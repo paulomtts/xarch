@@ -1,0 +1,54 @@
+"""Tests for the docs layout the spec module publishes: every document and folder of docs/project/, with templates."""
+import pytest
+
+from xarch.modules.spec.application.controller import SpecController
+from xarch.modules.spec.application.services.skeleton import SkeletonService
+from xarch.modules.spec.contract import Docs
+from tests.fakes.settings import FakeSettings
+
+QUESTIONS = {
+    "statement.md": "What problems are we trying to solve? What must the system do?",
+    "domain.md": "What exists in this problem domain, and how does it work?",
+    "design.md": "What are we proposing to build, and how will the pieces fit together?",
+    "architecture.md": "What is the system structurally?",
+    "requirements.md": "What does it require to exist?",
+    "adrs/0000-template.md": "What decisions have we made and why?",
+    "artifacts/standards/_template.md": "What is the correct way of doing things?",
+    "artifacts/audits/_template.md": "What does inconsistently wrong harness output look like?",
+    "artifacts/taxonomy/_template.md": "What are the names for certain recognizable patterns?",
+    "artifacts/modules/_template.md": "What is this module's responsibility? How does it behave? What are its invariants?",
+}
+
+
+def docs() -> Docs:
+    return SpecController(SkeletonService(FakeSettings())).docs()
+
+
+def templates() -> dict[str, str]:
+    return {"/".join(f.path): f.template for f in docs().files}
+
+
+def test_the_docs_live_in_docs_project_beside_the_app():
+    assert docs().root == ("docs", "project")
+
+
+def test_every_document_and_folder_has_exactly_one_template_in_order():
+    assert list(templates()) == list(QUESTIONS)
+
+
+@pytest.mark.parametrize("path", list(QUESTIONS))
+def test_each_template_starts_with_a_title_and_states_its_question(path):
+    text = templates()[path]
+    assert text.startswith("# ") and text.endswith("\n")
+    assert QUESTIONS[path] in text.splitlines()[2]
+
+
+@pytest.mark.parametrize("path", list(QUESTIONS))
+def test_each_template_is_short_with_sections(path):
+    text = templates()[path]
+    assert text.count("\n## ") >= 2
+    assert len(text.splitlines()) <= 45
+
+
+def test_the_domain_template_has_a_mermaid_placeholder():
+    assert "```mermaid" in templates()["domain.md"]

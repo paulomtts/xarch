@@ -1,0 +1,208 @@
+"""Tests for the CLI: exit codes and output, plus the scaffold-then-check drift guard."""
+import pytest
+from typer.testing import CliRunner
+
+from xarch.bootstrap.app import app
+
+runner = CliRunner()
+
+
+@pytest.fixture(autouse=True)
+def in_tmp(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+
+def test_check_on_a_scaffolded_tree_passes():
+    assert runner.invoke(app, ["init"]).exit_code == 0
+    assert runner.invoke(app, ["new-module", "demo"]).exit_code == 0
+    result = runner.invoke(app, ["check"])
+    assert result.exit_code == 0, result.output
+    assert "no violations" in result.output
+
+
+def test_check_reports_violations_with_exit_1(tmp_path):
+    runner.invoke(app, ["init"])
+    runner.invoke(app, ["new-module", "demo"])
+    (tmp_path / "app" / "kernel" / "bad.py").write_text("from app.platform import sql\n")
+    result = runner.invoke(app, ["check"])
+    assert result.exit_code == 1
+    assert "app/kernel/bad.py:1: kernel/ may not import platform/" in result.output
+    assert "1 violation" in result.output.splitlines()[-1]
+
+
+def test_check_reports_structure_violations(tmp_path):
+    runner.invoke(app, ["init"])
+    (tmp_path / "app" / "modules" / "docs").mkdir()
+    result = runner.invoke(app, ["check"])
+    assert result.exit_code == 1
+    assert "app/modules/docs: missing application/ports/" in result.output
+
+
+def test_check_with_a_missing_path_is_a_usage_error():
+    result = runner.invoke(app, ["check", "--app", "nowhere"])
+    assert result.exit_code == 2
+    assert "nowhere" in result.output
+
+
+def test_check_accepts_an_app_path(tmp_path):
+    runner.invoke(app, ["init", "--app", "elsewhere/app"])
+    assert runner.invoke(app, ["check", "--app", "elsewhere/app"]).exit_code == 0
+
+
+def test_init_says_what_it_created_then_what_it_skipped():
+    first = runner.invoke(app, ["init"])
+    assert first.exit_code == 0 and "created app/kernel/__init__.py" in first.output
+    second = runner.invoke(app, ["init"])
+    assert second.exit_code == 0
+    assert "skipped app/kernel/__init__.py" in second.output and "created" not in second.output
+
+
+def test_new_module_says_what_it_created():
+    runner.invoke(app, ["init"])
+    result = runner.invoke(app, ["new-module", "demo"])
+    assert result.exit_code == 0
+    assert "created app/modules/demo/application/controller.py" in result.output
+
+
+@pytest.mark.parametrize("name", ["Demo", "my-mod"])
+def test_new_module_refuses_a_bad_name_with_exit_2(name):
+    runner.invoke(app, ["init"])
+    result = runner.invoke(app, ["new-module", name])
+    assert result.exit_code == 2 and "lowercase" in result.output
+
+
+def test_new_module_refuses_an_existing_module_with_exit_2():
+    runner.invoke(app, ["init"])
+    runner.invoke(app, ["new-module", "demo"])
+    result = runner.invoke(app, ["new-module", "demo"])
+    assert result.exit_code == 2 and "already exists" in result.output
+
+
+def write_pyproject(folder, profile):
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "pyproject.toml").write_text(f'[project]\nname = "x"\n\n[tool.xarch]\nprofile = "{profile}"\n')
+
+
+def test_the_default_profile_is_cli(tmp_path):
+    runner.invoke(app, ["init"])
+    assert (tmp_path / "app" / "cli" / "commands" / "__init__.py").is_file()
+    assert not (tmp_path / "app" / "web").exists()
+
+
+def test_init_with_profile_web_then_check_with_profile_web_passes(tmp_path):
+    result = runner.invoke(app, ["init", "--profile", "web"])
+    assert result.exit_code == 0 and "created app/web/routes/__init__.py" in result.output
+    assert runner.invoke(app, ["new-module", "demo", "--profile", "web"]).exit_code == 0
+    checked = runner.invoke(app, ["check", "--profile", "web"])
+    assert checked.exit_code == 0, checked.output
+
+
+def test_a_web_tree_checked_as_cli_misses_cli():
+    runner.invoke(app, ["init", "--profile", "web"])
+    result = runner.invoke(app, ["check"])
+    assert result.exit_code == 1 and "app: missing cli/" in result.output
+
+
+def test_the_profile_comes_from_pyproject(tmp_path):
+    write_pyproject(tmp_path, "web")
+    assert runner.invoke(app, ["init"]).exit_code == 0
+    assert (tmp_path / "app" / "web" / "i18n" / "__init__.py").is_file()
+    assert runner.invoke(app, ["new-module", "demo"]).exit_code == 0
+    (tmp_path / "app" / "web" / "routes" / "demo.py").write_text("from app.modules.demo.domain import x\n")
+    result = runner.invoke(app, ["check"])
+    assert result.exit_code == 1
+    assert "app/web/routes/demo.py:1: web/ may not import domain/ of module 'demo'" in result.output
+
+
+def test_the_pyproject_is_looked_up_from_the_folder_holding_app(tmp_path):
+    write_pyproject(tmp_path / "elsewhere", "web")
+    runner.invoke(app, ["init", "--app", "elsewhere/app"])
+    assert (tmp_path / "elsewhere" / "app" / "web").is_dir()
+    assert runner.invoke(app, ["check", "--app", "elsewhere/app"]).exit_code == 0
+
+
+def test_profile_option_overrides_pyproject(tmp_path):
+    write_pyproject(tmp_path, "web")
+    runner.invoke(app, ["init"])
+    result = runner.invoke(app, ["check", "--profile", "cli"])
+    assert result.exit_code == 1 and "app: missing cli/" in result.output
+
+
+@pytest.mark.parametrize("command", [["check"], ["init"], ["new-module", "demo"]])
+def test_an_unknown_profile_option_is_a_usage_error(tmp_path, command):
+    runner.invoke(app, ["init"])
+    result = runner.invoke(app, [*command, "--profile", "mobile"])
+    assert result.exit_code == 2
+    assert "unknown profile 'mobile': use one of cli, web" in result.output
+    assert not (tmp_path / "app" / "modules" / "demo").exists()
+
+
+def test_an_unknown_profile_in_pyproject_is_a_usage_error(tmp_path):
+    write_pyproject(tmp_path, "mobile")
+    result = runner.invoke(app, ["init"])
+    assert result.exit_code == 2
+    assert f"unknown profile 'mobile' in {tmp_path / 'pyproject.toml'}" in result.output
+    assert not (tmp_path / "app").exists()
+
+
+def test_extras_produce_no_violations(tmp_path):
+    runner.invoke(app, ["init"])
+    runner.invoke(app, ["new-module", "demo"])
+    root = tmp_path / "app"
+    extras = {"main.py": "from app.platform import sql", "scripts/seed.py": "from app.modules.demo.adapters import r",
+              "modules/demo/helpers.py": "from app.platform import sql", "modules/demo/utils/x.py": "import os",
+              "modules/demo/application/helpers.py": "", "modules/demo/domain/x.py": "from ..helpers import h",
+              "kernel/sub/y.py": "", "web/routes/a.py": "from app.platform import sql"}
+    for rel, body in extras.items():
+        (root / rel).parent.mkdir(parents=True, exist_ok=True)
+        (root / rel).write_text(body)
+    (root / "README.txt").write_text("notes")
+    result = runner.invoke(app, ["check"])
+    assert result.exit_code == 0, result.output
+
+
+DOCS = ["docs/project/statement.md", "docs/project/domain.md", "docs/project/design.md",
+        "docs/project/architecture.md", "docs/project/requirements.md", "docs/project/adrs/0000-template.md",
+        "docs/project/artifacts/standards/_template.md", "docs/project/artifacts/audits/_template.md",
+        "docs/project/artifacts/taxonomy/_template.md", "docs/project/artifacts/modules/_template.md"]
+
+
+@pytest.mark.parametrize("profile", ["cli", "web"])
+def test_init_lists_the_docs_it_created_then_skips_them(tmp_path, profile):
+    first = runner.invoke(app, ["init", "--profile", profile])
+    assert first.exit_code == 0
+    lines = first.output.splitlines()
+    assert lines[-len(DOCS):] == [f"created {d}" for d in DOCS]          # after the app skeleton
+    assert (tmp_path / "docs/project/adrs/0000-template.md").read_text().startswith("# ADR")
+    second = runner.invoke(app, ["init", "--profile", profile])
+    assert second.exit_code == 0 and "created" not in second.output
+    assert all(f"skipped {d}" in second.output for d in DOCS)
+
+
+def test_init_keeps_an_existing_doc_and_the_extras_around_it(tmp_path):
+    project = tmp_path / "docs" / "project"
+    (project / "adrs").mkdir(parents=True)
+    (project / ".obsidian").mkdir()
+    (project / ".obsidian" / "app.json").write_text("{}")
+    (project / "architecture.md").write_text("# Mine\n")
+    result = runner.invoke(app, ["init"])
+    assert result.exit_code == 0
+    assert "skipped docs/project/architecture.md" in result.output
+    assert "created docs/project/adrs/0000-template.md" in result.output
+    assert (project / "architecture.md").read_text() == "# Mine\n"
+    assert (project / ".obsidian" / "app.json").read_text() == "{}"
+    assert runner.invoke(app, ["check"]).exit_code == 0              # drift guard: docs are not app structure
+
+
+def test_init_puts_the_docs_beside_an_app_given_by_path(tmp_path):
+    result = runner.invoke(app, ["init", "--app", "elsewhere/app"])
+    assert "created elsewhere/docs/project/statement.md" in result.output
+    assert (tmp_path / "elsewhere" / "docs" / "project" / "statement.md").is_file()
+
+
+def test_new_module_does_not_touch_the_docs(tmp_path):
+    runner.invoke(app, ["init"])
+    (tmp_path / "docs" / "project" / "statement.md").unlink()
+    result = runner.invoke(app, ["new-module", "demo"])
+    assert "docs/" not in result.output
+    assert not (tmp_path / "docs" / "project" / "statement.md").exists()
