@@ -69,6 +69,13 @@ def test_testing_gives_every_part_a_tier_and_names_the_profiles_driver(profile, 
     assert "{" not in text                                            # every placeholder was filled
 
 
+def test_testing_keeps_the_seed_in_bootstrap_for_the_smoke_tier_only():
+    text = templates()["testing.md"]
+    data = text.split("## Data")[1].split("## ")[0]
+    assert "| smoke | the seed |" in data and "`bootstrap/`" in data
+    assert data.count("seed") == text.count("seed")                   # no other tier mentions it
+
+
 def test_only_testing_differs_between_profiles():
     cli, web = templates("cli"), templates("web")
     assert [path for path in cli if cli[path] != web[path]] == ["testing.md"]

@@ -155,6 +155,22 @@ the fake proves nothing until it is a conformance pair.
 `tests/fakes/` holds one in-memory implementation per port, shared by the use-case tests and used as the
 `fake` side of every conformance pair. A fake is not an adapter; conformance is what keeps it honest.
 
+## Data
+
+A test builds the state it needs, so the reader sees all of it; no tier but smoke runs a shared seed.
+
+| Tier | Where its data comes from |
+|---|---|
+| unit | built in the test |
+| use case | the test loads the fake before acting; a builder per aggregate for the common shape, never a shared dataset |
+| conformance | the test writes what it then reads, on both sides of the pair |
+| driver | none: the faked controller returns the `Result` under test |
+| smoke | the seed |
+| guard | none |
+
+The seed is product code: it lives in `bootstrap/`, the only part that sees every module, and the demo
+environment runs the same seed the smoke tier does.
+
 ## Guards
 
 - `tests/architecture/`: `xarch check` on the app, so the dependency rules of architecture.md section 5 hold.
