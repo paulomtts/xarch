@@ -80,6 +80,14 @@ def test_testing_puts_scenarios_in_the_use_case_tier_only_with_the_name_rule():
     assert text.count("cenario") == files.count("cenario")           # no other section mentions them
 
 
+def test_testing_fakes_stateful_ports_and_mocks_fire_only_ones():
+    text = templates()["testing.md"]
+    section = text.split("## Fakes and mocks")[1].split("## ")[0]
+    assert "| reads back what it wrote | stateful | a fake" in section
+    assert "| only fires and never reads | fire-only | a mock" in section
+    assert "A mock has nothing to conform." in section
+
+
 def test_testing_keeps_the_seed_in_bootstrap_for_the_bootstrap_tier_only():
     text = templates()["testing.md"]
     data = text.split("## Data")[1].split("## ")[0]

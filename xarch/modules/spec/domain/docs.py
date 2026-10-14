@@ -125,7 +125,7 @@ Each ring admits one kind of test, so a test's tier follows from the ring its su
 | Tier | Subject | Proves | May touch |
 |---|---|---|---|
 | unit | `kernel/`, `domain/` | an invariant, a value rule, a state transition | nothing: no I/O, no clock, no fakes |
-| use case | `application/`, `contract/` | one `Result` variant per path, driven through the controller | `tests/fakes/` only |
+| use case | `application/`, `contract/` | one `Result` variant per path, driven through the controller | `tests/fakes/`, and mocks of fire-only ports |
 | conformance | `adapters/` | the fake and the real adapter agree on a port | the real system, parametrized `(fake, real)` |
 | driver | `{entry}/` | {driver_proves}; never a business outcome | controllers faked |
 | bootstrap | `bootstrap/` | one test: the app builds as `main` builds it, migrates, seeds and answers one command | everything, once |
@@ -146,7 +146,7 @@ nowhere else.
 ## Placement
 
 Which ring does the subject live in? That is the tier. The usual near-misses: a service test that mocks a
-port to assert it was called is a use-case test that should fake the port and assert the `Result`; a driver
+repo to assert it was called is a use-case test that should fake the repo and assert the `Result`; a driver
 test that asserts what the use case did belongs in the use-case tier; an adapter test that runs only against
 the fake proves nothing until it is a conformance pair.
 
@@ -181,10 +181,21 @@ def test_a_draft_with_a_title_is_published(): ...
 def test_a_draft_without_a_title_is_refused(): ...
 ```
 
-## Fakes
+## Fakes and mocks
 
-`tests/fakes/` holds one in-memory implementation per port, shared by the use-case tests and used as the
-`fake` side of every conformance pair. A fake is not an adapter; conformance is what keeps it honest.
+A port is faked or mocked by what the use case does with it:
+
+| The use case | Port kind | Stand-in | Example |
+|---|---|---|---|
+| reads back what it wrote | stateful | a fake: an in-memory implementation in `tests/fakes/`, one per port | a repo, a clock, a blob store |
+| only fires and never reads | fire-only | a mock asserting the call and its payload, since the call is the contract | send an email, publish an event |
+
+A mock on a stateful port scripts the answer, so the test proves the use case did what the test told it;
+a fake answers from what the use case wrote, so a second call sees the first. A fake for a fire-only port
+is ceremony. Mocks pin calls, so they belong only where the call is the outcome.
+
+The fakes are shared by every use-case test and are the `fake` side of every conformance pair. A fake is
+not an adapter; conformance is what keeps it honest. A mock has nothing to conform.
 
 ## Data
 
