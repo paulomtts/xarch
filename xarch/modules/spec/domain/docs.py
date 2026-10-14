@@ -150,6 +150,37 @@ port to assert it was called is a use-case test that should fake the port and as
 test that asserts what the use case did belongs in the use-case tier; an adapter test that runs only against
 the fake proves nothing until it is a conformance pair.
 
+## Files
+
+| Tier | One file per | Its cases come from |
+|---|---|---|
+| unit | domain object or rule | the invariants in the module doc |
+| use case | use case, headed by its scenarios | the scenarios: one per `Result` variant, happy and unhappy |
+| conformance | port | the port's methods |
+| driver | command or route | its arguments and outputs |
+| smoke | the app | the flows a demo walks |
+| guard | rule | the standard it enforces |
+
+Scenarios belong to the use-case tier only: there a test is one path through one use case, which is what a
+scenario names. A unit test proves a rule and a conformance test a port method; neither has a Given.
+
+A use-case file opens with its scenarios, one per `Result` variant of the use case in `contract/`, and
+a scenario's name is its test's name, so the header and the tests cannot drift apart. A variant with no
+scenario is an untested path; a scenario with no variant is a missing `Result`.
+
+```python
+\"\"\"Use case: publish a document.
+
+Scenario: a draft with a title is published
+  Given a draft with a title   When its owner publishes it   Then it is Published
+Scenario: a draft without a title is refused
+  Given a draft with no title  When its owner publishes it   Then it is Refused("title required")
+\"\"\"
+
+def test_a_draft_with_a_title_is_published(): ...
+def test_a_draft_without_a_title_is_refused(): ...
+```
+
 ## Fakes
 
 `tests/fakes/` holds one in-memory implementation per port, shared by the use-case tests and used as the

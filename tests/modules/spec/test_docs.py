@@ -69,6 +69,17 @@ def test_testing_gives_every_part_a_tier_and_names_the_profiles_driver(profile, 
     assert "{" not in text                                            # every placeholder was filled
 
 
+def test_testing_puts_scenarios_in_the_use_case_tier_only_with_the_name_rule():
+    text = templates()["testing.md"]
+    files = text.split("## Files")[1].split("## ")[0]
+    assert "| use case | use case, headed by its scenarios |" in files
+    assert "Scenarios belong to the use-case tier only" in files
+    assert "a scenario's name is its test's name" in files
+    assert "Scenario: a draft with a title is published" in files
+    assert "def test_a_draft_with_a_title_is_published" in files
+    assert text.count("cenario") == files.count("cenario")           # no other section mentions them
+
+
 def test_testing_keeps_the_seed_in_bootstrap_for_the_smoke_tier_only():
     text = templates()["testing.md"]
     data = text.split("## Data")[1].split("## ")[0]
