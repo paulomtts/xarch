@@ -260,9 +260,11 @@ A port is faked or mocked by what the use case does with it:
 | reads back what it wrote | stateful | a fake: an in-memory implementation in `tests/fakes/`, one per port | a repo, a clock, a blob store |
 | only fires and never reads | fire-only | a mock asserting the call and its payload, since the call is the contract | send an email, publish an event |
 
-A mock on a stateful port scripts the answer, so the test proves the use case did what the test told it;
-a fake answers from what the use case wrote, so a second call sees the first. A fake for a fire-only port
-is ceremony. Mocks pin calls, so they belong only where the call is the outcome.
+> **Litmus test.** Does the use case ever read back through this port what it or anything else wrote, or
+> branch on its answer? If yes, fake it: a mock would script the answer, and the test would prove only what
+> it was told. If the use case only calls it and never looks at it again, mock it: the call is the outcome,
+> and a fake would be ceremony. If a port does both, split the port: one that is written and read is not
+> the same need as one that only fires.
 
 A fake is a working implementation of the port that keeps its state in memory, not a recording of calls:
 

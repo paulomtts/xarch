@@ -99,6 +99,8 @@ def test_testing_fakes_stateful_ports_and_mocks_fire_only_ones():
     assert "| only fires and never reads | fire-only | a mock" in section
     assert "A mock has nothing to conform." in section
     assert "class DocsRepo(Protocol):" in section and "class FakeDocsRepo:" in section
+    assert "> **Litmus test.** Does the use case ever read back" in section
+    assert "If a port does both, split the port" in section
 
 
 @pytest.mark.parametrize("profile", ["cli", "web"])
