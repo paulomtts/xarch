@@ -66,7 +66,7 @@ def test_testing_gives_every_part_a_tier_and_names_the_profiles_driver(profile, 
                  f"`{profile}/`", "`platform/`", "`tests/architecture/`"]:
         assert part in text
     assert f"| driver | `{profile}/` | {driver}" in text
-    assert "{" not in text                                            # every placeholder was filled
+    assert "{entry}" not in text and "{driver_proves}" not in text   # every placeholder was filled
 
 
 def test_testing_puts_scenarios_in_the_use_case_tier_only_with_the_name_rule():
@@ -98,6 +98,15 @@ def test_testing_fakes_stateful_ports_and_mocks_fire_only_ones():
     assert "| reads back what it wrote | stateful | a fake" in section
     assert "| only fires and never reads | fire-only | a mock" in section
     assert "A mock has nothing to conform." in section
+    assert "class DocsRepo(Protocol):" in section and "class FakeDocsRepo:" in section
+
+
+@pytest.mark.parametrize("profile", ["cli", "web"])
+def test_testing_shows_one_example_test_per_tier(profile):
+    examples = templates(profile)["testing.md"].split("## Examples")[1].split("## ")[0]
+    for tier in ["unit", "use case", "conformance", "driver", "bootstrap", "guard"]:
+        assert f"# {tier}: tests/" in examples
+    assert f"# driver: tests/{profile}/" in examples
 
 
 def test_testing_keeps_the_seed_in_bootstrap_for_the_bootstrap_tier_only():

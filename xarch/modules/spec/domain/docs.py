@@ -173,6 +173,53 @@ first one it passes is where it goes.
 > **guard.** Does it read the source tree and fail on a rule of architecture.md, whatever the app does? If
 > yes, it is a guard, and it has a file under `artifacts/guards/`. If it runs the app, it is not a guard.
 
+## Examples
+
+One module, `docs`, with a use case `publish`; one test per tier, each holding only what its row allows.
+
+```python
+# unit: tests/modules/docs/domain/test_draft.py
+def test_a_draft_without_a_title_cannot_publish():
+    assert Draft(title="").can_publish() is False
+
+# use case: tests/modules/docs/application/test_publish.py (its header is shown under Files)
+def test_a_draft_without_a_title_is_refused():
+    repo = FakeDocsRepo()
+    repo.add(draft := a_draft(title=""))
+    assert controller(repo).publish(Publish(draft.id)) == Refused("title required")
+
+def test_the_owner_is_notified_once():
+    repo, mailer = FakeDocsRepo(), Mock(Mailer)
+    repo.add(draft := a_draft())
+    controller(repo, mailer).publish(Publish(draft.id))
+    mailer.send.assert_called_once_with(to=draft.owner, subject="Published")
+
+# conformance: tests/modules/docs/adapters/test_docs_repo.py
+@pytest.fixture(params=["fake", "sql"])
+def repo(request, sql_session):
+    return FakeDocsRepo() if request.param == "fake" else SqlDocsRepo(sql_session)
+
+def test_get_returns_what_save_stored(repo):
+    repo.save(doc := a_doc())
+    assert repo.get(doc.id) == doc
+
+# driver: tests/{entry}/test_publish.py
+def test_publish_prints_the_id_and_exits_zero(runner):
+    controller = Mock(publish=lambda cmd: Published(cmd.id))
+    result = runner.invoke(app(controller), ["docs", "publish", "42"])
+    assert result.exit_code == 0 and "42" in result.output
+
+# bootstrap: tests/bootstrap/test_app.py, the only test here
+def test_the_bootstrap_builds_migrates_seeds_and_answers(database_url):
+    app = build_app(Settings(database_url=database_url))
+    migrate(app); seed(app)                       # only this bootstrap test seeds
+    assert app.docs.list(ListDocs()).items
+
+# guard: tests/architecture/test_rules.py
+def test_the_dependency_rules_hold():
+    assert check(Path("app")).violations == []
+```
+
 ## Files
 
 | Tier | One file per | Its cases come from |
@@ -216,6 +263,22 @@ A port is faked or mocked by what the use case does with it:
 A mock on a stateful port scripts the answer, so the test proves the use case did what the test told it;
 a fake answers from what the use case wrote, so a second call sees the first. A fake for a fire-only port
 is ceremony. Mocks pin calls, so they belong only where the call is the outcome.
+
+A fake is a working implementation of the port that keeps its state in memory, not a recording of calls:
+
+```python
+class DocsRepo(Protocol):                       # the port, in application/ports/
+    def get(self, id: DocumentId) -> Document | None: ...
+    def save(self, doc: Document) -> None: ...
+
+class SqlDocsRepo:                              # the adapter, in adapters/: talks to the database
+    ...
+
+class FakeDocsRepo:                             # the fake, in tests/fakes/: a dict standing in for the table
+    def __init__(self): self.docs = {{}}
+    def get(self, id): return self.docs.get(id)
+    def save(self, doc): self.docs[doc.id] = doc
+```
 
 The fakes are shared by every use-case test and are the `fake` side of every conformance pair. A fake is
 not an adapter; conformance is what keeps it honest. A mock has nothing to conform.
