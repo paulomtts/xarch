@@ -128,20 +128,20 @@ Each ring admits one kind of test, so a test's tier follows from the ring its su
 | use case | `application/`, `contract/` | one `Result` variant per path, driven through the controller | `tests/fakes/` only |
 | conformance | `adapters/` | the fake and the real adapter agree on a port | the real system, parametrized `(fake, real)` |
 | driver | `{entry}/` | {driver_proves}; never a business outcome | controllers faked |
-| smoke | `bootstrap/` | the wiring builds and the app starts | everything, once |
+| bootstrap | `bootstrap/` | one test: the app builds as `main` builds it, migrates, seeds and answers one command | everything, once |
 | guard | the source tree | a rule of the architecture holds | `tests/architecture/` |
 
 `platform/` gets no tier of its own: conformance tests reach its clients through the adapters that use them.
 
 ## Running
 
-One command per tier that needs a real system (conformance, smoke), one for all the tiers that do not; a
+One command per tier that needs a real system (conformance, bootstrap), one for all the tiers that do not; a
 tier that needs a real system never shares a process with one that does not. The commands appear here and
 nowhere else.
 
 - unit, use case, driver, guard: `<command>`
 - conformance: `<command>`
-- smoke: `<command>`
+- bootstrap: `<command>`
 
 ## Placement
 
@@ -158,7 +158,7 @@ the fake proves nothing until it is a conformance pair.
 | use case | use case, headed by its scenarios | the scenarios: one per `Result` variant, happy and unhappy |
 | conformance | port | the port's methods |
 | driver | command or route | its arguments and outputs |
-| smoke | the app | the flows a demo walks |
+| bootstrap | the app | the one command it answers; a second test here belongs in a lower tier |
 | guard | rule | the standard it enforces |
 
 Scenarios belong to the use-case tier only: there a test is one path through one use case, which is what a
@@ -188,7 +188,7 @@ def test_a_draft_without_a_title_is_refused(): ...
 
 ## Data
 
-A test builds the state it needs, so the reader sees all of it; no tier but smoke runs a shared seed.
+A test builds the state it needs, so the reader sees all of it; no tier but bootstrap runs a shared seed.
 
 | Tier | Where its data comes from |
 |---|---|
@@ -196,11 +196,11 @@ A test builds the state it needs, so the reader sees all of it; no tier but smok
 | use case | the test loads the fake before acting; a builder per aggregate for the common shape, never a shared dataset |
 | conformance | the test writes what it then reads, on both sides of the pair |
 | driver | none: the faked controller returns the `Result` under test |
-| smoke | the seed |
+| bootstrap | the seed |
 | guard | none |
 
 The seed is product code: it lives in `bootstrap/`, the only part that sees every module, and the demo
-environment runs the same seed the smoke tier does.
+environment runs the same seed the bootstrap test does.
 
 ## Guards
 

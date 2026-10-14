@@ -80,11 +80,13 @@ def test_testing_puts_scenarios_in_the_use_case_tier_only_with_the_name_rule():
     assert text.count("cenario") == files.count("cenario")           # no other section mentions them
 
 
-def test_testing_keeps_the_seed_in_bootstrap_for_the_smoke_tier_only():
+def test_testing_keeps_the_seed_in_bootstrap_for_the_bootstrap_tier_only():
     text = templates()["testing.md"]
     data = text.split("## Data")[1].split("## ")[0]
-    assert "| smoke | the seed |" in data and "`bootstrap/`" in data
-    assert data.count("seed") == text.count("seed")                   # no other tier mentions it
+    assert "| bootstrap | the seed |" in data and "`bootstrap/`" in data
+    assert "smoke" not in text
+    outside = [line for line in text.replace(data, "").splitlines() if "seed" in line]
+    assert all("bootstrap" in line for line in outside)               # no other tier mentions it
 
 
 def test_only_testing_differs_between_profiles():
