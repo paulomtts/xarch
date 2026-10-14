@@ -162,9 +162,10 @@ def test_extras_produce_no_violations(tmp_path):
 
 
 DOCS = ["docs/project/statement.md", "docs/project/domain.md", "docs/project/design.md",
-        "docs/project/architecture.md", "docs/project/requirements.md", "docs/project/adrs/0000-template.md",
-        "docs/project/artifacts/standards/_template.md", "docs/project/artifacts/audits/_template.md",
-        "docs/project/artifacts/taxonomy/_template.md", "docs/project/artifacts/modules/_template.md"]
+        "docs/project/architecture.md", "docs/project/testing.md", "docs/project/requirements.md",
+        "docs/project/adrs/0000-template.md", "docs/project/artifacts/standards/_template.md",
+        "docs/project/artifacts/audits/_template.md", "docs/project/artifacts/taxonomy/_template.md",
+        "docs/project/artifacts/modules/_template.md", "docs/project/artifacts/guards/_template.md"]
 
 
 @pytest.mark.parametrize("profile", ["cli", "web"])

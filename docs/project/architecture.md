@@ -60,6 +60,7 @@ docs/
     ├── domain.md                   domain diagram
     ├── design.md                   design document
     ├── architecture.md             this file
+    ├── testing.md                  how the system is tested: tiers, commands, placement, fakes, guards
     ├── requirements.md
     ├── adrs/                       architecture decision records
     │   └── 0000-template.md
@@ -67,7 +68,8 @@ docs/
         ├── standards/              _template.md
         ├── audits/                 _template.md
         ├── taxonomy/               _template.md
-        └── modules/                _template.md
+        ├── modules/                _template.md
+        └── guards/                 _template.md; one per test that checks the codebase rather than the product
 ```
 
 ## 2. The rings across the app

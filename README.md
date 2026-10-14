@@ -62,9 +62,9 @@ are skipped, never overwritten, and extras (e.g. `.obsidian/`) are left alone.
 
 ```
 docs/project/
-  statement.md  domain.md  design.md  architecture.md  requirements.md
+  statement.md  domain.md  design.md  architecture.md  testing.md  requirements.md
   adrs/0000-template.md
-  artifacts/{standards,audits,taxonomy,modules}/_template.md
+  artifacts/{standards,audits,taxonomy,modules,guards}/_template.md
 ```
 
 Copy a folder's template to start a new document of that kind. `new-module` does not touch the docs, and

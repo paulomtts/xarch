@@ -107,6 +107,32 @@ What each part may import; anything not listed is forbidden.
 How one module uses another without importing it.
 """
 
+TESTING = """\
+# Testing
+
+> How is the system tested?
+
+## Tiers
+
+- Tier: what a test here proves, where it lives under `tests/`, and what it may touch (nothing, fakes, a real system).
+
+## Running
+
+One command per tier, each in its own invocation. The commands appear here and nowhere else.
+
+## Placement
+
+One litmus test per tier: the question a new test must answer yes to before it goes there.
+
+## Fakes
+
+What `tests/fakes/` implements, and which tiers use it.
+
+## Guards
+
+- Guard: what it refuses, in one line. Each has a file under `artifacts/guards/`.
+"""
+
 REQUIREMENTS = """\
 # Requirements
 
@@ -239,11 +265,38 @@ Inputs it accepts and outputs it returns.
 What it needs from outside, and the port that declares each need.
 """
 
+GUARD = """\
+# Guard: name
+
+> What does this guard refuse, and why?
+
+## Refuses
+
+What it fails on, in one sentence.
+
+## Why
+
+What goes wrong if it gets through.
+
+## Caught by
+
+The test file that enforces it.
+
+## Standard
+
+The standard under `artifacts/standards/` it enforces, or "review only" when there is none.
+
+## When it fires
+
+How to get unblocked: fix the cause, or, for a ratchet, where the allowlist is and what a reason must say.
+"""
+
 DOCS_TREE: DocTree = {
     "statement.md": STATEMENT,
     "domain.md": DOMAIN,
     "design.md": DESIGN,
     "architecture.md": ARCHITECTURE,
+    "testing.md": TESTING,
     "requirements.md": REQUIREMENTS,
     "adrs": {"0000-template.md": ADR},
     "artifacts": {
@@ -251,6 +304,7 @@ DOCS_TREE: DocTree = {
         "audits": {"_template.md": AUDIT},
         "taxonomy": {"_template.md": TAXONOMY},
         "modules": {"_template.md": MODULE},
+        "guards": {"_template.md": GUARD},
     },
 }
 

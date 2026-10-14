@@ -18,10 +18,10 @@ def controller(files: FakeFiles) -> ScaffoldController:
 
 
 DOCS = Path("/src/docs/project")
-DOC_FILES = [DOCS / p for p in ["statement.md", "domain.md", "design.md", "architecture.md", "requirements.md",
-                                "adrs/0000-template.md", "artifacts/standards/_template.md",
+DOC_FILES = [DOCS / p for p in ["statement.md", "domain.md", "design.md", "architecture.md", "testing.md",
+                                "requirements.md", "adrs/0000-template.md", "artifacts/standards/_template.md",
                                 "artifacts/audits/_template.md", "artifacts/taxonomy/_template.md",
-                                "artifacts/modules/_template.md"]]
+                                "artifacts/modules/_template.md", "artifacts/guards/_template.md"]]
 
 
 def test_init_creates_a_package_file_for_every_folder_then_the_docs_in_order():

@@ -11,12 +11,14 @@ QUESTIONS = {
     "domain.md": "What exists in this problem domain, and how does it work?",
     "design.md": "What are we proposing to build, and how will the pieces fit together?",
     "architecture.md": "What is the system structurally?",
+    "testing.md": "How is the system tested?",
     "requirements.md": "What does it require to exist?",
     "adrs/0000-template.md": "What decisions have we made and why?",
     "artifacts/standards/_template.md": "What is the correct way of doing things?",
     "artifacts/audits/_template.md": "What does inconsistently wrong harness output look like?",
     "artifacts/taxonomy/_template.md": "What are the names for certain recognizable patterns?",
     "artifacts/modules/_template.md": "What is this module's responsibility? How does it behave? What are its invariants?",
+    "artifacts/guards/_template.md": "What does this guard refuse, and why?",
 }
 
 
