@@ -80,6 +80,18 @@ def test_testing_puts_scenarios_in_the_use_case_tier_only_with_the_name_rule():
     assert text.count("cenario") == files.count("cenario")           # no other section mentions them
 
 
+def test_testing_gives_every_tier_a_litmus_test_in_placement():
+    text = templates()["testing.md"]
+    tiers = [line.split("|")[1].strip() for line in text.split("## Tiers")[1].split("## ")[0].splitlines()
+             if line.startswith("| ") and not line.startswith("| Tier")]
+    placement = text.split("## Placement")[1].split("## ")[0]
+    assert tiers == ["unit", "use case", "conformance", "driver", "bootstrap", "guard"]
+    verdicts = {"use case": "it is a use-case test", "bootstrap": "it is the bootstrap test", "guard": "it is a guard"}
+    for tier in tiers:
+        assert f"> **{tier}.** " in placement
+        assert verdicts.get(tier, f"it is a {tier} test") in placement
+
+
 def test_testing_fakes_stateful_ports_and_mocks_fire_only_ones():
     text = templates()["testing.md"]
     section = text.split("## Fakes and mocks")[1].split("## ")[0]

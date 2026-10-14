@@ -145,10 +145,33 @@ nowhere else.
 
 ## Placement
 
-Which ring does the subject live in? That is the tier. The usual near-misses: a service test that mocks a
-repo to assert it was called is a use-case test that should fake the repo and assert the `Result`; a driver
-test that asserts what the use case did belongs in the use-case tier; an adapter test that runs only against
-the fake proves nothing until it is a conformance pair.
+Which ring does the subject live in? That is the tier. When it is not obvious, run the litmus tests; the
+first one it passes is where it goes.
+
+> **unit.** Does it prove a rule, value or transition by building the object and asking it, with no port in
+> sight? If yes, it is a unit test. If it needs a port to get an answer, it is a use-case test. If it asserts
+> how a port was called, it is testing nothing.
+
+> **use case.** Does it drive one use case through the controller and assert one `Result` variant? If yes,
+> it is a use-case test. If it asserts what a fake holds instead of the `Result`,
+> check first that the `Result` would not already say it. If it asserts SQL, the order of rows or a
+> technology, it is a conformance test. If it mocks a repo to assert it was called, fake the repo and assert
+> the `Result`.
+
+> **conformance.** Does it assert something the port promises, and would it pass unchanged on both the fake
+> and the real adapter? If yes, it is a conformance test. If it would pass only on the real one, the fake is
+> wrong or the promise is not the port's. If it runs only against the fake, it proves nothing until it is a
+> pair. If it needs a use case to set the state up, it is a use-case test.
+
+> **driver.** Does it prove the entry point turned input into a command and a `Result` into output, with
+> the controller faked? If yes, it is a driver test. If it asserts what the use case did, or needs the real
+> controller to mean anything, it is a use-case test wearing a terminal.
+
+> **bootstrap.** Is it the one test that builds the app as `main` does? If yes, it is the bootstrap test. If
+> there is already one, this one belongs in a lower tier.
+
+> **guard.** Does it read the source tree and fail on a rule of architecture.md, whatever the app does? If
+> yes, it is a guard, and it has a file under `artifacts/guards/`. If it runs the app, it is not a guard.
 
 ## Files
 
