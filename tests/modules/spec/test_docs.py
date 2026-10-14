@@ -22,12 +22,15 @@ QUESTIONS = {
 }
 
 
-def docs() -> Docs:
-    return SpecController(SkeletonService(FakeSettings())).docs()
+TEMPLATES = [path for path in QUESTIONS if path != "testing.md"]       # testing.md is content, not a template
 
 
-def templates() -> dict[str, str]:
-    return {"/".join(f.path): f.template for f in docs().files}
+def docs(profile: str = "cli") -> Docs:
+    return SpecController(SkeletonService(FakeSettings())).docs(profile)
+
+
+def templates(profile: str = "cli") -> dict[str, str]:
+    return {"/".join(f.path): f.template for f in docs(profile).files}
 
 
 def test_the_docs_live_in_docs_project_beside_the_app():
@@ -45,7 +48,7 @@ def test_each_template_starts_with_a_title_and_states_its_question(path):
     assert QUESTIONS[path] in text.splitlines()[2]
 
 
-@pytest.mark.parametrize("path", list(QUESTIONS))
+@pytest.mark.parametrize("path", TEMPLATES)
 def test_each_template_is_short_with_sections(path):
     text = templates()[path]
     assert text.count("\n## ") >= 2
@@ -54,3 +57,18 @@ def test_each_template_is_short_with_sections(path):
 
 def test_the_domain_template_has_a_mermaid_placeholder():
     assert "```mermaid" in templates()["domain.md"]
+
+
+@pytest.mark.parametrize("profile, driver", [("cli", "argument parsing"), ("web", "routing")])
+def test_testing_gives_every_part_a_tier_and_names_the_profiles_driver(profile, driver):
+    text = templates(profile)["testing.md"]
+    for part in ["`kernel/`", "`domain/`", "`application/`", "`contract/`", "`adapters/`", "`bootstrap/`",
+                 f"`{profile}/`", "`platform/`", "`tests/architecture/`"]:
+        assert part in text
+    assert f"| driver | `{profile}/` | {driver}" in text
+    assert "{" not in text                                            # every placeholder was filled
+
+
+def test_only_testing_differs_between_profiles():
+    cli, web = templates("cli"), templates("web")
+    assert [path for path in cli if cli[path] != web[path]] == ["testing.md"]

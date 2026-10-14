@@ -10,6 +10,6 @@ class Skeleton(Protocol):
 
     def module(self, profile: str) -> list[tuple[tuple[str, ...], bool]]: ...
 
-    def docs(self) -> list[tuple[tuple[str, ...], str]]:
-        """(path below the folder holding the app, template) for every project doc, the same in every profile."""
+    def docs(self, profile: str) -> list[tuple[tuple[str, ...], str]]:
+        """(path below the folder holding the app, text) for every project doc."""
         ...

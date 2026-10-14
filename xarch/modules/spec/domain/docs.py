@@ -1,12 +1,16 @@
 """The project docs beside the app, defined once as data: every document, and a template for each.
 
-A dict is a folder holding its entries; a str is a file and the template it starts with. A folder holds a
-template for the kind of document that lives in it, so no folder is ever empty. The docs are the same in
-every profile, and they are not part of the app's structure: `check` does not require them.
+A dict is a folder holding its entries; a str is a file and the text it starts with. A folder holds a
+template for the kind of document that lives in it, so no folder is ever empty. testing.md is written as
+content, because the rings fix which tests each part admits; the rest are templates. Only testing.md's
+driver row depends on the profile, and the docs are not part of the app's structure: `check` does not
+require them.
 """
 from __future__ import annotations
 
 from collections.abc import Iterator
+
+from xarch.modules.spec.domain.skeleton import Profile
 
 DocTree = dict[str, "DocTree | str"]
 
@@ -112,25 +116,50 @@ TESTING = """\
 
 > How is the system tested?
 
+Each ring admits one kind of test, so a test's tier follows from the ring its subject lives in
+(architecture.md, section 2). Tests mirror the app: `tests/modules/<module>/<part>/`, `tests/{entry}/`,
+`tests/architecture/`.
+
 ## Tiers
 
-- Tier: what a test here proves, where it lives under `tests/`, and what it may touch (nothing, fakes, a real system).
+| Tier | Subject | Proves | May touch |
+|---|---|---|---|
+| unit | `kernel/`, `domain/` | an invariant, a value rule, a state transition | nothing: no I/O, no clock, no fakes |
+| use case | `application/`, `contract/` | one `Result` variant per path, driven through the controller | `tests/fakes/` only |
+| conformance | `adapters/` | the fake and the real adapter agree on a port | the real system, parametrized `(fake, real)` |
+| driver | `{entry}/` | {driver_proves}; never a business outcome | controllers faked |
+| smoke | `bootstrap/` | the wiring builds and the app starts | everything, once |
+| guard | the source tree | a rule of the architecture holds | `tests/architecture/` |
+
+`platform/` gets no tier of its own: conformance tests reach its clients through the adapters that use them.
 
 ## Running
 
-One command per tier, each in its own invocation. The commands appear here and nowhere else.
+One command per tier that needs a real system (conformance, smoke), one for all the tiers that do not; a
+tier that needs a real system never shares a process with one that does not. The commands appear here and
+nowhere else.
+
+- unit, use case, driver, guard: `<command>`
+- conformance: `<command>`
+- smoke: `<command>`
 
 ## Placement
 
-One litmus test per tier: the question a new test must answer yes to before it goes there.
+Which ring does the subject live in? That is the tier. The usual near-misses: a service test that mocks a
+port to assert it was called is a use-case test that should fake the port and assert the `Result`; a driver
+test that asserts what the use case did belongs in the use-case tier; an adapter test that runs only against
+the fake proves nothing until it is a conformance pair.
 
 ## Fakes
 
-What `tests/fakes/` implements, and which tiers use it.
+`tests/fakes/` holds one in-memory implementation per port, shared by the use-case tests and used as the
+`fake` side of every conformance pair. A fake is not an adapter; conformance is what keeps it honest.
 
 ## Guards
 
-- Guard: what it refuses, in one line. Each has a file under `artifacts/guards/`.
+- `tests/architecture/`: `xarch check` on the app, so the dependency rules of architecture.md section 5 hold.
+
+One line per guard. Each has a file under `artifacts/guards/`.
 """
 
 REQUIREMENTS = """\
@@ -309,11 +338,12 @@ DOCS_TREE: DocTree = {
 }
 
 
-def doc_files(tree: DocTree = DOCS_TREE, prefix: tuple[str, ...] = ()) -> Iterator[tuple[tuple[str, ...], str]]:
-    """Yield (path, template) for every file, in the order the tree lists them."""
+def doc_files(chosen: Profile, tree: DocTree = DOCS_TREE,
+              prefix: tuple[str, ...] = ()) -> Iterator[tuple[tuple[str, ...], str]]:
+    """Yield (path, text) for every file, in the order the tree lists them; testing.md names the profile's driver."""
     for name, sub in tree.items():
         path = prefix + (name,)
         if isinstance(sub, str):
-            yield path, sub
+            yield path, sub.format(entry=chosen.entry_point, driver_proves=chosen.driver_proves)
         else:
-            yield from doc_files(sub, path)
+            yield from doc_files(chosen, sub, path)

@@ -16,9 +16,9 @@ class SpecController:
         """The skeleton of a known profile: callers get the name from select() or profiles()."""
         return self._service.skeleton(profile)
 
-    def docs(self) -> Docs:
-        """The project docs and their templates, the same in every profile."""
-        return self._service.docs()
+    def docs(self, profile: str = DEFAULT_PROFILE) -> Docs:
+        """The project docs and their text; only testing.md's driver row depends on the profile."""
+        return self._service.docs(profile)
 
     def profiles(self) -> tuple[str, ...]:
         return self._service.profiles()

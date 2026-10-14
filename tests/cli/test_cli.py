@@ -175,6 +175,7 @@ def test_init_lists_the_docs_it_created_then_skips_them(tmp_path, profile):
     lines = first.output.splitlines()
     assert lines[-len(DOCS):] == [f"created {d}" for d in DOCS]          # after the app skeleton
     assert (tmp_path / "docs/project/adrs/0000-template.md").read_text().startswith("# ADR")
+    assert f"| driver | `{profile}/` |" in (tmp_path / "docs/project/testing.md").read_text()
     second = runner.invoke(app, ["init", "--profile", profile])
     assert second.exit_code == 0 and "created" not in second.output
     assert all(f"skipped {d}" in second.output for d in DOCS)

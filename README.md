@@ -57,8 +57,9 @@ profile = "web"
 ## Project docs
 
 `init` also writes the project docs beside the app folder (in the folder holding it), from short templates:
-a title, the question the document answers, and fixed section headings. Same in every profile; existing files
-are skipped, never overwritten, and extras (e.g. `.obsidian/`) are left alone.
+a title, the question the document answers, and fixed section headings. `testing.md` is written as content
+instead, since the rings fix which tests each part admits; only its driver row depends on the profile.
+Existing files are skipped, never overwritten, and extras (e.g. `.obsidian/`) are left alone.
 
 ```
 docs/project/

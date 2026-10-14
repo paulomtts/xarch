@@ -21,11 +21,12 @@ Tree = dict[str, "Tree | None"]
 class Profile:
     entry_point: str               # the folder that drives the modules
     entry_tree: Tree               # what it holds
+    driver_proves: str             # what a test of the entry point proves, for testing.md
 
 
 PROFILES: dict[str, Profile] = {
-    "cli": Profile("cli", {"commands": {}}),
-    "web": Profile("web", {"routes": {}, "i18n": {}, "ui": {}}),
+    "cli": Profile("cli", {"commands": {}}, "argument parsing, exit codes and terminal output"),
+    "web": Profile("web", {"routes": {}, "i18n": {}, "ui": {}}, "routing, status codes and rendered output"),
 }
 
 DEFAULT_PROFILE = "cli"

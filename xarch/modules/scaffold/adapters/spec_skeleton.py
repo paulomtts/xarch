@@ -9,7 +9,7 @@ from xarch.modules.spec.contract import Docs, Entry, Skeleton
 class _Spec(Protocol):                     # the little we use of spec's controller
     def skeleton(self, profile: str) -> Skeleton: ...
 
-    def docs(self) -> Docs: ...
+    def docs(self, profile: str) -> Docs: ...
 
 
 class SpecSkeleton:                        # satisfies scaffold's Skeleton port
@@ -22,8 +22,8 @@ class SpecSkeleton:                        # satisfies scaffold's Skeleton port
     def module(self, profile: str) -> list[tuple[tuple[str, ...], bool]]:
         return _entries(self._spec.skeleton(profile).module)
 
-    def docs(self) -> list[tuple[tuple[str, ...], str]]:
-        docs = self._spec.docs()
+    def docs(self, profile: str) -> list[tuple[tuple[str, ...], str]]:
+        docs = self._spec.docs(profile)
         return [(docs.root + f.path, f.template) for f in docs.files]
 
 

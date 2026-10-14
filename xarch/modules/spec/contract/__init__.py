@@ -22,12 +22,12 @@ class Skeleton:
 @dataclass(frozen=True)
 class DocFile:
     path: tuple[str, ...]          # below the docs root, e.g. ("adrs", "0000-template.md")
-    template: str                  # the text a new file starts with
+    template: str                  # the text a new file starts with: content for testing.md, a template elsewhere
 
 
 @dataclass(frozen=True)
 class Docs:
-    """The project docs, the same in every profile; folders exist because the template files inside them do."""
+    """The project docs of a profile; folders exist because the template files inside them do."""
     root: tuple[str, ...]          # below the folder holding the app, e.g. ("docs", "project")
     files: tuple[DocFile, ...]
 

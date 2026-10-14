@@ -37,7 +37,7 @@ def test_init_creates_a_package_file_for_every_folder_then_the_docs_in_order():
 def test_init_writes_each_doc_with_its_template_in_every_profile(profile):
     files = FakeFiles()
     controller(files).init(Init(ROOT, profile))
-    docs = build_spec().docs()
+    docs = build_spec().docs(profile)
     assert {path: files.texts[path] for path in DOC_FILES} == {
         DOCS.joinpath(*f.path): f.template for f in docs.files}
 

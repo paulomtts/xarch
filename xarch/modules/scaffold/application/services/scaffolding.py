@@ -18,7 +18,7 @@ class Scaffolding:
     def init(self, root: Path, profile: str) -> Report:
         report = self._build(root, self._skeleton.top_level(profile))
         base = holder(root)
-        for rel, template in self._skeleton.docs():                  # the project docs, after the app
+        for rel, template in self._skeleton.docs(profile):           # the project docs, after the app
             self._write(base.joinpath(*rel), template, report)
         return report
 

@@ -17,8 +17,8 @@ class SkeletonService:
         return Skeleton(top_level=_entries(top_level_tree(name)), module=_entries(MODULE_TREE),
                         entry_point=profile(name).entry_point)
 
-    def docs(self) -> Docs:
-        return Docs(root=DOCS_ROOT, files=tuple(DocFile(path, text) for path, text in doc_files()))
+    def docs(self, name: str = DEFAULT_PROFILE) -> Docs:
+        return Docs(root=DOCS_ROOT, files=tuple(DocFile(path, text) for path, text in doc_files(profile(name))))
 
     def profiles(self) -> tuple[str, ...]:
         return tuple(PROFILES)
