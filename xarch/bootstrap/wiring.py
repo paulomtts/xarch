@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from xarch.modules.layout.adapters.fs_disk import FsDisk
 from xarch.modules.layout.adapters.spec_skeleton import SpecSkeleton as LayoutSkeleton
@@ -15,9 +16,13 @@ from xarch.modules.scaffold.adapters.fs_files import FsFiles
 from xarch.modules.scaffold.adapters.spec_skeleton import SpecSkeleton as ScaffoldSkeleton
 from xarch.modules.scaffold.application.controller import ScaffoldController
 from xarch.modules.scaffold.application.services.scaffolding import Scaffolding
+from xarch.modules.spec.adapters.fs_architecture_files import FsArchitectureFiles
 from xarch.modules.spec.adapters.pyproject_settings import PyprojectSettings
 from xarch.modules.spec.application.controller import SpecController
+from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.application.services.skeleton import SkeletonService
+from xarch.modules.spec.domain.values import Architecture
+from xarch.platform.data_files import DataFileReader
 from xarch.platform.filesystem import FileSystem
 from xarch.platform.toml import TomlReader
 
@@ -32,6 +37,15 @@ class Controllers:
 
 def build_spec(fs: FileSystem | None = None) -> SpecController:
     return SpecController(SkeletonService(PyprojectSettings(fs or FileSystem(), TomlReader())))
+
+
+def build_architectures(fs: FileSystem | None = None) -> ArchitectureService:
+    return ArchitectureService(FsArchitectureFiles(fs or FileSystem(), DataFileReader()))
+
+
+def load_architecture(location: str | Path) -> Architecture:
+    """The architecture bundled under a name (e.g. "web") or in a .yaml or .json file; raises InvalidArchitecture."""
+    return build_architectures().load(location)
 
 
 def build_rules(fs: FileSystem, spec: SpecController) -> RulesController:

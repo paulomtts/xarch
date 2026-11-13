@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from xarch.modules.rules.domain.rules_table import EVERYTHING, RULES, Target
 from xarch.modules.rules.domain.values import Parts
 
 
@@ -39,34 +40,19 @@ def label(place: Place) -> str:
 
 
 def allowed(src: Place, dst: Place) -> bool:
-    if src.part == "bootstrap":
+    return any(_reaches(target, src, dst) for target in RULES.get(src.part, ()))
+
+
+def _reaches(target: Target, src: Place, dst: Place) -> bool:
+    if target.part == EVERYTHING:
         return True
-    if dst.part == "structure":
+    if target.part != dst.part or dst.sub[:len(target.sub)] != target.sub:
         return False
-    if dst.part == "kernel":
-        return src.part != "structure"
-    same = src.module is not None and src.module == dst.module
-    match src.part:
-        case "platform":
-            return dst.part == "platform"
-        case "entry":
-            return dst.part == "entry" or (dst.part in ("controller", "contract") and dst.module is not None)
-        case "domain":
-            return same and dst.part == "domain"
-        case "contract":
-            return same and (dst.part == "contract" or (dst.part == "domain" and dst.sub[:1] == ("values",)))
-        case "controller":
-            return same and dst.part in ("controller", "services", "logic", "ports", "domain", "contract")
-        case "services":
-            return same and dst.part in ("services", "logic", "ports", "domain", "contract")
-        case "logic":
-            return same and dst.part in ("logic", "domain")
-        case "ports":
-            return same and dst.part in ("ports", "domain")
-        case "adapters":
-            if dst.part == "platform":
-                return True
-            if dst.part == "contract":
-                return True            # its own, or the provider's whose controller it wraps (section 6)
-            return same and dst.part in ("adapters", "ports", "domain")
+    match target.scope:
+        case "own":
+            return src.module is not None and src.module == dst.module
+        case "any":
+            return dst.module is not None
+        case "none":
+            return dst.module is None
     return False

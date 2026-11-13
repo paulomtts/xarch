@@ -1,0 +1,126 @@
+# The architecture of a command-line app: modules driven by cli/, wired by bootstrap/.
+xarch: 1
+name: cli
+
+layout:
+  bootstrap:
+    migrations: {}
+  kernel:
+    logic: {}
+  modules:
+    each:
+      contract: {}
+      domain: {}
+      application:
+        controller.py: file
+        services: {}
+        logic: {}
+        ports: {}
+      adapters: {}
+  platform: {}
+  cli:
+    commands: {}
+
+parts:
+  contract:
+    path: modules/*/contract
+    role: "the module's published language: commands, DTOs, Results (one union per use case), ids"
+    litmus: >-
+      Is it part of what the module promises to callers outside it: an input a caller sends, an output that comes
+      back, or an id that names the module's things? If yes, it goes here, and an id is defined in
+      `domain/values.py` and re-exported here. If it is a `domain/` entity, a service type or a port, it stays where
+      it is, and a DTO goes here instead.
+  domain:
+    path: modules/*/domain
+    role: "entities, values (incl. ids), errors: invariants only"
+    litmus: >-
+      Is it an invariant of one of this module's entities or values (a state transition or a validation) that can
+      run with no database and no clock? If yes, it goes here, on that entity or value. If it is a pure rule that is
+      not one entity's invariant, it belongs in `application/logic/`. If it must load or save anything, it is a
+      service step.
+  controller:
+    path: modules/*/application/controller.py
+    role: "maps failures to a Result"
+    litmus: >-
+      Does it turn what a service returns or raises into a `Result` for the caller (exceptions into variants,
+      entities into DTOs), without deciding any business rule? If yes, it goes here. If it names argument parsing or
+      terminal output, it belongs in `cli/`. If it names SQL, it belongs in `adapters/`.
+  services:
+    path: modules/*/application/services
+    role: "use-case steps: load, check, act, persist"
+    litmus: >-
+      Does it run one use case as the sequence "load → check preconditions → act → persist → notify" by calling
+      ports and domain objects, without building the `Result` or the DTO? If yes, it goes here. If it decides what
+      is valid, it belongs in `domain/`. If it is a pure rule with no port, it belongs in `application/logic/`. If
+      it builds the `Result` or the DTO, it belongs in the controller. If it touches a database, it belongs in
+      `adapters/`.
+  logic:
+    path: modules/*/application/logic
+    role: "pure functions over the module's domain objects, one file per rule"
+    litmus: >-
+      Is it a pure function over this module's domain objects, not one entity's invariant, with no port and no I/O?
+      If yes, it goes here, in a file named for the rule. If it holds one entity's invariant, it belongs in that
+      entity in `domain/`. If another module needs it too, it belongs in `kernel/logic/`. If it must load or save
+      anything, it is a service step.
+  ports:
+    path: modules/*/application/ports
+    role: "Protocols for what the module needs from the outside"
+    litmus: >-
+      Is it something the application needs from outside itself (storage, search, email, or another module's rule)
+      that can be declared as a `Protocol` with no implementation, in the module's own vocabulary and not in SQL or
+      vendor terms? If yes, it goes here. If it is a generic primitive with no business meaning (such as `Clock`),
+      it belongs in `kernel/`. If it has a body that talks to a real system, it belongs in `adapters/`.
+  adapters:
+    path: modules/*/adapters
+    role: "driven only: repos, which translate the platform/ table models; use platform/ clients"
+    litmus: >-
+      Does it implement one of this module's ports against a real system, translating between the module's types
+      and that system's, and naming no other module except the `contract/` of one whose controller it wraps? If
+      yes, it goes here. If it knows no module's types and is only a client or engine for a technology, it belongs
+      in `platform/`. If it contains a business rule, it belongs in `domain/`.
+  kernel:
+    path: kernel
+    role: "pure primitives: id helpers, base errors, lifecycle fields, tracing, Clock; logic/ holds the pure functions that modules share"
+    litmus: >-
+      Is it a primitive with no business meaning, one that could be lifted unchanged into an unrelated system (id
+      helpers, base errors, lifecycle fields, tracing carriers, `Clock`)? If yes, it goes here. Is it a pure
+      function with no port and no I/O that two or more modules need? If yes, it goes in `kernel/logic/`. If only
+      one module needs it, or it names one module's thing, such as a concrete id like `DocumentId`, it belongs in
+      the owning module. If it wraps a technology, it belongs in `platform/`.
+  platform:
+    path: platform
+    role: "shared technology clients: llm, embeddings, email, crypto, blob_storage, system clock, sql engine, sessions and table models"
+    litmus: >-
+      Is it a client or engine for an external technology (LLM, embeddings, email, crypto, blob storage, clock, SQL
+      engine, table models) that knows none of the types of any one module? If yes, it goes here, named for the
+      technology (a table model, for its table) and never for a module. If it translates a module's types for a
+      port, it belongs in that module's `adapters/`.
+  entry:
+    path: cli
+    role: "the only place for commands and terminal output; commands/ holds one file per command group"
+    litmus: >-
+      Does it parse arguments or print to the terminal, whichever module's data it shows? If yes, it goes here. If
+      it reports a failure as a `Result`, it belongs in the controller. If it holds a business rule, it belongs in
+      `domain/`.
+  bootstrap:
+    path: bootstrap
+    role: "composition root: binds ports to adapters, hands controllers to cli/; migrations/ holds the schema and its history"
+    litmus: >-
+      Does it choose which adapter fills which port, build the services and controller around them, wrap one
+      module's controller in another's adapter, or define the schema? If yes, it goes here, and nowhere else. If it
+      only implements one module's port against a real system, it belongs in `adapters/`.
+
+# What each part may import. <part>@own: in the importer's module; <part>@any: in any module; a bare <part>: a part
+# outside the modules; /<path> after it: only that path below the part; "*": everything (quoted: * starts a YAML alias).
+rules:
+  contract:   [contract@own, domain@own/values, kernel]
+  domain:     [domain@own, kernel]
+  controller: [controller@own, services@own, logic@own, ports@own, domain@own, contract@own, kernel]
+  services:   [services@own, logic@own, ports@own, domain@own, contract@own, kernel]
+  logic:      [logic@own, domain@own, kernel]
+  ports:      [ports@own, domain@own, kernel]
+  adapters:   [platform, contract@any, adapters@own, ports@own, domain@own, kernel]   # contract@any: its own, or the provider's whose controller it wraps
+  kernel:     [kernel]
+  platform:   [platform, kernel]
+  entry:      [entry, controller@any, contract@any, kernel]
+  bootstrap:  ["*"]
