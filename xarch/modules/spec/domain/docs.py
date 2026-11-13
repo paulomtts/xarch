@@ -1,15 +1,16 @@
 """The project docs beside the app, defined once as data: every document, and a template for each.
 
 A dict is a folder holding its entries; a str is a file and the text it starts with. A folder holds a
-template for the kind of document that lives in it, so no folder is ever empty. testing.md is written as
-content, because the rings fix which tests each part admits; the rest are templates. Only testing.md's
-driver row depends on the profile, and the docs are not part of the app's structure: `check` does not
+template for the kind of document that lives in it, so no folder is ever empty. testing.md and architecture.md are
+written as content, because the rings fix which tests each part admits and what each may import; the rest are
+templates. Only those two depend on the profile, and the docs are not part of the app's structure: `check` does not
 require them.
 """
 from __future__ import annotations
 
 from collections.abc import Iterator
 
+from xarch.modules.spec.domain.architecture_text import ARCHITECTURE
 from xarch.modules.spec.domain.skeleton import Profile
 
 DocTree = dict[str, "DocTree | str"]
@@ -89,28 +90,6 @@ What else we weighed, and why not.
 What is still undecided.
 """
 
-ARCHITECTURE = """\
-# Architecture Document
-
-> What is the system structurally?
-
-## Structure
-
-The folder tree, with one line on what each part is for.
-
-## Rings
-
-The layers from the inside out, and which parts belong to each.
-
-## Dependency rules
-
-What each part may import; anything not listed is forbidden.
-
-## How modules meet
-
-How one module uses another without importing it.
-"""
-
 TESTING = """\
 # Testing
 
@@ -175,45 +154,42 @@ first one it passes is where it goes.
 
 ## Examples
 
-One module, `docs`, with a use case `publish`; one test per tier, each holding only what its row allows.
+One module, `documents`, with a use case `publish`; one test per tier, each holding only what its row allows.
 
 ```python
-# unit: tests/modules/docs/domain/test_draft.py
-def test_a_draft_without_a_title_cannot_publish():
-    assert Draft(title="").can_publish() is False
+# unit: tests/modules/documents/domain/test_document.py
+def test_a_document_without_a_title_cannot_be_published():
+    with pytest.raises(DocumentIncomplete):
+        a_document(title="").publish(NOW)
 
-# use case: tests/modules/docs/application/test_publish.py (its header is shown under Files)
-def test_a_draft_without_a_title_is_refused():
-    repo = FakeDocsRepo()
-    repo.add(draft := a_draft(title=""))
-    assert controller(repo).publish(Publish(draft.id)) == Refused("title required")
+# use case: tests/modules/documents/application/test_publish.py (its header is shown under Files)
+def test_a_document_without_a_title_is_rejected():
+    repo = FakeDocumentRepo()
+    repo.save(doc := a_document(title=""))
+    assert controller(repo).publish(PublishDocument(doc.id)) == Rejected("The document needs a title.")
 
-def test_the_owner_is_notified_once():
-    repo, mailer = FakeDocsRepo(), Mock(Mailer)
-    repo.add(draft := a_draft())
-    controller(repo, mailer).publish(Publish(draft.id))
-    mailer.send.assert_called_once_with(to=draft.owner, subject="Published")
+def test_the_owner_is_notified_once():                  # Notifier: a fire-only port of documents, so a mock
+    repo, notifier = FakeDocumentRepo(), Mock(Notifier)
+    repo.save(doc := a_document())
+    controller(repo, notifier).publish(PublishDocument(doc.id))
+    notifier.published.assert_called_once_with(doc.id)
 
-# conformance: tests/modules/docs/adapters/test_docs_repo.py
-@pytest.fixture(params=["fake", "sql"])
+# conformance: tests/modules/documents/adapters/test_document_repo.py
+@pytest.fixture(params=["fake", "db"])
 def repo(request, sql_session):
-    return FakeDocsRepo() if request.param == "fake" else SqlDocsRepo(sql_session)
+    return FakeDocumentRepo() if request.param == "fake" else DbDocumentRepo(sql_session)
 
 def test_get_returns_what_save_stored(repo):
-    repo.save(doc := a_doc())
+    repo.save(doc := a_document())
     assert repo.get(doc.id) == doc
 
 # driver: tests/{entry}/test_publish.py
-def test_publish_prints_the_id_and_exits_zero(runner):
-    controller = Mock(publish=lambda cmd: Published(cmd.id))
-    result = runner.invoke(app(controller), ["docs", "publish", "42"])
-    assert result.exit_code == 0 and "42" in result.output
-
+{driver_test}
 # bootstrap: tests/bootstrap/test_app.py, the only test here
 def test_the_bootstrap_builds_migrates_seeds_and_answers(database_url):
     app = build_app(Settings(database_url=database_url))
     migrate(app); seed(app)                       # only this bootstrap test seeds
-    assert app.docs.list(ListDocs()).items
+    assert isinstance(app.documents.publish(PublishDocument(SEEDED_DOCUMENT_ID)), Published)
 
 # guard: tests/architecture/test_rules.py
 def test_the_dependency_rules_hold():
@@ -241,14 +217,17 @@ scenario is an untested path; a scenario with no variant is a missing `Result`.
 ```python
 \"\"\"Use case: publish a document.
 
-Scenario: a draft with a title is published
-  Given a draft with a title   When its owner publishes it   Then it is Published
-Scenario: a draft without a title is refused
-  Given a draft with no title  When its owner publishes it   Then it is Refused("title required")
+Scenario: a document with a title is published
+  Given a document with a title   When it is published   Then the Result is Published
+Scenario: a document that does not exist is missing
+  Given no such document          When it is published   Then the Result is Missing
+Scenario: a document without a title is rejected
+  Given a document with no title  When it is published   Then the Result is Rejected("The document needs a title.")
 \"\"\"
 
-def test_a_draft_with_a_title_is_published(): ...
-def test_a_draft_without_a_title_is_refused(): ...
+def test_a_document_with_a_title_is_published(): ...
+def test_a_document_that_does_not_exist_is_missing(): ...
+def test_a_document_without_a_title_is_rejected(): ...
 ```
 
 ## Fakes and mocks
@@ -269,14 +248,14 @@ A port is faked or mocked by what the use case does with it:
 A fake is a working implementation of the port that keeps its state in memory, not a recording of calls:
 
 ```python
-class DocsRepo(Protocol):                       # the port, in application/ports/
+class DocumentRepo(Protocol):                       # the port, in application/ports/
     def get(self, id: DocumentId) -> Document | None: ...
     def save(self, doc: Document) -> None: ...
 
-class SqlDocsRepo:                              # the adapter, in adapters/: talks to the database
+class DbDocumentRepo:                              # the adapter, in adapters/: talks to the database
     ...
 
-class FakeDocsRepo:                             # the fake, in tests/fakes/: a dict standing in for the table
+class FakeDocumentRepo:                             # the fake, in tests/fakes/: a dict standing in for the table
     def __init__(self): self.docs = {{}}
     def get(self, id): return self.docs.get(id)
     def save(self, doc): self.docs[doc.id] = doc
@@ -470,7 +449,7 @@ DOCS_TREE: DocTree = {
     "statement.md": STATEMENT,
     "domain.md": DOMAIN,
     "design.md": DESIGN,
-    "architecture.md": ARCHITECTURE,
+    "architecture.md": "",                 # the profile's full text, see doc_text
     "testing.md": TESTING,
     "requirements.md": REQUIREMENTS,
     "adrs": {"0000-template.md": ADR},
@@ -484,12 +463,19 @@ DOCS_TREE: DocTree = {
 }
 
 
+def doc_text(chosen: Profile, name: str, text: str) -> str:
+    """architecture.md is the profile's full text, as is; every other doc fills the profile's placeholders."""
+    if name == "architecture.md":
+        return ARCHITECTURE[chosen.entry_point]
+    return text.format(entry=chosen.entry_point, driver_proves=chosen.driver_proves, driver_test=chosen.driver_test)
+
+
 def doc_files(chosen: Profile, tree: DocTree = DOCS_TREE,
               prefix: tuple[str, ...] = ()) -> Iterator[tuple[tuple[str, ...], str]]:
     """Yield (path, text) for every file, in the order the tree lists them; testing.md names the profile's driver."""
     for name, sub in tree.items():
         path = prefix + (name,)
         if isinstance(sub, str):
-            yield path, sub.format(entry=chosen.entry_point, driver_proves=chosen.driver_proves)
+            yield path, doc_text(chosen, name, sub)
         else:
             yield from doc_files(chosen, sub, path)

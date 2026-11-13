@@ -60,7 +60,7 @@ def allowed(src: Place, dst: Place) -> bool:
         case "services":
             return same and dst.part in ("services", "ports", "domain", "contract")
         case "ports":
-            return same and dst.part in ("ports", "domain", "contract")
+            return same and dst.part in ("ports", "domain")
         case "adapters":
             if dst.part == "platform":
                 return True
