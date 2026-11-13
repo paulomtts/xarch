@@ -45,7 +45,7 @@ DEFAULT_PROFILE = "cli"
 MODULE_TREE: Tree = {
     "contract": {},
     "domain": {},
-    "application": {"controller.py": None, "services": {}, "ports": {}},
+    "application": {"controller.py": None, "services": {}, "logic": {}, "ports": {}},
     "adapters": {},
 }
 
@@ -71,7 +71,7 @@ def top_level_tree(name: str) -> Tree:
     chosen = profile(name)
     return {
         "bootstrap": {"migrations": {}},
-        "kernel": {},
+        "kernel": {"logic": {}},
         "modules": {},
         "platform": {},
         chosen.entry_point: chosen.entry_tree,

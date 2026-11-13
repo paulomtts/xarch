@@ -56,9 +56,11 @@ def allowed(src: Place, dst: Place) -> bool:
         case "contract":
             return same and (dst.part == "contract" or (dst.part == "domain" and dst.sub[:1] == ("values",)))
         case "controller":
-            return same and dst.part in ("controller", "services", "ports", "domain", "contract")
+            return same and dst.part in ("controller", "services", "logic", "ports", "domain", "contract")
         case "services":
-            return same and dst.part in ("services", "ports", "domain", "contract")
+            return same and dst.part in ("services", "logic", "ports", "domain", "contract")
+        case "logic":
+            return same and dst.part in ("logic", "domain")
         case "ports":
             return same and dst.part in ("ports", "domain")
         case "adapters":

@@ -66,8 +66,15 @@ def test_testing_gives_every_part_a_tier_and_names_the_profiles_driver(profile, 
     for part in ["`kernel/`", "`domain/`", "`application/`", "`contract/`", "`adapters/`", "`bootstrap/`",
                  f"`{profile}/`", "`platform/`", "`tests/architecture/`"]:
         assert part in text
-    assert f"| driver | `{profile}/` | {driver}" in text
+    assert f"| driver | `{profile}/`, `bootstrap/jobs/` | {driver}" in text
     assert "{entry}" not in text and "{driver_proves}" not in text and "{driver_test}" not in text   # every placeholder was filled
+
+
+@pytest.mark.parametrize("profile", ["cli", "web"])
+def test_testing_unit_tests_pure_logic(profile):
+    text = templates(profile)["testing.md"]
+    assert "| unit | `kernel/` and `kernel/logic/`, `domain/`, `application/logic/` |" in text
+    assert "or by calling a\n> pure function from `logic/`" in text.split("## Placement")[1]
 
 
 def test_testing_puts_scenarios_in_the_use_case_tier_only_with_the_name_rule():
@@ -160,7 +167,7 @@ def test_architecture_orders_a_modules_layers_inward_instead_of_allowing_sideway
     text = templates(profile)["architecture.md"]
     assert "sideways" not in text and "same ring" not in text
     layers = text.split("## 3. The rings inside a module")[1].split("## 4.")[0]
-    assert "`domain/` → `contract/` → `application/ports/` → `application/services/` → `application/controller.py`" in layers
+    assert "`domain/` → `contract/` → `application/logic/` → `application/ports/` → `application/services/` → `application/controller.py`" in layers
     assert "`platform/` → `adapters/`" in layers
     assert text.split("## 5. ")[1].startswith("The dependency rules\n\nDependencies point inward:")
 
@@ -168,7 +175,7 @@ def test_architecture_orders_a_modules_layers_inward_instead_of_allowing_sideway
 @pytest.mark.parametrize("profile", ["cli", "web"])
 def test_the_table_model_lives_in_platform_and_the_repo_translates_it(profile):
     text = templates(profile)["architecture.md"]
-    adapters = text.split("### 8.6 adapters/")[1].split("### 8.7")[0]
+    adapters = text.split("### 8.7 adapters/")[1].split("### 8.8")[0]
     platform = text.split("### 9.2 platform/")[1].split("### 9.3")[0]
     assert "class DocumentRow" not in adapters and "document_row.py" not in text
     assert "def _to_domain(self, row: DocumentRow) -> Document:" in adapters and "def _from_domain(self, doc: Document) -> DocumentRow:" in adapters
@@ -206,10 +213,10 @@ def test_architecture_defines_build_moderation_beside_build_documents(profile):
 @pytest.mark.parametrize("profile", ["cli", "web"])
 def test_architecture_has_a_naming_table_where_an_adapter_ends_with_its_ports_name(profile):
     text = templates(profile)["architecture.md"]
-    assert "  - [[#8.7 Naming]]" in text
-    naming = text.split("### 8.7 Naming")[1].split("## 9.")[0]
+    assert "  - [[#8.8 Naming]]" in text
+    naming = text.split("### 8.8 Naming")[1].split("## 9.")[0]
     for kind in ["command", "DTO", "Result variant", "Result union", "entity", "id", "domain error", "service",
-                 "controller", "port", "adapter", "table model", "test fake"]:
+                 "controller", "pure rule", "port", "adapter", "table model", "test fake"]:
         assert f"| {kind} |" in naming
     assert "| adapter | `adapters/` | `<System><PortName>`" in naming
     assert "`DbDocumentRepo`" in naming and "`ModerationContentReview`" in naming
@@ -217,21 +224,42 @@ def test_architecture_has_a_naming_table_where_an_adapter_ends_with_its_ports_na
 
 
 
+@pytest.mark.parametrize("profile", ["cli", "web"])
+def test_architecture_gives_pure_logic_a_place_in_the_module_and_in_the_kernel(profile):
+    text = templates(profile)["architecture.md"]
+    assert "│   └── logic/                  pure functions that modules share" in text
+    assert "│       │   ├── logic/          pure functions over the module's domain objects" in text
+    rules = text.split("## 5. ")[1].split("## 6.")[0]
+    assert "| `application/logic/` | its own module's `domain/`, `kernel/` |" in rules
+    assert "`services/` (the controller only), `logic/`, `domain/`, `ports/` and `contract/`, `kernel/` |" in rules
+    assert "| `domain/` | its own module's `domain/`, `kernel/` |" in rules           # the domain does not import logic
+    assert "`domain` → `logic` → `ports` → `services`" in text.split("## 7. ")[1].split("## 8.")[0]
+    assert "  - [[#8.5 application/logic/]]" in text and "  - [[#8.6 application/ports/]]" in text
+    logic = text.split("### 8.5 application/logic/")[1].split("### 8.6 ")[0]
+    assert "def is_stale(doc: Document, now: datetime) -> bool:" in block(logic, "modules/documents/application/logic/staleness.py")
+    assert "from app.modules.documents.application.logic.staleness import is_stale" in logic
+    assert "is_stale(doc, self._clock.now())" in logic
+    assert "> **Litmus test.** Is it a pure function over this module's domain objects, not one entity's invariant" in logic
+    assert "it belongs in `kernel/logic/`" in logic and "it belongs in that entity in `domain/`" in logic
+    kernel = text.split("### 9.1 kernel/")[1].split("### 9.2 ")[0]
+    assert "Nothing here has business meaning" not in kernel and "including a business rule two modules need" in kernel
+    assert "it goes in `kernel/logic/`" in kernel
+
+
 def test_architecture_defines_every_name_its_examples_use():
     text = templates()["architecture.md"]
-    for definition in ["class CreateDocument:", "class Created:", "class Unavailable:", "CreateResult = ",
-                       "class ContentRejected(", "class ReviewUnavailable(", "class Status(Enum):",
-                       "def new(cls, title: str)", "class Allowed", "class Denied", "class NoAnswer"]:
+    for definition in ["class CreateDocument:", "class Created:", "CreateResult = ", "class ContentRejected(",
+                       "class DocumentIncomplete(", "def new(cls, title: str)", "class Allowed", "class Denied"]:
         assert definition in text, definition
     assert "from app.modules.moderation.contract import ReviewText, ReviewResult, Clean, Flagged" in text
 
 
 def test_architecture_names_the_reviews_outcomes_apart_from_the_create_results_variant():
     text = templates()["architecture.md"]
-    assert "-> Allowed | Denied | NoAnswer" in text
-    assert "case NoAnswer():    raise ReviewUnavailable()" in text            # aligned with its sibling cases
-    assert "case Unavailable()" not in text and "Allowed | Denied | Unavailable" not in text
-    assert "return Unavailable()" in text                                 # the controller's Result variant stays
+    assert "-> Allowed | Denied:" in text
+    assert "case Denied(why): raise ContentRejected(why)" in text         # the review's outcome becomes a domain error
+    assert "Allowed | Denied | Rejected" not in text and "case Rejected(" not in text.split("### 8.4 ")[1].split("### 8.5 ")[0]
+    assert "return Rejected(e.reason)" in text                            # the controller's Result variant stays
 
 
 @pytest.mark.parametrize("profile", ["cli", "web"])
@@ -289,7 +317,7 @@ def test_the_contract_example_is_split_into_files_like_a_real_contract(profile):
 
 def block(text: str, header: str) -> str:
     """The code of one example file: from its path comment to the next path comment or the end of its fence."""
-    body = text.split(f"# {header}")[-1]              # the last one: section 6 only excerpts bootstrap/app.py
+    body = text.split(f"# {header}")[-1]              # the last one: an earlier mention may only excerpt the file
     cut = [i for i in (body.find("\n# modules/"), body.find("\n# bootstrap/"), body.find("\n# cli/"),
                        body.find("\n# web/"), body.find("\n# kernel/"), body.find("\n# platform/"), body.find("\n```"))
            if i != -1]
@@ -305,7 +333,7 @@ def test_every_example_file_shows_the_imports_between_the_projects_own_files(pro
         "modules/documents/application/controller.py": ["from app.modules.documents.contract import", "from app.modules.documents.domain.errors import", "from app.modules.documents.application.services.document_service import DocumentService"],
         "modules/documents/application/services/document_service.py": ["from app.modules.documents.application.ports.document_repo import DocumentRepo", "from app.modules.documents.domain.document import Document", "from app.kernel.time import Clock"],
         "modules/documents/application/ports/document_repo.py": ["from app.modules.documents.domain.document import Document", "from app.modules.documents.domain.values import DocumentId"],
-        "modules/documents/adapters/db_document_repo.py": ["from app.platform.sql.tables.documents import DocumentRow", "from app.platform.sql import Session", "from app.modules.documents.domain.document import Document, Status"],
+        "modules/documents/adapters/db_document_repo.py": ["from app.platform.sql.tables.documents import DocumentRow", "from app.platform.sql import Session", "from app.modules.documents.domain.document import Document"],
         "bootstrap/wiring.py": ["from app.modules.documents.adapters.db_document_repo import DbDocumentRepo", "from app.platform.sql import Session"],
     }
     for header, imports in expected.items():
@@ -385,7 +413,7 @@ def test_the_schema_is_shown_as_a_migration_and_the_row_is_the_modules_view_of_i
     assert "CREATE TABLE" not in text and "exec_driver_sql" not in text          # SQLModel builds the table, not hand-written SQL
     assert "builds the table from the table model" in bootstrap and "a new migration file, never an edit of an old one" in bootstrap
     assert "adapters" not in migration and "names one of the row classes" not in text
-    assert "(section 9.4 shows one)" in text.split("### 8.6 adapters/")[1].split("### 8.7")[0]
+    assert "(section 9.4 shows one)" in text.split("### 8.7 adapters/")[1].split("### 8.8")[0]
     assert "models · migrations" not in text and "repos · table models" not in text and "adapters/ · repos\"]" in text
 
 
@@ -395,3 +423,13 @@ def test_the_table_model_is_named_by_its_place_in_the_naming_table_and_the_tree(
     assert "| table model | `platform/sql/tables/` | thing and `Row` | `DocumentRow` |" in text
     assert "sql engine, sessions and table models" in text
     assert "so two modules may map the same tables" not in text and "Each table is defined once, in `platform/`" in text
+
+
+@pytest.mark.parametrize("profile", ["cli", "web"])
+def test_the_architecture_says_where_callers_other_than_the_entry_point_live(profile):
+    text = templates(profile)["architecture.md"]
+    section = text.split("## 10. Callers other than the entry point")[1]
+    assert "`bootstrap/jobs/<job>.py`" in section and "driver test" in section
+    assert "- [[#10. Callers other than the entry point]]" in text
+    assert "section 10 says where each lives" in text
+    assert "UnitOfWork" not in text and "Actor" not in text         # transactions and the caller are the implementation's business

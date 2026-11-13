@@ -16,14 +16,16 @@ How the system is structured: where code lives, what each part is for, and the d
   - [[#8.2 domain/]]
   - [[#8.3 application/controller.py]]
   - [[#8.4 application/services/]]
-  - [[#8.5 application/ports/]]
-  - [[#8.6 adapters/]]
-  - [[#8.7 Naming]]
+  - [[#8.5 application/logic/]]
+  - [[#8.6 application/ports/]]
+  - [[#8.7 adapters/]]
+  - [[#8.8 Naming]]
 - [[#9. Outside the modules]]
   - [[#9.1 kernel/]]
   - [[#9.2 platform/]]
   - [[#9.3 web/]]
   - [[#9.4 bootstrap/]]
+- [[#10. Callers other than the entry point]]
 
 ## 1. Structure
 
@@ -40,6 +42,7 @@ app/
 ├── bootstrap/                  composition root: binds ports to adapters, hands controllers to web/
 │   └── migrations/             the schema and its history; the only place migrations live
 ├── kernel/                     pure primitives: id helpers, base errors, lifecycle fields, tracing, Clock
+│   └── logic/                  pure functions that modules share, including a rule two modules need
 ├── modules/
 │   └── <module>/
 │       ├── contract/           the module's published language: commands, DTOs, Results (one union per use case), ids
@@ -47,6 +50,7 @@ app/
 │       ├── application/
 │       │   ├── controller.py   maps failures to a Result
 │       │   ├── services/       use-case steps: load, check, act, persist
+│       │   ├── logic/          pure functions over the module's domain objects, one file per rule
 │       │   └── ports/          Protocols for what the module needs from the outside
 │       └── adapters/           driven only: repos, which translate the platform/ table models; use platform/ clients
 ├── platform/                   shared technology clients: llm, embeddings, email, crypto, blob_storage, system clock, sql engine, sessions and table models
@@ -85,7 +89,7 @@ flowchart TB
     subgraph r3["Edge ring · web/ · platform/ · each module's adapters/"]
       subgraph r2["Application ring · each module's application/ and contract/"]
         subgraph r1["Domain ring · each module's domain/"]
-          r0["kernel/ · pure primitives"]
+          r0["kernel/ · pure primitives · logic/"]
         end
       end
     end
@@ -94,7 +98,7 @@ flowchart TB
 
 | Ring | Where it lives | Role |
 |---|---|---|
-| 0, kernel | `kernel/` | Primitives with no business meaning |
+| 0, kernel | `kernel/` | Primitives with no business meaning, and the pure functions modules share (`kernel/logic/`) |
 | 1, domain | every module's `domain/` | Invariants |
 | 2, application | every module's `application/` and `contract/` | Use cases and the caller-facing vocabulary |
 | 3, edge | `web/`, `platform/`, every module's `adapters/` | Everything that touches the outside world |
@@ -119,6 +123,7 @@ flowchart TB
       pub["contract/ · commands · DTOs · Results · ids"]
       ctrl["application/controller"]
       svc["application/services"]
+      logic["application/logic"]
       ports["application/ports"]
       subgraph core["Domain ring · domain/"]
         dom["entities · values · errors"]
@@ -127,7 +132,7 @@ flowchart TB
   end
 ```
 
-Within those rings, the parts of a module sit in layers, and every import points from an outer layer to an inner one. From the inside out, the application side runs `domain/` → `contract/` → `application/ports/` → `application/services/` → `application/controller.py`, and the edge side runs `platform/` → `adapters/`. A service may import its ports, the contract and the domain because each is inward of it. A controller may import its services for the same reason. An adapter may use `platform/`, which sits just inward of it and is shared by every module. `kernel/` is inward of all of them. The table in section 5 lists which of these inward parts each part may import.
+Within those rings, the parts of a module sit in layers, and every import points from an outer layer to an inner one. From the inside out, the application side runs `domain/` → `contract/` → `application/logic/` → `application/ports/` → `application/services/` → `application/controller.py`, and the edge side runs `platform/` → `adapters/`. A service may import its logic, its ports, the contract and the domain because each is inward of it. A controller may import its services for the same reason. `application/logic/` imports only the domain, so the services and the controller call it and it calls neither. An adapter may use `platform/`, which sits just inward of it and is shared by every module. `kernel/` is inward of all of them. The table in section 5 lists which of these inward parts each part may import.
 
 ## 4. A request through the rings
 
@@ -147,7 +152,7 @@ flowchart LR
 ```
 
 > [!WARNING]
-> The browser is the only caller drawn, because it is the only one today. Something else, such as a database trigger, a scheduled job or an incoming event, may later call the controller exactly as a route does.
+> The entry point is the only caller drawn. A scheduled job or an incoming event calls the controller exactly as it does, and section 10 says where each lives.
 
 `kernel/` (pure primitives) is used by several of these parts and is left out of the diagram to keep the flow readable. Section 5 states who may import it.
 
@@ -157,10 +162,11 @@ Dependencies point inward: a part imports only from the rings inside it (section
 
 | Part | May import |
 |---|---|
-| `kernel/` | nothing |
+| `kernel/` (with `kernel/logic/`) | nothing |
 | `domain/` | its own module's `domain/`, `kernel/` |
 | `contract/` | its own module's `domain/values` (to re-export ids), `kernel/` |
-| `application/` (controller, services) | its own module's `services/` (the controller only), `domain/`, `ports/` and `contract/`, `kernel/` |
+| `application/` (controller, services) | its own module's `services/` (the controller only), `logic/`, `domain/`, `ports/` and `contract/`, `kernel/` |
+| `application/logic/` | its own module's `domain/`, `kernel/` |
 | `application/ports/` | its own module's `domain/`, `kernel/` |
 | `adapters/` | its own module's `application/ports/`, `domain/` and `contract/`, `kernel/`, `platform/`, and the `contract/` of a module whose controller it wraps (section 6) |
 | `platform/` | `kernel/` |
@@ -169,8 +175,8 @@ Dependencies point inward: a part imports only from the rings inside it (section
 
 > [!IMPORTANT]
 > Two consequences follow from the table.
-> - **A module never imports anything from another module, with one exception.** An adapter may name the `contract/` types of a module whose controller it wraps (section 6). Controllers, services, ports and domain never do. `web/` and `bootstrap/` are not modules, so they may import any module's `controller` and `contract/`.
-> - **`web/` goes through the controller.** It never imports a module's `domain/`, `services/`, `ports/` or `adapters/`.
+> - **A module never imports anything from another module, with one exception.** An adapter may name the `contract/` types of a module whose controller it wraps (section 6). Controllers, services, logic, ports and domain never do. `web/` and `bootstrap/` are not modules, so they may import any module's `controller` and `contract/`.
+> - **`web/` goes through the controller.** It never imports a module's `domain/`, `services/`, `logic/`, `ports/` or `adapters/`.
 
 ## 6. How modules meet
 
@@ -201,15 +207,13 @@ flowchart LR
 class Allowed: ...
 @dataclass(frozen=True)
 class Denied: why: str
-@dataclass(frozen=True)
-class NoAnswer: ...
 
 class ContentReview(Protocol):
-    def review(self, title: str) -> Allowed | Denied | NoAnswer: ...
+    def review(self, title: str) -> Allowed | Denied: ...
 
 # modules/documents/adapters/moderation_content_review.py: the only file that names moderation
 from app.modules.moderation.contract import ReviewText, ReviewResult, Clean, Flagged
-from app.modules.documents.application.ports.content_review import Allowed, Denied, NoAnswer
+from app.modules.documents.application.ports.content_review import Allowed, Denied
 
 class _Moderation(Protocol):                                  # the little we use of moderation's controller
     def review(self, cmd: ReviewText) -> ReviewResult: ...
@@ -221,17 +225,12 @@ class ModerationContentReview:                                # satisfies Conten
         match self._m.review(ReviewText(title)):       # moderation's contract, translated to documents' words
             case Clean():      return Allowed()
             case Flagged(why): return Denied(why)
-            case _:            return NoAnswer()
-
-# bootstrap/app.py, inside build_app (section 9.4): the adapter wraps the provider's controller
-moderation = build_moderation(session)
-documents = build_documents(session, clock, review=ModerationContentReview(moderation))
 ```
 
-`ReviewText`, `ReviewResult`, `Clean` and `Flagged` belong to moderation's `contract/`. `Allowed`, `Denied` and `NoAnswer` are documents' own, defined beside the port. So are the errors `ContentRejected` and `ReviewUnavailable`, which live in `domain/errors.py`. The service turns `Denied` and `NoAnswer` into those errors, and the controller turns the errors into the `Rejected` and `Unavailable` variants of the create `Result`.
+`ReviewText`, `ReviewResult`, `Clean` and `Flagged` belong to moderation's `contract/`. `Allowed` and `Denied` are documents' own, defined beside the port. So is the error `ContentRejected`, which lives in `domain/errors.py`. The service turns `Denied` into that error, and the controller turns the error into the `Rejected` variant of the create `Result`.
 
 > [!TIP]
-> **Litmus test.** Does one module need another module's rule? If yes, it declares a port in its own words, and an adapter in its own `adapters/` implements that port by calling the provider's controller. That adapter is the only place that names the provider, and it names only the provider's `contract/`.
+> **Litmus test.** Does one module need another module's rule? If yes, it declares a port in its own words, and an adapter in its own `adapters/` implements that port by calling the provider's controller. That adapter is the only place that names the provider, and it names only the provider's `contract/`. If the rule is a pure function with no port, it is promoted to `kernel/logic/` instead (section 9.1).
 
 > [!NOTE]
 > The adapter translates the provider's `Result` into the consumer's outcome, and the service turns it into a domain error, so no provider type reaches the consumer's service, controller or domain. The adapter types the provider's controller with its own small `Protocol`, so it imports only `contract/`, and the type checker verifies the match where `bootstrap/` passes the real controller in.
@@ -243,14 +242,14 @@ documents = build_documents(session, clock, review=ModerationContentReview(moder
 
 When a piece of code does not obviously fit, run the litmus tests in this order. The first one it passes is where it goes. The order governs code that belongs in the tree. Code that is deliberately outside the tree (section 1) has no home to find and is not checked.
 
-`domain` → `ports` → `services` → `controller` → `adapters` → `platform` → `web` → `bootstrap` → `contract` → `kernel`
+`domain` → `logic` → `ports` → `services` → `controller` → `adapters` → `platform` → `web` → `bootstrap` → `contract` → `kernel`
 
-The ports test excludes generic primitives, so `Clock` falls through to `kernel`. `kernel` comes last because "no business meaning" is the broadest test: anything that fails every earlier test and carries no business meaning is a kernel primitive.
+The ports test excludes generic primitives, so `Clock` falls through to `kernel`. The logic test excludes a rule another module also needs, so it falls through to `kernel/logic/`. `kernel` comes last because its test is the broadest: anything that fails every earlier test and either carries no business meaning or is a pure function that modules share goes there.
 
 The "if not" pointers inside each test name the usual near-miss. They are shortcuts, and when they disagree with the order above, the order decides.
 
 > [!NOTE]
-> Three tests call for judgment: `contract/` (is it a deliberate part of the module's contract), `kernel/` (does it carry business meaning), and the line between a precondition in `services/` (what the use case needs must exist or be available) and a business rule in `domain/` (what is valid to do). Decide them explicitly in review.
+> Three tests call for judgment: `contract/` (is it a deliberate part of the module's contract), `kernel/` (does it carry no business meaning, or is it a pure function shared by modules and so promoted to `kernel/logic/`), and the line between a precondition in `services/` (what the use case needs must exist or be available) and a business rule in `domain/` (what is valid to do). Decide them explicitly in review.
 
 ---
 
@@ -282,7 +281,6 @@ from app.modules.documents.domain.values import DocumentId
 class DocumentView:               # DTO: what comes back
     id: DocumentId
     title: str
-    published: bool
 
 # modules/documents/contract/results.py
 from app.modules.documents.contract.views import DocumentView
@@ -300,16 +298,14 @@ PublishResult = Published | Missing | Rejected
 # the variants of the create Result
 @dataclass(frozen=True)
 class Created: view: DocumentView
-@dataclass(frozen=True)
-class Unavailable: ...
 
-CreateResult = Created | Rejected | Unavailable
+CreateResult = Created | Rejected
 
 # modules/documents/contract/__init__.py: the public names; what is not listed here is not part of the contract
 from app.modules.documents.domain.values import DocumentId     # re-exported on purpose; defined in domain/values.py
 from app.modules.documents.contract.commands import PublishDocument, CreateDocument
 from app.modules.documents.contract.views import DocumentView
-from app.modules.documents.contract.results import Published, Missing, Rejected, PublishResult, Created, Unavailable, CreateResult
+from app.modules.documents.contract.results import Published, Missing, Rejected, PublishResult, Created, CreateResult
 ```
 
 > [!TIP]
@@ -323,7 +319,7 @@ from app.modules.documents.contract.results import Published, Missing, Rejected,
 
 ### 8.2 domain/
 
-Entities and their state transitions, value objects (including typed ids) and their validation, domain errors, and pure rules that span several entities.
+Entities and their state transitions, value objects (including typed ids) and their validation, and domain errors: the invariants of each entity and value. A pure rule that is not one entity's invariant goes in `application/logic/` (section 8.5).
 
 ```python
 # modules/documents/domain/values.py
@@ -333,40 +329,31 @@ DocumentId = NewType("DocumentId", UUID)
 from app.kernel.errors import DomainError, NotFound
 
 class DocumentNotFound(NotFound):      reason = "The document does not exist."
-class AlreadyPublished(DomainError):   reason = "The document is already published."
 class DocumentIncomplete(DomainError): reason = "The document needs a title."
 class ContentRejected(DomainError):
     def __init__(self, why: str): self.reason = why                    # the review's reason, passed on
-class ReviewUnavailable(DomainError): reason = "The content review could not answer."
 
 # modules/documents/domain/document.py
 from app.kernel.identifiers import new_id
-from app.modules.documents.domain.errors import AlreadyPublished, DocumentIncomplete
+from app.modules.documents.domain.errors import DocumentIncomplete
 from app.modules.documents.domain.values import DocumentId
 
-class Status(Enum):
-    DRAFT = "draft"
-    PUBLISHED = "published"
-
 class Document:
-    def __init__(self, id: DocumentId, title: str, status: Status, published_at: datetime | None):
-        self.id, self.title, self.status, self.published_at = id, title, status, published_at
+    def __init__(self, id: DocumentId, title: str, published_at: datetime | None):
+        self.id, self.title, self.published_at = id, title, published_at
 
     @classmethod
     def new(cls, title: str) -> "Document":
-        return cls(DocumentId(new_id()), title, Status.DRAFT, None)    # new_id comes from kernel/
+        return cls(DocumentId(new_id()), title, None)                  # new_id comes from kernel/
 
     def publish(self, now: datetime) -> None:
-        if self.status is Status.PUBLISHED:
-            raise AlreadyPublished(self.id)
-        if not self.title.strip():
+        if not self.title.strip():                                     # the rule: a document needs a title
             raise DocumentIncomplete(self.id)
-        self.status = Status.PUBLISHED
         self.published_at = now
 ```
 
 > [!TIP]
-> **Litmus test.** Is it a business rule, entity state transition or value validation of this module that can run with no database and no clock? If yes, it goes here. If it must load or save anything, it is a service step.
+> **Litmus test.** Is it an invariant of one of this module's entities or values (a state transition or a validation) that can run with no database and no clock? If yes, it goes here, on that entity or value. If it is a pure rule that is not one entity's invariant, it belongs in `application/logic/`. If it must load or save anything, it is a service step.
 
 ### 8.3 application/controller.py
 
@@ -375,13 +362,10 @@ The module's use-case façade. It delegates to a service, turns exceptions into 
 ```python
 # modules/documents/application/controller.py
 from app.modules.documents.contract import (
-    PublishDocument, CreateDocument, PublishResult, CreateResult, DocumentView,
-    Published, Missing, Rejected, Created, Unavailable,
+    PublishDocument, CreateDocument, PublishResult, CreateResult, DocumentView, Published, Missing, Rejected, Created,
 )
-from app.modules.documents.domain.document import Document, Status
-from app.modules.documents.domain.errors import (
-    DocumentNotFound, AlreadyPublished, DocumentIncomplete, ContentRejected, ReviewUnavailable,
-)
+from app.modules.documents.domain.document import Document
+from app.modules.documents.domain.errors import DocumentNotFound, DocumentIncomplete, ContentRejected
 from app.modules.documents.application.services.document_service import DocumentService
 
 class DocumentController:
@@ -393,7 +377,7 @@ class DocumentController:
             doc = self._service.publish(cmd.id)
         except DocumentNotFound:                         # exception -> Result
             return Missing()
-        except (AlreadyPublished, DocumentIncomplete) as e:
+        except DocumentIncomplete as e:
             return Rejected(e.reason)
         return Published(self._view(doc))                 # entity -> DTO
 
@@ -402,12 +386,10 @@ class DocumentController:
             doc = self._service.create(cmd.title)
         except ContentRejected as e:                     # raised after another module said no, see section 6
             return Rejected(e.reason)
-        except ReviewUnavailable:                        # the review could not answer
-            return Unavailable()
         return Created(self._view(doc))
 
     def _view(self, doc: Document) -> DocumentView:      # the DTO is built here: contract/ cannot import the entity
-        return DocumentView(id=doc.id, title=doc.title, published=doc.status is Status.PUBLISHED)
+        return DocumentView(id=doc.id, title=doc.title)
 ```
 
 > [!TIP]
@@ -424,9 +406,9 @@ The sequence for one use case: load, check the preconditions, tell the domain to
 # modules/documents/application/services/document_service.py
 from app.kernel.time import Clock
 from app.modules.documents.domain.document import Document
-from app.modules.documents.domain.errors import DocumentNotFound, ContentRejected, ReviewUnavailable
+from app.modules.documents.domain.errors import DocumentNotFound, ContentRejected
 from app.modules.documents.domain.values import DocumentId
-from app.modules.documents.application.ports.content_review import ContentReview, Denied, NoAnswer
+from app.modules.documents.application.ports.content_review import ContentReview, Denied
 from app.modules.documents.application.ports.document_repo import DocumentRepo
 
 class DocumentService:
@@ -434,7 +416,7 @@ class DocumentService:
         self._repo, self._review, self._clock = repo, review, clock
 
     def publish(self, id: DocumentId) -> Document:
-        doc = self._repo.get(id)                    # load
+        doc = self._repo.get(id)                                 # load
         if doc is None:
             raise DocumentNotFound(id)                           # precondition: it must exist
         doc.publish(self._clock.now())                           # the domain decides if it is legal
@@ -442,18 +424,37 @@ class DocumentService:
         return doc
 
     def create(self, title: str) -> Document:
-        match self._review.review(title):                 # another module, through a port (section 6)
-            case Denied(why):   raise ContentRejected(why)       # the controller maps this to Rejected
-            case NoAnswer():    raise ReviewUnavailable()        # the controller maps this to Unavailable
+        match self._review.review(title):                        # another module, through a port (section 6)
+            case Denied(why): raise ContentRejected(why)         # the controller maps this to Rejected
         doc = Document.new(title)
         self._repo.save(doc)                                     # persist
         return doc                                               # the entity; the controller builds the DTO
 ```
 
 > [!TIP]
-> **Litmus test.** Does it run one use case as the sequence "load → check preconditions → act → persist → notify" by calling ports and domain objects, without building the `Result` or the DTO? If yes, it goes here. If it decides what is valid, it belongs in `domain/`. If it builds the `Result` or the DTO, it belongs in the controller. If it touches a database, it belongs in `adapters/`.
+> **Litmus test.** Does it run one use case as the sequence "load → check preconditions → act → persist → notify" by calling ports and domain objects, without building the `Result` or the DTO? If yes, it goes here. If it decides what is valid, it belongs in `domain/`. If it is a pure rule with no port, it belongs in `application/logic/`. If it builds the `Result` or the DTO, it belongs in the controller. If it touches a database, it belongs in `adapters/`.
 
-### 8.5 application/ports/
+### 8.5 application/logic/
+
+Pure functions over the module's domain objects, one file named for the rule it holds. A rule or step that is not one entity's invariant lives here, so a service calls it instead of holding it. It takes values and returns values: no port, no I/O, no clock.
+
+```python
+# modules/documents/application/logic/staleness.py
+from app.modules.documents.domain.document import Document
+
+def is_stale(doc: Document, now: datetime) -> bool:
+    return doc.published_at is not None and now - doc.published_at > timedelta(days=365)
+
+# in DocumentService (section 8.4), which calls the rule and does not hold it
+from app.modules.documents.application.logic.staleness import is_stale
+
+        if is_stale(doc, self._clock.now()): ...
+```
+
+> [!TIP]
+> **Litmus test.** Is it a pure function over this module's domain objects, not one entity's invariant, with no port and no I/O? If yes, it goes here, in a file named for the rule. If it holds one entity's invariant, it belongs in that entity in `domain/`. If another module needs it too, it belongs in `kernel/logic/`. If it must load or save anything, it is a service step.
+
+### 8.6 application/ports/
 
 `Protocol` definitions for repositories, search, email and anything else the application needs, written in the module's own vocabulary. A need that another module fulfills is declared the same way, in the consumer's words, and an adapter wraps the provider (section 6).
 
@@ -466,20 +467,20 @@ class DocumentRepo(Protocol):
     def get(self, id: DocumentId) -> Document | None: ...
     def save(self, doc: Document) -> None: ...
 
-# modules/documents/application/ports/content_review.py: ContentReview and its outcomes Allowed, Denied and NoAnswer;
+# modules/documents/application/ports/content_review.py: ContentReview and its outcomes Allowed and Denied;
 #   filled by an adapter that wraps moderation, see section 6
 ```
 
 > [!TIP]
 > **Litmus test.** Is it something the application needs from outside itself (storage, search, email, or another module's rule) that can be declared as a `Protocol` with no implementation, in the module's own vocabulary and not in SQL or vendor terms? If yes, it goes here. If it is a generic primitive with no business meaning (such as `Clock`), it belongs in `kernel/`. If it has a body that talks to a real system, it belongs in `adapters/`.
 
-### 8.6 adapters/
+### 8.7 adapters/
 
 Code that implements this module's ports against a real system, using `platform/` clients for the technology: repositories, which translate between the module's types and the table models defined in `platform/`. The schema itself is created by `bootstrap/migrations/` (section 9.4 shows one), and no module owns a table exclusively. An adapter can also wrap another module's controller behind a port (section 6).
 
 ```python
 # modules/documents/adapters/db_document_repo.py
-from app.modules.documents.domain.document import Document, Status
+from app.modules.documents.domain.document import Document
 from app.modules.documents.domain.values import DocumentId
 from app.platform.sql import Session       # the engine and sessions are platform clients
 from app.platform.sql.tables.documents import DocumentRow   # the table model, defined once in platform/
@@ -495,10 +496,10 @@ class DbDocumentRepo:                      # satisfies DocumentRepo
         self._s.merge(self._from_domain(doc))
 
     def _to_domain(self, row: DocumentRow) -> Document:   # table row in, domain entity out
-        return Document(DocumentId(row.id), row.title, Status(row.status), row.published_at)
+        return Document(DocumentId(row.id), row.title, row.published_at)
 
     def _from_domain(self, doc: Document) -> DocumentRow: # domain entity in, table row out
-        return DocumentRow(id=doc.id, title=doc.title, status=doc.status.value, published_at=doc.published_at)
+        return DocumentRow(id=doc.id, title=doc.title, published_at=doc.published_at)
 ```
 
 The translation between the database's rows and the domain's entities lives here, in the adapter class, and never in `domain/` or in the table model: the domain never sees a row, and the service never sees one either.
@@ -509,7 +510,7 @@ The translation between the database's rows and the domain's entities lives here
 > [!NOTE]
 > Adapters are driven only. Whatever drives the module (today, a web route) calls the controller directly. The route is the translation from the caller's world to a controller call, so it lives in `web/`.
 
-### 8.7 Naming
+### 8.8 Naming
 
 Each kind of part has one naming pattern, so a name says what the thing is without opening its file.
 
@@ -521,8 +522,9 @@ Each kind of part has one naming pattern, so a name says what the thing is witho
 | Result union | `contract/` | verb and `Result` | `PublishResult` |
 | entity | `domain/` | the thing | `Document` |
 | id | `domain/` | thing and `Id` | `DocumentId` |
-| domain error | `domain/` | what went wrong | `DocumentNotFound`, `AlreadyPublished` |
+| domain error | `domain/` | what went wrong | `DocumentNotFound`, `DocumentIncomplete` |
 | service | `application/services/` | thing and `Service` | `DocumentService` |
+| pure rule | `application/logic/`, `kernel/logic/` | a file named for the rule, a function for what it answers | `staleness.py`, `is_stale` |
 | controller | `application/` | thing and `Controller` | `DocumentController` |
 | port | `application/ports/` | what the application needs, in its own words | `DocumentRepo`, `ContentReview` |
 | adapter | `adapters/` | `<System><PortName>` | `DbDocumentRepo`, `ModerationContentReview` |
@@ -537,7 +539,7 @@ An adapter's name starts with the system it talks to (a technology such as `Db` 
 
 ### 9.1 kernel/
 
-Typed-id helpers, the base error hierarchy, lifecycle fields (created, updated, deleted), tracing carriers and the `Clock` protocol. Nothing here has business meaning.
+Primitives with no business meaning: typed-id helpers, the base error hierarchy, lifecycle fields (created, updated, deleted), tracing carriers and the `Clock` protocol. `kernel/logic/` holds the pure functions that modules share, including a business rule two modules need: modules never import each other, so a shared rule is promoted here. Like the rest of `kernel/`, it imports nothing outside `kernel/`.
 
 ```python
 # kernel/identifiers.py
@@ -551,10 +553,13 @@ class NotFound(DomainError): ...
 # kernel/time.py
 class Clock(Protocol):
     def now(self) -> datetime: ...
+
+# kernel/logic/text.py: a pure function two modules need
+def normalized(title: str) -> str: return " ".join(title.split())
 ```
 
 > [!TIP]
-> **Litmus test.** Is it a primitive with no business meaning, one that could be lifted unchanged into an unrelated system (id helpers, base errors, lifecycle fields, tracing carriers, `Clock`)? If yes, it goes here. If it names one module's thing, such as a concrete id like `DocumentId`, or carries domain meaning (chunks, search), it belongs in the owning module. If it wraps a technology, it belongs in `platform/`.
+> **Litmus test.** Is it a primitive with no business meaning, one that could be lifted unchanged into an unrelated system (id helpers, base errors, lifecycle fields, tracing carriers, `Clock`)? If yes, it goes here. Is it a pure function with no port and no I/O that two or more modules need? If yes, it goes in `kernel/logic/`. If only one module needs it, or it names one module's thing, such as a concrete id like `DocumentId`, it belongs in the owning module. If it wraps a technology, it belongs in `platform/`.
 
 ### 9.2 platform/
 
@@ -563,7 +568,6 @@ Clients and engines for technology used by several modules and owned by none: th
 ```python
 # platform/email/smtp_client.py
 class SmtpClient:
-    def __init__(self, host: str, port: int): ...
     def send(self, to: str, subject: str, body: str) -> None: ...
 
 # platform/clock.py
@@ -575,11 +579,10 @@ class DocumentRow(SQLModel, table=True):   # the table model: the database's sha
     __tablename__ = "documents"
     id: UUID = Field(primary_key=True)
     title: str
-    status: str
     published_at: datetime | None = None
 ```
 
-The email client speaks plain strings and knows no module. A module adapter that implements a notification port wraps it and translates the module's types into those strings. A table model is the same kind of thing: it names a table and its columns and knows no module's types, so every module's repo can use it and translate it into its own entities (section 8.6).
+The email client speaks plain strings and knows no module. A module adapter that implements a notification port wraps it and translates the module's types into those strings. A table model is the same kind of thing: it names a table and its columns and knows no module's types, so every module's repo can use it and translate it into its own entities (section 8.7).
 
 > [!TIP]
 > **Litmus test.** Is it a client or engine for an external technology (LLM, embeddings, email, crypto, blob storage, clock, SQL engine, table models) that knows none of the types of any one module? If yes, it goes here, named for the technology (a table model, for its table) and never for a module. If it translates a module's types for a port, it belongs in that module's `adapters/`.
@@ -649,10 +652,9 @@ def build_moderation(session: Session) -> ModerationController:
 # bootstrap/app.py
 from app.modules.documents.adapters.moderation_content_review import ModerationContentReview
 from app.modules.documents.application.controller import DocumentController
-from app.modules.moderation.application.controller import ModerationController
 from app.platform.clock import SystemClock
 from app.platform.sql import Session, create_engine
-from app.web.routes import documents as documents_routes, moderation as moderation_routes
+from app.web.routes import documents as documents_routes
 from app.bootstrap.settings import Settings    # bootstrap/settings.py: reads the environment
 from app.bootstrap.wiring import build_documents, build_moderation
 
@@ -660,20 +662,17 @@ from app.bootstrap.wiring import build_documents, build_moderation
 class App:                              # what main and the bootstrap test hold on to
     web: FastAPI
     documents: DocumentController
-    moderation: ModerationController
 
 def build_app(settings: Settings) -> App:
     engine = create_engine(settings.database_url)    # from platform/sql
-    session = Session(engine)                        # session lifetime simplified here
+    session = Session(engine)
     clock = SystemClock()                            # from platform/, used as the kernel's Clock
     moderation = build_moderation(session)
     documents = build_documents(session, clock, review=ModerationContentReview(moderation))   # an adapter wraps the provider's controller
     web = FastAPI()                                  # the program's own app object
     web.include_router(documents_routes.router)
-    web.include_router(moderation_routes.router)
     web.state.documents = documents                  # what web/dependencies.py reads
-    web.state.moderation = moderation
-    return App(web=web, documents=documents, moderation=moderation)
+    return App(web=web, documents=documents)
 
 # bootstrap/main.py: the script that starts the program
 from app.bootstrap.app import build_app
@@ -698,3 +697,14 @@ def upgrade(engine: Engine) -> None:
 
 > [!TIP]
 > **Litmus test.** Does it choose which adapter fills which port, build the services and controller around them, wrap one module's controller in another's adapter, or define the schema? If yes, it goes here, and nowhere else. If it only implements one module's port against a real system, it belongs in `adapters/`.
+
+## 10. Callers other than the entry point
+
+A scheduled job or an incoming event calls a controller exactly as a route does, and needs nothing else from the architecture:
+
+- **A job** is an entry point wired by `bootstrap/`, in `bootstrap/jobs/<job>.py`. It builds the app as `main` does, builds the command, calls the controller and exits. Its test is a driver test: the work is a function that takes the controller, so the test passes a fake one.
+- **A request from another system**, such as a webhook, is still a request to the entry point's folder, so it lives in `web/`. `web/` cannot import `platform/`, so a check that needs a technology client, such as verifying a signature, is a port of the module that an adapter fills from `platform/` (section 8.7). A failed check is a `Result` variant like any other.
+- **A message from a queue** is handled like a job.
+
+> [!TIP]
+> **Litmus test.** Is it a caller that is not a person at the entry point? If yes, it is a job in `bootstrap/jobs/`, or a route in `web/` when it arrives as a request, and either one only builds a command and calls a controller. If it holds a rule, it belongs in `domain/`.

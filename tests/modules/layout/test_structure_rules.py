@@ -12,7 +12,7 @@ def check(app: Path, profile: str = "cli"):
 
 
 MODULE_PARTS = ["contract/", "domain/", "application/controller.py", "application/services/",
-                "application/ports/", "adapters/"]
+                "application/logic/", "application/ports/", "adapters/"]
 
 
 def make(root: Path, dirs: list[str], files: list[str] = ()) -> Path:
@@ -28,7 +28,7 @@ def make(root: Path, dirs: list[str], files: list[str] = ()) -> Path:
 
 TOP = ["bootstrap", "kernel", "modules", "platform", "cli"]
 FULL_MODULE_DIRS = ["modules/docs/contract", "modules/docs/domain", "modules/docs/application/services",
-                    "modules/docs/application/ports", "modules/docs/adapters"]
+                    "modules/docs/application/logic", "modules/docs/application/ports", "modules/docs/adapters"]
 
 
 def test_a_complete_skeleton_passes(tmp_path):

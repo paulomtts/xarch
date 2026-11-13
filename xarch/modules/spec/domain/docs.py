@@ -103,14 +103,15 @@ Each ring admits one kind of test, so a test's tier follows from the ring its su
 
 | Tier | Subject | Proves | May touch |
 |---|---|---|---|
-| unit | `kernel/`, `domain/` | an invariant, a value rule, a state transition | nothing: no I/O, no clock, no fakes |
-| use case | `application/`, `contract/` | one `Result` variant per path, driven through the controller | `tests/fakes/`, and mocks of fire-only ports |
+| unit | `kernel/` and `kernel/logic/`, `domain/`, `application/logic/` | an invariant, a value rule, a state transition, a pure rule | nothing: no I/O, no clock, no fakes |
+| use case | `application/` but `logic/`, `contract/` | one `Result` variant per path, driven through the controller | `tests/fakes/`, and mocks of fire-only ports |
 | conformance | `adapters/` | the fake and the real adapter agree on a port | the real system, parametrized `(fake, real)` |
-| driver | `{entry}/` | {driver_proves}; never a business outcome | controllers faked |
+| driver | `{entry}/`, `bootstrap/jobs/` | {driver_proves}; never a business outcome | controllers faked |
 | bootstrap | `bootstrap/` | one test: the app builds as `main` builds it, migrates, seeds and answers one command | everything, once |
 | guard | the source tree | a rule of the architecture holds | `tests/architecture/` |
 
 `platform/` gets no tier of its own: conformance tests reach its clients through the adapters that use them.
+`application/logic/` sits in the application ring but holds pure functions with no port, so it is unit-tested.
 
 ## Running
 
@@ -127,9 +128,9 @@ nowhere else.
 Which ring does the subject live in? That is the tier. When it is not obvious, run the litmus tests; the
 first one it passes is where it goes.
 
-> **unit.** Does it prove a rule, value or transition by building the object and asking it, with no port in
-> sight? If yes, it is a unit test. If it needs a port to get an answer, it is a use-case test. If it asserts
-> how a port was called, it is testing nothing.
+> **unit.** Does it prove a rule, value or transition by building the object and asking it, or by calling a
+> pure function from `logic/`, with no port in sight? If yes, it is a unit test. If it needs a port to get an
+> answer, it is a use-case test. If it asserts how a port was called, it is testing nothing.
 
 > **use case.** Does it drive one use case through the controller and assert one `Result` variant? If yes,
 > it is a use-case test. If it asserts what a fake holds instead of the `Result`,

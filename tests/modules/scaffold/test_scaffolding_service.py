@@ -28,7 +28,8 @@ def test_init_creates_a_package_file_for_every_folder_then_the_docs_in_order():
     files = FakeFiles()
     result = controller(files).init(Init(ROOT))
     expected = [ROOT / p / "__init__.py" for p in
-                ["", "bootstrap", "bootstrap/migrations", "kernel", "modules", "platform", "cli", "cli/commands"]]
+                ["", "bootstrap", "bootstrap/migrations", "kernel", "kernel/logic", "modules", "platform", "cli",
+                 "cli/commands"]]
     assert files.created == expected + DOC_FILES
     assert result == Scaffolded(type(result.report)(created=expected + DOC_FILES, skipped=[]))
 

@@ -32,13 +32,16 @@ def test_a_conforming_tree_passes(tmp_path):
     files = {
         **STRUCTURE,
         "kernel/errors.py": "import dataclasses",
+        "kernel/logic/text.py": "from app.kernel import errors",
         "platform/sql.py": "from app.kernel import errors",
         "modules/a/domain/values.py": "from app.kernel import errors",
         "modules/a/domain/doc.py": "from .values import X\nfrom app.kernel.errors import E",
         "modules/a/contract/__init__.py": "from ..domain.values import X\nfrom app.kernel import errors",
         "modules/a/application/ports/repo.py": "from app.modules.a.domain.doc import Doc\nfrom app.kernel import errors",
-        "modules/a/application/services/svc.py": "from ..ports.repo import Repo\nfrom ...domain import doc",
-        "modules/a/application/controller.py": "from .services.svc import Svc\nfrom ..contract import X",
+        "modules/a/application/logic/rule.py": "from app.modules.a.domain.doc import Doc\nfrom app.kernel.logic.text import t\nfrom .other import o",
+        "modules/a/application/logic/other.py": "from ...domain import values\nfrom app.kernel import errors",
+        "modules/a/application/services/svc.py": "from ..ports.repo import Repo\nfrom ...domain import doc\nfrom ..logic.rule import r",
+        "modules/a/application/controller.py": "from .services.svc import Svc\nfrom ..contract import X\nfrom .logic.rule import r",
         "modules/a/adapters/repo.py": "from app.platform.sql import S\nfrom ..application.ports.repo import Repo\nfrom app.modules.b.contract import Y",
         "modules/b/contract/__init__.py": "",
         "cli/commands/a.py": "from app.modules.a.application.controller import C\nfrom app.modules.a.contract import X",
@@ -49,6 +52,8 @@ def test_a_conforming_tree_passes(tmp_path):
 
 @pytest.mark.parametrize("path, body", [
     ("kernel/x.py", "from app.platform import sql"),
+    ("kernel/logic/x.py", "from app.modules.a.domain import doc"),
+    ("kernel/logic/x.py", "from app.modules.a.application.logic import rule"),
     ("modules/a/domain/x.py", "from app.modules.b.domain import y"),
     ("modules/a/domain/x.py", "from app.platform import sql"),
     ("modules/a/domain/x.py", "from ..application.services import svc"),
@@ -74,6 +79,49 @@ def test_a_conforming_tree_passes(tmp_path):
 def test_a_forbidden_import_is_reported(tmp_path, path, body):
     result = problems(tmp_path, {**STRUCTURE, path: body})
     assert len(result) == 1 and path in result[0]
+
+
+LOGIC = "modules/a/application/logic/rule.py"
+
+
+@pytest.mark.parametrize("body", [
+    "from ..services import svc",
+    "from ..ports import repo",
+    "from ..controller import C",
+    "from ...contract import X",
+    "from ...adapters import repo",
+    "from app.platform import sql",
+    "from app.cli.commands import a",
+    "from app.modules.b.domain import d",
+    "from app.modules.b.application.logic import rule",
+    "from app.modules.b.contract import Y",
+])
+def test_logic_may_import_only_its_own_domain_and_the_kernel(tmp_path, body):
+    result = problems(tmp_path, {**STRUCTURE, LOGIC: body})
+    assert len(result) == 1 and result[0].startswith(f"app/{LOGIC}:1: logic/ of module 'a' may not import"), result
+
+
+@pytest.mark.parametrize("path", [
+    "modules/a/application/services/svc.py",
+    "modules/a/application/controller.py",
+])
+def test_services_and_controller_may_import_their_own_logic(tmp_path, path):
+    assert problems(tmp_path, {**STRUCTURE, path: "from app.modules.a.application.logic.rule import r"}) == []
+
+
+@pytest.mark.parametrize("path", [
+    "modules/a/domain/x.py",
+    "modules/a/contract/__init__.py",
+    "modules/a/application/ports/repo.py",
+    "modules/a/adapters/repo.py",
+    "modules/a/application/services/svc.py",      # another module's logic
+    "platform/sql.py",
+    "cli/commands/a.py",
+])
+def test_no_other_part_may_import_logic(tmp_path, path):
+    other = "b" if "/services/" in path else "a"
+    result = problems(tmp_path, {**STRUCTURE, path: f"from app.modules.{other}.application.logic.rule import r"})
+    assert len(result) == 1 and f"logic/ of module '{other}'" in result[0], result
 
 
 def test_plain_import_statements_are_checked_too(tmp_path):

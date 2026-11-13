@@ -8,8 +8,9 @@ from xarch.modules.layout.contract import CheckStructure
 from xarch.modules.rules.contract import CheckImports
 from xarch.modules.scaffold.contract import Init, NewModule, Refused, Report, Scaffolded
 
-TOP = ["bootstrap/migrations", "kernel", "modules", "platform", "cli/commands"]
-MODULE = ["contract", "domain", "application", "application/services", "application/ports", "adapters"]
+TOP = ["bootstrap/migrations", "kernel", "kernel/logic", "modules", "platform", "cli/commands"]
+MODULE = ["contract", "domain", "application", "application/services", "application/logic", "application/ports",
+          "adapters"]
 
 
 def init(app: Path, profile: str = "cli") -> Report:
@@ -71,6 +72,15 @@ def test_new_module_creates_the_full_skeleton(tmp_path):
     assert (base / "application" / "controller.py").is_file()
 
 
+@pytest.mark.parametrize("profile", ["cli", "web"])
+def test_init_and_new_module_create_the_logic_folders(tmp_path, profile):
+    app = tmp_path / "app"
+    init(app, profile)
+    new_module(app, "documents", profile)
+    assert (app / "kernel" / "logic" / "__init__.py").is_file()
+    assert (app / "modules" / "documents" / "application" / "logic" / "__init__.py").is_file()
+
+
 @pytest.mark.parametrize("name", ["Documents", "my-module", "1abc", "", "class", "_x", "a b", "dõcs", "a.b"])
 def test_new_module_refuses_an_invalid_name(tmp_path, name):
     app = tmp_path / "app"
@@ -100,7 +110,8 @@ def test_a_scaffolded_module_has_every_part_the_layout_rules_require(tmp_path):
 def test_init_for_web_creates_web_with_routes_i18n_and_ui_and_no_cli(tmp_path):
     app = tmp_path / "app"
     init(app, "web")
-    for d in ["", "bootstrap/migrations", "kernel", "modules", "platform", "web", "web/routes", "web/i18n", "web/ui"]:
+    for d in ["", "bootstrap/migrations", "kernel", "kernel/logic", "modules", "platform", "web", "web/routes", "web/i18n",
+              "web/ui"]:
         assert (app / d / "__init__.py").is_file(), d
     assert not (app / "cli").exists()
 

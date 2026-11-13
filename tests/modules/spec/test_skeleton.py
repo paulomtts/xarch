@@ -13,7 +13,7 @@ def skeleton(*profile: str):
 
 def test_top_level_lists_every_folder_parents_before_children():
     paths = [e.path for e in skeleton().top_level]
-    assert paths == [("bootstrap",), ("bootstrap", "migrations"), ("kernel",), ("modules",), ("platform",),
+    assert paths == [("bootstrap",), ("bootstrap", "migrations"), ("kernel",), ("kernel", "logic"), ("modules",), ("platform",),
                      ("cli",), ("cli", "commands")]
     assert all(e.is_dir for e in skeleton().top_level)
 
@@ -25,7 +25,7 @@ def test_the_default_profile_is_cli():
 
 def test_the_web_profile_has_web_with_routes_i18n_and_ui_instead_of_cli():
     paths = [e.path for e in skeleton("web").top_level]
-    assert paths == [("bootstrap",), ("bootstrap", "migrations"), ("kernel",), ("modules",), ("platform",),
+    assert paths == [("bootstrap",), ("bootstrap", "migrations"), ("kernel",), ("kernel", "logic"), ("modules",), ("platform",),
                      ("web",), ("web", "routes"), ("web", "i18n"), ("web", "ui")]
     assert skeleton("web").entry_point == "web"
 
@@ -38,9 +38,16 @@ def test_module_lists_every_part_with_files_marked(profile):
         Entry(("application",), True, False),
         Entry(("application", "controller.py"), False, True),
         Entry(("application", "services"), True, True),
+        Entry(("application", "logic"), True, True),
         Entry(("application", "ports"), True, True),
         Entry(("adapters",), True, True),
     )
+
+
+@pytest.mark.parametrize("profile", ["cli", "web"])
+def test_kernel_holds_logic_and_every_module_holds_application_logic(profile):
+    assert Entry(("kernel", "logic"), True, True) in skeleton(profile).top_level
+    assert Entry(("application", "logic"), True, True) in skeleton(profile).module
 
 
 def test_a_folder_with_children_is_not_a_leaf():

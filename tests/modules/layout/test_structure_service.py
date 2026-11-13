@@ -11,7 +11,7 @@ from tests.fakes.filesystem import FakeDisk
 ROOT = Path("/src/pkg")
 TOP = {ROOT / n for n in ["bootstrap", "kernel", "modules", "platform", "cli"]}
 MODULE = {ROOT / "modules/docs" / p for p in ["", "contract", "domain", "application/services",
-                                               "application/ports", "adapters"]}
+                                               "application/logic", "application/ports", "adapters"]}
 CONTROLLER = ROOT / "modules/docs/application/controller.py"
 
 
