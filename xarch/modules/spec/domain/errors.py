@@ -27,3 +27,12 @@ class InvalidArchitecture(DomainError):
         self.source = source
         self.problems = tuple(f"{source}: {problem}" for problem in problems)
         super().__init__("\n".join(self.problems))
+
+
+class InvalidTemplate(DomainError):
+    """A docs template that cannot be filled from its architecture; problems holds every problem, prefixed as above."""
+
+    def __init__(self, source: str, problems: Iterable[str]):
+        self.source = source
+        self.problems = tuple(f"{source}: {problem}" for problem in problems)
+        super().__init__("\n".join(self.problems))

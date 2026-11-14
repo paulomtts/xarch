@@ -21,15 +21,22 @@ layout:
   cli:
     commands: {}
 
+# The tree note of a folder or file that is not a part; a part's note is its role.
+notes:
+  bootstrap/migrations: the schema and its history; the only place migrations live
+  kernel/logic: pure functions that modules share, including a rule two modules need
+  cli/commands: one file per command group; each calls module controllers
+
 parts:
-  contract:
-    path: modules/*/contract
-    role: "the module's published language: commands, DTOs, Results (one union per use case), ids"
+  kernel:
+    path: kernel
+    role: "pure primitives: id helpers, base errors, lifecycle fields, tracing, Clock"
     litmus: >-
-      Is it part of what the module promises to callers outside it: an input a caller sends, an output that comes
-      back, or an id that names the module's things? If yes, it goes here, and an id is defined in
-      `domain/values.py` and re-exported here. If it is a `domain/` entity, a service type or a port, it stays where
-      it is, and a DTO goes here instead.
+      Is it a primitive with no business meaning, one that could be lifted unchanged into an unrelated system (id
+      helpers, base errors, lifecycle fields, tracing carriers, `Clock`)? If yes, it goes here. Is it a pure
+      function with no port and no I/O that two or more modules need? If yes, it goes in `kernel/logic/`. If only
+      one module needs it, or it names one module's thing, such as a concrete id like `DocumentId`, it belongs in
+      the owning module. If it wraps a technology, it belongs in `platform/`.
   domain:
     path: modules/*/domain
     role: "entities, values (incl. ids), errors: invariants only"
@@ -38,6 +45,14 @@ parts:
       run with no database and no clock? If yes, it goes here, on that entity or value. If it is a pure rule that is
       not one entity's invariant, it belongs in `application/logic/`. If it must load or save anything, it is a
       service step.
+  contract:
+    path: modules/*/contract
+    role: "the module's published language: commands, DTOs, Results (one union per use case), ids"
+    litmus: >-
+      Is it part of what the module promises to callers outside it: an input a caller sends, an output that comes
+      back, or an id that names the module's things? If yes, it goes here, and an id is defined in
+      `domain/values.py` and re-exported here. If it is a `domain/` entity, a service type or a port, it stays where
+      it is, and a DTO goes here instead.
   controller:
     path: modules/*/application/controller.py
     role: "maps failures to a Result"
@@ -78,15 +93,6 @@ parts:
       and that system's, and naming no other module except the `contract/` of one whose controller it wraps? If
       yes, it goes here. If it knows no module's types and is only a client or engine for a technology, it belongs
       in `platform/`. If it contains a business rule, it belongs in `domain/`.
-  kernel:
-    path: kernel
-    role: "pure primitives: id helpers, base errors, lifecycle fields, tracing, Clock; logic/ holds the pure functions that modules share"
-    litmus: >-
-      Is it a primitive with no business meaning, one that could be lifted unchanged into an unrelated system (id
-      helpers, base errors, lifecycle fields, tracing carriers, `Clock`)? If yes, it goes here. Is it a pure
-      function with no port and no I/O that two or more modules need? If yes, it goes in `kernel/logic/`. If only
-      one module needs it, or it names one module's thing, such as a concrete id like `DocumentId`, it belongs in
-      the owning module. If it wraps a technology, it belongs in `platform/`.
   platform:
     path: platform
     role: "shared technology clients: llm, embeddings, email, crypto, blob_storage, system clock, sql engine, sessions and table models"
@@ -95,16 +101,19 @@ parts:
       engine, table models) that knows none of the types of any one module? If yes, it goes here, named for the
       technology (a table model, for its table) and never for a module. If it translates a module's types for a
       port, it belongs in that module's `adapters/`.
-  entry:
+  cli:
     path: cli
-    role: "the only place for commands and terminal output; commands/ holds one file per command group"
+    entry: true
+    role: "the only place for commands and terminal output"
     litmus: >-
       Does it parse arguments or print to the terminal, whichever module's data it shows? If yes, it goes here. If
       it reports a failure as a `Result`, it belongs in the controller. If it holds a business rule, it belongs in
       `domain/`.
+    driver_proves: "argument parsing, exit codes and terminal output"
+    driver_test: {file: examples/cli/driver.py}
   bootstrap:
     path: bootstrap
-    role: "composition root: binds ports to adapters, hands controllers to cli/; migrations/ holds the schema and its history"
+    role: "composition root: binds ports to adapters, hands controllers to cli/"
     litmus: >-
       Does it choose which adapter fills which port, build the services and controller around them, wrap one
       module's controller in another's adapter, or define the schema? If yes, it goes here, and nowhere else. If it
@@ -112,15 +121,45 @@ parts:
 
 # What each part may import. <part>@own: in the importer's module; <part>@any: in any module; a bare <part>: a part
 # outside the modules; /<path> after it: only that path below the part; "*": everything (quoted: * starts a YAML alias).
+# The docs' rules table lists the targets in this order, leaving out the part itself.
 rules:
-  contract:   [contract@own, domain@own/values, kernel]
+  kernel:     [kernel]
   domain:     [domain@own, kernel]
-  controller: [controller@own, services@own, logic@own, ports@own, domain@own, contract@own, kernel]
-  services:   [services@own, logic@own, ports@own, domain@own, contract@own, kernel]
+  contract:   [contract@own, domain@own/values, kernel]
+  controller: [controller@own, services@own, logic@own, domain@own, ports@own, contract@own, kernel]
+  services:   [services@own, logic@own, domain@own, ports@own, contract@own, kernel]
   logic:      [logic@own, domain@own, kernel]
   ports:      [ports@own, domain@own, kernel]
-  adapters:   [platform, contract@any, adapters@own, ports@own, domain@own, kernel]   # contract@any: its own, or the provider's whose controller it wraps
-  kernel:     [kernel]
+  adapters:   [adapters@own, ports@own, domain@own, kernel, platform, contract@any]   # contract@any: its own, or the provider's whose controller it wraps
   platform:   [platform, kernel]
-  entry:      [entry, controller@any, contract@any, kernel]
+  cli:        [cli, controller@any, contract@any, kernel]
   bootstrap:  ["*"]
+
+# The layers of a module, each from the inside out: no part imports a part after it in its chain.
+layers:
+  application: [domain, contract, logic, ports, services, controller]
+  edge:        [platform, adapters]
+
+# The order the litmus tests run in when a piece of code does not obviously fit: the first it passes wins.
+placement: [domain, logic, ports, services, controller, adapters, platform, cli, bootstrap, contract, kernel]
+
+# The docs' naming table: what each kind of thing is called, and where it lives.
+naming:
+  - {kind: command,        where: contract/,             pattern: verb and thing,                example: PublishDocument}
+  - {kind: DTO,            where: contract/,             pattern: "thing and `View`",            example: DocumentView}
+  - {kind: Result variant, where: contract/,             pattern: "the outcome, in one word",    example: [Published, Missing, Rejected]}
+  - {kind: Result union,   where: contract/,             pattern: "verb and `Result`",           example: PublishResult}
+  - {kind: entity,         where: domain/,               pattern: the thing,                     example: Document}
+  - {kind: id,             where: domain/,               pattern: "thing and `Id`",              example: DocumentId}
+  - {kind: domain error,   where: domain/,               pattern: what went wrong,               example: [DocumentNotFound, DocumentIncomplete]}
+  - {kind: service,        where: application/services/, pattern: "thing and `Service`",         example: DocumentService}
+  - {kind: pure rule,      where: [application/logic/, kernel/logic/],
+     pattern: "a file named for the rule, a function for what it answers",                       example: [staleness.py, is_stale]}
+  - {kind: controller,     where: application/,          pattern: "thing and `Controller`",      example: DocumentController}
+  - {kind: port,           where: application/ports/,    pattern: "what the application needs, in its own words", example: [DocumentRepo, ContentReview]}
+  - {kind: adapter,        where: adapters/,             pattern: "`<System><PortName>`",        example: [DbDocumentRepo, ModerationContentReview]}
+  - {kind: table model,    where: platform/sql/tables/,  pattern: "thing and `Row`",             example: DocumentRow}
+  - {kind: test fake,      where: tests/fakes/,          pattern: "`Fake` and the port's name",  example: FakeDocumentRepo}
+
+docs:
+  template: cli.md

@@ -1,6 +1,7 @@
 """Tests for the docs layout the spec module publishes: every document and folder of docs/project/, with templates."""
 import pytest
 
+from xarch.bootstrap.wiring import build_architectures
 from xarch.modules.spec.application.controller import SpecController
 from xarch.modules.spec.application.services.skeleton import SkeletonService
 from xarch.modules.spec.contract import Docs
@@ -27,7 +28,7 @@ TEMPLATES = [path for path in QUESTIONS if path not in CONTENT]
 
 
 def docs(profile: str = "cli") -> Docs:
-    return SpecController(SkeletonService(FakeSettings())).docs(profile)
+    return SpecController(SkeletonService(FakeSettings()), build_architectures()).docs(profile)
 
 
 def templates(profile: str = "cli") -> dict[str, str]:
@@ -67,7 +68,7 @@ def test_testing_gives_every_part_a_tier_and_names_the_profiles_driver(profile, 
                  f"`{profile}/`", "`platform/`", "`tests/architecture/`"]:
         assert part in text
     assert f"| driver | `{profile}/`, `bootstrap/jobs/` | {driver}" in text
-    assert "{entry}" not in text and "{driver_proves}" not in text and "{driver_test}" not in text   # every placeholder was filled
+    assert "{{" not in text and "}}" not in text                        # every placeholder was filled
 
 
 @pytest.mark.parametrize("profile", ["cli", "web"])
@@ -141,15 +142,15 @@ def test_architecture_is_the_full_document_for_the_profiles_entry_point(profile,
     for section in ["## 1. Structure", "## 5. The dependency rules", f"### 9.3 {folder}", "### 9.4 bootstrap/"]:
         assert section in text
     assert f"└── {folder}" in text and f"└── {other}" not in text
-    assert f"| `{folder}` | any module's `controller`" in text
+    assert f"| `{folder}` | any module's `application/controller.py` and `contract/`" in text
     assert "└── project/" in text                                         # docs are published below docs/project
     assert "docs/cli" not in text and "docs/web" not in text
 
 
 def test_architecture_keeps_its_braces_and_tool_name():
     text = templates()["architecture.md"]
-    assert "{entry}" not in text and "{driver_proves}" not in text
-    assert 'echo(f"Published {view.title}")' in text                      # code examples are not run through format
+    assert "{{" not in text and "}}" not in text
+    assert 'echo(f"Published {view.title}")' in text                      # code examples keep their braces
 
 
 @pytest.mark.parametrize("profile", ["cli", "web"])
@@ -231,8 +232,9 @@ def test_architecture_gives_pure_logic_a_place_in_the_module_and_in_the_kernel(p
     assert "│       │   ├── logic/          pure functions over the module's domain objects" in text
     rules = text.split("## 5. ")[1].split("## 6.")[0]
     assert "| `application/logic/` | its own module's `domain/`, `kernel/` |" in rules
-    assert "`services/` (the controller only), `logic/`, `domain/`, `ports/` and `contract/`, `kernel/` |" in rules
-    assert "| `domain/` | its own module's `domain/`, `kernel/` |" in rules           # the domain does not import logic
+    assert ("| `application/controller.py` | its own module's `application/services/`, `application/logic/`, `domain/`, "
+            "`application/ports/` and `contract/`, `kernel/` |") in rules
+    assert "| `domain/` | `kernel/` |" in rules                                # the domain does not import logic
     assert "`domain` → `logic` → `ports` → `services`" in text.split("## 7. ")[1].split("## 8.")[0]
     assert "  - [[#8.5 application/logic/]]" in text and "  - [[#8.6 application/ports/]]" in text
     logic = text.split("### 8.5 application/logic/")[1].split("### 8.6 ")[0]

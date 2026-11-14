@@ -21,23 +21,11 @@ Tree = dict[str, "Tree | None"]
 class Profile:
     entry_point: str               # the folder that drives the modules
     entry_tree: Tree               # what it holds
-    driver_proves: str             # what a test of the entry point proves, for testing.md
-    driver_test: str               # the example driver test in testing.md: drives the entry point with a faked controller
 
 
 PROFILES: dict[str, Profile] = {
-    "cli": Profile("cli", {"commands": {}}, "argument parsing, exit codes and terminal output", """\
-def test_publish_prints_the_title_and_exits_zero(runner):
-    controller = Mock(publish=lambda cmd: Published(DocumentView(cmd.id, "Hello", True)))
-    result = runner.invoke(cli_app(controller), ["documents", "publish", str(A_DOCUMENT_ID)])
-    assert result.exit_code == 0 and "Published Hello" in result.output
-"""),
-    "web": Profile("web", {"routes": {}, "i18n": {}, "ui": {}}, "routing, status codes and rendered output", """\
-def test_publish_renders_the_title_and_answers_200(client):
-    controller = Mock(publish=lambda cmd: Published(DocumentView(cmd.id, "Hello", True)))
-    response = client(controller).post(f"/documents/{A_DOCUMENT_ID}/publish")
-    assert response.status_code == 200 and "Hello" in response.text
-"""),
+    "cli": Profile("cli", {"commands": {}}),
+    "web": Profile("web", {"routes": {}, "i18n": {}, "ui": {}}),
 }
 
 DEFAULT_PROFILE = "cli"

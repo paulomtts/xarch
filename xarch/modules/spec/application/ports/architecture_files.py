@@ -19,3 +19,8 @@ class ArchitectureFiles(Protocol):
     def has_file(self, source: ArchitectureSource, relative: str) -> bool:
         """Whether a file exists at relative, a path from the folder holding the architecture file."""
         ...
+
+    def read_text(self, source: ArchitectureSource, relative: str) -> str:
+        """The text of the file at relative, a path from the folder holding the architecture file; raises
+        InvalidArchitecture if it cannot be read."""
+        ...

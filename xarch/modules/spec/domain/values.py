@@ -35,8 +35,11 @@ class Part:
     """Where code sits: a named path in the layout, with what goes there and how to tell."""
     name: str
     path: tuple[str, ...]              # in the layout; EACH stands for the module name, e.g. ("modules", "*", "domain")
-    role: str
+    role: str                          # one line; also the part's note in the docs' tree
     litmus: str = ""
+    entry: bool = False                # the entry point, which drives the modules; at most one part is
+    driver_proves: str = ""            # the entry point only: what a test of it proves, for testing.md
+    driver_test: str | None = None     # the entry point only: the file holding its example test, relative to the file
 
     @property
     def in_module(self) -> bool:
@@ -50,6 +53,15 @@ class Example:
 
 
 @dataclass(frozen=True)
+class Naming:
+    """One row of the docs' naming table: what a kind of thing is called, and where it lives."""
+    kind: str                          # e.g. "adapter"
+    where: tuple[str, ...]             # the folders it lives in, as the docs show them, e.g. ("adapters/",)
+    pattern: str                       # markdown, e.g. "`<System><PortName>`"
+    example: tuple[str, ...]           # names, e.g. ("DbDocumentRepo", "ModerationContentReview")
+
+
+@dataclass(frozen=True)
 class Architecture:
     """An architecture as described in an architecture file (format version 1)."""
     name: str
@@ -58,6 +70,24 @@ class Architecture:
     rules: dict[str, tuple[Target, ...]]   # every part, in the order of parts; a part with no row may import nothing
     docs_template: str | None = None       # relative to the architecture file
     examples: dict[str, Example] = field(default_factory=dict)   # by part
+    notes: dict[tuple[str, ...], str] = field(default_factory=dict)   # by layout path: a folder that is not a part
+    layers: dict[str, tuple[str, ...]] = field(default_factory=dict)  # named chains of parts, from the inside out
+    placement: tuple[str, ...] = ()        # every part once: the order the litmus tests run in
+    naming: tuple[Naming, ...] = ()
+
+    @property
+    def entry(self) -> Part | None:
+        """The entry point: the part marked `entry: true`, if any."""
+        return next((part for part in self.parts.values() if part.entry), None)
+
+    def is_file(self, path: tuple[str, ...]) -> bool:
+        """Whether a path of the layout, such as a part's, is a file rather than a folder."""
+        here: Layout | None = self.layout
+        for step in path:
+            if here is None or step not in here:
+                return False
+            here = here[step]
+        return here is None
 
     def module_root(self) -> tuple[str, ...] | None:
         """The folder holding the modules, e.g. ("modules",), or None if the layout has no `each`."""

@@ -18,7 +18,7 @@ PROFILE_NAMES = sorted(PROFILES)
 
 
 def parts_layout(architecture: Architecture) -> Parts:
-    """The Parts the import checker would derive from this file: the part named `entry` is the entry point."""
+    """The Parts the import checker would derive from this file: the part marked `entry: true` is the entry point."""
     root = architecture.module_root()
     assert root is not None
     depth = len(root) + 1                                    # below modules/<module>/
@@ -26,7 +26,8 @@ def parts_layout(architecture: Architecture) -> Parts:
     outside = [p.path for p in architecture.parts.values() if not p.in_module]
     assert all(len(path) == 1 for path in outside)          # every part outside the modules is a top-level folder
     assert {path[0] for path in in_module if len(path) == 2} == {"application"}
-    entry = architecture.parts["entry"].path[0]
+    assert architecture.entry is not None
+    entry = architecture.entry.path[0]
     return Parts(top_level=frozenset(path[0] for path in outside) - {entry},
                  module_folders=frozenset(path[0] for path in in_module if len(path) == 1),
                  application_parts=frozenset(path[1].removesuffix(".py") for path in in_module if len(path) == 2),
@@ -58,24 +59,54 @@ def test_the_layout_keeps_the_skeletons_order(profile):
     assert list(walk(architecture.module_tree())) == list(walk(MODULE_TREE))
 
 
+def as_checker_names(architecture: Architecture, part: str) -> str:
+    """rules_table names the entry point "entry"; the file names it as it likes and marks it `entry: true`."""
+    return "entry" if architecture.entry is not None and part == architecture.entry.name else part
+
+
 def test_the_rules_are_the_rules_table(profile):
-    loaded = {part: tuple(RuleTarget(t.part, t.scope, t.sub) for t in targets)
-              for part, targets in load_architecture(profile).rules.items()}
+    architecture = load_architecture(profile)
+    loaded = {as_checker_names(architecture, part):
+              frozenset(RuleTarget(as_checker_names(architecture, t.part), t.scope, t.sub) for t in targets)
+              for part, targets in architecture.rules.items()}
     assert RULES["structure"] == ()                         # the package files: never a part of a file, never a target
-    assert loaded == {part: targets for part, targets in RULES.items() if part != "structure"}
+    # the same targets per part; the file orders them as the docs' table lists them, which the checker ignores
+    assert loaded == {part: frozenset(targets) for part, targets in RULES.items() if part != "structure"}
 
 
 def test_the_parts_are_what_the_checker_derives(profile):
     assert parts_layout(load_architecture(profile)) == RulesSkeleton(build_spec()).parts(profile)
 
 
-def test_a_part_is_named_for_its_folder_except_the_entry_point(profile):
-    # place_of names a place by its folder (controller.py -> controller), and the entry point "entry"
+def test_the_entry_point_is_the_part_marked_entry_and_drives_the_profiles_folder(profile):
+    architecture = load_architecture(profile)
+    assert [part.name for part in architecture.parts.values() if part.entry] == [PROFILES[profile].entry_point]
+    assert architecture.entry is not None and architecture.entry.path == (PROFILES[profile].entry_point,)
+
+
+def test_a_part_is_named_for_its_folder(profile):
+    # place_of names a place by its folder (controller.py -> controller); the entry point too, now it is marked
     for part in load_architecture(profile).parts.values():
-        expected = "entry" if part.path == (PROFILES[profile].entry_point,) else part.path[-1].removesuffix(".py")
-        assert part.name == expected
+        assert part.name == part.path[-1].removesuffix(".py")
 
 
 def test_every_part_has_a_role_and_a_litmus_test(profile):
     for part in load_architecture(profile).parts.values():
         assert part.role and part.litmus, part.name
+
+
+def test_only_the_entry_point_has_a_driver(profile):
+    for part in load_architecture(profile).parts.values():
+        assert bool(part.driver_proves) == bool(part.driver_test) == part.entry, part.name
+
+
+def test_every_folder_of_the_tree_has_a_note_but_the_modules_folders(profile):
+    architecture = load_architecture(profile)
+    noted = set(architecture.notes) | {part.path for part in architecture.parts.values()}
+    unnoted = {path for path, _, _ in walk(architecture.layout) if path not in noted}
+    assert unnoted == {("modules",), ("modules", "*"), ("modules", "*", "application")}
+
+
+def test_placement_lists_every_part_once(profile):
+    architecture = load_architecture(profile)
+    assert sorted(architecture.placement) == sorted(architecture.parts)

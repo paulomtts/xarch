@@ -43,6 +43,14 @@ class FsArchitectureFiles:                 # satisfies spec's ArchitectureFiles 
             return _bundled_folder().joinpath(*Path(relative).parts).is_file()
         return self._fs.is_file(Path(source.location).parent / relative)
 
+    def read_text(self, source: ArchitectureSource, relative: str) -> str:
+        try:
+            if source.bundled:
+                return _bundled_folder().joinpath(*Path(relative).parts).read_text(encoding="utf-8")
+            return self._fs.read_text(Path(source.location).parent / relative)
+        except (OSError, UnicodeDecodeError) as e:
+            raise InvalidArchitecture(_name(source), [f"cannot read '{relative}': {getattr(e, 'strerror', None) or e}"]) from e
+
 
 def _name(source: ArchitectureSource) -> str:
     return source.location + BUNDLED_SUFFIX if source.bundled else source.location

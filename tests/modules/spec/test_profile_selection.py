@@ -1,6 +1,7 @@
 """Tests for choosing a profile: --profile, then [tool.xarch] profile, then the default."""
 from pathlib import Path
 
+from xarch.bootstrap.wiring import build_architectures
 from xarch.modules.spec.application.controller import SpecController
 from xarch.modules.spec.application.services.skeleton import SkeletonService
 from xarch.modules.spec.contract import ProfileRefused, ProfileSelected, SelectProfile
@@ -13,7 +14,7 @@ PYPROJECT = Path("/src/pyproject.toml")
 
 
 def select(settings: FakeSettings, override: str | None = None):
-    return SpecController(SkeletonService(settings)).select(SelectProfile(APP, override))
+    return SpecController(SkeletonService(settings), build_architectures()).select(SelectProfile(APP, override))
 
 
 def test_with_nothing_configured_the_profile_is_cli():

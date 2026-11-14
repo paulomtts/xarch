@@ -160,16 +160,17 @@ Dependencies point inward: a part imports only from the rings inside it (section
 
 | Part | May import |
 |---|---|
-| `kernel/` (with `kernel/logic/`) | nothing |
-| `domain/` | its own module's `domain/`, `kernel/` |
-| `contract/` | its own module's `domain/values` (to re-export ids), `kernel/` |
-| `application/` (controller, services) | its own module's `services/` (the controller only), `logic/`, `domain/`, `ports/` and `contract/`, `kernel/` |
+| `kernel/` | nothing |
+| `domain/` | `kernel/` |
+| `contract/` | its own module's `domain/values`, `kernel/` |
+| `application/controller.py` | its own module's `application/services/`, `application/logic/`, `domain/`, `application/ports/` and `contract/`, `kernel/` |
+| `application/services/` | its own module's `application/logic/`, `domain/`, `application/ports/` and `contract/`, `kernel/` |
 | `application/logic/` | its own module's `domain/`, `kernel/` |
 | `application/ports/` | its own module's `domain/`, `kernel/` |
-| `adapters/` | its own module's `application/ports/`, `domain/` and `contract/`, `kernel/`, `platform/`, and the `contract/` of a module whose controller it wraps (section 6) |
+| `adapters/` | its own module's `application/ports/` and `domain/`, `kernel/`, `platform/`, any module's `contract/` |
 | `platform/` | `kernel/` |
-| `cli/` | any module's `controller` and `contract/`, `kernel/` |
-| `bootstrap/` | everything; it is the only place that connects ports to adapters and passes one module's controller into another module's adapter |
+| `cli/` | any module's `application/controller.py` and `contract/`, `kernel/` |
+| `bootstrap/` | everything |
 
 > [!IMPORTANT]
 > Two consequences follow from the table.

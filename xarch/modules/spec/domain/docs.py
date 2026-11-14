@@ -3,15 +3,16 @@
 A dict is a folder holding its entries; a str is a file and the text it starts with. A folder holds a
 template for the kind of document that lives in it, so no folder is ever empty. testing.md and architecture.md are
 written as content, because the rings fix which tests each part admits and what each may import; the rest are
-templates. Only those two depend on the profile, and the docs are not part of the app's structure: `check` does not
-require them.
+templates. Only those two depend on the architecture: architecture.md is the architecture's own docs template and
+testing.md the one below, both filled from the architecture file (see docs_template.py). The docs are not part of
+the app's structure: `check` does not require them.
 """
 from __future__ import annotations
 
 from collections.abc import Iterator
 
-from xarch.modules.spec.domain.architecture_text import ARCHITECTURE
-from xarch.modules.spec.domain.skeleton import Profile
+from xarch.modules.spec.domain.docs_template import fill
+from xarch.modules.spec.domain.values import Architecture
 
 DocTree = dict[str, "DocTree | str"]
 
@@ -96,7 +97,7 @@ TESTING = """\
 > How is the system tested?
 
 Each ring admits one kind of test, so a test's tier follows from the ring its subject lives in
-(architecture.md, section 2). Tests mirror the app: `tests/modules/<module>/<part>/`, `tests/{entry}/`,
+(architecture.md, section 2). Tests mirror the app: `tests/modules/<module>/<part>/`, `tests/{{entry}}/`,
 `tests/architecture/`.
 
 ## Tiers
@@ -106,7 +107,7 @@ Each ring admits one kind of test, so a test's tier follows from the ring its su
 | unit | `kernel/` and `kernel/logic/`, `domain/`, `application/logic/` | an invariant, a value rule, a state transition, a pure rule | nothing: no I/O, no clock, no fakes |
 | use case | `application/` but `logic/`, `contract/` | one `Result` variant per path, driven through the controller | `tests/fakes/`, and mocks of fire-only ports |
 | conformance | `adapters/` | the fake and the real adapter agree on a port | the real system, parametrized `(fake, real)` |
-| driver | `{entry}/`, `bootstrap/jobs/` | {driver_proves}; never a business outcome | controllers faked |
+| driver | `{{entry}}/`, `bootstrap/jobs/` | {{driver_proves}}; never a business outcome | controllers faked |
 | bootstrap | `bootstrap/` | one test: the app builds as `main` builds it, migrates, seeds and answers one command | everything, once |
 | guard | the source tree | a rule of the architecture holds | `tests/architecture/` |
 
@@ -184,8 +185,8 @@ def test_get_returns_what_save_stored(repo):
     repo.save(doc := a_document())
     assert repo.get(doc.id) == doc
 
-# driver: tests/{entry}/test_publish.py
-{driver_test}
+# driver: tests/{{entry}}/test_publish.py
+{{driver_test}}
 # bootstrap: tests/bootstrap/test_app.py, the only test here
 def test_the_bootstrap_builds_migrates_seeds_and_answers(database_url):
     app = build_app(Settings(database_url=database_url))
@@ -257,7 +258,7 @@ class DbDocumentRepo:                              # the adapter, in adapters/: 
     ...
 
 class FakeDocumentRepo:                             # the fake, in tests/fakes/: a dict standing in for the table
-    def __init__(self): self.docs = {{}}
+    def __init__(self): self.docs = {}
     def get(self, id): return self.docs.get(id)
     def save(self, doc): self.docs[doc.id] = doc
 ```
@@ -450,7 +451,7 @@ DOCS_TREE: DocTree = {
     "statement.md": STATEMENT,
     "domain.md": DOMAIN,
     "design.md": DESIGN,
-    "architecture.md": "",                 # the profile's full text, see doc_text
+    "architecture.md": "",                 # the architecture's own docs template, see doc_files
     "testing.md": TESTING,
     "requirements.md": REQUIREMENTS,
     "adrs": {"0000-template.md": ADR},
@@ -463,20 +464,22 @@ DOCS_TREE: DocTree = {
     },
 }
 
+def doc_files(architecture: Architecture, template: str, template_name: str, driver_test: str | None = None,
+              tree: DocTree = DOCS_TREE, prefix: tuple[str, ...] = ()) -> Iterator[tuple[tuple[str, ...], str]]:
+    """Yield (path, text) for every file, in the order the tree lists them.
 
-def doc_text(chosen: Profile, name: str, text: str) -> str:
-    """architecture.md is the profile's full text, as is; every other doc fills the profile's placeholders."""
-    if name == "architecture.md":
-        return ARCHITECTURE[chosen.entry_point]
-    return text.format(entry=chosen.entry_point, driver_proves=chosen.driver_proves, driver_test=chosen.driver_test)
-
-
-def doc_files(chosen: Profile, tree: DocTree = DOCS_TREE,
-              prefix: tuple[str, ...] = ()) -> Iterator[tuple[tuple[str, ...], str]]:
-    """Yield (path, text) for every file, in the order the tree lists them; testing.md names the profile's driver."""
+    architecture.md is template, the architecture's own (named template_name in errors), and testing.md is TESTING,
+    both filled from the architecture; driver_test is the text of the entry point's example test. Raises
+    InvalidTemplate.
+    """
     for name, sub in tree.items():
         path = prefix + (name,)
         if isinstance(sub, str):
-            yield path, doc_text(chosen, name, sub)
+            if name == "architecture.md":
+                yield path, fill(template, architecture, template_name, driver_test)
+            elif name == "testing.md":
+                yield path, fill(sub, architecture, name, driver_test)
+            else:
+                yield path, sub
         else:
-            yield from doc_files(chosen, sub, path)
+            yield from doc_files(architecture, template, template_name, driver_test, sub, path)

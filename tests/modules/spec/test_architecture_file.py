@@ -7,7 +7,7 @@ import pytest
 from xarch.bootstrap.wiring import build_architectures, load_architecture
 from xarch.modules.spec.domain.architecture_file import parse_architecture
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.values import Example, Part, Target
+from xarch.modules.spec.domain.values import Example, Naming, Part, Target
 from xarch.platform.data_files import DataFileReader
 
 LAYERED = """\
@@ -108,7 +108,108 @@ def test_docs_template_and_examples_resolve_next_to_the_file(tmp_path):
                                                         "examples/charge.py")}
 
 
+def test_the_entry_point_its_driver_notes_layers_placement_and_naming_load(tmp_path):
+    write(tmp_path / "examples" / "driver.py", "def test_api(): ...\n")
+    text = LAYERED.replace('  api:     { path: "src/*/api",', '  api:     { entry: true, driver_proves: "routing",'
+                           ' driver_test: { file: examples/driver.py }, path: "src/*/api",') + (
+        "notes:\n  src: every module\n"
+        "layers:\n  inside: [store, service, api]\n"
+        "placement: [store, service, api]\n"
+        "naming:\n  - {kind: service, where: service/, pattern: thing and `Service`, example: [BillingService]}\n")
+    architecture = load_architecture(write(tmp_path / "layered.yaml", text))
+    assert architecture.entry == Part("api", ("src", "*", "api"), "HTTP handlers",
+                                      "Does it parse a request and call a service?", True, "routing",
+                                      "examples/driver.py")
+    assert [part.name for part in architecture.parts.values() if part.entry] == ["api"]
+    assert architecture.notes == {("src",): "every module"}
+    assert architecture.layers == {"inside": ("store", "service", "api")}
+    assert architecture.placement == ("store", "service", "api")
+    assert architecture.naming == (Naming("service", ("service/",), "thing and `Service`", ("BillingService",)),)
+
+
+def test_the_new_keys_are_optional():
+    architecture = parse_architecture(layered(), "layered.yaml", lambda r: True)
+    assert architecture.entry is None and architecture.notes == {} and architecture.layers == {}
+    assert architecture.placement == () and architecture.naming == ()
+
+
 # --- the errors, one kind at a time ---
+
+
+def test_two_entry_points_are_rejected():
+    document = layered()
+    document["parts"]["api"]["entry"] = True
+    document["parts"]["store"]["entry"] = True
+    document["parts"]["service"]["entry"] = "yes"
+    assert problems(document) == ["layered.yaml: parts.service.entry: must be true or false",
+                                  "layered.yaml: parts: only one part may be the entry point, not 'api', 'store'"]
+
+
+def test_a_driver_on_a_part_that_is_not_the_entry_point_is_rejected():
+    document = layered()
+    document["parts"]["store"] |= {"driver_proves": "queries", "driver_test": {"file": "x.py"}}
+    assert problems(document) == [
+        "layered.yaml: parts.store.driver_proves: only the entry point (`entry: true`) has a driver",
+        "layered.yaml: parts.store.driver_test: only the entry point (`entry: true`) has a driver",
+    ]
+
+
+def test_a_bad_driver_test_is_rejected():
+    document = layered()
+    document["parts"]["api"] |= {"entry": True, "driver_proves": 3, "driver_test": {"file": "nowhere.py", "x": 1}}
+    assert problems(document, has_file=lambda relative: False) == [
+        "layered.yaml: parts.api.driver_proves: must be a string",
+        "layered.yaml: parts.api.driver_test: unknown key 'x': use file",
+        "layered.yaml: parts.api.driver_test.file: no file 'nowhere.py' next to the architecture file",
+    ]
+    document["parts"]["api"]["driver_test"] = "examples/driver.py"
+    assert problems(document)[-1] == ("layered.yaml: parts.api.driver_test: must be a mapping such as "
+                                      "{file: examples/driver.py}")
+
+
+def test_a_note_off_the_layout_on_a_part_or_not_one_line_is_rejected():
+    document = layered() | {"notes": {"src/*/nope": "x", "src/*/api": "handlers", "src": "two\nlines", "src/*": ""}}
+    assert problems(document) == [
+        "layered.yaml: notes.src/*/nope: 'src/*/nope' matches no folder or file in layout",
+        "layered.yaml: notes.src/*/api: 'src/*/api' is part 'api', whose note is its role",
+        "layered.yaml: notes.src: must be one line of text",
+        "layered.yaml: notes.src/*: must be one line of text",
+    ]
+
+
+def test_a_layer_naming_no_part_twice_or_importing_outward_is_rejected():
+    document = layered() | {"layers": {"inside": ["store", "service", "api"], "again": ["store", "repo"],
+                                       "wrong": ["api"], "empty": []}}
+    document["layers"]["inside"] = ["api", "service", "store"]           # api imports service: outward
+    assert problems(document) == [
+        "layered.yaml: layers.inside: 'api' imports 'service', which is outward of it",
+        "layered.yaml: layers.inside: 'service' imports 'store', which is outward of it",
+        "layered.yaml: layers.again: part 'store' is already in layer 'inside'",
+        "layered.yaml: layers.again: no part named 'repo'",
+        "layered.yaml: layers.wrong: part 'api' is already in layer 'inside'",
+        "layered.yaml: layers.empty: must be a list of parts, from the inside out",
+    ]
+
+
+def test_placement_must_list_every_part_exactly_once():
+    document = layered() | {"placement": ["store", "store", "repo"]}
+    assert problems(document) == [
+        "layered.yaml: placement: part 'store' is listed twice",
+        "layered.yaml: placement: no part named 'repo'",
+        "layered.yaml: placement: missing parts 'api', 'service': list every part once",
+    ]
+
+
+def test_a_bad_naming_row_is_rejected():
+    document = layered() | {"naming": [{"kind": "service", "where": [], "pattern": "x"}, "row",
+                                       {"kind": "", "where": "a/", "pattern": "x", "example": "X", "colour": 1}]}
+    assert problems(document) == [
+        "layered.yaml: naming[0]: missing `example`",
+        "layered.yaml: naming[0].where: must be a string or a list of strings",
+        "layered.yaml: naming[1]: must be a mapping with `kind`, `where`, `pattern` and `example`",
+        "layered.yaml: naming[2]: unknown key 'colour': use example, kind, pattern, where",
+        "layered.yaml: naming[2].kind: must be a string",
+    ]
 
 
 def test_a_missing_version_is_rejected():
@@ -126,7 +227,7 @@ def test_an_unknown_version_is_rejected(version):
 def test_unknown_top_level_keys_are_rejected():
     document = layered() | {"profile": "cli", "extra": 1}
     assert problems(document) == ["layered.yaml: unknown keys 'extra', 'profile': "
-                                  "use docs, examples, layout, name, parts, rules, xarch"]
+                                  "use docs, examples, layers, layout, name, naming, notes, parts, placement, rules, xarch"]
 
 
 def test_missing_required_keys_are_reported():
@@ -238,7 +339,7 @@ def test_unknown_keys_inside_a_part_and_docs_are_rejected():
     document = layered() | {"docs": {"template": "layered.md", "style": "short"}}
     document["parts"]["api"]["colour"] = "blue"
     assert problems(document) == [
-        "layered.yaml: parts.api: unknown key 'colour': use litmus, path, role",
+        "layered.yaml: parts.api: unknown key 'colour': use driver_proves, driver_test, entry, litmus, path, role",
         "layered.yaml: docs: unknown key 'style': use template",
     ]
 
@@ -248,7 +349,8 @@ def test_every_problem_is_listed_at_once():
     document["parts"]["api"]["path"] = "src/*/nope"
     document["rules"]["store"] = ["store@mine"]
     assert problems(document) == [
-        "layered.yaml: unknown key 'extra': use docs, examples, layout, name, parts, rules, xarch",
+        "layered.yaml: unknown key 'extra': use docs, examples, layers, layout, name, naming, notes, parts, placement, "
+        "rules, xarch",
         "layered.yaml: parts.api.path: 'src/*/nope' matches no folder or file in layout",
         "layered.yaml: rules.store: 'store@mine' has an unknown scope '@mine': use @own (the importer's module) "
         "or @any (any module)",
@@ -277,6 +379,11 @@ def test_a_bad_layout_entry_is_rejected():
     "xarch: 1\nname: n\nlayout: {}\nparts: {}\nrules: {x: [1, null, {}]}\ndocs: [1]\nexamples: {x: 1}\n",
     "xarch: 1\nname: n\nlayout: {a: {}}\nparts: {a: {path: a, role: r}}\ndocs: {template: 3}\n"
     "examples: {a: {path: 1, file: [x]}}\n",
+    "xarch: 1\nname: n\nlayout: {a: {}}\nparts: {a: {path: a, role: r, entry: 1, driver_test: 3}}\n"
+    "notes: [1]\nlayers: 3\nplacement: x\nnaming: {a: 1}\n",
+    "xarch: 1\nname: n\nlayout: {a: {}}\nparts: {a: {path: a, role: r, driver_test: {file: [1]}}}\n"
+    "notes: {1: x, null: y, a: [z]}\nlayers: {1: [a], x: [[1]], y: a}\nplacement: [[1], null]\n"
+    "naming: [{kind: 1, where: [1], pattern: [], example: {}}, null]\n",
     "xarch: 1\n  bad: indentation\n", "{unclosed", "a: &x [*x]\n", "? [a, b]\n: 1\n", "xarch: !!python/object:os.system x\n",
 ])
 def test_a_bad_file_raises_invalid_architecture(tmp_path, text):

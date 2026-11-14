@@ -36,7 +36,8 @@ class Controllers:
 
 
 def build_spec(fs: FileSystem | None = None) -> SpecController:
-    return SpecController(SkeletonService(PyprojectSettings(fs or FileSystem(), TomlReader())))
+    fs = fs or FileSystem()
+    return SpecController(SkeletonService(PyprojectSettings(fs, TomlReader())), build_architectures(fs))
 
 
 def build_architectures(fs: FileSystem | None = None) -> ArchitectureService:
