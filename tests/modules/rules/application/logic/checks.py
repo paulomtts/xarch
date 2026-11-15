@@ -57,3 +57,7 @@ def syntax(files: Iterable[SourceFile], profile: Profile) -> list[Violation | We
 
 def names(app: Iterable[SourceFile], profile: Profile) -> list[Violation | Weak]:
     return run(expansion.names(profile), facts_of(app, [], profile, ""), profile)
+
+
+def no_callbacks(app: Iterable[SourceFile], profile: Profile) -> list[Violation | Weak]:
+    return run(expansion.no_callbacks(profile), facts_of(app, [], profile, ""), profile)
