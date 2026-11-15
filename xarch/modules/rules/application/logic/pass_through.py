@@ -44,7 +44,7 @@ def forwards(function: Function) -> str:
     """The dotted callee the function forwards to, or "": see the module's text."""
     call, signature = function.sole_call, function.signature
     dunder = function.name.startswith("__") and function.name.endswith("__")
-    if function.decorated or dunder or call is None or not signature.positional:
+    if function.decorated or dunder or call is None or call.then or not signature.positional:
         return ""
     own, others = signature.positional[0], [*signature.positional[1:], *signature.keyword_only]
     if call.callee[:1] != (own,) or len(call.callee) < 3:

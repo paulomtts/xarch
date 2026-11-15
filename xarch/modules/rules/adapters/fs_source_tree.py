@@ -38,7 +38,16 @@ not, and how many parameters of each kind it has, do show. Its annotations, defa
 
 A function records whether it is decorated, its parameters by kind, and, when its whole body, a docstring left out, is
 one `return` or bare statement of one call, perhaps awaited, that call: its callee as a chain of names, and each of its
-arguments as the bare name it passes (a starred one marked), or as nothing for any other expression.
+arguments as the bare name it passes (a starred one marked), or as nothing for any other expression. A body that is one
+`return` of a chain of attributes read on such a call (`return self.repo.get(id).name`) records the call and those
+attributes.
+
+A call whose callee is an attribute of an expression, `<expr>.<name>(...)`, and is no Ref is listed as a method call by
+the attribute's name, marked held when the expression is the first parameter of the method the call lies in (not a
+staticmethod's; also inside a function nested in that method) or a chain of attributes on it.
+
+A class lists its fields: the names a statement of its own body annotates (`x: int`, `y: str = ""`), in order, but one
+annotated `ClassVar` (alone or subscripted, by its bare name or as an attribute, or as a string annotation).
 """
 from __future__ import annotations
 
@@ -60,6 +69,7 @@ from xarch.modules.rules.domain.values import (
     Function,
     Import,
     Method,
+    MethodCall,
     ParameterCall,
     Ref,
     Row,
@@ -108,7 +118,8 @@ def _parsed(name: str, path: tuple[str, ...], text: str, form: TableForm | None)
     return SourceFile(name, path, tuple(_imports(tree)), comments, _functions(tree, form),
                       tuple(_unions(tree)), calls=tuple(calls.found), classes=tuple(_classes(tree)),
                       uses=tuple(calls.uses), parameter_calls=tuple(calls.parameter_calls),
-                      module_functions=_module_functions(tree), named=_named(tree), callbacks=tuple(calls.callbacks))
+                      module_functions=_module_functions(tree), named=_named(tree), callbacks=tuple(calls.callbacks),
+                      method_calls=tuple(calls.method_calls))
 
 
 def _module_functions(tree: ast.Module) -> tuple[str, ...]:
@@ -269,6 +280,10 @@ def _sole_call(node: ast.FunctionDef | ast.AsyncFunctionDef) -> SoleCall | None:
     body = [s for s in node.body if not _is_docstring(s)]
     statement = body[0] if len(body) == 1 else None
     call = statement.value if isinstance(statement, (ast.Return, ast.Expr)) else None
+    then: list[str] = []
+    while isinstance(statement, ast.Return) and isinstance(call, ast.Attribute):
+        then.insert(0, call.attr)
+        call = call.value
     if isinstance(call, ast.Await):
         call = call.value
     if not isinstance(call, ast.Call):
@@ -283,7 +298,7 @@ def _sole_call(node: ast.FunctionDef | ast.AsyncFunctionDef) -> SoleCall | None:
                  else arg.id if isinstance(arg, ast.Name) else "" for arg in call.args)
     keywords = tuple((keyword.arg if keyword.arg is not None else "**",
                       keyword.value.id if isinstance(keyword.value, ast.Name) else "") for keyword in call.keywords)
-    return SoleCall(callee, args, keywords)
+    return SoleCall(callee, args, keywords, tuple(then))
 
 
 def _named(tree: ast.AST) -> frozenset[str]:
@@ -499,6 +514,7 @@ class _Calls(ast.NodeVisitor):
         self._owners: list[tuple[str, str, frozenset[str]]] = []
         self.parameter_calls: list[ParameterCall] = []
         self.callbacks: list[Callback] = []
+        self.method_calls: list[MethodCall] = []
 
     def visit_Module(self, node: ast.Module) -> None:
         self._within(node, node.body, is_class=False)
@@ -559,6 +575,8 @@ class _Calls(ast.NodeVisitor):
                 self.callbacks.append(Callback(node.lineno, function, node.func.id, node.func.id == receiver,
                                                node.func.id in callables))
         func = _ref(node.func, self._chain)
+        if func is None and isinstance(node.func, ast.Attribute):
+            self.method_calls.append(MethodCall(node.lineno, node.func.attr, self._held(node.func.value)))
         if func is not None or self._is_parameter_method(node.func):
             args = tuple(_ref(a, self._chain) for a in node.args if not isinstance(a, ast.Starred))
             keywords = tuple((k.arg, _ref(k.value, self._chain)) for k in node.keywords if k.arg is not None)
@@ -570,6 +588,15 @@ class _Calls(ast.NodeVisitor):
                 self.parameter_calls.append(ParameterCall(node.lineno, node.func.value.id, node.func.attr, args,
                                                           keywords, unpacked))
         self.generic_visit(node)
+
+    def _held(self, node: ast.expr) -> bool:
+        """Whether node is the first parameter of the method around it, or a chain of attributes on it."""
+        while isinstance(node, ast.Attribute):
+            node = node.value
+        if not isinstance(node, ast.Name):
+            return False
+        index = self._parameter_scope(node.id)
+        return index is not None and self._owners[index][1] == node.id
 
     def _is_parameter_method(self, func: ast.expr) -> bool:
         """Whether func is `<name>.<attr>` and the nearest scope binding the name binds it as a parameter."""
@@ -630,8 +657,27 @@ def _classes(tree: ast.Module) -> list[Class]:
             if exception:
                 exceptions.add(node.name)
             found.append(Class(node.lineno, node.name, bases, methods, _attributes(node), _named(node) - {node.name},
-                               exception))
+                               exception, _fields(node)))
     return found
+
+
+def _fields(node: ast.ClassDef) -> tuple[str, ...]:
+    """The names the class body's own statements annotate, in order, but a class variable."""
+    return tuple(child.target.id for child in node.body if isinstance(child, ast.AnnAssign)
+                 and isinstance(child.target, ast.Name) and not _class_variable(child.annotation))
+
+
+def _class_variable(annotation: ast.expr) -> bool:
+    if isinstance(annotation, ast.Constant) and isinstance(annotation.value, str):
+        try:
+            annotation = ast.parse(annotation.value.strip(), mode="eval").body
+        except SyntaxError:
+            return False
+    if isinstance(annotation, ast.Subscript):
+        annotation = annotation.value
+    name = annotation.id if isinstance(annotation, ast.Name) else annotation.attr \
+        if isinstance(annotation, ast.Attribute) else ""
+    return name == "ClassVar"
 
 
 _CALLABLE = (("typing", "Callable"), ("collections", "abc", "Callable"))

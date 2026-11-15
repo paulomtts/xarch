@@ -10,6 +10,7 @@ from xarch.modules.rules.domain.values import (
     Callback,
     Class,
     Method,
+    MethodCall,
     ParameterCall,
     Row,
     Signature,
@@ -83,7 +84,7 @@ def test_a_class_lists_its_bases_as_paths_and_its_methods_with_their_return_anno
     assert tuple(replace(c, named=frozenset()) for c in parsed(tmp_path, text).classes) == (
         Class(4, "Repo", (("typing", "Protocol"),),
               (Method(5, "get", "str | None"), Method(6, "save", "None"), Method(7, "raw", None),
-               Method(8, "later", "None")), ("size",)),
+               Method(8, "later", "None")), ("size",), fields=("size",)),
         Class(10, "Typed", (("typing", "Protocol"), None), ()))
 
 
@@ -458,7 +459,13 @@ def test_annotations_defaults_and_decorators_are_no_part_of_the_shape(tmp_path):
     pytest.param("return self.helper(id)", SoleCall(('self', 'helper'), ('id',)), id="a method of the object itself, no collaborator"),
     pytest.param("return other.repo.get(id)", SoleCall(('other', 'repo', 'get'), ('id',)),
                  id="a chain that does not start at the first parameter"),
-    pytest.param("return self.repo.get(id).name", None, id="a read of the result"),
+    pytest.param("return self.repo.get(id).name", SoleCall(('self', 'repo', 'get'), ('id',), then=('name',)),
+                 id="a read of the result"),
+    pytest.param("return (await self.repo.get(id)).value.text",
+                 SoleCall(('self', 'repo', 'get'), ('id',), then=('value', 'text')), id="a chain read of an awaited result"),
+    pytest.param("self.repo.get(id).name", None, id="a read of the result that is not returned"),
+    pytest.param("return self.repo.get(id).name()", SoleCall(()), id="a call on the result is the call"),
+    pytest.param("return self.repo.get(id)[0]", None, id="an item of the result"),
     pytest.param("return self.repo.get(self.repo.size(), id)", SoleCall(('self', 'repo', 'get'), ('', 'id')),
                  id="a call inside the arguments"),
 ])
@@ -544,3 +551,40 @@ def test_a_callback_says_whether_its_parameter_is_annotated_as_a_callable(tmp_pa
     text = (f"from typing import Callable, Optional\nfrom collections import abc\n"
             f"def a(check: {annotation}):\n    return check()\n")
     assert [c.annotated for c in parsed(tmp_path, text).callbacks] == [annotated]
+
+
+@pytest.mark.parametrize("text, fields", [
+    pytest.param("class A:\n    x: int\n    y: str = ''\n    z: list = field(default_factory=list)\n", ("x", "y", "z"),
+                 id="the names annotated in the class body, in order, with or without a default"),
+    pytest.param("class A:\n    x = 1\n    def __init__(self):\n        self.y: int = 2\n", (),
+                 id="an assignment with no annotation and an annotated attribute of self are no field"),
+    pytest.param("from typing import ClassVar\nimport typing\nclass A:\n    x: ClassVar[int] = 1\n"
+                 "    y: typing.ClassVar = 2\n    z: int\n", ("z",), id="a class variable is no field"),
+    pytest.param("class A:\n    if flag:\n        x: int\n    class B:\n        y: int\n", (),
+                 id="only a statement of the body itself declares one"),
+])
+def test_a_class_lists_its_fields_the_names_its_body_annotates_in_order(tmp_path, text, fields):
+    assert parsed(tmp_path, text).classes[0].fields == fields
+
+
+@pytest.mark.parametrize("text, found", [
+    pytest.param("def a(path):\n    return path.resolve().absolute()\n",
+                 [MethodCall(2, "absolute"), MethodCall(2, "resolve")], id="a method of a parameter, then of its result"),
+    pytest.param("def a():\n    return make().resolve()\n", [MethodCall(2, "resolve")], id="a method of any expression"),
+    pytest.param("from pathlib import Path\nimport os\ndef a():\n    return Path.cwd(), os.path.abspath('.')\n", [],
+                 id="a callee an import binds is a call, not a method call"),
+    pytest.param("class S:\n    def a(self):\n        return self._paths.resolve(), self.resolve()\n",
+                 [MethodCall(3, "resolve", True), MethodCall(3, "resolve", True)],
+                 id="a method of what the object holds, or of the object itself, is marked held"),
+    pytest.param("class S:\n    def a(self, other):\n        return other.resolve(), self.x(1).resolve()\n",
+                 [MethodCall(3, "resolve"), MethodCall(3, "x", True), MethodCall(3, "resolve")],
+                 id="another parameter, or a result of a held call, is not held"),
+    pytest.param("class S:\n    def a(self):\n        def inner():\n            return self.p.resolve()\n",
+                 [MethodCall(4, "resolve", True)], id="the object is held in a nested function too"),
+    pytest.param("class S:\n    @staticmethod\n    def a(self):\n        return self.resolve()\n",
+                 [MethodCall(4, "resolve")], id="a static method has no object"),
+    pytest.param("def a(f):\n    return f()\n", [], id="a call of a bare name is no method call"),
+])
+def test_a_call_of_an_attribute_no_import_binds_is_listed_as_a_method_call(tmp_path, text, found):
+    assert sorted(parsed(tmp_path, text).method_calls, key=lambda c: (c.line, c.name, c.held)) == sorted(
+        found, key=lambda c: (c.line, c.name, c.held))

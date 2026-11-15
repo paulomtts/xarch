@@ -262,6 +262,18 @@ class Use:
 
 
 @dataclass(frozen=True)
+class MethodCall:
+    """A call of a name read as an attribute of an expression, `<expr>.<name>(...)`, whose callee no import binds (a
+    callee an import binds, such as `Path.cwd()` after `from pathlib import Path`, is a Call), and the line it is on:
+    the attribute's name, and held: whether the expression is the object a method is called on (its first parameter,
+    not a staticmethod's) or a chain of attributes on it, `self.name()` or `self.repo.name()`, as in a function nested
+    in that method too."""
+    line: int
+    name: str
+    held: bool = False
+
+
+@dataclass(frozen=True)
 class Method:
     """A function defined in a class body: its name and its return annotation as written (a string annotation by its
     text), None when it has none."""
@@ -275,7 +287,9 @@ class Class:
     """A module-level class: its bases, each a Ref (a generic interface names the interface alone), the methods of its body, and its
     attributes: the names its body assigns, and those its methods assign on their first parameter (`self.x = ...`);
     named: every name its bases and body mention, by its last step alone; exception: it derives from one of the language's
-    builtin exceptions, named by its bare name, directly or through a class defined before it in the same file."""
+    builtin exceptions, named by its bare name, directly or through a class defined before it in the same file;
+    fields: the names a statement of its body itself declares with an annotation (`x: int`, with a default or not), in
+    order, those annotated as a class variable left out."""
     line: int
     name: str
     bases: tuple[Ref, ...] = ()
@@ -283,6 +297,7 @@ class Class:
     attributes: tuple[str, ...] = ()
     named: frozenset[str] = frozenset()
     exception: bool = False
+    fields: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -320,11 +335,14 @@ class Signature:
 class SoleCall:
     """The one call a function's whole body returns or makes, a docstring aside, perhaps awaited: its callee as the
     chain of names it is (("self", "repo", "get")), empty when it is no such chain; each positional argument as the
-    bare name it passes, `*` before a starred one, "" for any other expression; and each keyword argument as (its
-    keyword, or `**` for an unpacked one; the bare name it passes, "" for any other expression)."""
+    bare name it passes, `*` before a starred one, "" for any other expression; each keyword argument as (its
+    keyword, or `**` for an unpacked one; the bare name it passes, "" for any other expression); and then, for a body
+    that returns a chain of attributes read on the call's result (`return self.repo.get(id).name`), those attributes
+    in order, empty when it returns or makes the call itself."""
     callee: tuple[str, ...]
     args: tuple[str, ...] = ()
     keywords: tuple[tuple[str, str], ...] = ()
+    then: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -359,8 +377,9 @@ class SourceFile:
     classes, the calls of the methods of its functions' parameters, the uses of the names it reads and the names it
     defines at module level as functions, in order (module_functions: a name that one `def` binds and nothing else
     binds, so that what it names is a function). named is every name the file mentions anywhere, annotations
-    included, by its last step alone; callbacks are the calls of a function's own parameter. error is how it fails
-    to parse, as (line, message), and then it holds nothing else."""
+    included, by its last step alone; callbacks are the calls of a function's own parameter; method_calls the calls
+    of an attribute no import binds (see MethodCall). error is how it fails to parse, as (line, message), and then it
+    holds nothing else."""
     name: str
     path: tuple[str, ...]
     imports: tuple[Import, ...]
@@ -375,6 +394,7 @@ class SourceFile:
     module_functions: tuple[str, ...] = ()
     named: frozenset[str] = frozenset()
     callbacks: tuple[Callback, ...] = ()
+    method_calls: tuple[MethodCall, ...] = ()
 
 
 @dataclass(frozen=True)
