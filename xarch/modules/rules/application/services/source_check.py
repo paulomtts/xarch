@@ -18,7 +18,6 @@ from xarch.modules.rules.application.logic import (
     pass_through,
     scenarios,
     stand_ins,
-    syntax,
     twins,
 )
 from xarch.modules.rules.application.logic.engine import run
@@ -54,13 +53,13 @@ class SourceCheckService:
         app = self._tree.read(root, [p for p in paths if closed_tree.governed(rules, p)])
         table = rules.scenarios.table if rules.scenarios is not None else None
         test_files = self._tree.read(tests, self._tree.paths(tests, extension), table) if tests is not None else []
-        broken = syntax.violations([*app, *test_files], rules)
-        app = [f for f in app if f.error is None]
-        test_files = [f for f in test_files if f.error is None]
         tests_root = self._tree.resolved(tests).name if tests is not None else ""
         book = expansion.book(rules)
         facts = facts_of(app, test_files, rules, package, tests_root, [r for group in book.values() for r in group])
-        found = broken + run(book["rules"], facts, rules) + run(book["libraries"], facts, rules)
+        app = [f for f in app if f.error is None]
+        test_files = [f for f in test_files if f.error is None]
+        found = run(book["syntax"], facts, rules) + run(book["rules"], facts, rules) + run(book["libraries"], facts,
+                                                                                           rules)
         found += run(book["forbidden"], facts, rules)
         found += cycles.violations(app, rules, package)
         found += run(book["tiers"], facts, rules)

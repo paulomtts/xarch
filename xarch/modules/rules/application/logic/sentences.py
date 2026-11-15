@@ -33,6 +33,13 @@ out from the finding by its name, a closed list:
     caller_fix    what to do about a part's use of a part as more than a type: use it as a type, and leave the call
                   to a part that may make it
     tier_fix      the same, for a tier's test: drive the tier's subject, with what the tier's tests may touch
+    title         how a message names the language of the app ("source" when it has no name)
+    text          what a comment or a parse error says
+    wanted        the name patterns of the rule's targets, joined by "or"
+    function      the function a callback is in
+    file          the file, as shown
+    function_parts, class_parts
+                  a part that holds functions, or classes, naming the first of those the profile has
 """
 from __future__ import annotations
 
@@ -46,6 +53,8 @@ from xarch.modules.rules.domain.values import Profile
 
 OWNERS = 3
 """How many parts that may import or call what a finding is about a fix names before it says "or another part"."""
+SHOWN = 3
+"""How many parts that hold the other kind a fix of holds names."""
 
 
 def said(text: str, found: Found, facts: Facts, profile: Profile) -> str:
@@ -126,7 +135,27 @@ def value(name: str, found: Found, facts: Facts, profile: Profile) -> str:
             return _tier_fix(found, profile)
         case "caller_fix":
             return _caller_fix(found, profile)
+        case "title":
+            return profile.language.title or "source"
+        case "text":
+            return fact.text
+        case "wanted":
+            return " or ".join(rule.targets.words)
+        case "function":
+            return fact.path[0]
+        case "file":
+            return read.file.name
+        case "function_parts":
+            return _holding(profile, "functions")
+        case "class_parts":
+            return _holding(profile, "classes")
     raise ValueError(f"no variable of a saying is named {name!r}")
+
+
+def _holding(profile: Profile, kind: str) -> str:
+    """A part that holds the kind, naming the first SHOWN of those the profile has."""
+    parts = [f"{name}/" for name, holds in profile.holds.items() if holds == kind][:SHOWN]
+    return f"a part that holds {kind}: {', '.join(parts)}" if parts else f"a part that holds {kind}"
 
 
 def _tier_fix(found: Found, profile: Profile) -> str:

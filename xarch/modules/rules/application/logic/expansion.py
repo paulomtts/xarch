@@ -11,6 +11,7 @@ from xarch.modules.rules.domain.rule import (
     ALL,
     APP,
     EXISTING,
+    LIST,
     MAY_NOT,
     MAY_ONLY,
     STRUCTURE,
@@ -171,9 +172,77 @@ def tiers(profile: Profile) -> tuple[Rule, ...]:
                  (fakes, test, elsewhere)))
 
 
+def syntax(profile: Profile) -> tuple[Rule, ...]:
+    """A file that does not parse is a violation, at the line its error is on, and no other rule reads it."""
+    return (Rule("syntax", Scope(ALL), ("error",), MAY_NOT, EXISTING,
+                 (Saying("not valid {title}: {text}", "correct the syntax so that the file can be read"),)),)
+
+
+def names(profile: Profile) -> tuple[Rule, ...]:
+    """Every public class of a part that lists `names` matches one of its patterns, `*` standing for any text."""
+    return tuple(Rule("names", Scope(APP, part), ("class",), MAY_ONLY, Targets("patterns", words=patterns),
+                      (Saying("{name} does not match {wanted}, as every class of {part} must ({key})",
+                              "rename {name} to match {wanted}, or move it to the part whose kind of class it is"),),
+                      keep=("public",), key=f"parts.{part}.names", part=part)
+                 for part, patterns in profile.names.items())
+
+
+def no_callbacks(profile: Profile) -> tuple[Rule, ...]:
+    """Code of a part that lists `no_callbacks` calls none of its own parameters annotated as callables; the first
+    parameter of a method, the object it is called on, is no callback."""
+    return tuple(Rule("no-callbacks", Scope(APP, part), ("callback",), MAY_NOT, EXISTING,
+                      (Saying("{function} calls its parameter {name}: {part} takes no callback ({key})",
+                              "have the caller call {name} first and pass {function} the answer as a value"),),
+                      keep=("annotated",), exempt=("receiver",), key=f"parts.{part}.no_callbacks", part=part)
+                 for part in profile.no_callbacks)
+
+
+def no_comments(profile: Profile) -> tuple[Rule, ...]:
+    """No line comment, in the app or its tests, but those the language's tools read: its directives, a shebang on
+    line 1, an encoding declaration on line 1 or 2."""
+    if not profile.no_comments:
+        return ()
+    return (Rule("no-comments", Scope(ALL), ("comment",), MAY_NOT, EXISTING,
+                 (Saying("a comment (no-comments)", "say it in a docstring or a name, and delete the comment"),),
+                 exempt=("read-by-a-tool",)),)
+
+
+def closed_tree(profile: Profile) -> tuple[Rule, ...]:
+    """Every source file of the app lies in a part, or is a package file of a folder of the layout."""
+    if not profile.closed_tree:
+        return ()
+    return (Rule("closed-tree", Scope(APP, where=("ungoverned",)), ("file",), MAY_NOT, EXISTING,
+                 (Saying("lies in no part and no folder of the layout (closed-tree)",
+                         "move {file} into the part that fits it (run xarch where {file}), or add its folder to the "
+                         "layout"),)),)
+
+
+def holds(profile: Profile) -> tuple[Rule, ...]:
+    """A file of a part that lists `holds` defines at the top level what the part holds, listed without failing:
+    no public function in a part of classes; no class in a part of functions but an exception or a record. A package
+    file only gathers what its package holds and is not read."""
+    found = []
+    for part, kind in profile.holds.items():
+        key = f"parts.{part}.holds"
+        if kind == "classes":
+            found.append(Rule("holds", Scope(APP, part, where=("not-a-package",)), ("function",), MAY_NOT, EXISTING,
+                              (Saying("{name} is a function at the top level, but {part} holds classes ({key})",
+                                      "make {name} a method of the class whose rule it is, or move it to "
+                                      "{function_parts}"),),
+                              keep=("top-level", "public"), mode=LIST, key=key, part=part))
+        else:
+            found.append(Rule("holds", Scope(APP, part, where=("not-a-package",)), ("class",), MAY_NOT, EXISTING,
+                              (Saying("{name} is a class, but {part} holds functions ({key})",
+                                      "move {name} to {class_parts}, or make what it does functions"),),
+                              exempt=("exception", "record"), mode=LIST, key=key, part=part))
+    return tuple(found)
+
+
 def book(profile: Profile) -> dict[str, tuple[Rule, ...]]:
     """Every check the engine runs, by the name of its group, each the rules its keys expand to."""
-    return {"rules": rules(profile), "libraries": libraries(profile), "forbidden": forbidden(profile),
-            "tiers": tiers(profile), "types-only tiers": types_only_tiers(profile),
+    return {"syntax": syntax(profile), "rules": rules(profile), "libraries": libraries(profile),
+            "forbidden": forbidden(profile), "tiers": tiers(profile), "types-only tiers": types_only_tiers(profile),
             "package-only": package_only(profile), "types-only parts": types_only_parts(profile),
-            "built-by": built_by(profile), "private-imports": private_imports(profile)}
+            "no-callbacks": no_callbacks(profile), "names": names(profile), "built-by": built_by(profile),
+            "private-imports": private_imports(profile), "no-comments": no_comments(profile),
+            "closed-tree": closed_tree(profile), "holds": holds(profile)}

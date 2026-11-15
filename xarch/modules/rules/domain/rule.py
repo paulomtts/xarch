@@ -140,11 +140,13 @@ class Facts:
 @dataclass(frozen=True)
 class Defined:
     """What the app defines, as the facts derived from it read it: the root package; where the file of each class it
-    defines at the top level of a file sits, by the class's dotted path (the root first); and the names each file,
-    by its steps below the root, binds to a function alone."""
+    defines at the top level of a file sits, by the class's dotted path (the root first); the names each file, by its
+    steps below the root, binds to a function alone; and its classes that are exceptions, as (their file's steps,
+    their name)."""
     root: str
     classes: dict[tuple[str, ...], Place | None]
     functions: dict[tuple[str, ...], frozenset[str]]
+    exceptions: frozenset[tuple[tuple[str, ...], str]] = frozenset()
 
 
 class Found(NamedTuple):

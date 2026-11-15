@@ -12,6 +12,7 @@ target it matches; under MAY_ONLY when it matches none.
                name it takes included
     allowance  the place a test's import into the app reaches is one that what the test's subject may import
                reaches, from the instance the test mirrors (see tier_of)
+    patterns   the name a declaration carries matches one of the patterns, `*` standing for any text
     test-code  a test file's import into the tests' package is of test code it may import: the fakes when its
                tier tests a part they stand in for, any other file that is no test file in its own folder
 """
@@ -19,7 +20,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from xarch.kernel.logic.placement import reaches
+from xarch.kernel.logic.placement import name_matches, reaches
 from xarch.modules.rules.application.logic.tier_of import Tested, allowance, as_place, may_use_fakes
 from xarch.modules.rules.domain.rule import MAY_NOT, MAY_ONLY, Facts, Found, Targets
 from xarch.modules.rules.domain.values import Profile
@@ -99,6 +100,11 @@ def _test_code(targets: Targets, found: Found, facts: Facts, profile: Profile) -
     return target if read.own and target[:len(read.own)] == read.own else None
 
 
-_KINDS = {"existing": _existing, "packages": _packages, "names": _names, "private": _private, "parts": _parts,
+def _patterns(targets: Targets, found: Found, facts: Facts, profile: Profile) -> tuple[str, ...] | None:
+    name = found.fact.name or ""
+    return next(((p,) for p in targets.words if name_matches(p, name)), None)
+
+
+_KINDS = {"patterns": _patterns, "existing": _existing, "packages": _packages, "names": _names, "private": _private, "parts": _parts,
           "places": _places, "allowance": _allowance, "test-code": _test_code}
 """How a fact is matched against each kind of target, by its name."""

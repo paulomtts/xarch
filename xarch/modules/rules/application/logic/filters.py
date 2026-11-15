@@ -8,6 +8,8 @@ Of a file:
     untiered          a test file of no tier
     a-test            a file whose name the profile's test files match
     not-a-fake        a file below the tests root outside the fakes' folder
+    not-a-package     a file that does not stand for its folder
+    ungoverned        a file of the app that no part and no folder of the layout governs
 
 Of a fact:
 
@@ -32,9 +34,18 @@ Of a fact:
     into-a-test       a test file's import of another test file
     a-call            a call, rather than a reference
     mirroring         a fact of a test file that mirrors parts of the app
+    public            a declaration whose name is public in the language of the app
+    top-level         a function defined at the top level, in no class
+    annotated         a callback of a parameter annotated as a callable
+    receiver          a callback of the first parameter of a method, the object or class it is called on
+    exception         a class that is an exception (see facts)
+    record            a class that is a record (see facts)
+    read-by-a-tool    a comment the language's tools read: a directive after the comment marker (a space in one
+                      standing for any spaces), a shebang on line 1, an encoding declaration on line 1 or 2
 """
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from dataclasses import replace
 
@@ -70,6 +81,10 @@ def _file(name: str, read: Read) -> bool:
             return read.is_test
         case "not-a-fake":
             return not read.is_fake
+        case "not-a-package":
+            return not read.package
+        case "ungoverned":
+            return not read.test and read.place is None
     raise ValueError(f"no filter of a file is named {name!r}")
 
 
@@ -173,13 +188,55 @@ def _mirroring(found: Found, facts: Facts, profile: Profile) -> bool:
     return bool(found.read.mirrors)
 
 
+def _public(found: Found, facts: Facts, profile: Profile) -> bool:
+    return found.fact.name is not None and profile.language.is_public(found.fact.name)
+
+
+def _trait(found: Found, name: str) -> bool:
+    return name in found.fact.traits
+
+
+def _top_level(found: Found, facts: Facts, profile: Profile) -> bool:
+    return _trait(found, "top-level")
+
+
+def _annotated(found: Found, facts: Facts, profile: Profile) -> bool:
+    return _trait(found, "annotated")
+
+
+def _receiver(found: Found, facts: Facts, profile: Profile) -> bool:
+    return _trait(found, "receiver")
+
+
+def _exception(found: Found, facts: Facts, profile: Profile) -> bool:
+    return _trait(found, "exception")
+
+
+def _record(found: Found, facts: Facts, profile: Profile) -> bool:
+    return _trait(found, "record")
+
+
+def _read_by_a_tool(found: Found, facts: Facts, profile: Profile) -> bool:
+    language, comment = profile.language, found.fact
+    marker = re.escape(language.comment)
+    words = "|".join(r"\s*".join(re.escape(part) for part in word.split(" ")) for word in language.directives)
+    if words and re.match(rf"{marker}\s*({words})", comment.text):
+        return True
+    if comment.line == 1 and language.shebang and comment.text.startswith(language.shebang):
+        return True
+    return comment.line <= 2 and bool(language.encoding) and bool(
+        re.match(rf"^[ \t\f]*{marker}.*?{language.encoding}", comment.text))
+
+
 _FACT = {"absolute": _absolute, "has-a-path": _has_a_path, "unheld": _unheld, "placed": _placed,
          "below-a-package": _below_a_package, "same-part-instance": _same_part_instance, "own-package": _own_package,
          "standard-unreserved": _standard_unreserved, "reserved": _reserved, "owned": _owned,
          "reserved-and-owned": _reserved_and_owned, "bound-by-the-import-that-hit": _bound_by_the_import_that_hit,
          "own-code": _own_code, "names-a-name": _names_a_name, "built-by-a-builder": _built_by_a_builder,
          "narrowed": _narrowed, "permits-nothing": _permits_nothing, "into-the-fakes": _into_the_fakes,
-         "into-a-test": _into_a_test, "a-call": _a_call, "mirroring": _mirroring}
+         "into-a-test": _into_a_test, "a-call": _a_call, "mirroring": _mirroring, "public": _public,
+         "top-level": _top_level, "annotated": _annotated, "receiver": _receiver, "exception": _exception,
+         "record": _record, "read-by-a-tool": _read_by_a_tool}
 """Each filter of a fact by its name, the question it asks."""
 
 
