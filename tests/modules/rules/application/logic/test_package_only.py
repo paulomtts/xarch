@@ -2,8 +2,8 @@
 anywhere outside its own instance's contract/, the app and the tests alike."""
 import pytest
 
+from tests.modules.rules.application.logic.checks import package_only as violations
 from tests.modules.rules.builders import PROFILE, imp, in_tests, profile, source
-from xarch.modules.rules.application.logic.package_only import violations
 
 CONTRACTS = [source("modules/docs/contract/__init__.py"), source("modules/docs/contract/results.py"),
              source("modules/other/contract/__init__.py"), source("modules/other/contract/results.py")]

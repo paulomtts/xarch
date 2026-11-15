@@ -16,7 +16,6 @@ from xarch.modules.rules.application.logic import (
     must_import,
     names,
     no_callbacks,
-    package_only,
     pass_through,
     private_imports,
     scenarios,
@@ -70,7 +69,7 @@ class SourceCheckService:
         found += cycles.violations(app, rules, package)
         found += tier_imports.violations(test_files, app, rules, package, tests_root)
         found += types_only.violations(test_files, app, rules, package)
-        found += package_only.violations(app, test_files, rules, package)
+        found += run(expansion.package_only(rules), facts, rules)
         found += scenarios.violations(app, test_files, rules)
         found += stand_ins.violations(app, test_files, rules, package, tests_root if tests is not None else None)
         found += must_import.violations(app, rules, package)

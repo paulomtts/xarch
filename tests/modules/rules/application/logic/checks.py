@@ -17,3 +17,13 @@ def libraries(files: Iterable[SourceFile], profile: Profile, root: str) -> list[
 
 def forbidden(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile) -> list[Violation | Weak]:
     return run(expansion.forbidden(profile), facts_of(app, tests, profile, ""), profile)
+
+
+def package_only(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile,
+                 root: str) -> list[Violation | Weak]:
+    return run(expansion.package_only(profile), facts_of(app, tests, profile, root), profile)
+
+
+def private_imports(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile, root: str,
+                    tests_root: str) -> list[Violation | Weak]:
+    return run(expansion.private_imports(profile), facts_of(app, tests, profile, root, tests_root), profile)
