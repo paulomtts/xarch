@@ -86,10 +86,14 @@ files:    {<path>: <from> | {from*, pinned, fill}}      docs: {entry, pages, nam
 true of a language as a whole lives in a data file shipped beside the profiles, `xarch/architectures/presets/language/
 <name>.yaml`, the way `testing: pytest` resolves to `presets/testing/pytest.yaml`: the ending of a source file, the file
 that stands for a folder, what marks an interface, the namespace of the builtins, the callables that import by a
-computed name, the folder of compiled files, and where the standard library's names are known from (`interpreter`).
+computed name, the folder of compiled files, and where the standard library's names are known from (`interpreter`);
+and the tokens of its code the checks and the docs need: what a name may be, how a private name starts, what a special
+name starts and ends with, the special method calling an instance runs, the annotation of no value, the comment marker
+and the comments its tools read, the shebang, the encoding declaration, and the keywords that branch.
 The rest of what a check knows of the language is one adapter, the reader that turns source into facts
-(`modules/rules/adapters/fs_source_tree.py`), and the platform. `tests/architecture/test_language_seam.py` fails when
-any other file of xarch names the language.
+(`modules/rules/adapters/fs_source_tree.py`), and the platform; spec reads the docs' examples through that reader too.
+`tests/architecture/test_language_seam.py` fails when any other file of xarch names the language or writes one of
+its tokens.
 
 The smallest valid profile is a name and one part (it runs `structure`, the import rules, `libraries` and `syntax`):
 
