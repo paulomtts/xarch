@@ -38,7 +38,7 @@ def test_a_conforming_tree_passes(tmp_path, profile):
         "platform/sql.py": "from app.kernel import errors",
         "modules/a/domain/values.py": "from app.kernel import errors",
         "modules/a/domain/doc.py": "from .values import X\nfrom app.kernel.errors import E",
-        "modules/a/contract/__init__.py": "from ..domain.values import X\nfrom app.kernel import errors",
+        "modules/a/contract/__init__.py": "from ..domain.values import XId\nfrom app.kernel import errors",
         "modules/a/application/ports/repo.py": "from app.modules.a.domain.doc import Doc\nfrom app.kernel import errors",
         "modules/a/application/logic/rule.py":
             "from app.modules.a.domain.doc import Doc\nfrom app.kernel.logic.text import t\nfrom .other import o",
@@ -92,6 +92,10 @@ OF_A, OF_B = " of modules/a", " of modules/b"
     pytest.param(CONTRACT, "from ..domain import doc",
                  denied(CONTRACT, "contract/" + OF_A, "domain/" + OF_A, "app.modules.a.domain"),
                  id="a contract imports only its domain's values"),
+    pytest.param(CONTRACT, "from ..domain.values import Doc",
+                 "app/modules/a/contract/__init__.py:1: contract/ of modules/a may import only *Id from domain/ of "
+                 "modules/a, not Doc (app.modules.a.domain.values.Doc)",
+                 id="a contract imports only the ids of its domain's values"),
     pytest.param(CONTRACT, "from ..domain.valuesx import V",
                  denied(CONTRACT, "contract/" + OF_A, "domain/" + OF_A, "app.modules.a.domain.valuesx"),
                  id="the values path is matched by whole names"),
@@ -238,7 +242,7 @@ KERNEL = {"kernel", "kernel/logic"}
 ALLOWED = {
     "kernel": KERNEL,
     "domain": {*KERNEL, "domain@a", "values@a"},
-    "contract": {*KERNEL, "contract@a", "values@a"},
+    "contract": {*KERNEL, "contract@a"},
     "controller": {*KERNEL, "controller@a", "services@a", "logic@a", "domain@a", "values@a", "ports@a", "contract@a"},
     "services": {*KERNEL, "services@a", "logic@a", "domain@a", "values@a", "ports@a", "contract@a"},
     "logic": {*KERNEL, "logic@a", "domain@a", "values@a"},
@@ -252,7 +256,8 @@ ALLOWED = {
 
 @PROFILES
 def test_every_part_imports_exactly_what_the_bundled_rules_allow(tmp_path, profile):
-    """One file per part imports every place, one per line: the lines reported are those the rules forbid."""
+    """One file per part imports every place, one per line: the lines reported are those the rules forbid. contract/
+    may import only the ids of its domain's values, by name, so the whole of that file is refused to it as well."""
     lines = "\n".join(f"import {module}" for module in TARGETS.values())
     found = problems(tmp_path, profile, {path: lines for path in SOURCES.values()})
     names = list(TARGETS)

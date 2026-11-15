@@ -171,7 +171,7 @@ Dependencies point inward: a part imports only from the rings inside it (section
 | `platform/` | `kernel/` |
 | `web/` | any module's `application/controller.py` and `contract/`, `kernel/` |
 | `bootstrap/` | everything |
-| `contract/` | its own module's `domain/values`, `kernel/` |
+| `contract/` | its own module's `domain/values:*Id`, `kernel/` |
 | `kernel/` | nothing |
 
 > [!IMPORTANT]

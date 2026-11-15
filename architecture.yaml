@@ -11,6 +11,8 @@ parts:
     role: "entities, values, errors: invariants only"
     may_import: [kernel]
     forbidden: pure
+    holds: classes
+    no_callbacks: true
     tier: unit
 
   logic:
@@ -18,6 +20,8 @@ parts:
     role: pure functions over the module's domain objects
     may_import: [domain, kernel]
     forbidden: pure
+    holds: functions
+    no_callbacks: true
     tier: unit
 
   ports:
@@ -25,18 +29,26 @@ parts:
     role: Protocols for what the module needs from the outside
     may_import: [domain, kernel]
     forbidden: pure
+    holds: classes
     tier: integration
 
   services:
     path: modules/<module>/application/services
     role: "use-case steps: load, check, act"
     may_import: [logic, domain, ports, contract, kernel]
+    types_only: [contract]
+    holds: classes
+    names: "*Service"
+    built_by: [bootstrap]
     tier: integration
 
   controller:
     path: modules/<module>/application/controller.py
     role: maps failures to a Result
     may_import: [services, logic, domain, ports, contract, kernel]
+    holds: classes
+    names: "*Controller"
+    built_by: [bootstrap]
     tier: integration
 
   adapters:
@@ -44,6 +56,8 @@ parts:
     role: implement the ports on the filesystem or another module's contract
     may_import: [ports, domain, kernel, platform, contract@any]
     must_import: [platform, contract@any]
+    holds: classes
+    built_by: [bootstrap]
     tier: unit
 
   platform:
@@ -80,7 +94,7 @@ parts:
   contract:
     path: modules/<module>/contract
     role: "the module's published language: commands, Results"
-    may_import: [domain/values, kernel]
+    may_import: ["domain/values:*Id", kernel]
     forbidden: pure
     tier: integration
     package_only: true
@@ -95,7 +109,8 @@ parts:
 forbidden:
   pure: [datetime.datetime.now, datetime.datetime.utcnow, datetime.datetime.today, datetime.date.today, time.time,
          time.time_ns, time.monotonic, time.perf_counter, builtins.open, builtins.print, builtins.input, sys.stdin,
-         sys.stdout, sys.stderr, os.environ, os.getenv, socket, subprocess, sqlite3, urllib, http, shutil]
+         sys.stdout, sys.stderr, os.environ, os.getenv, socket, subprocess, sqlite3, urllib, http, shutil,
+         pathlib.Path.cwd, pathlib.Path.absolute, os.getcwd, os.path.abspath, os.path.realpath]
 
 tiers:
   unit:
@@ -108,6 +123,7 @@ tiers:
   integration:
     proves: a use case, through its controller around fakes
     litmus: Does it drive a controller around fakes and check the Result it returns?
+    must_import: [controller]
     docs:
       may_touch: what the part it mirrors may import; `tests/fakes/`
 
@@ -115,6 +131,7 @@ tiers:
     proves: a command, a check on real files, or what a bundled profile holds, through the app bootstrap/ wires
     litmus: Does it need the whole app, as bootstrap/ wires it, to mean anything?
     types_only: [domain, logic, ports, services, controller, adapters, platform]
+    must_import: [bootstrap]
     docs:
       may_touch: anything bootstrap/ wires; temporary folders
 
@@ -144,8 +161,9 @@ guards:
   closed-tree: {}
   stand-ins: {}
   no-duplicates: {min_statements: 4}
-  dead-code: {}
-  pass-through: {parts: [services]}
+  dead-code: {untested: true}
+  pass-through: {parts: [services, controller, adapters]}
+  private-imports: {}
 
 excluded:
   architectures/examples: >-

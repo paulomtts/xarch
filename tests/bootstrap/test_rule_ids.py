@@ -74,6 +74,31 @@ CASES = [
                  "delete FakeNotifier, or write the test that uses it", id="dead-code: a fake"),
     pytest.param({"kernel/x.py": "def (:\n"}, {}, "syntax", "correct the syntax so that the file can be read",
                  id="syntax"),
+    pytest.param({"modules/docs/contract/ids.py": "from app.modules.docs.domain.values import Document\n"}, {}, "rules",
+                 "import from domain/ of modules/docs only names that match *Id (parts.contract.may_import), or move "
+                 "what needs the rest to a part that may import it", id="rules: a name the pattern does not match"),
+    pytest.param({}, {"modules/docs/domain/test_x.py": "from tests.modules.docs.domain.test_document import X\n"},
+                 "tiers", "move what tests.modules.docs.domain.test_document holds that this test needs into test code "
+                          "of its folder that is no test file, and import it from there", id="tiers: a test file"),
+    pytest.param({"modules/docs/application/services/doc.py":
+                  "from app.modules.docs.contract import Published\n\n\nclass DocService:\n"
+                  "    def run(self):\n        return Published()\n"}, {}, "types-only",
+                 "use contract/ here only as a type, and leave the call to controller/, adapters/ or web/, which may "
+                 "make it", id="types-only: a part"),
+    pytest.param({"modules/docs/domain/rule.py": "from typing import Callable\n\n\nclass Rule:\n"
+                                                 "    def ok(self, has: Callable[[str], bool]):\n"
+                                                 "        return has('x')\n"}, {}, "no-callbacks",
+                 "have the caller call has first and pass ok the answer as a value", id="no-callbacks"),
+    pytest.param({"modules/docs/application/services/doc.py": "class Publisher: ...\n"}, {}, "names",
+                 "rename Publisher to match *Service, or move it to the part whose kind of class it is", id="names"),
+    pytest.param({"modules/docs/application/services/doc.py": "class DocService: ...\n",
+                  "modules/docs/application/controller.py":
+                      "from app.modules.docs.application.services.doc import DocService\n\nDocService()\n"},
+                 {}, "built-by", "take DocService as a parameter of the constructor, and build it in bootstrap/",
+                 id="built-by"),
+    pytest.param({"kernel/x.py": "from app.kernel.y import _z\n"}, {}, "private-imports",
+                 "make _z public where it is defined (drop the `_`), or move it to a file both may import",
+                 id="private-imports"),
 ]
 
 
@@ -111,7 +136,7 @@ def test_a_closed_tree_names_its_rule_and_its_fix(tmp_path):
 
 def test_every_rule_id_has_a_case_here_that_produces_a_violation_with_a_fix():
     cases = {case.values[2] for case in CASES}
-    assert cases | {"structure", "test-tree", "closed-tree", "pass-through"} == set(RULES)
+    assert cases | {"structure", "test-tree", "closed-tree", "pass-through", "holds"} == set(RULES)
 
 
 def test_a_pass_through_is_listed_as_weak_with_its_fix_and_is_no_violation(tmp_path):
@@ -120,10 +145,10 @@ def test_a_pass_through_is_listed_as_weak_with_its_fix_and_is_no_violation(tmp_p
     app = write(tmp_path / "app", {**APP, "modules/docs/application/services/doc.py": service})
     result = build_controllers().rules.check(CheckImports(app, "app", "web", write(tmp_path / "tests", TESTS)))
     assert isinstance(result, ImportsChecked)
-    assert [(w.rule, w.line, w.fix) for w in result.enforcement.weak] == [
+    assert [(w.rule, w.line, w.fix) for w in result.enforcement.weak if w.rule == "pass-through"] == [
         ("pass-through", 5, "have the caller use self.repo.get, or keep it as a deliberate plain forward: it stays listed and fails "
                             "only `check --strict`")]
-    assert [f.detail for f in result.enforcement.strict if f.key == "weak"] == [
+    assert [f.detail for f in result.enforcement.strict if f.key == "weak" and "pass" in f.detail] == [
         "app/modules/docs/application/services/doc.py:5: DocService.get only passes its arguments on to self.repo.get"]
     assert [v.rule for v in result.violations] == []
 
@@ -137,3 +162,38 @@ def test_every_violation_of_a_check_names_a_rule(tmp_path):
         "arrange from given, act with when, assert == then, and give the odd case its own test",
         'write pytest.param(..., id="<a sentence stating the outcome>")',
         "add a row whose then is Missing, or a standalone test naming it"]
+
+
+def test_a_function_of_a_part_that_holds_classes_is_listed_as_weak_with_its_fix_and_is_no_violation(tmp_path):
+    app = write(tmp_path / "app", {**APP, "modules/docs/domain/rule.py": "def clean():\n    return 1\n"})
+    result = build_controllers().rules.check(CheckImports(app, "app", "web", write(tmp_path / "tests", TESTS)))
+    assert isinstance(result, ImportsChecked)
+    assert [(w.rule, w.line, w.fix) for w in result.enforcement.weak if w.rule == "holds"] == [
+        ("holds", 1, "make clean a method of the class whose rule it is, or move it to a part that holds functions: "
+                     "logic/")]
+    assert [v.rule for v in result.violations] == []
+
+
+def test_a_test_that_reaches_nothing_its_tier_must_reach_names_its_rule_and_its_fix(tmp_path):
+    shutil.copytree(BUNDLED, tmp_path / "arch")
+    text = (BUNDLED / "web.yaml").read_text().replace(
+        "  integration:\n", "  integration:\n    must_import: [controller]\n", 1)
+    (tmp_path / "arch/reach.yaml").write_text(text)
+    tests = {**TESTS, "modules/docs/application/test_other.py": "def test_other():\n    assert 1\n"}
+    result = build_controllers().rules.check(CheckImports(write(tmp_path / "app", APP), "app",
+                                                          str(tmp_path / "arch/reach.yaml"),
+                                                          write(tmp_path / "tests", tests)))
+    assert isinstance(result, ImportsChecked)
+    assert [(v.file, v.rule, v.fix) for v in result.violations] == [
+        ("tests/modules/docs/application/test_other.py", "must-import",
+         "drive what it proves through controller/, or move it to the tier of the part it calls directly")]
+
+
+def test_a_file_no_test_of_its_tier_reaches_is_listed_as_weak_with_its_fix(tmp_path):
+    app = write(tmp_path / "app", {**APP, "modules/docs/domain/rule.py": "class Rule:\n    def ok(self):\n"
+                                                                        "        return 1\n"})
+    result = build_controllers().rules.check(CheckImports(app, "app", "web", write(tmp_path / "tests", TESTS)))
+    assert isinstance(result, ImportsChecked)
+    assert [(w.file, w.fix) for w in result.enforcement.weak if w.rule == "dead-code"] == [
+        ("app/modules/docs/domain/rule.py", "write its unit test in tests/modules/docs/domain/, or delete what nothing "
+                                            "uses")]

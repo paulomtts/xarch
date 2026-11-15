@@ -38,8 +38,9 @@ def test_a_project_following_every_check_passes(tmp_path):
                   "may not reference app.modules.docs.application.controller.make, a function "
                   "(tiers.rendering.types_only)"],
                  id="types-only: a rendering test references a function of the controller without calling it"),
-    pytest.param({"modules/docs/application/controller.py": "class C: ...\n"},
-                 {"web/conftest.py": "from app.modules.docs.application.controller import C\n\nisinstance(1, C)\n"},
+    pytest.param({"modules/docs/application/controller.py": "class CController: ...\n"},
+                 {"web/conftest.py": "from app.modules.docs.application.controller import CController\n\n"
+                                     "isinstance(1, CController)\n"},
                  [], id="types-only: a class of the controller may be referenced"),
     pytest.param({"platform/sql.py": "import requests\n"}, {},
                  ["app/platform/sql.py:1: platform/ may not import the outside package requests (parts.platform.libraries)"],

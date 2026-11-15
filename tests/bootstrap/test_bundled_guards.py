@@ -11,6 +11,7 @@ from xarch.modules.spec.contract import (
     NoDuplicates,
     PackageOnly,
     PassThrough,
+    PrivateImports,
     ScenarioCoverage,
     StandIns,
 )
@@ -37,7 +38,7 @@ def test_the_bundled_profiles_use_every_guard_of_their_own(name):
         NoComments(),
         StandIns(tuple(("unittest", "mock", m) for m in mocks), (("unittest", "mock", "create_autospec"),),
                  ("spec", "spec_set"), (Fixture("mocker", mocks, ("create_autospec",)),)),
-        NoDuplicates(4), DeadCode(), PassThrough(("services",)))
+        NoDuplicates(4), DeadCode(untested=True), PassThrough(("services", "controller", "adapters")), PrivateImports())
     skips = ("pytest.mark.skip", "pytest.mark.skipif", "pytest.mark.xfail", "pytest.skip", "pytest.xfail",
              "pytest.importorskip", "unittest.skip", "unittest.skipIf", "unittest.skipUnless", "unittest.expectedFailure")
     assert load_architecture(name).framework == Framework(("test_*.py", "*_test.py"), "test_*",
@@ -51,7 +52,8 @@ def test_the_bundled_profiles_use_every_guard_of_their_own(name):
 PURE = ["datetime.datetime.now", "datetime.datetime.utcnow", "datetime.datetime.today", "datetime.date.today",
         "time.time", "time.time_ns", "time.monotonic", "time.perf_counter", "builtins.open", "builtins.print",
         "builtins.input", "sys.stdin", "sys.stdout", "sys.stderr", "os.environ", "os.getenv", "socket", "subprocess",
-        "sqlite3", "urllib", "http", "shutil"]
+        "sqlite3", "urllib", "http", "shutil", "pathlib.Path.cwd", "pathlib.Path.absolute", "os.getcwd",
+        "os.path.abspath", "os.path.realpath"]
 
 
 @pytest.mark.parametrize("name", ["cli", "web"])
@@ -79,7 +81,8 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
         "part's behalf elsewhere.",
         "- `tiers`: a test lives in the folder that mirrors its subject in the app, and imports only that part and "
         "what it may import (a test in a folder that mirrors no part, its tier's subject and what that may import); "
-        "only a test whose tier tests `application/ports/` imports the fakes in `tests/fakes/`.",
+        "only a test whose tier tests `application/ports/` imports the fakes in `tests/fakes/`; it imports no other "
+        "test file.",
         "- `types-only`: a rendering test uses `application/controller.py` only as a type: it may import it and "
         "annotate with it, and never calls it.",
         "- `test tree`: every folder below `tests/modules/` mirrors a folder of the app.",
@@ -88,6 +91,19 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
         "- `must-import`: every file of `adapters/` imports from `platform/`, any module's `contract/`, or an outside "
         "package, or reaches one through a file of its own part, so that it touches technology; a package file and "
         "a file with no code of its own are exempt.",
+        "- `types-only`: `application/services/` uses `contract/` only as a type: it imports it to annotate and never "
+        "calls it.",
+        "- `holds`: a file of `domain/`, `application/services/` and `application/controller.py` defines classes, "
+        "never a public function at the top level; a file of `application/logic/` defines functions, never a public "
+        "class but exceptions and the records its functions return; listed in the enforcement section, and fails "
+        "`check --strict` only.",
+        "- `no-callbacks`: no function of `domain/` and `application/logic/` calls a parameter annotated as a "
+        "callable: it is handed values, never a way to fetch them.",
+        "- `names`: every class of `application/services/` is named `*Service`.",
+        "- `names`: every class of `application/controller.py` is named `*Controller`.",
+        "- `built-by`: only code of `bootstrap/` builds a class of `application/services/`; tests are not read.",
+        "- `built-by`: only code of `bootstrap/` builds a class of `application/controller.py`; tests are not read.",
+        "- `built-by`: only code of `bootstrap/` builds a class of `adapters/`; tests are not read.",
         "- `package-only`: `contract/` is imported as a package, never by its files, from outside it.",
         "- `scenario-coverage`: every variant of a union named `<Name>Result` in `contract/` is the `then` of a row "
         "of the table (columns `given`, `when`, `then`) in `test_<name>.py` among the integration tests (section "
@@ -102,9 +118,14 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
         "- `no-duplicates`: no two functions of the app have the same code, names and formatting aside, when each "
         "holds at least 4 statements; tests are not compared.",
         "- `dead-code`: every `Protocol` in `application/ports/` is named by another file of the app, and every fake "
-        "in `tests/fakes/` by a test; the wiring and re-exports do not count.",
-        "- `pass-through`: a method of `application/services/` whose whole body forwards to one call on a "
-        "collaborator is listed in the enforcement section, and fails `check --strict` only.",
+        "in `tests/fakes/` by a test; the wiring and re-exports do not count. A file of a part with a tier that no "
+        "test of that tier reaches, directly or through files of parts of the same tier, is listed in the "
+        "enforcement section, and fails `check --strict` only.",
+        "- `pass-through`: a method of `application/services/`, `application/controller.py` and `adapters/` whose "
+        "whole body forwards to one call on a collaborator is listed in the enforcement section, and fails `check "
+        "--strict` only.",
+        "- `private-imports`: no file of the app or its tests imports a name that starts with `_` from another file "
+        "of them.",
     ])
 
 

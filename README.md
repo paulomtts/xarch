@@ -73,11 +73,12 @@ everything else is optional, and a key left out means off):
 xarch: 2*  name*  based_on  language  hints  excluded
 testing:  <preset> | {files*, functions*, skips, table, mocks}
 parts*:   {<part>: {path*, role*, litmus, may_import, must_import, libraries, forbidden, tier | untested,
-                    package_only, folders}}
+                    package_only, folders, holds, types_only, no_callbacks, names, built_by}}
 forbidden: {<list>: [<dotted name>, ...]}       layers: {<chain>: [<part>, ...]}
-tiers:    {<tier>: {proves, litmus, apply_forbidden, types_only, folder, may_import, docs}}
+tiers:    {<tier>: {proves, litmus, apply_forbidden, types_only, folder, may_import, must_import, docs}}
 fakes:    {folder*, for*, prefix}
-guards:   {scenario-coverage, no-comments, stand-ins, closed-tree, no-duplicates, dead-code, pass-through}
+guards:   {scenario-coverage, no-comments, stand-ins, closed-tree, no-duplicates, dead-code, pass-through,
+           private-imports}
 files:    {<path>: <from> | {from*, pinned, fill}}      docs: {entry, pages, naming, examples, example_notes}
 ```
 
@@ -99,7 +100,8 @@ The symbols:
   (`controller.py`) makes the part a file.
 - In `may_import`, a bare name is that part in the importer's own instance of its repeating folder; `store@any` any
   instance, and the only way to name a part of another repeating folder, which has no own instance; `store/schema`
-  only that path below the part; `everything` no limit (also for `libraries`). A part may always import itself.
+  only that path below the part; `store:*Id` only the names that match the pattern, imported by name;
+  `everything` no limit (also for `libraries`). A part may always import itself.
 
 This is the whole format on one screen. The reference for each key (what it means, what it accepts, whether `check`
 enforces it and through which rule, an example that loads, the keys it holds) is the command, which reads the same
@@ -156,22 +158,27 @@ that switches or configures each (`-` for none: the rule is always on):
 |---|---|---|
 | `syntax` | a file that does not parse, so no other check could read it | - |
 | `structure` | a folder or file of the layout missing, at any depth, in the app and in every instance of each repeating folder | `parts.path`, `parts.folders` |
-| `rules` | an import between parts that the importing part's `may_import` does not allow | `parts.may_import` |
+| `rules` | an import between parts that the importing part's `may_import` does not allow, or a name its pattern does not match | `parts.may_import` |
 | `libraries` | an outside package a part does not list; the standard library is always allowed, tests are not checked | `parts.libraries` |
 | `forbidden` | a name or module a part (or, with `apply_forbidden`, its tests) may not use | `forbidden`, `parts.forbidden`, `tiers.apply_forbidden` |
-| `tiers` | a test importing what its tier does not allow, or a test in no tier | `tiers`, `tiers.folder`, `tiers.may_import`, `parts.tier` |
+| `tiers` | a test importing what its tier does not allow, or another test file, or a test in no tier | `tiers`, `tiers.folder`, `tiers.may_import`, `parts.tier` |
 | `test-tree` | a folder below `tests/<repeating folder>/` that mirrors no folder of the app | `tiers`, `testing` |
-| `types-only` | a test calling what its tier may import only as a type | `tiers.types_only` |
+| `types-only` | a test, or code of a part, calling what it may import only as a type | `tiers.types_only`, `parts.types_only` |
 | `cycles` | instances of the repeating folders that import each other, directly or through others (across repeating folders too); each elementary cycle is reported once, at its first import | - (needs a repeating folder) |
 | `package-only` | an import of a file of a part from outside it, where the part is imported as a package | `parts.package_only` |
-| `must-import` | a file of a part that never reaches the technology or contract the part must reach | `parts.must_import` |
+| `must-import` | a file of a part that never reaches the technology or contract the part must reach, or a test that never reaches what its tier must | `parts.must_import`, `tiers.must_import` |
 | `scenario-coverage` | a variant of a result union with no row in its use case's test table | `guards.scenario-coverage` |
 | `no-comments` | a `#` comment in the app or its tests | `guards.no-comments` |
 | `stand-ins` | a read port without a fake, or a mock without a spec or with a read port's | `guards.stand-ins`, `fakes` |
 | `closed-tree` | a Python file of the app that lies in no part | `guards.closed-tree` |
 | `no-duplicates` | two functions or methods of the app with the same code | `guards.no-duplicates` |
-| `dead-code` | a port no other file names, a fake no test uses | `guards.dead-code`, `fakes` |
+| `dead-code` | a port no other file names, a fake no test uses; with `untested`, a file no test of its tier reaches, listed as `weak` only | `guards.dead-code`, `fakes` |
 | `pass-through` | a method that only forwards its arguments to a collaborator; never a violation: listed as `weak`, and fails only `--strict` | `guards.pass-through` |
+| `holds` | a public function at the top level of a part that holds classes, or a public class in one that holds functions; listed as `weak`, and fails only `--strict` | `parts.holds` |
+| `no-callbacks` | a function of a part that calls one of its own parameters annotated as a callable | `parts.no_callbacks` |
+| `names` | a public class of a part whose name matches none of the part's patterns | `parts.names` |
+| `built-by` | a call of the constructor of a part's class from a part it does not list | `parts.built_by` |
+| `private-imports` | an import of a name starting with `_` from another file of the app or its tests | `guards.private-imports` |
 
 A key left out means its check is off. For what a key means, accepts and exactly checks, run
 `xarch profile explain <key>` (for example `xarch profile explain guards.no-duplicates`, `parts.must_import`,

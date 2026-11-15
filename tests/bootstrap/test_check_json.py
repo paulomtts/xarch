@@ -107,4 +107,4 @@ def test_a_profile_with_a_hint_for_an_unknown_rule_is_refused(tmp_path):
     (tmp_path / "arch/mine.yaml").write_text((BUNDLED / "web.yaml").read_text() + "\nhints:\n  nothing: x\n")
     result = runner.invoke(app, ["check", "--profile", "arch/mine.yaml"])
     assert result.exit_code == 2
-    assert "hints.nothing: unknown rule id 'nothing': use closed-tree, cycles, dead-code, forbidden" in result.output
+    assert "hints.nothing: unknown rule id 'nothing': use built-by, closed-tree, cycles, dead-code" in result.output

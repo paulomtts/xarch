@@ -17,9 +17,13 @@ from xarch.modules.spec.contract import (
     MigrateProfile,
     NoDuplicates,
     PassThrough,
+    PrivateImports,
 )
 
 FROZEN = Path(__file__).parent / "profiles_v1"
+CWD = {("pathlib", "Path", "cwd"), ("pathlib", "Path", "absolute"), ("os", "getcwd"), ("os", "path", "abspath"),
+       ("os", "path", "realpath")}
+"""The names that read the working directory, added to the `pure` lists after format 1."""
 OWN = Path(xarch.__file__).parent.parent / "architecture.yaml"
 OWN_EXAMPLES = ("kernel/logic/test_placement.py", "modules/rules/application/test_check.py", "bootstrap/test_app.py",
                 "architecture/test_self_check.py")
@@ -52,13 +56,19 @@ def both(name: str, tmp_path: Path) -> tuple[Architecture, Architecture]:
 def comparable(architecture: Architecture) -> Architecture:
     """Without what differs by design: where the example files sit (the shipped profiles keep two folders of examples, a
     migration one), the tiers' examples and subjects' order, the order of the parts, what the profile is based on, and
-    what format 1 never had: each part's `must_import` and the guards no-duplicates, dead-code and pass-through."""
-    tiers = tuple(replace(tier, subject=tuple(sorted(tier.subject, key=lambda s: s.part)), example=None, helpers=())
-                  for tier in architecture.tiers)
-    parts = {name: replace(part, must_import=()) for name, part in architecture.parts.items()}
-    guards = tuple(g for g in architecture.guards if not isinstance(g, (NoDuplicates, DeadCode, PassThrough)))
+    what format 1 never had: each part's `must_import`, `holds`, `types_only`, `no_callbacks`, `names` and `built_by`,
+    a tier's `must_import`, a name pattern on a target, the names that read the working directory in a `forbidden`
+    list, and the guards no-duplicates, dead-code, pass-through and private-imports."""
+    tiers = tuple(replace(tier, subject=tuple(sorted(tier.subject, key=lambda s: s.part)), example=None, helpers=(),
+                          must_import=()) for tier in architecture.tiers)
+    parts = {name: replace(part, must_import=(), holds="", types_only=(), no_callbacks=False, names=(), built_by=())
+             for name, part in architecture.parts.items()}
+    guards = tuple(g for g in architecture.guards
+                   if not isinstance(g, (NoDuplicates, DeadCode, PassThrough, PrivateImports)))
+    rules = {name: tuple(replace(t, names="") for t in targets) for name, targets in architecture.rules.items()}
+    forbidden = {name: tuple(n for n in names if n not in CWD) for name, names in architecture.forbidden.items()}
     return replace(architecture, tiers=tiers, examples={}, files=(), placement=(), based_on="", parts=parts,
-                   guards=guards)
+                   guards=guards, rules=rules, forbidden=forbidden)
 
 
 @pytest.mark.parametrize("name", ["web", "cli", "xarch"])
@@ -87,11 +97,14 @@ def test_every_example_keeps_its_name_its_part_its_note_and_its_text_though_its_
 
 @pytest.mark.parametrize("name", ["web", "cli"])
 def test_the_docs_of_a_migrated_profile_are_the_docs_of_the_shipped_one_but_for_the_prose_of_one_template(name, tmp_path):
-    """The shipped testing.md was also reworded where it names keys of format 1; a migration moves keys, not prose."""
+    """The shipped testing.md was also reworded where it names keys of format 1, and lists the checks format 1 never
+    had; architecture.md shows the name pattern format 1 could not write on what contract/ imports. A migration moves
+    keys, not prose."""
     done = migrated(name, tmp_path)
     old, new = build_architectures().docs(done.profile), build_architectures().docs(name)
     assert [doc.path for doc in old.files] == [doc.path for doc in new.files]
-    assert [doc.path for doc, other in zip(old.files, new.files) if doc != other] == [("testing.md",)]
+    assert [doc.path for doc, other in zip(old.files, new.files) if doc != other] == [("architecture.md",),
+                                                                                       ("testing.md",)]
 
 
 def test_xarch_s_own_profile_differs_in_what_the_shipped_one_chose_to_change(tmp_path):

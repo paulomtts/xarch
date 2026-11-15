@@ -15,6 +15,8 @@ parts:
       step. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
     may_import: [kernel]
     forbidden: pure
+    holds: classes
+    no_callbacks: true
     tier: unit
 
   logic:
@@ -27,6 +29,8 @@ parts:
       it is a service step. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
     may_import: [domain, kernel]
     forbidden: pure
+    holds: functions
+    no_callbacks: true
     tier: unit
 
   ports:
@@ -51,6 +55,10 @@ parts:
       it belongs in `domain/`. If it is a pure rule with no port, it belongs in `application/logic/`. If it builds the
       `Result` or the DTO, it belongs in the controller. If it touches a database, it belongs in `adapters/`.
     may_import: [logic, domain, ports, contract, kernel]
+    types_only: [contract]
+    holds: classes
+    names: "*Service"
+    built_by: [bootstrap]
     tier: integration
 
   controller:
@@ -61,6 +69,9 @@ parts:
       into DTOs), without deciding any business rule? If yes, it goes here. If it names HTTP status codes, templates
       or translated text, it belongs in `web/`. If it handles a table row, it belongs in `adapters/`.
     may_import: [services, logic, domain, ports, contract, kernel]
+    holds: classes
+    names: "*Controller"
+    built_by: [bootstrap]
     tier: integration
 
   adapters:
@@ -73,6 +84,7 @@ parts:
       `platform/`. If it contains a business rule, it belongs in `domain/`.
     may_import: [ports, domain, kernel, platform, contract@any]
     must_import: [platform, contract@any]
+    built_by: [bootstrap]
     libraries: [sqlmodel]
     tier: unit
 
@@ -126,7 +138,7 @@ parts:
       back, or an id that names the module's things? If yes, it goes here, and an id is defined in `domain/values.py`
       and re-exported here. If it is a `domain/` entity, a service type or a port, it stays where it is, and a DTO
       goes here instead.
-    may_import: [domain/values, kernel]
+    may_import: ["domain/values:*Id", kernel]
     forbidden: pure
     tier: integration
     package_only: true
@@ -149,7 +161,8 @@ parts:
 forbidden:
   pure: [datetime.datetime.now, datetime.datetime.utcnow, datetime.datetime.today, datetime.date.today, time.time,
          time.time_ns, time.monotonic, time.perf_counter, builtins.open, builtins.print, builtins.input, sys.stdin,
-         sys.stdout, sys.stderr, os.environ, os.getenv, socket, subprocess, sqlite3, urllib, http, shutil]
+         sys.stdout, sys.stderr, os.environ, os.getenv, socket, subprocess, sqlite3, urllib, http, shutil,
+         pathlib.Path.cwd, pathlib.Path.absolute, os.getcwd, os.path.abspath, os.path.realpath]
 
 layers: {application: [domain, contract, logic, ports, services, controller], edge: [platform, adapters]}
 
@@ -236,8 +249,9 @@ guards:
   no-comments: {}
   stand-ins: {}
   no-duplicates: {min_statements: 4}
-  dead-code: {}
-  pass-through: {parts: [services]}
+  dead-code: {untested: true}
+  pass-through: {parts: [services, controller, adapters]}
+  private-imports: {}
 
 files:
   tests/architecture/test_rules.py: {from: examples/shared/tests/architecture/test_rules.py, pinned: true}
