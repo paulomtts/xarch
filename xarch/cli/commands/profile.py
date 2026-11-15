@@ -4,7 +4,7 @@ from typing import Annotated
 
 import typer
 
-from xarch.cli import profile_report as report
+from xarch.cli.reports import profile_report as report
 from xarch.cli.terminal import AppPath, Format, FormatOption, app_for, fail, no_profile, refusal
 from xarch.modules.spec.application.controller import SpecController
 from xarch.modules.spec.contract import (

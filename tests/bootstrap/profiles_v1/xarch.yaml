@@ -24,6 +24,7 @@ layout:
   __main__.py: file
   cli:
     commands: {}
+    reports: {}
 
 parts:
   kernel:     {path: kernel, role: "pure primitives and the rules two modules share"}
@@ -35,6 +36,7 @@ parts:
   ports:      {path: modules/*/application/ports, role: "Protocols for what the module needs from the outside"}
   adapters:   {path: modules/*/adapters, role: "implement the ports on the filesystem or another module's contract"}
   platform:   {path: platform, role: "the filesystem, the package data, the TOML and YAML readers and the YAML writer"}
+  reports:    {path: cli/reports, role: "formatting of Results into text and JSON"}
   cli:        {path: cli, entry: true, role: "the only place for commands and terminal output"}
   main:       {path: __main__.py, role: "`python -m xarch`: starts the same app as the console script",
                litmus: "Does it only hand control to the app bootstrap/ builds, so that `python -m xarch` runs it?",
@@ -52,7 +54,8 @@ rules:
   ports:      [domain@own, kernel]
   adapters:   [ports@own, domain@own, kernel, platform, contract@any]
   platform:   [kernel]
-  cli:        [controller@any, contract@any, kernel]
+  reports:    [contract@any, kernel]
+  cli:        [reports, controller@any, contract@any, kernel]
   main:       [bootstrap]
   bootstrap:  ["*"]
 
@@ -78,6 +81,7 @@ forbidden:
   contract:   *pure
   logic:      *pure
   ports:      *pure
+  reports:    *pure
 
 # How xarch's tests are named, and what skips one, as the bundled profiles say it for pytest.
 tests:
@@ -96,7 +100,7 @@ tests:
 # `folder` says where its tests live.
 tiers:
   - name: unit
-    subject: [kernel, kernel/logic, domain, logic, adapters, platform]
+    subject: [kernel, kernel/logic, domain, logic, adapters, platform, reports]
     proves: a pure rule of the kernel or a module, or an adapter's translation
     may_touch: "what the part it mirrors may import; an adapter, temporary folders"
     forbidden: true

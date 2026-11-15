@@ -3,7 +3,7 @@ from typing import Annotated
 
 import typer
 
-from xarch.cli.report import enforcement_lines, json_document, text_lines
+from xarch.cli.reports.report import enforcement_lines, json_document, text_lines
 from xarch.cli.terminal import AppPath, Format, FormatOption, ProfileName, TestsPath, app_for, refusal, selection
 from xarch.modules.rules.application.controller import RulesController
 from xarch.modules.rules.contract import AppChecked, CheckApp, NotADirectory

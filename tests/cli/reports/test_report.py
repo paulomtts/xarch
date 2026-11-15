@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from xarch.cli.report import enforcement_lines, folders, json_document, ordered, text_lines
+from xarch.cli.reports.report import enforcement_lines, folders, json_document, ordered, text_lines
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.contract import AppChecked, AtView, EnforcementView, ExcludedView, OriginView, WeakView
 

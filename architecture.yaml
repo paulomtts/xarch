@@ -70,10 +70,18 @@ parts:
   cli:
     path: cli
     role: the only place for commands and terminal output
-    may_import: [controller@any, contract@any, kernel]
+    may_import: [reports, controller@any, contract@any, kernel]
     libraries: [typer]
     tier: wired
     folders: [commands]
+
+  reports:
+    path: cli/reports
+    role: formatting of Results into text and JSON
+    may_import: [contract@any, kernel]
+    forbidden: pure
+    holds: functions
+    tier: unit
 
   main:
     path: __main__.py

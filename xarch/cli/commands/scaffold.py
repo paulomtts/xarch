@@ -3,7 +3,7 @@ from typing import Annotated
 
 import typer
 
-from xarch.cli.scaffold_report import report_lines
+from xarch.cli.reports.scaffold_report import report_lines
 from xarch.cli.terminal import AppPath, ProfileName, app_for, fail, profile_for
 from xarch.kernel.errors import DomainError
 from xarch.modules.scaffold.application.controller import ScaffoldController
