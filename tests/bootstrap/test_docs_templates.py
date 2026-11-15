@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from xarch.bootstrap.wiring import build_architectures, build_spec, load_architecture
+from xarch.bootstrap.wiring import build_spec, load_architecture
 from xarch.modules.spec.domain.errors import InvalidTemplate
 
 DOCS = Path(__file__).resolve().parents[2] / "docs"
@@ -78,7 +78,7 @@ def test_a_custom_architecture_brings_its_own_template(tmp_path):
     """It names no testing template, so it gets no testing.md."""
     write(tmp_path / "notes.md", "# Notes\n")
     write(tmp_path / "layered.md", "# Layered\n\nsrc/\n{{tree}}\n\n{{rules_table}}\n\n{{litmus:api}}\n")
-    docs = build_architectures().docs(write(tmp_path / "layered.yaml", ARCHITECTURE + "    notes.md: {from: notes.md}\n"))
+    docs = build_spec().docs(str(write(tmp_path / "layered.yaml", ARCHITECTURE + "    notes.md: {from: notes.md}\n")))
     texts = {"/".join(f.path): f.template for f in docs.files}
     assert texts["architecture.md"] == (
         "# Layered\n\nsrc/\n"
@@ -91,11 +91,11 @@ def test_a_custom_architecture_brings_its_own_template(tmp_path):
 def test_a_template_with_a_bad_placeholder_fails_naming_the_template(tmp_path):
     write(tmp_path / "layered.md", "{{litmus:repo}} {{tables}}\n")
     with pytest.raises(InvalidTemplate) as caught:
-        build_architectures().docs(write(tmp_path / "layered.yaml", ARCHITECTURE))
+        build_spec().docs(str(write(tmp_path / "layered.yaml", ARCHITECTURE)))
     assert caught.value.problems[0] == "layered.md: {{litmus:repo}}: the architecture defines no part 'repo'"
     assert caught.value.problems[1].startswith("layered.md: unknown placeholder {{tables}}: use {{tree}}")
 
 
 def test_an_architecture_that_declares_no_docs_gets_none(tmp_path):
     path = write(tmp_path / "layered.yaml", ARCHITECTURE.split("docs:")[0])
-    assert build_architectures().docs(path).files == ()
+    assert build_spec().docs(str(path)).files == ()

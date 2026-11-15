@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import Any
 
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.values import ArchitectureDocument, ArchitectureSource
+from xarch.modules.spec.domain.values import PROFILE_SUFFIX, ArchitectureDocument, ArchitectureSource
 
 
 class FakeArchitectureFiles:
@@ -29,6 +29,9 @@ class FakeArchitectureFiles:
         if source.location not in documents:
             raise InvalidArchitecture(source.location, ["cannot read the file: no such file"])
         return ArchitectureDocument(source.location, documents[source.location])
+
+    def profile_text(self, source: ArchitectureSource) -> str:
+        return self.read_text(source, f"{source.location}{PROFILE_SUFFIX}" if source.bundled else source.location)
 
     def has_file(self, source: ArchitectureSource, relative: str) -> bool:
         return relative in self._texts

@@ -6,7 +6,7 @@ import typer
 
 from xarch.cli import profile_report as report
 from xarch.cli.commands.check import Format, FormatOption, _json_refusal
-from xarch.cli.terminal import AppPath, app_for, fail
+from xarch.cli.terminal import AppPath, app_for, fail, no_profile
 from xarch.modules.spec.application.controller import SpecController
 from xarch.modules.spec.contract import (
     CheckProfile,
@@ -17,6 +17,7 @@ from xarch.modules.spec.contract import (
     MigrateProfile,
     MigrationRefused,
     NewProfile,
+    NoProfileChosen,
     ProfileChecked,
     ProfileCreated,
     ProfileRefused,
@@ -93,6 +94,8 @@ def register(app: typer.Typer, spec: SpecController) -> None:
             match spec.view(ViewProfile(app_for(spec, app_path, refuse), profile)):
                 case ProfileViewed() as seen:
                     _show(output, report.view_document(seen), report.view_lines(seen))
+                case NoProfileChosen(known):
+                    raise refuse(no_profile(known))
                 case ProfileRefused(reason):
                     raise refuse(reason)
             return
@@ -141,6 +144,8 @@ def register(app: typer.Typer, spec: SpecController) -> None:
                 _show(output, report.check_document(checked), report.check_lines(checked))
                 if not checked.ok:
                     raise typer.Exit(1)
+            case NoProfileChosen(known):
+                raise refuse(no_profile(known))
             case ProfileRefused(reason):
                 raise refuse(reason)
 

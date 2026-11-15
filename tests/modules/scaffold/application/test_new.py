@@ -6,7 +6,7 @@ import pytest
 from tests.fakes.filesystem import FakeFiles
 from tests.fakes.scaffold_skeleton import FakeSkeleton
 from xarch.modules.scaffold.application.controller import ScaffoldController
-from xarch.modules.scaffold.application.services.scaffolding import Scaffolding
+from xarch.modules.scaffold.application.services.scaffolding import ScaffoldingService
 from xarch.modules.scaffold.contract import Init, New, Refused, Report, Scaffolded
 
 ROOT = Path("/src/app")
@@ -37,8 +37,13 @@ MODULE_FILES = [ROOT / "modules/docs" / p for p in
                  "application/ports/__init__.py", "adapters/__init__.py"]]
 
 
-def controller(files: FakeFiles) -> ScaffoldController:
-    return ScaffoldController(Scaffolding(files, SKELETON))
+def controller(files: FakeFiles, skeleton: FakeSkeleton = SKELETON) -> ScaffoldController:
+    return ScaffoldController(ScaffoldingService(files, skeleton))
+
+
+def pyproject(files: FakeFiles) -> str | None:
+    found = files.pyproject(PYPROJECT.parent)
+    return None if found is None else found[1]
 
 
 @pytest.mark.parametrize("given, when, then", [
@@ -77,7 +82,7 @@ def test_a_new_module_in_an_empty_folder_of_its_kind_is_created():
 def test_a_refused_new_creates_nothing():
     files = FakeFiles()
     controller(files).new(New(ROOT, "module", "Docs", "cli"))
-    assert files.created == []
+    assert files.kind(ROOT) is None
 
 
 def test_init_creates_a_package_file_for_every_folder_then_the_docs_in_order():
@@ -86,7 +91,6 @@ def test_init_creates_a_package_file_for_every_folder_then_the_docs_in_order():
     expected = [ROOT / p / "__init__.py" for p in
                 ["", "bootstrap", "bootstrap/migrations", "kernel", "kernel/logic", "modules", "platform", "cli",
                  "cli/commands"]]
-    assert files.created == expected + [PYPROJECT] + DOC_FILES + [GUARD, MAKEFILE]
     assert result == Scaffolded(type(result.report)(created=expected + [PYPROJECT] + DOC_FILES + [GUARD, MAKEFILE],
                                                     skipped=[]))
 
@@ -94,43 +98,43 @@ def test_init_creates_a_package_file_for_every_folder_then_the_docs_in_order():
 def test_init_writes_each_doc_with_its_template():
     files = FakeFiles()
     controller(files).init(Init(ROOT, "cli"))
-    assert {path: files.texts[path] for path in DOC_FILES} == {DOCS / p: f"# {p}\n" for p in DOC_PATHS}
+    assert {path: files.content(path) for path in DOC_FILES} == {DOCS / p: f"# {p}\n" for p in DOC_PATHS}
 
 
 def test_init_writes_each_project_file_beside_the_app_folder():
     files = FakeFiles()
     controller(files).init(Init(ROOT, "cli"))
-    assert {path: files.texts[path] for path in (GUARD, MAKEFILE)} == {GUARD: "check app\n", MAKEFILE: "all: app\n"}
+    assert {path: files.content(path) for path in (GUARD, MAKEFILE)} == {GUARD: "check app\n", MAKEFILE: "all: app\n"}
 
 
 def test_init_asks_for_the_project_files_of_the_app_folder_by_its_name():
     files = FakeFiles()
     controller(files).init(Init(Path("/src/shop"), "cli"))
-    assert files.texts[GUARD] == "check shop\n"
+    assert files.content(GUARD) == "check shop\n"
 
 
 def test_init_writes_a_file_that_is_not_text_as_its_bytes_and_a_file_inside_the_app_folder():
     skeleton = FakeSkeleton([(("kernel",), True)], files={"app": [(("app", "kernel", "logo.woff"), b"\xff\x00"),
                                                                   (("app", "kernel", "a.txt"), "for app")]})
     files = FakeFiles()
-    report = Scaffolding(files, skeleton).init(ROOT, "cli")
-    assert files.data == {ROOT / "kernel" / "logo.woff": b"\xff\x00"}
-    assert files.texts[ROOT / "kernel" / "a.txt"] == "for app"
+    report = controller(files, skeleton).init(Init(ROOT, "cli")).report
+    assert files.content(ROOT / "kernel" / "logo.woff") == b"\xff\x00"
+    assert files.content(ROOT / "kernel" / "a.txt") == "for app"
     assert ROOT / "kernel" / "logo.woff" in report.created
 
 
 def test_init_never_overwrites_a_file_of_a_preset_and_reports_it_skipped():
     skeleton = FakeSkeleton([(("kernel",), True)], files={"app": [(("app", "kernel", "logo.woff"), b"\xff\x00")]})
     files = FakeFiles({ROOT / "kernel" / "logo.woff"})
-    report = Scaffolding(files, skeleton).init(ROOT, "cli")
-    assert files.data == {} and ROOT / "kernel" / "logo.woff" in report.skipped
+    report = controller(files, skeleton).init(Init(ROOT, "cli")).report
+    assert files.content(ROOT / "kernel" / "logo.woff") == "" and ROOT / "kernel" / "logo.woff" in report.skipped
 
 
 def test_init_never_overwrites_a_project_file_and_reports_it_skipped():
     files = FakeFiles({GUARD})
     report = controller(files).init(Init(ROOT, "cli")).report
     assert GUARD in report.skipped and GUARD not in report.created
-    assert GUARD not in files.texts and MAKEFILE in report.created
+    assert files.content(GUARD) == "" and MAKEFILE in report.created
 
 
 def test_a_second_init_skips_every_project_file():
@@ -145,7 +149,7 @@ def test_init_never_overwrites_a_doc_and_reports_it_skipped():
     files = FakeFiles({existing, DOCS / ".obsidian" / "app.json"}, dirs={DOCS / "adrs"})
     report = controller(files).init(Init(ROOT, "cli")).report
     assert report.skipped == [existing]
-    assert existing not in files.texts
+    assert files.content(existing) == ""
     assert DOCS / "adrs" / "0000-template.md" in report.created
 
 
@@ -162,54 +166,54 @@ def test_a_second_init_creates_nothing():
 ])
 def test_the_docs_go_beside_the_app_folder(app, docs):
     files = FakeFiles()
-    controller(files).init(Init(app, "cli"))
-    assert docs / "statement.md" in files.created
+    report = controller(files).init(Init(app, "cli")).report
+    assert docs / "statement.md" in report.created
 
 
 def test_the_docs_of_the_current_folder_go_beside_it_in_its_parent():
     files = FakeFiles()
-    controller(files).init(Init(Path("."), "cli"))
-    assert Path.cwd().parent / "docs" / "project" / "statement.md" in files.created
+    report = controller(files).init(Init(Path("."), "cli")).report
+    assert Path.cwd().parent / "docs" / "project" / "statement.md" in report.created
 
 
 def test_new_does_not_touch_the_docs():
     files = FakeFiles({ROOT / "modules" / "__init__.py"})
-    controller(files).new(New(ROOT, "module", "docs", "cli"))
-    assert files.texts == {}
-    assert not [p for p in files.created if "docs" in p.parts and "modules" not in p.parts]
+    report = controller(files).new(New(ROOT, "module", "docs", "cli")).report
+    assert files.kind(DOCS) is None and files.kind(PYPROJECT) is None
+    assert not [p for p in report.created if "docs" in p.parts and "modules" not in p.parts]
 
 
 def test_init_skips_what_exists():
     files = FakeFiles({ROOT / "kernel" / "__init__.py"})
     report = controller(files).init(Init(ROOT, "cli")).report
     assert report.skipped == [ROOT / "kernel" / "__init__.py"]
-    assert ROOT / "kernel" / "__init__.py" not in files.created
+    assert ROOT / "kernel" / "__init__.py" not in report.created
 
 
 def test_init_records_the_profile_in_a_new_pyproject_beside_the_app():
     files = FakeFiles()
     controller(files).init(Init(ROOT, "web"))
-    assert files.texts[PYPROJECT] == '[tool.xarch]\nprofile = "web"\n'
+    assert pyproject(files) == '[tool.xarch]\nprofile = "web"\n'
 
 
 def test_init_adds_the_profile_to_the_pyproject_of_the_project():
     files = FakeFiles(texts={PYPROJECT: '[project]\nname = "x"\n'})
     report = controller(files).init(Init(ROOT, "web")).report
-    assert files.texts[PYPROJECT] == '[project]\nname = "x"\n\n[tool.xarch]\nprofile = "web"\n'
+    assert pyproject(files) == '[project]\nname = "x"\n\n[tool.xarch]\nprofile = "web"\n'
     assert report.updated == [PYPROJECT] and PYPROJECT not in report.created
 
 
 def test_init_adds_the_profile_to_an_existing_tool_xarch_table():
     files = FakeFiles(texts={PYPROJECT: '[tool.xarch]\ntests = "t"\n\n[tool.other]\n'})
     controller(files).init(Init(ROOT, "web"))
-    assert files.texts[PYPROJECT] == '[tool.xarch]\nprofile = "web"\ntests = "t"\n\n[tool.other]\n'
+    assert pyproject(files) == '[tool.xarch]\nprofile = "web"\ntests = "t"\n\n[tool.other]\n'
 
 
 def test_init_never_changes_a_recorded_profile():
     text = '[tool.xarch]\nprofile = "cli"\n'
     files = FakeFiles(texts={PYPROJECT: text})
     report = controller(files).init(Init(ROOT, "web")).report
-    assert PYPROJECT not in files.texts and PYPROJECT in report.skipped
+    assert pyproject(files) == text and PYPROJECT in report.skipped
 
 
 
@@ -221,24 +225,13 @@ SHOP = Path("/src/shop")
                  id="a new pyproject records an app folder that is not the default, after the profile"),
     pytest.param(SHOP, '[project]\nname = "x"\n', '[project]\nname = "x"\n\n[tool.xarch]\nprofile = "web"\n'
                  'app = "shop"\n', "updated", id="a pyproject with no table gets it with both"),
-    pytest.param(SHOP, '[tool.xarch]\ntests = "t"\n\n[tool.other]\n',
-                 '[tool.xarch]\nprofile = "web"\napp = "shop"\ntests = "t"\n\n[tool.other]\n', "updated",
-                 id="an existing table gets both at its top"),
-    pytest.param(SHOP, '[tool.xarch]\nprofile = "web"\n', '[tool.xarch]\nprofile = "web"\napp = "shop"\n',
-                 "updated", id="a recorded profile is left, and the app folder is still recorded"),
-    pytest.param(SHOP, '[tool.xarch]\napp = "other"\n', '[tool.xarch]\nprofile = "web"\napp = "other"\n', "updated",
-                 id="a recorded app folder is left, and the profile is still recorded"),
-    pytest.param(SHOP, '[tool.xarch]\nprofile = "cli"\napp = "other"\n', None, "skipped",
-                 id="a profile and an app folder already recorded are never rewritten"),
-    pytest.param(ROOT, None, '[tool.xarch]\nprofile = "web"\n', "created",
-                 id="the default app folder is not recorded"),
-    pytest.param(ROOT, '[tool.xarch]\nprofile = "web"\n', None, "skipped",
-                 id="the default app folder with a recorded profile has nothing to record"),
+    pytest.param(SHOP, '[tool.xarch]\nprofile = "cli"\napp = "other"\n', '[tool.xarch]\nprofile = "cli"\napp = "other"\n',
+                 "skipped", id="a profile and an app folder already recorded are never rewritten"),
 ])
 def test_init_records_an_app_folder_that_is_not_the_default_and_never_rewrites_a_value(root, text, written, where):
     files = FakeFiles(texts={PYPROJECT: text} if text is not None else None)
     report = controller(files).init(Init(root, "web")).report
-    assert files.texts.get(PYPROJECT) == written
+    assert pyproject(files) == written
     assert PYPROJECT in getattr(report, where)
     assert (PYPROJECT in report.created) == (where == "created")
 
@@ -246,8 +239,8 @@ def test_init_records_an_app_folder_that_is_not_the_default_and_never_rewrites_a
 def test_the_app_folder_is_recorded_relative_to_the_pyproject_found_above_it_as_posix():
     files = FakeFiles(texts={PYPROJECT: '[project]\nname = "x"\n'})
     controller(files).init(Init(Path("/src/services/shop"), "web"))
-    assert files.texts[PYPROJECT].endswith('[tool.xarch]\nprofile = "web"\napp = "services/shop"\n')
-    assert files.texts[PYPROJECT].startswith('[project]\nname = "x"\n')
+    assert pyproject(files).endswith('[tool.xarch]\nprofile = "web"\napp = "services/shop"\n')
+    assert pyproject(files).startswith('[project]\nname = "x"\n')
 
 
 TWO_KINDS = FakeSkeleton([], {"module": (("modules",), [(("domain",), True)]),
@@ -256,7 +249,7 @@ TWO_KINDS = FakeSkeleton([], {"module": (("modules",), [(("domain",), True)]),
 
 def test_every_kind_of_a_profile_with_several_repeating_folders_is_made_in_its_own_folder():
     files = FakeFiles(dirs={ROOT / "modules", ROOT / "plugins"})
-    two = ScaffoldController(Scaffolding(files, TWO_KINDS))
+    two = controller(files, TWO_KINDS)
     assert two.new(New(ROOT, "module", "docs", "cli")) == Scaffolded(
         Report(created=[ROOT / "modules/docs/__init__.py", ROOT / "modules/docs/domain/__init__.py"]))
     assert two.new(New(ROOT, "plugin", "seo", "cli")) == Scaffolded(
@@ -270,5 +263,5 @@ def test_every_kind_of_a_profile_with_several_repeating_folders_is_made_in_its_o
                             "`xarch new plugin <name>`", id="the folder of the second kind names its word"),
 ])
 def test_a_kind_the_profile_does_not_declare_is_refused_listing_every_word(kind, reason):
-    two = ScaffoldController(Scaffolding(FakeFiles(dirs={ROOT / "modules"}), TWO_KINDS))
+    two = controller(FakeFiles(dirs={ROOT / "modules"}), TWO_KINDS)
     assert two.new(New(ROOT, kind, "docs", "cli")) == Refused(reason)

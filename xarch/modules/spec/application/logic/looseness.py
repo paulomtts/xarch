@@ -20,10 +20,10 @@ from dataclasses import replace
 from xarch.kernel.logic.placement import EVERYTHING, Target
 from xarch.modules.spec.application.logic.guard_names import guard_name
 from xarch.modules.spec.domain.guards import GUARDS
-from xarch.modules.spec.domain.values import Architecture
+from xarch.modules.spec.domain.values import Architecture, Loosening, Origin
 
-Loosening = tuple[str, str, str]
-"""(key, part, what), as Loosened holds them."""
+Looser = tuple[str, str, str]
+"""(key, part, what): one way a profile is looser, before it is said."""
 
 
 def guards_off(architecture: Architecture) -> tuple[str, ...]:
@@ -41,9 +41,9 @@ def closest(architecture: Architecture, bundled: Mapping[str, Architecture]) -> 
     return min(name for name, score in scores.items() if score == best) if best else None
 
 
-def looser(custom: Architecture, base: Architecture) -> list[Loosening]:
+def looser(custom: Architecture, base: Architecture) -> list[Looser]:
     shared = [name for name in custom.parts if name in base.parts]
-    found: list[Loosening] = []
+    found: list[Looser] = []
     for name in shared:
         before = base.rules.get(name, ())
         found += [("may_import", name, _shown(t)) for t in custom.rules.get(name, ())
@@ -79,6 +79,52 @@ def looser(custom: Architecture, base: Architecture) -> list[Loosening]:
     found += [("files.pinned", "", "/".join(file.path)) for file in base.files
               if file.pinned and file.path in files and not files[file.path].pinned]
     return found
+
+
+def origin_of(location: str, architecture: Architecture, bundled: bool,
+              others: Mapping[str, Architecture]) -> Origin:
+    """Where the architecture at location comes from: a bundled one is its own baseline; a custom one is compared with
+    the closest of the others, the bundled architectures by name, and is looser than it in the ways it says."""
+    off = guards_off(architecture)
+    if bundled:
+        return Origin(location, True, None, off, off, ())
+    name = closest(architecture, others)
+    if name is None:
+        return Origin(location, False, None, off, (), ())
+    baseline = guards_off(others[name])
+    return Origin(location, False, name, off, tuple(g for g in off if g in baseline),
+                  tuple(Loosening(key, part, what, sentence(key, part, what))
+                        for key, part, what in looser(architecture, others[name])))
+
+
+def sentence(key: str, part: str, what: str = "") -> str:
+    """How one way a profile is looser is said, naming the key of the profile that says it."""
+    match key:
+        case "may_import":
+            return f"{part} may also import {what} (parts.{part}.may_import)"
+        case "libraries" if not part:
+            return "outside packages are not checked"
+        case "libraries" if what == EVERYTHING:
+            return f"{part} may import any outside package (parts.{part}.libraries)"
+        case "libraries":
+            return f"{part} may also import {what} (parts.{part}.libraries)"
+        case "forbidden":
+            return f"{part} no longer forbids {what} (parts.{part}.forbidden)"
+        case "must_import" if not what:
+            return f"{part} no longer has to import anything (parts.{part}.must_import)"
+        case "must_import":
+            return f"{part} may also meet must_import with {what} (parts.{part}.must_import)"
+        case "untested":
+            return f"{part} is newly marked untested (parts.{part}.untested)"
+        case "types_only":
+            return f"the {part} tests may now call {what} (tiers.{part}.types_only)"
+        case "apply_forbidden":
+            return f"the {part} tests are no longer held to their part's forbidden list (tiers.{part}.apply_forbidden)"
+        case "testing.skips":
+            return f"{what} is no longer counted as a skip (testing.skips)"
+        case "files.pinned":
+            return f"{what} is no longer pinned (files.{what}.pinned)"
+    return " ".join(filter(None, (key, part, what)))
 
 
 def _shown(target: Target) -> str:

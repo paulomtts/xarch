@@ -3,7 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from xarch.bootstrap.wiring import build_architectures, load_architecture
+from tests.bootstrap.project import example_problems
+from xarch.bootstrap.wiring import build_spec, load_architecture
 from xarch.modules.spec.contract import Subject
 from xarch.modules.spec.domain.errors import InvalidTemplate
 
@@ -24,7 +25,7 @@ def test_every_part_of_a_bundled_architecture_is_tested_or_says_why_not(profile)
 
 @pytest.mark.parametrize("profile", ["cli", "web"])
 def test_the_bundled_tier_examples_pass_the_example_check(profile):
-    assert build_architectures().check_examples(profile) == ()
+    assert example_problems(profile) == ()
 
 
 CUSTOM = """\
@@ -81,7 +82,7 @@ def test_a_custom_architecture_with_its_own_tiers_gets_its_own_testing_md(tmp_pa
                                           "Run it: `<command>`\n\n{{tier_data}}\n\n{{tier_examples}}\n")
     write(tmp_path / "examples" / "tests/store/test_store.py", "def test_a_query(): ...\n")
     write(tmp_path / "examples" / "tests/api/test_api.py", "def test_a_route(): ...\n")
-    docs = build_architectures().docs(write(tmp_path / "layered.yaml", CUSTOM))
+    docs = build_spec().docs(str(write(tmp_path / "layered.yaml", CUSTOM)))
     texts = {"/".join(f.path): f.template for f in docs.files}
     assert texts["testing.md"] == (
         "# Testing of src/*/api\n\n"
@@ -104,7 +105,7 @@ def test_a_custom_testing_template_with_a_bad_placeholder_fails_naming_it(tmp_pa
     write(tmp_path / "examples" / "tests/store/test_store.py", "")
     write(tmp_path / "examples" / "tests/api/test_api.py", "")
     with pytest.raises(InvalidTemplate) as caught:
-        build_architectures().docs(write(tmp_path / "layered.yaml", CUSTOM))
+        build_spec().docs(str(write(tmp_path / "layered.yaml", CUSTOM)))
     assert caught.value.problems[0] == (
         "layered-testing.md: {{tier_files}}: tier 'unit' has no `one_file_per`, tier 'unit' has no `cases_from`, "
         "tier 'driver' has no `one_file_per`, tier 'driver' has no `cases_from`")

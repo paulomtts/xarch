@@ -3,11 +3,10 @@ based on is compared with that bundled profile, whatever it shares most parts wi
 import pytest
 
 from tests.fakes.architecture_files import FakeArchitectureFiles
-from tests.fakes.settings import FakeSettings
-from tests.modules.spec.application.test_origin import BASE, OTHER
+from tests.modules.spec.application.helpers import controller as spec_controller
+from tests.modules.spec.application.origins import BASE, OTHER
 from xarch.modules.spec.application.controller import SpecController
 from xarch.modules.spec.application.services.architecture import ArchitectureService
-from xarch.modules.spec.application.services.skeleton import SkeletonService
 from xarch.modules.spec.contract import Loosened
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 
@@ -29,9 +28,7 @@ def service(custom: dict) -> ArchitectureService:
 
 
 def controller(custom: dict) -> SpecController:
-    files, settings = ports(custom), FakeSettings(None, None, None)
-    architectures = ArchitectureService(files)
-    return SpecController(SkeletonService(settings, architectures, files), architectures, settings, files)
+    return spec_controller(ports(custom))
 
 
 def test_a_profile_in_format_2_is_loaded_with_its_preset_read_from_the_files_port():

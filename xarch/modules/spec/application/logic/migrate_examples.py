@@ -70,6 +70,15 @@ def rewrite_examples(text: str, names: dict[str, str]) -> tuple[str, tuple[str, 
     return PLACEHOLDER.sub(replace, text), tuple(unknown)
 
 
+def rewritten_template(destination: str, text: str, names: dict[str, str]) -> tuple[str, int, list[str]]:
+    """A template of the converted folder at destination: its text with the examples it quotes named by their paths,
+    how many of its placeholders were rewritten, and what is left to fix by hand."""
+    rewritten, unknown = rewrite_examples(text, names)
+    by_hand = [f"{destination}: {{{{example:{name}}}}} names no example: left as written, write the path of the example"
+               for name in unknown]
+    return rewritten, len(PLACEHOLDER.findall(rewritten)) - len(unknown), by_hand
+
+
 def plain_note(note: str, label: str, changes: list[str]) -> str:
     """A note of format 1 that was shown right after a path as written: its text without the outer parentheses."""
     text = note.strip()

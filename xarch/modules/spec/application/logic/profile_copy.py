@@ -4,7 +4,12 @@ from __future__ import annotations
 import os
 import re
 from pathlib import Path
+from typing import Any
 
+from xarch.modules.spec.domain.values import PROFILE_SUFFIX
+
+DEFAULT_FOLDER = "architecture"
+"""Where a new profile goes by default, below the folder holding the app folder: in a folder of its own, named for it."""
 _NAME = re.compile(r"^name:.*$", re.MULTILINE)
 _BASED_ON = re.compile(r"^based_on:.*\n", re.MULTILINE)
 _VALID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*")
@@ -28,3 +33,18 @@ def recorded(profile: Path, root: Path, cwd: Path) -> str:
     """The profile file as pyproject.toml, in root, records it: relative to root, written with `/`; a relative profile
     or root is read from cwd."""
     return Path(os.path.relpath(cwd / profile, cwd / root)).as_posix()
+
+
+def copied_document(document: Any, name: str, based_on: str) -> Any:
+    """The document of the copy, as copied_text writes it: named name, and based on based_on."""
+    return {**document, "name": name, "based_on": based_on}
+
+
+def copy_file(name: str) -> str:
+    """The name of the profile file of a copy called name."""
+    return f"{name}{PROFILE_SUFFIX}"
+
+
+def copy_folder(root: Path, name: str, out: Path | None) -> Path:
+    """Where the copy goes: out, else a folder named for it below the default folder in root."""
+    return out if out is not None else root / DEFAULT_FOLDER / name

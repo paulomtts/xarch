@@ -1,6 +1,6 @@
 """What every command shares: the --app, --profile and --tests options, choosing the profile, and how a refusal
 reaches the terminal."""
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Annotated
 
@@ -8,7 +8,7 @@ import typer
 
 from xarch.kernel.errors import DomainError
 from xarch.modules.spec.application.controller import SpecController
-from xarch.modules.spec.contract import ProfileRefused, ProfileSelected, SelectProfile
+from xarch.modules.spec.contract import NoProfileChosen, ProfileRefused, ProfileSelected, SelectProfile
 
 AppPath = Annotated[Path | None, typer.Option(
     "--app", help="The app/ folder to work on. Default: \\[tool.xarch] app in pyproject.toml (`init` records it when it "
@@ -20,6 +20,12 @@ ProfileName = Annotated[str | None, typer.Option(
 TestsPath = Annotated[Path | None, typer.Option(
     "--tests", help="The tests folder to check. Default: \\[tool.xarch] tests in pyproject.toml, else tests/ beside "
                     "the app folder, if there is one.")]
+
+
+def no_profile(known: Sequence[str]) -> str:
+    """Why nothing can run without a profile, and how to choose one."""
+    return ("no profile: pass --profile, or set `profile` under [tool.xarch] in pyproject.toml; "
+            f"the profiles found are {', '.join(known)}")
 
 
 def fail(message: str) -> typer.Exit:
@@ -52,5 +58,7 @@ def selection(spec: SpecController, app_path: Path, override: str | None,
             if chosen is None and (app_path.absolute().parent / "tests").is_dir():
                 chosen = app_path.absolute().parent / "tests"
             return name, chosen
+        case NoProfileChosen(known):
+            raise refuse(no_profile(known))
         case ProfileRefused(reason):
             raise refuse(reason)

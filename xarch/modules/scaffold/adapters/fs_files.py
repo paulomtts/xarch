@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from xarch.modules.scaffold.domain.values import FILE, FOLDER
 from xarch.platform.filesystem import FileSystem
+
+PYPROJECT = "pyproject.toml"
 
 
 class FsFiles:
@@ -11,23 +14,19 @@ class FsFiles:
     def __init__(self, fs: FileSystem):
         self._fs = fs
 
-    def exists(self, path: Path) -> bool:
-        return self._fs.exists(path)
+    def kind(self, path: Path) -> str | None:
+        if self._fs.is_dir(path):
+            return FOLDER
+        return FILE if self._fs.exists(path) else None
 
-    def is_dir(self, path: Path) -> bool:
-        return self._fs.is_dir(path)
+    def lay_down(self, path: Path, content: str | bytes) -> None:
+        if isinstance(content, bytes):
+            self._fs.write_bytes(path, content)
+        elif content:
+            self._fs.write_text(path, content)
+        else:
+            self._fs.create_empty(path)
 
-    def create_empty(self, path: Path) -> None:
-        self._fs.create_empty(path)
-
-    def write_text(self, path: Path, text: str) -> None:
-        self._fs.write_text(path, text)
-
-    def write_bytes(self, path: Path, data: bytes) -> None:
-        self._fs.write_bytes(path, data)
-
-    def read_text(self, path: Path) -> str:
-        return self._fs.read_text(path)
-
-    def find_upward(self, start: Path, name: str) -> Path | None:
-        return self._fs.find_upward(start, name)
+    def pyproject(self, start: Path) -> tuple[Path, str] | None:
+        found = self._fs.find_upward(start, PYPROJECT)
+        return None if found is None else (found, self._fs.read_text(found))

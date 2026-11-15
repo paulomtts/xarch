@@ -32,6 +32,9 @@ KEY = 28
 NEED = 10
 """The width of the column that says whether a key is required."""
 NO_RULE = "yes (the loader, or the `enforcement` section of `check`, not a rule id)"
+DEEPER = ("xarch profile explain parts.may_import        one key in full: what it accepts, its rule, an example\n"
+          "xarch profile explain --profile <name|path>   the folder tree and the imports of a profile")
+"""How to go deeper than the overview of the format."""
 NEXT = ("edit {profile}", "xarch profile explain                 # the format, key by key",
         "xarch profile check {profile}")
 
@@ -59,7 +62,7 @@ def overview_lines(whole: FormatExplained) -> list[str]:
     width = max(len(symbol.symbol) for symbol in whole.symbols)
     lines += [f"  {symbol.symbol:<{width}}  {symbol.meaning}" for symbol in whole.symbols]
     lines += ["", "smallest valid profile", *(f"  {line}" for line in whole.smallest.splitlines())]
-    lines += ["", "go deeper", *(f"  {line}" for line in whole.deeper.splitlines())]
+    lines += ["", "go deeper", *(f"  {line}" for line in DEEPER.splitlines())]
     return lines
 
 
@@ -98,7 +101,7 @@ def unknown_message(found: UnknownKey) -> str:
 def overview_document(whole: FormatExplained) -> str:
     return _dump({"ok": True, "format": whole.version, "shape": [_shown(shown) for shown in whole.shape],
                   "symbols": [{"symbol": s.symbol, "meaning": s.meaning} for s in whole.symbols],
-                  "smallest": whole.smallest, "deeper": whole.deeper})
+                  "smallest": whole.smallest, "deeper": DEEPER})
 
 
 def key_document(found: KeyExplained) -> str:

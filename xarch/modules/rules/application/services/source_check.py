@@ -37,7 +37,7 @@ SYNTAX = "syntax"
 """The rule of a file that does not parse."""
 
 
-class ImportCheck:
+class SourceCheckService:
     """Every check of what the source says: the app's imports, its outside packages, the tests' imports by tier and
     the guards the profile switches on."""
 

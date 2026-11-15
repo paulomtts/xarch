@@ -2,10 +2,8 @@
 import pytest
 
 from tests.fakes.architecture_files import FakeArchitectureFiles
-from tests.fakes.settings import FakeSettings
+from tests.modules.spec.application.helpers import controller as spec_controller
 from xarch.modules.spec.application.controller import SpecController
-from xarch.modules.spec.application.services.architecture import ArchitectureService
-from xarch.modules.spec.application.services.skeleton import SkeletonService
 from xarch.modules.spec.contract import ProjectFile
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 
@@ -19,8 +17,7 @@ INTO_APP = {"{{app}}/src/design/": {"from": "preset/"}}
 def controller(files: dict | None) -> SpecController:
     document = LAYERED | ({"files": files} if files is not None else {})
     files_port = FakeArchitectureFiles({"cli": document}, texts=TEXTS)
-    architectures, settings = ArchitectureService(files_port), FakeSettings(None, None, None)
-    return SpecController(SkeletonService(settings, architectures, files_port), architectures, settings, files_port)
+    return spec_controller(files_port)
 
 
 @pytest.mark.parametrize("given, when, then", [

@@ -2,8 +2,9 @@
 `build_controllers().rules.check` finds once files are added, replaced or (None) removed."""
 from pathlib import Path
 
-from xarch.bootstrap.wiring import build_controllers
+from xarch.bootstrap.wiring import build_controllers, build_spec
 from xarch.modules.rules.contract import CheckImports, ImportsChecked
+from xarch.modules.spec.contract import CheckProfile, Explain, KeyExplained, ProfileChecked
 
 APP = {
     "__init__.py": "",
@@ -72,3 +73,17 @@ def problems(tmp_path: Path, app: dict[str, str | None] | None = None,
 def line_of(text: str, marker: str) -> int:
     """The line of text that holds marker, counted from 1."""
     return next(n for n, line in enumerate(text.splitlines(), 1) if marker in line)
+
+
+def bundled_profiles() -> tuple[str, ...]:
+    """The names of the profiles xarch ships, as `based_on` may name them."""
+    found = build_spec().explain(Explain("based_on"))
+    assert isinstance(found, KeyExplained)
+    return found.choices
+
+
+def example_problems(location: str | Path) -> tuple[str, ...]:
+    """What `profile check` finds wrong with the examples of the profile at location, which loads."""
+    checked = build_spec().check_profile(CheckProfile(Path("app"), str(location)))
+    assert isinstance(checked, ProfileChecked) and all(p.check == "examples" for p in checked.problems), checked
+    return tuple(problem.text for problem in checked.problems)

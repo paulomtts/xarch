@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 import xarch
-from xarch.bootstrap.wiring import build_architectures, build_controllers, load_architecture
+from xarch.bootstrap.wiring import build_controllers, build_spec, load_architecture
 from xarch.modules.spec.contract import (
     Architecture,
     DeadCode,
@@ -101,7 +101,7 @@ def test_the_docs_of_a_migrated_profile_are_the_docs_of_the_shipped_one_but_for_
     had; architecture.md shows the name pattern format 1 could not write on what contract/ imports. A migration moves
     keys, not prose."""
     done = migrated(name, tmp_path)
-    old, new = build_architectures().docs(done.profile), build_architectures().docs(name)
+    old, new = build_spec().docs(str(done.profile)), build_spec().docs(str(name))
     assert [doc.path for doc in old.files] == [doc.path for doc in new.files]
     assert [doc.path for doc, other in zip(old.files, new.files) if doc != other] == [("architecture.md",),
                                                                                        ("testing.md",)]

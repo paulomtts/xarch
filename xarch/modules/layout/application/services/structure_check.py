@@ -10,7 +10,7 @@ from xarch.modules.layout.application.ports.skeleton import Skeleton
 from xarch.modules.layout.domain.structure import Repeated
 
 
-class StructureCheck:
+class StructureCheckService:
     def __init__(self, disk: Disk, skeleton: Skeleton):
         self._disk, self._skeleton = disk, skeleton
 

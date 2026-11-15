@@ -1,13 +1,22 @@
 from __future__ import annotations
 
-from xarch.modules.rules.application.services.import_check import ImportCheck
-from xarch.modules.rules.application.services.locate import Locator
-from xarch.modules.rules.contract import CheckImports, CheckResult, ImportsChecked, Locate, LocateResult, NotADirectory
-from xarch.modules.rules.domain.errors import RootMissing
+from xarch.modules.rules.application.services.locate import LocateService
+from xarch.modules.rules.application.services.source_check import SourceCheckService
+from xarch.modules.rules.contract import (
+    CheckImports,
+    CheckResult,
+    ImportsChecked,
+    Locate,
+    Located,
+    LocateResult,
+    NotADirectory,
+    Outside,
+)
+from xarch.modules.rules.domain.errors import OutsideProject, RootMissing
 
 
 class RulesController:
-    def __init__(self, service: ImportCheck, locator: Locator):
+    def __init__(self, service: SourceCheckService, locator: LocateService):
         self._service, self._locator = service, locator
 
     def check(self, cmd: CheckImports) -> CheckResult:
@@ -18,4 +27,8 @@ class RulesController:
         return ImportsChecked(tuple(found), enforcement)
 
     def locate(self, cmd: Locate) -> LocateResult:
-        return self._locator.locate(cmd)
+        """A path outside the project is refused with why."""
+        try:
+            return Located(self._locator.locate(cmd))
+        except OutsideProject as e:
+            return Outside(e.reason)

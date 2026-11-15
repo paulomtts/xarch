@@ -6,7 +6,7 @@ import pytest
 
 from tests.fakes.settings import FakeSettings
 from tests.modules.spec.application.builders import BASE, spec_controller
-from xarch.modules.spec.contract import CheckProfile, Problem, ProfileChecked, ProfileOrigin, ProfileRefused
+from xarch.modules.spec.contract import CheckProfile, NoProfileChosen, Problem, ProfileChecked, ProfileOrigin, ProfileRefused
 from xarch.modules.spec.domain.values import Configured
 
 APP = Path("/p/app")
@@ -38,8 +38,7 @@ OFF = ("package-only", "scenario-coverage", "no-comments", "stand-ins", "closed-
                  ProfileChecked("gone.yaml", (Problem("load", "gone.yaml: cannot read the file: no such file"),), 0, None),
                  id="a path that holds no file is a problem of the profile"),
     pytest.param(dict(), CheckProfile(APP, None),
-                 ProfileRefused("no profile: pass --profile, or set `profile` under [tool.xarch] in pyproject.toml; "
-                                "the profiles found are base"),
+                 NoProfileChosen(("base",)),
                  id="with no profile named and none configured nothing is chosen"),
     pytest.param(dict(), CheckProfile(APP, "nope"), ProfileRefused("unknown profile 'nope': use one of base"),
                  id="a name that is not a bundled profile is refused with the ones that are"),

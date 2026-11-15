@@ -8,8 +8,6 @@ from xarch.modules.spec.application.logic.key_lookup import keys_of, plain
 from xarch.modules.spec.domain.profile_keys import KEYS, PROFILE, Key
 
 VERSION = 2
-DEEPER = ("xarch profile explain parts.may_import        one key in full: what it accepts, its rule, an example\n"
-          "xarch profile explain --profile <name|path>   the folder tree and the imports of a profile")
 NEAREST = 3
 """How many keys an unknown one is answered with, at most."""
 _TOKENS = {"bundled": "<bundled>", "presets": "<preset>"}

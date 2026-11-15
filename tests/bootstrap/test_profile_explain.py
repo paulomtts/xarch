@@ -5,6 +5,7 @@ import json
 import pytest
 from typer.testing import CliRunner
 
+from tests.bootstrap.project import bundled_profiles
 from xarch.bootstrap.app import app
 from xarch.bootstrap.wiring import build_spec
 
@@ -62,6 +63,7 @@ def test_json_gives_the_shape_the_symbols_and_the_smallest_profile_and_for_a_key
     assert {"key": "parts.may_import", "depth": 1, "meaning": "what the part may import besides itself",
             "required": False, "enforced": True} in whole["shape"]
     assert whole["symbols"][0]["symbol"] == "<word>" and whole["smallest"].startswith("xarch: 2")
+    assert "xarch profile explain parts.may_import" in whole["deeper"]
     key = json.loads(runner.invoke(app, ["profile", "explain", "parts.may_import", "--format", "json"]).output)
     assert key["ok"] is True and key["key"] == "parts.may_import" and key["rules"] == ["rules"]
     assert set(key) == {"ok", "key", "where", "meaning", "accepts", "required", "enforced", "rules", "example",
@@ -110,12 +112,12 @@ def test_a_key_and_a_profile_together_or_no_configured_profile_is_refused(tmp_pa
 
 
 def test_the_bundled_profiles_the_choices_name_are_the_ones_xarch_ships():
-    shipped = build_spec().profiles()
+    shipped = bundled_profiles()
     based = json.loads(runner.invoke(app, ["profile", "explain", "based_on", "--format", "json"]).output)
     assert tuple(based["choices"]) == shipped and f"based_on: {shipped[0]}" in based["example"]
 
 
-@pytest.mark.parametrize("bundled", build_spec().profiles())
+@pytest.mark.parametrize("bundled", bundled_profiles())
 def test_the_agent_instructions_every_bundled_profile_ships_say_that_xarch_profile_explain_exists(bundled):
     text = next(f.content for f in build_spec().files(bundled, "app") if f.path == ("AGENTS.md",))
     assert "xarch profile explain" in text and "xarch profile check" in text

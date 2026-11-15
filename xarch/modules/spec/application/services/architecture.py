@@ -1,20 +1,20 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from xarch.modules.spec.application.logic.docs_files import DOCS_ROOT, doc_files
-from xarch.modules.spec.application.logic.example_imports import example_problems
-from xarch.modules.spec.application.logic.looseness import closest, guards_off, looser
+from xarch.modules.spec.application.logic.docs_files import doc_files
+from xarch.modules.spec.application.logic.example_imports import example_problems, shipped_problems
+from xarch.modules.spec.application.logic.looseness import origin_of
 from xarch.modules.spec.application.logic.profile_file import parse_profile, source_of
 from xarch.modules.spec.application.logic.profile_files import pointed_files
 from xarch.modules.spec.application.logic.profile_listing import listing, referenced
-from xarch.modules.spec.application.logic.project_files import EXAMPLE_APP, project_files, with_app
+from xarch.modules.spec.application.logic.project_files import EXAMPLE_APP, Written, entries, project_files, with_app
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
-from xarch.modules.spec.contract import DocFile, Docs, Loosened, ProfileOrigin, ProjectFile
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.values import Architecture, ArchitectureSource
+from xarch.modules.spec.domain.values import Architecture, ArchitectureSource, Origin
 
 
 class ArchitectureService:
@@ -39,46 +39,42 @@ class ArchitectureService:
         return pointed_files(architecture, {entry.source: self._files.files_under(source, entry.source)
                                             for entry in architecture.files if entry.folder})
 
-    def docs(self, location: str | Path) -> Docs:
-        """The project docs the architecture declares, each filled from its template; raises InvalidArchitecture or
-        InvalidTemplate. A bundled architecture's examples must also pass the example check."""
+    def parse_copy(self, document: Any, source: str, outputs: Mapping[str, bytes]) -> Architecture:
+        """The architecture a profile about to be written describes, its files being outputs, by their path from it;
+        raises InvalidArchitecture."""
+        return parse_profile(document, source, tuple(outputs), self._presets(), self._files.bundled())
+
+    def docs(self, location: str | Path) -> list[tuple[tuple[str, ...], str]]:
+        """The project docs the architecture declares, by their path below the docs root, each filled from its
+        template; raises InvalidArchitecture or InvalidTemplate. A bundled architecture's examples must also pass the
+        example check."""
         source, architecture = self._load(location)
         texts = {doc.source: self._files.read_text(source, doc.source) for doc in architecture.docs if doc.source}
         examples = self._example_texts(source, architecture)
         tier_examples = self._tier_example_texts(source, architecture)
-        problems = example_problems(architecture, examples) if source.bundled else []
+        problems = shipped_problems(architecture, examples, source.bundled)
         if problems:
             raise InvalidArchitecture(source.location, problems)
-        files = doc_files(architecture, texts, examples, tier_examples)
-        return Docs(root=DOCS_ROOT, files=tuple(DocFile(path, text) for path, text in files))
+        return list(doc_files(architecture, texts, examples, tier_examples))
 
-    def files(self, location: str | Path, app: str, presets: bool = True) -> tuple[ProjectFile, ...]:
+    def files(self, location: str | Path, app: str, presets: bool = True) -> list[Written]:
         """The project files the architecture declares for an app folder called app, each filled from its template
         unless it says otherwise, a folder entry as every file under its folder (unless presets is off, which leaves
         those unread); raises InvalidArchitecture."""
         source, architecture = self._load(location)
-        entries = [file for file in architecture.files if presets or not file.folder]
-        listing = {file.source: self._files.files_under(source, file.source) for file in entries if file.folder}
-        contents = {file.source: self._files.read_bytes(source, file.source) for file in entries if not file.folder}
+        kept = entries(architecture, presets)
+        listing = {file.source: self._files.files_under(source, file.source) for file in kept if file.folder}
+        contents = {file.source: self._files.read_bytes(source, file.source) for file in kept if not file.folder}
         contents.update({f"{folder}/{name}": self._files.read_bytes(source, f"{folder}/{name}")
                          for folder, names in listing.items() for name in names})
-        written = project_files(replace(architecture, files=tuple(entries)), contents, app, source.location, listing)
-        return tuple(ProjectFile(w.path, w.content, w.pinned, w.preset) for w in written)
+        return list(project_files(replace(architecture, files=kept), contents, app, source.location, listing))
 
-    def origin(self, location: str | Path) -> ProfileOrigin:
+    def origin(self, location: str | Path) -> Origin:
         """Where the architecture comes from, the guards it leaves off and, for a custom file, how it is looser than
         the bundled architecture it resembles; raises InvalidArchitecture."""
         source, architecture = self._load(location)
-        off = guards_off(architecture)
-        if source.bundled:
-            return ProfileOrigin(source.location, True, None, off, off, ())
-        bundled = {name: self.load(name) for name in self._files.bundled()}
-        name = closest(architecture, bundled)
-        if name is None:
-            return ProfileOrigin(source.location, False, None, off, (), ())
-        baseline = guards_off(bundled[name])
-        return ProfileOrigin(source.location, False, name, off, tuple(g for g in off if g in baseline),
-                             tuple(Loosened(*found) for found in looser(architecture, bundled[name])))
+        others = {} if source.bundled else {name: self.load(name) for name in self._files.bundled()}
+        return origin_of(source.location, architecture, source.bundled, others)
 
     def _example_texts(self, source: ArchitectureSource, architecture: Architecture) -> dict[str, str]:
         return {name: self._files.read_text(source, example.file) for name, example in architecture.examples.items()}

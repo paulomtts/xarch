@@ -1,10 +1,13 @@
-"""Unit tests for the structure check on an in-memory disk."""
+"""Use case: check that the layout of a profile exists below a root, and that the tests mirror the app, through the
+controller on an in-memory disk."""
 from pathlib import Path
+
+import pytest
 
 from tests.fakes.filesystem import FakeDisk
 from tests.fakes.layout_skeleton import FakeSkeleton
 from xarch.modules.layout.application.controller import LayoutController
-from xarch.modules.layout.application.services.structure_check import StructureCheck
+from xarch.modules.layout.application.services.structure_check import StructureCheckService
 from xarch.modules.layout.contract import CheckStructure
 
 ROOT = Path("/src/pkg")
@@ -21,7 +24,7 @@ SKELETON = FakeSkeleton([("bootstrap",), ("kernel",), ("kernel", "logic"), ("mod
 
 
 def run(disk: FakeDisk, package="app") -> list[str]:
-    controller = LayoutController(StructureCheck(disk, SKELETON))
+    controller = LayoutController(StructureCheckService(disk, SKELETON))
     return [str(v) for v in controller.check(CheckStructure(ROOT, package, "cli")).violations]
 
 
@@ -34,21 +37,24 @@ WITH_MAIN = FakeSkeleton([("kernel",)], top_files=[("__main__.py",)])
 
 
 def run_with_main(disk: FakeDisk) -> list[str]:
-    return [str(v) for v in LayoutController(StructureCheck(disk, WITH_MAIN)).check(
+    return [str(v) for v in LayoutController(StructureCheckService(disk, WITH_MAIN)).check(
         CheckStructure(ROOT, "app", "cli")).violations]
 
 
-def test_a_file_declared_at_the_top_level_must_exist_as_a_file():
-    assert run_with_main(FakeDisk({ROOT / "kernel"}, {MAIN})) == []
-    assert run_with_main(FakeDisk({ROOT / "kernel"})) == ["app: missing __main__.py"]
-    assert run_with_main(FakeDisk({ROOT / "kernel", MAIN})) == ["app: missing __main__.py"]
+@pytest.mark.parametrize("given, then", [
+    pytest.param(FakeDisk({ROOT / "kernel"}, {MAIN}), [], id="the file is there"),
+    pytest.param(FakeDisk({ROOT / "kernel"}), ["app: missing __main__.py"], id="the file is missing"),
+    pytest.param(FakeDisk({ROOT / "kernel", MAIN}), ["app: missing __main__.py"], id="a folder in its place is no file"),
+])
+def test_a_file_declared_at_the_top_level_must_exist_as_a_file(given, then):
+    assert run_with_main(given) == then
 
 
 NESTED = FakeSkeleton([("web",), ("web", "routes"), ("web", "ui")], top_files=[("web", "app.py"), ("main.py",)])
 
 
 def run_nested(disk: FakeDisk) -> list[str]:
-    return [str(v) for v in LayoutController(StructureCheck(disk, NESTED)).check(
+    return [str(v) for v in LayoutController(StructureCheckService(disk, NESTED)).check(
         CheckStructure(ROOT, "app", "cli")).violations]
 
 
@@ -80,7 +86,7 @@ TESTS = Path("/src/tests")
 
 
 def run_with_tests(disk: FakeDisk) -> list[str]:
-    controller = LayoutController(StructureCheck(disk, SKELETON))
+    controller = LayoutController(StructureCheckService(disk, SKELETON))
     return [str(v) for v in controller.check(CheckStructure(ROOT, "app", "cli", TESTS)).violations]
 
 
@@ -102,14 +108,14 @@ def test_a_folder_below_the_tests_of_the_each_folder_must_mirror_an_app_folder()
 
 def test_a_missing_folder_is_a_structure_violation_that_says_what_to_create():
     disk = FakeDisk((TOP - {ROOT / "kernel"}) | MODULE, {CONTROLLER})
-    found = LayoutController(StructureCheck(disk, SKELETON)).check(CheckStructure(ROOT, "app", "cli")).violations
+    found = LayoutController(StructureCheckService(disk, SKELETON)).check(CheckStructure(ROOT, "app", "cli")).violations
     assert [(v.rule, v.fix) for v in found] == [("structure", "create app/kernel/")]
 
 
 def test_a_test_folder_that_mirrors_nothing_is_a_test_tree_violation():
     tests = {TESTS / p for p in ["", "modules", "modules/gone"]}
     disk = FakeDisk(TOP | MODULE | tests, {CONTROLLER})
-    found = LayoutController(StructureCheck(disk, SKELETON)).check(CheckStructure(ROOT, "app", "cli", TESTS)).violations
+    found = LayoutController(StructureCheckService(disk, SKELETON)).check(CheckStructure(ROOT, "app", "cli", TESTS)).violations
     assert [(v.rule, v.fix) for v in found] == [
         ("test-tree", "create app/modules/gone/ in the app, or move what it holds to the folder that mirrors its "
                       "subject, or remove it")]
@@ -123,7 +129,7 @@ MANIFEST = ROOT / "plugins/seo/manifest.py"
 
 
 def run_two(disk: FakeDisk, tests: Path | None = None) -> list[str]:
-    return [str(v) for v in LayoutController(StructureCheck(disk, TWO)).check(
+    return [str(v) for v in LayoutController(StructureCheckService(disk, TWO)).check(
         CheckStructure(ROOT, "app", "cli", tests)).violations]
 
 

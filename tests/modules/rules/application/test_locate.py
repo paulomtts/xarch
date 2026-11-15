@@ -8,8 +8,8 @@ from tests.fakes.filesystem import FakeSourceTree
 from tests.fakes.profiles import FakeProfiles
 from xarch.kernel.logic.placement import Repeat, Target
 from xarch.modules.rules.application.controller import RulesController
-from xarch.modules.rules.application.services.import_check import ImportCheck
-from xarch.modules.rules.application.services.locate import Locator
+from xarch.modules.rules.application.services.locate import LocateService
+from xarch.modules.rules.application.services.source_check import SourceCheckService
 from xarch.modules.rules.contract import Locate, Located, Outside
 from xarch.modules.rules.domain.values import Exclusion, Nearest, PartInfo, Profile, Reach, TierInfo, Where
 from xarch.modules.rules.domain.values import TestTier as Tier
@@ -35,7 +35,7 @@ README = Where("ungoverned", "README.md", True, note="it lies outside the app fo
 def locate(files, command, profile=PROFILE):
     tree = FakeSourceTree(APP, files, {TESTS: {}}, texts={Path("/src/README.md"): "x"})
     profiles = FakeProfiles({"p": profile})
-    return RulesController(ImportCheck(tree, profiles), Locator(tree, profiles)).locate(command)
+    return RulesController(SourceCheckService(tree, profiles), LocateService(tree, profiles)).locate(command)
 
 
 @pytest.mark.parametrize("given, when, then", [

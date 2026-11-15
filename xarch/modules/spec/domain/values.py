@@ -25,6 +25,9 @@ class Configured:
     source: Path
 
 
+PROFILE_SUFFIX = ".yaml"
+"""The suffix of every bundled profile file, and of each one xarch writes."""
+
 Layout = dict[str, "Layout | None"]
 """A layout tree: a dict is a folder, None a file; the key "*" is a repeating folder, one per instance."""
 
@@ -435,3 +438,36 @@ class ArchitectureDocument:
     """
     source: str
     document: Any
+
+
+@dataclass(frozen=True)
+class Loosening:
+    """One way a profile is looser than the bundled profile it is compared with: the key that loosened (see the
+    contract's Loosened for the keys), the part or tier, what was added or dropped, and the sentence that says it."""
+    key: str
+    part: str
+    what: str
+    sentence: str
+
+
+@dataclass(frozen=True)
+class Origin:
+    """Where a profile comes from: its location as selected, whether it is bundled, the bundled profile a custom one is
+    compared with (None: it is bundled, or resembles none), the guards it leaves off, those of them the bundled profile
+    it is or is compared with leaves off too, and how it is looser than that one."""
+    location: str
+    bundled: bool
+    closest: str | None
+    guards_off: tuple[str, ...]
+    baseline_off: tuple[str, ...]
+    looser: tuple[Loosening, ...]
+
+
+@dataclass(frozen=True)
+class Review:
+    """What checking a profile found: its location; its problems, each with the check that found it (the loader, or
+    the examples); how many files it points to, and its origin, when it loads."""
+    location: str
+    problems: tuple[tuple[str, str], ...]
+    files: int
+    origin: Origin | None

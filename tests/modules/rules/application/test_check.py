@@ -9,8 +9,8 @@ from tests.fakes.profiles import FakeProfiles
 from xarch.kernel.logic.placement import Repeat, Target
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.controller import RulesController
-from xarch.modules.rules.application.services.import_check import ImportCheck
-from xarch.modules.rules.application.services.locate import Locator
+from xarch.modules.rules.application.services.locate import LocateService
+from xarch.modules.rules.application.services.source_check import SourceCheckService
 from xarch.modules.rules.contract import CheckImports, ImportsChecked, NotADirectory
 from xarch.modules.rules.domain.values import (
     Drift,
@@ -44,7 +44,7 @@ PROFILES = FakeProfiles({"cli": profile("cli"), "web": profile("web")})
 
 
 def controller_of(tree, profiles) -> RulesController:
-    return RulesController(ImportCheck(tree, profiles), Locator(tree, profiles))
+    return RulesController(SourceCheckService(tree, profiles), LocateService(tree, profiles))
 
 
 def run(files, package="app", root=ROOT, profile="cli"):

@@ -13,9 +13,11 @@ class UnknownProfile(DomainError):
 
 
 class NoProfile(DomainError):
+    """No profile was asked for, and the project configures none; known: the bundled profiles."""
+
     def __init__(self, known: Iterable[str]):
-        super().__init__("no profile: pass --profile, or set `profile` under [tool.xarch] in pyproject.toml; "
-                         f"the profiles found are {', '.join(known)}")
+        self.known = tuple(known)
+        super().__init__(f"no profile: none is asked for or configured; the profiles found are {', '.join(self.known)}")
 
 
 class UnreadableSettings(DomainError):

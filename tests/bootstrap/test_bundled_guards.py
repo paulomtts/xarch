@@ -1,7 +1,7 @@
 """The libraries and guards of the bundled profiles, loaded through the wiring."""
 import pytest
 
-from xarch.bootstrap.wiring import build_architectures, load_architecture
+from xarch.bootstrap.wiring import build_spec, load_architecture
 from xarch.modules.spec.contract import (
     CaseTable,
     DeadCode,
@@ -65,7 +65,7 @@ def test_the_bundled_profiles_forbid_the_clock_and_io_in_the_pure_parts_and_thei
 
 
 def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
-    testing = next(f.template for f in build_architectures().docs("web").files if f.path == ("testing.md",))
+    testing = next(f.template for f in build_spec().docs("web").files if f.path == ("testing.md",))
     section = testing.split("\n\n## 9. Guards\n\n", 1)[1].split("\n\n")[1]
     assert section == "\n".join([
         "- `structure`: every folder and file of the layout exists, in the app and in every `modules/<name>/`.",

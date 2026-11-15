@@ -6,6 +6,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from xarch.modules.rules.domain.values import Import, SourceFile, TableForm
+from xarch.modules.scaffold.domain.values import FILE, FOLDER
 
 
 class FakeSourceTree:
@@ -64,48 +65,29 @@ class FakeDisk:
 
 class FakeFiles:
     """Satisfies scaffold's Files: the files that exist (the folders above them exist too), the folders that exist
-    though empty, and the text of a file, as the real filesystem holds them; a file created empty reads as "", and
-    reading a file that does not exist raises FileNotFoundError, as the real one does."""
+    though empty, and the content of a file, as the real filesystem holds them; a file given without a text holds ""."""
 
     def __init__(self, existing: set[Path] = frozenset(), texts: dict[Path, str] | None = None,
                  dirs: set[Path] = frozenset()):
-        self.files: set[Path] = {*existing, *(texts or {})}
-        self.dirs: set[Path] = {*dirs, *(parent for path in {*self.files, *dirs} for parent in path.parents)}
-        self.created: list[Path] = []
-        self.texts: dict[Path, str] = {}
-        self.data: dict[Path, bytes] = {}
-        self._given = dict(texts or {})
+        self._files: dict[Path, str | bytes] = {**{path: "" for path in existing}, **(texts or {})}
+        self._dirs: set[Path] = {*dirs, *(parent for path in {*self._files, *dirs} for parent in path.parents)}
 
-    def exists(self, path: Path) -> bool:
-        return path in self.files or path in self.dirs
+    def kind(self, path: Path) -> str | None:
+        if path in self._dirs:
+            return FOLDER
+        return FILE if path in self._files else None
 
-    def is_dir(self, path: Path) -> bool:
-        return path in self.dirs
+    def lay_down(self, path: Path, content: str | bytes) -> None:
+        self._files[path] = content
+        self._dirs.update(path.parents)
 
-    def create_empty(self, path: Path) -> None:
-        self._add(path)
-        self.created.append(path)
-
-    def write_text(self, path: Path, text: str) -> None:
-        if path not in self.files:
-            self.create_empty(path)
-        self.texts[path] = text
-
-    def write_bytes(self, path: Path, data: bytes) -> None:
-        self.create_empty(path)
-        self.data[path] = data
-
-    def read_text(self, path: Path) -> str:
-        if path not in self.files:
-            raise FileNotFoundError(path)
-        return self.texts.get(path, self._given.get(path, ""))
-
-    def find_upward(self, start: Path, name: str) -> Path | None:
+    def pyproject(self, start: Path) -> tuple[Path, str] | None:
         for folder in [start, *start.parents]:
-            if folder / name in self.files:
-                return folder / name
+            found = folder / "pyproject.toml"
+            if found in self._files:
+                return found, str(self._files[found])
         return None
 
-    def _add(self, path: Path) -> None:
-        self.files.add(path)
-        self.dirs.update(path.parents)
+    def content(self, path: Path) -> str | bytes | None:
+        """What the file at path holds, or None when there is none: for reading back what was written."""
+        return self._files.get(path)

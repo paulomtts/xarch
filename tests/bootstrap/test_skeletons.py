@@ -1,6 +1,7 @@
 """The skeleton of architecture.md section 1 of each bundled profile, published through the wired spec controller."""
 import pytest
 
+from tests.bootstrap.project import bundled_profiles
 from xarch.bootstrap.wiring import build_spec
 from xarch.modules.spec.contract import Entry
 
@@ -53,4 +54,4 @@ def test_a_folder_with_children_is_not_a_leaf():
 
 
 def test_the_profiles_are_listed():
-    assert build_spec().profiles() == ("cli", "web")
+    assert bundled_profiles() == ("cli", "web")

@@ -21,6 +21,10 @@ class ArchitectureFiles(Protocol):
         """The file, parsed but not validated; raises InvalidArchitecture if it cannot be read or parsed."""
         ...
 
+    def profile_text(self, source: ArchitectureSource) -> str:
+        """The text of the profile file itself, as written; raises InvalidArchitecture if it cannot be read."""
+        ...
+
     def has_file(self, source: ArchitectureSource, relative: str) -> bool:
         """Whether a file exists at relative, a path from the folder holding the architecture file."""
         ...

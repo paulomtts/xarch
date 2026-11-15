@@ -6,11 +6,7 @@ import pytest
 
 from tests.fakes.architecture_files import FakeArchitectureFiles
 from tests.fakes.profile_output import FakeProfileOutput
-from tests.fakes.settings import FakeSettings
-from xarch.modules.spec.application.controller import SpecController
-from xarch.modules.spec.application.services.architecture import ArchitectureService
-from xarch.modules.spec.application.services.migration import MigrationService
-from xarch.modules.spec.application.services.skeleton import SkeletonService
+from tests.modules.spec.application.helpers import controller as spec_controller
 from xarch.modules.spec.contract import Migrated, MigratedFile, MigrateProfile, MigrationRefused
 
 OLD = {"xarch": 1, "name": "small", "layout": {"core": {}, "cli": {}},
@@ -25,12 +21,7 @@ OUT = Path("small-v2")
 
 def controller(documents: dict, texts: dict | None = None, existing: set[Path] | None = None):
     output = FakeProfileOutput(existing)
-    files = FakeArchitectureFiles({}, documents, texts or {})
-    architectures = ArchitectureService(files)
-    settings = FakeSettings(None, None, None)
-    spec = SpecController(SkeletonService(settings, architectures, files), architectures, settings, files,
-                          MigrationService(files, output))
-    return spec, output
+    return spec_controller(FakeArchitectureFiles({}, documents, texts or {}), output=output), output
 
 
 @pytest.mark.parametrize("given, when, then", [

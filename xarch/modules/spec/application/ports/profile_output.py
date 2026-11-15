@@ -1,16 +1,17 @@
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Protocol
 
 
 class ProfileOutput(Protocol):
-    """Where a converted profile and its files are written."""
+    """Where a new or converted profile and its files are written."""
 
-    def exists(self, path: Path) -> bool:
-        """Whether a file or folder is at path."""
+    def taken(self, folder: Path, names: Iterable[str]) -> list[Path]:
+        """The files of names, paths in folder, that something is at already, in the order given."""
         ...
 
-    def write(self, path: Path, data: bytes) -> None:
-        """Write a file, creating the folders above it."""
+    def write(self, folder: Path, outputs: Mapping[str, bytes]) -> None:
+        """Write each file at its path in folder, creating the folders above it."""
         ...

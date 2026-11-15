@@ -5,10 +5,9 @@ import pytest
 
 from tests.fakes.architecture_files import FakeArchitectureFiles
 from tests.fakes.settings import FakeSettings
+from tests.modules.spec.application.helpers import controller as spec_controller
 from xarch.modules.spec.application.controller import SpecController
-from xarch.modules.spec.application.services.architecture import ArchitectureService
-from xarch.modules.spec.application.services.skeleton import SkeletonService
-from xarch.modules.spec.contract import ProfileRefused, ProfileSelected, SelectProfile
+from xarch.modules.spec.contract import NoProfileChosen, ProfileRefused, ProfileSelected, SelectProfile
 from xarch.modules.spec.domain.errors import UnreadableSettings
 from xarch.modules.spec.domain.values import Configured
 
@@ -21,9 +20,8 @@ def controller(configured: Configured | None = None, error: Exception | None = N
                files: dict | None = None, at: Path | None = None, app: Path | None = None,
                from_folder: Path | None = None) -> SpecController:
     port = FakeArchitectureFiles({"cli": LAYERED, "web": LAYERED}, files)
-    architectures = ArchitectureService(port)
     settings = FakeSettings(configured, error, tests, at, app, from_folder)
-    return SpecController(SkeletonService(settings, architectures, port), architectures, settings, port)
+    return spec_controller(port, settings)
 
 
 FILE = "/src/layered.yaml"
@@ -32,16 +30,14 @@ BROKEN = {**LAYERED, "parts": {"api": {**LAYERED["parts"]["api"], "may_import": 
 
 @pytest.mark.parametrize("given, when, then", [
     pytest.param(dict(), SelectProfile(APP, None),
-                 ProfileRefused("no profile: pass --profile, or set `profile` under [tool.xarch] in pyproject.toml; "
-                                "the profiles found are cli, web"),
+                 NoProfileChosen(("cli", "web",)),
                  id="with nothing configured no profile is chosen and the known ones are listed"),
     pytest.param(dict(configured=Configured("web", PYPROJECT)), SelectProfile(APP, None), ProfileSelected("web"),
                  id="the configured profile is used"),
     pytest.param(dict(configured=Configured("web", PYPROJECT), at=APP), SelectProfile(APP, None), ProfileSelected("web"),
                  id="the profile is the one configured for the project holding the app folder"),
     pytest.param(dict(configured=Configured("web", PYPROJECT), at=Path("/elsewhere/app")), SelectProfile(APP, None),
-                 ProfileRefused("no profile: pass --profile, or set `profile` under [tool.xarch] in pyproject.toml; "
-                                "the profiles found are cli, web"),
+                 NoProfileChosen(("cli", "web",)),
                  id="a profile configured for another folder is not the app folder's"),
     pytest.param(dict(configured=Configured("web", PYPROJECT)), SelectProfile(APP, "cli"), ProfileSelected("cli"),
                  id="an override wins over the configured profile"),

@@ -7,24 +7,26 @@ from pathlib import Path
 from xarch.modules.layout.adapters.fs_disk import FsDisk
 from xarch.modules.layout.adapters.spec_skeleton import SpecSkeleton as LayoutSkeleton
 from xarch.modules.layout.application.controller import LayoutController
-from xarch.modules.layout.application.services.structure_check import StructureCheck
+from xarch.modules.layout.application.services.structure_check import StructureCheckService
 from xarch.modules.rules.adapters.fs_source_tree import FsSourceTree
 from xarch.modules.rules.adapters.spec_profile import SpecProfiles
 from xarch.modules.rules.application.controller import RulesController
-from xarch.modules.rules.application.services.import_check import ImportCheck
-from xarch.modules.rules.application.services.locate import Locator
+from xarch.modules.rules.application.services.locate import LocateService
+from xarch.modules.rules.application.services.source_check import SourceCheckService
 from xarch.modules.scaffold.adapters.fs_files import FsFiles
 from xarch.modules.scaffold.adapters.spec_skeleton import SpecSkeleton as ScaffoldSkeleton
 from xarch.modules.scaffold.application.controller import ScaffoldController
-from xarch.modules.scaffold.application.services.scaffolding import Scaffolding
+from xarch.modules.scaffold.application.services.scaffolding import ScaffoldingService
 from xarch.modules.spec.adapters.fs_architecture_files import FsArchitectureFiles
 from xarch.modules.spec.adapters.fs_profile_output import FsProfileOutput
 from xarch.modules.spec.adapters.pyproject_settings import PyprojectSettings
 from xarch.modules.spec.application.controller import SpecController
 from xarch.modules.spec.application.services.architecture import ArchitectureService
+from xarch.modules.spec.application.services.explanation import ExplainService
 from xarch.modules.spec.application.services.migration import MigrationService
-from xarch.modules.spec.application.services.profile_creation import ProfileCreation
-from xarch.modules.spec.application.services.skeleton import SkeletonService
+from xarch.modules.spec.application.services.profile_creation import ProfileCreationService
+from xarch.modules.spec.application.services.profile_review import ProfileReviewService
+from xarch.modules.spec.application.services.profile_selection import ProfileSelectionService
 from xarch.modules.spec.domain.values import Architecture
 from xarch.platform.data_files import DataFileReader
 from xarch.platform.filesystem import FileSystem
@@ -45,8 +47,10 @@ def build_spec(fs: FileSystem | None = None) -> SpecController:
     architectures = ArchitectureService(files)
     settings = PyprojectSettings(fs, TomlReader())
     output = FsProfileOutput(fs)
-    return SpecController(SkeletonService(settings, architectures, files), architectures, settings, files,
-                          MigrationService(files, output), creation=ProfileCreation(files, architectures, output))
+    selection = ProfileSelectionService(settings, architectures, files)
+    return SpecController(architectures, selection, settings, ProfileReviewService(selection, architectures, files),
+                          ExplainService(files), MigrationService(files, architectures, output),
+                          ProfileCreationService(files, architectures, output))
 
 
 def build_architectures(fs: FileSystem | None = None) -> ArchitectureService:
@@ -60,15 +64,15 @@ def load_architecture(location: str | Path) -> Architecture:
 
 def build_rules(fs: FileSystem, spec: SpecController) -> RulesController:
     tree, profiles = FsSourceTree(fs), SpecProfiles(spec)
-    return RulesController(ImportCheck(tree, profiles), Locator(tree, profiles))
+    return RulesController(SourceCheckService(tree, profiles), LocateService(tree, profiles))
 
 
 def build_layout(fs: FileSystem, spec: SpecController) -> LayoutController:
-    return LayoutController(StructureCheck(FsDisk(fs), LayoutSkeleton(spec)))
+    return LayoutController(StructureCheckService(FsDisk(fs), LayoutSkeleton(spec)))
 
 
 def build_scaffold(fs: FileSystem, spec: SpecController) -> ScaffoldController:
-    return ScaffoldController(Scaffolding(FsFiles(fs), ScaffoldSkeleton(spec)))
+    return ScaffoldController(ScaffoldingService(FsFiles(fs), ScaffoldSkeleton(spec)))
 
 
 def build_controllers() -> Controllers:

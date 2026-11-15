@@ -42,6 +42,12 @@ def with_app(text: str, app: str) -> str:
     return text.replace(APP_PLACEHOLDER, app)
 
 
+def entries(architecture: Architecture, presets: bool) -> tuple[ProjectFile, ...]:
+    """The entries `init` writes: every one, or with presets off only the file entries, leaving out what the folder
+    entries copy."""
+    return tuple(entry for entry in architecture.files if presets or not entry.folder)
+
+
 def project_files(architecture: Architecture, contents: Mapping[str, str | bytes], app: str, source: str,
                   folders: Mapping[str, tuple[str, ...]] | None = None) -> Iterator[Written]:
     """Yield every file the architecture declares, in its order, a folder entry as each file under its folder.

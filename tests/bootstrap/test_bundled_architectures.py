@@ -3,7 +3,8 @@ from importlib import resources
 
 import pytest
 
-from xarch.bootstrap.wiring import build_spec, load_architecture
+from tests.bootstrap.project import bundled_profiles
+from xarch.bootstrap.wiring import load_architecture
 
 PROFILE_NAMES = ["cli", "web"]
 
@@ -14,7 +15,7 @@ def profile(request):
 
 
 def test_cli_and_web_are_bundled():
-    assert build_spec().profiles() == tuple(PROFILE_NAMES)
+    assert bundled_profiles() == tuple(PROFILE_NAMES)
     for name in PROFILE_NAMES:
         assert resources.files("xarch").joinpath("architectures", f"{name}.yaml").is_file()
 

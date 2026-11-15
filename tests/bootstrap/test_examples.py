@@ -4,13 +4,13 @@ from pathlib import Path
 
 import pytest
 
-from xarch.bootstrap.wiring import build_architectures, build_spec
+from tests.bootstrap.project import bundled_profiles, example_problems
+from xarch.bootstrap.wiring import build_spec
 
 
 def test_the_bundled_examples_obey_their_architectures_rules():
-    service = build_architectures()
-    for profile in build_spec().profiles():
-        assert service.check_examples(profile) == (), profile
+    for profile in bundled_profiles():
+        assert example_problems(profile) == (), profile
 
 
 CUSTOM = """\
@@ -43,7 +43,6 @@ def test_a_custom_architecture_can_be_checked(tmp_path, code, problems):
     write(tmp_path / "examples" / "src/billing/api/handler.py", code)
     write(tmp_path / "layered.md", "{{example:src/billing/api/handler.py}}\n")
     path = write(tmp_path / "layered.yaml", CUSTOM)
-    service = build_architectures()
-    assert service.check_examples(path) == problems
-    texts = {"/".join(f.path): f.template for f in service.docs(path).files}
+    assert example_problems(path) == problems
+    texts = {"/".join(f.path): f.template for f in build_spec().docs(str(path)).files}
     assert texts["architecture.md"] == f"```python\n# src/billing/api/handler.py\n{code}```\n"

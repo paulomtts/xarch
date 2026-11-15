@@ -1,6 +1,7 @@
 """In-memory implementation of spec's ProfileOutput port. Not an adapter: a test double only."""
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 
 
@@ -11,8 +12,8 @@ class FakeProfileOutput:
         self._existing = set(existing or ())
         self.written: dict[Path, bytes] = {}
 
-    def exists(self, path: Path) -> bool:
-        return path in self._existing or path in self.written
+    def taken(self, folder: Path, names: Iterable[str]) -> list[Path]:
+        return [folder / name for name in names if folder / name in self._existing or folder / name in self.written]
 
-    def write(self, path: Path, data: bytes) -> None:
-        self.written[path] = data
+    def write(self, folder: Path, outputs: Mapping[str, bytes]) -> None:
+        self.written.update({folder / name: data for name, data in outputs.items()})

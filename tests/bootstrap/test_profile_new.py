@@ -4,11 +4,12 @@ import pytest
 import yaml
 from typer.testing import CliRunner
 
+from tests.bootstrap.project import bundled_profiles
 from xarch.bootstrap.app import app
 from xarch.bootstrap.wiring import build_spec, load_architecture
 
 runner = CliRunner()
-BUNDLED = build_spec().profiles()
+BUNDLED = bundled_profiles()
 
 
 @pytest.fixture(autouse=True)

@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from tests.modules.spec.application.builders import BASE, spec_controller
-from xarch.modules.spec.contract import ProfileRefused, ProfileViewed, ViewProfile
+from xarch.modules.spec.contract import NoProfileChosen, ProfileRefused, ProfileViewed, ViewProfile
 
 APP = Path("/p/app")
 TREE = "├── core/   the rules\n└── api/    the handlers"
@@ -19,6 +19,8 @@ IMPORTS = "| Part | May import |\n|---|---|\n| `core/` | nothing |\n| `api/` | `
     pytest.param(dict(files={"mine.yaml": {**BASE, "parts": {"core": {"path": "core"}}}}), ViewProfile(APP, "mine.yaml"),
                  ProfileRefused("mine.yaml: parts.core: missing `role`"),
                  id="a profile that does not load is refused with its problems"),
+    pytest.param(dict(), ViewProfile(APP, None), NoProfileChosen(("base",)),
+                 id="with no profile named and none configured nothing is chosen, the known ones listed"),
 ])
 def test_view(given, when, then):
     spec, _ = spec_controller(**given)

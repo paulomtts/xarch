@@ -30,7 +30,7 @@ __all__ = ["Architecture", "CaseTable", "ClosedTree", "DeadCode", "Fixture", "Fr
            "PackageOnly", "Part", "PassThrough", "PrivateImports", "Repeat",
            "ScenarioCoverage", "StandIns", "Subject", "Target", "Tier", "TierExample", "Entry", "Repeating", "Skeleton", "DocFile",
            "Docs", "ProjectFile", "Loosened", "ProfileOrigin", "SelectProfile", "ProfileSelected", "ProfileRefused",
-           "ProfileResult", "MigrateProfile", "MigratedFile", "Migrated", "MigrationRefused", "MigrateResult", "Shown",
+           "NoProfileChosen", "SelectResult", "MigrateProfile", "MigratedFile", "Migrated", "MigrationRefused", "MigrateResult", "Shown",
            "Symbol", "Explain", "FormatExplained", "KeyExplained", "UnknownKey", "ExplainResult", "ViewProfile",
            "ProfileViewed", "ViewResult", "CheckProfile", "Problem", "ProfileChecked", "CheckResult", "NewProfile",
            "ProfileCreated", "NewResult"]
@@ -157,7 +157,14 @@ class ProfileRefused:
     reason: str
 
 
-ProfileResult = ProfileSelected | ProfileRefused
+@dataclass(frozen=True)
+class NoProfileChosen:
+    """No profile was asked for and the project configures none, so none is in force; known: the bundled profiles,
+    one of which may be asked for."""
+    known: tuple[str, ...]
+
+
+SelectResult = ProfileSelected | NoProfileChosen | ProfileRefused
 
 
 @dataclass(frozen=True)
@@ -225,13 +232,11 @@ class Explain:
 
 @dataclass(frozen=True)
 class FormatExplained:
-    """The whole format: version, the keys as a tree (shape), the symbols, the smallest valid profile (as text), and
-    how to go deeper."""
+    """The whole format: version, the keys as a tree (shape), the symbols, and the smallest valid profile (as text)."""
     version: int
     shape: tuple[Shown, ...]
     symbols: tuple[Symbol, ...]
     smallest: str
-    deeper: str
 
 
 @dataclass(frozen=True)
@@ -280,7 +285,7 @@ class ProfileViewed:
     bundled: bool
 
 
-ViewResult = ProfileViewed | ProfileRefused
+ViewResult = ProfileViewed | NoProfileChosen | ProfileRefused
 
 
 @dataclass(frozen=True)
@@ -312,7 +317,7 @@ class ProfileChecked:
         return not self.problems
 
 
-CheckResult = ProfileChecked | ProfileRefused
+CheckResult = ProfileChecked | NoProfileChosen | ProfileRefused
 
 
 @dataclass(frozen=True)

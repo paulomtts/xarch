@@ -7,24 +7,15 @@ from typing import Protocol
 class Files(Protocol):
     """Where the skeleton is written."""
 
-    def exists(self, path: Path) -> bool: ...
-
-    def is_dir(self, path: Path) -> bool: ...
-
-    def create_empty(self, path: Path) -> None:
-        """Create an empty file, and the folders above it."""
+    def kind(self, path: Path) -> str | None:
+        """FOLDER for a folder, FILE for anything else that is there, None when nothing is."""
         ...
 
-    def write_text(self, path: Path, text: str) -> None:
-        """Write a file holding text, creating the folders above it."""
+    def lay_down(self, path: Path, content: str | bytes) -> None:
+        """Write a file, creating the folders above it: empty text makes an empty file, other text is written as text,
+        bytes as they are."""
         ...
 
-    def write_bytes(self, path: Path, data: bytes) -> None:
-        """Write a file holding data, creating the folders above it."""
-        ...
-
-    def read_text(self, path: Path) -> str: ...
-
-    def find_upward(self, start: Path, name: str) -> Path | None:
-        """The nearest file called name in start or a folder above it, or None."""
+    def pyproject(self, start: Path) -> tuple[Path, str] | None:
+        """The nearest pyproject.toml in start or a folder above it, with its text, or None."""
         ...

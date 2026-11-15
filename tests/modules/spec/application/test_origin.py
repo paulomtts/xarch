@@ -1,34 +1,14 @@
 """Use case: where the profile in force comes from, and how it is looser than the bundled profile it resembles."""
 from tests.fakes.architecture_files import FakeArchitectureFiles
-from tests.fakes.settings import FakeSettings
+from tests.modules.spec.application.helpers import controller as spec_controller
+from tests.modules.spec.application.origins import BASE, OFF, OTHER, PARTS, TESTING, TIER, part
 from xarch.modules.spec.application.controller import SpecController
-from xarch.modules.spec.application.services.architecture import ArchitectureService
-from xarch.modules.spec.application.services.skeleton import SkeletonService
 from xarch.modules.spec.contract import Loosened, ProfileOrigin
-
-TESTING = {"files": ["test_*.py"], "functions": "test_*", "skips": ["pytest.mark.skip", "pytest.mark.xfail"]}
-TIER = {"proves": "a rule", "litmus": "Does it call a rule?", "apply_forbidden": True, "types_only": ["store"]}
-PARTS = {"core": {"path": "core", "role": "rules", "may_import": [], "forbidden": "pure", "tier": "unit"},
-         "store": {"path": "store", "role": "storage", "may_import": ["core"], "libraries": ["sqlmodel"],
-                   "tier": "unit"},
-         "edge": {"path": "edge", "role": "entry", "may_import": "everything", "libraries": "everything",
-                  "untested": "it only wires"}}
-BASE = {"xarch": 2, "name": "base", "parts": PARTS, "forbidden": {"pure": ["time.time", "socket"]},
-        "testing": TESTING, "tiers": {"unit": TIER}, "guards": {"no-comments": {}},
-        "files": {"tests/test_rules.py": {"from": "guard.py", "pinned": True}}}
-OFF = ("package-only", "scenario-coverage", "stand-ins", "closed-tree", "no-duplicates", "dead-code", "pass-through",
-       "private-imports")
-OTHER = {"xarch": 2, "name": "other", "parts": {"web": {"path": "web", "role": "all"}}}
-
-
-def part(name: str, **changes) -> dict:
-    return {**PARTS, name: {**PARTS[name], **changes}}
 
 
 def controller(custom: dict) -> SpecController:
-    files = FakeArchitectureFiles({"base": BASE, "other": OTHER}, {"mine.yaml": custom}, {"guard.py": "check()\n"})
-    architectures, settings = ArchitectureService(files), FakeSettings(None, None, None)
-    return SpecController(SkeletonService(settings, architectures, files), architectures, settings, files)
+    return spec_controller(FakeArchitectureFiles({"base": BASE, "other": OTHER}, {"mine.yaml": custom},
+                                                 {"guard.py": "check()\n"}))
 
 
 def test_a_bundled_profile_lists_the_guards_it_leaves_off_as_its_own_defaults():
@@ -102,8 +82,7 @@ def test_a_part_that_no_longer_has_to_import_or_may_meet_it_with_more_is_looser(
     stricter = {**BASE, "parts": part("store", may_import=["core", "edge"], must_import=["core"])}
     files = FakeArchitectureFiles({"base": base}, {"dropped.yaml": dropped, "wider.yaml": wider, "same.yaml": same,
                                                    "stricter.yaml": stricter}, {"guard.py": "check()\n"})
-    controllers, settings = ArchitectureService(files), FakeSettings(None, None, None)
-    spec = SpecController(SkeletonService(settings, controllers, files), controllers, settings, files)
+    spec = spec_controller(files)
     assert spec.origin("dropped.yaml").looser == (Loosened("must_import", "store"),)
     assert spec.origin("wider.yaml").looser == (Loosened("must_import", "store", "edge"),)
     assert spec.origin("same.yaml").looser == ()

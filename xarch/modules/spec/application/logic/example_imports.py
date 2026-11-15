@@ -94,3 +94,9 @@ def _targets(tree: ast.AST, package: tuple[str, ...],
             for alias in node.names:
                 steps = base if alias.name == "*" or place.sub else base + (alias.name,)
                 yield (base if place.part is not None else steps), steps, alias.name if steps == base else None
+
+
+def shipped_problems(architecture: Architecture, texts: Mapping[str, str], bundled: bool) -> list[str]:
+    """The example problems a profile may not have when its docs are written: every one, for a bundled profile, which
+    ships with xarch; none for a custom one, whose examples `profile check` reports instead."""
+    return example_problems(architecture, texts) if bundled else []

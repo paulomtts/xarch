@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 Tree = dict[str, "Tree | None"]
@@ -42,3 +43,17 @@ class Copy:
     destination: str
     source: str
     rewritten: bool = False
+
+
+@dataclass(frozen=True)
+class Conversion:
+    """A conversion, written or, on a dry run, only planned: the folder, the converted profile in it, each file of the
+    folder in the order written (its path in it, the file next to the old profile it is read from, None for the
+    profile, and how many example placeholders were rewritten in it), what now means something else, what has no form
+    in format 2 and is to be written by hand, and whether nothing was written."""
+    folder: Path
+    profile: Path
+    files: tuple[tuple[str, str | None, int], ...]
+    changes: tuple[str, ...]
+    by_hand: tuple[str, ...]
+    dry_run: bool

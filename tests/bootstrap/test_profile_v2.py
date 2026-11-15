@@ -5,7 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from xarch.bootstrap.wiring import build_controllers, build_spec, load_architecture
+from tests.bootstrap.project import bundled_profiles
+from xarch.bootstrap.wiring import build_controllers, load_architecture
 from xarch.modules.layout.contract import CheckStructure
 from xarch.modules.rules.contract import CheckImports
 from xarch.modules.spec.contract import ScenarioCoverage, StandIns
@@ -110,7 +111,7 @@ def test_a_version_that_is_not_read_is_refused_naming_the_one_that_is(tmp_path):
 
 
 def test_a_bundled_profile_may_not_be_a_preset():
-    assert build_spec().profiles() == ("cli", "web")
+    assert bundled_profiles() == ("cli", "web")
 
 
 @pytest.mark.parametrize("name", ["cli", "web"])

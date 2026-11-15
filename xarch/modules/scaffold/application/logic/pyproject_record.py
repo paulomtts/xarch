@@ -11,6 +11,7 @@ import os
 import re
 from pathlib import Path
 
+PYPROJECT = "pyproject.toml"
 TABLE = "[tool.xarch]"
 DEFAULT_APP = "app"
 """The app folder xarch assumes, beside the pyproject.toml, when none is given or recorded."""
@@ -31,6 +32,22 @@ def recorded_app(app: Path, folder: Path, cwd: Path) -> str | None:
     folder, which needs no record. A relative app or folder is read from cwd."""
     shown = Path(os.path.relpath(cwd / app, cwd / folder)).as_posix()
     return None if shown == DEFAULT_APP else shown
+
+
+def pyproject_target(found: Path | None, base: Path, absolute: Path) -> Path:
+    """The pyproject.toml to record in, for the folder base holding the app (absolute, base made absolute): the one
+    found at or above it, else a new one in base; one found in base itself is named below base."""
+    return base / PYPROJECT if found is None or found.parent == absolute else found
+
+
+def recorded_text(text: str | None, location: str, app: str | None) -> str | None:
+    """The text with the profile at location recorded, then the app folder after it when app is not None: each only if
+    the table does not already hold it, so that no value is ever rewritten; None when there is nothing to record."""
+    edited = with_profile(text, location)
+    if app is None:
+        return edited
+    changed = with_setting(edited if edited is not None else text, "app", app, after="profile")
+    return changed if changed is not None else edited
 
 
 def with_profile(text: str | None, location: str) -> str | None:

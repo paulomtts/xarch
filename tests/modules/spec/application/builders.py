@@ -6,11 +6,7 @@ from typing import Any
 from tests.fakes.architecture_files import FakeArchitectureFiles
 from tests.fakes.profile_output import FakeProfileOutput
 from tests.fakes.settings import FakeSettings
-from xarch.modules.spec.application.controller import SpecController
-from xarch.modules.spec.application.services.architecture import ArchitectureService
-from xarch.modules.spec.application.services.migration import MigrationService
-from xarch.modules.spec.application.services.profile_creation import ProfileCreation
-from xarch.modules.spec.application.services.skeleton import SkeletonService
+from tests.modules.spec.application.helpers import controller
 
 TESTING = {"files": ["test_*.py"], "functions": "test_*"}
 BASE = {"xarch": 2, "name": "base", "testing": TESTING,
@@ -27,9 +23,4 @@ def spec_controller(bundled: dict[str, Any] | None = None, files: dict[str, Any]
     port = FakeArchitectureFiles({"base": BASE} if bundled is None else bundled, files, TEXTS | (texts or {}),
                                  presets if presets is not None else {"pytest": TESTING})
     output = FakeProfileOutput(existing)
-    architectures = ArchitectureService(port)
-    settings = settings or FakeSettings()
-    spec = SpecController(SkeletonService(settings, architectures, port), architectures, settings, port,
-                          MigrationService(port, output),
-                          creation=ProfileCreation(port, architectures, output))
-    return spec, output
+    return controller(port, settings, output), output
