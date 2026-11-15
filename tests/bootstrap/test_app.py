@@ -213,12 +213,13 @@ def test_init_lists_the_docs_it_created_then_skips_them(tmp_path, profile):
     first = runner.invoke(app, ["init", "--profile", profile])
     assert first.exit_code == 0
     lines = first.output.splitlines()
-    assert lines[-len(DOCS) - 1:] == ["created pyproject.toml", *[f"created {d}" for d in DOCS]]
+    assert lines[-len(DOCS) - 2:] == ["created pyproject.toml", *[f"created {d}" for d in DOCS],
+                                      "created tests/architecture/test_rules.py"]
     assert (tmp_path / "docs/project/adrs/0000-template.md").read_text().startswith("# ADR")
     assert f"| rendering | `{profile}/` |" in (tmp_path / "docs/project/testing.md").read_text()
     second = runner.invoke(app, ["init", "--profile", profile])
     assert second.exit_code == 0 and "created" not in second.output
-    assert all(f"skipped {d}" in second.output for d in DOCS)
+    assert all(f"skipped {d}" in second.output for d in [*DOCS, "tests/architecture/test_rules.py"])
 
 
 def test_init_keeps_an_existing_doc_and_the_extras_around_it(tmp_path):
@@ -281,3 +282,14 @@ def test_a_missing_tests_folder_is_a_usage_error():
     runner.invoke(app, ["init", "--profile", "cli"])
     result = runner.invoke(app, ["check", "--tests", "nowhere"])
     assert result.exit_code == 2 and "nowhere is not a directory" in result.output
+
+
+def test_init_refuses_a_profile_whose_file_lies_in_the_app_folder(tmp_path):
+    (tmp_path / "guard.tpl").write_text("{{app}}\n")
+    (tmp_path / "layered.yaml").write_text(
+        "xarch: 1\nname: layered\nlayout: {src: {}}\nparts: {src: {path: src, role: code}}\nrules: {src: [src]}\n"
+        "files: {app/guard.py: {from: guard.tpl}}\n")
+    result = runner.invoke(app, ["init", "--profile", "layered.yaml"])
+    assert result.exit_code == 2
+    assert "layered.yaml: files.app/guard.py: lies inside the app folder 'app'" in result.output
+    assert not (tmp_path / "app").exists() and not (tmp_path / "pyproject.toml").exists()

@@ -4,6 +4,7 @@ from typing import Annotated
 import typer
 
 from xarch.cli.terminal import DEFAULT_APP, AppPath, ProfileName, fail, profile_for
+from xarch.kernel.errors import DomainError
 from xarch.modules.scaffold.application.controller import ScaffoldController
 from xarch.modules.scaffold.contract import Init, New, Refused, Report, Scaffolded
 from xarch.modules.spec.application.controller import SpecController
@@ -21,8 +22,11 @@ def _show(report: Report) -> None:
 def register(app: typer.Typer, scaffold: ScaffoldController, spec: SpecController) -> None:
     @app.command()
     def init(app_path: AppPath = DEFAULT_APP, profile: ProfileName = None) -> None:
-        """Create the top-level skeleton, record the profile in pyproject.toml, write the docs; never overwrites."""
-        _show(scaffold.init(Init(app_path, profile_for(spec, app_path, profile))).report)
+        """Create the top-level skeleton, record the profile in pyproject.toml, write the docs and files; never overwrites."""
+        try:
+            _show(scaffold.init(Init(app_path, profile_for(spec, app_path, profile))).report)
+        except DomainError as e:
+            raise fail(e.reason)
 
     @app.command()
     def new(kind: Annotated[str, typer.Argument(help="A folder of the layout that declares `each:`, by its path.")],

@@ -33,6 +33,15 @@ stops early. The file's keys:
                                has an optional `note`, shown after its line in the tree. A folder holding a single
                                file and no entry of its own is shown on one line, `<file>; <note>`. Without `docs`,
                                `init` writes none
+    files: {<path>: {from}}                   optional; the other files `init` writes, in this order, beside the app
+                               folder (in the folder holding it, with docs/ and pyproject.toml): each path is relative
+                               to that folder, e.g. tests/architecture/test_rules.py, and `from` names the template
+                               file it is written from (relative to this file). The text is written as it stands,
+                               except that `{{app}}`, the name of the app folder, is replaced by it, so a file that
+                               must find the app folder can name it; any other `{{...}}` stays. A path may not be
+                               empty, start with `/`, hold `..` or an empty step, lie in the app folder (the
+                               check is made by `init`, which knows it) or clash with a doc's path, docs/project/<path>.
+                               A file is never overwritten. Without `files`, `init` writes none
     libraries: {<part>: [<package>, ...]}     optional; the outside packages each part may import, by top-level
                                import name; the standard library is always allowed, and a part not listed may import
                                no outside package. Without `libraries`, outside packages are not checked
@@ -46,7 +55,7 @@ stops early. The file's keys:
                                part nested deeper), the file holding its code and an optional one-line note shown
                                after its path; the docs template shows it by name, see docs_template.py
 
-Files named by docs, examples and the tiers' examples are relative to the architecture file; has_file says whether
+Files named by docs, files, examples and the tiers' examples are relative to the architecture file; has_file says whether
 one exists. Examples are only ever files: the format takes no inline code.
 """
 from __future__ import annotations
@@ -57,10 +66,11 @@ from collections.abc import Callable, Collection, Mapping
 from pathlib import Path
 from typing import Any
 
+from xarch.modules.spec.domain.docs import DOCS_ROOT
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import (EACH, EVERYTHING, Architecture, ArchitectureSource, ClosedTree, Doc,
                                               Example, Fakes,
-                                              Guard, Layout, NoComments, Naming, PackageOnly, Part, ScenarioCoverage,
+                                              Guard, Layout, NoComments, Naming, PackageOnly, Part, ProjectFile, ScenarioCoverage,
                                               Scope, StandIns, Subject, Target, Tier, TierExample)
 
 VERSION = 1
@@ -72,12 +82,13 @@ FILE = "file"
 """How a file marks a file in the layout."""
 
 _KEYS = {"xarch", "name", "layout", "notes", "parts", "rules", "layers", "placement", "naming", "tiers", "docs",
-         "examples", "libraries", "fakes", "guards"}
+         "files", "examples", "libraries", "fakes", "guards"}
 _REQUIRED = ("name", "layout", "parts")
 _PART_KEYS = {"path", "role", "litmus", "entry", "untested"}
 _NAMING_KEYS = {"kind", "where", "pattern", "example"}
 _EXAMPLE_KEYS = {"part", "path", "file", "note"}
 _DOC_KEYS = {"from", "note"}
+_FILE_KEYS = {"from"}
 _TIER_REQUIRED = ("name", "subject", "proves", "may_touch", "litmus")
 _TIER_TEXTS = ("proves", "may_touch", "subject_text", "one_file_per", "cases_from", "data")
 """The keys of a tier that hold one line of text each."""
@@ -131,6 +142,7 @@ def parse_architecture(document: Any, source: str, has_file: Callable[[str], boo
     naming = _naming(document.get("naming", []), problems)
     tiers = _tiers(document.get("tiers"), parts, declared, has_file, problems) if "tiers" in document else ()
     docs = _docs(document.get("docs", {}), has_file, problems)
+    files = _files(document.get("files", {}), docs, has_file, problems)
     examples = _examples(document.get("examples", {}), parts, declared, layout, has_file, problems)
     libraries = _libraries(document["libraries"], parts, declared, problems) if "libraries" in document else None
     fakes = _fakes(document["fakes"], parts, declared, problems) if "fakes" in document else None
@@ -138,7 +150,7 @@ def parse_architecture(document: Any, source: str, has_file: Callable[[str], boo
     if problems:
         raise InvalidArchitecture(source, problems)
     return Architecture(name, layout, parts, rules, docs, examples, notes, layers, placement, naming, tiers,
-                        libraries, guards, fakes, singular[0] if singular else "")
+                        libraries, guards, fakes, singular[0] if singular else "", files)
 
 
 def _check_version(document: Mapping[Any, Any], source: str) -> None:
@@ -456,6 +468,43 @@ def _docs(value: Any, has_file: Callable[[str], bool], problems: list[str]) -> t
     for doc in docs:
         problems += _doc_clashes(doc, files, folders)
     return tuple(docs)
+
+
+def _files(value: Any, docs: tuple[Doc, ...], has_file: Callable[[str], bool],
+           problems: list[str]) -> tuple[ProjectFile, ...]:
+    """The project files: each path below the project root with the template it is written from."""
+    if not isinstance(value, Mapping):
+        problems.append("files: must be a mapping of paths to {from}, such as {tests/test_rules.py: {from: guard.py}}")
+        return ()
+    found: list[ProjectFile] = []
+    for key, spec in value.items():
+        where = f"files.{key}"
+        steps = tuple(key.split("/")) if isinstance(key, str) else ()
+        if not steps or any(step in ("", ".", "..") or "\\" in step for step in steps):
+            problems.append(f"{where}: must be a path of plain names below the project root")
+            continue
+        if not isinstance(spec, Mapping):
+            problems.append(f"{where}: must be a mapping such as {{from: <file>}}")
+            continue
+        count = len(problems)
+        problems += _unknown_keys(spec, _FILE_KEYS, where)
+        source = _doc_source(spec, where, False, has_file, problems)
+        if len(problems) == count:
+            found.append(ProjectFile(steps, source or ""))
+    for file in found:
+        problems += _file_clashes(file, found, docs)
+    return tuple(found)
+
+
+def _file_clashes(file: ProjectFile, files: list[ProjectFile], docs: tuple[Doc, ...]) -> list[str]:
+    where = f"files.{'/'.join(file.path)}"
+    found = [f"{where}: '{'/'.join(file.path[:i])}' is a file, not a folder"
+             for i in range(1, len(file.path)) if any(other.path == file.path[:i] for other in files)]
+    for doc in docs:
+        written = DOCS_ROOT + doc.path
+        if doc.source is not None and (written[:len(file.path)] == file.path or file.path[:len(written)] == written):
+            found.append(f"{where}: collides with docs.{'/'.join(doc.path)}, written to {'/'.join(written)}")
+    return found
 
 
 def _doc_source(spec: Mapping[Any, Any], where: str, folder: bool, has_file: Callable[[str], bool],

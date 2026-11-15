@@ -4,7 +4,7 @@ from xarch.kernel.errors import DomainError
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.application.services.skeleton import SkeletonService
 from xarch.modules.spec.contract import (Architecture, Docs, ProfileRefused, ProfileResult, ProfileSelected,
-                                         SelectProfile, Skeleton)
+                                         ProjectFile, SelectProfile, Skeleton)
 
 
 class SpecController:
@@ -24,6 +24,10 @@ class SpecController:
     def docs(self, profile: str) -> Docs:
         """The project docs the profile declares, with their text."""
         return self._architectures.docs(profile)
+
+    def files(self, profile: str, app: str) -> tuple[ProjectFile, ...]:
+        """The files the profile has `init` write beside an app folder called app, with their text."""
+        return self._architectures.files(profile, app)
 
     def profiles(self) -> tuple[str, ...]:
         return self._service.profiles()

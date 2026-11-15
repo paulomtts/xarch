@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from xarch.modules.spec.contract import Docs, Entry, Skeleton
+from xarch.modules.spec.contract import Docs, Entry, ProjectFile, Skeleton
 
 
 class _Spec(Protocol):
@@ -12,6 +12,8 @@ class _Spec(Protocol):
     def skeleton(self, profile: str) -> Skeleton: ...
 
     def docs(self, profile: str) -> Docs: ...
+
+    def files(self, profile: str, app: str) -> tuple[ProjectFile, ...]: ...
 
 
 class SpecSkeleton:
@@ -32,6 +34,9 @@ class SpecSkeleton:
     def docs(self, profile: str) -> list[tuple[tuple[str, ...], str]]:
         docs = self._spec.docs(profile)
         return [(docs.root + f.path, f.template) for f in docs.files]
+
+    def files(self, profile: str, app: str) -> list[tuple[tuple[str, ...], str]]:
+        return [(f.path, f.text) for f in self._spec.files(profile, app)]
 
 
 def _entries(entries: tuple[Entry, ...]) -> list[tuple[tuple[str, ...], bool]]:

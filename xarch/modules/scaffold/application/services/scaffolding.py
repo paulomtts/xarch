@@ -8,7 +8,7 @@ from xarch.modules.scaffold.application.ports.skeleton import Skeleton
 from xarch.modules.scaffold.contract import Report
 from xarch.modules.scaffold.domain.errors import AlreadyExists, FolderMissing, InvalidName, UnknownKind
 from xarch.modules.scaffold.domain.names import valid_name
-from xarch.modules.scaffold.domain.plan import holder, plan
+from xarch.modules.scaffold.domain.plan import app_name, holder, plan
 from xarch.modules.scaffold.domain.pyproject import recorded_location, with_profile
 
 PYPROJECT = "pyproject.toml"
@@ -19,12 +19,15 @@ class Scaffolding:
         self._files, self._skeleton = files, skeleton
 
     def init(self, root: Path, profile: str) -> Report:
-        """The app's top level, then the profile recorded in the project's pyproject.toml, then the project docs."""
+        """The app's top level, then the profile recorded in the project's pyproject.toml, then the project docs and the profile's other project files."""
+        files = self._skeleton.files(profile, app_name(root))
         report = self._build(root, self._skeleton.top_level(profile))
         base = holder(root)
         self._record(base, profile, report)
         for rel, template in self._skeleton.docs(profile):
             self._write(base.joinpath(*rel), template, report)
+        for rel, text in files:
+            self._write(base.joinpath(*rel), text, report)
         return report
 
     def new(self, root: Path, kind: str, name: str, profile: str) -> Report:

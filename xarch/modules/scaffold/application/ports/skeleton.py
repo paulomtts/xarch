@@ -16,3 +16,7 @@ class Skeleton(Protocol):
     def docs(self, profile: str) -> list[tuple[tuple[str, ...], str]]:
         """(path below the folder holding the app, text) for every project doc."""
         ...
+
+    def files(self, profile: str, app: str) -> list[tuple[tuple[str, ...], str]]:
+        """(path below the folder holding the app, text) for every other project file, for an app folder called app."""
+        ...

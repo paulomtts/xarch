@@ -23,7 +23,10 @@ SKELETON = FakeSkeleton(
                                 (("application", "controller.py"), False), (("application", "services"), True),
                                 (("application", "logic"), True), (("application", "ports"), True),
                                 (("adapters",), True)])},
-    [(("docs", "project", *p.split("/")), f"# {p}\n") for p in DOC_PATHS])
+    [(("docs", "project", *p.split("/")), f"# {p}\n") for p in DOC_PATHS],
+    [(("tests", "architecture", "test_rules.py"), "check <app>\n"), (("Makefile",), "all: <app>\n")])
+GUARD = Path("/src/tests/architecture/test_rules.py")
+MAKEFILE = Path("/src/Makefile")
 
 
 MODULES = {ROOT / "modules" / "__init__.py"}
@@ -69,14 +72,41 @@ def test_init_creates_a_package_file_for_every_folder_then_the_docs_in_order():
     expected = [ROOT / p / "__init__.py" for p in
                 ["", "bootstrap", "bootstrap/migrations", "kernel", "kernel/logic", "modules", "platform", "cli",
                  "cli/commands"]]
-    assert files.created == expected + [PYPROJECT] + DOC_FILES
-    assert result == Scaffolded(type(result.report)(created=expected + [PYPROJECT] + DOC_FILES, skipped=[]))
+    assert files.created == expected + [PYPROJECT] + DOC_FILES + [GUARD, MAKEFILE]
+    assert result == Scaffolded(type(result.report)(created=expected + [PYPROJECT] + DOC_FILES + [GUARD, MAKEFILE],
+                                                    skipped=[]))
 
 
 def test_init_writes_each_doc_with_its_template():
     files = FakeFiles()
     controller(files).init(Init(ROOT, "cli"))
     assert {path: files.texts[path] for path in DOC_FILES} == {DOCS / p: f"# {p}\n" for p in DOC_PATHS}
+
+
+def test_init_writes_each_project_file_beside_the_app_folder_with_the_apps_name_filled_in():
+    files = FakeFiles()
+    controller(files).init(Init(ROOT, "cli"))
+    assert {path: files.texts[path] for path in (GUARD, MAKEFILE)} == {GUARD: "check app\n", MAKEFILE: "all: app\n"}
+
+
+def test_init_names_the_app_folder_whatever_it_is_called():
+    files = FakeFiles()
+    controller(files).init(Init(Path("/src/shop"), "cli"))
+    assert files.texts[GUARD] == "check shop\n"
+
+
+def test_init_never_overwrites_a_project_file_and_reports_it_skipped():
+    files = FakeFiles({GUARD})
+    report = controller(files).init(Init(ROOT, "cli")).report
+    assert GUARD in report.skipped and GUARD not in report.created
+    assert GUARD not in files.texts and MAKEFILE in report.created
+
+
+def test_a_second_init_skips_every_project_file():
+    files = FakeFiles()
+    controller(files).init(Init(ROOT, "cli"))
+    report = controller(files).init(Init(ROOT, "cli")).report
+    assert {GUARD, MAKEFILE} <= set(report.skipped) and report.created == []
 
 
 def test_init_never_overwrites_a_doc_and_reports_it_skipped():

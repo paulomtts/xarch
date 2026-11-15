@@ -9,7 +9,7 @@ from xarch.modules.spec.domain.values import (Architecture, ClosedTree, NoCommen
 
 __all__ = ["Architecture", "ClosedTree", "NoComments", "PackageOnly", "Part", "ScenarioCoverage", "StandIns", "Subject",
            "Target", "Tier",
-           "TierExample", "Entry", "Skeleton", "DocFile", "Docs",
+           "TierExample", "Entry", "Skeleton", "DocFile", "Docs", "ProjectFile",
            "SelectProfile", "ProfileSelected", "ProfileRefused", "ProfileResult"]
 
 
@@ -53,6 +53,17 @@ class Docs:
     """
     root: tuple[str, ...]
     files: tuple[DocFile, ...]
+
+
+@dataclass(frozen=True)
+class ProjectFile:
+    """A file `init` writes beside the app folder, in the folder holding it.
+
+    path: below the folder holding the app, e.g. ("tests", "architecture", "test_rules.py")
+    text: the file's text, the app folder's name filled in
+    """
+    path: tuple[str, ...]
+    text: str
 
 
 @dataclass(frozen=True)

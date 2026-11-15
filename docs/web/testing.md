@@ -77,6 +77,8 @@ A test imports only what the part its folder mirrors may import (architecture.md
 
 One module, `documents`, with a use case `publish` (architecture.md, section 8). Each tier has its test here, holding only what its row allows. Where a tier's cases share a shape, the test is a table (section 5.2).
 
+The guard test is the one example that is a real file: `xarch init` writes it as shown, with the app folder's name in place of `app`.
+
 ```python
 # unit: tests/modules/documents/application/logic/test_staleness.py
 @pytest.mark.parametrize("published_at, now, stale", [
@@ -123,9 +125,18 @@ def test_publish(client, result, shown):
     page = client(Mock(publish=lambda cmd: result)).post(f"/documents/{A_ID}/publish")
     assert shown in page.text
 
-# guard: tests/architecture/test_rules.py
-def test_the_dependency_rules_hold():
-    assert check(Path("app")).violations == []
+# guard: tests/architecture/test_rules.py (written by `xarch init`)
+import subprocess
+import sys
+from pathlib import Path
+
+PROJECT = Path(__file__).parents[2]
+
+
+def test_the_architecture_holds():
+    check = subprocess.run([sys.executable, "-m", "xarch", "check", "--app", str(PROJECT / "app")],
+                           capture_output=True, text=True)
+    assert check.returncode == 0, check.stdout + check.stderr
 ```
 
 ## 5. Files
@@ -318,7 +329,7 @@ A fake is checked against its port twice. `xarch check` requires it to exist: ev
 
 ## 9. Guards
 
-`xarch check` runs every guard below on the app and on `tests/`, and a test under `tests/architecture/` runs `xarch check`, so a broken rule fails the build. The ones named for a key of the architecture file follow from it; the others are switched on by name in its `guards`.
+`xarch check` runs every guard below on the app and on `tests/`. `xarch init` writes the guard test, `tests/architecture/test_rules.py` (section 4): it runs `xarch check` on the app, and it is what runs every guard with the project's test suite, so a broken rule fails the build. `xarch check` can also run in CI or in a pre-commit hook. The ones named for a key of the architecture file follow from it; the others are switched on by name in its `guards`.
 
 - `structure`: every folder and file of the layout exists, in the app and in every `modules/<name>/`.
 - `rules`: every import between parts is one that `rules` allows (architecture.md, section 5).

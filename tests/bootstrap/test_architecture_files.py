@@ -96,6 +96,7 @@ def test_the_entry_point_an_untested_part_notes_layers_placement_and_naming_load
 
 def test_a_missing_docs_template_or_example_file_is_rejected(tmp_path):
     text = LAYERED + ("docs:\n  architecture.md: {from: layered.md}\n"
+                      "files:\n  tests/guard.py: {from: guard.py}\n"
                       "examples:\n"
                       "  charge: { part: service, path: src/billing/service/charge.py, file: examples/charge.py }\n")
     path = write(tmp_path / "layered.yaml", text)
@@ -103,6 +104,7 @@ def test_a_missing_docs_template_or_example_file_is_rejected(tmp_path):
         load_architecture(path)
     assert caught.value.problems == (
         f"{path}: docs.architecture.md.from: no file 'layered.md' next to the architecture file",
+        f"{path}: files.tests/guard.py.from: no file 'guard.py' next to the architecture file",
         f"{path}: examples.charge.file: no file 'examples/charge.py' next to the architecture file",
     )
 
@@ -137,6 +139,7 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
     "naming: [{kind: 1, where: [1], pattern: [], example: {}}, null]\n",
     "xarch: 1\nname: n\nlayout: {a: {}}\nparts: {a: {path: a, role: r}}\ndocs: {testing: [1]}\n"
     "tiers: [1, {name: [x], subject: [[1], {}], proves: 1, litmus: [], example: {path: [1], file: 3, note: {}}}]\n",
+    "xarch: 1\nname: n\nlayout: {a: {}}\nparts: {a: {path: a, role: r}}\nfiles: {1: {from: 2}, x: [1], y: {z: 1}}\n",
     "xarch: 1\n  bad: indentation\n", "{unclosed", "a: &x [*x]\n", "? [a, b]\n: 1\n", "xarch: !!python/object:os.system x\n",
 ])
 def test_a_bad_file_raises_invalid_architecture(tmp_path, text):

@@ -61,6 +61,17 @@ class Doc:
 
 
 @dataclass(frozen=True)
+class ProjectFile:
+    """A file `init` writes beside the app folder, in the folder holding it.
+
+    path: below the folder holding the app, e.g. ("tests", "architecture", "test_rules.py")
+    source: the template the file is written from, relative to the architecture file
+    """
+    path: tuple[str, ...]
+    source: str
+
+
+@dataclass(frozen=True)
 class Example:
     """One file of the docs' example project: the part it illustrates, where it would live, and the file holding it.
 
@@ -199,6 +210,7 @@ class Architecture:
     guards: the pre-built checks in use
     fakes: where the test fakes live; None: no test may import them
     singular: the name of one instance of the `each` folder, as the docs show it; empty if the layout has no `each`
+    files: the project files `init` writes besides the docs, in order
     """
     name: str
     layout: Layout
@@ -215,6 +227,7 @@ class Architecture:
     guards: tuple[Guard, ...] = ()
     fakes: Fakes | None = None
     singular: str = ""
+    files: tuple[ProjectFile, ...] = ()
 
     @property
     def entry(self) -> Part | None:

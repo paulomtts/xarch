@@ -8,7 +8,7 @@ may also bring its own file. xarch knows no part by name: every name comes from 
 
 ```
 xarch init [--app PATH] [--profile NAME|FILE]                 # create the top-level skeleton, record the profile in
-                                                             # pyproject.toml, write the project docs; never overwrites
+                                                             # pyproject.toml, write the project docs and files; never overwrites
 xarch new KIND NAME [--app PATH] [--profile NAME|FILE]       # create one folder of a kind with its full skeleton
 xarch check [--app PATH] [--profile NAME|FILE] [--tests PATH]   # report every violation in the app and its tests
 ```
@@ -176,6 +176,30 @@ the profile. Existing files are skipped, never overwritten, and extras (e.g. `.o
 
 Copy a folder's template to start a new document of that kind. `new` does not touch the docs, and
 `check` does not require them: they are not part of the app structure.
+
+## Project files
+
+`init` can also write files that are not docs, beside the app folder (in the folder holding it, with `docs/` and
+`pyproject.toml`). The profile declares them under `files:`: each key is a path relative to that folder, and `from` names
+the template file it is written from (next to the profile file). A path may not be empty, start with `/`, hold `..` or
+an empty step, clash with a doc (`docs/project/<path>`), or lie inside the app folder (`init` checks that one, since only
+it knows the folder); a missing template, an unknown key or a value that is not a mapping is reported with the other
+problems of the file. The order of the keys is the order they are written in, a file is never overwritten, and a profile
+without `files:` writes none.
+
+A file is its template as it stands, except for one placeholder: `{{app}}` is replaced by the name of the app folder
+(`shop` for `--app src/shop`), so a file that must find the app folder can name it. Any other `{{...}}` is written
+unchanged. These are not the docs' placeholders: `{{tree}}` and the rest only fill docs.
+
+```yaml
+files:
+  tests/architecture/test_rules.py: {from: examples/shared/tiers/guard.py}
+```
+
+Both bundled profiles list the guard test, `tests/architecture/test_rules.py`. It runs `python -m xarch check --app
+<project>/<app>` with the interpreter running the test, and fails with `xarch check`'s output, the violations, as its
+message, so every guard runs with the project's test suite; xarch must be installed in that environment. It is also
+the guard tier's example in `testing.md`, from the same template with `{{app}}` filled in as `app`.
 
 ## Development
 

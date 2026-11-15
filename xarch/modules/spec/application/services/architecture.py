@@ -4,10 +4,11 @@ from pathlib import Path
 
 from xarch.modules.spec.application.logic.example_imports import example_problems
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
-from xarch.modules.spec.contract import DocFile, Docs
+from xarch.modules.spec.contract import DocFile, Docs, ProjectFile
 from xarch.modules.spec.domain.architecture_file import parse_architecture, source_of
 from xarch.modules.spec.domain.docs import DOCS_ROOT, doc_files
 from xarch.modules.spec.domain.errors import InvalidArchitecture
+from xarch.modules.spec.domain.project_files import EXAMPLE_APP, project_files, with_app
 from xarch.modules.spec.domain.values import Architecture, ArchitectureSource
 
 
@@ -44,16 +45,23 @@ class ArchitectureService:
         files = doc_files(architecture, texts, examples, tier_examples)
         return Docs(root=DOCS_ROOT, files=tuple(DocFile(path, text) for path, text in files))
 
+    def files(self, location: str | Path, app: str) -> tuple[ProjectFile, ...]:
+        """The project files the architecture declares for an app folder called app, each filled from its template;
+        raises InvalidArchitecture."""
+        source, architecture = self._load(location)
+        texts = {file.source: self._files.read_text(source, file.source) for file in architecture.files}
+        return tuple(ProjectFile(path, text) for path, text in project_files(architecture, texts, app, source.location))
+
     def _example_texts(self, source: ArchitectureSource, architecture: Architecture) -> dict[str, str]:
         return {name: self._files.read_text(source, example.file) for name, example in architecture.examples.items()}
 
     def _tier_example_texts(self, source: ArchitectureSource, architecture: Architecture) -> dict[str, str]:
-        """A helper is keyed by its file."""
+        """A helper is keyed by its file; the app folder's placeholder is filled as the docs' example project has it."""
         texts = {tier.name: self._files.read_text(source, tier.example.file)
                  for tier in architecture.tiers if tier.example is not None}
         texts.update({helper.file: self._files.read_text(source, helper.file)
                       for tier in architecture.tiers for helper in tier.helpers})
-        return texts
+        return {key: with_app(text, EXAMPLE_APP) for key, text in texts.items()}
 
     def _load(self, location: str | Path) -> tuple[ArchitectureSource, Architecture]:
         """The source and its architecture; a bundled one is read once, since it cannot change while xarch runs."""

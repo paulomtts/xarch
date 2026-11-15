@@ -4,7 +4,7 @@ import pytest
 
 from xarch.modules.spec.domain.architecture_file import parse_architecture
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.values import Doc, Target
+from xarch.modules.spec.domain.values import Doc, ProjectFile, Target
 
 
 def layered() -> dict:
@@ -122,7 +122,7 @@ def test_an_unknown_version_is_rejected(version):
 def test_unknown_top_level_keys_are_rejected():
     document = layered() | {"profile": "cli", "extra": 1}
     assert problems(document) == ["layered.yaml: unknown keys 'extra', 'profile': "
-                                  "use docs, examples, fakes, guards, layers, layout, libraries, name, naming, notes, parts, "
+                                  "use docs, examples, fakes, files, guards, layers, layout, libraries, name, naming, notes, parts, "
                                   "placement, rules, tiers, xarch"]
 
 
@@ -242,7 +242,7 @@ def test_every_problem_is_listed_at_once():
     document["parts"]["api"]["path"] = "src/*/nope"
     document["rules"]["store"] = ["store@mine"]
     assert problems(document) == [
-        "layered.yaml: unknown key 'extra': use docs, examples, fakes, guards, layers, layout, libraries, name, naming, notes, "
+        "layered.yaml: unknown key 'extra': use docs, examples, fakes, files, guards, layers, layout, libraries, name, naming, notes, "
         "parts, placement, rules, tiers, xarch",
         "layered.yaml: parts.api.path: 'src/*/nope' matches no folder or file in layout",
         "layered.yaml: rules.store: 'store@mine' has an unknown scope '@mine': use @own (the importer's own `each` "
@@ -294,6 +294,48 @@ def test_docs_files_and_folders_keep_their_order_and_notes():
 def test_bad_docs_are_rejected(docs, expected):
     assert problems(layered() | {"docs": docs}, lambda relative: relative == "x.md") == [
         f"layered.yaml: {line}" for line in expected]
+
+
+def test_files_keep_their_order_and_name_their_template():
+    document = layered() | {"files": {
+        "tests/architecture/test_rules.py": {"from": "guard.py"},
+        "Makefile": {"from": "make.txt"},
+    }}
+    assert parse_architecture(document, "layered.yaml", lambda r: True).files == (
+        ProjectFile(("tests", "architecture", "test_rules.py"), "guard.py"),
+        ProjectFile(("Makefile",), "make.txt"),
+    )
+
+
+def test_an_architecture_without_files_declares_none():
+    assert parse_architecture(layered(), "layered.yaml", lambda r: True).files == ()
+
+
+@pytest.mark.parametrize("files, expected", [
+    ([], ["files: must be a mapping of paths to {from}, such as {tests/test_rules.py: {from: guard.py}}"]),
+    ({"a.py": "x.py"}, ["files.a.py: must be a mapping such as {from: <file>}"]),
+    ({"a.py": {}}, ["files.a.py: missing `from`, the template file"]),
+    ({"a.py": {"from": 3}}, ["files.a.py.from: must be a file name"]),
+    ({"a.py": {"from": "x.py", "note": "n"}}, ["files.a.py: unknown key 'note': use from"]),
+    ({"a.py": {"from": "nowhere.py"}}, ["files.a.py.from: no file 'nowhere.py' next to the architecture file"]),
+    ({"../a.py": {"from": "x.py"}}, ["files.../a.py: must be a path of plain names below the project root"]),
+    ({"/a.py": {"from": "x.py"}}, ["files./a.py: must be a path of plain names below the project root"]),
+    ({"a//b.py": {"from": "x.py"}}, ["files.a//b.py: must be a path of plain names below the project root"]),
+    ({"a/": {"from": "x.py"}}, ["files.a/: must be a path of plain names below the project root"]),
+    ({3: {"from": "x.py"}}, ["files.3: must be a path of plain names below the project root"]),
+    ({"docs/project/a.md": {"from": "x.py"}, "docs/project/a.md/b": {"from": "x.py"}},
+     ["files.docs/project/a.md/b: 'docs/project/a.md' is a file, not a folder"]),
+])
+def test_bad_files_are_rejected(files, expected):
+    assert problems(layered() | {"files": files}, lambda relative: relative == "x.py") == [
+        f"layered.yaml: {line}" for line in expected]
+
+
+@pytest.mark.parametrize("path", ["docs/project/statement.md", "docs/project/statement.md/more", "docs/project"])
+def test_a_file_may_not_collide_with_a_doc(path):
+    document = layered() | {"docs": {"statement.md": {"from": "x.py"}}, "files": {path: {"from": "x.py"}}}
+    assert problems(document, lambda relative: True) == [
+        f"layered.yaml: files.{path}: collides with docs.statement.md, written to docs/project/statement.md"]
 
 
 def test_the_singular_name_of_an_instance_sits_beside_each_and_is_not_a_folder():

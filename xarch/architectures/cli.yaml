@@ -240,7 +240,8 @@ tiers:
     one_file_per: rule
     cases_from: the standard it enforces
     data: none
-    example: {path: tests/architecture/test_rules.py, file: examples/shared/tiers/guard.py}
+    example: {path: tests/architecture/test_rules.py, file: examples/shared/tiers/guard.py,
+              note: " (written by `xarch init`)"}
 
 # Where the test fakes live (path, below the tests root), the parts they stand in for (for) and how a fake's name
 # starts (prefix: the fake of DocumentRepo is FakeDocumentRepo): only a test whose tier's subject holds one of those
@@ -281,6 +282,14 @@ docs:
   artifacts/taxonomy/_template.md:   {from: docs/taxonomy.md}
   artifacts/modules/_template.md:    {from: docs/module.md}
   artifacts/guards/_template.md:     {from: docs/guard.md, note: one per test that checks the codebase rather than the product}
+
+# The files `xarch init` writes besides the docs: a key is a path relative to the project root (the folder holding the
+# app folder, where docs/ goes; no `..`, no leading `/`, not inside the app folder, not a docs path), and `from` is the
+# template file it is written from (next to this one). The text is written as it stands, except that `{{app}}` is
+# replaced by the name of the app folder, which differs per project (`--app`). A file is never overwritten. Without
+# `files`, `init` writes none. The guard test is the file of the guard tier's example, so the docs show what is written.
+files:
+  tests/architecture/test_rules.py: {from: examples/shared/tiers/guard.py}
 
 # The code examples of the docs, one file of the example project each: the part it illustrates, where it would
 # live in the app (path), the file holding its code (file, next to this one) and an optional note for its header line.
