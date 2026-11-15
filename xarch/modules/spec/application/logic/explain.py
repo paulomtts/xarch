@@ -7,7 +7,6 @@ from difflib import get_close_matches
 from xarch.modules.spec.application.logic.key_lookup import keys_of, plain
 from xarch.modules.spec.domain.profile_keys import KEYS, PROFILE, Key
 
-VERSION = 2
 NEAREST = 3
 """How many keys an unknown one is answered with, at most."""
 _TOKENS = {"bundled": "<bundled>", "presets": "<preset>"}

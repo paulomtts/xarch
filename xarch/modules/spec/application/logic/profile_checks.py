@@ -25,12 +25,12 @@ from xarch.modules.spec.domain.values import (
     Doc,
     Excluded,
     Fakes,
+    FileEntry,
     Fixture,
     Framework,
     Layout,
     Naming,
     Part,
-    ProjectFile,
     Target,
     Tier,
 )
@@ -150,12 +150,12 @@ def doc_pages(value: Any, listed: Collection[str], problems: list[str], at: str)
 
 
 def init_files(value: Any, docs: tuple[Doc, ...], files: Collection[str], problems: list[str],
-               docs_at: str) -> tuple[ProjectFile, ...]:
+               docs_at: str) -> tuple[FileEntry, ...]:
     """The project files: each path below the project root with the template, or the folder, it is written from."""
     if not isinstance(value, Mapping):
         problems.append("files: must be a mapping of paths to {from}, such as {tests/rules.py: {from: guard.py}}")
         return ()
-    found: list[ProjectFile] = []
+    found: list[FileEntry] = []
     for key, spec in value.items():
         folder = isinstance(key, str) and key.endswith("/")
         where = f"files.{key}"
@@ -184,17 +184,17 @@ def init_files(value: Any, docs: tuple[Doc, ...], files: Collection[str], proble
         if not isinstance(fill, bool):
             problems.append(f"{where}.fill: must be true or false: whether `{APP_PLACEHOLDER}` is filled in")
         if len(problems) == count:
-            found.append(ProjectFile(steps, source or "", pinned, folder, fill))
+            found.append(FileEntry(steps, source or "", pinned, folder, fill))
     for file in found:
         problems += file_clashes(file, found, docs, docs_at)
     return tuple(found)
 
 
-def entry(file: ProjectFile) -> str:
+def entry(file: FileEntry) -> str:
     return "/".join(file.path) + ("/" if file.folder else "")
 
 
-def file_clashes(file: ProjectFile, files: list[ProjectFile], docs: tuple[Doc, ...],
+def file_clashes(file: FileEntry, files: list[FileEntry], docs: tuple[Doc, ...],
                  docs_at: str) -> list[str]:
     where = f"files.{entry(file)}"
     found = [f"{where}: '{'/'.join(file.path[:i])}' is a file, not a folder"

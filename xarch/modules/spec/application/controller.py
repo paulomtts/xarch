@@ -3,7 +3,7 @@ from __future__ import annotations
 from xarch.kernel.errors import DomainError
 from xarch.kernel.logic.placement import Target
 from xarch.modules.spec.application.logic.docs_files import DOCS_ROOT
-from xarch.modules.spec.application.logic.explain import VERSION, cleaned, example_of, held_by, key_at, nearest, overview_keys
+from xarch.modules.spec.application.logic.explain import cleaned, example_of, held_by, key_at, nearest, overview_keys
 from xarch.modules.spec.application.logic.key_lookup import plain
 from xarch.modules.spec.application.logic.layout_walk import walk
 from xarch.modules.spec.application.logic.profile_view import view
@@ -67,6 +67,7 @@ from xarch.modules.spec.contract import (
 from xarch.modules.spec.domain.errors import NoProfile
 from xarch.modules.spec.domain.profile_keys import SMALLEST, SYMBOLS, Key
 from xarch.modules.spec.domain.values import (
+    VERSION,
     Architecture,
     ClosedTree,
     DeadCode,

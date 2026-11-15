@@ -12,10 +12,8 @@ from typing import Any
 
 from xarch.modules.spec.application.logic.profile_v2 import parse_v2
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.values import Architecture, ArchitectureSource
+from xarch.modules.spec.domain.values import VERSION, Architecture, ArchitectureSource
 
-VERSION = 2
-"""The one format version this xarch reads."""
 MIGRATE = "xarch profile migrate"
 
 

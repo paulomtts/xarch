@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from xarch.kernel.logic.placement import EACH
 from xarch.modules.spec.application.logic.layout_walk import walk
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.values import Architecture, ProjectFile
+from xarch.modules.spec.domain.values import Architecture, FileEntry
 
 APP_PLACEHOLDER = "{{app}}"
 """The one placeholder of a project file's template: the name of the app folder."""
@@ -42,7 +42,7 @@ def with_app(text: str, app: str) -> str:
     return text.replace(APP_PLACEHOLDER, app)
 
 
-def entries(architecture: Architecture, presets: bool) -> tuple[ProjectFile, ...]:
+def entries(architecture: Architecture, presets: bool) -> tuple[FileEntry, ...]:
     """The entries `init` writes: every one, or with presets off only the file entries, leaving out what the folder
     entries copy."""
     return tuple(entry for entry in architecture.files if presets or not entry.folder)
@@ -83,7 +83,7 @@ def project_files(architecture: Architecture, contents: Mapping[str, str | bytes
     yield from found
 
 
-def _content(raw: str | bytes, entry: ProjectFile, app: str, name: str, where: str,
+def _content(raw: str | bytes, entry: FileEntry, app: str, name: str, where: str,
              problems: list[str]) -> str | bytes | None:
     if not entry.fill:
         return raw.encode() if isinstance(raw, str) else raw

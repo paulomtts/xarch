@@ -25,6 +25,8 @@ class Configured:
     source: Path
 
 
+VERSION = 2
+"""The one format version of a profile this xarch reads and writes."""
 PROFILE_SUFFIX = ".yaml"
 """The suffix of every bundled profile file, and of each one xarch writes."""
 
@@ -86,7 +88,7 @@ class Doc:
 
 
 @dataclass(frozen=True)
-class ProjectFile:
+class FileEntry:
     """A file `init` writes beside the app folder, in the folder holding it.
 
     path: below the folder holding the app, e.g. ("tests", "architecture", "test_rules.py")
@@ -357,7 +359,7 @@ class Architecture:
     guards: tuple[Guard, ...] = ()
     fakes: Fakes | None = None
     repeats: tuple[Repeat, ...] = ()
-    files: tuple[ProjectFile, ...] = ()
+    files: tuple[FileEntry, ...] = ()
     framework: Framework | None = None
     forbidden: dict[str, tuple[tuple[str, ...], ...]] = field(default_factory=dict)
     excluded: tuple[Excluded, ...] = ()

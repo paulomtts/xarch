@@ -76,6 +76,7 @@ from xarch.modules.spec.domain.profile_keys import (
 )
 from xarch.modules.spec.domain.values import (
     EACH,
+    VERSION,
     Architecture,
     CaseTable,
     ClosedTree,
@@ -98,7 +99,6 @@ from xarch.modules.spec.domain.values import (
     TierExample,
 )
 
-VERSION = 2
 LANGUAGES = ("python",)
 """The languages an app may be in; the first is the default."""
 WORD = "everything"

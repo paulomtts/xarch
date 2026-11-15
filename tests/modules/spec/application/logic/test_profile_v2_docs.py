@@ -5,7 +5,7 @@ import pytest
 from tests.modules.spec.profiles_v2 import layered, parsed, problems
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic.docs_template import fill
-from xarch.modules.spec.domain.values import Doc, Example, Excluded, Naming, ProjectFile
+from xarch.modules.spec.domain.values import Doc, Example, Excluded, FileEntry, Naming
 
 
 def test_the_entry_point_is_the_part_docs_names():
@@ -116,8 +116,8 @@ def test_files_are_written_from_templates_and_a_bare_string_is_from():
     architecture = parsed(layered(files=files), files={"agents.md", "guard.py"},
                           folders={"ui": ("a.py",)})
     assert architecture.files == (
-        ProjectFile(("AGENTS.md",), "agents.md"), ProjectFile(("tests", "test_rules.py"), "guard.py", True),
-        ProjectFile(("{{app}}", "web", "ui"), "ui", False, True, False))
+        FileEntry(("AGENTS.md",), "agents.md"), FileEntry(("tests", "test_rules.py"), "guard.py", True),
+        FileEntry(("{{app}}", "web", "ui"), "ui", False, True, False))
 
 
 def test_a_bad_file_is_refused_with_its_address_and_what_to_write():

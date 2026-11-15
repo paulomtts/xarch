@@ -3,7 +3,7 @@ the way a part is shown, and every problem reported with the file's name, never 
 import pytest
 
 from tests.modules.spec.profiles_v2 import layered, parsed, problems
-from xarch.modules.spec.domain.values import Doc, ProjectFile
+from xarch.modules.spec.domain.values import Doc, FileEntry
 
 
 def test_a_document_that_is_not_a_mapping_stops_at_once():
@@ -92,8 +92,8 @@ def test_files_keep_their_order_and_name_their_template():
         "Makefile": {"from": "make.txt"},
     })
     assert parsed(document).files == (
-        ProjectFile(("tests", "architecture", "test_rules.py"), "guard.py"),
-        ProjectFile(("Makefile",), "make.txt"),
+        FileEntry(("tests", "architecture", "test_rules.py"), "guard.py"),
+        FileEntry(("Makefile",), "make.txt"),
     )
 
 
@@ -133,10 +133,10 @@ def test_a_key_ending_in_a_slash_is_a_folder_entry_which_is_not_filled_unless_it
     files = {"{{app}}/web/ui/design/": {"from": "preset/"}, "docs/": {"from": "preset", "fill": True},
              "x.txt": {"from": "x.py"}, "y.txt": {"from": "x.py", "fill": False}}
     found = parsed(layered(files=files), {"x.py"}, folders=FOLDERS).files
-    assert found == (ProjectFile(("{{app}}", "web", "ui", "design"), "preset", False, True, False),
-                     ProjectFile(("docs",), "preset", False, True, True),
-                     ProjectFile(("x.txt",), "x.py", False, False, True),
-                     ProjectFile(("y.txt",), "x.py", False, False, False))
+    assert found == (FileEntry(("{{app}}", "web", "ui", "design"), "preset", False, True, False),
+                     FileEntry(("docs",), "preset", False, True, True),
+                     FileEntry(("x.txt",), "x.py", False, False, True),
+                     FileEntry(("y.txt",), "x.py", False, False, False))
 
 
 @pytest.mark.parametrize("files, expected", [
