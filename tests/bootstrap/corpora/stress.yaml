@@ -1,0 +1,309 @@
+xarch: 2
+name: stress
+based_on: cli
+language: python
+testing: pytest
+parts:
+  domain:
+    path: modules/<module>/domain
+    role: 'entities, values, errors: invariants only'
+    may_import:
+    - kernel
+    forbidden: pure
+    holds: classes
+    no_callbacks: true
+    tier: unit
+    package_only: true
+    built_by:
+    - bootstrap
+    - adapters
+  logic:
+    path: modules/<module>/application/logic
+    role: pure functions over the module's domain objects
+    may_import:
+    - domain
+    - kernel
+    forbidden: pure
+    holds: functions
+    no_callbacks: true
+    tier: unit
+    package_only: true
+  ports:
+    path: modules/<module>/application/ports
+    role: Protocols for what the module needs from the outside
+    may_import:
+    - domain
+    - kernel
+    forbidden: pure
+    holds: classes
+    tier: integration
+    package_only: true
+  services:
+    path: modules/<module>/application/services
+    role: 'use-case steps: load, check, act'
+    may_import:
+    - logic
+    - domain
+    - ports
+    - contract
+    - kernel
+    types_only:
+    - contract
+    holds: classes
+    names: '*Service'
+    forbidden: ambient
+    built_by:
+    - bootstrap
+    tier: integration
+    must_import:
+    - ports
+    no_callbacks: true
+  controller:
+    path: modules/<module>/application/controller.py
+    role: maps failures to a Result
+    may_import:
+    - services
+    - logic
+    - domain
+    - ports
+    - contract
+    - kernel
+    holds: classes
+    names: '*Controller'
+    forbidden: ambient
+    built_by:
+    - bootstrap
+    tier: integration
+    no_callbacks: true
+  adapters:
+    path: modules/<module>/adapters
+    role: implement the ports on the filesystem or another module's contract
+    may_import:
+    - ports
+    - domain
+    - kernel
+    - platform
+    - contract@any
+    must_import:
+    - platform
+    - contract@any
+    libraries:
+    - ast
+    - tokenize
+    holds: classes
+    built_by:
+    - bootstrap
+    tier: unit
+    names: Fs*
+    types_only:
+    - domain
+    forbidden: pure
+  platform:
+    path: platform
+    role: the filesystem, the package data, the TOML and YAML readers and the YAML writer
+    may_import:
+    - kernel
+    libraries:
+    - yaml
+    tier: unit
+    names: '*Reader'
+    holds: functions
+  cli:
+    path: cli
+    role: the only place for commands and terminal output
+    may_import:
+    - reports
+    - controller@any
+    - contract@any
+    - kernel
+    libraries:
+    - typer
+    - json
+    tier: wired
+    folders:
+    - commands
+    forbidden: ambient
+  reports:
+    path: cli/reports
+    role: formatting of Results into text and JSON
+    may_import:
+    - contract@any
+    - kernel
+    forbidden: pure
+    holds: functions
+    tier: unit
+    libraries: []
+  main:
+    path: __main__.py
+    role: '`python -m xarch`: starts the same app as the console script'
+    litmus: Does it only hand control to the app bootstrap/ builds, so that `python -m xarch` runs it?
+    may_import:
+    - bootstrap
+    untested: a two-line shim that runs the app bootstrap/ builds; no test runs `python -m xarch`, and the wired tests drive that same app
+  bootstrap:
+    path: bootstrap
+    role: 'composition root: binds ports to adapters, hands controllers to cli/'
+    may_import: everything
+    tier: wired
+    folders:
+    - migrations
+  contract:
+    path: modules/<module>/contract
+    role: 'the module''s published language: commands, Results'
+    may_import:
+    - domain/values:*Id
+    - kernel
+    forbidden: pure
+    tier: integration
+    package_only: true
+  kernel:
+    path: kernel
+    role: pure primitives and the rules two modules share
+    forbidden: pure
+    tier: unit
+    folders:
+    - logic
+    holds: classes
+forbidden:
+  pure:
+  - datetime.datetime.now
+  - datetime.datetime.utcnow
+  - datetime.datetime.today
+  - datetime.date.today
+  - time.time
+  - time.time_ns
+  - time.monotonic
+  - time.perf_counter
+  - builtins.open
+  - builtins.print
+  - builtins.input
+  - sys.stdin
+  - sys.stdout
+  - sys.stderr
+  - os.environ
+  - os.getenv
+  - socket
+  - subprocess
+  - sqlite3
+  - urllib
+  - http
+  - shutil
+  - pathlib.Path.cwd
+  - pathlib.Path.absolute
+  - os.getcwd
+  - os.path.abspath
+  - os.path.realpath
+  - pathlib.Path.resolve
+  - pathlib.Path.home
+  - pathlib.Path.expanduser
+  - os.path.expanduser
+  - os.getcwdb
+  - os.chdir
+  ambient:
+  - pathlib.Path.cwd
+  - pathlib.Path.absolute
+  - pathlib.Path.resolve
+  - pathlib.Path.home
+  - pathlib.Path.expanduser
+  - os.getcwd
+  - os.getcwdb
+  - os.chdir
+  - os.path.abspath
+  - os.path.realpath
+  - os.path.expanduser
+  - .absolute()
+  - .resolve()
+  - .expanduser()
+reserved:
+  ast: only the reader adapter parses the checked language, so that another language needs one new reader
+  tokenize: only the reader adapter reads the checked language's tokens
+  json: only the reports write JSON
+  re: only the spec reads patterns
+tiers:
+  unit:
+    proves: a pure rule of the kernel or a module, or an adapter's translation
+    litmus: Does it call one part's own code directly, with nothing wired, and check its answer?
+    apply_forbidden: true
+    docs:
+      may_touch: what the part it mirrors may import; an adapter, temporary folders
+    types_only:
+    - domain
+    must_import:
+    - domain
+    - logic
+    - kernel
+  integration:
+    proves: a use case, through its controller around fakes
+    litmus: Does it drive a controller around fakes and check the Result it returns?
+    must_import:
+    - controller
+    docs:
+      may_touch: what the part it mirrors may import; `tests/fakes/`
+    apply_forbidden: true
+  wired:
+    proves: a command, a check on real files, or what a bundled profile holds, through the app bootstrap/ wires
+    litmus: Does it need the whole app, as bootstrap/ wires it, to mean anything?
+    types_only:
+    - domain
+    - logic
+    - ports
+    - services
+    - controller
+    - adapters
+    - platform
+    must_import:
+    - bootstrap
+    docs:
+      may_touch: anything bootstrap/ wires; temporary folders
+    apply_forbidden: true
+  guard:
+    proves: xarch follows the architecture it enforces
+    litmus: Does it run the wired check on xarch's own source?
+    types_only:
+    - domain
+    - logic
+    - ports
+    - services
+    - controller
+    - adapters
+    - platform
+    folder: architecture
+    may_import: everything
+    docs:
+      subject: xarch's own source tree
+      may_touch: '`tests/architecture/`'
+fakes:
+  folder: fakes
+  for:
+  - ports
+  prefix: Fake
+guards:
+  scenario-coverage:
+    results: contract
+    tier: integration
+    suffix: Result
+    columns:
+    - given
+    - when
+    - then
+    file: test_{name}.py
+  no-comments: {}
+  closed-tree: {}
+  stand-ins: {}
+  no-duplicates:
+    min_statements: 2
+  no-twins:
+    min_fields: 1
+  dead-code:
+    untested: true
+  pass-through:
+    parts:
+    - services
+    - controller
+    - adapters
+    - cli
+    - reports
+    - platform
+  private-imports: {}
+docs:
+  entry: cli

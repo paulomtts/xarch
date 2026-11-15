@@ -1,0 +1,548 @@
+{
+"findings": [
+[
+"V",
+"scenario-coverage",
+"tests/modules/documents/application/test_publish.py",
+1,
+"no table test whose parameters are given, when, then (scenario-coverage)",
+"add a table test whose parameters are given, when, then"
+],
+[
+"V",
+"scenario-coverage",
+"app/modules/documents/contract/results.py",
+17,
+"CreateResult has no test file test_create.py among the integration tests of documents (scenario-coverage)",
+"write test_create.py among the integration tests of documents"
+],
+[
+"V",
+"no-comments",
+"app/bootstrap/app.py",
+6,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/bootstrap/app.py",
+10,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/bootstrap/app.py",
+15,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/bootstrap/app.py",
+17,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/bootstrap/app.py",
+19,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/bootstrap/app.py",
+20,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/bootstrap/main.py",
+6,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/bootstrap/migrations/0001_create_documents.py",
+1,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/bootstrap/migrations/0001_create_documents.py",
+4,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/bootstrap/wiring.py",
+7,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/bootstrap/wiring.py",
+10,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/bootstrap/wiring.py",
+11,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/bootstrap/wiring.py",
+15,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/cli/commands/documents.py",
+3,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/cli/commands/documents.py",
+5,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/cli/commands/documents.py",
+10,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/cli/commands/documents.py",
+11,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/cli/dependencies.py",
+4,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/kernel/errors.py",
+2,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/adapters/db_document_repo.py",
+3,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/adapters/db_document_repo.py",
+4,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/adapters/db_document_repo.py",
+6,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/adapters/db_document_repo.py",
+16,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/adapters/db_document_repo.py",
+19,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/adapters/moderation_content_review.py",
+4,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/adapters/moderation_content_review.py",
+7,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/adapters/moderation_content_review.py",
+11,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/application/controller.py",
+15,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/application/controller.py",
+19,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/application/controller.py",
+24,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/application/controller.py",
+28,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/application/services/document_service.py",
+9,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/application/services/document_service.py",
+13,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/application/services/document_service.py",
+15,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/application/services/document_service.py",
+16,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/application/services/document_service.py",
+17,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/application/services/document_service.py",
+21,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/application/services/document_service.py",
+22,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/application/services/document_service.py",
+24,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/application/services/document_service.py",
+25,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/contract/__init__.py",
+1,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/contract/commands.py",
+4,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/contract/commands.py",
+8,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/contract/results.py",
+3,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/contract/results.py",
+9,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/contract/results.py",
+13,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/contract/views.py",
+4,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/domain/document.py",
+11,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/domain/document.py",
+14,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/modules/documents/domain/errors.py",
+6,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/platform/clock.py",
+1,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"app/platform/sql/tables/documents.py",
+1,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"tests/cli/conftest.py",
+6,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"tests/modules/documents/application/helpers.py",
+2,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"tests/modules/documents/application/logic/test_staleness.py",
+9,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"no-comments",
+"tests/modules/documents/application/logic/test_staleness.py",
+14,
+"a comment (no-comments)",
+"say it in a docstring or a name, and delete the comment"
+],
+[
+"W",
+"dead-code",
+"app/cli/commands/documents.py",
+0,
+"a file of cli/ that no rendering test reaches (guards.dead-code.untested)",
+"write its rendering test in tests/cli/commands/, or delete what nothing uses"
+],
+[
+"W",
+"dead-code",
+"app/cli/dependencies.py",
+0,
+"a file of cli/ that no rendering test reaches (guards.dead-code.untested)",
+"write its rendering test in tests/cli/, or delete what nothing uses"
+],
+[
+"W",
+"dead-code",
+"app/kernel/identifiers.py",
+0,
+"a file of kernel/ that no unit test reaches (guards.dead-code.untested)",
+"write its unit test in tests/kernel/, or delete what nothing uses"
+],
+[
+"W",
+"dead-code",
+"app/kernel/logic/text.py",
+0,
+"a file of kernel/ that no unit test reaches (guards.dead-code.untested)",
+"write its unit test in tests/kernel/logic/, or delete what nothing uses"
+],
+[
+"W",
+"dead-code",
+"app/modules/documents/adapters/db_document_repo.py",
+0,
+"a file of adapters/ of modules/documents that no unit test reaches (guards.dead-code.untested)",
+"write its unit test in tests/modules/documents/adapters/, or delete what nothing uses"
+],
+[
+"W",
+"dead-code",
+"app/modules/documents/adapters/moderation_content_review.py",
+0,
+"a file of adapters/ of modules/documents that no unit test reaches (guards.dead-code.untested)",
+"write its unit test in tests/modules/documents/adapters/, or delete what nothing uses"
+],
+[
+"W",
+"dead-code",
+"app/modules/documents/application/controller.py",
+0,
+"a file of controller/ of modules/documents that no integration test reaches (guards.dead-code.untested)",
+"write its integration test in tests/modules/documents/application/, or delete what nothing uses"
+],
+[
+"W",
+"dead-code",
+"app/modules/documents/application/logic/staleness.py",
+0,
+"a file of logic/ of modules/documents that no unit test reaches (guards.dead-code.untested)",
+"write its unit test in tests/modules/documents/application/logic/, or delete what nothing uses"
+],
+[
+"W",
+"dead-code",
+"app/modules/documents/application/services/document_service.py",
+0,
+"a file of services/ of modules/documents that no integration test reaches (guards.dead-code.untested)",
+"write its integration test in tests/modules/documents/application/services/, or delete what nothing uses"
+],
+[
+"W",
+"dead-code",
+"app/modules/documents/domain/document.py",
+0,
+"a file of domain/ of modules/documents that no unit test reaches (guards.dead-code.untested)",
+"write its unit test in tests/modules/documents/domain/, or delete what nothing uses"
+]
+]
+}

@@ -1,0 +1,436 @@
+{
+"findings": [
+[
+"V",
+"libraries",
+"xarch/modules/spec/application/logic/example_imports.py",
+17,
+"logic/ of modules/spec may not import ast, which the profile reserves: only the reader adapter parses the checked language, so that another language needs one new reader (reserved.ast; parts.logic.libraries)",
+"move the code that needs ast to adapters/, which may import it (parts.adapters.libraries)"
+],
+[
+"V",
+"forbidden",
+"xarch/modules/layout/application/services/structure_check.py",
+28,
+"services/ of modules/layout may not call .absolute() (parts.services.forbidden)",
+"do what needs .absolute() outside services/, and hand services/ the result"
+],
+[
+"V",
+"forbidden",
+"xarch/modules/rules/application/services/app_check.py",
+24,
+"services/ of modules/rules may not call .resolve() (parts.services.forbidden)",
+"do what needs .resolve() outside services/, and hand services/ the result"
+],
+[
+"V",
+"forbidden",
+"xarch/modules/rules/application/services/app_check.py",
+24,
+"services/ of modules/rules may not call .absolute() (parts.services.forbidden)",
+"do what needs .absolute() outside services/, and hand services/ the result"
+],
+[
+"V",
+"forbidden",
+"xarch/modules/rules/application/services/locate.py",
+19,
+"services/ of modules/rules may not call .resolve() (parts.services.forbidden)",
+"do what needs .resolve() outside services/, and hand services/ the result"
+],
+[
+"V",
+"forbidden",
+"xarch/modules/rules/application/services/locate.py",
+19,
+"services/ of modules/rules may not call .absolute() (parts.services.forbidden)",
+"do what needs .absolute() outside services/, and hand services/ the result"
+],
+[
+"V",
+"forbidden",
+"xarch/modules/rules/application/services/locate.py",
+20,
+"services/ of modules/rules may not call .resolve() (parts.services.forbidden)",
+"do what needs .resolve() outside services/, and hand services/ the result"
+],
+[
+"V",
+"forbidden",
+"xarch/modules/rules/application/services/locate.py",
+20,
+"services/ of modules/rules may not call .absolute() (parts.services.forbidden)",
+"do what needs .absolute() outside services/, and hand services/ the result"
+],
+[
+"V",
+"forbidden",
+"xarch/modules/rules/application/services/source_check.py",
+66,
+"services/ of modules/rules may not call .resolve() (parts.services.forbidden)",
+"do what needs .resolve() outside services/, and hand services/ the result"
+],
+[
+"V",
+"forbidden",
+"xarch/modules/rules/application/services/source_check.py",
+66,
+"services/ of modules/rules may not call .absolute() (parts.services.forbidden)",
+"do what needs .absolute() outside services/, and hand services/ the result"
+],
+[
+"V",
+"forbidden",
+"xarch/modules/rules/application/services/source_check.py",
+87,
+"services/ of modules/rules may not call .resolve() (parts.services.forbidden)",
+"do what needs .resolve() outside services/, and hand services/ the result"
+],
+[
+"V",
+"forbidden",
+"xarch/modules/rules/application/services/source_check.py",
+87,
+"services/ of modules/rules may not call .absolute() (parts.services.forbidden)",
+"do what needs .absolute() outside services/, and hand services/ the result"
+],
+[
+"V",
+"forbidden",
+"xarch/modules/rules/application/services/source_check.py",
+95,
+"services/ of modules/rules may not call .resolve() (parts.services.forbidden)",
+"do what needs .resolve() outside services/, and hand services/ the result"
+],
+[
+"V",
+"forbidden",
+"xarch/modules/rules/application/services/source_check.py",
+95,
+"services/ of modules/rules may not call .absolute() (parts.services.forbidden)",
+"do what needs .absolute() outside services/, and hand services/ the result"
+],
+[
+"V",
+"forbidden",
+"xarch/modules/rules/application/services/source_check.py",
+102,
+"services/ of modules/rules may not call .resolve() (parts.services.forbidden)",
+"do what needs .resolve() outside services/, and hand services/ the result"
+],
+[
+"V",
+"forbidden",
+"xarch/modules/rules/application/services/source_check.py",
+102,
+"services/ of modules/rules may not call .absolute() (parts.services.forbidden)",
+"do what needs .absolute() outside services/, and hand services/ the result"
+],
+[
+"V",
+"forbidden",
+"xarch/modules/scaffold/application/services/scaffolding.py",
+61,
+"services/ of modules/scaffold may not use pathlib.Path.cwd (parts.services.forbidden)",
+"do what needs pathlib.Path.cwd outside services/, and hand services/ the result"
+],
+[
+"V",
+"forbidden",
+"xarch/modules/scaffold/application/services/scaffolding.py",
+28,
+"services/ of modules/scaffold may not call .absolute() (parts.services.forbidden)",
+"do what needs .absolute() outside services/, and hand services/ the result"
+],
+[
+"V",
+"forbidden",
+"xarch/modules/scaffold/application/services/scaffolding.py",
+29,
+"services/ of modules/scaffold may not call .resolve() (parts.services.forbidden)",
+"do what needs .resolve() outside services/, and hand services/ the result"
+],
+[
+"V",
+"forbidden",
+"xarch/modules/scaffold/application/services/scaffolding.py",
+58,
+"services/ of modules/scaffold may not call .absolute() (parts.services.forbidden)",
+"do what needs .absolute() outside services/, and hand services/ the result"
+],
+[
+"V",
+"forbidden",
+"xarch/modules/spec/application/services/profile_creation.py",
+56,
+"services/ of modules/spec may not use pathlib.Path.cwd (parts.services.forbidden)",
+"do what needs pathlib.Path.cwd outside services/, and hand services/ the result"
+],
+[
+"V",
+"forbidden",
+"xarch/modules/spec/application/services/profile_selection.py",
+45,
+"services/ of modules/spec may not call .absolute() (parts.services.forbidden)",
+"do what needs .absolute() outside services/, and hand services/ the result"
+],
+[
+"V",
+"no-twins",
+"xarch/modules/rules/contract/__init__.py",
+15,
+"LoosenedView declares the fields of Loosened at xarch/modules/rules/domain/values.py:415 in the same order (key, part, what, sentence): contract/ of modules/rules and domain/ of modules/rules hold one type written twice (no-twins)",
+"keep one of the two and import it from a part both may import, or give LoosenedView the fields its reader needs instead of a copy of Loosened's"
+],
+[
+"V",
+"no-twins",
+"xarch/modules/spec/contract/__init__.py",
+249,
+"Loosened declares the fields of Loosening at xarch/modules/spec/domain/values.py:498 in the same order (key, part, what, sentence): contract/ of modules/spec and domain/ of modules/spec hold one type written twice (no-twins)",
+"keep one of the two and import it from a part both may import, or give Loosened the fields its reader needs instead of a copy of Loosening's"
+],
+[
+"V",
+"no-twins",
+"xarch/modules/rules/contract/__init__.py",
+25,
+"OriginView declares the fields of Origin at xarch/modules/rules/domain/values.py:426 in the same order (location, bundled, closest, guards_off and 2 more): contract/ of modules/rules and domain/ of modules/rules hold one type written twice (no-twins)",
+"keep one of the two and import it from a part both may import, or give OriginView the fields its reader needs instead of a copy of Origin's"
+],
+[
+"V",
+"no-twins",
+"xarch/modules/spec/contract/__init__.py",
+272,
+"ProfileOrigin declares the fields of Origin at xarch/modules/spec/domain/values.py:508 in the same order (location, bundled, closest, guards_off and 2 more): contract/ of modules/spec and domain/ of modules/spec hold one type written twice (no-twins)",
+"keep one of the two and import it from a part both may import, or give ProfileOrigin the fields its reader needs instead of a copy of Origin's"
+],
+[
+"V",
+"no-twins",
+"xarch/modules/rules/contract/__init__.py",
+38,
+"DriftView declares the fields of Drift at xarch/modules/rules/domain/values.py:440 in the same order (file, state): contract/ of modules/rules and domain/ of modules/rules hold one type written twice (no-twins)",
+"keep one of the two and import it from a part both may import, or give DriftView the fields its reader needs instead of a copy of Drift's"
+],
+[
+"V",
+"no-twins",
+"xarch/modules/rules/contract/__init__.py",
+45,
+"AtView declares the fields of At at xarch/modules/rules/domain/values.py:448 in the same order (file, line): contract/ of modules/rules and domain/ of modules/rules hold one type written twice (no-twins)",
+"keep one of the two and import it from a part both may import, or give AtView the fields its reader needs instead of a copy of At's"
+],
+[
+"V",
+"no-twins",
+"xarch/modules/rules/contract/__init__.py",
+52,
+"WeakView declares the fields of Weak at xarch/modules/rules/domain/values.py:455 in the same order (rule, file, line, message and 1 more): contract/ of modules/rules and domain/ of modules/rules hold one type written twice (no-twins)",
+"keep one of the two and import it from a part both may import, or give WeakView the fields its reader needs instead of a copy of Weak's"
+],
+[
+"V",
+"no-twins",
+"xarch/modules/rules/contract/__init__.py",
+62,
+"FindingView declares the fields of Finding at xarch/modules/rules/domain/values.py:466 in the same order (key, detail): contract/ of modules/rules and domain/ of modules/rules hold one type written twice (no-twins)",
+"keep one of the two and import it from a part both may import, or give FindingView the fields its reader needs instead of a copy of Finding's"
+],
+[
+"V",
+"no-twins",
+"xarch/modules/rules/contract/__init__.py",
+69,
+"ExcludedView declares the fields of Excluded at xarch/modules/rules/domain/values.py:473 in the same order (folder, reason): contract/ of modules/rules and domain/ of modules/rules hold one type written twice (no-twins)",
+"keep one of the two and import it from a part both may import, or give ExcludedView the fields its reader needs instead of a copy of Excluded's"
+],
+[
+"V",
+"no-twins",
+"xarch/modules/rules/contract/__init__.py",
+76,
+"EnforcementView declares the fields of Enforcement at xarch/modules/rules/domain/values.py:480 in the same order (origin, ungoverned, init_files, skipped and 5 more): contract/ of modules/rules and domain/ of modules/rules hold one type written twice (no-twins)",
+"keep one of the two and import it from a part both may import, or give EnforcementView the fields its reader needs instead of a copy of Enforcement's"
+],
+[
+"V",
+"no-twins",
+"xarch/modules/rules/contract/__init__.py",
+93,
+"ReachView declares the fields of Reach at xarch/modules/rules/domain/values.py:498 in the same order (part, scope, folder, path): contract/ of modules/rules and domain/ of modules/rules hold one type written twice (no-twins)",
+"keep one of the two and import it from a part both may import, or give ReachView the fields its reader needs instead of a copy of Reach's"
+],
+[
+"V",
+"no-twins",
+"xarch/modules/rules/contract/__init__.py",
+103,
+"NearestView declares the fields of Nearest at xarch/modules/rules/domain/values.py:508 in the same order (part, folder, path): contract/ of modules/rules and domain/ of modules/rules hold one type written twice (no-twins)",
+"keep one of the two and import it from a part both may import, or give NearestView the fields its reader needs instead of a copy of Nearest's"
+],
+[
+"V",
+"no-twins",
+"xarch/modules/rules/contract/__init__.py",
+111,
+"TierInfoView declares the fields of TierInfo at xarch/modules/rules/domain/values.py:516 in the same order (name, proves, may_touch, litmus): contract/ of modules/rules and domain/ of modules/rules hold one type written twice (no-twins)",
+"keep one of the two and import it from a part both may import, or give TierInfoView the fields its reader needs instead of a copy of TierInfo's"
+],
+[
+"V",
+"no-twins",
+"xarch/modules/rules/contract/__init__.py",
+120,
+"WhereView declares the fields of Where at xarch/modules/rules/domain/values.py:525 in the same order (kind, path, exists, part and 20 more): contract/ of modules/rules and domain/ of modules/rules hold one type written twice (no-twins)",
+"keep one of the two and import it from a part both may import, or give WhereView the fields its reader needs instead of a copy of Where's"
+],
+[
+"V",
+"no-twins",
+"xarch/modules/spec/contract/__init__.py",
+113,
+"TierView declares the fields of TestTier at xarch/modules/rules/domain/values.py:10 in the same order (name, subject, folder, types_only and 7 more): contract/ of modules/spec and domain/ of modules/rules hold one type written twice (no-twins)",
+"keep one of the two and import it from a part both may import, or give TierView the fields its reader needs instead of a copy of TestTier's"
+],
+[
+"V",
+"no-twins",
+"xarch/modules/spec/contract/__init__.py",
+200,
+"FrameworkView declares the fields of Framework at xarch/modules/spec/domain/values.py:232 in the same order (files, functions, skips): contract/ of modules/spec and domain/ of modules/spec hold one type written twice (no-twins)",
+"keep one of the two and import it from a part both may import, or give FrameworkView the fields its reader needs instead of a copy of Framework's"
+],
+[
+"V",
+"no-twins",
+"xarch/modules/spec/contract/__init__.py",
+133,
+"TableView declares the fields of CaseTable at xarch/modules/spec/domain/values.py:242 in the same order (decorator, row, id, keywords): contract/ of modules/spec and domain/ of modules/spec hold one type written twice (no-twins)",
+"keep one of the two and import it from a part both may import, or give TableView the fields its reader needs instead of a copy of CaseTable's"
+],
+[
+"V",
+"no-twins",
+"xarch/modules/spec/contract/__init__.py",
+143,
+"ScenariosView declares the fields of ScenarioCoverage at xarch/modules/spec/domain/values.py:253 in the same order (results, tier, suffix, columns and 2 more): contract/ of modules/spec and domain/ of modules/spec hold one type written twice (no-twins)",
+"keep one of the two and import it from a part both may import, or give ScenariosView the fields its reader needs instead of a copy of ScenarioCoverage's"
+],
+[
+"V",
+"no-twins",
+"xarch/modules/spec/contract/__init__.py",
+155,
+"FixtureView declares the fields of Fixture at xarch/modules/spec/domain/values.py:271 in the same order (name, mocks, autospec): contract/ of modules/spec and domain/ of modules/spec hold one type written twice (no-twins)",
+"keep one of the two and import it from a part both may import, or give FixtureView the fields its reader needs instead of a copy of Fixture's"
+],
+[
+"V",
+"no-twins",
+"xarch/modules/spec/contract/__init__.py",
+163,
+"StandInsView declares the fields of StandIns at xarch/modules/spec/domain/values.py:280 in the same order (mocks, autospec, spec, fixtures): contract/ of modules/spec and domain/ of modules/spec hold one type written twice (no-twins)",
+"keep one of the two and import it from a part both may import, or give StandInsView the fields its reader needs instead of a copy of StandIns's"
+],
+[
+"V",
+"no-twins",
+"xarch/modules/spec/contract/__init__.py",
+209,
+"ExcludedView declares the fields of Excluded at xarch/modules/spec/domain/values.py:202 in the same order (path, reason): contract/ of modules/spec and domain/ of modules/spec hold one type written twice (no-twins)",
+"keep one of the two and import it from a part both may import, or give ExcludedView the fields its reader needs instead of a copy of Excluded's"
+],
+[
+"V",
+"no-twins",
+"xarch/modules/spec/contract/__init__.py",
+216,
+"LanguageView declares the fields of Language at xarch/modules/rules/domain/values.py:113 in the same order (title, extension, package_file, interface and 1 more): contract/ of modules/spec and domain/ of modules/rules hold one type written twice (no-twins)",
+"keep one of the two and import it from a part both may import, or give LanguageView the fields its reader needs instead of a copy of Language's"
+],
+[
+"V",
+"no-twins",
+"xarch/modules/spec/contract/__init__.py",
+74,
+"ProjectFile declares the fields of Written at xarch/modules/spec/application/logic/project_files.py:30 in the same order (path, content, pinned, preset): contract/ of modules/spec and logic/ of modules/spec hold one type written twice (no-twins)",
+"keep one of the two and import it from a part both may import, or give ProjectFile the fields its reader needs instead of a copy of Written's"
+],
+[
+"V",
+"no-twins",
+"xarch/modules/spec/contract/__init__.py",
+192,
+"FakesView declares the fields of Fakes at xarch/modules/spec/domain/values.py:213 in the same order (folder, stand_in_for, prefix): contract/ of modules/spec and domain/ of modules/spec hold one type written twice (no-twins)",
+"keep one of the two and import it from a part both may import, or give FakesView the fields its reader needs instead of a copy of Fakes's"
+],
+[
+"V",
+"no-twins",
+"xarch/modules/spec/contract/__init__.py",
+351,
+"Migrated declares the fields of Conversion at xarch/modules/spec/domain/migration.py:49 in the same order (folder, profile, files, changes and 2 more): contract/ of modules/spec and domain/ of modules/spec hold one type written twice (no-twins)",
+"keep one of the two and import it from a part both may import, or give Migrated the fields its reader needs instead of a copy of Conversion's"
+],
+[
+"V",
+"no-twins",
+"xarch/modules/spec/contract/__init__.py",
+469,
+"ProfileChecked declares the fields of Review at xarch/modules/spec/domain/values.py:521 in the same order (location, problems, files, origin): contract/ of modules/spec and domain/ of modules/spec hold one type written twice (no-twins)",
+"keep one of the two and import it from a part both may import, or give ProfileChecked the fields its reader needs instead of a copy of Review's"
+],
+[
+"W",
+"pass-through",
+"xarch/modules/scaffold/adapters/spec_skeleton.py",
+28,
+"SpecSkeleton.package_file only passes its arguments on to self._spec.skeleton and returns its .package_file",
+"have the caller use self._spec.skeleton(...).package_file, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`"
+],
+[
+"W",
+"pass-through",
+"xarch/modules/scaffold/adapters/spec_skeleton.py",
+31,
+"SpecSkeleton.language only passes its arguments on to self._spec.skeleton and returns its .language",
+"have the caller use self._spec.skeleton(...).language, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`"
+],
+[
+"W",
+"pass-through",
+"xarch/modules/scaffold/adapters/spec_skeleton.py",
+34,
+"SpecSkeleton.reserved only passes its arguments on to self._spec.skeleton and returns its .reserved",
+"have the caller use self._spec.skeleton(...).reserved, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/application/logic/docs_template.py",
+129,
+"_Context is a class, but logic/ of modules/spec holds functions (parts.logic.holds)",
+"move _Context to a part that holds classes: domain/, ports/, services/, or make what it does functions"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/application/logic/migrate_examples.py",
+31,
+"_Copies is a class, but logic/ of modules/spec holds functions (parts.logic.holds)",
+"move _Copies to a part that holds classes: domain/, ports/, services/, or make what it does functions"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/application/logic/project_files.py",
+98,
+"_Reserved is a class, but logic/ of modules/spec holds functions (parts.logic.holds)",
+"move _Reserved to a part that holds classes: domain/, ports/, services/, or make what it does functions"
+]
+]
+}

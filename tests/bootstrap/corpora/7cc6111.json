@@ -1,0 +1,1612 @@
+{
+"findings": [
+[
+"V",
+"rules",
+"xarch/modules/rules/contract/__init__.py",
+8,
+"contract/ of modules/rules may import only *Id from domain/ of modules/rules, not At (xarch.modules.rules.domain.values.At)",
+"import from domain/ of modules/rules only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/rules/contract/__init__.py",
+8,
+"contract/ of modules/rules may import only *Id from domain/ of modules/rules, not Drift (xarch.modules.rules.domain.values.Drift)",
+"import from domain/ of modules/rules only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/rules/contract/__init__.py",
+8,
+"contract/ of modules/rules may import only *Id from domain/ of modules/rules, not Enforcement (xarch.modules.rules.domain.values.Enforcement)",
+"import from domain/ of modules/rules only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/rules/contract/__init__.py",
+8,
+"contract/ of modules/rules may import only *Id from domain/ of modules/rules, not Excluded (xarch.modules.rules.domain.values.Excluded)",
+"import from domain/ of modules/rules only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/rules/contract/__init__.py",
+8,
+"contract/ of modules/rules may import only *Id from domain/ of modules/rules, not Finding (xarch.modules.rules.domain.values.Finding)",
+"import from domain/ of modules/rules only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/rules/contract/__init__.py",
+8,
+"contract/ of modules/rules may import only *Id from domain/ of modules/rules, not Loosened (xarch.modules.rules.domain.values.Loosened)",
+"import from domain/ of modules/rules only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/rules/contract/__init__.py",
+8,
+"contract/ of modules/rules may import only *Id from domain/ of modules/rules, not Nearest (xarch.modules.rules.domain.values.Nearest)",
+"import from domain/ of modules/rules only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/rules/contract/__init__.py",
+8,
+"contract/ of modules/rules may import only *Id from domain/ of modules/rules, not Origin (xarch.modules.rules.domain.values.Origin)",
+"import from domain/ of modules/rules only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/rules/contract/__init__.py",
+8,
+"contract/ of modules/rules may import only *Id from domain/ of modules/rules, not Reach (xarch.modules.rules.domain.values.Reach)",
+"import from domain/ of modules/rules only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/rules/contract/__init__.py",
+8,
+"contract/ of modules/rules may import only *Id from domain/ of modules/rules, not TierInfo (xarch.modules.rules.domain.values.TierInfo)",
+"import from domain/ of modules/rules only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/rules/contract/__init__.py",
+8,
+"contract/ of modules/rules may import only *Id from domain/ of modules/rules, not Weak (xarch.modules.rules.domain.values.Weak)",
+"import from domain/ of modules/rules only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/rules/contract/__init__.py",
+8,
+"contract/ of modules/rules may import only *Id from domain/ of modules/rules, not Where (xarch.modules.rules.domain.values.Where)",
+"import from domain/ of modules/rules only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/spec/contract/__init__.py",
+7,
+"contract/ of modules/spec may import only *Id from domain/ of modules/spec, not Architecture (xarch.modules.spec.domain.values.Architecture)",
+"import from domain/ of modules/spec only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/spec/contract/__init__.py",
+7,
+"contract/ of modules/spec may import only *Id from domain/ of modules/spec, not CaseTable (xarch.modules.spec.domain.values.CaseTable)",
+"import from domain/ of modules/spec only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/spec/contract/__init__.py",
+7,
+"contract/ of modules/spec may import only *Id from domain/ of modules/spec, not ClosedTree (xarch.modules.spec.domain.values.ClosedTree)",
+"import from domain/ of modules/spec only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/spec/contract/__init__.py",
+7,
+"contract/ of modules/spec may import only *Id from domain/ of modules/spec, not DeadCode (xarch.modules.spec.domain.values.DeadCode)",
+"import from domain/ of modules/spec only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/spec/contract/__init__.py",
+7,
+"contract/ of modules/spec may import only *Id from domain/ of modules/spec, not Fixture (xarch.modules.spec.domain.values.Fixture)",
+"import from domain/ of modules/spec only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/spec/contract/__init__.py",
+7,
+"contract/ of modules/spec may import only *Id from domain/ of modules/spec, not Framework (xarch.modules.spec.domain.values.Framework)",
+"import from domain/ of modules/spec only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/spec/contract/__init__.py",
+7,
+"contract/ of modules/spec may import only *Id from domain/ of modules/spec, not NoComments (xarch.modules.spec.domain.values.NoComments)",
+"import from domain/ of modules/spec only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/spec/contract/__init__.py",
+7,
+"contract/ of modules/spec may import only *Id from domain/ of modules/spec, not NoDuplicates (xarch.modules.spec.domain.values.NoDuplicates)",
+"import from domain/ of modules/spec only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/spec/contract/__init__.py",
+7,
+"contract/ of modules/spec may import only *Id from domain/ of modules/spec, not PackageOnly (xarch.modules.spec.domain.values.PackageOnly)",
+"import from domain/ of modules/spec only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/spec/contract/__init__.py",
+7,
+"contract/ of modules/spec may import only *Id from domain/ of modules/spec, not Part (xarch.modules.spec.domain.values.Part)",
+"import from domain/ of modules/spec only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/spec/contract/__init__.py",
+7,
+"contract/ of modules/spec may import only *Id from domain/ of modules/spec, not PassThrough (xarch.modules.spec.domain.values.PassThrough)",
+"import from domain/ of modules/spec only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/spec/contract/__init__.py",
+7,
+"contract/ of modules/spec may import only *Id from domain/ of modules/spec, not PrivateImports (xarch.modules.spec.domain.values.PrivateImports)",
+"import from domain/ of modules/spec only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/spec/contract/__init__.py",
+7,
+"contract/ of modules/spec may import only *Id from domain/ of modules/spec, not Repeat (xarch.modules.spec.domain.values.Repeat)",
+"import from domain/ of modules/spec only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/spec/contract/__init__.py",
+7,
+"contract/ of modules/spec may import only *Id from domain/ of modules/spec, not ScenarioCoverage (xarch.modules.spec.domain.values.ScenarioCoverage)",
+"import from domain/ of modules/spec only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/spec/contract/__init__.py",
+7,
+"contract/ of modules/spec may import only *Id from domain/ of modules/spec, not StandIns (xarch.modules.spec.domain.values.StandIns)",
+"import from domain/ of modules/spec only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/spec/contract/__init__.py",
+7,
+"contract/ of modules/spec may import only *Id from domain/ of modules/spec, not Subject (xarch.modules.spec.domain.values.Subject)",
+"import from domain/ of modules/spec only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/spec/contract/__init__.py",
+7,
+"contract/ of modules/spec may import only *Id from domain/ of modules/spec, not Target (xarch.modules.spec.domain.values.Target)",
+"import from domain/ of modules/spec only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/spec/contract/__init__.py",
+7,
+"contract/ of modules/spec may import only *Id from domain/ of modules/spec, not Tier (xarch.modules.spec.domain.values.Tier)",
+"import from domain/ of modules/spec only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"rules",
+"xarch/modules/spec/contract/__init__.py",
+7,
+"contract/ of modules/spec may import only *Id from domain/ of modules/spec, not TierExample (xarch.modules.spec.domain.values.TierExample)",
+"import from domain/ of modules/spec only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"tiers",
+"tests/modules/spec/application/logic/test_migrate_examples.py",
+5,
+"a test may not import another test file (tests.modules.spec.application.logic.test_migrate_profile): what tests share lives in test code that is no test file",
+"move what tests.modules.spec.application.logic.test_migrate_profile holds that this test needs into test code of its folder that is no test file, and import it from there"
+],
+[
+"V",
+"tiers",
+"tests/modules/spec/application/test_profile_versions.py",
+7,
+"a test may not import another test file (tests.modules.spec.application.test_origin): what tests share lives in test code that is no test file",
+"move what tests.modules.spec.application.test_origin holds that this test needs into test code of its folder that is no test file, and import it from there"
+],
+[
+"V",
+"must-import",
+"tests/cli/test_report.py",
+0,
+"a wired test imports nothing from bootstrap/, directly or through test code it imports (tiers.wired.must_import)",
+"drive what it proves through bootstrap/, or move it to the tier of the part it calls directly"
+],
+[
+"V",
+"types-only",
+"xarch/modules/rules/application/services/locate.py",
+21,
+"services/ of modules/rules uses contract/ of modules/rules only as a type: it may not call xarch.modules.rules.contract.Outside (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/rules/application/services/locate.py",
+22,
+"services/ of modules/rules uses contract/ of modules/rules only as a type: it may not call xarch.modules.rules.contract.Located (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/scaffold/application/services/scaffolding.py",
+68,
+"services/ of modules/scaffold uses contract/ of modules/scaffold only as a type: it may not call xarch.modules.scaffold.contract.Report (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/architecture.py",
+45,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Docs (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/architecture.py",
+45,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.DocFile (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/architecture.py",
+58,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.ProjectFile (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/architecture.py",
+66,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.ProfileOrigin (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/architecture.py",
+70,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.ProfileOrigin (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/architecture.py",
+72,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.ProfileOrigin (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/architecture.py",
+73,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Loosened (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/explanation.py",
+27,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.FormatExplained (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/explanation.py",
+27,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Symbol (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/explanation.py",
+30,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.UnknownKey (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/explanation.py",
+32,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.KeyExplained (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/explanation.py",
+42,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Shown (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/migration.py",
+47,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.MigratedFile (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/migration.py",
+48,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.MigratedFile (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/migration.py",
+49,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Migrated (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/profile_creation.py",
+49,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.ProfileCreated (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/profile_review.py",
+32,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.ProfileChecked (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/profile_review.py",
+32,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Problem (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/profile_review.py",
+35,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Problem (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/profile_review.py",
+36,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.ProfileChecked (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/profile_review.py",
+43,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.ProfileViewed (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/skeleton.py",
+23,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Repeating (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/skeleton.py",
+25,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Skeleton (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/skeleton.py",
+38,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Entry (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"no-callbacks",
+"xarch/modules/rules/application/logic/where.py",
+55,
+"resolve calls its parameter exists: logic/ of modules/rules takes no callback (parts.logic.no_callbacks)",
+"have the caller call exists first and pass resolve the answer as a value"
+],
+[
+"V",
+"no-callbacks",
+"xarch/modules/spec/application/logic/migrate_examples.py",
+94,
+"gather calls its parameter has_file: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
+"have the caller call has_file first and pass gather the answer as a value"
+],
+[
+"V",
+"no-callbacks",
+"xarch/modules/spec/application/logic/migrate_examples.py",
+105,
+"gather calls its parameter folder_files: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
+"have the caller call folder_files first and pass gather the answer as a value"
+],
+[
+"V",
+"no-callbacks",
+"xarch/modules/spec/application/logic/migrate_examples.py",
+110,
+"gather calls its parameter has_file: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
+"have the caller call has_file first and pass gather the answer as a value"
+],
+[
+"V",
+"no-callbacks",
+"xarch/modules/spec/application/logic/migrate_examples.py",
+153,
+"_items calls its parameter has_file: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
+"have the caller call has_file first and pass _items the answer as a value"
+],
+[
+"V",
+"no-callbacks",
+"xarch/modules/spec/application/logic/migrate_examples.py",
+171,
+"_sources calls its parameter has_file: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
+"have the caller call has_file first and pass _sources the answer as a value"
+],
+[
+"V",
+"no-callbacks",
+"xarch/modules/spec/application/logic/migrate_examples.py",
+176,
+"_sources calls its parameter folder_files: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
+"have the caller call folder_files first and pass _sources the answer as a value"
+],
+[
+"V",
+"no-callbacks",
+"xarch/modules/spec/application/logic/migrate_examples.py",
+177,
+"_sources calls its parameter has_file: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
+"have the caller call has_file first and pass _sources the answer as a value"
+],
+[
+"V",
+"no-callbacks",
+"xarch/modules/spec/application/logic/migrate_examples.py",
+202,
+"_examples calls its parameter copy: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
+"have the caller call copy first and pass _examples the answer as a value"
+],
+[
+"V",
+"no-callbacks",
+"xarch/modules/spec/application/logic/profile_files.py",
+16,
+"pointed_files calls its parameter folder_files: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
+"have the caller call folder_files first and pass pointed_files the answer as a value"
+],
+[
+"V",
+"no-callbacks",
+"xarch/modules/spec/domain/profile_checks.py",
+217,
+"file_source calls its parameter has_file: domain/ of modules/spec takes no callback (parts.domain.no_callbacks)",
+"have the caller call has_file first and pass file_source the answer as a value"
+],
+[
+"V",
+"no-callbacks",
+"xarch/modules/spec/domain/profile_checks.py",
+217,
+"file_source calls its parameter folder_files: domain/ of modules/spec takes no callback (parts.domain.no_callbacks)",
+"have the caller call folder_files first and pass file_source the answer as a value"
+],
+[
+"V",
+"no-callbacks",
+"xarch/modules/spec/domain/profile_checks.py",
+231,
+"folder_source calls its parameter folder_files: domain/ of modules/spec takes no callback (parts.domain.no_callbacks)",
+"have the caller call folder_files first and pass folder_source the answer as a value"
+],
+[
+"V",
+"no-callbacks",
+"xarch/modules/spec/domain/profile_checks.py",
+232,
+"folder_source calls its parameter has_file: domain/ of modules/spec takes no callback (parts.domain.no_callbacks)",
+"have the caller call has_file first and pass folder_source the answer as a value"
+],
+[
+"V",
+"no-callbacks",
+"xarch/modules/spec/domain/profile_checks.py",
+253,
+"doc_source calls its parameter has_file: domain/ of modules/spec takes no callback (parts.domain.no_callbacks)",
+"have the caller call has_file first and pass doc_source the answer as a value"
+],
+[
+"V",
+"no-callbacks",
+"xarch/modules/spec/domain/profile_examples.py",
+51,
+"_roots calls its parameter folder_files: domain/ of modules/spec takes no callback (parts.domain.no_callbacks)",
+"have the caller call folder_files first and pass _roots the answer as a value"
+],
+[
+"V",
+"names",
+"xarch/modules/layout/application/services/structure_check.py",
+11,
+"StructureCheck does not match *Service, as every class of services/ of modules/layout must (parts.services.names)",
+"rename StructureCheck to match *Service, or move it to the part whose kind of class it is"
+],
+[
+"V",
+"names",
+"xarch/modules/rules/application/services/import_check.py",
+40,
+"ImportCheck does not match *Service, as every class of services/ of modules/rules must (parts.services.names)",
+"rename ImportCheck to match *Service, or move it to the part whose kind of class it is"
+],
+[
+"V",
+"names",
+"xarch/modules/rules/application/services/locate.py",
+9,
+"Locator does not match *Service, as every class of services/ of modules/rules must (parts.services.names)",
+"rename Locator to match *Service, or move it to the part whose kind of class it is"
+],
+[
+"V",
+"names",
+"xarch/modules/scaffold/application/services/scaffolding.py",
+17,
+"Scaffolding does not match *Service, as every class of services/ of modules/scaffold must (parts.services.names)",
+"rename Scaffolding to match *Service, or move it to the part whose kind of class it is"
+],
+[
+"V",
+"names",
+"xarch/modules/spec/application/services/profile_creation.py",
+19,
+"ProfileCreation does not match *Service, as every class of services/ of modules/spec must (parts.services.names)",
+"rename ProfileCreation to match *Service, or move it to the part whose kind of class it is"
+],
+[
+"V",
+"names",
+"xarch/modules/spec/application/services/profile_review.py",
+19,
+"ProfileReview does not match *Service, as every class of services/ of modules/spec must (parts.services.names)",
+"rename ProfileReview to match *Service, or move it to the part whose kind of class it is"
+],
+[
+"V",
+"names",
+"xarch/modules/spec/application/services/profile_writer.py",
+11,
+"ProfileWriter does not match *Service, as every class of services/ of modules/spec must (parts.services.names)",
+"rename ProfileWriter to match *Service, or move it to the part whose kind of class it is"
+],
+[
+"V",
+"built-by",
+"xarch/modules/spec/application/controller.py",
+46,
+"controller/ of modules/spec builds ExplainService, a class of services/ of modules/spec, which only bootstrap/ may build (parts.services.built_by)",
+"take ExplainService as a parameter of the constructor, and build it in bootstrap/"
+],
+[
+"V",
+"built-by",
+"xarch/modules/spec/application/controller.py",
+46,
+"controller/ of modules/spec builds ProfileReview, a class of services/ of modules/spec, which only bootstrap/ may build (parts.services.built_by)",
+"take ProfileReview as a parameter of the constructor, and build it in bootstrap/"
+],
+[
+"V",
+"built-by",
+"xarch/modules/spec/application/services/migration.py",
+26,
+"services/ of modules/spec builds ProfileWriter, a class of services/ of modules/spec, which only bootstrap/ may build (parts.services.built_by)",
+"take ProfileWriter as a parameter of the constructor, and build it in bootstrap/"
+],
+[
+"V",
+"built-by",
+"xarch/modules/spec/application/services/profile_creation.py",
+25,
+"services/ of modules/spec builds ProfileWriter, a class of services/ of modules/spec, which only bootstrap/ may build (parts.services.built_by)",
+"take ProfileWriter as a parameter of the constructor, and build it in bootstrap/"
+],
+[
+"V",
+"private-imports",
+"xarch/cli/commands/profile.py",
+8,
+"imports the private name _json_refusal from xarch.cli.commands.check (private-imports)",
+"make _json_refusal public where it is defined (drop the `_`), or move it to a file both may import"
+],
+[
+"V",
+"private-imports",
+"xarch/cli/commands/where.py",
+7,
+"imports the private name _json_refusal from xarch.cli.commands.check (private-imports)",
+"make _json_refusal public where it is defined (drop the `_`), or move it to a file both may import"
+],
+[
+"W",
+"pass-through",
+"xarch/modules/layout/adapters/fs_disk.py",
+14,
+"FsDisk.is_dir only passes its arguments on to self._fs.is_dir",
+"have the caller use self._fs.is_dir, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`"
+],
+[
+"W",
+"pass-through",
+"xarch/modules/layout/adapters/fs_disk.py",
+17,
+"FsDisk.is_file only passes its arguments on to self._fs.is_file",
+"have the caller use self._fs.is_file, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`"
+],
+[
+"W",
+"pass-through",
+"xarch/modules/layout/adapters/fs_disk.py",
+20,
+"FsDisk.subdirectories only passes its arguments on to self._fs.subdirectories",
+"have the caller use self._fs.subdirectories, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`"
+],
+[
+"W",
+"pass-through",
+"xarch/modules/layout/adapters/fs_disk.py",
+23,
+"FsDisk.folders only passes its arguments on to self._fs.folders",
+"have the caller use self._fs.folders, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`"
+],
+[
+"W",
+"pass-through",
+"xarch/modules/rules/adapters/fs_source_tree.py",
+78,
+"FsSourceTree.is_dir only passes its arguments on to self._fs.is_dir",
+"have the caller use self._fs.is_dir, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`"
+],
+[
+"W",
+"pass-through",
+"xarch/modules/rules/adapters/fs_source_tree.py",
+88,
+"FsSourceTree.exists only passes its arguments on to self._fs.exists",
+"have the caller use self._fs.exists, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`"
+],
+[
+"W",
+"pass-through",
+"xarch/modules/rules/application/controller.py",
+20,
+"RulesController.locate only passes its arguments on to self._locator.locate",
+"have the caller use self._locator.locate, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`"
+],
+[
+"W",
+"pass-through",
+"xarch/modules/scaffold/adapters/fs_files.py",
+14,
+"FsFiles.exists only passes its arguments on to self._fs.exists",
+"have the caller use self._fs.exists, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`"
+],
+[
+"W",
+"pass-through",
+"xarch/modules/scaffold/adapters/fs_files.py",
+17,
+"FsFiles.is_dir only passes its arguments on to self._fs.is_dir",
+"have the caller use self._fs.is_dir, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`"
+],
+[
+"W",
+"pass-through",
+"xarch/modules/scaffold/adapters/fs_files.py",
+20,
+"FsFiles.create_empty only passes its arguments on to self._fs.create_empty",
+"have the caller use self._fs.create_empty, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`"
+],
+[
+"W",
+"pass-through",
+"xarch/modules/scaffold/adapters/fs_files.py",
+23,
+"FsFiles.write_text only passes its arguments on to self._fs.write_text",
+"have the caller use self._fs.write_text, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`"
+],
+[
+"W",
+"pass-through",
+"xarch/modules/scaffold/adapters/fs_files.py",
+26,
+"FsFiles.write_bytes only passes its arguments on to self._fs.write_bytes",
+"have the caller use self._fs.write_bytes, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`"
+],
+[
+"W",
+"pass-through",
+"xarch/modules/scaffold/adapters/fs_files.py",
+29,
+"FsFiles.read_text only passes its arguments on to self._fs.read_text",
+"have the caller use self._fs.read_text, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`"
+],
+[
+"W",
+"pass-through",
+"xarch/modules/scaffold/adapters/fs_files.py",
+32,
+"FsFiles.find_upward only passes its arguments on to self._fs.find_upward",
+"have the caller use self._fs.find_upward, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`"
+],
+[
+"W",
+"pass-through",
+"xarch/modules/spec/adapters/fs_profile_output.py",
+15,
+"FsProfileOutput.exists only passes its arguments on to self._fs.exists",
+"have the caller use self._fs.exists, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`"
+],
+[
+"W",
+"pass-through",
+"xarch/modules/spec/adapters/fs_profile_output.py",
+18,
+"FsProfileOutput.write only passes its arguments on to self._fs.write_bytes",
+"have the caller use self._fs.write_bytes, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`"
+],
+[
+"W",
+"pass-through",
+"xarch/modules/spec/application/controller.py",
+48,
+"SpecController.skeleton only passes its arguments on to self._service.skeleton",
+"have the caller use self._service.skeleton, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`"
+],
+[
+"W",
+"pass-through",
+"xarch/modules/spec/application/controller.py",
+52,
+"SpecController.architecture only passes its arguments on to self._architectures.load",
+"have the caller use self._architectures.load, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`"
+],
+[
+"W",
+"pass-through",
+"xarch/modules/spec/application/controller.py",
+56,
+"SpecController.docs only passes its arguments on to self._architectures.docs",
+"have the caller use self._architectures.docs, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`"
+],
+[
+"W",
+"pass-through",
+"xarch/modules/spec/application/controller.py",
+60,
+"SpecController.files only passes its arguments on to self._architectures.files",
+"have the caller use self._architectures.files, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`"
+],
+[
+"W",
+"pass-through",
+"xarch/modules/spec/application/controller.py",
+65,
+"SpecController.origin only passes its arguments on to self._architectures.origin",
+"have the caller use self._architectures.origin, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`"
+],
+[
+"W",
+"pass-through",
+"xarch/modules/spec/application/controller.py",
+70,
+"SpecController.configured_app only passes its arguments on to self._settings.configured_app",
+"have the caller use self._settings.configured_app, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`"
+],
+[
+"W",
+"pass-through",
+"xarch/modules/spec/application/controller.py",
+75,
+"SpecController.profiles only passes its arguments on to self._files.bundled",
+"have the caller use self._files.bundled, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`"
+],
+[
+"W",
+"pass-through",
+"xarch/modules/spec/application/controller.py",
+95,
+"SpecController.explain only passes its arguments on to self._explanation.explain",
+"have the caller use self._explanation.explain, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`"
+],
+[
+"W",
+"holds",
+"xarch/modules/layout/domain/structure.py",
+23,
+"is_instance_name is a function at the top level, but domain/ of modules/layout holds classes (parts.domain.holds)",
+"make is_instance_name a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/layout/domain/structure.py",
+37,
+"requirements is a function at the top level, but domain/ of modules/layout holds classes (parts.domain.holds)",
+"make requirements a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/layout/domain/structure.py",
+53,
+"missing is a function at the top level, but domain/ of modules/layout holds classes (parts.domain.holds)",
+"make missing a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/layout/domain/structure.py",
+58,
+"hidden is a function at the top level, but domain/ of modules/layout holds classes (parts.domain.holds)",
+"make hidden a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/layout/domain/structure.py",
+63,
+"unmirrored is a function at the top level, but domain/ of modules/layout holds classes (parts.domain.holds)",
+"make unmirrored a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/rules/domain/imports.py",
+22,
+"dotted is a function at the top level, but domain/ of modules/rules holds classes (parts.domain.holds)",
+"make dotted a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/rules/domain/imports.py",
+29,
+"targets is a function at the top level, but domain/ of modules/rules holds classes (parts.domain.holds)",
+"make targets a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/rules/domain/imports.py",
+39,
+"named_targets is a function at the top level, but domain/ of modules/rules holds classes (parts.domain.holds)",
+"make named_targets a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/rules/domain/imports.py",
+62,
+"violations is a function at the top level, but domain/ of modules/rules holds classes (parts.domain.holds)",
+"make violations a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/rules/domain/places.py",
+13,
+"place is a function at the top level, but domain/ of modules/rules holds classes (parts.domain.holds)",
+"make place a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/rules/domain/places.py",
+23,
+"label is a function at the top level, but domain/ of modules/rules holds classes (parts.domain.holds)",
+"make label a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/rules/domain/places.py",
+35,
+"targets_of is a function at the top level, but domain/ of modules/rules holds classes (parts.domain.holds)",
+"make targets_of a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/rules/domain/places.py",
+40,
+"allowed is a function at the top level, but domain/ of modules/rules holds classes (parts.domain.holds)",
+"make allowed a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/scaffold/domain/names.py",
+6,
+"valid_name is a function at the top level, but domain/ of modules/scaffold holds classes (parts.domain.holds)",
+"make valid_name a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/scaffold/domain/plan.py",
+11,
+"plan is a function at the top level, but domain/ of modules/scaffold holds classes (parts.domain.holds)",
+"make plan a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/scaffold/domain/plan.py",
+18,
+"app_name is a function at the top level, but domain/ of modules/scaffold holds classes (parts.domain.holds)",
+"make app_name a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/scaffold/domain/plan.py",
+23,
+"holder is a function at the top level, but domain/ of modules/scaffold holds classes (parts.domain.holds)",
+"make holder a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/scaffold/domain/pyproject.py",
+20,
+"recorded_location is a function at the top level, but domain/ of modules/scaffold holds classes (parts.domain.holds)",
+"make recorded_location a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/scaffold/domain/pyproject.py",
+28,
+"recorded_app is a function at the top level, but domain/ of modules/scaffold holds classes (parts.domain.holds)",
+"make recorded_app a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/scaffold/domain/pyproject.py",
+35,
+"with_profile is a function at the top level, but domain/ of modules/scaffold holds classes (parts.domain.holds)",
+"make with_profile a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/scaffold/domain/pyproject.py",
+41,
+"with_setting is a function at the top level, but domain/ of modules/scaffold holds classes (parts.domain.holds)",
+"make with_setting a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/application/logic/migrate_examples.py",
+16,
+"Copy is a class, but logic/ of modules/spec holds functions (parts.logic.holds)",
+"move Copy to a part that holds classes: domain/, ports/, services/, or make what it does functions"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/application/logic/profile_v1.py",
+35,
+"OldProfile is a class, but logic/ of modules/spec holds functions (parts.logic.holds)",
+"move OldProfile to a part that holds classes: domain/, ports/, services/, or make what it does functions"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/docs.py",
+18,
+"doc_files is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make doc_files a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/docs_template.py",
+94,
+"fill is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make fill a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/guards.py",
+69,
+"guard_name is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make guard_name a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+45,
+"resolves is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make resolves a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+54,
+"layer_chains is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make layer_chains a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+88,
+"naming_rows is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make naming_rows a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+111,
+"strings is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make strings a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+119,
+"doc_pages is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make doc_pages a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+150,
+"init_files is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make init_files a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+192,
+"entry is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make entry a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+196,
+"file_clashes is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make file_clashes a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+215,
+"file_source is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make file_source a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+223,
+"folder_source is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make folder_source a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+243,
+"doc_source is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make doc_source a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+260,
+"doc_clashes is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make doc_clashes a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+269,
+"tier_folder is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make tier_folder a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+284,
+"folder_clashes is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make folder_clashes a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+298,
+"overlap is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make overlap a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+302,
+"excluded_folders is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make excluded_folders a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+327,
+"rule_hints is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make rule_hints a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+343,
+"part_names is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make part_names a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+358,
+"case_table is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make case_table a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+381,
+"use_case_file is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make use_case_file a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+396,
+"dotted is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make dotted a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+404,
+"dotted_names is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make dotted_names a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+418,
+"fixtures is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make fixtures a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+449,
+"identifiers is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make identifiers a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+465,
+"framework_patterns is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make framework_patterns a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+486,
+"file_patterns is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make file_patterns a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+503,
+"join_and is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make join_and a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+507,
+"column_names is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make column_names a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+520,
+"unknown_keys is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make unknown_keys a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+527,
+"text is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make text a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+531,
+"line is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make line a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+535,
+"string is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make string a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+539,
+"quoted is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make quoted a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+543,
+"package_names is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make package_names a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+561,
+"forbidden_names is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make forbidden_names a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_checks.py",
+582,
+"scenario_places is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make scenario_places a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_examples.py",
+25,
+"example_files is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make example_files a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_examples.py",
+81,
+"example_of is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make example_of a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_examples.py",
+95,
+"examples_of is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make examples_of a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_file.py",
+22,
+"parse_profile is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make parse_profile a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_file.py",
+41,
+"source_of is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make source_of a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_keys.py",
+171,
+"plain is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make plain a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_keys.py",
+489,
+"keys_of is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make keys_of a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_keys.py",
+493,
+"names_of is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make names_of a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_keys.py",
+497,
+"required_of is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make required_of a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/profile_v2.py",
+139,
+"parse_v2 is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make parse_v2 a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/project_files.py",
+40,
+"with_app is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make with_app a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/project_files.py",
+45,
+"project_files is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make project_files a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/skeleton.py",
+16,
+"is_path is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make is_path a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/skeleton.py",
+22,
+"choose is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make choose a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"holds",
+"xarch/modules/spec/domain/skeleton.py",
+39,
+"walk is a function at the top level, but domain/ of modules/spec holds classes (parts.domain.holds)",
+"make walk a method of the class whose rule it is, or move it to a part that holds functions: logic/"
+],
+[
+"W",
+"dead-code",
+"xarch/modules/layout/adapters/fs_disk.py",
+0,
+"a file of adapters/ of modules/layout that no unit test reaches (guards.dead-code.untested)",
+"write its unit test in tests/modules/layout/adapters/, or delete what nothing uses"
+],
+[
+"W",
+"dead-code",
+"xarch/modules/layout/adapters/spec_skeleton.py",
+0,
+"a file of adapters/ of modules/layout that no unit test reaches (guards.dead-code.untested)",
+"write its unit test in tests/modules/layout/adapters/, or delete what nothing uses"
+],
+[
+"W",
+"dead-code",
+"xarch/modules/rules/adapters/spec_profile.py",
+0,
+"a file of adapters/ of modules/rules that no unit test reaches (guards.dead-code.untested)",
+"write its unit test in tests/modules/rules/adapters/, or delete what nothing uses"
+],
+[
+"W",
+"dead-code",
+"xarch/modules/scaffold/adapters/fs_files.py",
+0,
+"a file of adapters/ of modules/scaffold that no unit test reaches (guards.dead-code.untested)",
+"write its unit test in tests/modules/scaffold/adapters/, or delete what nothing uses"
+],
+[
+"W",
+"dead-code",
+"xarch/modules/scaffold/adapters/spec_skeleton.py",
+0,
+"a file of adapters/ of modules/scaffold that no unit test reaches (guards.dead-code.untested)",
+"write its unit test in tests/modules/scaffold/adapters/, or delete what nothing uses"
+],
+[
+"W",
+"dead-code",
+"xarch/modules/scaffold/domain/names.py",
+0,
+"a file of domain/ of modules/scaffold that no unit test reaches (guards.dead-code.untested)",
+"write its unit test in tests/modules/scaffold/domain/, or delete what nothing uses"
+],
+[
+"W",
+"dead-code",
+"xarch/modules/scaffold/domain/plan.py",
+0,
+"a file of domain/ of modules/scaffold that no unit test reaches (guards.dead-code.untested)",
+"write its unit test in tests/modules/scaffold/domain/, or delete what nothing uses"
+],
+[
+"W",
+"dead-code",
+"xarch/modules/scaffold/domain/pyproject.py",
+0,
+"a file of domain/ of modules/scaffold that no unit test reaches (guards.dead-code.untested)",
+"write its unit test in tests/modules/scaffold/domain/, or delete what nothing uses"
+],
+[
+"W",
+"dead-code",
+"xarch/modules/spec/adapters/fs_architecture_files.py",
+0,
+"a file of adapters/ of modules/spec that no unit test reaches (guards.dead-code.untested)",
+"write its unit test in tests/modules/spec/adapters/, or delete what nothing uses"
+],
+[
+"W",
+"dead-code",
+"xarch/modules/spec/adapters/fs_profile_output.py",
+0,
+"a file of adapters/ of modules/spec that no unit test reaches (guards.dead-code.untested)",
+"write its unit test in tests/modules/spec/adapters/, or delete what nothing uses"
+]
+]
+}

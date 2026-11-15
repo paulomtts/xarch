@@ -1,0 +1,77 @@
+{
+ "groups": {
+  "V rules": [
+   31,
+   "bd33089b1d3c19c6df7fea6e79e5a80aeb3260d06739f4103683abcc84fcc923"
+  ],
+  "V libraries": [
+   16,
+   "bc16050d073cd2049be402726342dd6da55425ddb36690681a5d58b53073d290"
+  ],
+  "V forbidden": [
+   23,
+   "ed93c44836781e303e94d6d7181aa1069db6b1df6664e1d763591ae135d0c7b4"
+  ],
+  "V tiers": [
+   2,
+   "69225055ee587609d0a0b376c3781aae053449dfc58fbcb3e86e27a14903f971"
+  ],
+  "V types-only": [
+   761,
+   "647b1d1481466c88cb463cf2d708778d6d1a99c99e74e22d92d151820cf55042"
+  ],
+  "V package-only": [
+   607,
+   "c9a371fd94666fd720c776ca4eb245dda5c1c3df508e37095b75ca1bfb531caf"
+  ],
+  "V must-import": [
+   1,
+   "81a5837dc8c7a0d4a87e6b4b64922358d2ef1e78d063707605fa9400c002a21d"
+  ],
+  "V no-callbacks": [
+   16,
+   "3236de92097ae5df96f4d440040682b3d32740a2a995dd31ff914387cd17754f"
+  ],
+  "V names": [
+   13,
+   "e449f84df6275f35c687859b6ca66a82035f4655ed0eae1dcc9cd3e7b6f5e29e"
+  ],
+  "V built-by": [
+   91,
+   "7dab9f5267bc3e0a12c810ac3a2ae00565a8c99634563de8ce20d8ac6b9d00a8"
+  ],
+  "V private-imports": [
+   2,
+   "65d3117c66ef842b54fa0141bab208b37a18522d32e7a98d62c23a1f6773f875"
+  ],
+  "V no-duplicates": [
+   1,
+   "163636d78bf28d9e486e37b63ab0bcf44697384ea8aa64008e5965e048dc6df6"
+  ],
+  "V no-twins": [
+   4,
+   "8dbdb156345243cf3ca84904e7af7b322a663738c34317b761e928ee782a1c54"
+  ],
+  "V closed-tree": [
+   40,
+   "39751b075b9e8a38b29721951b009e77da780d487076368c08cc1c38b936d171"
+  ],
+  "V structure": [
+   1,
+   "a41c079fe12942ddd0e5dc0d9e607a192d2f41f28005e8878f4d6992860a476c"
+  ],
+  "W pass-through": [
+   24,
+   "c34f20ba1b737d998ef9c9889856f1f4e8eedf3d9f34017b7a37692d11fb8e32"
+  ],
+  "W holds": [
+   91,
+   "061cf34bc959462ef152f058b66e3ced4b0ffc1b046554853941c7fdcac29f41"
+  ],
+  "W dead-code": [
+   11,
+   "f29f0934c909a1049fe5c4bc115c60f23325e4b3971c01366925960f00b06baa"
+  ]
+ },
+ "order": "51d5e8809b9bdd2e6eee4916d6ce878ef6f1d4f99e8116b0d240af0e18fbcb1c"
+}
