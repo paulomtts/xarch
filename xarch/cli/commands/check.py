@@ -1,27 +1,13 @@
-"""xarch check: what the source says (rules module) and which folders exist (layout module), as text or JSON."""
-from enum import Enum
+"""xarch check: what the source says and which folders exist (rules module), as text or JSON."""
 from typing import Annotated
 
 import typer
 
-from xarch.cli.report import enforcement_lines, json_document, json_error, passed, text_lines
-from xarch.cli.terminal import AppPath, ProfileName, TestsPath, app_for, fail, selection
-from xarch.modules.layout.application.controller import LayoutController
-from xarch.modules.layout.contract import CheckStructure
+from xarch.cli.report import enforcement_lines, json_document, text_lines
+from xarch.cli.terminal import AppPath, Format, FormatOption, ProfileName, TestsPath, app_for, refusal, selection
 from xarch.modules.rules.application.controller import RulesController
-from xarch.modules.rules.contract import CheckImports, ImportsChecked, NotADirectory
+from xarch.modules.rules.contract import AppChecked, CheckApp, NotADirectory
 from xarch.modules.spec.application.controller import SpecController
-
-
-class Format(str, Enum):
-    text = "text"
-    json = "json"
-
-
-FormatOption = Annotated[Format, typer.Option(
-    "--format", help="text: one line per violation, then a summary (the default); json: one JSON document on stdout, "
-                     "described in the README.")]
-
 
 StrictOption = Annotated[bool, typer.Option(
     "--strict", help="Also fail (exit 1) on what the profile in force leaves unenforced, in the findings of the "
@@ -31,30 +17,23 @@ StrictOption = Annotated[bool, typer.Option(
                      "on.")]
 
 
-def _json_refusal(reason: str) -> typer.Exit:
-    typer.echo(json_error(reason))
-    return typer.Exit(2)
-
-
-def register(app: typer.Typer, rules: RulesController, layout: LayoutController, spec: SpecController) -> None:
+def register(app: typer.Typer, rules: RulesController, spec: SpecController) -> None:
     @app.command()
     def check(app_path: AppPath = None, profile: ProfileName = None, tests: TestsPath = None,
               output: FormatOption = Format.text, strict: StrictOption = False) -> None:
         """Report every violation of the architecture in the app and its tests."""
-        refuse = _json_refusal if output is Format.json else fail
+        refuse = refusal(output)
         app_path = app_for(spec, app_path, refuse)
         chosen, tests_root = selection(spec, app_path, profile, tests, refuse)
-        package = app_path.absolute().resolve().name
-        match rules.check(CheckImports(app_path, package, chosen, tests_root)):
+        match rules.check_app(CheckApp(app_path, chosen, tests_root, strict)):
             case NotADirectory(root):
                 raise refuse(f"{root} is not a directory")
-            case ImportsChecked(violations, enforcement):
-                found = violations + layout.check(CheckStructure(app_path, package, chosen, tests_root)).violations
-        hints = spec.profile(chosen).hints
-        if output is Format.json:
-            typer.echo(json_document(chosen, found, enforcement, strict, hints))
-        else:
-            for line in [*text_lines(found, hints), *enforcement_lines(enforcement, strict, hints)]:
-                typer.echo(line)
-        if not passed(found, enforcement, strict):
-            raise typer.Exit(1)
+            case AppChecked() as checked:
+                if output is Format.json:
+                    typer.echo(json_document(chosen, checked, strict))
+                else:
+                    for line in [*text_lines(checked.violations, checked.hints),
+                                 *enforcement_lines(checked.enforcement, strict, checked.hints)]:
+                        typer.echo(line)
+                if not checked.ok:
+                    raise typer.Exit(1)

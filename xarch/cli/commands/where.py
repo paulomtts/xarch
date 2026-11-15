@@ -4,8 +4,7 @@ from typing import Annotated
 
 import typer
 
-from xarch.cli.commands.check import Format, FormatOption, _json_refusal
-from xarch.cli.terminal import AppPath, ProfileName, TestsPath, app_for, fail, selection
+from xarch.cli.terminal import AppPath, Format, FormatOption, ProfileName, TestsPath, app_for, refusal, selection
 from xarch.cli.where_report import where_document, where_lines
 from xarch.modules.rules.application.controller import RulesController
 from xarch.modules.rules.contract import Locate, Located, Outside
@@ -25,7 +24,7 @@ def register(app: typer.Typer, rules: RulesController, spec: SpecController) -> 
         part's role and litmus test, what it may import, the outside packages it may import, the names it may not
         use, the tier that tests it and where its test lives; for a test, its tier, the part it mirrors and what
         it may import. Exit 0 for any path in the project, 2 for one outside it or a profile that cannot be used."""
-        refuse = _json_refusal if output is Format.json else fail
+        refuse = refusal(output)
         app_path = app_for(spec, app_path, refuse)
         chosen, tests_root = selection(spec, app_path, profile, tests, refuse)
         match rules.locate(Locate(path, Path.cwd().resolve(), app_path, chosen, tests_root)):

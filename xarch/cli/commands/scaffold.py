@@ -3,20 +3,12 @@ from typing import Annotated
 
 import typer
 
+from xarch.cli.scaffold_report import report_lines
 from xarch.cli.terminal import AppPath, ProfileName, app_for, fail, profile_for
 from xarch.kernel.errors import DomainError
 from xarch.modules.scaffold.application.controller import ScaffoldController
-from xarch.modules.scaffold.contract import Init, New, Refused, Report, Scaffolded
+from xarch.modules.scaffold.contract import Init, New, Refused, Scaffolded
 from xarch.modules.spec.application.controller import SpecController
-
-
-def _show(report: Report) -> None:
-    for path in report.created:
-        typer.echo(f"created {path.as_posix()}")
-    for path in report.updated:
-        typer.echo(f"updated {path.as_posix()}")
-    for path in report.skipped:
-        typer.echo(f"skipped {path.as_posix()}")
 
 
 def register(app: typer.Typer, scaffold: ScaffoldController, spec: SpecController) -> None:
@@ -26,7 +18,7 @@ def register(app: typer.Typer, scaffold: ScaffoldController, spec: SpecControlle
         write the docs and files; never overwrites."""
         app_path = app_for(spec, app_path)
         try:
-            _show(scaffold.init(Init(app_path, profile_for(spec, app_path, profile))).report)
+            _echo(report_lines(scaffold.init(Init(app_path, profile_for(spec, app_path, profile))).report))
         except DomainError as e:
             raise fail(e.reason)
 
@@ -38,6 +30,11 @@ def register(app: typer.Typer, scaffold: ScaffoldController, spec: SpecControlle
         app_path = app_for(spec, app_path)
         match scaffold.new(New(app_path, kind, name, profile_for(spec, app_path, profile))):
             case Scaffolded(report):
-                _show(report)
+                _echo(report_lines(report))
             case Refused(reason):
                 raise fail(reason)
+
+
+def _echo(lines: list[str]) -> None:
+    for line in lines:
+        typer.echo(line)

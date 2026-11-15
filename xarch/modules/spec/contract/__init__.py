@@ -8,7 +8,8 @@ from xarch.kernel.logic.placement import Repeat, Target
 
 __all__ = ["Entry", "Repeating", "Skeleton", "DocFile", "Docs", "ProjectFile", "PartView", "TierView", "TableView",
            "ScenariosView", "FixtureView", "StandInsView", "GuardsView", "FakesView", "FrameworkView", "ExcludedView",
-           "ProfileView", "Loosened", "ProfileOrigin", "SelectProfile", "ProfileSelected", "ProfileRefused",
+           "ProfileView", "Loosened", "ProfileOrigin", "ChooseApp", "AppChosen", "ChooseAppResult",
+           "SelectProfile", "ProfileSelected", "ProfileRefused",
            "NoProfileChosen", "SelectResult", "MigrateProfile", "MigratedFile", "Migrated", "MigrationRefused",
            "MigrateResult", "Shown", "Symbol", "Explain", "FormatExplained", "KeyExplained", "UnknownKey",
            "ExplainResult", "ViewProfile", "ProfileViewed", "ViewResult", "CheckProfile", "Problem", "ProfileChecked",
@@ -260,6 +261,19 @@ class ProfileOrigin:
 
 
 @dataclass(frozen=True)
+class ChooseApp:
+    """Choose the app folder to work on: given (from --app), else the one the project around the folder start
+    records, else the default one."""
+    start: Path
+    given: Path | None = None
+
+
+@dataclass(frozen=True)
+class AppChosen:
+    app: Path
+
+
+@dataclass(frozen=True)
 class SelectProfile:
     """Choose the architecture for an app folder, whose project's pyproject.toml may configure it: override is an
     explicit choice (from --profile), tests an explicit tests root (from --tests)."""
@@ -270,7 +284,8 @@ class SelectProfile:
 
 @dataclass(frozen=True)
 class ProfileSelected:
-    """The architecture in force, as a bundled name or a path, and the tests root chosen (None: none chosen)."""
+    """The architecture in force, as a bundled name or a path, and the tests root chosen: the one asked for, else the
+    one configured, else tests/ beside the app folder when there is one (None: none)."""
     name: str
     tests: Path | None = None
 
@@ -289,6 +304,7 @@ class NoProfileChosen:
 
 
 SelectResult = ProfileSelected | NoProfileChosen | ProfileRefused
+ChooseAppResult = AppChosen | ProfileRefused
 
 
 @dataclass(frozen=True)

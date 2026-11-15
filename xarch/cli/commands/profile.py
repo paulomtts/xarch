@@ -5,8 +5,7 @@ from typing import Annotated
 import typer
 
 from xarch.cli import profile_report as report
-from xarch.cli.commands.check import Format, FormatOption, _json_refusal
-from xarch.cli.terminal import AppPath, app_for, fail, no_profile
+from xarch.cli.terminal import AppPath, Format, FormatOption, app_for, fail, no_profile, refusal
 from xarch.modules.spec.application.controller import SpecController
 from xarch.modules.spec.contract import (
     CheckProfile,
@@ -25,28 +24,6 @@ from xarch.modules.spec.contract import (
     UnknownKey,
     ViewProfile,
 )
-
-COMMENTS = "YAML comments are not carried over: the converted file has none, so copy the ones you need by hand."
-
-
-def _migrated(done: Migrated) -> list[str]:
-    where = done.folder.as_posix()
-    lines = [f"{'dry run, nothing written: would write' if done.dry_run else 'wrote'} to {where}/"]
-    for file in done.files:
-        notes = []
-        if file.source is not None:
-            notes.append(f"from {file.source}")
-        if file.rewritten:
-            notes.append(f"{file.rewritten} example placeholder{'s' if file.rewritten > 1 else ''} rewritten")
-        lines.append(f"  {file.path}" + (f"  ({', '.join(notes)})" if notes else ""))
-    if done.changes:
-        lines += ["changed:", *(f"  {item}" for item in done.changes)]
-    if done.by_hand:
-        lines += ["by hand:", *(f"  {item}" for item in done.by_hand)]
-    lines.append(COMMENTS)
-    lines.append("the old profile and its files are untouched; check the new one with `xarch check --profile "
-                 f"{done.profile.as_posix()}`")
-    return lines
 
 
 def register(app: typer.Typer, spec: SpecController) -> None:
@@ -67,7 +44,7 @@ def register(app: typer.Typer, spec: SpecController) -> None:
         converted is listed with what to write by hand."""
         match spec.migrate(MigrateProfile(path, out, dry_run)):
             case Migrated() as done:
-                for line in _migrated(done):
+                for line in report.migrated_lines(done):
                     typer.echo(line)
             case MigrationRefused(reason):
                 raise fail(reason)
@@ -87,7 +64,7 @@ def register(app: typer.Typer, spec: SpecController) -> None:
         smallest valid profile; with a key, what it means, accepts, whether `check` enforces it and through which rule,
         an example that loads, and the keys it holds. A key that does not exist is refused with the nearest ones. With
         --profile or --configured, the folder tree and the import table of that profile, for a human to approve."""
-        refuse = _json_refusal if output is Format.json else fail
+        refuse = refusal(output)
         if profile is not None or configured:
             if key is not None or (profile is not None and configured):
                 raise refuse("give either a key or a profile (--profile or --configured), not both")
@@ -138,7 +115,7 @@ def register(app: typer.Typer, spec: SpecController) -> None:
         existing), its examples import only what their part may, and how it differs from the bundled profile it is
         based on is shown as information. Exit 0 when the profile is valid, 1 when it has problems, 2 when no profile
         can be chosen."""
-        refuse = _json_refusal if output is Format.json else fail
+        refuse = refusal(output)
         match spec.check_profile(CheckProfile(app_for(spec, app_path, refuse), target)):
             case ProfileChecked() as checked:
                 _show(output, report.check_document(checked), report.check_lines(checked))

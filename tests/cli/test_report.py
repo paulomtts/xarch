@@ -6,7 +6,7 @@ import pytest
 
 from xarch.cli.report import enforcement_lines, folders, json_document, ordered, text_lines
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.contract import AtView, EnforcementView, ExcludedView, OriginView, WeakView
+from xarch.modules.rules.contract import AppChecked, AtView, EnforcementView, ExcludedView, OriginView, WeakView
 
 A = Violation("app/a.py", 3, "a problem", "rules", "do this")
 B = Violation("app/a.py", 7, "another", "rules", "do that")
@@ -67,7 +67,8 @@ def test_a_line_of_skips_names_five_places_then_counts_the_rest(skipped, line):
 
 
 def test_the_json_document_gives_each_violation_its_fix_and_the_hint_of_its_rule_as_keys_of_their_own():
-    document = json.loads(json_document("web", [C, A], EnforcementView(OriginView("web")), False, {"rules": "see the docs"}))
+    checked = AppChecked((C, A), EnforcementView(OriginView("web")), {"rules": "see the docs"}, False)
+    document = json.loads(json_document("web", checked, False))
     assert document["violations"] == [
         {"rule": "rules", "file": "app/a.py", "line": 3, "message": "a problem", "fix": "do this",
          "hint": "see the docs"},
@@ -76,7 +77,7 @@ def test_the_json_document_gives_each_violation_its_fix_and_the_hint_of_its_rule
 
 def test_the_json_document_holds_the_violations_in_order_and_both_lists_of_guards_off():
     state = EnforcementView(OriginView("my.yaml", False, "web", ("closed-tree", "no-comments"), ("closed-tree",)))
-    document = json.loads(json_document("my.yaml", [C, A], state, False))
+    document = json.loads(json_document("my.yaml", AppChecked((C, A), state, {}, False), False))
     assert ([v["line"] for v in document["violations"]], document["enforcement"]["profile"]["guards_off"],
             document["enforcement"]["profile"]["baseline_off"]) == ([3, 1], ["closed-tree", "no-comments"],
                                                                     ["closed-tree"])
@@ -93,7 +94,7 @@ def test_an_excluded_folder_is_named_with_its_reason_after_the_ungoverned_files(
 
 def test_the_json_document_lists_every_excluded_folder_with_its_reason():
     state = EnforcementView(OriginView("web"), excluded=(ExcludedView("app/examples", "shipped as data"),))
-    document = json.loads(json_document("web", [], state, False))
+    document = json.loads(json_document("web", AppChecked((), state, {}, True), False))
     assert document["enforcement"]["excluded"] == [{"folder": "app/examples", "reason": "shipped as data"}]
 
 
@@ -113,7 +114,8 @@ def test_a_weak_check_with_a_fix_shows_it_under_its_line_and_the_hint_of_its_rul
 
 
 def test_the_json_weak_items_hold_their_fix_or_null():
-    document = json.loads(json_document("web", [], EnforcementView(origin=OriginView("web"), weak=(OLD, PASS)), False))
+    state = EnforcementView(origin=OriginView("web"), weak=(OLD, PASS))
+    document = json.loads(json_document("web", AppChecked((), state, {}, True), False))
     assert document["enforcement"]["weak"] == [
         {"rule": "stand-ins", "file": "tests/fakes/r.py", "line": 1,
          "message": "FakeR does not define get, which R declares", "fix": None},

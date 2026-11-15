@@ -8,7 +8,7 @@ from xarch.kernel.violations import Violation
 
 __all__ = ["LoosenedView", "OriginView", "DriftView", "AtView", "WeakView", "FindingView", "ExcludedView",
            "EnforcementView", "ReachView", "NearestView", "TierInfoView", "WhereView", "CheckImports", "ImportsChecked",
-           "NotADirectory", "CheckResult", "Locate", "Located", "Outside", "LocateResult"]
+           "NotADirectory", "CheckResult", "CheckApp", "AppChecked", "CheckAppResult", "Locate", "Located", "Outside", "LocateResult"]
 
 
 @dataclass(frozen=True)
@@ -173,6 +173,29 @@ class NotADirectory:
 
 
 CheckResult = ImportsChecked | NotADirectory
+
+
+@dataclass(frozen=True)
+class CheckApp:
+    """Check the app below root, its imports and its structure, and the tests below tests (None: no tests), against
+    the architecture at profile (a bundled name or a path); strict also fails on the enforcement's findings."""
+    root: Path
+    profile: str
+    tests: Path | None = None
+    strict: bool = False
+
+
+@dataclass(frozen=True)
+class AppChecked:
+    """The violations of the source, then of the structure; the state of the check's enforcement; the profile's own
+    advice by rule id; and whether the check passes: no violation and, under strict, no finding of the enforcement."""
+    violations: tuple[Violation, ...]
+    enforcement: EnforcementView
+    hints: dict[str, str]
+    ok: bool
+
+
+CheckAppResult = AppChecked | NotADirectory
 
 
 @dataclass(frozen=True)

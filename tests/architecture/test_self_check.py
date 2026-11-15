@@ -12,7 +12,7 @@ from xarch.bootstrap.app import app
 from xarch.bootstrap.wiring import build_controllers
 from xarch.modules.layout.contract import CheckStructure
 from xarch.modules.rules.contract import CheckImports, ImportsChecked
-from xarch.modules.spec.contract import ProfileSelected, SelectProfile
+from xarch.modules.spec.contract import AppChosen, ChooseApp, ProfileSelected, SelectProfile
 
 SRC = Path(xarch.__file__).parent
 TESTS = SRC.parent / "tests"
@@ -35,7 +35,7 @@ def test_xarch_checks_itself_against_its_own_architecture_file():
 
 
 def test_xarch_records_its_own_app_folder_so_a_bare_check_runs_here():
-    assert build_controllers().spec.configured_app(SRC.parent) == SRC
+    assert build_controllers().spec.choose_app(ChooseApp(SRC.parent)) == AppChosen(SRC)
 
 
 @REFACTOR_PENDING

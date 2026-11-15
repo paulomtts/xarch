@@ -15,7 +15,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.contract import AtView, EnforcementView, FindingView
+from xarch.modules.rules.contract import AppChecked, AtView, EnforcementView, FindingView
 
 LABEL = 13
 """The width of a label of the enforcement section, its colon and the spaces after it."""
@@ -138,19 +138,8 @@ def _finding(finding: FindingView) -> dict[str, str]:
     return {"key": finding.key, "detail": finding.detail}
 
 
-def json_document(profile: str, found: Iterable[Violation], state: EnforcementView, strict: bool,
-                  hints: Mapping[str, str] | None = None) -> str:
-    found = list(found)
-    document = {"ok": passed(found, state, strict), "strict": strict, "profile": profile,
-                "violations": [violation_document(v, hints) for v in ordered(found)],
-                "enforcement": enforcement_document(state)}
+def json_document(profile: str, checked: AppChecked, strict: bool) -> str:
+    document = {"ok": checked.ok, "strict": strict, "profile": profile,
+                "violations": [violation_document(v, checked.hints) for v in ordered(checked.violations)],
+                "enforcement": enforcement_document(checked.enforcement)}
     return json.dumps(document, indent=2, ensure_ascii=False)
-
-
-def passed(found: Sequence[Violation], state: EnforcementView, strict: bool) -> bool:
-    """No violation, and under strict no enforcement finding."""
-    return not found and not (strict and state.strict)
-
-
-def json_error(reason: str) -> str:
-    return json.dumps({"ok": False, "error": reason}, indent=2, ensure_ascii=False)

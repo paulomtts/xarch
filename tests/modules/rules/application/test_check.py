@@ -6,11 +6,9 @@ import pytest
 
 from tests.fakes.filesystem import FakeSourceTree
 from tests.fakes.profiles import FakeProfiles
+from tests.modules.rules.application.helpers import controller
 from xarch.kernel.logic.placement import Repeat, Target
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.application.controller import RulesController
-from xarch.modules.rules.application.services.locate import LocateService
-from xarch.modules.rules.application.services.source_check import SourceCheckService
 from xarch.modules.rules.contract import (
     CheckImports,
     DriftView,
@@ -48,8 +46,8 @@ def profile(entry: str) -> Profile:
 PROFILES = FakeProfiles({"cli": profile("cli"), "web": profile("web")})
 
 
-def controller_of(tree, profiles) -> RulesController:
-    return RulesController(SourceCheckService(tree, profiles), LocateService(tree, profiles))
+def controller_of(tree, profiles):
+    return controller(tree, profiles)
 
 
 def run(files, package="app", root=ROOT, profile="cli"):

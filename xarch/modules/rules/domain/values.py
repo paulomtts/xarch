@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from xarch.kernel.logic.placement import EVERYTHING, Repeat, Target, repeat_of
+from xarch.kernel.logic.placement import Repeat, Target, repeat_of
 
 
 @dataclass(frozen=True)
@@ -126,7 +126,8 @@ class Profile:
     with dead_code, the files of a tiered part no test of its tier reaches. holds says, by part, what its files define
     ("classes" or "functions"); types_only, by part, the parts it may use as types only; no_callbacks the parts whose
     code calls none of its own parameters; names, by part, the patterns its public classes match one of; built_by, by
-    part, the parts that alone may build its classes; private_imports switches the private-imports guard on.
+    part, the parts that alone may build its classes; private_imports switches the private-imports guard on. hints
+    holds the profile's own advice, by rule id.
     """
     parts: dict[str, tuple[str, ...]]
     rules: dict[str, tuple[Target, ...]]
@@ -155,6 +156,7 @@ class Profile:
     names: dict[str, tuple[str, ...]] = field(default_factory=dict)
     built_by: dict[str, tuple[str, ...]] = field(default_factory=dict)
     private_imports: bool = False
+    hints: dict[str, str] = field(default_factory=dict)
 
     def words(self) -> dict[str, str]:
         """The word of the repeating folder each part lies in; a part outside every one has none."""
@@ -347,40 +349,12 @@ class InitFile:
 @dataclass(frozen=True)
 class Loosened:
     """One way the profile in force is looser than the bundled profile it is compared with (see the spec contract's
-    Loosened for the keys); sentence says it."""
+    Loosened for the keys), and the sentence that says it, as spec words it."""
     key: str
     part: str
     what: str = ""
 
-    @property
-    def sentence(self) -> str:
-        match self.key:
-            case "may_import":
-                return f"{self.part} may also import {self.what} (parts.{self.part}.may_import)"
-            case "libraries" if not self.part:
-                return "outside packages are not checked"
-            case "libraries" if self.what == EVERYTHING:
-                return f"{self.part} may import any outside package (parts.{self.part}.libraries)"
-            case "libraries":
-                return f"{self.part} may also import {self.what} (parts.{self.part}.libraries)"
-            case "forbidden":
-                return f"{self.part} no longer forbids {self.what} (parts.{self.part}.forbidden)"
-            case "must_import" if not self.what:
-                return f"{self.part} no longer has to import anything (parts.{self.part}.must_import)"
-            case "must_import":
-                return f"{self.part} may also meet must_import with {self.what} (parts.{self.part}.must_import)"
-            case "untested":
-                return f"{self.part} is newly marked untested (parts.{self.part}.untested)"
-            case "types_only":
-                return f"the {self.part} tests may now call {self.what} (tiers.{self.part}.types_only)"
-            case "apply_forbidden":
-                return (f"the {self.part} tests are no longer held to their part's forbidden list "
-                        f"(tiers.{self.part}.apply_forbidden)")
-            case "testing.skips":
-                return f"{self.what} is no longer counted as a skip (testing.skips)"
-            case "files.pinned":
-                return f"{self.what} is no longer pinned (files.{self.what}.pinned)"
-        return " ".join(filter(None, (self.key, self.part, self.what)))
+    sentence: str = ""
 
 
 @dataclass(frozen=True)

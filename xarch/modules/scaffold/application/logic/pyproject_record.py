@@ -11,10 +11,10 @@ import os
 import re
 from pathlib import Path
 
+from xarch.kernel.defaults import DEFAULT_APP
+
 PYPROJECT = "pyproject.toml"
 TABLE = "[tool.xarch]"
-DEFAULT_APP = "app"
-"""The app folder xarch assumes, beside the pyproject.toml, when none is given or recorded."""
 _HEADER = re.compile(r"\s*\[")
 
 

@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from xarch.modules.rules.application.services.app_check import AppCheckService
 from xarch.modules.rules.application.services.locate import LocateService
 from xarch.modules.rules.application.services.source_check import SourceCheckService
 from xarch.modules.rules.contract import (
+    AppChecked,
     AtView,
+    CheckApp,
+    CheckAppResult,
     CheckImports,
     CheckResult,
     DriftView,
@@ -29,8 +33,16 @@ from xarch.modules.rules.domain.values import Enforcement, Where
 
 
 class RulesController:
-    def __init__(self, service: SourceCheckService, locator: LocateService):
-        self._service, self._locator = service, locator
+    def __init__(self, service: SourceCheckService, locator: LocateService, app: AppCheckService):
+        self._service, self._locator, self._app = service, locator, app
+
+    def check_app(self, cmd: CheckApp) -> CheckAppResult:
+        """The whole check of an app; a root or tests folder that is no folder is refused."""
+        try:
+            found, enforcement, hints, ok = self._app.check(cmd.root, cmd.profile, cmd.tests, cmd.strict)
+        except RootMissing as e:
+            return NotADirectory(e.root)
+        return AppChecked(tuple(found), _enforcement(enforcement), hints, ok)
 
     def check(self, cmd: CheckImports) -> CheckResult:
         try:

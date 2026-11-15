@@ -64,12 +64,12 @@ class SpecProfiles:
                        if view.framework is not None else None,
                        forbidden={p.name: p.forbidden for p in parts if p.forbidden},
                        info={p.name: PartInfo(p.role, p.litmus, p.shown, p.untested) for p in parts},
-                       excluded=tuple(Exclusion(e.path, e.reason) for e in view.excluded))
+                       excluded=tuple(Exclusion(e.path, e.reason) for e in view.excluded), hints=dict(view.hints))
 
     def origin(self, location: str) -> Origin:
         found = self._spec.origin(location)
         return Origin(found.location, found.bundled, found.closest, found.guards_off, found.baseline_off,
-                      tuple(Loosened(item.key, item.part, item.what) for item in found.looser))
+                      tuple(Loosened(item.key, item.part, item.what, item.sentence) for item in found.looser))
 
     def init_files(self, location: str, app: str) -> tuple[InitFile, ...]:
         """None when the profile cannot write them for this app, which `init` reports when it refuses."""

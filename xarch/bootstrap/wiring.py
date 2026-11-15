@@ -9,8 +9,10 @@ from xarch.modules.layout.adapters.spec_skeleton import SpecSkeleton as LayoutSk
 from xarch.modules.layout.application.controller import LayoutController
 from xarch.modules.layout.application.services.structure_check import StructureCheckService
 from xarch.modules.rules.adapters.fs_source_tree import FsSourceTree
+from xarch.modules.rules.adapters.layout_structure import LayoutStructure
 from xarch.modules.rules.adapters.spec_profile import SpecProfiles
 from xarch.modules.rules.application.controller import RulesController
+from xarch.modules.rules.application.services.app_check import AppCheckService
 from xarch.modules.rules.application.services.locate import LocateService
 from xarch.modules.rules.application.services.source_check import SourceCheckService
 from xarch.modules.scaffold.adapters.fs_files import FsFiles
@@ -18,6 +20,7 @@ from xarch.modules.scaffold.adapters.spec_skeleton import SpecSkeleton as Scaffo
 from xarch.modules.scaffold.application.controller import ScaffoldController
 from xarch.modules.scaffold.application.services.scaffolding import ScaffoldingService
 from xarch.modules.spec.adapters.fs_architecture_files import FsArchitectureFiles
+from xarch.modules.spec.adapters.fs_folders import FsFolders
 from xarch.modules.spec.adapters.fs_profile_output import FsProfileOutput
 from xarch.modules.spec.adapters.pyproject_settings import PyprojectSettings
 from xarch.modules.spec.application.controller import SpecController
@@ -47,8 +50,8 @@ def build_spec(fs: FileSystem | None = None) -> SpecController:
     architectures = ArchitectureService(files)
     settings = PyprojectSettings(fs, TomlReader())
     output = FsProfileOutput(fs)
-    selection = ProfileSelectionService(settings, architectures, files)
-    return SpecController(architectures, selection, settings, ProfileReviewService(selection, architectures, files),
+    selection = ProfileSelectionService(settings, architectures, files, FsFolders(fs))
+    return SpecController(architectures, selection, ProfileReviewService(selection, architectures, files),
                           ExplainService(files), MigrationService(files, architectures, output),
                           ProfileCreationService(files, architectures, output))
 
@@ -62,9 +65,11 @@ def load_architecture(location: str | Path) -> Architecture:
     return build_architectures().load(location)
 
 
-def build_rules(fs: FileSystem, spec: SpecController) -> RulesController:
+def build_rules(fs: FileSystem, spec: SpecController, layout: LayoutController) -> RulesController:
     tree, profiles = FsSourceTree(fs), SpecProfiles(spec)
-    return RulesController(SourceCheckService(tree, profiles), LocateService(tree, profiles))
+    source = SourceCheckService(tree, profiles)
+    return RulesController(source, LocateService(tree, profiles),
+                           AppCheckService(source, LayoutStructure(layout), profiles))
 
 
 def build_layout(fs: FileSystem, spec: SpecController) -> LayoutController:
@@ -79,4 +84,5 @@ def build_controllers() -> Controllers:
     """One spec feeds rules, layout and scaffold: they cannot drift."""
     fs = FileSystem()
     spec = build_spec(fs)
-    return Controllers(build_rules(fs, spec), build_layout(fs, spec), build_scaffold(fs, spec), spec)
+    layout = build_layout(fs, spec)
+    return Controllers(build_rules(fs, spec, layout), layout, build_scaffold(fs, spec), spec)

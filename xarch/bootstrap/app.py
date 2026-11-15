@@ -5,4 +5,4 @@ from xarch.bootstrap.wiring import build_controllers
 from xarch.cli.app import build
 
 _controllers = build_controllers()
-app = build(_controllers.rules, _controllers.layout, _controllers.scaffold, _controllers.spec)
+app = build(_controllers.rules, _controllers.scaffold, _controllers.spec)

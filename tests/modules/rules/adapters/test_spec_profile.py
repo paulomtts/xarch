@@ -90,7 +90,7 @@ def test_the_profile_view_becomes_the_profile_the_checks_see():
         excluded=(Exclusion(("vendor",), "not ours"),), must_import={"api": (Target("core"),)}, no_duplicates=4,
         dead_code=True, pass_through=("api",), untested=True, holds={"core": "functions"},
         types_only={"api": ("core",)}, no_callbacks=("core",), names={"api": ("*Api",)}, built_by={"api": ("core",)},
-        private_imports=True)
+        private_imports=True, hints={"rules": "ask first"})
 
 
 def test_the_origin_keeps_every_looseness():

@@ -5,7 +5,7 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.spec.profiles_v2 import layered, parsed
-from xarch.modules.spec.application.logic.looseness import closest, looser
+from xarch.modules.spec.application.logic.looseness import closest, looser, sentence
 
 
 @pytest.mark.parametrize("target, shown", [
@@ -29,3 +29,37 @@ def test_the_bundled_profile_a_profile_says_it_is_based_on_wins_over_the_one_sha
     mine = replace(full, parts={name: full.parts[name] for name in ("api", "store")})
     assert closest(mine, bundled) == "alpha"
     assert closest(replace(mine, based_on="beta"), bundled) == "beta"
+
+
+@pytest.mark.parametrize("looser, said", [
+    pytest.param(("may_import", "domain", "platform"),
+                 "domain may also import platform (parts.domain.may_import)", id="a rule target added"),
+    pytest.param(("libraries", "", ""), "outside packages are not checked", id="libraries switched off"),
+    pytest.param(("libraries", "web", "requests"), "web may also import requests (parts.web.libraries)",
+                 id="a package added"),
+    pytest.param(("libraries", "web", "*"), "web may import any outside package (parts.web.libraries)",
+                 id="a part left unchecked"),
+    pytest.param(("forbidden", "domain", "time.time"),
+                 "domain no longer forbids time.time (parts.domain.forbidden)", id="a forbidden name dropped"),
+    pytest.param(("must_import", "adapters", "contract@any"),
+                 "adapters may also meet must_import with contract@any (parts.adapters.must_import)",
+                 id="a must_import target added"),
+    pytest.param(("must_import", "adapters"), "adapters no longer has to import anything "
+                                                      "(parts.adapters.must_import)", id="must_import dropped"),
+    pytest.param(("untested", "platform"), "platform is newly marked untested (parts.platform.untested)",
+                 id="a part marked untested"),
+    pytest.param(("types_only", "rendering", "controller"),
+                 "the rendering tests may now call controller (tiers.rendering.types_only)",
+                 id="a types-only part dropped"),
+    pytest.param(("apply_forbidden", "unit"),
+                 "the unit tests are no longer held to their part's forbidden list (tiers.unit.apply_forbidden)",
+                 id="a tier's forbidden dropped"),
+    pytest.param(("testing.skips", "", "pytest.skip"),
+                 "pytest.skip is no longer counted as a skip (testing.skips)", id="a skip dropped"),
+    pytest.param(("files.pinned", "", "tests/test_rules.py"),
+                 "tests/test_rules.py is no longer pinned (files.tests/test_rules.py.pinned)",
+                 id="an init file unpinned"),
+    pytest.param(("other", "", "x"), "other x", id="a key it does not know is said by its words"),
+])
+def test_sentence(looser, said):
+    assert sentence(*looser) == said

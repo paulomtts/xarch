@@ -18,6 +18,7 @@ from typing import Any
 from xarch.modules.spec.contract import (
     FormatExplained,
     KeyExplained,
+    Migrated,
     ProfileChecked,
     ProfileCreated,
     ProfileViewed,
@@ -205,3 +206,26 @@ def _summary(files: Sequence[str]) -> list[str]:
 
 def _dump(document: dict[str, Any]) -> str:
     return json.dumps(document, indent=2, ensure_ascii=False)
+
+
+COMMENTS = "YAML comments are not carried over: the converted file has none, so copy the ones you need by hand."
+
+
+def migrated_lines(done: Migrated) -> list[str]:
+    where = done.folder.as_posix()
+    lines = [f"{'dry run, nothing written: would write' if done.dry_run else 'wrote'} to {where}/"]
+    for file in done.files:
+        notes = []
+        if file.source is not None:
+            notes.append(f"from {file.source}")
+        if file.rewritten:
+            notes.append(f"{file.rewritten} example placeholder{'s' if file.rewritten > 1 else ''} rewritten")
+        lines.append(f"  {file.path}" + (f"  ({', '.join(notes)})" if notes else ""))
+    if done.changes:
+        lines += ["changed:", *(f"  {item}" for item in done.changes)]
+    if done.by_hand:
+        lines += ["by hand:", *(f"  {item}" for item in done.by_hand)]
+    lines.append(COMMENTS)
+    lines.append("the old profile and its files are untouched; check the new one with `xarch check --profile "
+                 f"{done.profile.as_posix()}`")
+    return lines

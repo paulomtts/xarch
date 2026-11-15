@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from xarch.kernel.errors import DomainError
 from xarch.kernel.logic.placement import Target
 from xarch.modules.spec.application.logic.docs_files import DOCS_ROOT
@@ -9,7 +7,6 @@ from xarch.modules.spec.application.logic.explain import VERSION, cleaned, examp
 from xarch.modules.spec.application.logic.key_lookup import plain
 from xarch.modules.spec.application.logic.layout_walk import walk
 from xarch.modules.spec.application.logic.profile_view import view
-from xarch.modules.spec.application.ports.settings import Settings
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.application.services.explanation import ExplainService
 from xarch.modules.spec.application.services.migration import MigrationService
@@ -17,8 +14,11 @@ from xarch.modules.spec.application.services.profile_creation import ProfileCrea
 from xarch.modules.spec.application.services.profile_review import ProfileReviewService
 from xarch.modules.spec.application.services.profile_selection import ProfileSelectionService
 from xarch.modules.spec.contract import (
+    AppChosen,
     CheckProfile,
     CheckResult,
+    ChooseApp,
+    ChooseAppResult,
     DocFile,
     Docs,
     Entry,
@@ -87,10 +87,10 @@ from xarch.modules.spec.domain.values import (
 class SpecController:
     """Publishes the skeleton of a profile, and decides which profile is in force."""
 
-    def __init__(self, architectures: ArchitectureService, selection: ProfileSelectionService, settings: Settings,
+    def __init__(self, architectures: ArchitectureService, selection: ProfileSelectionService,
                  review: ProfileReviewService, explanation: ExplainService, migration: MigrationService,
                  creation: ProfileCreationService):
-        self._architectures, self._selection, self._settings = architectures, selection, settings
+        self._architectures, self._selection = architectures, selection
         self._review, self._explanation = review, explanation
         self._migration, self._creation = migration, creation
 
@@ -123,10 +123,12 @@ class SpecController:
         bundled profile it resembles; raises InvalidArchitecture."""
         return _origin(self._architectures.origin(location))
 
-    def configured_app(self, start: Path) -> Path | None:
-        """The app folder the project holding the folder start records under [tool.xarch], looked up from start upward,
-        or None; raises UnreadableSettings."""
-        return self._settings.configured_app(start)
+    def choose_app(self, cmd: ChooseApp) -> ChooseAppResult:
+        """The app folder to work on; settings that cannot be read are refused with why."""
+        try:
+            return AppChosen(self._selection.app(cmd.start, cmd.given))
+        except DomainError as e:
+            return ProfileRefused(e.reason)
 
     def select(self, cmd: SelectProfile) -> SelectResult:
         """No profile asked for or configured comes back with the known ones; an unknown profile, unreadable settings

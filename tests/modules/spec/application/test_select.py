@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from tests.fakes.architecture_files import FakeArchitectureFiles
+from tests.fakes.folders import FakeFolders
 from tests.fakes.settings import FakeSettings
 from tests.modules.spec.application.helpers import controller as spec_controller
 from xarch.modules.spec.application.controller import SpecController
@@ -80,17 +81,12 @@ def test_the_tests_root(configured_tests, override, tests):
     assert isinstance(result, ProfileSelected) and result.tests == tests
 
 
-@pytest.mark.parametrize("given, start, expected", [
-    pytest.param(dict(app=Path("/src/shop")), Path("/src"), Path("/src/shop"),
-                 id="the app folder configured for the project is returned"),
-    pytest.param(dict(), Path("/src"), None, id="with none configured there is none"),
-    pytest.param(dict(app=Path("/src/shop"), from_folder=Path("/src")), Path("/elsewhere"), None,
-                 id="an app folder configured for another project is not this one's"),
+@pytest.mark.parametrize("folders, tests", [
+    pytest.param({Path("/src/tests")}, Path("/src/tests"), id="tests/ beside the app folder is the default tests root"),
+    pytest.param(set(), None, id="with no tests/ beside the app folder there is no tests root"),
 ])
-def test_the_configured_app_folder_is_the_one_the_project_around_the_folder_records(given, start, expected):
-    assert controller(**given).configured_app(start) == expected
-
-
-def test_unreadable_settings_make_the_configured_app_folder_unreadable_too():
-    with pytest.raises(UnreadableSettings):
-        controller(error=UnreadableSettings(PYPROJECT, "bad")).configured_app(Path("/src"))
+def test_the_tests_root_by_default(folders, tests):
+    port = FakeArchitectureFiles({"cli": LAYERED, "web": LAYERED})
+    spec = spec_controller(port, FakeSettings(Configured("cli", PYPROJECT)), folders=FakeFolders(folders))
+    result = spec.select(SelectProfile(APP, None))
+    assert isinstance(result, ProfileSelected) and result.tests == tests
