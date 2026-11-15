@@ -2,8 +2,8 @@
 app or of its tests."""
 import pytest
 
+from tests.modules.rules.application.logic.checks import private_imports as violations
 from tests.modules.rules.builders import imp, in_tests, profile, source
-from xarch.modules.rules.application.logic.private_imports import violations
 
 ON = profile(private_imports=True)
 
