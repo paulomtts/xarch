@@ -121,7 +121,7 @@ class Tier:
 
     name: e.g. "use case"
     subject: the parts it tests; every part is in some tier's subject or is `untested`
-    litmus: its placement litmus test; may span lines, kept as written
+    litmus: its placement litmus test; the docs show it as one paragraph, whatever its line breaks
     subject_text: the Subject cell as written, in place of the subject's parts
     data: where its test data comes from
     helpers: files its tests share (builders, a fixture), shown with {{tier_helpers}}

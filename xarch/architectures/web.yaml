@@ -125,8 +125,9 @@ parts:
       only implements one module's port against a real system, it belongs in `adapters/`.
     untested: "it wires the app and holds no rule; it has no test of its own"
 
-# What each part may import. <part>@own: in the importer's module; <part>@any: in any module; a bare <part>: a part
-# outside the modules; /<path> after it: only that path below the part; "*": everything (quoted: * starts a YAML alias).
+# What each part may import. <part>@own: in the importer's own instance of the `each` folder (here, its module);
+# <part>@any: in any instance; a bare <part>: a part outside the `each` folder; /<path> after it: only that path
+# below the part; "*": everything (quoted: * starts a YAML alias).
 # The docs' rules table lists the targets in this order, leaving out the part itself.
 rules:
   kernel:     [kernel]
@@ -146,7 +147,7 @@ rules:
 libraries:
   platform:   [sqlmodel]
   adapters:   [sqlmodel]
-  web:       [fastapi]
+  web:        [fastapi]
   bootstrap:  [sqlmodel, fastapi, uvicorn]
 
 # The layers of a module, each from the inside out: no part imports a part after it in its chain.
@@ -186,11 +187,11 @@ tiers:
     subject: [kernel, kernel/logic, domain, logic, adapters]
     proves: an invariant, a value rule, a state transition, a pure rule, an adapter's translation
     may_touch: "nothing: no I/O, no clock, no fakes; an adapter gets a stub of its `platform/` client"
-    litmus: |-
-      Does it prove a rule, value or transition by building the object and asking it, or by calling a
-      pure function from `logic/`, or by handing an adapter a stub client and checking what it translates, with no
-      port in sight? If yes, it is a unit test. If it needs a port to get an
-      answer, it is an integration test. If it asserts how a port was called, it is testing nothing.
+    litmus: >-
+      Does it prove a rule, value or transition by building the object and asking it, or by calling a pure function
+      from `logic/`, or by handing an adapter a stub client and checking what it translates, with no port in sight?
+      If yes, it is a unit test. If it needs a port to get an answer, it is an integration test. If it asserts how
+      a port was called, it is testing nothing.
     one_file_per: domain object or rule
     cases_from: the invariants in the module doc
     data: built in the test
@@ -202,12 +203,11 @@ tiers:
     subject_text: "`application/controller.py`, with the services behind it"
     proves: one `Result` variant per path, driven through the controller
     may_touch: "real controllers only; their ports are `tests/fakes/`, or mocks for fire-only ports"
-    litmus: |-
-      Does it drive one use case through its real controller and assert one `Result` variant? If yes,
-      it is an integration test. If it asserts what a fake holds instead of the `Result`,
-      check first that the `Result` would not already say it. If it asserts how a row is stored or read
-      back, it is a unit test of the adapter. If it mocks a repo to assert it was called, fake the repo and assert
-      the `Result`.
+    litmus: >-
+      Does it drive one use case through its real controller and assert one `Result` variant? If yes, it is an
+      integration test. If it asserts what a fake holds instead of the `Result`, check first that the `Result`
+      would not already say it. If it asserts how a row is stored or read back, it is a unit test of the adapter.
+      If it mocks a repo to assert it was called, fake the repo and assert the `Result`.
     one_file_per: use case, headed by its scenarios
     cases_from: "the scenarios: one per `Result` variant, happy and unhappy"
     data: the test loads the fake before acting; a builder per aggregate for the common shape, never a shared dataset
@@ -219,10 +219,10 @@ tiers:
     subject: [web]
     proves: what the page shows for each `Result`; never a business outcome
     may_touch: a fake controller, injected
-    litmus: |-
-      Does it prove what the page shows for one `Result`, with a fake controller injected? If yes,
-      it is a rendering test. If it asserts what the use case did, or needs the real controller to mean
-      anything, it is an integration test wearing a screen.
+    litmus: >-
+      Does it prove what the page shows for one `Result`, with a fake controller injected? If yes, it is a
+      rendering test. If it asserts what the use case did, or needs the real controller to mean anything, it is an
+      integration test wearing a screen.
     one_file_per: command or page
     cases_from: the `Result` variants it shows
     data: "none: the fake controller returns the `Result` under test"
@@ -234,9 +234,9 @@ tiers:
     subject_text: the source tree
     proves: a rule of the architecture holds
     may_touch: "`tests/architecture/`"
-    litmus: |-
-      Does it read the source tree and fail on a rule of architecture.md, whatever the app does? If
-      yes, it is a guard, and it has a file under `artifacts/guards/`. If it runs the app, it is not a guard.
+    litmus: >-
+      Does it read the source tree and fail on a rule of architecture.md, whatever the app does? If yes, it is a
+      guard, and it has a file under `artifacts/guards/`. If it runs the app, it is not a guard.
     one_file_per: rule
     cases_from: the standard it enforces
     data: none
