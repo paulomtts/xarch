@@ -3,8 +3,8 @@ scenario-coverage and stand-ins read from it."""
 import pytest
 
 from tests.modules.spec.profiles_v2 import TESTING, covered, parsed, problems
+from xarch.kernel.logic.testing import Fixture
 from xarch.modules.spec.application.logic.docs_template import fill
-from xarch.modules.spec.domain.values import Fixture
 
 FILES = {"files": ["test_*.py"], "functions": "test_*"}
 TABLE_OK = TESTING["table"]

@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from xarch.kernel.logic.testing import CaseTable
 from xarch.modules.rules.adapters.fs_source_tree import FsSourceTree
 from xarch.modules.rules.domain.values import (
     Call,
@@ -17,15 +18,14 @@ from xarch.modules.rules.domain.values import (
     SoleCall,
     SourceFile,
     Table,
-    TableForm,
     Use,
 )
 from xarch.platform.filesystem import FileSystem
 
-PYTEST = TableForm(("pytest", "mark", "parametrize"), ("pytest", "param"), "id", ("argnames", "argvalues"))
+PYTEST = CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id", ("argnames", "argvalues"))
 
 
-def parsed(tmp_path: Path, text: str, table: TableForm | None = PYTEST) -> SourceFile:
+def parsed(tmp_path: Path, text: str, table: CaseTable | None = PYTEST) -> SourceFile:
     (tmp_path / "x.py").write_text(text)
     return FsSourceTree(FileSystem()).read(tmp_path, [("x.py",)], table)[0]
 
@@ -180,7 +180,7 @@ def test_the_functions_of_a_class_are_listed_in_source_order(tmp_path):
     assert [f.name for f in parsed(tmp_path, text).functions] == ["a", "b", "c"]
 
 
-OTHER = TableForm(("cases", "table"), ("cases", "row"), "name", ("names", "rows"))
+OTHER = CaseTable(("cases", "table"), ("cases", "row"), "name", ("names", "rows"))
 OTHER_TEXT = ("import cases\nfrom cases import row\nimport pytest\n\n"
               "@cases.table('a, b', [row(1, 2, name='x'), cases.row(3, 4, id='y')])\ndef it_a(): ...\n\n"
               "@pytest.mark.parametrize('a', [1])\ndef it_b(): ...\n\n"
@@ -198,7 +198,7 @@ def test_a_table_is_read_in_the_names_the_form_gives(tmp_path):
 
 
 def test_without_keywords_only_positional_arguments_are_read(tmp_path):
-    form = TableForm(("cases", "table"), ("cases", "row"), "name")
+    form = CaseTable(("cases", "table"), ("cases", "row"), "name")
     functions = parsed(tmp_path, OTHER_TEXT, form).functions
     assert [len(f.tables) for f in functions] == [1, 0, 0]
 

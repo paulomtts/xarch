@@ -101,7 +101,7 @@ def test_a_fresh_project_of_a_bundled_profile_has_every_shipped_file_and_passes_
     init(app, profile)
     controllers = build_controllers()
     assert isinstance(controllers.scaffold.new(New(app, "module", "documents", profile)), Scaffolded)
-    shipped = controllers.spec.files(profile, "app")
+    shipped = controllers.spec.files(profile, "app").files
     assert shipped and all((tmp_path.joinpath(*file.path)).is_file() for file in shipped)
     checked = controllers.rules.check(CheckImports(app, "app", profile, tmp_path / "tests"))
     assert isinstance(checked, ImportsChecked)

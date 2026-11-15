@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from xarch.kernel.errors import DomainError
+from xarch.kernel.logic.language import LanguageView
 from xarch.kernel.logic.placement import Target
+from xarch.kernel.logic.testing import ScenarioCoverage, StandIns, TierView
 from xarch.modules.spec.application.logic.docs_files import DOCS_ROOT
 from xarch.modules.spec.application.logic.explain import cleaned, example_of, held_by, key_at, nearest, overview_keys, said
 from xarch.modules.spec.application.logic.key_lookup import plain
@@ -22,17 +24,12 @@ from xarch.modules.spec.contract import (
     DocFile,
     Docs,
     Entry,
-    ExcludedView,
     Explain,
     ExplainResult,
-    FakesView,
-    FixtureView,
+    FilesResult,
     FormatExplained,
-    FrameworkView,
     GuardsView,
     KeyExplained,
-    LanguageView,
-    Loosened,
     Migrated,
     MigratedFile,
     MigrateProfile,
@@ -41,26 +38,22 @@ from xarch.modules.spec.contract import (
     NewProfile,
     NewResult,
     NoProfileChosen,
+    OriginResult,
     PartView,
     Problem,
     ProfileChecked,
     ProfileCreated,
-    ProfileOrigin,
     ProfileRefused,
     ProfileSelected,
     ProfileView,
     ProfileViewed,
-    ProjectFile,
+    ProjectFiles,
     Repeating,
-    ScenariosView,
     SelectProfile,
     SelectResult,
     Shown,
     Skeleton,
-    StandInsView,
     Symbol,
-    TableView,
-    TierView,
     UnknownKey,
     ViewProfile,
     ViewResult,
@@ -78,12 +71,9 @@ from xarch.modules.spec.domain.values import (
     NoComments,
     NoDuplicates,
     NoTwins,
-    Origin,
     PackageOnly,
     PassThrough,
     PrivateImports,
-    ScenarioCoverage,
-    StandIns,
     Tier,
 )
 
@@ -118,16 +108,21 @@ class SpecController:
         """The project docs the profile declares, with their text; raises InvalidArchitecture or InvalidTemplate."""
         return Docs(root=DOCS_ROOT, files=tuple(DocFile(path, text) for path, text in self._architectures.docs(profile)))
 
-    def files(self, profile: str, app: str, presets: bool = True) -> tuple[ProjectFile, ...]:
+    def files(self, profile: str, app: str, presets: bool = True) -> FilesResult:
         """The files the profile has `init` write beside an app folder called app, with their content; presets off
-        leaves out what its folder entries copy. Raises InvalidArchitecture."""
-        return tuple(ProjectFile(w.path, w.content, w.pinned, w.preset)
-                     for w in self._architectures.files(profile, app, presets))
+        leaves out what its folder entries copy. A profile that cannot write them is refused with why."""
+        try:
+            return ProjectFiles(tuple(self._architectures.files(profile, app, presets)))
+        except DomainError as e:
+            return ProfileRefused(e.reason)
 
-    def origin(self, location: str) -> ProfileOrigin:
+    def origin(self, location: str) -> OriginResult:
         """Where the profile at a location callers got from select() comes from, and how it is looser than the
-        bundled profile it resembles; raises InvalidArchitecture."""
-        return _origin(self._architectures.origin(location))
+        bundled profile it resembles; a profile that cannot be loaded is refused with why."""
+        try:
+            return self._architectures.origin(location)
+        except DomainError as e:
+            return ProfileRefused(e.reason)
 
     def choose_app(self, cmd: ChooseApp) -> ChooseAppResult:
         """The app folder to work on; settings that cannot be read are refused with why."""
@@ -192,7 +187,7 @@ class SpecController:
         except DomainError as e:
             return ProfileRefused(e.reason)
         return ProfileChecked(review.location, tuple(Problem(check, text) for check, text in review.problems),
-                              review.files, _origin(review.origin) if review.origin is not None else None)
+                              review.files, review.origin)
 
     def new_profile(self, cmd: NewProfile) -> NewResult:
         """Copies a bundled profile into the project, with its files; a copy that cannot be written is refused with why."""
@@ -205,11 +200,6 @@ class SpecController:
 
 def _entries(tree: Layout) -> tuple[Entry, ...]:
     return tuple(Entry(path, is_dir, leaf) for path, is_dir, leaf in walk(tree))
-
-
-def _origin(found: Origin) -> ProfileOrigin:
-    return ProfileOrigin(found.location, found.bundled, found.closest, found.guards_off, found.baseline_off,
-                         tuple(Loosened(item.key, item.part, item.what, item.sentence) for item in found.looser))
 
 
 def _shown(key: Key, depth: int, language: Language) -> Shown:
@@ -228,11 +218,8 @@ def _profile_view(architecture: Architecture) -> ProfileView:
         tiers=tuple(_tier_view(architecture, tier) for tier in architecture.tiers),
         libraries=None if architecture.libraries is None else dict(architecture.libraries),
         repeats=architecture.repeats, guards=_guards_view(guards),
-        fakes=FakesView(architecture.fakes.folder, architecture.fakes.stand_in_for, architecture.fakes.prefix)
-        if architecture.fakes is not None else None,
-        framework=FrameworkView(architecture.framework.files, architecture.framework.functions,
-                                architecture.framework.skips) if architecture.framework is not None else None,
-        excluded=tuple(ExcludedView(e.path, e.reason) for e in architecture.excluded), hints=dict(architecture.hints),
+        fakes=architecture.fakes, framework=architecture.framework, excluded=architecture.excluded,
+        hints=dict(architecture.hints),
         language=LanguageView(architecture.language.title, architecture.language.extension,
                               architecture.language.package_file, architecture.language.interface,
                               architecture.language.dynamic),
@@ -242,13 +229,9 @@ def _profile_view(architecture: Architecture) -> ProfileView:
 def _guards_view(guards: tuple[Guard, ...]) -> GuardsView:
     return GuardsView(
         package_only=tuple(p for g in guards if isinstance(g, PackageOnly) for p in g.parts),
-        scenarios=next((ScenariosView(g.results, g.tier, g.suffix, g.columns,
-                                      TableView(g.table.decorator, g.table.row, g.table.id, g.table.keywords), g.file)
-                        for g in guards if isinstance(g, ScenarioCoverage)), None),
+        scenarios=next((g for g in guards if isinstance(g, ScenarioCoverage)), None),
         no_comments=any(isinstance(g, NoComments) for g in guards),
-        stand_ins=next((StandInsView(g.mocks, g.autospec, g.spec,
-                                     tuple(FixtureView(f.name, f.mocks, f.autospec) for f in g.fixtures))
-                        for g in guards if isinstance(g, StandIns)), None),
+        stand_ins=next((g for g in guards if isinstance(g, StandIns)), None),
         closed_tree=any(isinstance(g, ClosedTree) for g in guards),
         no_duplicates=next((g.min_statements for g in guards if isinstance(g, NoDuplicates)), None),
         no_twins=next((g.min_fields for g in guards if isinstance(g, NoTwins)), None),

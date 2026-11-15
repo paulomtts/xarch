@@ -7,7 +7,8 @@ import pytest
 
 from tests.fakes.runtime import FakeRuntime
 from tests.modules.spec.application.builders import spec_controller
-from xarch.modules.spec.contract import CheckProfile, LanguageView, ProfileChecked
+from xarch.kernel.logic.language import LanguageView
+from xarch.modules.spec.contract import CheckProfile, ProfileChecked
 
 PASCAL = {"title": "Pascal", "extension": ".pas", "package_file": "unit.pas", "interface": ["sys.Contract"],
           "dynamic": ["sys.load"], "namespace": "system", "standard": "interpreter"}

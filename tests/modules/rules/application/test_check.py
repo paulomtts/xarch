@@ -8,25 +8,11 @@ from tests.fakes.filesystem import FakeSourceTree
 from tests.fakes.profiles import FakeProfiles
 from tests.modules.rules.application.helpers import controller
 from tests.modules.rules.builders import PYTHON
-from xarch.kernel.logic.placement import Repeat, Target
+from xarch.kernel.logic.origin import Origin
+from xarch.kernel.logic.placement import Excluded, Repeat, Target
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.contract import (
-    CheckImports,
-    DriftView,
-    EnforcementView,
-    ExcludedView,
-    FindingView,
-    ImportsChecked,
-    NotADirectory,
-    OriginView,
-)
-from xarch.modules.rules.domain.values import (
-    Exclusion,
-    Import,
-    InitFile,
-    Origin,
-    Profile,
-)
+from xarch.modules.rules.contract import CheckImports, DriftView, EnforcementView, ExcludedView, FindingView, ImportsChecked, NotADirectory
+from xarch.modules.rules.domain.values import Import, InitFile, Profile
 
 ROOT = Path("/src/pkg")
 
@@ -111,7 +97,7 @@ def test_the_enforcement_holds_the_origin_the_ungoverned_files_the_init_files_an
     tree = FakeSourceTree(ROOT, {"stray.py": [], "kernel/x.py": []}, texts={Path("/src/tests/test_rules.py"): "x\n"})
     result = controller_of(tree, profiles).check(CheckImports(ROOT, "app", "cli"))
     assert result.enforcement == EnforcementView(
-        OriginView("cli", True, None, ("closed-tree",), ("closed-tree",)), ("pkg/stray.py",),
+        Origin("cli", True, None, ("closed-tree",), ("closed-tree",)), ("pkg/stray.py",), ("pkg/stray.py",),
         (DriftView("tests/test_rules.py", "changed"), DriftView("AGENTS.md", "missing")),
         strict=(FindingView("ungoverned", "pkg/stray.py"), FindingView("init_files", "tests/test_rules.py is changed"),
                 FindingView("init_files", "AGENTS.md is missing")))
@@ -126,7 +112,7 @@ def test_the_enforcement_names_the_language_of_the_profile():
 
 def test_an_excluded_folder_is_never_read_nor_listed_as_ungoverned_and_is_named_in_the_enforcement():
     excluding = FakeProfiles({"cli": replace(profile("cli"), closed_tree=True, excluded=(
-        Exclusion(("examples",), "shipped as data"), Exclusion(("kernel", "legacy"), "copied code")))})
+        Excluded(("examples",), "shipped as data"), Excluded(("kernel", "legacy"), "copied code")))})
     bad = [Import(1, ("app", "platform"), names=("sql",))]
     tree = FakeSourceTree(ROOT, {"examples/x.py": bad, "examples/deep/y.py": [], "kernel/legacy/z.py": bad,
                                  "kernel/x.py": bad, "stray.py": []})
@@ -140,7 +126,7 @@ def test_an_excluded_folder_is_never_read_nor_listed_as_ungoverned_and_is_named_
 
 
 def test_an_excluded_folder_is_not_a_finding_strict_fails_on():
-    excluding = FakeProfiles({"cli": replace(profile("cli"), excluded=(Exclusion(("examples",), "shipped as data"),))})
+    excluding = FakeProfiles({"cli": replace(profile("cli"), excluded=(Excluded(("examples",), "shipped as data"),))})
     result = controller_of(FakeSourceTree(ROOT, {"examples/x.py": [], "kernel/x.py": []}), excluding).check(
         CheckImports(ROOT, "app", "cli"))
     assert result.enforcement.strict == ()

@@ -4,9 +4,10 @@ import json
 
 import pytest
 
-from xarch.cli.reports.report import enforcement_lines, folders, json_document, ordered, text_lines
-from xarch.kernel.violations import Violation
-from xarch.modules.rules.contract import AppChecked, AtView, EnforcementView, ExcludedView, OriginView, WeakView
+from xarch.cli.reports.report import enforcement_lines, json_document, ordered, text_lines
+from xarch.kernel.logic.origin import Origin
+from xarch.kernel.violations import At, Violation, Weak
+from xarch.modules.rules.contract import AppChecked, EnforcementView, ExcludedView
 
 A = Violation("app/a.py", 3, "a problem", "rules", "do this")
 B = Violation("app/a.py", 7, "another", "rules", "do that")
@@ -38,21 +39,12 @@ def test_text_lines(found, hints, lines):
     assert text_lines(found, hints) == lines
 
 
-@pytest.mark.parametrize("files, tops", [
-    pytest.param(["app/main.py", "app/kernel/x.py", "app/kernel/y/z.py", "app/scripts/a.py"],
-                 ["app/main.py", "app/kernel/", "app/scripts/"],
-                 id="a file at the app's root is itself, any other its top folder, each once in order"),
-])
-def test_folders(files, tops):
-    assert folders(files) == tops
-
-
 def test_violations_are_ordered_by_file_then_line_then_rule():
     later_rule = Violation("app/a.py", 3, "x", "tiers", "y")
     assert ordered([C, later_rule, B, A, WHOLE]) == [WHOLE, A, later_rule, B, C]
 
 
-SKIPS = tuple(AtView("tests/test_a.py", line) for line in range(1, 8))
+SKIPS = tuple(At("tests/test_a.py", line) for line in range(1, 8))
 
 
 @pytest.mark.parametrize("skipped, line", [
@@ -63,11 +55,11 @@ SKIPS = tuple(AtView("tests/test_a.py", line) for line in range(1, 8))
     pytest.param(SKIPS[:1], "  skipped:     1 skip (tests/test_a.py:1)", id="one skip is singular"),
 ])
 def test_a_line_of_skips_names_five_places_then_counts_the_rest(skipped, line):
-    assert enforcement_lines(EnforcementView(OriginView("web"), skipped=skipped), False)[2] == line
+    assert enforcement_lines(EnforcementView(Origin("web"), skipped=skipped), False)[2] == line
 
 
 def test_the_json_document_gives_each_violation_its_fix_and_the_hint_of_its_rule_as_keys_of_their_own():
-    checked = AppChecked((C, A), EnforcementView(OriginView("web")), {"rules": "see the docs"}, False)
+    checked = AppChecked((C, A), EnforcementView(Origin("web")), {"rules": "see the docs"}, False)
     document = json.loads(json_document("web", checked, False))
     assert document["violations"] == [
         {"rule": "rules", "file": "app/a.py", "line": 3, "message": "a problem", "fix": "do this",
@@ -76,7 +68,7 @@ def test_the_json_document_gives_each_violation_its_fix_and_the_hint_of_its_rule
 
 
 def test_the_json_document_holds_the_violations_in_order_and_both_lists_of_guards_off():
-    state = EnforcementView(OriginView("my.yaml", False, "web", ("closed-tree", "no-comments"), ("closed-tree",)))
+    state = EnforcementView(Origin("my.yaml", False, "web", ("closed-tree", "no-comments"), ("closed-tree",)))
     document = json.loads(json_document("my.yaml", AppChecked((C, A), state, {}, False), False))
     assert ([v["line"] for v in document["violations"]], document["enforcement"]["profile"]["guards_off"],
             document["enforcement"]["profile"]["baseline_off"]) == ([3, 1], ["closed-tree", "no-comments"],
@@ -84,7 +76,7 @@ def test_the_json_document_holds_the_violations_in_order_and_both_lists_of_guard
 
 
 def test_an_excluded_folder_is_named_with_its_reason_after_the_ungoverned_files():
-    state = EnforcementView(OriginView("web"), ("app/stray.py",), excluded=(ExcludedView("app/examples", "shipped as data"),
+    state = EnforcementView(Origin("web"), ("app/stray.py",), ("app/stray.py",), excluded=(ExcludedView("app/examples", "shipped as data"),
                                                                   ExcludedView("app/kernel/legacy", "copied code")),
                             language="Pascal")
     assert enforcement_lines(state, False)[2:] == [
@@ -94,17 +86,17 @@ def test_an_excluded_folder_is_named_with_its_reason_after_the_ungoverned_files(
 
 
 def test_the_json_document_lists_every_excluded_folder_with_its_reason():
-    state = EnforcementView(OriginView("web"), excluded=(ExcludedView("app/examples", "shipped as data"),))
+    state = EnforcementView(Origin("web"), excluded=(ExcludedView("app/examples", "shipped as data"),))
     document = json.loads(json_document("web", AppChecked((), state, {}, True), False))
     assert document["enforcement"]["excluded"] == [{"folder": "app/examples", "reason": "shipped as data"}]
 
 
-PASS = WeakView("pass-through", "app/s.py", 4, "S.get only passes its arguments on to self.repo.get", "use self.repo.get")
-OLD = WeakView("stand-ins", "tests/fakes/r.py", 1, "FakeR does not define get, which R declares")
+PASS = Weak("pass-through", "app/s.py", 4, "S.get only passes its arguments on to self.repo.get", "use self.repo.get")
+OLD = Weak("stand-ins", "tests/fakes/r.py", 1, "FakeR does not define get, which R declares")
 
 
 def test_a_weak_check_with_a_fix_shows_it_under_its_line_and_the_hint_of_its_rule_after_it():
-    state = EnforcementView(origin=OriginView("web"), weak=(OLD, PASS))
+    state = EnforcementView(origin=Origin("web"), weak=(OLD, PASS))
     assert enforcement_lines(state, False, {"pass-through": "see the ADR"})[-4:] == [
         "  weak:        tests/fakes/r.py:1: FakeR does not define get, which R declares",
         "  weak:        app/s.py:4: S.get only passes its arguments on to self.repo.get",
@@ -115,7 +107,7 @@ def test_a_weak_check_with_a_fix_shows_it_under_its_line_and_the_hint_of_its_rul
 
 
 def test_the_json_weak_items_hold_their_fix_or_null():
-    state = EnforcementView(origin=OriginView("web"), weak=(OLD, PASS))
+    state = EnforcementView(origin=Origin("web"), weak=(OLD, PASS))
     document = json.loads(json_document("web", AppChecked((), state, {}, True), False))
     assert document["enforcement"]["weak"] == [
         {"rule": "stand-ins", "file": "tests/fakes/r.py", "line": 1,
@@ -125,5 +117,5 @@ def test_the_json_weak_items_hold_their_fix_or_null():
 
 
 def test_ungoverned_files_are_source_files_when_the_language_is_not_named():
-    state = EnforcementView(OriginView("web"), ("app/a.src", "app/b.src"))
+    state = EnforcementView(Origin("web"), ("app/a.src", "app/b.src"), ("app/a.src", "app/b.src"))
     assert enforcement_lines(state, False)[2:] == ["  ungoverned:  2 source files outside every part (app/a.src, app/b.src)"]

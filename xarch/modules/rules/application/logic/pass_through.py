@@ -17,9 +17,10 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+from xarch.kernel.violations import Weak
 from xarch.modules.rules.application.logic.imports import dotted
 from xarch.modules.rules.application.logic.places import place
-from xarch.modules.rules.domain.values import Function, Profile, SourceFile, Weak
+from xarch.modules.rules.domain.values import Function, Profile, SourceFile
 
 RULE = "pass-through"
 

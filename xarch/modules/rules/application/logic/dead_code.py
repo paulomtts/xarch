@@ -26,13 +26,13 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from xarch.kernel.logic.placement import EVERYTHING
-from xarch.kernel.violations import Violation
+from xarch.kernel.violations import Violation, Weak
 from xarch.modules.rules.application.logic.holds import exceptions
 from xarch.modules.rules.application.logic.imports import dotted, targets
 from xarch.modules.rules.application.logic.places import label, place
 from xarch.modules.rules.application.logic.stand_ins import ports_of
 from xarch.modules.rules.application.logic.tier_of import tested
-from xarch.modules.rules.domain.values import Profile, SourceFile, Weak
+from xarch.modules.rules.domain.values import Profile, SourceFile
 
 RULE = "dead-code"
 
@@ -64,7 +64,7 @@ def _dead_ports(app: list[SourceFile], profile: Profile) -> list[Violation]:
 
 def _dead_fakes(tests: list[SourceFile], profile: Profile) -> list[Violation]:
     assert profile.fakes is not None
-    folder, prefix = profile.fakes.path, profile.fakes.prefix
+    folder, prefix = profile.fakes.folder, profile.fakes.prefix
     inside = [t for t in tests if t.path[:len(folder)] == folder]
     fakes = [(t, c) for t in inside for c in t.classes if c.name.startswith(prefix) and c.name != prefix]
     used: set[str] = set().union(*(t.named for t in tests if t.path[:len(folder)] != folder))

@@ -2,8 +2,9 @@
 import pytest
 
 from tests.modules.rules.builders import imp, in_tests, profile, source
+from xarch.kernel.violations import Weak
 from xarch.modules.rules.application.logic.dead_code import untested, violations
-from xarch.modules.rules.domain.values import Class, Function, Method, Weak
+from xarch.modules.rules.domain.values import Class, Function, Method
 
 PROTOCOL = ("typing", "Protocol")
 PORT_FILE = "modules/docs/application/ports/repo.py"

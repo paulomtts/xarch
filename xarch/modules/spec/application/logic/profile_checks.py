@@ -9,30 +9,15 @@ from collections.abc import Collection, Mapping
 from fnmatch import fnmatchcase
 from typing import Any
 
-from xarch.kernel.logic.placement import place_of
+from xarch.kernel.logic.placement import Excluded, place_of
+from xarch.kernel.logic.testing import CaseTable, Fakes, Fixture, Framework
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic.docs_files import DOCS_ROOT
 from xarch.modules.spec.application.logic.key_lookup import names_of, required_of
 from xarch.modules.spec.application.logic.profile_listing import listing_in
 from xarch.modules.spec.application.logic.project_files import APP_PLACEHOLDER
 from xarch.modules.spec.domain.profile_keys import FILE, NAMING, PAGE, TABLE
-from xarch.modules.spec.domain.values import (
-    EACH,
-    NAME,
-    CaseTable,
-    Doc,
-    Excluded,
-    Fakes,
-    FileEntry,
-    Fixture,
-    Framework,
-    Language,
-    Layout,
-    Naming,
-    Part,
-    Target,
-    Tier,
-)
+from xarch.modules.spec.domain.values import EACH, NAME, Doc, FileEntry, Language, Layout, Naming, Part, Target, Tier
 
 PART_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_-]*")
 PACKAGE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")

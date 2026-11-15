@@ -44,6 +44,17 @@ class Target:
 
 
 @dataclass(frozen=True)
+class Excluded:
+    """A folder below the app that is not its source, and why: no check reads it.
+
+    path: below the app folder, e.g. ("architectures", "examples")
+    reason: one line, shown in the enforcement section
+    """
+    path: tuple[str, ...]
+    reason: str
+
+
+@dataclass(frozen=True)
 class Marks:
     """How the language of the app writes a path: the ending a source file's name carries, and the name of the file that
     stands for the folder holding it. Empty marks leave a path as written."""

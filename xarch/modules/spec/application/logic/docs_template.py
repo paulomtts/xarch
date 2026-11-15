@@ -56,6 +56,7 @@ from dataclasses import dataclass
 
 from xarch.kernel.logic.imports import may_import, shown_target
 from xarch.kernel.logic.placement import EVERYTHING, Repeat
+from xarch.kernel.logic.testing import ScenarioCoverage, StandIns
 from xarch.modules.spec.domain.errors import InvalidTemplate
 from xarch.modules.spec.domain.values import (
     EACH,
@@ -73,8 +74,6 @@ from xarch.modules.spec.domain.values import (
     Part,
     PassThrough,
     PrivateImports,
-    ScenarioCoverage,
-    StandIns,
     Subject,
     Target,
     Tier,

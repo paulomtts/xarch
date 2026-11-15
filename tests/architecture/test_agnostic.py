@@ -27,7 +27,7 @@ from pathlib import Path
 
 import xarch
 from xarch.bootstrap.wiring import load_architecture
-from xarch.modules.spec.domain.values import ScenarioCoverage, StandIns
+from xarch.kernel.logic.testing import ScenarioCoverage, StandIns
 
 SRC = Path(xarch.__file__).parent
 BUNDLED = SRC / "architectures"

@@ -33,3 +33,7 @@ class FolderMissing(DomainError):
 class AlreadyExists(DomainError):
     def __init__(self, name: str, base: Path):
         super().__init__(f"'{name}' already exists at {base}")
+
+
+class ProfileUnusable(DomainError):
+    """The profile cannot give what `init` writes; reason says why, as the spec module put it."""

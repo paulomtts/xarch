@@ -3,9 +3,9 @@ import pytest
 
 from tests.fakes.architecture_files import FakeArchitectureFiles
 from tests.modules.spec.application.helpers import controller as spec_controller
+from xarch.kernel.logic.project_file import ProjectFile
 from xarch.modules.spec.application.controller import SpecController
-from xarch.modules.spec.contract import ProjectFile
-from xarch.modules.spec.domain.errors import InvalidArchitecture
+from xarch.modules.spec.contract import ProfileRefused, ProjectFiles
 
 LAYERED = {"xarch": 2, "name": "layered", "parts": {"src": {"path": "src", "role": "code"}}}
 GUARD = {"tests/architecture/test_rules.py": {"from": "guard.py"}}
@@ -33,23 +33,20 @@ def controller(files: dict | None) -> SpecController:
                  id="a folder entry is copied unchanged below a target inside the app, file by file"),
 ])
 def test_files(given, when, then):
-    assert controller(given).files("cli", when) == then
+    assert controller(given).files("cli", when) == ProjectFiles(then)
 
 
 def test_the_presets_can_be_left_out_so_that_a_check_reads_only_the_single_files():
     files = controller(GUARD | INTO_APP).files("cli", "shop", presets=False)
-    assert [file.path for file in files] == [("tests", "architecture", "test_rules.py")]
+    assert isinstance(files, ProjectFiles)
+    assert [file.path for file in files.files] == [("tests", "architecture", "test_rules.py")]
 
 
 def test_a_filled_preset_that_holds_a_binary_file_is_refused_naming_the_file():
-    with pytest.raises(InvalidArchitecture) as caught:
-        controller({"d/": {"from": "preset", "fill": True}}).files("cli", "shop")
-    assert caught.value.problems == (
-        "cli: files.d/: 'preset/fonts/f.woff' is not valid UTF-8 text: set `fill: false` to copy it unchanged",)
+    assert controller({"d/": {"from": "preset", "fill": True}}).files("cli", "shop") == ProfileRefused(
+        "cli: files.d/: 'preset/fonts/f.woff' is not valid UTF-8 text: set `fill: false` to copy it unchanged")
 
 
 def test_a_file_the_skeleton_writes_is_refused_with_the_profile_named():
-    with pytest.raises(InvalidArchitecture) as caught:
-        controller({"shop/__init__.py": {"from": "guard.py"}}).files("cli", "shop")
-    assert caught.value.problems == ("cli: files.shop/__init__.py: 'shop/__init__.py' is the package file the "
-                                     "skeleton writes",)
+    assert controller({"shop/__init__.py": {"from": "guard.py"}}).files("cli", "shop") == ProfileRefused(
+        "cli: files.shop/__init__.py: 'shop/__init__.py' is the package file the skeleton writes")

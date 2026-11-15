@@ -20,7 +20,8 @@ from dataclasses import dataclass
 from fnmatch import fnmatchcase
 
 from xarch.kernel.logic.placement import EACH, Place, Repeat, matches, place_of
-from xarch.modules.rules.domain.values import Profile, TestTier
+from xarch.kernel.logic.testing import TierView
+from xarch.modules.rules.domain.values import Profile
 
 
 @dataclass(frozen=True)
@@ -28,7 +29,7 @@ class Tested:
     """A file below the tests root: its tier (None if none), the instance of the repeating folder it is in, its own
     folder, whether it is a test (a name the profile's test files match) or a fake, and the parts it mirrors (its
     subject; empty when its tier was found by its tier's folder)."""
-    tier: TestTier | None
+    tier: TierView | None
     instance: str | None
     own: tuple[str, ...]
     is_test: bool
@@ -43,12 +44,12 @@ def is_test(profile: Profile, path: tuple[str, ...]) -> bool:
 
 
 def tested(profile: Profile, path: tuple[str, ...]) -> Tested:
-    fake = profile.fakes is not None and path[:len(profile.fakes.path)] == profile.fakes.path
+    fake = profile.fakes is not None and path[:len(profile.fakes.folder)] == profile.fakes.folder
     tier, instance, parts = (None, None, ()) if fake else _tier(profile, path)
     return Tested(tier, instance or _instance(profile, path), _own(profile, path), is_test(profile, path), fake, parts)
 
 
-def _tier(profile: Profile, path: tuple[str, ...]) -> tuple[TestTier | None, str | None, tuple[str, ...]]:
+def _tier(profile: Profile, path: tuple[str, ...]) -> tuple[TierView | None, str | None, tuple[str, ...]]:
     where = place_of(profile.parts, path, profile.language.marks)
     if where.part is not None:
         tier = _first(profile, lambda t: any(s.part == where.part and where.sub[:len(s.sub)] == s.sub
@@ -65,11 +66,11 @@ def _tier(profile: Profile, path: tuple[str, ...]) -> tuple[TestTier | None, str
     return _first(profile, lambda t: bool(t.folder) and folder[:len(t.folder)] == t.folder), None, ()
 
 
-def _tests(tier: TestTier, part: str) -> bool:
+def _tests(tier: TierView, part: str) -> bool:
     return any(s.part == part for s in tier.subject)
 
 
-def _first(profile: Profile, wanted) -> TestTier | None:
+def _first(profile: Profile, wanted) -> TierView | None:
     return next((t for t in profile.tiers if wanted(t)), None)
 
 

@@ -28,11 +28,12 @@ import re
 from collections.abc import Iterable
 from fnmatch import fnmatchcase
 
-from xarch.kernel.violations import Violation
+from xarch.kernel.logic.testing import ScenarioCoverage
+from xarch.kernel.violations import Violation, Weak
 from xarch.modules.rules.application.logic.imports import dotted
 from xarch.modules.rules.application.logic.places import place
 from xarch.modules.rules.application.logic.tier_of import tested
-from xarch.modules.rules.domain.values import Function, Profile, Row, Scenarios, SourceFile, Table, Weak
+from xarch.modules.rules.domain.values import Function, Profile, Row, SourceFile, Table
 
 RULE = "scenario-coverage"
 NAME = "{name}"
@@ -91,7 +92,7 @@ def weak(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profil
     return found
 
 
-def _credited(test: SourceFile, union: str, variants: tuple[str, ...], guard: Scenarios,
+def _credited(test: SourceFile, union: str, variants: tuple[str, ...], guard: ScenarioCoverage,
               pattern: str) -> list[Weak]:
     functions = [f for f in test.functions if fnmatchcase(f.name, pattern)]
     covered: set[str] = set()
@@ -114,7 +115,7 @@ def _in(profile: Profile, test: SourceFile, tier: str, instance: str) -> bool:
     return where.tier is not None and where.tier.name == tier and where.instance == instance
 
 
-def _covered(test: SourceFile, union: str, variants: tuple[str, ...], guard: Scenarios,
+def _covered(test: SourceFile, union: str, variants: tuple[str, ...], guard: ScenarioCoverage,
              pattern: str) -> list[Violation]:
     columns = guard.columns
     functions = [f for f in test.functions if fnmatchcase(f.name, pattern)]
@@ -141,7 +142,7 @@ def _branches(function: Function) -> list[Problem]:
             for line, keyword in function.branches]
 
 
-def _rows(table: Table, union: str, variants: tuple[str, ...], guard: Scenarios,
+def _rows(table: Table, union: str, variants: tuple[str, ...], guard: ScenarioCoverage,
           covered: set[str]) -> list[Problem]:
     result = guard.columns[-1]
     written = ".".join(guard.table.row)

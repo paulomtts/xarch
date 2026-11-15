@@ -3,7 +3,8 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from xarch.modules.spec.contract import Docs, Entry, ProjectFile, Skeleton
+from xarch.modules.scaffold.domain.errors import ProfileUnusable
+from xarch.modules.spec.contract import Docs, Entry, FilesResult, ProfileRefused, ProjectFiles, Skeleton
 
 
 class _Spec(Protocol):
@@ -13,7 +14,7 @@ class _Spec(Protocol):
 
     def docs(self, profile: str) -> Docs: ...
 
-    def files(self, profile: str, app: str, presets: bool = True) -> tuple[ProjectFile, ...]: ...
+    def files(self, profile: str, app: str, presets: bool = True) -> FilesResult: ...
 
 
 class SpecSkeleton:
@@ -43,7 +44,12 @@ class SpecSkeleton:
         return [(docs.root + f.path, f.template) for f in docs.files]
 
     def files(self, profile: str, app: str) -> list[tuple[tuple[str, ...], str | bytes]]:
-        return [(f.path, f.content) for f in self._spec.files(profile, app)]
+        """Raises ProfileUnusable, with spec's reason, when the profile cannot write them."""
+        match self._spec.files(profile, app):
+            case ProjectFiles(files):
+                return [(f.path, f.content) for f in files]
+            case ProfileRefused(reason):
+                raise ProfileUnusable(reason)
 
 
 def _entries(entries: tuple[Entry, ...]) -> list[tuple[tuple[str, ...], bool]]:

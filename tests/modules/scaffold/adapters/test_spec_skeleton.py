@@ -1,6 +1,19 @@
 """SpecSkeleton: spec's skeleton, docs and project files as the plain tuples scaffold's Skeleton port speaks."""
+import pytest
+
+from xarch.kernel.logic.project_file import ProjectFile
 from xarch.modules.scaffold.adapters.spec_skeleton import SpecSkeleton
-from xarch.modules.spec.contract import DocFile, Docs, Entry, ProjectFile, Repeating, Skeleton
+from xarch.modules.scaffold.domain.errors import ProfileUnusable
+from xarch.modules.spec.contract import (
+    DocFile,
+    Docs,
+    Entry,
+    FilesResult,
+    ProfileRefused,
+    ProjectFiles,
+    Repeating,
+    Skeleton,
+)
 
 
 class SpecStandIn:
@@ -18,8 +31,10 @@ class SpecStandIn:
         return Docs(("docs", "project"), (DocFile(("statement.md",), "# statement\n"),
                                           DocFile(("adrs", "0000-template.md"), "# adr\n")))
 
-    def files(self, profile: str, app: str, presets: bool = True) -> tuple[ProjectFile, ...]:
-        return (ProjectFile(("Makefile",), f"all: {app}\n"), ProjectFile((app, "logo.woff"), b"\xff\x00"))
+    def files(self, profile: str, app: str, presets: bool = True) -> FilesResult:
+        if profile == "broken":
+            return ProfileRefused("cli: files.x: no such template")
+        return ProjectFiles((ProjectFile(("Makefile",), f"all: {app}\n"), ProjectFile((app, "logo.woff"), b"\xff\x00")))
 
 
 def skeleton() -> SpecSkeleton:
@@ -42,6 +57,11 @@ def test_docs_are_placed_below_the_docs_root_with_their_template():
 
 def test_files_are_the_project_files_of_the_app_with_their_content_as_it_is():
     assert skeleton().files("cli", "shop") == [(("Makefile",), "all: shop\n"), (("shop", "logo.woff"), b"\xff\x00")]
+
+
+def test_files_spec_refuses_are_refused_with_its_reason():
+    with pytest.raises(ProfileUnusable, match="no such template"):
+        skeleton().files("broken", "shop")
 
 
 def test_the_package_file_is_the_one_the_language_of_the_profile_has_stand_for_a_folder():

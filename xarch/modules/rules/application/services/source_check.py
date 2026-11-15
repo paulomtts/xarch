@@ -93,15 +93,13 @@ class SourceCheckService:
     def _enforcement(self, root: Path, package: str, location: str, rules: Profile, app: list[SourceFile],
                      tests: list[SourceFile], ungoverned: list[str], tests_root: str | None) -> Enforcement:
         project = root.absolute().resolve().parent
-        files = self._profiles.init_files(location, package)
-        texts = [self._tree.text(project.joinpath(*file.path)) for file in files]
+        standing = self._profiles.standing(location, package)
+        texts = [self._tree.text(project.joinpath(*file.path)) for file in standing.init_files]
         weak = stand_ins.weak(app, tests, rules) + scenarios.weak(app, tests, rules) + pass_through.weak(app, rules)
         weak += holds.weak(app, rules, package)
         if tests_root is not None:
             weak += dead_code.untested(app, tests, rules, package, tests_root)
-        shown = enforcement.excluded(rules, root.absolute().resolve().name)
-        return Enforcement(self._profiles.origin(location), tuple(ungoverned), tuple(enforcement.drift(files, texts)),
+        return Enforcement(standing.origin, tuple(ungoverned), tuple(enforcement.drift(standing.init_files, texts)),
                            skipped=tuple(enforcement.skipped(tests, rules)),
                            dynamic=tuple(enforcement.dynamic([*app, *tests], rules)), weak=tuple(weak),
-                           excluded=tuple(shown), language=rules.language.title)
-
+                           excluded=rules.excluded, app=root.absolute().resolve().name, language=rules.language.title)

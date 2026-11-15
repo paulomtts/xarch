@@ -1,7 +1,8 @@
 """In-memory implementation of rules' Profiles port. Not an adapter: a test double only."""
 from __future__ import annotations
 
-from xarch.modules.rules.domain.values import InitFile, Origin, Profile
+from xarch.kernel.logic.origin import Origin
+from xarch.modules.rules.domain.values import InitFile, Profile, Standing
 
 
 class FakeProfiles:
@@ -15,8 +16,5 @@ class FakeProfiles:
     def profile(self, location: str) -> Profile:
         return self._profiles[location]
 
-    def origin(self, location: str) -> Origin:
-        return self._origins.get(location, Origin())
-
-    def init_files(self, location: str, app: str) -> tuple[InitFile, ...]:
-        return self._files.get(location, ())
+    def standing(self, location: str, app: str) -> Standing:
+        return Standing(self._origins.get(location, Origin()), self._files.get(location, ()))

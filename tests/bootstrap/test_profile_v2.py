@@ -7,10 +7,10 @@ import pytest
 
 from tests.bootstrap.project import bundled_profiles
 from xarch.bootstrap.wiring import build_controllers, load_architecture
+from xarch.kernel.logic.testing import ScenarioCoverage, StandIns
 from xarch.modules.layout.contract import CheckStructure
 from xarch.modules.rules.contract import CheckImports
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.values import ScenarioCoverage, StandIns
 
 PROFILE = """\
 xarch: 2

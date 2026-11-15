@@ -13,9 +13,9 @@ file of the layout), or land on a file another entry writes.
 from __future__ import annotations
 
 from collections.abc import Iterator, Mapping
-from dataclasses import dataclass
 
 from xarch.kernel.logic.placement import EACH
+from xarch.kernel.logic.project_file import ProjectFile
 from xarch.modules.spec.application.logic.layout_walk import walk
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import Architecture, FileEntry
@@ -24,16 +24,6 @@ APP_PLACEHOLDER = "{{app}}"
 """The one placeholder of a project file's template: the name of the app folder."""
 EXAMPLE_APP = "app"
 """The app folder's name in the docs' example project, which shows an example file with its placeholder filled."""
-
-
-@dataclass(frozen=True)
-class Written:
-    """One file `init` writes: its path below the folder holding the app, its content (text when filled, else the
-    bytes as they are), whether the entry is pinned, and whether it comes from a folder entry."""
-    path: tuple[str, ...]
-    content: str | bytes
-    pinned: bool = False
-    preset: bool = False
 
 
 def with_app(text: str, app: str) -> str:
@@ -48,7 +38,7 @@ def entries(architecture: Architecture, presets: bool) -> tuple[FileEntry, ...]:
 
 
 def project_files(architecture: Architecture, contents: Mapping[str, str | bytes], app: str, source: str,
-                  folders: Mapping[str, tuple[str, ...]] | None = None) -> Iterator[Written]:
+                  folders: Mapping[str, tuple[str, ...]] | None = None) -> Iterator[ProjectFile]:
     """Yield every file the architecture declares, in its order, a folder entry as each file under its folder.
 
     contents is each template file, by the name the architecture gives it, and each file of a folder by the folder's
@@ -57,7 +47,7 @@ def project_files(architecture: Architecture, contents: Mapping[str, str | bytes
     text but is filled, one that would replace what the skeleton writes, or two that land on one path.
     """
     problems: list[str] = []
-    found: list[Written] = []
+    found: list[ProjectFile] = []
     owners: dict[tuple[str, ...], str] = {}
     reserved = _Reserved(architecture, app)
     for entry in architecture.files:
@@ -76,7 +66,7 @@ def project_files(architecture: Architecture, contents: Mapping[str, str | bytes
             owners[target] = where
             content = _content(contents[name], entry, app, name, where, problems)
             if content is not None:
-                found.append(Written(target, content, entry.pinned, entry.folder))
+                found.append(ProjectFile(target, content, entry.pinned, entry.folder))
     if problems:
         raise InvalidArchitecture(source, problems)
     yield from found

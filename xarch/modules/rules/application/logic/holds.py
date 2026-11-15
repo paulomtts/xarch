@@ -19,9 +19,10 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+from xarch.kernel.violations import Weak
 from xarch.modules.rules.application.logic.imports import dotted
 from xarch.modules.rules.application.logic.places import label, place
-from xarch.modules.rules.domain.values import Class, Profile, SourceFile, Weak
+from xarch.modules.rules.domain.values import Class, Profile, SourceFile
 
 RULE = "holds"
 CLASSES, FUNCTIONS = "classes", "functions"

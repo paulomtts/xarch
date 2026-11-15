@@ -3,8 +3,9 @@ listed as weak, never as a violation."""
 import pytest
 
 from tests.modules.rules.builders import profile, source
+from xarch.kernel.violations import Weak
 from xarch.modules.rules.application.logic.pass_through import forwards, weak
-from xarch.modules.rules.domain.values import Function, Signature, SoleCall, Weak
+from xarch.modules.rules.domain.values import Function, Signature, SoleCall
 
 ON = profile(pass_through=("services",))
 SERVICES = "modules/docs/application/services/doc.py"

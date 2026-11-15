@@ -3,9 +3,10 @@ outside, which pre-built checks are in use and where the fakes live."""
 import pytest
 
 from tests.modules.spec.profiles_v2 import covered, layered, parsed, problems
+from xarch.kernel.logic.testing import CaseTable, ScenarioCoverage
 from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.modules.spec.domain.guards import GUARDS
-from xarch.modules.spec.domain.values import CaseTable, ClosedTree, NoComments, PackageOnly, ScenarioCoverage
+from xarch.modules.spec.domain.values import ClosedTree, NoComments, PackageOnly
 
 FILE = "test_{name}.py"
 SCENARIOS = {"results": "api", "tier": "integration", "suffix": "Result", "columns": ["given", "when", "then"],

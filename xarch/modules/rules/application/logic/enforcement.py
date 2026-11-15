@@ -13,12 +13,17 @@ guard it leaves off but those that the bundled profile in force, or the one a cu
 leaves off (with no profile to compare with, every guard left off), the ungoverned files, the init files missing or
 changed, the skips, the dynamic imports and the weak checks. How a custom profile differs from the closest bundled
 one (`origin.looser`) is information in the enforcement section and no finding: the profile defines the architecture.
+
+What the enforcement section shows of them is worked out here too: the folders holding the ungoverned files, a
+finding's detail, and an excluded folder as it is shown below the folder holding the app.
 """
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 
-from xarch.modules.rules.domain.values import At, Drift, Enforcement, Excluded, Finding, InitFile, Profile, SourceFile
+from xarch.kernel.logic.placement import Excluded
+from xarch.kernel.violations import At, Weak
+from xarch.modules.rules.domain.values import Drift, Enforcement, Finding, InitFile, Profile, SourceFile
 
 MISSING, CHANGED = "missing", "changed"
 
@@ -37,21 +42,41 @@ def drift(files: Sequence[InitFile], found: Sequence[str | None]) -> list[Drift]
     """found holds the text of each file as it stands, None where there is none."""
     states = [(file, MISSING if text is None else CHANGED if file.pinned and text != file.text else None)
               for file, text in zip(files, found)]
-    return [Drift("/".join(file.path), state) for file, state in states if state is not None]
+    return [Drift(file.path, state) for file, state in states if state is not None]
 
 
 def strict_findings(enforcement: Enforcement) -> tuple[Finding, ...]:
     origin = enforcement.origin
     found = [Finding("guards_off", g) for g in origin.guards_off if g not in origin.baseline_off]
     found += [Finding("ungoverned", file) for file in enforcement.ungoverned]
-    found += [Finding("init_files", f"{item.file} is {item.state}") for item in enforcement.init_files]
-    found += [Finding("skipped", f"{at.file}:{at.line}") for at in enforcement.skipped]
-    found += [Finding("dynamic", f"{at.file}:{at.line}") for at in enforcement.dynamic]
-    found += [Finding("weak", f"{weak.file}{f':{weak.line}' if weak.line else ''}: {weak.message}")
-              for weak in enforcement.weak]
+    found += [Finding("init_files", item) for item in enforcement.init_files]
+    found += [Finding("skipped", at) for at in enforcement.skipped]
+    found += [Finding("dynamic", at) for at in enforcement.dynamic]
+    found += [Finding("weak", weak) for weak in enforcement.weak]
     return tuple(found)
 
 
-def excluded(profile: Profile, app: str) -> list[Excluded]:
-    """The folders the profile excludes, as shown below the app folder named app, with why."""
-    return [Excluded("/".join((app, *e.path)), e.reason) for e in profile.excluded]
+def detail(item: str | Drift | At | Weak) -> str:
+    """A finding's item in words: a guard or a file by its name, an init file with its state, a place as
+    `<file>:<line>`, a weak check as its place (the file alone for a whole file) and its message."""
+    match item:
+        case Drift(path, state):
+            return f"{'/'.join(path)} is {state}"
+        case At(file, line):
+            return f"{file}:{line}"
+        case Weak(file=file, line=line, message=message):
+            return f"{file}{f':{line}' if line else ''}: {message}"
+        case _:
+            return item
+
+
+def folders(files: Sequence[str]) -> list[str]:
+    """The top folders below the app holding the files, each once, in order; a file at the app's root as itself."""
+    tops = ["/".join(parts[:2]) + "/" if len(parts) > 2 else file
+            for file in files for parts in [file.split("/")]]
+    return list(dict.fromkeys(tops))
+
+
+def excluded_folder(app: str, excluded: Excluded) -> str:
+    """An excluded folder as shown below the folder holding the app folder named app, such as "app/examples"."""
+    return "/".join((app, *excluded.path))

@@ -2,8 +2,8 @@
 from tests.fakes.architecture_files import FakeArchitectureFiles
 from tests.modules.spec.application.helpers import controller as spec_controller
 from tests.modules.spec.application.origins import BASE, OFF, OTHER, PARTS, TESTING, TIER, part
+from xarch.kernel.logic.origin import Loosened, Origin
 from xarch.modules.spec.application.controller import SpecController
-from xarch.modules.spec.contract import Loosened, ProfileOrigin
 
 
 def controller(custom: dict) -> SpecController:
@@ -13,7 +13,7 @@ def controller(custom: dict) -> SpecController:
 
 def test_a_bundled_profile_lists_the_guards_it_leaves_off_as_its_own_defaults():
     origin = controller(BASE).origin("base")
-    assert origin == ProfileOrigin("base", True, None, OFF, OFF, ())
+    assert origin == Origin("base", True, None, OFF, OFF, ())
 
 
 def test_a_copy_of_a_bundled_profile_is_compared_with_it_and_found_no_looser():

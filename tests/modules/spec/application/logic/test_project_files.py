@@ -3,7 +3,8 @@
 import pytest
 
 from tests.modules.spec.profiles_v2 import SOURCE, parsed
-from xarch.modules.spec.application.logic.project_files import Written, project_files, with_app
+from xarch.kernel.logic.project_file import ProjectFile
+from xarch.modules.spec.application.logic.project_files import project_files, with_app
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 
 PARTS = {"src": {"path": "src", "role": "code"}}
@@ -26,13 +27,13 @@ def test_each_file_is_its_template_with_the_app_folder_filled_in_in_the_order_de
     declared = architecture({"tests/a.py": {"from": "a.tpl"}, "b.txt": {"from": "b.tpl"}})
     texts = {"a.tpl": "ROOT / '{{app}}' and {{app}}\n", "b.tpl": "plain\n"}
     assert written(declared, texts) == [
-        Written(("tests", "a.py"), "ROOT / 'shop' and shop\n"), Written(("b.txt",), "plain\n")]
+        ProjectFile(("tests", "a.py"), "ROOT / 'shop' and shop\n"), ProjectFile(("b.txt",), "plain\n")]
 
 
 def test_any_other_placeholder_is_written_as_it_stands():
     declared = architecture({"a.html": {"from": "a.tpl"}})
     assert written(declared, {"a.tpl": "{{ title }} {{tree}} {{app}}"}) == [
-        Written(("a.html",), "{{ title }} {{tree}} shop")]
+        ProjectFile(("a.html",), "{{ title }} {{tree}} shop")]
 
 
 def test_an_architecture_without_files_yields_none():
@@ -72,14 +73,14 @@ def test_a_folder_entry_is_copied_with_its_relative_paths_below_a_target_in_the_
     declared = architecture({"{{app}}/src/design/": {"from": "preset"}})
     contents = {"preset/tokens.css": b"a {{app}}", "preset/fonts/f.woff": b"\xff\x00"}
     assert written(declared, contents, folders={"preset": ("tokens.css", "fonts/f.woff")}) == [
-        Written(("shop", "src", "design", "tokens.css"), b"a {{app}}", preset=True),
-        Written(("shop", "src", "design", "fonts", "f.woff"), b"\xff\x00", preset=True)]
+        ProjectFile(("shop", "src", "design", "tokens.css"), b"a {{app}}", preset=True),
+        ProjectFile(("shop", "src", "design", "fonts", "f.woff"), b"\xff\x00", preset=True)]
 
 
 def test_a_folder_entry_that_says_fill_has_its_text_filled():
     declared = architecture({"d/": {"from": "preset", "fill": True}})
     assert written(declared, {"preset/a.txt": b"for {{app}}"}, folders={"preset": ("a.txt",)}) == [
-        Written(("d", "a.txt"), "for shop", preset=True)]
+        ProjectFile(("d", "a.txt"), "for shop", preset=True)]
 
 
 def test_a_file_that_is_not_text_cannot_be_filled():
@@ -93,8 +94,8 @@ def test_a_file_that_is_not_text_cannot_be_filled():
 
 def test_a_file_entry_that_says_fill_false_is_copied_unchanged():
     declared = architecture({"a.txt": {"from": "a.tpl", "fill": False}})
-    assert written(declared, {"a.tpl": b"{{app}}"}) == [Written(("a.txt",), b"{{app}}")]
-    assert written(declared, {"a.tpl": "{{app}}"}) == [Written(("a.txt",), b"{{app}}")]
+    assert written(declared, {"a.tpl": b"{{app}}"}) == [ProjectFile(("a.txt",), b"{{app}}")]
+    assert written(declared, {"a.tpl": "{{app}}"}) == [ProjectFile(("a.txt",), b"{{app}}")]
 
 
 def test_two_entries_that_land_on_the_same_file_are_refused():

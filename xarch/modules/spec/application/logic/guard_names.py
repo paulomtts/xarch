@@ -1,6 +1,7 @@
 """The name a profile switches each guard on by."""
 from __future__ import annotations
 
+from xarch.kernel.logic.testing import ScenarioCoverage, StandIns
 from xarch.modules.spec.domain.values import (
     ClosedTree,
     DeadCode,
@@ -11,8 +12,6 @@ from xarch.modules.spec.domain.values import (
     PackageOnly,
     PassThrough,
     PrivateImports,
-    ScenarioCoverage,
-    StandIns,
 )
 
 _GUARD_NAMES: dict[type, str] = {PackageOnly: "package-only", ScenarioCoverage: "scenario-coverage",

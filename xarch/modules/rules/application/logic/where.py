@@ -22,10 +22,11 @@ from pathlib import Path
 
 from xarch.kernel.logic.imports import may_import, shown_target
 from xarch.kernel.logic.placement import EACH, Target, matches, repeat_of
+from xarch.kernel.logic.testing import TierView
 from xarch.modules.rules.application.logic.places import place, targets_of
 from xarch.modules.rules.application.logic.tier_imports import NO_TIER, allowance, may_use_fakes
 from xarch.modules.rules.application.logic.tier_of import Tested, tested
-from xarch.modules.rules.domain.values import Nearest, Profile, Reach, TestTier, TierInfo, Where
+from xarch.modules.rules.domain.values import Nearest, Profile, Reach, TierInfo, Where
 
 TESTS_FOLDER = "tests"
 """Where the tests are shown to be when no tests folder is known."""
@@ -116,7 +117,7 @@ def _app(profile: Profile, found: Resolved, shown: str, app: str, tests: str) ->
         name if tier else "")
 
 
-def _mirror(profile: Profile, part: str, steps: tuple[str, ...]) -> tuple[tuple[str, ...], str, TestTier | None]:
+def _mirror(profile: Profile, part: str, steps: tuple[str, ...]) -> tuple[tuple[str, ...], str, TierView | None]:
     """The folder below the tests root that mirrors the path, the name of the test file there ("" when it is no
     source file) and the tier that tests it: the answer the tests' own mapping (tier_of) gives for that folder."""
     pattern = profile.framework.files[0] if profile.framework is not None and profile.framework.files else ""
@@ -134,7 +135,7 @@ def _mirror(profile: Profile, part: str, steps: tuple[str, ...]) -> tuple[tuple[
     return folder, pattern.replace("*", stem), tier
 
 
-def _info(tier: TestTier | None) -> TierInfo | None:
+def _info(tier: TierView | None) -> TierInfo | None:
     return TierInfo(tier.name, tier.proves, tier.may_touch, tier.litmus) if tier is not None else None
 
 
@@ -221,4 +222,4 @@ def _tier_place(profile: Profile, where: Tested, kind: str, shown: str, exists: 
 
 
 def _fakes(profile: Profile, tests: str) -> str:
-    return f"{tests}/{'/'.join(profile.fakes.path)}/" if profile.fakes is not None else ""
+    return f"{tests}/{'/'.join(profile.fakes.folder)}/" if profile.fakes is not None else ""

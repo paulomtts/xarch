@@ -2,7 +2,7 @@
 import pytest
 
 from tests.modules.spec.profiles_v2 import layered, parsed, problems
-from xarch.modules.spec.domain.values import Excluded
+from xarch.kernel.logic.placement import Excluded
 
 
 def test_a_profile_without_excluded_folders_excludes_none():

@@ -24,11 +24,12 @@ from collections import Counter
 from collections.abc import Iterable
 
 from xarch.kernel.logic.placement import Place
+from xarch.kernel.logic.testing import TierView
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.imports import dotted
 from xarch.modules.rules.application.logic.places import label, place
 from xarch.modules.rules.application.logic.tier_of import tested
-from xarch.modules.rules.domain.values import Profile, SourceFile, TestTier
+from xarch.modules.rules.domain.values import Profile, SourceFile
 
 RULE = "types-only"
 OWNERS = 3
@@ -124,7 +125,7 @@ def _function(name: tuple[str, ...], bound: int, functions: dict[tuple[str, ...]
     return None
 
 
-def _fix(tier: TestTier, part: str) -> str:
+def _fix(tier: TierView, part: str) -> str:
     """Use the part as a type only and drive the tier's subject, else leave what it does to a tier that may call it;
     with the tier's own words for what it may touch."""
     driven = ", ".join(f"{s.part}/" for s in tier.subject)

@@ -3,20 +3,15 @@ fakes, and the guards."""
 import pytest
 
 from tests.modules.spec.profiles_v2 import EX, PRESETS, covered, layered, parsed, problems
+from xarch.kernel.logic.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns
 from xarch.modules.spec.domain.values import (
-    CaseTable,
     ClosedTree,
     DeadCode,
-    Fakes,
-    Fixture,
-    Framework,
     NoComments,
     NoDuplicates,
     NoTwins,
     PackageOnly,
     PassThrough,
-    ScenarioCoverage,
-    StandIns,
     Subject,
     Target,
     Tier,

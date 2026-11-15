@@ -12,22 +12,12 @@ from __future__ import annotations
 import sys
 from dataclasses import replace
 
+from xarch.kernel.logic.language import LanguageView
 from xarch.kernel.logic.placement import EVERYTHING, Repeat, Target
-from xarch.modules.rules.domain.values import (
-    Fakes,
-    Fixture,
-    Framework,
-    Import,
-    Language,
-    Profile,
-    Scenarios,
-    SourceFile,
-    StandIns,
-    TableForm,
-    TestTier,
-)
+from xarch.kernel.logic.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns, TierView
+from xarch.modules.rules.domain.values import Import, Profile, SourceFile
 
-PYTHON = Language("Python", ".py", "__init__.py", (("typing", "Protocol"), ("typing_extensions", "Protocol")),
+PYTHON = LanguageView("Python", ".py", "__init__.py", (("typing", "Protocol"), ("typing_extensions", "Protocol")),
                   (("importlib", "import_module"), ("importlib", "__import__"), ("builtins", "__import__")))
 APP, TESTS = "app", "tests"
 MODULES = Repeat("module", ("modules",))
@@ -60,22 +50,22 @@ FOLDERS = ((), ("bootstrap",), ("kernel",), ("kernel", "logic"), ("modules",), (
                                                   ("application", "services"), ("application", "logic"),
                                                   ("application", "ports"), ("adapters",)]),
            ("platform",), ("web",), ("web", "routes"))
-UNIT = TestTier("unit", (Target("kernel"), *own("domain", "logic", "adapters")), ("modules", "docs", "domain"),
+UNIT = TierView("unit", (Target("kernel"), *own("domain", "logic", "adapters")), ("modules", "docs", "domain"),
                 forbidden=True)
-INTEGRATION = TestTier("integration", own("controller", "services", "ports", "contract"),
+INTEGRATION = TierView("integration", own("controller", "services", "ports", "contract"),
                        ("modules", "docs", "application"))
-RENDERING = TestTier("rendering", (Target("web"),), ("web",), types_only=("controller",))
-GUARD = TestTier("guard", (), ("architecture",))
+RENDERING = TierView("rendering", (Target("web"),), ("web",), types_only=("controller",))
+GUARD = TierView("guard", (), ("architecture",))
 NOW = ("datetime", "datetime", "now")
 MOCK = ("unittest", "mock", "Mock")
 AUTOSPEC = ("unittest", "mock", "create_autospec")
-TABLE = TableForm(("pytest", "mark", "parametrize"), ("pytest", "param"), "id", ("argnames", "argvalues"))
+TABLE = CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id", ("argnames", "argvalues"))
 PROFILE = Profile(
     parts=PARTS, rules=RULES, folders=FOLDERS, tiers=(UNIT, INTEGRATION, RENDERING, GUARD),
     libraries={"platform": ("sqlmodel",), "adapters": ("sqlmodel",), "web": ("fastapi",),
                "bootstrap": ("sqlmodel", "fastapi")},
     fakes=Fakes(("fakes",), ("ports",), "Fake"), repeats=(MODULES,), package_only=("contract",),
-    scenarios=Scenarios("contract", "integration", "Result", ("given", "when", "then"), TABLE, "test_{name}.py"),
+    scenarios=ScenarioCoverage("contract", "integration", "Result", ("given", "when", "then"), TABLE, "test_{name}.py"),
     no_comments=True,
     stand_ins=StandIns((MOCK, ("unittest", "mock", "MagicMock")), (AUTOSPEC,), ("spec", "spec_set"),
                        (Fixture("mocker", ("Mock", "MagicMock"), ("create_autospec",)),)),
@@ -85,7 +75,7 @@ PROFILE = Profile(
 
 PLUGINS = Repeat("plugin", ("plugins",))
 PLUGIN_PARTS = {"hooks": ("plugins", "*", "hooks"), "manifest": ("plugins", "*", "manifest.py")}
-PLUGIN = TestTier("plugin", own("hooks", "manifest"), None)
+PLUGIN = TierView("plugin", own("hooks", "manifest"), None)
 TWO = replace(
     PROFILE, parts={**PARTS, **PLUGIN_PARTS},
     rules={**RULES, "hooks": (*own("manifest"), Target("domain", "any"), Target("kernel")),

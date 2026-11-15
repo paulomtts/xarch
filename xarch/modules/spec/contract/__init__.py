@@ -4,11 +4,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from xarch.kernel.logic.placement import Repeat, Target
+from xarch.kernel.logic.language import LanguageView
+from xarch.kernel.logic.origin import Origin
+from xarch.kernel.logic.placement import Excluded, Repeat, Target
+from xarch.kernel.logic.project_file import ProjectFile
+from xarch.kernel.logic.testing import Fakes, Framework, ScenarioCoverage, StandIns, TierView
 
-__all__ = ["Entry", "Repeating", "Skeleton", "DocFile", "Docs", "ProjectFile", "PartView", "TierView", "TableView",
-           "ScenariosView", "FixtureView", "StandInsView", "GuardsView", "FakesView", "FrameworkView", "ExcludedView",
-           "LanguageView", "ProfileView", "Loosened", "ProfileOrigin", "ChooseApp", "AppChosen", "ChooseAppResult",
+__all__ = ["Entry", "Repeating", "Skeleton", "DocFile", "Docs", "ProjectFiles", "FilesResult", "OriginResult", "PartView",
+           "GuardsView", "ProfileView", "ChooseApp", "AppChosen", "ChooseAppResult",
            "SelectProfile", "ProfileSelected", "ProfileRefused",
            "NoProfileChosen", "SelectResult", "MigrateProfile", "MigratedFile", "Migrated", "MigrationRefused",
            "MigrateResult", "Shown", "Symbol", "Explain", "FormatExplained", "KeyExplained", "UnknownKey",
@@ -71,19 +74,9 @@ class Docs:
 
 
 @dataclass(frozen=True)
-class ProjectFile:
-    """A file `init` writes beside the app folder, in the folder holding it.
-
-    path: below the folder holding the app, e.g. ("tests", "architecture", "test_rules<ending>"); a file inside the app
-        folder starts with the app folder's name
-    content: the file's text, the app folder's name filled in, or, for a file that is not filled, its bytes as they are
-    pinned: the project keeps it as written; `check` reports it when it differs
-    preset: it comes from a folder entry of the profile
-    """
-    path: tuple[str, ...]
-    content: str | bytes
-    pinned: bool = False
-    preset: bool = False
+class ProjectFiles:
+    """The files a profile has `init` write beside an app folder, besides the docs, in the profile's order."""
+    files: tuple[ProjectFile, ...]
 
 
 @dataclass(frozen=True)
@@ -110,75 +103,15 @@ class PartView:
 
 
 @dataclass(frozen=True)
-class TierView:
-    """One kind of test as a check reads it: its name; the parts it tests, each as a target (in its own instance for a
-    part of a repeating folder); the folder below the tests root of tests that mirror no part; the parts its tests may
-    use as types only; whether its tests keep to their part's forbidden list; its words (proves, may_touch, litmus,
-    one_file_per); what the tests of its folder may import (None: no folder); and the parts one of which each of its
-    test files must reach."""
-    name: str
-    subject: tuple[Target, ...]
-    folder: tuple[str, ...] | None = None
-    types_only: tuple[str, ...] = ()
-    forbidden: bool = False
-    proves: str = ""
-    may_touch: str = ""
-    litmus: str = ""
-    one_file_per: str = ""
-    may_import: tuple[Target, ...] | None = None
-    must_import: tuple[str, ...] = ()
-
-
-@dataclass(frozen=True)
-class TableView:
-    """How a test function holds a table of cases: the dotted names of its decorator and of a row, the keyword that
-    gives a row its id, and the keywords of its two arguments (None: positional only)."""
-    decorator: tuple[str, ...]
-    row: tuple[str, ...]
-    id: str
-    keywords: tuple[str, str] | None = None
-
-
-@dataclass(frozen=True)
-class ScenariosView:
-    """The scenario-coverage guard: the part holding the Results, the tier of their tests, how a union's name ends,
-    the three columns of a table, how a table is written, and the file name of a use case's test."""
-    results: str
-    tier: str
-    suffix: str
-    columns: tuple[str, str, str]
-    table: TableView
-    file: str
-
-
-@dataclass(frozen=True)
-class FixtureView:
-    """A fixture whose methods build mocks: its name, the methods that build a mock, and those that take a spec."""
-    name: str
-    mocks: tuple[str, ...]
-    autospec: tuple[str, ...] = ()
-
-
-@dataclass(frozen=True)
-class StandInsView:
-    """The stand-ins guard: what builds a mock, what builds one from a spec, the keywords a spec is given by, and the
-    fixtures that build them."""
-    mocks: tuple[tuple[str, ...], ...]
-    autospec: tuple[tuple[str, ...], ...]
-    spec: tuple[str, ...]
-    fixtures: tuple[FixtureView, ...] = ()
-
-
-@dataclass(frozen=True)
 class GuardsView:
     """The guards a profile switches on, None or False when off: the package-only parts, scenario coverage, no
     comments, stand-ins, the closed tree, the fewest statements of a duplicate, the fewest fields of a twin, dead code
     (and with it the files no test of their tier reaches), the parts whose forwarding methods are listed, and private
     imports."""
     package_only: tuple[str, ...] = ()
-    scenarios: ScenariosView | None = None
+    scenarios: ScenarioCoverage | None = None
     no_comments: bool = False
-    stand_ins: StandInsView | None = None
+    stand_ins: StandIns | None = None
     closed_tree: bool = False
     no_duplicates: int | None = None
     no_twins: int | None = None
@@ -186,42 +119,6 @@ class GuardsView:
     untested: bool = False
     pass_through: tuple[str, ...] = ()
     private_imports: bool = False
-
-
-@dataclass(frozen=True)
-class FakesView:
-    """Where the test fakes live below the tests root, the parts they stand in for, and how a fake's name starts."""
-    folder: tuple[str, ...]
-    stand_in_for: tuple[str, ...]
-    prefix: str = ""
-
-
-@dataclass(frozen=True)
-class FrameworkView:
-    """How the test framework names things: the patterns of a test file's name, that of a test function's, and the
-    dotted names of what skips a test."""
-    files: tuple[str, ...]
-    functions: str
-    skips: tuple[tuple[str, ...], ...] = ()
-
-
-@dataclass(frozen=True)
-class ExcludedView:
-    """A folder below the app that is not its source, and why."""
-    path: tuple[str, ...]
-    reason: str
-
-
-@dataclass(frozen=True)
-class LanguageView:
-    """The language of the app as a check reads it: how a message names it, the ending of a source file's name, the
-    file that stands for the folder holding it, the dotted names that mark a class as an interface, and those of what
-    imports by a name worked out when the code runs."""
-    title: str = ""
-    extension: str = ""
-    package_file: str = ""
-    interface: tuple[tuple[str, ...], ...] = ()
-    dynamic: tuple[tuple[str, ...], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -237,49 +134,12 @@ class ProfileView:
     libraries: dict[str, tuple[str, ...]] | None = None
     repeats: tuple[Repeat, ...] = ()
     guards: GuardsView = GuardsView()
-    fakes: FakesView | None = None
-    framework: FrameworkView | None = None
-    excluded: tuple[ExcludedView, ...] = ()
+    fakes: Fakes | None = None
+    framework: Framework | None = None
+    excluded: tuple[Excluded, ...] = ()
     hints: dict[str, str] = field(default_factory=dict)
     language: LanguageView = LanguageView()
     reserved: dict[str, str] = field(default_factory=dict)
-
-
-@dataclass(frozen=True)
-class Loosened:
-    """One way a profile is looser than the bundled profile it is compared with. key is what loosened:
-
-        may_import      part may also import what (a target as written)
-        libraries       part may also import the outside package what; with no part, outside packages are unchecked
-        must_import     part may also meet must_import with the target what; with no what, it has none now
-        forbidden       part no longer forbids what
-        untested        part is newly marked untested
-        types_only      the tests of tier part may now call what
-        apply_forbidden the tests of tier part are no longer held to their part's forbidden list
-        testing.skips   what is no longer counted as a skip
-        files.pinned    the init file what is no longer pinned
-        reserved        the standard-library name what is no longer reserved
-
-    sentence says it, naming the key of the profile that does.
-    """
-    key: str
-    part: str
-    what: str = ""
-    sentence: str = ""
-
-
-@dataclass(frozen=True)
-class ProfileOrigin:
-    """Where a profile comes from and how far it can be trusted. location: as selected, a bundled name or a path;
-    closest: for a custom file, the bundled profile sharing the most parts (the first by name on a tie), None when it
-    is bundled or shares none; guards_off: the guards xarch has that it leaves off, in xarch's order; baseline_off:
-    those the bundled profile it is, or is compared with, leaves off too; looser: how it is looser than closest."""
-    location: str
-    bundled: bool
-    closest: str | None
-    guards_off: tuple[str, ...]
-    baseline_off: tuple[str, ...]
-    looser: tuple[Loosened, ...]
 
 
 @dataclass(frozen=True)
@@ -325,6 +185,8 @@ class NoProfileChosen:
     known: tuple[str, ...]
 
 
+FilesResult = ProjectFiles | ProfileRefused
+OriginResult = Origin | ProfileRefused
 SelectResult = ProfileSelected | NoProfileChosen | ProfileRefused
 ChooseAppResult = AppChosen | ProfileRefused
 
@@ -472,7 +334,7 @@ class ProfileChecked:
     location: str
     problems: tuple[Problem, ...]
     files: int
-    origin: ProfileOrigin | None
+    origin: Origin | None
 
     @property
     def ok(self) -> bool:

@@ -4,7 +4,8 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Protocol
 
-from xarch.modules.rules.domain.values import SourceFile, TableForm
+from xarch.kernel.logic.testing import CaseTable
+from xarch.modules.rules.domain.values import SourceFile
 
 
 class SourceTree(Protocol):
@@ -18,7 +19,7 @@ class SourceTree(Protocol):
         """The path below root of every source file, sorted."""
         ...
 
-    def read(self, root: Path, paths: list[tuple[str, ...]], table: TableForm | None = None) -> list[SourceFile]:
+    def read(self, root: Path, paths: list[tuple[str, ...]], table: CaseTable | None = None) -> list[SourceFile]:
         """The files at paths below root, parsed; one that does not parse holds its error. A function holds the
         tables written in the form `table` names; with none, no table is recognised."""
         ...

@@ -6,9 +6,10 @@ import pytest
 
 from tests.modules.rules.builders import PYTHON
 from xarch.kernel.logic.placement import EVERYTHING, Repeat, Target
+from xarch.kernel.logic.testing import Fakes, Framework
+from xarch.kernel.logic.testing import TierView as Tier
 from xarch.modules.rules.application.logic.where import Resolved, describe, resolve
-from xarch.modules.rules.domain.values import Fakes, Framework, Nearest, PartInfo, Profile, Reach, TierInfo
-from xarch.modules.rules.domain.values import TestTier as Tier
+from xarch.modules.rules.domain.values import Nearest, PartInfo, Profile, Reach, TierInfo
 
 ROOT, APP, TESTS = Path("/p"), Path("/p/app"), Path("/p/tests")
 NOW = ("datetime", "datetime", "now")

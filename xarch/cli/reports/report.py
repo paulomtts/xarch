@@ -14,8 +14,8 @@ import json
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
-from xarch.kernel.violations import Violation
-from xarch.modules.rules.contract import AppChecked, AtView, EnforcementView, FindingView
+from xarch.kernel.violations import At, Violation
+from xarch.modules.rules.contract import AppChecked, EnforcementView, FindingView
 
 LABEL = 13
 """The width of a label of the enforcement section, its colon and the spaces after it."""
@@ -61,7 +61,7 @@ def enforcement_lines(state: EnforcementView, strict: bool, hints: Mapping[str, 
     if state.ungoverned:
         count = len(state.ungoverned)
         lines.append(_line("ungoverned", f"{_count(count, f'{state.language or "source"} file')} outside every part "
-                                         f"({', '.join(folders(state.ungoverned))})", 2))
+                                         f"({', '.join(state.ungoverned_folders)})", 2))
     lines += [_line("excluded", f"{item.folder}/ ({item.reason})", 2) for item in state.excluded]
     lines += [_line("init files", f"{item.file} is {item.state}", 2) for item in state.init_files]
     if state.skipped:
@@ -81,13 +81,6 @@ def enforcement_lines(state: EnforcementView, strict: bool, hints: Mapping[str, 
     return lines
 
 
-def folders(files: Sequence[str]) -> list[str]:
-    """The top folders below the app holding the files, each once, in order; a file at the app's root as itself."""
-    tops = ["/".join(parts[:2]) + "/" if len(parts) > 2 else file
-            for file in files for parts in [file.split("/")]]
-    return list(dict.fromkeys(tops))
-
-
 def _line(label: str, text: str, indent: int) -> str:
     return " " * indent + f"{label}:".ljust(max(LABEL, len(label) + 2)) + text
 
@@ -96,7 +89,7 @@ def _count(count: int, noun: str) -> str:
     return f"{count} {noun}{'' if count == 1 else 's'}"
 
 
-def _places(places: Sequence[AtView]) -> str:
+def _places(places: Sequence[At]) -> str:
     shown = ", ".join(f"{at.file}:{at.line}" for at in places[:SHOWN])
     return shown + (f" and {len(places) - SHOWN} more" if len(places) > SHOWN else "")
 
@@ -118,7 +111,7 @@ def enforcement_document(state: EnforcementView) -> dict[str, Any]:
                     "guards_off": list(origin.guards_off), "baseline_off": list(origin.baseline_off),
                     "looser": [{"key": item.key, "part": item.part, "what": item.what, "sentence": item.sentence}
                                for item in origin.looser]},
-        "ungoverned": {"count": len(state.ungoverned), "folders": folders(state.ungoverned),
+        "ungoverned": {"count": len(state.ungoverned), "folders": list(state.ungoverned_folders),
                        "files": list(state.ungoverned)},
         "excluded": [{"folder": item.folder, "reason": item.reason} for item in state.excluded],
         "init_files": [{"file": item.file, "state": item.state} for item in state.init_files],
@@ -130,7 +123,7 @@ def enforcement_document(state: EnforcementView) -> dict[str, Any]:
     }
 
 
-def _at(places: Sequence[AtView]) -> list[dict[str, Any]]:
+def _at(places: Sequence[At]) -> list[dict[str, Any]]:
     return [{"file": at.file, "line": at.line} for at in places]
 
 

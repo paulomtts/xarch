@@ -5,6 +5,8 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+from xarch.kernel.logic.origin import Origin
+from xarch.kernel.logic.project_file import ProjectFile
 from xarch.modules.spec.application.logic.docs_files import doc_files
 from xarch.modules.spec.application.logic.example_imports import example_problems, shipped_problems
 from xarch.modules.spec.application.logic.language_file import language_of
@@ -12,11 +14,11 @@ from xarch.modules.spec.application.logic.looseness import origin_of
 from xarch.modules.spec.application.logic.profile_file import parse_profile, source_of
 from xarch.modules.spec.application.logic.profile_files import pointed_files
 from xarch.modules.spec.application.logic.profile_listing import listing, referenced
-from xarch.modules.spec.application.logic.project_files import EXAMPLE_APP, Written, entries, project_files, with_app
+from xarch.modules.spec.application.logic.project_files import EXAMPLE_APP, entries, project_files, with_app
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
 from xarch.modules.spec.application.ports.runtime import Runtime
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.values import Architecture, ArchitectureSource, Language, Origin
+from xarch.modules.spec.domain.values import Architecture, ArchitectureSource, Language
 
 
 class ArchitectureService:
@@ -61,7 +63,7 @@ class ArchitectureService:
             raise InvalidArchitecture(source.location, problems)
         return list(doc_files(architecture, texts, examples, tier_examples))
 
-    def files(self, location: str | Path, app: str, presets: bool = True) -> list[Written]:
+    def files(self, location: str | Path, app: str, presets: bool = True) -> list[ProjectFile]:
         """The project files the architecture declares for an app folder called app, each filled from its template
         unless it says otherwise, a folder entry as every file under its folder (unless presets is off, which leaves
         those unread); raises InvalidArchitecture."""

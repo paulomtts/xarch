@@ -4,7 +4,9 @@ from pathlib import Path
 
 from tests.bootstrap.project import APP, TABLE, TESTS, write
 from xarch.bootstrap.wiring import build_controllers
-from xarch.modules.rules.contract import AtView, CheckImports, DriftView, EnforcementView, ImportsChecked, OriginView, WeakView
+from xarch.kernel.logic.origin import Origin
+from xarch.kernel.violations import At, Weak
+from xarch.modules.rules.contract import CheckImports, DriftView, EnforcementView, ImportsChecked
 
 PORTS = "modules/docs/application/ports/"
 REPO = ("from typing import Protocol\n\nclass Repo(Protocol):\n    def get(self, id: int) -> str: ...\n"
@@ -13,7 +15,7 @@ REPO = ("from typing import Protocol\n\nclass Repo(Protocol):\n    def get(self,
 
 def enforcement(tmp_path: Path, app: dict[str, str] | None = None, tests: dict[str, str | None] | None = None,
                 profile: str = "web") -> EnforcementView:
-    guard, *others = build_controllers().spec.files("web", "app")
+    guard, *others = build_controllers().spec.files("web", "app").files
     for file in others:
         (tmp_path.joinpath(*file.path)).parent.mkdir(parents=True, exist_ok=True)
         tmp_path.joinpath(*file.path).write_text(file.content)
@@ -27,7 +29,7 @@ def enforcement(tmp_path: Path, app: dict[str, str] | None = None, tests: dict[s
 
 def test_a_clean_project_on_a_bundled_profile_reports_only_the_guards_it_ships_off(tmp_path):
     assert enforcement(tmp_path) == EnforcementView(
-        OriginView("web", True, None, ("closed-tree",), ("closed-tree",), ()), language="Python")
+        Origin("web", True, None, ("closed-tree",), ("closed-tree",), ()), language="Python")
 
 
 def test_a_python_file_no_part_governs_is_listed(tmp_path):
@@ -47,15 +49,15 @@ def test_skipped_tests_and_dynamic_imports_are_listed_where_they_are(tmp_path):
                                                      "\n@pytest.mark.xfail(reason='later')\ndef test_y():\n    pass\n"}
     app = {"kernel/dyn.py": "import importlib\n\nplugin = importlib.import_module('app.' + 'x')\n"}
     found = enforcement(tmp_path, app, tests)
-    assert found.skipped == (AtView("tests/modules/docs/domain/test_document.py", 3),
-                             AtView("tests/modules/docs/domain/test_document.py", 7))
-    assert found.dynamic == (AtView("app/kernel/dyn.py", 3),)
+    assert found.skipped == (At("tests/modules/docs/domain/test_document.py", 3),
+                             At("tests/modules/docs/domain/test_document.py", 7))
+    assert found.dynamic == (At("app/kernel/dyn.py", 3),)
 
 
 def test_a_fake_that_defines_less_than_its_port_declares_is_weak(tmp_path):
     fakes = {"fakes/repo.py": "class FakeRepo:\n    def get(self, id):\n        return ''\n"}
     assert enforcement(tmp_path, {PORTS + "repo.py": REPO}, fakes).weak == (
-        WeakView("stand-ins", "tests/fakes/repo.py", 1,
+        Weak("stand-ins", "tests/fakes/repo.py", 1,
              "FakeRepo does not define save, size, which Repo declares (app/modules/docs/application/ports/repo.py)"),)
 
 
@@ -71,7 +73,7 @@ def test_a_variant_credited_to_a_standalone_test_with_no_assert_is_weak(tmp_path
     found = enforcement(tmp_path, {"modules/docs/contract/results.py": three},
                         {"modules/docs/application/test_publish.py": body})
     assert found.weak == (
-        WeakView("scenario-coverage", "tests/modules/docs/application/test_publish.py", 20,
+        Weak("scenario-coverage", "tests/modules/docs/application/test_publish.py", 20,
              "PublishResult variant Gone is credited to test_a_gone_document_is_gone, test_also_gone by name only: "
              "no assert in their bodies"),)
     asserted = body + "\ndef test_gone_for_real():\n    assert run(Gone) == Gone()\n"

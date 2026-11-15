@@ -57,6 +57,7 @@ from dataclasses import dataclass, field, replace
 from typing import Any
 
 from xarch.kernel.logic.placement import EVERYTHING, Repeat, root_of
+from xarch.kernel.logic.testing import CaseTable, Fakes, Framework, ScenarioCoverage, StandIns
 from xarch.modules.spec.application.logic import profile_checks as ck
 from xarch.modules.spec.application.logic import profile_examples as ex
 from xarch.modules.spec.application.logic.key_lookup import keys_of, names_of, required_of
@@ -82,11 +83,8 @@ from xarch.modules.spec.domain.values import (
     EACH,
     VERSION,
     Architecture,
-    CaseTable,
     ClosedTree,
     DeadCode,
-    Fakes,
-    Framework,
     Guard,
     Language,
     Layout,
@@ -97,8 +95,6 @@ from xarch.modules.spec.domain.values import (
     Part,
     PassThrough,
     PrivateImports,
-    ScenarioCoverage,
-    StandIns,
     Subject,
     Target,
     Tier,

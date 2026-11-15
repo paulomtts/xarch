@@ -85,7 +85,7 @@ def test_init_writes_the_agent_instructions_unpinned_and_short_naming_the_comman
                    "ruff check", "xarch check --format json", "Placement order", "Given/When/Then",
                    "fire-only", "guard test", "`fix:` line", "`hint:` line", "`fix` and `hint`"]:
         assert needed in text, needed
-    shipped = {file.path: file.pinned for file in build_controllers().spec.files(profile, "app")}
+    shipped = {file.path: file.pinned for file in build_controllers().spec.files(profile, "app").files}
     assert shipped[("AGENTS.md",)] is False
 
 
@@ -106,7 +106,7 @@ def test_init_writes_the_linter_config_unpinned_and_a_fresh_project_with_a_modul
     app = tmp_path / "app"
     init(app, profile)
     assert isinstance(build_controllers().scaffold.new(New(app, "module", "documents", profile)), Scaffolded)
-    assert {file.path: file.pinned for file in build_controllers().spec.files(profile, "app")}[("ruff.toml",)] is False
+    assert {file.path: file.pinned for file in build_controllers().spec.files(profile, "app").files}[("ruff.toml",)] is False
     result = ruff_in(tmp_path)
     assert result.returncode == 0, result.stdout + result.stderr
 

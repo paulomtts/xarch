@@ -3,9 +3,10 @@ name it lists, and a test of a tier that says so is held to the list of the part
 import pytest
 
 from xarch.kernel.logic.placement import Target
+from xarch.kernel.logic.testing import Fakes, Framework
+from xarch.kernel.logic.testing import TierView as Tier
 from xarch.modules.rules.application.logic.forbidden import violations
-from xarch.modules.rules.domain.values import Fakes, Framework, Import, MethodCall, Profile, SourceFile, Use
-from xarch.modules.rules.domain.values import TestTier as Tier
+from xarch.modules.rules.domain.values import Import, MethodCall, Profile, SourceFile, Use
 
 NOW = ("datetime", "datetime", "now")
 PROFILE = Profile(parts={"domain": ("modules", "*", "domain"), "adapters": ("modules", "*", "adapters")},

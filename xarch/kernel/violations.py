@@ -1,4 +1,6 @@
-"""A finding at a place in a file tree. No business meaning: what was found is in the message, what to do in the fix."""
+"""Findings at a place in a file tree. No business meaning: what was found is in the message, what to do in the fix. A
+violation fails the check; a weak finding is listed beside the violations and fails only a strict check; At is the
+place alone."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -31,3 +33,21 @@ class Violation:
     def __str__(self) -> str:
         where = f"{self.file}:{self.line}" if self.line else self.file
         return f"{where}: {self.message}"
+
+
+@dataclass(frozen=True)
+class At:
+    """A place in a file: how the file is shown and the line."""
+    file: str
+    line: int
+
+
+@dataclass(frozen=True)
+class Weak:
+    """A check satisfied to the letter only, which is not a violation: the stable id of the check it concerns (one of
+    RULES), where, and why; fix is what to do about it, empty when there is no advice."""
+    rule: str
+    file: str
+    line: int
+    message: str
+    fix: str = ""

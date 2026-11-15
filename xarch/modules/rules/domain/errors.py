@@ -16,3 +16,8 @@ class OutsideProject(DomainError):
 
     def __init__(self, path: Path, project: Path):
         super().__init__(f"{path.as_posix()} lies outside the project: it is not below {project.as_posix()}")
+
+
+class ProfileUnusable(DomainError):
+    """The profile in force cannot be read for what the check needs of it; reason says why, as the spec module put
+    it."""

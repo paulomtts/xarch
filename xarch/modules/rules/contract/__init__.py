@@ -4,86 +4,48 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from xarch.kernel.violations import Violation
+from xarch.kernel.logic.origin import Origin
+from xarch.kernel.violations import At, Violation, Weak
 
-__all__ = ["LoosenedView", "OriginView", "DriftView", "AtView", "WeakView", "FindingView", "ExcludedView",
-           "EnforcementView", "ReachView", "NearestView", "TierInfoView", "WhereView", "CheckImports", "ImportsChecked",
+__all__ = ["DriftView", "FindingView", "ExcludedView", "EnforcementView", "ReachView", "NearestView", "TierInfoView", "WhereView", "CheckImports", "ImportsChecked",
            "NotADirectory", "CheckResult", "CheckApp", "AppChecked", "CheckAppResult", "Locate", "Located", "Outside", "LocateResult"]
 
 
 @dataclass(frozen=True)
-class LoosenedView:
-    """One way the profile in force is looser than the bundled profile it is compared with: the key that loosened,
-    the part or tier, what was added or dropped, and the sentence that says it."""
-    key: str
-    part: str
-    what: str = ""
-    sentence: str = ""
-
-
-@dataclass(frozen=True)
-class OriginView:
-    """Where the profile in force comes from: its location as selected, whether it is bundled, the bundled profile a
-    custom one is compared with (None: it is bundled, or resembles none), the guards it leaves off, those the bundled
-    profile leaves off too, and how it is looser."""
-    location: str = ""
-    bundled: bool = True
-    closest: str | None = None
-    guards_off: tuple[str, ...] = ()
-    baseline_off: tuple[str, ...] = ()
-    looser: tuple[LoosenedView, ...] = ()
-
-
-@dataclass(frozen=True)
 class DriftView:
-    """An init file missing, or changed from what `init` would write: its path below the folder holding the app."""
+    """An init file missing, or changed from what `init` would write: its path below the folder holding the app, as
+    posix, and which."""
     file: str
     state: str
 
 
 @dataclass(frozen=True)
-class AtView:
-    """A place in a file: how the file is shown, and the line."""
-    file: str
-    line: int
-
-
-@dataclass(frozen=True)
-class WeakView:
-    """A check met to the letter only: the guard it concerns, where, why, and what to do about it ("" for nothing)."""
-    rule: str
-    file: str
-    line: int
-    message: str
-    fix: str = ""
-
-
-@dataclass(frozen=True)
 class FindingView:
-    """A finding `--strict` fails on: the key of the enforcement section it is under, and what."""
+    """A finding `--strict` fails on: the key of the enforcement section it is under, and what, in words."""
     key: str
     detail: str
 
 
 @dataclass(frozen=True)
 class ExcludedView:
-    """A folder the profile leaves out of every check, as shown, and why."""
+    """A folder the profile leaves out of every check, as shown below the folder holding the app, and why."""
     folder: str
     reason: str
 
 
 @dataclass(frozen=True)
 class EnforcementView:
-    """The state of the check's own enforcement, beside its violations: the origin of the profile; the files no part
-    governs; the init files missing or changed; the skipped tests and dynamic imports; the checks met to the letter
-    only; the findings `--strict` fails on; the folders the profile excludes; and how the language of the app is
-    named."""
-    origin: OriginView = OriginView()
+    """The state of the check's own enforcement, beside its violations, as the enforcement section shows it: the
+    origin of the profile; the files no part governs, and the top folders holding them (each once, in order); the init
+    files missing or changed; the skipped tests and dynamic imports; the checks met to the letter only; the findings
+    `--strict` fails on; the folders the profile excludes; and how the language of the app is named."""
+    origin: Origin = Origin()
     ungoverned: tuple[str, ...] = ()
+    ungoverned_folders: tuple[str, ...] = ()
     init_files: tuple[DriftView, ...] = ()
-    skipped: tuple[AtView, ...] = ()
-    dynamic: tuple[AtView, ...] = ()
-    weak: tuple[WeakView, ...] = ()
+    skipped: tuple[At, ...] = ()
+    dynamic: tuple[At, ...] = ()
+    weak: tuple[Weak, ...] = ()
     strict: tuple[FindingView, ...] = ()
     excluded: tuple[ExcludedView, ...] = ()
     language: str = ""

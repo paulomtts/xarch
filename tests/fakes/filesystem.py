@@ -5,8 +5,9 @@ from collections.abc import Iterable
 from dataclasses import replace
 from pathlib import Path
 
+from xarch.kernel.logic.testing import CaseTable
 from xarch.modules.layout.domain.structure import Requirement
-from xarch.modules.rules.domain.values import Import, SourceFile, TableForm
+from xarch.modules.rules.domain.values import Import, SourceFile
 from xarch.modules.scaffold.domain.values import FILE, FOLDER
 
 
@@ -27,7 +28,7 @@ class FakeSourceTree:
     def paths(self, root: Path) -> list[tuple[str, ...]]:
         return [tuple(rel.split("/")) for rel in sorted(self._trees[root])]
 
-    def read(self, root: Path, paths: list[tuple[str, ...]], table: TableForm | None = None) -> list[SourceFile]:
+    def read(self, root: Path, paths: list[tuple[str, ...]], table: CaseTable | None = None) -> list[SourceFile]:
         files = self._trees[root]
         return [_source(f"{root.name}/{'/'.join(path)}", path, files["/".join(path)]) for path in paths]
 

@@ -3,100 +3,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from xarch.kernel.logic.placement import Marks, Repeat, Target, repeat_of
-
-
-@dataclass(frozen=True)
-class TestTier:
-    """A kind of test as the checker sees it.
-
-    subject holds the parts it tests, each as a target: a part inside the modules in the test's own module. folder is
-    the folder below the tests root that places the tests of a tier whose tests mirror no part; an empty folder
-    places nothing. may_import is what the tests in that folder may import of the app; None: the tier's subject parts
-    and whatever each may import. types_only holds the parts its tests may use as types but never call. forbidden: its tests are held to the
-    forbidden list of the part they mirror. proves, may_touch, litmus and one_file_per are the profile's words for the
-    tier, which `where` shows. must_import holds the parts one of which each of its test files must reach.
-    """
-    name: str
-    subject: tuple[Target, ...]
-    folder: tuple[str, ...] | None = None
-    types_only: tuple[str, ...] = ()
-    forbidden: bool = False
-    proves: str = ""
-    may_touch: str = ""
-    litmus: str = ""
-    one_file_per: str = ""
-    may_import: tuple[Target, ...] | None = None
-    must_import: tuple[str, ...] = ()
-
-
-@dataclass(frozen=True)
-class Fakes:
-    """Where the test fakes live below the tests root, the parts they stand in for, and how a fake's name starts."""
-    path: tuple[str, ...]
-    stand_in_for: tuple[str, ...]
-    prefix: str = ""
-
-
-@dataclass(frozen=True)
-class Framework:
-    """How the test framework names things: the patterns of a test file's name (against the file name alone, `*` for
-    any text) and of a test function's, and the dotted names of what skips a test or expects it to fail."""
-    files: tuple[str, ...]
-    functions: str
-    skips: tuple[tuple[str, ...], ...] = ()
-
-
-@dataclass(frozen=True)
-class TableForm:
-    """How a test function holds a table: the dotted names of its decorator and of its row (each a Ref), the keyword
-    that gives a row its id, and (None: positional only) the keywords its two arguments, the parameter names and the
-    rows, may be given by."""
-    decorator: tuple[str, ...]
-    row: tuple[str, ...]
-    id: str
-    keywords: tuple[str, str] | None = None
-
-
-@dataclass(frozen=True)
-class Scenarios:
-    """The scenario-coverage guard: the part holding the result unions, the tier holding their tables, how a union's
-    name ends, the names of the three columns of a table (the state, the command and the result, in that order),
-    how a table is written, and the name of a use case's test file, `{name}` standing for the use case in
-    snake_case."""
-    results: str
-    tier: str
-    suffix: str
-    columns: tuple[str, str, str]
-    table: TableForm
-    file: str
-
-
-@dataclass(frozen=True)
-class Fixture:
-    """A test function's parameter that hands over a mock builder: its name, and the names of its methods that build
-    a mock and of those that build one from a spec given as an argument."""
-    name: str
-    mocks: tuple[str, ...]
-    autospec: tuple[str, ...] = ()
-
-
-@dataclass(frozen=True)
-class StandIns:
-    """The stand-ins guard: the dotted names of the calls that build a mock, of those that build one from a spec given
-    as an argument, and the keywords a mock is given its spec by (the first is the one the latter take); and the
-    fixtures: parameters whose methods build mocks the same way."""
-    mocks: tuple[tuple[str, ...], ...]
-    autospec: tuple[tuple[str, ...], ...]
-    spec: tuple[str, ...]
-    fixtures: tuple[Fixture, ...] = ()
-
-
-@dataclass(frozen=True)
-class Exclusion:
-    """A folder below the app that is not its source: its path below the app folder, and why."""
-    path: tuple[str, ...]
-    reason: str
+from xarch.kernel.logic.language import LanguageView
+from xarch.kernel.logic.origin import Origin
+from xarch.kernel.logic.placement import Excluded, Repeat, Target, repeat_of
+from xarch.kernel.logic.testing import Fakes, Framework, ScenarioCoverage, StandIns, TierView
+from xarch.kernel.violations import At, Weak
 
 
 @dataclass(frozen=True)
@@ -107,22 +18,6 @@ class PartInfo:
     litmus: str = ""
     shown: str = ""
     untested: str = ""
-
-
-@dataclass(frozen=True)
-class Language:
-    """The language of the app, as a check needs it: how a message names it, the ending of a source file's name, the
-    file that stands for the folder holding it, the dotted names that mark a class as an interface, and those of
-    what imports by a name worked out when the code runs."""
-    title: str = ""
-    extension: str = ""
-    package_file: str = ""
-    interface: tuple[tuple[str, ...], ...] = ()
-    dynamic: tuple[tuple[str, ...], ...] = ()
-
-    @property
-    def marks(self) -> Marks:
-        return Marks(self.extension, self.package_file)
 
 
 @dataclass(frozen=True)
@@ -151,19 +46,19 @@ class Profile:
     parts: dict[str, tuple[str, ...]]
     rules: dict[str, tuple[Target, ...]]
     folders: tuple[tuple[str, ...], ...] = ()
-    tiers: tuple[TestTier, ...] = ()
+    tiers: tuple[TierView, ...] = ()
     libraries: dict[str, tuple[str, ...]] | None = None
     fakes: Fakes | None = None
     repeats: tuple[Repeat, ...] = ()
     package_only: tuple[str, ...] = ()
-    scenarios: Scenarios | None = None
+    scenarios: ScenarioCoverage | None = None
     no_comments: bool = False
     stand_ins: StandIns | None = None
     closed_tree: bool = False
     framework: Framework | None = None
     forbidden: dict[str, tuple[tuple[str, ...], ...]] = field(default_factory=dict)
     info: dict[str, PartInfo] = field(default_factory=dict)
-    excluded: tuple[Exclusion, ...] = ()
+    excluded: tuple[Excluded, ...] = ()
     must_import: dict[str, tuple[Target, ...]] = field(default_factory=dict)
     no_duplicates: int | None = None
     no_twins: int | None = None
@@ -177,7 +72,7 @@ class Profile:
     built_by: dict[str, tuple[str, ...]] = field(default_factory=dict)
     private_imports: bool = False
     hints: dict[str, str] = field(default_factory=dict)
-    language: Language = Language()
+    language: LanguageView = LanguageView()
     reserved: dict[str, str] = field(default_factory=dict)
 
     def words(self) -> dict[str, str]:
@@ -412,68 +307,28 @@ class InitFile:
 
 
 @dataclass(frozen=True)
-class Loosened:
-    """One way the profile in force is looser than the bundled profile it is compared with (see the spec contract's
-    Loosened for the keys), and the sentence that says it, as spec words it."""
-    key: str
-    part: str
-    what: str = ""
-
-    sentence: str = ""
-
-
-@dataclass(frozen=True)
-class Origin:
-    """Where the profile in force comes from: location as selected (a bundled name or a path), whether it is bundled,
-    the bundled profile a custom one is compared with (None: it is bundled, or resembles none), the guards it leaves
-    off, those of them the bundled profile it is or is compared with leaves off too (baseline_off), and how it is
-    looser than that one."""
-    location: str = ""
-    bundled: bool = True
-    closest: str | None = None
-    guards_off: tuple[str, ...] = ()
-    baseline_off: tuple[str, ...] = ()
-    looser: tuple[Loosened, ...] = ()
+class Standing:
+    """How the profile in force stands, besides its rules: where it comes from and how it is looser than the bundled
+    profile it resembles, and the files `init` would write now beside the app folder, in the profile's order."""
+    origin: Origin
+    init_files: tuple[InitFile, ...]
 
 
 @dataclass(frozen=True)
 class Drift:
-    """An init file as it stands: missing, or changed from what `init` would write (pinned files only). file is its
-    path below the folder holding the app, as posix."""
-    file: str
+    """An init file as it stands: missing, or changed from what `init` would write (pinned files only). path is its
+    path below the folder holding the app."""
+    path: tuple[str, ...]
     state: str
 
 
 @dataclass(frozen=True)
-class At:
-    """A place in a file: how the file is shown and the line."""
-    file: str
-    line: int
-
-
-@dataclass(frozen=True)
-class Weak:
-    """A check satisfied to the letter only, which is not a violation: the guard it concerns, where, and why; fix is
-    what to do about it, empty when there is no advice."""
-    rule: str
-    file: str
-    line: int
-    message: str
-    fix: str = ""
-
-
-@dataclass(frozen=True)
 class Finding:
-    """An enforcement finding that `--strict` fails on: the key of the enforcement section it is under, and what."""
+    """An enforcement finding that `--strict` fails on: the key of the enforcement section it is under, and the item
+    there that fails: a guard left off or an ungoverned file (by name), an init file that drifted, a skip or a dynamic
+    import (where it is), or a weak check."""
     key: str
-    detail: str
-
-
-@dataclass(frozen=True)
-class Excluded:
-    """A folder the profile leaves out of every check, as it is shown (such as "app/examples"), and why."""
-    folder: str
-    reason: str
+    item: str | Drift | At | Weak
 
 
 @dataclass(frozen=True)
@@ -482,7 +337,8 @@ class Enforcement:
     it is; the app's source files no part and no folder of the layout governs (never read, so never checked), as
     shown; the init files missing or changed; the tests skipped or expected to fail, and the dynamic imports, where
     they are; the checks satisfied to the letter only; and strict, the findings `--strict` fails on; the folders
-    the profile excludes, which no check reads; and language, how the language of the app is named."""
+    the profile excludes, which no check reads; app, the name of the app folder the shown paths start with; and
+    language, how the language of the app is named."""
     origin: Origin = Origin()
     ungoverned: tuple[str, ...] = ()
     init_files: tuple[Drift, ...] = ()
@@ -491,6 +347,7 @@ class Enforcement:
     weak: tuple[Weak, ...] = ()
     strict: tuple[Finding, ...] = ()
     excluded: tuple[Excluded, ...] = ()
+    app: str = ""
     language: str = ""
 
 

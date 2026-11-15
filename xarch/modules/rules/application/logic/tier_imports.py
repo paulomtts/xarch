@@ -17,18 +17,19 @@ from collections.abc import Iterable, Iterator
 from dataclasses import replace
 
 from xarch.kernel.logic.placement import EACH, Target, reaches
+from xarch.kernel.logic.testing import TierView
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.imports import dotted, targets
 from xarch.modules.rules.application.logic.places import label, place, targets_of
 from xarch.modules.rules.application.logic.tier_of import Tested, as_place, is_test, tested
-from xarch.modules.rules.domain.values import Profile, SourceFile, TestTier
+from xarch.modules.rules.domain.values import Profile, SourceFile
 
 NO_TIER = "lies in no tier: no part's folder and no tier's `folder` is mirrored here"
 NO_TIER_FIX = "move it to the folder that mirrors its subject's path in the app, or into a tier's `folder`"
 RULE = "tiers"
 
 
-def may_import(profile: Profile, tier: TestTier) -> tuple[Target, ...]:
+def may_import(profile: Profile, tier: TierView) -> tuple[Target, ...]:
     """What the tests in the tier's own folder may import: what the tier says, else its subject parts and what each of
     them may import."""
     if tier.may_import is not None:
@@ -46,7 +47,7 @@ def allowance(profile: Profile, where: Tested) -> tuple[Target, ...]:
     return tuple(replace(t, names="") for s in own for t in (s, *targets_of(profile, s.part)))
 
 
-def may_use_fakes(profile: Profile, tier: TestTier) -> bool:
+def may_use_fakes(profile: Profile, tier: TierView) -> bool:
     return profile.fakes is not None and any(s.part in profile.fakes.stand_in_for for s in tier.subject)
 
 
@@ -97,7 +98,7 @@ def _test_imports(file: SourceFile, where: Tested, profile: Profile, tests_root:
     seen: set[tuple[int, tuple[str, ...]]] = set()
     for line, target in targets(file.imports, steps if is_package else steps[:-1], known, tests_root):
         shown = ".".join((tests_root, *target))
-        if profile.fakes is not None and target[:len(profile.fakes.path)] == profile.fakes.path:
+        if profile.fakes is not None and target[:len(profile.fakes.folder)] == profile.fakes.folder:
             if not may_use_fakes(profile, where.tier):
                 parts = ", ".join(profile.fakes.stand_in_for)
                 yield Violation(file.name, line, f"a {where.tier.name} test may not import the fakes ({shown}): only "

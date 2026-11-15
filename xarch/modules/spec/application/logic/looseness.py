@@ -17,10 +17,11 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import replace
 
+from xarch.kernel.logic.origin import Loosened, Origin
 from xarch.kernel.logic.placement import EVERYTHING, Target
 from xarch.modules.spec.application.logic.guard_names import guard_name
 from xarch.modules.spec.domain.guards import GUARDS
-from xarch.modules.spec.domain.values import Architecture, Loosening, Origin
+from xarch.modules.spec.domain.values import Architecture
 
 Looser = tuple[str, str, str]
 """(key, part, what): one way a profile is looser, before it is said."""
@@ -94,7 +95,7 @@ def origin_of(location: str, architecture: Architecture, bundled: bool,
         return Origin(location, False, None, off, (), ())
     baseline = guards_off(others[name])
     return Origin(location, False, name, off, tuple(g for g in off if g in baseline),
-                  tuple(Loosening(key, part, what, sentence(key, part, what))
+                  tuple(Loosened(key, part, what, sentence(key, part, what))
                         for key, part, what in looser(architecture, others[name])))
 
 

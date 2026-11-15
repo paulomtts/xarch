@@ -2,9 +2,9 @@
 import pytest
 
 from tests.modules.rules.builders import PYTHON
-from xarch.kernel.logic.placement import Target
+from xarch.kernel.logic.placement import Excluded, Target
 from xarch.modules.rules.application.logic.closed_tree import excluded, governed, ungoverned, violations
-from xarch.modules.rules.domain.values import Exclusion, Profile
+from xarch.modules.rules.domain.values import Profile
 
 PROFILE = Profile(parts={"domain": ("modules", "*", "domain"), "entry": ("cli",),
                          "controller": ("modules", "*", "application", "controller.py")},
@@ -61,7 +61,7 @@ def test_a_package_file_of_a_folder_of_the_layout_below_an_instance_passes_but_a
     pytest.param("modules/docs/domain/doc.py", False, id="a file of a part"),
 ])
 def test_excluded(path, is_excluded):
-    profile = Profile(**{**PROFILE.__dict__, "excluded": (Exclusion(("examples",), "shipped as data"),)})
+    profile = Profile(**{**PROFILE.__dict__, "excluded": (Excluded(("examples",), "shipped as data"),)})
     assert excluded(profile, tuple(path.split("/"))) is is_excluded
 
 

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+from xarch.modules.rules.application.logic import enforcement
 from xarch.modules.rules.application.services.app_check import AppCheckService
 from xarch.modules.rules.application.services.locate import LocateService
 from xarch.modules.rules.application.services.source_check import SourceCheckService
 from xarch.modules.rules.contract import (
     AppChecked,
-    AtView,
     CheckApp,
     CheckAppResult,
     CheckImports,
@@ -18,14 +18,11 @@ from xarch.modules.rules.contract import (
     Locate,
     Located,
     LocateResult,
-    LoosenedView,
     NearestView,
     NotADirectory,
-    OriginView,
     Outside,
     ReachView,
     TierInfoView,
-    WeakView,
     WhereView,
 )
 from xarch.modules.rules.domain.errors import OutsideProject, RootMissing
@@ -60,15 +57,12 @@ class RulesController:
 
 
 def _enforcement(state: Enforcement) -> EnforcementView:
-    origin = state.origin
     return EnforcementView(
-        OriginView(origin.location, origin.bundled, origin.closest, origin.guards_off, origin.baseline_off,
-                   tuple(LoosenedView(item.key, item.part, item.what, item.sentence) for item in origin.looser)),
-        state.ungoverned, tuple(DriftView(d.file, d.state) for d in state.init_files),
-        tuple(AtView(a.file, a.line) for a in state.skipped), tuple(AtView(a.file, a.line) for a in state.dynamic),
-        tuple(WeakView(w.rule, w.file, w.line, w.message, w.fix) for w in state.weak),
-        tuple(FindingView(f.key, f.detail) for f in state.strict),
-        tuple(ExcludedView(e.folder, e.reason) for e in state.excluded), state.language)
+        state.origin, state.ungoverned, tuple(enforcement.folders(state.ungoverned)),
+        tuple(DriftView("/".join(d.path), d.state) for d in state.init_files), state.skipped, state.dynamic,
+        state.weak, tuple(FindingView(f.key, enforcement.detail(f.item)) for f in state.strict),
+        tuple(ExcludedView(enforcement.excluded_folder(state.app, e), e.reason) for e in state.excluded),
+        state.language)
 
 
 def _where(found: Where) -> WhereView:

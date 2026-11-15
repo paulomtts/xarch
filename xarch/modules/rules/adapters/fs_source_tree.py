@@ -61,6 +61,7 @@ import tokenize
 from collections.abc import Iterable
 from pathlib import Path
 
+from xarch.kernel.logic.testing import CaseTable
 from xarch.modules.rules.domain.values import (
     Call,
     Callback,
@@ -77,7 +78,6 @@ from xarch.modules.rules.domain.values import (
     SoleCall,
     SourceFile,
     Table,
-    TableForm,
     Union,
     Use,
 )
@@ -94,7 +94,7 @@ class FsSourceTree:
     def paths(self, root: Path) -> list[tuple[str, ...]]:
         return [f.relative_to(root).parts for f in self._fs.files(root, "*.py")]
 
-    def read(self, root: Path, paths: list[tuple[str, ...]], table: TableForm | None = None) -> list[SourceFile]:
+    def read(self, root: Path, paths: list[tuple[str, ...]], table: CaseTable | None = None) -> list[SourceFile]:
         return [_parsed(root.joinpath(*path).relative_to(root.parent).as_posix(), path,
                         self._fs.read_text(root.joinpath(*path)), table) for path in paths]
 
@@ -105,7 +105,7 @@ class FsSourceTree:
         return self._fs.read_text(path) if self._fs.is_file(path) else None
 
 
-def _parsed(name: str, path: tuple[str, ...], text: str, form: TableForm | None) -> SourceFile:
+def _parsed(name: str, path: tuple[str, ...], text: str, form: CaseTable | None) -> SourceFile:
     try:
         tree = ast.parse(text)
         comments = _comments(text)
@@ -163,7 +163,7 @@ _BRANCHES = {ast.If: "if", ast.Match: "match", ast.Try: "try", ast.TryStar: "try
              ast.AsyncFor: "for", ast.While: "while"}
 
 
-def _functions(tree: ast.Module, form: TableForm | None) -> tuple[Function, ...]:
+def _functions(tree: ast.Module, form: CaseTable | None) -> tuple[Function, ...]:
     scope = [_scope(tree)]
     lists = _lists(tree)
     found: list[Function] = []
@@ -177,7 +177,7 @@ def _functions(tree: ast.Module, form: TableForm | None) -> tuple[Function, ...]
 
 
 def _function(node: ast.FunctionDef | ast.AsyncFunctionDef, scope: list[Scope], lists: dict[str, ast.expr],
-              form: TableForm | None, owner: str = "") -> Function:
+              form: CaseTable | None, owner: str = "") -> Function:
     inside = [n for statement in node.body for n in ast.walk(statement)]
     mentions = frozenset(n.id if isinstance(n, ast.Name) else n.attr for n in inside
                          if isinstance(n, (ast.Name, ast.Attribute)))
@@ -337,7 +337,7 @@ def _lists(tree: ast.Module) -> dict[str, ast.expr]:
             if len(values) == 1 and isinstance(values[0], (ast.List, ast.Tuple))}
 
 
-def _table(decorator: ast.expr, scope: list[Scope], lists: dict[str, ast.expr], form: TableForm) -> Table | None:
+def _table(decorator: ast.expr, scope: list[Scope], lists: dict[str, ast.expr], form: CaseTable) -> Table | None:
     if not isinstance(decorator, ast.Call) or _ref(decorator.func, scope) != form.decorator:
         return None
     given = {k.arg: k.value for k in decorator.keywords if k.arg}
@@ -364,7 +364,7 @@ def _columns(node: ast.expr | None) -> tuple[str, ...] | None:
     return None
 
 
-def _row(node: ast.expr, scope: list[Scope], form: TableForm) -> Row:
+def _row(node: ast.expr, scope: list[Scope], form: CaseTable) -> Row:
     if not isinstance(node, ast.Call) or _ref(node.func, scope) != form.row:
         return Row(node.lineno, False, None, tuple(_head(e) for e in node.elts) if isinstance(node, ast.Tuple) else ())
     ids = [k.value for k in node.keywords if k.arg == form.id]

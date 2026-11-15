@@ -6,7 +6,8 @@ import pytest
 
 from tests.fakes.settings import FakeSettings
 from tests.modules.spec.application.builders import BASE, spec_controller
-from xarch.modules.spec.contract import CheckProfile, NoProfileChosen, Problem, ProfileChecked, ProfileOrigin, ProfileRefused
+from xarch.kernel.logic.origin import Origin
+from xarch.modules.spec.contract import CheckProfile, NoProfileChosen, Problem, ProfileChecked, ProfileRefused
 from xarch.modules.spec.domain.values import Configured
 
 APP = Path("/p/app")
@@ -19,7 +20,7 @@ OFF = ("package-only", "scenario-coverage", "no-comments", "stand-ins", "closed-
 
 @pytest.mark.parametrize("given, when, then", [
     pytest.param(dict(files={"mine.yaml": MINE}), CheckProfile(APP, "mine.yaml"),
-                 ProfileChecked("mine.yaml", (), 2, ProfileOrigin("mine.yaml", False, "base", OFF, OFF, ())),
+                 ProfileChecked("mine.yaml", (), 2, Origin("mine.yaml", False, "base", OFF, OFF, ())),
                  id="a profile that loads and keeps to its rules is valid, with how many files it points to"),
     pytest.param(dict(files={"mine.yaml": {**MINE, "colour": 1, "parts": {"core": {"path": "core"}}}}),
                  CheckProfile(APP, "mine.yaml"),
@@ -32,7 +33,7 @@ OFF = ("package-only", "scenario-coverage", "no-comments", "stand-ins", "closed-
                  ProfileChecked("mine.yaml", (
                      Problem("examples", "example (core/rule.py): imports app.api which core may not import "
                                          "(parts.core.may_import)"),), 3,
-                                ProfileOrigin("mine.yaml", False, "base", OFF, OFF, ())),
+                                Origin("mine.yaml", False, "base", OFF, OFF, ())),
                  id="an example that imports what its part may not is a problem"),
     pytest.param(dict(files={}), CheckProfile(APP, "gone.yaml"),
                  ProfileChecked("gone.yaml", (Problem("load", "gone.yaml: cannot read the file: no such file"),), 0, None),

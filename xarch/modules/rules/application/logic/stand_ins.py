@@ -41,12 +41,13 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-from xarch.kernel.violations import Violation
+from xarch.kernel.logic.testing import StandIns
+from xarch.kernel.violations import Violation, Weak
 from xarch.modules.rules.application.logic.imports import dotted
 from xarch.modules.rules.application.logic.places import place
 from xarch.modules.rules.application.logic.tier_imports import may_use_fakes
 from xarch.modules.rules.application.logic.tier_of import tested
-from xarch.modules.rules.domain.values import Class, Profile, Ref, SourceFile, StandIns, Weak
+from xarch.modules.rules.domain.values import Class, Profile, Ref, SourceFile
 
 NONE = "None"
 RULE = "stand-ins"
@@ -80,7 +81,7 @@ def violations(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: 
 def weak(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile) -> list[Weak]:
     if profile.stand_ins is None or profile.fakes is None:
         return []
-    folder, prefix = profile.fakes.path, profile.fakes.prefix
+    folder, prefix = profile.fakes.folder, profile.fakes.prefix
     ports, _ = _ports(app, profile)
     found: list[Weak] = []
     for test in tests:
@@ -136,7 +137,7 @@ def _classified(file: SourceFile, cls: Class, profile: Profile) -> tuple[Port, l
 
 def _missing_fakes(ports: Iterable[Port], tests: list[SourceFile], profile: Profile) -> list[Violation]:
     assert profile.fakes is not None
-    folder = profile.fakes.path
+    folder = profile.fakes.folder
     fakes = {cls.name for t in tests if t.path[:len(folder)] == folder for cls in t.classes}
     shown = "/".join(("tests", *folder)) + "/"
     return [Violation(p.file, p.line, f"{p.name} is a read port with no fake {GUARD}", RULE,

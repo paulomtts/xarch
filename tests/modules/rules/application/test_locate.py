@@ -7,10 +7,10 @@ import pytest
 from tests.fakes.filesystem import FakeSourceTree
 from tests.fakes.profiles import FakeProfiles
 from tests.modules.rules.application.helpers import controller
-from xarch.kernel.logic.placement import Repeat, Target
+from xarch.kernel.logic.placement import Excluded, Repeat, Target
+from xarch.kernel.logic.testing import TierView as Tier
 from xarch.modules.rules.contract import Locate, Located, NearestView, Outside, ReachView, TierInfoView, WhereView
-from xarch.modules.rules.domain.values import Exclusion, PartInfo, Profile
-from xarch.modules.rules.domain.values import TestTier as Tier
+from xarch.modules.rules.domain.values import PartInfo, Profile
 
 APP, TESTS = Path("/src/app"), Path("/src/tests")
 PROFILE = Profile(
@@ -63,6 +63,6 @@ def test_locate(given, when, then):
                  id="a folder that only starts with the excluded name is not excluded"),
 ])
 def test_a_path_in_an_excluded_folder_is_ungoverned_and_says_why(path, then):
-    excluding = replace(PROFILE, closed_tree=True, excluded=(Exclusion(("examples",), "shipped as data"),))
+    excluding = replace(PROFILE, closed_tree=True, excluded=(Excluded(("examples",), "shipped as data"),))
     found = locate({}, Locate(Path(path), Path("/src"), APP, "p", TESTS), excluding)
     assert found == Located(then)
