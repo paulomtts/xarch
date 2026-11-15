@@ -4,7 +4,6 @@ from __future__ import annotations
 from typing import Protocol
 
 from xarch.kernel.errors import DomainError
-from xarch.kernel.logic.placement import Target
 from xarch.modules.rules.domain.values import (
     Exclusion,
     Fakes,
@@ -20,27 +19,13 @@ from xarch.modules.rules.domain.values import (
     TestTier,
 )
 from xarch.modules.rules.domain.values import StandIns as StandInNames
-from xarch.modules.spec.contract import (
-    Architecture,
-    ClosedTree,
-    DeadCode,
-    NoComments,
-    NoDuplicates,
-    PackageOnly,
-    PassThrough,
-    PrivateImports,
-    ProfileOrigin,
-    ProjectFile,
-    ScenarioCoverage,
-    StandIns,
-    Tier,
-)
+from xarch.modules.spec.contract import GuardsView, ProfileOrigin, ProfileView, ProjectFile
 
 
 class _Spec(Protocol):
     """The little rules uses of spec's controller."""
 
-    def architecture(self, location: str) -> Architecture: ...
+    def profile(self, location: str) -> ProfileView: ...
 
     def origin(self, location: str) -> ProfileOrigin: ...
 
@@ -48,53 +33,38 @@ class _Spec(Protocol):
 
 
 class SpecProfiles:
-    """Satisfies rules' Profiles port by translating spec's Architecture."""
+    """Satisfies rules' Profiles port by translating spec's ProfileView."""
 
     def __init__(self, spec: _Spec):
         self._spec = spec
 
     def profile(self, location: str) -> Profile:
-        architecture = self._spec.architecture(location)
-        return Profile(parts=architecture.patterns(), rules=dict(architecture.rules),
-                       folders=tuple(_folders(architecture.layout, ())),
-                       tiers=tuple(_tier(architecture, tier) for tier in architecture.tiers),
-                       libraries=None if architecture.libraries is None else dict(architecture.libraries),
-                       fakes=Fakes(architecture.fakes.folder, architecture.fakes.stand_in_for,
-                                   architecture.fakes.prefix)
-                       if architecture.fakes is not None else None,
-                       repeats=architecture.repeats,
-                       package_only=tuple(p for g in architecture.guards if isinstance(g, PackageOnly) for p in g.parts),
-                       scenarios=next((Scenarios(g.results, g.tier, g.suffix, g.columns,
-                                                 TableForm(g.table.decorator, g.table.row, g.table.id, g.table.keywords),
-                                                 g.file)
-                                       for g in architecture.guards if isinstance(g, ScenarioCoverage)), None),
-                       no_comments=any(isinstance(g, NoComments) for g in architecture.guards),
-                       stand_ins=next((StandInNames(g.mocks, g.autospec, g.spec,
-                                                    tuple(Fixture(f.name, f.mocks, f.autospec) for f in g.fixtures))
-                                       for g in architecture.guards if isinstance(g, StandIns)), None),
-                       closed_tree=any(isinstance(g, ClosedTree) for g in architecture.guards),
-                       must_import={name: part.must_import for name, part in architecture.parts.items()
-                                    if part.must_import},
-                       no_duplicates=next((g.min_statements for g in architecture.guards
-                                           if isinstance(g, NoDuplicates)), None),
-                       dead_code=any(isinstance(g, DeadCode) for g in architecture.guards),
-                       untested=any(isinstance(g, DeadCode) and g.untested for g in architecture.guards),
-                       pass_through=next((g.parts for g in architecture.guards if isinstance(g, PassThrough)), ()),
-                       holds={name: part.holds for name, part in architecture.parts.items() if part.holds},
-                       types_only={name: part.types_only for name, part in architecture.parts.items()
-                                   if part.types_only},
-                       no_callbacks=tuple(name for name, part in architecture.parts.items() if part.no_callbacks),
-                       names={name: part.names for name, part in architecture.parts.items() if part.names},
-                       built_by={name: part.built_by for name, part in architecture.parts.items() if part.built_by},
-                       private_imports=any(isinstance(g, PrivateImports) for g in architecture.guards),
-                       framework=Framework(architecture.framework.files, architecture.framework.functions,
-                                           architecture.framework.skips)
-                       if architecture.framework is not None else None,
-                       forbidden=dict(architecture.forbidden),
-                       info={name: PartInfo(part.role, part.litmus, architecture.shown(part), part.untested)
-                             for name, part in architecture.parts.items()},
-                       excluded=tuple(Exclusion(e.path, e.reason) for e in architecture.excluded))
-
+        view = self._spec.profile(location)
+        parts, guards = view.parts, view.guards
+        return Profile(parts={p.name: p.pattern for p in parts}, rules={p.name: p.may_import for p in parts},
+                       folders=view.folders,
+                       tiers=tuple(TestTier(t.name, t.subject, t.folder, t.types_only, t.forbidden, t.proves,
+                                            t.may_touch, t.litmus, t.one_file_per, t.may_import, t.must_import)
+                                   for t in view.tiers),
+                       libraries=None if view.libraries is None else dict(view.libraries),
+                       fakes=Fakes(view.fakes.folder, view.fakes.stand_in_for, view.fakes.prefix)
+                       if view.fakes is not None else None,
+                       repeats=view.repeats, package_only=guards.package_only,
+                       scenarios=_scenarios(guards), no_comments=guards.no_comments, stand_ins=_stand_ins(guards),
+                       closed_tree=guards.closed_tree,
+                       must_import={p.name: p.must_import for p in parts if p.must_import},
+                       no_duplicates=guards.no_duplicates, dead_code=guards.dead_code, untested=guards.untested,
+                       pass_through=guards.pass_through, holds={p.name: p.holds for p in parts if p.holds},
+                       types_only={p.name: p.types_only for p in parts if p.types_only},
+                       no_callbacks=tuple(p.name for p in parts if p.no_callbacks),
+                       names={p.name: p.names for p in parts if p.names},
+                       built_by={p.name: p.built_by for p in parts if p.built_by},
+                       private_imports=guards.private_imports,
+                       framework=Framework(view.framework.files, view.framework.functions, view.framework.skips)
+                       if view.framework is not None else None,
+                       forbidden={p.name: p.forbidden for p in parts if p.forbidden},
+                       info={p.name: PartInfo(p.role, p.litmus, p.shown, p.untested) for p in parts},
+                       excluded=tuple(Exclusion(e.path, e.reason) for e in view.excluded))
 
     def origin(self, location: str) -> Origin:
         found = self._spec.origin(location)
@@ -110,21 +80,23 @@ class SpecProfiles:
         return tuple(InitFile(file.path, _text(file.content), file.pinned) for file in files)
 
 
+def _scenarios(guards: GuardsView) -> Scenarios | None:
+    found = guards.scenarios
+    if found is None:
+        return None
+    table = found.table
+    return Scenarios(found.results, found.tier, found.suffix, found.columns,
+                     TableForm(table.decorator, table.row, table.id, table.keywords), found.file)
+
+
+def _stand_ins(guards: GuardsView) -> StandInNames | None:
+    found = guards.stand_ins
+    if found is None:
+        return None
+    return StandInNames(found.mocks, found.autospec, found.spec,
+                        tuple(Fixture(f.name, f.mocks, f.autospec) for f in found.fixtures))
+
+
 def _text(content: str | bytes) -> str:
     """What `check` compares a pinned file with: a file copied as bytes is compared as the text it holds."""
     return content if isinstance(content, str) else content.decode("utf-8", errors="replace")
-
-
-def _folders(tree: dict, prefix: tuple[str, ...]) -> list[tuple[str, ...]]:
-    found = [prefix]
-    for name, sub in tree.items():
-        if sub is not None:
-            found += _folders(sub, prefix + (name,))
-    return found
-
-
-def _tier(architecture: Architecture, tier: Tier) -> TestTier:
-    subject = tuple(Target(s.part, "own" if architecture.parts[s.part].in_instance else "none", s.sub)
-                    for s in tier.subject)
-    return TestTier(tier.name, subject, tier.folder, tier.types_only, tier.forbidden, tier.proves, tier.may_touch, tier.litmus,
-                    tier.one_file_per, tier.may_import, tier.must_import)

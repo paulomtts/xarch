@@ -4,7 +4,7 @@ from pathlib import Path
 
 from tests.bootstrap.project import APP, TABLE, TESTS, write
 from xarch.bootstrap.wiring import build_controllers
-from xarch.modules.rules.contract import At, CheckImports, Drift, Enforcement, ImportsChecked, Origin, Weak
+from xarch.modules.rules.contract import AtView, CheckImports, DriftView, EnforcementView, ImportsChecked, OriginView, WeakView
 
 PORTS = "modules/docs/application/ports/"
 REPO = ("from typing import Protocol\n\nclass Repo(Protocol):\n    def get(self, id: int) -> str: ...\n"
@@ -12,7 +12,7 @@ REPO = ("from typing import Protocol\n\nclass Repo(Protocol):\n    def get(self,
 
 
 def enforcement(tmp_path: Path, app: dict[str, str] | None = None, tests: dict[str, str | None] | None = None,
-                profile: str = "web") -> Enforcement:
+                profile: str = "web") -> EnforcementView:
     guard, *others = build_controllers().spec.files("web", "app")
     for file in others:
         (tmp_path.joinpath(*file.path)).parent.mkdir(parents=True, exist_ok=True)
@@ -26,7 +26,7 @@ def enforcement(tmp_path: Path, app: dict[str, str] | None = None, tests: dict[s
 
 
 def test_a_clean_project_on_a_bundled_profile_reports_only_the_guards_it_ships_off(tmp_path):
-    assert enforcement(tmp_path) == Enforcement(Origin("web", True, None, ("closed-tree",), ("closed-tree",), ()))
+    assert enforcement(tmp_path) == EnforcementView(OriginView("web", True, None, ("closed-tree",), ("closed-tree",), ()))
 
 
 def test_a_python_file_no_part_governs_is_listed(tmp_path):
@@ -36,9 +36,9 @@ def test_a_python_file_no_part_governs_is_listed(tmp_path):
 
 def test_a_missing_or_edited_guard_test_is_listed(tmp_path):
     assert enforcement(tmp_path, tests={"architecture/test_rules.py": None}).init_files == (
-        Drift("tests/architecture/test_rules.py", "missing"),)
+        DriftView("tests/architecture/test_rules.py", "missing"),)
     assert enforcement(tmp_path, tests={"architecture/test_rules.py": "def test_nothing():\n    pass\n"}).init_files == (
-        Drift("tests/architecture/test_rules.py", "changed"),)
+        DriftView("tests/architecture/test_rules.py", "changed"),)
 
 
 def test_skipped_tests_and_dynamic_imports_are_listed_where_they_are(tmp_path):
@@ -46,15 +46,15 @@ def test_skipped_tests_and_dynamic_imports_are_listed_where_they_are(tmp_path):
                                                      "\n@pytest.mark.xfail(reason='later')\ndef test_y():\n    pass\n"}
     app = {"kernel/dyn.py": "import importlib\n\nplugin = importlib.import_module('app.' + 'x')\n"}
     found = enforcement(tmp_path, app, tests)
-    assert found.skipped == (At("tests/modules/docs/domain/test_document.py", 3),
-                             At("tests/modules/docs/domain/test_document.py", 7))
-    assert found.dynamic == (At("app/kernel/dyn.py", 3),)
+    assert found.skipped == (AtView("tests/modules/docs/domain/test_document.py", 3),
+                             AtView("tests/modules/docs/domain/test_document.py", 7))
+    assert found.dynamic == (AtView("app/kernel/dyn.py", 3),)
 
 
 def test_a_fake_that_defines_less_than_its_port_declares_is_weak(tmp_path):
     fakes = {"fakes/repo.py": "class FakeRepo:\n    def get(self, id):\n        return ''\n"}
     assert enforcement(tmp_path, {PORTS + "repo.py": REPO}, fakes).weak == (
-        Weak("stand-ins", "tests/fakes/repo.py", 1,
+        WeakView("stand-ins", "tests/fakes/repo.py", 1,
              "FakeRepo does not define save, size, which Repo declares (app/modules/docs/application/ports/repo.py)"),)
 
 
@@ -70,7 +70,7 @@ def test_a_variant_credited_to_a_standalone_test_with_no_assert_is_weak(tmp_path
     found = enforcement(tmp_path, {"modules/docs/contract/results.py": three},
                         {"modules/docs/application/test_publish.py": body})
     assert found.weak == (
-        Weak("scenario-coverage", "tests/modules/docs/application/test_publish.py", 20,
+        WeakView("scenario-coverage", "tests/modules/docs/application/test_publish.py", 20,
              "PublishResult variant Gone is credited to test_a_gone_document_is_gone, test_also_gone by name only: "
              "no assert in their bodies"),)
     asserted = body + "\ndef test_gone_for_real():\n    assert run(Gone) == Gone()\n"

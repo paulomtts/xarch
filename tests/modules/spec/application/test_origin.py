@@ -37,14 +37,16 @@ def test_every_way_a_custom_profile_is_looser_than_the_bundled_one_it_resembles_
     assert origin.guards_off == ("package-only", "scenario-coverage", "no-comments", *OFF[2:])
     assert origin.baseline_off == OFF
     assert origin.looser == (
-        Loosened("may_import", "core", "store"),
-        Loosened("libraries", "core", "yaml"), Loosened("libraries", "store", "requests"),
-        Loosened("forbidden", "core", "time.time"),
-        Loosened("untested", "store"),
-        Loosened("types_only", "unit", "store"),
-        Loosened("apply_forbidden", "unit"),
-        Loosened("testing.skips", "", "pytest.mark.xfail"),
-        Loosened("files.pinned", "", "tests/test_rules.py"))
+        Loosened("may_import", "core", "store", "core may also import store (parts.core.may_import)"),
+        Loosened("libraries", "core", "yaml", "core may also import yaml (parts.core.libraries)"),
+        Loosened("libraries", "store", "requests", "store may also import requests (parts.store.libraries)"),
+        Loosened("forbidden", "core", "time.time", "core no longer forbids time.time (parts.core.forbidden)"),
+        Loosened("untested", "store", "", "store is newly marked untested (parts.store.untested)"),
+        Loosened("types_only", "unit", "store", "the unit tests may now call store (tiers.unit.types_only)"),
+        Loosened("apply_forbidden", "unit", "",
+                 "the unit tests are no longer held to their part's forbidden list (tiers.unit.apply_forbidden)"),
+        Loosened("testing.skips", "", "pytest.mark.xfail", "pytest.mark.xfail is no longer counted as a skip (testing.skips)"),
+        Loosened("files.pinned", "", "tests/test_rules.py", "tests/test_rules.py is no longer pinned (files.tests/test_rules.py.pinned)"))
 
 
 def test_a_stricter_custom_profile_lists_nothing_and_a_broader_ban_covers_a_narrower_one():
@@ -55,7 +57,8 @@ def test_a_stricter_custom_profile_lists_nothing_and_a_broader_ban_covers_a_narr
 
 def test_a_part_that_may_import_any_outside_package_is_looser_than_one_that_lists_them():
     custom = {**BASE, "parts": part("store", libraries="everything")}
-    assert controller(custom).origin("mine.yaml").looser == (Loosened("libraries", "store", "*"),)
+    assert controller(custom).origin("mine.yaml").looser == (
+        Loosened("libraries", "store", "*", "store may import any outside package (parts.store.libraries)"),)
 
 
 def test_a_custom_profile_sharing_no_part_resembles_no_bundled_profile_and_has_no_baseline():
@@ -83,7 +86,9 @@ def test_a_part_that_no_longer_has_to_import_or_may_meet_it_with_more_is_looser(
     files = FakeArchitectureFiles({"base": base}, {"dropped.yaml": dropped, "wider.yaml": wider, "same.yaml": same,
                                                    "stricter.yaml": stricter}, {"guard.py": "check()\n"})
     spec = spec_controller(files)
-    assert spec.origin("dropped.yaml").looser == (Loosened("must_import", "store"),)
-    assert spec.origin("wider.yaml").looser == (Loosened("must_import", "store", "edge"),)
+    assert spec.origin("dropped.yaml").looser == (
+        Loosened("must_import", "store", "", "store no longer has to import anything (parts.store.must_import)"),)
+    assert spec.origin("wider.yaml").looser == (
+        Loosened("must_import", "store", "edge", "store may also meet must_import with edge (parts.store.must_import)"),)
     assert spec.origin("same.yaml").looser == ()
     assert spec.origin("stricter.yaml").looser == ()

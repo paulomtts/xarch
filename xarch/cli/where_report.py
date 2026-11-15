@@ -5,14 +5,14 @@ import json
 from typing import Any
 
 from xarch.kernel.logic.placement import EVERYTHING
-from xarch.modules.rules.contract import Reach, TierInfo, Where
+from xarch.modules.rules.contract import ReachView, TierInfoView, WhereView
 
 LABEL = 16
 NOT_CHECKED = "not checked"
 EXISTS, NEW = "exists", "new"
 
 
-def where_lines(profile: str, where: Where) -> list[str]:
+def where_lines(profile: str, where: WhereView) -> list[str]:
     """One `label: text` line per answer, in the order a reader needs them; an answer that does not apply is left out."""
     lines = [_line("path", f"{where.path} ({EXISTS if where.exists else NEW})")]
     if where.kind in ("test", "support", "fake"):
@@ -24,7 +24,7 @@ def where_lines(profile: str, where: Where) -> list[str]:
     return lines
 
 
-def _place_lines(where: Where) -> list[str]:
+def _place_lines(where: WhereView) -> list[str]:
     if where.kind != "part":
         lines = [_line("part", f"none: {where.kind}")]
         if where.nearest:
@@ -44,7 +44,7 @@ def _place_lines(where: Where) -> list[str]:
     return lines
 
 
-def _test_lines(where: Where) -> list[str]:
+def _test_lines(where: WhereView) -> list[str]:
     if where.kind == "fake":
         return [_line("kind", "fake"), _line("fakes", f"live in {where.fakes_path}")]
     tier = f", {where.tier.name} tier" if where.tier is not None else ""
@@ -62,11 +62,11 @@ def _test_lines(where: Where) -> list[str]:
     return lines
 
 
-def _part(where: Where) -> str:
+def _part(where: WhereView) -> str:
     return f"{where.folder} in {where.singular} '{where.instance}'" if where.instance else where.folder
 
 
-def _libraries(where: Where) -> str:
+def _libraries(where: WhereView) -> str:
     if where.libraries is None:
         return NOT_CHECKED
     if EVERYTHING in where.libraries:
@@ -78,7 +78,7 @@ def _line(label: str, text: str) -> str:
     return f"{label}:".ljust(LABEL) + text
 
 
-def where_document(profile: str, where: Where) -> str:
+def where_document(profile: str, where: WhereView) -> str:
     """The JSON of an answer: `ok`, `profile`, `path`, `exists`, `kind` and the fields the README lists, a field that
     does not apply null (or empty for a list)."""
     document: dict[str, Any] = {
@@ -94,18 +94,18 @@ def where_document(profile: str, where: Where) -> str:
     return json.dumps(document, indent=2, ensure_ascii=False)
 
 
-def _part_document(where: Where) -> dict[str, str] | None:
+def _part_document(where: WhereView) -> dict[str, str] | None:
     if not where.part:
         return None
     return {"name": where.part, "folder": where.folder, "instance": where.instance, "singular": where.singular,
             "role": where.role, "litmus": where.litmus}
 
 
-def _reach(reach: Reach) -> dict[str, str]:
+def _reach(reach: ReachView) -> dict[str, str]:
     return {"part": reach.part, "scope": reach.scope, "folder": reach.folder, "path": reach.path}
 
 
-def _tier(tier: TierInfo | None) -> dict[str, str] | None:
+def _tier(tier: TierInfoView | None) -> dict[str, str] | None:
     return None if tier is None else {"name": tier.name, "proves": tier.proves, "may_touch": tier.may_touch,
                                       "litmus": tier.litmus}
 
@@ -114,7 +114,7 @@ def _list(values: tuple[str, ...] | None) -> list[str] | None:
     return None if values is None else list(values)
 
 
-def _test(where: Where) -> dict[str, Any] | None:
+def _test(where: WhereView) -> dict[str, Any] | None:
     if where.kind not in ("test", "support", "fake"):
         return None
     return {"may_use_fakes": where.may_use_fakes, "fakes_path": where.fakes_path or None,

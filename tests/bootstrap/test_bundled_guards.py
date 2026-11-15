@@ -3,17 +3,13 @@ import pytest
 
 from xarch.bootstrap.wiring import build_spec, load_architecture
 from xarch.modules.spec.contract import (
-    CaseTable,
-    DeadCode,
-    Fixture,
-    Framework,
-    NoComments,
-    NoDuplicates,
-    PackageOnly,
-    PassThrough,
-    PrivateImports,
-    ScenarioCoverage,
-    StandIns,
+    FakesView,
+    FixtureView,
+    FrameworkView,
+    GuardsView,
+    ScenariosView,
+    StandInsView,
+    TableView,
 )
 
 
@@ -24,29 +20,30 @@ from xarch.modules.spec.contract import (
              "bootstrap": ("sqlmodel", "typer")}),
 ])
 def test_the_bundled_profiles_list_the_libraries_their_examples_use(name, expected):
-    architecture = load_architecture(name)
-    assert {part: packages for part, packages in (architecture.libraries or {}).items() if packages} == expected
+    profile = build_spec().profile(name)
+    assert {part: packages for part, packages in (profile.libraries or {}).items() if packages} == expected
 
 
 @pytest.mark.parametrize("name", ["cli", "web"])
 def test_the_bundled_profiles_use_every_guard_of_their_own(name):
     mocks = ("Mock", "MagicMock", "AsyncMock", "NonCallableMock", "NonCallableMagicMock")
-    table = CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id", ("argnames", "argvalues"))
-    assert load_architecture(name).guards == (
-        PackageOnly(("contract",)),
-        ScenarioCoverage("contract", "integration", "Result", ("given", "when", "then"), table, "test_{name}.py"),
-        NoComments(),
-        StandIns(tuple(("unittest", "mock", m) for m in mocks), (("unittest", "mock", "create_autospec"),),
-                 ("spec", "spec_set"), (Fixture("mocker", mocks, ("create_autospec",)),)),
-        NoDuplicates(4), DeadCode(untested=True), PassThrough(("services", "controller", "adapters")), PrivateImports())
+    table = TableView(("pytest", "mark", "parametrize"), ("pytest", "param"), "id", ("argnames", "argvalues"))
+    profile = build_spec().profile(name)
+    assert profile.guards == GuardsView(
+        package_only=("contract",),
+        scenarios=ScenariosView("contract", "integration", "Result", ("given", "when", "then"), table, "test_{name}.py"),
+        no_comments=True,
+        stand_ins=StandInsView(tuple(("unittest", "mock", m) for m in mocks), (("unittest", "mock", "create_autospec"),),
+                               ("spec", "spec_set"), (FixtureView("mocker", mocks, ("create_autospec",)),)),
+        no_duplicates=4, dead_code=True, untested=True, pass_through=("services", "controller", "adapters"),
+        private_imports=True)
     skips = ("pytest.mark.skip", "pytest.mark.skipif", "pytest.mark.xfail", "pytest.skip", "pytest.xfail",
              "pytest.importorskip", "unittest.skip", "unittest.skipIf", "unittest.skipUnless", "unittest.expectedFailure")
-    assert load_architecture(name).framework == Framework(("test_*.py", "*_test.py"), "test_*",
-                                                          tuple(tuple(s.split(".")) for s in skips))
+    assert profile.framework == FrameworkView(("test_*.py", "*_test.py"), "test_*",
+                                              tuple(tuple(s.split(".")) for s in skips))
     assert [(file.path, file.pinned) for file in load_architecture(name).files] == [
         (("tests", "architecture", "test_rules.py"), True), (("AGENTS.md",), False), (("ruff.toml",), False)]
-    fakes = load_architecture(name).fakes
-    assert fakes is not None and (fakes.folder, fakes.stand_in_for, fakes.prefix) == (("fakes",), ("ports",), "Fake")
+    assert profile.fakes == FakesView(("fakes",), ("ports",), "Fake")
 
 
 PURE = ["datetime.datetime.now", "datetime.datetime.utcnow", "datetime.datetime.today", "datetime.date.today",

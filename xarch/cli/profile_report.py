@@ -15,7 +15,6 @@ from collections.abc import Sequence
 from textwrap import fill
 from typing import Any
 
-from xarch.modules.rules.contract import Loosened
 from xarch.modules.spec.contract import (
     FormatExplained,
     KeyExplained,
@@ -168,7 +167,7 @@ def _compared(checked: ProfileChecked) -> list[str]:
     if not origin.looser:
         return [f"  compared: no looser than {origin.closest}"]
     return [f"  compared: looser than {origin.closest} (information, never a failure):",
-            *(f"    {Loosened(item.key, item.part, item.what).sentence}" for item in origin.looser)]
+            *(f"    {item.sentence}" for item in origin.looser)]
 
 
 def check_document(checked: ProfileChecked) -> str:
@@ -177,7 +176,7 @@ def check_document(checked: ProfileChecked) -> str:
     if origin is not None and not origin.bundled and origin.closest is not None:
         compared = {"profile": origin.closest,
                     "looser": [{"key": i.key, "part": i.part, "what": i.what,
-                                "sentence": Loosened(i.key, i.part, i.what).sentence} for i in origin.looser]}
+                                "sentence": i.sentence} for i in origin.looser]}
     return _dump({"ok": checked.ok, "profile": checked.location,
                   "problems": [{"check": p.check, "message": p.text} for p in checked.problems],
                   "files": checked.files, "compared_with": compared})

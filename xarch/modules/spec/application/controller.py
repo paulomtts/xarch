@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from xarch.kernel.errors import DomainError
+from xarch.kernel.logic.placement import Target
 from xarch.modules.spec.application.logic.docs_files import DOCS_ROOT
 from xarch.modules.spec.application.logic.explain import VERSION, cleaned, example_of, held_by, key_at, nearest, overview_keys
 from xarch.modules.spec.application.logic.key_lookup import plain
@@ -16,15 +17,19 @@ from xarch.modules.spec.application.services.profile_creation import ProfileCrea
 from xarch.modules.spec.application.services.profile_review import ProfileReviewService
 from xarch.modules.spec.application.services.profile_selection import ProfileSelectionService
 from xarch.modules.spec.contract import (
-    Architecture,
     CheckProfile,
     CheckResult,
     DocFile,
     Docs,
     Entry,
+    ExcludedView,
     Explain,
     ExplainResult,
+    FakesView,
+    FixtureView,
     FormatExplained,
+    FrameworkView,
+    GuardsView,
     KeyExplained,
     Loosened,
     Migrated,
@@ -35,27 +40,48 @@ from xarch.modules.spec.contract import (
     NewProfile,
     NewResult,
     NoProfileChosen,
+    PartView,
     Problem,
     ProfileChecked,
     ProfileCreated,
     ProfileOrigin,
     ProfileRefused,
     ProfileSelected,
+    ProfileView,
     ProfileViewed,
     ProjectFile,
     Repeating,
+    ScenariosView,
     SelectProfile,
     SelectResult,
     Shown,
     Skeleton,
+    StandInsView,
     Symbol,
+    TableView,
+    TierView,
     UnknownKey,
     ViewProfile,
     ViewResult,
 )
 from xarch.modules.spec.domain.errors import NoProfile
 from xarch.modules.spec.domain.profile_keys import SMALLEST, SYMBOLS, Key
-from xarch.modules.spec.domain.values import Layout, Origin
+from xarch.modules.spec.domain.values import (
+    Architecture,
+    ClosedTree,
+    DeadCode,
+    Guard,
+    Layout,
+    NoComments,
+    NoDuplicates,
+    Origin,
+    PackageOnly,
+    PassThrough,
+    PrivateImports,
+    ScenarioCoverage,
+    StandIns,
+    Tier,
+)
 
 
 class SpecController:
@@ -77,9 +103,10 @@ class SpecController:
         return Skeleton(top_level=_entries(architecture.top_level_tree()), repeating=repeating,
                         entry_point=entry.path[0] if entry is not None else "")
 
-    def architecture(self, location: str) -> Architecture:
-        """The architecture at a location callers got from select(): a bundled name or a path."""
-        return self._architectures.load(location)
+    def profile(self, location: str) -> ProfileView:
+        """The profile at a location callers got from select(), a bundled name or a path, as the checks read it;
+        raises InvalidArchitecture."""
+        return _profile_view(self._architectures.load(location))
 
     def docs(self, profile: str) -> Docs:
         """The project docs the profile declares, with their text; raises InvalidArchitecture or InvalidTemplate."""
@@ -171,8 +198,60 @@ def _entries(tree: Layout) -> tuple[Entry, ...]:
 
 def _origin(found: Origin) -> ProfileOrigin:
     return ProfileOrigin(found.location, found.bundled, found.closest, found.guards_off, found.baseline_off,
-                         tuple(Loosened(item.key, item.part, item.what) for item in found.looser))
+                         tuple(Loosened(item.key, item.part, item.what, item.sentence) for item in found.looser))
 
 
 def _shown(key: Key, depth: int) -> Shown:
     return Shown(plain(key.address), depth, key.meaning, key.required, key.enforced)
+
+
+def _profile_view(architecture: Architecture) -> ProfileView:
+    guards = architecture.guards
+    patterns = architecture.patterns()
+    parts = tuple(PartView(name, patterns[name], architecture.rules.get(name, ()), part.role, part.litmus,
+                           architecture.shown(part), part.untested, architecture.forbidden.get(name, ()),
+                           part.must_import, part.holds, part.types_only, part.no_callbacks, part.names, part.built_by)
+                  for name, part in architecture.parts.items())
+    return ProfileView(
+        parts=parts, folders=tuple(_folders(architecture.layout, ())),
+        tiers=tuple(_tier_view(architecture, tier) for tier in architecture.tiers),
+        libraries=None if architecture.libraries is None else dict(architecture.libraries),
+        repeats=architecture.repeats, guards=_guards_view(guards),
+        fakes=FakesView(architecture.fakes.folder, architecture.fakes.stand_in_for, architecture.fakes.prefix)
+        if architecture.fakes is not None else None,
+        framework=FrameworkView(architecture.framework.files, architecture.framework.functions,
+                                architecture.framework.skips) if architecture.framework is not None else None,
+        excluded=tuple(ExcludedView(e.path, e.reason) for e in architecture.excluded), hints=dict(architecture.hints))
+
+
+def _guards_view(guards: tuple[Guard, ...]) -> GuardsView:
+    return GuardsView(
+        package_only=tuple(p for g in guards if isinstance(g, PackageOnly) for p in g.parts),
+        scenarios=next((ScenariosView(g.results, g.tier, g.suffix, g.columns,
+                                      TableView(g.table.decorator, g.table.row, g.table.id, g.table.keywords), g.file)
+                        for g in guards if isinstance(g, ScenarioCoverage)), None),
+        no_comments=any(isinstance(g, NoComments) for g in guards),
+        stand_ins=next((StandInsView(g.mocks, g.autospec, g.spec,
+                                     tuple(FixtureView(f.name, f.mocks, f.autospec) for f in g.fixtures))
+                        for g in guards if isinstance(g, StandIns)), None),
+        closed_tree=any(isinstance(g, ClosedTree) for g in guards),
+        no_duplicates=next((g.min_statements for g in guards if isinstance(g, NoDuplicates)), None),
+        dead_code=any(isinstance(g, DeadCode) for g in guards),
+        untested=any(isinstance(g, DeadCode) and g.untested for g in guards),
+        pass_through=next((g.parts for g in guards if isinstance(g, PassThrough)), ()),
+        private_imports=any(isinstance(g, PrivateImports) for g in guards))
+
+
+def _tier_view(architecture: Architecture, tier: Tier) -> TierView:
+    subject = tuple(Target(s.part, "own" if architecture.parts[s.part].in_instance else "none", s.sub)
+                    for s in tier.subject)
+    return TierView(tier.name, subject, tier.folder, tier.types_only, tier.forbidden, tier.proves, tier.may_touch,
+                    tier.litmus, tier.one_file_per, tier.may_import, tier.must_import)
+
+
+def _folders(tree: Layout, prefix: tuple[str, ...]) -> list[tuple[str, ...]]:
+    found = [prefix]
+    for name, sub in tree.items():
+        if sub is not None:
+            found += _folders(sub, prefix + (name,))
+    return found

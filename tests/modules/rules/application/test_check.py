@@ -11,13 +11,18 @@ from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.controller import RulesController
 from xarch.modules.rules.application.services.locate import LocateService
 from xarch.modules.rules.application.services.source_check import SourceCheckService
-from xarch.modules.rules.contract import CheckImports, ImportsChecked, NotADirectory
+from xarch.modules.rules.contract import (
+    CheckImports,
+    DriftView,
+    EnforcementView,
+    ExcludedView,
+    FindingView,
+    ImportsChecked,
+    NotADirectory,
+    OriginView,
+)
 from xarch.modules.rules.domain.values import (
-    Drift,
-    Enforcement,
-    Excluded,
     Exclusion,
-    Finding,
     Import,
     InitFile,
     Origin,
@@ -106,10 +111,11 @@ def test_the_enforcement_holds_the_origin_the_ungoverned_files_the_init_files_an
     profiles = FakeProfiles({"cli": profile("cli")}, {"cli": origin}, {"cli": files})
     tree = FakeSourceTree(ROOT, {"stray.py": [], "kernel/x.py": []}, texts={Path("/src/tests/test_rules.py"): "x\n"})
     result = controller_of(tree, profiles).check(CheckImports(ROOT, "app", "cli"))
-    assert result.enforcement == Enforcement(
-        origin, ("pkg/stray.py",), (Drift("tests/test_rules.py", "changed"), Drift("AGENTS.md", "missing")),
-        strict=(Finding("ungoverned", "pkg/stray.py"), Finding("init_files", "tests/test_rules.py is changed"),
-                Finding("init_files", "AGENTS.md is missing")))
+    assert result.enforcement == EnforcementView(
+        OriginView("cli", True, None, ("closed-tree",), ("closed-tree",)), ("pkg/stray.py",),
+        (DriftView("tests/test_rules.py", "changed"), DriftView("AGENTS.md", "missing")),
+        strict=(FindingView("ungoverned", "pkg/stray.py"), FindingView("init_files", "tests/test_rules.py is changed"),
+                FindingView("init_files", "AGENTS.md is missing")))
 
 
 def test_an_excluded_folder_is_never_read_nor_listed_as_ungoverned_and_is_named_in_the_enforcement():
@@ -123,8 +129,8 @@ def test_an_excluded_folder_is_never_read_nor_listed_as_ungoverned_and_is_named_
         "pkg/kernel/x.py:1: kernel/ may not import platform/ (app.platform)",
         "pkg/stray.py: lies in no part and no folder of the layout (closed-tree)"]
     assert result.enforcement.ungoverned == ("pkg/stray.py",)
-    assert result.enforcement.excluded == (Excluded("pkg/examples", "shipped as data"),
-                                           Excluded("pkg/kernel/legacy", "copied code"))
+    assert result.enforcement.excluded == (ExcludedView("pkg/examples", "shipped as data"),
+                                           ExcludedView("pkg/kernel/legacy", "copied code"))
 
 
 def test_an_excluded_folder_is_not_a_finding_strict_fails_on():

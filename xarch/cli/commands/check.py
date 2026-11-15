@@ -50,7 +50,7 @@ def register(app: typer.Typer, rules: RulesController, layout: LayoutController,
                 raise refuse(f"{root} is not a directory")
             case ImportsChecked(violations, enforcement):
                 found = violations + layout.check(CheckStructure(app_path, package, chosen, tests_root)).violations
-        hints = spec.architecture(chosen).hints
+        hints = spec.profile(chosen).hints
         if output is Format.json:
             typer.echo(json_document(chosen, found, enforcement, strict, hints))
         else:

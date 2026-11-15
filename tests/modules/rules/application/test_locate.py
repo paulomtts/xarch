@@ -10,8 +10,8 @@ from xarch.kernel.logic.placement import Repeat, Target
 from xarch.modules.rules.application.controller import RulesController
 from xarch.modules.rules.application.services.locate import LocateService
 from xarch.modules.rules.application.services.source_check import SourceCheckService
-from xarch.modules.rules.contract import Locate, Located, Outside
-from xarch.modules.rules.domain.values import Exclusion, Nearest, PartInfo, Profile, Reach, TierInfo, Where
+from xarch.modules.rules.contract import Locate, Located, NearestView, Outside, ReachView, TierInfoView, WhereView
+from xarch.modules.rules.domain.values import Exclusion, PartInfo, Profile
 from xarch.modules.rules.domain.values import TestTier as Tier
 
 APP, TESTS = Path("/src/app"), Path("/src/tests")
@@ -23,13 +23,13 @@ PROFILE = Profile(
     libraries={"kernel": (), "domain": ()}, repeats=(Repeat("module", ("modules",)),),
     info={"kernel": PartInfo("primitives", "Is it a primitive?", "kernel/"),
           "domain": PartInfo("invariants", "Is it an invariant?", "domain/")})
-KERNEL = Where("part", "app/kernel/ids.py", True, "kernel", "primitives", "Is it a primitive?", "kernel/",
-               singular="module", may_import=(Reach("kernel", "none", "kernel/", "app/kernel/"),),
-               may_import_text="`kernel/`", libraries=(), tier=TierInfo("unit", "a rule", "nothing", "Does it?"),
+KERNEL = WhereView("part", "app/kernel/ids.py", True, "kernel", "primitives", "Is it a primitive?", "kernel/",
+               singular="module", may_import=(ReachView("kernel", "none", "kernel/", "app/kernel/"),),
+               may_import_text="`kernel/`", libraries=(), tier=TierInfoView("unit", "a rule", "nothing", "Does it?"),
                test_folder="tests/kernel/")
-STRAY = Where("ungoverned", "app/stray/run.py", False, nearest=(
-    Nearest("kernel", "kernel/", "app/kernel/"), Nearest("domain", "domain/", "app/modules/<module>/domain/")))
-README = Where("ungoverned", "README.md", True, note="it lies outside the app folder and the tests folder")
+STRAY = WhereView("ungoverned", "app/stray/run.py", False, nearest=(
+    NearestView("kernel", "kernel/", "app/kernel/"), NearestView("domain", "domain/", "app/modules/<module>/domain/")))
+README = WhereView("ungoverned", "README.md", True, note="it lies outside the app folder and the tests folder")
 
 
 def locate(files, command, profile=PROFILE):
@@ -54,12 +54,12 @@ def test_locate(given, when, then):
 
 
 @pytest.mark.parametrize("path, then", [
-    pytest.param("app/examples/run.py", Where("ungoverned", "app/examples/run.py", False, note="excluded from the "
+    pytest.param("app/examples/run.py", WhereView("ungoverned", "app/examples/run.py", False, note="excluded from the "
                  "checks by the profile: shipped as data"), id="a file in an excluded folder says it is excluded"),
-    pytest.param("app/examples", Where("ungoverned", "app/examples", False, note="excluded from the checks by the "
+    pytest.param("app/examples", WhereView("ungoverned", "app/examples", False, note="excluded from the checks by the "
                  "profile: shipped as data"), id="the excluded folder itself says it is excluded"),
-    pytest.param("app/examples2/run.py", Where("ungoverned", "app/examples2/run.py", False,
-                 nearest=(Nearest("kernel", "kernel/", "app/kernel/"), Nearest("domain", "domain/",
+    pytest.param("app/examples2/run.py", WhereView("ungoverned", "app/examples2/run.py", False,
+                 nearest=(NearestView("kernel", "kernel/", "app/kernel/"), NearestView("domain", "domain/",
                                                                               "app/modules/<module>/domain/")),
                  closed_tree=True),
                  id="a folder that only starts with the excluded name is not excluded"),

@@ -10,15 +10,8 @@ import pytest
 
 import xarch
 from xarch.bootstrap.wiring import build_controllers, build_spec, load_architecture
-from xarch.modules.spec.contract import (
-    Architecture,
-    DeadCode,
-    Migrated,
-    MigrateProfile,
-    NoDuplicates,
-    PassThrough,
-    PrivateImports,
-)
+from xarch.modules.spec.contract import Migrated, MigrateProfile
+from xarch.modules.spec.domain.values import Architecture, DeadCode, NoDuplicates, PassThrough, PrivateImports
 
 FROZEN = Path(__file__).parent / "profiles_v1"
 CWD = {("pathlib", "Path", "cwd"), ("pathlib", "Path", "absolute"), ("os", "getcwd"), ("os", "path", "abspath"),

@@ -15,7 +15,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.contract import At, Enforcement, Finding
+from xarch.modules.rules.contract import AtView, EnforcementView, FindingView
 
 LABEL = 13
 """The width of a label of the enforcement section, its colon and the spaces after it."""
@@ -44,7 +44,7 @@ def text_lines(found: Iterable[Violation], hints: Mapping[str, str] | None = Non
     return [*lines, f"{len(found)} violation(s) in {files} file(s)"]
 
 
-def enforcement_lines(state: Enforcement, strict: bool, hints: Mapping[str, str] | None = None) -> list[str]:
+def enforcement_lines(state: EnforcementView, strict: bool, hints: Mapping[str, str] | None = None) -> list[str]:
     """The enforcement section; with strict, the findings it fails on after it. A weak check that has a fix shows it
     under its line, then the profile's hint for its rule when there is one."""
     origin = state.origin
@@ -96,7 +96,7 @@ def _count(count: int, noun: str) -> str:
     return f"{count} {noun}{'' if count == 1 else 's'}"
 
 
-def _places(places: Sequence[At]) -> str:
+def _places(places: Sequence[AtView]) -> str:
     shown = ", ".join(f"{at.file}:{at.line}" for at in places[:SHOWN])
     return shown + (f" and {len(places) - SHOWN} more" if len(places) > SHOWN else "")
 
@@ -111,7 +111,7 @@ def violation_document(violation: Violation, hints: Mapping[str, str] | None = N
             "message": violation.message, "fix": violation.fix, "hint": (hints or {}).get(violation.rule)}
 
 
-def enforcement_document(state: Enforcement) -> dict[str, Any]:
+def enforcement_document(state: EnforcementView) -> dict[str, Any]:
     origin = state.origin
     return {
         "profile": {"location": origin.location, "bundled": origin.bundled, "closest": origin.closest,
@@ -130,15 +130,15 @@ def enforcement_document(state: Enforcement) -> dict[str, Any]:
     }
 
 
-def _at(places: Sequence[At]) -> list[dict[str, Any]]:
+def _at(places: Sequence[AtView]) -> list[dict[str, Any]]:
     return [{"file": at.file, "line": at.line} for at in places]
 
 
-def _finding(finding: Finding) -> dict[str, str]:
+def _finding(finding: FindingView) -> dict[str, str]:
     return {"key": finding.key, "detail": finding.detail}
 
 
-def json_document(profile: str, found: Iterable[Violation], state: Enforcement, strict: bool,
+def json_document(profile: str, found: Iterable[Violation], state: EnforcementView, strict: bool,
                   hints: Mapping[str, str] | None = None) -> str:
     found = list(found)
     document = {"ok": passed(found, state, strict), "strict": strict, "profile": profile,
@@ -147,7 +147,7 @@ def json_document(profile: str, found: Iterable[Violation], state: Enforcement, 
     return json.dumps(document, indent=2, ensure_ascii=False)
 
 
-def passed(found: Sequence[Violation], state: Enforcement, strict: bool) -> bool:
+def passed(found: Sequence[Violation], state: EnforcementView, strict: bool) -> bool:
     """No violation, and under strict no enforcement finding."""
     return not found and not (strict and state.strict)
 

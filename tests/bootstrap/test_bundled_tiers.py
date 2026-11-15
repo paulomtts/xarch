@@ -5,7 +5,6 @@ import pytest
 
 from tests.bootstrap.project import example_problems
 from xarch.bootstrap.wiring import build_spec, load_architecture
-from xarch.modules.spec.contract import Subject
 from xarch.modules.spec.domain.errors import InvalidTemplate
 
 
@@ -19,7 +18,7 @@ def test_every_part_of_a_bundled_architecture_is_tested_or_says_why_not(profile)
     assert untested == {"platform", "bootstrap"}
     assert [tier.name for tier in architecture.tiers] == ["unit", "integration", "rendering",
                                                           "guard"]
-    assert architecture.tiers[2].subject[0] == Subject(profile)
+    assert (architecture.tiers[2].subject[0].part, architecture.tiers[2].subject[0].sub) == (profile, ())
     assert all(tier.litmus and tier.example for tier in architecture.tiers)
 
 

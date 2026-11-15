@@ -1,39 +1,18 @@
 """What the spec module publishes: the skeleton of a profile as flat lists of entries, and which profile is in force."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
-from xarch.modules.spec.domain.values import (
-    Architecture,
-    CaseTable,
-    ClosedTree,
-    DeadCode,
-    Fixture,
-    Framework,
-    NoComments,
-    NoDuplicates,
-    PackageOnly,
-    Part,
-    PassThrough,
-    PrivateImports,
-    Repeat,
-    ScenarioCoverage,
-    StandIns,
-    Subject,
-    Target,
-    Tier,
-    TierExample,
-)
+from xarch.kernel.logic.placement import Repeat, Target
 
-__all__ = ["Architecture", "CaseTable", "ClosedTree", "DeadCode", "Fixture", "Framework", "NoComments", "NoDuplicates",
-           "PackageOnly", "Part", "PassThrough", "PrivateImports", "Repeat",
-           "ScenarioCoverage", "StandIns", "Subject", "Target", "Tier", "TierExample", "Entry", "Repeating", "Skeleton", "DocFile",
-           "Docs", "ProjectFile", "Loosened", "ProfileOrigin", "SelectProfile", "ProfileSelected", "ProfileRefused",
-           "NoProfileChosen", "SelectResult", "MigrateProfile", "MigratedFile", "Migrated", "MigrationRefused", "MigrateResult", "Shown",
-           "Symbol", "Explain", "FormatExplained", "KeyExplained", "UnknownKey", "ExplainResult", "ViewProfile",
-           "ProfileViewed", "ViewResult", "CheckProfile", "Problem", "ProfileChecked", "CheckResult", "NewProfile",
-           "ProfileCreated", "NewResult"]
+__all__ = ["Entry", "Repeating", "Skeleton", "DocFile", "Docs", "ProjectFile", "PartView", "TierView", "TableView",
+           "ScenariosView", "FixtureView", "StandInsView", "GuardsView", "FakesView", "FrameworkView", "ExcludedView",
+           "ProfileView", "Loosened", "ProfileOrigin", "SelectProfile", "ProfileSelected", "ProfileRefused",
+           "NoProfileChosen", "SelectResult", "MigrateProfile", "MigratedFile", "Migrated", "MigrationRefused",
+           "MigrateResult", "Shown", "Symbol", "Explain", "FormatExplained", "KeyExplained", "UnknownKey",
+           "ExplainResult", "ViewProfile", "ProfileViewed", "ViewResult", "CheckProfile", "Problem", "ProfileChecked",
+           "CheckResult", "NewProfile", "ProfileCreated", "NewResult"]
 
 
 @dataclass(frozen=True)
@@ -103,6 +82,148 @@ class ProjectFile:
 
 
 @dataclass(frozen=True)
+class PartView:
+    """One part of a profile as a check reads it: its name; its path as a pattern, `*` standing for the instance of a
+    repeating folder; what it may import besides itself; its role, litmus test, how the docs name it (shown) and why no
+    tier tests it; the names it may not use; what each of its files must import one of; what its files define
+    (holds); the parts it may use as types only; whether it calls none of its own parameters; the patterns its public
+    classes match; and the parts that alone may build its classes."""
+    name: str
+    pattern: tuple[str, ...]
+    may_import: tuple[Target, ...]
+    role: str = ""
+    litmus: str = ""
+    shown: str = ""
+    untested: str = ""
+    forbidden: tuple[tuple[str, ...], ...] = ()
+    must_import: tuple[Target, ...] = ()
+    holds: str = ""
+    types_only: tuple[str, ...] = ()
+    no_callbacks: bool = False
+    names: tuple[str, ...] = ()
+    built_by: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class TierView:
+    """One kind of test as a check reads it: its name; the parts it tests, each as a target (in its own instance for a
+    part of a repeating folder); the folder below the tests root of tests that mirror no part; the parts its tests may
+    use as types only; whether its tests keep to their part's forbidden list; its words (proves, may_touch, litmus,
+    one_file_per); what the tests of its folder may import (None: no folder); and the parts one of which each of its
+    test files must reach."""
+    name: str
+    subject: tuple[Target, ...]
+    folder: tuple[str, ...] | None = None
+    types_only: tuple[str, ...] = ()
+    forbidden: bool = False
+    proves: str = ""
+    may_touch: str = ""
+    litmus: str = ""
+    one_file_per: str = ""
+    may_import: tuple[Target, ...] | None = None
+    must_import: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class TableView:
+    """How a test function holds a table of cases: the dotted names of its decorator and of a row, the keyword that
+    gives a row its id, and the keywords of its two arguments (None: positional only)."""
+    decorator: tuple[str, ...]
+    row: tuple[str, ...]
+    id: str
+    keywords: tuple[str, str] | None = None
+
+
+@dataclass(frozen=True)
+class ScenariosView:
+    """The scenario-coverage guard: the part holding the Results, the tier of their tests, how a union's name ends,
+    the three columns of a table, how a table is written, and the file name of a use case's test."""
+    results: str
+    tier: str
+    suffix: str
+    columns: tuple[str, str, str]
+    table: TableView
+    file: str
+
+
+@dataclass(frozen=True)
+class FixtureView:
+    """A fixture whose methods build mocks: its name, the methods that build a mock, and those that take a spec."""
+    name: str
+    mocks: tuple[str, ...]
+    autospec: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class StandInsView:
+    """The stand-ins guard: what builds a mock, what builds one from a spec, the keywords a spec is given by, and the
+    fixtures that build them."""
+    mocks: tuple[tuple[str, ...], ...]
+    autospec: tuple[tuple[str, ...], ...]
+    spec: tuple[str, ...]
+    fixtures: tuple[FixtureView, ...] = ()
+
+
+@dataclass(frozen=True)
+class GuardsView:
+    """The guards a profile switches on, None or False when off: the package-only parts, scenario coverage, no
+    comments, stand-ins, the closed tree, the fewest statements of a duplicate, dead code (and with it the files no
+    test of their tier reaches), the parts whose forwarding methods are listed, and private imports."""
+    package_only: tuple[str, ...] = ()
+    scenarios: ScenariosView | None = None
+    no_comments: bool = False
+    stand_ins: StandInsView | None = None
+    closed_tree: bool = False
+    no_duplicates: int | None = None
+    dead_code: bool = False
+    untested: bool = False
+    pass_through: tuple[str, ...] = ()
+    private_imports: bool = False
+
+
+@dataclass(frozen=True)
+class FakesView:
+    """Where the test fakes live below the tests root, the parts they stand in for, and how a fake's name starts."""
+    folder: tuple[str, ...]
+    stand_in_for: tuple[str, ...]
+    prefix: str = ""
+
+
+@dataclass(frozen=True)
+class FrameworkView:
+    """How the test framework names things: the patterns of a test file's name, that of a test function's, and the
+    dotted names of what skips a test."""
+    files: tuple[str, ...]
+    functions: str
+    skips: tuple[tuple[str, ...], ...] = ()
+
+
+@dataclass(frozen=True)
+class ExcludedView:
+    """A folder below the app that is not its source, and why."""
+    path: tuple[str, ...]
+    reason: str
+
+
+@dataclass(frozen=True)
+class ProfileView:
+    """A profile as the checks read it, everything they need already worked out: its parts in order; every folder of
+    the layout as a pattern; its tiers in order; the outside packages each part may import (None: unchecked); its
+    repeating folders; the guards switched on; the fakes and the test framework (None: none); the excluded folders;
+    and the project's own advice for a rule, by rule id."""
+    parts: tuple[PartView, ...]
+    folders: tuple[tuple[str, ...], ...] = ()
+    tiers: tuple[TierView, ...] = ()
+    libraries: dict[str, tuple[str, ...]] | None = None
+    repeats: tuple[Repeat, ...] = ()
+    guards: GuardsView = GuardsView()
+    fakes: FakesView | None = None
+    framework: FrameworkView | None = None
+    excluded: tuple[ExcludedView, ...] = ()
+    hints: dict[str, str] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
 class Loosened:
     """One way a profile is looser than the bundled profile it is compared with. key is what loosened:
 
@@ -115,10 +236,13 @@ class Loosened:
         apply_forbidden the tests of tier part are no longer held to their part's forbidden list
         testing.skips   what is no longer counted as a skip
         files.pinned    the init file what is no longer pinned
+
+    sentence says it, naming the key of the profile that does.
     """
     key: str
     part: str
     what: str = ""
+    sentence: str = ""
 
 
 @dataclass(frozen=True)

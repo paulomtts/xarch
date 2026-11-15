@@ -7,7 +7,7 @@ import pytest
 
 from tests.bootstrap.project import bundled_profiles
 from xarch.bootstrap.wiring import load_architecture
-from xarch.modules.spec.contract import Part, Repeat, Target
+from xarch.kernel.logic.placement import Repeat, Target
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 
 LAYERED = """\
@@ -54,8 +54,9 @@ def test_a_valid_file_loads(tmp_path):
     assert architecture.repeats == (Repeat("module", ("src",)),)
     assert architecture.instance_tree(architecture.repeats[0]) == {"api": {}, "service": {}, "store": {}}
     assert architecture.top_level_tree() == {"src": {}}
-    assert architecture.parts["api"] == Part("api", ("src", "*", "api"), "HTTP handlers",
-                                             "Does it parse a request and call a service?")
+    api = architecture.parts["api"]
+    assert (api.name, api.path, api.role, api.litmus, api.entry) == (
+        "api", ("src", "*", "api"), "HTTP handlers", "Does it parse a request and call a service?", False)
     assert architecture.rules["service"] == (Target("store", "own"),)
     assert architecture.docs == () and architecture.examples == {}
 
@@ -95,8 +96,9 @@ def test_the_entry_point_an_untested_part_folder_notes_layers_and_naming_load(tm
         "  naming:\n"
         "    - {kind: service, where: service/, pattern: thing and `Service`, example: [BillingService]}\n")
     architecture = load_architecture(write(tmp_path / "layered.yaml", text))
-    assert architecture.entry == Part("api", ("src", "*", "api"), "HTTP handlers",
-                                      "Does it parse a request and call a service?", True)
+    entry = architecture.entry
+    assert entry is not None and (entry.name, entry.path, entry.role, entry.litmus, entry.entry) == (
+        "api", ("src", "*", "api"), "HTTP handlers", "Does it parse a request and call a service?", True)
     assert architecture.parts["store"].untested == "reached through the service"
     assert [part.name for part in architecture.parts.values() if part.entry] == ["api"]
     assert architecture.notes == {("src", "*", "api", "routes"): "one file per route"}
