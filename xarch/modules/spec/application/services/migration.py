@@ -5,8 +5,8 @@ from xarch.modules.spec.application.logic.migrate_output import converted_folder
 from xarch.modules.spec.application.logic.migrate_profile import Converted, convert
 from xarch.modules.spec.application.logic.profile_listing import listing
 from xarch.modules.spec.application.logic.taken_paths import taken_phrase
-from xarch.modules.spec.application.logic.yaml_text import dump
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
+from xarch.modules.spec.application.ports.profile_format import ProfileFormat
 from xarch.modules.spec.application.ports.profile_output import ProfileOutput
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.contract import MigrateProfile
@@ -19,8 +19,9 @@ class MigrationService:
     """Converts a profile of format 1 to format 2 in a new folder: the profile, and the files it names, copied to where
     format 2 reads them. Validates the result with the loader of format 2 before writing, and never writes over a file."""
 
-    def __init__(self, files: ArchitectureFiles, architectures: ArchitectureService, output: ProfileOutput):
-        self._files, self._architectures, self._output = files, architectures, output
+    def __init__(self, files: ArchitectureFiles, architectures: ArchitectureService, output: ProfileOutput,
+                 form: ProfileFormat):
+        self._files, self._architectures, self._output, self._form = files, architectures, output, form
 
     def migrate(self, cmd: MigrateProfile) -> Conversion:
         """Raises UnmigratableProfile, or InvalidArchitecture when the file cannot be read."""
@@ -37,7 +38,7 @@ class MigrationService:
         name = converted_name(cmd.path)
         contents, rewritten, by_hand = self._contents(source, converted)
         by_hand = (*converted.by_hand, *by_hand)
-        outputs = {name: dump(converted.document).encode("utf-8"), **contents}
+        outputs = {name: self._form.written(converted.document), **contents}
         try:
             self._architectures.parse_copy(converted.document, location, outputs)
         except InvalidArchitecture as e:

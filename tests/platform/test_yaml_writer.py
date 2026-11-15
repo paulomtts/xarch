@@ -1,8 +1,8 @@
-"""The text of a converted profile: block style, the shortest safe form of each scalar, and a literal or folded block
-for a long text, so that the file reads as one written by hand."""
+"""Plain values written as YAML: block style, the shortest safe form of each scalar, and a literal or folded block for
+a long text, so that the file reads as one written by hand."""
 import pytest
 
-from xarch.modules.spec.application.logic.yaml_text import dump
+from xarch.platform.yaml_writer import YamlWriter
 
 
 @pytest.mark.parametrize("document, text", [
@@ -26,16 +26,16 @@ from xarch.modules.spec.application.logic.yaml_text import dump
                  id="a blank line comes before each key whose value is a block at the top"),
 ])
 def test_a_document_is_written_in_the_form_a_person_would_write(document, text):
-    assert dump(document) == text
+    assert YamlWriter().dump(document) == text
 
 
 def test_a_long_text_of_one_line_is_folded_at_the_width_and_a_long_list_wraps_under_its_key():
     words = " ".join(f"word{n}" for n in range(40))
-    folded = dump({"a": words}, width=60)
+    folded = YamlWriter().dump({"a": words}, width=60)
     assert folded.startswith("a: >-\n  word0 ")
     assert all(len(line) <= 60 for line in folded.splitlines())
     items = [f"item{n}" for n in range(30)]
-    wrapped = dump({"a": items}, width=60)
+    wrapped = YamlWriter().dump({"a": items}, width=60)
     assert wrapped.splitlines()[0].startswith("a: [item0, item1")
     assert all(len(line) <= 60 for line in wrapped.splitlines())
     assert wrapped.endswith("item29]\n")
@@ -43,4 +43,4 @@ def test_a_long_text_of_one_line_is_folded_at_the_width_and_a_long_list_wraps_un
 
 def test_a_text_that_folding_would_change_stays_on_one_line():
     spaced = "a  " + "b " * 80 + "c"
-    assert dump({"a": spaced}, width=40) == f"a: {spaced}\n"
+    assert YamlWriter().dump({"a": spaced}, width=40) == f"a: {spaced}\n"

@@ -34,8 +34,7 @@ parts:
   logic:      {path: modules/*/application/logic, role: "pure functions over the module's domain objects"}
   ports:      {path: modules/*/application/ports, role: "Protocols for what the module needs from the outside"}
   adapters:   {path: modules/*/adapters, role: "implement the ports on the filesystem or another module's contract"}
-  platform:   {path: platform, role: "the filesystem, TOML and YAML readers",
-               untested: "it wraps the standard library and yaml; the adapter and wired tests reach it on real files"}
+  platform:   {path: platform, role: "the filesystem, the package data, the TOML and YAML readers and the YAML writer"}
   cli:        {path: cli, entry: true, role: "the only place for commands and terminal output"}
   main:       {path: __main__.py, role: "`python -m xarch`: starts the same app as the console script",
                litmus: "Does it only hand control to the app bootstrap/ builds, so that `python -m xarch` runs it?",
@@ -97,7 +96,7 @@ tests:
 # `folder` says where its tests live.
 tiers:
   - name: unit
-    subject: [kernel, kernel/logic, domain, logic, adapters]
+    subject: [kernel, kernel/logic, domain, logic, adapters, platform]
     proves: a pure rule of the kernel or a module, or an adapter's translation
     may_touch: "what the part it mirrors may import; an adapter, temporary folders"
     forbidden: true

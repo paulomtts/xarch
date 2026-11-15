@@ -1,9 +1,6 @@
 """Architecture files bundled with xarch as package data (xarch/architectures/<name>.yaml), or anywhere on disk."""
 from __future__ import annotations
 
-from collections.abc import Iterator
-from importlib import resources
-from importlib.resources.abc import Traversable
 from pathlib import Path
 from typing import Any
 
@@ -11,42 +8,37 @@ from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import PROFILE_SUFFIX, ArchitectureDocument, ArchitectureSource
 from xarch.platform.data_files import DataFileError, DataFileReader
 from xarch.platform.filesystem import FileSystem
+from xarch.platform.package_data import PackageData
 
-PRESETS = ("presets", "testing")
+PRESETS = "presets/testing"
 """Where the presets of `testing` are, below the bundled folder: one YAML file each, named for the preset."""
 
 
-def _bundled_folder() -> Traversable:
-    return resources.files("xarch").joinpath("architectures")
-
-
 class FsArchitectureFiles:
-    """Satisfies spec's ArchitectureFiles port."""
+    """Satisfies spec's ArchitectureFiles port: a bundled architecture from the package data, any other on disk."""
 
-    def __init__(self, fs: FileSystem, reader: DataFileReader):
-        self._fs, self._reader = fs, reader
+    def __init__(self, fs: FileSystem, reader: DataFileReader, package: PackageData):
+        self._fs, self._reader, self._package = fs, reader, package
 
     def bundled(self) -> tuple[str, ...]:
-        return tuple(sorted(f.name.removesuffix(PROFILE_SUFFIX) for f in _bundled_folder().iterdir()
-                            if f.is_file() and f.name.endswith(PROFILE_SUFFIX)))
+        return tuple(name.removesuffix(PROFILE_SUFFIX) for name in self._package.files_in()
+                     if name.endswith(PROFILE_SUFFIX))
 
     def testing_presets(self) -> dict[str, Any]:
-        folder = _bundled_folder().joinpath(*PRESETS)
         found: dict[str, Any] = {}
-        for file in sorted(folder.iterdir(), key=lambda f: f.name):
-            if file.is_file() and file.name.endswith(PROFILE_SUFFIX):
-                name = file.name.removesuffix(PROFILE_SUFFIX)
+        for name in self._package.files_in(PRESETS):
+            if name.endswith(PROFILE_SUFFIX):
                 try:
-                    found[name] = self._reader.parse(file.read_text(encoding="utf-8"))
+                    found[name.removesuffix(PROFILE_SUFFIX)] = self._reader.parse(
+                        self._package.read_text(f"{PRESETS}/{name}"))
                 except (OSError, UnicodeDecodeError, DataFileError) as e:
-                    raise InvalidArchitecture(f"{'/'.join(PRESETS)}/{file.name}", [f"cannot read the preset: {e}"]) from e
+                    raise InvalidArchitecture(f"{PRESETS}/{name}", [f"cannot read the preset: {e}"]) from e
         return found
 
     def read(self, source: ArchitectureSource) -> ArchitectureDocument:
         name = _name(source)
         try:
-            text = (_bundled_folder().joinpath(name).read_text(encoding="utf-8") if source.bundled
-                    else self._fs.read_text(Path(source.location)))
+            text = self._package.read_text(name) if source.bundled else self._fs.read_text(Path(source.location))
         except (OSError, UnicodeDecodeError) as e:
             raise InvalidArchitecture(name, [f"cannot read the file: {getattr(e, 'strerror', None) or e}"]) from e
         try:
@@ -67,18 +59,18 @@ class FsArchitectureFiles:
 
     def has_file(self, source: ArchitectureSource, relative: str) -> bool:
         if source.bundled:
-            return _bundled_folder().joinpath(*Path(relative).parts).is_file()
+            return self._package.is_file(relative)
         return self._fs.is_file(Path(source.location).parent / relative)
 
     def files_under(self, source: ArchitectureSource, relative: str) -> tuple[str, ...]:
         if source.bundled:
-            return tuple(sorted(_below(_bundled_folder().joinpath(*Path(relative).parts))))
+            return tuple(self._package.files_below(relative))
         return tuple(self._fs.files_below(Path(source.location).parent / relative))
 
     def read_bytes(self, source: ArchitectureSource, relative: str) -> bytes:
         try:
             if source.bundled:
-                return _bundled_folder().joinpath(*Path(relative).parts).read_bytes()
+                return self._package.read_bytes(relative)
             return self._fs.read_bytes(Path(source.location).parent / relative)
         except OSError as e:
             raise InvalidArchitecture(_name(source), [f"cannot read '{relative}': {e.strerror or e}"]) from e
@@ -86,22 +78,12 @@ class FsArchitectureFiles:
     def read_text(self, source: ArchitectureSource, relative: str) -> str:
         try:
             if source.bundled:
-                return _bundled_folder().joinpath(*Path(relative).parts).read_text(encoding="utf-8")
+                return self._package.read_text(relative)
             return self._fs.read_text(Path(source.location).parent / relative)
         except UnicodeDecodeError as e:
             raise InvalidArchitecture(_name(source), [f"cannot read '{relative}': it is not valid UTF-8 text"]) from e
         except OSError as e:
             raise InvalidArchitecture(_name(source), [f"cannot read '{relative}': {e.strerror or e}"]) from e
-
-
-def _below(folder: Traversable, prefix: str = "") -> Iterator[str]:
-    if not folder.is_dir():
-        return
-    for child in folder.iterdir():
-        if child.is_dir():
-            yield from _below(child, f"{prefix}{child.name}/")
-        else:
-            yield prefix + child.name
 
 
 def _name(source: ArchitectureSource) -> str:

@@ -23,6 +23,7 @@ from xarch.modules.spec.adapters.fs_architecture_files import FsArchitectureFile
 from xarch.modules.spec.adapters.fs_folders import FsFolders
 from xarch.modules.spec.adapters.fs_profile_output import FsProfileOutput
 from xarch.modules.spec.adapters.pyproject_settings import PyprojectSettings
+from xarch.modules.spec.adapters.yaml_profile_format import YamlProfileFormat
 from xarch.modules.spec.application.controller import SpecController
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.application.services.explanation import ExplainService
@@ -33,7 +34,12 @@ from xarch.modules.spec.application.services.profile_selection import ProfileSel
 from xarch.modules.spec.domain.values import Architecture
 from xarch.platform.data_files import DataFileReader
 from xarch.platform.filesystem import FileSystem
+from xarch.platform.package_data import PackageData
 from xarch.platform.toml import TomlReader
+from xarch.platform.yaml_writer import YamlWriter
+
+BUNDLED = PackageData("xarch", "architectures")
+"""Where the bundled profiles, their files and the testing presets ship."""
 
 
 @dataclass(frozen=True)
@@ -46,18 +52,18 @@ class Controllers:
 
 def build_spec(fs: FileSystem | None = None) -> SpecController:
     fs = fs or FileSystem()
-    files = FsArchitectureFiles(fs, DataFileReader())
+    files = FsArchitectureFiles(fs, DataFileReader(), BUNDLED)
     architectures = ArchitectureService(files)
     settings = PyprojectSettings(fs, TomlReader())
     output = FsProfileOutput(fs)
     selection = ProfileSelectionService(settings, architectures, files, FsFolders(fs))
     return SpecController(architectures, selection, ProfileReviewService(selection, architectures, files),
-                          ExplainService(files), MigrationService(files, architectures, output),
+                          ExplainService(files), MigrationService(files, architectures, output, YamlProfileFormat(YamlWriter())),
                           ProfileCreationService(files, architectures, output))
 
 
 def build_architectures(fs: FileSystem | None = None) -> ArchitectureService:
-    return ArchitectureService(FsArchitectureFiles(fs or FileSystem(), DataFileReader()))
+    return ArchitectureService(FsArchitectureFiles(fs or FileSystem(), DataFileReader(), BUNDLED))
 
 
 def load_architecture(location: str | Path) -> Architecture:

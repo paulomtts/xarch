@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from tests.fakes.architecture_files import FakeArchitectureFiles
 from tests.fakes.folders import FakeFolders
+from tests.fakes.profile_format import FakeProfileFormat
 from tests.fakes.profile_output import FakeProfileOutput
 from tests.fakes.settings import FakeSettings
 from xarch.modules.spec.application.controller import SpecController
@@ -22,5 +23,5 @@ def controller(files: FakeArchitectureFiles, settings: FakeSettings | None = Non
     selection = ProfileSelectionService(settings, architectures, files,
                                         folders if folders is not None else FakeFolders())
     return SpecController(architectures, selection, ProfileReviewService(selection, architectures, files),
-                          ExplainService(files), MigrationService(files, architectures, output),
+                          ExplainService(files), MigrationService(files, architectures, output, FakeProfileFormat()),
                           ProfileCreationService(files, architectures, output))

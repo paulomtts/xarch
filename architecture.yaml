@@ -62,10 +62,10 @@ parts:
 
   platform:
     path: platform
-    role: the filesystem, TOML and YAML readers
+    role: the filesystem, the package data, the TOML and YAML readers and the YAML writer
     may_import: [kernel]
     libraries: [yaml]
-    untested: it wraps the standard library and yaml; the adapter and wired tests reach it on real files
+    tier: unit
 
   cli:
     path: cli

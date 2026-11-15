@@ -1,5 +1,6 @@
-"""The text of a document as YAML written by hand: block style, scalars in the shortest form that reads back as the
-same value, a literal block for a text of several lines, a folded one for a long line, short lists in flow style."""
+"""Writing plain Python values as YAML that reads as written by hand: block style, scalars in the shortest form that reads
+back as the same value, a literal block for a text of several lines, a folded one for a long line, short lists in flow
+style. Knows no module."""
 from __future__ import annotations
 
 import json
@@ -13,8 +14,13 @@ _RESERVED = {"true", "false", "null", "yes", "no", "on", "off", "y", "n", "~"}
 _BLOCKS = (dict, list)
 
 
-def dump(document: dict[str, Any], width: int = WIDTH) -> str:
-    """The document as text; a blank line comes before each top-level key whose value is a block."""
+class YamlWriter:
+    def dump(self, document: dict[str, Any], width: int = WIDTH) -> str:
+        """The document as text; a blank line comes before each top-level key whose value is a block."""
+        return _dump(document, width)
+
+
+def _dump(document: dict[str, Any], width: int) -> str:
     lines: list[str] = []
     for n, (key, value) in enumerate(document.items()):
         if n and _is_block(value):

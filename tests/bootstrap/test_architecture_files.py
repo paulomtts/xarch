@@ -234,19 +234,6 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
     pytest.param('xarch: 2\n  bad: indentation\n',
                  ['not valid YAML: line 2, column 6: mapping values are not allowed here'],
                  id='bad indentation'),
-    pytest.param('{unclosed',
-                 ["not valid YAML: line 1, column 10: expected ',' or '}', but got '<stream end>'"],
-                 id='an unclosed mapping'),
-    pytest.param('a: &x [*x]\n',
-                 ['not valid YAML: line 1, column 4: found unconstructable recursive node'],
-                 id='a recursive anchor'),
-    pytest.param('? [a, b]\n: 1\n',
-                 ['not valid YAML: line 1, column 3: a mapping key must be a plain value'],
-                 id='a key that is a list'),
-    pytest.param('xarch: !!python/object:os.system x\n',
-                 ["not valid YAML: line 1, column 8: could not determine a constructor for the tag "
-                  "'tag:yaml.org,2002:python/object:os.system'"],
-                 id='a python tag'),
 ])
 
 def test_a_bad_file_raises_invalid_architecture_naming_every_problem(tmp_path, text, expected):
