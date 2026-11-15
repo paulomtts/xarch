@@ -1,27 +1,17 @@
-"""The closed-tree guard: every source file of the app lies in a part, or is the package file of a folder of the
-layout (the file the language has stand for the root, for `modules`, for `modules/<name>` and the like), which only
-holds the tree together. Anything else, such as a file `modules/<name>/helpers`, an extra top-level folder or a script
-at the root, is a violation. Only source files, the ones the reader lists, are looked at.
+"""Which source files of the app the checks read: a file below a folder the profile excludes is not looked at at all;
+of the rest, one that lies in a part, or is the package file of a folder of the layout (the file the language has
+stand for the root, for `modules`, for `modules/<name>` and the like), is governed and read; anything else, such as a
+file `modules/<name>/helpers`, an extra top-level folder or a script at the root, is ungoverned: never read, listed in
+the enforcement section, and what the closed-tree guard (see expansion.closed_tree) reports. Only source files, the
+ones the reader lists, are looked at.
 """
 from __future__ import annotations
 
 from collections.abc import Iterable
 
-from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.imports import dotted
 from xarch.modules.rules.application.logic.places import place
 from xarch.modules.rules.domain.values import Profile
-
-MESSAGE = "lies in no part and no folder of the layout (closed-tree)"
-
-
-def violations(paths: Iterable[tuple[str, ...]], profile: Profile, shown: str) -> list[Violation]:
-    """paths are below the app root, shown as shown/<path>."""
-    if not profile.closed_tree:
-        return []
-    return [Violation(file, 0, MESSAGE, "closed-tree",
-                      f"move {file} into the part that fits it (run xarch where {file}), or add its folder to the layout")
-            for file in ungoverned(paths, profile, shown)]
 
 
 def ungoverned(paths: Iterable[tuple[str, ...]], profile: Profile, shown: str) -> list[str]:

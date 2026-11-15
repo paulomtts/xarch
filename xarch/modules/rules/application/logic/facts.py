@@ -78,7 +78,7 @@ def facts_of(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Pr
                       {steps: frozenset(f.module_functions) for f, steps in parsed},
                       frozenset(exceptions(parsed, root)))
     placed = [Read(file, steps, package, False, _placed(profile, cache, steps)) for file, steps, package in app]
-    placed += [Read(file, steps, package, False) for file, steps, package in
+    placed += [Read(file, steps, package, False, _placed(profile, cache, steps)) for file, steps, package in
                ((f, *dotted(f.path, marks)) for f in unread)]
     placed += [_tested(file, steps, package, profile) for file, steps, package in tests]
     bare = Facts((), root, tests_root, known, known_tests,

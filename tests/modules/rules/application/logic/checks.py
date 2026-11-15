@@ -78,3 +78,8 @@ def comment_allowed(comment: Comment, language: LanguageView) -> bool:
     found = Found(rule, Read(SourceFile("x", ("x",), ()), ("x",), False, False), Fact("comment", comment.line,
                                                                                        text=comment.text))
     return holds("read-by-a-tool", found, facts_of([], [], profile, ""), profile)
+
+
+def closed_tree(paths: Iterable[tuple[str, ...]], profile: Profile, shown: str) -> list[Violation | Weak]:
+    unread = [SourceFile("/".join((shown, *path)), path, ()) for path in paths]
+    return run(expansion.closed_tree(profile), facts_of([], [], profile, "", unread=unread), profile)

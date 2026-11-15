@@ -51,8 +51,12 @@ class SourceCheckService:
         table = rules.scenarios.table if rules.scenarios is not None else None
         test_files = self._tree.read(tests, self._tree.paths(tests, extension), table) if tests is not None else []
         tests_root = self._tree.resolved(tests).name if tests is not None else ""
+        resolved = self._tree.resolved(root)
+        shown = resolved.name
+        unread = [SourceFile("/".join((shown, *p)), p, ()) for p in paths if not closed_tree.governed(rules, p)]
         book = expansion.book(rules)
-        facts = facts_of(app, test_files, rules, package, tests_root, [r for group in book.values() for r in group])
+        facts = facts_of(app, test_files, rules, package, tests_root, [r for group in book.values() for r in group],
+                         unread)
         app = [f for f in app if f.error is None]
         test_files = [f for f in test_files if f.error is None]
         found = run(book["syntax"], facts, rules) + run(book["rules"], facts, rules) + run(book["libraries"], facts,
@@ -75,9 +79,7 @@ class SourceCheckService:
         found += twins.violations(app, rules)
         found += dead_code.violations(app, test_files, rules, tests is not None)
         found += run(book["no-comments"], facts, rules)
-        resolved = self._tree.resolved(root)
-        shown = resolved.name
-        found += closed_tree.violations(paths, rules, shown)
+        found += run(book["closed-tree"], facts, rules)
         state = self._enforcement(resolved, package, profile, rules, app, test_files,
                                   closed_tree.ungoverned(paths, rules, shown), tests_root if tests is not None else None)
         return Checked(tuple(found), replace(state, strict=enforcement.strict_findings(state)), rules)
