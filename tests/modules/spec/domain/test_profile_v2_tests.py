@@ -166,7 +166,7 @@ def test_a_tier_name_is_one_line_of_text_and_a_tier_is_a_mapping():
 
 @pytest.mark.parametrize("tier, expected", [
     pytest.param({"colour": 1}, "layered.yaml: tiers.unit: unknown key 'colour': use apply_forbidden, docs, folder, "
-                                "litmus, may_import, proves, types_only", id="an unknown key"),
+                                "litmus, may_import, must_import, proves, types_only", id="an unknown key"),
     pytest.param({"proves": "a\nb"}, "layered.yaml: tiers.unit.proves: must be one line of text", id="proves of two lines"),
     pytest.param({"litmus": 3}, "layered.yaml: tiers.unit.litmus: must be text: the question that tells a test "
                                 "belongs to the tier", id="a litmus that is no text"),
@@ -346,7 +346,8 @@ def test_guards_are_off_unless_named_and_package_only_comes_first():
     pytest.param(3, ["layered.yaml: guards: must be a mapping of guard names to their parameters, such as "
                      "{no-comments: {}}"], id="not a mapping"),
     pytest.param({"colour": {}}, ["layered.yaml: guards: unknown guard 'colour': use closed-tree, dead-code, "
-                                  "no-comments, no-duplicates, pass-through, scenario-coverage, stand-ins"],
+                                  "no-comments, no-duplicates, pass-through, private-imports, scenario-coverage, "
+                                  "stand-ins"],
                  id="an unknown guard"),
     pytest.param({"package-only": ["api"]}, ["layered.yaml: guards.package-only: a fact about a part in format 2: write "
                                              "`package_only: true` on each part"], id="package-only moved to the parts"),
@@ -379,7 +380,7 @@ def test_the_new_guards_take_their_parameters_and_dead_code_needs_fakes():
     pytest.param({"no-duplicates": {"min_statements": True}},
                  ["layered.yaml: guards.no-duplicates.min_statements: must be a whole number of statements, at least "
                   "1, such as 4"], id="no-duplicates, a boolean"),
-    pytest.param({"dead-code": {"x": 1}}, ["layered.yaml: guards.dead-code: takes no parameters: write {}"],
+    pytest.param({"dead-code": {"x": 1}}, ["layered.yaml: guards.dead-code: unknown key 'x': use untested"],
                  id="dead-code, a parameter"),
     pytest.param({"pass-through": {}}, ["layered.yaml: guards.pass-through: missing `parts`"],
                  id="pass-through, no parts"),

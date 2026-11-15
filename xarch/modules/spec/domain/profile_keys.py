@@ -27,6 +27,7 @@ FAKES = "fakes"
 GUARD = "guard"
 SCENARIO_COVERAGE = "guard.scenario-coverage"
 NO_DUPLICATES = "guard.no-duplicates"
+DEAD_CODE = "guard.dead-code"
 PASS_THROUGH = "guard.pass-through"
 DOCS = "docs"
 PAGE = "docs.page"
@@ -46,6 +47,7 @@ SCOPES = {
     GUARD: "guards",
     SCENARIO_COVERAGE: "guards.scenario-coverage",
     NO_DUPLICATES: "guards.no-duplicates",
+    DEAD_CODE: "guards.dead-code",
     PASS_THROUGH: "guards.pass-through",
     DOCS: "docs",
     PAGE: "docs.pages.<path>",
@@ -73,6 +75,7 @@ SYMBOLS: tuple[tuple[str, str], ...] = (
     ("store", "in may_import, a bare name: that part, in the importer's own instance of its repeating folder"),
     ("store@any", "that part in any instance; the only way to name a part of another repeating folder"),
     ("store/schema", "only what lies below that path of the part"),
+    ("store:*Id", "in may_import, after `:`: only the names that match the pattern, `*` for any text"),
     ("everything", "in may_import or libraries: no limit"),
     ("a path ending in .py", "a last path step with a dot: the part is one file, not a folder"),
 )
@@ -180,7 +183,8 @@ def _guard(name: str, meaning: str, example: str) -> Key:
     return Key(GUARD, name, meaning, GUARDS[name], example, False, True, (name,), _GUARD_SCOPES.get(name, ""))
 
 
-_GUARD_SCOPES = {"scenario-coverage": SCENARIO_COVERAGE, "no-duplicates": NO_DUPLICATES, "pass-through": PASS_THROUGH}
+_GUARD_SCOPES = {"scenario-coverage": SCENARIO_COVERAGE, "no-duplicates": NO_DUPLICATES, "dead-code": DEAD_CODE,
+                 "pass-through": PASS_THROUGH}
 
 
 KEYS: tuple[Key, ...] = (
@@ -249,9 +253,11 @@ KEYS: tuple[Key, ...] = (
     _k(PART, "litmus", "the question that tells code belongs here", "text, ideally a yes-or-no question",
        _in_part("litmus: Does it save or load a document?\n"), False, False),
     _k(PART, "may_import", "what the part may import besides itself",
-       "[<part>, <part>@any, <part>/<path>, ...] or everything: a bare name is that part in the importer's own "
-       "instance (a part of another repeating folder has none: write `@any`), `@any` any instance, `/<path>` only "
-       "what lies below it; a part may always import itself, so a target that only says so is refused",
+       "[<part>, <part>@any, <part>/<path>, <part>:<pattern>, ...] or everything: a bare name is that part in the "
+       "importer's own instance (a part of another repeating folder has none: write `@any`), `@any` any instance, "
+       "`/<path>` only what lies below it, `:<pattern>` only the names that match the pattern (`*` for any text, "
+       "such as `core/ids:*Id`): `from <there> import <name>` for each name, never the file as a whole, and a "
+       "file of the tests is not narrowed; a part may always import itself, so a target that only says so is refused",
        _TWO, rules=("rules",)),
     _k(PART, "must_import", "what each file of the part has to reach",
        "[<target>, ...] written as `may_import` writes them, each one the part may import: each file imports one "
@@ -260,6 +266,35 @@ KEYS: tuple[Key, ...] = (
        "meet nothing. Exempt: `__init__.py` and a file with no function or method holding a real statement (types, "
        "constants, Protocol stubs). A failing file is reported once, as a whole", _in_two("must_import: [core]\n"),
        rules=("must-import",)),
+    _k(PART, "types_only", "the parts its files may use only as types",
+       "[<part>, ...], each one `may_import` allows: a file of the part may import them to annotate, and for "
+       "`isinstance` and exception matching, but never call what it imports from them (`X(...)`, `m.X(...)`, "
+       "`X.build(...)`) nor reference one of their top-level functions at all; read through absolute imports "
+       "only, as `tiers.<tier>.types_only` reads a test", _in_two("types_only: [core]\n"), rules=("types-only",)),
+    _k(PART, "holds", "what the files of the part define at the top level",
+       "classes or functions. classes: no file of the part defines a public function at the top level (a name that "
+       "does not start with `_`). functions: no file of the part defines a public class at the top level, but for an "
+       "exception class (one that derives from a builtin exception, directly or through classes of the app) and a "
+       "record (a class with no method of its own, dunder methods aside) that a top-level function of the same "
+       "file names in its return annotation. A package file (`__init__.py`) is exempt. Each one is listed as "
+       "`weak` in the enforcement section, and fails `check --strict` only", _in_part("holds: classes\n"),
+       rules=("holds",)),
+    _k(PART, "no_callbacks", "its code calls none of its own parameters",
+       "true: no function, method or nested function of the part calls, by its bare name, a parameter of a function "
+       "it lies in that is annotated as a callable (`Callable` of typing or collections.abc, alone, subscripted, in "
+       "a union or `Optional`), as in `check(path)` for `check: Callable[[str], bool]`. Not read: the first "
+       "parameter of a method (`self`, `cls`; a staticmethod has none), a parameter with no such annotation, one "
+       "passed on (`sorted(rows, key=key)`), one whose method is called (`p.read()`), and one the body rebinds",
+       _in_part("no_callbacks: true\n"), rules=("no-callbacks",)),
+    _k(PART, "names", "how the classes of the part are named",
+       "a pattern, or a list of them, with `*` for any text: every public class (a name that does not start with "
+       "`_`) defined at the top level in a file of the part matches one of them", _in_part('names: "*Store"\n'),
+       rules=("names",)),
+    _k(PART, "built_by", "the only parts that may build its classes",
+       "[<part>, ...]: only code of those parts calls the constructor of a class defined at the top level in a file "
+       "of this part, `X(...)` or `m.X(...)`, read through absolute imports; code of this part counts as any other, "
+       "and tests are not read. Silent on a class reached through a package file that re-exports it, built in its "
+       "own file, or built through a variable or a parameter", _in_two("built_by: [core]\n"), rules=("built-by",)),
     _k(PART, "libraries", "the outside packages the part may import",
        "[<package>, ...] by top-level name, or everything; none by default; the standard library is always allowed and "
        "tests are not checked", _in_part("libraries: [yaml]\n"),
@@ -290,6 +325,12 @@ KEYS: tuple[Key, ...] = (
        "`Controller(...)` is not; a plain function of such a part may not be referenced at all, while "
        "`isinstance`, exception matching and enum members stay allowed", _tiered("types_only: [documents]\n"),
        rules=("types-only",)),
+    _k(TIER, "must_import", "what each of its test files has to reach",
+       "[<part>, ...]: each test file of the tier (a file whose name `testing.files` matches) imports from one of "
+       "those parts, in any instance, or imports test code that is no test file and does, however far the chain "
+       "goes; a test file with no function holding a real statement is exempt, and a file failing is reported once, "
+       "as a whole. Silent on what a test is handed without importing it, such as a fixture",
+       _tiered("must_import: [documents]\n"), rules=("must-import",)),
     _k(TIER, "folder", "a folder of tests that mirror no part",
        "a folder below the tests folder, for a tier whose tests mirror no part of the app",
        _tier_folder(""), rules=("tiers", "test-tree")),
@@ -366,6 +407,8 @@ KEYS: tuple[Key, ...] = (
     _guard("no-duplicates", "no two functions with the same code", _guarded("no-duplicates: {min_statements: 6}\n")),
     _guard("dead-code", "no Protocol nothing names, no fake no test uses", _TWO + _FAKES + _guarded("dead-code: {}\n")),
     _guard("pass-through", "a method that only forwards is listed", _TWO + _guarded("pass-through:\n  parts: [documents]\n")),
+    _guard("private-imports", "no name starting with `_` is imported from another file",
+           _guarded("private-imports: {}\n")),
 
     _k(SCENARIO_COVERAGE, "results", "the part holding the result unions", "the name of a part", _COVERAGE_GUARD, True,
        rules=("scenario-coverage",)),
@@ -380,6 +423,14 @@ KEYS: tuple[Key, ...] = (
 
     _k(NO_DUPLICATES, "min_statements", "the fewest statements that count", "a whole number, 4 when left out",
        _guarded("no-duplicates: {min_statements: 6}\n"), rules=("no-duplicates",)),
+
+    _k(DEAD_CODE, "untested", "also list the files no test of their tier reaches",
+       "true or false: every file of a part that has a `tier`, which no test code of that tier (a file below the "
+       "tests folder that the tier holds, test or not) imports, directly or through files of parts of that same tier "
+       "that it reaches, is listed as `weak` in the enforcement section and fails `check --strict` only. Exempt: a "
+       "package file, and a file with no function or method holding a real statement (types, constants, Protocol "
+       "stubs). Read only with a tests folder", _TWO + _FAKES + _guarded("dead-code: {untested: true}\n"),
+       rules=("dead-code",)),
 
     _k(PASS_THROUGH, "parts", "the parts whose forwarding methods are listed", "[<part>, ...]",
        _TWO + _guarded("pass-through:\n  parts: [documents]\n"), True, rules=("pass-through",)),

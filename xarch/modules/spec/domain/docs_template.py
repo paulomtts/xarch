@@ -70,6 +70,7 @@ from xarch.modules.spec.domain.values import (
     PackageOnly,
     Part,
     PassThrough,
+    PrivateImports,
     ScenarioCoverage,
     StandIns,
     Subject,
@@ -424,7 +425,7 @@ def _guards(architecture: Architecture, _: str, __: _Context) -> str:
                      f"`{'/'.join(('tests', *architecture.fakes.folder))}/`")
         lines.append("`tiers`: a test lives in the folder that mirrors its subject in the app, and imports only that "
                      "part and what it may import (a test in a folder that mirrors no part, its tier's subject and "
-                     f"what that may import){fakes}.")
+                     f"what that may import){fakes}; it imports no other test file.")
         for tier in architecture.tiers:
             if tier.types_only:
                 shown = _and([f"`{_shown(architecture, architecture.parts[p])}`" for p in tier.types_only])
@@ -438,6 +439,8 @@ def _guards(architecture: Architecture, _: str, __: _Context) -> str:
         lines.append(f"`cycles`: no {instances} imports from another that imports, directly or through "
                      "others, from it; each cycle is reported once, with the imports that close it.")
     lines += [_must_import_line(architecture, part) for part in architecture.parts.values() if part.must_import]
+    lines += [_tier_must_import_line(architecture, tier) for tier in architecture.tiers if tier.must_import]
+    lines += _part_lines(architecture)
     lines += [_guard_line(architecture, guard) for guard in architecture.guards]
     return "\n".join(f"- {line}" for line in lines)
 
@@ -484,12 +487,19 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
         case NoDuplicates(least):
             return (f"`no-duplicates`: no two functions of the app have the same code, names and formatting aside, "
                     f"when each holds at least {least} statements; tests are not compared.")
-        case DeadCode():
+        case DeadCode(untested):
             fakes = architecture.fakes
             assert fakes is not None
             ports = _and([f"`{_shown(architecture, architecture.parts[p])}`" for p in fakes.stand_in_for])
+            reached = (" A file of a part with a tier that no test of that tier reaches, directly or through files of "
+                       "parts of the same tier, is listed in the enforcement section, and fails `check --strict` "
+                       "only." if untested else "")
             return (f"`dead-code`: every `Protocol` in {ports} is named by another file of the app, and every fake in "
-                    f"`{'/'.join(('tests', *fakes.folder))}/` by a test; the wiring and re-exports do not count.")
+                    f"`{'/'.join(('tests', *fakes.folder))}/` by a test; the wiring and re-exports do not "
+                    f"count.{reached}")
+        case PrivateImports():
+            return ("`private-imports`: no file of the app or its tests imports a name that starts with `_` from "
+                    "another file of them.")
         case PassThrough(parts):
             shown = _and([f"`{_shown(architecture, architecture.parts[p])}`" for p in parts])
             return (f"`pass-through`: a method of {shown} whose whole body forwards to one call on a collaborator is "
@@ -500,6 +510,48 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
         case _:
             return ("`no-comments`: no `#` comments in the app or its tests; docstrings and tool directives "
                     "(`# type: ignore`, `# noqa`, `# pragma:`) stay.")
+
+
+def _tier_must_import_line(architecture: Architecture, tier: Tier) -> str:
+    wanted = _or([f"`{_shown(architecture, architecture.parts[p])}`" for p in tier.must_import])
+    return (f"`must-import`: every {tier.name} test imports from {wanted}, directly or through test code that is no "
+            "test file.")
+
+
+def _part_lines(architecture: Architecture) -> list[str]:
+    """One line per check a part's own keys switch on, the parts that share a value named together."""
+    def shown(names: list[str]) -> str:
+        return _and([f"`{_shown(architecture, architecture.parts[n])}`" for n in names])
+
+    parts = list(architecture.parts.values())
+    lines: list[str] = []
+    for part in parts:
+        if part.types_only:
+            lines.append(f"`types-only`: {shown([part.name])} uses {shown(list(part.types_only))} only as a type: it "
+                         "imports it to annotate and never calls it.")
+    holds = {kind: [p.name for p in parts if p.holds == kind] for kind in ("classes", "functions")}
+    if any(holds.values()):
+        said = []
+        if holds["classes"]:
+            said.append(f"a file of {shown(holds['classes'])} defines classes, never a public function at the top level")
+        if holds["functions"]:
+            said.append(f"a file of {shown(holds['functions'])} defines functions, never a public class but exceptions "
+                        "and the records its functions return")
+        lines.append(f"`holds`: {'; '.join(said)}; listed in the enforcement section, and fails `check --strict` "
+                     "only.")
+    callbacks = [p.name for p in parts if p.no_callbacks]
+    if callbacks:
+        lines.append(f"`no-callbacks`: no function of {shown(callbacks)} calls a parameter annotated as a callable: it "
+                     "is handed values, never a way to fetch them.")
+    for part in parts:
+        if part.names:
+            lines.append(f"`names`: every class of {shown([part.name])} is named "
+                         f"{_or([f'`{n}`' for n in part.names])}.")
+    for part in parts:
+        if part.built_by:
+            lines.append(f"`built-by`: only code of {shown(list(part.built_by))} builds a class of "
+                         f"{shown([part.name])}; tests are not read.")
+    return lines
 
 
 def _must_import_line(architecture: Architecture, part: Part) -> str:

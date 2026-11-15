@@ -16,6 +16,7 @@ from xarch.modules.spec.domain.values import (
     PackageOnly,
     Part,
     PassThrough,
+    PrivateImports,
     Repeat,
     ScenarioCoverage,
     StandIns,
@@ -26,7 +27,7 @@ from xarch.modules.spec.domain.values import (
 )
 
 __all__ = ["Architecture", "CaseTable", "ClosedTree", "DeadCode", "Fixture", "Framework", "NoComments", "NoDuplicates",
-           "PackageOnly", "Part", "PassThrough", "Repeat",
+           "PackageOnly", "Part", "PassThrough", "PrivateImports", "Repeat",
            "ScenarioCoverage", "StandIns", "Subject", "Target", "Tier", "TierExample", "Entry", "Repeating", "Skeleton", "DocFile",
            "Docs", "ProjectFile", "Loosened", "ProfileOrigin", "SelectProfile", "ProfileSelected", "ProfileRefused",
            "ProfileResult", "MigrateProfile", "MigratedFile", "Migrated", "MigrationRefused", "MigrateResult", "Shown",

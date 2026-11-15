@@ -3,7 +3,8 @@ looser than the one it resembles.
 
 The closest bundled profile is the one a profile says it is based on, else the one sharing the most part names, the
 first by name on a tie; one sharing none resembles no bundled profile. Looser is compared only where both have the
-same name (a part, a tier, a file), and only in these ways, each one entry: a target added to a part's `may_import`; an
+same name (a part, a tier, a file), and only in these ways, each one entry: a target added to a part's `may_import`
+(a name pattern added to a target narrows it, and is not looser); an
 outside package added to a part's `libraries`, or `libraries` dropped as a whole; a target added to a part's
 `must_import`, or the key dropped from a part that has it; a name the bundled `forbidden` list of a part holds that no
 entry of the custom list covers (`time` covers `time.time`); a part newly marked `untested`; a part dropped from a
@@ -14,6 +15,7 @@ tier's `types_only`; a tier no longer `apply_forbidden`; a name dropped from `te
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import replace
 
 from xarch.kernel.logic.placement import EVERYTHING, Target
 from xarch.modules.spec.domain.guards import GUARDS, guard_name
@@ -42,7 +44,9 @@ def looser(custom: Architecture, base: Architecture) -> list[Loosening]:
     shared = [name for name in custom.parts if name in base.parts]
     found: list[Loosening] = []
     for name in shared:
-        found += [("may_import", name, _shown(t)) for t in custom.rules.get(name, ()) if t not in base.rules.get(name, ())]
+        before = base.rules.get(name, ())
+        found += [("may_import", name, _shown(t)) for t in custom.rules.get(name, ())
+                  if t not in before and replace(t, names="") not in before]
     if base.libraries is not None:
         if custom.libraries is None:
             found.append(("libraries", "", ""))
@@ -80,4 +84,5 @@ def _shown(target: Target) -> str:
     if target.part == EVERYTHING:
         return "everything"
     scope = f"@{target.scope}" if target.scope == "any" else ""
-    return target.part + scope + "".join(f"/{step}" for step in target.sub)
+    names = f":{target.names}" if target.names else ""
+    return target.part + scope + "".join(f"/{step}" for step in target.sub) + names

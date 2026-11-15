@@ -31,9 +31,11 @@ def may_import(targets: Iterable[Target], folders: Mapping[str, str], words: Map
 
 
 def shown_target(target: Target, folders: Mapping[str, str]) -> str:
-    """A target as a path: its part's folder, and the path below it if it names one."""
+    """A target as a path: its part's folder, and the path below it if it names one; then, after `:`, the pattern of
+    the names it allows if it has one."""
     shown = folders[target.part]
-    return shown.removesuffix("/") + "/" + "/".join(target.sub) if target.sub else shown
+    path = shown.removesuffix("/") + "/" + "/".join(target.sub) if target.sub else shown
+    return f"{path}:{target.names}" if target.names else path
 
 
 def _and(items: list[str]) -> str:

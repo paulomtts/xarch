@@ -10,6 +10,7 @@ from xarch.modules.spec.domain.values import (
     NoDuplicates,
     PackageOnly,
     PassThrough,
+    PrivateImports,
     ScenarioCoverage,
     StandIns,
 )
@@ -39,11 +40,13 @@ GUARDS = {
                      "async or not, and number of parameters; what is called is part of it. A function counts when "
                      "it holds at least min_statements statements (nested ones counted; 4 when left out). The first "
                      "by file and line is the original; each other is reported naming it",
-    "dead-code": "{}: every port (a Protocol in a part `fakes.for` names) is named by another file of the app, in code "
-                 "or an annotation, and every fake (a top-level class of the fakes folder whose name starts with "
-                 "`prefix`) is named by a test outside that folder or by a fake that is itself used. The port's own "
-                 "file, package files and the wiring (a part that may import `everything`) do not count; names are "
-                 "compared by their last step",
+    "dead-code": "{untested: true|false}: every port (a Protocol in a part `fakes.for` names) is named by another file "
+                 "of the app, in code or an annotation, and every fake (a top-level class of the fakes folder whose "
+                 "name starts with `prefix`) is named by a test outside that folder or by a fake that is itself used. "
+                 "The port's own file, package files and the wiring (a part that may import `everything`) do not "
+                 "count; names are compared by their last step. With `untested: true`, every file of a part that "
+                 "has a `tier` that no test of that tier reaches is also listed as `weak`, failing `check --strict` "
+                 "only (see guards.dead-code.untested)",
     "pass-through": "{parts: [<part>, ...]}: a method of those parts whose whole body (a docstring aside) is one "
                     "`return` or bare statement of one call, perhaps awaited, on a chain of at least two attributes "
                     "of its own first parameter (`self.repo.get(...)`), passing every other parameter straight "
@@ -51,11 +54,16 @@ GUARDS = {
                     "--strict` only. Any other statement, a changed, extra or dropped argument, a decorator, a "
                     "dunder method, a function outside a class or a call on something not held by the object "
                     "(`self.helper(...)`) is not one",
+    "private-imports": "{}: no file of the app or its tests imports a name that starts with `_` (a dunder name "
+                       "aside) from a file of the app or its tests, `from x import _y`; an import of a whole "
+                       "file, whatever its name, and an import from an outside package or the standard library "
+                       "are not read",
 }
 """The pre-built checks a profile may switch on, each with the parameters it takes."""
 _GUARD_NAMES: dict[type, str] = {PackageOnly: "package-only", ScenarioCoverage: "scenario-coverage",
                                  NoComments: "no-comments", StandIns: "stand-ins", ClosedTree: "closed-tree",
-                                 NoDuplicates: "no-duplicates", DeadCode: "dead-code", PassThrough: "pass-through"}
+                                 NoDuplicates: "no-duplicates", DeadCode: "dead-code", PassThrough: "pass-through",
+                                 PrivateImports: "private-imports"}
 
 
 def guard_name(guard: Guard) -> str:

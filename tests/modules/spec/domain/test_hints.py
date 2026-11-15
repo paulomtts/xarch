@@ -19,9 +19,9 @@ def test_every_rule_id_may_carry_a_hint(rule):
     assert parsed(layered(hints={rule: "x"})).hints == {rule: "x"}
 
 
-KNOWN = ("closed-tree, cycles, dead-code, forbidden, libraries, must-import, no-comments, no-duplicates, "
-         "package-only, pass-through, rules, scenario-coverage, stand-ins, structure, syntax, test-tree, tiers, "
-         "types-only")
+KNOWN = ("built-by, closed-tree, cycles, dead-code, forbidden, holds, libraries, must-import, names, no-callbacks, "
+         "no-comments, no-duplicates, package-only, pass-through, private-imports, rules, scenario-coverage, "
+         "stand-ins, structure, syntax, test-tree, tiers, types-only")
 
 
 @pytest.mark.parametrize("hints, problem", [

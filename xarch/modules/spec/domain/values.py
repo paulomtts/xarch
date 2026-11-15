@@ -41,6 +41,11 @@ class Part:
     entry: the entry point, which drives the rest; at most one part is
     untested: why no tier tests it, e.g. "reached through the adapters that use it"
     must_import: the targets each of its files must import one of (or an outside package); empty: no such rule
+    holds: what its files define at module level, "classes" or "functions"; empty: either
+    types_only: the parts its files may import and use as types, but never call
+    no_callbacks: no function of it calls one of its own parameters
+    names: the patterns one of which every public class of it matches (`*` for any text); empty: any name
+    built_by: the only parts whose code may call the constructor of a class of it; empty: any part
     """
     name: str
     path: tuple[str, ...]
@@ -49,6 +54,11 @@ class Part:
     entry: bool = False
     untested: str = ""
     must_import: tuple[Target, ...] = ()
+    holds: str = ""
+    types_only: tuple[str, ...] = ()
+    no_callbacks: bool = False
+    names: tuple[str, ...] = ()
+    built_by: tuple[str, ...] = ()
 
     @property
     def in_instance(self) -> bool:
@@ -161,6 +171,8 @@ class Tier:
         the example only shows a place, it never decides one
     may_import: what the tests in its own folder may import of the app, as targets; None for a tier with no folder,
         whose tests import what the part their folder mirrors may
+    must_import: the parts one of which each of its test files reaches, directly or through test code that is no
+        test; empty: no such rule
     """
     name: str
     subject: tuple[Subject, ...]
@@ -177,6 +189,7 @@ class Tier:
     forbidden: bool = False
     folder: tuple[str, ...] | None = None
     may_import: tuple[Target, ...] | None = None
+    must_import: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -282,7 +295,14 @@ class NoDuplicates:
 
 @dataclass(frozen=True)
 class DeadCode:
-    """The guard dead-code: the ports and fakes come from `fakes`."""
+    """The guard dead-code: the ports and fakes come from `fakes`; untested: also list each file of a part with a
+    tier that no test of that tier reaches."""
+    untested: bool = False
+
+
+@dataclass(frozen=True)
+class PrivateImports:
+    """The guard private-imports: no name starting with `_` is imported from another file."""
 
 
 @dataclass(frozen=True)
@@ -291,7 +311,8 @@ class PassThrough:
     parts: tuple[str, ...]
 
 
-Guard = PackageOnly | ScenarioCoverage | NoComments | StandIns | ClosedTree | NoDuplicates | DeadCode | PassThrough
+Guard = (PackageOnly | ScenarioCoverage | NoComments | StandIns | ClosedTree | NoDuplicates | DeadCode | PassThrough
+         | PrivateImports)
 
 
 @dataclass(frozen=True)

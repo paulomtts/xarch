@@ -55,8 +55,8 @@ def _problems(architecture: Architecture, name: str, path: tuple[str, ...], text
         return []
     rule = architecture.targets_of(source.part)
     found: list[str] = []
-    for target, steps in _targets(tree, path[:-1], architecture):
-        if not any(reaches(allowed, source, architecture.place_of(steps)) for allowed in rule):
+    for target, steps, name in _targets(tree, path[:-1], architecture):
+        if not any(reaches(allowed, source, architecture.place_of(steps), name) for allowed in rule):
             problem = (f"{shown}: imports {'.'.join((ROOT_PACKAGE, *target))} which {source.part} may not import "
                        f"(parts.{source.part}.may_import)")
             if problem not in found:
@@ -65,18 +65,20 @@ def _problems(architecture: Architecture, name: str, path: tuple[str, ...], text
 
 
 def _targets(tree: ast.AST, package: tuple[str, ...],
-             architecture: Architecture) -> Iterator[tuple[tuple[str, ...], tuple[str, ...]]]:
-    """(as shown, as checked): the path below the root package of everything the code imports from it.
+             architecture: Architecture) -> Iterator[tuple[tuple[str, ...], tuple[str, ...], str | None]]:
+    """(as shown, as checked, the name imported from it): the path below the root package of everything the code
+    imports from it.
 
     `from m import n` may import a module n, so n is checked as part of the path when m is no part, or a part's own
-    folder; it is shown only when m is no part.
+    folder; it is shown only when m is no part. The name is n when it is not checked as part of the path, else None:
+    what is imported is the whole of the path.
     """
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
                 steps = tuple(alias.name.split("."))
                 if steps[0] == ROOT_PACKAGE:
-                    yield steps[1:], steps[1:]
+                    yield steps[1:], steps[1:], None
         elif isinstance(node, ast.ImportFrom):
             module = tuple(node.module.split(".")) if node.module else ()
             if node.level:
@@ -91,4 +93,4 @@ def _targets(tree: ast.AST, package: tuple[str, ...],
             place = architecture.place_of(base)
             for alias in node.names:
                 steps = base if alias.name == "*" or place.sub else base + (alias.name,)
-                yield (base if place.part is not None else steps), steps
+                yield (base if place.part is not None else steps), steps, alias.name if steps == base else None

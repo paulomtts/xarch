@@ -59,6 +59,7 @@ from xarch.modules.spec.domain import profile_examples as ex
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.guards import GUARDS
 from xarch.modules.spec.domain.profile_keys import (
+    DEAD_CODE,
     DOCS,
     FAKES,
     MOCKS,
@@ -90,6 +91,7 @@ from xarch.modules.spec.domain.values import (
     PackageOnly,
     Part,
     PassThrough,
+    PrivateImports,
     ScenarioCoverage,
     StandIns,
     Subject,
@@ -104,7 +106,9 @@ LANGUAGES = ("python",)
 WORD = "everything"
 """How a file writes EVERYTHING: for what a part may import and for its libraries."""
 _REPEATING = re.compile(r"<([A-Za-z_][A-Za-z0-9_-]*)>")
-_TARGET = re.compile(r"(?P<part>[^@/]*)(?:@(?P<scope>[^/]*))?(?:/(?P<sub>.*))?")
+_TARGET = re.compile(r"(?P<part>[^@/:]*)(?:@(?P<scope>[^/:]*))?(?:/(?P<sub>[^:]*))?(?::(?P<names>.*))?")
+_NAME_PATTERN = re.compile(r"[A-Za-z0-9_*]+")
+_HOLDS = ("classes", "functions")
 _TIER_TEXTS = ("subject", "may_touch", "one_file_per", "cases_from", "data")
 """The keys under a tier's `docs` that hold one line of text each."""
 _GUARDS = tuple(name for name in GUARDS if name != "package-only")
@@ -154,10 +158,11 @@ def parse_v2(document: Any, source: str, has_file: Callable[[str], bool],
     parts = built.parts
     examples = ex.example_files(document.get("docs", {}), folder_files or (lambda relative: None), problems)
     rules = {part: _may_import(specs[part].get("may_import"), item, parts, declared, f"parts.{part}.may_import",
-                               problems) for part, item in parts.items()}
+                               problems, patterns=True) for part, item in parts.items()}
     libraries = {part: _libraries(specs[part], f"parts.{part}.libraries", problems) for part in parts}
     parts = {part: replace(item, must_import=_must_import(specs[part], item, parts, declared, rules[part], problems))
              for part, item in parts.items()}
+    parts = {part: _substance(specs[part], item, declared, rules[part], problems) for part, item in parts.items()}
     forbidden = _forbidden_refs(specs, parts, lists, problems)
     layers = ck.layer_chains(document["layers"], parts, declared, rules, problems) if "layers" in document else {}
     testing = _testing(document["testing"], presets or {}, problems) if "testing" in document else None
@@ -404,8 +409,9 @@ def _add_folder(tree: Layout, path: tuple[str, ...]) -> bool:
 
 
 def _may_import(value: Any, owner: Part | None, parts: dict[str, Part], declared: set[str], where: str,
-                problems: list[str]) -> tuple[Target, ...]:
-    """What a part, or the tests in a tier's folder (no owner), may import, as targets."""
+                problems: list[str], patterns: bool = False) -> tuple[Target, ...]:
+    """What a part, or the tests in a tier's folder (no owner), may import, as targets; a name pattern only where
+    patterns allows one."""
     if value is None:
         return ()
     if value == WORD:
@@ -415,14 +421,14 @@ def _may_import(value: Any, owner: Part | None, parts: dict[str, Part], declared
         return ()
     found: list[Target] = []
     for item in value:
-        target = _target(item, owner, parts, declared, where, problems)
+        target = _target(item, owner, parts, declared, where, problems, patterns)
         if target is not None:
             found.append(target)
     return tuple(found)
 
 
 def _target(value: Any, owner: Part | None, parts: dict[str, Part], declared: set[str], where: str,
-            problems: list[str]) -> Target | None:
+            problems: list[str], patterns: bool = False) -> Target | None:
     if value == WORD:
         problems.append(f"{where}: {value!r} stands alone: write `may_import: {WORD}`, not in a list")
         return None
@@ -430,7 +436,17 @@ def _target(value: Any, owner: Part | None, parts: dict[str, Part], declared: se
     if match is None or not match["part"]:
         problems.append(f"{where}: {value!r} is not a target: use <part>, <part>@any, optionally followed by /<path>")
         return None
-    name, scope, sub = match["part"], match["scope"], match["sub"]
+    name, scope, sub, names = match["part"], match["scope"], match["sub"], match["names"]
+    if names is not None and not patterns:
+        problems.append(f"{where}: {value!r} has a name pattern: only a part's `may_import` narrows what may be "
+                        "imported by name")
+        return None
+    if names is not None and not names:
+        problems.append(f"{where}: {value!r} has an empty name pattern after `:`")
+        return None
+    if names is not None and not _NAME_PATTERN.fullmatch(names):
+        problems.append(f"{where}: {value!r} has a name pattern that is not one: use letters, digits, '_' and `*`")
+        return None
     part = parts.get(name)
     if part is None:
         if name not in declared:
@@ -463,7 +479,7 @@ def _target(value: Any, owner: Part | None, parts: dict[str, Part], declared: se
     if owner is not None and name == owner.name and chosen != "any":
         problems.append(_implied(where, value, owner))
         return None
-    return Target(name, chosen, steps)
+    return Target(name, chosen, steps, names or "")
 
 
 def _implied(where: str, value: str, part: Part) -> str:
@@ -645,12 +661,14 @@ def _tier(name: str, spec: Any, subject: tuple[Subject, ...], parts: dict[str, P
     allowance = (_may_import(spec.get("may_import"), None, parts, declared, f"{where}.may_import", problems)
                  if "folder" in spec else None)
     docs = _tier_docs(spec["docs"], folder, examples, f"{where}.docs", problems) if "docs" in spec else {}
+    reach = (ck.part_names(spec["must_import"], declared, f"{where}.must_import", problems)
+             if "must_import" in spec else [])
     if len(problems) != count:
         return None
     return Tier(name, subject, spec.get("proves", ""), docs.get("may_touch", ""), spec.get("litmus", "").strip("\n"),
                 docs.get("subject", ""), docs.get("one_file_per", ""), docs.get("cases_from", ""), docs.get("data", ""),
                 docs.get("example"), docs.get("helpers", ()), tuple(p for p in types_only if p in parts), held, folder,
-                allowance)
+                allowance, tuple(p for p in reach if p in parts))
 
 
 def _tier_docs(value: Any, folder: tuple[str, ...] | None, examples: ex.Examples, where: str,
@@ -735,17 +753,13 @@ def _guards(value: Any, specs: dict[str, Any], parts: dict[str, Part], declared:
             if guard is not None:
                 guards.append(guard)
         elif name == "dead-code":
-            if spec not in ({}, None):
-                problems.append(f"{where}: takes no parameters: write {{}}")
-            elif fakes is None:
-                problems.append(f"{where}: needs `fakes`: it reads the Protocols of the parts `fakes.for` names "
-                                "and the classes in `fakes.folder`")
-            else:
-                guards.append(DeadCode())
+            guard = _dead_code(spec, fakes, where, problems)
+            if guard is not None:
+                guards.append(guard)
         elif spec not in ({}, None):
             problems.append(f"{where}: takes no parameters: write {{}}")
         else:
-            guards.append(ClosedTree() if name == "closed-tree" else NoComments())
+            guards.append({"closed-tree": ClosedTree(), "private-imports": PrivateImports()}.get(name, NoComments()))
     return tuple(guards)
 
 
@@ -788,6 +802,64 @@ def _stand_ins(spec: Any, fakes: Fakes | None, testing: _Testing | None, where: 
         problems.append(f"{where}: needs `testing.mocks`: the calls that build a mock and the keywords a mock is "
                         "given its spec by")
     return testing.mocks if testing is not None else None
+
+
+def _dead_code(spec: Any, fakes: Fakes | None, where: str, problems: list[str]) -> DeadCode | None:
+    if spec is None:
+        spec = {}
+    if not isinstance(spec, Mapping):
+        problems.append(f"{where}: must be a mapping {{untested: true|false}}, or {{}}")
+        return None
+    count = len(problems)
+    problems += ck.unknown_keys(spec, names_of(DEAD_CODE), where)
+    untested = spec.get("untested", False)
+    if not isinstance(untested, bool):
+        problems.append(f"{where}.untested: must be true or false")
+    if len(problems) != count:
+        return None
+    if fakes is None:
+        problems.append(f"{where}: needs `fakes`: it reads the Protocols of the parts `fakes.for` names and the "
+                        "classes in `fakes.folder`")
+        return None
+    return DeadCode(untested)
+
+
+def _substance(spec: Any, part: Part, declared: set[str], may_import: tuple[Target, ...],
+               problems: list[str]) -> Part:
+    """The keys of a part that say what its code holds and how it is used: holds, types_only, no_callbacks, names and
+    built_by."""
+    where = f"parts.{part.name}"
+    if not isinstance(spec, Mapping):
+        return part
+    holds = spec.get("holds", "")
+    if "holds" in spec and holds not in _HOLDS:
+        problems.append(f"{where}.holds: must be {' or '.join(_HOLDS)}")
+        holds = ""
+    no_callbacks = spec.get("no_callbacks", False)
+    if not isinstance(no_callbacks, bool):
+        problems.append(f"{where}.no_callbacks: must be true or false")
+        no_callbacks = False
+    names = _class_patterns(spec["names"], f"{where}.names", problems) if "names" in spec else ()
+    built_by = tuple(ck.part_names(spec["built_by"], declared, f"{where}.built_by", problems)) \
+        if "built_by" in spec else ()
+    types_only = tuple(ck.part_names(spec["types_only"], declared, f"{where}.types_only", problems)) \
+        if "types_only" in spec else ()
+    for name in types_only:
+        if not any(t.part in (EVERYTHING, name) for t in may_import):
+            problems.append(f"{where}.types_only: {name!r} is not in `may_import`, so no file could import it to use as "
+                            "a type: add it there, or drop it")
+    return replace(part, holds=holds, no_callbacks=no_callbacks, names=names, built_by=built_by, types_only=types_only)
+
+
+def _class_patterns(value: Any, where: str, problems: list[str]) -> tuple[str, ...]:
+    items = [value] if isinstance(value, str) else value
+    if not isinstance(items, list) or not items or items == [""]:
+        problems.append(f"{where}: must be a class name pattern with `*` for any text, such as *Store, or a list of "
+                        "them")
+        return ()
+    bad = [item for item in items if not isinstance(item, str) or not _NAME_PATTERN.fullmatch(item)]
+    problems += [f"{where}: {item!r} is not a class name pattern: use letters, digits, '_' and `*`" for item in bad]
+    return () if bad else tuple(items)
 
 
 def _no_duplicates(spec: Any, where: str, problems: list[str]) -> NoDuplicates:

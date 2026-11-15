@@ -5,15 +5,17 @@ sits in the pattern it lies in, the deepest when patterns nest, with `*` capturi
 pattern is the place's sub-path. A path is compared as Python names it: no `.py` on its file, and a package's
 `__init__` is the package itself.
 
-A target names a part, a scope and an optional path below the part. Scope "own" reaches the part in the importer's
-instance, "any" in any instance, "none" a part outside the instances. EVERYTHING reaches every
-place, including the places no part claims.
+A target names a part, a scope, an optional path below the part and an optional name pattern. Scope "own" reaches the
+part in the importer's instance, "any" in any instance, "none" a part outside the instances. EVERYTHING reaches every
+place, including the places no part claims. A target with a name pattern reaches only a name imported from the place
+that the pattern matches (`*` stands for any text, the rest is matched as written), never the place as a whole.
 
 A part may always import itself: its own instance for a part inside a repeating folder, the part for one outside. A rule
 never says so; `with_itself` adds it to the row of the part.
 """
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Literal
@@ -33,10 +35,12 @@ class Repeat:
 
 @dataclass(frozen=True)
 class Target:
-    """What a part may import: a part, or EVERYTHING; the instance it is in; and optionally only a path below it."""
+    """What a part may import: a part, or EVERYTHING; the instance it is in; optionally only a path below it; and
+    optionally (names, a pattern) only the names that match it."""
     part: str
     scope: Scope = "none"
     sub: tuple[str, ...] = ()
+    names: str = ""
 
 
 @dataclass(frozen=True)
@@ -92,11 +96,19 @@ def matches(pattern: tuple[str, ...], path: tuple[str, ...]) -> bool:
         step != EACH and want in (EACH, step) for want, step in zip(pattern, steps))
 
 
-def reaches(target: Target, source: Place, place: Place) -> bool:
-    """Whether target, in the rules of the part at source, allows importing what sits at place."""
+def name_matches(pattern: str, name: str) -> bool:
+    """Whether a name matches a pattern in which `*` stands for any text and every other character for itself."""
+    return re.fullmatch(".*".join(re.escape(piece) for piece in pattern.split("*")), name) is not None
+
+
+def reaches(target: Target, source: Place, place: Place, name: str | None = None) -> bool:
+    """Whether target, in the rules of the part at source, allows importing what sits at place: the name imported
+    from it, None when the place is imported as a whole, which a target with a name pattern never allows."""
     if target.part == EVERYTHING:
         return True
     if place.part is None or target.part != place.part or place.sub[:len(target.sub)] != target.sub:
+        return False
+    if target.names and (name is None or not name_matches(target.names, name)):
         return False
     match target.scope:
         case "own":

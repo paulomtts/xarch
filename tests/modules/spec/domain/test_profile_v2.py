@@ -162,8 +162,9 @@ def test_a_folder_that_is_a_part_is_refused_since_its_note_is_its_role():
                  ["layered.yaml: parts.x.role: must be a string", "layered.yaml: parts.x.litmus: must be a string"],
                  id="texts that are no strings"),
     pytest.param({"x": {"path": "x", "role": "r", "colour": 1}},
-                 ["layered.yaml: parts.x: unknown key 'colour': use folders, forbidden, libraries, litmus, may_import, must_import, "
-                  "package_only, path, role, tier, untested"], id="an unknown key"),
+                 ["layered.yaml: parts.x: unknown key 'colour': use built_by, folders, forbidden, holds, libraries, litmus, "
+                  "may_import, must_import, names, no_callbacks, package_only, path, role, tier, types_only, untested"],
+                 id="an unknown key"),
     pytest.param({"x": {"path": "x", "role": "r", "package_only": "yes"}},
                  ["layered.yaml: parts.x.package_only: must be true or false"], id="package_only that is no boolean"),
     pytest.param({"x": {"path": "x", "role": "r", "untested": "two\nlines"}},
