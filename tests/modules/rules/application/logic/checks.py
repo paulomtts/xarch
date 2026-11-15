@@ -53,3 +53,7 @@ def tiers(tests: Iterable[SourceFile], app: Iterable[SourceFile], profile: Profi
 
 def syntax(files: Iterable[SourceFile], profile: Profile) -> list[Violation | Weak]:
     return run(expansion.syntax(profile), facts_of(files, [], profile, ""), profile)
+
+
+def names(app: Iterable[SourceFile], profile: Profile) -> list[Violation | Weak]:
+    return run(expansion.names(profile), facts_of(app, [], profile, ""), profile)

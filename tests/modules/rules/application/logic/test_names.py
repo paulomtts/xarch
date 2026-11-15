@@ -1,8 +1,8 @@
 """The names check on hand-made source files: every public class of a part that lists `names` matches a pattern."""
 import pytest
 
+from tests.modules.rules.application.logic.checks import names as violations
 from tests.modules.rules.builders import profile, source
-from xarch.modules.rules.application.logic.names import violations
 from xarch.modules.rules.domain.values import Class
 
 ON = profile(names={"services": ("*Service", "*Step")})
