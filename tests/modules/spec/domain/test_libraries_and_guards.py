@@ -5,7 +5,7 @@ import pytest
 from xarch.modules.spec.domain.architecture_file import GUARDS, parse_architecture
 from xarch.modules.spec.domain.docs_template import fill
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.values import ClosedTree, Fakes, NoComments, PackageOnly, ScenarioCoverage, StandIns
+from xarch.modules.spec.domain.values import CaseTable, ClosedTree, Fakes, NoComments, PackageOnly, ScenarioCoverage, StandIns
 
 
 def layered(**extra) -> dict:
@@ -57,15 +57,24 @@ TIERS = [{"name": "wired", "subject": ["service", "contract", "store"], "proves"
 
 
 COLUMNS = ["given", "when", "then"]
+TESTS = {"files": ["test_*.py"], "functions": "test_*"}
+TABLE = {"decorator": "pytest.mark.parametrize", "row": "pytest.param", "id": "id"}
+FILE = "test_{name}.py"
+
+
+def scenarios(**changes) -> dict:
+    return {"results": "contract", "tier": "wired", "suffix": "Result", "columns": COLUMNS, "table": TABLE,
+            "file": FILE} | changes
 
 
 def test_guards_name_the_pre_built_checks_in_use_with_their_parameters():
-    document = layered(tiers=TIERS, guards={"no-comments": {}, "package-only": ["contract"],
-                                            "scenario-coverage": {"results": "contract", "tier": "wired",
-                                                                  "suffix": "Outcome",
-                                                                  "columns": ["state", "command", "outcome"]}})
+    outcomes = scenarios(suffix="Outcome", columns=["state", "command", "outcome"])
+    document = layered(tiers=TIERS, tests=TESTS, guards={"no-comments": {}, "package-only": ["contract"],
+                                                         "scenario-coverage": outcomes})
     assert load(document).guards == (NoComments(), PackageOnly(("contract",)),
-                                     ScenarioCoverage("contract", "wired", "Outcome", ("state", "command", "outcome")))
+                                     ScenarioCoverage("contract", "wired", "Outcome", ("state", "command", "outcome"),
+                                                      CaseTable(("pytest", "mark", "parametrize"),
+                                                                ("pytest", "param"), "id"), FILE))
     assert load(layered()).guards == ()
 
 
@@ -78,47 +87,52 @@ def test_the_pre_built_checks_are_known_by_name_with_one_line_each():
     ({"no-comment": {}}, "guards: unknown guard 'no-comment': use package-only, scenario-coverage, no-comments, "
                          "stand-ins, closed-tree"),
     ({"closed-tree": []}, "guards.closed-tree: takes no parameters: write {}"),
-    ({"stand-ins": {"x": 1}}, "guards.stand-ins: takes no parameters: write {}"),
-    ({"stand-ins": {}}, "guards.stand-ins: needs `fakes` with a `prefix`, such as {path: tests/fakes, for: [<part>], "
-                        "prefix: Fake}: the parts whose Protocols the fakes stand in for, where they live and how a "
-                        "fake is named"),
     ({"no-comments": {"x": 1}}, "guards.no-comments: takes no parameters: write {}"),
     (["no-comments"], "guards: must be a mapping of guard names to their parameters, such as {no-comments: {}}"),
     ({"package-only": ["nowhere"]}, "guards.package-only: no part named 'nowhere'"),
     ({"package-only": "contract"}, "guards.package-only: must be a list of part names"),
     ({"package-only": ["contract", "contract"]}, "guards.package-only: 'contract' is listed twice"),
-    ({"scenario-coverage": {"results": "contract"}},
-     "guards.scenario-coverage: must be a mapping {results, tier, suffix, columns}: the part holding the result "
-     "unions, the tier whose test files hold their tables, how a union's name ends, and the three names of a "
-     "table's parameters: its state, its command and its result"),
-    ({"scenario-coverage": {"results": "nowhere", "tier": "wired", "suffix": "Result", "columns": COLUMNS}},
+    ({"package-only": []}, "guards.package-only: must be a list of part names"),
+    ({"scenario-coverage": []},
+     "guards.scenario-coverage: must be a mapping {results, tier, suffix, columns, table, file}: the part holding "
+     "the result unions, the tier whose test files hold their tables, how a union's name ends, the three names of a "
+     "table's parameters (its state, its command and its result), how the table is written, and the name of a use "
+     "case's test file"),
+    ({"scenario-coverage": scenarios(results="nowhere", tier="wired", suffix="Result", columns=COLUMNS)},
      "guards.scenario-coverage.results: no part named 'nowhere'"),
-    ({"scenario-coverage": {"results": "contract", "tier": "unit", "suffix": "Result", "columns": COLUMNS}},
+    ({"scenario-coverage": scenarios(results="contract", tier="unit", suffix="Result", columns=COLUMNS)},
      "guards.scenario-coverage.tier: no tier named 'unit'"),
-    ({"scenario-coverage": {"results": "contract", "tier": "wired", "suffix": "a b", "columns": COLUMNS}},
+    ({"scenario-coverage": scenarios(results="contract", tier="wired", suffix="a b", columns=COLUMNS)},
      "guards.scenario-coverage.suffix: must be the end of a name, such as Result"),
-    ({"scenario-coverage": {"results": "contract", "tier": "wired", "suffix": "Result", "columns": "given, when"}},
+    ({"scenario-coverage": scenarios(results="contract", tier="wired", suffix="Result", columns="given, when")},
      "guards.scenario-coverage.columns: must be a list of three names, such as [given, when, then]"),
-    ({"scenario-coverage": {"results": "contract", "tier": "wired", "suffix": "Result",
-                            "columns": ["a", "b"]}},
+    ({"scenario-coverage": scenarios(results="contract", tier="wired", suffix="Result", columns=["a", "b"])},
      "guards.scenario-coverage.columns: must be a list of three names, such as [given, when, then]"),
-    ({"scenario-coverage": {"results": "contract", "tier": "wired", "suffix": "Result",
-                            "columns": ["a", "b", "a"]}},
+    ({"scenario-coverage": scenarios(results="contract", tier="wired", suffix="Result", columns=["a", "b", "a"])},
      "guards.scenario-coverage.columns: 'a' is listed twice"),
-    ({"scenario-coverage": {"results": "contract", "tier": "wired", "suffix": "Result",
-                            "columns": ["a", "b c", "d"]}},
+    ({"scenario-coverage": scenarios(results="contract", tier="wired", suffix="Result", columns=["a", "b c", "d"])},
      "guards.scenario-coverage.columns: 'b c' is not a name a parameter can have"),
 ])
 def test_a_bad_guards_entry_is_rejected(guards, problem):
-    assert problems(layered(tiers=TIERS, guards=guards)) == [f"layered.yaml: {problem}"]
+    assert problems(layered(tiers=TIERS, tests=TESTS, guards=guards)) == [f"layered.yaml: {problem}"]
 
 
 def test_scenario_coverage_needs_its_tier_to_test_the_results_part():
     tiers = [dict(TIERS[0], subject=["service", "store"]),
              {"name": "api", "subject": ["contract"], "proves": "x", "may_touch": "y", "litmus": "z"}]
-    guards = {"scenario-coverage": {"results": "contract", "tier": "wired", "suffix": "Result", "columns": COLUMNS}}
-    assert problems(layered(tiers=tiers, guards=guards)) == [
+    guards = {"scenario-coverage": scenarios(results="contract", tier="wired", suffix="Result", columns=COLUMNS)}
+    assert problems(layered(tiers=tiers, tests=TESTS, guards=guards)) == [
         "layered.yaml: guards.scenario-coverage.tier: tier 'wired' does not test part 'contract'"]
+
+
+def test_scenario_coverage_needs_its_results_part_in_the_each_folder():
+    document = layered(tiers=[dict(TIERS[0], subject=["service", "contract", "store", "shared"])], tests=TESTS,
+                       guards={"scenario-coverage": scenarios(results="shared")})
+    document["layout"]["shared"] = {}
+    document["parts"]["shared"] = {"path": "shared", "role": "shared code"}
+    assert problems(document) == [
+        "layered.yaml: guards.scenario-coverage.results: part 'shared' does not lie in the `each` folder: its unions "
+        "are matched to the tests of the same folder"]
 
 
 def test_the_closed_tree_guard_takes_no_parameters_and_is_listed_in_the_guards_section():
@@ -136,9 +150,10 @@ def test_fakes_name_their_folder_and_the_parts_they_stand_in_for():
 
 def test_fakes_may_say_how_a_fake_is_named_and_then_the_stand_ins_guard_applies():
     fakes = {"path": "tests/fakes", "for": ["store"], "prefix": "Fake"}
-    architecture = load(layered(fakes=fakes, guards={"stand-ins": {}}))
+    stand_ins = {"mocks": ["unittest.mock.Mock"], "spec": ["spec"]}
+    architecture = load(layered(tests=TESTS, fakes=fakes, guards={"stand-ins": stand_ins}))
     assert architecture.fakes == Fakes(("tests", "fakes"), ("store",), "Fake")
-    assert architecture.guards == (StandIns(),)
+    assert architecture.guards == (StandIns((("unittest", "mock", "Mock"),), (), ("spec",)),)
 
 
 @pytest.mark.parametrize("fakes, problem", [
@@ -151,6 +166,9 @@ def test_fakes_may_say_how_a_fake_is_named_and_then_the_stand_ins_guard_applies(
      "fakes.prefix: must be the start of a class name, such as Fake"),
     ({"path": "fakes", "for": ["store"]}, "fakes.path: must be a folder below the tests root, such as tests/fakes"),
     ({"path": "tests/fakes", "for": ["nowhere"]}, "fakes.for: no part named 'nowhere'"),
+    ({"path": "tests/fakes", "for": []}, "fakes.for: must be a list of part names"),
+    ({"path": "tests/fakes", "for": ["store"], "prefix": ""}, "fakes.prefix: must be the start of a class name, such as Fake"),
+    ({"path": "tests/*/fakes", "for": ["store"]}, "fakes.path: must be a folder below the tests root, such as tests/fakes"),
 ])
 def test_a_bad_fakes_entry_is_rejected(fakes, problem):
     assert problems(layered(fakes=fakes)) == [f"layered.yaml: {problem}"]

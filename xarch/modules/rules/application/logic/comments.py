@@ -14,6 +14,7 @@ from xarch.modules.rules.domain.values import Comment, SourceFile
 _DIRECTIVE = re.compile(r"#\s*(type:\s*ignore|noqa|pragma:)")
 _ENCODING = re.compile(r"^[ \t\f]*#.*?coding[:=][ \t]*[-\w.]+")
 MESSAGE = "a comment: say it in a docstring or a name (no-comments)"
+FIX = "say it in a docstring or a name"
 
 
 def allowed(comment: Comment) -> bool:
@@ -25,4 +26,4 @@ def allowed(comment: Comment) -> bool:
 
 
 def violations(files: Iterable[SourceFile]) -> list[Violation]:
-    return [Violation(f.name, c.line, MESSAGE) for f in files for c in f.comments if not allowed(c)]
+    return [Violation(f.name, c.line, MESSAGE, "no-comments", FIX) for f in files for c in f.comments if not allowed(c)]

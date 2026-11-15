@@ -34,5 +34,6 @@ def violations(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: 
                 continue
             package = ".".join((root, *target[:len(target) - len(dst.sub)]))
             found.append(Violation(file.name, line, f"{label(profile, dst)} is imported only as a package: import "
-                                                    f"from {package} ({'.'.join((root, *target))}) (package-only)"))
+                                                    f"from {package} ({'.'.join((root, *target))}) (package-only)",
+                                   "package-only", f"import from {package}"))
     return found

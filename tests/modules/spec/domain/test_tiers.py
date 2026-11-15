@@ -2,50 +2,16 @@
 
 import pytest
 
-from xarch.modules.spec.domain.architecture_file import parse_architecture
+from tests.modules.spec.builders import integration, layered_tiers, parsed, problems, tiered, unit
 from xarch.modules.spec.domain.docs_template import fill
-from xarch.modules.spec.domain.errors import InvalidArchitecture, InvalidTemplate
+from xarch.modules.spec.domain.errors import InvalidTemplate
 from xarch.modules.spec.domain.values import Subject, Tier, TierExample
-
-
-def layered(*tiers: dict, **parts: dict) -> dict:
-    return {
-        "xarch": 1, "name": "layered",
-        "layout": {"src": {"singular": "module", "each": {"api": {}, "service": {}, "store": {}}}, "shared": {}},
-        "parts": {"api": {"path": "src/*/api", "role": "HTTP handlers"},
-                  "service": {"path": "src/*/service", "role": "business logic"},
-                  "store": {"path": "src/*/store", "role": "database access"},
-                  "shared": {"path": "shared", "role": "shared code",
-                             "untested": "reached through the parts that use it"}} | parts,
-        "rules": {},
-        "tiers": list(tiers) or [unit(), integration()],
-    }
-
-
-def unit(**extra) -> dict:
-    return {"name": "unit", "subject": ["service", "service/rules"], "proves": "a rule", "may_touch": "nothing",
-            "litmus": "Does it decide?\nIf yes, it is a unit test.\n"} | extra
-
-
-def integration(**extra) -> dict:
-    return {"name": "integration", "subject": ["api", "store"], "proves": "a request", "may_touch": "the database",
-            "litmus": "Does it need the database?"} | extra
-
-
-def parsed(document: dict, has_file=lambda relative: True):
-    return parse_architecture(document, "layered.yaml", has_file)
-
-
-def problems(document: dict, has_file=lambda relative: True) -> list[str]:
-    with pytest.raises(InvalidArchitecture) as caught:
-        parsed(document, has_file)
-    return list(caught.value.problems)
 
 
 def test_tiers_load_in_order_with_their_subjects_and_example():
     """A litmus test keeps its lines as written, with the trailing newline trimmed."""
     example = {"path": "tests/src/test_api.py", "file": "examples/api.py", "note": " (one per route)"}
-    architecture = parsed(layered(unit(), integration(subject_text="the edges", one_file_per="route",
+    architecture = parsed(layered_tiers(unit(), integration(subject_text="the edges", one_file_per="route",
                                                       cases_from="its arguments", data="the test", example=example)))
     assert architecture.tiers == (
         Tier("unit", (Subject("service"), Subject("service", ("rules",))), "a rule", "nothing",
@@ -58,7 +24,7 @@ def test_tiers_load_in_order_with_their_subjects_and_example():
 
 
 def test_tiers_are_optional_and_without_them_no_part_needs_a_tier():
-    document = layered()
+    document = layered_tiers()
     del document["tiers"]
     assert parsed(document).tiers == ()
 
@@ -66,121 +32,150 @@ def test_tiers_are_optional_and_without_them_no_part_needs_a_tier():
 def test_a_tier_with_no_part_in_its_subject_is_shown_by_its_text():
     guard = {"name": "guard", "subject": [], "subject_text": "the source tree", "proves": "a rule holds",
              "may_touch": "the tree", "litmus": "Does it read the source?"}
-    assert parsed(layered(unit(), integration(), guard)).tiers[2].subject == ()
+    assert parsed(layered_tiers(unit(), integration(), guard)).tiers[2].subject == ()
     del guard["subject_text"]
-    assert problems(layered(unit(), integration(), guard)) == [
+    assert problems(layered_tiers(unit(), integration(), guard)) == [
         "layered.yaml: tiers[2]: a subject with no part needs `subject_text`, such as 'the source tree'"]
 
 
 def test_a_part_no_tier_tests_is_rejected_naming_it():
-    assert problems(layered(unit(), integration(subject=["api"]))) == [
+    assert problems(layered_tiers(unit(), integration(subject=["api"]))) == [
         "layered.yaml: tiers: no tier tests part 'store': add it to a tier's subject, "
         "or give the part `untested: <reason>`"]
 
 
 def test_a_part_both_tested_and_untested_is_rejected():
-    assert problems(layered(unit(), integration(subject=["api", "store", "shared"]))) == [
+    assert problems(layered_tiers(unit(), integration(subject=["api", "store", "shared"]))) == [
         "layered.yaml: tiers: part 'shared' is in the subject of tier 'integration' and is marked `untested`: drop one"]
 
 
 def test_a_sub_path_of_a_part_covers_the_part():
-    assert parsed(layered(unit(subject=["service/rules"]), integration())).tiers[0].subject == (
+    assert parsed(layered_tiers(unit(subject=["service/rules"]), integration())).tiers[0].subject == (
         Subject("service", ("rules",)),)
 
 
 def test_a_subject_naming_no_part_or_a_bad_path_is_rejected():
-    assert problems(layered(unit(subject=["service", "repo", "service/../x", "store/", 3]), integration())) == [
+    assert problems(layered_tiers(unit(subject=["service", "repo", "service/../x", "store/", 3]), integration())) == [
         "layered.yaml: tiers[0].subject: no part named 'repo'",
         "layered.yaml: tiers[0].subject: 'service/../x' has an invalid path after the part",
         "layered.yaml: tiers[0].subject: 'store/' has an invalid path after the part",
         "layered.yaml: tiers[0].subject: no part named 3",
     ]
-    assert problems(layered(unit(subject="service"), integration(subject=["api", "store", "service"]))) == [
+    assert problems(layered_tiers(unit(subject="service"), integration(subject=["api", "store", "service"]))) == [
         "layered.yaml: tiers[0].subject: must be a list of parts, each optionally followed by /<path>, "
         "such as [api, shared/text]"]
 
 
 def test_a_tier_names_the_parts_its_tests_use_as_types_only():
-    assert parsed(layered(unit(), integration(types_only=["service"]))).tiers[1].types_only == ("service",)
-    assert parsed(layered()).tiers[1].types_only == ()
+    assert parsed(layered_tiers(unit(), integration(types_only=["service"]))).tiers[1].types_only == ("service",)
+    assert parsed(layered_tiers()).tiers[1].types_only == ()
 
 
 def test_a_bad_types_only_entry_is_rejected():
-    assert problems(layered(unit(), integration(types_only=["repo", "service", "service"]))) == [
+    assert problems(layered_tiers(unit(), integration(types_only=["repo", "service", "service"]))) == [
         "layered.yaml: tiers[1].types_only: no part named 'repo'",
         "layered.yaml: tiers[1].types_only: 'service' is listed twice"]
-    assert problems(layered(unit(), integration(types_only="service"))) == [
+    assert problems(layered_tiers(unit(), integration(types_only="service"))) == [
+        "layered.yaml: tiers[1].types_only: must be a list of part names"]
+    assert problems(layered_tiers(unit(), integration(types_only=[]))) == [
         "layered.yaml: tiers[1].types_only: must be a list of part names"]
 
 
 def test_duplicate_tier_names_are_rejected():
-    assert problems(layered(unit(), integration(), unit(subject=["api"]))) == [
+    assert problems(layered_tiers(unit(), integration(), unit(subject=["api"]))) == [
         "layered.yaml: tiers[2]: tier 'unit' is listed twice"]
 
 
 def test_a_tier_missing_its_litmus_or_another_required_key_is_rejected():
     tier = unit()
     del tier["litmus"], tier["proves"]
-    assert problems(layered(tier, integration())) == [
+    assert problems(layered_tiers(tier, integration())) == [
         "layered.yaml: tiers[0]: missing `proves`", "layered.yaml: tiers[0]: missing `litmus`"]
-    assert problems(layered(unit(litmus="  "), integration())) == [
+    assert problems(layered_tiers(unit(litmus="  "), integration())) == [
         "layered.yaml: tiers[0].litmus: must be text: the question that tells a test belongs to the tier"]
 
 
 def test_bad_tier_keys_and_texts_are_rejected():
-    assert problems(layered(unit(colour="red", proves="two\nlines", data=3, name=""), integration())) == [
-        "layered.yaml: tiers[0]: unknown key 'colour': use cases_from, data, example, helpers, litmus, may_touch, name, "
+    assert problems(layered_tiers(unit(colour="red", proves="two\nlines", data=3, name=""), integration())) == [
+        "layered.yaml: tiers[0]: unknown key 'colour': use cases_from, data, example, forbidden, helpers, litmus, may_touch, name, "
         "one_file_per, proves, subject, subject_text, types_only",
         "layered.yaml: tiers[0].name: must be one line of text, such as 'unit'",
         "layered.yaml: tiers[0].proves: must be one line of text",
         "layered.yaml: tiers[0].data: must be one line of text",
     ]
-    assert problems(layered(unit(), integration(), "unit")) == [
+    assert problems(layered_tiers(unit(), integration(), "unit")) == [
         "layered.yaml: tiers[2]: must be a mapping with `name`, `subject`, `proves`, `may_touch` and `litmus`"]
-    for value in ([], {}, "unit"):
-        document = layered()
-        document["tiers"] = value
-        assert problems(document) == [
-            "layered.yaml: tiers: must be a list of tiers such as {name, subject, proves, may_touch, litmus}, "
-            "in the order their litmus tests run"]
+
+
+@pytest.mark.parametrize("value", [pytest.param([], id="an empty list"), pytest.param({}, id="a mapping"),
+                                   pytest.param("unit", id="a string")])
+def test_tiers_that_are_not_a_list_of_tiers_are_rejected(value):
+    assert problems(layered_tiers() | {"tiers": value}) == [
+        "layered.yaml: tiers: must be a list of tiers such as {name, subject, proves, may_touch, litmus}, "
+        "in the order their litmus tests run"]
 
 
 def test_a_bad_untested_reason_is_rejected():
-    assert problems(layered(shared={"path": "shared", "role": "r", "untested": ""})) == [
+    assert problems(layered_tiers(shared={"path": "shared", "role": "r", "untested": ""})) == [
         "layered.yaml: parts.shared.untested: must be one line of text: why no tier tests the part",
         "layered.yaml: tiers: no tier tests part 'shared': add it to a tier's subject, "
         "or give the part `untested: <reason>`",
     ]
 
 
-def test_a_bad_example_path_or_file_is_rejected():
-    bad = [{"path": "tests/../x.py", "file": "examples/x.py"}, {"path": "tests/x.py", "file": "nowhere.py"},
-           {"file": "examples/x.py", "code": "pass", "note": "two\nlines"}, "examples/x.py"]
-    for i, example in enumerate(bad):
-        document = layered(unit(example=example), integration())
-        assert problems(document, lambda relative: relative != "nowhere.py") == [
-            ["layered.yaml: tiers[0].example.path: must be a path such as "
-             "'tests/src/billing/api/test_invoice.py'"],
-            ["layered.yaml: tiers[0].example.file: no file 'nowhere.py' next to the architecture file"],
-            ["layered.yaml: tiers[0].example: unknown key 'code': use file, note, path",
-             "layered.yaml: tiers[0].example: missing `path`",
-             "layered.yaml: tiers[0].example.note: must be one line of text"],
-            ["layered.yaml: tiers[0].example: must be a mapping with `path` and `file`, and optionally `note`"],
-        ][i]
+@pytest.mark.parametrize("example, expected", [
+    pytest.param({"path": "tests/../x.py", "file": "examples/x.py"},
+                 ["layered.yaml: tiers[0].example.path: must be a path such as "
+                  "'tests/src/billing/api/invoice_checks.py'"], id="a path climbing out is rejected"),
+    pytest.param({"path": "tests/src/*/test_x.py", "file": "examples/x.py"},
+                 ["layered.yaml: tiers[0].example.path: must be a path such as "
+                  "'tests/src/billing/api/invoice_checks.py'"], id="a path naming no instance is rejected"),
+    pytest.param({"path": "", "file": "examples/x.py"},
+                 ["layered.yaml: tiers[0].example.path: must be a path such as "
+                  "'tests/src/billing/api/invoice_checks.py'"], id="an empty path is rejected"),
+    pytest.param({"path": "tests/x.py", "file": "nowhere.py"},
+                 ["layered.yaml: tiers[0].example.file: no file 'nowhere.py' next to the architecture file"],
+                 id="a file that is not there is rejected"),
+    pytest.param({"path": "tests/x.py", "file": ""}, ["layered.yaml: tiers[0].example.file: must be a file name"],
+                 id="an empty file name is rejected"),
+    pytest.param({"file": "examples/x.py", "code": "pass", "note": "two\nlines"},
+                 ["layered.yaml: tiers[0].example: unknown key 'code': use file, note, path",
+                  "layered.yaml: tiers[0].example: missing `path`",
+                  "layered.yaml: tiers[0].example.note: must be one line of text"],
+                 id="an unknown key, a missing path and a note of two lines are rejected"),
+    pytest.param("examples/x.py",
+                 ["layered.yaml: tiers[0].example: must be a mapping with `path` and `file`, and optionally `note`"],
+                 id="an example that is not a mapping is rejected"),
+])
+def test_a_bad_example_is_rejected(example, expected):
+    assert problems(layered_tiers(unit(example=example), integration()), lambda relative: relative != "nowhere.py") == expected
+
+
+@pytest.mark.parametrize("helpers, expected", [
+    pytest.param({"path": "tests/src/builders.py", "file": "x/builders.py"},
+                 ["layered.yaml: tiers[0].helpers: must be a list of files such as {path, file}"],
+                 id="helpers that are not a list are rejected"),
+    pytest.param([{"path": "tests/src/builders.py", "file": "x/builders.py"}, {"path": "tests/../b.py", "file": "b.py"}],
+                 ["layered.yaml: tiers[0].helpers[1].path: must be a path such as "
+                  "'tests/src/billing/api/invoice_checks.py'"],
+                 id="a bad helper is reported by its place in the list"),
+])
+def test_bad_helpers_are_rejected(helpers, expected):
+    assert problems(layered_tiers(unit(helpers=helpers), integration())) == expected
+
+
+def test_a_tiers_helpers_load_in_order():
+    helpers = [{"path": "tests/src/builders.py", "file": "x/builders.py", "note": " (shared)"},
+               {"path": "tests/src/conftest.py", "file": "x/conftest.py"}]
+    assert parsed(layered_tiers(unit(helpers=helpers), integration())).tiers[0].helpers == (
+        TierExample(("tests", "src", "builders.py"), "x/builders.py", " (shared)"),
+        TierExample(("tests", "src", "conftest.py"), "x/conftest.py"))
 
 
 def test_a_missing_testing_template_is_rejected():
-    document = layered() | {"docs": {"architecture.md": {"from": "layered.md"}, "testing.md": {"from": "testing.md"}}}
+    document = layered_tiers() | {"docs": {"architecture.md": {"from": "layered.md"}, "testing.md": {"from": "testing.md"}}}
     assert problems(document, lambda relative: relative == "layered.md") == [
         "layered.yaml: docs.testing.md.from: no file 'testing.md' next to the architecture file"]
-
-
-def tiered() -> dict:
-    example = {"path": "tests/src/billing/service/test_rules.py", "file": "x/unit.py", "note": " (one per rule)"}
-    return layered(
-        unit(one_file_per="rule", cases_from="the invariants", data="built in the test", example=example),
-        integration(subject_text="`src/` but `service/`", one_file_per="route", cases_from="its arguments",
-                    data="the seed", example={"path": "tests/src/test_api.py", "file": "x/integration.py"}))
 
 
 TIER_TEXTS = {"unit": "def test_a_rule():\n    assert decide()\n\n", "integration": "def test_a_request(): ...\n"}
@@ -202,7 +197,7 @@ def test_the_tiers_table_shows_each_subject_by_path_a_parts_sub_paths_joined_by_
         "| Tier | Subject | Proves | May touch |\n|---|---|---|---|\n"
         "| unit | `service/` and `service/rules/` | a rule | nothing |\n"
         "| integration | `src/` but `service/` | a request | the database |")
-    document = layered(unit(subject=["store", "service", "service/rules", "service/x.py"]), integration())
+    document = layered_tiers(unit(subject=["store", "service", "service/rules", "service/x.py"]), integration())
     document["layout"]["src"]["each"]["service"] = {"x.py": "file"}
     assert rendered("{{tiers}}", document).splitlines()[2] == (
         "| unit | `store/`, `service/`, `service/rules/` and `service/x.py` | a rule | nothing |")
@@ -257,7 +252,7 @@ def test_the_example_tests_share_one_block_each_under_its_tier_and_path():
 
 
 def test_what_the_tier_placeholders_need_and_the_file_leaves_out_is_reported():
-    document = layered()
+    document = layered_tiers()
     assert template_problems("{{tier_files}}\n{{tier_data}}\n{{tier_examples}}", document) == [
         "testing.md: {{tier_files}}: tier 'unit' has no `one_file_per`, tier 'unit' has no `cases_from`, "
         "tier 'integration' has no `one_file_per`, tier 'integration' has no `cases_from`",

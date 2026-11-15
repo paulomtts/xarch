@@ -3,8 +3,17 @@ from __future__ import annotations
 from xarch.kernel.errors import DomainError
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.application.services.skeleton import SkeletonService
-from xarch.modules.spec.contract import (Architecture, Docs, ProfileRefused, ProfileResult, ProfileSelected,
-                                         ProjectFile, SelectProfile, Skeleton)
+from xarch.modules.spec.contract import (
+    Architecture,
+    Docs,
+    ProfileOrigin,
+    ProfileRefused,
+    ProfileResult,
+    ProfileSelected,
+    ProjectFile,
+    SelectProfile,
+    Skeleton,
+)
 
 
 class SpecController:
@@ -25,9 +34,15 @@ class SpecController:
         """The project docs the profile declares, with their text."""
         return self._architectures.docs(profile)
 
-    def files(self, profile: str, app: str) -> tuple[ProjectFile, ...]:
-        """The files the profile has `init` write beside an app folder called app, with their text."""
-        return self._architectures.files(profile, app)
+    def files(self, profile: str, app: str, presets: bool = True) -> tuple[ProjectFile, ...]:
+        """The files the profile has `init` write beside an app folder called app, with their content; presets off
+        leaves out what its folder entries copy."""
+        return self._architectures.files(profile, app, presets)
+
+    def origin(self, location: str) -> ProfileOrigin:
+        """Where the profile at a location callers got from select() comes from, and how it is looser than the
+        bundled profile it resembles."""
+        return self._architectures.origin(location)
 
     def profiles(self) -> tuple[str, ...]:
         return self._service.profiles()

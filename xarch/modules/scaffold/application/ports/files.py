@@ -19,6 +19,10 @@ class Files(Protocol):
         """Write a file holding text, creating the folders above it."""
         ...
 
+    def write_bytes(self, path: Path, data: bytes) -> None:
+        """Write a file holding data, creating the folders above it."""
+        ...
+
     def read_text(self, path: Path) -> str: ...
 
     def find_upward(self, start: Path, name: str) -> Path | None:

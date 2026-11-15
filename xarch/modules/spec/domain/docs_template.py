@@ -31,8 +31,9 @@ architecture. Prose, diagrams and code examples stay as the author wrote them; o
     {{tier_helpers}}       the helper files of all tiers in one block, each under its header line, `# <path>` (its
                            note right after it, as written)
     {{guards}}             one line per check `xarch check` runs: the structure, the rules, the libraries (with
-                           `libraries`), the tiers (with `tiers`), types-only (one line per tier with `types_only`),
-                           the test tree and the cycles (with an `each` folder), then each guard of `guards`, in order
+                           `libraries`), what each part may not use (with `forbidden`), the tiers (with `tiers`), types-only
+                           (one line per tier with `types_only`), the test tree and the cycles (with an `each` folder),
+                           then each guard of `guards`, in order
     {{tier_examples}}      each tier's example test in one block, under its header line `# <tier>: <path>` (its note
                            right after the path, as written), as {{example:...}} writes them; a tier with no example
                            is left out
@@ -43,7 +44,8 @@ own, it writes only the examples, and the template adds the rest of the block: a
 example project, such as a few lines of a function, stays in the template as the author wrote it.
 
 A placeholder the template does not use is fine. One that is unknown, or that needs what the architecture does not
-define (a part, a layer, an entry point, a placement, an example, the tiers or what a tier leaves out), fails the whole template with every problem listed.
+define (a part, a layer, an entry point, a placement, an example, the tiers or what a tier leaves out), fails the whole
+template with every problem listed.
 """
 from __future__ import annotations
 
@@ -52,9 +54,24 @@ import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
+from xarch.kernel.logic.imports import may_import, shown_target
 from xarch.modules.spec.domain.errors import InvalidTemplate
-from xarch.modules.spec.domain.values import (EACH, EVERYTHING, Architecture, ClosedTree, Doc, Guard, Layout,
-                                              PackageOnly, Part, ScenarioCoverage, StandIns, Subject, Target, Tier)
+from xarch.modules.spec.domain.values import (
+    EACH,
+    NAME,
+    Architecture,
+    ClosedTree,
+    Doc,
+    Guard,
+    Layout,
+    PackageOnly,
+    Part,
+    ScenarioCoverage,
+    StandIns,
+    Subject,
+    Target,
+    Tier,
+)
 
 PLACEHOLDER = re.compile(r"\{\{(.*?)\}\}")
 FENCE = re.compile(r"^```", re.MULTILINE)
@@ -174,27 +191,17 @@ def _rules_table(architecture: Architecture, _: str, __: _Context) -> str:
 
 
 def _may_import(architecture: Architecture, part: Part) -> str:
-    """What a part may import, in the order of its rule: consecutive parts in one scope share their phrase.
-
-    (scope phrase, the targets it covers).
-    """
+    """What a part may import, in the order of its rule."""
     targets = [t for t in architecture.rules.get(part.name, ()) if t.part != part.name]
-    if any(t.part == EVERYTHING for t in targets):
-        return "everything"
-    phrases: list[tuple[str, list[str]]] = []
-    for target in targets:
-        scope = {"own": f"its own {architecture.singular}'s ", "any": f"any {architecture.singular}'s "}.get(target.scope, "")
-        shown = f"`{_target(architecture, target)}`"
-        if scope and phrases and phrases[-1][0] == scope:
-            phrases[-1][1].append(shown)
-        else:
-            phrases.append((scope, [shown]))
-    return ", ".join(scope + _and(names) for scope, names in phrases) or "nothing"
+    return may_import(targets, _folders(architecture), architecture.singular)
+
+
+def _folders(architecture: Architecture) -> dict[str, str]:
+    return {name: _shown(architecture, part) for name, part in architecture.parts.items()}
 
 
 def _target(architecture: Architecture, target: Target) -> str:
-    shown = _shown(architecture, architecture.parts[target.part])
-    return shown.removesuffix("/") + "/" + "/".join(target.sub) if target.sub else shown
+    return shown_target(target, _folders(architecture))
 
 
 def _layers(architecture: Architecture, name: str, _: _Context) -> str:
@@ -367,10 +374,7 @@ def _part(architecture: Architecture, name: str) -> Part:
 
 
 def _shown(architecture: Architecture, part: Part) -> str:
-    """A part as the docs name it: its path below its instance for an instance's part, ending in / for a folder."""
-    root = architecture.instance_root()
-    path = part.path[len(root) + 1:] if part.in_instance and root is not None else part.path
-    return "/".join(path) + ("" if architecture.is_file(part.path) else "/")
+    return architecture.shown(part)
 
 
 def _ticked(names: tuple[str, ...]) -> str:
@@ -393,6 +397,8 @@ def _guards(architecture: Architecture, _: str, __: _Context) -> str:
                            for name, packages in architecture.libraries.items() if packages)
         lines.append(f"`libraries`: a part imports only the outside packages listed for it ({listed}); the standard "
                      "library is always allowed, and tests are not checked.")
+    if architecture.forbidden:
+        lines.append(_forbidden_line(architecture))
     if architecture.tiers:
         fakes = ""
         if architecture.fakes is not None:
@@ -416,6 +422,19 @@ def _guards(architecture: Architecture, _: str, __: _Context) -> str:
     return "\n".join(f"- {line}" for line in lines)
 
 
+def _forbidden_line(architecture: Architecture) -> str:
+    """The parts that share a list are named together, in the order the file lists them."""
+    groups: dict[tuple[tuple[str, ...], ...], list[str]] = {}
+    for name, names in architecture.forbidden.items():
+        groups.setdefault(names, []).append(f"`{_shown(architecture, architecture.parts[name])}`")
+    listed = "; ".join(f"{_and(parts)}: {_ticked(tuple('.'.join(n) for n in names))}" for names, parts in groups.items())
+    tiers = [tier.name for tier in architecture.tiers if tier.forbidden]
+    tests = f", and neither do the {_and(tiers)} tests of those parts" if tiers else ""
+    return (f"`forbidden`: a part neither imports nor uses by name what is listed for it ({listed}){tests}. It "
+            "catches what is written in the part's own files, through their imports and aliases, not a name reached "
+            "through a variable or `getattr`, nor I/O done on the part's behalf elsewhere.")
+
+
 def _structure_line(architecture: Architecture) -> str:
     root = architecture.instance_root()
     every = f", in the app and in every `{'/'.join(root)}/<name>/`" if root is not None else ""
@@ -428,15 +447,15 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
             shown = _and([f"`{_shown(architecture, architecture.parts[p])}`" for p in parts])
             return (f"`package-only`: {shown} {'is' if len(parts) == 1 else 'are'} imported as a package, never by "
                     "its files, from outside it.")
-        case ScenarioCoverage(results, tier, suffix, columns):
+        case ScenarioCoverage(results, tier, suffix, columns, table, file):
             shown = ", ".join(f"`{c}`" for c in columns)
             return (f"`scenario-coverage`: every variant of a union named `<Name>{suffix}` in "
                     f"`{_shown(architecture, architecture.parts[results])}` is the `{columns[-1]}` of a row of the "
-                    f"table (columns {shown}) in `test_<name>.py` among the {tier} tests (section 5.2), or is named "
-                    "by a standalone test of that file; every row is a `pytest.param` with an `id`, and a table "
-                    "test has no `if`, `match`, `try`, `for` or `while`.")
-        case StandIns():
-            return _stand_ins_line(architecture)
+                    f"table (columns {shown}) in `{file.replace(NAME, '<name>')}` among the {tier} tests (section 5.2), "
+                    f"or is named by a standalone test of that file; every row is a `{'.'.join(table.row)}` with "
+                    f"an `{table.id}`, and a table test has no `if`, `match`, `try`, `for` or `while`.")
+        case StandIns(mocks, _, spec):
+            return _stand_ins_line(architecture, mocks[0][-1], spec[0])
         case ClosedTree():
             return ("`closed-tree`: every Python file of the app lies in a part, or is the package file "
                     "(`__init__.py`) of a folder of the layout.")
@@ -445,12 +464,12 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
                     "(`# type: ignore`, `# noqa`, `# pragma:`) stay.")
 
 
-def _stand_ins_line(architecture: Architecture) -> str:
+def _stand_ins_line(architecture: Architecture, mock: str, spec: str) -> str:
     fakes = architecture.fakes
     assert fakes is not None
     parts = _and([f"`{_shown(architecture, architecture.parts[p])}`" for p in fakes.stand_in_for])
     tiers = _and([t.name for t in architecture.tiers if any(s.part in fakes.stand_in_for for s in t.subject)])
-    mocks = (f"; and every mock in the {tiers} tests names what it stands in for, `Mock(spec=<Port>)`, never a "
+    mocks = (f"; and every mock in the {tiers} tests names what it stands in for, `{mock}({spec}=<Port>)`, never a "
              "read port") if tiers else ""
     return (f"`stand-ins`: every `Protocol` in {parts} is fire-only (every method returns `None`) or read (any "
             "method returns a value), each method annotated; every read port `<Port>` has a fake "
@@ -459,8 +478,9 @@ def _stand_ins_line(architecture: Architecture) -> str:
 
 _RENDERERS: dict[str, Callable[[Architecture, str, _Context], str]] = {
     "tree": _tree, "rules_table": _rules_table, "layers": _layers, "placement": _placement, "litmus": _litmus,
-    "naming": _naming, "entry": _entry, "docs_tree": _docs_tree, "example": _example, "tiers": _tiers, "untested": _untested, "tier_litmus": _tier_litmus,
-    "tier_files": _tier_files, "tier_helpers": _tier_helpers, "tier_index": _tier_index, "tier_data": _tier_data, "tier_examples": _tier_examples,
+    "naming": _naming, "entry": _entry, "docs_tree": _docs_tree, "example": _example, "tiers": _tiers,
+    "untested": _untested, "tier_litmus": _tier_litmus, "tier_files": _tier_files, "tier_helpers": _tier_helpers,
+    "tier_index": _tier_index, "tier_data": _tier_data, "tier_examples": _tier_examples,
     "guards": _guards,
 }
 _WITH_ARGUMENT = {"layers", "litmus", "example", "tier_index", "tier_litmus"}

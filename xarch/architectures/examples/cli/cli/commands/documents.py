@@ -5,7 +5,7 @@ from app.cli.terminal import echo, fail          # cli/terminal.py: the output h
 app = Typer()                              # bootstrap/ adds this group to the program's Typer
 
 @app.command()
-def publish(ctx: Context, id: UUID):
+def publish(ctx: Context, id: UUID) -> None:
     documents = documents_controller(ctx)
     result = documents.publish(PublishDocument(DocumentId(id)))                 # controller call
     match result:                                # the command branches on the Result

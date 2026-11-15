@@ -17,6 +17,7 @@ class Skeleton(Protocol):
         """(path below the folder holding the app, text) for every project doc."""
         ...
 
-    def files(self, profile: str, app: str) -> list[tuple[tuple[str, ...], str]]:
-        """(path below the folder holding the app, text) for every other project file, for an app folder called app."""
+    def files(self, profile: str, app: str) -> list[tuple[tuple[str, ...], str | bytes]]:
+        """(path below the folder holding the app, content) for every other project file, for an app folder called
+        app: text, or bytes for a file that is copied as it is. A path may lie inside the app folder."""
         ...

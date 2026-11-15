@@ -59,4 +59,4 @@ def _violation(cycle: list[str], edges: dict[str, dict[str, Edge]], each: tuple[
     hops = [edges[a][b] for a, b in zip(cycle, [*cycle[1:], cycle[0]])]
     shown = " → ".join("/".join((*each, name)) for name in [*cycle, cycle[0]])
     why = "; ".join(f"{file}:{line} imports {target}" for file, line, target in hops)
-    return Violation(hops[0][0], hops[0][1], f"{shown} import each other in a cycle: {why} (cycles)")
+    return Violation(hops[0][0], hops[0][1], f"{shown} import each other in a cycle: {why} (cycles)", "cycles")

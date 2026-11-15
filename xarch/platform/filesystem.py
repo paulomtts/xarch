@@ -38,8 +38,18 @@ class FileSystem:
         """Every file below root matching the glob pattern, sorted."""
         return sorted(root.rglob(pattern))
 
+    def files_below(self, path: Path) -> list[str]:
+        """Every file below path, at any depth, as its path below it written with `/`, sorted; [] if path is not a
+        folder."""
+        if not path.is_dir():
+            return []
+        return sorted(p.relative_to(path).as_posix() for p in path.rglob("*") if p.is_file())
+
     def read_text(self, path: Path) -> str:
         return path.read_text()
+
+    def read_bytes(self, path: Path) -> bytes:
+        return path.read_bytes()
 
     def create_empty(self, path: Path) -> None:
         self.write_text(path, "")
@@ -48,3 +58,8 @@ class FileSystem:
         """Write text to path, creating the folders above it."""
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text)
+
+    def write_bytes(self, path: Path, data: bytes) -> None:
+        """Write data to path, creating the folders above it."""
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)

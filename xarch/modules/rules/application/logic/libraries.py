@@ -32,5 +32,5 @@ def violations(files: Iterable[SourceFile], profile: Profile, root: str) -> list
                 continue
             seen.add((imp.line, top))
             found.append(Violation(file.name, imp.line, f"{label(profile, src)} may not import the outside package "
-                                                        f"{top} (libraries.{src.part})"))
+                                                        f"{top} (libraries.{src.part})", "libraries"))
     return found

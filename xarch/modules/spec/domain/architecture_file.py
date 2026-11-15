@@ -24,8 +24,10 @@ stops early. The file's keys:
                                test, where it would live in a project, the file holding it and a note shown right
                                after its path, as written) and helpers (a list of such files that its tests share,
                                such as builders or a fixture) are optional, and so is types_only (a list of parts its
-                               tests may import and use as types, never call: `x: Part` is fine, `Part(...)` is not).
-                               With tiers, every part is in some tier's subject or says `untested`, never both
+                               tests may import and use as types, never call: `x: Part` is fine, `Part(...)` is not),
+                               and so is forbidden (true: its tests are held to the `forbidden` list of the part
+                               they mirror). With tiers, every part is in some tier's subject or says `untested`,
+                               never both
     docs: {<path>: {from, note}}              optional; the project docs `init` writes below docs/project/, in this
                                order: each path is a file, written from the template file `from` (relative to this
                                file) after its placeholders are filled, see docs_template.py; a path ending in `/`
@@ -33,22 +35,44 @@ stops early. The file's keys:
                                has an optional `note`, shown after its line in the tree. A folder holding a single
                                file and no entry of its own is shown on one line, `<file>; <note>`. Without `docs`,
                                `init` writes none
-    files: {<path>: {from}}                   optional; the other files `init` writes, in this order, beside the app
-                               folder (in the folder holding it, with docs/ and pyproject.toml): each path is relative
-                               to that folder, e.g. tests/architecture/test_rules.py, and `from` names the template
-                               file it is written from (relative to this file). The text is written as it stands,
-                               except that `{{app}}`, the name of the app folder, is replaced by it, so a file that
-                               must find the app folder can name it; any other `{{...}}` stays. A path may not be
-                               empty, start with `/`, hold `..` or an empty step, lie in the app folder (the
-                               check is made by `init`, which knows it) or clash with a doc's path, docs/project/<path>.
-                               A file is never overwritten. Without `files`, `init` writes none
+    files: {<path>: {from, pinned, fill}}     optional; the other files `init` writes, in this order, beside the app
+                               folder (in the folder holding it, with docs/ and pyproject.toml), or inside it: each
+                               path is relative to that folder, e.g. tests/architecture/test_rules.py, and `from`
+                               names the template file it is written from (relative to this file). The text is written
+                               as it stands, except that `{{app}}`, the name of the app folder, is replaced by it
+                               (in a path too, so an entry may land inside the app: {{app}}/web/ui/); any other
+                               `{{...}}` stays. A path may not be empty, start with `/`, hold `..` or an empty step,
+                               or clash with a doc's path, docs/project/<path>. A path ending in `/` is a folder
+                               entry: `from` is a folder (relative to this file) holding at least one file, and
+                               every file under it is written below the path, keeping its relative path; entries may
+                               not overlap (a file or folder inside a folder entry, the same path twice). `init`,
+                               which knows the app folder, also refuses a file that would replace what the skeleton
+                               writes inside it (see project_files.py). A file is never overwritten. Without `files`,
+                               `init` writes none. pinned (true or false, default false; not for a folder entry):
+                               the project keeps the file as `init` writes it, and `check` reports it when it
+                               differs from what `init` would write now. fill (true or false; default true for a
+                               file, false for a folder): whether `{{app}}` is filled in; off, the bytes are copied
+                               unchanged, which a binary file needs; on, a file that is not UTF-8 text is refused
     libraries: {<part>: [<package>, ...]}     optional; the outside packages each part may import, by top-level
                                import name; the standard library is always allowed, and a part not listed may import
                                no outside package. Without `libraries`, outside packages are not checked
+    forbidden: {<part>: [<name>, ...]}        optional; what each part may not use: a dotted name as an absolute import
+                               binds it (datetime.datetime.now; a builtin as builtins.open), or a module by its import
+                               name (socket); a file of the part may neither import it (or below it) nor use it by
+                               name, see the rules module's forbidden check. Each list is non-empty, each name once
     fakes: {path, for, prefix} optional; the folder of the test fakes (path, below the tests root as in tests/fakes)
                                and the parts they stand in for: only a tier whose subject holds one may import them;
                                prefix, optional, is how a fake's name starts (Fake: the fake of DocumentRepo is
                                FakeDocumentRepo), which the guard stand-ins needs
+    tests: {files, functions, skips}  how the project's test framework names things: `files` is a list of patterns
+                               of a test file's name (a .py name, `*` for any text) and `functions` the pattern of a
+                               test function's name; `skips`, optional, the dotted names of what skips a test or
+                               expects it to fail (a marker or a call), which `check` counts. Required with `tiers` and with a guard that
+                               reads tests
+                               (scenario-coverage, stand-ins): they cannot tell a test without it. The names of
+                               the framework itself (its decorator, its mocks) are the parameters of those guards;
+                               xarch's code holds none of them. Python stays fixed: `typing.Protocol` marks a port,
+                               imports and the syntax tree are read as Python defines them
     guards: {<name>: <parameters>}   optional; the pre-built checks in use, each named in GUARDS with its parameters
     examples: {<name>: {part, path, file, note}}   optional; the docs' code examples, each one file of the example
                                project: the part it illustrates, where it would live (path, inside that part and no
@@ -63,15 +87,40 @@ from __future__ import annotations
 import re
 import sys
 from collections.abc import Callable, Collection, Mapping
+from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import Any
 
 from xarch.modules.spec.domain.docs import DOCS_ROOT
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.values import (EACH, EVERYTHING, Architecture, ArchitectureSource, ClosedTree, Doc,
-                                              Example, Fakes,
-                                              Guard, Layout, NoComments, Naming, PackageOnly, Part, ProjectFile, ScenarioCoverage,
-                                              Scope, StandIns, Subject, Target, Tier, TierExample)
+from xarch.modules.spec.domain.project_files import APP_PLACEHOLDER
+from xarch.modules.spec.domain.values import (
+    EACH,
+    EVERYTHING,
+    NAME,
+    Architecture,
+    ArchitectureSource,
+    CaseTable,
+    ClosedTree,
+    Doc,
+    Example,
+    Fakes,
+    Framework,
+    Guard,
+    Layout,
+    Naming,
+    NoComments,
+    PackageOnly,
+    Part,
+    ProjectFile,
+    ScenarioCoverage,
+    Scope,
+    StandIns,
+    Subject,
+    Target,
+    Tier,
+    TierExample,
+)
 
 VERSION = 1
 EACH_KEY = "each"
@@ -82,41 +131,64 @@ FILE = "file"
 """How a file marks a file in the layout."""
 
 _KEYS = {"xarch", "name", "layout", "notes", "parts", "rules", "layers", "placement", "naming", "tiers", "docs",
-         "files", "examples", "libraries", "fakes", "guards"}
+         "files", "examples", "libraries", "fakes", "guards", "tests", "forbidden"}
 _REQUIRED = ("name", "layout", "parts")
 _PART_KEYS = {"path", "role", "litmus", "entry", "untested"}
 _NAMING_KEYS = {"kind", "where", "pattern", "example"}
 _EXAMPLE_KEYS = {"part", "path", "file", "note"}
 _DOC_KEYS = {"from", "note"}
-_FILE_KEYS = {"from"}
+_FILE_KEYS = {"from", "pinned", "fill"}
 _TIER_REQUIRED = ("name", "subject", "proves", "may_touch", "litmus")
 _TIER_TEXTS = ("proves", "may_touch", "subject_text", "one_file_per", "cases_from", "data")
 """The keys of a tier that hold one line of text each."""
-_TIER_KEYS = {*_TIER_REQUIRED, *_TIER_TEXTS, "example", "helpers", "types_only"}
+_TIER_KEYS = {*_TIER_REQUIRED, *_TIER_TEXTS, "example", "helpers", "types_only", "forbidden"}
 _TIER_EXAMPLE_KEYS = {"path", "file", "note"}
 _PART_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_-]*")
 _PACKAGE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+_DOTTED = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+")
+_NAME_OR_DOTTED = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*")
+_FILE_PATTERN = re.compile(r"[A-Za-z0-9_.*-]+\.py")
+_FILE_NAME = re.compile(r"[A-Za-z0-9_.-]+\.py")
+_FUNCTION_PATTERN = re.compile(r"[A-Za-z0-9_*]+")
+_TESTS_KEYS = {"files", "functions"}
+_TESTS_OPTIONAL = {"skips"}
+_SCENARIO_KEYS = {"results", "tier", "suffix", "columns", "table", "file"}
+_TABLE_KEYS = {"decorator", "row", "id", "keywords"}
+_TABLE_REQUIRED = ("decorator", "row", "id")
+_STAND_INS_KEYS = {"mocks", "autospec", "spec"}
 GUARDS = {
     "package-only": "[<part>, ...]: parts that are imported only as a package, never by their files, from outside it",
-    "scenario-coverage": "{results: <part>, tier: <tier>, suffix: <text>, columns: [<state>, <command>, <result>]}: "
-                         "every variant of a union named <Name><suffix> in a results part is the result column of a "
-                         "row of the table in its use case's test file of that tier; every row is a pytest.param "
-                         "with an id, and a table test has no branching",
+    "scenario-coverage": "{results: <part>, tier: <tier>, suffix: <text>, columns: [<state>, <command>, <result>], "
+                         "table: {decorator, row, id, keywords}, file: <name>}: every variant of a union named "
+                         "<Name><suffix> in a results part is the result column of a row of the table in its use "
+                         "case's test file <file> of that tier; every row is a <table.row> call with an <table.id>, "
+                         "and a table test has no branching",
     "no-comments": "{}: no `#` comments in the app or its tests; docstrings and tool directives stay",
-    "stand-ins": "{}: every Protocol in a part `fakes` stands in for is fire-only (every method returns None) or read "
-                 "(any one returns a value), each method annotated; every read port has a fake <prefix><Port> "
-                 "under `fakes.path`; and a test of a tier that may import the fakes gives every mock a spec, never "
-                 "a read port's",
+    "stand-ins": "{mocks: [<dotted name>, ...], autospec: [<dotted name>, ...], spec: [<keyword>, ...]}: every "
+                 "Protocol in a part `fakes` stands in for is fire-only (every method returns None) or read (any one "
+                 "returns a value), each method annotated; every read port has a fake <prefix><Port> under "
+                 "`fakes.path`; and a test of a tier that may import the fakes gives every mock a spec, never a "
+                 "read port's",
     "closed-tree": "{}: every Python file of the app lies in a part or is the package file of a folder of the layout; "
                    "off unless switched on, since a profile is a protocol, not a closed world",
 }
 """The pre-built checks a file may switch on in `guards`, each with the parameters it takes."""
+_GUARD_NAMES: dict[type, str] = {PackageOnly: "package-only", ScenarioCoverage: "scenario-coverage",
+                                 NoComments: "no-comments", StandIns: "stand-ins", ClosedTree: "closed-tree"}
+
+
+def guard_name(guard: Guard) -> str:
+    """The name a file switches the guard on by, one of GUARDS."""
+    return _GUARD_NAMES[type(guard)]
 
 _TARGET = re.compile(r"(?P<part>[^@/]*)(?:@(?P<scope>[^/]*))?(?:/(?P<sub>.*))?")
 
 
-def parse_architecture(document: Any, source: str, has_file: Callable[[str], bool]) -> Architecture:
-    """The architecture the document describes; raises InvalidArchitecture listing every problem."""
+def parse_architecture(document: Any, source: str, has_file: Callable[[str], bool],
+                       folder_files: Callable[[str], tuple[str, ...] | None] | None = None) -> Architecture:
+    """The architecture the document describes; raises InvalidArchitecture listing every problem. folder_files says
+    which files lie under a folder next to the architecture file, None when it is no folder; without it, no folder
+    exists."""
     problems: list[str] = []
     if not isinstance(document, Mapping):
         raise InvalidArchitecture(source, ["must be a mapping of keys, starting with `xarch: 1`"])
@@ -142,15 +214,19 @@ def parse_architecture(document: Any, source: str, has_file: Callable[[str], boo
     naming = _naming(document.get("naming", []), problems)
     tiers = _tiers(document.get("tiers"), parts, declared, has_file, problems) if "tiers" in document else ()
     docs = _docs(document.get("docs", {}), has_file, problems)
-    files = _files(document.get("files", {}), docs, has_file, problems)
+    files = _files(document.get("files", {}), docs, has_file, folder_files or (lambda relative: None), problems)
     examples = _examples(document.get("examples", {}), parts, declared, layout, has_file, problems)
     libraries = _libraries(document["libraries"], parts, declared, problems) if "libraries" in document else None
+    forbidden = _forbidden(document["forbidden"], parts, declared, problems) if "forbidden" in document else {}
     fakes = _fakes(document["fakes"], parts, declared, problems) if "fakes" in document else None
-    guards = _guards(document.get("guards", {}), parts, declared, tiers, fakes, problems)
+    framework = _framework(document["tests"], problems) if "tests" in document else None
+    guards = _guards(document.get("guards", {}), parts, declared, tiers, fakes, framework, problems)
+    if "tests" not in document:
+        problems += _needs_tests(document, tiers)
     if problems:
         raise InvalidArchitecture(source, problems)
     return Architecture(name, layout, parts, rules, docs, examples, notes, layers, placement, naming, tiers,
-                        libraries, guards, fakes, singular[0] if singular else "", files)
+                        libraries, guards, fakes, singular[0] if singular else "", files, framework, forbidden)
 
 
 def _check_version(document: Mapping[Any, Any], source: str) -> None:
@@ -471,40 +547,94 @@ def _docs(value: Any, has_file: Callable[[str], bool], problems: list[str]) -> t
 
 
 def _files(value: Any, docs: tuple[Doc, ...], has_file: Callable[[str], bool],
-           problems: list[str]) -> tuple[ProjectFile, ...]:
-    """The project files: each path below the project root with the template it is written from."""
+           folder_files: Callable[[str], tuple[str, ...] | None], problems: list[str]) -> tuple[ProjectFile, ...]:
+    """The project files: each path below the project root with the template, or the folder, it is written from."""
     if not isinstance(value, Mapping):
-        problems.append("files: must be a mapping of paths to {from}, such as {tests/test_rules.py: {from: guard.py}}")
+        problems.append("files: must be a mapping of paths to {from}, such as {tests/rules.py: {from: guard.py}}")
         return ()
     found: list[ProjectFile] = []
     for key, spec in value.items():
+        folder = isinstance(key, str) and key.endswith("/")
         where = f"files.{key}"
-        steps = tuple(key.split("/")) if isinstance(key, str) else ()
+        steps = tuple(key.removesuffix("/").split("/")) if isinstance(key, str) else ()
         if not steps or any(step in ("", ".", "..") or "\\" in step for step in steps):
             problems.append(f"{where}: must be a path of plain names below the project root")
+            continue
+        if re.search(r"[{}]", key.replace(APP_PLACEHOLDER, "")):
+            problems.append(f"{where}: must be a path of plain names below the project root; "
+                            f"the only placeholder is {APP_PLACEHOLDER}")
             continue
         if not isinstance(spec, Mapping):
             problems.append(f"{where}: must be a mapping such as {{from: <file>}}")
             continue
         count = len(problems)
         problems += _unknown_keys(spec, _FILE_KEYS, where)
-        source = _doc_source(spec, where, False, has_file, problems)
+        source = (_folder_source(spec, where, has_file, folder_files, problems) if folder
+                  else _file_source(spec, where, has_file, folder_files, problems))
+        pinned = spec.get("pinned", False)
+        if not isinstance(pinned, bool):
+            problems.append(f"{where}.pinned: must be true or false: whether `check` reports the file when it differs "
+                            "from what `init` writes")
+        elif pinned and folder:
+            problems.append(f"{where}.pinned: a folder entry cannot be pinned: a project edits what it copies")
+        fill = spec.get("fill", not folder)
+        if not isinstance(fill, bool):
+            problems.append(f"{where}.fill: must be true or false: whether `{APP_PLACEHOLDER}` is filled in")
         if len(problems) == count:
-            found.append(ProjectFile(steps, source or ""))
+            found.append(ProjectFile(steps, source or "", pinned, folder, fill))
     for file in found:
         problems += _file_clashes(file, found, docs)
     return tuple(found)
 
 
+def _entry(file: ProjectFile) -> str:
+    return "/".join(file.path) + ("/" if file.folder else "")
+
+
 def _file_clashes(file: ProjectFile, files: list[ProjectFile], docs: tuple[Doc, ...]) -> list[str]:
-    where = f"files.{'/'.join(file.path)}"
+    where = f"files.{_entry(file)}"
     found = [f"{where}: '{'/'.join(file.path[:i])}' is a file, not a folder"
-             for i in range(1, len(file.path)) if any(other.path == file.path[:i] for other in files)]
+             for i in range(1, len(file.path)) if any(o.path == file.path[:i] and not o.folder for o in files)]
+    for other in files:
+        if not other.folder or other is file:
+            continue
+        if file.path == other.path:
+            found.append(f"{where}: is also a folder entry")
+        elif file.path[:len(other.path)] == other.path:
+            found.append(f"{where}: lies inside the folder entry '{_entry(other)}'")
     for doc in docs:
         written = DOCS_ROOT + doc.path
         if doc.source is not None and (written[:len(file.path)] == file.path or file.path[:len(written)] == written):
             found.append(f"{where}: collides with docs.{'/'.join(doc.path)}, written to {'/'.join(written)}")
     return found
+
+
+def _file_source(spec: Mapping[Any, Any], where: str, has_file: Callable[[str], bool],
+                 folder_files: Callable[[str], tuple[str, ...] | None], problems: list[str]) -> str | None:
+    if _text(spec.get("from")) and not has_file(spec["from"]) and folder_files(spec["from"]):
+        problems.append(f"{where}.from: '{spec['from']}' is a folder, not a file: end the key with / to copy a folder")
+        return None
+    return _doc_source(spec, where, False, has_file, problems)
+
+
+def _folder_source(spec: Mapping[Any, Any], where: str, has_file: Callable[[str], bool],
+                   folder_files: Callable[[str], tuple[str, ...] | None], problems: list[str]) -> str | None:
+    if "from" not in spec:
+        problems.append(f"{where}: missing `from`, the folder")
+    elif not _text(spec["from"]):
+        problems.append(f"{where}.from: must be a folder name")
+    else:
+        folder = spec["from"].removesuffix("/")
+        held = folder_files(folder)
+        if has_file(folder):
+            problems.append(f"{where}.from: '{folder}' is a file, not a folder: a folder entry copies a folder")
+        elif held is None:
+            problems.append(f"{where}.from: no folder '{folder}' next to the architecture file")
+        elif not held:
+            problems.append(f"{where}.from: the folder '{folder}' holds no file")
+        else:
+            return folder
+    return None
 
 
 def _doc_source(spec: Mapping[Any, Any], where: str, folder: bool, has_file: Callable[[str], bool],
@@ -572,12 +702,17 @@ def _tiers(value: Any, parts: dict[str, Part], declared: set[str], has_file: Cal
         helpers = _tier_helpers(spec["helpers"], has_file, f"{where}.helpers", problems) if "helpers" in spec else ()
         types_only = (tuple(_part_names(spec["types_only"], declared, f"{where}.types_only", problems))
                       if "types_only" in spec else ())
+        held = spec.get("forbidden", False)
+        if not isinstance(held, bool):
+            problems.append(f"{where}.forbidden: must be true or false: whether its tests are held to the `forbidden` "
+                            "list of the part they mirror")
         for item in subject:
             claimed.setdefault(item.part, name if _line(name) else where)
         if len(problems) == count:
             tiers.append(Tier(name, subject, spec["proves"], spec["may_touch"], spec["litmus"].strip("\n"),
                               spec.get("subject_text", ""), spec.get("one_file_per", ""), spec.get("cases_from", ""),
-                              spec.get("data", ""), example, helpers, tuple(p for p in types_only if p in parts)))
+                              spec.get("data", ""), example, helpers, tuple(p for p in types_only if p in parts),
+                              held))
     for part in parts.values():
         if part.untested and part.name in claimed:
             problems.append(f"tiers: part '{part.name}' is in the subject of tier '{claimed[part.name]}' "
@@ -617,7 +752,7 @@ def _tier_example(value: Any, has_file: Callable[[str], bool], where: str, probl
     path = value.get("path")
     steps = tuple(path.strip("/").split("/")) if _text(path) else None
     if "path" in value and (steps is None or any(s in ("", ".", "..") or EACH in s for s in steps)):
-        problems.append(f"{where}.path: must be a path such as 'tests/src/billing/api/test_invoice.py'")
+        problems.append(f"{where}.path: must be a path such as 'tests/src/billing/api/invoice_checks.py'")
     if "file" in value:
         _file(value["file"], has_file, f"{where}.file", problems)
     if "note" in value and not _line(value["note"]):
@@ -666,6 +801,37 @@ def _libraries(value: Any, parts: dict[str, Part], declared: set[str],
     return libraries | {name: () for name in parts if name not in libraries}
 
 
+def _forbidden(value: Any, parts: dict[str, Part], declared: set[str],
+               problems: list[str]) -> dict[str, tuple[tuple[str, ...], ...]]:
+    """The names each listed part may not use, in the file's order: a dotted name, or a module by its import name."""
+    if not isinstance(value, Mapping):
+        problems.append("forbidden: must be a mapping of part names to lists of dotted names, such as "
+                        "{<part>: [datetime.datetime.now, socket]}")
+        return {}
+    forbidden: dict[str, tuple[tuple[str, ...], ...]] = {}
+    for name, names in value.items():
+        where = f"forbidden.{name}"
+        if name not in declared:
+            problems.append(f"{where}: no part named {name!r}")
+            continue
+        if not isinstance(names, list) or not names:
+            problems.append(f"{where}: must be a non-empty list of dotted names or import names, such as "
+                            "[datetime.datetime.now, socket]")
+            continue
+        found: list[tuple[str, ...]] = []
+        for item in names:
+            if not isinstance(item, str) or not _NAME_OR_DOTTED.fullmatch(item):
+                problems.append(f"{where}: {item!r} is not a dotted name such as datetime.datetime.now, nor an import "
+                                "name such as socket")
+            elif tuple(item.split(".")) in found:
+                problems.append(f"{where}: {item!r} is listed twice")
+            else:
+                found.append(tuple(item.split(".")))
+        if name in parts:
+            forbidden[name] = tuple(found)
+    return forbidden
+
+
 def _fakes(value: Any, parts: dict[str, Part], declared: set[str], problems: list[str]) -> Fakes | None:
     where = "fakes"
     if not isinstance(value, Mapping) or not {"path", "for"} <= set(value) <= {"path", "for", "prefix"}:
@@ -701,7 +867,7 @@ def _part_names(value: Any, declared: set[str], where: str, problems: list[str])
 
 
 def _guards(value: Any, parts: dict[str, Part], declared: set[str], tiers: tuple[Tier, ...], fakes: Fakes | None,
-            problems: list[str]) -> tuple[Guard, ...]:
+            framework: Framework | None, problems: list[str]) -> tuple[Guard, ...]:
     if not isinstance(value, Mapping):
         problems.append("guards: must be a mapping of guard names to their parameters, such as {no-comments: {}}")
         return ()
@@ -714,34 +880,40 @@ def _guards(value: Any, parts: dict[str, Part], declared: set[str], tiers: tuple
             names = _part_names(spec, declared, where, problems)
             guards.append(PackageOnly(tuple(n for n in names if n in parts)))
         elif name == "scenario-coverage":
-            guard = _scenario_coverage(spec, parts, declared, tiers, where, problems)
+            guard = _scenario_coverage(spec, parts, declared, tiers, framework, where, problems)
             if guard is not None:
                 guards.append(guard)
-        elif spec not in ({}, None):
-            problems.append(f"{where}: takes no parameters: write {{}}")
-        elif name == "closed-tree":
-            guards.append(ClosedTree())
         elif name == "stand-ins":
             if fakes is None or not fakes.prefix:
                 problems.append(f"{where}: needs `fakes` with a `prefix`, such as {{path: tests/fakes, for: [<part>], "
                                 "prefix: Fake}: the parts whose Protocols the fakes stand in for, where they live and "
                                 "how a fake is named")
             else:
-                guards.append(StandIns())
+                stand_ins = _stand_ins(spec, where, problems)
+                if stand_ins is not None:
+                    guards.append(stand_ins)
+        elif spec not in ({}, None):
+            problems.append(f"{where}: takes no parameters: write {{}}")
+        elif name == "closed-tree":
+            guards.append(ClosedTree())
         else:
             guards.append(NoComments())
     return tuple(guards)
 
 
-def _scenario_coverage(spec: Any, parts: dict[str, Part], declared: set[str], tiers: tuple[Tier, ...], where: str,
-                       problems: list[str]) -> ScenarioCoverage | None:
-    keys = {"results", "tier", "suffix", "columns"}
-    if not isinstance(spec, Mapping) or set(spec) != keys:
-        problems.append(f"{where}: must be a mapping {{results, tier, suffix, columns}}: the part holding the result "
-                        "unions, the tier whose test files hold their tables, how a union's name ends, and the three "
-                        "names of a table's parameters: its state, its command and its result")
+def _scenario_coverage(spec: Any, parts: dict[str, Part], declared: set[str], tiers: tuple[Tier, ...],
+                       framework: Framework | None, where: str, problems: list[str]) -> ScenarioCoverage | None:
+    if not isinstance(spec, Mapping):
+        problems.append(f"{where}: must be a mapping {{results, tier, suffix, columns, table, file}}: the part holding "
+                        "the result unions, the tier whose test files hold their tables, how a union's name ends, the "
+                        "three names of a table's parameters (its state, its command and its result), how the table "
+                        "is written, and the name of a use case's test file")
         return None
     count = len(problems)
+    problems += _unknown_keys(spec, _SCENARIO_KEYS, where)
+    problems += [f"{where}: missing `{key}`" for key in sorted(_SCENARIO_KEYS) if key not in spec]
+    if len(problems) != count:
+        return None
     results, tier, suffix = spec["results"], spec["tier"], spec["suffix"]
     part = parts.get(results) if isinstance(results, str) else None
     if part is None:
@@ -758,7 +930,157 @@ def _scenario_coverage(spec: Any, parts: dict[str, Part], declared: set[str], ti
     if not isinstance(suffix, str) or not _PACKAGE.fullmatch(suffix):
         problems.append(f"{where}.suffix: must be the end of a name, such as Result")
     columns = _columns(spec["columns"], f"{where}.columns", problems)
-    return ScenarioCoverage(results, tier, suffix, columns) if len(problems) == count and columns else None
+    table = _case_table(spec["table"], f"{where}.table", problems)
+    file = _use_case_file(spec["file"], framework, f"{where}.file", problems)
+    if len(problems) != count or columns is None or table is None or file is None:
+        return None
+    return ScenarioCoverage(results, tier, suffix, columns, table, file)
+
+
+def _case_table(value: Any, where: str, problems: list[str]) -> CaseTable | None:
+    if not isinstance(value, Mapping):
+        problems.append(f"{where}: must be a mapping {{decorator, row, id}}, and optionally keywords: the dotted names "
+                        "of the table's decorator and of its row, the keyword of a row's id, and the keywords the "
+                        "decorator's two arguments may be given by")
+        return None
+    count = len(problems)
+    problems += _unknown_keys(value, _TABLE_KEYS, where)
+    problems += [f"{where}: missing `{key}`" for key in _TABLE_REQUIRED if key not in value]
+    decorator = _dotted(value["decorator"], f"{where}.decorator", problems) if "decorator" in value else None
+    row = _dotted(value["row"], f"{where}.row", problems) if "row" in value else None
+    if "id" in value and not (isinstance(value["id"], str) and value["id"].isidentifier()):
+        problems.append(f"{where}.id: must be a keyword name")
+    keywords = value.get("keywords")
+    if "keywords" in value and not (isinstance(keywords, list) and len(keywords) == 2 and len(set(keywords)) == 2
+                                    and all(isinstance(k, str) and k.isidentifier() for k in keywords)):
+        problems.append(f"{where}.keywords: must be two keyword names, the decorator's names and its rows, "
+                        "such as [names, rows]")
+    if len(problems) != count or decorator is None or row is None:
+        return None
+    return CaseTable(decorator, row, value["id"], (keywords[0], keywords[1]) if keywords else None)
+
+
+def _use_case_file(value: Any, framework: Framework | None, where: str, problems: list[str]) -> str | None:
+    if not isinstance(value, str) or value.count(NAME) != 1:
+        problems.append(f"{where}: must hold `{NAME}` once, such as a_{NAME}.py")
+        return None
+    name = value.replace(NAME, "x")
+    if not _FILE_NAME.fullmatch(name):
+        problems.append(f"{where}: must be a file name below the test folders, such as a_{NAME}.py")
+        return None
+    if framework is not None and not any(fnmatchcase(name, pattern) for pattern in framework.files):
+        problems.append(f"{where}: {value!r} is not a name `tests.files` recognises as a test file")
+        return None
+    return value
+
+
+def _dotted(value: Any, where: str, problems: list[str]) -> tuple[str, ...] | None:
+    """A dotted name such as pkg.sub.name, the path an absolute import binds."""
+    if not isinstance(value, str) or not _DOTTED.fullmatch(value):
+        problems.append(f"{where}: {value!r} is not a dotted name such as pkg.sub.name")
+        return None
+    return tuple(value.split("."))
+
+
+def _dotted_names(value: Any, where: str, problems: list[str]) -> tuple[tuple[str, ...], ...] | None:
+    if not isinstance(value, list) or not value:
+        problems.append(f"{where}: must be a list of dotted names such as pkg.sub.Name")
+        return None
+    found: list[tuple[str, ...]] = []
+    for item in value:
+        name = _dotted(item, where, problems)
+        if name is not None and name in found:
+            problems.append(f"{where}: {item!r} is listed twice")
+        elif name is not None:
+            found.append(name)
+    return tuple(found)
+
+
+def _stand_ins(spec: Any, where: str, problems: list[str]) -> StandIns | None:
+    if not isinstance(spec, Mapping):
+        problems.append(f"{where}: must be a mapping {{mocks, spec}}, and optionally autospec: the dotted names of "
+                        "the calls that build a mock, and the keywords a mock is given its spec by")
+        return None
+    count = len(problems)
+    problems += _unknown_keys(spec, _STAND_INS_KEYS, where)
+    problems += [f"{where}: missing `{key}`" for key in ("mocks", "spec") if key not in spec]
+    mocks = _dotted_names(spec["mocks"], f"{where}.mocks", problems) if "mocks" in spec else None
+    autospec = _dotted_names(spec["autospec"], f"{where}.autospec", problems) if "autospec" in spec else ()
+    for name in (autospec or ()):
+        if mocks and name in mocks:
+            problems.append(f"{where}.autospec: {'.'.join(name)!r} is also listed in mocks")
+    keywords = _keywords(spec["spec"], f"{where}.spec", problems) if "spec" in spec else None
+    if len(problems) != count or mocks is None or autospec is None or keywords is None:
+        return None
+    return StandIns(mocks, autospec, keywords)
+
+
+def _keywords(value: Any, where: str, problems: list[str]) -> tuple[str, ...] | None:
+    if not isinstance(value, list) or not value:
+        problems.append(f"{where}: must be a list of keyword names such as [spec]")
+        return None
+    found: list[str] = []
+    for item in value:
+        if not isinstance(item, str) or not item.isidentifier():
+            problems.append(f"{where}: {item!r} is not a keyword name")
+        elif item in found:
+            problems.append(f"{where}: {item!r} is listed twice")
+        else:
+            found.append(item)
+    return tuple(found)
+
+
+def _framework(value: Any, problems: list[str]) -> Framework | None:
+    where = "tests"
+    if not isinstance(value, Mapping):
+        problems.append("tests: must be a mapping {files, functions}: the patterns of a test file's name and of a test "
+                        "function's")
+        return None
+    count = len(problems)
+    problems += _unknown_keys(value, _TESTS_KEYS | _TESTS_OPTIONAL, where)
+    problems += [f"{where}: missing `{key}`" for key in sorted(_TESTS_KEYS) if key not in value]
+    files = _file_patterns(value["files"], problems) if "files" in value else None
+    skips = _dotted_names(value["skips"], f"{where}.skips", problems) if "skips" in value else ()
+    functions = value.get("functions")
+    if "functions" in value and not (isinstance(functions, str) and _FUNCTION_PATTERN.fullmatch(functions)
+                                     and functions.replace("*", "x").isidentifier()):
+        problems.append(f"{where}.functions: must be a function name pattern: a name with `*` for any text")
+    if len(problems) != count or files is None or skips is None:
+        return None
+    return Framework(files, functions, skips)
+
+
+def _file_patterns(value: Any, problems: list[str]) -> tuple[str, ...] | None:
+    where = "tests.files"
+    if not isinstance(value, list) or not value:
+        problems.append(f"{where}: must be a non-empty list of file name patterns, each a .py name with `*` for any "
+                        "text")
+        return None
+    found: list[str] = []
+    for item in value:
+        if not isinstance(item, str) or not _FILE_PATTERN.fullmatch(item):
+            problems.append(f"{where}: {item!r} is not a file name pattern: a name ending in .py, with `*` for any "
+                            "text")
+        elif item in found:
+            problems.append(f"{where}: {item!r} is listed twice")
+        else:
+            found.append(item)
+    return tuple(found)
+
+
+def _needs_tests(document: Mapping[Any, Any], tiers: tuple[Tier, ...]) -> list[str]:
+    guards = document.get("guards")
+    names = [f"`guards.{name}`" for name in ("scenario-coverage", "stand-ins")
+             if isinstance(guards, Mapping) and name in guards]
+    needing = (["`tiers`"] if tiers or "tiers" in document else []) + names
+    if not needing:
+        return []
+    return [f"missing `tests`: {_and(needing)} must recognise a test file by its name: add "
+            "tests: {files: [<pattern>, ...], functions: <pattern>}"]
+
+
+def _and(items: list[str]) -> str:
+    return items[0] if len(items) == 1 else f"{', '.join(items[:-1])} and {items[-1]}"
 
 
 def _columns(value: Any, where: str, problems: list[str]) -> tuple[str, str, str] | None:

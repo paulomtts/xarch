@@ -42,7 +42,8 @@ parts:
       helpers, base errors, lifecycle fields, tracing carriers, `Clock`)? If yes, it goes here. Is it a pure
       function with no port and no I/O that two or more modules need? If yes, it goes in `kernel/logic/`. If only
       one module needs it, or it names one module's thing, such as a concrete id like `DocumentId`, it belongs in
-      the owning module. If it wraps a technology, it belongs in `platform/`.
+      the owning module. If it wraps a technology, it belongs in `platform/`. `xarch check` holds it to its
+      `forbidden` list: no clock and no I/O by name.
   domain:
     path: modules/*/domain
     role: "entities, values (incl. ids), errors: invariants only"
@@ -50,7 +51,7 @@ parts:
       Is it an invariant of one of this module's entities or values (a state transition or a validation) that can
       run with no database and no clock? If yes, it goes here, on that entity or value. If it is a pure rule that is
       not one entity's invariant, it belongs in `application/logic/`. If it must load or save anything, it is a
-      service step.
+      service step. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
   contract:
     path: modules/*/contract
     role: "the module's published language: commands, DTOs, Results (one union per use case), ids"
@@ -82,7 +83,7 @@ parts:
       Is it a pure function over this module's domain objects, not one entity's invariant, with no port and no I/O?
       If yes, it goes here, in a file named for the rule. If it holds one entity's invariant, it belongs in that
       entity in `domain/`. If another module needs it too, it belongs in `kernel/logic/`. If it must load or save
-      anything, it is a service step.
+      anything, it is a service step. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
   ports:
     path: modules/*/application/ports
     role: "Protocols for what the module needs from the outside"
@@ -90,7 +91,8 @@ parts:
       Is it something the application needs from outside itself (storage, search, email, or another module's rule)
       that can be declared as a `Protocol` with no implementation, in the module's own vocabulary and not in SQL or
       vendor terms? If yes, it goes here. If it is a generic primitive with no business meaning (such as `Clock`),
-      it belongs in `kernel/`. If it has a body that talks to a real system, it belongs in `adapters/`.
+      it belongs in `kernel/`. If it has a body that talks to a real system, it belongs in `adapters/`. `xarch
+      check` holds it to its `forbidden` list: no clock and no I/O by name.
   adapters:
     path: modules/*/adapters
     role: "driven only: repos, which translate the platform/ table models; use platform/ clients"
@@ -150,6 +152,23 @@ libraries:
   web:        [fastapi]
   bootstrap:  [sqlmodel, fastapi, uvicorn]
 
+# The names each part may not use, so that what its litmus test promises (no clock, no I/O) is checked: a call or
+# attribute by its dotted name as an absolute import binds it (a builtin as builtins.<name>), or a whole package or
+# module by its import name. A file of the part may not import a listed module, or anything below it, nor use a
+# listed name, called or not, as the file writes it: through its imports and their aliases, a builtin by its bare
+# name where nothing in its scope shadows it. Only what the file says is seen: a name reached through a variable,
+# getattr or an object, or I/O done for the part by code elsewhere, is not. A tier with `forbidden: true` holds its
+# tests to the list of the part they mirror. &pure names the list once and *pure repeats it (YAML's anchor and alias).
+forbidden:
+  domain:     &pure [datetime.datetime.now, datetime.datetime.utcnow, datetime.datetime.today, datetime.date.today,
+                     time.time, time.time_ns, time.monotonic, time.perf_counter, builtins.open, builtins.print,
+                     builtins.input, sys.stdin, sys.stdout, sys.stderr, os.environ, os.getenv, socket, subprocess,
+                     sqlite3, urllib, http, shutil]
+  logic:      *pure
+  kernel:     *pure
+  ports:      *pure
+  contract:   *pure
+
 # The layers of a module, each from the inside out: no part imports a part after it in its chain.
 layers:
   application: [domain, contract, logic, ports, services, controller]
@@ -176,6 +195,21 @@ naming:
   - {kind: table model,    where: platform/sql/tables/,  pattern: "thing and `Row`",             example: DocumentRow}
   - {kind: test fake,      where: tests/fakes/,          pattern: "`Fake` and the port's name",  example: FakeDocumentRepo}
 
+# How the project's test framework names things, which xarch's code does not know: a test file is one whose name
+# matches a pattern of `files` (`*` stands for any text; the file name alone, whatever its folder), and a test
+# function one whose name matches `functions`. The tiers need the first to tell a test from a helper, the guards
+# below both. Required with `tiers` and with a guard that reads tests. Python itself stays fixed in xarch: a port
+# is a `typing.Protocol`, imports and the syntax tree are read as Python defines them. A fake (see `fakes`) is
+# never a test, whatever it is named. skips, optional: the dotted names an import binds of what skips a test or
+# expects it to fail, a marker or a call; `check` counts every use of one (or of a name below it) in the tests in its
+# enforcement section, and `--strict` fails on them. Python's own `importlib.import_module` and `__import__` are
+# counted there too, as dynamic imports, and need no entry.
+tests:
+  files: ["test_*.py", "*_test.py"]
+  functions: "test_*"
+  skips: [pytest.mark.skip, pytest.mark.skipif, pytest.mark.xfail, pytest.skip, pytest.xfail, pytest.importorskip,
+          unittest.skip, unittest.skipIf, unittest.skipUnless, unittest.expectedFailure]
+
 # The kinds of test, in the order their litmus tests run when a test's tier is not obvious: the first it passes wins.
 # subject: the parts it tests (<part>/<path> for only a path below one), shown as their folders unless subject_text
 # says otherwise. Every part is in some tier's subject, or says why not with `untested` (see platform).
@@ -188,7 +222,8 @@ tiers:
   - name: unit
     subject: [kernel, kernel/logic, domain, logic, adapters]
     proves: an invariant, a value rule, a state transition, a pure rule, an adapter's translation
-    may_touch: "nothing: no I/O, no clock, no fakes; an adapter gets a stub of its `platform/` client"
+    may_touch: "nothing: no I/O, no clock (checked by `forbidden` for the pure parts), no fakes; an adapter gets a stub of its `platform/` client"
+    forbidden: true
     litmus: >-
       Does it prove a rule, value or transition by building the object and asking it, or by calling a pure function
       from `logic/`, or by handing an adapter a stub client and checking what it translates, with no port in sight?
@@ -240,9 +275,9 @@ tiers:
     may_touch: "`tests/architecture/`"
     litmus: >-
       Does it read the source tree and fail on a rule of architecture.md, whatever the app does? If yes, it is a
-      guard, and it has a file under `artifacts/guards/`. If it runs the app, it is not a guard.
-    one_file_per: rule
-    cases_from: the standard it enforces
+      guard. If it runs the app, it is not a guard.
+    one_file_per: project, since one test runs every guard
+    cases_from: the guards of section 9
     data: none
     example: {path: tests/architecture/test_rules.py, file: examples/shared/tiers/guard.py,
               note: " (written by `xarch init`)"}
@@ -256,16 +291,36 @@ fakes: {path: tests/fakes, for: [ports], prefix: Fake}
 # its parameters. package-only: the parts imported only as a package from outside them. scenario-coverage: the part
 # holding the result unions (results), the tier whose test files hold their tables (tier), how a union's name ends
 # (suffix), and the three parameter names of a table, its state, its command and its result (columns): each variant
-# of a union is the result of a row, every row is a pytest.param with an id, and a table test does not branch.
-# no-comments: none. stand-ins: none, it reads `fakes`: a port is read when any of its methods
-# returns a value and fire-only when all return None (by its return annotations), every read port has a fake, and an
-# integration test's mocks name a fire-only port. Also available,
+# of a union is the result of a row, every row is a call of the table's row with an id, and a table test does not
+# branch. How a table is written, in the framework's names (table): the dotted name an import binds of the
+# decorator that holds the rows (decorator), of a row (row), the keyword that gives a row its id (id), and,
+# optionally, the keywords the decorator's two positional arguments, the parameter names and the rows, may be
+# given by (keywords; without them only positional arguments are read). file is the name of a use case's test
+# file, `{name}` standing for the use case in snake_case (PublishDocument: test_publish_document.py), and must be
+# a name `tests.files` matches. The mechanism assumes a decorator holding rows; a framework that holds its cases
+# another way cannot use this guard, and leaves it out.
+# no-comments: none. stand-ins: it reads `fakes`: a port is read when any of its methods returns a value and
+# fire-only when all return None (by its return annotations), every read port has a fake, and an integration test's
+# mocks name a fire-only port. A mock is a call of one of `mocks` (dotted names an import binds), which names its
+# spec as its first argument or by a keyword of `spec`; the calls of `autospec`, optional, take the spec as their
+# first argument or by the first keyword of `spec`. The mechanism assumes a mock built by a call that names its
+# spec; a framework with another shape leaves the guard out. Also available,
 # and off here because the tree is a protocol, not a closed world: closed-tree, every Python file lies in a part.
 guards:
   package-only:      [contract]
-  scenario-coverage: {results: contract, tier: integration, suffix: Result, columns: [given, when, then]}
+  scenario-coverage:
+    results: contract
+    tier: integration
+    suffix: Result
+    columns: [given, when, then]
+    table: {decorator: pytest.mark.parametrize, row: pytest.param, id: id, keywords: [argnames, argvalues]}
+    file: "test_{name}.py"
   no-comments:       {}
-  stand-ins:         {}
+  stand-ins:
+    mocks: [unittest.mock.Mock, unittest.mock.MagicMock, unittest.mock.AsyncMock,
+            unittest.mock.NonCallableMock, unittest.mock.NonCallableMagicMock]
+    autospec: [unittest.mock.create_autospec]
+    spec: [spec, spec_set]
 
 # The project docs `xarch init` writes below docs/project/, in this order, and how the docs tree shows them. A key
 # is a path: a file takes `from`, the template file it is written from (next to this one, placeholders filled as
@@ -285,15 +340,23 @@ docs:
   artifacts/audits/_template.md:     {from: docs/audit.md}
   artifacts/taxonomy/_template.md:   {from: docs/taxonomy.md}
   artifacts/modules/_template.md:    {from: docs/module.md}
-  artifacts/guards/_template.md:     {from: docs/guard.md, note: one per test that checks the codebase rather than the product}
+  artifacts/guards/_template.md:     {from: docs/guard.md, note: the write-up of a guard the project adds itself}
 
 # The files `xarch init` writes besides the docs: a key is a path relative to the project root (the folder holding the
-# app folder, where docs/ goes; no `..`, no leading `/`, not inside the app folder, not a docs path), and `from` is the
-# template file it is written from (next to this one). The text is written as it stands, except that `{{app}}` is
-# replaced by the name of the app folder, which differs per project (`--app`). A file is never overwritten. Without
-# `files`, `init` writes none. The guard test is the file of the guard tier's example, so the docs show what is written.
+# app folder, where docs/ goes; no `..`, no leading `/`, not a docs path), and `from` is the template file it is
+# written from (next to this one). The text is written as it stands, except that `{{app}}` is replaced by the name of
+# the app folder, which differs per project (`--app`); `{{app}}` may also start or sit inside the key, so a file can
+# land inside the app, but never on a file the skeleton writes. A key ending in `/` is a folder, and `from` a folder
+# next to this file: every file under it is copied below the key, as it is (`fill: false` is its default; `fill`
+# says whether `{{app}}` is filled in, default true for a file). A file is never overwritten. Without `files`, `init`
+# writes none. The guard test is the file of the guard tier's example, so the docs show what is written.
+# pinned, optional, single files only: the project keeps the file as `init` writes it, so `check` reports it in its
+# enforcement section when it differs from what `init` would write now (every listed single file is reported when it
+# is missing); a file a project is meant to edit, such as a linter's config, is left unpinned.
 files:
-  tests/architecture/test_rules.py: {from: examples/shared/tiers/guard.py}
+  tests/architecture/test_rules.py: {from: examples/shared/tiers/guard.py, pinned: true}
+  AGENTS.md:                       {from: agents.md}
+  ruff.toml:                       {from: lint.toml}
 
 # The code examples of the docs, one file of the example project each: the part it illustrates, where it would
 # live in the app (path), the file holding its code (file, next to this one) and an optional note for its header line.

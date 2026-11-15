@@ -41,7 +41,7 @@ Every import starts at `app.`. The examples show the imports between the project
 app/
 {{tree}}
 
-tests/                          each module's tests mirror its folder; architecture/ holds the dependency-rule tests; fakes/ holds in-memory implementations of ports
+tests/                          each module's tests mirror its folder; architecture/ holds the guard test, which runs `xarch check`; fakes/ holds in-memory implementations of ports
 
 docs/
 └── project/

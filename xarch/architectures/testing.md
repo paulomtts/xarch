@@ -21,6 +21,7 @@ How the system is tested: which kind of test each part admits, where a test is p
   - [[#8.3 What a conftest.py may hold]]
   - [[#8.4 How a fake stays honest]]
 - [[#9. Guards]]
+  - [[#9.1 The enforcement section]]
 
 ## 1. Tiers
 
@@ -36,6 +37,8 @@ How the system is tested: which kind of test each part admits, where a test is p
 One command runs every tier. It appears here and nowhere else.
 
 - unit, integration, rendering, guard: `<command>`
+
+The project also ships a linter config, `ruff.toml`, for the rules that are the same in every file (imports sorted and absolute, a return type on public functions, no `print`, no naive datetime, pytest style). What differs by part, such as which imports, names and outside packages a part may use, lives in the profile and is checked by `xarch check`, not in the linter config.
 
 ## 3. Placement
 
@@ -215,4 +218,10 @@ A fake is checked against its port twice. `xarch check` requires it to exist: ev
 
 {{guards}}
 
-One line per guard. Each has a file under `artifacts/guards/`.
+One line per guard. A guard the project adds itself is a check of its own under `tests/architecture/`, written up from `artifacts/guards/_template.md`.
+
+### 9.1 The enforcement section
+
+After the violations, `xarch check` prints an `enforcement` section: the state of its own enforcement, so that a clean check reached by weakening it shows. It names the profile in force, a bundled one or a custom file with the bundled profile it most resembles (the one sharing the most parts), and the guards it leaves off; for a custom file, every way it is looser than that profile: an import target or an outside package added to a part, a `forbidden` name dropped, a part newly marked `untested`, a tier that lost a `types_only` part or its `forbidden`, a skip no longer counted, an init file no longer pinned. Then the Python files of the app that no part and no folder of the layout governs, which no check reads; the files `xarch init` writes that are missing, or, for a pinned one such as the guard test, changed from what `init` would write now; the tests skipped or expected to fail; the dynamic imports (`importlib.import_module`, `__import__`), whose targets the import rules cannot see; and the checks met to the letter only, as `weak`: a fake that does not define every method its port declares, and a `Result` variant credited to a standalone test whose body holds no `assert`. `xarch check --format json` gives the same as one JSON document.
+
+The section never changes the exit code. `xarch check --strict` fails on every finding in it except the guards that the bundled profile in force, or the one a custom profile is compared with, also leaves off (`closed-tree` here). The guard test runs `xarch check` without `--strict`, and is pinned, so editing it is itself reported: a project opts in by running `xarch check --strict` in CI or in a pre-commit hook.

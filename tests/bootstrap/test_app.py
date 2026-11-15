@@ -27,7 +27,8 @@ def test_check_reports_violations_with_exit_1(tmp_path):
     result = runner.invoke(app, ["check"])
     assert result.exit_code == 1
     assert "app/kernel/bad.py:1: kernel/ may not import platform/" in result.output
-    assert "1 violation" in result.output.splitlines()[-1]
+    assert "1 violation(s) in 1 file(s)" in result.output.splitlines()
+    assert result.output.splitlines().index("enforcement") > result.output.splitlines().index("1 violation(s) in 1 file(s)")
 
 
 def test_check_reports_structure_violations(tmp_path):
@@ -213,13 +214,13 @@ def test_init_lists_the_docs_it_created_then_skips_them(tmp_path, profile):
     first = runner.invoke(app, ["init", "--profile", profile])
     assert first.exit_code == 0
     lines = first.output.splitlines()
-    assert lines[-len(DOCS) - 2:] == ["created pyproject.toml", *[f"created {d}" for d in DOCS],
-                                      "created tests/architecture/test_rules.py"]
+    assert lines[-len(DOCS) - 4:] == ["created pyproject.toml", *[f"created {d}" for d in DOCS],
+                                      "created tests/architecture/test_rules.py", "created AGENTS.md", "created ruff.toml"]
     assert (tmp_path / "docs/project/adrs/0000-template.md").read_text().startswith("# ADR")
     assert f"| rendering | `{profile}/` |" in (tmp_path / "docs/project/testing.md").read_text()
     second = runner.invoke(app, ["init", "--profile", profile])
     assert second.exit_code == 0 and "created" not in second.output
-    assert all(f"skipped {d}" in second.output for d in [*DOCS, "tests/architecture/test_rules.py"])
+    assert all(f"skipped {d}" in second.output for d in [*DOCS, "tests/architecture/test_rules.py", "AGENTS.md", "ruff.toml"])
 
 
 def test_init_keeps_an_existing_doc_and_the_extras_around_it(tmp_path):
@@ -284,12 +285,13 @@ def test_a_missing_tests_folder_is_a_usage_error():
     assert result.exit_code == 2 and "nowhere is not a directory" in result.output
 
 
-def test_init_refuses_a_profile_whose_file_lies_in_the_app_folder(tmp_path):
+def test_init_refuses_a_profile_whose_file_replaces_what_the_skeleton_writes(tmp_path):
     (tmp_path / "guard.tpl").write_text("{{app}}\n")
     (tmp_path / "layered.yaml").write_text(
         "xarch: 1\nname: layered\nlayout: {src: {}}\nparts: {src: {path: src, role: code}}\nrules: {src: [src]}\n"
-        "files: {app/guard.py: {from: guard.tpl}}\n")
+        "files: {app/__init__.py: {from: guard.tpl}}\n")
     result = runner.invoke(app, ["init", "--profile", "layered.yaml"])
     assert result.exit_code == 2
-    assert "layered.yaml: files.app/guard.py: lies inside the app folder 'app'" in result.output
+    assert ("layered.yaml: files.app/__init__.py: 'app/__init__.py' is the package file the skeleton writes"
+            in result.output)
     assert not (tmp_path / "app").exists() and not (tmp_path / "pyproject.toml").exists()

@@ -24,12 +24,13 @@ How the system is tested: which kind of test each part admits, where a test is p
   - [[#8.3 What a conftest.py may hold]]
   - [[#8.4 How a fake stays honest]]
 - [[#9. Guards]]
+  - [[#9.1 The enforcement section]]
 
 ## 1. Tiers
 
 | Tier | Subject | Proves | May touch |
 |---|---|---|---|
-| unit | `kernel/` and `kernel/logic/`, `domain/`, `application/logic/`, `adapters/` | an invariant, a value rule, a state transition, a pure rule, an adapter's translation | nothing: no I/O, no clock, no fakes; an adapter gets a stub of its `platform/` client |
+| unit | `kernel/` and `kernel/logic/`, `domain/`, `application/logic/`, `adapters/` | an invariant, a value rule, a state transition, a pure rule, an adapter's translation | nothing: no I/O, no clock (checked by `forbidden` for the pure parts), no fakes; an adapter gets a stub of its `platform/` client |
 | integration | `application/controller.py`, with the services behind it | one `Result` variant per path, driven through the controller | real controllers only; their ports are `tests/fakes/`, or `Mock(spec=<Port>)` for fire-only ports |
 | rendering | `web/` | what the page shows for each `Result`; never a business outcome | a fake controller, injected; the real controller's class only as a type, never called |
 | guard | the source tree | a rule of the architecture holds | `tests/architecture/` |
@@ -46,6 +47,8 @@ How the system is tested: which kind of test each part admits, where a test is p
 One command runs every tier. It appears here and nowhere else.
 
 - unit, integration, rendering, guard: `<command>`
+
+The project also ships a linter config, `ruff.toml`, for the rules that are the same in every file (imports sorted and absolute, a return type on public functions, no `print`, no naive datetime, pytest style). What differs by part, such as which imports, names and outside packages a part may use, lives in the profile and is checked by `xarch check`, not in the linter config.
 
 ## 3. Placement
 
@@ -71,7 +74,7 @@ A test imports only what the part its folder mirrors may import (architecture.md
 ### 3.4 guard
 
 > [!TIP]
-> **Litmus test.** Does it read the source tree and fail on a rule of architecture.md, whatever the app does? If yes, it is a guard, and it has a file under `artifacts/guards/`. If it runs the app, it is not a guard.
+> **Litmus test.** Does it read the source tree and fail on a rule of architecture.md, whatever the app does? If yes, it is a guard. If it runs the app, it is not a guard.
 
 ## 4. Examples
 
@@ -148,7 +151,7 @@ def test_the_architecture_holds():
 | unit | domain object or rule | the invariants in the module doc; a rule's cases are a table of its inputs and its answer |
 | integration | use case | a Given / When / Then table: a row for every `Result` variant, happy and unhappy |
 | rendering | command or page | a table of the `Result` and what is shown, a row for every variant it shows |
-| guard | rule | the standard it enforces |
+| guard | project, since one test runs every guard | the guards of section 9 |
 
 ### 5.2 Tables
 
@@ -280,7 +283,7 @@ def a_document(id: DocumentId = A_ID, title: str = "Hello", published_at: dateti
 
 # tests/modules/documents/application/helpers.py
 def controller(repo: Iterable[Document] = (), review: Allowed | Denied = Allowed(), now: datetime = NOW) -> DocumentController:
-    service = DocumentService(FakeDocumentRepo(repo), FakeContentReview(review), FakeClock(now))   # each argument is a fake's starting state
+    service = DocumentService(FakeDocumentRepo(repo), FakeContentReview(review), FakeClock(now))   # each argument is a fake's start state
     return DocumentController(service)
 
 # tests/web/conftest.py
@@ -334,6 +337,7 @@ A fake is checked against its port twice. `xarch check` requires it to exist: ev
 - `structure`: every folder and file of the layout exists, in the app and in every `modules/<name>/`.
 - `rules`: every import between parts is one that `rules` allows (architecture.md, section 5).
 - `libraries`: a part imports only the outside packages listed for it (`platform/`: sqlmodel; `adapters/`: sqlmodel; `web/`: fastapi; `bootstrap/`: sqlmodel, fastapi, uvicorn); the standard library is always allowed, and tests are not checked.
+- `forbidden`: a part neither imports nor uses by name what is listed for it (`domain/`, `application/logic/`, `kernel/`, `application/ports/` and `contract/`: `datetime.datetime.now`, `datetime.datetime.utcnow`, `datetime.datetime.today`, `datetime.date.today`, `time.time`, `time.time_ns`, `time.monotonic`, `time.perf_counter`, `builtins.open`, `builtins.print`, `builtins.input`, `sys.stdin`, `sys.stdout`, `sys.stderr`, `os.environ`, `os.getenv`, `socket`, `subprocess`, `sqlite3`, `urllib`, `http`, `shutil`), and neither do the unit tests of those parts. It catches what is written in the part's own files, through their imports and aliases, not a name reached through a variable or `getattr`, nor I/O done on the part's behalf elsewhere.
 - `tiers`: a test lives in the folder that mirrors its subject in the app, and imports only that part and what it may import (a test in a folder that mirrors no part, its tier's subject and what that may import); only a test whose tier tests `application/ports/` imports the fakes in `tests/fakes/`.
 - `types-only`: a rendering test uses `application/controller.py` only as a type: it may import it and annotate with it, and never calls it.
 - `test tree`: every folder below `tests/modules/` mirrors a folder of the app.
@@ -343,4 +347,10 @@ A fake is checked against its port twice. `xarch check` requires it to exist: ev
 - `no-comments`: no `#` comments in the app or its tests; docstrings and tool directives (`# type: ignore`, `# noqa`, `# pragma:`) stay.
 - `stand-ins`: every `Protocol` in `application/ports/` is fire-only (every method returns `None`) or read (any method returns a value), each method annotated; every read port `<Port>` has a fake `Fake<Port>` in `tests/fakes/`; and every mock in the integration tests names what it stands in for, `Mock(spec=<Port>)`, never a read port (section 6).
 
-One line per guard. Each has a file under `artifacts/guards/`.
+One line per guard. A guard the project adds itself is a check of its own under `tests/architecture/`, written up from `artifacts/guards/_template.md`.
+
+### 9.1 The enforcement section
+
+After the violations, `xarch check` prints an `enforcement` section: the state of its own enforcement, so that a clean check reached by weakening it shows. It names the profile in force, a bundled one or a custom file with the bundled profile it most resembles (the one sharing the most parts), and the guards it leaves off; for a custom file, every way it is looser than that profile: an import target or an outside package added to a part, a `forbidden` name dropped, a part newly marked `untested`, a tier that lost a `types_only` part or its `forbidden`, a skip no longer counted, an init file no longer pinned. Then the Python files of the app that no part and no folder of the layout governs, which no check reads; the files `xarch init` writes that are missing, or, for a pinned one such as the guard test, changed from what `init` would write now; the tests skipped or expected to fail; the dynamic imports (`importlib.import_module`, `__import__`), whose targets the import rules cannot see; and the checks met to the letter only, as `weak`: a fake that does not define every method its port declares, and a `Result` variant credited to a standalone test whose body holds no `assert`. `xarch check --format json` gives the same as one JSON document.
+
+The section never changes the exit code. `xarch check --strict` fails on every finding in it except the guards that the bundled profile in force, or the one a custom profile is compared with, also leaves off (`closed-tree` here). The guard test runs `xarch check` without `--strict`, and is pinned, so editing it is itself reported: a project opts in by running `xarch check --strict` in CI or in a pre-commit hook.

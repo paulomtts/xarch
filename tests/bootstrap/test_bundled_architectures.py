@@ -4,7 +4,6 @@ from importlib import resources
 import pytest
 
 from xarch.bootstrap.wiring import build_architectures, load_architecture
-from xarch.modules.spec.domain.skeleton import walk
 
 PROFILE_NAMES = ["cli", "web"]
 
@@ -54,10 +53,16 @@ def test_the_rendering_tier_tests_the_entry_point(profile):
     assert architecture.entry is not None and rendering.subject[0].part == architecture.entry.name
 
 
+def folders(tree: dict, above: tuple[str, ...] = ()) -> list[tuple[str, ...]]:
+    """Every path of the layout tree, folders and files, as the docs tree lists them."""
+    return [path for name, sub in tree.items()
+            for path in [(*above, name), *(folders(sub, (*above, name)) if sub else [])]]
+
+
 def test_every_folder_of_the_tree_has_a_note_but_the_modules_folders(profile):
     architecture = load_architecture(profile)
     noted = set(architecture.notes) | {part.path for part in architecture.parts.values()}
-    unnoted = {path for path, _, _ in walk(architecture.layout) if path not in noted}
+    unnoted = {path for path in folders(architecture.layout) if path not in noted}
     assert unnoted == {("modules",), ("modules", "*"), ("modules", "*", "application")}
 
 

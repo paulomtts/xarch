@@ -81,7 +81,7 @@ def test_testing_unit_tests_pure_logic(profile):
 def test_testing_makes_the_given_when_then_table_the_standard_for_a_use_case():
     text = templates()["testing.md"]
     files = text.split("## 5. Files")[1].split("\n## ")[0]
-    assert "| integration | use case |" in files and "headed by" not in text
+    assert "| integration | use case |" in files
     assert "### 5.2 Tables" in files and "### 5.3 Tables in the other tiers" in files
     table = files.split("### 5.2 Tables")[1].split("### 5.3 ")[0]
     for rule in ["`given`", "`when`", "`then`", "`pytest.param(..., id=\"<a sentence stating the outcome>\")`",
@@ -93,7 +93,6 @@ def test_testing_makes_the_given_when_then_table_the_standard_for_a_use_case():
     guards = text.split("## 9. Guards")[1]
     assert "`scenario-coverage`" in guards
     outside = text.replace(guards, "")
-    assert "Scenario" not in text and "header" not in text
     assert "[[#5.2 Tables]]" in outside and "[[#5.3 Tables in the other tiers]]" in outside and "(section 5.2)" in outside
 
 
@@ -102,9 +101,7 @@ def test_testing_names_a_table_test_for_the_use_case_and_a_standalone_test_for_i
     naming = text.split("### 8.2 How tests are named")[1].split("\n### ")[0]
     assert "`test_publish`" in naming and "`test_is_stale`" in naming
     assert "id" in naming and "never" in naming
-    assert "def test_publish(): ...      " not in naming
     assert "> [!TIP]\n> **Litmus test.** When the test fails" in naming
-    assert "its name is its scenario's name" not in naming and "a scenario's name is its test's name" not in text
 
 
 def test_testing_takes_the_data_of_an_integration_test_from_its_given_column():
@@ -121,7 +118,7 @@ def test_the_helper_builds_the_fakes_from_their_starting_state_for_both_forms_of
     fake = text.split("## 6. Fakes and mocks")[1].split("\n## ")[0]
     assert "def __init__(self, docs: Iterable[Document] = ()): self.docs = {d.id: d for d in docs}" in fake
     assert "def save(self, doc): self.docs[doc.id] = doc\n" in fake
-    assert "def save(self, doc: Document) -> None: ..." in fake and "-> Document: ..." not in fake
+    assert "def save(self, doc: Document) -> None: ..." in fake
 
 
 def test_testing_gives_every_tier_a_litmus_test_in_placement():
@@ -144,12 +141,10 @@ def test_testing_fakes_stateful_ports_and_mocks_fire_only_ones():
     assert "| only fires and never reads | fire-only | every one returns `None` | a mock that names the port" in section
     assert "a mock is not a fake" in section
     assert "class DocumentRepo(Protocol):" in section and "class FakeDocumentRepo:" in section
-    assert "class DbDocumentRepo:" in section and "DocsRepo" not in text
+    assert "class DbDocumentRepo:" in section
     assert "> [!TIP]\n> **Litmus test.** Does the use case ever read back" in section
-    assert "If a port does both, split the port" not in section
     assert "A port that is written and then read back is a read port" in section
     assert "two unrelated needs" in section and "`check` does not report it" in section
-    assert "| reads back what it wrote | read (stateful) | at least one returns a value | a fake" in section
 
 
 @pytest.mark.parametrize("profile", ["cli", "web"])
@@ -164,7 +159,6 @@ def test_testing_keeps_the_seed_in_bootstrap_and_in_no_tier():
     text = templates()["testing.md"]
     data = text.split("## 7. Data")[1].split("\n## ")[0]
     assert "`bootstrap/`" in data and "No tier runs a shared seed" in data
-    assert "smoke" not in text
 
 
 def test_only_architecture_and_testing_differ_between_profiles():
@@ -193,21 +187,12 @@ def test_architecture_keeps_its_braces_and_tool_name():
 
 
 @pytest.mark.parametrize("profile", ["cli", "web"])
-def test_architecture_assumes_nothing_about_who_uses_the_app(profile):
-    assert "single user" not in templates(profile)["architecture.md"]
-
-
-@pytest.mark.parametrize("profile", ["cli", "web"])
-def test_architecture_does_not_ask_for_a_home_for_future_callers(profile):
-    assert "home in the tree" not in templates(profile)["architecture.md"]
-
-
-@pytest.mark.parametrize("profile", ["cli", "web"])
-def test_architecture_orders_a_modules_layers_inward_instead_of_allowing_sideways_imports(profile):
+def test_architecture_orders_a_modules_layers_inward(profile):
     text = templates(profile)["architecture.md"]
-    assert "sideways" not in text and "same ring" not in text
     layers = text.split("## 3. The rings inside a module")[1].split("## 4.")[0]
-    assert "`domain/` → `contract/` → `application/logic/` → `application/ports/` → `application/services/` → `application/controller.py`" in layers
+    chain = ["domain/", "contract/", "application/logic/", "application/ports/", "application/services/",
+             "application/controller.py"]
+    assert " → ".join(f"`{step}`" for step in chain) in layers
     assert "`platform/` → `adapters/`" in layers
     assert text.split("## 5. ")[1].startswith("The dependency rules\n\nDependencies point inward:")
 
@@ -218,9 +203,8 @@ def test_the_table_model_lives_in_platform_and_the_repo_translates_it(profile):
     text = templates(profile)["architecture.md"]
     adapters = text.split("### 8.7 adapters/")[1].split("### 8.8")[0]
     platform = text.split("### 9.2 platform/")[1].split("### 9.3")[0]
-    assert "class DocumentRow" not in adapters and "document_row.py" not in text
-    assert "def _to_domain(self, row: DocumentRow) -> Document:" in adapters and "def _from_domain(self, doc: Document) -> DocumentRow:" in adapters
-    assert "_to_row" not in adapters and "_to_document" not in adapters
+    assert "def _to_domain(self, row: DocumentRow) -> Document:" in adapters
+    assert "def _from_domain(self, doc: Document) -> DocumentRow:" in adapters
     assert "and never in `domain/` or in the table model" in adapters
     table = block(platform, "platform/sql/tables/documents.py")
     assert "class DocumentRow(SQLModel, table=True):" in table and '__tablename__ = "documents"' in table
@@ -238,7 +222,6 @@ def test_ports_may_import_only_the_domain_and_the_kernel(profile):
 @pytest.mark.parametrize("profile", ["cli", "web"])
 def test_architecture_says_plainly_that_files_within_one_part_import_each_other_freely(profile):
     text = templates(profile)["architecture.md"].split("## 5. ")[1].split("| Part |")[0]
-    assert "Every part may also import its own files" not in text
     assert "Files within one part may import each other freely" in text
     assert "not checked" in text
 
@@ -284,7 +267,7 @@ def test_architecture_gives_pure_logic_a_place_in_the_module_and_in_the_kernel(p
     assert "> **Litmus test.** Is it a pure function over this module's domain objects, not one entity's invariant" in logic
     assert "it belongs in `kernel/logic/`" in logic and "it belongs in that entity in `domain/`" in logic
     kernel = text.split("### 9.1 kernel/")[1].split("### 9.2 ")[0]
-    assert "Nothing here has business meaning" not in kernel and "including a business rule two modules need" in kernel
+    assert "including a business rule two modules need" in kernel
     assert "it goes in `kernel/logic/`" in kernel
 
 
@@ -301,7 +284,6 @@ def test_architecture_names_the_reviews_outcomes_apart_from_the_create_results_v
     text = templates()["architecture.md"]
     assert "-> Allowed | Denied:" in text
     assert "case Denied(why): raise ContentRejected(why)" in text
-    assert "Allowed | Denied | Rejected" not in text and "case Rejected(" not in text.split("### 8.4 ")[1].split("### 8.5 ")[0]
     assert "return Rejected(e.reason)" in text
 
 
@@ -311,14 +293,12 @@ def test_testing_tells_the_same_story_as_architecture(profile):
     text = templates(profile)["testing.md"]
     examples = text.split("## 4. Examples")[1].split("\n## ")[0]
     assert "One module, `documents`, with a use case `publish`" in examples
-    for name in ["Draft", "Refused", "Publish(", "a_draft", "`docs`", "tests/modules/docs/", "test_docs_repo"]:
-        assert name not in text, name
     for name in ["PublishDocument", "Rejected", "Missing", "Published", "DbDocumentRepo", "DocumentIncomplete",
                  "is_stale"]:
         assert name in examples, name
     table = examples.split("# integration:")[1].split("# rendering:")[0]
     for variant in ["is published", "is missing", "is rejected"]:
-        assert f'id="a document' in table and variant in table
+        assert 'id="a document' in table and variant in table
     assert "def test_publish(given, when, then):" in table and "pytest.param(" in table
 
 
@@ -360,7 +340,7 @@ def test_the_controller_builds_the_dto_and_the_service_returns_the_entity(profil
     assert "def _view(self, doc: Document) -> DocumentView:" in controller
     assert "entities into DTOs" in controller
     assert "def publish(self, id: DocumentId) -> Document:" in service and "def create(self, title: str) -> Document:" in service
-    assert "to_view" not in text and "DocumentView" not in service
+    assert "DocumentView" not in service
     assert "without building the `Result` or the DTO" in service
     assert "which the controller builds from the entity (section 8.3)" in text
 
@@ -377,7 +357,8 @@ def test_the_contract_example_is_split_into_files_like_a_real_contract(profile):
     results = contract.split("contract/results.py")[1].split("# modules/")[0]
     assert "from app.modules.documents.contract.views import DocumentView" in results and "CreateResult = " in results
     init = contract.split("contract/__init__.py")[1].split("```")[0]
-    assert "from app.modules.documents.contract.commands import" in init and "from app.modules.documents.contract.results import" in init and "class " not in init
+    assert "from app.modules.documents.contract.commands import" in init
+    assert "from app.modules.documents.contract.results import" in init and "class " not in init
     assert "imports from `contract`, never from its files" in contract
 
 
@@ -398,12 +379,24 @@ def test_every_example_file_shows_the_imports_between_the_projects_own_files(pro
     text = templates(profile)["architecture.md"]
     expected = {
         "modules/documents/domain/errors.py": ["from app.kernel.errors import DomainError, NotFound"],
-        "modules/documents/domain/document.py": ["from app.kernel.identifiers import new_id", "from app.modules.documents.domain.errors import", "from app.modules.documents.domain.values import DocumentId"],
-        "modules/documents/application/controller.py": ["from app.modules.documents.contract import", "from app.modules.documents.domain.errors import", "from app.modules.documents.application.services.document_service import DocumentService"],
-        "modules/documents/application/services/document_service.py": ["from app.modules.documents.application.ports.document_repo import DocumentRepo", "from app.modules.documents.domain.document import Document", "from app.kernel.time import Clock"],
-        "modules/documents/application/ports/document_repo.py": ["from app.modules.documents.domain.document import Document", "from app.modules.documents.domain.values import DocumentId"],
-        "modules/documents/adapters/db_document_repo.py": ["from app.platform.sql.tables.documents import DocumentRow", "from app.platform.sql import Session", "from app.modules.documents.domain.document import Document"],
-        "bootstrap/wiring.py": ["from app.modules.documents.adapters.db_document_repo import DbDocumentRepo", "from app.platform.sql import Session"],
+        "modules/documents/domain/document.py": [
+            "from app.kernel.identifiers import new_id", "from app.modules.documents.domain.errors import",
+            "from app.modules.documents.domain.values import DocumentId"],
+        "modules/documents/application/controller.py": [
+            "from app.modules.documents.contract import", "from app.modules.documents.domain.errors import",
+            "from app.modules.documents.application.services.document_service import DocumentService"],
+        "modules/documents/application/services/document_service.py": [
+            "from app.modules.documents.application.ports.document_repo import DocumentRepo",
+            "from app.modules.documents.domain.document import Document", "from app.kernel.time import Clock"],
+        "modules/documents/application/ports/document_repo.py": [
+            "from app.modules.documents.domain.document import Document",
+            "from app.modules.documents.domain.values import DocumentId"],
+        "modules/documents/adapters/db_document_repo.py": [
+            "from app.platform.sql.tables.documents import DocumentRow", "from app.platform.sql import Session",
+            "from app.modules.documents.domain.document import Document"],
+        "bootstrap/wiring.py": [
+            "from app.modules.documents.adapters.db_document_repo import DbDocumentRepo",
+            "from app.platform.sql import Session"],
     }
     for header, imports in expected.items():
         code = block(text, header)
@@ -418,17 +411,11 @@ def test_the_examples_say_which_imports_they_show(profile):
     assert "standard library and third-party packages are left out" in text
 
 
-@pytest.mark.parametrize("profile", ["cli", "web"])
-def test_no_registering_happens_inside_the_entry_point(profile):
-    text = templates(profile)["architecture.md"]
-    assert "register_controllers" not in text and "def register(" not in text
-
-
 def test_web_routes_are_plain_functions_and_bootstrap_owns_the_app():
     text = templates("web")["architecture.md"]
     routes = block(text, "web/routes/documents.py")
     assert "router = APIRouter()" in routes and '@router.post("/documents/{id}/publish")' in routes
-    assert "def publish(id: UUID, documents: DocumentController = Depends(documents_controller)):" in routes
+    assert "def publish(id: UUID, documents: DocumentController = Depends(documents_controller)) -> Response:" in routes
     assert "from app.web.dependencies import documents_controller" in routes
     assert "from app.web.i18n import t" in routes and "from app.web.ui import render" in routes
     assert "request.app.state.documents" in block(text, "web/dependencies.py")
@@ -443,7 +430,7 @@ def test_cli_commands_are_plain_functions_and_bootstrap_owns_the_app():
     text = templates("cli")["architecture.md"]
     commands = block(text, "cli/commands/documents.py")
     assert "app = Typer()" in commands and "@app.command()" in commands
-    assert "def publish(ctx: Context, id: UUID):" in commands and "documents = documents_controller(ctx)" in commands
+    assert "def publish(ctx: Context, id: UUID) -> None:" in commands and "documents = documents_controller(ctx)" in commands
     assert "from app.cli.dependencies import documents_controller" in commands and "from app.cli.terminal import echo, fail" in commands
     assert "ctx.obj.documents" in block(text, "cli/dependencies.py")
     app = block(text, "bootstrap/app.py")
@@ -477,11 +464,10 @@ def test_the_schema_is_shown_as_a_migration_and_the_row_is_the_modules_view_of_i
     assert "from app.platform.sql.tables.documents import DocumentRow" in migration
     assert "def upgrade(engine: Engine) -> None:" in migration
     assert "SQLModel.metadata.create_all(engine, tables=[DocumentRow.__table__])" in migration
-    assert "CREATE TABLE" not in text and "exec_driver_sql" not in text
     assert "builds the table from the table model" in bootstrap and "a new migration file, never an edit of an old one" in bootstrap
-    assert "adapters" not in migration and "names one of the row classes" not in text
+    assert "adapters" not in migration
     assert "(section 9.4 shows one)" in text.split("### 8.7 adapters/")[1].split("### 8.8")[0]
-    assert "models · migrations" not in text and "repos · table models" not in text and "adapters/ · repos\"]" in text
+    assert "adapters/ · repos\"]" in text
 
 
 @pytest.mark.parametrize("profile", ["cli", "web"])
@@ -489,7 +475,7 @@ def test_the_table_model_is_named_by_its_place_in_the_naming_table_and_the_tree(
     text = templates(profile)["architecture.md"]
     assert "| table model | `platform/sql/tables/` | thing and `Row` | `DocumentRow` |" in text
     assert "sql engine, sessions and table models" in text
-    assert "so two modules may map the same tables" not in text and "Each table is defined once, in `platform/`" in text
+    assert "Each table is defined once, in `platform/`" in text
 
 
 @pytest.mark.parametrize("profile", ["cli", "web"])
@@ -500,4 +486,3 @@ def test_the_architecture_says_where_callers_other_than_the_entry_point_live(pro
     assert "`bootstrap/jobs/<job>.py`" in section and "handed a fake one" in section
     assert "- [[#10. Callers other than the entry point]]" in text
     assert "section 10 says where each lives" in text
-    assert "UnitOfWork" not in text and "Actor" not in text

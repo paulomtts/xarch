@@ -65,10 +65,17 @@ class ProjectFile:
     """A file `init` writes beside the app folder, in the folder holding it.
 
     path: below the folder holding the app, e.g. ("tests", "architecture", "test_rules.py")
-    source: the template the file is written from, relative to the architecture file
+    source: the template the file is written from, relative to the architecture file; for a folder entry, the folder
+    pinned: the project keeps it as `init` writes it; `check` reports it when it differs
+    folder: the entry is a folder: every file under source is copied below path, keeping its relative path
+    fill: `{{app}}` in the text is replaced by the app folder's name; off, the bytes are copied unchanged
+    path may hold the placeholder `{{app}}` in a step, for a target inside the app folder.
     """
     path: tuple[str, ...]
     source: str
+    pinned: bool = False
+    folder: bool = False
+    fill: bool = True
 
 
 @dataclass(frozen=True)
@@ -137,6 +144,7 @@ class Tier:
     data: where its test data comes from
     helpers: files its tests share (builders, a fixture), shown with {{tier_helpers}}
     types_only: parts its tests may import and use as types, but never call
+    forbidden: its tests are held to the `forbidden` list of the part they mirror
     """
     name: str
     subject: tuple[Subject, ...]
@@ -150,6 +158,7 @@ class Tier:
     example: TierExample | None = None
     helpers: tuple[TierExample, ...] = ()
     types_only: tuple[str, ...] = ()
+    forbidden: bool = False
 
 
 @dataclass(frozen=True)
@@ -167,14 +176,42 @@ class PackageOnly:
     parts: tuple[str, ...]
 
 
+NAME = "{name}"
+"""Stands, in the file name a guard expects, for the name of the use case in snake_case."""
+
+
+@dataclass(frozen=True)
+class Framework:
+    """How the project's test framework names things: the patterns of a test file's name (matched against the file
+    name alone, `*` for any text) and of a test function's, and the dotted names of what skips a test or expects it
+    to fail (a marker or a call; empty: none is counted)."""
+    files: tuple[str, ...]
+    functions: str
+    skips: tuple[tuple[str, ...], ...] = ()
+
+
+@dataclass(frozen=True)
+class CaseTable:
+    """How a test function holds a table of cases: the dotted name of its decorator and of its row, the keyword that
+    gives a row its id, and (None: positional only) the keywords its two arguments, the parameter names and the rows,
+    may be given by."""
+    decorator: tuple[str, ...]
+    row: tuple[str, ...]
+    id: str
+    keywords: tuple[str, str] | None = None
+
+
 @dataclass(frozen=True)
 class ScenarioCoverage:
     """The guard scenario-coverage: the part holding the result unions, the tier holding their tables, how a union's
-    name ends, and the names of the three parameters of a table: its state, its command and its result."""
+    name ends, the names of the three parameters of a table (its state, its command and its result), how the table
+    is written, and the name of a use case's test file, `{name}` standing for the use case in snake_case."""
     results: str
     tier: str
     suffix: str
     columns: tuple[str, str, str]
+    table: CaseTable
+    file: str
 
 
 @dataclass(frozen=True)
@@ -184,7 +221,12 @@ class NoComments:
 
 @dataclass(frozen=True)
 class StandIns:
-    """The guard stand-ins: its parameters are those of `fakes`."""
+    """The guard stand-ins: the dotted names of the calls that build a mock, of those that build a mock from a spec
+    given as an argument (autospec), and the keywords a mock is given its spec by; the first keyword is the one an
+    autospec call takes. The other parameters are those of `fakes`."""
+    mocks: tuple[tuple[str, ...], ...]
+    autospec: tuple[tuple[str, ...], ...]
+    spec: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -210,7 +252,9 @@ class Architecture:
     guards: the pre-built checks in use
     fakes: where the test fakes live; None: no test may import them
     singular: the name of one instance of the `each` folder, as the docs show it; empty if the layout has no `each`
+    framework: how the test framework names test files and functions; None when no tier or guard needs them
     files: the project files `init` writes besides the docs, in order
+    forbidden: the dotted names and modules a part may not use, by part; a part not listed has none
     """
     name: str
     layout: Layout
@@ -228,11 +272,19 @@ class Architecture:
     fakes: Fakes | None = None
     singular: str = ""
     files: tuple[ProjectFile, ...] = ()
+    framework: Framework | None = None
+    forbidden: dict[str, tuple[tuple[str, ...], ...]] = field(default_factory=dict)
 
     @property
     def entry(self) -> Part | None:
         """The entry point: the part marked `entry: true`, if any."""
         return next((part for part in self.parts.values() if part.entry), None)
+
+    def shown(self, part: Part) -> str:
+        """A part as the docs name it: its path below its instance for an instance's part, ending in / for a folder."""
+        root = self.instance_root()
+        path = part.path[len(root) + 1:] if part.in_instance and root is not None else part.path
+        return "/".join(path) + ("" if self.is_file(part.path) else "/")
 
     def is_file(self, path: tuple[str, ...]) -> bool:
         """Whether a path of the layout, such as a part's, is a file rather than a folder."""

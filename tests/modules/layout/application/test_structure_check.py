@@ -1,11 +1,11 @@
 """Unit tests for the structure check on an in-memory disk."""
 from pathlib import Path
 
+from tests.fakes.filesystem import FakeDisk
+from tests.fakes.layout_skeleton import FakeSkeleton
 from xarch.modules.layout.application.controller import LayoutController
 from xarch.modules.layout.application.services.structure_check import StructureCheck
 from xarch.modules.layout.contract import CheckStructure
-from tests.fakes.filesystem import FakeDisk
-from tests.fakes.layout_skeleton import FakeSkeleton
 
 ROOT = Path("/src/pkg")
 TOP = {ROOT / n for n in ["bootstrap", "kernel", "modules", "platform", "cli"]}
@@ -58,3 +58,17 @@ def test_a_folder_below_the_tests_of_the_each_folder_must_mirror_an_app_folder()
         "tests/modules/gone: mirrors no folder of the app (app/modules/gone)",
         "tests/modules/gone/domain: mirrors no folder of the app (app/modules/gone/domain)",
     ]
+
+
+def test_a_missing_folder_is_a_structure_violation_that_says_what_to_create():
+    disk = FakeDisk((TOP - {ROOT / "kernel"}) | MODULE, {CONTROLLER})
+    found = LayoutController(StructureCheck(disk, SKELETON)).check(CheckStructure(ROOT, "app", "cli")).violations
+    assert [(v.rule, v.fix) for v in found] == [("structure", "create app/kernel/")]
+
+
+def test_a_test_folder_that_mirrors_nothing_is_a_test_tree_violation():
+    tests = {TESTS / p for p in ["", "modules", "modules/gone"]}
+    disk = FakeDisk(TOP | MODULE | tests, {CONTROLLER})
+    found = LayoutController(StructureCheck(disk, SKELETON)).check(CheckStructure(ROOT, "app", "cli", TESTS)).violations
+    assert [(v.rule, v.fix) for v in found] == [
+        ("test-tree", "move what it holds to the folder that mirrors its subject in the app, or remove it")]

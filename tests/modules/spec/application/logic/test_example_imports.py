@@ -1,7 +1,6 @@
 """The example check: the imports of an architecture's Python examples obey that architecture's own rules."""
 from dataclasses import replace
 
-
 from xarch.modules.spec.application.logic.example_imports import example_problems
 from xarch.modules.spec.domain.architecture_file import parse_architecture
 from xarch.modules.spec.domain.values import Example

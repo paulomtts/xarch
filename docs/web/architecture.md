@@ -59,7 +59,7 @@ app/
     ├── i18n/                   translated strings and locale selection
     └── ui/                     pages and components that render a Result
 
-tests/                          each module's tests mirror its folder; architecture/ holds the dependency-rule tests; fakes/ holds in-memory implementations of ports
+tests/                          each module's tests mirror its folder; architecture/ holds the guard test, which runs `xarch check`; fakes/ holds in-memory implementations of ports
 
 docs/
 └── project/
@@ -76,7 +76,7 @@ docs/
         ├── audits/                 _template.md
         ├── taxonomy/               _template.md
         ├── modules/                _template.md
-        └── guards/                 _template.md; one per test that checks the codebase rather than the product
+        └── guards/                 _template.md; the write-up of a guard the project adds itself
 ```
 
 ## 2. The rings across the app
@@ -222,7 +222,7 @@ class _Moderation(Protocol):                                  # the little we us
 class ModerationContentReview:                                # satisfies ContentReview, with no inheritance
     def __init__(self, moderation: _Moderation): self._m = moderation
 
-    def review(self, title):
+    def review(self, title: str) -> Allowed | Denied:
         match self._m.review(ReviewText(title)):       # moderation's contract, translated to documents' words
             case Clean():      return Allowed()
             case Flagged(why): return Denied(why)
@@ -354,7 +354,7 @@ class Document:
 ```
 
 > [!TIP]
-> **Litmus test.** Is it an invariant of one of this module's entities or values (a state transition or a validation) that can run with no database and no clock? If yes, it goes here, on that entity or value. If it is a pure rule that is not one entity's invariant, it belongs in `application/logic/`. If it must load or save anything, it is a service step.
+> **Litmus test.** Is it an invariant of one of this module's entities or values (a state transition or a validation) that can run with no database and no clock? If yes, it goes here, on that entity or value. If it is a pure rule that is not one entity's invariant, it belongs in `application/logic/`. If it must load or save anything, it is a service step. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
 
 ### 8.3 application/controller.py
 
@@ -453,7 +453,7 @@ from app.modules.documents.application.logic.staleness import is_stale
 ```
 
 > [!TIP]
-> **Litmus test.** Is it a pure function over this module's domain objects, not one entity's invariant, with no port and no I/O? If yes, it goes here, in a file named for the rule. If it holds one entity's invariant, it belongs in that entity in `domain/`. If another module needs it too, it belongs in `kernel/logic/`. If it must load or save anything, it is a service step.
+> **Litmus test.** Is it a pure function over this module's domain objects, not one entity's invariant, with no port and no I/O? If yes, it goes here, in a file named for the rule. If it holds one entity's invariant, it belongs in that entity in `domain/`. If another module needs it too, it belongs in `kernel/logic/`. If it must load or save anything, it is a service step. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
 
 ### 8.6 application/ports/
 
@@ -473,7 +473,7 @@ class DocumentRepo(Protocol):
 ```
 
 > [!TIP]
-> **Litmus test.** Is it something the application needs from outside itself (storage, search, email, or another module's rule) that can be declared as a `Protocol` with no implementation, in the module's own vocabulary and not in SQL or vendor terms? If yes, it goes here. If it is a generic primitive with no business meaning (such as `Clock`), it belongs in `kernel/`. If it has a body that talks to a real system, it belongs in `adapters/`.
+> **Litmus test.** Is it something the application needs from outside itself (storage, search, email, or another module's rule) that can be declared as a `Protocol` with no implementation, in the module's own vocabulary and not in SQL or vendor terms? If yes, it goes here. If it is a generic primitive with no business meaning (such as `Clock`), it belongs in `kernel/`. If it has a body that talks to a real system, it belongs in `adapters/`. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
 
 ### 8.7 adapters/
 
@@ -489,11 +489,11 @@ from app.platform.sql.tables.documents import DocumentRow   # the table model, d
 class DbDocumentRepo:                      # satisfies DocumentRepo
     def __init__(self, session: Session): self._s = session
 
-    def get(self, id):
+    def get(self, id: DocumentId) -> Document | None:
         row = self._s.get(DocumentRow, id)
         return self._to_domain(row) if row else None
 
-    def save(self, doc):
+    def save(self, doc: Document) -> None:
         self._s.merge(self._from_domain(doc))
 
     def _to_domain(self, row: DocumentRow) -> Document:   # table row in, domain entity out
@@ -560,7 +560,7 @@ def normalized(title: str) -> str: return " ".join(title.split())
 ```
 
 > [!TIP]
-> **Litmus test.** Is it a primitive with no business meaning, one that could be lifted unchanged into an unrelated system (id helpers, base errors, lifecycle fields, tracing carriers, `Clock`)? If yes, it goes here. Is it a pure function with no port and no I/O that two or more modules need? If yes, it goes in `kernel/logic/`. If only one module needs it, or it names one module's thing, such as a concrete id like `DocumentId`, it belongs in the owning module. If it wraps a technology, it belongs in `platform/`.
+> **Litmus test.** Is it a primitive with no business meaning, one that could be lifted unchanged into an unrelated system (id helpers, base errors, lifecycle fields, tracing carriers, `Clock`)? If yes, it goes here. Is it a pure function with no port and no I/O that two or more modules need? If yes, it goes in `kernel/logic/`. If only one module needs it, or it names one module's thing, such as a concrete id like `DocumentId`, it belongs in the owning module. If it wraps a technology, it belongs in `platform/`. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
 
 ### 9.2 platform/
 
@@ -609,7 +609,7 @@ from app.web.ui import render
 router = APIRouter()                         # bootstrap/ includes this router in the program's FastAPI
 
 @router.post("/documents/{id}/publish")
-def publish(id: UUID, documents: DocumentController = Depends(documents_controller)):
+def publish(id: UUID, documents: DocumentController = Depends(documents_controller)) -> Response:
     result = documents.publish(PublishDocument(DocumentId(id)))                 # controller call
     match result:                                # the route branches on the Result
         case Published(view): return render("documents/published", view=view)
@@ -660,7 +660,7 @@ from app.bootstrap.settings import Settings    # bootstrap/settings.py: reads th
 from app.bootstrap.wiring import build_documents, build_moderation
 
 @dataclass
-class App:                              # what main and the bootstrap test hold on to
+class App:                              # what main holds on to
     web: FastAPI
     documents: DocumentController
 

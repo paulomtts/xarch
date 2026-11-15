@@ -1,0 +1,74 @@
+"""The structure rules on plain values: what must exist below the root, what is missing, and which folders of the
+tests mirror no folder of the app."""
+import pytest
+
+from xarch.modules.layout.domain.structure import Requirement, hidden, is_instance_name, missing, requirements, unmirrored
+
+PARTS = [(("domain",), True), (("application", "controller.py"), False)]
+
+
+@pytest.mark.parametrize("name, instance", [
+    pytest.param("docs", True, id="an identifier is an instance"),
+    pytest.param("doc_store2", True, id="an identifier with an underscore and a digit is an instance"),
+    pytest.param("_private", False, id="a name starting with an underscore is private"),
+    pytest.param("__pycache__", False, id="a cache folder is not an instance"),
+    pytest.param("not-a-module", False, id="a name that is no identifier is not an instance"),
+    pytest.param("2docs", False, id="a name starting with a digit is not an instance"),
+])
+def test_is_instance_name(name, instance):
+    assert is_instance_name(name) == instance
+
+
+@pytest.mark.parametrize("each_root, instances, required", [
+    pytest.param(None, ["docs"], [Requirement("app", ("kernel",), True, "kernel/"),
+                                  Requirement("app", ("modules",), True, "modules/")],
+                 id="without an each folder only the top level is required"),
+    pytest.param(("modules",), [], [Requirement("app", ("kernel",), True, "kernel/"),
+                                    Requirement("app", ("modules",), True, "modules/")],
+                 id="with no instance only the top level is required"),
+    pytest.param(("modules",), ["users", "_cache", "docs"], [
+        Requirement("app", ("kernel",), True, "kernel/"), Requirement("app", ("modules",), True, "modules/"),
+        Requirement("app/modules/docs", ("modules", "docs", "domain"), True, "domain/"),
+        Requirement("app/modules/docs", ("modules", "docs", "application", "controller.py"), False,
+                    "application/controller.py"),
+        Requirement("app/modules/users", ("modules", "users", "domain"), True, "domain/"),
+        Requirement("app/modules/users", ("modules", "users", "application", "controller.py"), False,
+                    "application/controller.py")],
+                 id="every part of every instance is required, instances by name, a private folder left out"),
+    pytest.param(("src", "features"), ["docs"], [
+        Requirement("app", ("kernel",), True, "kernel/"), Requirement("app", ("modules",), True, "modules/"),
+        Requirement("app/src/features/docs", ("src", "features", "docs", "domain"), True, "domain/"),
+        Requirement("app/src/features/docs", ("src", "features", "docs", "application", "controller.py"), False,
+                    "application/controller.py")],
+                 id="an each folder below the top level is owned by its full path"),
+])
+def test_requirements(each_root, instances, required):
+    assert requirements("app", ["kernel", "modules"], each_root, PARTS, instances) == required
+
+
+def test_missing_reports_what_is_not_present_with_its_owner_and_fix():
+    kernel, domain = Requirement("app", ("kernel",), True, "kernel/"), Requirement("app/modules/docs", (
+        "modules", "docs", "domain"), True, "domain/")
+    found = missing([kernel, domain], [kernel])
+    assert [(str(v), v.rule, v.fix) for v in found] == [
+        ("app/modules/docs: missing domain/", "structure", "create app/modules/docs/domain/")]
+
+
+@pytest.mark.parametrize("path, is_hidden", [
+    pytest.param(("docs", "__pycache__"), True, id="a cache folder is hidden"),
+    pytest.param((".cache",), True, id="a dot folder is hidden"),
+    pytest.param(("_private", "x"), True, id="a folder below a private one is hidden"),
+    pytest.param(("docs", "domain"), False, id="a plain folder is not hidden"),
+])
+def test_hidden(path, is_hidden):
+    assert hidden(path) == is_hidden
+
+
+def test_unmirrored_reports_each_test_folder_that_mirrors_no_folder_of_the_app_in_order():
+    folders = [("docs", "gone"), ("docs",), ("docs", "__pycache__"), ("ghost",), ("docs", "domain")]
+    found = unmirrored("tests", "app", ("modules",), folders, {("docs",), ("docs", "domain")})
+    assert [(str(v), v.rule, v.fix) for v in found] == [
+        ("tests/modules/docs/gone: mirrors no folder of the app (app/modules/docs/gone)", "test-tree",
+         "move what it holds to the folder that mirrors its subject in the app, or remove it"),
+        ("tests/modules/ghost: mirrors no folder of the app (app/modules/ghost)", "test-tree",
+         "move what it holds to the folder that mirrors its subject in the app, or remove it")]

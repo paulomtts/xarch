@@ -1,9 +1,8 @@
 """The libraries and guards of the bundled profiles, loaded through the wiring."""
 import pytest
 
-from xarch.bootstrap.wiring import load_architecture
-from xarch.modules.spec.domain.docs_template import fill
-from xarch.modules.spec.domain.values import Fakes, NoComments, PackageOnly, ScenarioCoverage, StandIns
+from xarch.bootstrap.wiring import build_architectures, load_architecture
+from xarch.modules.spec.contract import CaseTable, Framework, NoComments, PackageOnly, ScenarioCoverage, StandIns
 
 
 @pytest.mark.parametrize("name, expected", [
@@ -19,21 +18,52 @@ def test_the_bundled_profiles_list_the_libraries_their_examples_use(name, expect
 
 @pytest.mark.parametrize("name", ["cli", "web"])
 def test_the_bundled_profiles_use_every_guard_of_their_own(name):
-    assert load_architecture(name).guards == (PackageOnly(("contract",)),
-                                              ScenarioCoverage("contract", "integration", "Result",
-                                                                  ("given", "when", "then")), NoComments(),
-                                              StandIns())
-    assert load_architecture(name).fakes == Fakes(("tests", "fakes"), ("ports",), "Fake")
+    mocks = ("Mock", "MagicMock", "AsyncMock", "NonCallableMock", "NonCallableMagicMock")
+    table = CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id", ("argnames", "argvalues"))
+    assert load_architecture(name).guards == (
+        PackageOnly(("contract",)),
+        ScenarioCoverage("contract", "integration", "Result", ("given", "when", "then"), table, "test_{name}.py"),
+        NoComments(),
+        StandIns(tuple(("unittest", "mock", m) for m in mocks), (("unittest", "mock", "create_autospec"),),
+                 ("spec", "spec_set")))
+    skips = ("pytest.mark.skip", "pytest.mark.skipif", "pytest.mark.xfail", "pytest.skip", "pytest.xfail",
+             "pytest.importorskip", "unittest.skip", "unittest.skipIf", "unittest.skipUnless", "unittest.expectedFailure")
+    assert load_architecture(name).framework == Framework(("test_*.py", "*_test.py"), "test_*",
+                                                          tuple(tuple(s.split(".")) for s in skips))
+    assert [(file.path, file.pinned) for file in load_architecture(name).files] == [
+        (("tests", "architecture", "test_rules.py"), True), (("AGENTS.md",), False), (("ruff.toml",), False)]
+    fakes = load_architecture(name).fakes
+    assert fakes is not None and (fakes.path, fakes.stand_in_for, fakes.prefix) == (("tests", "fakes"), ("ports",), "Fake")
 
 
-def test_the_guards_placeholder_writes_a_line_per_derived_check_and_per_guard():
-    text = fill("{{guards}}", load_architecture("web"), "web.md")
-    assert text.splitlines() == [
+PURE = ["datetime.datetime.now", "datetime.datetime.utcnow", "datetime.datetime.today", "datetime.date.today",
+        "time.time", "time.time_ns", "time.monotonic", "time.perf_counter", "builtins.open", "builtins.print",
+        "builtins.input", "sys.stdin", "sys.stdout", "sys.stderr", "os.environ", "os.getenv", "socket", "subprocess",
+        "sqlite3", "urllib", "http", "shutil"]
+
+
+@pytest.mark.parametrize("name", ["cli", "web"])
+def test_the_bundled_profiles_forbid_the_clock_and_io_in_the_pure_parts_and_their_unit_tests(name):
+    architecture = load_architecture(name)
+    pure = tuple(tuple(n.split(".")) for n in PURE)
+    assert architecture.forbidden == {part: pure for part in ("domain", "logic", "kernel", "ports", "contract")}
+    assert [tier.name for tier in architecture.tiers if tier.forbidden] == ["unit"]
+
+
+def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
+    testing = next(f.template for f in build_architectures().docs("web").files if f.path == ("testing.md",))
+    section = testing.split("\n\n## 9. Guards\n\n", 1)[1].split("\n\n")[1]
+    assert section == "\n".join([
         "- `structure`: every folder and file of the layout exists, in the app and in every `modules/<name>/`.",
         "- `rules`: every import between parts is one that `rules` allows (architecture.md, section 5).",
         "- `libraries`: a part imports only the outside packages listed for it (`platform/`: sqlmodel; "
         "`adapters/`: sqlmodel; `web/`: fastapi; `bootstrap/`: sqlmodel, fastapi, uvicorn); the standard library "
         "is always allowed, and tests are not checked.",
+        "- `forbidden`: a part neither imports nor uses by name what is listed for it (`domain/`, "
+        "`application/logic/`, `kernel/`, `application/ports/` and `contract/`: " + ", ".join(f"`{n}`" for n in PURE)
+        + "), and neither do the unit tests of those parts. It catches what is written in the part's own files, "
+        "through their imports and aliases, not a name reached through a variable or `getattr`, nor I/O done on the "
+        "part's behalf elsewhere.",
         "- `tiers`: a test lives in the folder that mirrors its subject in the app, and imports only that part and "
         "what it may import (a test in a folder that mirrors no part, its tier's subject and what that may import); "
         "only a test whose tier tests `application/ports/` imports the fakes in `tests/fakes/`.",
@@ -53,4 +83,4 @@ def test_the_guards_placeholder_writes_a_line_per_derived_check_and_per_guard():
         "(any method returns a value), each method annotated; every read port `<Port>` has a fake `Fake<Port>` in "
         "`tests/fakes/`; and every mock in the integration tests names what it stands in for, `Mock(spec=<Port>)`, "
         "never a read port (section 6).",
-    ]
+    ])

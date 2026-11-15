@@ -57,5 +57,6 @@ def violations(files: Iterable[SourceFile], profile: Profile, root: str) -> list
             dst = place(profile, target)
             if dst is not None and not allowed(profile, src, dst):
                 shown = ".".join((root, *target))
-                found.append(Violation(file.name, line, f"{label(profile, src)} may not import {label(profile, dst)} ({shown})"))
+                found.append(Violation(file.name, line, f"{label(profile, src)} may not import {label(profile, dst)} ({shown})",
+                                       "rules"))
     return found

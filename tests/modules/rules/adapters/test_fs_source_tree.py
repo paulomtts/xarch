@@ -4,13 +4,20 @@ from pathlib import Path
 import pytest
 
 from xarch.modules.rules.adapters.fs_source_tree import FsSourceTree
-from xarch.modules.rules.domain.values import Call, Class, Function, Method, Row, SourceFile, Table
+from xarch.modules.rules.domain.values import Call, Class, Method, Row, SourceFile, Table, TableForm, Use
 from xarch.platform.filesystem import FileSystem
 
+PYTEST = TableForm(("pytest", "mark", "parametrize"), ("pytest", "param"), "id", ("argnames", "argvalues"))
 
-def parsed(tmp_path: Path, text: str) -> SourceFile:
+
+def parsed(tmp_path: Path, text: str, table: TableForm | None = PYTEST) -> SourceFile:
     (tmp_path / "x.py").write_text(text)
-    return FsSourceTree(FileSystem()).read(tmp_path, [("x.py",)])[0]
+    return FsSourceTree(FileSystem()).read(tmp_path, [("x.py",)], table)[0]
+
+
+def line_of(text: str, marker: str) -> int:
+    """The line of text that holds marker, counted from 1, as the parser counts it."""
+    return next(n for n, line in enumerate(text.splitlines(), 1) if marker in line)
 
 
 def test_a_call_names_its_callee_by_the_path_its_import_binds(tmp_path):
@@ -62,8 +69,30 @@ def test_a_class_lists_its_bases_as_paths_and_its_methods_with_their_return_anno
     assert parsed(tmp_path, text).classes == (
         Class(4, "Repo", (("typing", "Protocol"),),
               (Method(5, "get", "str | None"), Method(6, "save", "None"), Method(7, "raw", None),
-               Method(8, "later", "None"))),
+               Method(8, "later", "None")), ("size",)),
         Class(10, "Typed", (("typing", "Protocol"), None), ()))
+
+
+def test_a_use_names_what_it_reaches_by_the_path_its_import_binds_and_how_many_steps_the_import_bound(tmp_path):
+    text = ("from datetime import datetime as dt\nimport datetime\nimport urllib.request\n"
+            "dt.now()\ndatetime.datetime.now\nurllib.request.urlopen(url)\nf().now\nx = dt\n")
+    assert parsed(tmp_path, text).uses == (
+        Use(4, ("datetime", "datetime", "now"), 2), Use(5, ("datetime", "datetime", "now"), 1),
+        Use(6, ("urllib", "request", "urlopen"), 1), Use(8, ("datetime", "datetime"), 2))
+
+
+def test_a_builtin_is_used_by_its_bare_name_unless_its_scope_binds_the_name(tmp_path):
+    text = ("open('x')\nprint\nundefined()\ndef f(open):\n    return open()\n"
+            "def g():\n    print = log\n    print()\nclass C:\n    input = 1\n    def m(self):\n        input()\n"
+            "import builtins\nbuiltins.open\n")
+    assert parsed(tmp_path, text).uses == (
+        Use(1, ("builtins", "open"), 0), Use(2, ("builtins", "print"), 0), Use(12, ("builtins", "input"), 0),
+        Use(14, ("builtins", "open"), 1))
+
+
+def test_a_name_rebound_at_module_level_or_a_star_import_hides_the_builtin(tmp_path):
+    assert parsed(tmp_path, "open = safe_open\nopen('x')\n").uses == ()
+    assert parsed(tmp_path, "from os import *\nopen('x')\n").uses == ()
 
 
 TABLE = '''import pytest
@@ -88,13 +117,13 @@ def test_go(given, when, then):
 
 def test_a_parametrized_function_lists_its_rows_with_their_ids_and_the_names_heading_their_values(tmp_path):
     function = parsed(tmp_path, TABLE).functions[0]
-    assert (function.name, function.line) == ("test_go", 14)
-    assert function.tables == (Table(7, ("given", "when", "then"), (
-        Row(8, True, "a", (None, "Go", "Missing")),
-        Row(9, True, None, (None, "Go", "Published")),
-        Row(10, True, None, (None, "Go", "Gone")),
-        Row(11, False, None, (None, "Go", None)),
-        Row(12, False, None, ()))),)
+    assert (function.name, function.line) == ("test_go", line_of(TABLE, "def test_go"))
+    assert function.tables == (Table(line_of(TABLE, "@pytest.mark.parametrize"), ("given", "when", "then"), (
+        Row(line_of(TABLE, "Go(1)"), True, "a", (None, "Go", "Missing")),
+        Row(line_of(TABLE, "Go(2)"), True, None, (None, "Go", "Published")),
+        Row(line_of(TABLE, "Go(3)"), True, None, (None, "Go", "Gone")),
+        Row(line_of(TABLE, "Go(4)"), False, None, (None, "Go", None)),
+        Row(line_of(TABLE, "other,"), False, None, ()))),)
 
 
 def test_a_function_lists_the_names_its_body_uses_and_its_branches(tmp_path):
@@ -134,3 +163,122 @@ def test_only_the_parametrize_of_pytest_makes_a_table(tmp_path):
 def test_the_functions_of_a_class_are_listed_in_source_order(tmp_path):
     text = "def a(): ...\nclass K:\n    def b(self): ...\ndef c(): ...\n"
     assert [f.name for f in parsed(tmp_path, text).functions] == ["a", "b", "c"]
+
+
+OTHER = TableForm(("cases", "table"), ("cases", "row"), "name", ("names", "rows"))
+OTHER_TEXT = ("import cases\nfrom cases import row\nimport pytest\n\n"
+              "@cases.table('a, b', [row(1, 2, name='x'), cases.row(3, 4, id='y')])\ndef it_a(): ...\n\n"
+              "@pytest.mark.parametrize('a', [1])\ndef it_b(): ...\n\n"
+              "@cases.table(names='a', rows=[1])\ndef it_c(): ...\n")
+
+
+def test_a_table_is_read_in_the_names_the_form_gives(tmp_path):
+    functions = parsed(tmp_path, OTHER_TEXT, OTHER).functions
+    a, c = line_of(OTHER_TEXT, "@cases.table('a, b'"), line_of(OTHER_TEXT, "@cases.table(names=")
+    assert [(f.name, f.tables) for f in functions] == [
+        ("it_a", (Table(a, ("a", "b"), (Row(a, True, "x", (None, None)), Row(a, True, None, (None, None)))),)),
+        ("it_b", ()),
+        ("it_c", (Table(c, ("a",), (Row(c, False, None, ()),)),)),
+    ]
+
+
+def test_without_keywords_only_positional_arguments_are_read(tmp_path):
+    form = TableForm(("cases", "table"), ("cases", "row"), "name")
+    functions = parsed(tmp_path, OTHER_TEXT, form).functions
+    assert [len(f.tables) for f in functions] == [1, 0, 0]
+
+
+def test_without_a_form_no_table_is_recognised(tmp_path):
+    assert [f.tables for f in parsed(tmp_path, OTHER_TEXT, None).functions] == [(), (), ()]
+
+
+def test_a_function_says_whether_its_body_holds_an_assert(tmp_path):
+    text = "def test_a():\n    assert 1\n\ndef test_b():\n    Rejected()\n"
+    assert [f.asserts for f in parsed(tmp_path, text).functions] == [True, False]
+
+
+def test_a_class_lists_the_attributes_its_body_and_its_methods_assign(tmp_path):
+    text = ("class FakeRepo:\n    size: int = 0\n    name = 'x'\n    def __init__(self, items):\n"
+            "        self.items = items\n        self.seen: list = []\n        other.x = 1\n")
+    assert parsed(tmp_path, text).classes[0].attributes == ("size", "name", "items", "seen")
+
+
+def test_a_file_or_a_folder_exists_and_a_path_that_is_not_there_does_not(tmp_path):
+    (tmp_path / "a").mkdir()
+    (tmp_path / "a" / "x.py").write_text("")
+    tree = FsSourceTree(FileSystem())
+    assert [tree.exists(tmp_path / "a"), tree.exists(tmp_path / "a" / "x.py"), tree.exists(tmp_path / "b")] == [
+        True, True, False]
+
+
+@pytest.mark.parametrize("text, calls", [
+    pytest.param("X = 1\nfrom app import X\nX()\n", [], id="an assignment then an import of the name"),
+    pytest.param("from app import X\nX = 1\nX()\n", [], id="an import then an assignment of the name"),
+    pytest.param("from a import X\nfrom b import X\nX()\n", [], id="two different imports of the name"),
+    pytest.param("if c:\n    from a import X\nelse:\n    X = None\nX()\n", [],
+                 id="an import and an assignment in two branches"),
+    pytest.param("from a import X\nfrom a import X\nX()\n", [("a", "X")], id="the same import twice is one binding"),
+])
+def test_a_name_with_two_different_bindings_in_its_scope_is_read_as_neither(tmp_path, text, calls):
+    assert [c.func for c in parsed(tmp_path, text).calls] == calls
+
+
+@pytest.mark.parametrize("text, calls", [
+    pytest.param("class C:\n    from a import X\n    def m(self):\n        X()\n    X()\n", [(5, ("a", "X"))],
+                 id="a name the class body imports is read in the body, not in its methods"),
+    pytest.param("from a import X\nclass C:\n    X = 2\n    def m(self):\n        X()\n", [(5, ("a", "X"))],
+                 id="a method reads past the class body to the module"),
+    pytest.param("from a import X\nclass C:\n    X = 2\n    class D:\n        X()\n", [(5, ("a", "X"))],
+                 id="a nested class body reads past the class around it to the module"),
+    pytest.param("from a import X\nclass C:\n    X = 2\n    X()\n", [], id="the class body reads its own names"),
+    pytest.param("from a import d\nclass C:\n    d = 1\n    @d()\n    def m(self): ...\n", [],
+                 id="a method's decorator is read in the class body"),
+    pytest.param("from a import d\nclass C:\n    @d()\n    def m(self): ...\n", [(3, ("a", "d"))],
+                 id="a method's decorator the class body does not bind is read in the module"),
+])
+def test_a_class_body_binds_names_only_for_its_own_statements(tmp_path, text, calls):
+    assert [(c.line, c.func) for c in parsed(tmp_path, text).calls] == calls
+
+
+def test_a_class_base_is_read_in_the_scope_around_the_class_not_in_its_body(tmp_path):
+    text = "from a import B\nclass C(B):\n    B = 1\n"
+    assert parsed(tmp_path, text).classes[0].bases == (("a", "B"),)
+
+
+ROWS = ("import pytest\nimport other\n\n@pytest.mark.parametrize('a', [other.param(1, id='x'), param(2, id='y'), "
+        "pytest.param(3, id='z')])\ndef test_a(): ...\n")
+
+
+def test_only_a_call_of_the_forms_row_is_a_row(tmp_path):
+    assert [r.param for r in parsed(tmp_path, ROWS).functions[0].tables[0].rows] == [False, False, True]
+
+
+@pytest.mark.parametrize("body, branches", [
+    pytest.param("    async for x in y:\n        pass\n", ((2, "for"),), id="an async for is a for"),
+    pytest.param("    while x:\n        pass\n", ((2, "while"),), id="a while"),
+    pytest.param("    match x:\n        case _:\n            pass\n", ((2, "match"),), id="a match"),
+    pytest.param("    try:\n        pass\n    except* E:\n        pass\n", ((2, "try"),), id="a try with except*"),
+    pytest.param("    x = [y for y in z if y]\n", (), id="a comprehension is no branch"),
+])
+def test_a_loop_or_branch_of_any_kind_in_a_function_body_is_listed(tmp_path, body, branches):
+    text = f"async def test_a():\n{body}"
+    assert parsed(tmp_path, text).functions[0].branches == branches
+
+
+def test_an_async_with_is_no_branch(tmp_path):
+    assert parsed(tmp_path, "async def test_a():\n    async with x:\n        pass\n").functions[0].branches == ()
+
+
+@pytest.mark.parametrize("text, unions", [
+    pytest.param("R = A | B\n", [("R", ("A", "B"))], id="an assignment of names joined by |"),
+    pytest.param("R: TypeAlias = A | B | C\n", [("R", ("A", "B", "C"))], id="an annotated assignment"),
+    pytest.param("type R = A | B\n", [("R", ("A", "B"))], id="a type statement"),
+    pytest.param("R = A\n", [], id="a single name is an alias, not a union"),
+    pytest.param("type R = A\n", [], id="a type statement of a single name is an alias"),
+    pytest.param("R = A | m.B\n", [], id="a member that is not a plain name"),
+    pytest.param("R = A | None\n", [], id="None is a literal, not a plain name"),
+    pytest.param("R: TypeAlias\n", [], id="an annotation with no value"),
+    pytest.param("def f():\n    R = A | B\n", [], id="a union inside a function is not at module level"),
+])
+def test_a_union_is_a_module_level_alias_of_two_or_more_plain_names(tmp_path, text, unions):
+    assert [(u.name, u.members) for u in parsed(tmp_path, text).unions] == unions

@@ -13,7 +13,7 @@ class _Spec(Protocol):
 
     def docs(self, profile: str) -> Docs: ...
 
-    def files(self, profile: str, app: str) -> tuple[ProjectFile, ...]: ...
+    def files(self, profile: str, app: str, presets: bool = True) -> tuple[ProjectFile, ...]: ...
 
 
 class SpecSkeleton:
@@ -35,8 +35,8 @@ class SpecSkeleton:
         docs = self._spec.docs(profile)
         return [(docs.root + f.path, f.template) for f in docs.files]
 
-    def files(self, profile: str, app: str) -> list[tuple[tuple[str, ...], str]]:
-        return [(f.path, f.text) for f in self._spec.files(profile, app)]
+    def files(self, profile: str, app: str) -> list[tuple[tuple[str, ...], str | bytes]]:
+        return [(f.path, f.content) for f in self._spec.files(profile, app)]
 
 
 def _entries(entries: tuple[Entry, ...]) -> list[tuple[tuple[str, ...], bool]]:

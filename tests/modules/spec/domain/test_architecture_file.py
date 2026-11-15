@@ -18,11 +18,103 @@ def layered() -> dict:
     }
 
 
-def problems(document, has_file=lambda relative: True) -> list[str]:
+def problems(document, has_file=lambda relative: True, folder_files=None) -> list[str]:
     with pytest.raises(InvalidArchitecture) as caught:
-        parse_architecture(document, "layered.yaml", has_file)
+        parse_architecture(document, "layered.yaml", has_file, folder_files)
     assert caught.value.reason == "\n".join(caught.value.problems)
     return list(caught.value.problems)
+
+
+DROP = object()
+"""A change's value that removes the key."""
+
+
+def edited(*changes: tuple[tuple, object]) -> dict:
+    """layered() with each (path of keys, value) change made: the value set at the path, or the key dropped."""
+    document = layered()
+    for path, value in changes:
+        holder = document
+        for key in path[:-1]:
+            holder = holder[key]
+        if value is DROP:
+            del holder[path[-1]]
+        else:
+            holder[path[-1]] = value
+    return document
+
+
+EACH_PARTS_UNMATCHED = [f"parts.{p}.path: 'src/*/{p}' matches no folder or file in layout" for p in ("api", "service", "store")]
+
+
+@pytest.mark.parametrize("document, expected", [
+    pytest.param(["xarch", 1], ["must be a mapping of keys, starting with `xarch: 1`"],
+                 id="a document that is not a mapping stops at once"),
+    pytest.param(edited((("name",), "")), ["`name` must be a non-empty string"], id="an empty name"),
+    pytest.param(edited((("name",), "  ")), ["`name` must be a non-empty string"], id="a blank name"),
+    pytest.param(edited((("name",), 3)), ["`name` must be a non-empty string"], id="a name that is not a string"),
+    pytest.param(edited((("layout", "lib"), {"singular": "lib", "each": {}})), ["layout: `each` may appear only once"],
+                 id="a second each folder"),
+    pytest.param(edited((("layout", "src", "lib"), {"singular": "lib", "each": {}})),
+                 ["layout: `each` may appear only once"], id="an each folder beside another one"),
+    pytest.param(edited((("layout",), "src")), ["layout: must be a mapping of folder and file names",
+                                                *EACH_PARTS_UNMATCHED], id="a layout that is not a mapping"),
+    pytest.param(edited((("layout", "src", "each"), "x")),
+                 ["layout.src.each: must be a mapping of what every `each` folder holds, not 'x'",
+                  *EACH_PARTS_UNMATCHED], id="an each folder that is not a mapping"),
+    pytest.param(edited((("parts",), [])), ["parts: must be a mapping of part names to {path, role, litmus}",
+                                            "rules.api: no part named 'api'", "rules.service: no part named 'service'",
+                                            "rules.store: no part named 'store'"], id="parts that are not a mapping"),
+    pytest.param(edited((("parts", "9x"), {"path": "src", "role": "r"})),
+                 ["parts: '9x' is not a part name: use letters, digits, '_' and '-'"], id="a part name that is no name"),
+    pytest.param(edited((("parts", "api"), "x")),
+                 ["parts.api: must be a mapping with `path` and `role`, and optionally `litmus`"],
+                 id="a part that is not a mapping"),
+    pytest.param(edited((("parts", "api"), {})), ["parts.api: missing `path`", "parts.api: missing `role`"],
+                 id="a part missing its path and role"),
+    pytest.param(edited((("parts", "api", "role"), 3), (("parts", "api", "litmus"), ["a"])),
+                 ["parts.api.role: must be a string", "parts.api.litmus: must be a string"],
+                 id="a role and a litmus that are not strings"),
+    pytest.param(edited((("parts", "api", "path"), "")), ["parts.api.path: must be a path such as 'src/*/api'"],
+                 id="an empty part path"),
+    pytest.param(edited((("parts", "api", "colour"), 1), (("parts", "api", "size"), 2)),
+                 ["parts.api: unknown keys 'colour', 'size': use entry, litmus, path, role, untested"],
+                 id="two unknown keys of a part are named together"),
+    pytest.param(edited((("notes",), [])),
+                 ["notes: must be a mapping of layout paths to one line of text, such as {src/shared: ...}"],
+                 id="notes that are not a mapping"),
+    pytest.param(edited((("notes",), {3: "x"})), ["notes: 3: must be a path such as 'src/*/api'"],
+                 id="a note whose key is not a path"),
+    pytest.param(edited((("rules",), [])), ["rules: must be a mapping of part names to lists of targets"],
+                 id="rules that are not a mapping"),
+    pytest.param(edited((("rules", "api"), "api@own")),
+                 ["rules.api: must be a list of targets such as [api@own, shared]"], id="a rule that is not a list"),
+    pytest.param(edited((("layers",), [])),
+                 ["layers: must be a mapping of names to lists of parts, from the inside out"],
+                 id="layers that are not a mapping"),
+    pytest.param(edited((("layers",), {"a b": ["api"]})),
+                 ["layers: 'a b' is not a name: use letters, digits, '_' and '-'"], id="a layer name that is no name"),
+    pytest.param(edited((("placement",), "api")),
+                 ["placement: must be a list of every part, in the order their litmus tests run"],
+                 id="a placement that is not a list"),
+    pytest.param(edited((("placement",), ["api", "service"])),
+                 ["placement: missing part 'store': list every part once"], id="a placement missing one part"),
+    pytest.param(edited((("naming",), {})), ["naming: must be a list of rows such as {kind, where, pattern, example}"],
+                 id="naming that is not a list"),
+    pytest.param(edited((("naming",), [{"kind": "k", "where": "w", "pattern": 3, "example": "e"}])),
+                 ["naming[0].pattern: must be a string"], id="a naming pattern that is not a string"),
+    pytest.param(edited((("examples",), [])), ["examples: must be a mapping of example names to {part, path, file}"],
+                 id="examples that are not a mapping"),
+    pytest.param(edited((("examples",), {"x": {"part": "api", "path": "src/*/api/x.py", "file": "x.py"}})),
+                 ["examples.x.path: must be a path such as 'src/billing/service/charge.py'"],
+                 id="an example path naming no instance"),
+    pytest.param(edited((("examples",), {"x": {"part": "api", "path": "", "file": "x.py"}})),
+                 ["examples.x.path: must be a path such as 'src/billing/service/charge.py'"],
+                 id="an empty example path"),
+    pytest.param(edited((("examples",), {"x": {"part": "api", "path": "src/b/api/x.py", "file": ""}})),
+                 ["examples.x.file: must be a file name"], id="an empty example file name"),
+])
+def test_a_bad_value_is_rejected(document, expected):
+    assert problems(document) == [f"layered.yaml: {line}" for line in expected]
 
 
 def test_targets_carry_scope_and_sub_path():
@@ -122,8 +214,8 @@ def test_an_unknown_version_is_rejected(version):
 def test_unknown_top_level_keys_are_rejected():
     document = layered() | {"profile": "cli", "extra": 1}
     assert problems(document) == ["layered.yaml: unknown keys 'extra', 'profile': "
-                                  "use docs, examples, fakes, files, guards, layers, layout, libraries, name, naming, notes, parts, "
-                                  "placement, rules, tiers, xarch"]
+                                  "use docs, examples, fakes, files, forbidden, guards, layers, layout, libraries, name, "
+                                  "naming, notes, parts, placement, rules, tests, tiers, xarch"]
 
 
 def test_missing_required_keys_are_reported():
@@ -242,8 +334,8 @@ def test_every_problem_is_listed_at_once():
     document["parts"]["api"]["path"] = "src/*/nope"
     document["rules"]["store"] = ["store@mine"]
     assert problems(document) == [
-        "layered.yaml: unknown key 'extra': use docs, examples, fakes, files, guards, layers, layout, libraries, name, naming, notes, "
-        "parts, placement, rules, tiers, xarch",
+        "layered.yaml: unknown key 'extra': use docs, examples, fakes, files, forbidden, guards, layers, layout, "
+        "libraries, name, naming, notes, parts, placement, rules, tests, tiers, xarch",
         "layered.yaml: parts.api.path: 'src/*/nope' matches no folder or file in layout",
         "layered.yaml: rules.store: 'store@mine' has an unknown scope '@mine': use @own (the importer's own `each` "
         "folder) or @any (any `each` folder)",
@@ -289,6 +381,8 @@ def test_docs_files_and_folders_keep_their_order_and_notes():
     ({"/a.md": {"from": "x.md"}}, ["docs./a.md: must be a path of plain names below the docs folder"]),
     ({"a//b.md": {"from": "x.md"}}, ["docs.a//b.md: must be a path of plain names below the docs folder"]),
     ({"a.md": {"from": "x.md"}, "a.md/b.md": {"from": "x.md"}}, ["docs.a.md/b.md: 'a.md' is a file, not a folder"]),
+    ({"g/a.md": {"from": "x.md"}, "g/a.md/b.md": {"from": "x.md"}},
+     ["docs.g/a.md/b.md: 'g/a.md' is a file, not a folder"]),
     ({"a.md": {"from": "nowhere.md"}}, ["docs.a.md.from: no file 'nowhere.md' next to the architecture file"]),
 ])
 def test_bad_docs_are_rejected(docs, expected):
@@ -312,16 +406,16 @@ def test_an_architecture_without_files_declares_none():
 
 
 @pytest.mark.parametrize("files, expected", [
-    ([], ["files: must be a mapping of paths to {from}, such as {tests/test_rules.py: {from: guard.py}}"]),
+    ([], ["files: must be a mapping of paths to {from}, such as {tests/rules.py: {from: guard.py}}"]),
     ({"a.py": "x.py"}, ["files.a.py: must be a mapping such as {from: <file>}"]),
     ({"a.py": {}}, ["files.a.py: missing `from`, the template file"]),
     ({"a.py": {"from": 3}}, ["files.a.py.from: must be a file name"]),
-    ({"a.py": {"from": "x.py", "note": "n"}}, ["files.a.py: unknown key 'note': use from"]),
+    ({"a.py": {"from": "x.py", "note": "n"}}, ["files.a.py: unknown key 'note': use fill, from, pinned"]),
     ({"a.py": {"from": "nowhere.py"}}, ["files.a.py.from: no file 'nowhere.py' next to the architecture file"]),
     ({"../a.py": {"from": "x.py"}}, ["files.../a.py: must be a path of plain names below the project root"]),
     ({"/a.py": {"from": "x.py"}}, ["files./a.py: must be a path of plain names below the project root"]),
     ({"a//b.py": {"from": "x.py"}}, ["files.a//b.py: must be a path of plain names below the project root"]),
-    ({"a/": {"from": "x.py"}}, ["files.a/: must be a path of plain names below the project root"]),
+    ({"/": {"from": "x.py"}}, ["files./: must be a path of plain names below the project root"]),
     ({3: {"from": "x.py"}}, ["files.3: must be a path of plain names below the project root"]),
     ({"docs/project/a.md": {"from": "x.py"}, "docs/project/a.md/b": {"from": "x.py"}},
      ["files.docs/project/a.md/b: 'docs/project/a.md' is a file, not a folder"]),
@@ -329,6 +423,56 @@ def test_an_architecture_without_files_declares_none():
 def test_bad_files_are_rejected(files, expected):
     assert problems(layered() | {"files": files}, lambda relative: relative == "x.py") == [
         f"layered.yaml: {line}" for line in expected]
+
+
+
+def folders(relative):
+    return {"preset": ("a.txt", "sub/b.bin"), "empty": ()}.get(relative.rstrip("/"))
+
+
+def files_of(entries):
+    return parse_architecture(layered() | {"files": entries}, "layered.yaml",
+                              lambda relative: relative == "x.py", folders).files
+
+
+def test_a_key_ending_in_a_slash_is_a_folder_entry_which_is_not_filled_unless_it_says_so():
+    found = files_of({"{{app}}/web/ui/design/": {"from": "preset/"}, "docs/": {"from": "preset", "fill": True},
+                      "x.txt": {"from": "x.py"}, "y.txt": {"from": "x.py", "fill": False}})
+    assert found == (ProjectFile(("{{app}}", "web", "ui", "design"), "preset", False, True, False),
+                     ProjectFile(("docs",), "preset", False, True, True),
+                     ProjectFile(("x.txt",), "x.py", False, False, True),
+                     ProjectFile(("y.txt",), "x.py", False, False, False))
+
+
+@pytest.mark.parametrize("files, expected", [
+    ({"d/": {}}, ["files.d/: missing `from`, the folder"]),
+    ({"d/": {"from": 3}}, ["files.d/.from: must be a folder name"]),
+    ({"d/": {"from": "x.py"}}, ["files.d/.from: 'x.py' is a file, not a folder: a folder entry copies a folder"]),
+    ({"d/": {"from": "nowhere"}}, ["files.d/.from: no folder 'nowhere' next to the architecture file"]),
+    ({"d/": {"from": "empty"}}, ["files.d/.from: the folder 'empty' holds no file"]),
+    ({"d/": {"from": "preset", "pinned": True}},
+     ["files.d/.pinned: a folder entry cannot be pinned: a project edits what it copies"]),
+    ({"d": {"from": "preset"}}, ["files.d.from: 'preset' is a folder, not a file: end the key with / to copy a folder"]),
+    ({"d/": {"from": "preset", "fill": "no"}}, ["files.d/.fill: must be true or false: whether `{{app}}` is filled in"]),
+    ({"d/": {"from": "preset"}, "d/a.txt": {"from": "x.py"}}, ["files.d/a.txt: lies inside the folder entry 'd/'"]),
+    ({"d/": {"from": "preset"}, "d/e/": {"from": "preset"}}, ["files.d/e/: lies inside the folder entry 'd/'"]),
+    ({"d/e/": {"from": "preset"}, "d/": {"from": "preset"}}, ["files.d/e/: lies inside the folder entry 'd/'"]),
+    ({"d/": {"from": "preset"}, "d": {"from": "x.py"}}, ["files.d: is also a folder entry"]),
+    ({"d/{{other}}/": {"from": "preset"}}, ["files.d/{{other}}/: must be a path of plain names below the project root; "
+                                            "the only placeholder is {{app}}"]),
+    ({"docs/project/": {"from": "preset"}}, ["files.docs/project/: collides with docs.statement.md, written to "
+                                             "docs/project/statement.md"]),
+])
+def test_bad_folder_entries_are_rejected(files, expected):
+    document = layered() | {"docs": {"statement.md": {"from": "x.py"}}, "files": files}
+    assert problems(document, lambda relative: relative == "x.py", folders) == [
+        f"layered.yaml: {line}" for line in expected]
+
+
+def test_a_file_colliding_with_a_doc_in_a_folder_names_the_docs_path():
+    document = layered() | {"docs": {"guides/a.md": {"from": "x.py"}}, "files": {"docs/project/guides/a.md": {"from": "x.py"}}}
+    assert problems(document) == ["layered.yaml: files.docs/project/guides/a.md: collides with docs.guides/a.md, "
+                                  "written to docs/project/guides/a.md"]
 
 
 @pytest.mark.parametrize("path", ["docs/project/statement.md", "docs/project/statement.md/more", "docs/project"])
@@ -369,3 +513,14 @@ def test_a_malformed_singular_name_is_a_problem(value):
     document["layout"]["src"]["singular"] = value
     assert problems(document) == [
         f"layered.yaml: layout.src.singular: must be one word naming an instance of the `each` folder, not {value!r}"]
+
+
+def test_a_part_is_shown_as_the_docs_show_it_below_its_instance_and_ending_in_a_slash_for_a_folder():
+    document = layered()
+    document["layout"] = {"src": {"singular": "feature", "each": {"core": {}, "main.py": "file"}}}
+    document["parts"] = {"core": {"path": "src/*/core", "role": "r"}, "main": {"path": "src/*/main.py", "role": "r"},
+                         "src": {"path": "src", "role": "r"}}
+    document["rules"] = {}
+    architecture = parse_architecture(document, "layered.yaml", lambda r: True)
+    assert {name: architecture.shown(part) for name, part in architecture.parts.items()} == {
+        "core": "core/", "main": "main.py", "src": "src/"}

@@ -7,7 +7,7 @@ from app.web.ui import render
 router = APIRouter()                         # bootstrap/ includes this router in the program's FastAPI
 
 @router.post("/documents/{id}/publish")
-def publish(id: UUID, documents: DocumentController = Depends(documents_controller)):
+def publish(id: UUID, documents: DocumentController = Depends(documents_controller)) -> Response:
     result = documents.publish(PublishDocument(DocumentId(id)))                 # controller call
     match result:                                # the route branches on the Result
         case Published(view): return render("documents/published", view=view)

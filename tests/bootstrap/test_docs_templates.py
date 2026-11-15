@@ -5,17 +5,30 @@ from pathlib import Path
 
 import pytest
 
-from xarch.bootstrap.wiring import build_architectures, load_architecture
+from xarch.bootstrap.wiring import build_architectures, build_spec, load_architecture
 from xarch.modules.spec.domain.errors import InvalidTemplate
 
 DOCS = Path(__file__).resolve().parents[2] / "docs"
 
 
-@pytest.mark.parametrize("profile", ["cli", "web"])
-@pytest.mark.parametrize("doc", ["architecture.md", "testing.md"])
-def test_the_bundled_architecture_and_template_generate_the_checked_in_docs(profile, doc):
-    generated = {"/".join(f.path): f.template for f in build_architectures().docs(profile).files}
-    assert generated[doc] == (DOCS / profile / doc).read_text(encoding="utf-8")
+PROFILES = ["cli", "web"]
+CHECKED_IN = [(profile, path.relative_to(DOCS / profile).as_posix()) for profile in PROFILES
+              for path in sorted((DOCS / profile).rglob("*.md"))]
+"""Every doc checked in under docs/<profile>/, the golden copy of what `init` writes into docs/project/."""
+
+
+def generated(profile: str) -> dict[str, str]:
+    return {"/".join(f.path): f.template for f in build_spec().docs(profile).files}
+
+
+@pytest.mark.parametrize("profile", PROFILES)
+def test_init_writes_exactly_the_docs_checked_in_for_the_profile(profile):
+    assert sorted(generated(profile)) == sorted(path for p, path in CHECKED_IN if p == profile)
+
+
+@pytest.mark.parametrize("profile, doc", [pytest.param(p, d, id=f"{p}/{d}") for p, d in CHECKED_IN])
+def test_the_bundled_architecture_and_templates_generate_each_checked_in_doc_byte_for_byte(profile, doc):
+    assert generated(profile)[doc] == (DOCS / profile / doc).read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize("profile", ["cli", "web"])

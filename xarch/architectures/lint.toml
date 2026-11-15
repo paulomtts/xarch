@@ -1,0 +1,36 @@
+# The linter rules that are the same for every file of the project. Anything that differs by part (which imports, which
+# names, which outside packages a part may use) is the profile's job, checked by `xarch check`, and is not repeated here.
+# `xarch init` writes this file once and never overwrites it: the project owns it from then on.
+target-version = "py313"
+
+# The longest line of the profile's own code examples is 138 characters; 140 keeps what the docs show passing.
+line-length = 140
+
+[lint]
+select = [
+    "E", "F",                    # pycodestyle errors and pyflakes: syntax, unused and undefined names, bare except
+    "I",                         # import sorting
+    "TID252",                    # no relative imports: the architecture's imports are absolute, so `xarch check` sees them
+    "ANN201", "ANN205", "ANN206",  # a public function, static method or class method says what it returns; a port's methods
+                                 # need it for the `stand-ins` guard (read or fire-only). Arguments and private helpers
+                                 # are not asked for
+    "PT",                        # pytest style: a table's names as one comma-separated string, its rows as a list
+    "T20",                       # no print: output is the CLI's or the web layer's, not any file's
+    "DTZ",                       # no naive datetime: the time comes from the `Clock` port, aware
+    "RUF100",                    # a `noqa` that suppresses nothing is itself reported
+]
+ignore = [
+    "E701",                      # the docs write compact one-line classes and `case` arms, aligned: `class A(B): reason = "..."`
+    "PT018",                     # `assert a and b` is fine, and a result compared as one tuple reads better than split asserts
+]
+
+[lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[lint.flake8-pytest-style]
+parametrize-names-type = "csv"
+parametrize-values-type = "list"
+parametrize-values-row-type = "tuple"
+
+[lint.per-file-ignores]
+"tests/**" = ["ANN201", "ANN205", "ANN206"]   # test functions, fakes' helpers and fixtures are not asked for return annotations

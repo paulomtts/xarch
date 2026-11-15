@@ -3,14 +3,14 @@ from pathlib import Path
 
 import pytest
 
+from tests.fakes.architecture_files import FakeArchitectureFiles
+from tests.fakes.settings import FakeSettings
 from xarch.modules.spec.application.controller import SpecController
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.application.services.skeleton import SkeletonService
 from xarch.modules.spec.contract import ProfileRefused, ProfileSelected, SelectProfile
 from xarch.modules.spec.domain.errors import UnreadableSettings
 from xarch.modules.spec.domain.values import Configured
-from tests.fakes.architecture_files import FakeArchitectureFiles
-from tests.fakes.settings import FakeSettings
 
 APP = Path("/src/app")
 PYPROJECT = Path("/src/pyproject.toml")
@@ -19,10 +19,9 @@ LAYERED = {"xarch": 1, "name": "layered", "layout": {"src": {"singular": "module
 
 
 def controller(configured: Configured | None = None, error: Exception | None = None, tests: Path | None = None,
-               files: dict | None = None, settings: FakeSettings | None = None) -> SpecController:
+               files: dict | None = None, at: Path | None = None) -> SpecController:
     architectures = ArchitectureService(FakeArchitectureFiles({"cli": LAYERED, "web": LAYERED}, files))
-    return SpecController(SkeletonService(settings or FakeSettings(configured, error, tests), architectures),
-                          architectures)
+    return SpecController(SkeletonService(FakeSettings(configured, error, tests, at), architectures), architectures)
 
 
 FILE = "/src/layered.yaml"
@@ -35,6 +34,12 @@ FILE = "/src/layered.yaml"
                  id="with nothing configured no profile is chosen and the known ones are listed"),
     pytest.param(dict(configured=Configured("web", PYPROJECT)), SelectProfile(APP, None), ProfileSelected("web"),
                  id="the configured profile is used"),
+    pytest.param(dict(configured=Configured("web", PYPROJECT), at=APP), SelectProfile(APP, None), ProfileSelected("web"),
+                 id="the profile is the one configured for the project holding the app folder"),
+    pytest.param(dict(configured=Configured("web", PYPROJECT), at=Path("/elsewhere/app")), SelectProfile(APP, None),
+                 ProfileRefused("no profile: pass --profile, or set `profile` under [tool.xarch] in pyproject.toml; "
+                                "the profiles found are cli, web"),
+                 id="a profile configured for another folder is not the app folder's"),
     pytest.param(dict(configured=Configured("web", PYPROJECT)), SelectProfile(APP, "cli"), ProfileSelected("cli"),
                  id="an override wins over the configured profile"),
     pytest.param(dict(), SelectProfile(APP, "mobile"),
@@ -66,18 +71,11 @@ def test_profile(given, when, then):
     assert controller(**given).select(when) == then
 
 
-def select(settings: FakeSettings, override: str | None = None):
-    return controller(settings=settings).select(SelectProfile(APP, override))
-
-
-def test_the_settings_are_looked_up_for_the_app_folder():
-    settings = FakeSettings()
-    select(settings)
-    assert settings.asked == [APP]
-
-
-def test_the_tests_root_is_the_override_else_the_configured_one_else_none():
-    configured = Configured("cli", PYPROJECT)
-    assert controller(configured).select(SelectProfile(APP, None)).tests is None
-    assert controller(configured, tests=Path("/src/checks")).select(SelectProfile(APP, None)).tests == Path("/src/checks")
-    assert controller(configured, tests=Path("/src/checks")).select(SelectProfile(APP, None, Path("t"))).tests == Path("t")
+@pytest.mark.parametrize("configured_tests, override, tests", [
+    pytest.param(None, None, None, id="with neither the tests root is none"),
+    pytest.param(Path("/src/checks"), None, Path("/src/checks"), id="the configured tests root is used"),
+    pytest.param(Path("/src/checks"), Path("t"), Path("t"), id="an override wins over the configured tests root"),
+])
+def test_the_tests_root(configured_tests, override, tests):
+    result = controller(Configured("cli", PYPROJECT), tests=configured_tests).select(SelectProfile(APP, None, override))
+    assert isinstance(result, ProfileSelected) and result.tests == tests

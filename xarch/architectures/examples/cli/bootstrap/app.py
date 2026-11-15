@@ -7,7 +7,7 @@ from app.bootstrap.settings import Settings    # bootstrap/settings.py: reads th
 from app.bootstrap.wiring import build_documents, build_moderation
 
 @dataclass
-class App:                              # what main and the bootstrap test hold on to
+class App:                              # what main holds on to
     cli: Typer
     documents: DocumentController
 

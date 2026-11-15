@@ -12,6 +12,7 @@ from xarch.modules.rules.adapters.fs_source_tree import FsSourceTree
 from xarch.modules.rules.adapters.spec_profile import SpecProfiles
 from xarch.modules.rules.application.controller import RulesController
 from xarch.modules.rules.application.services.import_check import ImportCheck
+from xarch.modules.rules.application.services.locate import Locator
 from xarch.modules.scaffold.adapters.fs_files import FsFiles
 from xarch.modules.scaffold.adapters.spec_skeleton import SpecSkeleton as ScaffoldSkeleton
 from xarch.modules.scaffold.application.controller import ScaffoldController
@@ -51,7 +52,8 @@ def load_architecture(location: str | Path) -> Architecture:
 
 
 def build_rules(fs: FileSystem, spec: SpecController) -> RulesController:
-    return RulesController(ImportCheck(FsSourceTree(fs), SpecProfiles(spec)))
+    tree, profiles = FsSourceTree(fs), SpecProfiles(spec)
+    return RulesController(ImportCheck(tree, profiles), Locator(tree, profiles))
 
 
 def build_layout(fs: FileSystem, spec: SpecController) -> LayoutController:

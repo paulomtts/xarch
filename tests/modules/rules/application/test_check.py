@@ -4,14 +4,15 @@ from pathlib import Path
 
 import pytest
 
+from tests.fakes.filesystem import FakeSourceTree
+from tests.fakes.profiles import FakeProfiles
 from xarch.kernel.logic.placement import Target
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.controller import RulesController
 from xarch.modules.rules.application.services.import_check import ImportCheck
+from xarch.modules.rules.application.services.locate import Locator
 from xarch.modules.rules.contract import CheckImports, ImportsChecked, NotADirectory
-from xarch.modules.rules.domain.values import Import, Profile
-from tests.fakes.filesystem import FakeSourceTree
-from tests.fakes.profiles import FakeProfiles
+from xarch.modules.rules.domain.values import Drift, Enforcement, Finding, Import, InitFile, Origin, Profile
 
 ROOT = Path("/src/pkg")
 
@@ -32,14 +33,19 @@ def profile(entry: str) -> Profile:
 PROFILES = FakeProfiles({"cli": profile("cli"), "web": profile("web")})
 
 
+def controller_of(tree, profiles) -> RulesController:
+    return RulesController(ImportCheck(tree, profiles), Locator(tree, profiles))
+
+
 def run(files, package="app", root=ROOT, profile="cli"):
-    controller = RulesController(ImportCheck(FakeSourceTree(ROOT, files), PROFILES))
+    controller = controller_of(FakeSourceTree(ROOT, files), PROFILES)
     return controller.check(CheckImports(root, package, profile))
 
 
 @pytest.mark.parametrize("given, when, then", [
     pytest.param({"kernel/x.py": [Import(3, ("app", "platform", "sql"))]}, CheckImports(ROOT, "app", "cli"),
-                 ImportsChecked((Violation("pkg/kernel/x.py", 3, "kernel/ may not import platform/ (app.platform.sql)"),)),
+                 ImportsChecked((Violation("pkg/kernel/x.py", 3, "kernel/ may not import platform/ (app.platform.sql)",
+                                           "rules"),)),
                  id="a forbidden absolute import is reported"),
     pytest.param({"kernel/x.py": [Import(3, ("app", "kernel", "y"))]}, CheckImports(ROOT, "app", "cli"),
                  ImportsChecked(()), id="an allowed import is no violation"),
@@ -47,7 +53,7 @@ def run(files, package="app", root=ROOT, profile="cli"):
                  id="a missing root is reported as such"),
 ])
 def test_check(given, when, then):
-    assert RulesController(ImportCheck(FakeSourceTree(ROOT, given), PROFILES)).check(when) == then
+    assert controller_of(FakeSourceTree(ROOT, given), PROFILES).check(when) == then
 
 
 def test_the_root_package_name_is_a_parameter():
@@ -78,7 +84,19 @@ def test_the_profile_decides_the_entry_point():
 
 def test_a_closed_tree_reports_a_file_in_no_part_and_no_folder_of_the_layout():
     closed = FakeProfiles({"cli": replace(profile("cli"), closed_tree=True)})
-    controller = RulesController(ImportCheck(FakeSourceTree(ROOT, {"stray.py": [], "kernel/x.py": []}), closed))
+    controller = controller_of(FakeSourceTree(ROOT, {"stray.py": [], "kernel/x.py": []}), closed)
     assert [str(v) for v in controller.check(CheckImports(ROOT, "app", "cli")).violations] == [
         "pkg/stray.py: lies in no part and no folder of the layout: move it into a part, or add its folder to the "
         "layout (closed-tree)"]
+
+
+def test_the_enforcement_holds_the_origin_the_ungoverned_files_the_init_files_and_what_strict_fails_on():
+    origin = Origin("cli", True, None, ("closed-tree",), ("closed-tree",))
+    files = (InitFile(("tests", "test_rules.py"), "check()\n", True), InitFile(("AGENTS.md",), "be good\n"))
+    profiles = FakeProfiles({"cli": profile("cli")}, {"cli": origin}, {"cli": files})
+    tree = FakeSourceTree(ROOT, {"stray.py": [], "kernel/x.py": []}, texts={Path("/src/tests/test_rules.py"): "x\n"})
+    result = controller_of(tree, profiles).check(CheckImports(ROOT, "app", "cli"))
+    assert result.enforcement == Enforcement(
+        origin, ("pkg/stray.py",), (Drift("tests/test_rules.py", "changed"), Drift("AGENTS.md", "missing")),
+        strict=(Finding("ungoverned", "pkg/stray.py"), Finding("init_files", "tests/test_rules.py is changed"),
+                Finding("init_files", "AGENTS.md is missing")))

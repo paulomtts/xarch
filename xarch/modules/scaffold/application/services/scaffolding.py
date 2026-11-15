@@ -19,7 +19,8 @@ class Scaffolding:
         self._files, self._skeleton = files, skeleton
 
     def init(self, root: Path, profile: str) -> Report:
-        """The app's top level, then the profile recorded in the project's pyproject.toml, then the project docs and the profile's other project files."""
+        """The app's top level, then the profile recorded in the project's pyproject.toml, then the project docs and the
+        profile's other project files."""
         files = self._skeleton.files(profile, app_name(root))
         report = self._build(root, self._skeleton.top_level(profile))
         base = holder(root)
@@ -63,12 +64,14 @@ class Scaffolding:
             self._write(base.joinpath(*rel), "", report)
         return report
 
-    def _write(self, target: Path, text: str, report: Report) -> None:
+    def _write(self, target: Path, text: str | bytes, report: Report) -> None:
         """Never overwrites: what exists is reported skipped."""
         if self._files.exists(target):
             report.skipped.append(target)
             return
-        if text:
+        if isinstance(text, bytes):
+            self._files.write_bytes(target, text)
+        elif text:
             self._files.write_text(target, text)
         else:
             self._files.create_empty(target)

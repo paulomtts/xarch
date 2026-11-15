@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 from xarch.modules.spec.application.logic.example_imports import example_problems
+from xarch.modules.spec.application.logic.looseness import closest, guards_off, looser
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
-from xarch.modules.spec.contract import DocFile, Docs, ProjectFile
+from xarch.modules.spec.contract import DocFile, Docs, Loosened, ProfileOrigin, ProjectFile
 from xarch.modules.spec.domain.architecture_file import parse_architecture, source_of
 from xarch.modules.spec.domain.docs import DOCS_ROOT, doc_files
 from xarch.modules.spec.domain.errors import InvalidArchitecture
@@ -45,12 +47,33 @@ class ArchitectureService:
         files = doc_files(architecture, texts, examples, tier_examples)
         return Docs(root=DOCS_ROOT, files=tuple(DocFile(path, text) for path, text in files))
 
-    def files(self, location: str | Path, app: str) -> tuple[ProjectFile, ...]:
-        """The project files the architecture declares for an app folder called app, each filled from its template;
-        raises InvalidArchitecture."""
+    def files(self, location: str | Path, app: str, presets: bool = True) -> tuple[ProjectFile, ...]:
+        """The project files the architecture declares for an app folder called app, each filled from its template
+        unless it says otherwise, a folder entry as every file under its folder (unless presets is off, which leaves
+        those unread); raises InvalidArchitecture."""
         source, architecture = self._load(location)
-        texts = {file.source: self._files.read_text(source, file.source) for file in architecture.files}
-        return tuple(ProjectFile(path, text) for path, text in project_files(architecture, texts, app, source.location))
+        entries = [file for file in architecture.files if presets or not file.folder]
+        listing = {file.source: self._files.files_under(source, file.source) for file in entries if file.folder}
+        contents = {file.source: self._files.read_bytes(source, file.source) for file in entries if not file.folder}
+        contents.update({f"{folder}/{name}": self._files.read_bytes(source, f"{folder}/{name}")
+                         for folder, names in listing.items() for name in names})
+        written = project_files(replace(architecture, files=tuple(entries)), contents, app, source.location, listing)
+        return tuple(ProjectFile(w.path, w.content, w.pinned, w.preset) for w in written)
+
+    def origin(self, location: str | Path) -> ProfileOrigin:
+        """Where the architecture comes from, the guards it leaves off and, for a custom file, how it is looser than
+        the bundled architecture it resembles; raises InvalidArchitecture."""
+        source, architecture = self._load(location)
+        off = guards_off(architecture)
+        if source.bundled:
+            return ProfileOrigin(source.location, True, None, off, off, ())
+        bundled = {name: self.load(name) for name in self.bundled()}
+        name = closest(architecture, bundled)
+        if name is None:
+            return ProfileOrigin(source.location, False, None, off, (), ())
+        baseline = guards_off(bundled[name])
+        return ProfileOrigin(source.location, False, name, off, tuple(g for g in off if g in baseline),
+                             tuple(Loosened(*found) for found in looser(architecture, bundled[name])))
 
     def _example_texts(self, source: ArchitectureSource, architecture: Architecture) -> dict[str, str]:
         return {name: self._files.read_text(source, example.file) for name, example in architecture.examples.items()}
@@ -70,7 +93,8 @@ class ArchitectureService:
             return self._bundled[source.location]
         raw = self._files.read(source)
         loaded = source, parse_architecture(raw.document, raw.source,
-                                            lambda relative: self._files.has_file(source, relative))
+                                            lambda relative: self._files.has_file(source, relative),
+                                            lambda relative: self._files.files_under(source, relative) or None)
         if source.bundled:
             self._bundled[source.location] = loaded
         return loaded

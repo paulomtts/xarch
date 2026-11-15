@@ -17,6 +17,7 @@ the tests root: the folder whose helpers it may import.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from fnmatch import fnmatchcase
 
 from xarch.kernel.logic.placement import EACH, Place, matches, place_of
 from xarch.modules.rules.domain.values import Profile, TestTier
@@ -25,7 +26,7 @@ from xarch.modules.rules.domain.values import Profile, TestTier
 @dataclass(frozen=True)
 class Tested:
     """A file below the tests root: its tier (None if none), the instance of the `each` folder it is in, its own
-    folder, whether it is a test (test_*.py or *_test.py) or a fake, and the parts it mirrors (its subject; empty
+    folder, whether it is a test (a name the profile's test files match) or a fake, and the parts it mirrors (its subject; empty
     when its tier was found by its example's folder)."""
     tier: TestTier | None
     instance: str | None
@@ -35,14 +36,16 @@ class Tested:
     parts: tuple[str, ...] = ()
 
 
-def is_test(path: tuple[str, ...]) -> bool:
-    return bool(path) and (path[-1].startswith("test_") or path[-1].endswith("_test.py"))
+def is_test(profile: Profile, path: tuple[str, ...]) -> bool:
+    """Whether the file name matches one of the profile's test file patterns; no file is a test when it names none."""
+    return bool(path) and profile.framework is not None and any(fnmatchcase(path[-1], pattern)
+                                                                for pattern in profile.framework.files)
 
 
 def tested(profile: Profile, path: tuple[str, ...]) -> Tested:
     fake = profile.fakes is not None and path[:len(profile.fakes.path)] == profile.fakes.path
     tier, instance, parts = (None, None, ()) if fake else _tier(profile, path)
-    return Tested(tier, instance or _instance(profile, path), _own(profile, path), is_test(path), fake, parts)
+    return Tested(tier, instance or _instance(profile, path), _own(profile, path), is_test(profile, path), fake, parts)
 
 
 def _tier(profile: Profile, path: tuple[str, ...]) -> tuple[TestTier | None, str | None, tuple[str, ...]]:

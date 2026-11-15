@@ -30,5 +30,5 @@ def violations(tests: Iterable[SourceFile], profile: Profile, root: str) -> list
                 continue
             found.append(Violation(file.name, call.line, f"a {tier.name} test uses {label(profile, where)} only as a "
                                                          f"type: it may not call {'.'.join(call.func)} "
-                                                         f"(tiers.{tier.name}.types_only)"))
+                                                         f"(tiers.{tier.name}.types_only)", "types-only"))
     return found

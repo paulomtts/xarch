@@ -1,6 +1,7 @@
 """Architecture files bundled with xarch as package data (xarch/architectures/<name>.yaml), or anywhere on disk."""
 from __future__ import annotations
 
+from collections.abc import Iterator
 from importlib import resources
 from importlib.resources.abc import Traversable
 from pathlib import Path
@@ -45,13 +46,38 @@ class FsArchitectureFiles:
             return _bundled_folder().joinpath(*Path(relative).parts).is_file()
         return self._fs.is_file(Path(source.location).parent / relative)
 
+    def files_under(self, source: ArchitectureSource, relative: str) -> tuple[str, ...]:
+        if source.bundled:
+            return tuple(sorted(_below(_bundled_folder().joinpath(*Path(relative).parts))))
+        return tuple(self._fs.files_below(Path(source.location).parent / relative))
+
+    def read_bytes(self, source: ArchitectureSource, relative: str) -> bytes:
+        try:
+            if source.bundled:
+                return _bundled_folder().joinpath(*Path(relative).parts).read_bytes()
+            return self._fs.read_bytes(Path(source.location).parent / relative)
+        except OSError as e:
+            raise InvalidArchitecture(_name(source), [f"cannot read '{relative}': {e.strerror or e}"]) from e
+
     def read_text(self, source: ArchitectureSource, relative: str) -> str:
         try:
             if source.bundled:
                 return _bundled_folder().joinpath(*Path(relative).parts).read_text(encoding="utf-8")
             return self._fs.read_text(Path(source.location).parent / relative)
-        except (OSError, UnicodeDecodeError) as e:
-            raise InvalidArchitecture(_name(source), [f"cannot read '{relative}': {getattr(e, 'strerror', None) or e}"]) from e
+        except UnicodeDecodeError as e:
+            raise InvalidArchitecture(_name(source), [f"cannot read '{relative}': it is not valid UTF-8 text"]) from e
+        except OSError as e:
+            raise InvalidArchitecture(_name(source), [f"cannot read '{relative}': {e.strerror or e}"]) from e
+
+
+def _below(folder: Traversable, prefix: str = "") -> Iterator[str]:
+    if not folder.is_dir():
+        return
+    for child in folder.iterdir():
+        if child.is_dir():
+            yield from _below(child, f"{prefix}{child.name}/")
+        else:
+            yield prefix + child.name
 
 
 def _name(source: ArchitectureSource) -> str:

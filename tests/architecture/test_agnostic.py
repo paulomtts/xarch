@@ -1,5 +1,5 @@
-"""xarch's code names no part of any bundled architecture as an architecture concept: those names come from the
-profile, and belong in xarch/architectures/ (the bundled profiles, templates and examples).
+"""xarch's code names no part of any bundled architecture as an architecture concept, and no test framework: those
+names come from the profile, and belong in xarch/architectures/ (the bundled profiles, templates and examples).
 
 Scope: every string literal in xarch's Python source outside xarch/architectures/, including the text of f-strings;
 docstrings are prose and are not scanned, nor are identifiers and import statements, so xarch's own package folders
@@ -7,6 +7,17 @@ docstrings are prose and are not scanned, nor are identifiers and import stateme
 every part and every layout folder of the bundled profiles, and the singular name of the repeating folder (`module`):
 as a string literal it is an architecture concept, while Python's own notion of a module (docstrings, `ast.Module`,
 `imp.module`, `sys.stdlib_module_names`) is an identifier or prose and never a string literal here. Nothing is allowed: ALLOWED stays empty.
+
+The test framework is scanned the same way, in the same literals. Its names are read from what the bundled profiles
+say for it: every dotted name of the guards (the table's decorator and row, the mocks, the autospec functions) and of
+`tests.skips` (the markers and calls that skip a test) split into its words, the keywords (the table's, the spec's), and
+the stems of the patterns of the test files and functions (`test_`, `_test`), found at the start of a name, never inside
+a longer word (`latest_`). A few words of the
+dotted names are ordinary English that the messages use for their own concept, a mock, a spec, an id, a mark, a
+param, a test, a skip: they are EXEMPT, and the longer names around them (`unittest`, `Mock`, `spec_set`, `parametrize`)
+are what the scan holds. Python itself is not scanned for: `typing.Protocol`, `__init__.py` and the standard
+library's names are not a framework's, and neither are `importlib.import_module` and `__import__`, which the
+enforcement section counts as dynamic imports.
 """
 import ast
 import io
@@ -16,11 +27,14 @@ from pathlib import Path
 
 import xarch
 from xarch.bootstrap.wiring import load_architecture
+from xarch.modules.spec.contract import ScenarioCoverage, StandIns
 
 SRC = Path(xarch.__file__).parent
 BUNDLED = SRC / "architectures"
 
 ALLOWED: dict[tuple[str, str], str] = {}
+
+EXEMPT = {"mock", "mark", "param", "id", "spec", "test", "skip"}
 
 
 def concept_names() -> set[str]:
@@ -39,6 +53,26 @@ def concept_names() -> set[str]:
     return names - {"*"}
 
 
+def framework_names() -> tuple[set[str], set[str]]:
+    """The words and the stems the bundled profiles name for their test framework, EXEMPT words left out."""
+    words: set[str] = set()
+    stems: set[str] = set()
+    for profile in ("cli", "web"):
+        architecture = load_architecture(profile)
+        assert architecture.framework is not None
+        patterns = (*architecture.framework.files, architecture.framework.functions)
+        stems |= {stem for pattern in patterns for stem in re.split(r"\*|\.py$", pattern) if stem}
+        words |= {word for name in architecture.framework.skips for word in name}
+        for guard in architecture.guards:
+            dotted: tuple[tuple[str, ...], ...] = ()
+            if isinstance(guard, ScenarioCoverage):
+                dotted = (guard.table.decorator, guard.table.row, tuple(guard.table.keywords or ()))
+            elif isinstance(guard, StandIns):
+                dotted = (*guard.mocks, *guard.autospec, guard.spec)
+            words |= {word for name in dotted for word in name}
+    return words - EXEMPT, stems
+
+
 def docstring_lines(tree: ast.AST) -> set[int]:
     lines = set()
     for node in ast.walk(tree):
@@ -49,8 +83,12 @@ def docstring_lines(tree: ast.AST) -> set[int]:
     return lines
 
 
-def literals_naming(names: set[str], root: Path = SRC) -> list[tuple[str, int, str]]:
-    word = re.compile(r"\b(" + "|".join(sorted(names)) + r")\b")
+def literals_naming(names: set[str], root: Path = SRC, stems: frozenset[str] | set[str] = frozenset()
+                    ) -> list[tuple[str, int, str]]:
+    pattern = r"\b(" + "|".join(sorted(names)) + r")\b"
+    if stems:
+        pattern += r"|(?<![A-Za-z0-9])(" + "|".join(re.escape(s) for s in sorted(stems)) + ")"
+    word = re.compile(pattern)
     found = []
     for file in sorted(root.rglob("*.py")):
         if file.is_relative_to(BUNDLED) and root == SRC:
@@ -60,7 +98,7 @@ def literals_naming(names: set[str], root: Path = SRC) -> list[tuple[str, int, s
         for token in tokenize.generate_tokens(io.StringIO(text).readline):
             if token.type in (tokenize.STRING, tokenize.FSTRING_MIDDLE) and token.start[0] not in docs:
                 for match in word.finditer(token.string):
-                    found.append((file.relative_to(root).as_posix(), token.start[0], match[1]))
+                    found.append((file.relative_to(root).as_posix(), token.start[0], match[0]))
     return found
 
 
@@ -68,6 +106,39 @@ def test_xarch_names_no_part_of_a_bundled_architecture_outside_the_bundled_files
     found = [f"xarch/{file}:{line}: names '{name}'" for file, line, name in literals_naming(concept_names())
              if (file, name) not in ALLOWED]
     assert found == []
+
+
+def test_xarch_names_no_test_framework_outside_the_bundled_files():
+    words, stems = framework_names()
+    found = [f"xarch/{file}:{line}: names '{name}'" for file, line, name in literals_naming(words, SRC, stems)
+             if (file, name) not in ALLOWED]
+    assert found == []
+
+
+def test_the_framework_names_are_those_of_the_bundled_profiles():
+    words, stems = framework_names()
+    assert {"pytest", "parametrize", "unittest", "Mock", "MagicMock", "AsyncMock", "NonCallableMock",
+            "NonCallableMagicMock", "create_autospec", "spec_set", "argnames", "argvalues", "skipif", "xfail",
+            "importorskip", "skipIf", "skipUnless", "expectedFailure"} <= words
+    assert stems == {"test_", "_test"}
+    assert not words & EXEMPT
+
+
+def test_xarch_names_no_linter_outside_the_bundled_files():
+    found = [f"xarch/{file}:{line}: names '{name}'" for file, line, name in literals_naming({"ruff"})]
+    assert found == []
+
+
+def test_the_scan_would_catch_the_linter(tmp_path):
+    (tmp_path / "words.py").write_text('"""About ruff."""\nCOMMAND = ["ruff", "check"]\n')
+    assert literals_naming({"ruff"}, tmp_path) == [("words.py", 2, "ruff")]
+
+
+def test_the_scan_would_catch_a_framework_name(tmp_path):
+    (tmp_path / "words.py").write_text('"""A docstring about pytest."""\nA = "pytest"\nB = f"a {A} Mock"\n'
+                                       'C = "test_a.py"\nD = "latest_a"\nE = "a mock for the spec"\n')
+    found = literals_naming({"pytest", "Mock"}, tmp_path, {"test_"})
+    assert found == [("words.py", 2, "pytest"), ("words.py", 3, "Mock"), ("words.py", 4, "test_")]
 
 
 def test_the_scan_would_catch_a_part_name(tmp_path):

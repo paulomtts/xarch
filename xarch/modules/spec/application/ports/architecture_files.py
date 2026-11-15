@@ -20,6 +20,15 @@ class ArchitectureFiles(Protocol):
         """Whether a file exists at relative, a path from the folder holding the architecture file."""
         ...
 
+    def files_under(self, source: ArchitectureSource, relative: str) -> tuple[str, ...]:
+        """Every file below the folder at relative, a path from the folder holding the architecture file, as its path
+        in that folder written with `/`, sorted; empty when there is no such folder or it holds no file."""
+        ...
+
+    def read_bytes(self, source: ArchitectureSource, relative: str) -> bytes:
+        """The bytes of the file at relative; raises InvalidArchitecture if it cannot be read."""
+        ...
+
     def read_text(self, source: ArchitectureSource, relative: str) -> str:
         """The text of the file at relative, a path from the folder holding the architecture file; raises
         InvalidArchitecture if it cannot be read."""

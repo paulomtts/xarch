@@ -14,11 +14,17 @@ from xarch.modules.rules.domain.values import Profile
 
 MESSAGE = ("lies in no part and no folder of the layout: move it into a part, or add its folder to the layout "
            "(closed-tree)")
+FIX = "move it into a part, or add its folder to the layout"
 
 
 def violations(paths: Iterable[tuple[str, ...]], profile: Profile, shown: str) -> list[Violation]:
     """paths are below the app root, shown as shown/<path>."""
     if not profile.closed_tree:
         return []
-    return [Violation("/".join((shown, *path)), 0, MESSAGE) for path in paths
-            if place(profile, dotted(path)[0]) is None]
+    return [Violation(file, 0, MESSAGE, "closed-tree", FIX) for file in ungoverned(paths, profile, shown)]
+
+
+def ungoverned(paths: Iterable[tuple[str, ...]], profile: Profile, shown: str) -> list[str]:
+    """The files in no part and no folder of the layout, whether the guard is on or not, each shown as
+    shown/<path>: no check reads them."""
+    return ["/".join((shown, *path)) for path in paths if place(profile, dotted(path)[0]) is None]

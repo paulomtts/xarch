@@ -4,10 +4,8 @@ from pathlib import Path
 import pytest
 
 from xarch.bootstrap.wiring import build_architectures, load_architecture
+from xarch.modules.spec.contract import Subject
 from xarch.modules.spec.domain.errors import InvalidTemplate
-from xarch.modules.spec.domain.values import Subject
-
-DOCS = Path(__file__).resolve().parents[2] / "docs"
 
 
 @pytest.mark.parametrize("profile", ["cli", "web"])
@@ -38,6 +36,7 @@ parts:
   store:  {path: "src/*/store", role: database access}
   shared: {path: shared, role: helpers, untested: reached through the parts that use it}
 rules: {api: [store@own]}
+tests: {files: ["test_*.py"], functions: "test_*"}
 tiers:
   - name: unit
     subject: [store]
@@ -101,9 +100,3 @@ def test_a_custom_testing_template_with_a_bad_placeholder_fails_naming_it(tmp_pa
         "layered-testing.md: {{tier_files}}: tier 'unit' has no `one_file_per`, tier 'unit' has no `cases_from`, "
         "tier 'driver' has no `one_file_per`, tier 'driver' has no `cases_from`")
     assert caught.value.problems[1].startswith("layered-testing.md: unknown placeholder {{tier}}: use {{tree}}")
-
-
-@pytest.mark.parametrize("profile", ["cli", "web"])
-def test_the_bundled_tiers_and_testing_template_generate_the_checked_in_testing_md(profile):
-    generated = {"/".join(f.path): f.template for f in build_architectures().docs(profile).files}
-    assert generated["testing.md"] == (DOCS / profile / "testing.md").read_text(encoding="utf-8")

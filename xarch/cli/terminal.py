@@ -1,5 +1,6 @@
 """What every command shares: the --app, --profile and --tests options, choosing the profile, and how a refusal
 reaches the terminal."""
+from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated
 
@@ -28,13 +29,13 @@ def profile_for(spec: SpecController, app_path: Path, override: str | None) -> s
 
 
 def selection(spec: SpecController, app_path: Path, override: str | None,
-              tests: Path | None) -> tuple[str, Path | None]:
+              tests: Path | None, refuse: Callable[[str], typer.Exit] = fail) -> tuple[str, Path | None]:
     """The architecture in force and the tests root to check: the chosen one, else tests/ beside the app folder
-    when it exists, else None."""
+    when it exists, else None. A refusal is raised as what refuse makes of its reason."""
     match spec.select(SelectProfile(app_path, override, tests)):
         case ProfileSelected(name, chosen):
             if chosen is None and (app_path.absolute().parent / "tests").is_dir():
                 chosen = app_path.absolute().parent / "tests"
             return name, chosen
         case ProfileRefused(reason):
-            raise fail(reason)
+            raise refuse(reason)

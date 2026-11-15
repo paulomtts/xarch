@@ -4,16 +4,34 @@ A name in a call or a class base is read as Python scopes it: through the innerm
 comprehension that binds it (a class body only for its own statements), then the module. It is a Ref only when that
 scope binds it with an absolute import and nothing else; a parameter, an assignment, a def, a relative import or a
 second, different binding of the same name in that scope makes it None, and so does a name no scope binds.
+
+A use is every name read in the file's code, called or not, and every chain of attributes on one (`a.b.c` once, as
+the whole chain), read the same way; a name no scope binds that is one of Python's builtins is the use
+("builtins", <name>), unless the file holds a star import, which might bind it. Annotations are not read for uses.
 """
 from __future__ import annotations
 
 import ast
+import builtins
 import io
 import tokenize
 from pathlib import Path
 
-from xarch.modules.rules.domain.values import (Call, Class, Comment, Function, Import, Method, Ref, Row, SourceFile, Table,
-                                               Union)
+from xarch.modules.rules.domain.values import (
+    Call,
+    Class,
+    Comment,
+    Function,
+    Import,
+    Method,
+    Ref,
+    Row,
+    SourceFile,
+    Table,
+    TableForm,
+    Union,
+    Use,
+)
 from xarch.platform.filesystem import FileSystem
 
 
@@ -27,12 +45,18 @@ class FsSourceTree:
     def paths(self, root: Path) -> list[tuple[str, ...]]:
         return [f.relative_to(root).parts for f in self._fs.files(root, "*.py")]
 
-    def read(self, root: Path, paths: list[tuple[str, ...]]) -> list[SourceFile]:
+    def read(self, root: Path, paths: list[tuple[str, ...]], table: TableForm | None = None) -> list[SourceFile]:
         return [_parsed(root.joinpath(*path).relative_to(root.parent).as_posix(), path,
-                        self._fs.read_text(root.joinpath(*path))) for path in paths]
+                        self._fs.read_text(root.joinpath(*path)), table) for path in paths]
+
+    def exists(self, path: Path) -> bool:
+        return self._fs.exists(path)
+
+    def text(self, path: Path) -> str | None:
+        return self._fs.read_text(path) if self._fs.is_file(path) else None
 
 
-def _parsed(name: str, path: tuple[str, ...], text: str) -> SourceFile:
+def _parsed(name: str, path: tuple[str, ...], text: str, form: TableForm | None) -> SourceFile:
     try:
         tree = ast.parse(text)
         comments = _comments(text)
@@ -40,10 +64,19 @@ def _parsed(name: str, path: tuple[str, ...], text: str) -> SourceFile:
         return SourceFile(name, path, (), error=(e.lineno or 0, f"not valid Python: {e.msg}"))
     except (tokenize.TokenError, IndentationError) as e:
         return SourceFile(name, path, (), error=(0, f"not valid Python: {e}"))
-    calls = _Calls()
+    calls = _Calls(_BUILTINS if not _star_import(tree) else frozenset())
     calls.visit(tree)
-    return SourceFile(name, path, tuple(_imports(tree)), comments, _functions(tree),
-                      tuple(_unions(tree)), calls=tuple(calls.found), classes=tuple(_classes(tree)))
+    return SourceFile(name, path, tuple(_imports(tree)), comments, _functions(tree, form),
+                      tuple(_unions(tree)), calls=tuple(calls.found), classes=tuple(_classes(tree)),
+                      uses=tuple(calls.uses))
+
+
+_BUILTINS = frozenset(name for name in vars(builtins) if not name.startswith("__") or name == "__import__")
+"""Python's builtins, as a bare name reads them; the dunder names the builtins namespace holds about itself left out."""
+
+
+def _star_import(tree: ast.AST) -> bool:
+    return any(isinstance(n, ast.ImportFrom) and any(a.name == "*" for a in n.names) for n in ast.walk(tree))
 
 
 def _imports(tree: ast.AST) -> list[Import]:
@@ -64,29 +97,31 @@ def _comments(text: str) -> tuple[Comment, ...]:
 
 _BRANCHES = {ast.If: "if", ast.Match: "match", ast.Try: "try", ast.TryStar: "try", ast.For: "for",
              ast.AsyncFor: "for", ast.While: "while"}
-_PARAMETRIZE = ("pytest", "mark", "parametrize")
-_PARAM = ("pytest", "param")
 
 
-def _functions(tree: ast.Module) -> tuple[Function, ...]:
+def _functions(tree: ast.Module, form: TableForm | None) -> tuple[Function, ...]:
     scope = [_scope(tree)]
     lists = _lists(tree)
     found: list[Function] = []
     for node in tree.body:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            found.append(_function(node, scope, lists))
+            found.append(_function(node, scope, lists, form))
         elif isinstance(node, ast.ClassDef):
-            found += [_function(n, scope, lists) for n in node.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
+            found += [_function(n, scope, lists, form) for n in node.body
+                      if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
     return tuple(found)
 
 
-def _function(node: ast.FunctionDef | ast.AsyncFunctionDef, scope: list[Scope], lists: dict[str, ast.expr]) -> Function:
+def _function(node: ast.FunctionDef | ast.AsyncFunctionDef, scope: list[Scope], lists: dict[str, ast.expr],
+              form: TableForm | None) -> Function:
     inside = [n for statement in node.body for n in ast.walk(statement)]
     mentions = frozenset(n.id if isinstance(n, ast.Name) else n.attr for n in inside
                          if isinstance(n, (ast.Name, ast.Attribute)))
     branches = tuple(sorted((n.lineno, _BRANCHES[type(n)]) for n in inside if type(n) in _BRANCHES))
-    tables = tuple(table for d in node.decorator_list if (table := _table(d, scope, lists)) is not None)
-    return Function(node.lineno, node.name, tables, mentions, branches)
+    tables = tuple(table for d in node.decorator_list if form is not None
+                   and (table := _table(d, scope, lists, form)) is not None)
+    asserts = any(isinstance(n, ast.Assert) for n in inside)
+    return Function(node.lineno, node.name, tables, mentions, branches, asserts)
 
 
 def _lists(tree: ast.Module) -> dict[str, ast.expr]:
@@ -101,12 +136,13 @@ def _lists(tree: ast.Module) -> dict[str, ast.expr]:
             if len(values) == 1 and isinstance(values[0], (ast.List, ast.Tuple))}
 
 
-def _table(decorator: ast.expr, scope: list[Scope], lists: dict[str, ast.expr]) -> Table | None:
-    if not isinstance(decorator, ast.Call) or _ref(decorator.func, scope) != _PARAMETRIZE:
+def _table(decorator: ast.expr, scope: list[Scope], lists: dict[str, ast.expr], form: TableForm) -> Table | None:
+    if not isinstance(decorator, ast.Call) or _ref(decorator.func, scope) != form.decorator:
         return None
     given = {k.arg: k.value for k in decorator.keywords if k.arg}
-    names = decorator.args[0] if decorator.args else given.get("argnames")
-    values = decorator.args[1] if len(decorator.args) > 1 else given.get("argvalues")
+    by_keyword = form.keywords or (None, None)
+    names = decorator.args[0] if decorator.args else given.get(by_keyword[0])
+    values = decorator.args[1] if len(decorator.args) > 1 else given.get(by_keyword[1])
     columns = _columns(names)
     if columns is None:
         return None
@@ -114,7 +150,7 @@ def _table(decorator: ast.expr, scope: list[Scope], lists: dict[str, ast.expr]) 
         values = lists.get(values.id)
     rows = None
     if isinstance(values, (ast.List, ast.Tuple)) and not any(isinstance(v, ast.Starred) for v in values.elts):
-        rows = tuple(_row(v, scope) for v in values.elts)
+        rows = tuple(_row(v, scope, form) for v in values.elts)
     return Table(decorator.lineno, columns, rows)
 
 
@@ -127,10 +163,10 @@ def _columns(node: ast.expr | None) -> tuple[str, ...] | None:
     return None
 
 
-def _row(node: ast.expr, scope: list[Scope]) -> Row:
-    if not isinstance(node, ast.Call) or _ref(node.func, scope) != _PARAM:
+def _row(node: ast.expr, scope: list[Scope], form: TableForm) -> Row:
+    if not isinstance(node, ast.Call) or _ref(node.func, scope) != form.row:
         return Row(node.lineno, False, None, tuple(_head(e) for e in node.elts) if isinstance(node, ast.Tuple) else ())
-    ids = [k.value for k in node.keywords if k.arg == "id"]
+    ids = [k.value for k in node.keywords if k.arg == form.id]
     given = ids[0].value if ids and isinstance(ids[0], ast.Constant) and isinstance(ids[0].value, str) else None
     return Row(node.lineno, True, given if given and given.strip() else None,
                tuple(_head(a) for a in node.args if not isinstance(a, ast.Starred)))
@@ -231,21 +267,32 @@ def _own(body: list[ast.AST]):
 
 
 def _ref(node: ast.AST, chain: list[Scope]) -> Ref:
+    return _reached(node, chain, frozenset())[0]
+
+
+def _reached(node: ast.AST, chain: list[Scope], names: frozenset[str]) -> tuple[Ref, int]:
+    """The path a name or a chain of attributes on one reaches, and how many of its steps the binding bound; a name
+    no scope binds that is in names is a builtin."""
     attrs: list[str] = []
     while isinstance(node, ast.Attribute):
         attrs.insert(0, node.attr)
         node = node.value
     if not isinstance(node, ast.Name):
-        return None
-    base = next((scope[node.id] for scope in chain if node.id in scope), None)
-    return (*base, *attrs) if base is not None else None
+        return None, 0
+    scope = next((scope for scope in chain if node.id in scope), None)
+    if scope is None:
+        return (("builtins", node.id, *attrs), 0) if node.id in names else (None, 0)
+    base = scope[node.id]
+    return ((*base, *attrs), len(base)) if base is not None else (None, 0)
 
 
 class _Calls(ast.NodeVisitor):
     """Collects every call whose callee is a Ref, reading each name in the scope it is read in."""
 
-    def __init__(self) -> None:
+    def __init__(self, builtins: frozenset[str] = frozenset()) -> None:
         self.found: list[Call] = []
+        self.uses: list[Use] = []
+        self._builtins = builtins
         self._chain: list[Scope] = []
         self._classes: list[bool] = []
 
@@ -280,10 +327,9 @@ class _Calls(ast.NodeVisitor):
     visit_ListComp = visit_SetComp = visit_DictComp = visit_GeneratorExp = _comprehension
 
     def _within(self, node: ast.AST, body: list[ast.AST], is_class: bool) -> None:
-        outer = [s for s, c in zip(self._chain, self._classes) if not c] if not is_class else self._chain
-        outer_classes = [False] * len(outer) if not is_class else self._classes
+        outer = [s for s, c in zip(self._chain, self._classes) if not c]
         saved = self._chain, self._classes
-        self._chain, self._classes = [_scope(node), *outer], [is_class, *outer_classes]
+        self._chain, self._classes = [_scope(node), *outer], [is_class, *([False] * len(outer))]
         for child in body:
             self.visit(child)
         self._chain, self._classes = saved
@@ -297,6 +343,24 @@ class _Calls(ast.NodeVisitor):
             self.found.append(Call(node.lineno, func, args, keywords, unpacked))
         self.generic_visit(node)
 
+    def visit_Name(self, node: ast.Name) -> None:
+        if isinstance(node.ctx, ast.Load):
+            self._use(node)
+
+    def visit_Attribute(self, node: ast.Attribute) -> None:
+        base: ast.expr = node
+        while isinstance(base, ast.Attribute):
+            base = base.value
+        if isinstance(base, ast.Name):
+            self._use(node)
+        else:
+            self.visit(base)
+
+    def _use(self, node: ast.expr) -> None:
+        name, bound = _reached(node, self._chain, self._builtins)
+        if name is not None:
+            self.uses.append(Use(node.lineno, name, bound))
+
 
 def _classes(tree: ast.Module) -> list[Class]:
     scope = [_scope(tree)]
@@ -306,8 +370,24 @@ def _classes(tree: ast.Module) -> list[Class]:
             bases = tuple(_ref(b.value if isinstance(b, ast.Subscript) else b, scope) for b in node.bases)
             methods = tuple(Method(n.lineno, n.name, _annotation(n.returns)) for n in node.body
                             if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)))
-            found.append(Class(node.lineno, node.name, bases, methods))
+            found.append(Class(node.lineno, node.name, bases, methods, _attributes(node)))
     return found
+
+
+def _attributes(node: ast.ClassDef) -> tuple[str, ...]:
+    """The names the class body assigns, then those its methods assign on their first parameter, each once."""
+    names: list[str] = []
+    for child in node.body:
+        targets = child.targets if isinstance(child, ast.Assign) else [child.target] \
+            if isinstance(child, ast.AnnAssign) else []
+        names += [t.id for t in targets if isinstance(t, ast.Name)]
+    for method in node.body:
+        if not isinstance(method, (ast.FunctionDef, ast.AsyncFunctionDef)) or not method.args.args:
+            continue
+        own = method.args.args[0].arg
+        names += [n.attr for n in ast.walk(method) if isinstance(n, ast.Attribute) and isinstance(n.ctx, ast.Store)
+                  and isinstance(n.value, ast.Name) and n.value.id == own]
+    return tuple(dict.fromkeys(names))
 
 
 def _annotation(node: ast.expr | None) -> str | None:

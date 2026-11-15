@@ -23,6 +23,9 @@ class FsFiles:
     def write_text(self, path: Path, text: str) -> None:
         self._fs.write_text(path, text)
 
+    def write_bytes(self, path: Path, data: bytes) -> None:
+        self._fs.write_bytes(path, data)
+
     def read_text(self, path: Path) -> str:
         return self._fs.read_text(path)
 

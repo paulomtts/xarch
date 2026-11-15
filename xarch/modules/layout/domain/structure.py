@@ -42,7 +42,8 @@ def requirements(root: str, top_level: Iterable[str], each_root: tuple[str, ...]
 
 
 def missing(required: Iterable[Requirement], present: Collection[Requirement]) -> list[Violation]:
-    return [Violation(r.owner, 0, f"missing {r.shown}") for r in required if r not in present]
+    return [Violation(r.owner, 0, f"missing {r.shown}", "structure", f"create {r.owner}/{r.shown}")
+            for r in required if r not in present]
 
 
 def hidden(path: tuple[str, ...]) -> bool:
@@ -62,5 +63,6 @@ def unmirrored(tests: str, root: str, each_root: tuple[str, ...], folders: Itera
             continue
         mirrored = "/".join((root, *each_root, *folder))
         found.append(Violation("/".join((tests, *each_root, *folder)), 0,
-                               f"mirrors no folder of the app ({mirrored})"))
+                               f"mirrors no folder of the app ({mirrored})", "test-tree",
+                               "move what it holds to the folder that mirrors its subject in the app, or remove it"))
     return found
