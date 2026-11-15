@@ -32,9 +32,8 @@ GUARDS = {
                 "bodies annotate, types and defaults aside, class variables left out. A class counts when it "
                 "declares at least min_fields of them (3 when left out) and is no %interface%; two classes of the "
                 "same part, in one instance of a repeating folder or two, are not compared. Of the classes with "
-                "the same fields, the first in the order of the parts, then of file and line, is the original; "
-                "each other one with a twin in a part of another name is reported naming that twin, one of its "
-                "own instance first",
+                "the same fields, in the order of the parts, then of file and line, each one with an earlier "
+                "twin in a part of another name is reported naming that twin, one of its own instance first",
     "dead-code": "{untested: true|false}: every port (a %interface% in a part `fakes.for` names) is named by another file "
                  "of the app, in code or an annotation, and every fake (a top-level class of the fakes folder whose "
                  "name starts with `prefix`) is named by a test outside that folder or by a fake that is itself used. "

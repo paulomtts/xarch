@@ -59,24 +59,22 @@ def test_two_instances_of_a_repeating_folder_hold_twins_across_their_parts():
         "written twice (no-twins)"]
 
 
-def test_the_original_comes_first_by_the_order_of_the_parts_and_each_copy_names_a_twin_of_its_own_instance_first():
+def test_the_inner_part_comes_first_and_each_copy_names_an_earlier_twin_of_its_own_instance_first():
     found = problems(source(CONTRACT, classes=(Class(5, "A", fields=FIELDS),)),
                      source(DOMAIN, classes=(Class(5, "B", fields=FIELDS),)),
                      source("modules/rules/contract/__init__.py", classes=(Class(5, "C", fields=FIELDS),)),
                      source("modules/rules/domain/values.py", classes=(Class(5, "D", fields=FIELDS),)))
     assert [line.split(" in the same order")[0] for line in found] == [
-        "app/modules/rules/domain/values.py:5: D declares the fields of C at app/modules/rules/contract/__init__.py:5",
         "app/modules/docs/contract/__init__.py:5: A declares the fields of B at app/modules/docs/domain/values.py:5",
         "app/modules/rules/contract/__init__.py:5: C declares the fields of D at app/modules/rules/domain/values.py:5"]
 
 
-def test_a_class_with_twins_only_in_other_instances_names_the_first_of_them():
+def test_a_class_whose_earlier_twins_share_its_part_is_not_reported_but_its_later_twin_in_another_part_is():
     found = problems(source(DOMAIN, classes=(Class(5, "A", fields=FIELDS),)),
                      source("modules/rules/domain/values.py", classes=(Class(5, "B", fields=FIELDS),)),
-                     source("modules/rules/contract/__init__.py", classes=(Class(5, "C", fields=FIELDS),)))
+                     source("modules/billing/contract/__init__.py", classes=(Class(5, "C", fields=FIELDS),)))
     assert [line.split(" in the same order")[0] for line in found] == [
-        "app/modules/rules/domain/values.py:5: B declares the fields of C at app/modules/rules/contract/__init__.py:5",
-        "app/modules/rules/contract/__init__.py:5: C declares the fields of B at app/modules/rules/domain/values.py:5"]
+        "app/modules/billing/contract/__init__.py:5: C declares the fields of A at app/modules/docs/domain/values.py:5"]
 
 
 def test_many_fields_are_shown_by_the_first_four():

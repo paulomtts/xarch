@@ -11,10 +11,12 @@ different names: two parts of one instance of a repeating folder, of two instanc
 the same part, in one instance or in two, are not this check's business, and the tests are never read.
 
 The classes with the same fields form a group, in the order of the profile's parts (the order their litmus tests
-run, so the inner part comes first), then of file name and line; the first of the group is the original. Each other
-class is reported at its own place when a twin of it lies in a part of another name, naming one such twin: the first,
-in the group's order, of those in its own instance of a repeating folder (or, for a class outside every repeating
-folder, outside them too), else the first of them all. A class whose twins all lie in its own part is not reported.
+run, so the inner part comes first), then of file name and line. A class is reported at its own place when an earlier
+class of the group lies in a part of another name, naming one such: the first of those in its own instance of a
+repeating folder (for a class outside every repeating folder, the first outside them too), else the first of them
+all. So the first of a group is never reported, every class with an earlier twin in another part is, each report
+names a class before it, and a class whose earlier twins all lie in its own part is not reported, though its later
+twins in other parts are.
 """
 from __future__ import annotations
 
@@ -48,8 +50,8 @@ def violations(app: Iterable[SourceFile], profile: Profile) -> list[Violation]:
     found: list[Violation] = []
     for fields, members in groups.items():
         group = sorted(members, key=lambda item: order.get(item[2].part or "", len(order)))
-        for file, cls, where in group[1:]:
-            others = [item for item in group if item[2].part != where.part]
+        for index, (file, cls, where) in enumerate(group):
+            others = [item for item in group[:index] if item[2].part != where.part]
             twin = next((item for item in others if item[2].instance == where.instance), others[0] if others else None)
             if twin is None:
                 continue
