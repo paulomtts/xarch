@@ -19,17 +19,13 @@ class StructureCheckService:
         folder that mirrors no folder of the app."""
         roots = self._skeleton.each_roots(profile)
         repeated = [Repeated(each, self._skeleton.each_parts(profile, each),
-                             self._disk.subdirectories(root.joinpath(*each))) for each in roots]
+                             self._disk.instances(root, each)) for each in roots]
         required = requirements(package, self._skeleton.top_level(profile), repeated,
                                 self._skeleton.top_level_files(profile))
-        present = {r for r in required if self._exists(root.joinpath(*r.path), r.is_dir)}
-        found = missing(required, present)
+        found = missing(required, self._disk.present(root, required))
         if tests is not None:
             for each in roots:
-                app = set(self._disk.folders(root.joinpath(*each)))
-                found += unmirrored(tests.absolute().name, package, each,
-                                    self._disk.folders(tests.joinpath(*each)), app)
+                found += unmirrored(tests.absolute().name, package, each, self._disk.below(tests, each),
+                                    set(self._disk.below(root, each)))
         return found
 
-    def _exists(self, path: Path, is_dir: bool) -> bool:
-        return self._disk.is_dir(path) if is_dir else self._disk.is_file(path)

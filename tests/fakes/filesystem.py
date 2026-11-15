@@ -5,6 +5,7 @@ from collections.abc import Iterable
 from dataclasses import replace
 from pathlib import Path
 
+from xarch.modules.layout.domain.structure import Requirement
 from xarch.modules.rules.domain.values import Import, SourceFile, TableForm
 from xarch.modules.scaffold.domain.values import FILE, FOLDER
 
@@ -50,17 +51,17 @@ class FakeDisk:
     def __init__(self, dirs: set[Path] = frozenset(), files: set[Path] = frozenset()):
         self._dirs, self._files = set(dirs), set(files)
 
-    def is_dir(self, path: Path) -> bool:
-        return path in self._dirs
+    def present(self, root: Path, required: Iterable[Requirement]) -> set[Requirement]:
+        return {item for item in required
+                if root.joinpath(*item.path) in (self._dirs if item.is_dir else self._files)}
 
-    def is_file(self, path: Path) -> bool:
-        return path in self._files
+    def instances(self, root: Path, each: tuple[str, ...]) -> list[str]:
+        base = root.joinpath(*each)
+        return [d.name for d in self._dirs if d.parent == base]
 
-    def subdirectories(self, path: Path) -> list[str]:
-        return [d.name for d in self._dirs if d.parent == path]
-
-    def folders(self, path: Path) -> list[tuple[str, ...]]:
-        return sorted(d.relative_to(path).parts for d in self._dirs if d != path and d.is_relative_to(path))
+    def below(self, root: Path, each: tuple[str, ...]) -> list[tuple[str, ...]]:
+        base = root.joinpath(*each)
+        return sorted(d.relative_to(base).parts for d in self._dirs if d != base and d.is_relative_to(base))
 
 
 class FakeFiles:

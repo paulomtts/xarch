@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
 
+from xarch.modules.layout.domain.structure import Requirement
 from xarch.platform.filesystem import FileSystem
 
 
@@ -11,14 +13,16 @@ class FsDisk:
     def __init__(self, fs: FileSystem):
         self._fs = fs
 
-    def is_dir(self, path: Path) -> bool:
-        return self._fs.is_dir(path)
+    def present(self, root: Path, required: Iterable[Requirement]) -> set[Requirement]:
+        found = set()
+        for item in required:
+            path = root.joinpath(*item.path)
+            if self._fs.is_dir(path) if item.is_dir else self._fs.is_file(path):
+                found.add(item)
+        return found
 
-    def is_file(self, path: Path) -> bool:
-        return self._fs.is_file(path)
+    def instances(self, root: Path, each: tuple[str, ...]) -> list[str]:
+        return self._fs.subdirectories(root.joinpath(*each))
 
-    def subdirectories(self, path: Path) -> list[str]:
-        return self._fs.subdirectories(path)
-
-    def folders(self, path: Path) -> list[tuple[str, ...]]:
-        return self._fs.folders(path)
+    def below(self, root: Path, each: tuple[str, ...]) -> list[tuple[str, ...]]:
+        return self._fs.folders(root.joinpath(*each))
