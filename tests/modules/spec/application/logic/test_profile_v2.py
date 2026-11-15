@@ -31,7 +31,7 @@ def test_a_profile_says_what_it_does_not_have_by_leaving_it_out():
 def test_unknown_keys_are_refused_with_the_keys_that_exist_in_the_file():
     assert problems(layered(colour=1, extra=2)) == [
         "layered.yaml: unknown keys 'colour', 'extra': use based_on, docs, excluded, fakes, files, forbidden, guards, "
-        "hints, language, layers, name, parts, testing, tiers, xarch"]
+        "hints, language, layers, name, parts, reserved, testing, tiers, xarch"]
 
 
 def test_every_unknown_key_message_reads_the_table_of_keys():
@@ -377,7 +377,7 @@ def test_a_part_may_leave_libraries_unchecked_with_everything():
     pytest.param("all", "layered.yaml: parts.store.libraries: must be a list of top-level import names such as "
                         "[sqlmodel], or everything", id="a string that is not everything"),
     pytest.param(["json"], "layered.yaml: parts.store.libraries: 'json' is in the standard library, which every part "
-                           "may import", id="the standard library"),
+                           "may import unless `reserved` names it", id="the standard library"),
     pytest.param(["a.b"], "layered.yaml: parts.store.libraries: 'a.b' is not a top-level import name, such as sqlmodel",
                  id="a dotted name"),
     pytest.param(["x", "x"], "layered.yaml: parts.store.libraries: 'x' is listed twice", id="twice"),
@@ -449,7 +449,7 @@ def test_every_problem_of_a_profile_is_reported_at_once():
         "layered.yaml: `layout`: not a key of format 2: delete it: the layout comes from each part's `path` and "
         "`folders`",
         "layered.yaml: unknown key 'colour': use based_on, docs, excluded, fakes, files, forbidden, guards, hints, "
-        "language, layers, name, parts, testing, tiers, xarch",
+        "language, layers, name, parts, reserved, testing, tiers, xarch",
         "layered.yaml: language: 'ruby' is not a language xarch reads: use python",
         "layered.yaml: parts.store.may_import: 'repo' names no part 'repo'"]
 

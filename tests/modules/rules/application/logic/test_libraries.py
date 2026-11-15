@@ -80,3 +80,34 @@ def test_a_violation_names_its_rule():
 ])
 def test_a_violation_says_what_to_do(path, imports, fix):
     assert [(v.rule, v.fix) for v in violations([source(path, *imports)], PROFILE, "app")] == [("libraries", fix)]
+
+
+RESERVING = profile(libraries={**PROFILE.libraries, "adapters": ("sqlmodel", "ast")},
+                    reserved={"ast": "only the reader parses the language", "tokenize": "the reader's"})
+
+
+@pytest.mark.parametrize("path, imports, expected", [
+    pytest.param("modules/docs/adapters/reader.py", [imp(1, "ast"), imp(2, "json")], [],
+                 id="a reserved module the part lists, and another standard module"),
+    pytest.param("modules/docs/application/logic/rule.py", [imp(1, "ast"), imp(2, "ast", "parse"), imp(3, "json")],
+                 ["app/modules/docs/application/logic/rule.py:1: logic/ of modules/docs may not import ast, which the "
+                  "profile reserves: only the reader parses the language (reserved.ast; parts.logic.libraries)",
+                  "app/modules/docs/application/logic/rule.py:2: logic/ of modules/docs may not import ast, which the "
+                  "profile reserves: only the reader parses the language (reserved.ast; parts.logic.libraries)"],
+                 id="a reserved module a part does not list is reported at each import"),
+    pytest.param("modules/docs/application/logic/rule.py", [imp(1, "ast.nodes")],
+                 ["app/modules/docs/application/logic/rule.py:1: logic/ of modules/docs may not import ast, which the "
+                  "profile reserves: only the reader parses the language (reserved.ast; parts.logic.libraries)"],
+                 id="what lies below a reserved module is it"),
+])
+def test_a_reserved_module_of_the_standard_library_is_imported_only_by_the_parts_that_list_it(path, imports, expected):
+    assert problems(path, *imports, checked=RESERVING) == expected
+
+
+def test_a_reserved_module_says_where_its_code_belongs_or_that_no_part_may_import_it():
+    listed = violations([source("kernel/x.py", imp(1, "ast"))], RESERVING, "app")[0]
+    unlisted = violations([source("kernel/x.py", imp(1, "tokenize"))], RESERVING, "app")[0]
+    assert (listed.rule, listed.fix) == ("libraries", "move the code that needs ast to adapters/, which may import it "
+                                                      "(parts.adapters.libraries)")
+    assert unlisted.fix == ("list tokenize in the libraries of the part it is reserved for, and keep the code that "
+                            "needs it there")

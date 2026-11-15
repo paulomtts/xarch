@@ -229,7 +229,8 @@ class ProfileView:
     """A profile as the checks read it, everything they need already worked out: its parts in order; every folder of
     the layout as a pattern; its tiers in order; the outside packages each part may import (None: unchecked); its
     repeating folders; the guards switched on; the fakes and the test framework (None: none); the excluded folders;
-    the project's own advice for a rule, by rule id; and the language of the app."""
+    the project's own advice for a rule, by rule id; the language of the app; and the standard-library modules a
+    part imports only when its libraries list them, each with why."""
     parts: tuple[PartView, ...]
     folders: tuple[tuple[str, ...], ...] = ()
     tiers: tuple[TierView, ...] = ()
@@ -241,6 +242,7 @@ class ProfileView:
     excluded: tuple[ExcludedView, ...] = ()
     hints: dict[str, str] = field(default_factory=dict)
     language: LanguageView = LanguageView()
+    reserved: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -256,6 +258,7 @@ class Loosened:
         apply_forbidden the tests of tier part are no longer held to their part's forbidden list
         testing.skips   what is no longer counted as a skip
         files.pinned    the init file what is no longer pinned
+        reserved        the standard-library name what is no longer reserved
 
     sentence says it, naming the key of the profile that does.
     """

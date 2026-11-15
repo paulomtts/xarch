@@ -67,7 +67,8 @@ class SpecProfiles:
                        info={p.name: PartInfo(p.role, p.litmus, p.shown, p.untested) for p in parts},
                        excluded=tuple(Exclusion(e.path, e.reason) for e in view.excluded), hints=dict(view.hints),
                        language=Language(view.language.title, view.language.extension, view.language.package_file,
-                                         view.language.interface, view.language.dynamic))
+                                         view.language.interface, view.language.dynamic),
+                       reserved=dict(view.reserved))
 
     def origin(self, location: str) -> Origin:
         found = self._spec.origin(location)

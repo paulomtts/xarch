@@ -29,6 +29,8 @@ each means and whether it is enforced are in profile_keys, which the messages be
         folders: {<folder>: <note>} | [<folder>, ...]
                                folders below the part that the layout shows
     forbidden: {<list>: [<name>, ...]}         named lists of what a part may not use
+    reserved: {<module>: <reason>}             standard-library modules only the parts whose `libraries` list them
+                               may import
     layers: {<name>: [<part>, ...]}            chains of parts from the inside out: none imports one after it
     tiers: {<tier>: {proves, litmus, apply_forbidden, types_only, folder, may_import, docs}}
                                the kinds of test, in the order their litmus tests run. A tier with a `folder` below
@@ -159,7 +161,9 @@ def parse_v2(document: Any, source: str, files: Collection[str] = (), presets: M
     examples = ex.example_files(document.get("docs", {}), files, problems, language)
     rules = {part: _may_import(specs[part].get("may_import"), item, parts, declared, f"parts.{part}.may_import",
                                problems, patterns=True) for part, item in parts.items()}
-    libraries = {part: _libraries(specs[part], f"parts.{part}.libraries", problems, language) for part in parts}
+    reserved = ck.reserved_modules(document["reserved"], problems, language) if "reserved" in document else {}
+    libraries = {part: _libraries(specs[part], f"parts.{part}.libraries", problems, language, reserved)
+                 for part in parts}
     parts = {part: replace(item, must_import=_must_import(specs[part], item, parts, declared, rules[part], problems))
              for part, item in parts.items()}
     parts = {part: _substance(specs[part], item, declared, rules[part], problems) for part, item in parts.items()}
@@ -181,7 +185,7 @@ def parse_v2(document: Any, source: str, files: Collection[str] = (), presets: M
     shown = ex.examples_of(examples, built.tree, parts, language)
     return Architecture(name, built.tree, parts, rules, pages, shown, built.notes, layers, tuple(parts), naming, tiers,
                         libraries, guards, fakes, tuple(built.repeats), written, testing.framework if testing else None, forbidden,
-                        excluded, hints, based_on, language)
+                        excluded, hints, based_on, language, reserved)
 
 
 def _keys(document: Mapping[Any, Any]) -> list[str]:
@@ -493,8 +497,10 @@ def _implied(where: str, value: str, part: Part) -> str:
             f"folder; remove it ({part.name}@any, another instance's too, stays allowed)")
 
 
-def _libraries(spec: Mapping[Any, Any], where: str, problems: list[str], language: Language) -> tuple[str, ...]:
-    """The outside packages of a part: none unless it lists them; (EVERYTHING,) leaves them unchecked."""
+def _libraries(spec: Mapping[Any, Any], where: str, problems: list[str], language: Language,
+               reserved: Mapping[str, str]) -> tuple[str, ...]:
+    """The outside packages of a part, and the reserved modules it may import: none unless it lists them;
+    (EVERYTHING,) leaves them unchecked."""
     if "libraries" not in spec:
         return ()
     value = spec["libraries"]
@@ -503,7 +509,7 @@ def _libraries(spec: Mapping[Any, Any], where: str, problems: list[str], languag
     if not isinstance(value, list):
         problems.append(f"{where}: must be a list of top-level import names such as [sqlmodel], or {WORD}")
         return ()
-    return ck.package_names(value, where, problems, language) or ()
+    return ck.package_names(value, where, problems, language, reserved) or ()
 
 
 def _forbidden_lists(value: Any, problems: list[str],

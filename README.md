@@ -70,7 +70,7 @@ litmus tests run, which is also the order of the generated docs' tree and rules 
 everything else is optional, and a key left out means off):
 
 ```
-xarch: 2*  name*  based_on  language  hints  excluded
+xarch: 2*  name*  based_on  language  hints  excluded  reserved
 testing:  <preset> | {files*, functions*, skips, table, mocks}
 parts*:   {<part>: {path*, role*, litmus, may_import, must_import, libraries, forbidden, tier | untested,
                     package_only, folders, holds, types_only, no_callbacks, names, built_by}}
@@ -168,7 +168,7 @@ that switches or configures each (`-` for none: the rule is always on):
 | `syntax` | a file that does not parse, so no other check could read it | - |
 | `structure` | a folder or file of the layout missing, at any depth, in the app and in every instance of each repeating folder | `parts.path`, `parts.folders` |
 | `rules` | an import between parts that the importing part's `may_import` does not allow, or a name its pattern does not match | `parts.may_import` |
-| `libraries` | an outside package a part does not list; the standard library is always allowed, tests are not checked | `parts.libraries` |
+| `libraries` | an outside package a part does not list, or a standard-library name `reserved` holds that it does not list; the rest of the standard library is always allowed, tests are not checked | `parts.libraries`, `reserved` |
 | `forbidden` | a name or module a part (or, with `apply_forbidden`, its tests) may not use, or a method written `.name()` it may not call on anything but its own object and what that holds | `forbidden`, `parts.forbidden`, `tiers.apply_forbidden` |
 | `tiers` | a test importing what its tier does not allow, or another test file, or a test in no tier | `tiers`, `tiers.folder`, `tiers.may_import`, `parts.tier` |
 | `test-tree` | a folder below `tests/<repeating folder>/` that mirrors no folder of the app | `tiers`, `testing` |

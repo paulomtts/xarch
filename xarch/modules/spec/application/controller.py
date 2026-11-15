@@ -235,7 +235,8 @@ def _profile_view(architecture: Architecture) -> ProfileView:
         excluded=tuple(ExcludedView(e.path, e.reason) for e in architecture.excluded), hints=dict(architecture.hints),
         language=LanguageView(architecture.language.title, architecture.language.extension,
                               architecture.language.package_file, architecture.language.interface,
-                              architecture.language.dynamic))
+                              architecture.language.dynamic),
+        reserved=dict(architecture.reserved))
 
 
 def _guards_view(guards: tuple[Guard, ...]) -> GuardsView:

@@ -392,6 +392,7 @@ class Architecture:
     hints: the project's own advice for a rule id, shown after the built-in fix of a violation of that rule
     based_on: the bundled profile it says it was copied from; empty when it does not say
     language: the language of the app
+    reserved: the standard-library modules only the parts whose `libraries` list them may import, each with why
     """
     name: str
     layout: Layout
@@ -415,6 +416,7 @@ class Architecture:
     hints: dict[str, str] = field(default_factory=dict)
     based_on: str = ""
     language: Language = Language()
+    reserved: dict[str, str] = field(default_factory=dict)
 
     @property
     def entry(self) -> Part | None:

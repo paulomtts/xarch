@@ -46,6 +46,7 @@ SHAPE = (
     Shown('parts.package_only', 1, 'the part is imported only as a package', False, True),
     Shown('parts.folders', 1, 'the folders below the part that the layout shows', False, True),
     Shown('forbidden', 0, 'named lists of names a part may not use', False, True),
+    Shown('reserved', 0, 'standard-library names only some parts may import', False, True),
     Shown('layers', 0, 'chains of parts from the inside out', False, True),
     Shown('tiers', 0, 'the kinds of test, in the order their litmus tests run', False, True),
     Shown('tiers.proves', 1, 'what its tests prove, in one line', False, False),

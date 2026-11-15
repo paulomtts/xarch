@@ -61,7 +61,8 @@ def comparable(architecture: Architecture) -> Architecture:
     migration one), the tiers' examples and subjects' order, the order of the parts, what the profile is based on, and
     what format 1 never had: each part's `must_import`, `holds`, `types_only`, `no_callbacks`, `names` and `built_by`,
     a tier's `must_import`, a name pattern on a target, the names that read the working directory in a `forbidden`
-    list (and a list of nothing else), and the guards no-duplicates, no-twins, dead-code, pass-through and private-imports."""
+    list (and a list of nothing else), the names `reserved` holds and the parts' libraries that list them, and the
+    guards no-duplicates, no-twins, dead-code, pass-through and private-imports."""
     tiers = tuple(replace(tier, subject=tuple(sorted(tier.subject, key=lambda s: s.part)), example=None, helpers=(),
                           must_import=()) for tier in architecture.tiers)
     parts = {name: replace(part, must_import=(), holds="", types_only=(), no_callbacks=False, names=(), built_by=())
@@ -71,8 +72,11 @@ def comparable(architecture: Architecture) -> Architecture:
     rules = {name: tuple(replace(t, names="") for t in targets) for name, targets in architecture.rules.items()}
     kept = {name: tuple(n for n in names if n not in CWD) for name, names in architecture.forbidden.items()}
     forbidden = {name: names for name, names in kept.items() if names}
+    libraries = None if architecture.libraries is None else {
+        name: tuple(p for p in packages if p not in architecture.reserved)
+        for name, packages in architecture.libraries.items()}
     return replace(architecture, tiers=tiers, examples={}, files=(), placement=(), based_on="", parts=parts,
-                   guards=guards, rules=rules, forbidden=forbidden)
+                   guards=guards, rules=rules, forbidden=forbidden, reserved={}, libraries=libraries)
 
 
 @pytest.mark.parametrize("name", ["web", "cli", "xarch"])

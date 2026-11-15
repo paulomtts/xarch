@@ -19,10 +19,10 @@ TESTS = SRC.parent / "tests"
 REFACTOR_PENDING = pytest.mark.xfail(
     strict=True,
     reason="branch refactor/profile-consistency, second round: architecture.yaml switches on the checks that close the "
-           "loopholes the audits found (no-twins; the `ambient` forbidden list on services and controller; "
-           "pass-through on a returned attribute of a forwarded call; holds on a private class), and xarch's own "
-           "code breaks them until it is refactored. Remove this mark once `uv run xarch check --strict` passes on "
-           "xarch.")
+           "loopholes the audits found (no-twins; the `ambient` forbidden list on services and controller; ast and "
+           "tokenize `reserved` for adapters; pass-through on a returned attribute of a forwarded call; holds on a "
+           "private class), and xarch's own code breaks them until it is refactored. Remove this mark once "
+           "`uv run xarch check --strict` passes on xarch.")
 
 
 def own_architecture() -> str:

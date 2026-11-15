@@ -145,7 +145,8 @@ class Profile:
     ("classes" or "functions"); types_only, by part, the parts it may use as types only; no_callbacks the parts whose
     code calls none of its own parameters; names, by part, the patterns its public classes match one of; built_by, by
     part, the parts that alone may build its classes; private_imports switches the private-imports guard on. hints
-    holds the profile's own advice, by rule id. language is the language of the app.
+    holds the profile's own advice, by rule id. language is the language of the app. reserved holds the
+    standard-library modules (by top-level name, each with why) a part imports only when its libraries list them.
     """
     parts: dict[str, tuple[str, ...]]
     rules: dict[str, tuple[Target, ...]]
@@ -177,6 +178,7 @@ class Profile:
     private_imports: bool = False
     hints: dict[str, str] = field(default_factory=dict)
     language: Language = Language()
+    reserved: dict[str, str] = field(default_factory=dict)
 
     def words(self) -> dict[str, str]:
         """The word of the repeating folder each part lies in; a part outside every one has none."""

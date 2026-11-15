@@ -40,7 +40,7 @@ def test_the_standard_library_and_the_builtins_a_profile_is_checked_against_come
     checked = spec.check_profile(CheckProfile(APP, "base"))
     assert isinstance(checked, ProfileChecked)
     assert [problem.text for problem in checked.problems] == [
-        "base: parts.core.libraries: 'strutils' is in the standard library, which every part may import"]
+        "base: parts.core.libraries: 'strutils' is in the standard library, which every part may import unless `reserved` names it"]
 
 
 @pytest.mark.parametrize("languages", [{}, {"python": PYTHON}])

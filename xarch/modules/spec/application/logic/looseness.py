@@ -9,8 +9,8 @@ outside package added to a part's `libraries`, or `libraries` dropped as a whole
 `must_import`, or the key dropped from a part that has it; a name the bundled `forbidden` list of a part holds that no
 entry of the custom list covers (`time` covers `time.time`); a part newly marked `untested`; a part dropped from a
 tier's `types_only`; a tier no longer `apply_forbidden`; a name dropped from `testing.skips`; a `files` entry no longer
-`pinned`. Anything stricter, and what is compared in no way above (the layout, new parts, the guards' parameters,
-`fakes`), is not listed.
+`pinned`; a name the bundled profile `reserved` holds that the custom one does not. Anything stricter, and what is
+compared in no way above (the layout, new parts, the guards' parameters, `fakes`), is not listed.
 """
 from __future__ import annotations
 
@@ -78,6 +78,7 @@ def looser(custom: Architecture, base: Architecture) -> list[Looser]:
     files = {file.path: file for file in custom.files}
     found += [("files.pinned", "", "/".join(file.path)) for file in base.files
               if file.pinned and file.path in files and not files[file.path].pinned]
+    found += [("reserved", "", name) for name in base.reserved if name not in custom.reserved]
     return found
 
 
@@ -124,6 +125,8 @@ def sentence(key: str, part: str, what: str = "") -> str:
             return f"{what} is no longer counted as a skip (testing.skips)"
         case "files.pinned":
             return f"{what} is no longer pinned (files.{what}.pinned)"
+        case "reserved":
+            return f"{what} is no longer reserved (reserved.{what})"
     return " ".join(filter(None, (key, part, what)))
 
 

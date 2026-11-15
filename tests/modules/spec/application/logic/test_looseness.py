@@ -60,6 +60,7 @@ def test_the_bundled_profile_a_profile_says_it_is_based_on_wins_over_the_one_sha
     pytest.param(("files.pinned", "", "tests/test_rules.py"),
                  "tests/test_rules.py is no longer pinned (files.tests/test_rules.py.pinned)",
                  id="an init file unpinned"),
+    pytest.param(("reserved", "", "ast"), "ast is no longer reserved (reserved.ast)", id="a reserved name dropped"),
     pytest.param(("other", "", "x"), "other x", id="a key it does not know is said by its words"),
 ])
 def test_sentence(looser, said):
@@ -80,3 +81,9 @@ def test_every_way_a_profile_is_looser_than_another_is_found_in_order():
         ("forbidden", "core", "time.time"), ("untested", "store", ""), ("types_only", "unit", "store"),
         ("apply_forbidden", "unit", ""), ("testing.skips", "", "pytest.mark.xfail"),
         ("files.pinned", "", "tests/test_rules.py")]
+
+
+def test_a_name_the_base_reserves_and_the_custom_profile_does_not_is_looser():
+    base = parsed(layered(reserved={"ast": "the reader's", "json": "the store's"}))
+    assert looser(parsed(layered(reserved={"json": "mine"})), base) == [("reserved", "", "ast")]
+    assert looser(parsed(layered(reserved={"ast": "the reader's", "json": "the store's", "csv": "x"})), base) == []

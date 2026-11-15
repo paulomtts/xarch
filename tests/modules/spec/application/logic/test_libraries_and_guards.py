@@ -107,3 +107,40 @@ def test_the_guards_placeholder_leaves_out_what_the_profile_does_not_check():
         "- `test tree`: every folder below `tests/src/` mirrors a folder of the app.",
         "- `cycles`: no `src/<name>/` imports from another that imports, directly or through others, from it; each "
         "cycle is reported once, with the imports that close it."]
+
+
+def reserving(reserved, libraries=None) -> dict:
+    """The layered profile reserving modules, with the store part's libraries when given."""
+    document = layered(reserved=reserved)
+    if libraries is not None:
+        document["parts"]["store"]["libraries"] = libraries
+    return document
+
+
+def test_a_reserved_module_of_the_standard_library_loads_with_its_reason_and_a_part_may_list_it():
+    architecture = parsed(reserving({"ast": "the reader's", "tokenize": "the reader's"}, ["ast", "tokenize"]))
+    assert (architecture.reserved, architecture.libraries["store"]) == (
+        {"ast": "the reader's", "tokenize": "the reader's"}, ("ast", "tokenize"))
+
+
+@pytest.mark.parametrize("reserved, libraries, problem", [
+    pytest.param(["ast"], None, "reserved: must be a mapping of standard-library names to why they are reserved, "
+                                "such as {ast: only the reader parses the language}", id="a list"),
+    pytest.param({"yaml": "x"}, None, "reserved: 'yaml' is not in the Python standard library: an outside package "
+                                      "is imported only by the parts whose `libraries` list it already",
+                 id="an outside package"),
+    pytest.param({"os.path": "x"}, None, "reserved: 'os.path' is not a top-level import name, such as ast",
+                 id="a module below a top-level one"),
+    pytest.param({"ast": ""}, None, "reserved.ast: must say in one line why it is reserved", id="no reason"),
+    pytest.param({}, ["ast"], "parts.store.libraries: 'ast' is in the standard library, which every part may import "
+                              "unless `reserved` names it", id="a standard module listed but not reserved"),
+])
+def test_a_bad_reserved_module_is_refused_saying_what_to_write(reserved, libraries, problem):
+    assert problems(reserving(reserved, libraries)) == [f"layered.yaml: {problem}"]
+
+
+def test_the_guards_section_says_which_parts_may_import_a_reserved_module():
+    lines = fill("{{guards}}", parsed(reserving({"ast": "the reader's"}, ["ast"])), "layered.md").splitlines()
+    assert lines[2] == ("- `libraries`: a part imports only the outside packages listed for it (`store/`: ast); the "
+                        "standard library is always allowed but what `reserved` names (`ast`: the reader's), "
+                        "and tests are not checked.")

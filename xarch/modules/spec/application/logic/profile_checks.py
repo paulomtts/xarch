@@ -550,8 +550,30 @@ def quoted(names: list[str]) -> str:
     return ", ".join(f"'{n}'" for n in names)
 
 
-def package_names(value: Any, where: str, problems: list[str], language: Language) -> tuple[str, ...] | None:
-    """The outside packages a part may import, by top-level import name; the standard library is no entry."""
+def reserved_modules(value: Any, problems: list[str], language: Language) -> dict[str, str]:
+    """The standard-library modules the profile reserves, by top-level import name, each with why."""
+    if not isinstance(value, Mapping):
+        problems.append("reserved: must be a mapping of standard-library names to why they are reserved, such as "
+                        "{ast: only the reader parses the language}")
+        return {}
+    found: dict[str, str] = {}
+    for name, reason in value.items():
+        if not isinstance(name, str) or not PACKAGE.fullmatch(name):
+            problems.append(f"reserved: {name!r} is not a top-level import name, such as ast")
+        elif name not in language.standard_names:
+            problems.append(f"reserved: {name!r} is not in the {language.title} standard library: an outside package "
+                            "is imported only by the parts whose `libraries` list it already")
+        elif not line(reason):
+            problems.append(f"reserved.{name}: must say in one line why it is reserved")
+        else:
+            found[name] = reason
+    return found
+
+
+def package_names(value: Any, where: str, problems: list[str], language: Language,
+                  reserved: Collection[str] = ()) -> tuple[str, ...] | None:
+    """The outside packages a part may import, by top-level import name; the standard library is no entry, but for a
+    module the profile reserves."""
     if not isinstance(value, list):
         problems.append(f"{where}: must be a list of top-level import names, such as [sqlmodel]")
         return None
@@ -559,8 +581,9 @@ def package_names(value: Any, where: str, problems: list[str], language: Languag
     for package in value:
         if not isinstance(package, str) or not PACKAGE.fullmatch(package):
             problems.append(f"{where}: {package!r} is not a top-level import name, such as sqlmodel")
-        elif package in language.standard_names:
-            problems.append(f"{where}: {package!r} is in the standard library, which every part may import")
+        elif package in language.standard_names and package not in reserved:
+            problems.append(f"{where}: {package!r} is in the standard library, which every part may import unless "
+                            "`reserved` names it")
         elif package in found:
             problems.append(f"{where}: {package!r} is listed twice")
         else:

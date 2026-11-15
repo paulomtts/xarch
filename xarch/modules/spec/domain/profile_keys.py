@@ -212,6 +212,11 @@ KEYS: tuple[Key, ...] = (
        "not name, an annotation, and what a helper in another file does: a ban list, not a proof of purity",
        "forbidden:\n  pure: [time.time, socket]\n  ambient: [pathlib.Path.cwd, .absolute()]\n"
        + _in_part("forbidden: pure\n"), rules=("forbidden",)),
+    _k(PROFILE, "reserved", "standard-library names only some parts may import",
+       "a map {<name>: <reason>}: a top-level import name of the %language% standard library, and why; the "
+       "`libraries` check reads it as an outside package, so a file of a part imports it only when the part's "
+       "`libraries` lists it (or is everything), and the violation says the reason. Tests are not checked",
+       "reserved:\n  json: only the store reads files\n" + _in_part("libraries: [json]\n"), rules=("libraries",)),
     _k(PROFILE, "layers", "chains of parts from the inside out",
        "a map {<name>: [<part>, ...]}: no part imports one after it in its chain; refused at load when a "
        "`may_import` breaks a chain", "layers:\n  stack: [core, documents]\n" + _TWO),
@@ -297,8 +302,8 @@ KEYS: tuple[Key, ...] = (
        "and tests are not read. Silent on a class reached through a package file that re-exports it, built in its "
        "own file, or built through a variable or a parameter", _in_two("built_by: [core]\n"), rules=("built-by",)),
     _k(PART, "libraries", "the outside packages the part may import",
-       "[<package>, ...] by top-level name, or everything; none by default; the standard library is always allowed and "
-       "tests are not checked", _in_part("libraries: [yaml]\n"),
+       "[<package>, ...] by top-level name, or everything; none by default; the standard library is always allowed, but "
+       "for a name `reserved` holds, which a part lists here to import it; tests are not checked", _in_part("libraries: [yaml]\n"),
        rules=("libraries",)),
     _k(PART, "forbidden", "the list of names the part may not use",
        "the name of a top-level `forbidden` list", "forbidden:\n  pure: [time.time, socket]\n"

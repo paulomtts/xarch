@@ -419,8 +419,10 @@ def _guards(architecture: Architecture, _: str, __: _Context) -> str:
     if architecture.libraries is not None:
         listed = "; ".join(f"`{_shown(architecture, architecture.parts[name])}`: {_packages(packages)}"
                            for name, packages in architecture.libraries.items() if packages)
+        reserved = "; ".join(f"`{name}`: {reason}" for name, reason in architecture.reserved.items())
+        but = f" but what `reserved` names ({reserved})" if reserved else ""
         lines.append(f"`libraries`: a part imports only the outside packages listed for it ({listed}); the standard "
-                     "library is always allowed, and tests are not checked.")
+                     f"library is always allowed{but}, and tests are not checked.")
     if architecture.forbidden:
         lines.append(_forbidden_line(architecture))
     if architecture.tiers:

@@ -58,6 +58,7 @@ parts:
     role: implement the ports on the filesystem or another module's contract
     may_import: [ports, domain, kernel, platform, contract@any]
     must_import: [platform, contract@any]
+    libraries: [ast, tokenize]
     holds: classes
     built_by: [bootstrap]
     tier: unit
@@ -125,6 +126,10 @@ forbidden:
   ambient: [pathlib.Path.cwd, pathlib.Path.absolute, pathlib.Path.resolve, pathlib.Path.home, pathlib.Path.expanduser,
             os.getcwd, os.getcwdb, os.chdir, os.path.abspath, os.path.realpath, os.path.expanduser, .absolute(),
             .resolve(), .expanduser()]
+
+reserved:
+  ast: only the reader adapter parses the checked language, so that another language needs one new reader
+  tokenize: only the reader adapter reads the checked language's tokens
 
 tiers:
   unit:
