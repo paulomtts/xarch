@@ -1,499 +1,289 @@
-# The architecture of a web app: modules driven by web/, wired by bootstrap/.
-xarch: 1
+# A web app of modules: each module is a vertical slice; shared technology sits in platform/, routes in web/.
+xarch: 2
 name: web
-
-layout:
-  bootstrap:
-    migrations: {}
-  kernel:
-    logic: {}
-  modules:
-    # `each` is the repeating folder, one per instance; `singular` names one instance, as the docs show it
-    singular: module
-    each:
-      contract: {}
-      domain: {}
-      application:
-        controller.py: file
-        services: {}
-        logic: {}
-        ports: {}
-      adapters: {}
-  platform: {}
-  web:
-    routes: {}
-    i18n: {}
-    ui: {}
-
-# The tree note of a folder or file that is not a part; a part's note is its role.
-notes:
-  bootstrap/migrations: the schema and its history; the only place migrations live
-  kernel/logic: pure functions that modules share, including a rule two modules need
-  web/routes: one file per route group; each calls module controllers
-  web/i18n: translated strings and locale selection
-  web/ui: pages and components that render a Result
+language: python
+testing: pytest
 
 parts:
+  domain:
+    path: modules/<module>/domain
+    role: "entities, values (incl. ids), errors: invariants only"
+    litmus: >-
+      Is it an invariant of one of this module's entities or values (a state transition or a validation) that can run
+      with no database and no clock? If yes, it goes here, on that entity or value. If it is a pure rule that is not
+      one entity's invariant, it belongs in `application/logic/`. If it must load or save anything, it is a service
+      step. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
+    may_import: [kernel]
+    forbidden: pure
+    tier: unit
+
+  logic:
+    path: modules/<module>/application/logic
+    role: pure functions over the module's domain objects, one file per rule
+    litmus: >-
+      Is it a pure function over this module's domain objects, not one entity's invariant, with no port and no I/O? If
+      yes, it goes here, in a file named for the rule. If it holds one entity's invariant, it belongs in that entity
+      in `domain/`. If another module needs it too, it belongs in `kernel/logic/`. If it must load or save anything,
+      it is a service step. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
+    may_import: [domain, kernel]
+    forbidden: pure
+    tier: unit
+
+  ports:
+    path: modules/<module>/application/ports
+    role: Protocols for what the module needs from the outside
+    litmus: >-
+      Is it something the application needs from outside itself (storage, search, email, or another module's rule)
+      that can be declared as a `Protocol` with no implementation, in the module's own vocabulary and not in SQL or
+      vendor terms? If yes, it goes here. If it is a generic primitive with no business meaning (such as `Clock`), it
+      belongs in `kernel/`. If it has a body that talks to a real system, it belongs in `adapters/`. `xarch check`
+      holds it to its `forbidden` list: no clock and no I/O by name.
+    may_import: [domain, kernel]
+    forbidden: pure
+    tier: integration
+
+  services:
+    path: modules/<module>/application/services
+    role: "use-case steps: load, check, act, persist"
+    litmus: >-
+      Does it run one use case as the sequence "load → check preconditions → act → persist → notify" by calling ports
+      and domain objects, without building the `Result` or the DTO? If yes, it goes here. If it decides what is valid,
+      it belongs in `domain/`. If it is a pure rule with no port, it belongs in `application/logic/`. If it builds the
+      `Result` or the DTO, it belongs in the controller. If it touches a database, it belongs in `adapters/`.
+    may_import: [logic, domain, ports, contract, kernel]
+    tier: integration
+
+  controller:
+    path: modules/<module>/application/controller.py
+    role: maps failures to a Result
+    litmus: >-
+      Does it turn what a service returns or raises into a `Result` for the caller (exceptions into variants, entities
+      into DTOs), without deciding any business rule? If yes, it goes here. If it names HTTP status codes, templates
+      or translated text, it belongs in `web/`. If it handles a table row, it belongs in `adapters/`.
+    may_import: [services, logic, domain, ports, contract, kernel]
+    tier: integration
+
+  adapters:
+    path: modules/<module>/adapters
+    role: "driven only: repos, which translate the platform/ table models; use platform/ clients"
+    litmus: >-
+      Does it implement one of this module's ports against a real system, translating between the module's types and
+      that system's, and naming no other module except the `contract/` of one whose controller it wraps? If yes, it
+      goes here. If it knows no module's types and is only a client or engine for a technology, it belongs in
+      `platform/`. If it contains a business rule, it belongs in `domain/`.
+    may_import: [ports, domain, kernel, platform, contract@any]
+    libraries: [sqlmodel]
+    tier: unit
+
+  platform:
+    path: platform
+    role: >-
+      shared technology clients: llm, embeddings, email, crypto, blob_storage, system clock, sql engine, sessions and
+      table models
+    litmus: >-
+      Is it a client or engine for an external technology (LLM, embeddings, email, crypto, blob storage, clock, SQL
+      engine, table models) that knows none of the types of any one module? If yes, it goes here, named for the
+      technology (a table model, for its table) and never for a module. If it translates a module's types for a port,
+      it belongs in that module's `adapters/`.
+    may_import: [kernel]
+    libraries: [sqlmodel]
+    untested: it wraps outside technology; adapters are tested against a stub of it
+
+  web:
+    path: web
+    role: the only place for routes, translations and rendered output
+    litmus: >-
+      Does it parse a request, pick a status code, translate text or render output, whichever module's data it shows?
+      If yes, it goes here. If it reports a failure as a `Result`, it belongs in the controller. If it holds a
+      business rule, it belongs in `domain/`.
+    may_import: [controller@any, contract@any, kernel]
+    libraries: [fastapi]
+    tier: rendering
+    folders:
+      routes: one file per route group; each calls module controllers
+      i18n: translated strings and locale selection
+      ui: pages and components that render a Result
+
+  bootstrap:
+    path: bootstrap
+    role: "composition root: binds ports to adapters, hands controllers to web/"
+    litmus: >-
+      Does it choose which adapter fills which port, build the services and controller around them, wrap one module's
+      controller in another's adapter, or define the schema? If yes, it goes here, and nowhere else. If it only
+      implements one module's port against a real system, it belongs in `adapters/`.
+    may_import: everything
+    libraries: [sqlmodel, fastapi, uvicorn]
+    untested: it wires the app and holds no rule; it has no test of its own
+    folders:
+      migrations: the schema and its history; the only place migrations live
+
+  contract:
+    path: modules/<module>/contract
+    role: "the module's published language: commands, DTOs, Results (one union per use case), ids"
+    litmus: >-
+      Is it part of what the module promises to callers outside it: an input a caller sends, an output that comes
+      back, or an id that names the module's things? If yes, it goes here, and an id is defined in `domain/values.py`
+      and re-exported here. If it is a `domain/` entity, a service type or a port, it stays where it is, and a DTO
+      goes here instead.
+    may_import: [domain/values, kernel]
+    forbidden: pure
+    tier: integration
+    package_only: true
+
   kernel:
     path: kernel
     role: "pure primitives: id helpers, base errors, lifecycle fields, tracing, Clock"
     litmus: >-
       Is it a primitive with no business meaning, one that could be lifted unchanged into an unrelated system (id
-      helpers, base errors, lifecycle fields, tracing carriers, `Clock`)? If yes, it goes here. Is it a pure
-      function with no port and no I/O that two or more modules need? If yes, it goes in `kernel/logic/`. If only
-      one module needs it, or it names one module's thing, such as a concrete id like `DocumentId`, it belongs in
-      the owning module. If it wraps a technology, it belongs in `platform/`. `xarch check` holds it to its
-      `forbidden` list: no clock and no I/O by name.
-  domain:
-    path: modules/*/domain
-    role: "entities, values (incl. ids), errors: invariants only"
-    litmus: >-
-      Is it an invariant of one of this module's entities or values (a state transition or a validation) that can
-      run with no database and no clock? If yes, it goes here, on that entity or value. If it is a pure rule that is
-      not one entity's invariant, it belongs in `application/logic/`. If it must load or save anything, it is a
-      service step. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
-  contract:
-    path: modules/*/contract
-    role: "the module's published language: commands, DTOs, Results (one union per use case), ids"
-    litmus: >-
-      Is it part of what the module promises to callers outside it: an input a caller sends, an output that comes
-      back, or an id that names the module's things? If yes, it goes here, and an id is defined in
-      `domain/values.py` and re-exported here. If it is a `domain/` entity, a service type or a port, it stays where
-      it is, and a DTO goes here instead.
-  controller:
-    path: modules/*/application/controller.py
-    role: "maps failures to a Result"
-    litmus: >-
-      Does it turn what a service returns or raises into a `Result` for the caller (exceptions into variants,
-      entities into DTOs), without deciding any business rule? If yes, it goes here. If it names HTTP status codes,
-      templates or translated text, it belongs in `web/`. If it handles a table row, it belongs in `adapters/`.
-  services:
-    path: modules/*/application/services
-    role: "use-case steps: load, check, act, persist"
-    litmus: >-
-      Does it run one use case as the sequence "load → check preconditions → act → persist → notify" by calling
-      ports and domain objects, without building the `Result` or the DTO? If yes, it goes here. If it decides what
-      is valid, it belongs in `domain/`. If it is a pure rule with no port, it belongs in `application/logic/`. If
-      it builds the `Result` or the DTO, it belongs in the controller. If it touches a database, it belongs in
-      `adapters/`.
-  logic:
-    path: modules/*/application/logic
-    role: "pure functions over the module's domain objects, one file per rule"
-    litmus: >-
-      Is it a pure function over this module's domain objects, not one entity's invariant, with no port and no I/O?
-      If yes, it goes here, in a file named for the rule. If it holds one entity's invariant, it belongs in that
-      entity in `domain/`. If another module needs it too, it belongs in `kernel/logic/`. If it must load or save
-      anything, it is a service step. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
-  ports:
-    path: modules/*/application/ports
-    role: "Protocols for what the module needs from the outside"
-    litmus: >-
-      Is it something the application needs from outside itself (storage, search, email, or another module's rule)
-      that can be declared as a `Protocol` with no implementation, in the module's own vocabulary and not in SQL or
-      vendor terms? If yes, it goes here. If it is a generic primitive with no business meaning (such as `Clock`),
-      it belongs in `kernel/`. If it has a body that talks to a real system, it belongs in `adapters/`. `xarch
-      check` holds it to its `forbidden` list: no clock and no I/O by name.
-  adapters:
-    path: modules/*/adapters
-    role: "driven only: repos, which translate the platform/ table models; use platform/ clients"
-    litmus: >-
-      Does it implement one of this module's ports against a real system, translating between the module's types
-      and that system's, and naming no other module except the `contract/` of one whose controller it wraps? If
-      yes, it goes here. If it knows no module's types and is only a client or engine for a technology, it belongs
-      in `platform/`. If it contains a business rule, it belongs in `domain/`.
-  platform:
-    path: platform
-    role: "shared technology clients: llm, embeddings, email, crypto, blob_storage, system clock, sql engine, sessions and table models"
-    litmus: >-
-      Is it a client or engine for an external technology (LLM, embeddings, email, crypto, blob storage, clock, SQL
-      engine, table models) that knows none of the types of any one module? If yes, it goes here, named for the
-      technology (a table model, for its table) and never for a module. If it translates a module's types for a
-      port, it belongs in that module's `adapters/`.
-    untested: "it wraps outside technology; adapters are tested against a stub of it"
-  web:
-    path: web
-    entry: true
-    role: "the only place for routes, translations and rendered output"
-    litmus: >-
-      Does it parse a request, pick a status code, translate text or render output, whichever module's data it
-      shows? If yes, it goes here. If it reports a failure as a `Result`, it belongs in the controller. If it holds
-      a business rule, it belongs in `domain/`.
-  bootstrap:
-    path: bootstrap
-    role: "composition root: binds ports to adapters, hands controllers to web/"
-    litmus: >-
-      Does it choose which adapter fills which port, build the services and controller around them, wrap one
-      module's controller in another's adapter, or define the schema? If yes, it goes here, and nowhere else. If it
-      only implements one module's port against a real system, it belongs in `adapters/`.
-    untested: "it wires the app and holds no rule; it has no test of its own"
+      helpers, base errors, lifecycle fields, tracing carriers, `Clock`)? If yes, it goes here. Is it a pure function
+      with no port and no I/O that two or more modules need? If yes, it goes in `kernel/logic/`. If only one module
+      needs it, or it names one module's thing, such as a concrete id like `DocumentId`, it belongs in the owning
+      module. If it wraps a technology, it belongs in `platform/`. `xarch check` holds it to its `forbidden` list: no
+      clock and no I/O by name.
+    forbidden: pure
+    tier: unit
+    folders:
+      logic: pure functions that modules share, including a rule two modules need
 
-# What each part may import. <part>@own: in the importer's own instance of the `each` folder (here, its module);
-# <part>@any: in any instance; a bare <part>: a part outside the `each` folder; /<path> after it: only that path
-# below the part; "*": everything (quoted: * starts a YAML alias).
-# A part may always import itself (its own instance, for a part in the `each` folder), so no row lists it: a row that
-# says only that is refused. `<part>@any` in the part's own row stays allowed: another instance's. The docs' rules
-# table lists the targets in this order.
-rules:
-  kernel:     []
-  domain:     [kernel]
-  contract:   [domain@own/values, kernel]
-  controller: [services@own, logic@own, domain@own, ports@own, contract@own, kernel]
-  services:   [logic@own, domain@own, ports@own, contract@own, kernel]
-  logic:      [domain@own, kernel]
-  ports:      [domain@own, kernel]
-  adapters:   [ports@own, domain@own, kernel, platform, contract@any]   # contract@any: its own, or the provider's whose controller it wraps
-  platform:   [kernel]
-  web:        [controller@any, contract@any, kernel]
-  bootstrap:  ["*"]
-
-# The outside packages each part may import, by top-level import name (what follows `import`). The standard library
-# is always allowed and test code is not checked; a part not listed here may import no outside package.
-libraries:
-  platform:   [sqlmodel]
-  adapters:   [sqlmodel]
-  web:        [fastapi]
-  bootstrap:  [sqlmodel, fastapi, uvicorn]
-
-# The names each part may not use, so that what its litmus test promises (no clock, no I/O) is checked: a call or
-# attribute by its dotted name as an absolute import binds it (a builtin as builtins.<name>; a bare `open` is
-# refused, since it would ban nothing), or a whole package or module by its import name. A file of the part may not import a listed module, or anything below it, nor use a
-# listed name, called or not, as the file writes it: through its imports and their aliases, a builtin by its bare
-# name where nothing in its scope shadows it. Only what the file says is seen: a name reached through a variable,
-# getattr or an object, or I/O done for the part by code elsewhere, is not. A tier with `forbidden: true` holds its
-# tests to the list of the part they mirror. &pure names the list once and *pure repeats it (YAML's anchor and alias).
 forbidden:
-  domain:     &pure [datetime.datetime.now, datetime.datetime.utcnow, datetime.datetime.today, datetime.date.today,
-                     time.time, time.time_ns, time.monotonic, time.perf_counter, builtins.open, builtins.print,
-                     builtins.input, sys.stdin, sys.stdout, sys.stderr, os.environ, os.getenv, socket, subprocess,
-                     sqlite3, urllib, http, shutil]
-  logic:      *pure
-  kernel:     *pure
-  ports:      *pure
-  contract:   *pure
+  pure: [datetime.datetime.now, datetime.datetime.utcnow, datetime.datetime.today, datetime.date.today, time.time,
+         time.time_ns, time.monotonic, time.perf_counter, builtins.open, builtins.print, builtins.input, sys.stdin,
+         sys.stdout, sys.stderr, os.environ, os.getenv, socket, subprocess, sqlite3, urllib, http, shutil]
 
-# The layers of a module, each from the inside out: no part imports a part after it in its chain.
-layers:
-  application: [domain, contract, logic, ports, services, controller]
-  edge:        [platform, adapters]
+layers: {application: [domain, contract, logic, ports, services, controller], edge: [platform, adapters]}
 
-# The order the litmus tests run in when a piece of code does not obviously fit: the first it passes wins.
-placement: [domain, logic, ports, services, controller, adapters, platform, web, bootstrap, contract, kernel]
-
-# The docs' naming table: what each kind of thing is called, and where it lives.
-naming:
-  - {kind: command,        where: contract/,             pattern: verb and thing,                example: PublishDocument}
-  - {kind: DTO,            where: contract/,             pattern: "thing and `View`",            example: DocumentView}
-  - {kind: Result variant, where: contract/,             pattern: "the outcome, in one word",    example: [Published, Missing, Rejected]}
-  - {kind: Result union,   where: contract/,             pattern: "verb and `Result`",           example: PublishResult}
-  - {kind: entity,         where: domain/,               pattern: the thing,                     example: Document}
-  - {kind: id,             where: domain/,               pattern: "thing and `Id`",              example: DocumentId}
-  - {kind: domain error,   where: domain/,               pattern: what went wrong,               example: [DocumentNotFound, DocumentIncomplete]}
-  - {kind: service,        where: application/services/, pattern: "thing and `Service`",         example: DocumentService}
-  - {kind: pure rule,      where: [application/logic/, kernel/logic/],
-     pattern: "a file named for the rule, a function for what it answers",                       example: [staleness.py, is_stale]}
-  - {kind: controller,     where: application/,          pattern: "thing and `Controller`",      example: DocumentController}
-  - {kind: port,           where: application/ports/,    pattern: "what the application needs, in its own words", example: [DocumentRepo, ContentReview]}
-  - {kind: adapter,        where: adapters/,             pattern: "`<System><PortName>`",        example: [DbDocumentRepo, ModerationContentReview]}
-  - {kind: table model,    where: platform/sql/tables/,  pattern: "thing and `Row`",             example: DocumentRow}
-  - {kind: test fake,      where: tests/fakes/,          pattern: "`Fake` and the port's name",  example: FakeDocumentRepo}
-
-# How the project's test framework names things, which xarch's code does not know: a test file is one whose name
-# matches a pattern of `files` (`*` stands for any text; the file name alone, whatever its folder), and a test
-# function one whose name matches `functions`. The tiers need the first to tell a test from a helper, the guards
-# below both. Required with `tiers` and with a guard that reads tests. Python itself stays fixed in xarch: a port
-# is a `typing.Protocol`, imports and the syntax tree are read as Python defines them. A fake (see `fakes`) is
-# never a test, whatever it is named. skips, optional: the dotted names an import binds of what skips a test or
-# expects it to fail, a marker or a call; `check` counts every use of one (or of a name below it) in the tests in its
-# enforcement section, and `--strict` fails on them. Python's own `importlib.import_module` and `__import__` are
-# counted there too, as dynamic imports, and need no entry.
-tests:
-  files: ["test_*.py", "*_test.py"]
-  functions: "test_*"
-  skips: [pytest.mark.skip, pytest.mark.skipif, pytest.mark.xfail, pytest.skip, pytest.xfail, pytest.importorskip,
-          unittest.skip, unittest.skipIf, unittest.skipUnless, unittest.expectedFailure]
-
-# The kinds of test, in the order their litmus tests run when a test's tier is not obvious: the first it passes wins.
-# subject: the parts it tests (<part>/<path> for only a path below one), shown as their folders unless subject_text
-# says otherwise. Every part is in some tier's subject, or says why not with `untested` (see platform).
-# helpers: the files that test code shares, written like an example (path, file, note); {{tier_helpers}} shows them.
-# example: the tier's example test, where it would live in the project (path) and the file holding it (file, next
-# to this one); its note is shown right after the path, as written; it is for the docs and decides nothing `check`
-# does. folder: where the tests of a tier live when they mirror no part (the guard's, which test the source tree), a
-# folder below the tests folder such as architecture: a test there has the tier. It is relative, with no `..` and no
-# `*`, mirrors no part, and does not overlap the `fakes` folder or another tier's folder; with an example, the
-# example's path lies in it. types_only: the parts its tests may import and
-# use as types, never call (the rendering tier types its fake with the controller's class, and never builds one).
-# A test imports only what the part its folder mirrors may import under `rules`, not all its tier may touch.
 tiers:
-  - name: unit
-    subject: [kernel, kernel/logic, domain, logic, adapters]
+  unit:
     proves: an invariant, a value rule, a state transition, a pure rule, an adapter's translation
-    may_touch: "nothing: no I/O, no clock (checked by `forbidden` for the pure parts), no fakes; an adapter gets a stub of its `platform/` client"
-    forbidden: true
     litmus: >-
       Does it prove a rule, value or transition by building the object and asking it, or by calling a pure function
-      from `logic/`, or by handing an adapter a stub client and checking what it translates, with no port in sight?
-      If yes, it is a unit test. If it needs a port to get an answer, it is an integration test. If it asserts how
-      a port was called, it is testing nothing.
-    one_file_per: domain object or rule
-    cases_from: "the invariants in the module doc; a rule's cases are a table of its inputs and its answer"
-    data: "built in the test; a rule's inputs are the columns of its table"
-    example: {path: tests/modules/documents/application/logic/test_staleness.py, file: examples/shared/tiers/unit.py}
-    helpers:
-      - {path: tests/modules/documents/builders.py, file: examples/shared/tiers/builders.py}
-  - name: integration
-    subject: [controller, services, ports, contract]
-    subject_text: "`application/controller.py`, with the services behind it"
+      from `logic/`, or by handing an adapter a stub client and checking what it translates, with no port in sight? If
+      yes, it is a unit test. If it needs a port to get an answer, it is an integration test. If it asserts how a port
+      was called, it is testing nothing.
+    apply_forbidden: true
+    docs:
+      may_touch: >-
+        nothing: no I/O, no clock (checked by `forbidden` for the pure parts), no fakes; an adapter gets a stub of its
+        `platform/` client
+      one_file_per: domain object or rule
+      cases_from: the invariants in the module doc; a rule's cases are a table of its inputs and its answer
+      data: built in the test; a rule's inputs are the columns of its table
+      example: tests/modules/documents/application/logic/test_staleness.py
+      helpers: [tests/modules/documents/builders.py]
+
+  integration:
     proves: one `Result` variant per path, driven through the controller
-    may_touch: "real controllers only; their ports are `tests/fakes/`, or `Mock(spec=<Port>)` for fire-only ports"
     litmus: >-
       Does it drive one use case through its real controller, from the state in `given` with the command in `when`,
-      and assert the `Result` in `then`? If yes, it is an integration test. If it asserts what a fake holds instead
-      of the `Result`, check first that the `Result` would not already say it. If it asserts how a row is stored or
-      read back, it is a unit test of the adapter. If it mocks a repo to assert it was called, fake the repo and
-      assert the `Result`.
-    one_file_per: use case
-    cases_from: "a Given / When / Then table: a row for every `Result` variant, happy and unhappy"
-    data: "the `given` column: the state the fakes start with; a builder per aggregate for the common shape, never a shared dataset"
-    example: {path: tests/modules/documents/application/test_publish.py, file: examples/shared/tiers/integration.py,
-              note: " (its table is in section 5.2)"}
-    helpers:
-      - {path: tests/modules/documents/application/helpers.py, file: examples/shared/tiers/helpers.py}
-  - name: rendering
-    subject: [web]
+      and assert the `Result` in `then`? If yes, it is an integration test. If it asserts what a fake holds instead of
+      the `Result`, check first that the `Result` would not already say it. If it asserts how a row is stored or read
+      back, it is a unit test of the adapter. If it mocks a repo to assert it was called, fake the repo and assert the
+      `Result`.
+    docs:
+      subject: "`application/controller.py`, with the services behind it"
+      may_touch: real controllers only; their ports are `tests/fakes/`, or `Mock(spec=<Port>)` for fire-only ports
+      one_file_per: use case
+      cases_from: "a Given / When / Then table: a row for every `Result` variant, happy and unhappy"
+      data: >-
+        the `given` column: the state the fakes start with; a builder per aggregate for the common shape, never a
+        shared dataset
+      example: tests/modules/documents/application/test_publish.py
+      helpers: [tests/modules/documents/application/helpers.py]
+
+  rendering:
     proves: what the page shows for each `Result`; never a business outcome
-    may_touch: "a fake controller, injected; the real controller's class only as a type, never called"
-    types_only: [controller]
     litmus: >-
       Does it prove what the page shows for one `Result`, with a fake controller injected, asserting only what is
-      shown and never a status code? If yes, it is a rendering test. If it asserts what the use case did, or needs
-      the real controller to mean anything, it is an integration test wearing a screen.
-    one_file_per: command or page
-    cases_from: "a table of the `Result` and what is shown, a row for every variant it shows"
-    data: "none: the `result` column is what the fake controller returns"
-    example: {path: tests/web/test_publish.py, file: examples/web/tiers/rendering.py}
-    helpers:
-      - {path: tests/web/conftest.py, file: examples/web/tiers/client.py}
-  - name: guard
-    subject: []
-    subject_text: the source tree
+      shown and never a status code? If yes, it is a rendering test. If it asserts what the use case did, or needs the
+      real controller to mean anything, it is an integration test wearing a screen.
+    types_only: [controller]
+    docs:
+      may_touch: a fake controller, injected; the real controller's class only as a type, never called
+      one_file_per: command or page
+      cases_from: a table of the `Result` and what is shown, a row for every variant it shows
+      data: "none: the `result` column is what the fake controller returns"
+      example: tests/web/test_publish.py
+      helpers: [tests/web/conftest.py]
+
+  guard:
     proves: a rule of the architecture holds
-    may_touch: "`tests/architecture/`"
     litmus: >-
       Does it read the source tree and fail on a rule of architecture.md, whatever the app does? If yes, it is a
       guard. If it runs the app, it is not a guard.
-    one_file_per: project, since one test runs every guard
-    cases_from: the guards of section 9
-    data: none
     folder: architecture
-    example: {path: tests/architecture/test_rules.py, file: examples/shared/tiers/guard.py,
-              note: " (written by `xarch init`)"}
+    may_import: []
+    docs:
+      subject: the source tree
+      may_touch: "`tests/architecture/`"
+      one_file_per: project, since one test runs every guard
+      cases_from: the guards of section 9
+      data: none
+      example: tests/architecture/test_rules.py
 
-# Where the test fakes live (path, below the tests root), the parts they stand in for (for) and how a fake's name
-# starts (prefix: the fake of DocumentRepo is FakeDocumentRepo): only a test whose tier's subject holds one of those
-# parts may import them.
-fakes: {path: tests/fakes, for: [ports], prefix: Fake}
+fakes:
+  folder: fakes
+  for: [ports]
+  prefix: Fake
 
-# The pre-built checks `xarch check` runs besides those it derives from rules, libraries and tiers, each by name with
-# its parameters. package-only: the parts imported only as a package from outside them. scenario-coverage: the part
-# holding the result unions (results), the tier whose test files hold their tables (tier), how a union's name ends
-# (suffix), and the three parameter names of a table, its state, its command and its result (columns): each variant
-# of a union is the result of a row, every row is a call of the table's row with an id, and a table test does not
-# branch. How a table is written, in the framework's names (table): the dotted name an import binds of the
-# decorator that holds the rows (decorator), of a row (row), the keyword that gives a row its id (id), and,
-# optionally, the keywords the decorator's two positional arguments, the parameter names and the rows, may be
-# given by (keywords; without them only positional arguments are read). file is the name of a use case's test
-# file, `{name}` standing for the use case in snake_case (PublishDocument: test_publish_document.py), and must be
-# a name `tests.files` matches. The mechanism assumes a decorator holding rows; a framework that holds its cases
-# another way cannot use this guard, and leaves it out.
-# no-comments: none. stand-ins: it reads `fakes`: a port is read when any of its methods returns a value and
-# fire-only when all return None (by its return annotations), every read port has a fake, and an integration test's
-# mocks name a fire-only port. A mock is a call of one of `mocks` (dotted names an import binds), which names its
-# spec as its first argument or by a keyword of `spec`; the calls of `autospec`, optional, take the spec as their
-# first argument or by the first keyword of `spec`. `fixtures`, optional, names the parameters of a test function
-# whose methods build mocks the same way: a call of `<parameter>.<method>` for a method listed under `mocks` or
-# `autospec` is read like a call of the dotted names above (a parameter the function rebinds, `*args` and the like
-# are not read). The mechanism assumes a mock built by a call that names its
-# spec; a framework with another shape leaves the guard out. Also available,
-# and off here because the tree is a protocol, not a closed world: closed-tree, every Python file lies in a part.
 guards:
-  package-only:      [contract]
   scenario-coverage:
     results: contract
     tier: integration
     suffix: Result
     columns: [given, when, then]
-    table: {decorator: pytest.mark.parametrize, row: pytest.param, id: id, keywords: [argnames, argvalues]}
-    file: "test_{name}.py"
-  no-comments:       {}
-  stand-ins:
-    mocks: [unittest.mock.Mock, unittest.mock.MagicMock, unittest.mock.AsyncMock,
-            unittest.mock.NonCallableMock, unittest.mock.NonCallableMagicMock]
-    autospec: [unittest.mock.create_autospec]
-    spec: [spec, spec_set]
-    fixtures:
-      mocker: {mocks: [Mock, MagicMock, AsyncMock, NonCallableMock, NonCallableMagicMock], autospec: [create_autospec]}
+    file: test_{name}.py
+  no-comments: {}
+  stand-ins: {}
 
-# Two optional keys this profile does not use. `excluded: {<folder>: <reason>}` names folders below the app that are
-# not its source, such as example code shipped as data: a path with no `..`, no leading `/` and no `*`, not a folder
-# of the layout, none inside another; no check reads a Python file below one, and `xarch check` lists each in its
-# enforcement section with its reason. `hints: {<rule-id>: <text>}` adds a project's own advice to a rule: its text
-# is shown after the built-in fix of every violation of that rule id (a stable id such as `rules`, `libraries` or
-# `stand-ins`, the `rule` of `xarch check --format json`), as its own `hint`; an unknown id is refused.
-
-# The project docs `xarch init` writes below docs/project/, in this order, and how the docs tree shows them. A key
-# is a path: a file takes `from`, the template file it is written from (next to this one, placeholders filled as
-# the docs template describes), and an optional one-line `note` for the tree; a key ending in `/` is a folder, which
-# takes only a `note`. A folder holding one file and given no entry of its own shows as `<file>; <note>` on one line.
-# A file is never overwritten. Without `docs`, `init` writes no docs.
-docs:
-  statement.md:                      {from: docs/statement.md, note: problem statement and use cases}
-  domain.md:                         {from: docs/domain.md, note: domain diagram}
-  design.md:                         {from: docs/design.md, note: design document}
-  architecture.md:                   {from: web.md, note: this file}
-  testing.md:                        {from: testing.md, note: "how the system is tested: tiers, commands, placement, fakes, guards"}
-  requirements.md:                   {from: docs/requirements.md}
-  adrs/:                             {note: architecture decision records}
-  adrs/0000-template.md:             {from: docs/adr.md}
-  artifacts/standards/_template.md:  {from: docs/standard.md}
-  artifacts/audits/_template.md:     {from: docs/audit.md}
-  artifacts/taxonomy/_template.md:   {from: docs/taxonomy.md}
-  artifacts/modules/_template.md:    {from: docs/module.md}
-  artifacts/guards/_template.md:     {from: docs/guard.md, note: the write-up of a guard the project adds itself}
-
-# The files `xarch init` writes besides the docs: a key is a path relative to the project root (the folder holding the
-# app folder, where docs/ goes; no `..`, no leading `/`, not a docs path), and `from` is the template file it is
-# written from (next to this one). The text is written as it stands, except that `{{app}}` is replaced by the name of
-# the app folder, which differs per project (`--app`); `{{app}}` may also start or sit inside the key, so a file can
-# land inside the app, but never on a file the skeleton writes. A key ending in `/` is a folder, and `from` a folder
-# next to this file: every file under it is copied below the key, as it is (`fill: false` is its default; `fill`
-# says whether `{{app}}` is filled in, default true for a file). A file is never overwritten. Without `files`, `init`
-# writes none. The guard test is the file of the guard tier's example, so the docs show what is written.
-# pinned, optional, single files only: the project keeps the file as `init` writes it, so `check` reports it in its
-# enforcement section when it differs from what `init` would write now (every listed single file is reported when it
-# is missing); a file a project is meant to edit, such as a linter's config, is left unpinned.
 files:
-  tests/architecture/test_rules.py: {from: examples/shared/tiers/guard.py, pinned: true}
-  AGENTS.md:                       {from: agents.md}
-  ruff.toml:                       {from: lint.toml}
+  tests/architecture/test_rules.py: {from: examples/shared/tests/architecture/test_rules.py, pinned: true}
+  AGENTS.md: agents.md
+  ruff.toml: lint.toml
 
-# The code examples of the docs, one file of the example project each: the part it illustrates, where it would
-# live in the app (path), the file holding its code (file, next to this one) and an optional note for its header line.
-# The template shows them with {{example:<name>, ...}}; `xarch` checks that their imports obey the rules above.
-examples:
-  content_review:
-    part: ports
-    path: modules/documents/application/ports/content_review.py
-    file: examples/shared/modules/documents/application/ports/content_review.py
-    note: "documents' own words, no other module named"
-  moderation_content_review:
-    part: adapters
-    path: modules/documents/adapters/moderation_content_review.py
-    file: examples/shared/modules/documents/adapters/moderation_content_review.py
-    note: "the only file that names moderation"
-  contract_commands:
-    part: contract
-    path: modules/documents/contract/commands.py
-    file: examples/shared/modules/documents/contract/commands.py
-  contract_views:
-    part: contract
-    path: modules/documents/contract/views.py
-    file: examples/shared/modules/documents/contract/views.py
-  contract_results:
-    part: contract
-    path: modules/documents/contract/results.py
-    file: examples/shared/modules/documents/contract/results.py
-  contract_init:
-    part: contract
-    path: modules/documents/contract/__init__.py
-    file: examples/shared/modules/documents/contract/__init__.py
-    note: "the public names; what is not listed here is not part of the contract"
-  domain_values:
-    part: domain
-    path: modules/documents/domain/values.py
-    file: examples/shared/modules/documents/domain/values.py
-  domain_errors:
-    part: domain
-    path: modules/documents/domain/errors.py
-    file: examples/shared/modules/documents/domain/errors.py
-    note: "each module subclasses the kernel's base errors"
-  document:
-    part: domain
-    path: modules/documents/domain/document.py
-    file: examples/shared/modules/documents/domain/document.py
-  controller:
-    part: controller
-    path: modules/documents/application/controller.py
-    file: examples/shared/modules/documents/application/controller.py
-  document_service:
-    part: services
-    path: modules/documents/application/services/document_service.py
-    file: examples/shared/modules/documents/application/services/document_service.py
-  staleness:
-    part: logic
-    path: modules/documents/application/logic/staleness.py
-    file: examples/shared/modules/documents/application/logic/staleness.py
-  document_repo:
-    part: ports
-    path: modules/documents/application/ports/document_repo.py
-    file: examples/shared/modules/documents/application/ports/document_repo.py
-  db_document_repo:
-    part: adapters
-    path: modules/documents/adapters/db_document_repo.py
-    file: examples/shared/modules/documents/adapters/db_document_repo.py
-  kernel_identifiers:
-    part: kernel
-    path: kernel/identifiers.py
-    file: examples/shared/kernel/identifiers.py
-  kernel_errors:
-    part: kernel
-    path: kernel/errors.py
-    file: examples/shared/kernel/errors.py
-  kernel_time:
-    part: kernel
-    path: kernel/time.py
-    file: examples/shared/kernel/time.py
-  kernel_text:
-    part: kernel
-    path: kernel/logic/text.py
-    file: examples/shared/kernel/logic/text.py
-    note: "a pure function two modules need"
-  smtp_client:
-    part: platform
-    path: platform/email/smtp_client.py
-    file: examples/shared/platform/email/smtp_client.py
-  system_clock:
-    part: platform
-    path: platform/clock.py
-    file: examples/shared/platform/clock.py
-  documents_table:
-    part: platform
-    path: platform/sql/tables/documents.py
-    file: examples/shared/platform/sql/tables/documents.py
-    note: "columns only, no module's types"
-  dependencies:
-    part: web
-    path: web/dependencies.py
-    file: examples/web/web/dependencies.py
-    note: "how a route reaches its controller"
-  documents_routes:
-    part: web
-    path: web/routes/documents.py
-    file: examples/web/web/routes/documents.py
-  wiring:
-    part: bootstrap
-    path: bootstrap/wiring.py
-    file: examples/shared/bootstrap/wiring.py
-  bootstrap_app:
-    part: bootstrap
-    path: bootstrap/app.py
-    file: examples/web/bootstrap/app.py
-  bootstrap_main:
-    part: bootstrap
-    path: bootstrap/main.py
-    file: examples/web/bootstrap/main.py
-    note: "the script that starts the program"
-  migration:
-    part: bootstrap
-    path: bootstrap/migrations/0001_create_documents.py
-    file: examples/shared/bootstrap/migrations/0001_create_documents.py
+docs:
+  entry: web
+  pages:
+    statement.md: {from: docs/statement.md, note: problem statement and use cases}
+    domain.md: {from: docs/domain.md, note: domain diagram}
+    design.md: {from: docs/design.md, note: design document}
+    architecture.md: {from: web.md, note: this file}
+    testing.md: {from: testing.md, note: "how the system is tested: tiers, commands, placement, fakes, guards"}
+    requirements.md: docs/requirements.md
+    adrs/: {note: architecture decision records}
+    adrs/0000-template.md: docs/adr.md
+    artifacts/standards/_template.md: docs/standard.md
+    artifacts/audits/_template.md: docs/audit.md
+    artifacts/taxonomy/_template.md: docs/taxonomy.md
+    artifacts/modules/_template.md: docs/module.md
+    artifacts/guards/_template.md: {from: docs/guard.md, note: the write-up of a guard the project adds itself}
+  naming:
+    - {kind: command, where: contract/, pattern: verb and thing, example: PublishDocument}
+    - {kind: DTO, where: contract/, pattern: thing and `View`, example: DocumentView}
+    - {kind: Result variant, where: contract/, pattern: "the outcome, in one word",
+       example: [Published, Missing, Rejected]}
+    - {kind: Result union, where: contract/, pattern: verb and `Result`, example: PublishResult}
+    - {kind: entity, where: domain/, pattern: the thing, example: Document}
+    - {kind: id, where: domain/, pattern: thing and `Id`, example: DocumentId}
+    - {kind: domain error, where: domain/, pattern: what went wrong, example: [DocumentNotFound, DocumentIncomplete]}
+    - {kind: service, where: application/services/, pattern: thing and `Service`, example: DocumentService}
+    - {kind: pure rule, where: [application/logic/, kernel/logic/],
+       pattern: "a file named for the rule, a function for what it answers", example: [staleness.py, is_stale]}
+    - {kind: controller, where: application/, pattern: thing and `Controller`, example: DocumentController}
+    - {kind: port, where: application/ports/, pattern: "what the application needs, in its own words",
+       example: [DocumentRepo, ContentReview]}
+    - {kind: adapter, where: adapters/, pattern: "`<System><PortName>`",
+       example: [DbDocumentRepo, ModerationContentReview]}
+    - {kind: table model, where: platform/sql/tables/, pattern: thing and `Row`, example: DocumentRow}
+    - {kind: test fake, where: tests/fakes/, pattern: "`Fake` and the port's name", example: FakeDocumentRepo}
+  examples: [examples/shared, examples/web]
+  example_notes:
+    modules/documents/application/ports/content_review.py: documents' own words, no other module named
+    modules/documents/adapters/moderation_content_review.py: the only file that names moderation
+    modules/documents/contract/__init__.py: the public names; what is not listed here is not part of the contract
+    modules/documents/domain/errors.py: each module subclasses the kernel's base errors
+    kernel/logic/text.py: a pure function two modules need
+    platform/sql/tables/documents.py: columns only, no module's types
+    web/dependencies.py: how a route reaches its controller
+    bootstrap/main.py: the script that starts the program
+    tests/modules/documents/application/test_publish.py: its table is in section 5.2
+    tests/architecture/test_rules.py: written by `xarch init`

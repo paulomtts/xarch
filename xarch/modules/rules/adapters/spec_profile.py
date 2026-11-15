@@ -55,7 +55,7 @@ class SpecProfiles:
                        folders=tuple(_folders(architecture.layout, ())),
                        tiers=tuple(_tier(architecture, tier) for tier in architecture.tiers),
                        libraries=None if architecture.libraries is None else dict(architecture.libraries),
-                       fakes=Fakes(architecture.fakes.path[1:], architecture.fakes.stand_in_for,
+                       fakes=Fakes(architecture.fakes.folder, architecture.fakes.stand_in_for,
                                    architecture.fakes.prefix)
                        if architecture.fakes is not None else None,
                        each_root=architecture.instance_root(),
@@ -110,4 +110,4 @@ def _tier(architecture: Architecture, tier: Tier) -> TestTier:
     subject = tuple(Target(s.part, "own" if architecture.parts[s.part].in_instance else "none", s.sub)
                     for s in tier.subject)
     return TestTier(tier.name, subject, tier.folder, tier.types_only, tier.forbidden, tier.proves, tier.may_touch, tier.litmus,
-                    tier.one_file_per)
+                    tier.one_file_per, tier.may_import)

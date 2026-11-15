@@ -14,8 +14,7 @@ from xarch.modules.spec.domain.values import Configured
 
 APP = Path("/src/app")
 PYPROJECT = Path("/src/pyproject.toml")
-LAYERED = {"xarch": 1, "name": "layered", "layout": {"src": {"singular": "module", "each": {"api": {}}}},
-           "parts": {"api": {"path": "src/*/api", "role": "handlers"}}, "rules": {"api": []}}
+LAYERED = {"xarch": 2, "name": "layered", "parts": {"api": {"path": "src/<module>/api", "role": "handlers"}}}
 
 
 def controller(configured: Configured | None = None, error: Exception | None = None, tests: Path | None = None,
@@ -26,6 +25,7 @@ def controller(configured: Configured | None = None, error: Exception | None = N
 
 
 FILE = "/src/layered.yaml"
+BROKEN = {**LAYERED, "parts": {"api": {**LAYERED["parts"]["api"], "may_import": ["api@mine", "nowhere"]}}}
 
 
 @pytest.mark.parametrize("given, when, then", [
@@ -58,11 +58,11 @@ FILE = "/src/layered.yaml"
     pytest.param(dict(configured=Configured("arch/layered.yaml", PYPROJECT), files={"/src/arch/layered.yaml": LAYERED}),
                  SelectProfile(APP, None), ProfileSelected("/src/arch/layered.yaml"),
                  id="a configured path is relative to the pyproject holding it"),
-    pytest.param(dict(files={FILE: LAYERED | {"rules": {"api": ["api@mine", "nowhere"]}}}), SelectProfile(APP, FILE),
+    pytest.param(dict(files={FILE: BROKEN}), SelectProfile(APP, FILE),
                  ProfileRefused(
-                     f"{FILE}: rules.api: 'api@mine' has an unknown scope '@mine': use @own (the importer's own "
-                     f"`each` folder) or @any (any `each` folder)\n{FILE}: rules.api: 'nowhere' names no part "
-                     "'nowhere'"),
+                     f"{FILE}: parts.api.may_import: 'api@mine' has an unknown scope '@mine': the only scope is "
+                     f"@any, any instance of the repeating folder\n{FILE}: parts.api.may_import: 'nowhere' names "
+                     "no part 'nowhere'"),
                  id="an invalid architecture file is refused with every problem"),
     pytest.param(dict(), SelectProfile(APP, "/src/none.yaml"),
                  ProfileRefused("/src/none.yaml: cannot read the file: no such file"),

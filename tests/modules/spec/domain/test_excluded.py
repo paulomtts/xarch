@@ -1,21 +1,16 @@
 """The top-level `excluded` key: folders below the app that are not its source, each with the reason."""
 import pytest
 
-from tests.modules.spec.domain.test_architecture_file import layered, problems
-from xarch.modules.spec.domain.architecture_file import parse_architecture
+from tests.modules.spec.profiles_v2 import layered, parsed, problems
 from xarch.modules.spec.domain.values import Excluded
 
 
-def load(document):
-    return parse_architecture(document, "layered.yaml", lambda relative: True)
-
-
 def test_a_profile_without_excluded_folders_excludes_none():
-    assert load(layered()).excluded == ()
+    assert parsed(layered()).excluded == ()
 
 
 def test_excluded_folders_load_with_their_reason_in_the_order_of_the_file():
-    architecture = load(layered() | {"excluded": {"vendor/": "copied code", "docs/examples": "example sources"}})
+    architecture = parsed(layered(excluded={"vendor/": "copied code", "docs/examples": "example sources"}))
     assert architecture.excluded == (Excluded(("vendor",), "copied code"),
                                      Excluded(("docs", "examples"), "example sources"))
 
@@ -53,4 +48,4 @@ def test_excluded_folders_load_with_their_reason_in_the_order_of_the_file():
                  id="the same folder twice"),
 ])
 def test_a_bad_excluded_entry_is_rejected(excluded, problem):
-    assert problems(layered() | {"excluded": excluded}) == [f"layered.yaml: {problem}"]
+    assert problems(layered(excluded=excluded)) == [f"layered.yaml: {problem}"]

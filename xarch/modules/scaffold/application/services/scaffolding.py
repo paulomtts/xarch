@@ -36,9 +36,9 @@ class Scaffolding:
         if not valid_name(name):
             raise InvalidName(name)
         kinds = self._skeleton.kinds(profile)
-        if kind.strip("/") not in kinds:
-            raise UnknownKind(kind, kinds)
-        folder, entries = kinds[kind.strip("/")]
+        if kind not in kinds:
+            raise UnknownKind(kind, kinds, {word: "/".join(path) for word, (path, _) in kinds.items()})
+        folder, entries = kinds[kind]
         parent = root.joinpath(*folder)
         if not self._files.is_dir(parent):
             raise FolderMissing(parent)

@@ -39,25 +39,25 @@ Every import starts at `app.`. The examples show the imports between the project
 
 ```
 app/
-├── bootstrap/                  composition root: binds ports to adapters, hands controllers to web/
-│   └── migrations/             the schema and its history; the only place migrations live
-├── kernel/                     pure primitives: id helpers, base errors, lifecycle fields, tracing, Clock
-│   └── logic/                  pure functions that modules share, including a rule two modules need
 ├── modules/
 │   └── <module>/
-│       ├── contract/           the module's published language: commands, DTOs, Results (one union per use case), ids
 │       ├── domain/             entities, values (incl. ids), errors: invariants only
 │       ├── application/
-│       │   ├── controller.py   maps failures to a Result
-│       │   ├── services/       use-case steps: load, check, act, persist
 │       │   ├── logic/          pure functions over the module's domain objects, one file per rule
-│       │   └── ports/          Protocols for what the module needs from the outside
-│       └── adapters/           driven only: repos, which translate the platform/ table models; use platform/ clients
+│       │   ├── ports/          Protocols for what the module needs from the outside
+│       │   ├── services/       use-case steps: load, check, act, persist
+│       │   └── controller.py   maps failures to a Result
+│       ├── adapters/           driven only: repos, which translate the platform/ table models; use platform/ clients
+│       └── contract/           the module's published language: commands, DTOs, Results (one union per use case), ids
 ├── platform/                   shared technology clients: llm, embeddings, email, crypto, blob_storage, system clock, sql engine, sessions and table models
-└── web/                        the only place for routes, translations and rendered output
-    ├── routes/                 one file per route group; each calls module controllers
-    ├── i18n/                   translated strings and locale selection
-    └── ui/                     pages and components that render a Result
+├── web/                        the only place for routes, translations and rendered output
+│   ├── routes/                 one file per route group; each calls module controllers
+│   ├── i18n/                   translated strings and locale selection
+│   └── ui/                     pages and components that render a Result
+├── bootstrap/                  composition root: binds ports to adapters, hands controllers to web/
+│   └── migrations/             the schema and its history; the only place migrations live
+└── kernel/                     pure primitives: id helpers, base errors, lifecycle fields, tracing, Clock
+    └── logic/                  pure functions that modules share, including a rule two modules need
 
 tests/                          each module's tests mirror its folder; architecture/ holds the guard test, which runs `xarch check`; fakes/ holds in-memory implementations of ports
 
@@ -162,17 +162,17 @@ Dependencies point inward: a part imports only from the rings inside it (section
 
 | Part | May import |
 |---|---|
-| `kernel/` | nothing |
 | `domain/` | `kernel/` |
-| `contract/` | its own module's `domain/values`, `kernel/` |
-| `application/controller.py` | its own module's `application/services/`, `application/logic/`, `domain/`, `application/ports/` and `contract/`, `kernel/` |
-| `application/services/` | its own module's `application/logic/`, `domain/`, `application/ports/` and `contract/`, `kernel/` |
 | `application/logic/` | its own module's `domain/`, `kernel/` |
 | `application/ports/` | its own module's `domain/`, `kernel/` |
+| `application/services/` | its own module's `application/logic/`, `domain/`, `application/ports/` and `contract/`, `kernel/` |
+| `application/controller.py` | its own module's `application/services/`, `application/logic/`, `domain/`, `application/ports/` and `contract/`, `kernel/` |
 | `adapters/` | its own module's `application/ports/` and `domain/`, `kernel/`, `platform/`, any module's `contract/` |
 | `platform/` | `kernel/` |
 | `web/` | any module's `application/controller.py` and `contract/`, `kernel/` |
 | `bootstrap/` | everything |
+| `contract/` | its own module's `domain/values`, `kernel/` |
+| `kernel/` | nothing |
 
 > [!IMPORTANT]
 > Two consequences follow from the table.

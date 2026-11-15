@@ -29,10 +29,10 @@ def found(tmp_path: Path, app: dict[str, str], tests: dict[str, str]) -> list[Vi
 
 CASES = [
     pytest.param({"kernel/x.py": "from app.platform import sql\n"}, {}, "rules",
-                 "import only kernel/ in kernel/ (rules.kernel), or move this code to adapters/, which may import it",
+                 "import only kernel/ in kernel/ (parts.kernel.may_import), or move this code to adapters/, which may import it",
                  id="rules"),
     pytest.param({"kernel/x.py": "import requests\n"}, {}, "libraries",
-                 "use the standard library or a package libraries lists for kernel/, since requests is listed for "
+                 "use the standard library or a package listed in parts.kernel.libraries, since requests is listed for "
                  "no part", id="libraries"),
     pytest.param({"kernel/x.py": "import socket\n"}, {}, "forbidden",
                  "do what needs socket outside kernel/, and hand kernel/ the result", id="forbidden"),
@@ -85,8 +85,8 @@ def test_the_layout_checks_name_their_rule_and_carry_their_fix(tmp_path):
 
 def test_a_closed_tree_names_its_rule_and_its_fix(tmp_path):
     shutil.copytree(BUNDLED, tmp_path / "arch")
-    text = (BUNDLED / "web.yaml").read_text().replace("  no-comments:       {}\n",
-                                                       "  no-comments:       {}\n  closed-tree:       {}\n")
+    text = (BUNDLED / "web.yaml").read_text().replace("  no-comments: {}\n",
+                                                       "  no-comments: {}\n  closed-tree: {}\n")
     (tmp_path / "arch/closed.yaml").write_text(text)
     write(tmp_path / "app", {"stray.py": ""})
     result = build_controllers().rules.check(CheckImports(tmp_path / "app", "app", str(tmp_path / "arch/closed.yaml")))

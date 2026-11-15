@@ -74,7 +74,7 @@ def test_testing_gives_every_part_a_tier_and_names_the_profiles_driver(profile, 
 @pytest.mark.parametrize("profile", ["cli", "web"])
 def test_testing_unit_tests_pure_logic(profile):
     text = templates(profile)["testing.md"]
-    assert "| unit | `kernel/` and `kernel/logic/`, `domain/`, `application/logic/`, `adapters/` |" in text
+    assert "| unit | `domain/`, `application/logic/`, `adapters/`, `kernel/` |" in text
     assert "or by calling a pure function from `logic/`" in text.split("## 3. Placement")[1]
 
 
@@ -173,7 +173,7 @@ def test_architecture_is_the_full_document_for_the_profiles_entry_point(profile,
     assert text.count("\n## ") >= 9 and len(text.splitlines()) > 400
     for section in ["## 1. Structure", "## 5. The dependency rules", f"### 9.3 {folder}", "### 9.4 bootstrap/"]:
         assert section in text
-    assert f"└── {folder}" in text and f"└── {other}" not in text
+    assert f"── {folder}" in text and f"── {other}" not in text
     assert f"| `{folder}` | any module's `application/controller.py` and `contract/`" in text
     assert "└── project/" in text
     assert "docs/cli" not in text and "docs/web" not in text
@@ -251,7 +251,7 @@ def test_architecture_has_a_naming_table_where_an_adapter_ends_with_its_ports_na
 def test_architecture_gives_pure_logic_a_place_in_the_module_and_in_the_kernel(profile):
     """The domain does not import logic."""
     text = templates(profile)["architecture.md"]
-    assert "│   └── logic/                  pure functions that modules share" in text
+    assert "    └── logic/                  pure functions that modules share" in text
     assert "│       │   ├── logic/          pure functions over the module's domain objects" in text
     rules = text.split("## 5. ")[1].split("## 6.")[0]
     assert "| `application/logic/` | its own module's `domain/`, `kernel/` |" in rules

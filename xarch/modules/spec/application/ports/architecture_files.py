@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Any, Protocol
 
 from xarch.modules.spec.domain.values import ArchitectureDocument, ArchitectureSource
 
@@ -10,6 +10,11 @@ class ArchitectureFiles(Protocol):
 
     def bundled(self) -> tuple[str, ...]:
         """The names of the bundled architectures, e.g. ("cli", "web")."""
+        ...
+
+    def testing_presets(self) -> dict[str, Any]:
+        """The documents of the presets a profile may name under `testing`, by name, e.g. {"pytest": {...}}: the
+        same mapping a profile writes out, shipped as data with xarch."""
         ...
 
     def read(self, source: ArchitectureSource) -> ArchitectureDocument:

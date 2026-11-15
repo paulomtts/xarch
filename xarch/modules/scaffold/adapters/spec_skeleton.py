@@ -27,9 +27,9 @@ class SpecSkeleton:
 
     def kinds(self, profile: str) -> dict[str, tuple[tuple[str, ...], list[tuple[tuple[str, ...], bool]]]]:
         skeleton = self._spec.skeleton(profile)
-        if skeleton.each_root is None:
+        if skeleton.each_root is None or not skeleton.each_word:
             return {}
-        return {"/".join(skeleton.each_root): (skeleton.each_root, _entries(skeleton.each))}
+        return {skeleton.each_word: (skeleton.each_root, _entries(skeleton.each))}
 
     def docs(self, profile: str) -> list[tuple[tuple[str, ...], str]]:
         docs = self._spec.docs(profile)

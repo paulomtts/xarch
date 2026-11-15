@@ -14,19 +14,16 @@ def test_the_bundled_examples_obey_their_architectures_rules():
 
 
 CUSTOM = """\
-xarch: 1
+xarch: 2
 name: layered
-layout: {src: {singular: module, each: {api: {}, store: {}}}}
 parts:
-  api:   {path: "src/*/api", role: handlers, entry: true}
-  store: {path: "src/*/store", role: database access}
-rules:
-  api:   [store@own]
-  store: []
+  api:   {path: "src/<module>/api", role: handlers, may_import: [store]}
+  store: {path: "src/<module>/store", role: database access}
 docs:
-  architecture.md: {from: layered.md}
-examples:
-  handler: {part: api, path: src/billing/api/handler.py, file: examples/handler.py}
+  entry: api
+  pages:
+    architecture.md: {from: layered.md}
+  examples: [examples]
 """
 
 
@@ -39,12 +36,12 @@ def write(path: Path, text: str) -> Path:
 @pytest.mark.parametrize("code, problems", [
     ("from app.src.billing.store import Repo\n", ()),
     ("from app.src.tax.store import Repo\n",
-     ("example handler (src/billing/api/handler.py): imports app.src.tax.store which api may not import (rules.api)",)),
+     ("example (src/billing/api/handler.py): imports app.src.tax.store which api may not import (parts.api.may_import)",)),
 ])
 def test_a_custom_architecture_can_be_checked(tmp_path, code, problems):
     """Not checked unless asked."""
-    write(tmp_path / "examples" / "handler.py", code)
-    write(tmp_path / "layered.md", "{{example:handler}}\n")
+    write(tmp_path / "examples" / "src/billing/api/handler.py", code)
+    write(tmp_path / "layered.md", "{{example:src/billing/api/handler.py}}\n")
     path = write(tmp_path / "layered.yaml", CUSTOM)
     service = build_architectures()
     assert service.check_examples(path) == problems

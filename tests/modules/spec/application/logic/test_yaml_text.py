@@ -1,0 +1,46 @@
+"""The text of a converted profile: block style, the shortest safe form of each scalar, and a literal or folded block
+for a long text, so that the file reads as one written by hand."""
+import pytest
+
+from xarch.modules.spec.application.logic.yaml_text import dump
+
+
+@pytest.mark.parametrize("document, text", [
+    pytest.param({"a": 1, "b": "x", "c": True, "d": None}, "a: 1\nb: x\nc: true\nd: null\n",
+                 id="a scalar is written plain"),
+    pytest.param({"p": "modules/<module>/domain", "q": "domain@own/values"}, "p: modules/<module>/domain\nq: domain@own/values\n",
+                 id="a path or a target stays plain"),
+    pytest.param({"a": "*", "b": "true", "c": "12", "d": "a: b", "e": "x #y", "f": "", "g": " x", "h": "- x", "i": "{{app}}"},
+                 'a: "*"\nb: "true"\nc: "12"\nd: "a: b"\ne: "x #y"\nf: ""\ng: " x"\nh: "- x"\ni: "{{app}}"\n',
+                 id="a text YAML would read as something else is quoted"),
+    pytest.param({"a": {}, "b": [], "c": {"d": {"e": 1}}}, "a: {}\nb: []\n\nc:\n  d:\n    e: 1\n",
+                 id="an empty collection is flow and a mapping nests by two spaces"),
+    pytest.param({"a": ["x", "y z", "{{q}}", "a,b"]}, 'a: [x, y z, "{{q}}", "a,b"]\n',
+                 id="a short list is flow with the items that need it quoted"),
+    pytest.param({"a": "one\ntwo\n\nthree"}, "a: |-\n  one\n  two\n\n  three\n",
+                 id="a text of several lines is a literal block"),
+    pytest.param({"a": "one\n"}, 'a: "one\\n"\n', id="a text ending in a line break is quoted, which keeps it"),
+    pytest.param({"a": [{"k": "v", "w": 1}, {"k": "x"}]}, "a:\n  - k: v\n    w: 1\n  - k: x\n",
+                 id="a list of mappings is a block sequence"),
+    pytest.param({"a": 1, "b": {"c": 1}, "d": [1]}, "a: 1\n\nb:\n  c: 1\nd: [1]\n",
+                 id="a blank line comes before each key whose value is a block at the top"),
+])
+def test_a_document_is_written_in_the_form_a_person_would_write(document, text):
+    assert dump(document) == text
+
+
+def test_a_long_text_of_one_line_is_folded_at_the_width_and_a_long_list_wraps_under_its_key():
+    words = " ".join(f"word{n}" for n in range(40))
+    folded = dump({"a": words}, width=60)
+    assert folded.startswith("a: >-\n  word0 ")
+    assert all(len(line) <= 60 for line in folded.splitlines())
+    items = [f"item{n}" for n in range(30)]
+    wrapped = dump({"a": items}, width=60)
+    assert wrapped.splitlines()[0].startswith("a: [item0, item1")
+    assert all(len(line) <= 60 for line in wrapped.splitlines())
+    assert wrapped.endswith("item29]\n")
+
+
+def test_a_text_that_folding_would_change_stays_on_one_line():
+    spaced = "a  " + "b " * 80 + "c"
+    assert dump({"a": spaced}, width=40) == f"a: {spaced}\n"

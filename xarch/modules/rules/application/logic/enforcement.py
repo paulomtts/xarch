@@ -1,7 +1,7 @@
 """The findings of the enforcement section, besides the violations: what the check could not see or was told to
 pass over, read from the same parsed files.
 
-    skipped    a use, in a test file, of a name the profile's `tests.skips` lists, or one below it: a marker such as
+    skipped    a use, in a test file, of a name the profile's `testing.skips` lists, or one below it: a marker such as
                `pytest.mark.skip`, `pytest.mark.skipif(...)` (a name of its own, so listed on its own) or a call such
                as `pytest.skip(...)`, read through imports like any use (see the Use value); one per use
     dynamic    a use, in a file read, of what Python imports by a computed or string name with:

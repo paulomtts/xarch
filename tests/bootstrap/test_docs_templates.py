@@ -62,15 +62,15 @@ def write(path: Path, text: str) -> Path:
 
 
 ARCHITECTURE = """\
-xarch: 1
+xarch: 2
 name: layered
-layout: {src: {singular: module, each: {api: {}, store: {}}}}
 parts:
-  api:   {path: "src/*/api", role: handlers, litmus: "Does it parse?", entry: true}
-  store: {path: "src/*/store", role: database access, litmus: "Does it query?"}
-rules: {api: [store@own]}
+  api:   {path: "src/<module>/api", role: handlers, litmus: "Does it parse?", may_import: [store]}
+  store: {path: "src/<module>/store", role: database access, litmus: "Does it query?"}
 docs:
-  architecture.md: {from: layered.md, note: this file}
+  entry: api
+  pages:
+    architecture.md: {from: layered.md, note: this file}
 """
 
 
@@ -78,7 +78,7 @@ def test_a_custom_architecture_brings_its_own_template(tmp_path):
     """It names no testing template, so it gets no testing.md."""
     write(tmp_path / "notes.md", "# Notes\n")
     write(tmp_path / "layered.md", "# Layered\n\nsrc/\n{{tree}}\n\n{{rules_table}}\n\n{{litmus:api}}\n")
-    docs = build_architectures().docs(write(tmp_path / "layered.yaml", ARCHITECTURE + "  notes.md: {from: notes.md}\n"))
+    docs = build_architectures().docs(write(tmp_path / "layered.yaml", ARCHITECTURE + "    notes.md: {from: notes.md}\n"))
     texts = {"/".join(f.path): f.template for f in docs.files}
     assert texts["architecture.md"] == (
         "# Layered\n\nsrc/\n"

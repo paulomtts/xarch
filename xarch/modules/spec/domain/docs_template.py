@@ -4,11 +4,11 @@ A template is markdown with placeholders, each `{{name}}` or `{{name:argument}}`
 architecture. Prose, diagrams and code examples stay as the author wrote them; only these are generated:
 
     {{tree}}               the layout, one line per folder and file, below a root line the template writes itself;
-                           a part's line carries its role, any other line its note from `notes`
+                           a part's line carries its role, any other line its note from `folders`
     {{rules_table}}        the dependency rules as a table: one row per part, in the order of `parts`, saying what
                            the part may import (its own part is implied, so it is not listed)
     {{layers:<name>}}      the chain `layers.<name>` as `a/` → `b/` → ..., each part by its path
-    {{placement}}          the `placement` order as `a` → `b` → ..., each part by its name
+    {{placement}}          the order of `parts` as `a` → `b` → ..., each part by its name
     {{litmus:<part>}}      the part's litmus test, as a "> [!TIP]" block
     {{naming}}             the `naming` rows as a table
     {{entry}}              the entry point's path, e.g. web
@@ -16,12 +16,12 @@ architecture. Prose, diagrams and code examples stay as the author wrote them; o
                            file and folder, each as the file declares it, indented to sit below a folder the
                            template writes itself, with the notes aligned: a folder holding one file and declared no
                            note of its own shows as `<file>; <note>` on its own line
-    {{example:<name>}}     an example of `examples`: its header line, `# <path>` (`: <note>` after it if it has one),
-                           then its file as the file holds it, without trailing blank lines
+    {{example:<path>}}     a file of an example project of `docs.examples`, by its path in the project: its header
+                           line, `# <path>` (`: <note>` after it if `docs.example_notes` has one), then its file as the
+                           file holds it, without trailing blank lines
     {{example:<a>, <b>}}   several examples one after another in one block, one blank line between them
     {{tiers}}              the `tiers` as a table, one row per tier in order: its name, its subject (each part by its
-                           path, a part's sub-paths after it joined by "and"; or its `subject_text`), what it proves
-                           and what it may touch
+                           path; or its `docs.subject`), what it proves and what it may touch
     {{untested}}           one paragraph per part marked `untested`: "`<part>/` gets no tier of its own: <reason>."
     {{tier_index:<n>}}     the index entries of {{tier_litmus:<n>}}, one per tier, indented as a subsection of section <n>
     {{tier_litmus:<n>}}    each tier as a subsection of section <n>, "### <n>.<i> <tier>", holding its litmus test as
@@ -29,13 +29,13 @@ architecture. Prose, diagrams and code examples stay as the author wrote them; o
     {{tier_files}}         each tier's `one_file_per` and `cases_from`, as a table
     {{tier_data}}          each tier's `data`, as a table
     {{tier_helpers}}       the helper files of all tiers in one block, each under its header line, `# <path>` (its
-                           note right after it, as written)
+                           note after it, in parentheses)
     {{guards}}             one line per check `xarch check` runs: the structure, the rules, the libraries (with
                            `libraries`), what each part may not use (with `forbidden`), the tiers (with `tiers`), types-only
                            (one line per tier with `types_only`), the test tree and the cycles (with an `each` folder),
                            then each guard of `guards`, in order
     {{tier_examples}}      each tier's example test in one block, under its header line `# <tier>: <path>` (its note
-                           right after the path, as written), as {{example:...}} writes them; a tier with no example
+                           after the path, in parentheses), as {{example:...}} writes them; a tier with no example
                            is left out
 
 Where {{example:...}} or {{tier_examples}} stands alone, it writes the whole fenced block, whose language comes from the files' extension
@@ -55,6 +55,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
 from xarch.kernel.logic.imports import may_import, shown_target
+from xarch.kernel.logic.placement import EVERYTHING
 from xarch.modules.spec.domain.errors import InvalidTemplate
 from xarch.modules.spec.domain.values import (
     EACH,
@@ -212,7 +213,7 @@ def _layers(architecture: Architecture, name: str, _: _Context) -> str:
 
 def _placement(architecture: Architecture, _: str, __: _Context) -> str:
     if not architecture.placement:
-        raise _Missing("the architecture has no `placement`")
+        raise _Missing("the architecture has no placement order: list its `parts` in the order the litmus tests run")
     return ARROW.join(f"`{name}`" for name in architecture.placement)
 
 
@@ -225,7 +226,7 @@ def _litmus(architecture: Architecture, name: str, _: _Context) -> str:
 
 def _naming(architecture: Architecture, _: str, __: _Context) -> str:
     if not architecture.naming:
-        raise _Missing("the architecture has no `naming`")
+        raise _Missing("the architecture has no `docs.naming`")
     rows = [f"| {row.kind} | {_ticked(row.where)} | {row.pattern} | {_ticked(row.example)} |"
             for row in architecture.naming]
     return "\n".join(["| Kind | Where | Pattern | Example |", "|---|---|---|---|", *rows])
@@ -326,8 +327,12 @@ def _tier_examples(architecture: Architecture, _: str, context: _Context) -> str
     unread = [tier.name for tier in tiers if tier.name not in context.tier_examples]
     if unread:
         raise _Missing(f"the example of tier {_quoted(unread)} was not read")
-    return _block([(f"{tier.name}: {'/'.join(tier.example.path)}{tier.example.note}", tier.example.file,
+    return _block([(f"{tier.name}: {'/'.join(tier.example.path)}{_aside(tier.example.note)}", tier.example.file,
                     context.tier_examples[tier.name]) for tier in tiers if tier.example is not None], context.in_fence)
+
+
+def _aside(note: str) -> str:
+    return f" ({note})" if note else ""
 
 
 def _tier_helpers(architecture: Architecture, _: str, context: _Context) -> str:
@@ -337,7 +342,7 @@ def _tier_helpers(architecture: Architecture, _: str, context: _Context) -> str:
     unread = [helper.file for helper in helpers if helper.file not in context.tier_examples]
     if unread:
         raise _Missing(f"the helper file {_quoted(unread)} was not read")
-    return _block([(f"{'/'.join(helper.path)}{helper.note}", helper.file, context.tier_examples[helper.file])
+    return _block([(f"{'/'.join(helper.path)}{_aside(helper.note)}", helper.file, context.tier_examples[helper.file])
                    for helper in helpers], context.in_fence)
 
 
@@ -362,7 +367,7 @@ def _suffix(file: str) -> str:
 
 def _entry_part(architecture: Architecture) -> Part:
     if architecture.entry is None:
-        raise _Missing("no part is the entry point: mark one `entry: true`")
+        raise _Missing("no part is the entry point: set `docs.entry` to a part")
     return architecture.entry
 
 
@@ -390,9 +395,10 @@ def _quoted(names: list[str]) -> str:
 
 def _guards(architecture: Architecture, _: str, __: _Context) -> str:
     lines = [_structure_line(architecture),
-             "`rules`: every import between parts is one that `rules` allows (architecture.md, section 5)."]
+             "`rules`: every import between parts is one that the `may_import` of the importing part allows "
+             "(architecture.md, section 5)."]
     if architecture.libraries is not None:
-        listed = "; ".join(f"`{_shown(architecture, architecture.parts[name])}`: {', '.join(packages)}"
+        listed = "; ".join(f"`{_shown(architecture, architecture.parts[name])}`: {_packages(packages)}"
                            for name, packages in architecture.libraries.items() if packages)
         lines.append(f"`libraries`: a part imports only the outside packages listed for it ({listed}); the standard "
                      "library is always allowed, and tests are not checked.")
@@ -403,7 +409,7 @@ def _guards(architecture: Architecture, _: str, __: _Context) -> str:
         if architecture.fakes is not None:
             parts = _and([f"`{_shown(architecture, architecture.parts[p])}`" for p in architecture.fakes.stand_in_for])
             fakes = (f"; only a test whose tier tests {parts} imports the fakes in "
-                     f"`{'/'.join(architecture.fakes.path)}/`")
+                     f"`{'/'.join(('tests', *architecture.fakes.folder))}/`")
         lines.append("`tiers`: a test lives in the folder that mirrors its subject in the app, and imports only that "
                      "part and what it may import (a test in a folder that mirrors no part, its tier's subject and "
                      f"what that may import){fakes}.")
@@ -419,6 +425,10 @@ def _guards(architecture: Architecture, _: str, __: _Context) -> str:
                      "others, from it; each cycle is reported once, with the imports that close it.")
     lines += [_guard_line(architecture, guard) for guard in architecture.guards]
     return "\n".join(f"- {line}" for line in lines)
+
+
+def _packages(packages: tuple[str, ...]) -> str:
+    return "any outside package" if EVERYTHING in packages else ", ".join(packages)
 
 
 def _forbidden_line(architecture: Architecture) -> str:
@@ -474,7 +484,7 @@ def _stand_ins_line(architecture: Architecture, mock: str, spec: str, built: str
              "never a read port") if tiers else ""
     return (f"`stand-ins`: every `Protocol` in {parts} is fire-only (every method returns `None`) or read (any "
             "method returns a value), each method annotated; every read port `<Port>` has a fake "
-            f"`{fakes.prefix}<Port>` in `{'/'.join(fakes.path)}/`{mocks} (section 6).")
+            f"`{fakes.prefix}<Port>` in `{'/'.join(('tests', *fakes.folder))}/`{mocks} (section 6).")
 
 
 _RENDERERS: dict[str, Callable[[Architecture, str, _Context], str]] = {
@@ -485,6 +495,6 @@ _RENDERERS: dict[str, Callable[[Architecture, str, _Context], str]] = {
     "guards": _guards,
 }
 _WITH_ARGUMENT = {"layers", "litmus", "example", "tier_index", "tier_litmus"}
-_ARGUMENT = {"litmus": "<part>", "example": "<name>, ...", "tier_index": "<section>", "tier_litmus": "<section>"}
+_ARGUMENT = {"litmus": "<part>", "example": "<path>, ...", "tier_index": "<section>", "tier_litmus": "<section>"}
 _KNOWN = [f"{{{{{name}:{_ARGUMENT.get(name, '<name>')}}}}}" if name in _WITH_ARGUMENT
           else f"{{{{{name}}}}}" for name in _RENDERERS]

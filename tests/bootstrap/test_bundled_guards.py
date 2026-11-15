@@ -41,7 +41,7 @@ def test_the_bundled_profiles_use_every_guard_of_their_own(name):
     assert [(file.path, file.pinned) for file in load_architecture(name).files] == [
         (("tests", "architecture", "test_rules.py"), True), (("AGENTS.md",), False), (("ruff.toml",), False)]
     fakes = load_architecture(name).fakes
-    assert fakes is not None and (fakes.path, fakes.stand_in_for, fakes.prefix) == (("tests", "fakes"), ("ports",), "Fake")
+    assert fakes is not None and (fakes.folder, fakes.stand_in_for, fakes.prefix) == (("fakes",), ("ports",), "Fake")
 
 
 PURE = ["datetime.datetime.now", "datetime.datetime.utcnow", "datetime.datetime.today", "datetime.date.today",
@@ -63,12 +63,13 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
     section = testing.split("\n\n## 9. Guards\n\n", 1)[1].split("\n\n")[1]
     assert section == "\n".join([
         "- `structure`: every folder and file of the layout exists, in the app and in every `modules/<name>/`.",
-        "- `rules`: every import between parts is one that `rules` allows (architecture.md, section 5).",
-        "- `libraries`: a part imports only the outside packages listed for it (`platform/`: sqlmodel; "
-        "`adapters/`: sqlmodel; `web/`: fastapi; `bootstrap/`: sqlmodel, fastapi, uvicorn); the standard library "
+        "- `rules`: every import between parts is one that the `may_import` of the importing part allows "
+        "(architecture.md, section 5).",
+        "- `libraries`: a part imports only the outside packages listed for it (`adapters/`: sqlmodel; "
+        "`platform/`: sqlmodel; `web/`: fastapi; `bootstrap/`: sqlmodel, fastapi, uvicorn); the standard library "
         "is always allowed, and tests are not checked.",
         "- `forbidden`: a part neither imports nor uses by name what is listed for it (`domain/`, "
-        "`application/logic/`, `kernel/`, `application/ports/` and `contract/`: " + ", ".join(f"`{n}`" for n in PURE)
+        "`application/logic/`, `application/ports/`, `contract/` and `kernel/`: " + ", ".join(f"`{n}`" for n in PURE)
         + "), and neither do the unit tests of those parts. It catches what is written in the part's own files, "
         "through their imports and aliases, not a name reached through a variable or `getattr`, nor I/O done on the "
         "part's behalf elsewhere.",

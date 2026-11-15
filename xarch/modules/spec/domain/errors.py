@@ -42,3 +42,7 @@ class InvalidTemplate(DomainError):
         self.source = source
         self.problems = tuple(f"{source}: {problem}" for problem in problems)
         super().__init__("\n".join(self.problems))
+
+
+class UnmigratableProfile(DomainError):
+    """A profile that `xarch profile migrate` cannot convert, or whose conversion cannot be written; reason says why."""

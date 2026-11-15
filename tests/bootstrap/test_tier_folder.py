@@ -9,26 +9,27 @@ NO_TIER = ("tests/scripts/test_x.py: lies in no tier: no part's folder and no ti
            "fix: move it to the folder that mirrors its subject's path in the app, or into a tier's `folder`")
 
 PROFILE = """\
-xarch: 1
+xarch: 2
 name: min
-layout: {{sub: {{}}}}
-parts: {{sub: {{path: sub, role: "the only part"}}}}
-rules: {{}}
-tests: {{files: ["test_*.py"], functions: "test_*"}}
+testing: pytest
+parts:
+  sub: {{path: sub, role: "the only part", tier: unit}}
 tiers:
-  - name: unit
-    subject: [sub]
+  unit:
     proves: a rule
-    may_touch: nothing
     litmus: Does it decide?
 {tier}
+docs: {{examples: [ex]}}
 """
+EXAMPLES = ("tests/architecture/test_x.py", "tests/scripts/test_x.py", "tests/test_x.py", "test_x.py")
 
 
 def check(tmp_path, tier: str, tests: tuple[str, ...]) -> list[str]:
     (tmp_path / "app" / "sub").mkdir(parents=True)
     (tmp_path / "app" / "sub" / "a.py").write_text("x = 1\n")
-    (tmp_path / "x.py").write_text("x = 1\n")
+    for example in EXAMPLES:
+        (tmp_path / "ex" / example).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / "ex" / example).write_text("x = 1\n")
     for name in tests:
         (tmp_path / "tests" / name).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / "tests" / name).write_text("x = 1\n")
@@ -42,14 +43,14 @@ def check(tmp_path, tier: str, tests: tuple[str, ...]) -> list[str]:
 @pytest.mark.parametrize("tier, tests, expected", [
     pytest.param("    folder: architecture", ("scripts/test_x.py", "architecture/test_x.py"), [NO_TIER],
                  id="a test in a tier's folder has that tier and one outside every folder has none"),
-    pytest.param("    folder: architecture\n    example: {path: tests/architecture/test_x.py, file: x.py}",
+    pytest.param("    folder: architecture\n    docs: {example: tests/architecture/test_x.py}",
                  ("scripts/test_x.py", "architecture/test_x.py"), [NO_TIER],
                  id="an example inside the tier's folder changes nothing"),
-    pytest.param("    example: {path: tests/scripts/test_x.py, file: x.py}", ("scripts/test_x.py",), [NO_TIER],
+    pytest.param("    docs: {example: tests/scripts/test_x.py}", ("scripts/test_x.py",), [NO_TIER],
                  id="an example with no folder places no test, even where it says it would live"),
-    pytest.param("    example: {path: tests/test_x.py, file: x.py}", ("scripts/test_x.py",), [NO_TIER],
+    pytest.param("    docs: {example: tests/test_x.py}", ("scripts/test_x.py",), [NO_TIER],
                  id="an example directly below the tests folder does not make every test placed"),
-    pytest.param("    example: {path: test_x.py, file: x.py}", ("scripts/test_x.py",), [NO_TIER],
+    pytest.param("    docs: {example: test_x.py}", ("scripts/test_x.py",), [NO_TIER],
                  id="an example with no tests folder in its path does not make every test placed"),
 ])
 def test_a_test_with_no_part_to_mirror_is_placed_only_by_a_tier_folder(tmp_path, tier, tests, expected):

@@ -55,7 +55,7 @@ def run(files, package="app", root=ROOT, profile="cli"):
 @pytest.mark.parametrize("given, when, then", [
     pytest.param({"kernel/x.py": [Import(3, ("app", "platform", "sql"))]}, CheckImports(ROOT, "app", "cli"),
                  ImportsChecked((Violation("pkg/kernel/x.py", 3, "kernel/ may not import platform/ (app.platform.sql)",
-                                           "rules", "import only kernel/ in kernel/ (rules.kernel), or move this code "
+                                           "rules", "import only kernel/ in kernel/ (parts.kernel.may_import), or move this code "
                                                     "to a part that may import platform/"),)),
                  id="a forbidden absolute import is reported"),
     pytest.param({"kernel/x.py": [Import(3, ("app", "kernel", "y"))]}, CheckImports(ROOT, "app", "cli"),
@@ -70,7 +70,7 @@ def test_check(given, when, then):
 def test_the_root_package_name_is_a_parameter():
     files = {"kernel/x.py": [Import(1, ("xarch", "platform"), names=("sql",))]}
     assert [str(v) for v in run(files, package="app").violations] == [
-        "pkg/kernel/x.py:1: kernel/ may not import the outside package xarch (libraries.kernel)"]
+        "pkg/kernel/x.py:1: kernel/ may not import the outside package xarch (parts.kernel.libraries)"]
     assert [str(v) for v in run(files, package="xarch").violations] == [
         "pkg/kernel/x.py:1: kernel/ may not import platform/ (xarch.platform)"]
 

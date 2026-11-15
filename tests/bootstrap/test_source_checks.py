@@ -23,7 +23,7 @@ def test_a_project_following_every_check_passes(tmp_path):
     pytest.param({}, {"modules/docs/domain/test_document.py": "from app.modules.docs.adapters.db_repo import DbRepo\n"},
                  ["tests/modules/docs/domain/test_document.py:1: a test of domain/ (unit tier) may not import "
                   "adapters/ of modules/docs (app.modules.docs.adapters.db_repo): it imports only what domain/ may "
-                  "(rules.domain)"],
+                  "(parts.domain.may_import)"],
                  id="tiers: a test imports only what the part it mirrors may"),
     pytest.param({}, {"scripts/test_x.py": ""},
                  ["tests/scripts/test_x.py: lies in no tier: no part's folder and no tier's `folder` is mirrored here"],
@@ -42,7 +42,7 @@ def test_a_project_following_every_check_passes(tmp_path):
                  {"web/conftest.py": "from app.modules.docs.application.controller import C\n\nisinstance(1, C)\n"},
                  [], id="types-only: a class of the controller may be referenced"),
     pytest.param({"platform/sql.py": "import requests\n"}, {},
-                 ["app/platform/sql.py:1: platform/ may not import the outside package requests (libraries.platform)"],
+                 ["app/platform/sql.py:1: platform/ may not import the outside package requests (parts.platform.libraries)"],
                  id="libraries: an outside package not listed for the part"),
     pytest.param({"web/routes/docs.py": "from app.modules.docs.contract.results import Published\n"}, {},
                  ["app/web/routes/docs.py:1: contract/ of modules/docs is imported only as a package, never by its "

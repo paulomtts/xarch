@@ -7,40 +7,32 @@ from xarch.bootstrap.wiring import build_controllers
 from xarch.modules.rules.contract import CheckImports, ImportsChecked
 
 PROFILE = """
-xarch: 1
+xarch: 2
 name: other
-layout:
-  modules:
-    singular: module
-    each:
-      contract: {}
-      application:
-        controller.py: file
-        ports: {}
+testing:
+  files: ["*_spec.py"]
+  functions: "it_*"
+  table: {decorator: cases.table, row: cases.row, id: name}
+  mocks: {calls: [doubles.Double], spec_keywords: [of]}
 parts:
-  contract:   {path: modules/*/contract, role: results}
-  controller: {path: modules/*/application/controller.py, role: maps}
-  ports:      {path: modules/*/application/ports, role: ports}
-rules:
-  contract:   []
-  controller: [contract@own, ports@own]
-  ports:      []
-tests: {files: ["*_spec.py"], functions: "it_*"}
+  contract:   {path: modules/<module>/contract, role: results, tier: integration}
+  controller:
+    path: modules/<module>/application/controller.py
+    role: maps
+    may_import: [contract, ports]
+    tier: integration
+  ports:      {path: modules/<module>/application/ports, role: ports, tier: integration}
 tiers:
-  - {name: integration, subject: [controller, contract, ports], proves: a use case, may_touch: fakes,
-     litmus: "Does it drive a controller?"}
-fakes: {path: tests/fakes, for: [ports], prefix: Fake}
+  integration: {proves: a use case, litmus: "Does it drive a controller?"}
+fakes: {folder: fakes, for: [ports], prefix: Fake}
 guards:
   scenario-coverage:
     results: contract
     tier: integration
     suffix: Result
     columns: [given, when, then]
-    table: {decorator: cases.table, row: cases.row, id: name}
     file: "{name}_spec.py"
-  stand-ins:
-    mocks: [doubles.Double]
-    spec: [of]
+  stand-ins: {}
 """
 
 APP = {
@@ -149,12 +141,12 @@ def test_a_file_the_profile_names_as_a_test_but_that_mirrors_no_part_has_no_tier
                      "tier's `folder`"]
 
 
-def test_a_profile_of_four_keys_names_no_framework_and_still_checks(tmp_path):
+def test_a_profile_with_no_testing_key_names_no_framework_and_still_checks(tmp_path):
     (tmp_path / "app" / "sub").mkdir(parents=True)
     (tmp_path / "tests").mkdir()
     (tmp_path / "app" / "sub" / "a.py").write_text("x = 1\n")
     (tmp_path / "tests" / "test_a.py").write_text("import pytest\n")
-    (tmp_path / "min.yaml").write_text('xarch: 1\nname: min\nlayout: {sub: {}}\n'
+    (tmp_path / "min.yaml").write_text('xarch: 2\nname: min\n'
                                        'parts: {sub: {path: sub, role: "the only part"}}\n')
     result = build_controllers().rules.check(CheckImports(tmp_path / "app", "app", str(tmp_path / "min.yaml"),
                                                           tmp_path / "tests"))

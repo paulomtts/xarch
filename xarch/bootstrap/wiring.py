@@ -18,9 +18,11 @@ from xarch.modules.scaffold.adapters.spec_skeleton import SpecSkeleton as Scaffo
 from xarch.modules.scaffold.application.controller import ScaffoldController
 from xarch.modules.scaffold.application.services.scaffolding import Scaffolding
 from xarch.modules.spec.adapters.fs_architecture_files import FsArchitectureFiles
+from xarch.modules.spec.adapters.fs_profile_output import FsProfileOutput
 from xarch.modules.spec.adapters.pyproject_settings import PyprojectSettings
 from xarch.modules.spec.application.controller import SpecController
 from xarch.modules.spec.application.services.architecture import ArchitectureService
+from xarch.modules.spec.application.services.migration import MigrationService
 from xarch.modules.spec.application.services.skeleton import SkeletonService
 from xarch.modules.spec.domain.values import Architecture
 from xarch.platform.data_files import DataFileReader
@@ -38,8 +40,10 @@ class Controllers:
 
 def build_spec(fs: FileSystem | None = None) -> SpecController:
     fs = fs or FileSystem()
-    architectures = build_architectures(fs)
-    return SpecController(SkeletonService(PyprojectSettings(fs, TomlReader()), architectures), architectures)
+    files = FsArchitectureFiles(fs, DataFileReader())
+    architectures = ArchitectureService(files)
+    return SpecController(SkeletonService(PyprojectSettings(fs, TomlReader()), architectures), architectures,
+                          MigrationService(files, FsProfileOutput(fs)))
 
 
 def build_architectures(fs: FileSystem | None = None) -> ArchitectureService:

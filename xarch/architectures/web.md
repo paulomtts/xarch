@@ -159,7 +159,7 @@ flowchart LR
   dadp --> mctrl
 ```
 
-{{example:content_review, moderation_content_review}}
+{{example:modules/documents/application/ports/content_review.py, modules/documents/adapters/moderation_content_review.py}}
 
 `ReviewText`, `ReviewResult`, `Clean` and `Flagged` belong to moderation's `contract/`. `Allowed` and `Denied` are documents' own, defined beside the port. So is the error `ContentRejected`, which lives in `domain/errors.py`. The service turns `Denied` into that error, and the controller turns the error into the `Rejected` variant of the create `Result`.
 
@@ -196,7 +196,7 @@ The "if not" pointers inside each test name the usual near-miss. They are shortc
 
 What the module promises to everyone outside it: the inputs a caller sends the controller, what comes back, and the ids that name its things. A **Result** is the union of outcomes a controller returns for one use case, and each member of the union is a variant.
 
-{{example:contract_commands, contract_views, contract_results, contract_init}}
+{{example:modules/documents/contract/commands.py, modules/documents/contract/views.py, modules/documents/contract/results.py, modules/documents/contract/__init__.py}}
 
 {{litmus:contract}}
 
@@ -210,7 +210,7 @@ What the module promises to everyone outside it: the inputs a caller sends the c
 
 Entities and their state transitions, value objects (including typed ids) and their validation, and domain errors: the invariants of each entity and value. A pure rule that is not one entity's invariant goes in `application/logic/` (section 8.5).
 
-{{example:domain_values, domain_errors, document}}
+{{example:modules/documents/domain/values.py, modules/documents/domain/errors.py, modules/documents/domain/document.py}}
 
 {{litmus:domain}}
 
@@ -218,7 +218,7 @@ Entities and their state transitions, value objects (including typed ids) and th
 
 The module's use-case façade. It delegates to a service, turns exceptions into a `Result` the caller can branch on and turns the entities the service returns into DTOs. It holds no business rules.
 
-{{example:controller}}
+{{example:modules/documents/application/controller.py}}
 
 {{litmus:controller}}
 
@@ -229,7 +229,7 @@ The module's use-case façade. It delegates to a service, turns exceptions into 
 
 The sequence for one use case: load, check the preconditions, tell the domain to act, persist, notify. Services call ports, and never implement them. A precondition is that what the use case needs exists or is available. What is valid to do with it is the domain's call.
 
-{{example:document_service}}
+{{example:modules/documents/application/services/document_service.py}}
 
 {{litmus:services}}
 
@@ -238,7 +238,7 @@ The sequence for one use case: load, check the preconditions, tell the domain to
 Pure functions over the module's domain objects, one file named for the rule it holds. A rule or step that is not one entity's invariant lives here, so a service calls it instead of holding it. It takes values and returns values: no port, no I/O, no clock.
 
 ```python
-{{example:staleness}}
+{{example:modules/documents/application/logic/staleness.py}}
 
 # in DocumentService (section 8.4), which calls the rule and does not hold it
 from app.modules.documents.application.logic.staleness import is_stale
@@ -253,7 +253,7 @@ from app.modules.documents.application.logic.staleness import is_stale
 `Protocol` definitions for repositories, search, email and anything else the application needs, written in the module's own vocabulary. A need that another module fulfills is declared the same way, in the consumer's words, and an adapter wraps the provider (section 6).
 
 ```python
-{{example:document_repo}}
+{{example:modules/documents/application/ports/document_repo.py}}
 
 # modules/documents/application/ports/content_review.py: ContentReview and its outcomes Allowed and Denied;
 #   filled by an adapter that wraps moderation, see section 6
@@ -265,7 +265,7 @@ from app.modules.documents.application.logic.staleness import is_stale
 
 Code that implements this module's ports against a real system, using `platform/` clients for the technology: repositories, which translate between the module's types and the table models defined in `platform/`. The schema itself is created by `bootstrap/migrations/` (section 9.4 shows one), and no module owns a table exclusively. An adapter can also wrap another module's controller behind a port (section 6).
 
-{{example:db_document_repo}}
+{{example:modules/documents/adapters/db_document_repo.py}}
 
 The translation between the database's rows and the domain's entities lives here, in the adapter class, and never in `domain/` or in the table model: the domain never sees a row, and the service never sees one either.
 
@@ -290,7 +290,7 @@ An adapter's name starts with the system it talks to (a technology such as `Db` 
 
 Primitives with no business meaning: typed-id helpers, the base error hierarchy, lifecycle fields (created, updated, deleted), tracing carriers and the `Clock` protocol. `kernel/logic/` holds the pure functions that modules share, including a business rule two modules need: modules never import each other, so a shared rule is promoted here. Like the rest of `kernel/`, it imports nothing outside `kernel/`.
 
-{{example:kernel_identifiers, kernel_errors, kernel_time, kernel_text}}
+{{example:kernel/identifiers.py, kernel/errors.py, kernel/time.py, kernel/logic/text.py}}
 
 {{litmus:kernel}}
 
@@ -298,7 +298,7 @@ Primitives with no business meaning: typed-id helpers, the base error hierarchy,
 
 Clients and engines for technology used by several modules and owned by none: the LLM client, embeddings, email, crypto, blob storage, the SQL engine, sessions and table models, and the system clock. Module adapters use most of them, while `bootstrap/` passes `SystemClock` straight to services as the kernel's `Clock`. Platform implements no module's port and imports no module.
 
-{{example:smtp_client, system_clock, documents_table}}
+{{example:platform/email/smtp_client.py, platform/clock.py, platform/sql/tables/documents.py}}
 
 The email client speaks plain strings and knows no module. A module adapter that implements a notification port wraps it and translates the module's types into those strings. A table model is the same kind of thing: it names a table and its columns and knows no module's types, so every module's repo can use it and translate it into its own entities (section 8.7).
 
@@ -308,7 +308,7 @@ The email client speaks plain strings and knows no module. A module adapter that
 
 The only place that speaks HTTP or renders for the browser, whichever module's data it shows. Each route parses the request, builds the module's command object, calls the controller and renders the `Result` as a status code and a page or payload. Strings shown to the user live in `i18n/`, and rendering lives in `ui/`. Neither holds a business rule.
 
-{{example:dependencies, documents_routes}}
+{{example:web/dependencies.py, web/routes/documents.py}}
 
 {{litmus:web}}
 
@@ -322,11 +322,11 @@ The only place that speaks HTTP or renders for the browser, whichever module's d
 
 Builds each module's adapters, hands them to its services, and hands the services to its controller. It then hands the controllers to `web/`. It wraps a provider module's controller in the consumer's adapter (section 6), and it holds the migrations, which define the schema for every module. The only place that decides which adapter fills which port. It is also where the program's entry point lives: only `bootstrap/` may see both the entry-point folder and the adapters, so the script that starts the program is wired here and not in `web/`.
 
-{{example:wiring, bootstrap_app, bootstrap_main}}
+{{example:bootstrap/wiring.py, bootstrap/app.py, bootstrap/main.py}}
 
 The schema is created by the migrations, one file per change, applied in order. A migration builds its tables from the table models in `platform/`, which SQLModel turns into DDL:
 
-{{example:migration}}
+{{example:bootstrap/migrations/0001_create_documents.py}}
 
 > [!NOTE]
 > A migration builds the table from the table model, so the table model declares the columns and the migration decides when the table is created. A later change to a column is a new migration file, never an edit of an old one. Every module that reads the table translates the same table model, so a column change reaches all of them through it.

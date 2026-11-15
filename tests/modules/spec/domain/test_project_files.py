@@ -2,27 +2,25 @@
 
 import pytest
 
-from xarch.modules.spec.domain.architecture_file import parse_architecture
+from tests.modules.spec.profiles_v2 import SOURCE, parsed
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.project_files import Written, project_files, with_app
 
-
-def layered() -> dict:
-    return {"xarch": 1, "name": "layered", "layout": {"src": {}},
-            "parts": {"src": {"path": "src", "role": "code"}}, "rules": {"src": []}}
+PARTS = {"src": {"path": "src", "role": "code"}}
+"""A profile of one part, the folder src."""
 
 
-def architecture(files: dict, layout: dict | None = None):
-    document = layered() | {"files": files}
-    if layout is not None:
-        top = next(iter(layout))
-        document |= {"layout": layout, "parts": {"p": {"path": top, "role": "code"}}, "rules": {"p": []}}
-    return parse_architecture(document, "layered.yaml", lambda relative: relative != "preset",
-                              lambda relative: ("x",) if relative == "preset" else None)
+def architecture(files: dict, parts: dict | None = None):
+    document = {"xarch": 2, "name": "layered", "parts": parts or PARTS, "files": files}
+    return parsed(document, lambda relative: relative != "preset",
+                  folder_files=lambda relative: ("x",) if relative == "preset" else None)
+
+
+FILE_IN_SRC = PARTS | {"a": {"path": "src/a.py", "role": "code"}}
 
 
 def written(declared, contents, app="shop", folders=None):
-    return list(project_files(declared, contents, app, "layered.yaml", folders or {}))
+    return list(project_files(declared, contents, app, SOURCE, folders or {}))
 
 
 def test_each_file_is_its_template_with_the_app_folder_filled_in_in_the_order_declared():
@@ -39,7 +37,7 @@ def test_any_other_placeholder_is_written_as_it_stands():
 
 
 def test_an_architecture_without_files_yields_none():
-    declared = parse_architecture(layered(), "layered.yaml", lambda relative: True)
+    declared = parsed({"xarch": 2, "name": "layered", "parts": PARTS})
     assert written(declared, {}) == []
 
 
@@ -57,7 +55,7 @@ def test_a_file_inside_the_app_folder_is_written_there_when_the_skeleton_does_no
     ("{{app}}", "'shop' is the app folder"),
 ])
 def test_a_file_the_skeleton_writes_is_refused(key, problem):
-    declared = architecture({key: {"from": "a.tpl"}}, {"src": {"a.py": "file"}})
+    declared = architecture({key: {"from": "a.tpl"}}, FILE_IN_SRC)
     with pytest.raises(InvalidArchitecture) as caught:
         written(declared, {"a.tpl": ""})
     assert caught.value.problems == (f"layered.yaml: files.{key}: {problem}",)
@@ -65,7 +63,7 @@ def test_a_file_the_skeleton_writes_is_refused(key, problem):
 
 def test_a_file_in_an_instance_folder_may_not_replace_what_a_new_instance_gets():
     declared = architecture({"{{app}}/mods/x/domain/__init__.py": {"from": "a.tpl"}},
-                            {"mods": {"each": {"domain": {}}, "singular": "mod"}})
+                            {"domain": {"path": "mods/<mod>/domain", "role": "code"}})
     with pytest.raises(InvalidArchitecture) as caught:
         written(declared, {"a.tpl": ""})
     assert "is the package file the skeleton writes" in caught.value.problems[0]

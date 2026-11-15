@@ -31,3 +31,6 @@ module-root = ""
 [tool.xarch]
 profile = "architecture.yaml"
 app = "xarch"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

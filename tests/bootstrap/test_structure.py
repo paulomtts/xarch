@@ -12,8 +12,8 @@ def check(app: Path, profile: str = "cli"):
     return list(build_controllers().layout.check(CheckStructure(app, "app", profile)).violations)
 
 
-MODULE_PARTS = ["contract/", "domain/", "application/controller.py", "application/services/",
-                "application/logic/", "application/ports/", "adapters/"]
+MODULE_PARTS = ["domain/", "application/logic/", "application/ports/", "application/services/",
+                "application/controller.py", "adapters/", "contract/"]
 
 
 def make(root: Path, dirs: list[str], files: list[str] = ()) -> Path:
@@ -46,8 +46,8 @@ def test_a_missing_folder_below_a_top_level_folder_is_reported(tmp_path, missing
 
 def test_a_top_level_folder_with_nothing_in_it_reports_what_the_layout_puts_in_it(tmp_path):
     app = make(tmp_path, ["bootstrap", "kernel", "modules", "platform", "cli"])
-    assert [str(v) for v in check(app)] == ["app: missing bootstrap/migrations/", "app: missing kernel/logic/",
-                                            "app: missing cli/commands/"]
+    assert [str(v) for v in check(app)] == ["app: missing cli/commands/", "app: missing bootstrap/migrations/",
+                                            "app: missing kernel/logic/"]
 
 
 @pytest.mark.parametrize("missing", TOP)

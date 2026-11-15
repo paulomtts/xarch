@@ -24,7 +24,7 @@ from xarch.modules.spec.domain.values import (
 __all__ = ["Architecture", "CaseTable", "ClosedTree", "Fixture", "Framework", "NoComments", "PackageOnly", "Part",
            "ScenarioCoverage", "StandIns", "Subject", "Target", "Tier", "TierExample", "Entry", "Skeleton", "DocFile",
            "Docs", "ProjectFile", "Loosened", "ProfileOrigin", "SelectProfile", "ProfileSelected", "ProfileRefused",
-           "ProfileResult"]
+           "ProfileResult", "MigrateProfile", "MigratedFile", "Migrated", "MigrationRefused", "MigrateResult"]
 
 
 @dataclass(frozen=True)
@@ -42,11 +42,13 @@ class Entry:
 class Skeleton:
     """The layout as entries: top_level below the app root, with the `each` folder's parent empty; each_root, the
     folder holding the `each` instances (None if the layout has none); each, what every instance holds; entry_point,
-    the top-level folder of the part marked `entry` ("" if none)."""
+    the top-level folder of the part marked `entry` ("" if none); each_word, what one instance is called (the word
+    between `<` and `>` in a path), "" if the layout has no `each`."""
     top_level: tuple[Entry, ...]
     each_root: tuple[str, ...] | None
     each: tuple[Entry, ...]
     entry_point: str
+    each_word: str = ""
 
 
 @dataclass(frozen=True)
@@ -89,14 +91,14 @@ class ProjectFile:
 class Loosened:
     """One way a profile is looser than the bundled profile it is compared with. key is what loosened:
 
-        rules           part may also import what (a target as written)
+        may_import      part may also import what (a target as written)
         libraries       part may also import the outside package what; with no part, outside packages are unchecked
         forbidden       part no longer forbids what
         untested        part is newly marked untested
         types_only      the tests of tier part may now call what
-        tier_forbidden  the tests of tier part are no longer held to their part's forbidden list
-        skips           what is no longer counted as a skip
-        pinned          the init file what is no longer pinned
+        apply_forbidden the tests of tier part are no longer held to their part's forbidden list
+        testing.skips   what is no longer counted as a skip
+        files.pinned    the init file what is no longer pinned
     """
     key: str
     part: str
@@ -140,3 +142,43 @@ class ProfileRefused:
 
 
 ProfileResult = ProfileSelected | ProfileRefused
+
+
+@dataclass(frozen=True)
+class MigrateProfile:
+    """Convert the profile file at path, in format 1, to format 2 in a new folder: out, else a folder beside the file
+    named for it with `-v2`. dry_run: report what would be written and write nothing."""
+    path: Path
+    out: Path | None = None
+    dry_run: bool = False
+
+
+@dataclass(frozen=True)
+class MigratedFile:
+    """A file of the converted folder, by its path in it. source: the file next to the old profile it is read from, None
+    for the converted profile; rewritten: how many `{{example:...}}` placeholders of a template were rewritten."""
+    path: str
+    source: str | None
+    rewritten: int
+
+
+@dataclass(frozen=True)
+class Migrated:
+    """The conversion: the folder, the converted profile, every file of the folder in the order written, what now means
+    something else (changes), what has no form in format 2 and is to be written by hand (by_hand), and whether nothing
+    was written because it was a dry run."""
+    folder: Path
+    profile: Path
+    files: tuple[MigratedFile, ...]
+    changes: tuple[str, ...]
+    by_hand: tuple[str, ...]
+    dry_run: bool
+
+
+@dataclass(frozen=True)
+class MigrationRefused:
+    """A refusal; reason is safe to show the user as-is."""
+    reason: str
+
+
+MigrateResult = Migrated | MigrationRefused

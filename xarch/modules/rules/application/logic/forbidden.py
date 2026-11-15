@@ -40,7 +40,7 @@ def violations(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: 
         where = place(profile, dotted(file.path)[0])
         if where is None or where.part not in profile.forbidden:
             continue
-        found += _file(file, where.part, label(profile, where), f"({RULE}.{where.part})", profile)
+        found += _file(file, where.part, label(profile, where), f"(parts.{where.part}.{RULE})", profile)
     for file in tests:
         where = tested(profile, file.path)
         if where.tier is None or not where.tier.forbidden or where.is_fake:
@@ -48,7 +48,7 @@ def violations(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: 
         for part in where.parts:
             if part in profile.forbidden:
                 found += _file(file, part, f"a test of {part}/ ({where.tier.name} tier)",
-                               f"({RULE}.{part}; tiers.{where.tier.name}.{RULE})", profile)
+                               f"(parts.{part}.{RULE}; tiers.{where.tier.name}.apply_{RULE})", profile)
     return found
 
 

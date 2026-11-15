@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from xarch.kernel.logic.placement import EVERYTHING
 from xarch.modules.rules.contract import Reach, TierInfo, Where
 
 LABEL = 16
@@ -68,6 +69,8 @@ def _part(where: Where) -> str:
 def _libraries(where: Where) -> str:
     if where.libraries is None:
         return NOT_CHECKED
+    if EVERYTHING in where.libraries:
+        return "any outside package"
     return ", ".join(where.libraries) or "none"
 
 

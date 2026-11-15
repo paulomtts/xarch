@@ -11,8 +11,8 @@ def skeleton(profile: str):
 
 def test_top_level_lists_every_folder_parents_before_children():
     paths = [e.path for e in skeleton("cli").top_level]
-    assert paths == [("bootstrap",), ("bootstrap", "migrations"), ("kernel",), ("kernel", "logic"), ("modules",), ("platform",),
-                     ("cli",), ("cli", "commands")]
+    assert paths == [("modules",), ("platform",), ("cli",), ("cli", "commands"), ("bootstrap",), ("bootstrap", "migrations"),
+                     ("kernel",), ("kernel", "logic")]
     assert all(e.is_dir for e in skeleton("cli").top_level)
 
 
@@ -22,22 +22,22 @@ def test_the_cli_profile_enters_through_cli():
 
 def test_the_web_profile_has_web_with_routes_i18n_and_ui_instead_of_cli():
     paths = [e.path for e in skeleton("web").top_level]
-    assert paths == [("bootstrap",), ("bootstrap", "migrations"), ("kernel",), ("kernel", "logic"), ("modules",), ("platform",),
-                     ("web",), ("web", "routes"), ("web", "i18n"), ("web", "ui")]
+    assert paths == [("modules",), ("platform",), ("web",), ("web", "routes"), ("web", "i18n"), ("web", "ui"),
+                     ("bootstrap",), ("bootstrap", "migrations"), ("kernel",), ("kernel", "logic")]
     assert skeleton("web").entry_point == "web"
 
 
 @pytest.mark.parametrize("profile", ["cli", "web"])
 def test_module_lists_every_part_with_files_marked(profile):
     assert skeleton(profile).each == (
-        Entry(("contract",), True, True),
         Entry(("domain",), True, True),
         Entry(("application",), True, False),
-        Entry(("application", "controller.py"), False, True),
-        Entry(("application", "services"), True, True),
         Entry(("application", "logic"), True, True),
         Entry(("application", "ports"), True, True),
+        Entry(("application", "services"), True, True),
+        Entry(("application", "controller.py"), False, True),
         Entry(("adapters",), True, True),
+        Entry(("contract",), True, True),
     )
 
 
@@ -48,8 +48,8 @@ def test_kernel_holds_logic_and_every_module_holds_application_logic(profile):
 
 
 def test_a_folder_with_children_is_not_a_leaf():
-    bootstrap, migrations = skeleton("cli").top_level[:2]
-    assert not bootstrap.leaf and migrations.leaf
+    entries = {e.path: e for e in skeleton("cli").top_level}
+    assert not entries[("bootstrap",)].leaf and entries[("bootstrap", "migrations")].leaf
 
 
 def test_the_profiles_are_listed():

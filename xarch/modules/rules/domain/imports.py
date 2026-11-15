@@ -80,4 +80,4 @@ def _fix(profile: Profile, src: Place, dst: Place) -> str:
     if not permitted:
         return f"drop the import of {label(profile, dst)}, or {move}"
     return (f"import only {', '.join(f'{name}/' for name in permitted)} in {label(profile, src)} "
-            f"(rules.{src.part}), or {move}")
+            f"(parts.{src.part}.may_import), or {move}")

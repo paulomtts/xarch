@@ -29,17 +29,17 @@ def problems(path: str, *imports, checked=PROFILE) -> list[str]:
                  id="a test imports its part and what that part may"),
     pytest.param(DOMAIN_TEST, [imp(3, "app.modules.docs.application", "controller")],
                  ["3: a test of domain/ (unit tier) may not import controller/ of modules/docs "
-                  "(app.modules.docs.application.controller): it imports only what domain/ may (rules.domain)"],
+                  "(app.modules.docs.application.controller): it imports only what domain/ may (parts.domain.may_import)"],
                  id="a test may not import what its part may not"),
     pytest.param(DOMAIN_TEST, [imp(3, "app.modules.other.domain", "doc")],
                  ["3: a test of domain/ (unit tier) may not import domain/ of modules/other "
-                  "(app.modules.other.domain.doc): it imports only what domain/ may (rules.domain)"],
+                  "(app.modules.other.domain.doc): it imports only what domain/ may (parts.domain.may_import)"],
                  id="@own reaches the instance the test mirrors, not another"),
     pytest.param(DOMAIN_TEST, [imp(3, "app.modules.docs.domain.doc")],
                  [], id="a plain import is read too, and allowed here"),
     pytest.param(DOMAIN_TEST, [imp(3, "app.platform.sql")],
                  ["3: a test of domain/ (unit tier) may not import platform/ (app.platform.sql): it imports only "
-                  "what domain/ may (rules.domain)"],
+                  "what domain/ may (parts.domain.may_import)"],
                  id="a plain import that is not allowed is reported"),
     pytest.param(DOMAIN_TEST, [imp(1, "pytest"), imp(2, "pathlib", "Path"), imp(3, "app.scripts", "seed")], [],
                  id="the standard library, outside packages and ungoverned places of the app are not its business"),
@@ -49,14 +49,14 @@ def problems(path: str, *imports, checked=PROFILE) -> list[str]:
                  [imp(1, "app.modules.docs.application", "controller"), imp(2, "app.modules.docs.domain", "doc"),
                   imp(3, "app.modules.docs.adapters", "db")],
                  ["3: a test of controller/ (integration tier) may not import adapters/ of modules/docs "
-                  "(app.modules.docs.adapters.db): it imports only what controller/ may (rules.controller)"],
+                  "(app.modules.docs.adapters.db): it imports only what controller/ may (parts.controller.may_import)"],
                  id="a test in the folder of a file part imports what that part may"),
     pytest.param("architecture/test_rules.py", [imp(1, "app.kernel", "ids")],
                  ["1: a guard test may not import kernel/ (app.kernel.ids)"],
                  id="a test placed by its tier's folder imports what its tier's subject may, here nothing"),
     pytest.param("kernel/test_ids.py", [imp(1, "app.kernel", "ids"), imp(2, "app.modules.docs.domain", "doc")],
                  ["2: a test of kernel/ (unit tier) may not import domain/ of modules/docs "
-                  "(app.modules.docs.domain.doc): it imports only what kernel/ may (rules.kernel)"],
+                  "(app.modules.docs.domain.doc): it imports only what kernel/ may (parts.kernel.may_import)"],
                  id="a test of a part outside the instances imports what that part may"),
     pytest.param("platform/test_sql.py", [imp(1, "app.platform", "sql")], [NO_TIER],
                  id="a test of a part no tier tests lies in no tier, and its imports are not checked"),
@@ -144,6 +144,19 @@ def test_allowance(path, expected):
 def test_a_tiers_allowance_is_its_subject_and_what_each_part_may_import():
     assert may_import(PROFILE, Tier("pair", (Target("kernel"), Target("platform")))) == (
         Target("kernel"), Target("kernel"), Target("platform"), Target("platform"), Target("kernel"))
+
+
+def test_a_tiers_own_allowance_replaces_what_its_subject_would_give():
+    guard = Tier("guard", (Target("kernel"),), ("architecture",), may_import=(Target("platform"),))
+    assert may_import(PROFILE, guard) == (Target("platform"),)
+
+
+def test_a_test_in_a_tiers_folder_imports_only_what_the_tier_allows():
+    guard = Tier("guard", (), ("architecture",), may_import=(Target("kernel"),))
+    checked = profile(tiers=(guard,))
+    assert problems("architecture/test_rules.py", imp(1, "app.kernel", "ids"), imp(2, "app.platform", "sql"),
+                    checked=checked) == [
+        "2: a guard test may not import platform/ (app.platform.sql)"]
 
 
 @pytest.mark.parametrize("checked, tier, expected", [

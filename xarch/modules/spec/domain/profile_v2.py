@@ -1,0 +1,792 @@
+"""A profile file (format version 2), parsed and validated into an Architecture.
+
+An Architecture, from a file that states each fact once, on the thing it is about. The keys, what
+each means and whether it is enforced are in profile_keys, which the messages below read; the shape:
+
+    xarch: 2
+    name: <name>
+    based_on: <bundled name>   optional; the bundled profile this one was copied from, which a report compares with
+    language: python           optional; the language of the app, python by default and the only one
+    testing: <preset> | {files, functions, skips, table, mocks}
+                               how the test framework names things; a preset is a name, read from data shipped with
+                               xarch. Required with `tiers` and with the guards scenario-coverage and stand-ins
+    parts: {<part>: {path, role, ...}}
+                               in the order their litmus tests run. A part's path is a folder below the app, or a file
+                               when its last step holds a dot; one step written `<word>` is the repeating folder, one
+                               instance per name, and the word is what the docs call one instance. The layout is the
+                               paths of the parts and their `folders` (each with an optional note), nothing else
+        may_import: [<part>, <part>@any, <part>/<path>] | everything
+                               what the part may import besides itself, which it always may: a bare name of a part in
+                               the repeating folder is the importer's own instance, `@any` any instance; everything
+        libraries: [<package>, ...] | everything
+                               the outside packages by top-level import name; a part that lists none may import none,
+                               and everything leaves the part unchecked
+        forbidden: <list>      the name of a top-level `forbidden` list the part may not use
+        tier: <tier> | untested: <reason>
+                               one tier covers the part, or the reason none does; with `tiers`, one of the two
+        package_only: true     the part is imported only as a package from outside it
+        folders: {<folder>: <note>} | [<folder>, ...]
+                               folders below the part that the layout shows
+    forbidden: {<list>: [<name>, ...]}         named lists of what a part may not use
+    layers: {<name>: [<part>, ...]}            chains of parts from the inside out: none imports one after it
+    tiers: {<tier>: {proves, litmus, apply_forbidden, types_only, folder, may_import, docs}}
+                               the kinds of test, in the order their litmus tests run. A tier with a `folder` below
+                               the tests folder says in `may_import` what the tests there may import; `docs` holds what
+                               only fills the generated docs
+    fakes: {folder, for, prefix}               the folder of the test fakes below the tests folder, the parts they
+                               stand in for, and how a fake's name starts
+    guards: {<guard>: {...}}                   the pre-built checks in use; left out means off
+    excluded: {<folder>: <reason>}             folders below the app that are not its source
+    hints: {<rule id>: <text>}                 your own advice for a rule, shown after its built-in fix
+    files: {<path>: <from> | {from, pinned, fill}}  what `init` writes besides the docs
+    docs: {entry, pages, naming, examples, example_notes}
+                               everything that only fills the docs; `examples` lists folders next to the profile, each
+                               an example project, whose every file is an example named by its path in the project
+
+Every problem found is collected, so one InvalidArchitecture lists them all, each naming the key by its address in the
+file and saying what to write instead; a problem that makes the rest meaningless stops early.
+"""
+from __future__ import annotations
+
+import re
+from collections.abc import Callable, Collection, Mapping
+from dataclasses import dataclass, replace
+from typing import Any
+
+from xarch.kernel.logic.placement import EVERYTHING
+from xarch.modules.spec.domain import profile_checks as ck
+from xarch.modules.spec.domain import profile_examples as ex
+from xarch.modules.spec.domain.errors import InvalidArchitecture
+from xarch.modules.spec.domain.guards import GUARDS
+from xarch.modules.spec.domain.profile_keys import (
+    DOCS,
+    FAKES,
+    MOCKS,
+    MOVED,
+    PART,
+    PROFILE,
+    SCENARIO_COVERAGE,
+    TESTING,
+    TIER,
+    TIER_DOCS,
+    keys_of,
+    names_of,
+    required_of,
+)
+from xarch.modules.spec.domain.values import (
+    EACH,
+    Architecture,
+    CaseTable,
+    ClosedTree,
+    Fakes,
+    Framework,
+    Guard,
+    Layout,
+    NoComments,
+    PackageOnly,
+    Part,
+    ScenarioCoverage,
+    StandIns,
+    Subject,
+    Target,
+    Tier,
+    TierExample,
+)
+
+VERSION = 2
+LANGUAGES = ("python",)
+"""The languages an app may be in; the first is the default."""
+WORD = "everything"
+"""How a file writes EVERYTHING: for what a part may import and for its libraries."""
+_REPEATING = re.compile(r"<([A-Za-z_][A-Za-z0-9_-]*)>")
+_TARGET = re.compile(r"(?P<part>[^@/]*)(?:@(?P<scope>[^/]*))?(?:/(?P<sub>.*))?")
+_TIER_TEXTS = ("subject", "may_touch", "one_file_per", "cases_from", "data")
+"""The keys under a tier's `docs` that hold one line of text each."""
+_GUARDS = tuple(name for name in GUARDS if name != "package-only")
+_NEEDS_TESTING = ("scenario-coverage", "stand-ins")
+_PRESET_MAP = "{files, functions}"
+_TIER_INSTEAD = "`tier: <tier>`, or `untested: <reason>`"
+
+
+@dataclass(frozen=True)
+class _Testing:
+    """What `testing` says: how test files and functions are named, and, when written, how a table of cases is held
+    and how a mock is built."""
+    framework: Framework
+    table: CaseTable | None
+    mocks: StandIns | None
+
+
+@dataclass
+class _Layout:
+    """The layout and what comes with it, built from the paths of the parts: the parts, the tree, the notes of the
+    folders, the one repeating word and the folder it repeats in."""
+    parts: dict[str, Part]
+    tree: Layout
+    notes: dict[tuple[str, ...], str]
+    word: str = ""
+    root: tuple[str, ...] = ()
+
+
+def parse_v2(document: Any, source: str, has_file: Callable[[str], bool],
+             folder_files: Callable[[str], tuple[str, ...] | None] | None = None,
+             presets: Mapping[str, Any] | None = None, bundled: Collection[str] = ()) -> Architecture:
+    """The architecture the document describes; raises InvalidArchitecture listing every problem. folder_files says
+    which files lie under a folder next to the profile file, None when it is no folder; presets are the documents of
+    the `testing` presets by name; bundled are the names of the bundled profiles, which `based_on` may name."""
+    if not isinstance(document, Mapping):
+        raise InvalidArchitecture(source, [f"must be a mapping of keys, starting with `xarch: {VERSION}`"])
+    problems: list[str] = []
+    problems += _keys(document)
+    name = document.get("name")
+    if "name" in document and not ck.text(name):
+        problems.append("`name` must be a non-empty string")
+    _language(document, problems)
+    based_on = _based_on(document["based_on"], bundled, problems) if "based_on" in document else ""
+    lists = _forbidden_lists(document["forbidden"], problems) if "forbidden" in document else {}
+    specs = _specs(document.get("parts", {}), problems)
+    declared = set(specs)
+    built = _layout(specs, problems)
+    parts = built.parts
+    examples = ex.example_files(document.get("docs", {}), folder_files or (lambda relative: None), problems)
+    rules = {part: _may_import(specs[part].get("may_import"), item, parts, declared, f"parts.{part}.may_import",
+                               problems) for part, item in parts.items()}
+    libraries = {part: _libraries(specs[part], f"parts.{part}.libraries", problems) for part in parts}
+    forbidden = _forbidden_refs(specs, parts, lists, problems)
+    layers = ck.layer_chains(document["layers"], parts, declared, rules, problems) if "layers" in document else {}
+    testing = _testing(document["testing"], presets or {}, problems) if "testing" in document else None
+    tiers = _tiers(document, specs, parts, declared, examples, problems)
+    fakes = _fakes(document["fakes"], parts, declared, problems) if "fakes" in document else None
+    problems += ck.folder_clashes(tiers, fakes)
+    guards = _guards(document.get("guards", {}), specs, parts, declared, tiers, fakes, testing, problems)
+    problems += _needs_testing(document)
+    entry, pages, naming = _docs(document.get("docs", {}), declared, has_file, problems)
+    parts = {part: replace(item, entry=True) if part == entry else item for part, item in parts.items()}
+    files = ck.init_files(_bare_from(document.get("files", {})), pages, has_file, folder_files or (lambda relative: None),
+                          problems, "docs.pages")
+    excluded = ck.excluded_folders(document["excluded"], built.tree, problems) if "excluded" in document else ()
+    hints = ck.rule_hints(document["hints"], problems) if "hints" in document else {}
+    if problems:
+        raise InvalidArchitecture(source, problems)
+    shown = ex.examples_of(examples, built.tree, parts)
+    return Architecture(name, built.tree, parts, rules, pages, shown, built.notes, layers, tuple(parts), naming, tiers,
+                        libraries, guards, fakes, built.word, files, testing.framework if testing else None, forbidden,
+                        excluded, hints, based_on)
+
+
+def _keys(document: Mapping[Any, Any]) -> list[str]:
+    """The keys of the file that are unknown: one that moved from format 1 says where it went."""
+    problems = [f"`{key}`: not a key of format 2: {MOVED[key]}" for key in sorted(map(str, document)) if key in MOVED]
+    unknown = sorted(str(key) for key in document if key not in names_of(PROFILE) and key not in MOVED)
+    if unknown:
+        problems.append(f"unknown key{'s' if len(unknown) > 1 else ''} {ck.quoted(unknown)}: "
+                        f"use {', '.join(sorted(names_of(PROFILE)))}")
+    problems += [f"missing `{key}`" for key in required_of(PROFILE) if key not in document]
+    return problems
+
+
+def _language(document: Mapping[Any, Any], problems: list[str]) -> None:
+    language = document.get("language", LANGUAGES[0])
+    if language not in LANGUAGES:
+        problems.append(f"language: {language!r} is not a language xarch reads: use {', '.join(LANGUAGES)}")
+
+
+def _based_on(value: Any, bundled: Collection[str], problems: list[str]) -> str:
+    use = f": use {', '.join(bundled)}" if bundled else ""
+    if not isinstance(value, str):
+        problems.append(f"based_on: must be the name of a bundled profile{use}")
+    elif value not in bundled:
+        problems.append(f"based_on: no bundled profile {value!r}{use}")
+    else:
+        return value
+    return ""
+
+
+def _bare_from(value: Any) -> Any:
+    """A bare string, where a mapping with `from` is expected, is that `from`."""
+    if not isinstance(value, Mapping):
+        return value
+    return {key: {"from": item} if isinstance(item, str) else item for key, item in value.items()}
+
+
+def _specs(value: Any, problems: list[str]) -> dict[str, Any]:
+    """Every part with a valid name, by name, whatever it holds: a part already reported is not reported again."""
+    if not isinstance(value, Mapping):
+        problems.append("parts: must be a mapping of part names to {path, role, ...}")
+        return {}
+    specs: dict[str, Any] = {}
+    for name, spec in value.items():
+        if not ck.text(name) or not ck.PART_NAME.fullmatch(name):
+            problems.append(f"parts: {name!r} is not a part name: use letters, digits, '_' and '-'")
+        else:
+            specs[name] = spec
+    return specs
+
+
+def _layout(specs: dict[str, Any], problems: list[str]) -> _Layout:
+    """The parts that place validly, in the order of the file, and the layout their paths and `folders` make."""
+    built = _Layout({}, {}, {})
+    claimed: dict[tuple[str, ...], str] = {}
+    owners: dict[tuple[str, ...], str] = {}
+    for name, spec in specs.items():
+        where = f"parts.{name}"
+        if not isinstance(spec, Mapping):
+            problems.append(f"{where}: must be a mapping with `path` and `role`")
+            continue
+        problems += ck.unknown_keys(spec, names_of(PART), where)
+        problems += [f"{where}: missing `{key}`" for key in required_of(PART) if key not in spec]
+        for key in ("role", "litmus"):
+            if key in spec and not isinstance(spec[key], str):
+                problems.append(f"{where}.{key}: must be a string")
+        if "untested" in spec and not ck.line(spec["untested"]):
+            problems.append(f"{where}.untested: must be one line of text: why no tier tests the part")
+        if "package_only" in spec and not isinstance(spec["package_only"], bool):
+            problems.append(f"{where}.package_only: must be true or false")
+        placed = _path(spec["path"], where, problems) if "path" in spec else None
+        if placed is None:
+            continue
+        steps, word = placed
+        if not _repeats_alike(name, steps, word, built, owners, where, spec["path"], problems):
+            continue
+        if steps in claimed:
+            problems.append(f"{where}.path: '{_shown(steps, word)}' is already claimed by part '{claimed[steps]}'")
+            continue
+        if not _insert(built.tree, steps, name, owners, where, _shown(steps, word), problems):
+            continue
+        claimed[steps] = name
+        built.parts[name] = Part(name, steps, ck.string(spec.get("role")), ck.string(spec.get("litmus")), False,
+                                 spec["untested"] if ck.line(spec.get("untested")) else "")
+    for name, part in built.parts.items():
+        problems += _folders(specs[name].get("folders"), part, built, claimed, f"parts.{name}.folders", "folders" in specs[name])
+    return built
+
+
+def _path(value: Any, where: str, problems: list[str]) -> tuple[tuple[str, ...], str] | None:
+    """A part's path as steps, the repeating step as EACH, and the word between its brackets ("" if none)."""
+    if not ck.text(value):
+        problems.append(f"{where}.path: must be a path such as 'src/<name>/api'")
+        return None
+    steps = value.strip("/").split("/")
+    if any(step in ("", ".", "..") or "\\" in step for step in steps):
+        problems.append(f"{where}.path: '{value}' has an empty, `.` or `..` step")
+        return None
+    if any(EACH in step for step in steps):
+        problems.append(f"{where}.path: '{value}' has a `*` step: write the repeating folder as one word between `<` "
+                        "and `>`")
+        return None
+    words = [_REPEATING.fullmatch(step) for step in steps if "<" in step or ">" in step]
+    if any(match is None for match in words):
+        problems.append(f"{where}.path: '{value}' has a step with `<` or `>` that is not one word between them: write "
+                        "the repeating folder as `<name>`")
+        return None
+    if len(words) > 1:
+        problems.append(f"{where}.path: '{value}' has two repeating steps: a path has one")
+        return None
+    return (tuple(EACH if _REPEATING.fullmatch(step) else step for step in steps),
+            words[0].group(1) if words and words[0] else "")
+
+
+def _shown(steps: tuple[str, ...], word: str) -> str:
+    return "/".join(f"<{word}>" if step == EACH else step for step in steps)
+
+
+def _repeats_alike(name: str, steps: tuple[str, ...], word: str, built: _Layout,
+                   owners: dict[tuple[str, ...], str], where: str, value: str, problems: list[str]) -> bool:
+    """A profile has one repeating folder, under one parent, called by one word."""
+    if EACH not in steps:
+        return True
+    root = steps[:steps.index(EACH)]
+    if not built.word:
+        built.word, built.root = word, root
+        owners[(*root, EACH)] = name
+        return True
+    first = owners[(*built.root, EACH)]
+    if word != built.word:
+        problems.append(f"{where}.path: '{value}' calls the repeating folder <{word}>, but part '{first}' called it "
+                        f"<{built.word}>: use one word")
+    elif root != built.root:
+        problems.append(f"{where}.path: '{value}' repeats below '{'/'.join(root)}', but part '{first}' repeats "
+                        f"below '{'/'.join(built.root)}': a profile has one repeating folder")
+    else:
+        return True
+    return False
+
+
+def _insert(tree: Layout, steps: tuple[str, ...], name: str, owners: dict[tuple[str, ...], str], where: str,
+            shown: str, problems: list[str]) -> bool:
+    """The path in the tree: folders for every step, a file for a last step holding a dot; False when it clashes."""
+    here = tree
+    for i, step in enumerate(steps[:-1], 1):
+        if step in here and here[step] is None:
+            problems.append(f"{where}.path: '{shown}' lies below '{'/'.join(steps[:i])}', which part "
+                            f"'{owners[steps[:i]]}' makes a file")
+            return False
+        here = here.setdefault(step, {})
+    last = steps[-1]
+    if "." in last:
+        if last in here:
+            problems.append(f"{where}.path: '{shown}' is a file, since its last step holds a dot, but part "
+                            f"'{owners[steps]}' lies below it: rename one of them")
+            return False
+        here[last] = None
+    else:
+        here.setdefault(last, {})
+    for i in range(1, len(steps) + 1):
+        owners.setdefault(steps[:i], name)
+    return True
+
+
+def _folders(value: Any, part: Part, built: _Layout, claimed: dict[tuple[str, ...], str], where: str,
+             given: bool) -> list[str]:
+    """The `folders` of a part: each goes in the layout below the part, and its note, if any, in the notes."""
+    if not given:
+        return []
+    problems: list[str] = []
+    if isinstance(value, Mapping):
+        entries = list(value.items())
+    elif isinstance(value, list):
+        entries = [(item, "") for item in value]
+    else:
+        return [f"{where}: must be a mapping of folder paths to one line of text, or a list of folder paths"]
+    if _is_file(built.tree, part.path):
+        return [f"{where}: a file has no folders: drop the key"]
+    seen: list[str] = []
+    for key, note in entries:
+        steps = tuple(key.strip("/").split("/")) if ck.text(key) else ()
+        if not steps or any(step in ("", ".", "..") or EACH in step or "<" in step or "\\" in step for step in steps):
+            problems.append(f"{where}: {key!r} is not a folder below the part: write a path of plain names such as "
+                            "io/disk")
+        elif key in seen:
+            problems.append(f"{where}: {key!r} is listed twice")
+        elif isinstance(value, Mapping) and not ck.line(note):
+            problems.append(f"{where}.{key}: must be one line of text")
+        else:
+            seen.append(key)
+            full = (*part.path, *steps)
+            if full in claimed:
+                problems.append(f"{where}.{key}: '{key}' is part '{claimed[full]}', whose note is its role: drop it "
+                                "from `folders`")
+                continue
+            if not _add_folder(built.tree, full):
+                problems.append(f"{where}.{key}: '{key}' lies below a file")
+                continue
+            if note:
+                built.notes[full] = note
+    return problems
+
+
+def _is_file(tree: Layout, path: tuple[str, ...]) -> bool:
+    here: Layout | None = tree
+    for step in path:
+        if here is None or step not in here:
+            return False
+        here = here[step]
+    return here is None
+
+
+def _add_folder(tree: Layout, path: tuple[str, ...]) -> bool:
+    here = tree
+    for step in path:
+        if step in here and here[step] is None:
+            return False
+        here = here.setdefault(step, {})
+    return True
+
+
+def _may_import(value: Any, owner: Part | None, parts: dict[str, Part], declared: set[str], where: str,
+                problems: list[str]) -> tuple[Target, ...]:
+    """What a part, or the tests in a tier's folder (no owner), may import, as targets."""
+    if value is None:
+        return ()
+    if value == WORD:
+        return (Target(EVERYTHING),)
+    if not isinstance(value, list):
+        problems.append(f"{where}: must be a list of targets such as [service, shared/text, api@any], or {WORD}")
+        return ()
+    found: list[Target] = []
+    for item in value:
+        target = _target(item, owner, parts, declared, where, problems)
+        if target is not None:
+            found.append(target)
+    return tuple(found)
+
+
+def _target(value: Any, owner: Part | None, parts: dict[str, Part], declared: set[str], where: str,
+            problems: list[str]) -> Target | None:
+    if value == WORD:
+        problems.append(f"{where}: {value!r} stands alone: write `may_import: {WORD}`, not in a list")
+        return None
+    match = _TARGET.fullmatch(value) if isinstance(value, str) else None
+    if match is None or not match["part"]:
+        problems.append(f"{where}: {value!r} is not a target: use <part>, <part>@any, optionally followed by /<path>")
+        return None
+    name, scope, sub = match["part"], match["scope"], match["sub"]
+    part = parts.get(name)
+    if part is None:
+        if name not in declared:
+            problems.append(f"{where}: {value!r} names no part {name!r}")
+        return None
+    if scope is not None and scope not in ("own", "any"):
+        problems.append(f"{where}: {value!r} has an unknown scope '@{scope}': the only scope is @any, any instance of "
+                        "the repeating folder")
+        return None
+    inside = owner is not None and owner.in_instance
+    if part.in_instance and scope == "own" and inside:
+        problems.append(f"{where}: {value!r} says what a bare name already says: write {name}")
+        return None
+    if part.in_instance and not inside and scope != "any":
+        importer = f"{owner.name} is" if owner is not None else "a tier's folder is"
+        problems.append(f"{where}: {value!r} lies in the repeating folder, which {importer} not in: say {name}@any")
+        return None
+    if not part.in_instance and scope is not None:
+        problems.append(f"{where}: {value!r} does not lie in the repeating folder: drop '@{scope}'")
+        return None
+    steps = tuple(sub.split("/")) if sub is not None else ()
+    if any(not step or step in (".", "..") or EACH in step for step in steps):
+        problems.append(f"{where}: {value!r} has an invalid path after the part")
+        return None
+    chosen = "any" if scope == "any" else ("own" if part.in_instance else "none")
+    if owner is not None and name == owner.name and chosen != "any":
+        problems.append(_implied(where, value, owner))
+        return None
+    return Target(name, chosen, steps)
+
+
+def _implied(where: str, value: str, part: Part) -> str:
+    """A part may always import itself, so a target that only says so is refused."""
+    if not part.in_instance:
+        return f"{where}: {value!r} is implied: a part may always import itself; remove it"
+    return (f"{where}: {value!r} is implied: a part may always import itself, its own instance of the repeating "
+            f"folder; remove it ({part.name}@any, another instance's too, stays allowed)")
+
+
+def _libraries(spec: Mapping[Any, Any], where: str, problems: list[str]) -> tuple[str, ...]:
+    """The outside packages of a part: none unless it lists them; (EVERYTHING,) leaves them unchecked."""
+    if "libraries" not in spec:
+        return ()
+    value = spec["libraries"]
+    if value == WORD:
+        return (EVERYTHING,)
+    if not isinstance(value, list):
+        problems.append(f"{where}: must be a list of top-level import names such as [sqlmodel], or {WORD}")
+        return ()
+    return ck.package_names(value, where, problems) or ()
+
+
+def _forbidden_lists(value: Any, problems: list[str]) -> dict[str, tuple[tuple[str, ...], ...] | None] | None:
+    """The named lists of names a part may not use; a list already reported is None. None: `forbidden` is no mapping."""
+    if not isinstance(value, Mapping):
+        problems.append("forbidden: must be a mapping of list names to lists of dotted names, such as "
+                        "{pure: [datetime.datetime.now, socket]}")
+        return None
+    lists: dict[str, tuple[tuple[str, ...], ...] | None] = {}
+    for name, names in value.items():
+        if not ck.text(name) or not ck.PART_NAME.fullmatch(name):
+            problems.append(f"forbidden: {name!r} is not a list name: use letters, digits, '_' and '-'")
+        else:
+            lists[name] = ck.forbidden_names(names, f"forbidden.{name}", problems)
+    return lists
+
+
+def _forbidden_refs(specs: dict[str, Any], parts: dict[str, Part],
+                    lists: dict[str, tuple[tuple[str, ...], ...] | None] | None,
+                    problems: list[str]) -> dict[str, tuple[tuple[str, ...], ...]]:
+    """What each part that names a list may not use."""
+    forbidden: dict[str, tuple[tuple[str, ...], ...]] = {}
+    for name in parts:
+        spec = specs[name]
+        if "forbidden" not in spec or lists is None:
+            continue
+        ref, where = spec["forbidden"], f"parts.{name}.forbidden"
+        if not isinstance(ref, str):
+            problems.append(f"{where}: must be the name of a list under `forbidden`")
+        elif ref not in lists:
+            use = f"use {', '.join(sorted(lists))}, or write it" if lists else "write it"
+            problems.append(f"{where}: no list named {ref!r}: {use} under `forbidden`")
+        elif lists[ref] is not None:
+            forbidden[name] = lists[ref]
+    return forbidden
+
+
+def _testing(value: Any, presets: Mapping[str, Any], problems: list[str]) -> _Testing | None:
+    """How the test framework names things: the map in the file, or the one a preset holds, validated the same."""
+    if isinstance(value, str):
+        if value not in presets:
+            names = f"use {', '.join(sorted(presets))}, or write" if presets else "write"
+            problems.append(f"testing: no preset {value!r}: {names} the map {_PRESET_MAP}")
+            return None
+        value = presets[value]
+    elif not isinstance(value, Mapping):
+        problems.append(f"testing: must be a preset name or a mapping {_PRESET_MAP}: the patterns of a test file's name "
+                        "and of a test function's")
+        return None
+    count = len(problems)
+    framework = ck.framework_patterns(value, problems, "testing", names_of(TESTING))
+    table = ck.case_table(value["table"], "testing.table", problems) if "table" in value else None
+    mocks = _mocks(value["mocks"], problems) if "mocks" in value else None
+    if len(problems) != count or framework is None:
+        return None
+    return _Testing(framework, table, mocks)
+
+
+def _mocks(value: Any, problems: list[str]) -> StandIns | None:
+    where = "testing.mocks"
+    if not isinstance(value, Mapping):
+        problems.append(f"{where}: must be a mapping {{calls, spec_keywords}}, and optionally autospec and fixtures: "
+                        "the dotted names of the calls that build a mock, the keywords a mock is given its spec by, "
+                        "and the parameters of a test function whose methods build one")
+        return None
+    count = len(problems)
+    problems += ck.unknown_keys(value, names_of(MOCKS), where)
+    problems += [f"{where}: missing `{key}`" for key in required_of(MOCKS) if key not in value]
+    calls = ck.dotted_names(value["calls"], f"{where}.calls", problems) if "calls" in value else None
+    autospec = ck.dotted_names(value["autospec"], f"{where}.autospec", problems) if "autospec" in value else ()
+    problems += [f"{where}.autospec: {'.'.join(name)!r} is also listed in calls" for name in autospec or ()
+                 if calls and name in calls]
+    keywords = (ck.identifiers(value["spec_keywords"], f"{where}.spec_keywords", problems, "keyword", "[spec]")
+                if "spec_keywords" in value else None)
+    fixtures = (ck.fixtures(value["fixtures"], f"{where}.fixtures", problems, "calls")
+                if "fixtures" in value else ())
+    if len(problems) != count or calls is None or autospec is None or keywords is None or fixtures is None:
+        return None
+    return StandIns(calls, autospec, keywords, fixtures)
+
+
+def _tiers(document: Mapping[Any, Any], specs: dict[str, Any], parts: dict[str, Part], declared: set[str],
+           examples: ex.Examples, problems: list[str]) -> tuple[Tier, ...]:
+    """The tiers in the order of the file, each with the parts that say they are tested by it; then the coverage:
+    with tiers, every part names one or is untested, and without them none names one."""
+    value = document.get("tiers")
+    usable = isinstance(value, Mapping) and bool(value)
+    if "tiers" in document and not usable:
+        problems.append("tiers: must be a mapping of tier names to {proves, litmus, ...}, in the order their litmus "
+                        "tests run")
+    names = _tier_names(value) if usable else None
+    assigned = _coverage(specs, parts, names, "tiers" in document, problems)
+    if not usable:
+        return ()
+    tiers: list[Tier] = []
+    for name, spec in value.items():
+        if not ck.line(name):
+            problems.append(f"tiers: {name!r} is not a tier name: one line of text")
+            continue
+        subject = tuple(Subject(part) for part in parts if assigned.get(part) == name)
+        tier = _tier(name, spec, subject, parts, declared, examples, problems)
+        if tier is not None:
+            tiers.append(tier)
+    return tuple(tiers)
+
+
+def _tier_names(tiers: Mapping[Any, Any]) -> list[str]:
+    return [name for name in tiers if ck.line(name)]
+
+
+def _coverage(specs: dict[str, Any], parts: dict[str, Part], names: list[str] | None, has_tiers: bool,
+              problems: list[str]) -> dict[str, str]:
+    """The tier each part names, by part; a part that fits neither way is reported."""
+    assigned: dict[str, str] = {}
+    for name in parts:
+        spec, where = specs[name], f"parts.{name}"
+        named, untested = "tier" in spec, "untested" in spec
+        if named and untested:
+            problems.append(f"{where}: has a `tier` and is `untested`: drop one")
+        if named and not has_tiers:
+            problems.append(f"{where}.tier: the profile has no `tiers`: add them, or drop the key")
+        elif named and names is not None:
+            tier = spec["tier"]
+            use = f"use {', '.join(names)}"
+            if not isinstance(tier, str):
+                problems.append(f"{where}.tier: must be the name of a tier: {use}")
+            elif tier not in names:
+                problems.append(f"{where}.tier: no tier named {tier!r}: {use}")
+            else:
+                assigned[name] = tier
+        elif not named and not untested and names is not None:
+            problems.append(f"{where}: no tier tests it: give it {_TIER_INSTEAD}")
+    return assigned
+
+
+def _tier(name: str, spec: Any, subject: tuple[Subject, ...], parts: dict[str, Part], declared: set[str],
+          examples: ex.Examples, problems: list[str]) -> Tier | None:
+    where = f"tiers.{name}"
+    if not isinstance(spec, Mapping):
+        problems.append(f"{where}: must be a mapping, {{}} if it takes nothing")
+        return None
+    count = len(problems)
+    problems += ck.unknown_keys(spec, names_of(TIER), where)
+    if "proves" in spec and not ck.line(spec["proves"]):
+        problems.append(f"{where}.proves: must be one line of text")
+    if "litmus" in spec and not ck.text(spec["litmus"]):
+        problems.append(f"{where}.litmus: must be text: the question that tells a test belongs to the tier")
+    held = spec.get("apply_forbidden", False)
+    if not isinstance(held, bool):
+        problems.append(f"{where}.apply_forbidden: must be true or false: whether its tests are held to the "
+                        "`forbidden` list of the part they mirror")
+    types_only = (ck.part_names(spec["types_only"], declared, f"{where}.types_only", problems)
+                  if "types_only" in spec else [])
+    folder = ck.tier_folder(spec["folder"], parts, f"{where}.folder", problems) if "folder" in spec else None
+    if "folder" not in spec and "may_import" in spec:
+        problems.append(f"{where}.may_import: only a tier with a `folder` has an allowance of its own: without one, its "
+                        "tests import what the part they mirror may")
+    allowance = (_may_import(spec.get("may_import"), None, parts, declared, f"{where}.may_import", problems)
+                 if "folder" in spec else None)
+    docs = _tier_docs(spec["docs"], folder, examples, f"{where}.docs", problems) if "docs" in spec else {}
+    if len(problems) != count:
+        return None
+    return Tier(name, subject, spec.get("proves", ""), docs.get("may_touch", ""), spec.get("litmus", "").strip("\n"),
+                docs.get("subject", ""), docs.get("one_file_per", ""), docs.get("cases_from", ""), docs.get("data", ""),
+                docs.get("example"), docs.get("helpers", ()), tuple(p for p in types_only if p in parts), held, folder,
+                allowance)
+
+
+def _tier_docs(value: Any, folder: tuple[str, ...] | None, examples: ex.Examples, where: str,
+               problems: list[str]) -> dict[str, Any]:
+    """What a tier says only for the docs: its texts, its example and its helpers."""
+    if not isinstance(value, Mapping):
+        problems.append(f"{where}: must be a mapping of {{{', '.join(key.name for key in keys_of(TIER_DOCS))}}}")
+        return {}
+    problems += ck.unknown_keys(value, names_of(TIER_DOCS), where)
+    problems += [f"{where}.{key}: must be one line of text" for key in _TIER_TEXTS if key in value and not ck.line(value[key])]
+    found: dict[str, Any] = {key: value[key] for key in _TIER_TEXTS if key in value and ck.line(value[key])}
+    if "example" in value:
+        example = ex.example_of(value["example"], examples, f"{where}.example", problems)
+        if example is not None and folder is not None and example.path[1:-1][:len(folder)] != folder:
+            problems.append(f"{where}.example: '{'/'.join(example.path)}' is not inside the tier's folder "
+                            f"'{'/'.join(folder)}' below the tests folder: the docs would show a place `check` places "
+                            "in no tier")
+        found["example"] = example
+    if "helpers" in value:
+        found["helpers"] = _helpers(value["helpers"], examples, f"{where}.helpers", problems)
+    return found
+
+
+def _helpers(value: Any, examples: ex.Examples, where: str, problems: list[str]) -> tuple[TierExample, ...]:
+    if not isinstance(value, list):
+        problems.append(f"{where}: must be a list of paths in an example project")
+        return ()
+    helpers = [ex.example_of(item, examples, f"{where}[{i}]", problems) for i, item in enumerate(value)]
+    return tuple(helper for helper in helpers if helper is not None)
+
+
+def _fakes(value: Any, parts: dict[str, Part], declared: set[str], problems: list[str]) -> Fakes | None:
+    where = "fakes"
+    if not isinstance(value, Mapping):
+        problems.append(f"{where}: must be a mapping {{folder, for}} and optionally prefix: the folder of the fakes "
+                        "below the tests folder, the parts they stand in for, and how a fake's name starts")
+        return None
+    count = len(problems)
+    problems += ck.unknown_keys(value, names_of(FAKES), where)
+    problems += [f"{where}: missing `{key}`" for key in required_of(FAKES) if key not in value]
+    prefix = value.get("prefix", "")
+    if "prefix" in value and (not isinstance(prefix, str) or not ck.PACKAGE.fullmatch(prefix)):
+        problems.append(f"{where}.prefix: must be the start of a class name, such as Fake")
+    folder = value.get("folder")
+    steps = tuple(folder.split("/")) if ck.line(folder) and not folder.startswith("/") else ()
+    if "folder" in value and (not steps or any(step in ("", ".", "..") or EACH in step for step in steps)):
+        problems.append(f"{where}.folder: must be a folder below the tests folder, such as fakes: relative, with no "
+                        "`..`, no empty step and no `*`")
+    names = ck.part_names(value["for"], declared, f"{where}.for", problems) if "for" in value else []
+    if len(problems) != count:
+        return None
+    return Fakes(steps, tuple(n for n in names if n in parts), prefix)
+
+
+def _guards(value: Any, specs: dict[str, Any], parts: dict[str, Part], declared: set[str], tiers: tuple[Tier, ...],
+            fakes: Fakes | None, testing: _Testing | None, problems: list[str]) -> tuple[Guard, ...]:
+    guards: list[Guard] = []
+    package_only = tuple(name for name in parts if specs[name].get("package_only") is True)
+    if package_only:
+        guards.append(PackageOnly(package_only))
+    if not isinstance(value, Mapping):
+        problems.append("guards: must be a mapping of guard names to their parameters, such as {no-comments: {}}")
+        return tuple(guards)
+    for name, spec in value.items():
+        where = f"guards.{name}"
+        if name == "package-only":
+            problems.append(f"{where}: a fact about a part in format 2: write `package_only: true` on each part")
+        elif name not in _GUARDS:
+            problems.append(f"guards: unknown guard {name!r}: use {', '.join(sorted(_GUARDS))}")
+        elif name == "scenario-coverage":
+            guard = _scenario_coverage(spec, parts, declared, tiers, testing, where, problems)
+            if guard is not None:
+                guards.append(guard)
+        elif name == "stand-ins":
+            guard = _stand_ins(spec, fakes, testing, where, problems)
+            if guard is not None:
+                guards.append(guard)
+        elif spec not in ({}, None):
+            problems.append(f"{where}: takes no parameters: write {{}}")
+        else:
+            guards.append(ClosedTree() if name == "closed-tree" else NoComments())
+    return tuple(guards)
+
+
+def _scenario_coverage(spec: Any, parts: dict[str, Part], declared: set[str], tiers: tuple[Tier, ...],
+                       testing: _Testing | None, where: str, problems: list[str]) -> ScenarioCoverage | None:
+    if not isinstance(spec, Mapping):
+        problems.append(f"{where}: must be a mapping {{results, tier, suffix, columns, file}}: the part holding the "
+                        "result unions, the tier whose test files hold their tables, how a union's name ends, the "
+                        "three names of a table's parameters (its state, its command and its result), and the name "
+                        "of a use case's test file")
+        return None
+    count = len(problems)
+    problems += ck.unknown_keys(spec, names_of(SCENARIO_COVERAGE), where)
+    problems += [f"{where}: missing `{key}`" for key in sorted(required_of(SCENARIO_COVERAGE)) if key not in spec]
+    if testing is not None and testing.table is None:
+        problems.append(f"{where}: needs `testing.table`: how a table of cases is written, such as "
+                        "{decorator, row, id}")
+    if len(problems) != count:
+        return None
+    ck.scenario_places(spec["results"], spec["tier"], spec["suffix"], parts, declared, tiers, where, problems)
+    columns = ck.column_names(spec["columns"], f"{where}.columns", problems)
+    framework = testing.framework if testing is not None else None
+    file = ck.use_case_file(spec["file"], framework, f"{where}.file", problems, "testing.files")
+    if len(problems) != count or columns is None or file is None or testing is None or testing.table is None:
+        return None
+    return ScenarioCoverage(spec["results"], spec["tier"], spec["suffix"], columns, testing.table, file)
+
+
+def _stand_ins(spec: Any, fakes: Fakes | None, testing: _Testing | None, where: str,
+               problems: list[str]) -> StandIns | None:
+    if spec not in ({}, None):
+        problems.append(f"{where}: takes no parameters: write {{}}")
+        return None
+    if fakes is None or not fakes.prefix:
+        problems.append(f"{where}: needs `fakes` with a `prefix`, such as {{folder: fakes, for: [<part>], prefix: "
+                        "Fake}: the parts whose Protocols the fakes stand in for, where they live and how a fake is "
+                        "named")
+        return None
+    if testing is not None and testing.mocks is None:
+        problems.append(f"{where}: needs `testing.mocks`: the calls that build a mock and the keywords a mock is "
+                        "given its spec by")
+    return testing.mocks if testing is not None else None
+
+
+def _needs_testing(document: Mapping[Any, Any]) -> list[str]:
+    """`testing` is required by what reads tests: the tiers and the guards that read them."""
+    if "testing" in document:
+        return []
+    guards = document.get("guards")
+    names = [f"`guards.{name}`" for name in _NEEDS_TESTING if isinstance(guards, Mapping) and name in guards]
+    needing = (["`tiers`"] if "tiers" in document else []) + names
+    if not needing:
+        return []
+    return [f"missing `testing`: {ck.join_and(needing)} must recognise a test file by its name: write testing: "
+            "<preset>, or testing: {files: [<pattern>, ...], functions: <pattern>}"]
+
+
+def _docs(value: Any, declared: set[str], has_file: Callable[[str], bool],
+          problems: list[str]) -> tuple[str, tuple, tuple]:
+    """What only fills the docs, but for the examples: the entry point's name ("" if none), the pages and the naming
+    table."""
+    if not isinstance(value, Mapping):
+        problems.append(f"docs: must be a mapping of {{{', '.join(key.name for key in keys_of(DOCS))}}}")
+        return "", (), ()
+    problems += ck.unknown_keys(value, names_of(DOCS), "docs")
+    entry = value.get("entry", "")
+    if "entry" in value and (not isinstance(entry, str) or entry not in declared):
+        problems.append(f"docs.entry: no part named {entry!r}")
+        entry = ""
+    pages = ck.doc_pages(_bare_from(value["pages"]), has_file, problems, "docs.pages") if "pages" in value else ()
+    naming = ck.naming_rows(value["naming"], problems, "docs.naming") if "naming" in value else ()
+    return entry, pages, naming

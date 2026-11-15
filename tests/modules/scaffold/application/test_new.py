@@ -19,7 +19,7 @@ DOC_FILES = [DOCS / p for p in DOC_PATHS]
 SKELETON = FakeSkeleton(
     [(tuple(p.split("/")), True) for p in ["bootstrap", "bootstrap/migrations", "kernel", "kernel/logic", "modules",
                                            "platform", "cli", "cli/commands"]],
-    {"modules": (("modules",), [(("contract",), True), (("domain",), True), (("application",), True),
+    {"module": (("modules",), [(("contract",), True), (("domain",), True), (("application",), True),
                                 (("application", "controller.py"), False), (("application", "services"), True),
                                 (("application", "logic"), True), (("application", "ports"), True),
                                 (("adapters",), True)])},
@@ -42,33 +42,41 @@ def controller(files: FakeFiles) -> ScaffoldController:
 
 
 @pytest.mark.parametrize("given, when, then", [
-    pytest.param(MODULES, New(ROOT, "modules", "docs", "cli"), Scaffolded(Report(created=MODULE_FILES)),
+    pytest.param(MODULES, New(ROOT, "module", "docs", "cli"), Scaffolded(Report(created=MODULE_FILES)),
                  id="a new module is created with its controller as a file"),
-    pytest.param(set(), New(ROOT, "modules", "docs", "cli"),
+    pytest.param(set(), New(ROOT, "module", "docs", "cli"),
                  Refused(f"{ROOT / 'modules'} does not exist: run 'xarch init' first"),
                  id="a new module in an app that was not initialised is refused"),
-    pytest.param(MODULES, New(ROOT, "modules", "Docs", "cli"),
+    pytest.param(MODULES, New(ROOT, "module", "Docs", "cli"),
                  Refused("'Docs' is not a valid name: use a lowercase Python identifier, e.g. 'documents'"),
                  id="a name that is not a lowercase identifier is refused"),
-    pytest.param(MODULES | {ROOT / "modules" / "docs" / "__init__.py"}, New(ROOT, "modules", "docs", "cli"),
+    pytest.param(MODULES | {ROOT / "modules" / "docs" / "__init__.py"}, New(ROOT, "module", "docs", "cli"),
                  Refused(f"'docs' already exists at {ROOT / 'modules' / 'docs'}"),
                  id="a module that already exists is refused"),
     pytest.param(MODULES, New(ROOT, "features", "docs", "cli"),
-                 Refused("no kind 'features' in the profile: use modules"),
+                 Refused("no kind 'features' in the profile: use module"),
                  id="a kind the profile does not declare is refused"),
+    pytest.param(MODULES, New(ROOT, "modules", "docs", "cli"),
+                 Refused("no kind 'modules' in the profile: that is the folder of the kind module: write "
+                         "`xarch new module <name>`"),
+                 id="the folder of a kind in place of its word is refused, saying what to type"),
+    pytest.param(MODULES, New(ROOT, "modules/", "docs", "cli"),
+                 Refused("no kind 'modules/' in the profile: that is the folder of the kind module: write "
+                         "`xarch new module <name>`"),
+                 id="the folder written with a trailing slash is refused the same way"),
 ])
 def test_new(given, when, then):
     assert controller(FakeFiles(given)).new(when) == then
 
 
 def test_a_new_module_in_an_empty_folder_of_its_kind_is_created():
-    result = controller(FakeFiles(dirs={ROOT / "modules"})).new(New(ROOT, "modules", "docs", "cli"))
+    result = controller(FakeFiles(dirs={ROOT / "modules"})).new(New(ROOT, "module", "docs", "cli"))
     assert result == Scaffolded(Report(created=MODULE_FILES))
 
 
 def test_a_refused_new_creates_nothing():
     files = FakeFiles()
-    controller(files).new(New(ROOT, "modules", "Docs", "cli"))
+    controller(files).new(New(ROOT, "module", "Docs", "cli"))
     assert files.created == []
 
 
@@ -166,7 +174,7 @@ def test_the_docs_of_the_current_folder_go_beside_it_in_its_parent():
 
 def test_new_does_not_touch_the_docs():
     files = FakeFiles({ROOT / "modules" / "__init__.py"})
-    controller(files).new(New(ROOT, "modules", "docs", "cli"))
+    controller(files).new(New(ROOT, "module", "docs", "cli"))
     assert files.texts == {}
     assert not [p for p in files.created if "docs" in p.parts and "modules" not in p.parts]
 

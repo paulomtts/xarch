@@ -9,8 +9,7 @@ from xarch.modules.spec.application.services.skeleton import SkeletonService
 from xarch.modules.spec.contract import ProjectFile
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 
-LAYERED = {"xarch": 1, "name": "layered", "layout": {"src": {}}, "parts": {"src": {"path": "src", "role": "code"}},
-           "rules": {"src": []}}
+LAYERED = {"xarch": 2, "name": "layered", "parts": {"src": {"path": "src", "role": "code"}}}
 GUARD = {"tests/architecture/test_rules.py": {"from": "guard.py"}}
 PRESET = {"preset/tokens.css": "a {{app}}\n", "preset/fonts/f.woff": b"\xff\x00"}
 TEXTS = {"guard.py": "check('{{app}}')\n", **PRESET}

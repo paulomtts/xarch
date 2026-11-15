@@ -4,10 +4,14 @@ from pathlib import Path
 
 from xarch.kernel.errors import DomainError
 from xarch.modules.spec.application.services.architecture import ArchitectureService
+from xarch.modules.spec.application.services.migration import MigrationService
 from xarch.modules.spec.application.services.skeleton import SkeletonService
 from xarch.modules.spec.contract import (
     Architecture,
     Docs,
+    MigrateProfile,
+    MigrateResult,
+    MigrationRefused,
     ProfileOrigin,
     ProfileRefused,
     ProfileResult,
@@ -21,8 +25,9 @@ from xarch.modules.spec.contract import (
 class SpecController:
     """Publishes the skeleton of a profile, and decides which profile is in force."""
 
-    def __init__(self, service: SkeletonService, architectures: ArchitectureService):
-        self._service, self._architectures = service, architectures
+    def __init__(self, service: SkeletonService, architectures: ArchitectureService,
+                 migration: MigrationService | None = None):
+        self._service, self._architectures, self._migration = service, architectures, migration
 
     def skeleton(self, profile: str) -> Skeleton:
         """The skeleton of a known profile: callers get the name from select() or profiles()."""
@@ -61,3 +66,12 @@ class SpecController:
         except DomainError as e:
             return ProfileRefused(e.reason)
         return ProfileSelected(name, tests)
+
+    def migrate(self, cmd: MigrateProfile) -> MigrateResult:
+        """Converts a profile of format 1 to format 2; a profile it cannot convert, or cannot write, is refused with why."""
+        if self._migration is None:
+            return MigrationRefused("migration is not available")
+        try:
+            return self._migration.migrate(cmd)
+        except DomainError as e:
+            return MigrationRefused(e.reason)

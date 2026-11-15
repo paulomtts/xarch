@@ -20,7 +20,7 @@ def init(app: Path, profile: str = "cli") -> Report:
 
 
 def new_module(app: Path, name: str, profile: str = "cli") -> Scaffolded | Refused:
-    return build_controllers().scaffold.new(New(app, "modules", name, profile))
+    return build_controllers().scaffold.new(New(app, "module", name, profile))
 
 
 def refusal(app: Path, name: str) -> str:

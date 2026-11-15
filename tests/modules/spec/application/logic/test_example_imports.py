@@ -1,33 +1,30 @@
 """The example check: the imports of an architecture's Python examples obey that architecture's own rules."""
-from dataclasses import replace
-
+from tests.modules.spec.profiles_v2 import layered as layered_v2
+from tests.modules.spec.profiles_v2 import parsed as v2
 from xarch.modules.spec.application.logic.example_imports import example_problems
-from xarch.modules.spec.domain.architecture_file import parse_architecture
-from xarch.modules.spec.domain.values import Example
+
+PROFILE = {
+    "xarch": 2, "name": "layered",
+    "parts": {"shared": {"path": "shared", "role": "code every module uses"},
+              "store": {"path": "src/<module>/store", "role": "database access", "may_import": ["sql", "shared/text"]},
+              "sql": {"path": "src/<module>/store/sql", "role": "queries"},
+              "service": {"path": "src/<module>/service", "role": "business logic",
+                          "may_import": ["store", "api@any"]},
+              "api": {"path": "src/<module>/api.py", "role": "HTTP handlers", "may_import": "everything"}},
+}
+PATHS = {"shared": "shared/x.py", "store": "src/billing/store/x.py", "sql": "src/billing/store/sql/x.py",
+         "service": "src/billing/service/x.py", "api": "src/billing/api.py"}
 
 
-def layered(examples: dict) -> dict:
-    return {
-        "xarch": 1, "name": "layered",
-        "layout": {"src": {"singular": "module", "each": {"api.py": "file", "service": {}, "store": {"sql": {}}}}, "shared": {}},
-        "parts": {"shared": {"path": "shared", "role": "code every module uses"},
-                  "store": {"path": "src/*/store", "role": "database access"},
-                  "sql": {"path": "src/*/store/sql", "role": "queries"},
-                  "service": {"path": "src/*/service", "role": "business logic"},
-                  "api": {"path": "src/*/api.py", "role": "HTTP handlers"}},
-        "rules": {"shared": [], "store": ["sql@own", "shared/text"], "sql": [],
-                  "service": ["store@own", "api@any"], "api": ["*"]},
-        "examples": examples,
-    }
+def project(texts: dict[str, str]) -> list[str]:
+    """The problems of an example project whose files are the paths given, each holding its text."""
+    architecture = v2(PROFILE | {"docs": {"examples": ["ex"]}}, folder_files={"ex": tuple(texts)}.get)
+    return example_problems(architecture, texts)
 
 
 def check(**codes: str) -> list[str]:
-    """The problems of examples named after their part, each at <part>/x.py in module billing, holding its code."""
-    paths = {"shared": "shared/x.py", "store": "src/billing/store/x.py", "sql": "src/billing/store/sql/x.py",
-             "service": "src/billing/service/x.py", "api": "src/billing/api.py"}
-    examples = {part: {"part": part, "path": paths[part], "file": f"{part}.py"} for part in codes}
-    architecture = parse_architecture(layered(examples), "layered.yaml", lambda r: True)
-    return example_problems(architecture, codes)
+    """The problems of examples at <part>/x.py in module billing, each holding the code given for its part."""
+    return project({PATHS[part]: code for part, code in codes.items()})
 
 
 def test_imports_the_rules_allow_pass():
@@ -54,16 +51,16 @@ def test_an_import_the_rules_forbid_is_reported_once_with_its_rule():
         sql="from app.src.billing.store.repo import R\n",
         shared="from app.src import billing\n",
     ) == [
-        "example service (src/billing/service/x.py): imports app.src.tax.store which service may not import "
-        "(rules.service)",
-        "example service (src/billing/service/x.py): imports app.shared which service may not import "
-        "(rules.service)",
-        "example store (src/billing/store/x.py): imports app.shared.other which store may not import (rules.store)",
-        "example store (src/billing/store/x.py): imports app.src.billing.service which store may not import "
-        "(rules.store)",
-        "example sql (src/billing/store/sql/x.py): imports app.src.billing.store.repo which sql may not import "
-        "(rules.sql)",
-        "example shared (shared/x.py): imports app.src.billing which shared may not import (rules.shared)",
+        "example (src/billing/service/x.py): imports app.src.tax.store which service may not import "
+        "(parts.service.may_import)",
+        "example (src/billing/service/x.py): imports app.shared which service may not import "
+        "(parts.service.may_import)",
+        "example (src/billing/store/x.py): imports app.shared.other which store may not import (parts.store.may_import)",
+        "example (src/billing/store/x.py): imports app.src.billing.service which store may not import "
+        "(parts.store.may_import)",
+        "example (src/billing/store/sql/x.py): imports app.src.billing.store.repo which sql may not import "
+        "(parts.sql.may_import)",
+        "example (shared/x.py): imports app.src.billing which shared may not import (parts.shared.may_import)",
     ]
 
 
@@ -72,25 +69,34 @@ def test_a_part_may_import_itself_in_its_own_instance_and_not_in_another_without
         shared="from app.shared import x\n",
         sql="from app.src.billing.store.sql.queries import Q\nfrom app.src.tax.store.sql import Q\n",
     ) == [
-        "example sql (src/billing/store/sql/x.py): imports app.src.tax.store.sql which sql may not import (rules.sql)"]
+        "example (src/billing/store/sql/x.py): imports app.src.tax.store.sql which sql may not import (parts.sql.may_import)"]
 
 
 def test_relative_imports_resolve_from_the_examples_path():
     assert check(service="from .rules import cap\nfrom ..store import Repo\nfrom ...tax.store import T\n") == [
-        "example service (src/billing/service/x.py): imports app.src.tax.store which service may not import "
-        "(rules.service)"]
+        "example (src/billing/service/x.py): imports app.src.tax.store which service may not import "
+        "(parts.service.may_import)"]
 
 
 def test_an_example_in_no_part_or_not_valid_python_is_reported_and_other_files_are_not_checked():
-    architecture = parse_architecture(layered({
-        "a": {"part": "service", "path": "src/billing/service/a.py", "file": "a.py"},
-        "b": {"part": "service", "path": "src/billing/service/b.py", "file": "b.py"},
-        "c": {"part": "service", "path": "src/billing/service/c.sql", "file": "c.sql"}}),
-        "layered.yaml", lambda r: True)
-    loose = Example("loose", "service", ("src", "billing", "helpers.py"), "loose.py")
-    architecture = replace(architecture, examples={**architecture.examples, "loose": loose})
-    texts = {"a": "def f(:\n", "b": "", "c": "from app.src.tax.store import x", "loose": ""}
+    assert project({"src/billing/service/a.py": "def f(:\n", "src/billing/service/b.py": "",
+                    "src/billing/service/c.sql": "from app.src.tax.store import x",
+                    "src/billing/helpers.py": ""}) == [
+        "example (src/billing/service/a.py): is not valid Python: invalid syntax (line 1)",
+        "example (src/billing/helpers.py): lies in no part of the architecture"]
+
+
+def test_every_python_file_of_an_example_project_is_checked_by_its_path_and_test_code_is_only_parsed():
+    files = ("src/billing/api/x.py", "src/billing/store/x.py", "shared/text.py", "tests/src/billing/test_x.py",
+             "tests/src/billing/test_y.py", "other/x.py", "notes.md")
+    architecture = v2(layered_v2(docs={"examples": ["ex"]}), folder_files={"ex": files}.get)
+    texts = {"src/billing/api/x.py": "from app.src.billing.service import S\n",
+             "src/billing/store/x.py": "from app.shared import text\nfrom app.src.billing.api import A\n",
+             "shared/text.py": "import os\n",
+             "tests/src/billing/test_x.py": "from app.src.billing.api import anything\n",
+             "tests/src/billing/test_y.py": "def f(:\n", "other/x.py": "X = 1\n", "notes.md": "not python ("}
     assert example_problems(architecture, texts) == [
-        "example a (src/billing/service/a.py): is not valid Python: invalid syntax (line 1)",
-        "example loose (src/billing/helpers.py): lies in no part of the architecture",
-    ]
+        "example (src/billing/store/x.py): imports app.src.billing.api which store may not import "
+        "(parts.store.may_import)",
+        "example (tests/src/billing/test_y.py): is not valid Python: invalid syntax (line 1)",
+        "example (other/x.py): lies in no part of the architecture"]

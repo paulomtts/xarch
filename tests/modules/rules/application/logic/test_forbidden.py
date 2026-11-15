@@ -23,30 +23,30 @@ def file(path=DOMAIN, imports=(), uses=()) -> SourceFile:
 
 
 @pytest.mark.parametrize("imports, uses, problems", [
-    pytest.param([], [Use(4, NOW, 2)], ["4: domain/ of modules/docs may not use datetime.datetime.now (forbidden.domain)"],
+    pytest.param([], [Use(4, NOW, 2)], ["4: domain/ of modules/docs may not use datetime.datetime.now (parts.domain.forbidden)"],
                  id="a listed name used through the import that binds its first steps is reported where it is used"),
     pytest.param([], [Use(4, ("datetime", "datetime", "now", "date"), 1)],
-                 ["4: domain/ of modules/docs may not use datetime.datetime.now (forbidden.domain)"],
+                 ["4: domain/ of modules/docs may not use datetime.datetime.now (parts.domain.forbidden)"],
                  id="a use reaching below a listed name is a use of it"),
     pytest.param([], [Use(4, ("datetime", "datetime", "fromisoformat"), 2), Use(5, ("datetime", "datetime"), 2)], [],
                  id="a name beside or above a listed one is no use of it"),
     pytest.param([], [Use(2, ("builtins", "open"), 0)],
-                 ["2: domain/ of modules/docs may not use builtins.open (forbidden.domain)"],
+                 ["2: domain/ of modules/docs may not use builtins.open (parts.domain.forbidden)"],
                  id="a builtin used by its bare name is reported"),
     pytest.param([Import(1, ("socket",))], [Use(3, ("socket", "create_connection"), 1)],
-                 ["1: domain/ of modules/docs may not import socket (forbidden.domain)"],
+                 ["1: domain/ of modules/docs may not import socket (parts.domain.forbidden)"],
                  id="a listed module is reported where it is imported and not again where it is used"),
     pytest.param([Import(1, ("urllib", "request"))], [],
-                 ["1: domain/ of modules/docs may not import urllib (forbidden.domain)"],
+                 ["1: domain/ of modules/docs may not import urllib (parts.domain.forbidden)"],
                  id="a module below a listed one is the listed one"),
     pytest.param([Import(1, ("datetime",), names=("datetime", "date"))], [], [],
                  id="importing what holds a listed name is fine"),
     pytest.param([Import(1, ("datetime", "datetime"), names=("now",))], [Use(2, NOW, 3)],
-                 ["1: domain/ of modules/docs may not import datetime.datetime.now (forbidden.domain)"],
+                 ["1: domain/ of modules/docs may not import datetime.datetime.now (parts.domain.forbidden)"],
                  id="importing a listed name itself is reported at the import"),
     pytest.param([Import(1, ("socket",), level=1)], [], [], id="a relative import is the app's own"),
     pytest.param([Import(1, ("socket",), names=("socket", "create_connection"))], [],
-                 ["1: domain/ of modules/docs may not import socket (forbidden.domain)"],
+                 ["1: domain/ of modules/docs may not import socket (parts.domain.forbidden)"],
                  id="two names of one listed module on one line are reported once"),
     pytest.param([Import(1, ("time",), names=("time",))], [Use(2, ("time", "time"), 2)], [],
                  id="a name the list does not hold is not reported, even beside a listed one"),
@@ -77,7 +77,7 @@ def test_a_test_of_a_tier_held_to_the_list_is_checked_as_the_part_it_mirrors():
                        uses=(Use(3, ("builtins", "open"), 0),))
     assert [str(v) for v in violations([], [held, loose], PROFILE)] == [
         "tests/modules/docs/domain/test_doc.py:3: a test of domain/ (unit tier) may not use builtins.open "
-        "(forbidden.domain; tiers.unit.forbidden)"]
+        "(parts.domain.forbidden; tiers.unit.apply_forbidden)"]
 
 
 def test_without_a_forbidden_list_nothing_is_checked():

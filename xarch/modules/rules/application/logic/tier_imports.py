@@ -27,7 +27,10 @@ RULE = "tiers"
 
 
 def may_import(profile: Profile, tier: TestTier) -> tuple[Target, ...]:
-    """The tier's subject parts, and what each of them may import."""
+    """What the tests in the tier's own folder may import: what the tier says, else its subject parts and what each of
+    them may import."""
+    if tier.may_import is not None:
+        return tier.may_import
     return tuple(t for s in tier.subject for t in (s, *targets_of(profile, s.part)))
 
 
@@ -70,7 +73,7 @@ def _app_imports(file: SourceFile, where: Tested, profile: Profile, root: str,
     assert where.tier is not None
     allowed = allowance(profile, where)
     subject = " and ".join(f"{p}/" for p in where.parts)
-    why = (f": it imports only what {subject} may ({', '.join(f'rules.{p}' for p in where.parts)})"
+    why = (f": it imports only what {subject} may ({', '.join(f'parts.{p}.may_import' for p in where.parts)})"
            if where.parts else "")
     test = f"a test of {subject} ({where.tier.name} tier)" if where.parts else f"a {where.tier.name} test"
     absolute = tuple(i for i in file.imports if not i.level)

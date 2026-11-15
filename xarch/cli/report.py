@@ -56,7 +56,7 @@ def enforcement_lines(state: Enforcement, strict: bool) -> list[str]:
     lines = ["enforcement", _line("profile", f"{origin.location} ({where})", 2)]
     if origin.guards_off:
         lines.append(_line("guards off", ", ".join(origin.guards_off), 4))
-    lines += [_line(item.key.replace("_", " "), item.sentence, 4) for item in origin.looser]
+    lines += [_line(item.key, item.sentence, 4) for item in origin.looser]
     if state.ungoverned:
         count = len(state.ungoverned)
         lines.append(_line("ungoverned", f"{_count(count, 'Python file')} outside every part "

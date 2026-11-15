@@ -9,21 +9,20 @@ from xarch.bootstrap.app import app
 from xarch.bootstrap.wiring import build_spec
 
 runner = CliRunner()
-PROFILE = """xarch: 1
+PROFILE = """xarch: 2
 name: shim
-layout:
-  __main__.py: file
-  core: {}
 parts:
-  main: {path: __main__.py, role: the python -m entry, untested: a two-line shim}
+  main:
+    path: __main__.py
+    role: the python -m entry
+    may_import: [core]
+    untested: a two-line shim
   core: {path: core, role: the code}
-rules:
-  main: [core]
-  core: []
 guards:
   closed-tree: {}
 docs:
-  architecture.md: {from: arch.md}
+  pages:
+    architecture.md: {from: arch.md}
 """
 TEMPLATE = "# Architecture\n\n{{tree}}\n"
 

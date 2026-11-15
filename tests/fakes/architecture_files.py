@@ -9,12 +9,17 @@ from xarch.modules.spec.domain.values import ArchitectureDocument, ArchitectureS
 
 class FakeArchitectureFiles:
     """Satisfies spec's ArchitectureFiles: documents already parsed, bundled by name or at a path, and the text of
-    the files beside them by their relative path (text, or bytes for one that is not text). A document it does not
+    the files beside them by their relative path (text, or bytes for one that is not text), and the presets of
+    `testing` by name. A document it does not
     hold cannot be read."""
 
     def __init__(self, bundled: dict[str, Any] | None = None, files: dict[str, Any] | None = None,
-                 texts: dict[str, str | bytes] | None = None):
+                 texts: dict[str, str | bytes] | None = None, presets: dict[str, Any] | None = None):
         self._bundled, self._files, self._texts = dict(bundled or {}), dict(files or {}), dict(texts or {})
+        self._presets = dict(presets or {})
+
+    def testing_presets(self) -> dict[str, Any]:
+        return dict(self._presets)
 
     def bundled(self) -> tuple[str, ...]:
         return tuple(sorted(self._bundled))

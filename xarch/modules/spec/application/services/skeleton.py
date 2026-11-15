@@ -19,7 +19,8 @@ class SkeletonService:
         architecture = self._architectures.load(location)
         entry = architecture.entry
         return Skeleton(top_level=_entries(architecture.top_level_tree()), each_root=architecture.instance_root(),
-                        each=_entries(architecture.instance_tree()), entry_point=entry.path[0] if entry is not None else "")
+                        each=_entries(architecture.instance_tree()), entry_point=entry.path[0] if entry is not None else "",
+                        each_word=architecture.singular)
 
     def profiles(self) -> tuple[str, ...]:
         return self._architectures.bundled()

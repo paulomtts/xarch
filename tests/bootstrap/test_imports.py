@@ -172,7 +172,7 @@ OF_A, OF_B = " of modules/a", " of modules/b"
                  id="no part but bootstrap imports the structure"),
     pytest.param(DOMAIN, "import sqlalchemy\nfrom uuid import UUID",
                  "app/modules/a/domain/x.py:1: domain/ of modules/a may not import the outside package sqlalchemy "
-                 "(libraries.domain)",
+                 "(parts.domain.libraries)",
                  id="the standard library is always allowed and an unlisted outside package never"),
 ])
 def test_a_forbidden_import_is_reported(tmp_path, profile, path, body, expected):

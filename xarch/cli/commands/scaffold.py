@@ -31,10 +31,10 @@ def register(app: typer.Typer, scaffold: ScaffoldController, spec: SpecControlle
             raise fail(e.reason)
 
     @app.command()
-    def new(kind: Annotated[str, typer.Argument(help="A folder of the layout that declares `each:`, by its path.")],
+    def new(kind: Annotated[str, typer.Argument(help="The word the profile calls one instance of its repeating folder.")],
             name: Annotated[str, typer.Argument(help="The name of the new folder.")],
             app_path: AppPath = None, profile: ProfileName = None) -> None:
-        """Create one folder of a kind (a layout folder that declares `each:`) with its full skeleton."""
+        """Create one instance of the profile's repeating folder, named by its word, with its full skeleton."""
         app_path = app_for(spec, app_path)
         match scaffold.new(New(app_path, kind, name, profile_for(spec, app_path, profile))):
             case Scaffolded(report):

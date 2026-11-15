@@ -82,8 +82,8 @@ class ProjectFile:
 class Example:
     """One file of the docs' example project: the part it illustrates, where it would live, and the file holding it.
 
-    name: how the docs template refers to it, e.g. "charge"
-    part: the part it illustrates
+    name: how the docs template refers to it: its path in its project, written with `/`
+    part: the part it illustrates; empty for what no part claims, such as test code
     path: where the example would live in an app, e.g. ("src", "billing", "service", "charge.py")
     file: the file holding its code, relative to the architecture file
     note: shown after its path on its header line in the docs
@@ -126,7 +126,7 @@ class TierExample:
 
     path: e.g. ("tests", "modules", "documents", "domain", "test_document.py")
     file: the file holding its code, relative to the architecture file
-    note: shown right after its path on its header line, as written
+    note: plain text, shown after its path on its header line in parentheses
     """
     path: tuple[str, ...]
     file: str
@@ -147,6 +147,8 @@ class Tier:
     forbidden: its tests are held to the `forbidden` list of the part they mirror
     folder: the folder below the tests folder where its tests live when they mirror no part, e.g. ("architecture",);
         the example only shows a place, it never decides one
+    may_import: what the tests in its own folder may import of the app, as targets; None for a tier with no folder,
+        whose tests import what the part their folder mirrors may
     """
     name: str
     subject: tuple[Subject, ...]
@@ -162,6 +164,7 @@ class Tier:
     types_only: tuple[str, ...] = ()
     forbidden: bool = False
     folder: tuple[str, ...] | None = None
+    may_import: tuple[Target, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -177,9 +180,9 @@ class Excluded:
 
 @dataclass(frozen=True)
 class Fakes:
-    """Where the test fakes live, below the tests root, the parts they stand in for, and how a fake's name starts
-    (the fake of port X is <prefix>X; empty when the file does not say)."""
-    path: tuple[str, ...]
+    """Where the test fakes live, as a folder below the tests folder (e.g. ("fakes",)), the parts they stand in for,
+    and how a fake's name starts (the fake of port X is <prefix>X; empty when the file does not say)."""
+    folder: tuple[str, ...]
     stand_in_for: tuple[str, ...]
     prefix: str = ""
 
@@ -283,6 +286,7 @@ class Architecture:
     forbidden: the dotted names and modules a part may not use, by part; a part not listed has none
     excluded: the folders below the app that are not its source, in the order of the file
     hints: the project's own advice for a rule id, shown after the built-in fix of a violation of that rule
+    based_on: the bundled profile it says it was copied from; empty when it does not say
     """
     name: str
     layout: Layout
@@ -304,6 +308,7 @@ class Architecture:
     forbidden: dict[str, tuple[tuple[str, ...], ...]] = field(default_factory=dict)
     excluded: tuple[Excluded, ...] = ()
     hints: dict[str, str] = field(default_factory=dict)
+    based_on: str = ""
 
     @property
     def entry(self) -> Part | None:

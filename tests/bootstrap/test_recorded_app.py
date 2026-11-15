@@ -44,7 +44,7 @@ def test_init_does_not_record_the_default_app_folder(tmp_path):
 
 def test_a_bare_check_new_and_where_use_the_recorded_app_folder(tmp_path):
     init("--app", "shop")
-    assert runner.invoke(app, ["new", "modules", "demo"]).exit_code == 0
+    assert runner.invoke(app, ["new", "module", "demo"]).exit_code == 0
     assert (tmp_path / "shop/modules/demo/application/controller.py").is_file()
     assert not (tmp_path / "app").exists()
     checked = runner.invoke(app, ["check"])
@@ -61,7 +61,7 @@ def test_the_recorded_app_folder_is_found_from_a_folder_below_the_project(tmp_pa
     (tmp_path / "below").mkdir()
     monkeypatch.chdir(tmp_path / "below")
     assert runner.invoke(app, ["check"]).exit_code == 0
-    assert runner.invoke(app, ["new", "modules", "demo"]).exit_code == 0
+    assert runner.invoke(app, ["new", "module", "demo"]).exit_code == 0
     assert (tmp_path / "shop/modules/demo").is_dir()
 
 
@@ -69,7 +69,7 @@ def test_the_flag_wins_over_the_recorded_app_folder(tmp_path):
     init("--app", "shop")
     init("--app", "other/app")
     assert runner.invoke(app, ["check", "--app", "other/app"]).exit_code == 0
-    assert runner.invoke(app, ["new", "modules", "demo", "--app", "other/app"]).exit_code == 0
+    assert runner.invoke(app, ["new", "module", "demo", "--app", "other/app"]).exit_code == 0
     assert (tmp_path / "other/app/modules/demo").is_dir()
     missing = runner.invoke(app, ["check", "--app", "app"])
     assert missing.exit_code == 2 and "app is not a directory" in missing.output

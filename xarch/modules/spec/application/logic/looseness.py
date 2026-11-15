@@ -1,20 +1,21 @@
 """How a profile compares with the bundled ones: which it resembles, the guards it leaves off, and every way it is
 looser than the one it resembles.
 
-The closest bundled profile is the one sharing the most part names, the first by name on a tie; one sharing none
-resembles no bundled profile. Looser is compared only where both have the same name (a part, a tier, a file), and only
-in these ways, each one entry: a target added to a part's `rules`; an outside package added to a part's `libraries`,
-or `libraries` dropped as a whole; a name the bundled `forbidden` list of a part holds that no entry of the custom
-list covers (`time` covers `time.time`); a part newly marked `untested`; a part dropped from a tier's `types_only`; a
-tier no longer `forbidden`; a name dropped from `tests.skips`; a `files` entry no longer `pinned`. Anything stricter,
-and what is compared in no way above (the layout, new parts, the guards' parameters, `fakes`), is not listed.
+The closest bundled profile is the one a profile says it is based on, else the one sharing the most part names, the
+first by name on a tie; one sharing none resembles no bundled profile. Looser is compared only where both have the
+same name (a part, a tier, a file), and only in these ways, each one entry: a target added to a part's `may_import`; an
+outside package added to a part's `libraries`, or `libraries` dropped as a whole; a name the bundled `forbidden` list
+of a part holds that no entry of the custom list covers (`time` covers `time.time`); a part newly marked `untested`; a
+part dropped from a tier's `types_only`; a tier no longer `apply_forbidden`; a name dropped from `testing.skips`; a `files`
+entry no longer `pinned`. Anything stricter, and what is compared in no way above (the layout, new parts, the guards'
+parameters, `fakes`), is not listed.
 """
 from __future__ import annotations
 
 from collections.abc import Mapping
 
 from xarch.kernel.logic.placement import EVERYTHING, Target
-from xarch.modules.spec.domain.architecture_file import GUARDS, guard_name
+from xarch.modules.spec.domain.guards import GUARDS, guard_name
 from xarch.modules.spec.domain.values import Architecture
 
 Loosening = tuple[str, str, str]
@@ -28,6 +29,9 @@ def guards_off(architecture: Architecture) -> tuple[str, ...]:
 
 
 def closest(architecture: Architecture, bundled: Mapping[str, Architecture]) -> str | None:
+    """The bundled profile the architecture says it is based on, else the one sharing the most part names."""
+    if architecture.based_on in bundled:
+        return architecture.based_on
     scores = {name: len(set(architecture.parts) & set(other.parts)) for name, other in bundled.items()}
     best = max(scores.values(), default=0)
     return min(name for name, score in scores.items() if score == best) if best else None
@@ -37,7 +41,7 @@ def looser(custom: Architecture, base: Architecture) -> list[Loosening]:
     shared = [name for name in custom.parts if name in base.parts]
     found: list[Loosening] = []
     for name in shared:
-        found += [("rules", name, _shown(t)) for t in custom.rules.get(name, ()) if t not in base.rules.get(name, ())]
+        found += [("may_import", name, _shown(t)) for t in custom.rules.get(name, ()) if t not in base.rules.get(name, ())]
     if base.libraries is not None:
         if custom.libraries is None:
             found.append(("libraries", "", ""))
@@ -54,19 +58,19 @@ def looser(custom: Architecture, base: Architecture) -> list[Loosening]:
         mine = tiers.get(tier.name)
         if mine is not None:
             found += [("types_only", tier.name, part) for part in tier.types_only if part not in mine.types_only]
-    found += [("tier_forbidden", tier.name, "") for tier in base.tiers
+    found += [("apply_forbidden", tier.name, "") for tier in base.tiers
               if tier.forbidden and tier.name in tiers and not tiers[tier.name].forbidden]
     skips = custom.framework.skips if custom.framework is not None else ()
     if base.framework is not None:
-        found += [("skips", "", ".".join(name)) for name in base.framework.skips if name not in skips]
+        found += [("testing.skips", "", ".".join(name)) for name in base.framework.skips if name not in skips]
     files = {file.path: file for file in custom.files}
-    found += [("pinned", "", "/".join(file.path)) for file in base.files
+    found += [("files.pinned", "", "/".join(file.path)) for file in base.files
               if file.pinned and file.path in files and not files[file.path].pinned]
     return found
 
 
 def _shown(target: Target) -> str:
     if target.part == EVERYTHING:
-        return EVERYTHING
-    scope = f"@{target.scope}" if target.scope != "none" else ""
+        return "everything"
+    scope = f"@{target.scope}" if target.scope == "any" else ""
     return target.part + scope + "".join(f"/{step}" for step in target.sub)

@@ -18,7 +18,7 @@ BUNDLED = Path(xarch.__file__).parent / "architectures"
 def project(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     assert runner.invoke(app, ["init", "--profile", "web"]).exit_code == 0
-    assert runner.invoke(app, ["new", "modules", "docs"]).exit_code == 0
+    assert runner.invoke(app, ["new", "module", "docs"]).exit_code == 0
 
 
 def check(*arguments: str):
@@ -96,14 +96,14 @@ def test_strict_fails_on_every_finding_and_lists_them(tmp_path):
 
 def test_a_custom_copy_of_a_bundled_profile_is_compared_with_it(tmp_path):
     shutil.copytree(BUNDLED, tmp_path / "arch")
-    text = (BUNDLED / "web.yaml").read_text().replace("  no-comments:       {}\n", "")
-    (tmp_path / "arch/mine.yaml").write_text(text.replace("  kernel:     []\n", "  kernel:     [platform]\n"))
+    text = (BUNDLED / "web.yaml").read_text().replace("  no-comments: {}\n", "")
+    (tmp_path / "arch/mine.yaml").write_text(text.replace("    path: kernel\n", "    path: kernel\n    may_import: [platform]\n"))
     result = check("--profile", "arch/mine.yaml")
     assert result.exit_code == 0, result.stdout
     assert result.stdout.splitlines()[2:5] == [
         "  profile:     arch/mine.yaml (custom; closest bundled: web)",
         "    guards off:  no-comments, closed-tree",
-        "    rules:       kernel may also import platform"]
+        "    may_import:  kernel may also import platform (parts.kernel.may_import)"]
     strict = check("--profile", "arch/mine.yaml", "--strict")
     assert strict.exit_code == 1
     assert strict.stdout.splitlines()[-2:] == ["strict:      1 finding fails the check", "    guards off: no-comments"]
@@ -112,15 +112,16 @@ def test_a_custom_copy_of_a_bundled_profile_is_compared_with_it(tmp_path):
 def test_how_a_custom_profile_differs_from_the_closest_bundled_one_is_shown_and_never_fails_strict(tmp_path):
     shutil.copytree(BUNDLED, tmp_path / "arch")
     text = (BUNDLED / "web.yaml").read_text()
-    (tmp_path / "arch/mine.yaml").write_text(text.replace("  kernel:     []\n", "  kernel:     [platform]\n"))
+    (tmp_path / "arch/mine.yaml").write_text(text.replace("    path: kernel\n", "    path: kernel\n    may_import: [platform]\n"))
     strict = check("--profile", "arch/mine.yaml", "--strict")
     assert strict.exit_code == 0, strict.stdout
-    assert "    rules:       kernel may also import platform" in strict.stdout.splitlines()
+    assert "    may_import:  kernel may also import platform (parts.kernel.may_import)" in strict.stdout.splitlines()
     assert "strict" not in strict.stdout
     document = json.loads(check("--profile", "arch/mine.yaml", "--strict", "--format", "json").stdout)
     assert document["ok"] is True and document["enforcement"]["strict_failures"] == []
     assert document["enforcement"]["profile"]["looser"] == [
-        {"key": "rules", "part": "kernel", "what": "platform", "sentence": "kernel may also import platform"}]
+        {"key": "may_import", "part": "kernel", "what": "platform",
+         "sentence": "kernel may also import platform (parts.kernel.may_import)"}]
 
 
 def test_an_excluded_folder_is_never_read_is_listed_and_does_not_fail_strict(tmp_path):

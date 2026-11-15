@@ -14,7 +14,7 @@ def in_tmp(tmp_path, monkeypatch):
 
 def test_check_on_a_scaffolded_tree_passes():
     assert runner.invoke(app, ["init", "--profile", "cli"]).exit_code == 0
-    assert runner.invoke(app, ["new", "modules", "demo"]).exit_code == 0
+    assert runner.invoke(app, ["new", "module", "demo"]).exit_code == 0
     result = runner.invoke(app, ["check"])
     assert result.exit_code == 0, result.output
     assert "no violations" in result.output
@@ -22,7 +22,7 @@ def test_check_on_a_scaffolded_tree_passes():
 
 def test_check_reports_violations_with_exit_1(tmp_path):
     runner.invoke(app, ["init", "--profile", "cli"])
-    runner.invoke(app, ["new", "modules", "demo"])
+    runner.invoke(app, ["new", "module", "demo"])
     (tmp_path / "app" / "kernel" / "bad.py").write_text("from app.platform import sql\n")
     result = runner.invoke(app, ["check"])
     assert result.exit_code == 1
@@ -60,7 +60,7 @@ def test_init_says_what_it_created_then_what_it_skipped():
 
 def test_new_module_says_what_it_created():
     runner.invoke(app, ["init", "--profile", "cli"])
-    result = runner.invoke(app, ["new", "modules", "demo"])
+    result = runner.invoke(app, ["new", "module", "demo"])
     assert result.exit_code == 0
     assert "created app/modules/demo/application/controller.py" in result.output
 
@@ -68,14 +68,14 @@ def test_new_module_says_what_it_created():
 @pytest.mark.parametrize("name", ["Demo", "my-mod"])
 def test_new_module_refuses_a_bad_name_with_exit_2(name):
     runner.invoke(app, ["init", "--profile", "cli"])
-    result = runner.invoke(app, ["new", "modules", name])
+    result = runner.invoke(app, ["new", "module", name])
     assert result.exit_code == 2 and "lowercase" in result.output
 
 
 def test_new_module_refuses_an_existing_module_with_exit_2():
     runner.invoke(app, ["init", "--profile", "cli"])
-    runner.invoke(app, ["new", "modules", "demo"])
-    result = runner.invoke(app, ["new", "modules", "demo"])
+    runner.invoke(app, ["new", "module", "demo"])
+    result = runner.invoke(app, ["new", "module", "demo"])
     assert result.exit_code == 2 and "already exists" in result.output
 
 
@@ -84,7 +84,7 @@ def write_pyproject(folder, profile):
     (folder / "pyproject.toml").write_text(f'[project]\nname = "x"\n\n[tool.xarch]\nprofile = "{profile}"\n')
 
 
-@pytest.mark.parametrize("command", [["init"], ["check"], ["new", "modules", "demo"]])
+@pytest.mark.parametrize("command", [["init"], ["check"], ["new", "module", "demo"]])
 def test_without_a_profile_a_command_is_a_usage_error_listing_the_profiles_found(tmp_path, command):
     result = runner.invoke(app, command)
     assert result.exit_code == 2
@@ -95,7 +95,7 @@ def test_without_a_profile_a_command_is_a_usage_error_listing_the_profiles_found
 def test_init_with_profile_web_then_check_with_profile_web_passes(tmp_path):
     result = runner.invoke(app, ["init", "--profile", "web"])
     assert result.exit_code == 0 and "created app/web/routes/__init__.py" in result.output
-    assert runner.invoke(app, ["new", "modules", "demo", "--profile", "web"]).exit_code == 0
+    assert runner.invoke(app, ["new", "module", "demo", "--profile", "web"]).exit_code == 0
     checked = runner.invoke(app, ["check", "--profile", "web"])
     assert checked.exit_code == 0, checked.output
 
@@ -110,7 +110,7 @@ def test_init_records_the_profile_so_a_bare_check_uses_it(tmp_path):
     result = runner.invoke(app, ["init", "--profile", "web"])
     assert "created pyproject.toml" in result.output
     assert (tmp_path / "pyproject.toml").read_text() == '[tool.xarch]\nprofile = "web"\n'
-    assert runner.invoke(app, ["new", "modules", "demo"]).exit_code == 0
+    assert runner.invoke(app, ["new", "module", "demo"]).exit_code == 0
     checked = runner.invoke(app, ["check"])
     assert checked.exit_code == 0, checked.output
 
@@ -118,17 +118,22 @@ def test_init_records_the_profile_so_a_bare_check_uses_it(tmp_path):
 def test_new_refuses_a_kind_the_profile_does_not_declare_with_exit_2():
     runner.invoke(app, ["init", "--profile", "cli"])
     result = runner.invoke(app, ["new", "features", "demo"])
-    assert result.exit_code == 2 and "no kind 'features' in the profile: use modules" in result.output
+    assert result.exit_code == 2 and "no kind 'features' in the profile: use module" in result.output
+
+
+def test_new_refuses_the_folder_of_a_kind_in_place_of_its_word_and_says_what_to_type():
+    runner.invoke(app, ["init", "--profile", "cli"])
+    result = runner.invoke(app, ["new", "modules", "demo"])
+    assert result.exit_code == 2 and "write `xarch new module <name>`" in result.output
 
 
 def test_a_project_may_check_against_its_own_architecture_file(tmp_path):
     (tmp_path / "layered.yaml").write_text(
-        'xarch: 1\nname: layered\nlayout: {lib: {}, modules: {singular: module, each: {api: {}}}}\n'
-        'parts: {lib: {path: lib, role: shared}, api: {path: "modules/*/api", role: handlers}}\n'
-        'rules: {api: [lib], lib: []}\n')
+        'xarch: 2\nname: layered\n'
+        'parts: {lib: {path: lib, role: shared}, api: {path: "modules/<module>/api", role: handlers, may_import: [lib]}}\n')
     write_pyproject(tmp_path, "layered.yaml")
     assert runner.invoke(app, ["init"]).exit_code == 0
-    assert runner.invoke(app, ["new", "modules", "orders"]).exit_code == 0
+    assert runner.invoke(app, ["new", "module", "orders"]).exit_code == 0
     assert (tmp_path / "app" / "modules" / "orders" / "api" / "__init__.py").is_file()
     (tmp_path / "app" / "lib" / "x.py").write_text("from app.modules.orders.api import h\n")
     result = runner.invoke(app, ["check"])
@@ -137,10 +142,10 @@ def test_a_project_may_check_against_its_own_architecture_file(tmp_path):
 
 
 def test_a_bad_architecture_file_is_a_clear_usage_error(tmp_path):
-    (tmp_path / "bad.yaml").write_text("xarch: 1\nname: bad\nlayout: {}\nparts: {x: {path: nowhere, role: r}}\n")
+    (tmp_path / "bad.yaml").write_text("xarch: 2\nname: bad\nparts: {x: {path: nowhere}}\n")
     result = runner.invoke(app, ["check", "--profile", "bad.yaml"])
     assert result.exit_code == 2
-    assert "error: bad.yaml: parts.x.path: 'nowhere' matches no folder or file in layout" in result.output
+    assert "error: bad.yaml: parts.x: missing `role`" in result.output
     assert "Traceback" not in result.output
 
 
@@ -148,7 +153,7 @@ def test_the_profile_comes_from_pyproject(tmp_path):
     write_pyproject(tmp_path, "web")
     assert runner.invoke(app, ["init"]).exit_code == 0
     assert (tmp_path / "app" / "web" / "i18n" / "__init__.py").is_file()
-    assert runner.invoke(app, ["new", "modules", "demo"]).exit_code == 0
+    assert runner.invoke(app, ["new", "module", "demo"]).exit_code == 0
     (tmp_path / "app" / "web" / "routes" / "demo.py").write_text("from app.modules.demo.domain import x\n")
     result = runner.invoke(app, ["check"])
     assert result.exit_code == 1
@@ -169,7 +174,7 @@ def test_profile_option_overrides_pyproject(tmp_path):
     assert result.exit_code == 1 and "app: missing cli/" in result.output
 
 
-@pytest.mark.parametrize("command", [["check"], ["init"], ["new", "modules", "demo"]])
+@pytest.mark.parametrize("command", [["check"], ["init"], ["new", "module", "demo"]])
 def test_an_unknown_profile_option_is_a_usage_error(tmp_path, command):
     runner.invoke(app, ["init", "--profile", "cli"])
     result = runner.invoke(app, [*command, "--profile", "mobile"])
@@ -188,7 +193,7 @@ def test_an_unknown_profile_in_pyproject_is_a_usage_error(tmp_path):
 
 def test_extras_produce_no_violations(tmp_path):
     runner.invoke(app, ["init", "--profile", "cli"])
-    runner.invoke(app, ["new", "modules", "demo"])
+    runner.invoke(app, ["new", "module", "demo"])
     root = tmp_path / "app"
     extras = {"main.py": "from app.platform import sql", "scripts/seed.py": "from app.modules.demo.adapters import r",
               "modules/demo/helpers.py": "from app.platform import sql", "modules/demo/utils/x.py": "import os",
@@ -248,7 +253,7 @@ def test_init_puts_the_docs_beside_an_app_given_by_path(tmp_path):
 def test_new_module_does_not_touch_the_docs(tmp_path):
     runner.invoke(app, ["init", "--profile", "cli"])
     (tmp_path / "docs" / "project" / "statement.md").unlink()
-    result = runner.invoke(app, ["new", "modules", "demo"])
+    result = runner.invoke(app, ["new", "module", "demo"])
     assert "docs/" not in result.output
     assert not (tmp_path / "docs" / "project" / "statement.md").exists()
 
@@ -288,7 +293,7 @@ def test_a_missing_tests_folder_is_a_usage_error():
 def test_init_refuses_a_profile_whose_file_replaces_what_the_skeleton_writes(tmp_path):
     (tmp_path / "guard.tpl").write_text("{{app}}\n")
     (tmp_path / "layered.yaml").write_text(
-        "xarch: 1\nname: layered\nlayout: {src: {}}\nparts: {src: {path: src, role: code}}\nrules: {src: []}\n"
+        "xarch: 2\nname: layered\nparts: {src: {path: src, role: code}}\n"
         "files: {app/__init__.py: {from: guard.tpl}}\n")
     result = runner.invoke(app, ["init", "--profile", "layered.yaml"])
     assert result.exit_code == 2

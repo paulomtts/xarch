@@ -3,6 +3,7 @@ own package and the outside packages `libraries` lists for that part."""
 import pytest
 
 from tests.modules.rules.builders import PROFILE, imp, profile, source
+from xarch.kernel.logic.placement import EVERYTHING
 from xarch.modules.rules.application.logic.libraries import violations
 
 
@@ -11,7 +12,14 @@ def problems(path: str, *imports, checked=PROFILE) -> list[str]:
 
 
 def message(path: str, line: int, label: str, part: str, package: str) -> str:
-    return f"app/{path}:{line}: {label} may not import the outside package {package} (libraries.{part})"
+    return f"app/{path}:{line}: {label} may not import the outside package {package} (parts.{part}.libraries)"
+
+
+def test_a_part_listed_as_everything_may_import_any_outside_package_while_another_part_still_may_not():
+    checked = profile(libraries={**PROFILE.libraries, "bootstrap": (EVERYTHING,)})
+    assert problems("bootstrap/app.py", imp(1, "anything", "x"), imp(2, "fastapi"), checked=checked) == []
+    assert problems("platform/sql.py", imp(1, "anything", "x"), checked=checked) == [
+        message("platform/sql.py", 1, "platform/", "platform", "anything")]
 
 
 @pytest.mark.parametrize("path, imports, expected", [
@@ -52,7 +60,7 @@ def test_without_libraries_in_the_profile_nothing_is_checked():
 
 def test_the_apps_package_is_the_root_it_is_given():
     assert [str(v) for v in violations([source("kernel/ids.py", imp(1, "app.kernel", "x"))], PROFILE, "shop")] == [
-        "app/kernel/ids.py:1: kernel/ may not import the outside package app (libraries.kernel)"]
+        "app/kernel/ids.py:1: kernel/ may not import the outside package app (parts.kernel.libraries)"]
 
 
 def test_a_violation_names_its_rule():
@@ -61,13 +69,13 @@ def test_a_violation_names_its_rule():
 
 @pytest.mark.parametrize("path, imports, fix", [
     pytest.param("platform/sql.py", [imp(3, "fastapi", "FastAPI")],
-                 "move the code that needs fastapi to web/, bootstrap/, which may import it (libraries.web)",
+                 "move the code that needs fastapi to web/, bootstrap/, which may import it (parts.web.libraries)",
                  id="a package listed for another part names that part"),
     pytest.param("web/routes.py", [imp(3, "sqlmodel", "SQLModel")],
                  "move the code that needs sqlmodel to platform/, adapters/, bootstrap/, which may import it "
-                 "(libraries.platform)", id="a package listed for several parts names them all"),
+                 "(parts.platform.libraries)", id="a package listed for several parts names them all"),
     pytest.param("platform/sql.py", [imp(3, "requests")],
-                 "use the standard library or a package libraries lists for platform/, since requests is listed for "
+                 "use the standard library or a package listed in parts.platform.libraries, since requests is listed for "
                  "no part", id="a package no part lists"),
 ])
 def test_a_violation_says_what_to_do(path, imports, fix):

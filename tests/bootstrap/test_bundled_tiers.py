@@ -28,35 +28,44 @@ def test_the_bundled_tier_examples_pass_the_example_check(profile):
 
 
 CUSTOM = """\
-xarch: 1
+xarch: 2
 name: layered
-layout: {src: {singular: module, each: {api: {}, store: {}}}, shared: {}}
+testing: pytest
 parts:
-  api:    {path: "src/*/api", role: handlers, entry: true}
-  store:  {path: "src/*/store", role: database access}
+  api:
+    path: "src/<module>/api"
+    role: handlers
+    may_import: [store]
+    tier: driver
+  store:
+    path: "src/<module>/store"
+    role: database access
+    tier: unit
   shared: {path: shared, role: helpers, untested: reached through the parts that use it}
-rules: {api: [store@own]}
-tests: {files: ["test_*.py"], functions: "test_*"}
 tiers:
-  - name: unit
-    subject: [store]
+  unit:
     proves: a query
-    may_touch: an in-memory database
     litmus: |
       Does it query?
       If yes, it is a unit test.
-    data: built in the test
-    example: {path: tests/store/test_store.py, file: examples/unit.py}
-  - name: driver
-    subject: [api]
+    docs:
+      may_touch: an in-memory database
+      data: built in the test
+      example: tests/store/test_store.py
+  driver:
     proves: routing
-    may_touch: a fake store
     litmus: Does it route?
-    data: none
-    example: {path: tests/api/test_api.py, file: examples/driver.py, note: ", one per route"}
+    docs:
+      may_touch: a fake store
+      data: none
+      example: tests/api/test_api.py
 docs:
-  architecture.md: {from: layered.md}
-  testing.md: {from: layered-testing.md}
+  entry: api
+  pages:
+    architecture.md: {from: layered.md}
+    testing.md: {from: layered-testing.md}
+  examples: [examples]
+  example_notes: {tests/api/test_api.py: one per route}
 """
 
 
@@ -70,8 +79,8 @@ def test_a_custom_architecture_with_its_own_tiers_gets_its_own_testing_md(tmp_pa
     write(tmp_path / "layered.md", "# Layered\n")
     write(tmp_path / "layered-testing.md", "# Testing of {{entry}}\n\n{{tiers}}\n\n{{untested}}\n\n{{tier_litmus:3}}\n\n"
                                           "Run it: `<command>`\n\n{{tier_data}}\n\n{{tier_examples}}\n")
-    write(tmp_path / "examples" / "unit.py", "def test_a_query(): ...\n")
-    write(tmp_path / "examples" / "driver.py", "def test_a_route(): ...\n")
+    write(tmp_path / "examples" / "tests/store/test_store.py", "def test_a_query(): ...\n")
+    write(tmp_path / "examples" / "tests/api/test_api.py", "def test_a_route(): ...\n")
     docs = build_architectures().docs(write(tmp_path / "layered.yaml", CUSTOM))
     texts = {"/".join(f.path): f.template for f in docs.files}
     assert texts["testing.md"] == (
@@ -85,15 +94,15 @@ def test_a_custom_architecture_with_its_own_tiers_gets_its_own_testing_md(tmp_pa
         "Run it: `<command>`\n\n"
         "| Tier | Where its data comes from |\n|---|---|\n| unit | built in the test |\n| driver | none |\n\n"
         "```python\n# unit: tests/store/test_store.py\ndef test_a_query(): ...\n\n"
-        "# driver: tests/api/test_api.py, one per route\ndef test_a_route(): ...\n```\n")
+        "# driver: tests/api/test_api.py (one per route)\ndef test_a_route(): ...\n```\n")
     assert [f.path for f in docs.files] == [("architecture.md",), ("testing.md",)]
 
 
 def test_a_custom_testing_template_with_a_bad_placeholder_fails_naming_it(tmp_path):
     write(tmp_path / "layered.md", "# Layered\n")
     write(tmp_path / "layered-testing.md", "{{tier_files}}\n{{tier}}\n")
-    write(tmp_path / "examples" / "unit.py", "")
-    write(tmp_path / "examples" / "driver.py", "")
+    write(tmp_path / "examples" / "tests/store/test_store.py", "")
+    write(tmp_path / "examples" / "tests/api/test_api.py", "")
     with pytest.raises(InvalidTemplate) as caught:
         build_architectures().docs(write(tmp_path / "layered.yaml", CUSTOM))
     assert caught.value.problems[0] == (

@@ -10,20 +10,16 @@ from xarch.modules.rules.contract import CheckImports, ImportsChecked
 from xarch.modules.scaffold.contract import Init, New, Scaffolded
 
 PROFILE = """\
-xarch: 1
+xarch: 2
 name: presets
-layout:
-  kernel: {}
-  web:
-    ui: {}
+forbidden:
+  nothing_printed: [builtins.print]
 parts:
   kernel: {path: kernel, role: primitives}
-  ui:     {path: web/ui, role: pages}
-rules:
-  kernel: []
-  ui:     []
-forbidden:
-  ui: [builtins.print]
+  ui:
+    path: web/ui
+    role: pages
+    forbidden: nothing_printed
 files:
   "{{app}}/web/ui/design/": {from: presets/design/}
   "notes.txt": {from: presets/design/tokens.css, fill: false}
@@ -104,7 +100,7 @@ def test_a_fresh_project_of_a_bundled_profile_has_every_shipped_file_and_passes_
     app = tmp_path / "app"
     init(app, profile)
     controllers = build_controllers()
-    assert isinstance(controllers.scaffold.new(New(app, "modules", "documents", profile)), Scaffolded)
+    assert isinstance(controllers.scaffold.new(New(app, "module", "documents", profile)), Scaffolded)
     shipped = controllers.spec.files(profile, "app")
     assert shipped and all((tmp_path.joinpath(*file.path)).is_file() for file in shipped)
     checked = controllers.rules.check(CheckImports(app, "app", profile, tmp_path / "tests"))

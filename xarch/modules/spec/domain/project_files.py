@@ -1,6 +1,6 @@
 """The project files beside the app: the files the architecture declares besides the docs, each filled from its template.
 
-The architecture names every entry (`files: {<path>: {from, pinned, fill}}`, see architecture_file.py). A file entry
+The architecture names every entry (`files: {<path>: {from, pinned, fill}}`, see profile_v2.py). A file entry
 is its template; a folder entry (a key ending in `/`) is every file under its folder, written below the key with the
 relative paths kept. `{{app}}` in a key is the name of the app folder, so an entry may land inside the app; in a text it
 is replaced by the name when the entry is filled, and any other `{{...}}` is left alone: a template may hold code that

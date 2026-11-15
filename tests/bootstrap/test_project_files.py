@@ -105,7 +105,7 @@ def ruff_in(project: Path) -> subprocess.CompletedProcess[str]:
 def test_init_writes_the_linter_config_unpinned_and_a_fresh_project_with_a_module_passes_it(tmp_path, profile):
     app = tmp_path / "app"
     init(app, profile)
-    assert isinstance(build_controllers().scaffold.new(New(app, "modules", "documents", profile)), Scaffolded)
+    assert isinstance(build_controllers().scaffold.new(New(app, "module", "documents", profile)), Scaffolded)
     assert {file.path: file.pinned for file in build_controllers().spec.files(profile, "app")}[("ruff.toml",)] is False
     result = ruff_in(tmp_path)
     assert result.returncode == 0, result.stdout + result.stderr

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from xarch.kernel.logic.placement import Target
+from xarch.kernel.logic.placement import EVERYTHING, Target
 
 NAME = "{name}"
 """Stands, in the file name the scenario-coverage guard expects, for the use case's name in snake_case."""
@@ -15,7 +15,8 @@ class TestTier:
 
     subject holds the parts it tests, each as a target: a part inside the modules in the test's own module. folder is
     the folder below the tests root that places the tests of a tier whose tests mirror no part; an empty folder
-    places nothing. types_only holds the parts its tests may use as types but never call. forbidden: its tests are held to the
+    places nothing. may_import is what the tests in that folder may import of the app; None: the tier's subject parts
+    and whatever each may import. types_only holds the parts its tests may use as types but never call. forbidden: its tests are held to the
     forbidden list of the part they mirror. proves, may_touch, litmus and one_file_per are the profile's words for the
     tier, which `where` shows.
     """
@@ -28,6 +29,7 @@ class TestTier:
     may_touch: str = ""
     litmus: str = ""
     one_file_per: str = ""
+    may_import: tuple[Target, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -302,24 +304,27 @@ class Loosened:
     @property
     def sentence(self) -> str:
         match self.key:
-            case "rules":
-                return f"{self.part} may also import {self.what}"
+            case "may_import":
+                return f"{self.part} may also import {self.what} (parts.{self.part}.may_import)"
             case "libraries" if not self.part:
                 return "outside packages are not checked"
+            case "libraries" if self.what == EVERYTHING:
+                return f"{self.part} may import any outside package (parts.{self.part}.libraries)"
             case "libraries":
-                return f"{self.part} may also import {self.what}"
+                return f"{self.part} may also import {self.what} (parts.{self.part}.libraries)"
             case "forbidden":
-                return f"{self.part} no longer forbids {self.what}"
+                return f"{self.part} no longer forbids {self.what} (parts.{self.part}.forbidden)"
             case "untested":
-                return f"{self.part} is newly marked untested"
+                return f"{self.part} is newly marked untested (parts.{self.part}.untested)"
             case "types_only":
-                return f"the {self.part} tests may now call {self.what}"
-            case "tier_forbidden":
-                return f"the {self.part} tests are no longer held to their part's forbidden list"
-            case "skips":
-                return f"{self.what} is no longer counted as a skip"
-            case "pinned":
-                return f"{self.what} is no longer pinned"
+                return f"the {self.part} tests may now call {self.what} (tiers.{self.part}.types_only)"
+            case "apply_forbidden":
+                return (f"the {self.part} tests are no longer held to their part's forbidden list "
+                        f"(tiers.{self.part}.apply_forbidden)")
+            case "testing.skips":
+                return f"{self.what} is no longer counted as a skip (testing.skips)"
+            case "files.pinned":
+                return f"{self.what} is no longer pinned (files.{self.what}.pinned)"
         return " ".join(filter(None, (self.key, self.part, self.what)))
 
 

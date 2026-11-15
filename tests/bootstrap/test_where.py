@@ -19,7 +19,7 @@ DOMAIN = "app/modules/docs/domain/invoice.py"
 def project(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     assert runner.invoke(app, ["init", "--profile", "web"]).exit_code == 0
-    assert runner.invoke(app, ["new", "modules", "docs"]).exit_code == 0
+    assert runner.invoke(app, ["new", "module", "docs"]).exit_code == 0
     (tmp_path / DOMAIN).write_text("X = 1\n")
 
 
@@ -84,7 +84,7 @@ def test_a_unit_test_may_not_import_the_fakes():
 def test_a_path_in_no_part_is_ungoverned_and_names_the_parts_near_it():
     found = lines("app/scripts/run.py")
     assert found["part"] == "none: ungoverned"
-    assert found["nearest"].startswith("kernel/ (app/kernel/), ")
+    assert found["nearest"].startswith("domain/ (app/modules/<module>/domain/), ")
     assert found["closed-tree"] == "off: `xarch check` does not read it"
 
 
@@ -120,7 +120,7 @@ def test_json_of_a_test_and_of_an_ungoverned_path():
                             "code_from": "tests/modules/docs/"}
     stray = document("app/scripts/run.py")
     assert (stray["kind"], stray["part"], stray["closed_tree"]) == ("ungoverned", None, False)
-    assert [n["part"] for n in stray["nearest"]][:2] == ["kernel", "domain"]
+    assert [n["part"] for n in stray["nearest"]][:2] == ["domain", "logic"]
 
 
 def test_a_path_in_the_project_outside_the_app_is_ungoverned_and_exits_0(tmp_path):
@@ -153,3 +153,10 @@ def test_a_path_in_an_excluded_folder_says_it_is_excluded_and_why(tmp_path):
     found = document("app/samples/run.py", "--profile", "arch/mine.yaml")
     assert (found["kind"], found["note"], found["closed_tree"]) == (
         "ungoverned", "excluded from the checks by the profile: example sources the docs show", None)
+
+
+def test_a_part_that_may_import_every_outside_package_says_so_in_words(tmp_path):
+    (tmp_path / "wide.yaml").write_text("xarch: 2\nname: wide\nparts:\n  glue: {path: glue, role: the glue, libraries: everything}\n")
+    (tmp_path / "app/glue").mkdir()
+    assert lines("app/glue/x.py", "--profile", "wide.yaml")["libraries"] == "any outside package"
+    assert document("app/glue/x.py", "--profile", "wide.yaml")["libraries"] == ["*"]
