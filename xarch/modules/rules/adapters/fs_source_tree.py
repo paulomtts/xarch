@@ -30,11 +30,14 @@ A class is an exception when one of its bases is the bare name of a builtin exce
 A file also lists every name it mentions (`named`), by its last step alone, in code and in annotations, a string
 annotation read as the expression it holds, and every imported name; a class lists the same for its bases and body.
 
-A function lists how many real statements its body holds (every statement, nested ones included, but a docstring, `pass`
-and a bare `...`) and its shape: its body without the docstring, written as a tree in which every local name (a
-parameter, or a name the body binds in any way) is replaced by its number in order of appearance, so that formatting
-and local names do not show; what it calls, reads (attributes, globals), its constants, its keyword names, async or
-not, and how many parameters of each kind it has, do show. Its annotations, defaults and decorators are no part of it.
+A function lists how many statements its body holds, nested ones included, and how many of them are inert: they do
+nothing (a docstring, `pass`, a bare `...`). Its shape is the fingerprint the no-duplicates guard compares, a
+definition of this reader, per language, since only the reader of a language can say when two bodies are the same
+code: its body without the docstring, written as a tree in which every local name (a parameter, or a name the body
+binds in any way) is replaced by its number in order of appearance, so that formatting and local names do not show;
+what it calls, reads (attributes, globals), its constants, its keyword names, async or not, and how many parameters
+of each kind it has, do show. Its annotations, defaults and decorators are no part of it; a body of inert statements
+alone has no shape.
 
 A function records whether it is decorated, its parameters by kind, and, when its whole body, a docstring left out, is
 one `return` or bare statement of one call, perhaps awaited, that call: its callee as a chain of names, and each of its
@@ -91,8 +94,8 @@ class FsSourceTree:
     def absent(self, roots: Iterable[Path]) -> list[Path]:
         return [root for root in roots if not self._fs.is_dir(root)]
 
-    def paths(self, root: Path) -> list[tuple[str, ...]]:
-        return [f.relative_to(root).parts for f in self._fs.files(root, "*.py")]
+    def paths(self, root: Path, extension: str) -> list[tuple[str, ...]]:
+        return [f.relative_to(root).parts for f in self._fs.files(root, f"*{extension}")]
 
     def read(self, root: Path, paths: list[tuple[str, ...]], table: CaseTable | None = None) -> list[SourceFile]:
         return [_parsed(root.joinpath(*path).relative_to(root.parent).as_posix(), path,
@@ -193,10 +196,10 @@ def _function(node: ast.FunctionDef | ast.AsyncFunctionDef, scope: list[Scope], 
     tables = tuple(table for d in node.decorator_list if form is not None
                    and (table := _table(d, scope, lists, form)) is not None)
     asserts = any(isinstance(n, ast.Assert) for n in inside)
-    statements, shape = _shape(node)
+    statements, inert, shape = _shape(node)
     returns = _named(node.returns) if node.returns is not None else frozenset()
     return Function(node.lineno, node.name, tables, mentions, blocks, asserts, owner, statements, shape,
-                    bool(node.decorator_list), _signature(node), _sole_call(node), returns)
+                    bool(node.decorator_list), _signature(node), _sole_call(node), returns, inert)
 
 
 def _is_docstring(node: ast.stmt) -> bool:
@@ -211,10 +214,12 @@ def _real(node: ast.AST) -> bool:
                 and (isinstance(node.value.value, str) or node.value.value is Ellipsis))
 
 
-def _shape(node: ast.FunctionDef | ast.AsyncFunctionDef) -> tuple[int, str]:
-    count = sum(1 for statement in node.body for n in ast.walk(statement) if _real(n))
-    if count == 0:
-        return 0, ""
+def _shape(node: ast.FunctionDef | ast.AsyncFunctionDef) -> tuple[int, int, str]:
+    """How many statements the body holds, nested ones too, how many of them are inert, and its fingerprint."""
+    nodes = [n for statement in node.body for n in ast.walk(statement) if isinstance(n, ast.stmt)]
+    inert = sum(1 for n in nodes if not _real(n))
+    if inert == len(nodes):
+        return len(nodes), inert, ""
     body = [copy.deepcopy(s) for s in node.body if not _is_docstring(s)]
     a = node.args
     parameters = [x.arg for x in [*a.posonlyargs, *a.args, *a.kwonlyargs, *(v for v in (a.vararg, a.kwarg) if v)]]
@@ -226,7 +231,7 @@ def _shape(node: ast.FunctionDef | ast.AsyncFunctionDef) -> tuple[int, str]:
     renamed = local.visit(wrapped)
     arity = (len(a.posonlyargs), len(a.args), len(a.kwonlyargs), a.vararg is not None, a.kwarg is not None)
     text = f"{type(node).__name__}{arity}{ast.dump(renamed)}"
-    return count, hashlib.sha1(text.encode()).hexdigest()
+    return len(nodes), inert, hashlib.sha1(text.encode()).hexdigest()
 
 
 class _Locals(ast.NodeTransformer):
@@ -377,8 +382,7 @@ def _row(node: ast.expr, scope: list[Scope], form: CaseTable) -> Row:
         return Row(node.lineno, False, None, tuple(_head(e) for e in node.elts) if isinstance(node, ast.Tuple) else ())
     ids = [k.value for k in node.keywords if k.arg == form.id]
     given = ids[0].value if ids and isinstance(ids[0], ast.Constant) and isinstance(ids[0].value, str) else None
-    return Row(node.lineno, True, given if given and given.strip() else None,
-               tuple(_head(a) for a in node.args if not isinstance(a, ast.Starred)))
+    return Row(node.lineno, True, given, tuple(_head(a) for a in node.args if not isinstance(a, ast.Starred)))
 
 
 def _head(node: ast.expr) -> str | None:
@@ -402,7 +406,7 @@ def _unions(tree: ast.Module) -> list[Union]:
         else:
             continue
         members = _members(value)
-        if members is not None and len(members) > 1:
+        if members is not None:
             found.append(Union(node.lineno, name, members))
     return found
 

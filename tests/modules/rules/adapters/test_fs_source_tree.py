@@ -137,7 +137,7 @@ def test_a_parametrized_function_lists_its_rows_with_their_ids_and_the_names_hea
     assert function.tables == (Table(line_of(TABLE, "@pytest.mark.parametrize"), ("given", "when", "then"), (
         Row(line_of(TABLE, "Go(1)"), True, "a", (None, "Go", "Missing")),
         Row(line_of(TABLE, "Go(2)"), True, None, (None, "Go", "Published")),
-        Row(line_of(TABLE, "Go(3)"), True, None, (None, "Go", "Gone")),
+        Row(line_of(TABLE, "Go(3)"), True, "", (None, "Go", "Gone")),
         Row(line_of(TABLE, "Go(4)"), False, None, (None, "Go", None)),
         Row(line_of(TABLE, "other,"), False, None, ()))),)
 
@@ -297,14 +297,14 @@ def test_an_async_with_is_a_block_opened_by_with(tmp_path):
     pytest.param("R = A | B\n", [("R", ("A", "B"))], id="an assignment of names joined by |"),
     pytest.param("R: TypeAlias = A | B | C\n", [("R", ("A", "B", "C"))], id="an annotated assignment"),
     pytest.param("type R = A | B\n", [("R", ("A", "B"))], id="a type statement"),
-    pytest.param("R = A\n", [], id="a single name is an alias, not a union"),
-    pytest.param("type R = A\n", [], id="a type statement of a single name is an alias"),
+    pytest.param("R = A\n", [("R", ("A",))], id="a single name is an alias, listed with its one name"),
+    pytest.param("type R = A\n", [("R", ("A",))], id="a type statement of a single name is an alias too"),
     pytest.param("R = A | m.B\n", [], id="a member that is not a plain name"),
     pytest.param("R = A | None\n", [], id="None is a literal, not a plain name"),
     pytest.param("R: TypeAlias\n", [], id="an annotation with no value"),
     pytest.param("def f():\n    R = A | B\n", [], id="a union inside a function is not at module level"),
 ])
-def test_a_union_is_a_module_level_alias_of_two_or_more_plain_names(tmp_path, text, unions):
+def test_a_module_level_alias_of_plain_names_is_listed_with_its_names(tmp_path, text, unions):
     assert [(u.name, u.members) for u in parsed(tmp_path, text).unions] == unions
 
 
@@ -387,7 +387,7 @@ def test_the_names_a_file_defines_as_functions_at_module_level_are_listed(tmp_pa
 ])
 def test_only_files_are_listed_as_source(tmp_path, make, listed):
     make(tmp_path)
-    assert FsSourceTree(FileSystem()).paths(tmp_path) == listed
+    assert FsSourceTree(FileSystem()).paths(tmp_path, ".py") == listed
 
 
 def functions_of(tmp_path: Path, text: str):
@@ -398,9 +398,17 @@ def test_a_function_counts_its_real_statements_nested_ones_too_and_not_a_docstri
     text = ('def a(x):\n    """Doc."""\n    if x:\n        return 1\n    return 2\n\n'
             'def b():\n    """Doc."""\n    pass\n\ndef c():\n    ...\n\nclass K:\n    def m(self):\n        return 1\n')
     found = functions_of(tmp_path, text)
-    assert (found["a"].statements, found["b"].statements, found["c"].statements, found["m"].statements) == (3, 0, 0, 1)
+    assert (found["a"].real_statements, found["b"].real_statements, found["c"].real_statements,
+            found["m"].real_statements) == (3, 0, 0, 1)
+    assert (found["a"].inert, found["b"].inert, found["c"].inert) == (1, 2, 1)
     assert (found["b"].shape, found["c"].shape) == ("", "")
     assert (found["a"].owner, found["m"].owner) == ("", "K")
+
+
+def test_the_files_listed_are_those_whose_name_ends_in_the_extension_given(tmp_path):
+    (tmp_path / "a.py").write_text("")
+    (tmp_path / "b.pas").write_text("")
+    assert FsSourceTree(FileSystem()).paths(tmp_path, ".pas") == [("b.pas",)]
 
 
 def test_two_functions_have_one_shape_when_only_formatting_docstrings_and_local_names_differ(tmp_path):

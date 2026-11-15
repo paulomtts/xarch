@@ -117,7 +117,7 @@ def untested(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Pr
         only_exceptions = bool(file.classes) and all((steps, c.name) in raised for c in file.classes) and not any(
             not f.owner for f in file.functions)
         if (tier_name is None or (steps, tier_name) in reached or dotted(file.path, profile.language.marks)[1] or only_exceptions
-                or not any(f.statements for f in file.functions)):
+                or not any(f.real_statements for f in file.functions)):
             continue
         where = place(profile, steps)
         assert where is not None

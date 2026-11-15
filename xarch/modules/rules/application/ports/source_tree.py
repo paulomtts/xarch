@@ -15,8 +15,8 @@ class SourceTree(Protocol):
         """The roots that are no folder, in the order given."""
         ...
 
-    def paths(self, root: Path) -> list[tuple[str, ...]]:
-        """The path below root of every source file, sorted."""
+    def paths(self, root: Path, extension: str) -> list[tuple[str, ...]]:
+        """The path below root of every source file, a file whose name ends in extension, sorted."""
         ...
 
     def read(self, root: Path, paths: list[tuple[str, ...]], table: CaseTable | None = None) -> list[SourceFile]:

@@ -26,7 +26,7 @@ class FakeSourceTree:
     def absent(self, roots: Iterable[Path]) -> list[Path]:
         return [root for root in roots if root not in self._trees]
 
-    def paths(self, root: Path) -> list[tuple[str, ...]]:
+    def paths(self, root: Path, extension: str) -> list[tuple[str, ...]]:
         return [tuple(rel.split("/")) for rel in sorted(self._trees[root])]
 
     def read(self, root: Path, paths: list[tuple[str, ...]], table: CaseTable | None = None) -> list[SourceFile]:

@@ -58,7 +58,7 @@ def violations(files: Iterable[SourceFile], profile: Profile, root: str) -> list
     for file, steps, _ in checked:
         src = place(profile, steps)
         assert src is not None and src.part is not None
-        if steps in touching or file.path[-1] == profile.language.package_file or not any(f.statements for f in file.functions):
+        if steps in touching or file.path[-1] == profile.language.package_file or not any(f.real_statements for f in file.functions):
             continue
         shown = " or ".join(dict.fromkeys(f"{t.part}/" for t in profile.must_import[src.part]))
         found_violations.append(Violation(
@@ -102,7 +102,7 @@ def tier_violations(tests: Iterable[SourceFile], app: Iterable[SourceFile], prof
         for file, steps, _ in parsed:
             where = tested(profile, file.path)
             if (where.tier is None or where.tier.name != name or not where.is_test or steps in reaching
-                    or not any(f.statements for f in file.functions)):
+                    or not any(f.real_statements for f in file.functions)):
                 continue
             found.append(Violation(file.name, 0, f"a{'n' if name[:1] in 'aeiou' else ''} {name} test imports nothing "
                                                  f"from {shown}, directly or through test code it imports "

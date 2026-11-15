@@ -92,10 +92,16 @@ class Comment:
 
 @dataclass(frozen=True)
 class Union:
-    """A module-level `Name = A | B | ...` of plain names, and the line it is on."""
+    """A module-level name bound to one plain name or to plain names joined as alternatives (`Name = A | B | ...`),
+    and the line it is on; it is a union when it joins two or more (see is_union)."""
     line: int
     name: str
     members: tuple[str, ...]
+
+    @property
+    def is_union(self) -> bool:
+        """Whether it joins two names or more, rather than naming one."""
+        return len(self.members) > 1
 
 
 Ref = tuple[str, ...] | None
@@ -194,13 +200,19 @@ class Class:
 @dataclass(frozen=True)
 class Row:
     """One element of the rows of a table, and the line it is on. param is whether it is a call of the table's row
-    (a bare tuple or anything else is not); id is its id keyword when that is a non-empty string literal, else None; cells
+    (a bare tuple or anything else is not); id is its id keyword when that is a string literal, as written, else None
+    (see given_id); cells
     holds the name that heads each positional value (the callee of a call, a bare name, the last name of an
     attribute), None where a value has none."""
     line: int
     param: bool
     id: str | None
     cells: tuple[str | None, ...]
+
+    @property
+    def given_id(self) -> str | None:
+        """Its id when it says something: a literal of blanks alone is no id."""
+        return self.id if self.id is not None and self.id.strip() else None
 
 
 @dataclass(frozen=True)
@@ -240,10 +252,11 @@ class SoleCall:
 class Function:
     """A function at module level or in a class: its tables, every name its body uses (`mentions`), and each
     statement of its body that holds a block of its own, as (line, the keyword that opens it); asserts: its body holds
-    an assertion. owner is the class it is defined in ("" at module level). statements counts the real
-    statements of its body: every statement, nested ones included, but a docstring, `pass` and a bare `...`. shape
-    is its code with the docstring dropped and every local name (its parameters and what it binds) numbered in order
-    of appearance, as one text; "" when statements is 0. decorated: it has a decorator; signature: its parameters;
+    an assertion. owner is the class it is defined in ("" at module level). statements counts the statements of its
+    body, nested ones included, and inert those of them that do nothing (a docstring, a statement that only fills a
+    place), as the reader of the language tells them; its real statements are the others (see real_statements).
+    shape is the reader's fingerprint of its code, the same for two functions the reader holds the same code (see the
+    reader); "" when it has no real statement. decorated: it has a decorator; signature: its parameters;
     sole_call: the one call its whole body makes, None when it does not (see SoleCall). returns_named is every name
     its return annotation mentions, by its last step alone, a string annotation read as the expression it holds."""
     line: int
@@ -259,6 +272,12 @@ class Function:
     signature: Signature = Signature()
     sole_call: SoleCall | None = None
     returns_named: frozenset[str] = frozenset()
+    inert: int = 0
+
+    @property
+    def real_statements(self) -> int:
+        """How many statements of its body do something."""
+        return self.statements - self.inert
 
 
 @dataclass(frozen=True)
