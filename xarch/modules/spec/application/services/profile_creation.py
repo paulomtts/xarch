@@ -17,6 +17,7 @@ from xarch.modules.spec.application.ports.profile_output import ProfileOutput
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.contract import NewProfile
 from xarch.modules.spec.domain.errors import InvalidArchitecture, NewProfileRefused, UnknownProfile
+from xarch.modules.spec.domain.values import ProfileCopy
 
 
 class ProfileCreationService:
@@ -27,9 +28,8 @@ class ProfileCreationService:
     def __init__(self, files: ArchitectureFiles, architectures: ArchitectureService, output: ProfileOutput):
         self._files, self._architectures, self._output = files, architectures, output
 
-    def create(self, cmd: NewProfile) -> tuple[Path, Path, tuple[str, ...], str]:
-        """The folder written, the profile file in it, every file written (by its path in the folder) and the profile
-        as pyproject.toml records it; raises NewProfileRefused, UnknownProfile or InvalidArchitecture."""
+    def create(self, cmd: NewProfile) -> ProfileCopy:
+        """Raises NewProfileRefused, UnknownProfile or InvalidArchitecture."""
         if not valid_name(cmd.name):
             raise NewProfileRefused(f"'{cmd.name}' is not a profile name: use letters, digits, '-' and '_', starting "
                                     "with a letter or a digit")
@@ -53,4 +53,4 @@ class ProfileCreationService:
             raise NewProfileRefused(f"{taken}: nothing was written; `new` writes only new files, so pass "
                                     "`--out <folder>` to write somewhere else, or choose another name")
         self._output.write(folder, outputs)
-        return folder, folder / profile, tuple(outputs), recorded(folder / profile, cmd.root, Path.cwd())
+        return ProfileCopy(folder, profile, tuple(pointed), recorded(folder / profile, cmd.root, Path.cwd()))

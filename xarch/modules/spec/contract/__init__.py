@@ -15,7 +15,7 @@ __all__ = ["Entry", "Repeating", "Skeleton", "DocFile", "Docs", "ProjectFiles", 
            "SelectProfile", "ProfileSelected", "ProfileRefused",
            "NoProfileChosen", "SelectResult", "MigrateProfile", "MigratedFile", "Migrated", "MigrationRefused",
            "MigrateResult", "Shown", "Symbol", "Explain", "FormatExplained", "KeyExplained", "UnknownKey",
-           "ExplainResult", "ViewProfile", "ProfileViewed", "ViewResult", "CheckProfile", "Problem", "ProfileChecked",
+           "ExplainResult", "ViewProfile", "ProfileViewed", "ViewResult", "CheckProfile", "LOAD", "EXAMPLES", "Problem", "ProfileChecked",
            "CheckResult", "NewProfile", "ProfileCreated", "NewResult"]
 
 
@@ -317,6 +317,10 @@ class CheckProfile:
     """Validate a profile without an app: target as for ViewProfile."""
     app: Path
     target: str | None = None
+
+
+LOAD, EXAMPLES = "load", "examples"
+"""The checks a Problem names: the loader, which finds every problem at once, and the examples' imports."""
 
 
 @dataclass(frozen=True)

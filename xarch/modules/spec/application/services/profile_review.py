@@ -7,10 +7,7 @@ from xarch.modules.spec.application.ports.architecture_files import Architecture
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.application.services.profile_selection import ProfileSelectionService
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.values import Architecture, Review
-
-LOAD = "load"
-EXAMPLES = "examples"
+from xarch.modules.spec.domain.values import Loadable, LoadedProfile, Review, Unloadable
 
 
 class ProfileReviewService:
@@ -27,13 +24,13 @@ class ProfileReviewService:
         try:
             self._architectures.load(location)
         except InvalidArchitecture as e:
-            return Review(location, tuple((LOAD, problem) for problem in e.problems), 0, None)
+            return Unloadable(location, e.problems)
         files = self._architectures.pointed(location)
-        found = tuple((EXAMPLES, problem) for problem in self._architectures.check_examples(location))
-        return Review(location, found, len(files), self._architectures.origin(location))
+        return Loadable(location, tuple(self._architectures.check_examples(location)), len(files),
+                        self._architectures.origin(location))
 
-    def view(self, app: Path, target: str | None) -> tuple[str, Architecture, bool]:
-        """The location of the profile, its architecture and whether it is bundled; raises NoProfile, UnknownProfile or
-        InvalidArchitecture."""
+    def view(self, app: Path, target: str | None) -> LoadedProfile:
+        """Raises NoProfile, UnknownProfile or InvalidArchitecture."""
         location = self._selection.location(app, target)
-        return location, self._architectures.load(location), source_of(location, self._files.bundled()).bundled
+        return LoadedProfile(location, self._architectures.load(location),
+                             source_of(location, self._files.bundled()).bundled)

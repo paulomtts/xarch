@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import replace
 from pathlib import Path
 
-from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic import (
     built_by,
     closed_tree,
@@ -32,7 +31,7 @@ from xarch.modules.rules.application.logic.imports import violations
 from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.application.ports.source_tree import SourceTree
 from xarch.modules.rules.domain.errors import RootMissing
-from xarch.modules.rules.domain.values import Enforcement, Profile, SourceFile
+from xarch.modules.rules.domain.values import Checked, Enforcement, Profile, SourceFile
 
 
 class SourceCheckService:
@@ -42,8 +41,7 @@ class SourceCheckService:
     def __init__(self, tree: SourceTree, profiles: Profiles):
         self._tree, self._profiles = tree, profiles
 
-    def check(self, root: Path, package: str, profile: str,
-              tests: Path | None = None) -> tuple[list[Violation], Enforcement]:
+    def check(self, root: Path, package: str, profile: str, tests: Path | None = None) -> Checked:
         """The violations below root and below tests, and the state of the check's enforcement; raises RootMissing
         when either is not a folder.
 
@@ -88,7 +86,7 @@ class SourceCheckService:
         found += closed_tree.violations(paths, rules, shown)
         state = self._enforcement(root, package, profile, rules, app, test_files,
                                   closed_tree.ungoverned(paths, rules, shown), tests_root if tests is not None else None)
-        return found, replace(state, strict=enforcement.strict_findings(state))
+        return Checked(tuple(found), replace(state, strict=enforcement.strict_findings(state)), rules)
 
     def _enforcement(self, root: Path, package: str, location: str, rules: Profile, app: list[SourceFile],
                      tests: list[SourceFile], ungoverned: list[str], tests_root: str | None) -> Enforcement:

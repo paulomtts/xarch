@@ -8,7 +8,7 @@ from xarch.kernel.logic.language import LanguageView
 from xarch.kernel.logic.origin import Origin
 from xarch.kernel.logic.placement import Excluded, Place, Repeat, Target, repeat_of
 from xarch.kernel.logic.testing import Fakes, Framework, ScenarioCoverage, StandIns, TierView
-from xarch.kernel.violations import At, Weak
+from xarch.kernel.violations import At, Violation, Weak
 
 
 @dataclass(frozen=True)
@@ -350,6 +350,15 @@ class Enforcement:
     excluded: tuple[Excluded, ...] = ()
     app: str = ""
     language: str = ""
+
+
+@dataclass(frozen=True)
+class Checked:
+    """What a check found: the violations, in the order the checks found them; the state of its enforcement; and the
+    profile it checked against."""
+    violations: tuple[Violation, ...]
+    enforcement: Enforcement
+    profile: Profile
 
 
 @dataclass(frozen=True)

@@ -423,10 +423,42 @@ class ArchitectureDocument:
 
 
 @dataclass(frozen=True)
-class Review:
-    """What checking a profile found: its location; its problems, each with the check that found it (the loader, or
-    the examples); how many files it points to, and its origin, when it loads."""
+class Unloadable:
+    """A profile checked that does not load: its location, and every problem the loader found, the files it points
+    to included."""
     location: str
-    problems: tuple[tuple[str, str], ...]
+    problems: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class Loadable:
+    """A profile checked that loads: its location, what its examples import that their part may not, how many files
+    it points to, and where it comes from."""
+    location: str
+    example_problems: tuple[str, ...]
     files: int
-    origin: Origin | None
+    origin: Origin
+
+
+Review = Unloadable | Loadable
+"""What checking a profile found."""
+
+
+@dataclass(frozen=True)
+class LoadedProfile:
+    """A profile chosen and loaded: its location as selected, its architecture, and whether it is bundled."""
+    location: str
+    architecture: Architecture
+    bundled: bool
+
+
+@dataclass(frozen=True)
+class ProfileCopy:
+    """A bundled profile copied into the project: the folder written, the name of the profile file in it, every file
+    the bundled profile points to, copied beside it by its path in the folder, and the profile file as pyproject.toml
+    records it."""
+    folder: Path
+    profile: str
+    pointed: tuple[str, ...]
+    location: str
+

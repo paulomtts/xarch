@@ -3,6 +3,7 @@ from __future__ import annotations
 from xarch.kernel.logic.placement import Place
 from xarch.kernel.logic.testing import TierView
 from xarch.modules.rules.application.logic import enforcement
+from xarch.modules.rules.application.logic.verdict import passed
 from xarch.modules.rules.application.services.app_check import AppCheckService
 from xarch.modules.rules.application.services.locate import LocateService
 from xarch.modules.rules.application.services.source_check import SourceCheckService
@@ -57,17 +58,18 @@ class RulesController:
     def check_app(self, cmd: CheckApp) -> CheckAppResult:
         """The whole check of an app; a root or tests folder that is no folder is refused."""
         try:
-            found, enforcement, hints, ok = self._app.check(cmd.root, cmd.profile, cmd.tests, cmd.strict)
+            checked = self._app.check(cmd.root, cmd.profile, cmd.tests)
         except RootMissing as e:
             return NotADirectory(e.root)
-        return AppChecked(tuple(found), _enforcement(enforcement), hints, ok)
+        return AppChecked(checked.violations, _enforcement(checked.enforcement), dict(checked.profile.hints),
+                          passed(checked.violations, checked.enforcement.strict, cmd.strict))
 
     def check(self, cmd: CheckImports) -> CheckResult:
         try:
-            found, enforcement = self._service.check(cmd.root, cmd.package, cmd.profile, cmd.tests)
+            checked = self._service.check(cmd.root, cmd.package, cmd.profile, cmd.tests)
         except RootMissing as e:
             return NotADirectory(e.root)
-        return ImportsChecked(tuple(found), _enforcement(enforcement))
+        return ImportsChecked(checked.violations, _enforcement(checked.enforcement))
 
     def locate(self, cmd: Locate) -> LocateResult:
         """A path outside the project is refused with why."""

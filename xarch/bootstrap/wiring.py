@@ -76,7 +76,7 @@ def build_rules(fs: FileSystem, spec: SpecController, layout: LayoutController) 
     tree, profiles = FsSourceTree(fs), SpecProfiles(spec)
     source = SourceCheckService(tree, profiles)
     return RulesController(source, LocateService(tree, profiles),
-                           AppCheckService(source, LayoutStructure(layout), profiles))
+                           AppCheckService(source, LayoutStructure(layout)))
 
 
 def build_layout(fs: FileSystem, spec: SpecController) -> LayoutController:

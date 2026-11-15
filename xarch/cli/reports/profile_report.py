@@ -16,6 +16,8 @@ from textwrap import fill
 from typing import Any
 
 from xarch.modules.spec.contract import (
+    EXAMPLES,
+    LOAD,
     FormatExplained,
     KeyExplained,
     Migrated,
@@ -140,8 +142,8 @@ def check_lines(checked: ProfileChecked) -> list[str]:
     else:
         where = "custom"
     lines = [f"checking {checked.location} ({where})"]
-    loads = [p for p in checked.problems if p.check == "load"]
-    examples = [p for p in checked.problems if p.check == "examples"]
+    loads = [p for p in checked.problems if p.check == LOAD]
+    examples = [p for p in checked.problems if p.check == EXAMPLES]
     lines += _section("loads", loads, "ok")
     if origin is None:
         lines.append("  examples: not checked: the profile does not load")

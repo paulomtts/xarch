@@ -16,6 +16,8 @@ from xarch.modules.spec.application.services.profile_creation import ProfileCrea
 from xarch.modules.spec.application.services.profile_review import ProfileReviewService
 from xarch.modules.spec.application.services.profile_selection import ProfileSelectionService
 from xarch.modules.spec.contract import (
+    EXAMPLES,
+    LOAD,
     AppChosen,
     CheckProfile,
     CheckResult,
@@ -68,6 +70,7 @@ from xarch.modules.spec.domain.values import (
     Guard,
     Language,
     Layout,
+    Loadable,
     NoComments,
     NoDuplicates,
     NoTwins,
@@ -75,6 +78,7 @@ from xarch.modules.spec.domain.values import (
     PassThrough,
     PrivateImports,
     Tier,
+    Unloadable,
 )
 
 
@@ -148,8 +152,9 @@ class SpecController:
             done = self._migration.migrate(cmd)
         except DomainError as e:
             return MigrationRefused(e.reason)
-        return Migrated(done.folder, done.profile, tuple(MigratedFile(*file) for file in done.files), done.changes,
-                        done.by_hand, done.dry_run)
+        files = (MigratedFile(done.profile, None, 0),
+                 *(MigratedFile(c.copy.destination, c.copy.source, c.rewritten) for c in done.copies))
+        return Migrated(done.folder, done.folder / done.profile, files, done.changes, done.by_hand, cmd.dry_run)
 
     def explain(self, cmd: Explain) -> ExplainResult:
         """The format of a profile, whole or one key; a key the format does not have comes back with the nearest ones."""
@@ -169,13 +174,13 @@ class SpecController:
     def view(self, cmd: ViewProfile) -> ViewResult:
         """The folder tree and import table of a profile; one that cannot be chosen or loaded is refused with why."""
         try:
-            location, architecture, bundled = self._review.view(cmd.app, cmd.target)
+            loaded = self._review.view(cmd.app, cmd.target)
         except NoProfile as e:
             return NoProfileChosen(e.known)
         except DomainError as e:
             return ProfileRefused(e.reason)
-        tree, imports = view(architecture)
-        return ProfileViewed(location, architecture.name, tree, imports, bundled)
+        tree, imports = view(loaded.architecture)
+        return ProfileViewed(loaded.location, loaded.architecture.name, tree, imports, loaded.bundled)
 
     def check_profile(self, cmd: CheckProfile) -> CheckResult:
         """Validates a profile: its problems, all at once, with how it differs from the bundled one it is based on; one
@@ -186,16 +191,19 @@ class SpecController:
             return NoProfileChosen(e.known)
         except DomainError as e:
             return ProfileRefused(e.reason)
-        return ProfileChecked(review.location, tuple(Problem(check, text) for check, text in review.problems),
-                              review.files, review.origin)
+        match review:
+            case Unloadable(location, problems):
+                return ProfileChecked(location, tuple(Problem(LOAD, text) for text in problems), 0, None)
+            case Loadable(location, problems, files, origin):
+                return ProfileChecked(location, tuple(Problem(EXAMPLES, text) for text in problems), files, origin)
 
     def new_profile(self, cmd: NewProfile) -> NewResult:
         """Copies a bundled profile into the project, with its files; a copy that cannot be written is refused with why."""
         try:
-            folder, profile, files, location = self._creation.create(cmd)
+            copy = self._creation.create(cmd)
         except DomainError as e:
             return ProfileRefused(e.reason)
-        return ProfileCreated(folder, profile, files, location)
+        return ProfileCreated(copy.folder, copy.folder / copy.profile, (copy.profile, *copy.pointed), copy.location)
 
 
 def _entries(tree: Layout) -> tuple[Entry, ...]:
