@@ -27,7 +27,8 @@ def test_every_problem_of_a_document_is_listed_naming_the_preset():
         language_of("odd", broken)
     assert caught.value.source == "presets/language/odd.yaml"
     assert [problem.removeprefix("presets/language/odd.yaml: ") for problem in caught.value.problems] == [
-        "unknown key 'extra': use cache, dynamic, extension, interface, namespace, package_file, standard, title",
+        "unknown key 'extra': use branching, cache, call, comment, directives, dynamic, encoding, extension, "
+        "interface, name, namespace, nothing, package_file, private, shebang, special, standard, title",
         "missing `namespace`", "missing `standard`",
         "title: must be a non-empty string",
         "extension: must be a dot and a name, such as .pas",
@@ -42,3 +43,27 @@ def test_a_document_that_is_no_mapping_is_refused():
         language_of("odd", ["x"])
     assert caught.value.problems == (
         "presets/language/odd.yaml: must be a mapping of keys, such as title, extension and package_file",)
+
+
+def test_the_tokens_of_the_code_are_read_when_the_document_gives_them():
+    tokens = {"name": "[a-z]+", "private": "_", "special": "__", "call": "__call__", "nothing": "None",
+              "comment": "//", "directives": ["lint: off"], "shebang": "#!", "encoding": "utf-8",
+              "branching": ["if", "case"]}
+    language = language_of("pascal", DOCUMENT | tokens)
+    assert (language.names, language.private, language.special, language.call, language.nothing, language.comment,
+            language.directives, language.shebang, language.encoding, language.branching) == (
+        "[a-z]+", "_", "__", "__call__", "None", "//", ("lint: off",), "#!", "utf-8", ("if", "case"))
+
+
+@pytest.mark.parametrize("given, problem", [
+    pytest.param({"name": "[a-"}, "name: must be a regular expression", id="a name that is no regular expression"),
+    pytest.param({"directives": "noqa"}, "directives: must be a list of non-empty strings", id="directives not a list"),
+    pytest.param({"branching": ["if", ""]}, "branching: must be a list of non-empty strings", id="an empty keyword"),
+    pytest.param({"comment": ""}, "comment: must be a non-empty string", id="an empty comment marker"),
+])
+def test_a_token_that_is_not_what_its_key_takes_is_a_problem(given, problem):
+    with pytest.raises(InvalidArchitecture) as caught:
+        language_of("odd", DOCUMENT | given)
+    assert [p.removeprefix("presets/language/odd.yaml: ").split(":")[0] for p in caught.value.problems] == [
+        problem.split(":")[0]]
+    assert caught.value.problems[0].removeprefix("presets/language/odd.yaml: ").startswith(problem)

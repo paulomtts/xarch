@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Protocol
 
+from xarch.modules.layout.domain.structure import Naming
+
 
 class Skeleton(Protocol):
     """What the architecture requires to exist, under a profile."""
@@ -16,6 +18,10 @@ class Skeleton(Protocol):
 
     def each_roots(self, profile: str) -> list[tuple[str, ...]]:
         """The folder holding the instances of each repeating folder of the layout, in the order of the profile."""
+        ...
+
+    def naming(self, profile: str) -> Naming:
+        """How the language of the app names a folder."""
         ...
 
     def each_parts(self, profile: str, root: tuple[str, ...]) -> list[tuple[tuple[str, ...], bool]]:

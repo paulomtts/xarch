@@ -19,7 +19,10 @@ from xarch.kernel.logic.testing import CaseTable, Fakes, Fixture, Framework, Sce
 from xarch.modules.rules.domain.values import Profile, SourceFile
 
 PYTHON = LanguageView("Python", ".py", "__init__.py", (("typing", "Protocol"), ("typing_extensions", "Protocol")),
-                  (("importlib", "import_module"), ("importlib", "__import__"), ("builtins", "__import__")))
+                      (("importlib", "import_module"), ("importlib", "__import__"), ("builtins", "__import__")),
+                      "_", "__", "__call__", "None", "#", ("type: ignore", "noqa", "pragma:"), "#!",
+                      r"coding[:=][ \t]*[-\w.]+", ("if", "match", "try", "for", "while"))
+"""Python as its data file says it, for the checks that read the tokens of its code."""
 APP, TESTS = "app", "tests"
 MODULES = Repeat("module", ("modules",))
 EACH_PARTS = {"domain": ("domain",), "contract": ("contract",), "controller": ("application", "controller.py"),

@@ -48,13 +48,13 @@ def weak(app: Iterable[SourceFile], profile: Profile, root: str) -> list[Weak]:
                                                    f"{label(profile, where)} holds classes {key}",
                            f"make {f.name} a method of the class whose rule it is, or move it to "
                            f"{_others(profile, FUNCTIONS)}")
-                      for f in file.functions if not f.owner and not f.name.startswith("_")]
+                      for f in file.functions if not f.owner and profile.language.is_public(f.name)]
         else:
             found += [Weak(RULE, file.name, c.line, f"{c.name} is a class, but {label(profile, where)} holds "
                                                    f"functions {key}",
                            f"move {c.name} to {_others(profile, CLASSES)}, or make what it does functions")
                       for c in file.classes if (steps, c.name) not in found_exceptions
-                      and not _record(c, file)]
+                      and not _record(c, file, profile)]
     return found
 
 
@@ -63,9 +63,9 @@ def _others(profile: Profile, kind: str) -> str:
     return f"a part that holds {kind}: {', '.join(parts)}" if parts else f"a part that holds {kind}"
 
 
-def _record(cls: Class, file: SourceFile) -> bool:
-    """A class with no method but dunder methods that a top-level function of its file returns."""
-    if any(not (m.name.startswith("__") and m.name.endswith("__")) for m in cls.methods):
+def _record(cls: Class, file: SourceFile, profile: Profile) -> bool:
+    """A class with no method but special methods that a top-level function of its file returns."""
+    if any(not profile.language.is_special(m.name) for m in cls.methods):
         return False
     return any(cls.name in f.returns_named for f in file.functions if not f.owner)
 

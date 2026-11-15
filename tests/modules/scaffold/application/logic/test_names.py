@@ -2,6 +2,10 @@
 import pytest
 
 from xarch.modules.scaffold.application.logic.names import valid_name
+from xarch.modules.scaffold.domain.values import Language
+
+PYTHON = Language("Python", "__init__.py", frozenset({"class"}), r"(?!\d)\w+", "_")
+"""Python as its data file says it, with one reserved word."""
 
 
 @pytest.mark.parametrize("name, valid", [
@@ -19,4 +23,4 @@ from xarch.modules.scaffold.application.logic.names import valid_name
     pytest.param("a.b", False, id="a dot is refused"),
 ])
 def test_valid_name(name, valid):
-    assert valid_name(name, {"class"}) == valid
+    assert valid_name(name, PYTHON) == valid

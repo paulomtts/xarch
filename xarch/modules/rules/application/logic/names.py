@@ -31,5 +31,5 @@ def violations(app: Iterable[SourceFile], profile: Profile) -> list[Violation]:
                                                f"{label(profile, where)} must (parts.{where.part}.names)", RULE,
                             f"rename {c.name} to match {shown}, or move it to the part whose kind of class it is")
                   for c in file.classes
-                  if not c.name.startswith("_") and not any(name_matches(p, c.name) for p in patterns)]
+                  if profile.language.is_public(c.name) and not any(name_matches(p, c.name) for p in patterns)]
     return found

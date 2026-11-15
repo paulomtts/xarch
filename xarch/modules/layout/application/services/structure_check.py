@@ -20,12 +20,13 @@ class StructureCheckService:
         roots = self._skeleton.each_roots(profile)
         repeated = [Repeated(each, self._skeleton.each_parts(profile, each),
                              self._disk.instances(root, each)) for each in roots]
+        naming = self._skeleton.naming(profile)
         required = requirements(package, self._skeleton.top_level(profile), repeated,
-                                self._skeleton.top_level_files(profile))
+                                self._skeleton.top_level_files(profile), naming)
         found = missing(required, self._disk.present(root, required))
         if tests is not None:
             for each in roots:
                 found += unmirrored((self._disk.working_folder() / tests).name, package, each, self._disk.below(tests, each),
-                                    set(self._disk.below(root, each)))
+                                    set(self._disk.below(root, each)), naming)
         return found
 

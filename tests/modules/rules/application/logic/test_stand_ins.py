@@ -22,7 +22,7 @@ INTEGRATION_TEST = "modules/docs/application/test_publish.py"
 
 
 def problems(app, tests=(FAKE,), checked=PROFILE, has_tests=True) -> list[str]:
-    return [str(v) for v in violations(list(app), list(tests), checked, "app", has_tests)]
+    return [str(v) for v in violations(list(app), list(tests), checked, "app", "tests" if has_tests else None)]
 
 
 def ported(*classes: Class, path: str = PORT_FILE):
@@ -266,4 +266,4 @@ def test_one_fake_serves_read_ports_of_the_same_name_in_two_instances():
                  "use its fake FakeRepo", id="a fixture's mock of a read port"),
 ])
 def test_a_violation_names_its_rule_and_says_what_to_do(app, tests, fix):
-    assert [(v.rule, v.fix) for v in violations(app, tests, PROFILE, "app")] == [("stand-ins", fix)]
+    assert [(v.rule, v.fix) for v in violations(app, tests, PROFILE, "app", "tests")] == [("stand-ins", fix)]

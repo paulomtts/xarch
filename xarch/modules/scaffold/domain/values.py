@@ -23,8 +23,11 @@ class Touched:
 @dataclass(frozen=True)
 class Language:
     """The language of the app as scaffolding needs it: how a message names it, the file it has stand for each folder
-    (which every folder of the skeleton holds), and the words no name of an instance may be."""
+    (which every folder of the skeleton holds), the words no name of an instance may be, what a name may be (a regular
+    expression) and how a private one starts ("" for either: the language does not say)."""
     title: str
     package_file: str
     reserved: frozenset[str]
+    names: str = ""
+    private: str = ""
 

@@ -85,7 +85,7 @@ class Profile:
 
 @dataclass(frozen=True)
 class Comment:
-    """A `#` comment as written, and the line it is on."""
+    """A line comment as written, its marker included, and the line it is on."""
     line: int
     text: str
 
@@ -239,8 +239,8 @@ class SoleCall:
 @dataclass(frozen=True)
 class Function:
     """A function at module level or in a class: its tables, every name its body uses (`mentions`), and each
-    `if`, `match`, `try`, `for` or `while` statement of its body as (line, keyword); asserts: its body holds an
-    `assert` statement. owner is the class it is defined in ("" at module level). statements counts the real
+    statement of its body that holds a block of its own, as (line, the keyword that opens it); asserts: its body holds
+    an assertion. owner is the class it is defined in ("" at module level). statements counts the real
     statements of its body: every statement, nested ones included, but a docstring, `pass` and a bare `...`. shape
     is its code with the docstring dropped and every local name (its parameters and what it binds) numbered in order
     of appearance, as one text; "" when statements is 0. decorated: it has a decorator; signature: its parameters;
@@ -250,7 +250,7 @@ class Function:
     name: str
     tables: tuple[Table, ...] = ()
     mentions: frozenset[str] = frozenset()
-    branches: tuple[tuple[int, str], ...] = ()
+    blocks: tuple[tuple[int, str], ...] = ()
     asserts: bool = False
     owner: str = ""
     statements: int = 0

@@ -44,13 +44,17 @@ class Skeleton:
     """The layout as entries: top_level below the app root, with every repeating folder empty; repeating, the
     repeating folders in the order of the profile; entry_point, the top-level folder of the part marked `entry` ("" if
     none); package_file, the file the language of the app has stand for each folder, which a folder of the layout holds;
-    language, how the language of the app is named; reserved, the words no name may be."""
+    language, how the language of the app is named; reserved, the words no name may be; names, what a name may be in
+    it (a regular expression); private, how a name private to its folder starts ("" for each: the language does not
+    say)."""
     top_level: tuple[Entry, ...]
     repeating: tuple[Repeating, ...]
     entry_point: str
     package_file: str = ""
     language: str = ""
     reserved: frozenset[str] = frozenset()
+    names: str = ""
+    private: str = ""
 
 
 @dataclass(frozen=True)

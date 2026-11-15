@@ -28,6 +28,17 @@ METHOD = re.compile(r"\.(?P<name>[A-Za-z_][A-Za-z0-9_]*)\(\)")
 FUNCTION_PATTERN = re.compile(r"[A-Za-z0-9_*]+")
 
 
+
+def is_name(text: str, language: Language) -> bool:
+    """Whether text is a name the language allows, as its data file says (any text when it does not say)."""
+    return re.fullmatch(language.names or ".+", text) is not None
+
+
+def is_special(name: str, language: Language) -> bool:
+    """Whether a name is one the language reserves for itself: it starts and ends as its data file says such a name
+    does."""
+    return bool(language.special) and name.startswith(language.special) and name.endswith(language.special)
+
 def file_pattern(language: Language) -> re.Pattern[str]:
     """What a file name pattern is: letters, digits, `_`, `.`, `-` and `*`, ending in the language's extension."""
     return re.compile(rf"[A-Za-z0-9_.*-]+{re.escape(language.extension)}")
@@ -348,7 +359,7 @@ def part_names(value: Any, declared: set[str], where: str, problems: list[str]) 
     return found
 
 
-def case_table(value: Any, where: str, problems: list[str]) -> CaseTable | None:
+def case_table(value: Any, where: str, problems: list[str], language: Language) -> CaseTable | None:
     if not isinstance(value, Mapping):
         problems.append(f"{where}: must be a mapping {{decorator, row, id}}, and optionally keywords: the dotted names "
                         "of the table's decorator and of its row, the keyword of a row's id, and the keywords the "
@@ -359,11 +370,11 @@ def case_table(value: Any, where: str, problems: list[str]) -> CaseTable | None:
     problems += [f"{where}: missing `{key}`" for key in required_of(TABLE) if key not in value]
     decorator = dotted(value["decorator"], f"{where}.decorator", problems) if "decorator" in value else None
     row = dotted(value["row"], f"{where}.row", problems) if "row" in value else None
-    if "id" in value and not (isinstance(value["id"], str) and value["id"].isidentifier()):
+    if "id" in value and not (isinstance(value["id"], str) and is_name(value["id"], language)):
         problems.append(f"{where}.id: must be a keyword name")
     keywords = value.get("keywords")
     if "keywords" in value and not (isinstance(keywords, list) and len(keywords) == 2 and len(set(keywords)) == 2
-                                    and all(isinstance(k, str) and k.isidentifier() for k in keywords)):
+                                    and all(isinstance(k, str) and is_name(k, language) for k in keywords)):
         problems.append(f"{where}.keywords: must be two keyword names, the decorator's names and its rows, "
                         "such as [names, rows]")
     if len(problems) != count or decorator is None or row is None:
@@ -408,7 +419,8 @@ def dotted_names(value: Any, where: str, problems: list[str]) -> tuple[tuple[str
     return tuple(found)
 
 
-def fixtures(value: Any, where: str, problems: list[str], calls: str = "mocks") -> tuple[Fixture, ...] | None:
+def fixtures(value: Any, where: str, problems: list[str], language: Language,
+             calls: str = "mocks") -> tuple[Fixture, ...] | None:
     """The parameters whose methods build mocks, each as {<calls>: [...], autospec: [...]}; `calls` is the key naming
     the methods that build a mock."""
     if not isinstance(value, Mapping) or not value:
@@ -419,7 +431,7 @@ def fixtures(value: Any, where: str, problems: list[str], calls: str = "mocks") 
     count = len(problems)
     found: list[Fixture] = []
     for name, spec in value.items():
-        if not isinstance(name, str) or not name.isidentifier():
+        if not isinstance(name, str) or not is_name(name, language):
             problems.append(f"{where}: {name!r} is not a parameter name")
             continue
         at = f"{where}.{name}"
@@ -429,8 +441,8 @@ def fixtures(value: Any, where: str, problems: list[str], calls: str = "mocks") 
         before = len(problems)
         problems += unknown_keys(spec, {calls, "autospec"}, at)
         problems += [f"{at}: missing `{calls}`"] if calls not in spec else []
-        mocks = identifiers(spec[calls], f"{at}.{calls}", problems, "method", "[build]") if calls in spec else None
-        autospec = (identifiers(spec["autospec"], f"{at}.autospec", problems, "method", "[build]")
+        mocks = identifiers(spec[calls], f"{at}.{calls}", problems, "method", "[build]", language) if calls in spec else None
+        autospec = (identifiers(spec["autospec"], f"{at}.autospec", problems, "method", "[build]", language)
                     if "autospec" in spec else ())
         problems += [f"{at}.autospec: {method!r} is also listed in {calls}" for method in autospec or ()
                      if mocks and method in mocks]
@@ -439,14 +451,15 @@ def fixtures(value: Any, where: str, problems: list[str], calls: str = "mocks") 
     return tuple(found) if len(problems) == count else None
 
 
-def identifiers(value: Any, where: str, problems: list[str], noun: str, example: str) -> tuple[str, ...] | None:
+def identifiers(value: Any, where: str, problems: list[str], noun: str, example: str,
+                language: Language) -> tuple[str, ...] | None:
     """A non-empty list of names, each once, each a plain identifier: the keywords of a call, the methods of an object."""
     if not isinstance(value, list) or not value:
         problems.append(f"{where}: must be a list of {noun} names such as {example}")
         return None
     found: list[str] = []
     for item in value:
-        if not isinstance(item, str) or not item.isidentifier():
+        if not isinstance(item, str) or not is_name(item, language):
             problems.append(f"{where}: {item!r} is not a {noun} name")
         elif item in found:
             problems.append(f"{where}: {item!r} is listed twice")
@@ -470,7 +483,7 @@ def framework_patterns(value: Any, problems: list[str], where: str, known: Colle
     skips = dotted_names(value["skips"], f"{where}.skips", problems) if "skips" in value else ()
     functions = value.get("functions")
     if "functions" in value and not (isinstance(functions, str) and FUNCTION_PATTERN.fullmatch(functions)
-                                     and functions.replace("*", "x").isidentifier()):
+                                     and is_name(functions.replace("*", "x"), language)):
         problems.append(f"{where}.functions: must be a function name pattern: a name with `*` for any text")
     if len(problems) != count or files is None or skips is None:
         return None
@@ -499,13 +512,13 @@ def join_and(items: list[str]) -> str:
     return items[0] if len(items) == 1 else f"{', '.join(items[:-1])} and {items[-1]}"
 
 
-def column_names(value: Any, where: str, problems: list[str]) -> tuple[str, str, str] | None:
+def column_names(value: Any, where: str, problems: list[str], language: Language) -> tuple[str, str, str] | None:
     if not isinstance(value, list) or len(value) != 3 or not all(isinstance(v, str) for v in value):
         problems.append(f"{where}: must be a list of three names, such as [given, when, then]")
         return None
     count = len(problems)
     for i, name in enumerate(value):
-        if not name.isidentifier():
+        if not is_name(name, language):
             problems.append(f"{where}: {name!r} is not a name a parameter can have")
         elif name in value[:i]:
             problems.append(f"{where}: {name!r} is listed twice")
@@ -588,7 +601,7 @@ def forbidden_names(value: Any, where: str, problems: list[str],
     found: list[tuple[str, ...]] = []
     for item in value:
         method = METHOD.fullmatch(item) if isinstance(item, str) else None
-        if method is not None and method["name"].startswith("__") and method["name"].endswith("__"):
+        if method is not None and is_special(method["name"], language):
             problems.append(f"{where}: {item!r} is a dunder method, which no code calls by name")
         elif method is None and isinstance(item, str) and item.startswith(".") and NAME_OR_DOTTED.fullmatch(item[1:]) \
                 and "." not in item[1:]:

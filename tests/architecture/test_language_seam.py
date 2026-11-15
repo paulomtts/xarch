@@ -22,8 +22,18 @@ because it has no key for them. They are looked for in:
                           name, read as snake_case and camelCase words, for NAMES_BESIDES and the title of the language
 
 `Protocol` is a word of the literals and docstrings, not of the identifiers: xarch's own ports are typing.Protocol, and
-its own imports of the standard library are of no concern to the guard. EXEMPT names every file or word that stays, with
-why; a stale entry fails the test. Nothing is exempt by pattern but the reader and the platform.
+its own imports of the standard library are of no concern to the guard.
+
+The data file also gives the tokens of the language's code, which are looked for by their kind:
+
+    a literal that is a token     the prefix of a private name, the affix of a special one, the special method calling
+                                  an instance runs, the annotation of no value, the comment marker, the shebang: a
+                                  string literal equal to one is the language's rule written in xarch's code
+    a directive word              the comment texts its tools read, as whole words in literals and docstrings
+    a branching keyword           quoted as code (`if`) in literals and docstrings: plain prose may say "if"
+
+EXEMPT names every file or word that stays, with why; a stale entry fails the test. Nothing is exempt by pattern but
+the reader and the platform.
 """
 import ast
 import re
@@ -81,7 +91,8 @@ def test_reading(tmp_path, text, modules):
 LANGUAGE = SRC / "architectures" / "presets" / "language" / "python.yaml"
 WORDS_BESIDES = {"stdlib_module_names": "the interpreter's list of the standard library, which no data file can hold "
                                         "current: the platform reads it and the reader marks each import with it"}
-NAMES_BESIDES = {"iskeyword", "kwlist"}
+NAMES_BESIDES = {"iskeyword", "kwlist", "isidentifier"}
+"""Identifiers of the interpreter's own tests of a name against the language's rules, which no data file can hold."""
 IDENTIFIER_FREE = {"protocol", "typing", "typing_extensions"}
 """Words that are literal text and docstring prose to the guard but may be identifiers: xarch's own ports are
 typing.Protocol."""
@@ -91,6 +102,11 @@ SEAM = ("modules/rules/adapters/fs_source_tree.py", "platform/")
 EXEMPT: dict[tuple[str, str], str] = {
     ("__main__.py", "python"): "`python -m xarch` is how the interpreter that runs xarch starts it, not the language "
                                "xarch checks",
+    ("modules/rules/application/logic/scenarios.py", "_"): "the separator of snake_case, which the profile format "
+                                                            "defines `{name}` to be in the test file of a use case "
+                                                            "(guards.scenario-coverage.file); it is no private prefix, "
+                                                            "and a profile in another language would still say "
+                                                            "{name} in that case",
 }
 
 
@@ -106,6 +122,36 @@ def language_words() -> tuple[re.Pattern[str], set[str]]:
     pattern = re.compile(rf"(?<![A-Za-z0-9_])(?:{title}|{whole})(?![A-Za-z0-9_])|{ending}(?![A-Za-z0-9_])")
     return pattern, {data["title"].lower(), data["namespace"], *{s.lower() for s in steps} - IDENTIFIER_FREE,
                      *WORDS_BESIDES, *NAMES_BESIDES}
+
+
+TOKEN_KEYS = ("private", "special", "call", "nothing", "comment", "shebang")
+"""The keys of the data file whose value is a token of the language's code."""
+
+
+def language_tokens() -> tuple[set[str], re.Pattern[str]]:
+    """The tokens a literal may not be, and the pattern of the directive words and of the branching keywords quoted as
+    code."""
+    data = yaml.safe_load(LANGUAGE.read_text(encoding="utf-8"))
+    tokens = {data[key] for key in TOKEN_KEYS}
+    directives = "|".join(sorted((re.escape(word) for word in data["directives"]), key=len, reverse=True))
+    branching = "|".join(re.escape(word) for word in data["branching"])
+    return tokens, re.compile(rf"(?<![A-Za-z0-9_])(?:{directives})(?![A-Za-z0-9_])|`(?:{branching})`")
+
+
+def token_leaks(root: Path) -> list[tuple[str, int, str]]:
+    """(file below root, line, token) of every literal that is a token of the language, and every directive word or
+    branching keyword quoted as code, outside the seam."""
+    tokens, words = language_tokens()
+    found: list[tuple[str, int, str]] = []
+    for path in sorted(root.rglob("*.py")):
+        relative = path.relative_to(root).as_posix()
+        if relative.startswith(("architectures/", *SEAM)):
+            continue
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                found += [(relative, node.lineno, node.value)] if node.value in tokens else []
+                found += [(relative, node.lineno, match[0]) for match in words.finditer(node.value)]
+    return found
 
 
 def parts_of(identifier: str) -> set[str]:
@@ -148,7 +194,28 @@ def test_no_file_outside_the_reader_and_the_platform_names_the_language_of_the_d
     pattern, names = language_words()
     found = {(file, word) for file, _, word in leaks(SRC, pattern, names)}
     assert sorted(found - set(EXEMPT)) == []
-    assert sorted(set(EXEMPT) - found) == []
+    assert sorted(set(EXEMPT) - found - {(file, token) for file, _, token in token_leaks(SRC)}) == []
+
+
+def test_no_file_outside_the_reader_and_the_platform_writes_a_token_of_the_language_of_the_data_file():
+    found = {(file, token) for file, _, token in token_leaks(SRC)}
+    assert sorted(found - set(EXEMPT)) == []
+    assert sorted(set(EXEMPT) - found - {(file, word) for file, _, word in leaks(SRC, *language_words())}) == []
+
+
+@pytest.mark.parametrize("text, found", [
+    pytest.param('PRIVATE = "_"\nx = name.startswith(("_", "."))\n', ["_", "_"], id="a literal that is the private prefix"),
+    pytest.param('x = name.startswith("__") and name.endswith("__")\n', ["__", "__"], id="the affix of a special name"),
+    pytest.param('A = "__call__"\nB = "None"\nC = "#"\nD = "#!"\n', ["__call__", "None", "#", "#!"],
+                 id="the call method, no value, the comment marker and the shebang"),
+    pytest.param('def f():\n    """Allowed: `# noqa` and `# type: ignore`; no `if` or `for`."""\n',
+                 ["noqa", "type: ignore", "`if`", "`for`"], id="directive words and quoted branching keywords"),
+    pytest.param('def f():\n    """None if nothing is found, for a start."""\nA = "a_b"\n', [],
+                 id="prose and a literal that only holds a token are no leak"),
+])
+def test_the_guard_finds_a_token_of_the_language_where_it_is_written(tmp_path, text, found):
+    (tmp_path / "tokens.py").write_text(text)
+    assert sorted(token for _, _, token in token_leaks(tmp_path)) == sorted(found)
 
 
 def test_the_words_are_read_from_the_data_file_of_the_language():

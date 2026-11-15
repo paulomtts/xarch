@@ -166,8 +166,9 @@ def _comments(text: str) -> tuple[Comment, ...]:
     return tuple(Comment(t.start[0], t.string) for t in tokens if t.type == tokenize.COMMENT)
 
 
-_BRANCHES = {ast.If: "if", ast.Match: "match", ast.Try: "try", ast.TryStar: "try", ast.For: "for",
-             ast.AsyncFor: "for", ast.While: "while"}
+_BLOCKS = {ast.If: "if", ast.Match: "match", ast.Try: "try", ast.TryStar: "try", ast.For: "for",
+           ast.AsyncFor: "for", ast.While: "while", ast.With: "with", ast.AsyncWith: "with"}
+"""Each statement that holds a block of statements of its own, by the keyword that opens it."""
 
 
 def _functions(tree: ast.Module, form: CaseTable | None) -> tuple[Function, ...]:
@@ -188,13 +189,13 @@ def _function(node: ast.FunctionDef | ast.AsyncFunctionDef, scope: list[Scope], 
     inside = [n for statement in node.body for n in ast.walk(statement)]
     mentions = frozenset(n.id if isinstance(n, ast.Name) else n.attr for n in inside
                          if isinstance(n, (ast.Name, ast.Attribute)))
-    branches = tuple(sorted((n.lineno, _BRANCHES[type(n)]) for n in inside if type(n) in _BRANCHES))
+    blocks = tuple(sorted((n.lineno, _BLOCKS[type(n)]) for n in inside if type(n) in _BLOCKS))
     tables = tuple(table for d in node.decorator_list if form is not None
                    and (table := _table(d, scope, lists, form)) is not None)
     asserts = any(isinstance(n, ast.Assert) for n in inside)
     statements, shape = _shape(node)
     returns = _named(node.returns) if node.returns is not None else frozenset()
-    return Function(node.lineno, node.name, tables, mentions, branches, asserts, owner, statements, shape,
+    return Function(node.lineno, node.name, tables, mentions, blocks, asserts, owner, statements, shape,
                     bool(node.decorator_list), _signature(node), _sole_call(node), returns)
 
 

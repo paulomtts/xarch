@@ -44,7 +44,7 @@ def violations(app: Iterable[SourceFile], profile: Profile) -> list[Violation]:
         if where is None or where.part is None:
             continue
         for cls in sorted(file.classes, key=lambda c: c.line):
-            if len(cls.fields) >= least and not cls.name.startswith("_") \
+            if len(cls.fields) >= least and profile.language.is_public(cls.name) \
                     and not any(base in profile.language.interface for base in cls.bases):
                 groups.setdefault(cls.fields, []).append((file, cls, where))
     found: list[Violation] = []

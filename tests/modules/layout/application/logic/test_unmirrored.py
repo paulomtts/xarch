@@ -2,6 +2,10 @@
 import pytest
 
 from xarch.modules.layout.application.logic.unmirrored import hidden, unmirrored
+from xarch.modules.layout.domain.structure import Naming
+
+PYTHON_NAMING = Naming(r"(?!\d)\w+", "_")
+"""How Python names a folder, as its data file says."""
 
 
 @pytest.mark.parametrize("path, is_hidden", [
@@ -11,12 +15,12 @@ from xarch.modules.layout.application.logic.unmirrored import hidden, unmirrored
     pytest.param(("docs", "domain"), False, id="a plain folder is not hidden"),
 ])
 def test_hidden(path, is_hidden):
-    assert hidden(path) == is_hidden
+    assert hidden(path, PYTHON_NAMING) == is_hidden
 
 
 def test_unmirrored_reports_each_test_folder_that_mirrors_no_folder_of_the_app_in_order():
     folders = [("docs", "gone"), ("docs",), ("docs", "__pycache__"), ("ghost",), ("docs", "domain")]
-    found = unmirrored("tests", "app", ("modules",), folders, {("docs",), ("docs", "domain")})
+    found = unmirrored("tests", "app", ("modules",), folders, {("docs",), ("docs", "domain")}, PYTHON_NAMING)
     assert [(str(v), v.rule, v.fix) for v in found] == [
         ("tests/modules/docs/gone: mirrors no folder of the app (app/modules/docs/gone)", "test-tree",
          "create app/modules/docs/gone/ in the app, or move what it holds to the folder that mirrors its subject, "

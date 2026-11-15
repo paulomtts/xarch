@@ -23,3 +23,12 @@ class Repeated:
     root: tuple[str, ...]
     parts: Iterable[tuple[tuple[str, ...], bool]]
     instances: Iterable[str]
+
+
+@dataclass(frozen=True)
+class Naming:
+    """How the language of the app names a folder: what a name may be (a regular expression), and how a name private
+    to its folder starts; "" for either: the language does not say."""
+    names: str = ""
+    private: str = ""
+

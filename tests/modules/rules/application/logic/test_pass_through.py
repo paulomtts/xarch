@@ -2,7 +2,7 @@
 listed as weak, never as a violation."""
 import pytest
 
-from tests.modules.rules.builders import profile, source
+from tests.modules.rules.builders import PYTHON, profile, source
 from xarch.kernel.violations import Weak
 from xarch.modules.rules.application.logic.pass_through import forwards, weak
 from xarch.modules.rules.domain.values import Function, Signature, SoleCall
@@ -79,7 +79,7 @@ def test_a_part_that_is_a_file_and_a_folder_part_are_read_alike():
     pytest.param(SoleCall(('self', 'repo', 'get'), ('', 'id')), "", id="a call inside the arguments"),
 ])
 def test_a_method_forwards_when_its_one_call_passes_each_parameter_once_to_a_collaborator(call, callee):
-    assert forwards(Function(1, "get", owner="S", signature=TAKES_ID, sole_call=call)) == callee
+    assert forwards(Function(1, "get", owner="S", signature=TAKES_ID, sole_call=call), PYTHON) == callee
 
 
 @pytest.mark.parametrize("function, callee", [
@@ -99,7 +99,7 @@ def test_a_method_forwards_when_its_one_call_passes_each_parameter_once_to_a_col
     pytest.param(Function(1, "e", sole_call=SoleCall(("self", "r", "e"))), "", id="no first parameter to hold it"),
 ])
 def test_a_decorator_a_dunder_or_a_starred_parameter_passed_whole_decides_too(function, callee):
-    assert forwards(function) == callee
+    assert forwards(function, PYTHON) == callee
 
 
 def test_a_method_that_returns_an_attribute_of_what_it_forwards_to_says_which():

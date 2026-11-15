@@ -56,6 +56,7 @@ from collections.abc import Callable, Mapping
 from xarch.kernel.logic.imports import may_import, shown_target
 from xarch.kernel.logic.placement import EVERYTHING, Repeat
 from xarch.kernel.logic.testing import ScenarioCoverage, StandIns
+from xarch.modules.spec.application.logic.defaults import TESTS
 from xarch.modules.spec.domain.errors import InvalidTemplate
 from xarch.modules.spec.domain.values import (
     EACH,
@@ -86,7 +87,8 @@ _LANGUAGE = {".sh": "bash", ".yml": "yaml", ".js": "javascript", ".ts": "typescr
 """The language of a code block by its file's extension, besides the language of the app, whose own name the block
 uses; any other extension is named by itself."""
 _COMMENT = {".js": "//", ".ts": "//", ".go": "//", ".rs": "//", ".java": "//", ".kt": "//", ".sql": "--"}
-"""The line-comment marker of a code block by its file's extension; any other extension uses "#"."""
+"""The line-comment marker of a code block by its file's extension; any other extension uses the one of the language of
+the app."""
 DOCS_NOTE_GAP = 8
 """Spaces between the longest line of the docs tree and its notes."""
 NOTE_GAP = 3
@@ -251,7 +253,7 @@ def _block(files: list[tuple[str, str, str]], in_fence: bool, language: Language
     if len(suffixes) > 1:
         raise _Missing(f"one block cannot mix files of different kinds ({', '.join(sorted(suffixes))})")
     suffix = suffixes.pop()
-    comment = _COMMENT.get(suffix, "#")
+    comment = _COMMENT.get(suffix, language.comment)
     body = "\n\n".join(f"{comment} {header}\n" + text.rstrip("\n") for header, _, text in files)
     if in_fence:
         return body
@@ -415,7 +417,7 @@ def _guards(architecture: Architecture, _: str, __: Quotes, ___: bool) -> str:
         if architecture.fakes is not None:
             parts = _and([f"`{_shown(architecture, architecture.parts[p])}`" for p in architecture.fakes.stand_in_for])
             fakes = (f"; only a test whose tier tests {parts} imports the fakes in "
-                     f"`{'/'.join(('tests', *architecture.fakes.folder))}/`")
+                     f"`{'/'.join((TESTS, *architecture.fakes.folder))}/`")
         lines.append("`tiers`: a test lives in the folder that mirrors its subject in the app, and imports only that "
                      "part and what it may import (a test in a folder that mirrors no part, its tier's subject and "
                      f"what that may import){fakes}; it imports no other test file.")
@@ -426,7 +428,7 @@ def _guards(architecture: Architecture, _: str, __: Quotes, ___: bool) -> str:
                              "annotate with it, and never calls it.")
     roots = [repeat.root for repeat in architecture.repeats]
     if roots:
-        folders = _and([f"`tests/{'/'.join(root)}/`" for root in roots])
+        folders = _and([f"`{'/'.join((TESTS, *root))}/`" for root in roots])
         lines.append(f"`test tree`: every folder below {folders} mirrors a folder of the app.")
         instances = _or([f"`{'/'.join(root)}/<name>/`" for root in roots])
         lines.append(f"`cycles`: no {instances} imports from another that imports, directly or through "
@@ -476,7 +478,8 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
                     f"`{_shown(architecture, architecture.parts[results])}` is the `{columns[-1]}` of a row of the "
                     f"table (columns {shown}) in `{file.replace(NAME, '<name>')}` among the {tier} tests (section 5.2), "
                     f"or is named by a standalone test of that file; every row is a `{'.'.join(table.row)}` with "
-                    f"an `{table.id}`, and a table test has no `if`, `match`, `try`, `for` or `while`.")
+                    f"an `{table.id}`, and a table test has no "
+                    f"{_or([f'`{word}`' for word in architecture.language.branching])}.")
         case StandIns(mocks, _, spec, fixtures):
             built = f"{fixtures[0].name}.{fixtures[0].mocks[0]}" if fixtures else ""
             return _stand_ins_line(architecture, mocks[0][-1], spec[0], built)
@@ -492,11 +495,11 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
                        "only." if untested else "")
             interface = architecture.language.interface_name
             return (f"`dead-code`: every `{interface}` in {ports} is named by another file of the app, and every fake in "
-                    f"`{'/'.join(('tests', *fakes.folder))}/` by a test; the wiring and re-exports do not "
+                    f"`{'/'.join((TESTS, *fakes.folder))}/` by a test; the wiring and re-exports do not "
                     f"count.{reached}")
         case PrivateImports():
-            return ("`private-imports`: no file of the app or its tests imports a name that starts with `_` from "
-                    "another file of them.")
+            return ("`private-imports`: no file of the app or its tests imports a name that starts with "
+                    f"`{architecture.language.private}` from another file of them.")
         case NoTwins(least):
             return (f"`no-twins`: no two public classes in parts of different names declare the same fields in the "
                     f"same order, when each declares at least {least}; types and defaults aside, tests not read.")
@@ -510,8 +513,10 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
             return (f"`closed-tree`: every {language.title} file of the app lies in a part, or is the package file "
                     f"(`{language.package_file}`) of a folder of the layout.")
         case _:
-            return ("`no-comments`: no `#` comments in the app or its tests; docstrings and tool directives "
-                    "(`# type: ignore`, `# noqa`, `# pragma:`) stay.")
+            comment = architecture.language.comment
+            directives = ", ".join(f"`{comment} {word}`" for word in architecture.language.directives)
+            return (f"`no-comments`: no `{comment}` comments in the app or its tests; docstrings and tool directives "
+                    f"({directives}) stay.")
 
 
 def _tier_must_import_line(architecture: Architecture, tier: Tier) -> str:
@@ -572,9 +577,10 @@ def _stand_ins_line(architecture: Architecture, mock: str, spec: str, built: str
     mocks = (f"; and every mock in the {tiers} tests names what it stands in for, `{mock}({spec}=<Port>)`{fixture}, "
              "never a read port") if tiers else ""
     interface = architecture.language.interface_name
-    return (f"`stand-ins`: every `{interface}` in {parts} is fire-only (every method returns `None`) or read (any "
-            "method returns a value), each method annotated; every read port `<Port>` has a fake "
-            f"`{fakes.prefix}<Port>` in `{'/'.join(('tests', *fakes.folder))}/`{mocks} (section 6).")
+    return (f"`stand-ins`: every `{interface}` in {parts} is fire-only (every method returns "
+            f"`{architecture.language.nothing}`) or read (any method returns a value), each method annotated; every "
+            f"read port `<Port>` has a fake `{fakes.prefix}<Port>` in `{'/'.join((TESTS, *fakes.folder))}/`{mocks} "
+            "(section 6).")
 
 
 _RENDERERS: dict[str, Callable[[Architecture, str, Quotes, bool], str]] = {

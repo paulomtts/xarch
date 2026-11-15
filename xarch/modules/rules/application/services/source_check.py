@@ -69,7 +69,7 @@ class SourceCheckService:
         found += types_only.violations(test_files, app, rules, package)
         found += package_only.violations(app, test_files, rules, package)
         found += scenarios.violations(app, test_files, rules)
-        found += stand_ins.violations(app, test_files, rules, package, tests is not None)
+        found += stand_ins.violations(app, test_files, rules, package, tests_root if tests is not None else None)
         found += must_import.violations(app, rules, package)
         found += must_import.tier_violations(test_files, app, rules, package, tests_root)
         found += types_only.part_violations(app, rules, package)
@@ -81,7 +81,7 @@ class SourceCheckService:
         found += twins.violations(app, rules)
         found += dead_code.violations(app, test_files, rules, tests is not None)
         if rules.no_comments:
-            found += comments.violations([*app, *test_files])
+            found += comments.violations([*app, *test_files], rules.language)
         resolved = self._tree.resolved(root)
         shown = resolved.name
         found += closed_tree.violations(paths, rules, shown)

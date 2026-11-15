@@ -1,6 +1,6 @@
 """The private-imports check: no file of the app or of its tests imports a private name from another file of them.
 
-A private name is one that starts with `_` and is no dunder name (`__version__` is not private). The imports read
+A private name is one the language of the app marks private and is no special name (see LanguageView). The imports read
 are `from <m> import <name>` where m is a relative import, or an absolute one of the app's package or the tests'
 package: the import of a whole file (`import a._b`), whatever its name, and a name of an outside package or of the
 standard library are not this check's business. Each private name is reported on the line of its import.
@@ -28,9 +28,5 @@ def violations(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: 
             found += [Violation(file.name, imp.line, f"imports the private name {name} from {imp.written} ({RULE})", RULE,
                                 f"make {name} public where it is defined (drop the `_`), or move it to a file both "
                                 "may import")
-                      for name in imp.names if _private(name)]
+                      for name in imp.names if profile.language.is_private(name)]
     return found
-
-
-def _private(name: str) -> bool:
-    return name.startswith("_") and not (name.startswith("__") and name.endswith("__"))

@@ -49,7 +49,6 @@ from xarch.modules.rules.application.logic.tier_imports import may_use_fakes
 from xarch.modules.rules.application.logic.tier_of import tested
 from xarch.modules.rules.domain.values import Class, Profile, Ref, SourceFile
 
-NONE = "None"
 RULE = "stand-ins"
 GUARD = f"({RULE})"
 
@@ -66,14 +65,14 @@ class Port:
 
 
 def violations(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile, root: str,
-               has_tests: bool = True) -> list[Violation]:
-    """has_tests is whether there is a tests root: without one there are no fakes to look for."""
+               tests_root: str | None) -> list[Violation]:
+    """tests_root names the tests root, None when there is none: without one there are no fakes to look for."""
     if profile.stand_ins is None or profile.fakes is None:
         return []
     tests = list(tests)
     ports, found = _ports(app, profile)
-    if has_tests:
-        found += _missing_fakes(ports.values(), tests, profile)
+    if tests_root is not None:
+        found += _missing_fakes(ports.values(), tests, profile, tests_root)
     found += _mocks(tests, ports, profile, root)
     return found
 
@@ -122,7 +121,8 @@ def _ports(app: Iterable[SourceFile], profile: Profile) -> tuple[dict[tuple[tupl
 
 
 def _classified(file: SourceFile, cls: Class, profile: Profile) -> tuple[Port, list[Violation]]:
-    methods = [m for m in cls.methods if not _dunder(m.name) or m.name == "__call__"]
+    language = profile.language
+    methods = [m for m in cls.methods if not language.is_special(m.name) or m.name == language.call]
     bare = [m for m in methods if m.returns is None]
     problems = [Violation(file.name, m.line, f"{cls.name}.{m.name} has no return annotation, and whether {cls.name} "
                                              f"is fire-only or read follows from it {GUARD}",
@@ -130,16 +130,17 @@ def _classified(file: SourceFile, cls: Class, profile: Profile) -> tuple[Port, l
                 for m in bare]
     kind = None
     if not bare and methods:
-        kind = "read" if any(m.returns != NONE for m in methods) else "fire-only"
+        kind = "read" if any(m.returns != language.nothing for m in methods) else "fire-only"
     module = dotted(file.path, profile.language.marks)[0]
     return Port(file.name, module, cls.line, cls.name, kind, tuple(m.name for m in methods)), problems
 
 
-def _missing_fakes(ports: Iterable[Port], tests: list[SourceFile], profile: Profile) -> list[Violation]:
+def _missing_fakes(ports: Iterable[Port], tests: list[SourceFile], profile: Profile,
+                   tests_root: str) -> list[Violation]:
     assert profile.fakes is not None
     folder = profile.fakes.folder
     fakes = {cls.name for t in tests if t.path[:len(folder)] == folder for cls in t.classes}
-    shown = "/".join(("tests", *folder)) + "/"
+    shown = "/".join((tests_root, *folder)) + "/"
     return [Violation(p.file, p.line, f"{p.name} is a read port with no fake {GUARD}", RULE,
                       f"write {profile.fakes.prefix}{p.name} under {shown}")
             for p in ports if p.kind == "read" and f"{profile.fakes.prefix}{p.name}" not in fakes]
@@ -213,9 +214,5 @@ def _spec(call: Built, names: tuple[str, ...]) -> tuple[bool, tuple[str, ...] | 
         if name in keywords:
             return True, keywords[name]
     return call.unpacked, None
-
-
-def _dunder(name: str) -> bool:
-    return name.startswith("__") and name.endswith("__")
 
 

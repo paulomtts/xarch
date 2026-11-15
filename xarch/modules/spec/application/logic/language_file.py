@@ -10,6 +10,19 @@ runtime knows are added to it by the service that holds the runtime.
     namespace      the namespace of the names the language binds without an import
     cache          the folder in which its tools keep what they compile, which no check or example reads; optional
     standard       where the names of the standard library are known from
+
+and, all optional, the tokens of its code the checks and the docs need (empty: the language has none):
+
+    name           a regular expression: what a name may be
+    private        what a name private to its file or folder starts with
+    special        what a name the language reserves for itself starts and ends with
+    call           the special method that calling an instance runs
+    nothing        the return annotation of a function that gives no value
+    comment        the marker of a line comment
+    directives     the comments its tools read as instructions, each after the marker; a space stands for any spaces
+    shebang        how line 1 names the program that runs the file
+    encoding       a regular expression: how line 1 or 2 declares the file's encoding, after the marker
+    branching      the keywords of the statements that branch
 """
 from __future__ import annotations
 
@@ -22,7 +35,8 @@ from xarch.modules.spec.domain.values import Language
 
 FOLDER = "presets/language"
 """Where the data files of the languages are, below the bundled folder: one YAML file each, named for the language."""
-KEYS = ("title", "extension", "package_file", "interface", "dynamic", "namespace", "cache", "standard")
+KEYS = ("title", "extension", "package_file", "interface", "dynamic", "namespace", "cache", "standard", "name", "private",
+        "special", "call", "nothing", "comment", "directives", "shebang", "encoding", "branching")
 REQUIRED = ("title", "extension", "package_file", "namespace", "standard")
 _EXTENSION = re.compile(r"\.[A-Za-z0-9]+")
 _DOTTED = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*")
@@ -51,9 +65,18 @@ def language_of(name: str, document: Any) -> Language:
     namespace = _text(document, "namespace", "must be a name", problems, _WORD)
     standard = _text(document, "standard", "must be a name", problems, _WORD)
     cache = _text(document, "cache", "must be a folder name", problems, _FOLDER)
+    tokens = {key: _text(document, key, "must be a non-empty string", problems)
+              for key in ("private", "special", "call", "nothing", "comment", "shebang")}
+    names = _pattern(document, "name", problems)
+    encoding = _pattern(document, "encoding", problems)
+    directives = _words(document, "directives", problems)
+    branching = _words(document, "branching", problems)
     if problems:
         raise InvalidArchitecture(source, problems)
-    return Language(name, title, extension, package_file, interface, dynamic, namespace, standard, cache)
+    return Language(name, title, extension, package_file, interface, dynamic, namespace, standard, cache,
+                    names=names, private=tokens["private"], special=tokens["special"], call=tokens["call"],
+                    nothing=tokens["nothing"], comment=tokens["comment"], directives=directives,
+                    shebang=tokens["shebang"], encoding=encoding, branching=branching)
 
 
 def _text(document: Mapping[Any, Any], key: str, said: str, problems: list[str],
@@ -65,6 +88,26 @@ def _text(document: Mapping[Any, Any], key: str, said: str, problems: list[str],
         problems.append(f"{key}: {said}")
         return ""
     return value
+
+
+def _pattern(document: Mapping[Any, Any], key: str, problems: list[str]) -> str:
+    value = _text(document, key, "must be a regular expression", problems)
+    try:
+        re.compile(value)
+    except re.error as e:
+        problems.append(f"{key}: must be a regular expression: {e}")
+        return ""
+    return value
+
+
+def _words(document: Mapping[Any, Any], key: str, problems: list[str]) -> tuple[str, ...]:
+    if key not in document:
+        return ()
+    value = document[key]
+    if not isinstance(value, list) or not all(isinstance(item, str) and item.strip() for item in value):
+        problems.append(f"{key}: must be a list of non-empty strings")
+        return ()
+    return tuple(value)
 
 
 def _dotted(document: Mapping[Any, Any], key: str, problems: list[str]) -> tuple[tuple[str, ...], ...]:

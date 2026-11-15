@@ -101,7 +101,8 @@ class SpecController:
         return Skeleton(top_level=_entries(architecture.top_level_tree()), repeating=repeating,
                         entry_point=entry.path[0] if entry is not None else "",
                         package_file=architecture.language.package_file, language=architecture.language.title,
-                        reserved=architecture.language.reserved_names)
+                        reserved=architecture.language.reserved_names, names=architecture.language.names,
+                        private=architecture.language.private)
 
     def profile(self, location: str) -> ProfileView:
         """The profile at a location callers got from select(), a bundled name or a path, as the checks read it;
@@ -229,10 +230,15 @@ def _profile_view(architecture: Architecture) -> ProfileView:
         repeats=architecture.repeats, guards=_guards_view(guards),
         fakes=architecture.fakes, framework=architecture.framework, excluded=architecture.excluded,
         hints=dict(architecture.hints),
-        language=LanguageView(architecture.language.title, architecture.language.extension,
-                              architecture.language.package_file, architecture.language.interface,
-                              architecture.language.dynamic),
+        language=_language_view(architecture.language),
         reserved=dict(architecture.reserved))
+
+
+def _language_view(language: Language) -> LanguageView:
+    return LanguageView(language.title, language.extension, language.package_file, language.interface,
+                        language.dynamic, language.private, language.special, language.call, language.nothing,
+                        language.comment, language.directives, language.shebang, language.encoding,
+                        language.branching)
 
 
 def _guards_view(guards: tuple[Guard, ...]) -> GuardsView:

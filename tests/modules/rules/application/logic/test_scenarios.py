@@ -86,7 +86,7 @@ FILE = "tests/modules/docs/application/test_publish.py"
                   f"{FILE}:9: PublishResult variant Published has no row in the table and no standalone test naming "
                   "it (scenario-coverage)"],
                  id="a row with too few values names no variant"),
-    pytest.param([Function(8, "test_publish", (TABLE,), branches=((14, "if"), (15, "for")))],
+    pytest.param([Function(8, "test_publish", (TABLE,), blocks=((14, "if"), (15, "for")))],
                  [f"{FILE}:14: test_publish has an `if` in its body (scenario-coverage)",
                   f"{FILE}:15: test_publish has a `for` in its body (scenario-coverage)"],
                  id="a branch in the body of a table test is reported where it is"),
@@ -188,7 +188,7 @@ ARRANGE_FIX = "arrange from given, act with when, assert == then, and give the o
                  ["use one of Published, Missing"], id="a row whose result is not a variant"),
     pytest.param([Function(8, "test_publish", (table(row("Published")),))],
                  ["add a row whose then is Missing, or a standalone test naming it"], id="a variant with no row"),
-    pytest.param([Function(8, "test_publish", (TABLE,), branches=((14, "if"), (15, "for")))],
+    pytest.param([Function(8, "test_publish", (TABLE,), blocks=((14, "if"), (15, "for")))],
                  [ARRANGE_FIX, ARRANGE_FIX], id="a branch in a table test"),
 ])
 def test_a_violation_of_a_test_file_says_what_to_do(functions, fixes):

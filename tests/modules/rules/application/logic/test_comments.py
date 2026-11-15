@@ -2,7 +2,7 @@
 shebang on line 1 or an encoding declaration on line 1 or 2."""
 import pytest
 
-from tests.modules.rules.builders import source
+from tests.modules.rules.builders import PYTHON, source
 from xarch.modules.rules.application.logic.comments import allowed, violations
 from xarch.modules.rules.domain.values import Comment
 
@@ -25,12 +25,12 @@ from xarch.modules.rules.domain.values import Comment
     pytest.param(Comment(1, "# coding is fun"), False, id="the word coding without its value is a comment"),
 ])
 def test_allowed(comment, kept):
-    assert allowed(comment) is kept
+    assert allowed(comment, PYTHON) is kept
 
 
 def test_every_comment_not_allowed_is_reported_where_it_is_with_its_fix():
     found = violations([source("kernel/x.py", comments=(Comment(1, "#!/bin/python"), Comment(3, "# why"),
-                                                         Comment(4, "# noqa")))])
+                                                         Comment(4, "# noqa")))], PYTHON)
     assert [(str(v), v.rule, v.fix) for v in found] == [
         ("app/kernel/x.py:3: a comment (no-comments)", "no-comments",
          "say it in a docstring or a name, and delete the comment")]

@@ -29,7 +29,7 @@ class SpecSkeleton:
 
     def language(self, profile: str) -> Language:
         skeleton = self._spec.skeleton(profile)
-        return Language(skeleton.language, skeleton.package_file, skeleton.reserved)
+        return Language(skeleton.language, skeleton.package_file, skeleton.reserved, skeleton.names, skeleton.private)
 
     def kinds(self, profile: str) -> dict[str, tuple[tuple[str, ...], list[tuple[tuple[str, ...], bool]]]]:
         return {repeating.word: (repeating.root, _entries(repeating.entries))

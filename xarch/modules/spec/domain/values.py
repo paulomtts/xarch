@@ -269,6 +269,12 @@ class Language:
     namespace: the namespace of the names bound without an import
     standard: where the names of the standard library are known from
     cache: the folder in which its tools keep what they compile; empty: none
+    names: a regular expression, what a name may be; private: what a name private to its file or folder starts with;
+        special: what a name the language reserves for itself starts and ends with; call: the special method calling
+        an instance runs; nothing: the return annotation of no value; comment: the marker of a line comment;
+        directives: the comments its tools read, after the marker; shebang: how line 1 names the program that runs
+        the file; encoding: a regular expression, how line 1 or 2 declares the encoding; branching: the keywords of
+        the statements that branch (each empty: the language has none)
     standard_names: the top-level names of the standard library
     builtin_names: the names bound without an import
     reserved_names: the words no name may be
@@ -282,6 +288,16 @@ class Language:
     namespace: str = ""
     standard: str = ""
     cache: str = ""
+    names: str = ""
+    private: str = ""
+    special: str = ""
+    call: str = ""
+    nothing: str = ""
+    comment: str = ""
+    directives: tuple[str, ...] = ()
+    shebang: str = ""
+    encoding: str = ""
+    branching: tuple[str, ...] = ()
     standard_names: frozenset[str] = frozenset()
     builtin_names: frozenset[str] = frozenset()
     reserved_names: frozenset[str] = frozenset()

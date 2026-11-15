@@ -408,7 +408,7 @@ KEYS: tuple[Key, ...] = (
        "FakeDocumentRepo", _TWO + _FAKES, rules=("stand-ins", "dead-code")),
 
     _guard("scenario-coverage", "every result of a use case has a row", _COVERAGE_GUARD),
-    _guard("no-comments", "no `#` comments in the app or its tests", _guarded("no-comments: {}\n")),
+    _guard("no-comments", "no `%comment%` comments in the app or its tests", _guarded("no-comments: {}\n")),
     _guard("stand-ins", "a %interface% is faked, or mocked with a spec", _STAND_INS + _guarded("stand-ins: {}\n")),
     _guard("closed-tree", "every file lies in a part", _guarded("closed-tree: {}\n")),
     _guard("no-duplicates", "no two functions with the same code", _guarded("no-duplicates: {min_statements: 6}\n")),

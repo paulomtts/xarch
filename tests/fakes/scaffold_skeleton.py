@@ -23,7 +23,7 @@ class FakeSkeleton:
         return list(self._top)
 
     def language(self, profile: str) -> Language:
-        return Language(self._language, self._package, self._reserved)
+        return Language(self._language, self._package, self._reserved, r"(?!\d)\w+", "_")
 
     def kinds(self, profile: str) -> dict[str, tuple[tuple[str, ...], list[tuple[tuple[str, ...], bool]]]]:
         return dict(self._kinds)

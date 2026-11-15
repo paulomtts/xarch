@@ -20,10 +20,12 @@ _WORD = re.compile(r"%(\w+)%")
 
 def said(text: str, language: Language) -> str:
     """The text with each `%word%` replaced by what the language says for it: the title, the extension, the package file,
-    the name of an interface and its dotted path, and the namespace of the names bound without an import; a word it has none for stays."""
+    the name of an interface and its dotted path, the namespace of the names bound without an import, the marker of a
+    line comment and the comments its tools read, each quoted after the marker; a word it has none for stays."""
     words = {"language": language.title, "extension": language.extension, "package_file": language.package_file,
              "interface": language.interface_name, "interface_path": ".".join(language.interface[0]) if language.interface else "",
-             "namespace": language.namespace}
+             "namespace": language.namespace, "comment": language.comment,
+             "directives": ", ".join(f"`{language.comment} {word}`" for word in language.directives)}
     return _WORD.sub(lambda found: words.get(found[1], found[0]), text)
 
 

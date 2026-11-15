@@ -17,7 +17,8 @@ is one whose name matches the profile's pattern:
     the head of each row's result value (the callee of `Rejected("why")`, or a bare name) is a variant of the
     union; every variant heads the result of at least one row, or is named in the body of a standalone test
     function (one with no table) of the same file, for a case that does not fit a row.
-    the body of a table test holds no `if`, `match`, `try`, `for` or `while`: the odd case is its own test.
+    the body of a table test holds no statement that branches (one of the language's `branching` keywords): the odd
+    case is its own test.
 
 weak lists, without failing, a variant met to the letter only: one no row covers, credited only to standalone tests
 of the file that name it, none of which holds an `assert` statement in its body.
@@ -69,7 +70,7 @@ def violations(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: 
                                                               f"({RULE})", RULE,
                                        f"write {name} among the {guard.tier} tests of {where.instance}"))
             for test in files:
-                found += _covered(test, union.name, union.members, guard, profile.framework.functions)
+                found += _covered(test, union.name, union.members, guard, profile)
     return found
 
 
@@ -116,9 +117,10 @@ def _in(profile: Profile, test: SourceFile, tier: str, instance: str) -> bool:
 
 
 def _covered(test: SourceFile, union: str, variants: tuple[str, ...], guard: ScenarioCoverage,
-             pattern: str) -> list[Violation]:
+             profile: Profile) -> list[Violation]:
     columns = guard.columns
-    functions = [f for f in test.functions if fnmatchcase(f.name, pattern)]
+    assert profile.framework is not None
+    functions = [f for f in test.functions if fnmatchcase(f.name, profile.framework.functions)]
     tables = [(f, t) for f in functions for t in f.tables if set(columns) <= set(t.columns)]
     if not tables:
         return [Violation(test.name, 1, f"no table test whose parameters are {', '.join(columns)} ({RULE})", RULE,
@@ -126,7 +128,7 @@ def _covered(test: SourceFile, union: str, variants: tuple[str, ...], guard: Sce
     problems: list[Problem] = []
     covered: set[str] = set()
     for function, table in tables:
-        problems += _branches(function) + _rows(table, union, variants, guard, covered)
+        problems += _branches(function, profile) + _rows(table, union, variants, guard, covered)
     standalone = set().union(*(f.mentions for f in functions if not f.tables))
     line = tables[0][1].line
     if all(table.rows is not None for _, table in tables):
@@ -136,10 +138,10 @@ def _covered(test: SourceFile, union: str, variants: tuple[str, ...], guard: Sce
     return [Violation(test.name, line, f"{problem} ({RULE})", RULE, fix) for line, problem, fix in problems]
 
 
-def _branches(function: Function) -> list[Problem]:
+def _branches(function: Function, profile: Profile) -> list[Problem]:
     fix = "arrange from given, act with when, assert == then, and give the odd case its own test"
-    return [(line, f"{function.name} has {'an' if keyword == 'if' else 'a'} `{keyword}` in its body", fix)
-            for line, keyword in function.branches]
+    return [(line, f"{function.name} has {'an' if keyword[:1] in 'aeiou' else 'a'} `{keyword}` in its body", fix)
+            for line, keyword in function.blocks if keyword in profile.language.branching]
 
 
 def _rows(table: Table, union: str, variants: tuple[str, ...], guard: ScenarioCoverage,

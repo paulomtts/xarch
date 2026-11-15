@@ -558,14 +558,14 @@ def _testing(value: Any, presets: Mapping[str, Any], problems: list[str], langua
         return None
     count = len(problems)
     framework = ck.framework_patterns(value, problems, "testing", names_of(TESTING), language)
-    table = ck.case_table(value["table"], "testing.table", problems) if "table" in value else None
-    mocks = _mocks(value["mocks"], problems) if "mocks" in value else None
+    table = ck.case_table(value["table"], "testing.table", problems, language) if "table" in value else None
+    mocks = _mocks(value["mocks"], problems, language) if "mocks" in value else None
     if len(problems) != count or framework is None:
         return None
     return _Testing(framework, table, mocks)
 
 
-def _mocks(value: Any, problems: list[str]) -> StandIns | None:
+def _mocks(value: Any, problems: list[str], language: Language) -> StandIns | None:
     where = "testing.mocks"
     if not isinstance(value, Mapping):
         problems.append(f"{where}: must be a mapping {{calls, spec_keywords}}, and optionally autospec and fixtures: "
@@ -579,9 +579,9 @@ def _mocks(value: Any, problems: list[str]) -> StandIns | None:
     autospec = ck.dotted_names(value["autospec"], f"{where}.autospec", problems) if "autospec" in value else ()
     problems += [f"{where}.autospec: {'.'.join(name)!r} is also listed in calls" for name in autospec or ()
                  if calls and name in calls]
-    keywords = (ck.identifiers(value["spec_keywords"], f"{where}.spec_keywords", problems, "keyword", "[spec]")
-                if "spec_keywords" in value else None)
-    fixtures = (ck.fixtures(value["fixtures"], f"{where}.fixtures", problems, "calls")
+    keywords = (ck.identifiers(value["spec_keywords"], f"{where}.spec_keywords", problems, "keyword", "[spec]",
+                               language) if "spec_keywords" in value else None)
+    fixtures = (ck.fixtures(value["fixtures"], f"{where}.fixtures", problems, language, "calls")
                 if "fixtures" in value else ())
     if len(problems) != count or calls is None or autospec is None or keywords is None or fixtures is None:
         return None
@@ -791,7 +791,7 @@ def _scenario_coverage(spec: Any, parts: dict[str, Part], declared: set[str], ti
     if len(problems) != count:
         return None
     ck.scenario_places(spec["results"], spec["tier"], spec["suffix"], parts, declared, tiers, where, problems)
-    columns = ck.column_names(spec["columns"], f"{where}.columns", problems)
+    columns = ck.column_names(spec["columns"], f"{where}.columns", problems, language)
     framework = testing.framework if testing is not None else None
     file = ck.use_case_file(spec["file"], framework, f"{where}.file", problems, language, "testing.files")
     if len(problems) != count or columns is None or file is None or testing is None or testing.table is None:

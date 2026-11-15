@@ -4,22 +4,27 @@ from __future__ import annotations
 from collections.abc import Collection, Iterable
 
 from xarch.kernel.violations import Violation
+from xarch.modules.layout.domain.structure import Naming
+
+HIDDEN = "."
+"""How the name of a folder starts that the filesystem hides, such as `.cache`."""
 
 
-def hidden(path: tuple[str, ...]) -> bool:
-    """A folder such as one of compiled files or `.cache`, which mirrors nothing and is never checked."""
-    return any(step.startswith(("_", ".")) for step in path)
+def hidden(path: tuple[str, ...], naming: Naming) -> bool:
+    """A folder the filesystem hides, or whose name is private in the language (such as one of compiled files), which
+    mirrors nothing and is never checked."""
+    return any(step.startswith(HIDDEN) or (naming.private and step.startswith(naming.private)) for step in path)
 
 
 def unmirrored(tests: str, root: str, each_root: tuple[str, ...], folders: Iterable[tuple[str, ...]],
-               app: Collection[tuple[str, ...]]) -> list[Violation]:
+               app: Collection[tuple[str, ...]], naming: Naming) -> list[Violation]:
     """Every folder below the tests of a repeating folder (tests/<its root>/) that mirrors no folder of the app.
 
     folders are below tests/<each root>/, app the app's folders below <each root>/; tests and root name the two
     roots in violations."""
     found: list[Violation] = []
     for folder in sorted(folders):
-        if hidden(folder) or folder in app:
+        if hidden(folder, naming) or folder in app:
             continue
         mirrored = "/".join((root, *each_root, *folder))
         found.append(Violation("/".join((tests, *each_root, *folder)), 0,

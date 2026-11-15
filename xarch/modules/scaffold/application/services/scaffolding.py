@@ -41,7 +41,7 @@ class ScaffoldingService:
     def new(self, root: Path, kind: str, name: str, profile: str) -> list[Touched]:
         """Refused unless the name is valid, the kind is declared, init ran and nothing would be overwritten."""
         language = self._skeleton.language(profile)
-        if not valid_name(name, language.reserved):
+        if not valid_name(name, language):
             raise InvalidName(name, language.title)
         kinds = self._skeleton.kinds(profile)
         if kind not in kinds:

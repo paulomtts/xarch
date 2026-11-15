@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
+from xarch.modules.layout.domain.structure import Naming
 from xarch.modules.spec.contract import Skeleton
 
 
@@ -26,6 +27,10 @@ class SpecSkeleton:
 
     def each_roots(self, profile: str) -> list[tuple[str, ...]]:
         return [repeating.root for repeating in self._spec.skeleton(profile).repeating]
+
+    def naming(self, profile: str) -> Naming:
+        skeleton = self._spec.skeleton(profile)
+        return Naming(skeleton.names, skeleton.private)
 
     def each_parts(self, profile: str, root: tuple[str, ...]) -> list[tuple[tuple[str, ...], bool]]:
         repeating = next(r for r in self._spec.skeleton(profile).repeating if r.root == root)

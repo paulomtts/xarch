@@ -1,8 +1,12 @@
+"""Which names `new` gives an instance of a repeating folder."""
 from __future__ import annotations
 
-from collections.abc import Collection
+import re
+
+from xarch.modules.scaffold.domain.values import Language
 
 
-def valid_name(name: str, reserved: Collection[str]) -> bool:
-    return (name.isascii() and name.isidentifier() and name == name.lower() and not name.startswith("_")
-            and name not in reserved)
+def valid_name(name: str, language: Language) -> bool:
+    """A lowercase name in plain letters that the language allows, neither private nor reserved."""
+    return (name.isascii() and bool(re.fullmatch(language.names or ".+", name)) and name == name.lower()
+            and not (language.private and name.startswith(language.private)) and name not in language.reserved)

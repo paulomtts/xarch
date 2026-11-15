@@ -11,8 +11,8 @@ GUARDS = {
                          "<Name> in snake_case) of that tier, or is named by a standalone test of it; every row is a "
                          "`testing.table.row` call with a `testing.table.id`, and a table test has no branching; "
                          "read from the syntax tree, never run",
-    "no-comments": "{}: no `#` comments in the app or its tests, whole-line or trailing; docstrings stay, and so do "
-                   "`# type: ignore`, `# noqa`, `# pragma:`, a shebang and an encoding line",
+    "no-comments": "{}: no `%comment%` comments in the app or its tests, whole-line or trailing; docstrings stay, and so "
+                   "do %directives%, a shebang and an encoding line",
     "stand-ins": "{}: every %interface% in a part `fakes` stands in for is fire-only (every method returns None) or read "
                  "(any one returns a value), each method annotated; every read port has a fake <prefix><Port> in "
                  "`fakes.folder`; and a test of a tier that may import the fakes gives every mock (`testing.mocks`) "

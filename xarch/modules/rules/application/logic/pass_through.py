@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+from xarch.kernel.logic.language import LanguageView
 from xarch.kernel.violations import Weak
 from xarch.modules.rules.application.logic.imports import dotted
 from xarch.modules.rules.application.logic.places import place
@@ -34,7 +35,7 @@ def weak(app: Iterable[SourceFile], profile: Profile) -> list[Weak]:
         if where is None or where.part not in profile.pass_through:
             continue
         for function in file.functions:
-            callee = forwards(function)
+            callee = forwards(function, profile.language)
             if callee and function.owner and function.sole_call is not None:
                 name = f"{function.owner}.{function.name}"
                 then = ".".join(function.sole_call.then)
@@ -46,11 +47,10 @@ def weak(app: Iterable[SourceFile], profile: Profile) -> list[Weak]:
     return found
 
 
-def forwards(function: Function) -> str:
+def forwards(function: Function, language: LanguageView) -> str:
     """The dotted callee the function forwards to, or "": see the module's text."""
     call, signature = function.sole_call, function.signature
-    dunder = function.name.startswith("__") and function.name.endswith("__")
-    if function.decorated or dunder or call is None or not signature.positional:
+    if function.decorated or language.is_special(function.name) or call is None or not signature.positional:
         return ""
     own, others = signature.positional[0], [*signature.positional[1:], *signature.keyword_only]
     if call.callee[:1] != (own,) or len(call.callee) < 3:

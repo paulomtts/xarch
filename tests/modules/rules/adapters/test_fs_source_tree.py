@@ -146,7 +146,7 @@ def test_a_function_lists_the_names_its_body_uses_and_its_branches(tmp_path):
     text = "def test_a():\n    for x in xs:\n        try:\n            Rejected(y.z)\n        finally:\n            pass\n"
     function = parsed(tmp_path, text).functions[0]
     assert function.mentions >= {"Rejected", "y", "z", "xs"}
-    assert function.branches == ((2, "for"), (3, "try"))
+    assert function.blocks == ((2, "for"), (3, "try"))
 
 
 @pytest.mark.parametrize("arguments, columns", [
@@ -276,20 +276,21 @@ def test_only_a_call_of_the_forms_row_is_a_row(tmp_path):
     assert [r.param for r in parsed(tmp_path, ROWS).functions[0].tables[0].rows] == [False, False, True]
 
 
-@pytest.mark.parametrize("body, branches", [
+@pytest.mark.parametrize("body, blocks", [
     pytest.param("    async for x in y:\n        pass\n", ((2, "for"),), id="an async for is a for"),
     pytest.param("    while x:\n        pass\n", ((2, "while"),), id="a while"),
     pytest.param("    match x:\n        case _:\n            pass\n", ((2, "match"),), id="a match"),
     pytest.param("    try:\n        pass\n    except* E:\n        pass\n", ((2, "try"),), id="a try with except*"),
     pytest.param("    x = [y for y in z if y]\n", (), id="a comprehension is no branch"),
 ])
-def test_a_loop_or_branch_of_any_kind_in_a_function_body_is_listed(tmp_path, body, branches):
+def test_a_loop_or_branch_of_any_kind_in_a_function_body_is_listed(tmp_path, body, blocks):
     text = f"async def test_a():\n{body}"
-    assert parsed(tmp_path, text).functions[0].branches == branches
+    assert parsed(tmp_path, text).functions[0].blocks == blocks
 
 
-def test_an_async_with_is_no_branch(tmp_path):
-    assert parsed(tmp_path, "async def test_a():\n    async with x:\n        pass\n").functions[0].branches == ()
+def test_an_async_with_is_a_block_opened_by_with(tmp_path):
+    assert parsed(tmp_path, "async def test_a():\n    async with x:\n        pass\n").functions[0].blocks == (
+        (2, "with"),)
 
 
 @pytest.mark.parametrize("text, unions", [
