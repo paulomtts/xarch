@@ -4,7 +4,6 @@ from dataclasses import replace
 from pathlib import Path
 
 from xarch.modules.rules.application.logic import (
-    built_by,
     closed_tree,
     comments,
     cycles,
@@ -76,7 +75,7 @@ class SourceCheckService:
         found += types_only.part_violations(app, rules, package)
         found += no_callbacks.violations(app, rules)
         found += names.violations(app, rules)
-        found += built_by.violations(app, rules, package)
+        found += run(expansion.built_by(rules), facts, rules)
         found += run(expansion.private_imports(rules), facts, rules)
         found += duplicates.violations(app, rules)
         found += twins.violations(app, rules)
