@@ -35,3 +35,12 @@ def built_by(app: Iterable[SourceFile], profile: Profile, root: str) -> list[Vio
 
 def rules(files: Iterable[SourceFile], profile: Profile, root: str) -> list[Violation | Weak]:
     return run(expansion.rules(profile), facts_of(files, [], profile, root), profile)
+
+
+def types_only(tests: Iterable[SourceFile], app: Iterable[SourceFile], profile: Profile,
+               root: str) -> list[Violation | Weak]:
+    return run(expansion.types_only_tiers(profile), facts_of(app, tests, profile, root), profile)
+
+
+def types_only_parts(app: Iterable[SourceFile], profile: Profile, root: str) -> list[Violation | Weak]:
+    return run(expansion.types_only_parts(profile), facts_of(app, [], profile, root), profile)
