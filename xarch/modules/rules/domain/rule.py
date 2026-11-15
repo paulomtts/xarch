@@ -10,6 +10,7 @@ the engine's, by its name.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import NamedTuple
 
 from xarch.kernel.logic.placement import Place, Target
 from xarch.modules.rules.domain.values import SourceFile
@@ -84,13 +85,14 @@ class Rule:
     part: str = ""
 
 
-@dataclass(frozen=True)
-class Fact:
+class Fact(NamedTuple):
     """One thing a file says, as a rule reads it: its kind, the line it is on (0: the file as a whole), the dotted path
     it names (what an import imports, the name a use reaches, the callee of a call), a name it carries (a name an
     import takes, a method called, a parameter), the traits the reader recorded of it by name (relative, standard,
     held, receiver, annotated), how many steps of its path the import binding it bound, and, for an import into the
-    app or the tests, the file or package it reaches below that root and where that sits."""
+    app or the tests, the file or package it reaches below that root and where that sits. A run holds a fact for
+    every import, name read and call of every file, so a fact is a named tuple, which is made several times faster
+    than a frozen dataclass and is as immutable."""
     kind: str
     line: int
     path: tuple[str, ...] = ()
@@ -145,10 +147,10 @@ class Defined:
     functions: dict[tuple[str, ...], frozenset[str]]
 
 
-@dataclass(frozen=True)
-class Found:
+class Found(NamedTuple):
     """A fact a rule reads in a file, and the target it matched (hit: None when it matched none, or before it is
-    compared): what a filter, a condition and a variable of a saying are worked out from."""
+    compared): what a filter, a condition and a variable of a saying are worked out from; a named tuple, made once
+    for each fact a rule reads (see Fact)."""
     rule: Rule
     read: Read
     fact: Fact

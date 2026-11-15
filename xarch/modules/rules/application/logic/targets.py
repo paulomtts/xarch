@@ -17,54 +17,88 @@ target it matches; under MAY_ONLY when it matches none.
 """
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from xarch.kernel.logic.placement import reaches
 from xarch.modules.rules.application.logic.tier_of import Tested, allowance, as_place, may_use_fakes
 from xarch.modules.rules.domain.rule import MAY_NOT, MAY_ONLY, Facts, Found, Targets
 from xarch.modules.rules.domain.values import Profile
 
+Matcher = Callable[[Targets, Found, Facts, Profile], tuple[str, ...] | None]
+"""How a fact is matched against targets: the target it matches, None when it matches none."""
 
-def compared(quantifier: str, targets: Targets, found: Found, facts: Facts,
-             profile: Profile) -> tuple[bool, tuple[str, ...] | None]:
-    """Whether the fact is a finding, and the target it matched (None: none)."""
-    hit = matched(targets, found, facts, profile)
-    match quantifier:
-        case "may_not":
-            return hit is not None, hit
-        case "may_only":
-            return hit is None, None
+
+def finding(quantifier: str, hit: tuple[str, ...] | None) -> bool:
+    """Whether a fact that matched hit (None: nothing) is a finding under the quantifier."""
+    if quantifier == MAY_NOT:
+        return hit is not None
+    if quantifier == MAY_ONLY:
+        return hit is None
     raise ValueError(f"no quantifier is named {quantifier!r}: use {MAY_NOT} or {MAY_ONLY}")
 
 
-def matched(targets: Targets, found: Found, facts: Facts, profile: Profile) -> tuple[str, ...] | None:
-    fact, read = found.fact, found.read
-    match targets.kind:
-        case "existing":
-            return ()
-        case "packages":
-            return fact.path[:1] if fact.path[:1] and fact.path[0] in targets.words else None
-        case "names":
-            if fact.kind == "method":
-                return next((n for n in reversed(targets.names) if len(n) == 2 and not n[0]
-                             and n[1].removesuffix("()") == fact.name), None)
-            return next((n for n in targets.names if fact.path[:len(n)] == n), None)
-        case "private":
-            return (fact.name,) if fact.name is not None and profile.language.is_private(fact.name) else None
-        case "parts":
-            return fact.target if fact.at is not None and fact.at.part in targets.words else None
-        case "places":
-            src, at = read.place, fact.at
-            return fact.target if src is not None and at is not None and any(
-                reaches(t, src, at, fact.name) for t in targets.places) else None
-        case "allowance":
-            tier = next(t for t in profile.tiers if t.name == read.tier)
-            allowed = allowance(profile, Tested(tier, read.instance, read.own, read.is_test, read.is_fake, read.mirrors))
-            return fact.target if fact.at is not None and any(
-                reaches(t, as_place(read.instance), fact.at) for t in allowed) else None
-        case "test-code":
-            tier = next(t for t in profile.tiers if t.name == read.tier)
-            if profile.fakes is not None and fact.target[:len(profile.fakes.folder)] == profile.fakes.folder:
-                return fact.target if may_use_fakes(profile, tier) else None
-            if fact.target in facts.test_files:
-                return None
-            return fact.target if read.own and fact.target[:len(read.own)] == read.own else None
-    raise ValueError(f"no kind of target is named {targets.kind!r}")
+def matcher(kind: str) -> Matcher:
+    """How a fact is matched against targets of a kind, by the kind's name."""
+    found = _KINDS.get(kind)
+    if found is None:
+        raise ValueError(f"no kind of target is named {kind!r}")
+    return found
+
+
+def _existing(targets: Targets, found: Found, facts: Facts, profile: Profile) -> tuple[str, ...] | None:
+    return ()
+
+
+def _packages(targets: Targets, found: Found, facts: Facts, profile: Profile) -> tuple[str, ...] | None:
+    path = found.fact.path
+    return path[:1] if path and path[0] in targets.words else None
+
+
+def _names(targets: Targets, found: Found, facts: Facts, profile: Profile) -> tuple[str, ...] | None:
+    fact = found.fact
+    if fact.kind == "method":
+        return next((n for n in reversed(targets.names) if len(n) == 2 and not n[0]
+                     and n[1].removesuffix("()") == fact.name), None)
+    path = fact.path
+    for name in targets.names:
+        if path[:len(name)] == name:
+            return name
+    return None
+
+
+def _private(targets: Targets, found: Found, facts: Facts, profile: Profile) -> tuple[str, ...] | None:
+    name = found.fact.name
+    return (name,) if name is not None and profile.language.is_private(name) else None
+
+
+def _parts(targets: Targets, found: Found, facts: Facts, profile: Profile) -> tuple[str, ...] | None:
+    fact = found.fact
+    return fact.target if fact.at is not None and fact.at.part in targets.words else None
+
+
+def _places(targets: Targets, found: Found, facts: Facts, profile: Profile) -> tuple[str, ...] | None:
+    src, fact = found.read.place, found.fact
+    return fact.target if src is not None and fact.at is not None and any(
+        reaches(t, src, fact.at, fact.name) for t in targets.places) else None
+
+
+def _allowance(targets: Targets, found: Found, facts: Facts, profile: Profile) -> tuple[str, ...] | None:
+    read, fact = found.read, found.fact
+    tier = next(t for t in profile.tiers if t.name == read.tier)
+    allowed = allowance(profile, Tested(tier, read.instance, read.own, read.is_test, read.is_fake, read.mirrors))
+    return fact.target if fact.at is not None and any(
+        reaches(t, as_place(read.instance), fact.at) for t in allowed) else None
+
+
+def _test_code(targets: Targets, found: Found, facts: Facts, profile: Profile) -> tuple[str, ...] | None:
+    read, target = found.read, found.fact.target
+    if profile.fakes is not None and target[:len(profile.fakes.folder)] == profile.fakes.folder:
+        return target if may_use_fakes(profile, next(t for t in profile.tiers if t.name == read.tier)) else None
+    if target in facts.test_files:
+        return None
+    return target if read.own and target[:len(read.own)] == read.own else None
+
+
+_KINDS = {"existing": _existing, "packages": _packages, "names": _names, "private": _private, "parts": _parts,
+          "places": _places, "allowance": _allowance, "test-code": _test_code}
+"""How a fact is matched against each kind of target, by its name."""

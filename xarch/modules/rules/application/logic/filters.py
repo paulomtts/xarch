@@ -26,7 +26,6 @@ Of a fact:
     own-code          an import of the app's or the tests' own package, or a relative one
     names-a-name      an import of a name, not of a whole module
     built-by-a-builder a build in a file of a part the built class's part lists in its built_by
-    named-name        an import into the app of a name rather than of a whole file
     narrowed          an import whose target a target of the file's part reaches but for its name pattern
     permits-nothing   an import in a file of a part whose rules name no other part
     into-the-fakes    a test file's import into the fakes' folder
@@ -36,12 +35,16 @@ Of a fact:
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import replace
 
 from xarch.kernel.logic.placement import EVERYTHING, reaches
 from xarch.modules.rules.application.logic.places import targets_of
 from xarch.modules.rules.domain.rule import ALL, ANY, APP, STRUCTURE, TESTS, Facts, Found, Read, Scope
 from xarch.modules.rules.domain.values import Profile
+
+Question = Callable[[Found, Facts, Profile], bool]
+"""What a filter of a fact asks of a fact a rule found."""
 
 
 def in_scope(scope: Scope, read: Read, facts: Facts, profile: Profile) -> bool:
@@ -71,57 +74,113 @@ def _file(name: str, read: Read) -> bool:
 
 
 def holds(name: str, found: Found, facts: Facts, profile: Profile) -> bool:
-    fact, read = found.fact, found.read
-    match name:
-        case "absolute":
-            return "relative" not in fact.traits
-        case "has-a-path":
-            return bool(fact.path)
-        case "unheld":
-            return "held" not in fact.traits
-        case "placed":
-            return fact.at is not None
-        case "below-a-package":
-            return fact.at is not None and bool(fact.at.sub)
-        case "same-part-instance":
-            return (read.place is not None and fact.at is not None and read.place.part == fact.at.part
-                    and read.place.instance == fact.at.instance)
-        case "own-package":
-            return fact.path[:1] == (facts.root,)
-        case "standard-unreserved":
-            return "standard" in fact.traits and "".join(fact.path[:1]) not in profile.reserved
-        case "reserved":
-            return "".join(fact.path[:1]) in profile.reserved
-        case "owned":
-            return any("".join(fact.path[:1]) in packages and part != found.rule.part
-                       for part, packages in (profile.libraries or {}).items())
-        case "reserved-and-owned":
-            return holds("reserved", found, facts, profile) and holds("owned", found, facts, profile)
-        case "bound-by-the-import-that-hit":
-            return fact.kind == "use" and found.hit is not None and fact.bound >= len(found.hit)
-        case "own-code":
-            return "relative" in fact.traits or fact.path[:1] in ((facts.root,), (facts.tests_root,))
-        case "names-a-name":
-            return fact.name is not None
-        case "built-by-a-builder":
-            return (read.place is not None and fact.at is not None
-                    and read.place.part in profile.built_by.get(fact.at.part or "", ()))
-        case "named-name":
-            return fact.name is not None
-        case "narrowed":
-            return bool(narrowed(found, profile))
-        case "permits-nothing":
-            part = read.place.part if read.place is not None else None
-            return not any(t.part != EVERYTHING for t in (targets_of(profile, part) if part is not None else ()))
-        case "into-the-fakes":
-            return profile.fakes is not None and fact.target[:len(profile.fakes.folder)] == profile.fakes.folder
-        case "into-a-test":
-            return fact.target in facts.test_files
-        case "a-call":
-            return fact.kind == "call"
-        case "mirroring":
-            return bool(read.mirrors)
-    raise ValueError(f"no filter of a fact is named {name!r}")
+    return question(name)(found, facts, profile)
+
+
+def question(name: str) -> Question:
+    """The question a filter of a fact asks, by its name."""
+    asked = _FACT.get(name)
+    if asked is None:
+        raise ValueError(f"no filter of a fact is named {name!r}")
+    return asked
+
+
+def _absolute(found: Found, facts: Facts, profile: Profile) -> bool:
+    return "relative" not in found.fact.traits
+
+
+def _has_a_path(found: Found, facts: Facts, profile: Profile) -> bool:
+    return bool(found.fact.path)
+
+
+def _unheld(found: Found, facts: Facts, profile: Profile) -> bool:
+    return "held" not in found.fact.traits
+
+
+def _placed(found: Found, facts: Facts, profile: Profile) -> bool:
+    return found.fact.at is not None
+
+
+def _below_a_package(found: Found, facts: Facts, profile: Profile) -> bool:
+    return found.fact.at is not None and bool(found.fact.at.sub)
+
+
+def _same_part_instance(found: Found, facts: Facts, profile: Profile) -> bool:
+    src, at = found.read.place, found.fact.at
+    return src is not None and at is not None and src.part == at.part and src.instance == at.instance
+
+
+def _own_package(found: Found, facts: Facts, profile: Profile) -> bool:
+    return found.fact.path[:1] == (facts.root,)
+
+
+def _standard_unreserved(found: Found, facts: Facts, profile: Profile) -> bool:
+    return "standard" in found.fact.traits and "".join(found.fact.path[:1]) not in profile.reserved
+
+
+def _reserved(found: Found, facts: Facts, profile: Profile) -> bool:
+    return "".join(found.fact.path[:1]) in profile.reserved
+
+
+def _owned(found: Found, facts: Facts, profile: Profile) -> bool:
+    top = "".join(found.fact.path[:1])
+    return any(top in packages and part != found.rule.part for part, packages in (profile.libraries or {}).items())
+
+
+def _reserved_and_owned(found: Found, facts: Facts, profile: Profile) -> bool:
+    return _reserved(found, facts, profile) and _owned(found, facts, profile)
+
+
+def _bound_by_the_import_that_hit(found: Found, facts: Facts, profile: Profile) -> bool:
+    return found.fact.kind == "use" and found.hit is not None and found.fact.bound >= len(found.hit)
+
+
+def _own_code(found: Found, facts: Facts, profile: Profile) -> bool:
+    return "relative" in found.fact.traits or found.fact.path[:1] in ((facts.root,), (facts.tests_root,))
+
+
+def _names_a_name(found: Found, facts: Facts, profile: Profile) -> bool:
+    return found.fact.name is not None
+
+
+def _built_by_a_builder(found: Found, facts: Facts, profile: Profile) -> bool:
+    src, at = found.read.place, found.fact.at
+    return src is not None and at is not None and src.part in profile.built_by.get(at.part or "", ())
+
+
+def _narrowed(found: Found, facts: Facts, profile: Profile) -> bool:
+    return bool(narrowed(found, profile))
+
+
+def _permits_nothing(found: Found, facts: Facts, profile: Profile) -> bool:
+    part = found.read.place.part if found.read.place is not None else None
+    return not any(t.part != EVERYTHING for t in (targets_of(profile, part) if part is not None else ()))
+
+
+def _into_the_fakes(found: Found, facts: Facts, profile: Profile) -> bool:
+    return profile.fakes is not None and found.fact.target[:len(profile.fakes.folder)] == profile.fakes.folder
+
+
+def _into_a_test(found: Found, facts: Facts, profile: Profile) -> bool:
+    return found.fact.target in facts.test_files
+
+
+def _a_call(found: Found, facts: Facts, profile: Profile) -> bool:
+    return found.fact.kind == "call"
+
+
+def _mirroring(found: Found, facts: Facts, profile: Profile) -> bool:
+    return bool(found.read.mirrors)
+
+
+_FACT = {"absolute": _absolute, "has-a-path": _has_a_path, "unheld": _unheld, "placed": _placed,
+         "below-a-package": _below_a_package, "same-part-instance": _same_part_instance, "own-package": _own_package,
+         "standard-unreserved": _standard_unreserved, "reserved": _reserved, "owned": _owned,
+         "reserved-and-owned": _reserved_and_owned, "bound-by-the-import-that-hit": _bound_by_the_import_that_hit,
+         "own-code": _own_code, "names-a-name": _names_a_name, "built-by-a-builder": _built_by_a_builder,
+         "narrowed": _narrowed, "permits-nothing": _permits_nothing, "into-the-fakes": _into_the_fakes,
+         "into-a-test": _into_a_test, "a-call": _a_call, "mirroring": _mirroring}
+"""Each filter of a fact by its name, the question it asks."""
 
 
 def narrowed(found: Found, profile: Profile) -> tuple[str, ...]:

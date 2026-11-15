@@ -24,17 +24,15 @@ out from the finding by its name, a closed list:
     taken         what an import takes that a pattern does not allow: "not <name>", or "not the file as a whole"
     move          where the code that makes an import a part may not make could go
     permitted     the parts the file's part may import, each as `<part>/`
+    callee        the callee of a call, as a dotted name
     tests_target  a test's import into the tests' package, as a dotted name from the tests' root
     own           the folder a test may import test code from, from the tests' root
     faked         the parts the fakes stand in for
-    test_of       how a test is named: "a test of <subject> (<tier> tier)", or "a <tier> test" for one that mirrors
-                  no part
-    subject       the parts a test mirrors, each as `<part>/`, joined by "and"; else "the subject of the <tier> tier"
-    mirrored      what a test mirroring parts imports only: ": it imports only what <parts> may (<their keys>)"
-    what          what a use of a part as a type does that it may not: "call <callee>", "reference <function>, a
-                  function"
-    caller_fix    what to do about it, for a part that uses parts as types only
-    tier_fix      the same, for a tier
+    subject       the parts a test mirrors, each as `<part>/`, joined by "and"
+    mirrored_keys the keys of what they may import, joined by commas
+    caller_fix    what to do about a part's use of a part as more than a type: use it as a type, and leave the call
+                  to a part that may make it
+    tier_fix      the same, for a tier's test: drive the tier's subject, with what the tier's tests may touch
 """
 from __future__ import annotations
 

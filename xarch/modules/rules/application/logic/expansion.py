@@ -169,3 +169,11 @@ def tiers(profile: Profile) -> tuple[Rule, ...]:
                  (mirrored, by_folder), keep=("placed",)),
             Rule("tiers", Scope(TESTS, where=("tiered",)), ("suite_edge",), MAY_ONLY, Targets("test-code"),
                  (fakes, test, elsewhere)))
+
+
+def book(profile: Profile) -> dict[str, tuple[Rule, ...]]:
+    """Every check the engine runs, by the name of its group, each the rules its keys expand to."""
+    return {"rules": rules(profile), "libraries": libraries(profile), "forbidden": forbidden(profile),
+            "tiers": tiers(profile), "types-only tiers": types_only_tiers(profile),
+            "package-only": package_only(profile), "types-only parts": types_only_parts(profile),
+            "built-by": built_by(profile), "private-imports": private_imports(profile)}

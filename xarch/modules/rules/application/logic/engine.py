@@ -15,10 +15,10 @@ from collections import Counter
 from collections.abc import Iterable
 
 from xarch.kernel.violations import Violation, Weak
-from xarch.modules.rules.application.logic.filters import holds, in_scope
+from xarch.modules.rules.application.logic.filters import Question, holds, in_scope, question
 from xarch.modules.rules.application.logic.sentences import said, value
-from xarch.modules.rules.application.logic.targets import compared
-from xarch.modules.rules.domain.rule import FAIL, Facts, Found, Read, Rule
+from xarch.modules.rules.application.logic.targets import finding, matcher
+from xarch.modules.rules.domain.rule import FAIL, MAY_NOT, Facts, Found, Read, Rule
 from xarch.modules.rules.domain.values import Profile
 
 CALLED = "called"
@@ -40,16 +40,19 @@ def _file(rule: Rule, read: Read, facts: Facts, profile: Profile) -> list[Violat
     found: list[Violation | Weak] = []
     seen: set[tuple[int, tuple[str, ...]]] = set()
     calls = Counter((call.line, call.path) for call in read.facts.get("call", ())) if CALLED in rule.exempt else None
+    keep = tuple(question(name) for name in rule.keep)
+    exempt = tuple(question(name) for name in rule.exempt if name != CALLED)
+    match, targets, quantifier = matcher(rule.targets.kind), rule.targets, rule.quantifier
     for kind in rule.facts:
         for fact in read.facts.get(kind, ()):
             candidate = Found(rule, read, fact)
-            if not all(holds(name, candidate, facts, profile) for name in rule.keep):
+            if not _all(keep, candidate, facts, profile):
                 continue
-            finding, hit = compared(rule.quantifier, rule.targets, candidate, facts, profile)
-            if not finding:
+            hit = match(targets, candidate, facts, profile)
+            if not finding(quantifier, hit):
                 continue
-            candidate = Found(rule, read, fact, hit)
-            if any(holds(name, candidate, facts, profile) for name in rule.exempt if name != CALLED):
+            candidate = Found(rule, read, fact, hit if quantifier == MAY_NOT else None)
+            if exempt and _any(exempt, candidate, facts, profile):
                 continue
             if calls is not None and fact.kind == "reference" and calls[(fact.line, fact.path)] > 0:
                 calls[(fact.line, fact.path)] -= 1
@@ -66,3 +69,17 @@ def _file(rule: Rule, read: Read, facts: Facts, profile: Profile) -> list[Violat
             found.append(Violation(file, line, message, rule.id, fix) if rule.mode == FAIL else
                          Weak(rule.id, file, line, message, fix))
     return found
+
+
+def _all(questions: tuple[Question, ...], found: Found, facts: Facts, profile: Profile) -> bool:
+    for asked in questions:
+        if not asked(found, facts, profile):
+            return False
+    return True
+
+
+def _any(questions: tuple[Question, ...], found: Found, facts: Facts, profile: Profile) -> bool:
+    for asked in questions:
+        if asked(found, facts, profile):
+            return True
+    return False

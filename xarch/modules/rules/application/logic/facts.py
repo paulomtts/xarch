@@ -25,86 +25,125 @@ and the facts derived from them over the whole app:
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
+from dataclasses import replace
 
+from xarch.kernel.logic.placement import Place
+from xarch.modules.rules.application.logic.filters import in_scope
 from xarch.modules.rules.application.logic.imports import dotted, named_targets, targets
 from xarch.modules.rules.application.logic.places import place
 from xarch.modules.rules.application.logic.tier_of import tested
-from xarch.modules.rules.domain.rule import Defined, Fact, Facts, Read
+from xarch.modules.rules.domain.rule import Defined, Fact, Facts, Read, Rule
 from xarch.modules.rules.domain.values import Profile, SourceFile
+
+Placements = dict[tuple[str, ...], Place | None]
+"""Where each path below the root placed so far sits."""
+
+KINDS = ("file", "import", "imported", "use", "method", "call", "build", "reference", "edge", "suite_edge")
+"""Every kind of fact, in the order a file's facts are worked out."""
+
+_TRAITS = {(relative, standard, held): frozenset(name for name, on in (("relative", relative), ("standard", standard),
+                                                                       ("held", held)) if on)
+           for relative in (False, True) for standard in (False, True) for held in (False, True)}
+"""The traits of a fact, by whether it is relative, of the standard library and held."""
 
 
 def facts_of(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile, root: str,
-             tests_root: str = "") -> Facts:
+             tests_root: str = "", rules: Iterable[Rule] | None = None) -> Facts:
     """The facts of the app's files, below the root package root, and of the test files, below the package
-    tests_root."""
+    tests_root: every kind of each file, or (rules given) the kinds the rules whose scope holds the file read."""
     marks = profile.language.marks
     app, tests = [(f, *dotted(f.path, marks)) for f in app], [(f, *dotted(f.path, marks)) for f in tests]
     known = frozenset(steps for _, steps, _ in app)
     known_tests = frozenset(steps for _, steps, _ in tests)
-    defined = Defined(root, {(root, *steps, c.name): place(profile, steps) for f, steps, _ in app for c in f.classes},
+    cache: Placements = {}
+    defined = Defined(root, {(root, *steps, c.name): _placed(profile, cache, steps) for f, steps, _ in app
+                             for c in f.classes},
                       {steps: frozenset(f.module_functions) for f, steps, _ in app})
-    read = [_app(file, steps, package, profile, defined, known) for file, steps, package in app]
-    read += [_test(file, steps, package, profile, defined, tests_root, known, known_tests)
-             for file, steps, package in tests]
-    return Facts(tuple(read), root, tests_root, known, known_tests,
-                 frozenset(r.steps for r in read if r.test and r.is_test))
+    placed = [Read(file, steps, package, False, _placed(profile, cache, steps)) for file, steps, package in app]
+    placed += [_tested(file, steps, package, profile) for file, steps, package in tests]
+    bare = Facts((), root, tests_root, known, known_tests, frozenset(r.steps for r in placed if r.test and r.is_test))
+    rules = tuple(rules) if rules is not None else None
+    read = tuple(replace(r, facts={kind: _facts(kind, r, profile, cache, defined, bare)
+                                   for kind in (KINDS if rules is None else _read(r, rules, bare, profile))})
+                 for r in placed)
+    return replace(bare, files=read)
 
 
-def _app(file: SourceFile, steps: tuple[str, ...], package: bool, profile: Profile, defined: Defined,
-         known: frozenset[tuple[str, ...]]) -> Read:
-    edges = tuple(Fact("edge", line, name=name, target=target, at=place(profile, target))
-                  for line, target, name in named_targets(file.imports, steps if package else steps[:-1], known,
-                                                          defined.root))
-    return Read(file, steps, package, False, place(profile, steps), facts=_said(file, profile, defined) | {"edge": edges})
-
-
-def _test(file: SourceFile, steps: tuple[str, ...], package: bool, profile: Profile, defined: Defined,
-          tests_root: str, known: frozenset[tuple[str, ...]], known_tests: frozenset[tuple[str, ...]]) -> Read:
+def _tested(file: SourceFile, steps: tuple[str, ...], package: bool, profile: Profile) -> Read:
     where = tested(profile, file.path)
-    absolute = tuple(i for i in file.imports if not i.relative)
-    edges = tuple(Fact("edge", line, target=target, at=place(profile, target))
-                  for line, target in targets(absolute, (), known, defined.root))
-    own = tuple(Fact("suite_edge", line, target=target)
-                for line, target in targets(file.imports, steps if package else steps[:-1], known_tests, tests_root))
     return Read(file, steps, package, True, None, where.tier.name if where.tier is not None else "", where.instance,
-                where.own, where.parts, where.is_test, where.is_fake,
-                _said(file, profile, defined) | {"edge": edges, "suite_edge": own})
+                where.own, where.parts, where.is_test, where.is_fake)
 
 
-def _said(file: SourceFile, profile: Profile, defined: Defined) -> dict[str, tuple[Fact, ...]]:
-    root = defined.root
-    return {"file": (Fact("file", 0),),
-            "import": tuple(Fact("import", i.line, i.module, traits=_traits(i.relative, i.standard), text=i.written)
-                            for i in file.imports),
-            "imported": tuple(_imported(file)),
-            "use": tuple(Fact("use", u.line, u.name, bound=u.bound) for u in file.uses),
-            "method": tuple(Fact("method", m.line, name=m.name, traits=_traits(held=m.held)) for m in file.method_calls),
-            "call": tuple(Fact("call", c.line, c.func, at=place(profile, c.func[1:]) if c.func[:1] == (root,) else None)
-                          for c in file.calls),
-            "build": tuple(Fact("build", c.line, c.func, at=defined.classes[c.func]) for c in file.calls
-                           if c.func in defined.classes),
-            "reference": tuple(_references(file, profile, defined))}
+def _read(read: Read, rules: tuple[Rule, ...], facts: Facts, profile: Profile) -> tuple[str, ...]:
+    """The kinds of fact the rules whose scope holds the file read, a call for those that excuse a reference read as
+    the callee of a call."""
+    kinds = [kind for rule in rules if in_scope(rule.scope, read, facts, profile)
+             for kind in (*rule.facts, *(("call",) if "called" in rule.exempt else ()))]
+    return tuple(dict.fromkeys(kinds))
 
 
-def _references(file: SourceFile, profile: Profile, defined: Defined) -> Iterator[Fact]:
+def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: Defined,
+           facts: Facts) -> tuple[Fact, ...]:
+    file, root = read.file, defined.root
+    package = read.steps if read.package else read.steps[:-1]
+    match kind:
+        case "file":
+            return (Fact("file", 0),)
+        case "import":
+            return tuple(Fact("import", i.line, i.module, traits=_TRAITS[i.relative, i.standard, False],
+                              text=i.written) for i in file.imports)
+        case "imported":
+            return tuple(_imported(file))
+        case "use":
+            return tuple(Fact("use", u.line, u.name, bound=u.bound) for u in file.uses)
+        case "method":
+            return tuple(Fact("method", m.line, name=m.name, traits=_TRAITS[False, False, m.held])
+                         for m in file.method_calls)
+        case "call":
+            return tuple(Fact("call", c.line, c.func,
+                              at=_placed(profile, cache, c.func[1:]) if c.func[:1] == (root,) else None)
+                         for c in file.calls)
+        case "build":
+            return tuple(Fact("build", c.line, c.func, at=defined.classes[c.func]) for c in file.calls
+                         if c.func in defined.classes)
+        case "reference":
+            return tuple(_references(file, profile, cache, defined))
+        case "edge" if read.test:
+            return tuple(Fact("edge", line, target=target, at=_placed(profile, cache, target)) for line, target in
+                         targets((i for i in file.imports if not i.relative), (), facts.known, root))
+        case "edge":
+            return tuple(Fact("edge", line, name=name, target=target, at=_placed(profile, cache, target))
+                         for line, target, name in named_targets(file.imports, package, facts.known, root))
+        case "suite_edge":
+            return tuple(Fact("suite_edge", line, target=target) for line, target in
+                         targets(file.imports, package, facts.known_tests, facts.tests_root)) if read.test else ()
+    raise ValueError(f"no kind of fact is named {kind!r}")
+
+
+def _references(file: SourceFile, profile: Profile, cache: Placements, defined: Defined) -> Iterator[Fact]:
     for use in file.uses:
         if use.name[:1] != (defined.root,):
             continue
         for end in range(max(use.bound, 2), len(use.name) + 1):
             module, function = use.name[1:end - 1], use.name[end - 1]
             if function in defined.functions.get(module, ()):
-                yield Fact("reference", use.line, use.name, target=(*module, function), at=place(profile, module))
+                yield Fact("reference", use.line, use.name, target=(*module, function),
+                           at=_placed(profile, cache, module))
                 break
+
+
+def _placed(profile: Profile, cache: Placements, path: tuple[str, ...]) -> Place | None:
+    """Where a path below the root sits, worked out once a run."""
+    if path not in cache:
+        cache[path] = place(profile, path)
+    return cache[path]
 
 
 def _imported(file: SourceFile) -> Iterator[Fact]:
     for i in file.imports:
-        traits = _traits(i.relative, i.standard)
+        traits = _TRAITS[i.relative, i.standard, False]
         if i.names is None:
             yield Fact("imported", i.line, i.module, traits=traits, text=i.written)
         else:
             yield from (Fact("imported", i.line, (*i.module, name), name, traits, text=i.written) for name in i.names)
-
-
-def _traits(relative: bool = False, standard: bool = False, held: bool = False) -> frozenset[str]:
-    return frozenset(name for name, on in (("relative", relative), ("standard", standard), ("held", held)) if on)
