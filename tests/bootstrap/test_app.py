@@ -125,7 +125,7 @@ def test_a_project_may_check_against_its_own_architecture_file(tmp_path):
     (tmp_path / "layered.yaml").write_text(
         'xarch: 1\nname: layered\nlayout: {lib: {}, modules: {singular: module, each: {api: {}}}}\n'
         'parts: {lib: {path: lib, role: shared}, api: {path: "modules/*/api", role: handlers}}\n'
-        'rules: {api: [api@own, lib], lib: [lib]}\n')
+        'rules: {api: [lib], lib: []}\n')
     write_pyproject(tmp_path, "layered.yaml")
     assert runner.invoke(app, ["init"]).exit_code == 0
     assert runner.invoke(app, ["new", "modules", "orders"]).exit_code == 0
@@ -288,7 +288,7 @@ def test_a_missing_tests_folder_is_a_usage_error():
 def test_init_refuses_a_profile_whose_file_replaces_what_the_skeleton_writes(tmp_path):
     (tmp_path / "guard.tpl").write_text("{{app}}\n")
     (tmp_path / "layered.yaml").write_text(
-        "xarch: 1\nname: layered\nlayout: {src: {}}\nparts: {src: {path: src, role: code}}\nrules: {src: [src]}\n"
+        "xarch: 1\nname: layered\nlayout: {src: {}}\nparts: {src: {path: src, role: code}}\nrules: {src: []}\n"
         "files: {app/__init__.py: {from: guard.tpl}}\n")
     result = runner.invoke(app, ["init", "--profile", "layered.yaml"])
     assert result.exit_code == 2

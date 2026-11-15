@@ -13,6 +13,9 @@ stops early. The file's keys:
                                a part no tier tests says why with `untested: <reason>`, one line
                                one part may also say `entry: true`: it is the entry point, which drives the rest
     rules: {<part>: [<target>, ...]}          what the part may import: <part>[@own|@any][/<sub path>], or `*`
+                               besides itself: a part may always import itself (its own instance, for a part in the
+                               `each` folder), so a target that only says so (`x` or `x@own` in the row of `x`) is
+                               refused; `x@any` says more and stays
     layers: {<name>: [<part>, ...]}           optional; chains of parts from the inside out: none imports one after it
     placement: [<part>, ...]                  optional; every part once, in the order its litmus test is run
     naming: [{kind, where, pattern, example}] optional; the docs' naming table, one row per kind of thing
@@ -26,8 +29,12 @@ stops early. The file's keys:
                                such as builders or a fixture) are optional, and so is types_only (a list of parts its
                                tests may import and use as types, never call: `x: Part` is fine, `Part(...)` is not),
                                and so is forbidden (true: its tests are held to the `forbidden` list of the part
-                               they mirror). With tiers, every part is in some tier's subject or says `untested`,
-                               never both
+                               they mirror), and so is folder (a path below the tests folder, such as architecture:
+                               where its tests live when they mirror no part, which the guard tier's do; relative,
+                               no `..`, no empty step, no `*`, not the folder of a part, not overlapping the fakes'
+                               folder or another tier's; when the tier also has an example, its path lies in the
+                               folder. The example is for the docs and places no test). With tiers, every part is in
+                               some tier's subject or says `untested`, never both
     docs: {<path>: {from, note}}              optional; the project docs `init` writes below docs/project/, in this
                                order: each path is a file, written from the template file `from` (relative to this
                                file) after its placeholders are filled, see docs_template.py; a path ending in `/`
@@ -66,9 +73,10 @@ stops early. The file's keys:
                                out. No check reads a Python file below one; `check` lists each in its enforcement
                                section, so the exclusion stays visible
     forbidden: {<part>: [<name>, ...]}        optional; what each part may not use: a dotted name as an absolute import
-                               binds it (datetime.datetime.now; a builtin as builtins.open), or a module by its import
-                               name (socket); a file of the part may neither import it (or below it) nor use it by
-                               name, see the rules module's forbidden check. Each list is non-empty, each name once
+                               binds it (datetime.datetime.now; a builtin as builtins.open, since a bare builtin such
+                               as `open` is refused), or a module by its import name (socket); a file of the part
+                               may neither import it (or below it) nor use it by name, see the rules module's
+                               forbidden check. Each list is non-empty, each name once
     fakes: {path, for, prefix} optional; the folder of the test fakes (path, below the tests root as in tests/fakes)
                                and the parts they stand in for: only a tier whose subject holds one may import them;
                                prefix, optional, is how a fake's name starts (Fake: the fake of DocumentRepo is
@@ -98,6 +106,7 @@ one exists. Examples are only ever files: the format takes no inline code.
 """
 from __future__ import annotations
 
+import builtins
 import re
 import sys
 from collections.abc import Callable, Collection, Mapping
@@ -105,6 +114,7 @@ from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import Any
 
+from xarch.kernel.logic.placement import place_of
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.domain.docs import DOCS_ROOT
 from xarch.modules.spec.domain.errors import InvalidArchitecture
@@ -158,7 +168,7 @@ _FILE_KEYS = {"from", "pinned", "fill"}
 _TIER_REQUIRED = ("name", "subject", "proves", "may_touch", "litmus")
 _TIER_TEXTS = ("proves", "may_touch", "subject_text", "one_file_per", "cases_from", "data")
 """The keys of a tier that hold one line of text each."""
-_TIER_KEYS = {*_TIER_REQUIRED, *_TIER_TEXTS, "example", "helpers", "types_only", "forbidden"}
+_TIER_KEYS = {*_TIER_REQUIRED, *_TIER_TEXTS, "example", "helpers", "types_only", "forbidden", "folder"}
 _TIER_EXAMPLE_KEYS = {"path", "file", "note"}
 _PART_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_-]*")
 _PACKAGE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
@@ -241,6 +251,7 @@ def parse_architecture(document: Any, source: str, has_file: Callable[[str], boo
     framework = _framework(document["tests"], problems) if "tests" in document else None
     excluded = _excluded(document["excluded"], layout, problems) if "excluded" in document else ()
     hints = _hints(document["hints"], problems) if "hints" in document else {}
+    problems += _folder_clashes(tiers, fakes)
     guards = _guards(document.get("guards", {}), parts, declared, tiers, fakes, framework, problems)
     if "tests" not in document:
         problems += _needs_tests(document, tiers)
@@ -415,8 +426,18 @@ def _rules(value: Any, parts: dict[str, Part], declared: set[str],
             problems.append(f"{where}: must be a list of targets such as [api@own, shared]")
             continue
         parsed = [_target(t, parts, declared, where, problems) for t in targets]
-        rows[name] = tuple(t for t in parsed if t is not None)
+        found = [(value, t) for value, t in zip(targets, parsed) if t is not None]
+        problems += [_implied(where, value, parts[name]) for value, t in found if t.part == name and t.scope != "any"]
+        rows[name] = tuple(t for _, t in found)
     return rows
+
+
+def _implied(where: str, value: str, part: Part) -> str:
+    """A part may always import itself, so a target that only says so is refused."""
+    if not part.in_instance:
+        return f"{where}: {value!r} is implied: a part may always import itself; remove it"
+    return (f"{where}: {value!r} is implied: a part may always import itself, its own instance of the `each` folder; "
+            f"remove it ({part.name}@any, another instance's too, stays allowed)")
 
 
 def _target(value: Any, parts: dict[str, Part], declared: set[str], where: str,
@@ -723,6 +744,11 @@ def _tiers(value: Any, parts: dict[str, Part], declared: set[str], has_file: Cal
         helpers = _tier_helpers(spec["helpers"], has_file, f"{where}.helpers", problems) if "helpers" in spec else ()
         types_only = (tuple(_part_names(spec["types_only"], declared, f"{where}.types_only", problems))
                       if "types_only" in spec else ())
+        folder = _tier_folder(spec["folder"], parts, f"{where}.folder", problems) if "folder" in spec else None
+        if folder is not None and example is not None and example.path[1:-1][:len(folder)] != folder:
+            problems.append(f"{where}.example.path: '{'/'.join(example.path)}' is not inside the tier's folder "
+                            f"'{'/'.join(folder)}' below the tests folder: the docs would show a place `check` "
+                            "places in no tier")
         held = spec.get("forbidden", False)
         if not isinstance(held, bool):
             problems.append(f"{where}.forbidden: must be true or false: whether its tests are held to the `forbidden` "
@@ -733,7 +759,7 @@ def _tiers(value: Any, parts: dict[str, Part], declared: set[str], has_file: Cal
             tiers.append(Tier(name, subject, spec["proves"], spec["may_touch"], spec["litmus"].strip("\n"),
                               spec.get("subject_text", ""), spec.get("one_file_per", ""), spec.get("cases_from", ""),
                               spec.get("data", ""), example, helpers, tuple(p for p in types_only if p in parts),
-                              held))
+                              held, folder))
     for part in parts.values():
         if part.untested and part.name in claimed:
             problems.append(f"tiers: part '{part.name}' is in the subject of tier '{claimed[part.name]}' "
@@ -781,6 +807,39 @@ def _tier_example(value: Any, has_file: Callable[[str], bool], where: str, probl
     if len(problems) != count or steps is None:
         return None
     return TierExample(steps, value["file"], value.get("note", ""))
+
+
+def _tier_folder(value: Any, parts: dict[str, Part], where: str, problems: list[str]) -> tuple[str, ...] | None:
+    """The folder below the tests folder where a tier's tests live when they mirror no part."""
+    steps = tuple(value.split("/")) if _line(value) and not value.startswith("/") else ()
+    if not steps or any(step in ("", ".", "..") or EACH in step for step in steps):
+        problems.append(f"{where}: must be a folder below the tests folder, such as architecture: relative, with no "
+                        "`..`, no empty step and no `*`")
+        return None
+    mirrored = place_of({name: part.path for name, part in parts.items()}, steps).part
+    if mirrored is not None:
+        problems.append(f"{where}: '{value}' is the folder of part '{mirrored}', which places its tests: give `folder` "
+                        "only to a folder that mirrors no part")
+        return None
+    return steps
+
+
+def _folder_clashes(tiers: tuple[Tier, ...], fakes: Fakes | None) -> list[str]:
+    """The folders of tiers that lie inside, or hold, the fakes' folder or another tier's."""
+    problems: list[str] = []
+    taken = [(f"the fakes' folder '{'/'.join(fakes.path[1:])}'", fakes.path[1:])] if fakes is not None else []
+    for tier in tiers:
+        if tier.folder is None:
+            continue
+        shown = "/".join(tier.folder)
+        problems += [f"tiers: the folder '{shown}' of tier '{tier.name}' overlaps {owner}: give each its own folder"
+                     for owner, other in taken if _overlap(tier.folder, other)]
+        taken.append((f"the folder '{shown}' of tier '{tier.name}'", tier.folder))
+    return problems
+
+
+def _overlap(first: tuple[str, ...], second: tuple[str, ...]) -> bool:
+    return first[:len(second)] == second or second[:len(first)] == first
 
 
 def _tier_helpers(value: Any, has_file: Callable[[str], bool], where: str,
@@ -844,6 +903,9 @@ def _forbidden(value: Any, parts: dict[str, Part], declared: set[str],
             if not isinstance(item, str) or not _NAME_OR_DOTTED.fullmatch(item):
                 problems.append(f"{where}: {item!r} is not a dotted name such as datetime.datetime.now, nor an import "
                                 "name such as socket")
+            elif "." not in item and hasattr(builtins, item):
+                problems.append(f"{where}: {item!r} is a Python builtin, which a bare name does not ban: write "
+                                f"builtins.{item}")
             elif tuple(item.split(".")) in found:
                 problems.append(f"{where}: {item!r} is listed twice")
             else:

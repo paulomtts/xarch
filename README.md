@@ -84,14 +84,19 @@ the profile's [`excluded`](#excluded-and-hints) key instead, and then no check l
 
 From the architecture itself:
 
-- `structure`: every folder and file of the layout exists, in the app and in every instance of the `each:` folder.
+- `structure`: every folder and file of the layout exists, at any depth (`kernel/logic/`, `web/routes/`), in the app
+  and in every instance of the `each:` folder.
 - `rules`: every import between parts is one that `rules:` allows. `@own` means the importer's own instance of
-  the `each:` folder, `@any` any instance.
+  the `each:` folder, `@any` any instance. A part may always import itself (its own instance, for a part in the
+  `each:` folder), so its row never lists it: `kernel: []` for a part that imports nothing else, and a row that only
+  restates it (`kernel`, or `domain@own`) is refused. `domain@any` in the row of `domain` says more, another
+  instance's, and stays.
 - `libraries` (with `libraries:`): a part imports only the outside packages listed for it, by top-level import
   name; the standard library (`sys.stdlib_module_names`) is always allowed, and tests are not checked.
 - `forbidden` (with `forbidden:`): the names a part may not use, so that what a pure part promises (no clock, no
   I/O) is checked. An entry is a dotted name as an absolute import binds it (`datetime.datetime.now`; a builtin as
-  `builtins.open`) or a whole package or module by its import name (`socket`). A file of the part may not import a
+  `builtins.open`, since a bare `open` is refused: it would ban nothing) or a whole package or module by its
+  import name (`socket`). A file of the part may not import a
   listed module or anything below it (`import urllib.request` is `urllib`, `from time import time` is `time.time`),
   and may not use a listed name, called or not (`time.time` passed as a key counts), as the file writes it:
   through the import that binds its first name and its alias (`from datetime import datetime as dt; dt.now()`,
@@ -110,8 +115,10 @@ From the architecture itself:
   ```
 - `tiers` (with `tiers:`): tests mirror the app, `tests/<path>` for the app's `<path>`. A file's tier is that of
   the part its folder mirrors; a file directly in the folder of file parts (such as `application/`, holding
-  `controller.py`) takes their tier; a folder that mirrors no part belongs to the tier whose example test lies in it
-  (`tests/architecture/` is the guard tier's). A test imports only the part its folder mirrors and what that part
+  `controller.py`) takes their tier; a folder that mirrors no part belongs to the tier whose `folder:` holds it, a path below
+  `tests/` that the tier states (`folder: architecture` is the guard tier's: relative, no `..`, no `*`, not the folder
+  of a part, not overlapping the `fakes:` folder or another tier's; a tier's `example:` is shown in the docs, and when
+  the tier has a `folder:` its path lies in it, but the example places no test). A test imports only the part its folder mirrors and what that part
   may import under `rules:`, `@own` meaning the instance it mirrors (a test directly in `application/` has the
   file parts there, such as `controller.py`); a test in a folder that mirrors no part (the guard tier's) imports
   its tier's subject parts and what those may import. It imports the fakes only when its tier tests a part

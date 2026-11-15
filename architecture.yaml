@@ -44,16 +44,16 @@ parts:
 
 # The same rules as the bundled cli profile.
 rules:
-  kernel:     [kernel]
-  domain:     [domain@own, kernel]
-  contract:   [contract@own, domain@own/values, kernel]
-  controller: [controller@own, services@own, logic@own, domain@own, ports@own, contract@own, kernel]
-  services:   [services@own, logic@own, domain@own, ports@own, contract@own, kernel]
-  logic:      [logic@own, domain@own, kernel]
-  ports:      [ports@own, domain@own, kernel]
-  adapters:   [adapters@own, ports@own, domain@own, kernel, platform, contract@any]
-  platform:   [platform, kernel]
-  cli:        [cli, controller@any, contract@any, kernel]
+  kernel:     []
+  domain:     [kernel]
+  contract:   [domain@own/values, kernel]
+  controller: [services@own, logic@own, domain@own, ports@own, contract@own, kernel]
+  services:   [logic@own, domain@own, ports@own, contract@own, kernel]
+  logic:      [domain@own, kernel]
+  ports:      [domain@own, kernel]
+  adapters:   [ports@own, domain@own, kernel, platform, contract@any]
+  platform:   [kernel]
+  cli:        [controller@any, contract@any, kernel]
   main:       [bootstrap]
   bootstrap:  ["*"]
 
@@ -93,7 +93,8 @@ tests:
 # what bootstrap/ wires, from tests/bootstrap/ (or tests/cli/ for what cli/ renders); the guard runs the wired check on
 # xarch's own source. bootstrap/'s rule is "*", so a wired or guard test may import anything; `types_only` keeps it from
 # calling the inner parts: it drives bootstrap/, cli/ and the contracts, and may use the rest only as types. The format
-# has no way to forbid an import or an attribute read there, so those stay open.
+# has no way to forbid an import or an attribute read there, so those stay open. The guard mirrors no part, so its
+# `folder` says where its tests live.
 tiers:
   - name: unit
     subject: [kernel, kernel/logic, domain, logic, adapters]
@@ -122,6 +123,7 @@ tiers:
     may_touch: "`tests/architecture/`"
     types_only: [domain, logic, ports, services, controller, adapters, platform]
     litmus: Does it run the wired check on xarch's own source?
+    folder: architecture
     example: {path: tests/architecture/test_self_check.py, file: tests/architecture/test_self_check.py}
 
 # The fakes of the ports, one per read port, each named Fake<Port>; stand-ins holds the ports to their kind: a port

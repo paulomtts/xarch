@@ -22,9 +22,9 @@ parts:
   controller: {path: modules/*/application/controller.py, role: maps}
   ports:      {path: modules/*/application/ports, role: ports}
 rules:
-  contract:   [contract@own]
-  controller: [controller@own, contract@own, ports@own]
-  ports:      [ports@own]
+  contract:   []
+  controller: [contract@own, ports@own]
+  ports:      []
 tests: {files: ["*_spec.py"], functions: "it_*"}
 tiers:
   - {name: integration, subject: [controller, contract, ports], proves: a use case, may_touch: fakes,
@@ -144,8 +144,9 @@ def test_a_mock_of_a_name_the_profile_does_not_list_is_not_checked(tmp_path):
 
 def test_a_file_the_profile_names_as_a_test_but_that_mirrors_no_part_has_no_tier(tmp_path):
     found = check(tmp_path, {"elsewhere/stray_spec.py": "", "elsewhere/test_stray.py": ""})
-    assert found == ["tests/elsewhere/stray_spec.py: lies in no tier: no part's folder and no tier's example folder "
-                     "is mirrored here; fix: move it to the folder that mirrors its subject's path in the app"]
+    assert found == ["tests/elsewhere/stray_spec.py: lies in no tier: no part's folder and no tier's `folder` is "
+                     "mirrored here; fix: move it to the folder that mirrors its subject's path in the app, or into a "
+                     "tier's `folder`"]
 
 
 def test_a_profile_of_four_keys_names_no_framework_and_still_checks(tmp_path):

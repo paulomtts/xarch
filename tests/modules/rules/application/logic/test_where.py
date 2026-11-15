@@ -18,12 +18,11 @@ SHOWN = {"kernel": "kernel/", "domain": "domain/", "controller": "application/co
          "ports": "application/ports/", "platform": "platform/", "entry": "front/"}
 PROFILE = Profile(
     parts=PARTS,
-    rules={"kernel": (Target("kernel"),), "domain": (Target("domain", "own"), Target("kernel")),
-           "controller": (Target("controller", "own"), Target("domain", "own"), Target("ports", "own"),
-                          Target("kernel")),
-           "ports": (Target("ports", "own"), Target("domain", "own"), Target("kernel")),
-           "platform": (Target("platform"), Target("kernel")),
-           "entry": (Target("entry"), Target("controller", "any"), Target("kernel"))},
+    rules={"kernel": (), "domain": (Target("kernel"),),
+           "controller": (Target("domain", "own"), Target("ports", "own"), Target("kernel")),
+           "ports": (Target("domain", "own"), Target("kernel")),
+           "platform": (Target("kernel"),),
+           "entry": (Target("controller", "any"), Target("kernel"))},
     folders=((), ("kernel",), ("modules",), ("modules", "*"), ("modules", "*", "domain"),
              ("modules", "*", "application"), ("modules", "*", "application", "ports"), ("platform",), ("front",)),
     tiers=(Tier("unit", (Target("kernel"), Target("domain", "own")), None, (), True, "a rule", "nothing",
@@ -244,7 +243,8 @@ def test_a_structure_folder_that_is_itself_in_the_layout_lists_the_parts_below_i
 def test_a_target_below_a_folder_part_is_shown_without_the_folders_slash():
     below = Profile(**{**vars(PROFILE), "rules": {**PROFILE.rules, "entry": (Target("ports", "any", ("repo",)),)}})
     assert where("front", "main.py", profile=below).may_import == (
-        Reach("ports", "any", "application/ports/repo", "app/modules/<module>/application/ports/repo"),)
+        Reach("entry", "none", "front/", "app/front/"),
+        Reach("ports", "any", "application/ports/repo", "app/modules/<module>/application/ports/repo"))
 
 
 def test_what_exists_in_the_app_beats_what_exists_elsewhere_in_the_project():

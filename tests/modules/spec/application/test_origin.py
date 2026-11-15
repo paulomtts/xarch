@@ -12,14 +12,14 @@ TIER = {"name": "unit", "subject": ["core", "store"], "proves": "a rule", "may_t
 BASE = {"xarch": 1, "name": "base", "layout": {"core": {}, "store": {}, "edge": {}},
         "parts": {"core": {"path": "core", "role": "rules"}, "store": {"path": "store", "role": "storage"},
                   "edge": {"path": "edge", "role": "entry", "untested": "it only wires"}},
-        "rules": {"core": ["core"], "store": ["store", "core"], "edge": ["*"]},
+        "rules": {"core": [], "store": ["core"], "edge": ["*"]},
         "libraries": {"store": ["sqlmodel"]},
         "forbidden": {"core": ["time.time", "socket"]},
         "tests": TESTS, "tiers": [TIER],
         "guards": {"no-comments": {}},
         "files": {"tests/test_rules.py": {"from": "guard.py", "pinned": True}}}
 OTHER = {"xarch": 1, "name": "other", "layout": {"web": {}}, "parts": {"web": {"path": "web", "role": "all"}},
-         "rules": {"web": ["web"]}}
+         "rules": {"web": []}}
 
 
 def controller(custom: dict) -> SpecController:
@@ -41,7 +41,7 @@ def test_a_copy_of_a_bundled_profile_is_compared_with_it_and_found_no_looser():
 
 
 def test_every_way_a_custom_profile_is_looser_than_the_bundled_one_it_resembles_is_listed():
-    custom = {**BASE, "rules": {"core": ["core", "store"], "store": ["store", "core"], "edge": ["*"]},
+    custom = {**BASE, "rules": {"core": ["store"], "store": ["core"], "edge": ["*"]},
               "libraries": {"store": ["sqlmodel", "requests"], "core": ["yaml"]},
               "forbidden": {"core": ["socket"]},
               "parts": {**BASE["parts"], "store": {"path": "store", "role": "storage", "untested": "trust me"}},
@@ -66,7 +66,7 @@ def test_every_way_a_custom_profile_is_looser_than_the_bundled_one_it_resembles_
 
 
 def test_a_stricter_custom_profile_lists_nothing_and_a_broader_ban_covers_a_narrower_one():
-    custom = {**BASE, "rules": {"core": ["core"], "store": ["store"], "edge": ["*"]}, "libraries": {},
+    custom = {**BASE, "rules": {"core": [], "store": [], "edge": ["*"]}, "libraries": {},
               "forbidden": {"core": ["time", "socket"], "store": ["socket"]}}
     assert controller(custom).origin("mine.yaml").looser == ()
 
@@ -78,7 +78,7 @@ def test_unchecked_libraries_are_looser_than_checked_ones():
 
 def test_a_custom_profile_sharing_no_part_resembles_no_bundled_profile_and_has_no_baseline():
     custom = {"xarch": 1, "name": "mine", "layout": {"x": {}}, "parts": {"x": {"path": "x", "role": "all"}},
-              "rules": {"x": ["x"]}}
+              "rules": {"x": []}}
     origin = controller(custom).origin("mine.yaml")
     assert (origin.closest, origin.baseline_off, origin.looser) == (None, (), ())
     assert origin.guards_off == ("package-only", "scenario-coverage", "no-comments", "stand-ins", "closed-tree")
@@ -87,9 +87,9 @@ def test_a_custom_profile_sharing_no_part_resembles_no_bundled_profile_and_has_n
 def test_the_closest_bundled_profile_is_the_one_sharing_the_most_parts_the_first_by_name_on_a_tie():
     custom = {**OTHER, "layout": {"web": {}, "core": {}, "store": {}},
               "parts": {**OTHER["parts"], "core": {"path": "core", "role": "x"}, "store": {"path": "store", "role": "y"}},
-              "rules": {"web": ["web"], "core": ["core"], "store": ["store"]}}
+              "rules": {"web": [], "core": [], "store": []}}
     assert controller(custom).origin("mine.yaml").closest == "base"
     assert controller(OTHER).origin("mine.yaml").closest == "other"
     tie = {**OTHER, "layout": {"web": {}, "core": {}}, "parts": {**OTHER["parts"], "core": {"path": "core", "role": "x"}},
-           "rules": {"web": ["web"], "core": ["core"]}}
+           "rules": {"web": [], "core": []}}
     assert controller(tie).origin("mine.yaml").closest == "base"

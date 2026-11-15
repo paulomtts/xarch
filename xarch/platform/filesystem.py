@@ -35,8 +35,8 @@ class FileSystem:
         return None
 
     def files(self, root: Path, pattern: str) -> list[Path]:
-        """Every file below root matching the glob pattern, sorted."""
-        return sorted(root.rglob(pattern))
+        """Every file below root matching the glob pattern, sorted: a folder or a dangling link that matches is not one."""
+        return sorted(path for path in root.rglob(pattern) if path.is_file())
 
     def files_below(self, path: Path) -> list[str]:
         """Every file below path, at any depth, as its path below it written with `/`, sorted; [] if path is not a

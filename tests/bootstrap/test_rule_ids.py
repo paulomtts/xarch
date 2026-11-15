@@ -40,7 +40,8 @@ CASES = [
                  "import here only what domain/ may; test controller/ of modules/docs from the folder that mirrors it",
                  id="tiers: an import"),
     pytest.param({}, {"misc/test_x.py": ""}, "tiers",
-                 "move it to the folder that mirrors its subject's path in the app", id="tiers: no tier"),
+                 "move it to the folder that mirrors its subject's path in the app, or into a tier's `folder`",
+                 id="tiers: no tier"),
     pytest.param({}, {"web/conftest.py": f"from {CONTROLLER} import DocumentController\nDocumentController(None)\n"},
                  "types-only", "use controller/ here only as a type, and drive what you test through web/ "
                                "(rendering tests may touch: a fake controller, injected; the real controller's class "

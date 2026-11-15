@@ -14,8 +14,8 @@ class TestTier:
     """A kind of test as the checker sees it.
 
     subject holds the parts it tests, each as a target: a part inside the modules in the test's own module. folder is
-    the folder of its example test below the tests root, which places the tests of a tier whose folder mirrors no part.
-    types_only holds the parts its tests may use as types but never call. forbidden: its tests are held to the
+    the folder below the tests root that places the tests of a tier whose tests mirror no part; an empty folder
+    places nothing. types_only holds the parts its tests may use as types but never call. forbidden: its tests are held to the
     forbidden list of the part they mirror. proves, may_touch, litmus and one_file_per are the profile's words for the
     tier, which `where` shows.
     """

@@ -8,11 +8,12 @@ from xarch.modules.layout.application.services.structure_check import StructureC
 from xarch.modules.layout.contract import CheckStructure
 
 ROOT = Path("/src/pkg")
-TOP = {ROOT / n for n in ["bootstrap", "kernel", "modules", "platform", "cli"]}
+TOP = {ROOT / n for n in ["bootstrap", "kernel", "kernel/logic", "modules", "platform", "cli", "cli/commands"]}
 MODULE = {ROOT / "modules/docs" / p for p in ["", "contract", "domain", "application/services",
                                                "application/logic", "application/ports", "adapters"]}
 CONTROLLER = ROOT / "modules/docs/application/controller.py"
-SKELETON = FakeSkeleton(["bootstrap", "kernel", "modules", "platform", "cli"], ("modules",),
+SKELETON = FakeSkeleton([("bootstrap",), ("kernel",), ("kernel", "logic"), ("modules",), ("platform",), ("cli",),
+                         ("cli", "commands")], ("modules",),
                         [(("contract",), True), (("domain",), True), (("application", "controller.py"), False),
                          (("application", "services"), True), (("application", "logic"), True),
                          (("application", "ports"), True), (("adapters",), True)])
@@ -28,7 +29,7 @@ def test_a_complete_tree_passes():
 
 
 MAIN = ROOT / "__main__.py"
-WITH_MAIN = FakeSkeleton(["kernel"], top_files=["__main__.py"])
+WITH_MAIN = FakeSkeleton([("kernel",)], top_files=[("__main__.py",)])
 
 
 def run_with_main(disk: FakeDisk) -> list[str]:
@@ -40,6 +41,29 @@ def test_a_file_declared_at_the_top_level_must_exist_as_a_file():
     assert run_with_main(FakeDisk({ROOT / "kernel"}, {MAIN})) == []
     assert run_with_main(FakeDisk({ROOT / "kernel"})) == ["app: missing __main__.py"]
     assert run_with_main(FakeDisk({ROOT / "kernel", MAIN})) == ["app: missing __main__.py"]
+
+
+NESTED = FakeSkeleton([("web",), ("web", "routes"), ("web", "ui")], top_files=[("web", "app.py"), ("main.py",)])
+
+
+def run_nested(disk: FakeDisk) -> list[str]:
+    return [str(v) for v in LayoutController(StructureCheck(disk, NESTED)).check(
+        CheckStructure(ROOT, "app", "cli")).violations]
+
+
+def test_a_folder_or_file_declared_at_any_depth_outside_the_each_folder_is_required():
+    whole = FakeDisk({ROOT / "web", ROOT / "web/routes", ROOT / "web/ui"}, {ROOT / "web/app.py", ROOT / "main.py"})
+    assert run_nested(whole) == []
+    assert run_nested(FakeDisk({ROOT / "web", ROOT / "web/ui"}, {ROOT / "web/app.py", ROOT / "main.py"})) == [
+        "app: missing web/routes/"]
+    assert run_nested(FakeDisk({ROOT / "web", ROOT / "web/routes", ROOT / "web/ui"}, {ROOT / "main.py"})) == [
+        "app: missing web/app.py"]
+
+
+def test_a_folder_that_is_missing_with_what_the_layout_holds_in_it_reports_each():
+    assert run_nested(FakeDisk(set(), set())) == [
+        "app: missing web/", "app: missing web/routes/", "app: missing web/ui/", "app: missing web/app.py",
+        "app: missing main.py"]
 
 
 def test_violations_are_labelled_with_the_root_package():

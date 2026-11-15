@@ -6,7 +6,7 @@ what the profile does not govern is not checked.
 """
 from __future__ import annotations
 
-from xarch.kernel.logic.placement import EACH, Place, matches, place_of, reaches
+from xarch.kernel.logic.placement import EACH, Place, Target, matches, place_of, reaches, with_itself
 from xarch.modules.rules.domain.values import Profile
 
 
@@ -32,5 +32,10 @@ def label(profile: Profile, where: Place) -> str:
     return f"{where.part}/ of {'/'.join(folder)}"
 
 
+def targets_of(profile: Profile, part: str) -> tuple[Target, ...]:
+    """What a part may import: itself (its own instance, for a part in the `each` folder), then its row of rules."""
+    return with_itself(part, profile.parts[part], profile.rules.get(part, ())) if part in profile.parts else ()
+
+
 def allowed(profile: Profile, src: Place, dst: Place) -> bool:
-    return src.part is not None and any(reaches(target, src, dst) for target in profile.rules.get(src.part, ()))
+    return src.part is not None and any(reaches(target, src, dst) for target in targets_of(profile, src.part))

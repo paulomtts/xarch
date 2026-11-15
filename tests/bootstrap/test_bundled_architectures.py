@@ -41,10 +41,10 @@ def test_every_part_has_a_role_and_a_litmus_test(profile):
         assert part.role and part.litmus, part.name
 
 
-def test_bootstrap_may_import_everything_and_kernel_only_itself(profile):
+def test_bootstrap_may_import_everything_and_kernel_nothing_but_itself(profile):
     rules = load_architecture(profile).rules
     assert [t.part for t in rules["bootstrap"]] == ["*"]
-    assert [t.part for t in rules["kernel"]] == ["kernel"]
+    assert rules["kernel"] == ()
 
 
 def test_the_rendering_tier_tests_the_entry_point(profile):

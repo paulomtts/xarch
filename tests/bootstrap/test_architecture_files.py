@@ -24,9 +24,9 @@ parts:
   service: { path: "src/*/service", role: "business logic",  litmus: "Does it decide what is allowed?" }
   store:   { path: "src/*/store",   role: "database access", litmus: "Does it touch the database?" }
 rules:
-  api:     [api@own, service@own]
-  service: [service@own, store@own]
-  store:   [store@own]
+  api:     [service@own]
+  service: [store@own]
+  store:   []
 """
 LAYERED_DATA = {
     "xarch": 1, "name": "layered",
@@ -34,7 +34,7 @@ LAYERED_DATA = {
     "parts": {"api": {"path": "src/*/api", "role": "HTTP handlers", "litmus": "Does it parse a request and call a service?"},
               "service": {"path": "src/*/service", "role": "business logic", "litmus": "Does it decide what is allowed?"},
               "store": {"path": "src/*/store", "role": "database access", "litmus": "Does it touch the database?"}},
-    "rules": {"api": ["api@own", "service@own"], "service": ["service@own", "store@own"], "store": ["store@own"]},
+    "rules": {"api": ["service@own"], "service": ["store@own"], "store": []},
 }
 """LAYERED as data, as its YAML reads."""
 
@@ -54,7 +54,7 @@ def test_a_valid_file_loads(tmp_path):
     assert architecture.top_level_tree() == {"src": {}}
     assert architecture.parts["api"] == Part("api", ("src", "*", "api"), "HTTP handlers",
                                              "Does it parse a request and call a service?")
-    assert architecture.rules["service"] == (Target("service", "own"), Target("store", "own"))
+    assert architecture.rules["service"] == (Target("store", "own"),)
     assert architecture.docs == () and architecture.examples == {}
 
 
@@ -190,6 +190,12 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
                   'docs: must be a mapping of paths to {from, note}, such as {statement.md: {from: docs/statement.md}}',
                   'examples.x: must be a mapping with `part`, `path` and `file`, and optionally `note`'],
                  id='rules, docs and examples of the wrong shape'),
+    pytest.param('xarch: 1\nname: n\nlayout: {a: {}}\nparts: {a: {path: a, role: r}}\nrules: {a: [a]}\n',
+                 ["rules.a: 'a' is implied: a part may always import itself; remove it"],
+                 id='a rule that only says a part may import itself'),
+    pytest.param('xarch: 1\nname: n\nlayout: {a: {}}\nparts: {a: {path: a, role: r}}\nforbidden: {a: [open]}\n',
+                 ["forbidden.a: 'open' is a Python builtin, which a bare name does not ban: write builtins.open"],
+                 id='a bare builtin in a forbidden list'),
     pytest.param('xarch: 1\n'
                  'name: n\n'
                  'layout: {a: {}}\n'

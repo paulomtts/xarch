@@ -5,11 +5,11 @@ A file at tests/<path> mirrors the app's <path>. Its tier is, in order:
 1. the first tier whose subject holds the part that claims <path> (below the subject's sub-path, if it names one);
 2. else, when its folder is the folder of parts that are files (such as a controller.py), the tier of those parts,
    if they share one;
-3. else, the first tier whose example test lies in its folder or a folder above it.
+3. else, the first tier whose `folder` holds it: the file lies in that folder or below it.
 A file under the fakes' folder is a fake, which no tier holds. A file in none of these has no tier.
 
 Its subject is the part its folder mirrors (1.), or the file parts of its folder (2.); a file placed by its tier's
-example folder (3.) mirrors no part and has none.
+folder (3.) mirrors no part and has none.
 
 Its own folder is the instance of the `each` folder it mirrors (tests/<each root>/<name>/), else the top folder below
 the tests root: the folder whose helpers it may import.
@@ -27,7 +27,7 @@ from xarch.modules.rules.domain.values import Profile, TestTier
 class Tested:
     """A file below the tests root: its tier (None if none), the instance of the `each` folder it is in, its own
     folder, whether it is a test (a name the profile's test files match) or a fake, and the parts it mirrors (its subject; empty
-    when its tier was found by its example's folder)."""
+    when its tier was found by its tier's folder)."""
     tier: TestTier | None
     instance: str | None
     own: tuple[str, ...]
@@ -61,7 +61,7 @@ def _tier(profile: Profile, path: tuple[str, ...]) -> tuple[TestTier | None, str
     if len(tiers) == 1:
         instance = place_of({"": profile.parts[file_parts[0]][:-1]}, folder).instance
         return next(iter(tiers.values())), instance, tuple(file_parts)
-    return _first(profile, lambda t: t.folder is not None and folder[:len(t.folder)] == t.folder), None, ()
+    return _first(profile, lambda t: bool(t.folder) and folder[:len(t.folder)] == t.folder), None, ()
 
 
 def _tests(tier: TestTier, part: str) -> bool:

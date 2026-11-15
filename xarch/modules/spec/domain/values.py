@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from xarch.kernel.logic.placement import EACH, EVERYTHING, Place, Scope, Target, place_of
+from xarch.kernel.logic.placement import EACH, EVERYTHING, Place, Scope, Target, place_of, with_itself
 
 
 @dataclass(frozen=True)
@@ -145,6 +145,8 @@ class Tier:
     helpers: files its tests share (builders, a fixture), shown with {{tier_helpers}}
     types_only: parts its tests may import and use as types, but never call
     forbidden: its tests are held to the `forbidden` list of the part they mirror
+    folder: the folder below the tests folder where its tests live when they mirror no part, e.g. ("architecture",);
+        the example only shows a place, it never decides one
     """
     name: str
     subject: tuple[Subject, ...]
@@ -159,6 +161,7 @@ class Tier:
     helpers: tuple[TierExample, ...] = ()
     types_only: tuple[str, ...] = ()
     forbidden: bool = False
+    folder: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -263,7 +266,8 @@ Guard = PackageOnly | ScenarioCoverage | NoComments | StandIns | ClosedTree
 class Architecture:
     """An architecture as described in an architecture file (format version 1).
 
-    rules: every part, in the order of parts; a part with no row may import nothing
+    rules: every part, in the order of parts, with what it may import besides itself (which a part may always
+        import, and no row says); a part with no row may import only itself
     docs: the project docs, in order: the files `init` writes and the folders it gives a note
     examples: by name, in the order of the file
     notes: by layout path: a folder that is not a part
@@ -320,6 +324,10 @@ class Architecture:
                 return False
             here = here[step]
         return here is None
+
+    def targets_of(self, part: str) -> tuple[Target, ...]:
+        """What a part may import: itself (its own instance, for a part in the `each` folder), then its row."""
+        return with_itself(part, self.parts[part].path, self.rules.get(part, ())) if part in self.parts else ()
 
     def place_of(self, path: tuple[str, ...]) -> Place:
         """Where a path below the app root sits, e.g. ("modules", "billing", "domain", "invoice.py") or the dotted

@@ -24,7 +24,7 @@ from xarch.kernel.logic.imports import may_import, shown_target
 from xarch.kernel.logic.placement import EACH, Target, matches
 from xarch.modules.rules.application.logic.tier_imports import NO_TIER, allowance, may_use_fakes
 from xarch.modules.rules.application.logic.tier_of import Tested, tested
-from xarch.modules.rules.domain.places import place
+from xarch.modules.rules.domain.places import place, targets_of
 from xarch.modules.rules.domain.values import Nearest, Profile, Reach, TestTier, TierInfo, Where
 
 TESTS_FOLDER = "tests"
@@ -98,7 +98,7 @@ def _app(profile: Profile, found: Resolved, shown: str, app: str, tests: str) ->
                      nearest=_nearest(profile, steps, structure, app), closed_tree=not structure and profile.closed_tree)
     part, info = where.part, profile.info.get(where.part)
     folders = {name: i.shown for name, i in profile.info.items()}
-    targets = profile.rules.get(part, ())
+    targets = targets_of(profile, part)
     folder, name, tier = _mirror(profile, part, steps)
     return Where(
         "part", shown, found.exists, part, info.role if info else "", info.litmus if info else "",

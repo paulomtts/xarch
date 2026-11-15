@@ -9,14 +9,14 @@ from xarch.modules.spec.domain.project_files import Written, project_files, with
 
 def layered() -> dict:
     return {"xarch": 1, "name": "layered", "layout": {"src": {}},
-            "parts": {"src": {"path": "src", "role": "code"}}, "rules": {"src": ["src"]}}
+            "parts": {"src": {"path": "src", "role": "code"}}, "rules": {"src": []}}
 
 
 def architecture(files: dict, layout: dict | None = None):
     document = layered() | {"files": files}
     if layout is not None:
         top = next(iter(layout))
-        document |= {"layout": layout, "parts": {"p": {"path": top, "role": "code"}}, "rules": {"p": ["p"]}}
+        document |= {"layout": layout, "parts": {"p": {"path": top, "role": "code"}}, "rules": {"p": []}}
     return parse_architecture(document, "layered.yaml", lambda relative: relative != "preset",
                               lambda relative: ("x",) if relative == "preset" else None)
 

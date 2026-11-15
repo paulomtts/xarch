@@ -61,6 +61,29 @@ def test_a_bad_forbidden_entry_is_rejected(forbidden, problem):
     assert problems(layered(forbidden=forbidden)) == [f"layered.yaml: {problem}"]
 
 
+@pytest.mark.parametrize("name, problem", [
+    pytest.param("open", "forbidden.service: 'open' is a Python builtin, which a bare name does not ban: write "
+                         "builtins.open", id="a bare builtin is rejected with the name to write instead"),
+    pytest.param("print", "forbidden.service: 'print' is a Python builtin, which a bare name does not ban: write "
+                          "builtins.print", id="another bare builtin is rejected"),
+    pytest.param("__import__", "forbidden.service: '__import__' is a Python builtin, which a bare name does not ban: "
+                               "write builtins.__import__", id="a dunder builtin is rejected"),
+])
+def test_a_builtin_named_bare_bans_nothing_so_it_is_rejected(name, problem):
+    assert problems(layered(forbidden={"service": [name]})) == [f"layered.yaml: {problem}"]
+
+
+@pytest.mark.parametrize("name", [
+    pytest.param("builtins.open", id="a builtin written as builtins.<name> is a dotted name"),
+    pytest.param("socket", id="a module that is no builtin stays an import name"),
+    pytest.param("time", id="a module whose name only resembles a builtin's stays an import name"),
+    pytest.param("open.read", id="a dotted name starting with a builtin's is not a bare name"),
+    pytest.param("Open", id="a name that differs from a builtin by case is no builtin"),
+])
+def test_a_name_that_is_no_bare_builtin_is_kept(name):
+    assert load(layered(forbidden={"service": [name]})).forbidden == {"service": (tuple(name.split(".")),)}
+
+
 def test_a_tier_may_hold_its_tests_to_the_list_of_the_part_they_mirror():
     tests = {"files": ["test_*.py"], "functions": "test_*"}
     architecture = load(layered(tiers=[{**TIER, "forbidden": True}], tests=tests,

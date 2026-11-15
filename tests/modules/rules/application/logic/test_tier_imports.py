@@ -15,7 +15,7 @@ APP = [source(p) for p in ["kernel/ids.py", "modules/docs/domain/doc.py", "modul
                            "modules/other/domain/doc.py", "platform/sql.py", "web/routes.py", "scripts/seed.py"]]
 HELPERS = [in_tests(p) for p in ["modules/docs/builders.py", "modules/other/builders.py", "web/conftest.py",
                                  "fakes/repo.py", "helpers.py", "conftest.py"]]
-NO_TIER = "lies in no tier: no part's folder and no tier's example folder is mirrored here"
+NO_TIER = "lies in no tier: no part's folder and no tier's `folder` is mirrored here"
 DOMAIN_TEST = "modules/docs/domain/test_doc.py"
 
 
@@ -53,7 +53,7 @@ def problems(path: str, *imports, checked=PROFILE) -> list[str]:
                  id="a test in the folder of a file part imports what that part may"),
     pytest.param("architecture/test_rules.py", [imp(1, "app.kernel", "ids")],
                  ["1: a guard test may not import kernel/ (app.kernel.ids)"],
-                 id="a test placed by its example folder imports what its tier's subject may, here nothing"),
+                 id="a test placed by its tier's folder imports what its tier's subject may, here nothing"),
     pytest.param("kernel/test_ids.py", [imp(1, "app.kernel", "ids"), imp(2, "app.modules.docs.domain", "doc")],
                  ["2: a test of kernel/ (unit tier) may not import domain/ of modules/docs "
                   "(app.modules.docs.domain.doc): it imports only what kernel/ may (rules.kernel)"],
@@ -101,10 +101,12 @@ def test_test_imports(path, imports, expected):
     assert problems(path, *imports) == expected
 
 
-def test_a_test_at_the_tests_root_has_no_own_folder_to_import_from():
-    at_root = profile(tiers=(Tier("all", (), ()),))
-    assert problems("test_all.py", imp(1, "tests", "helpers"), checked=at_root) == [
-        "1: a test may import test code only from its own folder tests/ (tests.helpers)"]
+@pytest.mark.parametrize("checked", [
+    pytest.param(profile(tiers=(Tier("all", (), ()),)), id="a tier with an empty folder places no test"),
+    pytest.param(profile(tiers=(Tier("all", (), None),)), id="a tier with no folder places no test"),
+])
+def test_a_test_at_the_tests_root_lies_in_no_tier(checked):
+    assert problems("test_all.py", imp(1, "tests", "helpers"), checked=checked) == [NO_TIER]
 
 
 SELFLESS = profile(rules={"kernel": (), "domain": (Target("kernel"),)},
@@ -131,7 +133,8 @@ def test_without_tiers_nothing_is_checked():
     pytest.param("kernel/test_ids.py", (Target("kernel"), Target("kernel")),
                  id="a part outside the instances is reached in no instance"),
     pytest.param("architecture/test_rules.py", (), id="a tier with no subject allows nothing"),
-    pytest.param("modules/docs/application/test_publish.py", (Target("controller", "own"), *PROFILE.rules["controller"]),
+    pytest.param("modules/docs/application/test_publish.py", (Target("controller", "own"), Target("controller", "own"),
+                                                    *PROFILE.rules["controller"]),
                  id="the file part of its folder"),
 ])
 def test_allowance(path, expected):
@@ -166,7 +169,8 @@ def test_may_use_fakes(checked, tier, expected):
     pytest.param(DOMAIN_TEST, [imp(1, "tests.modules.other", "builders")],
                  "move what tests.modules.other.builders holds into tests/modules/docs/, or drop the import",
                  id="test code of another folder"),
-    pytest.param("scripts/test_seed.py", [], "move it to the folder that mirrors its subject's path in the app",
+    pytest.param("scripts/test_seed.py", [],
+                 "move it to the folder that mirrors its subject's path in the app, or into a tier's `folder`",
                  id="a test in no tier"),
 ])
 def test_a_violation_says_what_to_do(path, imports, fix):

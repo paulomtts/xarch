@@ -5,7 +5,7 @@ PROFILE's app is the package `app`, its tests the package `tests`; its `each` fo
 domain/, contract/, application/{controller.py, services/, logic/, ports/} and adapters/, beside kernel/, platform/,
 web/ (the entry) and bootstrap/. Its tiers are unit (kernel, domain, logic, adapters; held to `forbidden`),
 integration (controller, services, ports, contract), rendering (web; the controller as a type only) and guard (by
-its example folder, architecture/).
+its folder, architecture/).
 """
 from __future__ import annotations
 
@@ -38,16 +38,16 @@ def own(*parts: str) -> tuple[Target, ...]:
 
 
 RULES = {
-    "kernel": (Target("kernel"),),
-    "domain": (*own("domain"), Target("kernel")),
-    "contract": (*own("contract"), Target("domain", "own", ("values",)), Target("kernel")),
-    "controller": (*own("controller", "services", "logic", "domain", "ports", "contract"), Target("kernel")),
-    "services": (*own("services", "logic", "domain", "ports", "contract"), Target("kernel")),
-    "logic": (*own("logic", "domain"), Target("kernel")),
-    "ports": (*own("ports", "domain"), Target("kernel")),
-    "adapters": (*own("adapters", "ports", "domain"), Target("kernel"), Target("platform"), Target("contract", "any")),
-    "platform": (Target("platform"), Target("kernel")),
-    "web": (Target("web"), Target("controller", "any"), Target("contract", "any"), Target("kernel")),
+    "kernel": (),
+    "domain": (Target("kernel"),),
+    "contract": (Target("domain", "own", ("values",)), Target("kernel")),
+    "controller": (*own("services", "logic", "domain", "ports", "contract"), Target("kernel")),
+    "services": (*own("logic", "domain", "ports", "contract"), Target("kernel")),
+    "logic": (*own("domain"), Target("kernel")),
+    "ports": (*own("domain"), Target("kernel")),
+    "adapters": (*own("ports", "domain"), Target("kernel"), Target("platform"), Target("contract", "any")),
+    "platform": (Target("kernel"),),
+    "web": (Target("controller", "any"), Target("contract", "any"), Target("kernel")),
     "bootstrap": (Target(EVERYTHING),),
 }
 FOLDERS = ((), ("bootstrap",), ("kernel",), ("kernel", "logic"), ("modules",), ("modules", "*"),

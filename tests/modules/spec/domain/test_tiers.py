@@ -4,7 +4,7 @@ import pytest
 
 from tests.modules.spec.builders import integration, layered_tiers, parsed, problems, tiered, unit
 from xarch.modules.spec.domain.docs_template import fill
-from xarch.modules.spec.domain.errors import InvalidTemplate
+from xarch.modules.spec.domain.errors import InvalidArchitecture, InvalidTemplate
 from xarch.modules.spec.domain.values import Subject, Tier, TierExample
 
 
@@ -97,7 +97,7 @@ def test_a_tier_missing_its_litmus_or_another_required_key_is_rejected():
 
 def test_bad_tier_keys_and_texts_are_rejected():
     assert problems(layered_tiers(unit(colour="red", proves="two\nlines", data=3, name=""), integration())) == [
-        "layered.yaml: tiers[0]: unknown key 'colour': use cases_from, data, example, forbidden, helpers, litmus, may_touch, name, "
+        "layered.yaml: tiers[0]: unknown key 'colour': use cases_from, data, example, folder, forbidden, helpers, litmus, may_touch, name, "
         "one_file_per, proves, subject, subject_text, types_only",
         "layered.yaml: tiers[0].name: must be one line of text, such as 'unit'",
         "layered.yaml: tiers[0].proves: must be one line of text",
@@ -279,3 +279,90 @@ def test_tier_examples_not_read_or_of_mixed_kinds_are_reported():
 def test_a_tier_placeholder_with_an_argument_is_unknown():
     assert template_problems("{{tiers:unit}} {{tier_litmus}}")[0].startswith(
         "testing.md: unknown placeholder {{tiers:unit}}")
+
+
+FOLDER_PROBLEM = ("layered.yaml: tiers[0].folder: must be a folder below the tests folder, such as architecture: "
+                  "relative, with no `..`, no empty step and no `*`")
+
+
+def found(document: dict) -> list[str]:
+    """The problems of the document; none when it loads."""
+    try:
+        parsed(document)
+    except InvalidArchitecture as error:
+        return list(error.problems)
+    return []
+
+
+def test_a_tier_may_name_the_folder_its_tests_live_in_and_has_none_otherwise():
+    assert parsed(layered_tiers(unit(folder="checks/rules"), integration())).tiers[0].folder == ("checks", "rules")
+    assert parsed(layered_tiers()).tiers[0].folder is None
+
+
+@pytest.mark.parametrize("folder, expected", [
+    pytest.param("", [FOLDER_PROBLEM], id="an empty folder is rejected"),
+    pytest.param(3, [FOLDER_PROBLEM], id="a folder that is not text is rejected"),
+    pytest.param("/checks", [FOLDER_PROBLEM], id="an absolute folder is rejected"),
+    pytest.param("checks/", [FOLDER_PROBLEM], id="a folder with an empty step is rejected"),
+    pytest.param("checks//rules", [FOLDER_PROBLEM], id="a folder with an empty step inside is rejected"),
+    pytest.param("../checks", [FOLDER_PROBLEM], id="a folder climbing out is rejected"),
+    pytest.param(".", [FOLDER_PROBLEM], id="the folder itself is rejected"),
+    pytest.param("checks/*", [FOLDER_PROBLEM], id="a folder with a wildcard is rejected"),
+    pytest.param("src/billing/api",
+                 ["layered.yaml: tiers[0].folder: 'src/billing/api' is the folder of part 'api', which places its "
+                  "tests: give `folder` only to a folder that mirrors no part"],
+                 id="the folder of a part is rejected, since the part already places its tests"),
+])
+def test_a_bad_tier_folder_is_rejected(folder, expected):
+    assert problems(layered_tiers(unit(folder=folder), integration())) == expected
+
+
+@pytest.mark.parametrize("example, expected", [
+    pytest.param("tests/checks/rules/test_x.py", [], id="an example inside the folder is fine"),
+    pytest.param("tests/checks/test_x.py", [], id="an example directly in the folder is fine"),
+    pytest.param("tests/other/test_x.py",
+                 ["layered.yaml: tiers[0].example.path: 'tests/other/test_x.py' is not inside the tier's folder "
+                  "'checks' below the tests folder: the docs would show a place `check` places in no tier"],
+                 id="an example outside the folder is rejected"),
+    pytest.param("tests/test_x.py",
+                 ["layered.yaml: tiers[0].example.path: 'tests/test_x.py' is not inside the tier's folder "
+                  "'checks' below the tests folder: the docs would show a place `check` places in no tier"],
+                 id="an example directly below the tests folder is rejected"),
+    pytest.param("test_x.py",
+                 ["layered.yaml: tiers[0].example.path: 'test_x.py' is not inside the tier's folder "
+                  "'checks' below the tests folder: the docs would show a place `check` places in no tier"],
+                 id="an example with no tests folder in its path is rejected"),
+    pytest.param("tests/checks",
+                 ["layered.yaml: tiers[0].example.path: 'tests/checks' is not inside the tier's folder "
+                  "'checks' below the tests folder: the docs would show a place `check` places in no tier"],
+                 id="an example whose file name is the folder is rejected"),
+])
+def test_the_example_of_a_tier_with_a_folder_lies_in_it(example, expected):
+    tier = unit(folder="checks", example={"path": example, "file": "examples/x.py"})
+    assert found(layered_tiers(tier, integration())) == expected
+
+
+FAKES = {"path": "tests/fakes", "for": ["store"]}
+
+
+@pytest.mark.parametrize("first, second, fakes, expected", [
+    pytest.param("fakes", "other", FAKES,
+                 ["layered.yaml: tiers: the folder 'fakes' of tier 'unit' overlaps the fakes' folder 'fakes': give "
+                  "each its own folder"], id="a folder equal to the fakes' folder is rejected"),
+    pytest.param("fakes/db", "other", FAKES,
+                 ["layered.yaml: tiers: the folder 'fakes/db' of tier 'unit' overlaps the fakes' folder 'fakes': give "
+                  "each its own folder"], id="a folder inside the fakes' folder is rejected"),
+    pytest.param("fakes", "other", {"path": "tests/fakes/db", "for": ["store"]},
+                 ["layered.yaml: tiers: the folder 'fakes' of tier 'unit' overlaps the fakes' folder 'fakes/db': give "
+                  "each its own folder"], id="a folder holding the fakes' folder is rejected"),
+    pytest.param("checks", "checks", FAKES,
+                 ["layered.yaml: tiers: the folder 'checks' of tier 'integration' overlaps the folder 'checks' of tier "
+                  "'unit': give each its own folder"], id="two tiers with the same folder are rejected"),
+    pytest.param("checks", "checks/rules", FAKES,
+                 ["layered.yaml: tiers: the folder 'checks/rules' of tier 'integration' overlaps the folder 'checks' of "
+                  "tier 'unit': give each its own folder"], id="a folder inside another tier's is rejected"),
+    pytest.param("checks", "other", FAKES, [], id="folders that do not overlap are fine"),
+    pytest.param("checks", "chec", FAKES, [], id="a folder that only starts like another is not inside it"),
+])
+def test_the_folders_of_tiers_overlap_neither_the_fakes_nor_each_other(first, second, fakes, expected):
+    assert found(layered_tiers(unit(folder=first), integration(folder=second)) | {"fakes": fakes}) == expected

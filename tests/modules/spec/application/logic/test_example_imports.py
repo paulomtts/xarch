@@ -15,8 +15,8 @@ def layered(examples: dict) -> dict:
                   "sql": {"path": "src/*/store/sql", "role": "queries"},
                   "service": {"path": "src/*/service", "role": "business logic"},
                   "api": {"path": "src/*/api.py", "role": "HTTP handlers"}},
-        "rules": {"shared": ["shared"], "store": ["store@own", "sql@own", "shared/text"], "sql": ["sql@own"],
-                  "service": ["service@own", "store@own", "api@any"], "api": ["*"]},
+        "rules": {"shared": [], "store": ["sql@own", "shared/text"], "sql": [],
+                  "service": ["store@own", "api@any"], "api": ["*"]},
         "examples": examples,
     }
 
@@ -65,6 +65,14 @@ def test_an_import_the_rules_forbid_is_reported_once_with_its_rule():
         "(rules.sql)",
         "example shared (shared/x.py): imports app.src.billing which shared may not import (rules.shared)",
     ]
+
+
+def test_a_part_may_import_itself_in_its_own_instance_and_not_in_another_without_saying_so():
+    assert check(
+        shared="from app.shared import x\n",
+        sql="from app.src.billing.store.sql.queries import Q\nfrom app.src.tax.store.sql import Q\n",
+    ) == [
+        "example sql (src/billing/store/sql/x.py): imports app.src.tax.store.sql which sql may not import (rules.sql)"]
 
 
 def test_relative_imports_resolve_from_the_examples_path():

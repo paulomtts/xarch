@@ -86,7 +86,7 @@ def test_without_a_forbidden_list_nothing_is_checked():
 
 @pytest.mark.parametrize("path", [
     pytest.param(("fakes", "clock.py"), id="a fake"),
-    pytest.param(("architecture", "test_rules.py"), id="a test placed by its tier's example folder mirrors no part"),
+    pytest.param(("architecture", "test_rules.py"), id="a test placed by its tier's folder mirrors no part"),
     pytest.param(("stray", "test_x.py"), id="a test in no tier"),
 ])
 def test_a_test_that_mirrors_no_listed_part_is_not_checked(path):

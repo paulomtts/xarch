@@ -1,5 +1,5 @@
 """Where a file below the tests root sits, on hand-made profiles: its tier follows from the part its folder mirrors,
-else from the file parts of its folder when they share a tier, else from a tier's example folder; a fake has none."""
+else from the file parts of its folder when they share a tier, else from a tier's folder; a fake has none."""
 import pytest
 
 from tests.modules.rules.builders import GUARD, INTEGRATION, PARTS, PROFILE, RENDERING, UNIT, profile, steps
@@ -42,16 +42,22 @@ SHARED = profile(parts=MAIN, tiers=(UNIT, Tier("integration", (*INTEGRATION.subj
                  id="a test in a folder of file parts sharing one tier mirrors them all"),
     pytest.param(SPLIT, "modules/docs/application/test_publish.py",
                  tier_of.Tested(INTEGRATION, "docs", ("modules", "docs"), True, False, ()),
-                 id="a test in a folder of file parts of different tiers is placed by its tier's example folder"),
+                 id="a test in a folder of file parts of different tiers is placed by its tier's folder"),
     pytest.param(PROFILE, "architecture/test_rules.py", tier_of.Tested(GUARD, None, ("architecture",), True, False, ()),
-                 id="a test in a tier's example folder that mirrors no part has that tier and no subject"),
+                 id="a test in a tier's folder that mirrors no part has that tier and no subject"),
     pytest.param(PROFILE, "architecture/rules/test_layers.py",
                  tier_of.Tested(GUARD, None, ("architecture",), True, False, ()),
                  id="so does a test in a folder below it"),
     pytest.param(PROFILE, "web/routes/test_docs.py", tier_of.Tested(RENDERING, None, ("web",), True, False, ("web",)),
-                 id="a part's own tier wins over an example folder"),
+                 id="a part's own tier wins over a tier's folder"),
     pytest.param(PROFILE, "scripts/test_seed.py", tier_of.Tested(None, None, ("scripts",), True, False, ()),
-                 id="a test in no part and no example folder has no tier"),
+                 id="a test in no part and no tier folder has no tier"),
+    pytest.param(profile(tiers=(Tier("odd", (), ()),)), "scripts/test_seed.py",
+                 tier_of.Tested(None, None, ("scripts",), True, False, ()),
+                 id="a tier with an empty folder places no test"),
+    pytest.param(profile(tiers=(Tier("odd", (), ()),)), "test_seed.py",
+                 tier_of.Tested(None, None, (), True, False, ()),
+                 id="so a test at the tests root has no tier either"),
     pytest.param(PROFILE, "fakes/repo.py", tier_of.Tested(None, None, ("fakes",), False, True, ()),
                  id="a file under the fakes' folder is a fake, in no tier"),
     pytest.param(PROFILE, "fakes/modules/docs/test_repo.py", tier_of.Tested(None, None, ("fakes",), True, True, ()),

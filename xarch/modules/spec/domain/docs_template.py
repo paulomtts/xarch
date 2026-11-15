@@ -191,9 +191,8 @@ def _rules_table(architecture: Architecture, _: str, __: _Context) -> str:
 
 
 def _may_import(architecture: Architecture, part: Part) -> str:
-    """What a part may import, in the order of its rule."""
-    targets = [t for t in architecture.rules.get(part.name, ()) if t.part != part.name]
-    return may_import(targets, _folders(architecture), architecture.singular)
+    """What a part may import besides itself, in the order of its rule."""
+    return may_import(architecture.rules.get(part.name, ()), _folders(architecture), architecture.singular)
 
 
 def _folders(architecture: Architecture) -> dict[str, str]:

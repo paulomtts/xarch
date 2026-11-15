@@ -3,7 +3,7 @@
 A file below the tests root that has a tier (see tier_of) may import, of the app, the part its folder mirrors (its
 subject, see tier_of) and whatever that part may import under `rules`, where @own means the instance of the `each`
 folder the test mirrors; a file in the folder of file parts (such as a controller.py) has those parts as its
-subject. A file with no subject, placed by its tier's example folder (such as the guard tier's), may import its
+subject. A file with no subject, placed by its tier's folder (such as the guard tier's), may import its
 tier's subject parts and whatever those may import. Of the test code, it may import the fakes only when its tier's
 subject holds a part the fakes stand in for, and any other file only from its own folder (see tier_of). A test file
 that has no tier is a violation; any other file with no tier (a conftest.py or builders.py above every part's
@@ -18,17 +18,17 @@ from xarch.kernel.logic.placement import EACH, Target, reaches
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.tier_of import Tested, as_place, tested
 from xarch.modules.rules.domain.imports import dotted, targets
-from xarch.modules.rules.domain.places import label, place
+from xarch.modules.rules.domain.places import label, place, targets_of
 from xarch.modules.rules.domain.values import Profile, SourceFile, TestTier
 
-NO_TIER = "lies in no tier: no part's folder and no tier's example folder is mirrored here"
-NO_TIER_FIX = "move it to the folder that mirrors its subject's path in the app"
+NO_TIER = "lies in no tier: no part's folder and no tier's `folder` is mirrored here"
+NO_TIER_FIX = "move it to the folder that mirrors its subject's path in the app, or into a tier's `folder`"
 RULE = "tiers"
 
 
 def may_import(profile: Profile, tier: TestTier) -> tuple[Target, ...]:
     """The tier's subject parts, and what each of them may import."""
-    return tuple(t for s in tier.subject for t in (s, *profile.rules.get(s.part, ())))
+    return tuple(t for s in tier.subject for t in (s, *targets_of(profile, s.part)))
 
 
 def allowance(profile: Profile, where: Tested) -> tuple[Target, ...]:
@@ -37,7 +37,7 @@ def allowance(profile: Profile, where: Tested) -> tuple[Target, ...]:
         assert where.tier is not None
         return may_import(profile, where.tier)
     own = tuple(Target(p, "own" if EACH in profile.parts[p] else "none") for p in where.parts)
-    return tuple(t for s in own for t in (s, *profile.rules.get(s.part, ())))
+    return tuple(t for s in own for t in (s, *targets_of(profile, s.part)))
 
 
 def may_use_fakes(profile: Profile, tier: TestTier) -> bool:

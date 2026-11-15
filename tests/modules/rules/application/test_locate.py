@@ -17,7 +17,7 @@ from xarch.modules.rules.domain.values import TestTier as Tier
 APP, TESTS = Path("/src/app"), Path("/src/tests")
 PROFILE = Profile(
     parts={"kernel": ("kernel",), "domain": ("modules", "*", "domain")},
-    rules={"kernel": (Target("kernel"),), "domain": (Target("domain", "own"), Target("kernel"))},
+    rules={"kernel": (), "domain": (Target("kernel"),)},
     folders=((), ("kernel",), ("modules",), ("modules", "*"), ("modules", "*", "domain")),
     tiers=(Tier("unit", (Target("kernel"), Target("domain", "own")), None, (), False, "a rule", "nothing", "Does it?"),),
     libraries={"kernel": (), "domain": ()}, each_root=("modules",),

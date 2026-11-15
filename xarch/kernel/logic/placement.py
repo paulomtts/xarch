@@ -7,10 +7,13 @@ is compared as Python names it: no `.py` on its file, and a package's `__init__`
 A target names a part, a scope and an optional path below the part. Scope "own" reaches the part in the importer's
 instance, "any" in any instance, "none" a part outside the instances. EVERYTHING reaches every
 place, including the places no part claims.
+
+A part may always import itself: its own instance for a part inside the `each` folder, the part for one outside. A rule
+never says so; `with_itself` adds it to the row of the part.
 """
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Literal
 
@@ -83,3 +86,12 @@ def reaches(target: Target, source: Place, place: Place) -> bool:
             return place.instance is not None
         case _:
             return place.instance is None
+
+
+def with_itself(name: str, pattern: tuple[str, ...], row: Iterable[Target]) -> tuple[Target, ...]:
+    """The targets a part may import: itself first, then its row; just the row when it says EVERYTHING, which holds
+    the part already."""
+    targets = tuple(row)
+    if any(target.part == EVERYTHING for target in targets):
+        return targets
+    return (Target(name, "own" if EACH in pattern else "none"), *targets)

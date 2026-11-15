@@ -361,3 +361,16 @@ def test_a_call_of_a_method_of_a_parameter_is_listed_with_the_names_of_both(tmp_
 ])
 def test_the_names_a_file_defines_as_functions_at_module_level_are_listed(tmp_path, text, found):
     assert parsed(tmp_path, text).module_functions == found
+
+
+@pytest.mark.parametrize("make, listed", [
+    pytest.param(lambda root: (root / "a.py").write_text(""), [("a.py",)], id="a file ending in .py is listed"),
+    pytest.param(lambda root: (root / "__main__.py").mkdir(), [], id="a folder whose name ends in .py is not a source file"),
+    pytest.param(lambda root: (root / "pkg" / "x.py").mkdir(parents=True), [],
+                 id="nor is one below a folder, and its folder is not read as a file either"),
+    pytest.param(lambda root: (root / "gone.py").symlink_to(root / "nowhere"), [],
+                 id="a link that points at nothing is not a source file"),
+])
+def test_only_files_are_listed_as_source(tmp_path, make, listed):
+    make(tmp_path)
+    assert FsSourceTree(FileSystem()).paths(tmp_path) == listed

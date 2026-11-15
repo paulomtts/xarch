@@ -26,7 +26,7 @@ def test_a_project_following_every_check_passes(tmp_path):
                   "(rules.domain)"],
                  id="tiers: a test imports only what the part it mirrors may"),
     pytest.param({}, {"scripts/test_x.py": ""},
-                 ["tests/scripts/test_x.py: lies in no tier: no part's folder and no tier's example folder is mirrored here"],
+                 ["tests/scripts/test_x.py: lies in no tier: no part's folder and no tier's `folder` is mirrored here"],
                  id="tiers: a test in no tier's folder"),
     pytest.param({}, {"web/conftest.py": "from app.modules.docs.application.controller import C\n\nC()\n"},
                  ["tests/web/conftest.py:3: a rendering test uses controller/ of modules/docs only as a type: it "
@@ -88,3 +88,12 @@ def test_a_project_following_every_check_passes(tmp_path):
 ])
 def test_each_check_is_wired(tmp_path, app, tests, found):
     assert problems(tmp_path, app, tests) == found
+
+
+@pytest.mark.parametrize("where", [
+    pytest.param("app/__main__.py", id="a folder in the app whose name ends in .py"),
+    pytest.param("tests/modules/docs/domain/test_x.py", id="a folder in the tests whose name ends in .py"),
+])
+def test_a_folder_named_like_a_source_file_is_not_read_as_one(tmp_path, where):
+    (tmp_path / where).mkdir(parents=True)
+    assert problems(tmp_path) == []

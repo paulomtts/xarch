@@ -14,7 +14,7 @@ def layered() -> dict:
         "parts": {"api": {"path": "src/*/api", "role": "HTTP handlers"},
                   "service": {"path": "src/*/service", "role": "business logic"},
                   "store": {"path": "src/*/store", "role": "database access"}},
-        "rules": {"api": ["api@own", "service@own"], "service": ["service@own", "store@own"], "store": ["store@own"]},
+        "rules": {"api": ["service@own"], "service": ["store@own"], "store": []},
     }
 
 
@@ -118,7 +118,7 @@ def test_a_bad_value_is_rejected(document, expected):
 
 
 def test_targets_carry_scope_and_sub_path():
-    """A part with no row may import nothing."""
+    """A part with no row may import only itself."""
     document = layered()
     document["layout"]["shared"] = {}
     document["parts"]["shared"] = {"path": "shared", "role": "shared code"}
@@ -231,7 +231,7 @@ def test_a_rule_for_an_undefined_part_is_rejected():
 
 def test_a_rule_target_naming_an_undefined_part_is_rejected():
     document = layered()
-    document["rules"]["api"] = ["api@own", "repo@own"]
+    document["rules"]["api"] = ["repo@own"]
     assert problems(document) == ["layered.yaml: rules.api: 'repo@own' names no part 'repo'"]
 
 
@@ -300,6 +300,42 @@ def test_an_invalid_target_is_rejected(target, problem):
     document = layered()
     document["rules"]["store"] = [target]
     assert problems(document) == [f"layered.yaml: rules.store: {problem}"]
+
+
+IMPLIED_IN_INSTANCE = ("a part may always import itself, its own instance of the `each` folder; remove it "
+                       "(store@any, another instance's too, stays allowed)")
+
+
+@pytest.mark.parametrize("owner, target, problem", [
+    pytest.param("store", "store@own", f"layered.yaml: rules.store: 'store@own' is implied: {IMPLIED_IN_INSTANCE}",
+                 id="a part in the each folder naming its own instance is rejected as implied"),
+    pytest.param("store", "store@own/sql", f"layered.yaml: rules.store: 'store@own/sql' is implied: {IMPLIED_IN_INSTANCE}",
+                 id="so is a sub-path of it, which says less than the whole"),
+    pytest.param("shared", "shared",
+                 "layered.yaml: rules.shared: 'shared' is implied: a part may always import itself; remove it",
+                 id="a part outside the each folder naming itself is rejected as implied"),
+    pytest.param("shared", "shared/text",
+                 "layered.yaml: rules.shared: 'shared/text' is implied: a part may always import itself; remove it",
+                 id="so is a sub-path of it"),
+])
+def test_a_rule_that_only_says_a_part_may_import_itself_is_rejected(owner, target, problem):
+    document = layered()
+    document["layout"]["shared"] = {}
+    document["parts"]["shared"] = {"path": "shared", "role": "shared code"}
+    document["rules"][owner] = [target]
+    assert problems(document) == [problem]
+
+
+def test_a_rule_naming_another_instance_of_the_part_itself_says_more_and_is_kept():
+    document = layered()
+    document["rules"]["store"] = ["store@any"]
+    assert parse_architecture(document, "layered.yaml", lambda r: True).rules["store"] == (Target("store", "any"),)
+
+
+def test_a_rule_naming_another_part_of_the_same_kind_is_not_implied():
+    document = layered()
+    document["rules"]["store"] = ["service@own"]
+    assert parse_architecture(document, "layered.yaml", lambda r: True).rules["store"] == (Target("service", "own"),)
 
 
 def test_a_scope_on_a_part_outside_the_modules_is_rejected():

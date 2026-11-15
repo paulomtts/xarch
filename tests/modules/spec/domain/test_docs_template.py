@@ -17,8 +17,8 @@ def layered(**extra) -> dict:
                   "service": {"path": "src/*/service", "role": "business logic", "litmus": "Does it decide?"},
                   "api": {"path": "src/*/api.py", "role": "HTTP handlers", "litmus": "Does it parse a request?",
                           "entry": True}},
-        "rules": {"shared": ["shared"], "store": ["store@own", "shared/text"],
-                  "service": ["service@own", "store@own", "api@any", "shared"], "api": ["*"]},
+        "rules": {"shared": [], "store": ["shared/text"],
+                  "service": ["store@own", "api@any", "shared"], "api": ["*"]},
         "layers": {"inside": ["store", "service"]},
         "placement": ["store", "service", "api", "shared"],
         "naming": [{"kind": "service", "where": ["service/"], "pattern": "thing and `Service`",
@@ -58,6 +58,11 @@ def test_the_rules_table_lists_each_part_in_order_without_itself():
         "| `store/` | `shared/text` |\n"
         "| `service/` | its own module's `store/`, any module's `api.py`, `shared/` |\n"
         "| `api.py` | everything |")
+
+
+def test_a_part_naming_its_own_kind_in_any_module_shows_it():
+    rules = {"shared": [], "store": ["store@any"], "service": [], "api": []}
+    assert filled("{{rules_table}}", rules=rules).splitlines()[3] == "| `store/` | any module's `store/` |"
 
 
 def test_consecutive_targets_in_one_scope_share_their_phrase():

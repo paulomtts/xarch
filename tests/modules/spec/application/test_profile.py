@@ -15,7 +15,7 @@ from xarch.modules.spec.domain.values import Configured
 APP = Path("/src/app")
 PYPROJECT = Path("/src/pyproject.toml")
 LAYERED = {"xarch": 1, "name": "layered", "layout": {"src": {"singular": "module", "each": {"api": {}}}},
-           "parts": {"api": {"path": "src/*/api", "role": "handlers"}}, "rules": {"api": ["api@own"]}}
+           "parts": {"api": {"path": "src/*/api", "role": "handlers"}}, "rules": {"api": []}}
 
 
 def controller(configured: Configured | None = None, error: Exception | None = None, tests: Path | None = None,

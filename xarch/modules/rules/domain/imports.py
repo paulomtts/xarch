@@ -8,7 +8,7 @@ from collections.abc import Iterable, Iterator
 
 from xarch.kernel.logic.placement import EVERYTHING, Place
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.domain.places import allowed, label, place
+from xarch.modules.rules.domain.places import allowed, label, place, targets_of
 from xarch.modules.rules.domain.values import Import, Profile, SourceFile
 
 OWNERS = 3
@@ -69,7 +69,7 @@ def violations(files: Iterable[SourceFile], profile: Profile, root: str) -> list
 def _fix(profile: Profile, src: Place, dst: Place) -> str:
     """What to do about an import that rules forbid: import what the part may, or move the code to a part that may
     import the place; both named from the profile."""
-    targets_of_src = profile.rules.get(src.part, ()) if src.part is not None else ()
+    targets_of_src = targets_of(profile, src.part) if src.part is not None else ()
     permitted = list(dict.fromkeys(t.part for t in targets_of_src if t.part != EVERYTHING))
     owners = [name for name, targets in profile.rules.items()
               if name not in (src.part, dst.part) and any(t.part == dst.part for t in targets)]

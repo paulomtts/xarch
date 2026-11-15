@@ -21,8 +21,8 @@ parts:
   api:   {path: "src/*/api", role: handlers, entry: true}
   store: {path: "src/*/store", role: database access}
 rules:
-  api:   [api@own, store@own]
-  store: [store@own]
+  api:   [store@own]
+  store: []
 docs:
   architecture.md: {from: layered.md}
 examples:

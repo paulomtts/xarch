@@ -1,4 +1,4 @@
-"""Structure rules: the folders and files that architecture.md section 1 requires to exist.
+"""Structure rules: the folders and files that architecture.md section 1 requires to exist, at any depth.
 
 Only what is required is looked for: extra folders and files are none of the layout's business.
 """
@@ -25,13 +25,13 @@ def is_instance_name(name: str) -> bool:
     return name.isidentifier() and not name.startswith("_")
 
 
-def requirements(root: str, top_level: Iterable[str], each_root: tuple[str, ...] | None,
+def requirements(root: str, top_level: Iterable[tuple[str, ...]], each_root: tuple[str, ...] | None,
                  each_parts: Iterable[tuple[tuple[str, ...], bool]], instances: Iterable[str],
-                 top_files: Iterable[str] = ()) -> list[Requirement]:
-    """What must exist: every top-level folder, every file declared at the top level, and every part of every
-    instance found in the `each` folder's parent."""
-    required = [Requirement(root, (name,), True, f"{name}/") for name in top_level]
-    required += [Requirement(root, (name,), False, name) for name in top_files]
+                 top_files: Iterable[tuple[str, ...]] = ()) -> list[Requirement]:
+    """What must exist: every folder the layout declares outside the `each` folder, at any depth, then every file it
+    declares there, and every part of every instance found in the `each` folder's parent."""
+    required = [Requirement(root, path, True, "/".join(path) + "/") for path in top_level]
+    required += [Requirement(root, path, False, "/".join(path)) for path in top_files]
     if each_root is None:
         return required
     parts = list(each_parts)

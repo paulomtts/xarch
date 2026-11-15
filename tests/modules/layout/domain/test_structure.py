@@ -43,12 +43,18 @@ def test_is_instance_name(name, instance):
                  id="an each folder below the top level is owned by its full path"),
 ])
 def test_requirements(each_root, instances, required):
-    assert requirements("app", ["kernel", "modules"], each_root, PARTS, instances) == required
+    assert requirements("app", [("kernel",), ("modules",)], each_root, PARTS, instances) == required
 
 
 def test_a_file_declared_at_the_top_level_is_required_as_a_file_after_the_folders():
-    assert requirements("app", ["kernel"], None, [], [], ["__main__.py"]) == [
+    assert requirements("app", [("kernel",)], None, [], [], [("__main__.py",)]) == [
         Requirement("app", ("kernel",), True, "kernel/"), Requirement("app", ("__main__.py",), False, "__main__.py")]
+
+
+def test_a_folder_or_file_below_a_top_level_folder_is_required_as_its_path_shows_it():
+    assert requirements("app", [("kernel",), ("kernel", "logic")], None, [], [], [("web", "app.py")]) == [
+        Requirement("app", ("kernel",), True, "kernel/"), Requirement("app", ("kernel", "logic"), True, "kernel/logic/"),
+        Requirement("app", ("web", "app.py"), False, "web/app.py")]
 
 
 def test_missing_reports_what_is_not_present_with_its_owner_and_fix():

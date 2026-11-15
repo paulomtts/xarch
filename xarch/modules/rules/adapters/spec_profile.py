@@ -109,6 +109,5 @@ def _folders(tree: dict, prefix: tuple[str, ...]) -> list[tuple[str, ...]]:
 def _tier(architecture: Architecture, tier: Tier) -> TestTier:
     subject = tuple(Target(s.part, "own" if architecture.parts[s.part].in_instance else "none", s.sub)
                     for s in tier.subject)
-    folder = tier.example.path[1:-1] if tier.example is not None else None
-    return TestTier(tier.name, subject, folder, tier.types_only, tier.forbidden, tier.proves, tier.may_touch, tier.litmus,
+    return TestTier(tier.name, subject, tier.folder, tier.types_only, tier.forbidden, tier.proves, tier.may_touch, tier.litmus,
                     tier.one_file_per)

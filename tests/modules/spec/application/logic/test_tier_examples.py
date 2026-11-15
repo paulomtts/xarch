@@ -6,7 +6,7 @@ from xarch.modules.spec.application.logic.example_imports import example_problem
 def test_a_tier_example_under_tests_is_only_parsed_and_one_in_a_part_obeys_its_rules():
     """A tier example whose path lies in a part (here service) obeys that part's rules."""
     document = tiered()
-    document["rules"] = {"service": ["service@own"]}
+    document["rules"] = {"service": []}
     document["tiers"][1]["example"]["path"] = "src/billing/service/test_api.py"
     architecture = parsed(document)
     texts = {"unit": "from app.src.tax.store import anything\n", "integration": "from app.src.tax.store import x\n"}

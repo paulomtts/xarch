@@ -20,8 +20,8 @@ parts:
   kernel: {path: kernel, role: primitives}
   ui:     {path: web/ui, role: pages}
 rules:
-  kernel: [kernel]
-  ui:     [ui]
+  kernel: []
+  ui:     []
 forbidden:
   ui: [builtins.print]
 files:

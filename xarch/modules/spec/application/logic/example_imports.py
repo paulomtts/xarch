@@ -61,7 +61,7 @@ def _problems(architecture: Architecture, name: str, path: tuple[str, ...], text
         return [f"{shown}: is not valid Python: {e.msg} (line {e.lineno})"]
     if source.part is None:
         return []
-    rule = architecture.rules.get(source.part, ())
+    rule = architecture.targets_of(source.part)
     found: list[str] = []
     for target, steps in _targets(tree, path[:-1], architecture):
         if not any(reaches(allowed, source, architecture.place_of(steps)) for allowed in rule):

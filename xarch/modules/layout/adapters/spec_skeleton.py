@@ -18,11 +18,11 @@ class SpecSkeleton:
     def __init__(self, spec: _Spec):
         self._spec = spec
 
-    def top_level(self, profile: str) -> list[str]:
-        return [e.path[0] for e in self._spec.skeleton(profile).top_level if len(e.path) == 1 and e.is_dir]
+    def top_level(self, profile: str) -> list[tuple[str, ...]]:
+        return [e.path for e in self._spec.skeleton(profile).top_level if e.is_dir]
 
-    def top_level_files(self, profile: str) -> list[str]:
-        return [e.path[0] for e in self._spec.skeleton(profile).top_level if len(e.path) == 1 and not e.is_dir]
+    def top_level_files(self, profile: str) -> list[tuple[str, ...]]:
+        return [e.path for e in self._spec.skeleton(profile).top_level if not e.is_dir]
 
     def each_root(self, profile: str) -> tuple[str, ...] | None:
         return self._spec.skeleton(profile).each_root

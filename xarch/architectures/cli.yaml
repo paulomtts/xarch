@@ -126,18 +126,20 @@ parts:
 # What each part may import. <part>@own: in the importer's own instance of the `each` folder (here, its module);
 # <part>@any: in any instance; a bare <part>: a part outside the `each` folder; /<path> after it: only that path
 # below the part; "*": everything (quoted: * starts a YAML alias).
-# The docs' rules table lists the targets in this order, leaving out the part itself.
+# A part may always import itself (its own instance, for a part in the `each` folder), so no row lists it: a row that
+# says only that is refused. `<part>@any` in the part's own row stays allowed: another instance's. The docs' rules
+# table lists the targets in this order.
 rules:
-  kernel:     [kernel]
-  domain:     [domain@own, kernel]
-  contract:   [contract@own, domain@own/values, kernel]
-  controller: [controller@own, services@own, logic@own, domain@own, ports@own, contract@own, kernel]
-  services:   [services@own, logic@own, domain@own, ports@own, contract@own, kernel]
-  logic:      [logic@own, domain@own, kernel]
-  ports:      [ports@own, domain@own, kernel]
-  adapters:   [adapters@own, ports@own, domain@own, kernel, platform, contract@any]   # contract@any: its own, or the provider's whose controller it wraps
-  platform:   [platform, kernel]
-  cli:        [cli, controller@any, contract@any, kernel]
+  kernel:     []
+  domain:     [kernel]
+  contract:   [domain@own/values, kernel]
+  controller: [services@own, logic@own, domain@own, ports@own, contract@own, kernel]
+  services:   [logic@own, domain@own, ports@own, contract@own, kernel]
+  logic:      [domain@own, kernel]
+  ports:      [domain@own, kernel]
+  adapters:   [ports@own, domain@own, kernel, platform, contract@any]   # contract@any: its own, or the provider's whose controller it wraps
+  platform:   [kernel]
+  cli:        [controller@any, contract@any, kernel]
   bootstrap:  ["*"]
 
 # The outside packages each part may import, by top-level import name (what follows `import`). The standard library
@@ -149,8 +151,8 @@ libraries:
   bootstrap:  [sqlmodel, typer]
 
 # The names each part may not use, so that what its litmus test promises (no clock, no I/O) is checked: a call or
-# attribute by its dotted name as an absolute import binds it (a builtin as builtins.<name>), or a whole package or
-# module by its import name. A file of the part may not import a listed module, or anything below it, nor use a
+# attribute by its dotted name as an absolute import binds it (a builtin as builtins.<name>; a bare `open` is
+# refused, since it would ban nothing), or a whole package or module by its import name. A file of the part may not import a listed module, or anything below it, nor use a
 # listed name, called or not, as the file writes it: through its imports and their aliases, a builtin by its bare
 # name where nothing in its scope shadows it. Only what the file says is seen: a name reached through a variable,
 # getattr or an object, or I/O done for the part by code elsewhere, is not. A tier with `forbidden: true` holds its
@@ -211,7 +213,11 @@ tests:
 # says otherwise. Every part is in some tier's subject, or says why not with `untested` (see platform).
 # helpers: the files that test code shares, written like an example (path, file, note); {{tier_helpers}} shows them.
 # example: the tier's example test, where it would live in the project (path) and the file holding it (file, next
-# to this one); its note is shown right after the path, as written. types_only: the parts its tests may import and
+# to this one); its note is shown right after the path, as written; it is for the docs and decides nothing `check`
+# does. folder: where the tests of a tier live when they mirror no part (the guard's, which test the source tree), a
+# folder below the tests folder such as architecture: a test there has the tier. It is relative, with no `..` and no
+# `*`, mirrors no part, and does not overlap the `fakes` folder or another tier's folder; with an example, the
+# example's path lies in it. types_only: the parts its tests may import and
 # use as types, never call (the rendering tier types its fake with the controller's class, and never builds one).
 # A test imports only what the part its folder mirrors may import under `rules`, not all its tier may touch.
 tiers:
@@ -275,6 +281,7 @@ tiers:
     one_file_per: project, since one test runs every guard
     cases_from: the guards of section 9
     data: none
+    folder: architecture
     example: {path: tests/architecture/test_rules.py, file: examples/shared/tiers/guard.py,
               note: " (written by `xarch init`)"}
 

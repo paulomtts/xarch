@@ -15,7 +15,7 @@ def layered(**extra) -> dict:
         "parts": {"contract": {"path": "src/*/contract", "role": "what callers send and get back"},
                   "service": {"path": "src/*/service", "role": "business logic"},
                   "store": {"path": "src/*/store", "role": "database access"}},
-        "rules": {"service": ["service@own", "store@own", "contract@own"], "store": ["store@own"]},
+        "rules": {"service": ["store@own", "contract@own"], "store": []},
         **extra,
     }
 
@@ -172,6 +172,20 @@ def test_fakes_may_say_how_a_fake_is_named_and_then_the_stand_ins_guard_applies(
 ])
 def test_a_bad_fakes_entry_is_rejected(fakes, problem):
     assert problems(layered(fakes=fakes)) == [f"layered.yaml: {problem}"]
+
+
+@pytest.mark.parametrize("path", [
+    pytest.param("tests", id="the tests root alone names no folder below it"),
+    pytest.param("tests/", id="the tests root with a slash names no folder below it"),
+    pytest.param("/fakes", id="a leading slash leaves one step, which is no folder below the tests root"),
+    pytest.param("tests//fakes", id="an empty step is rejected"),
+    pytest.param("tests/../fakes", id="a step climbing out is rejected"),
+    pytest.param("tests/./fakes", id="a step that is the folder itself is rejected"),
+    pytest.param(3, id="a path that is no text is rejected"),
+])
+def test_the_fakes_folder_below_the_tests_root_is_never_empty(path):
+    assert problems(layered(fakes={"path": path, "for": ["store"]})) == [
+        "layered.yaml: fakes.path: must be a folder below the tests root, such as tests/fakes"]
 
 
 def test_the_guards_placeholder_leaves_out_what_the_architecture_does_not_check():

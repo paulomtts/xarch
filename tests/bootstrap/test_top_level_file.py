@@ -19,7 +19,7 @@ parts:
   core: {path: core, role: the code}
 rules:
   main: [core]
-  core: [core]
+  core: []
 guards:
   closed-tree: {}
 docs:

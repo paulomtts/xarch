@@ -6,10 +6,12 @@ from typing import Protocol
 class Skeleton(Protocol):
     """What the architecture requires to exist, under a profile."""
 
-    def top_level(self, profile: str) -> list[str]: ...
+    def top_level(self, profile: str) -> list[tuple[str, ...]]:
+        """Every folder the layout declares outside the `each` folder, at any depth, parents before children."""
+        ...
 
-    def top_level_files(self, profile: str) -> list[str]:
-        """The files the layout declares directly below the app root."""
+    def top_level_files(self, profile: str) -> list[tuple[str, ...]]:
+        """Every file the layout declares outside the `each` folder, at any depth."""
         ...
 
     def each_root(self, profile: str) -> tuple[str, ...] | None:
