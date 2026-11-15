@@ -14,41 +14,24 @@ business.
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
-from dataclasses import replace
 
-from xarch.kernel.logic.placement import EACH, Target, reaches
-from xarch.kernel.logic.testing import TierView
+from xarch.kernel.logic.placement import reaches
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.imports import dotted, targets
-from xarch.modules.rules.application.logic.places import label, place, targets_of
-from xarch.modules.rules.application.logic.tier_of import Tested, as_place, is_test, tested
+from xarch.modules.rules.application.logic.places import label, place
+from xarch.modules.rules.application.logic.tier_of import (
+    NO_TIER,
+    NO_TIER_FIX,
+    Tested,
+    allowance,
+    as_place,
+    is_test,
+    may_use_fakes,
+    tested,
+)
 from xarch.modules.rules.domain.values import Profile, SourceFile
 
-NO_TIER = "lies in no tier: no part's folder and no tier's `folder` is mirrored here"
-NO_TIER_FIX = "move it to the folder that mirrors its subject's path in the app, or into a tier's `folder`"
 RULE = "tiers"
-
-
-def may_import(profile: Profile, tier: TierView) -> tuple[Target, ...]:
-    """What the tests in the tier's own folder may import: what the tier says, else its subject parts and what each of
-    them may import."""
-    if tier.may_import is not None:
-        return tier.may_import
-    return tuple(replace(t, names="") for s in tier.subject for t in (s, *targets_of(profile, s.part)))
-
-
-def allowance(profile: Profile, where: Tested) -> tuple[Target, ...]:
-    """What a test may import of the app: its subject parts and what each may import, else its tier's; a name pattern
-    of a part's target does not narrow what its test imports."""
-    if not where.parts:
-        assert where.tier is not None
-        return may_import(profile, where.tier)
-    own = tuple(Target(p, "own" if EACH in profile.parts[p] else "none") for p in where.parts)
-    return tuple(replace(t, names="") for s in own for t in (s, *targets_of(profile, s.part)))
-
-
-def may_use_fakes(profile: Profile, tier: TierView) -> bool:
-    return profile.fakes is not None and any(s.part in profile.fakes.stand_in_for for s in tier.subject)
 
 
 def violations(tests: Iterable[SourceFile], app: Iterable[SourceFile], profile: Profile, root: str,

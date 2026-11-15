@@ -7,7 +7,8 @@ from tests.modules.rules.builders import GUARD, INTEGRATION, PROFILE, UNIT, imp,
 from xarch.kernel.logic.placement import Target
 from xarch.kernel.logic.testing import TierView as Tier
 from xarch.modules.rules.application.logic import tier_of
-from xarch.modules.rules.application.logic.tier_imports import allowance, may_import, may_use_fakes, violations
+from xarch.modules.rules.application.logic.tier_imports import violations
+from xarch.modules.rules.application.logic.tier_of import allowance, may_import, may_use_fakes
 
 APP = [source(p) for p in ["kernel/ids.py", "modules/docs/domain/doc.py", "modules/docs/domain/values.py",
                            "modules/docs/application/controller.py", "modules/docs/application/ports/repo.py",

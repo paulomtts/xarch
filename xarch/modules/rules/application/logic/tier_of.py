@@ -16,12 +16,16 @@ the tests root: the folder whose helpers it may import.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from fnmatch import fnmatchcase
 
-from xarch.kernel.logic.placement import EACH, Place, Repeat, matches, place_of
+from xarch.kernel.logic.placement import EACH, Place, Repeat, Target, matches, place_of
 from xarch.kernel.logic.testing import TierView
+from xarch.modules.rules.application.logic.places import targets_of
 from xarch.modules.rules.domain.values import Profile
+
+NO_TIER = "lies in no tier: no part's folder and no tier's `folder` is mirrored here"
+NO_TIER_FIX = "move it to the folder that mirrors its subject's path in the app, or into a tier's `folder`"
 
 
 @dataclass(frozen=True)
@@ -90,6 +94,29 @@ def _own(profile: Profile, path: tuple[str, ...]) -> tuple[str, ...]:
     if repeat is not None:
         return (*repeat.root, path[len(repeat.root)])
     return path[:1] if len(path) > 1 else ()
+
+
+def may_import(profile: Profile, tier: TierView) -> tuple[Target, ...]:
+    """What the tests in the tier's own folder may import: what the tier says, else its subject parts and what each of
+    them may import."""
+    if tier.may_import is not None:
+        return tier.may_import
+    return tuple(replace(t, names="") for s in tier.subject for t in (s, *targets_of(profile, s.part)))
+
+
+def allowance(profile: Profile, where: Tested) -> tuple[Target, ...]:
+    """What a test may import of the app: its subject parts and what each may import, else its tier's; a name pattern
+    of a part's target does not narrow what its test imports."""
+    if not where.parts:
+        assert where.tier is not None
+        return may_import(profile, where.tier)
+    own = tuple(Target(p, "own" if EACH in profile.parts[p] else "none") for p in where.parts)
+    return tuple(replace(t, names="") for s in own for t in (s, *targets_of(profile, s.part)))
+
+
+def may_use_fakes(profile: Profile, tier: TierView) -> bool:
+    """Whether the tests of the tier may import the fakes: its subject holds a part they stand in for."""
+    return profile.fakes is not None and any(s.part in profile.fakes.stand_in_for for s in tier.subject)
 
 
 def as_place(instance: str | None) -> Place:

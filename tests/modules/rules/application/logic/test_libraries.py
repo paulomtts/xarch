@@ -2,9 +2,9 @@
 own package and the outside packages `libraries` lists for that part."""
 import pytest
 
+from tests.modules.rules.application.logic.checks import libraries as violations
 from tests.modules.rules.builders import PROFILE, imp, profile, source
 from xarch.kernel.logic.placement import EVERYTHING
-from xarch.modules.rules.application.logic.libraries import violations
 
 
 def problems(path: str, *imports, checked=PROFILE) -> list[str]:

@@ -11,9 +11,9 @@ from xarch.modules.rules.application.logic import (
     dead_code,
     duplicates,
     enforcement,
+    expansion,
     forbidden,
     holds,
-    libraries,
     must_import,
     names,
     no_callbacks,
@@ -27,6 +27,8 @@ from xarch.modules.rules.application.logic import (
     twins,
     types_only,
 )
+from xarch.modules.rules.application.logic.engine import run
+from xarch.modules.rules.application.logic.facts import facts_of
 from xarch.modules.rules.application.logic.imports import violations
 from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.application.ports.source_tree import SourceTree
@@ -63,7 +65,8 @@ class SourceCheckService:
         app = [f for f in app if f.error is None]
         test_files = [f for f in test_files if f.error is None]
         tests_root = self._tree.resolved(tests).name if tests is not None else ""
-        found = broken + violations(app, rules, package) + libraries.violations(app, rules, package)
+        facts = facts_of(app, test_files, rules, package, tests_root)
+        found = broken + violations(app, rules, package) + run(expansion.libraries(rules), facts, rules)
         found += forbidden.violations(app, test_files, rules)
         found += cycles.violations(app, rules, package)
         found += tier_imports.violations(test_files, app, rules, package, tests_root)
