@@ -8,6 +8,10 @@ class Skeleton(Protocol):
 
     def top_level(self, profile: str) -> list[str]: ...
 
+    def top_level_files(self, profile: str) -> list[str]:
+        """The files the layout declares directly below the app root."""
+        ...
+
     def each_root(self, profile: str) -> tuple[str, ...] | None:
         """The folder holding the instances of the layout's `each` folder, or None if it has none."""
         ...

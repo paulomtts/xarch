@@ -46,6 +46,11 @@ def test_requirements(each_root, instances, required):
     assert requirements("app", ["kernel", "modules"], each_root, PARTS, instances) == required
 
 
+def test_a_file_declared_at_the_top_level_is_required_as_a_file_after_the_folders():
+    assert requirements("app", ["kernel"], None, [], [], ["__main__.py"]) == [
+        Requirement("app", ("kernel",), True, "kernel/"), Requirement("app", ("__main__.py",), False, "__main__.py")]
+
+
 def test_missing_reports_what_is_not_present_with_its_owner_and_fix():
     kernel, domain = Requirement("app", ("kernel",), True, "kernel/"), Requirement("app/modules/docs", (
         "modules", "docs", "domain"), True, "domain/")
@@ -69,6 +74,8 @@ def test_unmirrored_reports_each_test_folder_that_mirrors_no_folder_of_the_app_i
     found = unmirrored("tests", "app", ("modules",), folders, {("docs",), ("docs", "domain")})
     assert [(str(v), v.rule, v.fix) for v in found] == [
         ("tests/modules/docs/gone: mirrors no folder of the app (app/modules/docs/gone)", "test-tree",
-         "move what it holds to the folder that mirrors its subject in the app, or remove it"),
+         "create app/modules/docs/gone/ in the app, or move what it holds to the folder that mirrors its subject, "
+         "or remove it"),
         ("tests/modules/ghost: mirrors no folder of the app (app/modules/ghost)", "test-tree",
-         "move what it holds to the folder that mirrors its subject in the app, or remove it")]
+         "create app/modules/ghost/ in the app, or move what it holds to the folder that mirrors its subject, or "
+         "remove it")]

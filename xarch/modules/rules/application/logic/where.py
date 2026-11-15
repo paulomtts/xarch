@@ -9,6 +9,7 @@ would hold, then what the project would; a path that is in none of them is not p
   - in a part: the part's role and litmus test, the folders its code may import (its `rules`), the outside packages
     it may import, the names it may not use, and the kind of test that tests it with the file that test would be in;
   - in the structure, or in no part: which parts are near it, and whether the closed-tree guard is on;
+  - below a folder the profile excludes: ungoverned, with the profile's reason in the note;
   - below the tests root: its tier (see tier_of), the part it mirrors, what it may import (the per-part rule of
     tier_imports), whether it may import the fakes, and what the tier proves and may touch.
 """
@@ -32,6 +33,7 @@ FALLBACK_FILE = "x.py"
 SAMPLE = "x"
 STAND_IN = "<name>"
 OUTSIDE_NOTE = "it lies outside the app folder and the tests folder"
+EXCLUDED_NOTE = "excluded from the checks by the profile"
 FAKE_NOTE = "a test fake: it stands in for a port, and is no test"
 
 
@@ -86,6 +88,9 @@ def _relative(path: Path, root: Path) -> str:
 
 def _app(profile: Profile, found: Resolved, shown: str, app: str, tests: str) -> Where:
     steps = found.steps
+    for exclusion in profile.excluded:
+        if steps[:len(exclusion.path)] == exclusion.path:
+            return Where("ungoverned", shown, found.exists, note=f"{EXCLUDED_NOTE}: {exclusion.reason}")
     where = place(profile, steps)
     if where is None or where.part is None:
         structure = where is not None

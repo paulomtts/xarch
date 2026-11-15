@@ -56,6 +56,15 @@ stops early. The file's keys:
     libraries: {<part>: [<package>, ...]}     optional; the outside packages each part may import, by top-level
                                import name; the standard library is always allowed, and a part not listed may import
                                no outside package. Without `libraries`, outside packages are not checked
+    hints: {<rule id>: <text>}                optional; the project's own advice for a rule, one line each, shown after
+                               the built-in fix of every violation of that rule, in the text output and in the
+                               JSON's `hint`. The rule id is one of RULES in xarch/kernel/violations.py, the `rule` a
+                               violation names; any other is refused
+    excluded: {<folder>: <reason>}            optional; folders below the app that are not its source (such as example
+                               code shipped as data): a path with no `..`, no leading `/` and no `*`, not a folder of
+                               the layout, none inside or holding another, each with the one-line reason it is left
+                               out. No check reads a Python file below one; `check` lists each in its enforcement
+                               section, so the exclusion stays visible
     forbidden: {<part>: [<name>, ...]}        optional; what each part may not use: a dotted name as an absolute import
                                binds it (datetime.datetime.now; a builtin as builtins.open), or a module by its import
                                name (socket); a file of the part may neither import it (or below it) nor use it by
@@ -74,6 +83,11 @@ stops early. The file's keys:
                                xarch's code holds none of them. Python stays fixed: `typing.Protocol` marks a port,
                                imports and the syntax tree are read as Python defines them
     guards: {<name>: <parameters>}   optional; the pre-built checks in use, each named in GUARDS with its parameters
+                               stand-ins may add `fixtures: {<parameter>: {mocks: [<method>, ...], autospec: [<method>, ...]}}`:
+                               the parameters of a test function whose methods build a mock, as a fixture hands one
+                               over (a call of `<parameter>.<method>` follows the rules of the dotted names in `mocks`
+                               and `autospec`); each parameter is a plain name, its `mocks` required and its
+                               `autospec` optional, each list of method names non-empty with each name once
     examples: {<name>: {part, path, file, note}}   optional; the docs' code examples, each one file of the example
                                project: the part it illustrates, where it would live (path, inside that part and no
                                part nested deeper), the file holding its code and an optional one-line note shown
@@ -91,6 +105,7 @@ from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import Any
 
+from xarch.kernel.violations import RULES
 from xarch.modules.spec.domain.docs import DOCS_ROOT
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.project_files import APP_PLACEHOLDER
@@ -104,7 +119,9 @@ from xarch.modules.spec.domain.values import (
     ClosedTree,
     Doc,
     Example,
+    Excluded,
     Fakes,
+    Fixture,
     Framework,
     Guard,
     Layout,
@@ -131,7 +148,7 @@ FILE = "file"
 """How a file marks a file in the layout."""
 
 _KEYS = {"xarch", "name", "layout", "notes", "parts", "rules", "layers", "placement", "naming", "tiers", "docs",
-         "files", "examples", "libraries", "fakes", "guards", "tests", "forbidden"}
+         "files", "examples", "libraries", "fakes", "guards", "tests", "forbidden", "excluded", "hints"}
 _REQUIRED = ("name", "layout", "parts")
 _PART_KEYS = {"path", "role", "litmus", "entry", "untested"}
 _NAMING_KEYS = {"kind", "where", "pattern", "example"}
@@ -155,7 +172,8 @@ _TESTS_OPTIONAL = {"skips"}
 _SCENARIO_KEYS = {"results", "tier", "suffix", "columns", "table", "file"}
 _TABLE_KEYS = {"decorator", "row", "id", "keywords"}
 _TABLE_REQUIRED = ("decorator", "row", "id")
-_STAND_INS_KEYS = {"mocks", "autospec", "spec"}
+_STAND_INS_KEYS = {"mocks", "autospec", "spec", "fixtures"}
+_FIXTURE_KEYS = {"mocks", "autospec"}
 GUARDS = {
     "package-only": "[<part>, ...]: parts that are imported only as a package, never by their files, from outside it",
     "scenario-coverage": "{results: <part>, tier: <tier>, suffix: <text>, columns: [<state>, <command>, <result>], "
@@ -164,7 +182,8 @@ GUARDS = {
                          "case's test file <file> of that tier; every row is a <table.row> call with an <table.id>, "
                          "and a table test has no branching",
     "no-comments": "{}: no `#` comments in the app or its tests; docstrings and tool directives stay",
-    "stand-ins": "{mocks: [<dotted name>, ...], autospec: [<dotted name>, ...], spec: [<keyword>, ...]}: every "
+    "stand-ins": "{mocks: [<dotted name>, ...], autospec: [<dotted name>, ...], spec: [<keyword>, ...], "
+                 "fixtures: {<parameter>: {mocks: [<method>, ...], autospec: [<method>, ...]}}}: every "
                  "Protocol in a part `fakes` stands in for is fire-only (every method returns None) or read (any one "
                  "returns a value), each method annotated; every read port has a fake <prefix><Port> under "
                  "`fakes.path`; and a test of a tier that may import the fakes gives every mock a spec, never a "
@@ -220,13 +239,15 @@ def parse_architecture(document: Any, source: str, has_file: Callable[[str], boo
     forbidden = _forbidden(document["forbidden"], parts, declared, problems) if "forbidden" in document else {}
     fakes = _fakes(document["fakes"], parts, declared, problems) if "fakes" in document else None
     framework = _framework(document["tests"], problems) if "tests" in document else None
+    excluded = _excluded(document["excluded"], layout, problems) if "excluded" in document else ()
+    hints = _hints(document["hints"], problems) if "hints" in document else {}
     guards = _guards(document.get("guards", {}), parts, declared, tiers, fakes, framework, problems)
     if "tests" not in document:
         problems += _needs_tests(document, tiers)
     if problems:
         raise InvalidArchitecture(source, problems)
     return Architecture(name, layout, parts, rules, docs, examples, notes, layers, placement, naming, tiers,
-                        libraries, guards, fakes, singular[0] if singular else "", files, framework, forbidden)
+                        libraries, guards, fakes, singular[0] if singular else "", files, framework, forbidden, excluded, hints)
 
 
 def _check_version(document: Mapping[Any, Any], source: str) -> None:
@@ -851,6 +872,47 @@ def _fakes(value: Any, parts: dict[str, Part], declared: set[str], problems: lis
     return Fakes(steps, tuple(n for n in names if n in parts), prefix)
 
 
+def _excluded(value: Any, layout: Layout, problems: list[str]) -> tuple[Excluded, ...]:
+    """The folders below the app that are not its source, each with its reason."""
+    if not isinstance(value, Mapping):
+        problems.append("excluded: must be a mapping of folders below the app to the reason each is not its source, "
+                        "such as {vendor: copied code}")
+        return ()
+    found: list[Excluded] = []
+    for key, reason in value.items():
+        steps = tuple(key.strip("/").split("/")) if isinstance(key, str) and not key.startswith("/") else ()
+        if not steps or any(step in ("", ".", "..") or EACH in step for step in steps):
+            problems.append(f"excluded: {key!r} is not a folder below the app, such as vendor/generated")
+        elif not _line(reason):
+            problems.append(f"excluded.{key}: must give the reason, one line of text")
+        elif _resolves(steps, layout):
+            problems.append(f"excluded.{key}: '{key}' is a folder of the layout: it is source, not excluded")
+        else:
+            clash = next((e for e in found if e.path[:len(steps)] == steps[:len(e.path)]), None)
+            if clash is not None:
+                problems.append(f"excluded.{key}: overlaps the excluded folder '{'/'.join(clash.path)}': list only "
+                                "one of the two")
+            else:
+                found.append(Excluded(steps, reason))
+    return tuple(found)
+
+
+def _hints(value: Any, problems: list[str]) -> dict[str, str]:
+    """The project's own advice for a rule id, by rule id."""
+    if not isinstance(value, Mapping):
+        problems.append("hints: must be a mapping of rule ids to one line of text, such as {rules: see the docs}")
+        return {}
+    found: dict[str, str] = {}
+    for rule, text in value.items():
+        if rule not in RULES:
+            problems.append(f"hints.{rule}: unknown rule id {rule!r}: use {', '.join(sorted(RULES))}")
+        elif not _line(text):
+            problems.append(f"hints.{rule}: must be one line of text")
+        else:
+            found[rule] = text
+    return found
+
+
 def _part_names(value: Any, declared: set[str], where: str, problems: list[str]) -> list[str]:
     if not isinstance(value, list) or not value:
         problems.append(f"{where}: must be a list of part names")
@@ -998,8 +1060,9 @@ def _dotted_names(value: Any, where: str, problems: list[str]) -> tuple[tuple[st
 
 def _stand_ins(spec: Any, where: str, problems: list[str]) -> StandIns | None:
     if not isinstance(spec, Mapping):
-        problems.append(f"{where}: must be a mapping {{mocks, spec}}, and optionally autospec: the dotted names of "
-                        "the calls that build a mock, and the keywords a mock is given its spec by")
+        problems.append(f"{where}: must be a mapping {{mocks, spec}}, and optionally autospec and fixtures: the dotted "
+                        "names of the calls that build a mock, the keywords a mock is given its spec by, and the "
+                        "parameters of a test function whose methods build one")
         return None
     count = len(problems)
     problems += _unknown_keys(spec, _STAND_INS_KEYS, where)
@@ -1009,20 +1072,52 @@ def _stand_ins(spec: Any, where: str, problems: list[str]) -> StandIns | None:
     for name in (autospec or ()):
         if mocks and name in mocks:
             problems.append(f"{where}.autospec: {'.'.join(name)!r} is also listed in mocks")
-    keywords = _keywords(spec["spec"], f"{where}.spec", problems) if "spec" in spec else None
-    if len(problems) != count or mocks is None or autospec is None or keywords is None:
+    keywords = _identifiers(spec["spec"], f"{where}.spec", problems, "keyword", "[spec]") if "spec" in spec else None
+    fixtures = _fixtures(spec["fixtures"], f"{where}.fixtures", problems) if "fixtures" in spec else ()
+    if len(problems) != count or mocks is None or autospec is None or keywords is None or fixtures is None:
         return None
-    return StandIns(mocks, autospec, keywords)
+    return StandIns(mocks, autospec, keywords, fixtures)
 
 
-def _keywords(value: Any, where: str, problems: list[str]) -> tuple[str, ...] | None:
+def _fixtures(value: Any, where: str, problems: list[str]) -> tuple[Fixture, ...] | None:
+    """The parameters whose methods build mocks, each as {mocks: [...], autospec: [...]}."""
+    if not isinstance(value, Mapping) or not value:
+        problems.append(f"{where}: must be a mapping of parameter names to {{mocks}}, and optionally autospec: the "
+                        "names of the methods that build a mock, and of those that build one from a spec given as an "
+                        "argument")
+        return None
+    count = len(problems)
+    found: list[Fixture] = []
+    for name, spec in value.items():
+        if not isinstance(name, str) or not name.isidentifier():
+            problems.append(f"{where}: {name!r} is not a parameter name")
+            continue
+        at = f"{where}.{name}"
+        if not isinstance(spec, Mapping):
+            problems.append(f"{at}: must be a mapping {{mocks}}, and optionally autospec")
+            continue
+        before = len(problems)
+        problems += _unknown_keys(spec, _FIXTURE_KEYS, at)
+        problems += [f"{at}: missing `mocks`"] if "mocks" not in spec else []
+        mocks = _identifiers(spec["mocks"], f"{at}.mocks", problems, "method", "[build]") if "mocks" in spec else None
+        autospec = (_identifiers(spec["autospec"], f"{at}.autospec", problems, "method", "[build]")
+                    if "autospec" in spec else ())
+        problems += [f"{at}.autospec: {method!r} is also listed in mocks" for method in autospec or ()
+                     if mocks and method in mocks]
+        if len(problems) == before and mocks is not None and autospec is not None:
+            found.append(Fixture(name, mocks, autospec))
+    return tuple(found) if len(problems) == count else None
+
+
+def _identifiers(value: Any, where: str, problems: list[str], noun: str, example: str) -> tuple[str, ...] | None:
+    """A non-empty list of names, each once, each a plain identifier: the keywords of a call, the methods of an object."""
     if not isinstance(value, list) or not value:
-        problems.append(f"{where}: must be a list of keyword names such as [spec]")
+        problems.append(f"{where}: must be a list of {noun} names such as {example}")
         return None
     found: list[str] = []
     for item in value:
         if not isinstance(item, str) or not item.isidentifier():
-            problems.append(f"{where}: {item!r} is not a keyword name")
+            problems.append(f"{where}: {item!r} is not a {noun} name")
         elif item in found:
             problems.append(f"{where}: {item!r} is listed twice")
         else:

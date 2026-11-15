@@ -30,3 +30,4 @@ module-root = ""
 
 [tool.xarch]
 profile = "architecture.yaml"
+app = "xarch"

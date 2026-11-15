@@ -15,9 +15,11 @@ folder is not `app/`.
 
 ## Before you finish any change
 
-- Run `xarch check` and `ruff check`, and fix every violation they report. Fix the code, not the check.
-- `xarch check --format json` prints the same as one JSON document, each violation with its `rule`, `file`, `line` and
-  `fix`.
+- Run `xarch check` and `ruff check`, and fix every violation they report. Every violation says what to do in the
+  `fix:` line under it, and shows a `hint:` line when this project adds advice for its rule: follow both. Fix the
+  code, not the check.
+- `xarch check --format json` prints the same as one JSON document, each violation with its `rule`, `file`, `line`,
+  `message`, `fix` and `hint` (null when the project has none).
 
 ## How tests are written
 

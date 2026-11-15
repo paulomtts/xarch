@@ -32,5 +32,5 @@ def test_every_comment_not_allowed_is_reported_where_it_is_with_its_fix():
     found = violations([source("kernel/x.py", comments=(Comment(1, "#!/bin/python"), Comment(3, "# why"),
                                                          Comment(4, "# noqa")))])
     assert [(str(v), v.rule, v.fix) for v in found] == [
-        ("app/kernel/x.py:3: a comment: say it in a docstring or a name (no-comments)", "no-comments",
-         "say it in a docstring or a name")]
+        ("app/kernel/x.py:3: a comment (no-comments)", "no-comments",
+         "say it in a docstring or a name, and delete the comment")]

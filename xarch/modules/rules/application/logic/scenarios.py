@@ -118,8 +118,7 @@ def _covered(test: SourceFile, union: str, variants: tuple[str, ...], guard: Sce
     functions = [f for f in test.functions if fnmatchcase(f.name, pattern)]
     tables = [(f, t) for f in functions for t in f.tables if set(columns) <= set(t.columns)]
     if not tables:
-        return [Violation(test.name, 1, "no table test: add a parametrized test whose parameters are "
-                                        f"{', '.join(columns)} ({RULE})", RULE,
+        return [Violation(test.name, 1, f"no table test whose parameters are {', '.join(columns)} ({RULE})", RULE,
                           f"add a table test whose parameters are {', '.join(columns)}")]
     problems: list[Problem] = []
     covered: set[str] = set()
@@ -136,7 +135,7 @@ def _covered(test: SourceFile, union: str, variants: tuple[str, ...], guard: Sce
 
 def _branches(function: Function) -> list[Problem]:
     fix = "arrange from given, act with when, assert == then, and give the odd case its own test"
-    return [(line, f"{function.name} has {'an' if keyword == 'if' else 'a'} `{keyword}` in its body: {fix}", fix)
+    return [(line, f"{function.name} has {'an' if keyword == 'if' else 'a'} `{keyword}` in its body", fix)
             for line, keyword in function.branches]
 
 
@@ -147,13 +146,13 @@ def _rows(table: Table, union: str, variants: tuple[str, ...], guard: Scenarios,
     case = f'write {written}(..., {guard.table.id}="<a sentence stating the outcome>")'
     if table.rows is None:
         fix = "write them as a list, or as the name of a list assigned at the top of the file"
-        return [(table.line, f"the rows of the table cannot be read: {fix}", fix)]
+        return [(table.line, "the rows of the table cannot be read", fix)]
     problems: list[Problem] = []
     for row in table.rows:
         if not row.param:
-            problems.append((row.line, f"row is not a {written}(...): {case}", case))
+            problems.append((row.line, f"row is not a {written}(...)", case))
         elif row.id is None:
-            problems.append((row.line, f"row has no id: {case}", case))
+            problems.append((row.line, "row has no id", case))
         if row.param or row.cells:
             problems += _result(row, table.columns.index(result), union, variants, result, covered)
     return problems
@@ -167,5 +166,5 @@ def _result(row: Row, index: int, union: str, variants: tuple[str, ...], column:
         return []
     fix = f"use one of {', '.join(variants)}"
     if head is None:
-        return [(row.line, f"row '{row.id}' names no variant in its {column} column: {fix}", fix)]
+        return [(row.line, f"row '{row.id}' names no variant in its {column} column", fix)]
     return [(row.line, f"row '{row.id}' has {head} in its {column} column, which is not a variant of {union}", fix)]

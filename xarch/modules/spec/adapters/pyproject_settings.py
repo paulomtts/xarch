@@ -17,15 +17,19 @@ class PyprojectSettings:
         self._fs, self._toml = fs, toml
 
     def configured_profile(self, app: Path) -> Configured | None:
-        found = self._setting(app, "profile")
+        found = self._setting(app.absolute().parent, "profile")
         return Configured(found[0], found[1]) if found is not None else None
 
     def configured_tests(self, app: Path) -> Path | None:
-        found = self._setting(app, "tests")
+        found = self._setting(app.absolute().parent, "tests")
         return found[1].parent / found[0] if found is not None else None
 
-    def _setting(self, app: Path, key: str) -> tuple[str, Path] | None:
-        source = self._fs.find_upward(app.absolute().parent, "pyproject.toml")
+    def configured_app(self, start: Path) -> Path | None:
+        found = self._setting(start.absolute(), "app")
+        return found[1].parent / found[0] if found is not None else None
+
+    def _setting(self, folder: Path, key: str) -> tuple[str, Path] | None:
+        source = self._fs.find_upward(folder, "pyproject.toml")
         if source is None:
             return None
         try:

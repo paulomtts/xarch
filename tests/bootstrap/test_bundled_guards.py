@@ -2,7 +2,15 @@
 import pytest
 
 from xarch.bootstrap.wiring import build_architectures, load_architecture
-from xarch.modules.spec.contract import CaseTable, Framework, NoComments, PackageOnly, ScenarioCoverage, StandIns
+from xarch.modules.spec.contract import (
+    CaseTable,
+    Fixture,
+    Framework,
+    NoComments,
+    PackageOnly,
+    ScenarioCoverage,
+    StandIns,
+)
 
 
 @pytest.mark.parametrize("name, expected", [
@@ -25,7 +33,7 @@ def test_the_bundled_profiles_use_every_guard_of_their_own(name):
         ScenarioCoverage("contract", "integration", "Result", ("given", "when", "then"), table, "test_{name}.py"),
         NoComments(),
         StandIns(tuple(("unittest", "mock", m) for m in mocks), (("unittest", "mock", "create_autospec"),),
-                 ("spec", "spec_set")))
+                 ("spec", "spec_set"), (Fixture("mocker", mocks, ("create_autospec",)),)))
     skips = ("pytest.mark.skip", "pytest.mark.skipif", "pytest.mark.xfail", "pytest.skip", "pytest.xfail",
              "pytest.importorskip", "unittest.skip", "unittest.skipIf", "unittest.skipUnless", "unittest.expectedFailure")
     assert load_architecture(name).framework == Framework(("test_*.py", "*_test.py"), "test_*",
@@ -81,6 +89,6 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
         "(`# type: ignore`, `# noqa`, `# pragma:`) stay.",
         "- `stand-ins`: every `Protocol` in `application/ports/` is fire-only (every method returns `None`) or read "
         "(any method returns a value), each method annotated; every read port `<Port>` has a fake `Fake<Port>` in "
-        "`tests/fakes/`; and every mock in the integration tests names what it stands in for, `Mock(spec=<Port>)`, "
-        "never a read port (section 6).",
+        "`tests/fakes/`; and every mock in the integration tests names what it stands in for, `Mock(spec=<Port>)` "
+        "(or, from a fixture, `mocker.Mock(spec=<Port>)`), never a read port (section 6).",
     ])

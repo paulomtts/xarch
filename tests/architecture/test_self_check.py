@@ -1,9 +1,13 @@
 """xarch's own source follows the architecture it enforces: its package root plays the role of app/, and its
 architecture is the one its pyproject.toml names, architecture.yaml at the repository root."""
+import json
 import shutil
 from pathlib import Path
 
+from typer.testing import CliRunner
+
 import xarch
+from xarch.bootstrap.app import app
 from xarch.bootstrap.wiring import build_controllers
 from xarch.modules.layout.contract import CheckStructure
 from xarch.modules.rules.contract import CheckImports, ImportsChecked
@@ -23,12 +27,25 @@ def test_xarch_checks_itself_against_its_own_architecture_file():
     assert own_architecture() == str(SRC.parent / "architecture.yaml")
 
 
+def test_xarch_records_its_own_app_folder_so_a_bare_check_runs_here():
+    assert build_controllers().spec.configured_app(SRC.parent) == SRC
+
+
 def test_xarch_has_no_violations_in_its_source_or_its_tests():
     controllers = build_controllers()
     imports = controllers.rules.check(CheckImports(SRC, "xarch", own_architecture(), TESTS))
     structure = controllers.layout.check(CheckStructure(SRC, "xarch", own_architecture(), TESTS))
     assert isinstance(imports, ImportsChecked)
     assert [str(v) for v in imports.violations + structure.violations] == []
+
+
+def test_xarch_passes_its_own_check_in_strict_mode_leaving_nothing_unenforced():
+    result = CliRunner().invoke(app, ["check", "--app", str(SRC), "--strict", "--format", "json"])
+    document = json.loads(result.stdout)
+    assert (document["violations"], document["enforcement"]["strict_failures"]) == ([], [])
+    assert (result.exit_code, document["ok"], document["strict"]) == (0, True, True)
+    assert [item["folder"] for item in document["enforcement"]["excluded"]] == ["xarch/architectures/examples"]
+    assert document["enforcement"]["profile"]["guards_off"] == []
 
 
 def test_xarch_is_split_into_its_four_modules():

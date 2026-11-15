@@ -18,9 +18,17 @@ In a test whose tier may import the fakes (see tier_imports), every call of one 
 spec, as its first argument or by one of the profile's spec keywords, and every call of one of its autospec
 functions its first argument or the first spec keyword; one that names none is a violation. A spec that is a class
 of the app, `from <module> import X` or `<module alias>.X`, whose module is a port's file and X a read port there,
-is a violation that points to its fake. The check stays silent on what it cannot read: a call that unpacks *args or
-**kwargs, a spec that is not a name an absolute import binds (a variable, an expression, a string), a spec imported
-from a package that re-exports the port, and a mock built by `patch`.
+is a violation that points to its fake.
+
+A mock may also come from a fixture: a parameter of a function, named in the profile's `fixtures`, whose methods build
+mocks. A call of `<parameter>.<method>` for a method the fixture lists under `mocks` follows exactly the rules of the
+profile's mocks, and one listed under `autospec` those of its autospec functions; it is shown as written, such as
+`mocker.Mock()`.
+
+The check stays silent on what it cannot read: a call that unpacks *args or **kwargs, a spec that is not a name an
+absolute import binds (a variable, an expression, a string), a spec imported from a package that re-exports the port,
+a mock built by `patch`, and a fixture the function rebinds (the source tree reports only a parameter its function's
+signature alone binds), reaches through a longer chain (`mocker.patch.object`) or calls itself.
 
 weak lists, without failing, a fake that meets the rule to the letter only: a class <prefix>X below the fakes' folder
 that does not define, in its own body, every method port X declares (its methods as above), where a name its body or
@@ -38,7 +46,7 @@ from xarch.modules.rules.application.logic.tier_imports import may_use_fakes
 from xarch.modules.rules.application.logic.tier_of import tested
 from xarch.modules.rules.domain.imports import dotted
 from xarch.modules.rules.domain.places import place
-from xarch.modules.rules.domain.values import Call, Class, Profile, SourceFile, Weak
+from xarch.modules.rules.domain.values import Class, Profile, Ref, SourceFile, StandIns, Weak
 
 PROTOCOLS = {("typing", "Protocol"), ("typing_extensions", "Protocol")}
 NONE = "None"
@@ -111,8 +119,8 @@ def _ports(app: Iterable[SourceFile], profile: Profile) -> tuple[dict[tuple[tupl
 def _classified(file: SourceFile, cls: Class) -> tuple[Port, list[Violation]]:
     methods = [m for m in cls.methods if not _dunder(m.name) or m.name == "__call__"]
     bare = [m for m in methods if m.returns is None]
-    problems = [Violation(file.name, m.line, f"{cls.name}.{m.name} has no return annotation: annotate it, since "
-                                             f"whether {cls.name} is fire-only or read follows from it {GUARD}",
+    problems = [Violation(file.name, m.line, f"{cls.name}.{m.name} has no return annotation, and whether {cls.name} "
+                                             f"is fire-only or read follows from it {GUARD}",
                           RULE, f"annotate what {cls.name}.{m.name} returns")
                 for m in bare]
     kind = None
@@ -126,42 +134,70 @@ def _missing_fakes(ports: Iterable[Port], tests: list[SourceFile], profile: Prof
     folder = profile.fakes.path
     fakes = {cls.name for t in tests if t.path[:len(folder)] == folder for cls in t.classes}
     shown = "/".join(("tests", *folder)) + "/"
-    return [Violation(p.file, p.line, f"{p.name} is a read port with no fake: write {profile.fakes.prefix}{p.name} "
-                                      f"under {shown} {GUARD}", RULE, f"write {profile.fakes.prefix}{p.name} under {shown}")
+    return [Violation(p.file, p.line, f"{p.name} is a read port with no fake {GUARD}", RULE,
+                      f"write {profile.fakes.prefix}{p.name} under {shown}")
             for p in ports if p.kind == "read" and f"{profile.fakes.prefix}{p.name}" not in fakes]
 
 
 def _mocks(tests: list[SourceFile], ports: dict[tuple[tuple[str, ...], str], Port], profile: Profile,
            root: str) -> list[Violation]:
     assert profile.fakes is not None and profile.stand_ins is not None
-    names = profile.stand_ins
-    shown = f"{names.mocks[0][-1]}({names.spec[0]}=<port>)"
     found: list[Violation] = []
     for file in tests:
         tier = tested(profile, file.path).tier
         if tier is None or not may_use_fakes(profile, tier):
             continue
-        for call in file.calls:
-            if call.func not in names.mocks and call.func not in names.autospec:
-                continue
-            named, spec = _spec(call, names.spec[:1] if call.func in names.autospec else names.spec)
-            if not named:
-                found.append(Violation(file.name, call.line, f"{call.func[-1]}() names nothing it stands in for: give "
-                                                             f"it a spec, such as {shown} {GUARD}", RULE,
-                                       f"give it a spec, such as {shown}"))
-            elif spec is not None and spec[:1] == (root,):
-                port = ports.get((spec[1:-1], spec[-1]))
-                if port is not None and port.kind == "read":
-                    written = f"{call.func[-1]}({names.spec[0]}={port.name})" if _by_keyword(call) else \
-                        f"{call.func[-1]}({port.name})"
-                    found.append(Violation(file.name, call.line, f"{written} stands in for {port.name}, a read port: "
-                                                                 f"use its fake {profile.fakes.prefix}{port.name} "
-                                                                 f"{GUARD}", RULE,
-                                           f"use its fake {profile.fakes.prefix}{port.name}"))
+        for mock in _built(file, profile.stand_ins):
+            found += _mock(file, mock, ports, profile, root)
     return found
 
 
-def _spec(call: Call, names: tuple[str, ...]) -> tuple[bool, tuple[str, ...] | None]:
+@dataclass(frozen=True)
+class Built:
+    """A call that builds a mock: its line, how it is shown (`Mock`, or `mocker.Mock` for a fixture's), its arguments
+    as a Call holds them, and whether it takes its spec as its first argument only (an autospec)."""
+    line: int
+    shown: str
+    args: tuple[Ref, ...]
+    keywords: tuple[tuple[str, Ref], ...]
+    unpacked: bool
+    autospec: bool
+
+
+def _built(file: SourceFile, names: StandIns) -> list[Built]:
+    """The calls of the file that build a mock, those of imported names first, then those of a fixture's methods."""
+    found = [Built(c.line, c.func[-1], c.args, c.keywords, c.unpacked, c.func in names.autospec)
+             for c in file.calls if c.func in names.mocks or c.func in names.autospec]
+    for call in file.parameter_calls:
+        for fixture in names.fixtures:
+            if call.parameter == fixture.name and call.method in (*fixture.mocks, *fixture.autospec):
+                found.append(Built(call.line, f"{call.parameter}.{call.method}", call.args, call.keywords,
+                                   call.unpacked, call.method in fixture.autospec))
+    return found
+
+
+def _mock(file: SourceFile, mock: Built, ports: dict[tuple[tuple[str, ...], str], Port], profile: Profile,
+          root: str) -> list[Violation]:
+    assert profile.fakes is not None and profile.stand_ins is not None
+    names = profile.stand_ins
+    prefix = mock.shown.rpartition(".")[0]
+    constructor = f"{prefix}." if prefix else ""
+    suggested = f"{constructor}{names.mocks[0][-1]}({names.spec[0]}=<port>)"
+    named, spec = _spec(mock, names.spec[:1] if mock.autospec else names.spec)
+    if not named:
+        return [Violation(file.name, mock.line, f"{mock.shown}() names nothing it stands in for {GUARD}", RULE,
+                          f"give it a spec, such as {suggested}")]
+    if spec is not None and spec[:1] == (root,):
+        port = ports.get((spec[1:-1], spec[-1]))
+        if port is not None and port.kind == "read":
+            written = f"{mock.shown}({names.spec[0]}={port.name})" if not mock.args else \
+                f"{mock.shown}({port.name})"
+            return [Violation(file.name, mock.line, f"{written} stands in for {port.name}, a read port {GUARD}", RULE,
+                              f"use its fake {profile.fakes.prefix}{port.name}")]
+    return []
+
+
+def _spec(call: Built, names: tuple[str, ...]) -> tuple[bool, tuple[str, ...] | None]:
     """Whether the call names a spec (or may, when it unpacks arguments), by its first argument or one of the keywords
     names, and the spec when it is a name."""
     keywords = dict(call.keywords)
@@ -177,5 +213,3 @@ def _dunder(name: str) -> bool:
     return name.startswith("__") and name.endswith("__")
 
 
-def _by_keyword(call: Call) -> bool:
-    return not call.args

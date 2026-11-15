@@ -5,9 +5,22 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.domain.values import At, Drift, Enforcement, Finding, Loosened, Nearest, Origin, Reach, TierInfo, Weak, Where
+from xarch.modules.rules.domain.values import (
+    At,
+    Drift,
+    Enforcement,
+    Excluded,
+    Finding,
+    Loosened,
+    Nearest,
+    Origin,
+    Reach,
+    TierInfo,
+    Weak,
+    Where,
+)
 
-__all__ = ["At", "Drift", "Enforcement", "Finding", "Loosened", "Nearest", "Origin", "Reach", "TierInfo", "Weak",
+__all__ = ["At", "Drift", "Enforcement", "Excluded", "Finding", "Loosened", "Nearest", "Origin", "Reach", "TierInfo", "Weak",
            "Where", "CheckImports", "ImportsChecked", "NotADirectory", "CheckResult", "Locate", "Located", "Outside",
            "LocateResult"]
 

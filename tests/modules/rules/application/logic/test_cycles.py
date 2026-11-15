@@ -82,3 +82,10 @@ def test_without_an_each_folder_there_are_no_cycles():
 def test_a_cycle_names_its_rule():
     assert [v.rule for v in violations([adapter("a", uses(1, "b")), adapter("b", uses(1, "a"))], PROFILE, "app")] == [
         "cycles"]
+
+
+def test_a_violation_says_which_import_to_remove():
+    found = violations([adapter("b", uses(3, "a")), adapter("a", uses(1, "b"))], PROFILE, "app")
+    assert [(v.rule, v.fix) for v in found] == [
+        ("cycles", "break the cycle: remove the import of app.modules.b.contract at "
+                   "app/modules/a/adapters/peer.py:1, or move what it needs to a part that both may import")]

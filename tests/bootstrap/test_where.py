@@ -1,13 +1,17 @@
 """xarch where: what a path is and what code there may do, as text and as JSON, for a path that is there or not yet,
 from the working folder, the project root or the app folder; and what is refused."""
 import json
+import shutil
+from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
 
+import xarch
 from xarch.bootstrap.app import app
 
 runner = CliRunner()
+BUNDLED = Path(xarch.__file__).parent / "architectures"
 DOMAIN = "app/modules/docs/domain/invoice.py"
 
 
@@ -138,3 +142,14 @@ def test_a_profile_that_cannot_be_used_is_refused_with_exit_2_in_json_too():
     result = runner.invoke(app, ["where", DOMAIN, "--profile", "nowhere", "--format", "json"])
     assert result.exit_code == 2
     assert json.loads(result.stdout)["ok"] is False
+
+
+def test_a_path_in_an_excluded_folder_says_it_is_excluded_and_why(tmp_path):
+    shutil.copytree(BUNDLED, tmp_path / "arch")
+    (tmp_path / "arch/mine.yaml").write_text((BUNDLED / "web.yaml").read_text()
+                                             + "\nexcluded:\n  samples: example sources the docs show\n")
+    (tmp_path / "app/samples").mkdir()
+    (tmp_path / "app/samples/run.py").write_text("x = 1\n")
+    found = document("app/samples/run.py", "--profile", "arch/mine.yaml")
+    assert (found["kind"], found["note"], found["closed_tree"]) == (
+        "ungoverned", "excluded from the checks by the profile: example sources the docs show", None)

@@ -33,7 +33,7 @@ def violations(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: 
             if src is not None and src.part == dst.part and src.instance == dst.instance:
                 continue
             package = ".".join((root, *target[:len(target) - len(dst.sub)]))
-            found.append(Violation(file.name, line, f"{label(profile, dst)} is imported only as a package: import "
-                                                    f"from {package} ({'.'.join((root, *target))}) (package-only)",
+            found.append(Violation(file.name, line, f"{label(profile, dst)} is imported only as a package, never by its "
+                                                    f"files ({'.'.join((root, *target))}) (package-only)",
                                    "package-only", f"import from {package}"))
     return found

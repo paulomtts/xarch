@@ -8,6 +8,7 @@ from xarch.modules.spec.domain.values import (
     Architecture,
     CaseTable,
     ClosedTree,
+    Fixture,
     Framework,
     NoComments,
     PackageOnly,
@@ -20,7 +21,7 @@ from xarch.modules.spec.domain.values import (
     TierExample,
 )
 
-__all__ = ["Architecture", "CaseTable", "ClosedTree", "Framework", "NoComments", "PackageOnly", "Part",
+__all__ = ["Architecture", "CaseTable", "ClosedTree", "Fixture", "Framework", "NoComments", "PackageOnly", "Part",
            "ScenarioCoverage", "StandIns", "Subject", "Target", "Tier", "TierExample", "Entry", "Skeleton", "DocFile",
            "Docs", "ProjectFile", "Loosened", "ProfileOrigin", "SelectProfile", "ProfileSelected", "ProfileRefused",
            "ProfileResult"]

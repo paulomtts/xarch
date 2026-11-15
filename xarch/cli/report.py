@@ -1,8 +1,9 @@
-"""How `xarch check` shows what it found: the violations as text lines, as they always were, then the state of its
-enforcement; or all of it as one JSON document.
+"""How `xarch check` shows what it found: the violations as text lines, each with the fix and the profile's hint when it
+has one, then the state of its enforcement; or all of it as one JSON document.
 
 The JSON document is a contract (see the README): {"ok", "strict", "profile", "violations", "enforcement"}, each
-violation {"rule", "file", "line", "message", "fix"}, a line of 0 (the whole file or folder) shown as null, the
+violation {"rule", "file", "line", "message", "fix", "hint"}, a line of 0 (the whole file or folder) shown as null,
+the fix what to do about it and the hint the profile's own advice for the rule (null when it has none), the
 violations in order of file, then line, then rule. A refusal is {"ok": false, "error"}.
 
 The text section leaves out a line with nothing to report; the JSON object always holds every key.
@@ -10,7 +11,7 @@ The text section leaves out a line with nothing to report; the JSON object alway
 from __future__ import annotations
 
 import json
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
 from xarch.kernel.violations import Violation
@@ -18,19 +19,29 @@ from xarch.modules.rules.contract import At, Enforcement, Finding
 
 LABEL = 13
 """The width of a label of the enforcement section, its colon and the spaces after it."""
+INDENT = "    "
+"""How far the fix and the hint of a finding are indented under its line."""
 SHOWN = 5
 """How many places a text line of skips or dynamic imports names before it counts the rest."""
-_KEYS = {"guards_off": "guards off", "looser": "looser", "ungoverned": "ungoverned", "init_files": "init files",
+_KEYS = {"guards_off": "guards off", "ungoverned": "ungoverned", "init_files": "init files",
          "skipped": "skipped", "dynamic": "dynamic", "weak": "weak"}
 
 
-def text_lines(found: Iterable[Violation]) -> list[str]:
-    """The violations as the terminal shows them, in the order the checks found them, then the summary line."""
+def text_lines(found: Iterable[Violation], hints: Mapping[str, str] | None = None) -> list[str]:
+    """The violations as the terminal shows them, in the order the checks found them, then the summary line. A
+    finding is its line, `<file>:<line>: <message>`, then an indented `fix:` line and, when the profile has a hint
+    for its rule, an indented `hint:` line."""
     found = list(found)
+    hints = hints or {}
     if not found:
         return ["OK: no violations"]
     files = len({v.file for v in found})
-    return [*(str(v) for v in found), f"{len(found)} violation(s) in {files} file(s)"]
+    lines: list[str] = []
+    for v in found:
+        lines += [str(v), f"{INDENT}fix: {v.fix}"]
+        if v.rule in hints:
+            lines.append(f"{INDENT}hint: {hints[v.rule]}")
+    return [*lines, f"{len(found)} violation(s) in {files} file(s)"]
 
 
 def enforcement_lines(state: Enforcement, strict: bool) -> list[str]:
@@ -50,6 +61,7 @@ def enforcement_lines(state: Enforcement, strict: bool) -> list[str]:
         count = len(state.ungoverned)
         lines.append(_line("ungoverned", f"{_count(count, 'Python file')} outside every part "
                                          f"({', '.join(folders(state.ungoverned))})", 2))
+    lines += [_line("excluded", f"{item.folder}/ ({item.reason})", 2) for item in state.excluded]
     lines += [_line("init files", f"{item.file} is {item.state}", 2) for item in state.init_files]
     if state.skipped:
         lines.append(_line("skipped", f"{_count(len(state.skipped), 'skip')} ({_places(state.skipped)})", 2))
@@ -88,9 +100,9 @@ def ordered(found: Iterable[Violation]) -> list[Violation]:
     return sorted(found, key=lambda v: (v.file, v.line, v.rule))
 
 
-def violation_document(violation: Violation) -> dict[str, Any]:
+def violation_document(violation: Violation, hints: Mapping[str, str] | None = None) -> dict[str, Any]:
     return {"rule": violation.rule, "file": violation.file, "line": violation.line or None,
-            "message": violation.message, "fix": violation.fix}
+            "message": violation.message, "fix": violation.fix, "hint": (hints or {}).get(violation.rule)}
 
 
 def enforcement_document(state: Enforcement) -> dict[str, Any]:
@@ -102,6 +114,7 @@ def enforcement_document(state: Enforcement) -> dict[str, Any]:
                                for item in origin.looser]},
         "ungoverned": {"count": len(state.ungoverned), "folders": folders(state.ungoverned),
                        "files": list(state.ungoverned)},
+        "excluded": [{"folder": item.folder, "reason": item.reason} for item in state.excluded],
         "init_files": [{"file": item.file, "state": item.state} for item in state.init_files],
         "skipped": {"count": len(state.skipped), "at": _at(state.skipped)},
         "dynamic": {"count": len(state.dynamic), "at": _at(state.dynamic)},
@@ -119,10 +132,11 @@ def _finding(finding: Finding) -> dict[str, str]:
     return {"key": finding.key, "detail": finding.detail}
 
 
-def json_document(profile: str, found: Iterable[Violation], state: Enforcement, strict: bool) -> str:
+def json_document(profile: str, found: Iterable[Violation], state: Enforcement, strict: bool,
+                  hints: Mapping[str, str] | None = None) -> str:
     found = list(found)
     document = {"ok": passed(found, state, strict), "strict": strict, "profile": profile,
-                "violations": [violation_document(v) for v in ordered(found)],
+                "violations": [violation_document(v, hints) for v in ordered(found)],
                 "enforcement": enforcement_document(state)}
     return json.dumps(document, indent=2, ensure_ascii=False)
 

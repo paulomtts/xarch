@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from xarch.kernel.errors import DomainError
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.application.services.skeleton import SkeletonService
@@ -43,6 +45,11 @@ class SpecController:
         """Where the profile at a location callers got from select() comes from, and how it is looser than the
         bundled profile it resembles."""
         return self._architectures.origin(location)
+
+    def configured_app(self, start: Path) -> Path | None:
+        """The app folder the project holding the folder start records under [tool.xarch], looked up from start upward,
+        or None; raises UnreadableSettings."""
+        return self._service.configured_app(start)
 
     def profiles(self) -> tuple[str, ...]:
         return self._service.profiles()

@@ -19,9 +19,10 @@ LAYERED = {"xarch": 1, "name": "layered", "layout": {"src": {"singular": "module
 
 
 def controller(configured: Configured | None = None, error: Exception | None = None, tests: Path | None = None,
-               files: dict | None = None, at: Path | None = None) -> SpecController:
+               files: dict | None = None, at: Path | None = None, app: Path | None = None,
+               from_folder: Path | None = None) -> SpecController:
     architectures = ArchitectureService(FakeArchitectureFiles({"cli": LAYERED, "web": LAYERED}, files))
-    return SpecController(SkeletonService(FakeSettings(configured, error, tests, at), architectures), architectures)
+    return SpecController(SkeletonService(FakeSettings(configured, error, tests, at, app, from_folder), architectures), architectures)
 
 
 FILE = "/src/layered.yaml"
@@ -79,3 +80,19 @@ def test_profile(given, when, then):
 def test_the_tests_root(configured_tests, override, tests):
     result = controller(Configured("cli", PYPROJECT), tests=configured_tests).select(SelectProfile(APP, None, override))
     assert isinstance(result, ProfileSelected) and result.tests == tests
+
+
+@pytest.mark.parametrize("given, start, expected", [
+    pytest.param(dict(app=Path("/src/shop")), Path("/src"), Path("/src/shop"),
+                 id="the app folder configured for the project is returned"),
+    pytest.param(dict(), Path("/src"), None, id="with none configured there is none"),
+    pytest.param(dict(app=Path("/src/shop"), from_folder=Path("/src")), Path("/elsewhere"), None,
+                 id="an app folder configured for another project is not this one's"),
+])
+def test_the_configured_app_folder_is_the_one_the_project_around_the_folder_records(given, start, expected):
+    assert controller(**given).configured_app(start) == expected
+
+
+def test_unreadable_settings_make_the_configured_app_folder_unreadable_too():
+    with pytest.raises(UnreadableSettings):
+        controller(error=UnreadableSettings(PYPROJECT, "bad")).configured_app(Path("/src"))

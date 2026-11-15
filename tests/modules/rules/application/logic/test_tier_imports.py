@@ -15,8 +15,7 @@ APP = [source(p) for p in ["kernel/ids.py", "modules/docs/domain/doc.py", "modul
                            "modules/other/domain/doc.py", "platform/sql.py", "web/routes.py", "scripts/seed.py"]]
 HELPERS = [in_tests(p) for p in ["modules/docs/builders.py", "modules/other/builders.py", "web/conftest.py",
                                  "fakes/repo.py", "helpers.py", "conftest.py"]]
-NO_TIER = ("lies in no tier: no part's folder and no tier's example folder is mirrored here; a test lives in the "
-           "folder that mirrors its subject's path in the app")
+NO_TIER = "lies in no tier: no part's folder and no tier's example folder is mirrored here"
 DOMAIN_TEST = "modules/docs/domain/test_doc.py"
 
 
@@ -152,3 +151,24 @@ def test_a_tiers_allowance_is_its_subject_and_what_each_part_may_import():
 ])
 def test_may_use_fakes(checked, tier, expected):
     assert may_use_fakes(checked, tier) == expected
+
+
+@pytest.mark.parametrize("path, imports, fix", [
+    pytest.param(DOMAIN_TEST, [imp(3, "app.modules.docs.application", "controller")],
+                 "import here only what domain/ may; test controller/ of modules/docs from the folder that mirrors it",
+                 id="an app import a test of a part may not make"),
+    pytest.param("architecture/test_rules.py", [imp(1, "app.kernel", "ids")],
+                 "import here only what the subject of the guard tier may; test kernel/ from the folder that mirrors "
+                 "it", id="an app import a test with no subject part may not make"),
+    pytest.param(DOMAIN_TEST, [imp(1, "tests.fakes.repo", "FakeRepo")],
+                 "drop the import of tests.fakes.repo, or move the test to a tier that tests ports",
+                 id="the fakes in a tier that may not use them"),
+    pytest.param(DOMAIN_TEST, [imp(1, "tests.modules.other", "builders")],
+                 "move what tests.modules.other.builders holds into tests/modules/docs/, or drop the import",
+                 id="test code of another folder"),
+    pytest.param("scripts/test_seed.py", [], "move it to the folder that mirrors its subject's path in the app",
+                 id="a test in no tier"),
+])
+def test_a_violation_says_what_to_do(path, imports, fix):
+    found = violations([in_tests(path, *imports), *HELPERS], APP, PROFILE, "app", "tests")
+    assert [(v.rule, v.fix) for v in found] == [("tiers", fix)]

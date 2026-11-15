@@ -17,3 +17,8 @@ class Settings(Protocol):
         """The tests root configured for the project holding app, relative paths resolved against the folder holding
         its pyproject.toml, or None; raises UnreadableSettings."""
         ...
+
+    def configured_app(self, start: Path) -> Path | None:
+        """The app folder configured for the project holding the folder start, looked up from start upward, a relative
+        path resolved against the folder holding the pyproject.toml, or None; raises UnreadableSettings."""
+        ...

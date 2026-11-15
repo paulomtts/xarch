@@ -10,8 +10,8 @@ CONTRACTS = [source("modules/docs/contract/__init__.py"), source("modules/docs/c
 
 
 def message(line: int, instance: str, imported: str) -> str:
-    return (f"{line}: contract/ of modules/{instance} is imported only as a package: import from "
-            f"app.modules.{instance}.contract ({imported}) (package-only)")
+    return (f"{line}: contract/ of modules/{instance} is imported only as a package, never by its files "
+            f"({imported}) (package-only)")
 
 
 def problems(path: str, *imports, in_app: bool = True, checked=PROFILE) -> list[str]:

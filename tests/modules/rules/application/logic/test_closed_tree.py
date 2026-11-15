@@ -26,8 +26,7 @@ def test_a_file_in_no_part_and_no_folder_of_the_layout_is_reported():
     assert [str(v) for v in violations(paths("main.py", "modules/docs/helpers.py",
                                              "modules/docs/application/helpers.py", "scripts/__init__.py"),
                                        PROFILE, "app")] == [
-        f"app/{p}: lies in no part and no folder of the layout: move it into a part, or add its folder to the "
-        "layout (closed-tree)"
+        f"app/{p}: lies in no part and no folder of the layout (closed-tree)"
         for p in ["main.py", "modules/docs/helpers.py", "modules/docs/application/helpers.py", "scripts/__init__.py"]]
 
 
@@ -37,7 +36,8 @@ def test_without_the_guard_nothing_is_reported():
 
 def test_a_file_outside_the_tree_names_its_rule_and_its_fix():
     found = violations(paths("main.py"), PROFILE, "app")[0]
-    assert (found.rule, found.fix) == ("closed-tree", "move it into a part, or add its folder to the layout")
+    assert (found.rule, found.fix) == ("closed-tree", "move app/main.py into the part that fits it (run xarch where "
+                                                      "app/main.py), or add its folder to the layout")
 
 
 def test_the_ungoverned_files_are_listed_whether_the_guard_is_on_or_not():

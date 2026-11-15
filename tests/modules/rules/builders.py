@@ -14,6 +14,7 @@ from dataclasses import replace
 from xarch.kernel.logic.placement import EVERYTHING, Target
 from xarch.modules.rules.domain.values import (
     Fakes,
+    Fixture,
     Framework,
     Import,
     Profile,
@@ -70,7 +71,9 @@ PROFILE = Profile(
                "bootstrap": ("sqlmodel", "fastapi")},
     fakes=Fakes(("fakes",), ("ports",), "Fake"), each_root=("modules",), package_only=("contract",),
     scenarios=Scenarios("contract", "integration", "Result", ("given", "when", "then"), TABLE, "test_{name}.py"),
-    no_comments=True, stand_ins=StandIns((MOCK, ("unittest", "mock", "MagicMock")), (AUTOSPEC,), ("spec", "spec_set")),
+    no_comments=True,
+    stand_ins=StandIns((MOCK, ("unittest", "mock", "MagicMock")), (AUTOSPEC,), ("spec", "spec_set"),
+                       (Fixture("mocker", ("Mock", "MagicMock"), ("create_autospec",)),)),
     framework=Framework(("test_*.py", "*_test.py"), "test_*"),
     forbidden={"domain": (NOW, ("builtins", "open"), ("socket",))}, singular="module")
 

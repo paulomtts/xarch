@@ -344,7 +344,7 @@ A fake is checked against its port twice. `xarch check` requires it to exist: ev
 - `package-only`: `contract/` is imported as a package, never by its files, from outside it.
 - `scenario-coverage`: every variant of a union named `<Name>Result` in `contract/` is the `then` of a row of the table (columns `given`, `when`, `then`) in `test_<name>.py` among the integration tests (section 5.2), or is named by a standalone test of that file; every row is a `pytest.param` with an `id`, and a table test has no `if`, `match`, `try`, `for` or `while`.
 - `no-comments`: no `#` comments in the app or its tests; docstrings and tool directives (`# type: ignore`, `# noqa`, `# pragma:`) stay.
-- `stand-ins`: every `Protocol` in `application/ports/` is fire-only (every method returns `None`) or read (any method returns a value), each method annotated; every read port `<Port>` has a fake `Fake<Port>` in `tests/fakes/`; and every mock in the integration tests names what it stands in for, `Mock(spec=<Port>)`, never a read port (section 6).
+- `stand-ins`: every `Protocol` in `application/ports/` is fire-only (every method returns `None`) or read (any method returns a value), each method annotated; every read port `<Port>` has a fake `Fake<Port>` in `tests/fakes/`; and every mock in the integration tests names what it stands in for, `Mock(spec=<Port>)` (or, from a fixture, `mocker.Mock(spec=<Port>)`), never a read port (section 6).
 
 One line per guard. A guard the project adds itself is a check of its own under `tests/architecture/`, written up from `artifacts/guards/_template.md`.
 

@@ -9,7 +9,7 @@ from xarch.modules.scaffold.contract import Report
 from xarch.modules.scaffold.domain.errors import AlreadyExists, FolderMissing, InvalidName, UnknownKind
 from xarch.modules.scaffold.domain.names import valid_name
 from xarch.modules.scaffold.domain.plan import app_name, holder, plan
-from xarch.modules.scaffold.domain.pyproject import recorded_location, with_profile
+from xarch.modules.scaffold.domain.pyproject import recorded_app, recorded_location, with_profile, with_setting
 
 PYPROJECT = "pyproject.toml"
 
@@ -19,12 +19,12 @@ class Scaffolding:
         self._files, self._skeleton = files, skeleton
 
     def init(self, root: Path, profile: str) -> Report:
-        """The app's top level, then the profile recorded in the project's pyproject.toml, then the project docs and the
-        profile's other project files."""
+        """The app's top level, then the profile (and the app folder, when it is not the default) recorded in the
+        project's pyproject.toml, then the project docs and the profile's other project files."""
         files = self._skeleton.files(profile, app_name(root))
         report = self._build(root, self._skeleton.top_level(profile))
         base = holder(root)
-        self._record(base, profile, report)
+        self._record(base, root, profile, report)
         for rel, template in self._skeleton.docs(profile):
             self._write(base.joinpath(*rel), template, report)
         for rel, text in files:
@@ -47,11 +47,17 @@ class Scaffolding:
             raise AlreadyExists(name, base)
         return self._build(base, entries)
 
-    def _record(self, base: Path, profile: str, report: Report) -> None:
+    def _record(self, base: Path, root: Path, profile: str, report: Report) -> None:
+        """Record the profile, then the app folder when it is not the default, after the profile: each only if the
+        pyproject.toml does not already hold it, so that no value is ever rewritten."""
         found = self._files.find_upward(base.absolute(), PYPROJECT)
         target = base / PYPROJECT if found is None or found.parent == base.absolute() else found
         text = self._files.read_text(target) if found is not None else None
-        changed = with_profile(text, recorded_location(profile, target.parent))
+        app = recorded_app(root, target.parent)
+        edited = with_profile(text, recorded_location(profile, target.parent))
+        changed = with_setting(edited if edited is not None else text, "app", app, after="profile") \
+            if app is not None else edited
+        changed = changed if changed is not None else edited
         if changed is None:
             report.skipped.append(target)
             return

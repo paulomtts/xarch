@@ -57,3 +57,18 @@ def test_the_apps_package_is_the_root_it_is_given():
 
 def test_a_violation_names_its_rule():
     assert [v.rule for v in violations([source("kernel/ids.py", imp(1, "yaml"))], PROFILE, "app")] == ["libraries"]
+
+
+@pytest.mark.parametrize("path, imports, fix", [
+    pytest.param("platform/sql.py", [imp(3, "fastapi", "FastAPI")],
+                 "move the code that needs fastapi to web/, bootstrap/, which may import it (libraries.web)",
+                 id="a package listed for another part names that part"),
+    pytest.param("web/routes.py", [imp(3, "sqlmodel", "SQLModel")],
+                 "move the code that needs sqlmodel to platform/, adapters/, bootstrap/, which may import it "
+                 "(libraries.platform)", id="a package listed for several parts names them all"),
+    pytest.param("platform/sql.py", [imp(3, "requests")],
+                 "use the standard library or a package libraries lists for platform/, since requests is listed for "
+                 "no part", id="a package no part lists"),
+])
+def test_a_violation_says_what_to_do(path, imports, fix):
+    assert [(v.rule, v.fix) for v in violations([source(path, *imports)], PROFILE, "app")] == [("libraries", fix)]

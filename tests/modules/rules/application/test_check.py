@@ -12,7 +12,17 @@ from xarch.modules.rules.application.controller import RulesController
 from xarch.modules.rules.application.services.import_check import ImportCheck
 from xarch.modules.rules.application.services.locate import Locator
 from xarch.modules.rules.contract import CheckImports, ImportsChecked, NotADirectory
-from xarch.modules.rules.domain.values import Drift, Enforcement, Finding, Import, InitFile, Origin, Profile
+from xarch.modules.rules.domain.values import (
+    Drift,
+    Enforcement,
+    Excluded,
+    Exclusion,
+    Finding,
+    Import,
+    InitFile,
+    Origin,
+    Profile,
+)
 
 ROOT = Path("/src/pkg")
 
@@ -45,7 +55,8 @@ def run(files, package="app", root=ROOT, profile="cli"):
 @pytest.mark.parametrize("given, when, then", [
     pytest.param({"kernel/x.py": [Import(3, ("app", "platform", "sql"))]}, CheckImports(ROOT, "app", "cli"),
                  ImportsChecked((Violation("pkg/kernel/x.py", 3, "kernel/ may not import platform/ (app.platform.sql)",
-                                           "rules"),)),
+                                           "rules", "import only kernel/ in kernel/ (rules.kernel), or move this code "
+                                                    "to a part that may import platform/"),)),
                  id="a forbidden absolute import is reported"),
     pytest.param({"kernel/x.py": [Import(3, ("app", "kernel", "y"))]}, CheckImports(ROOT, "app", "cli"),
                  ImportsChecked(()), id="an allowed import is no violation"),
@@ -86,8 +97,7 @@ def test_a_closed_tree_reports_a_file_in_no_part_and_no_folder_of_the_layout():
     closed = FakeProfiles({"cli": replace(profile("cli"), closed_tree=True)})
     controller = controller_of(FakeSourceTree(ROOT, {"stray.py": [], "kernel/x.py": []}), closed)
     assert [str(v) for v in controller.check(CheckImports(ROOT, "app", "cli")).violations] == [
-        "pkg/stray.py: lies in no part and no folder of the layout: move it into a part, or add its folder to the "
-        "layout (closed-tree)"]
+        "pkg/stray.py: lies in no part and no folder of the layout (closed-tree)"]
 
 
 def test_the_enforcement_holds_the_origin_the_ungoverned_files_the_init_files_and_what_strict_fails_on():
@@ -100,3 +110,25 @@ def test_the_enforcement_holds_the_origin_the_ungoverned_files_the_init_files_an
         origin, ("pkg/stray.py",), (Drift("tests/test_rules.py", "changed"), Drift("AGENTS.md", "missing")),
         strict=(Finding("ungoverned", "pkg/stray.py"), Finding("init_files", "tests/test_rules.py is changed"),
                 Finding("init_files", "AGENTS.md is missing")))
+
+
+def test_an_excluded_folder_is_never_read_nor_listed_as_ungoverned_and_is_named_in_the_enforcement():
+    excluding = FakeProfiles({"cli": replace(profile("cli"), closed_tree=True, excluded=(
+        Exclusion(("examples",), "shipped as data"), Exclusion(("kernel", "legacy"), "copied code")))})
+    bad = [Import(1, ("app", "platform"), names=("sql",))]
+    tree = FakeSourceTree(ROOT, {"examples/x.py": bad, "examples/deep/y.py": [], "kernel/legacy/z.py": bad,
+                                 "kernel/x.py": bad, "stray.py": []})
+    result = controller_of(tree, excluding).check(CheckImports(ROOT, "app", "cli"))
+    assert [str(v) for v in result.violations] == [
+        "pkg/kernel/x.py:1: kernel/ may not import platform/ (app.platform)",
+        "pkg/stray.py: lies in no part and no folder of the layout (closed-tree)"]
+    assert result.enforcement.ungoverned == ("pkg/stray.py",)
+    assert result.enforcement.excluded == (Excluded("pkg/examples", "shipped as data"),
+                                           Excluded("pkg/kernel/legacy", "copied code"))
+
+
+def test_an_excluded_folder_is_not_a_finding_strict_fails_on():
+    excluding = FakeProfiles({"cli": replace(profile("cli"), excluded=(Exclusion(("examples",), "shipped as data"),))})
+    result = controller_of(FakeSourceTree(ROOT, {"examples/x.py": [], "kernel/x.py": []}), excluding).check(
+        CheckImports(ROOT, "app", "cli"))
+    assert result.enforcement.strict == ()

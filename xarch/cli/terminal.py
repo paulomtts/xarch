@@ -6,10 +6,13 @@ from typing import Annotated
 
 import typer
 
+from xarch.kernel.errors import DomainError
 from xarch.modules.spec.application.controller import SpecController
 from xarch.modules.spec.contract import ProfileRefused, ProfileSelected, SelectProfile
 
-AppPath = Annotated[Path, typer.Option("--app", help="The app/ folder to work on.")]
+AppPath = Annotated[Path | None, typer.Option(
+    "--app", help="The app/ folder to work on. Default: \\[tool.xarch] app in pyproject.toml (`init` records it when it "
+                  "is not app/), else app/ in the working folder.")]
 DEFAULT_APP = Path("app")
 ProfileName = Annotated[str | None, typer.Option(
     "--profile", help="The profile: the name of a bundled profile, or a path to a profile file (.yaml or .json). "
@@ -22,6 +25,18 @@ TestsPath = Annotated[Path | None, typer.Option(
 def fail(message: str) -> typer.Exit:
     typer.echo(f"error: {message}", err=True)
     return typer.Exit(2)
+
+
+def app_for(spec: SpecController, app_path: Path | None, refuse: Callable[[str], typer.Exit] = fail) -> Path:
+    """The app folder to work on: the one given with --app, else the one the project around the working folder records
+    under [tool.xarch], else app/. An unreadable setting is raised as what refuse makes of its reason."""
+    if app_path is not None:
+        return app_path
+    try:
+        configured = spec.configured_app(Path.cwd())
+    except DomainError as e:
+        raise refuse(e.reason)
+    return configured if configured is not None else DEFAULT_APP
 
 
 def profile_for(spec: SpecController, app_path: Path, override: str | None) -> str:

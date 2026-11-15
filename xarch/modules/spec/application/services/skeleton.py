@@ -24,6 +24,10 @@ class SkeletonService:
     def profiles(self) -> tuple[str, ...]:
         return self._architectures.bundled()
 
+    def configured_app(self, start: Path) -> Path | None:
+        """The app folder the project holding start records, or None; raises UnreadableSettings."""
+        return self._settings.configured_app(start)
+
     def select(self, app: Path, override: str | None, tests: Path | None = None) -> tuple[str, Path | None]:
         """The location in force, once its architecture loads, and the tests root: the explicit one, else the
         configured one, else None; raises NoProfile, UnknownProfile, UnreadableSettings or InvalidArchitecture."""

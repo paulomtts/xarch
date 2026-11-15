@@ -9,8 +9,11 @@ pass over, read from the same parsed files.
                cannot see what those import
     drift      an init file (`files` in the profile) that is missing, or pinned and not what `init` would write now
 
-strict_findings lists what `--strict` fails on: every finding but the guards that the bundled profile in force, or
-the one a custom profile is compared with, also leaves off; with no profile to compare with, every guard left off.
+strict_findings lists what `--strict` fails on: what the profile in force leaves unenforced or unseen. That is every
+guard it leaves off but those that the bundled profile in force, or the one a custom profile is compared with, also
+leaves off (with no profile to compare with, every guard left off), the ungoverned files, the init files missing or
+changed, the skips, the dynamic imports and the weak checks. How a custom profile differs from the closest bundled
+one (`origin.looser`) is information in the enforcement section and no finding: the profile defines the architecture.
 """
 from __future__ import annotations
 
@@ -43,7 +46,6 @@ def drift(files: Sequence[InitFile], found: Sequence[str | None]) -> list[Drift]
 def strict_findings(enforcement: Enforcement) -> tuple[Finding, ...]:
     origin = enforcement.origin
     found = [Finding("guards_off", g) for g in origin.guards_off if g not in origin.baseline_off]
-    found += [Finding("looser", f"{item.key}: {item.sentence}") for item in origin.looser]
     found += [Finding("ungoverned", file) for file in enforcement.ungoverned]
     found += [Finding("init_files", f"{item.file} is {item.state}") for item in enforcement.init_files]
     found += [Finding("skipped", f"{at.file}:{at.line}") for at in enforcement.skipped]

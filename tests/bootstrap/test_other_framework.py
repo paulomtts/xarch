@@ -1,6 +1,6 @@
 """The checks tied to a test framework (scenario-coverage, stand-ins and the tier mapping) take its names from the
 profile: a profile that names another framework of the same shape gets the same checks, on files written in its
-names, with messages in its names."""
+names, with messages and fixes in its names."""
 from pathlib import Path
 
 from xarch.bootstrap.wiring import build_controllers
@@ -85,7 +85,7 @@ def check(tmp_path: Path, tests: dict[str, str], without: tuple[str, ...] = ()) 
     result = build_controllers().rules.check(CheckImports(tmp_path / "app", "app", str(tmp_path / "other.yaml"),
                                                           tmp_path / "tests"))
     assert isinstance(result, ImportsChecked)
-    return [str(v) for v in result.violations]
+    return [f"{v}; fix: {v.fix}" for v in result.violations]
 
 
 def test_a_table_written_in_the_names_of_the_profile_passes(tmp_path):
@@ -95,36 +95,37 @@ def test_a_table_written_in_the_names_of_the_profile_passes(tmp_path):
 def test_a_row_without_an_id_is_reported_in_the_names_of_the_profile(tmp_path):
     rows = GOOD + '\n    cases.row(1, 2, Missing()),'
     assert check(tmp_path, {"modules/docs/application/publish_spec.py": spec(rows)}) == [
-        'tests/modules/docs/application/publish_spec.py:7: row has no id: write cases.row(..., name="<a sentence '
-        'stating the outcome>") (scenario-coverage)']
+        'tests/modules/docs/application/publish_spec.py:7: row has no id (scenario-coverage); fix: write '
+        'cases.row(..., name="<a sentence stating the outcome>")']
 
 
 def test_a_bare_row_is_reported_in_the_names_of_the_profile(tmp_path):
     rows = GOOD + "\n    (1, 2, Missing()),"
     assert check(tmp_path, {"modules/docs/application/publish_spec.py": spec(rows)}) == [
-        'tests/modules/docs/application/publish_spec.py:7: row is not a cases.row(...): write cases.row(..., '
-        'name="<a sentence stating the outcome>") (scenario-coverage)']
+        'tests/modules/docs/application/publish_spec.py:7: row is not a cases.row(...) (scenario-coverage); fix: '
+        'write cases.row(..., name="<a sentence stating the outcome>")']
 
 
 def test_a_test_function_the_profile_does_not_name_is_not_a_table_test(tmp_path):
     assert check(tmp_path, {"modules/docs/application/publish_spec.py": spec(name="test_publishes")}) == [
-        "tests/modules/docs/application/publish_spec.py:1: no table test: add a parametrized test whose parameters "
-        "are given, when, then (scenario-coverage)"]
+        "tests/modules/docs/application/publish_spec.py:1: no table test whose parameters are given, when, then "
+        "(scenario-coverage); fix: add a table test whose parameters are given, when, then"]
 
 
 def test_a_use_case_whose_test_file_is_not_named_as_the_profile_says_is_reported_by_the_name_it_expects(tmp_path):
     tests = {"modules/docs/application/test_publish.py": spec()}
     assert check(tmp_path, tests, without=("modules/docs/application/publish_spec.py",)) == [
         "app/modules/docs/contract/__init__.py:4: PublishResult has no test file publish_spec.py among the "
-        "integration tests of docs (scenario-coverage)"]
+        "integration tests of docs (scenario-coverage); fix: write publish_spec.py among the integration tests of "
+        "docs"]
 
 
 def test_a_mock_with_no_spec_is_reported_in_the_names_of_the_profile(tmp_path):
     more = "\n\ndef it_mocks():\n    Double()\n"
     found = check(tmp_path, {"modules/docs/application/publish_spec.py": spec(imports="from doubles import Double\n",
                                                                               more=more)})
-    assert found == ["tests/modules/docs/application/publish_spec.py:14: Double() names nothing it stands in for: "
-                     "give it a spec, such as Double(of=<port>) (stand-ins)"]
+    assert found == ["tests/modules/docs/application/publish_spec.py:14: Double() names nothing it stands in for "
+                     "(stand-ins); fix: give it a spec, such as Double(of=<port>)"]
 
 
 def test_a_mock_of_a_read_port_points_to_its_fake(tmp_path):
@@ -132,7 +133,7 @@ def test_a_mock_of_a_read_port_points_to_its_fake(tmp_path):
     imports = "from doubles import Double\nfrom app.modules.docs.application.ports.repo import Repo\n"
     found = check(tmp_path, {"modules/docs/application/publish_spec.py": spec(imports=imports, more=more)})
     assert found == ["tests/modules/docs/application/publish_spec.py:15: Double(of=Repo) stands in for Repo, a read "
-                     "port: use its fake FakeRepo (stand-ins)"]
+                     "port (stand-ins); fix: use its fake FakeRepo"]
 
 
 def test_a_mock_of_a_name_the_profile_does_not_list_is_not_checked(tmp_path):
@@ -144,7 +145,7 @@ def test_a_mock_of_a_name_the_profile_does_not_list_is_not_checked(tmp_path):
 def test_a_file_the_profile_names_as_a_test_but_that_mirrors_no_part_has_no_tier(tmp_path):
     found = check(tmp_path, {"elsewhere/stray_spec.py": "", "elsewhere/test_stray.py": ""})
     assert found == ["tests/elsewhere/stray_spec.py: lies in no tier: no part's folder and no tier's example folder "
-                     "is mirrored here; a test lives in the folder that mirrors its subject's path in the app"]
+                     "is mirrored here; fix: move it to the folder that mirrors its subject's path in the app"]
 
 
 def test_a_profile_of_four_keys_names_no_framework_and_still_checks(tmp_path):

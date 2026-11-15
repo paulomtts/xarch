@@ -27,6 +27,21 @@ def test_a_complete_tree_passes():
     assert run(FakeDisk(TOP | MODULE, {CONTROLLER})) == []
 
 
+MAIN = ROOT / "__main__.py"
+WITH_MAIN = FakeSkeleton(["kernel"], top_files=["__main__.py"])
+
+
+def run_with_main(disk: FakeDisk) -> list[str]:
+    return [str(v) for v in LayoutController(StructureCheck(disk, WITH_MAIN)).check(
+        CheckStructure(ROOT, "app", "cli")).violations]
+
+
+def test_a_file_declared_at_the_top_level_must_exist_as_a_file():
+    assert run_with_main(FakeDisk({ROOT / "kernel"}, {MAIN})) == []
+    assert run_with_main(FakeDisk({ROOT / "kernel"})) == ["app: missing __main__.py"]
+    assert run_with_main(FakeDisk({ROOT / "kernel", MAIN})) == ["app: missing __main__.py"]
+
+
 def test_violations_are_labelled_with_the_root_package():
     disk = FakeDisk((TOP - {ROOT / "kernel"}) | MODULE)
     assert run(disk, package="xarch") == ["xarch: missing kernel/", "xarch/modules/docs: missing application/controller.py"]
@@ -71,4 +86,5 @@ def test_a_test_folder_that_mirrors_nothing_is_a_test_tree_violation():
     disk = FakeDisk(TOP | MODULE | tests, {CONTROLLER})
     found = LayoutController(StructureCheck(disk, SKELETON)).check(CheckStructure(ROOT, "app", "cli", TESTS)).violations
     assert [(v.rule, v.fix) for v in found] == [
-        ("test-tree", "move what it holds to the folder that mirrors its subject in the app, or remove it")]
+        ("test-tree", "create app/modules/gone/ in the app, or move what it holds to the folder that mirrors its "
+                      "subject, or remove it")]

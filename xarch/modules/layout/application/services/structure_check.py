@@ -18,7 +18,8 @@ class StructureCheck:
         each_root = self._skeleton.each_root(profile)
         instances = self._disk.subdirectories(root.joinpath(*each_root)) if each_root is not None else []
         required = requirements(package, self._skeleton.top_level(profile), each_root,
-                                self._skeleton.each_parts(profile), instances)
+                                self._skeleton.each_parts(profile), instances,
+                                self._skeleton.top_level_files(profile))
         present = {r for r in required if self._exists(root.joinpath(*r.path), r.is_dir)}
         found = missing(required, present)
         if tests is not None and each_root is not None:

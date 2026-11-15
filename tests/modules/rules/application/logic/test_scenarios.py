@@ -53,51 +53,41 @@ FILE = "tests/modules/docs/application/test_publish.py"
                   "(scenario-coverage)"],
                  id="a variant named in the body of the table test is no standalone test"),
     pytest.param([Function(8, "check_publish", (TABLE,))],
-                 [f"{FILE}:1: no table test: add a parametrized test whose parameters are given, when, then "
-                  "(scenario-coverage)"],
+                 [f"{FILE}:1: no table test whose parameters are given, when, then (scenario-coverage)"],
                  id="a function the test pattern does not match holds no table test"),
     pytest.param([Function(8, "test_publish", (table(row("Published"), row("Missing", 11),
                                                      columns=("given", "when", "outcome")),))],
-                 [f"{FILE}:1: no table test: add a parametrized test whose parameters are given, when, then "
-                  "(scenario-coverage)"],
+                 [f"{FILE}:1: no table test whose parameters are given, when, then (scenario-coverage)"],
                  id="a table without the three columns is not the use case's table"),
     pytest.param([Function(8, "test_publish", (Table(9, COLUMNS, None),))],
-                 [f"{FILE}:9: the rows of the table cannot be read: write them as a list, or as the name of a list "
-                  "assigned at the top of the file (scenario-coverage)"],
+                 [f"{FILE}:9: the rows of the table cannot be read (scenario-coverage)"],
                  id="rows that cannot be read are reported, and no variant is then missing"),
     pytest.param([Function(8, "test_publish", (table(row("Published", param=False, id=None), row("Missing", 11)),))],
-                 [f'{FILE}:10: row is not a pytest.param(...): write pytest.param(..., id="<a sentence stating the '
-                  'outcome>") (scenario-coverage)'],
+                 [f"{FILE}:10: row is not a pytest.param(...) (scenario-coverage)"],
                  id="a bare tuple is reported, and still covers the variant it names"),
     pytest.param([Function(8, "test_publish", (table(row("Published", id=None), row("Missing", 11)),))],
-                 [f'{FILE}:10: row has no id: write pytest.param(..., id="<a sentence stating the outcome>") '
-                  '(scenario-coverage)'],
+                 [f"{FILE}:10: row has no id (scenario-coverage)"],
                  id="a row without an id is reported"),
     pytest.param([Function(8, "test_publish", (table(row("Published"), row("Missing", 11), row("Gone", 12)),))],
                  [f"{FILE}:12: row 'an outcome' has Gone in its then column, which is not a variant of PublishResult "
                   "(scenario-coverage)"],
                  id="a row whose result is not a variant is reported"),
     pytest.param([Function(8, "test_publish", (table(row("Published"), row("Missing", 11), row(None, 12)),))],
-                 [f"{FILE}:12: row 'an outcome' names no variant in its then column: use one of Published, Missing "
-                  "(scenario-coverage)"],
+                 [f"{FILE}:12: row 'an outcome' names no variant in its then column (scenario-coverage)"],
                  id="a row whose result has no name is reported"),
     pytest.param([Function(8, "test_publish", (table(row("Published"), row("Missing", 11),
                                                      Row(12, False, None, ())),))],
-                 [f'{FILE}:12: row is not a pytest.param(...): write pytest.param(..., id="<a sentence stating the '
-                  'outcome>") (scenario-coverage)'],
+                 [f"{FILE}:12: row is not a pytest.param(...) (scenario-coverage)"],
                  id="a row that is neither a call nor a tuple is reported once, with no result to check"),
     pytest.param([Function(8, "test_publish", (table(Row(10, True, "an outcome", (None, "PublishDocument")),
                                                      row("Missing", 11)),))],
-                 [f"{FILE}:10: row 'an outcome' names no variant in its then column: use one of Published, Missing "
-                  "(scenario-coverage)",
+                 [f"{FILE}:10: row 'an outcome' names no variant in its then column (scenario-coverage)",
                   f"{FILE}:9: PublishResult variant Published has no row in the table and no standalone test naming "
                   "it (scenario-coverage)"],
                  id="a row with too few values names no variant"),
     pytest.param([Function(8, "test_publish", (TABLE,), branches=((14, "if"), (15, "for")))],
-                 [f"{FILE}:14: test_publish has an `if` in its body: arrange from given, act with when, assert == then, "
-                  "and give the odd case its own test (scenario-coverage)",
-                  f"{FILE}:15: test_publish has a `for` in its body: arrange from given, act with when, assert == "
-                  "then, and give the odd case its own test (scenario-coverage)"],
+                 [f"{FILE}:14: test_publish has an `if` in its body (scenario-coverage)",
+                  f"{FILE}:15: test_publish has a `for` in its body (scenario-coverage)"],
                  id="a branch in the body of a table test is reported where it is"),
 ])
 def test_scenario_coverage(functions, expected):
@@ -175,3 +165,35 @@ def test_a_weak_credit_counts_only_the_use_cases_own_instance():
                       Function(20, "test_missing", mentions=frozenset({"Missing"})),
                       path="modules/other/application/test_publish.py")
     assert weak([RESULTS], [other], PROFILE) == []
+
+
+PUBLISH_FIX = 'write pytest.param(..., id="<a sentence stating the outcome>")'
+ARRANGE_FIX = "arrange from given, act with when, assert == then, and give the odd case its own test"
+
+
+@pytest.mark.parametrize("functions, fixes", [
+    pytest.param([Function(8, "check_publish", (TABLE,))], ["add a table test whose parameters are given, when, then"],
+                 id="no table test"),
+    pytest.param([Function(8, "test_publish", (Table(9, COLUMNS, None),))],
+                 ["write them as a list, or as the name of a list assigned at the top of the file"],
+                 id="rows that cannot be read"),
+    pytest.param([Function(8, "test_publish", (table(row("Published", param=False, id=None), row("Missing", 11)),))],
+                 [PUBLISH_FIX], id="a bare tuple"),
+    pytest.param([Function(8, "test_publish", (table(row("Published", id=None), row("Missing", 11)),))],
+                 [PUBLISH_FIX], id="a row without an id"),
+    pytest.param([Function(8, "test_publish", (table(row("Published"), row("Missing", 11), row(None, 12)),))],
+                 ["use one of Published, Missing"], id="a row whose result has no name"),
+    pytest.param([Function(8, "test_publish", (table(row("Published"), row("Missing", 11), row("Gone", 12)),))],
+                 ["use one of Published, Missing"], id="a row whose result is not a variant"),
+    pytest.param([Function(8, "test_publish", (table(row("Published")),))],
+                 ["add a row whose then is Missing, or a standalone test naming it"], id="a variant with no row"),
+    pytest.param([Function(8, "test_publish", (TABLE,), branches=((14, "if"), (15, "for")))],
+                 [ARRANGE_FIX, ARRANGE_FIX], id="a branch in a table test"),
+])
+def test_a_violation_of_a_test_file_says_what_to_do(functions, fixes):
+    assert [v.fix for v in violations([RESULTS], [publish_tests(*functions)], PROFILE)] == fixes
+
+
+def test_a_union_with_no_test_file_says_where_to_write_it():
+    assert [v.fix for v in violations([RESULTS], [], PROFILE)] == [
+        "write test_publish.py among the integration tests of docs"]

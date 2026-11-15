@@ -59,7 +59,7 @@ def test_a_file_that_is_not_pinned_is_reported_only_when_missing():
     assert drift(files, ["be bad\n", None]) == [Drift("ruff.toml", "missing")]
 
 
-def test_strict_fails_on_every_finding_but_the_guards_its_baseline_also_leaves_off():
+def test_strict_fails_on_every_finding_but_the_guards_its_baseline_also_leaves_off_and_how_the_profile_differs():
     enforcement = Enforcement(
         Origin("mine.yaml", False, "web", ("no-comments", "closed-tree"), ("closed-tree",),
                (Loosened("rules", "domain", "platform"),)),
@@ -67,8 +67,8 @@ def test_strict_fails_on_every_finding_but_the_guards_its_baseline_also_leaves_o
         skipped=(At("tests/test_a.py", 3),), dynamic=(At("app/kernel/dyn.py", 2),),
         weak=(Weak("stand-ins", "tests/fakes/repo.py", 1, "FakeRepo does not define get, which Repo declares"),))
     assert strict_findings(enforcement) == (
-        Finding("guards_off", "no-comments"), Finding("looser", "rules: domain may also import platform"),
-        Finding("ungoverned", "app/scripts/x.py"), Finding("init_files", "tests/test_rules.py is changed"),
+        Finding("guards_off", "no-comments"), Finding("ungoverned", "app/scripts/x.py"),
+        Finding("init_files", "tests/test_rules.py is changed"),
         Finding("skipped", "tests/test_a.py:3"), Finding("dynamic", "app/kernel/dyn.py:2"),
         Finding("weak", "tests/fakes/repo.py:1: FakeRepo does not define get, which Repo declares"))
 
@@ -96,3 +96,9 @@ def test_a_pinned_file_as_init_writes_it_and_a_changed_one_are_told_apart_in_ord
 def test_with_no_bundled_profile_to_compare_with_every_guard_left_off_fails_strict():
     enforcement = Enforcement(Origin("mine.yaml", False, None, ("no-comments", "closed-tree"), ()))
     assert strict_findings(enforcement) == (Finding("guards_off", "no-comments"), Finding("guards_off", "closed-tree"))
+
+
+def test_how_a_custom_profile_differs_from_the_closest_bundled_one_is_never_a_strict_finding():
+    differing = Origin("mine.yaml", False, "web", (), (), (Loosened("rules", "domain", "platform"),
+                                                           Loosened("libraries", "", ""), Loosened("pinned", "", "x")))
+    assert strict_findings(Enforcement(differing)) == ()

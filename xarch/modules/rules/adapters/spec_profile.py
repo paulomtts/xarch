@@ -6,7 +6,9 @@ from typing import Protocol
 from xarch.kernel.errors import DomainError
 from xarch.kernel.logic.placement import Target
 from xarch.modules.rules.domain.values import (
+    Exclusion,
     Fakes,
+    Fixture,
     Framework,
     InitFile,
     Loosened,
@@ -63,8 +65,9 @@ class SpecProfiles:
                                                  g.file)
                                        for g in architecture.guards if isinstance(g, ScenarioCoverage)), None),
                        no_comments=any(isinstance(g, NoComments) for g in architecture.guards),
-                       stand_ins=next((StandInNames(g.mocks, g.autospec, g.spec) for g in architecture.guards
-                                       if isinstance(g, StandIns)), None),
+                       stand_ins=next((StandInNames(g.mocks, g.autospec, g.spec,
+                                                    tuple(Fixture(f.name, f.mocks, f.autospec) for f in g.fixtures))
+                                       for g in architecture.guards if isinstance(g, StandIns)), None),
                        closed_tree=any(isinstance(g, ClosedTree) for g in architecture.guards),
                        framework=Framework(architecture.framework.files, architecture.framework.functions,
                                            architecture.framework.skips)
@@ -72,7 +75,8 @@ class SpecProfiles:
                        forbidden=dict(architecture.forbidden),
                        info={name: PartInfo(part.role, part.litmus, architecture.shown(part), part.untested)
                              for name, part in architecture.parts.items()},
-                       singular=architecture.singular)
+                       singular=architecture.singular,
+                       excluded=tuple(Exclusion(e.path, e.reason) for e in architecture.excluded))
 
 
     def origin(self, location: str) -> Origin:

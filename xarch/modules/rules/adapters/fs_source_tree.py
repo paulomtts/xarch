@@ -5,6 +5,15 @@ comprehension that binds it (a class body only for its own statements), then the
 scope binds it with an absolute import and nothing else; a parameter, an assignment, a def, a relative import or a
 second, different binding of the same name in that scope makes it None, and so does a name no scope binds.
 
+A call of a method of a parameter, `<parameter>.<method>(...)`, is listed apart, whatever the parameter's name, when
+the nearest scope binding the name binds it as a parameter of its function and nothing else binds it there: a
+parameter the body rebinds (an assignment, a loop, an import, a def, `global`) is not read, nor is a call of the
+parameter itself, a call deeper in a chain (`p.a.b()`) or a method of any other expression.
+
+A file also lists the names it defines at module level as functions: a name one `def` (or `async def`) binds in the
+module's own scope, a branch of an `if` or `try` included, and nothing else binds (no second def, import,
+assignment, class or `global`), so that the name is a function and not a class or a value.
+
 A use is every name read in the file's code, called or not, and every chain of attributes on one (`a.b.c` once, as
 the whole chain), read the same way; a name no scope binds that is one of Python's builtins is the use
 ("builtins", <name>), unless the file holds a star import, which might bind it. Annotations are not read for uses.
@@ -24,6 +33,7 @@ from xarch.modules.rules.domain.values import (
     Function,
     Import,
     Method,
+    ParameterCall,
     Ref,
     Row,
     SourceFile,
@@ -68,7 +78,15 @@ def _parsed(name: str, path: tuple[str, ...], text: str, form: TableForm | None)
     calls.visit(tree)
     return SourceFile(name, path, tuple(_imports(tree)), comments, _functions(tree, form),
                       tuple(_unions(tree)), calls=tuple(calls.found), classes=tuple(_classes(tree)),
-                      uses=tuple(calls.uses))
+                      uses=tuple(calls.uses), parameter_calls=tuple(calls.parameter_calls),
+                      module_functions=_module_functions(tree))
+
+
+def _module_functions(tree: ast.Module) -> tuple[str, ...]:
+    """The names a `def` at module level binds, and nothing else binds, in the order they are defined."""
+    names = _bound(tree)[2]
+    return tuple(dict.fromkeys(n.name for n in _own(tree.body)
+                               if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name in names))
 
 
 _BUILTINS = frozenset(name for name in vars(builtins) if not name.startswith("__") or name == "__import__")
@@ -216,21 +234,32 @@ _NESTED = (*_FUNCTIONS, ast.ClassDef, *_COMPREHENSIONS)
 def _scope(node: ast.AST) -> Scope:
     """The names a module, class, function, lambda or comprehension binds: the path an absolute import binds, or
     None when the name is bound any other way."""
+    return _bound(node)[0]
+
+
+def _bound(node: ast.AST) -> tuple[Scope, frozenset[str], frozenset[str]]:
+    """What _scope returns, then the names its signature binds as parameters and nothing else binds, and the names
+    one `def` binds and nothing else binds."""
     found: Scope = {}
+    counts: dict[str, int] = {}
+    parameters: set[str] = set()
+    functions: set[str] = set()
 
     def bind(name: str, path: Ref) -> None:
         found[name] = path if found.get(name, path) == path else None
+        counts[name] = counts.get(name, 0) + 1
 
     if isinstance(node, _FUNCTIONS):
         a = node.args
         for arg in [*a.posonlyargs, *a.args, *a.kwonlyargs, *(x for x in (a.vararg, a.kwarg) if x)]:
             bind(arg.arg, None)
+            parameters.add(arg.arg)
     if isinstance(node, _COMPREHENSIONS):
         for generator in node.generators:
             for n in ast.walk(generator.target):
                 if isinstance(n, ast.Name):
                     bind(n.id, None)
-        return found
+        return found, frozenset(), frozenset()
     body = node.body if isinstance(node.body, list) else [node.body]
     for child in _own(body):
         if isinstance(child, ast.Import):
@@ -246,6 +275,8 @@ def _scope(node: ast.AST) -> Scope:
             bind(child.id, None)
         elif isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             bind(child.name, None)
+            if not isinstance(child, ast.ClassDef):
+                functions.add(child.name)
         elif isinstance(child, (ast.Global, ast.Nonlocal)):
             for name in child.names:
                 bind(name, None)
@@ -253,7 +284,8 @@ def _scope(node: ast.AST) -> Scope:
             bind(child.name, None)
         elif isinstance(child, ast.MatchMapping) and child.rest:
             bind(child.rest, None)
-    return found
+    once = {name for name, count in counts.items() if count == 1}
+    return found, frozenset(parameters & once), frozenset(functions & once)
 
 
 def _own(body: list[ast.AST]):
@@ -294,7 +326,9 @@ class _Calls(ast.NodeVisitor):
         self.uses: list[Use] = []
         self._builtins = builtins
         self._chain: list[Scope] = []
+        self._parameters: list[frozenset[str]] = []
         self._classes: list[bool] = []
+        self.parameter_calls: list[ParameterCall] = []
 
     def visit_Module(self, node: ast.Module) -> None:
         self._within(node, node.body, is_class=False)
@@ -327,21 +361,38 @@ class _Calls(ast.NodeVisitor):
     visit_ListComp = visit_SetComp = visit_DictComp = visit_GeneratorExp = _comprehension
 
     def _within(self, node: ast.AST, body: list[ast.AST], is_class: bool) -> None:
-        outer = [s for s, c in zip(self._chain, self._classes) if not c]
-        saved = self._chain, self._classes
-        self._chain, self._classes = [_scope(node), *outer], [is_class, *([False] * len(outer))]
+        keep = [not c for c in self._classes]
+        outer = [s for s, k in zip(self._chain, keep) if k]
+        outer_parameters = [p for p, k in zip(self._parameters, keep) if k]
+        saved = self._chain, self._parameters, self._classes
+        scope, parameters, _ = _bound(node)
+        self._chain, self._parameters = [scope, *outer], [parameters, *outer_parameters]
+        self._classes = [is_class, *([False] * len(outer))]
         for child in body:
             self.visit(child)
-        self._chain, self._classes = saved
+        self._chain, self._parameters, self._classes = saved
 
     def visit_Call(self, node: ast.Call) -> None:
         func = _ref(node.func, self._chain)
-        if func is not None:
+        if func is not None or self._is_parameter_method(node.func):
             args = tuple(_ref(a, self._chain) for a in node.args if not isinstance(a, ast.Starred))
             keywords = tuple((k.arg, _ref(k.value, self._chain)) for k in node.keywords if k.arg is not None)
             unpacked = any(isinstance(a, ast.Starred) for a in node.args) or any(k.arg is None for k in node.keywords)
-            self.found.append(Call(node.lineno, func, args, keywords, unpacked))
+            if func is not None:
+                self.found.append(Call(node.lineno, func, args, keywords, unpacked))
+            else:
+                assert isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name)
+                self.parameter_calls.append(ParameterCall(node.lineno, node.func.value.id, node.func.attr, args,
+                                                          keywords, unpacked))
         self.generic_visit(node)
+
+    def _is_parameter_method(self, func: ast.expr) -> bool:
+        """Whether func is `<name>.<attr>` and the nearest scope binding the name binds it as a parameter."""
+        if not isinstance(func, ast.Attribute) or not isinstance(func.value, ast.Name):
+            return False
+        name = func.value.id
+        index = next((i for i, scope in enumerate(self._chain) if name in scope), None)
+        return index is not None and name in self._parameters[index]
 
     def visit_Name(self, node: ast.Name) -> None:
         if isinstance(node.ctx, ast.Load):

@@ -66,3 +66,22 @@ def test_violations(file, expected):
 def test_a_violation_names_its_rule():
     found = violations([source("kernel/x.py", imp(1, "app.platform", "sql")), *APP], PROFILE, "app")
     assert [v.rule for v in found] == ["rules"]
+
+
+@pytest.mark.parametrize("file, fix", [
+    pytest.param(source("modules/docs/domain/values.py", imp(3, "app.platform", "sql")),
+                 "import only domain/, kernel/ in domain/ of modules/docs (rules.domain), or move this code to "
+                 "adapters/, which may import it", id="the parts the importer may import, and the ones that may import the target"),
+    pytest.param(source("modules/docs/__init__.py", imp(1, "app.kernel", "ids")),
+                 "drop the import of kernel/, or move this code to domain/, contract/, controller/ or another part that "
+                 "may import it", id="a place that may import nothing, and more parts that may import the target "
+                                     "than are named"),
+    pytest.param(source("kernel/x.py", imp(1, "app.modules.docs.domain", "doc")),
+                 "import only kernel/ in kernel/ (rules.kernel), or move this code to contract/, controller/, services/ or "
+                 "another part that may import it", id="more parts that may import the target than are named"),
+    pytest.param(source("modules/docs/domain/values.py", imp(1, "app.scripts.x"), imp(2, "app.modules.docs", "x")),
+                 "import only domain/, kernel/ in domain/ of modules/docs (rules.domain), or move this code to a "
+                 "part that may import structure/", id="no part names the target's part"),
+])
+def test_a_violation_says_what_to_do(file, fix):
+    assert [v.fix for v in violations([file, *APP], PROFILE, "app")] == [fix]

@@ -69,3 +69,42 @@ def test_a_tests_setting_that_is_not_a_string_is_unreadable(tmp_path):
     with pytest.raises(UnreadableSettings) as caught:
         settings().configured_tests(tmp_path / "app")
     assert caught.value.reason == f"cannot read {pyproject}: [tool.xarch] tests must be a string"
+
+
+def test_the_app_folder_is_read_relative_to_the_pyproject_looked_up_from_the_folder_asked_from(tmp_path):
+    write(tmp_path / "pyproject.toml", '[tool.xarch]\napp = "services/shop"\n')
+    assert settings().configured_app(tmp_path / "docs" / "deep") == tmp_path / "services" / "shop"
+    assert settings().configured_app(tmp_path) == tmp_path / "services" / "shop"
+
+
+def test_a_relative_folder_asked_from_is_looked_up_from_the_working_directory(tmp_path, monkeypatch):
+    write(tmp_path / "pyproject.toml", '[tool.xarch]\napp = "shop"\n')
+    monkeypatch.chdir(tmp_path)
+    assert settings().configured_app(Path(".")) == tmp_path / "shop"
+
+
+@pytest.mark.parametrize("text", [
+    pytest.param('[tool.xarch]\nprofile = "web"\n', id="a pyproject that records no app folder"),
+    pytest.param('[project]\nname = "x"\n', id="a pyproject with no xarch table"),
+])
+def test_no_recorded_app_folder_means_none(tmp_path, text):
+    write(tmp_path / "pyproject.toml", text)
+    assert settings().configured_app(tmp_path) is None
+
+
+def test_the_nearest_pyproject_decides_which_app_folder_is_configured(tmp_path):
+    write(tmp_path / "pyproject.toml", '[tool.xarch]\napp = "shop"\n')
+    write(tmp_path / "inner" / "pyproject.toml", '[project]\nname = "inner"\n')
+    assert settings().configured_app(tmp_path / "inner") is None
+
+
+def test_no_pyproject_means_no_configured_app_folder(tmp_path):
+    assert not any((p / "pyproject.toml").exists() for p in [tmp_path, *tmp_path.parents])
+    assert settings().configured_app(tmp_path) is None
+
+
+def test_an_app_folder_that_is_not_a_string_is_unreadable(tmp_path):
+    write(tmp_path / "pyproject.toml", "[tool.xarch]\napp = 3\n")
+    with pytest.raises(UnreadableSettings) as caught:
+        settings().configured_app(tmp_path)
+    assert caught.value.reason == f"cannot read {tmp_path / 'pyproject.toml'}: [tool.xarch] app must be a string"

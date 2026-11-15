@@ -303,7 +303,10 @@ fakes: {path: tests/fakes, for: [ports], prefix: Fake}
 # fire-only when all return None (by its return annotations), every read port has a fake, and an integration test's
 # mocks name a fire-only port. A mock is a call of one of `mocks` (dotted names an import binds), which names its
 # spec as its first argument or by a keyword of `spec`; the calls of `autospec`, optional, take the spec as their
-# first argument or by the first keyword of `spec`. The mechanism assumes a mock built by a call that names its
+# first argument or by the first keyword of `spec`. `fixtures`, optional, names the parameters of a test function
+# whose methods build mocks the same way: a call of `<parameter>.<method>` for a method listed under `mocks` or
+# `autospec` is read like a call of the dotted names above (a parameter the function rebinds, `*args` and the like
+# are not read). The mechanism assumes a mock built by a call that names its
 # spec; a framework with another shape leaves the guard out. Also available,
 # and off here because the tree is a protocol, not a closed world: closed-tree, every Python file lies in a part.
 guards:
@@ -321,6 +324,15 @@ guards:
             unittest.mock.NonCallableMock, unittest.mock.NonCallableMagicMock]
     autospec: [unittest.mock.create_autospec]
     spec: [spec, spec_set]
+    fixtures:
+      mocker: {mocks: [Mock, MagicMock, AsyncMock, NonCallableMock, NonCallableMagicMock], autospec: [create_autospec]}
+
+# Two optional keys this profile does not use. `excluded: {<folder>: <reason>}` names folders below the app that are
+# not its source, such as example code shipped as data: a path with no `..`, no leading `/` and no `*`, not a folder
+# of the layout, none inside another; no check reads a Python file below one, and `xarch check` lists each in its
+# enforcement section with its reason. `hints: {<rule-id>: <text>}` adds a project's own advice to a rule: its text
+# is shown after the built-in fix of every violation of that rule id (a stable id such as `rules`, `libraries` or
+# `stand-ins`, the `rule` of `xarch check --format json`), as its own `hint`; an unknown id is refused.
 
 # The project docs `xarch init` writes below docs/project/, in this order, and how the docs tree shows them. A key
 # is a path: a file takes `from`, the template file it is written from (next to this one, placeholders filled as

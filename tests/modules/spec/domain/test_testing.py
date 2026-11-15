@@ -5,7 +5,7 @@ import pytest
 from xarch.modules.spec.domain.architecture_file import parse_architecture
 from xarch.modules.spec.domain.docs_template import fill
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.values import CaseTable, Framework, ScenarioCoverage, StandIns
+from xarch.modules.spec.domain.values import CaseTable, Fixture, Framework, ScenarioCoverage, StandIns
 
 TESTS = {"files": ["test_*.py", "*_test.py"], "functions": "test_*"}
 TABLE = {"decorator": "pytest.mark.parametrize", "row": "pytest.param", "id": "id",
@@ -104,6 +104,46 @@ def test_the_autospec_names_of_the_stand_ins_guard_are_optional():
     assert architecture.guards[0].autospec == ()
 
 
+FIXTURES = {"mocker": {"mocks": ["Mock", "MagicMock"], "autospec": ["create_autospec"]}}
+
+
+def test_the_stand_ins_guard_loads_the_fixtures_whose_methods_build_mocks():
+    architecture = load(layered(tests=TESTS, fakes=FAKES, guards={"stand-ins": {**STAND_INS, "fixtures": {
+        **FIXTURES, "factory": {"mocks": ["build"]}}}}))
+    assert architecture.guards[0].fixtures == (Fixture("mocker", ("Mock", "MagicMock"), ("create_autospec",)),
+                                               Fixture("factory", ("build",)))
+
+
+def test_the_fixtures_of_the_stand_ins_guard_are_optional():
+    assert load(layered(tests=TESTS, fakes=FAKES, guards={"stand-ins": STAND_INS})).guards[0].fixtures == ()
+
+
+@pytest.mark.parametrize("fixtures, problem", [
+    ({}, "guards.stand-ins.fixtures: must be a mapping of parameter names to {mocks}, and optionally autospec: "
+         "the names of the methods that build a mock, and of those that build one from a spec given as an argument"),
+    ([], "guards.stand-ins.fixtures: must be a mapping of parameter names to {mocks}, and optionally autospec: "
+         "the names of the methods that build a mock, and of those that build one from a spec given as an argument"),
+    ({"a b": {"mocks": ["Mock"]}}, "guards.stand-ins.fixtures: 'a b' is not a parameter name"),
+    ({"mocker": ["Mock"]}, "guards.stand-ins.fixtures.mocker: must be a mapping {mocks}, and optionally autospec"),
+    ({"mocker": {}}, "guards.stand-ins.fixtures.mocker: missing `mocks`"),
+    ({"mocker": {"mocks": ["Mock"], "x": 1}},
+     "guards.stand-ins.fixtures.mocker: unknown key 'x': use autospec, mocks"),
+    ({"mocker": {"mocks": []}}, "guards.stand-ins.fixtures.mocker.mocks: must be a list of method names such as "
+                                "[build]"),
+    ({"mocker": {"mocks": "Mock"}}, "guards.stand-ins.fixtures.mocker.mocks: must be a list of method names such "
+                                    "as [build]"),
+    ({"mocker": {"mocks": ["a.b"]}}, "guards.stand-ins.fixtures.mocker.mocks: 'a.b' is not a method name"),
+    ({"mocker": {"mocks": ["Mock", "Mock"]}}, "guards.stand-ins.fixtures.mocker.mocks: 'Mock' is listed twice"),
+    ({"mocker": {"mocks": ["Mock"], "autospec": []}},
+     "guards.stand-ins.fixtures.mocker.autospec: must be a list of method names such as [build]"),
+    ({"mocker": {"mocks": ["Mock"], "autospec": ["Mock"]}},
+     "guards.stand-ins.fixtures.mocker.autospec: 'Mock' is also listed in mocks"),
+])
+def test_a_bad_fixtures_entry_is_rejected(fixtures, problem):
+    assert problems(layered(tests=TESTS, fakes=FAKES, guards={"stand-ins": {**STAND_INS, "fixtures": fixtures}})) == [
+        f"layered.yaml: {problem}"]
+
+
 def scenarios(**changes) -> dict:
     return {"scenario-coverage": {**SCENARIOS, **changes}}
 
@@ -152,7 +192,8 @@ FAKES = {"path": "tests/fakes", "for": ["store"], "prefix": "Fake"}
 @pytest.mark.parametrize("stand_ins, problem", [
     ({"spec": ["spec"]}, "guards.stand-ins: missing `mocks`"),
     ({"mocks": MOCKS}, "guards.stand-ins: missing `spec`"),
-    ({"mocks": MOCKS, "spec": ["spec"], "x": 1}, "guards.stand-ins: unknown key 'x': use autospec, mocks, spec"),
+    ({"mocks": MOCKS, "spec": ["spec"], "x": 1},
+     "guards.stand-ins: unknown key 'x': use autospec, fixtures, mocks, spec"),
     ({"mocks": [], "spec": ["spec"]}, "guards.stand-ins.mocks: must be a list of dotted names such as "
                                       "pkg.sub.Name"),
     ({"mocks": "unittest.mock.Mock", "spec": ["spec"]},
@@ -167,8 +208,9 @@ FAKES = {"path": "tests/fakes", "for": ["store"], "prefix": "Fake"}
     ({"mocks": MOCKS, "spec": []}, "guards.stand-ins.spec: must be a list of keyword names such as [spec]"),
     ({"mocks": MOCKS, "spec": ["spec", "spec"]}, "guards.stand-ins.spec: 'spec' is listed twice"),
     ({"mocks": MOCKS, "spec": ["a b"]}, "guards.stand-ins.spec: 'a b' is not a keyword name"),
-    ([], "guards.stand-ins: must be a mapping {mocks, spec}, and optionally autospec: the dotted names of the calls "
-         "that build a mock, and the keywords a mock is given its spec by"),
+    ([], "guards.stand-ins: must be a mapping {mocks, spec}, and optionally autospec and fixtures: the dotted names "
+         "of the calls that build a mock, the keywords a mock is given its spec by, and the parameters of a test "
+         "function whose methods build one"),
 ])
 def test_a_bad_stand_ins_entry_is_rejected(stand_ins, problem):
     assert problems(layered(tiers=TIERS, tests=TESTS, fakes=FAKES, guards={"stand-ins": stand_ins})) == [

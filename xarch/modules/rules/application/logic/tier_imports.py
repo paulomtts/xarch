@@ -21,8 +21,7 @@ from xarch.modules.rules.domain.imports import dotted, targets
 from xarch.modules.rules.domain.places import label, place
 from xarch.modules.rules.domain.values import Profile, SourceFile, TestTier
 
-NO_TIER = ("lies in no tier: no part's folder and no tier's example folder is mirrored here; a test lives in the "
-           "folder that mirrors its subject's path in the app")
+NO_TIER = "lies in no tier: no part's folder and no tier's example folder is mirrored here"
 NO_TIER_FIX = "move it to the folder that mirrors its subject's path in the app"
 RULE = "tiers"
 
@@ -79,7 +78,9 @@ def _app_imports(file: SourceFile, where: Tested, profile: Profile, root: str,
         dst = place(profile, target)
         if dst is not None and not any(reaches(t, as_place(where.instance), dst) for t in allowed):
             yield Violation(file.name, line, f"{test} may not import {label(profile, dst)} "
-                                             f"({'.'.join((root, *target))}){why}", RULE)
+                                             f"({'.'.join((root, *target))}){why}", RULE,
+                            f"import here only what {subject or f'the subject of the {where.tier.name} tier'} may; "
+                            f"test {label(profile, dst)} from the folder that mirrors it")
 
 
 def _test_imports(file: SourceFile, where: Tested, profile: Profile, tests_root: str,
@@ -92,9 +93,11 @@ def _test_imports(file: SourceFile, where: Tested, profile: Profile, tests_root:
             if not may_use_fakes(profile, where.tier):
                 parts = ", ".join(profile.fakes.stand_in_for)
                 yield Violation(file.name, line, f"a {where.tier.name} test may not import the fakes ({shown}): only "
-                                                 f"a tier that tests {parts} may", RULE)
+                                                 f"a tier that tests {parts} may", RULE,
+                                f"drop the import of {shown}, or move the test to a tier that tests {parts}")
         elif target[:len(where.own)] != where.own or not where.own:
             own = "/".join((tests_root, *where.own))
             yield Violation(file.name, line, f"a test may import test code only from its own folder {own}/ "
-                                             f"({shown})", RULE)
+                                             f"({shown})", RULE,
+                            f"move what {shown} holds into {own}/, or drop the import")
 

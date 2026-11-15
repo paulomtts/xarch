@@ -21,6 +21,7 @@ layout:
         ports: {}
       adapters: {}
   platform: {}
+  __main__.py: file
   cli:
     commands: {}
 
@@ -36,6 +37,9 @@ parts:
   platform:   {path: platform, role: "the filesystem, TOML and YAML readers",
                untested: "it wraps the standard library and yaml; the adapter and wired tests reach it on real files"}
   cli:        {path: cli, entry: true, role: "the only place for commands and terminal output"}
+  main:       {path: __main__.py, role: "`python -m xarch`: starts the same app as the console script",
+               litmus: "Does it only hand control to the app bootstrap/ builds, so that `python -m xarch` runs it?",
+               untested: "a two-line shim that runs the app bootstrap/ builds; no test runs `python -m xarch`, and the wired tests drive that same app"}
   bootstrap:  {path: bootstrap, role: "composition root: binds ports to adapters, hands controllers to cli/"}
 
 # The same rules as the bundled cli profile.
@@ -50,7 +54,13 @@ rules:
   adapters:   [adapters@own, ports@own, domain@own, kernel, platform, contract@any]
   platform:   [platform, kernel]
   cli:        [cli, controller@any, contract@any, kernel]
+  main:       [bootstrap]
   bootstrap:  ["*"]
+
+# Folders below the app that are not its source: no check reads them, and `xarch check` lists each one with its reason.
+excluded:
+  architectures/examples: "the example projects the bundled profiles ship as data, which their docs show; sources
+                           that xarch never imports or runs, so they are not part of its own code"
 
 # The outside packages xarch imports, where it imports them.
 libraries:
@@ -128,8 +138,11 @@ guards:
     table: {decorator: pytest.mark.parametrize, row: pytest.param, id: id, keywords: [argnames, argvalues]}
     file: "test_{name}.py"
   no-comments:       {}
+  closed-tree:       {}
   stand-ins:
     mocks: [unittest.mock.Mock, unittest.mock.MagicMock, unittest.mock.AsyncMock,
             unittest.mock.NonCallableMock, unittest.mock.NonCallableMagicMock]
     autospec: [unittest.mock.create_autospec]
     spec: [spec, spec_set]
+    fixtures:
+      mocker: {mocks: [Mock, MagicMock, AsyncMock, NonCallableMock, NonCallableMagicMock], autospec: [create_autospec]}

@@ -26,10 +26,12 @@ def is_instance_name(name: str) -> bool:
 
 
 def requirements(root: str, top_level: Iterable[str], each_root: tuple[str, ...] | None,
-                 each_parts: Iterable[tuple[tuple[str, ...], bool]], instances: Iterable[str]) -> list[Requirement]:
-    """What must exist: every top-level folder, and every part of every instance found in the `each` folder's
-    parent."""
+                 each_parts: Iterable[tuple[tuple[str, ...], bool]], instances: Iterable[str],
+                 top_files: Iterable[str] = ()) -> list[Requirement]:
+    """What must exist: every top-level folder, every file declared at the top level, and every part of every
+    instance found in the `each` folder's parent."""
     required = [Requirement(root, (name,), True, f"{name}/") for name in top_level]
+    required += [Requirement(root, (name,), False, name) for name in top_files]
     if each_root is None:
         return required
     parts = list(each_parts)
@@ -64,5 +66,6 @@ def unmirrored(tests: str, root: str, each_root: tuple[str, ...], folders: Itera
         mirrored = "/".join((root, *each_root, *folder))
         found.append(Violation("/".join((tests, *each_root, *folder)), 0,
                                f"mirrors no folder of the app ({mirrored})", "test-tree",
-                               "move what it holds to the folder that mirrors its subject in the app, or remove it"))
+                               f"create {mirrored}/ in the app, or move what it holds to the folder that mirrors its "
+                               "subject, or remove it"))
     return found

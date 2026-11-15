@@ -7,12 +7,13 @@ may also bring its own file. xarch knows no part by name: every name comes from 
 ## Commands
 
 ```
-xarch init [--app PATH] [--profile NAME|FILE]                 # create the top-level skeleton, record the profile in
-                                                             # pyproject.toml, write the project docs and files; never overwrites
+xarch init [--app PATH] [--profile NAME|FILE]                 # create the top-level skeleton, record the profile (and the
+                                                             # app folder, if not app/) in pyproject.toml, write the
+                                                             # project docs and files; never overwrites
 xarch new KIND NAME [--app PATH] [--profile NAME|FILE]       # create one folder of a kind with its full skeleton
 xarch check [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json] [--strict]
-                                                             # report every violation in the app and its tests,
-                                                             # then the state of the check's own enforcement
+                                                             # report every violation in the app and its tests, each
+                                                             # with its fix, then the state of the check's own enforcement
 xarch where PATH [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json]
                                                              # what a path is and what code there may do, before it is written
 ```
@@ -30,7 +31,8 @@ layout:
       domain: {}
 ```
 
-`--app` defaults to `app` (relative to the working directory); the app's import name is its folder's name. `check`
+`--app` defaults to the app folder recorded under `[tool.xarch]` (see below), else to `app` (relative to the working
+directory); the flag wins over what is recorded. The app's import name is its folder's name. `check`
 exits 0 when clean, 1 with violations (or, with `--strict`, with an enforcement finding), and 2 on a usage error (a
 missing app or tests folder, no profile or an unknown one, an invalid architecture file, an unreadable
 `pyproject.toml`). Its output is described under [The output of check](#the-output-of-check). `init` and `new` exit 2 when they refuse (an invalid
@@ -58,19 +60,27 @@ The profile is a bundled name or a path to an architecture file (`.yaml` or `.js
 With neither, the command fails with exit code 2 and lists the profiles found: no profile is assumed.
 
 The file is loaded and validated before anything runs; a bad one is reported with every problem in it. `init`
-records the profile it used in that `pyproject.toml` (creating one beside the app folder if there is none, and never
-changing a profile already recorded), so a bare `xarch check` uses it.
+records the profile it used in that `pyproject.toml` (creating one beside the app folder if there is none), and, when
+the app folder is not `app/` beside it, the app folder too, so a bare `xarch check` uses both. It never changes a value
+already recorded.
 
 ```toml
 [tool.xarch]
 profile = "web"          # or a path, such as "architecture.yaml"
+app = "src/shop"         # optional; the app folder, relative to this file; recorded by `init --app src/shop`
 tests = "tests"          # optional; the default is tests/ beside the app folder, when it exists
 ```
+
+Without `--app`, `check`, `new`, `where` and `init` look for `app` in the nearest `pyproject.toml` at or above the
+working folder (the nearest one decides, as for `profile`), and take `app/` in the working folder when it holds none.
+An `app` that is not a string is a usage error.
 
 ## What check checks
 
 `check` reads only the files the profile governs: a file in a part, or a package file of a folder of the layout.
-A file anywhere else (such as reference code kept as data, like xarch's own `architectures/examples/`) is never read.
+A file anywhere else is never read, and is listed as `ungoverned` in the enforcement section. A folder that is not
+the app's source at all (reference code kept as data, such as xarch's own `architectures/examples/`) is declared with
+the profile's [`excluded`](#excluded-and-hints) key instead, and then no check looks at it.
 
 From the architecture itself:
 
@@ -112,7 +122,12 @@ From the architecture itself:
   as types, but never call what they import from them: `def build(controller: DocumentController)` is fine,
   `DocumentController(...)` is not. A call is read through the import that binds its name (`from m import X as Y`,
   `import m as a` then `a.X(...)`, `import m` then `m.X(...)`); a name bound otherwise in its scope (a parameter,
-  an assignment) is not followed. Both bundled profiles give the rendering tier `types_only: [controller]`.
+  an assignment) is not followed. A function is not a type either: a name that an import binds to a module-level
+  function of such a part may not be referenced at all, so `f = allowed; f(x)`, `map(allowed, xs)` and
+  `allowed.cache_clear` are reported too, where the source tree can tell a function (a name one `def` binds in its
+  module and nothing else binds) from a class. References to classes outside calls stay allowed (`isinstance`,
+  exception matching, enum members), and so does a name from a package that re-exports it, which is not followed.
+  Both bundled profiles give the rendering tier `types_only: [controller]`.
 - `test tree`: every folder below `tests/<each root>/` mirrors a folder of the app.
 - `cycles` (with an `each:` folder): no instance imports from another that imports, directly or through others,
   from it. Each elementary cycle is reported once, at its first import, with its instances in order from the first
@@ -139,7 +154,7 @@ Switched on by name in `guards:`:
   `while`. No docstring header is read.
 - `no-comments: {}`: no `#` comments in the app or its tests, whole-line or trailing; docstrings stay, and so do
   `# type: ignore`, `# noqa`, `# pragma:`, a shebang on line 1 and an encoding line on line 1 or 2.
-- `stand-ins: {mocks, autospec, spec}` (needs `fakes: {path, for, prefix}`): a port is a `Protocol` class (`typing`'s or
+- `stand-ins: {mocks, autospec, spec, fixtures}` (needs `fakes: {path, for, prefix}`): a port is a `Protocol` class (`typing`'s or
   `typing_extensions`') in a part `fakes.for` names, and its kind follows from its methods' return annotations:
   every one `-> None` is fire-only, any one returning something else makes it a read port (a repository, written
   and read back), and a method with no return annotation is a violation. Dunder methods other than `__call__` are left out, a
@@ -149,11 +164,16 @@ Switched on by name in `guards:`:
   `NonCallableMock`, `NonCallableMagicMock`) names its spec (first argument, or a keyword of `spec`: `spec=` or
   `spec_set=`), every call of one of the `autospec` functions (`unittest.mock.create_autospec`, optional) names it
   as its first argument or by the first keyword of `spec`, and a spec that is a read port of the app is a
-  violation that points to its fake. All are dotted names an absolute import binds. It stays silent where it cannot read the
-  code: a call that unpacks `*args`/`**kwargs`, a spec that is a variable, an expression or a string, a port
-  re-exported by a package, and mocks made by `patch`.
+  violation that points to its fake. All are dotted names an absolute import binds. `fixtures`, optional, names the
+  parameters of a function whose methods build mocks, as a fixture hands one over: `fixtures: {mocker: {mocks: [Mock,
+  MagicMock, ...], autospec: [create_autospec]}}` makes `mocker.Mock(spec=Repo)`, in a function with a parameter
+  called `mocker`, follow exactly the same rules as the imported ones. A parameter its function rebinds is not read.
+  It stays silent where it cannot read the code: a call that unpacks `*args`/`**kwargs`, a spec that is a variable, an
+  expression or a string, a port re-exported by a package, a fixture's `patch` (and any longer chain such as
+  `mocker.patch.object`), and mocks made by `patch`.
 - `closed-tree: {}`: every Python file of the app lies in a part or is the `__init__.py` of a folder of the layout,
-  which only holds the tree together. Off in both bundled profiles, whose tree is a protocol, not a closed world.
+  which only holds the tree together (a folder the profile `excluded` is not looked at). Off in both bundled
+  profiles, whose tree is a protocol, not a closed world.
 
 ```yaml
 tiers:
@@ -165,6 +185,8 @@ guards:
   stand-ins:
     mocks: [unittest.mock.Mock, unittest.mock.MagicMock]
     spec: [spec, spec_set]
+    fixtures:
+      mocker: {mocks: [Mock, MagicMock], autospec: [create_autospec]}
   closed-tree: {}      # optional: report any file outside the parts
 ```
 
@@ -190,8 +212,9 @@ house module of doubles, it is their dotted import paths in `mocks` (`mock.Mock`
 (`from house import cases`) it is `table: {decorator: house.cases.table, row: house.cases.row, id: name}` with
 `file: "{name}_spec.py"` and `tests: {files: ["*_spec.py"], functions: "it_*"}`. Messages and the generated
 `testing.md` then speak in those names. Dotted names are what an absolute import binds, so a decorator reached by
-`from house import cases` is read as `house.cases.table`; a name bound any other way is not followed. That is why pytest-mock's `mocker` fixture, which no import binds, is
-not read.
+`from house import cases` is read as `house.cases.table`; a name bound any other way is not followed. A fixture,
+which no import binds, is named by the `fixtures` of `stand-ins` instead: the parameter's name and the names of its
+methods that build a mock (pytest-mock's `mocker`, in both bundled profiles).
 
 What stays Python, and so in xarch's code: `typing.Protocol` as the mark of a port, `__init__.py`, the syntax tree,
 import resolution and the standard library's names. The limit is the shape of the mechanism: a table is a decorator
@@ -199,13 +222,51 @@ holding rows (each a call that may carry an id), and a mock is built by a call t
 cases or doubles have another shape cannot be described by these names, and leaves `scenario-coverage` or
 `stand-ins` out of its profile.
 
+### Excluded and hints
+
+Two optional top-level keys of a profile.
+
+`excluded: {<folder>: <reason>}` names folders below the app that are not its source, such as example code shipped as
+data. A folder is a path below the app (`architectures/examples`) with no `..`, no leading `/` and no `*`; it may not
+be a folder of the layout, nor lie inside or hold another excluded folder; the reason is one line of text and is
+required. No check reads a Python file below an excluded folder (so `closed-tree` and the `ungoverned` list leave it
+out), and `check` lists each one with its reason in its enforcement section, so the exclusion stays visible. It is not
+a finding for `--strict`. `xarch where` on a path inside one says it is excluded and why.
+
+```yaml
+excluded:
+  architectures/examples: "example projects the bundled profiles ship as data; never imported or run"
+```
+
+`hints: {<rule id>: <text>}` adds the project's own advice to a rule: one line of text, shown after the built-in `fix`
+of every violation of that rule, as a `hint:` line in the text output and as `hint` in the JSON. The rule id is the
+`rule` a violation names (`rules`, `libraries`, `forbidden`, `tiers`, `types-only`, `test-tree`, `cycles`,
+`structure`, `package-only`, `scenario-coverage`, `no-comments`, `stand-ins`, `closed-tree`, `syntax`); any other id
+is refused when the profile loads, naming the ones there are. The bundled profiles set none.
+
+```yaml
+hints:
+  rules: "the layers and what each may import are in docs/project/architecture.md"
+  stand-ins: "fakes live in tests/fakes; copy FakeDocumentRepo"
+```
+
 ## The output of check
 
 ### Text
 
-One line per violation, `<file>[:<line>]: <message>`, in the order the checks run (the source checks, then the
-structure), then a summary, `OK: no violations` or `<n> violation(s) in <m> file(s)`, then the enforcement section
-(below). Paths are relative to the folder holding the app folder (`app/kernel/x.py`, `tests/...`).
+Every violation says what to do about it. A finding is its line, `<file>[:<line>]: <message>`, then an indented line
+`fix: <what to do>`, one imperative sentence specific to the finding, and, when the profile has a
+[hint](#excluded-and-hints) for its rule, an indented `hint: <text>` line. The findings come in the order the checks
+run (the source checks, then the structure), then a summary, `OK: no violations` or `<n> violation(s) in <m>
+file(s)`, then the enforcement section (below). Paths are relative to the folder holding the app folder
+(`app/kernel/x.py`, `tests/...`).
+
+```
+app/kernel/x.py:1: kernel/ may not import platform/ (app.platform)
+    fix: import only kernel/ in kernel/ (rules.kernel), or move this code to adapters/, which may import it
+    hint: the layers are in docs/project/architecture.md
+1 violation(s) in 1 file(s)
+```
 
 ### JSON
 
@@ -220,12 +281,14 @@ and rule ids may be added, but an existing one keeps its name and meaning.
   "violations": [
     {"rule": "forbidden", "file": "app/modules/docs/domain/clock.py", "line": 1,
      "message": "domain/ of modules/docs may not import socket (forbidden.domain)",
-     "fix": "do what needs socket outside domain/, and hand domain/ the result"}
+     "fix": "do what needs socket outside domain/, and hand domain/ the result",
+     "hint": null}
   ],
   "enforcement": {
     "profile": {"location": "web", "bundled": true, "closest": null, "guards_off": ["closed-tree"],
                 "baseline_off": ["closed-tree"], "looser": []},
     "ungoverned": {"count": 0, "folders": [], "files": []},
+    "excluded": [],
     "init_files": [],
     "skipped": {"count": 0, "at": []},
     "dynamic": {"count": 0, "at": []},
@@ -238,16 +301,17 @@ and rule ids may be added, but an existing one keeps its name and meaning.
 - `ok`: no violation, and with `--strict` no enforcement finding either; it agrees with the exit code. `strict`:
   whether `--strict` was given. `profile`: the profile in force, a bundled name or a path, as selected.
 - `violations`: sorted by `file`, then `line` (a whole-file or folder violation, `line: null`, first), then `rule`.
-  `file` is the path the text output prints; `message` the sentence it prints after the path; `fix` a short
-  instruction when the check knows one, else `null`. `rule` is one of: `rules`, `libraries`, `forbidden`, `tiers`
+  `file` is the path the text output prints; `message` the sentence it prints after the path; `fix` what to do about
+  it, always a non-empty string (a violation cannot be made without one); `hint` the profile's own advice for the
+  rule, else `null`. `rule` is one of: `rules`, `libraries`, `forbidden`, `tiers`
   (a test's imports, or a test in no tier), `types-only`, `test-tree`, `cycles`, `structure`, `package-only`,
   `scenario-coverage`, `no-comments`, `stand-ins`, `closed-tree`, and `syntax` (a file that does not parse).
 - `enforcement`: every key always present, empty when there is nothing to report. `profile.looser` items are
   `{"key", "part", "what", "sentence"}` with `key` one of `rules`, `libraries`, `forbidden`, `untested`,
-  `types_only`, `tier_forbidden`, `skips`, `pinned`; `init_files` items `{"file", "state"}`, `state` `missing` or
+  `types_only`, `tier_forbidden`, `skips`, `pinned`; `excluded` items `{"folder", "reason"}`; `init_files` items `{"file", "state"}`, `state` `missing` or
   `changed`; `skipped.at` and `dynamic.at` items `{"file", "line"}`; `weak` items `{"rule", "file", "line",
-  "message"}`; `strict_failures` items `{"key", "detail"}`, `key` one of `guards_off`, `looser`, `ungoverned`,
-  `init_files`, `skipped`, `dynamic`, `weak`. `strict_failures` is filled whether or not `--strict` was given: it
+  "message"}`; `strict_failures` items `{"key", "detail"}`, `key` one of `guards_off`, `ungoverned`, `init_files`,
+  `skipped`, `dynamic`, `weak`. `strict_failures` is filled whether or not `--strict` was given: it
   is what `--strict` fails on.
 - A refusal (exit 2: an unknown or invalid profile, a missing folder) prints `{"ok": false, "error": "<reason>"}` on
   stdout, so a caller always gets JSON. Only an error in the command line itself (an unknown option, a `--format`
@@ -265,6 +329,7 @@ enforcement
     guards off:  no-comments, closed-tree
     rules:       kernel may also import platform
   ungoverned:  1 Python file outside every part (app/scripts/)
+  excluded:    app/examples/ (example sources the docs show)
   init files:  tests/architecture/test_rules.py is changed
   skipped:     1 skip (tests/modules/docs/domain/test_x.py:4)
   dynamic:     1 dynamic import (app/kernel/dyn.py:3)
@@ -278,9 +343,12 @@ enforcement
   name: a target added to a part's `rules`, an outside package added to its `libraries` (or `libraries` dropped), a
   name of its `forbidden` list no entry covers any more, a part newly `untested`, a part dropped from a tier's
   `types_only`, a tier no longer `forbidden`, a name dropped from `tests.skips`, a `files` entry no longer `pinned`.
-  Stricter differences, new parts, the layout and the guards' parameters are not compared.
+  Stricter differences, new parts, the layout and the guards' parameters are not compared. This comparison is
+  information: the profile defines the architecture, so how it differs from another is no finding for `--strict`.
 - `ungoverned`: the app's Python files in no part and no folder of the layout (what `closed-tree` would report),
   which no check reads, counted with their top folders.
+- `excluded`: each folder the profile's `excluded` key leaves out, with its reason; no check reads a file below it,
+  so the exclusion stays visible here.
 - `init files`: each single file of the profile's `files:` that is missing beside the app folder, or, when the entry
   says `pinned: true`, that differs from what `init` would write now. The files of a folder entry (a preset) are
   copied once and not watched.
@@ -292,9 +360,9 @@ enforcement
   row covers, credited only to standalone tests that name it and hold no `assert`.
 
 Without `--strict` the section never changes the exit code. `--strict` fails (exit 1) on every finding listed in
-`strict_failures`: each guard left off that the bundled profile in force, or the one a custom profile is compared
-with, does not also leave off (with no profile to compare with, every guard left off); each looser item; each
-ungoverned file; each missing or changed init file; each skip; each dynamic import; each weak finding. The text
+`strict_failures`: what the profile in force leaves unenforced or unseen: each guard left off that the bundled profile
+in force, or the one a custom profile is compared with, does not also leave off (with no profile to compare with,
+every guard left off); each ungoverned file; each missing or changed init file; each skip; each dynamic import; each weak finding. The text
 lists them after the section, under `strict:`. The guard test `init` writes runs `check` without `--strict`: a
 project opts in by running `xarch check --strict` in CI or a pre-commit hook.
 
@@ -509,8 +577,9 @@ uv tool install --editable . --reinstall     # refresh the system-wide `xarch`
 ```
 
 `tests/architecture/test_self_check.py` runs xarch on its own source and tests, against `architecture.yaml` at the
-repository root (named in `pyproject.toml`): the `cli` layout and rules, the outside packages xarch really uses, and
-its tests as they are. `tests/architecture/test_agnostic.py` fails if xarch's code names a part of a bundled profile or a name of
+repository root (named in `pyproject.toml`, which also records `app = "xarch"`, so a bare `xarch check` works here): the
+`cli` layout and rules, the outside packages xarch really uses, and its tests as they are. `closed-tree` is on, the
+example projects under `architectures/examples/` are `excluded`, and the same check in `--strict` mode passes. `tests/architecture/test_agnostic.py` fails if xarch's code names a part of a bundled profile or a name of
 its test framework or the linter (xarch's code never runs it). The repository's own `ruff.toml` is the template the
 bundled profiles write (`xarch/architectures/lint.toml`, named so that the linter does not read it as a config of
 its own) plus an exclusion of the reference snippets under `xarch/architectures/examples/` and of `.claude/`; a test

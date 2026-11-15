@@ -162,6 +162,17 @@ class Tier:
 
 
 @dataclass(frozen=True)
+class Excluded:
+    """A folder below the app that is not its source, and why: no check reads it.
+
+    path: below the app folder, e.g. ("architectures", "examples")
+    reason: one line, shown in the enforcement section
+    """
+    path: tuple[str, ...]
+    reason: str
+
+
+@dataclass(frozen=True)
 class Fakes:
     """Where the test fakes live, below the tests root, the parts they stand in for, and how a fake's name starts
     (the fake of port X is <prefix>X; empty when the file does not say)."""
@@ -220,13 +231,24 @@ class NoComments:
 
 
 @dataclass(frozen=True)
+class Fixture:
+    """A parameter of a test function that hands over a mock builder, and the names of its methods: those that build
+    a mock, and those that build one from a spec given as an argument (autospec)."""
+    name: str
+    mocks: tuple[str, ...]
+    autospec: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class StandIns:
     """The guard stand-ins: the dotted names of the calls that build a mock, of those that build a mock from a spec
     given as an argument (autospec), and the keywords a mock is given its spec by; the first keyword is the one an
-    autospec call takes. The other parameters are those of `fakes`."""
+    autospec call takes; and the fixtures, whose methods build mocks the same way. The other parameters are those of
+    `fakes`."""
     mocks: tuple[tuple[str, ...], ...]
     autospec: tuple[tuple[str, ...], ...]
     spec: tuple[str, ...]
+    fixtures: tuple[Fixture, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -255,6 +277,8 @@ class Architecture:
     framework: how the test framework names test files and functions; None when no tier or guard needs them
     files: the project files `init` writes besides the docs, in order
     forbidden: the dotted names and modules a part may not use, by part; a part not listed has none
+    excluded: the folders below the app that are not its source, in the order of the file
+    hints: the project's own advice for a rule id, shown after the built-in fix of a violation of that rule
     """
     name: str
     layout: Layout
@@ -274,6 +298,8 @@ class Architecture:
     files: tuple[ProjectFile, ...] = ()
     framework: Framework | None = None
     forbidden: dict[str, tuple[tuple[str, ...], ...]] = field(default_factory=dict)
+    excluded: tuple[Excluded, ...] = ()
+    hints: dict[str, str] = field(default_factory=dict)
 
     @property
     def entry(self) -> Part | None:

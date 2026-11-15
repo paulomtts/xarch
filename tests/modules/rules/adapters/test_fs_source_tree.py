@@ -4,7 +4,17 @@ from pathlib import Path
 import pytest
 
 from xarch.modules.rules.adapters.fs_source_tree import FsSourceTree
-from xarch.modules.rules.domain.values import Call, Class, Method, Row, SourceFile, Table, TableForm, Use
+from xarch.modules.rules.domain.values import (
+    Call,
+    Class,
+    Method,
+    ParameterCall,
+    Row,
+    SourceFile,
+    Table,
+    TableForm,
+    Use,
+)
 from xarch.platform.filesystem import FileSystem
 
 PYTEST = TableForm(("pytest", "mark", "parametrize"), ("pytest", "param"), "id", ("argnames", "argvalues"))
@@ -282,3 +292,72 @@ def test_an_async_with_is_no_branch(tmp_path):
 ])
 def test_a_union_is_a_module_level_alias_of_two_or_more_plain_names(tmp_path, text, unions):
     assert [(u.name, u.members) for u in parsed(tmp_path, text).unions] == unions
+
+
+@pytest.mark.parametrize("text, found", [
+    pytest.param("def test_a(mocker):\n    mocker.Mock()\n", [ParameterCall(2, "mocker", "Mock")],
+                 id="a method called on a parameter is a call of that parameter"),
+    pytest.param("from app.ports import Notifier\ndef test_a(mocker):\n    mocker.Mock(Notifier, spec=Notifier, name='n')\n",
+                 [ParameterCall(3, "mocker", "Mock", (("app", "ports", "Notifier"),),
+                                (("spec", ("app", "ports", "Notifier")), ("name", None)))],
+                 id="its arguments are kept as a call keeps them"),
+    pytest.param("def test_a(mocker):\n    mocker.Mock(*specs)\n    mocker.Mock(**options)\n",
+                 [ParameterCall(2, "mocker", "Mock", unpacked=True), ParameterCall(3, "mocker", "Mock", unpacked=True)],
+                 id="unpacked arguments are flagged"),
+    pytest.param("async def test_a(mocker, *, other):\n    other.go()\n",
+                 [ParameterCall(2, "other", "go")], id="an async function and a keyword-only parameter are read"),
+    pytest.param("class T:\n    def test_a(self, mocker):\n        mocker.Mock()\n",
+                 [ParameterCall(3, "mocker", "Mock")], id="a method's parameter is read"),
+    pytest.param("def test_a(mocker):\n    mocker = other()\n    mocker.Mock()\n", [],
+                 id="a parameter rebound in the body by an assignment is not read"),
+    pytest.param("def test_a(mocker):\n    for mocker in many:\n        mocker.Mock()\n", [],
+                 id="a parameter rebound by a loop is not read"),
+    pytest.param("def test_a(mocker):\n    from unittest import mock as mocker\n    mocker.Mock()\n", [],
+                 id="a parameter rebound by an import is not read"),
+    pytest.param("def test_a(mocker):\n    def mocker(): ...\n    mocker.Mock()\n", [],
+                 id="a parameter rebound by a def is not read"),
+    pytest.param("def test_a(mocker):\n    mocker.patch.object(T, 'x')\n", [],
+                 id="a call below a method of the parameter is not read"),
+    pytest.param("def test_a(mocker):\n    mocker()\n    x = mocker.Mock\n", [],
+                 id="a call of the parameter itself, or a method not called, is not read"),
+    pytest.param("def test_a(mocker):\n    make().Mock()\n    (mocker or z).Mock()\n", [],
+                 id="a method of anything but a bare name is not read"),
+    pytest.param("def test_a(mocker):\n    def inner(other):\n        mocker.Mock()\n        other.Mock()\n",
+                 [ParameterCall(3, "mocker", "Mock"), ParameterCall(4, "other", "Mock")],
+                 id="a parameter of an enclosing function is read inside a nested one"),
+    pytest.param("def test_a(mocker):\n    def inner(mocker):\n        mocker.Mock()\n", [ParameterCall(3, "mocker", "Mock")],
+                 id="the nearest function's parameter is the one read"),
+    pytest.param("def test_a(mocker):\n    f = lambda: mocker.Mock()\n    g = [mocker.Mock() for _ in range(2)]\n",
+                 [ParameterCall(2, "mocker", "Mock"), ParameterCall(3, "mocker", "Mock")],
+                 id="a lambda and a comprehension read the parameter around them"),
+    pytest.param("mocker = make()\nmocker.Mock()\ndef test_a():\n    mocker.Mock()\n", [],
+                 id="a module-level name is no parameter"),
+    pytest.param("def test_a(mocker):\n    global mocker\n    mocker.Mock()\n", [],
+                 id="a parameter declared global is not read"),
+    pytest.param("class T:\n    mocker = 1\n    def test_a(self):\n        self.mocker.Mock()\n", [],
+                 id="an attribute is no parameter"),
+])
+def test_a_call_of_a_method_of_a_parameter_is_listed_with_the_names_of_both(tmp_path, text, found):
+    assert list(parsed(tmp_path, text).parameter_calls) == found
+
+
+@pytest.mark.parametrize("text, found", [
+    pytest.param("def build(): ...\nasync def later(): ...\n", ("build", "later"),
+                 id="a def and an async def at module level are functions"),
+    pytest.param("class Builder: ...\n", (), id="a class is no function"),
+    pytest.param("def build(): ...\nbuild = other\n", (), id="a name assigned again is not read as a function"),
+    pytest.param("def build(): ...\ndef build(): ...\n", (), id="a name defined twice is not read as a function"),
+    pytest.param("from a import build\ndef build(): ...\n", (), id="a name imported and defined is not read"),
+    pytest.param("class build: ...\ndef build(): ...\n", (), id="a name that is a class and a def is not read"),
+    pytest.param("if x:\n    def build(): ...\nelse:\n    build = None\n", (),
+                 id="a def in one branch and an assignment in another is not read"),
+    pytest.param("if x:\n    def build(): ...\n", ("build",), id="a def in a branch bound once is a function"),
+    pytest.param("class C:\n    def method(self): ...\ndef outer():\n    def inner(): ...\n", ("outer",),
+                 id="a method and a nested def are no module-level function"),
+    pytest.param("def build(): ...\n@decorate\ndef wrapped(): ...\n", ("build", "wrapped"),
+                 id="a decorated def is still a function"),
+    pytest.param("build = lambda: 1\nvalues = [1]\n", (), id="a lambda assigned is not a def"),
+    pytest.param("def build(): ...\nglobal build\n", (), id="a name declared global is not read"),
+])
+def test_the_names_a_file_defines_as_functions_at_module_level_are_listed(tmp_path, text, found):
+    assert parsed(tmp_path, text).module_functions == found

@@ -13,8 +13,8 @@ from xarch.modules.rules.domain.values import Comment, SourceFile
 
 _DIRECTIVE = re.compile(r"#\s*(type:\s*ignore|noqa|pragma:)")
 _ENCODING = re.compile(r"^[ \t\f]*#.*?coding[:=][ \t]*[-\w.]+")
-MESSAGE = "a comment: say it in a docstring or a name (no-comments)"
-FIX = "say it in a docstring or a name"
+MESSAGE = "a comment (no-comments)"
+FIX = "say it in a docstring or a name, and delete the comment"
 
 
 def allowed(comment: Comment) -> bool:

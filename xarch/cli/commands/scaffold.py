@@ -3,7 +3,7 @@ from typing import Annotated
 
 import typer
 
-from xarch.cli.terminal import DEFAULT_APP, AppPath, ProfileName, fail, profile_for
+from xarch.cli.terminal import AppPath, ProfileName, app_for, fail, profile_for
 from xarch.kernel.errors import DomainError
 from xarch.modules.scaffold.application.controller import ScaffoldController
 from xarch.modules.scaffold.contract import Init, New, Refused, Report, Scaffolded
@@ -21,8 +21,10 @@ def _show(report: Report) -> None:
 
 def register(app: typer.Typer, scaffold: ScaffoldController, spec: SpecController) -> None:
     @app.command()
-    def init(app_path: AppPath = DEFAULT_APP, profile: ProfileName = None) -> None:
-        """Create the top-level skeleton, record the profile in pyproject.toml, write the docs and files; never overwrites."""
+    def init(app_path: AppPath = None, profile: ProfileName = None) -> None:
+        """Create the top-level skeleton, record the profile (and the app folder, when it is not app/) in pyproject.toml,
+        write the docs and files; never overwrites."""
+        app_path = app_for(spec, app_path)
         try:
             _show(scaffold.init(Init(app_path, profile_for(spec, app_path, profile))).report)
         except DomainError as e:
@@ -31,8 +33,9 @@ def register(app: typer.Typer, scaffold: ScaffoldController, spec: SpecControlle
     @app.command()
     def new(kind: Annotated[str, typer.Argument(help="A folder of the layout that declares `each:`, by its path.")],
             name: Annotated[str, typer.Argument(help="The name of the new folder.")],
-            app_path: AppPath = DEFAULT_APP, profile: ProfileName = None) -> None:
+            app_path: AppPath = None, profile: ProfileName = None) -> None:
         """Create one folder of a kind (a layout folder that declares `each:`) with its full skeleton."""
+        app_path = app_for(spec, app_path)
         match scaffold.new(New(app_path, kind, name, profile_for(spec, app_path, profile))):
             case Scaffolded(report):
                 _show(report)

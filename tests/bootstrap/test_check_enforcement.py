@@ -39,6 +39,7 @@ def test_the_json_enforcement_always_holds_every_key():
         "profile": {"location": "web", "bundled": True, "closest": None, "guards_off": ["closed-tree"],
                     "baseline_off": ["closed-tree"], "looser": []},
         "ungoverned": {"count": 0, "folders": [], "files": []},
+        "excluded": [],
         "init_files": [],
         "skipped": {"count": 0, "at": []},
         "dynamic": {"count": 0, "at": []},
@@ -105,5 +106,36 @@ def test_a_custom_copy_of_a_bundled_profile_is_compared_with_it(tmp_path):
         "    rules:       kernel may also import platform"]
     strict = check("--profile", "arch/mine.yaml", "--strict")
     assert strict.exit_code == 1
-    assert strict.stdout.splitlines()[-3:] == ["strict:      2 findings fail the check", "    guards off: no-comments",
-                                               "    looser: rules: kernel may also import platform"]
+    assert strict.stdout.splitlines()[-2:] == ["strict:      1 finding fails the check", "    guards off: no-comments"]
+
+
+def test_how_a_custom_profile_differs_from_the_closest_bundled_one_is_shown_and_never_fails_strict(tmp_path):
+    shutil.copytree(BUNDLED, tmp_path / "arch")
+    text = (BUNDLED / "web.yaml").read_text()
+    (tmp_path / "arch/mine.yaml").write_text(text.replace("  kernel:     [kernel]\n", "  kernel:     [kernel, platform]\n"))
+    strict = check("--profile", "arch/mine.yaml", "--strict")
+    assert strict.exit_code == 0, strict.stdout
+    assert "    rules:       kernel may also import platform" in strict.stdout.splitlines()
+    assert "strict" not in strict.stdout
+    document = json.loads(check("--profile", "arch/mine.yaml", "--strict", "--format", "json").stdout)
+    assert document["ok"] is True and document["enforcement"]["strict_failures"] == []
+    assert document["enforcement"]["profile"]["looser"] == [
+        {"key": "rules", "part": "kernel", "what": "platform", "sentence": "kernel may also import platform"}]
+
+
+def test_an_excluded_folder_is_never_read_is_listed_and_does_not_fail_strict(tmp_path):
+    shutil.copytree(BUNDLED, tmp_path / "arch")
+    text = (BUNDLED / "web.yaml").read_text() + "\nexcluded:\n  scripts: example scripts the docs show\n"
+    (tmp_path / "arch/mine.yaml").write_text(text)
+    (tmp_path / "app/scripts").mkdir()
+    (tmp_path / "app/scripts/run.py").write_text("def (:\n")
+    result = check("--profile", "arch/mine.yaml", "--strict")
+    assert result.exit_code == 0, result.stdout
+    assert result.stdout.splitlines() == [
+        "OK: no violations", "enforcement",
+        "  profile:     arch/mine.yaml (custom; closest bundled: web)",
+        "    guards off:  closed-tree",
+        "  excluded:    app/scripts/ (example scripts the docs show)"]
+    document = json.loads(check("--profile", "arch/mine.yaml", "--format", "json").stdout)
+    assert document["enforcement"]["excluded"] == [{"folder": "app/scripts", "reason": "example scripts the docs show"}]
+    assert document["enforcement"]["ungoverned"]["count"] == 0

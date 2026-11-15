@@ -83,7 +83,7 @@ def test_init_writes_the_agent_instructions_unpinned_and_short_naming_the_comman
     assert 0 < len(text.splitlines()) <= 60
     for needed in ["docs/project/architecture.md", "docs/project/testing.md", "xarch where <path>", "xarch check",
                    "ruff check", "xarch check --format json", "Placement order", "Given/When/Then",
-                   "fire-only", "guard test"]:
+                   "fire-only", "guard test", "`fix:` line", "`hint:` line", "`fix` and `hint`"]:
         assert needed in text, needed
     shipped = {file.path: file.pinned for file in build_controllers().spec.files(profile, "app")}
     assert shipped[("AGENTS.md",)] is False

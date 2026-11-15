@@ -5,7 +5,7 @@ from typing import Annotated
 import typer
 
 from xarch.cli.commands.check import Format, FormatOption, _json_refusal
-from xarch.cli.terminal import DEFAULT_APP, AppPath, ProfileName, TestsPath, fail, selection
+from xarch.cli.terminal import AppPath, ProfileName, TestsPath, app_for, fail, selection
 from xarch.cli.where_report import where_document, where_lines
 from xarch.modules.rules.application.controller import RulesController
 from xarch.modules.rules.contract import Locate, Located, Outside
@@ -19,13 +19,14 @@ PathArgument = Annotated[Path, typer.Argument(
 
 def register(app: typer.Typer, rules: RulesController, spec: SpecController) -> None:
     @app.command()
-    def where(path: PathArgument, app_path: AppPath = DEFAULT_APP, profile: ProfileName = None,
+    def where(path: PathArgument, app_path: AppPath = None, profile: ProfileName = None,
               tests: TestsPath = None, output: FormatOption = Format.text) -> None:
         """Say what a path is and what code there may do, before writing it: its part (or that it is in none), the
         part's role and litmus test, what it may import, the outside packages it may import, the names it may not
         use, the tier that tests it and where its test lives; for a test, its tier, the part it mirrors and what
         it may import. Exit 0 for any path in the project, 2 for one outside it or a profile that cannot be used."""
         refuse = _json_refusal if output is Format.json else fail
+        app_path = app_for(spec, app_path, refuse)
         chosen, tests_root = selection(spec, app_path, profile, tests, refuse)
         match rules.locate(Locate(path, Path.cwd().resolve(), app_path, chosen, tests_root)):
             case Outside(reason):

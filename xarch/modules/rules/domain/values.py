@@ -73,12 +73,30 @@ class Scenarios:
 
 
 @dataclass(frozen=True)
+class Fixture:
+    """A test function's parameter that hands over a mock builder: its name, and the names of its methods that build
+    a mock and of those that build one from a spec given as an argument."""
+    name: str
+    mocks: tuple[str, ...]
+    autospec: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class StandIns:
     """The stand-ins guard: the dotted names of the calls that build a mock, of those that build one from a spec given
-    as an argument, and the keywords a mock is given its spec by (the first is the one the latter take)."""
+    as an argument, and the keywords a mock is given its spec by (the first is the one the latter take); and the
+    fixtures: parameters whose methods build mocks the same way."""
     mocks: tuple[tuple[str, ...], ...]
     autospec: tuple[tuple[str, ...], ...]
     spec: tuple[str, ...]
+    fixtures: tuple[Fixture, ...] = ()
+
+
+@dataclass(frozen=True)
+class Exclusion:
+    """A folder below the app that is not its source: its path below the app folder, and why."""
+    path: tuple[str, ...]
+    reason: str
 
 
 @dataclass(frozen=True)
@@ -101,7 +119,8 @@ class Profile:
     `each` folder. framework names the test files and functions; None: no file is a test. package_only, scenarios,
     no_comments, stand_ins and closed_tree are the guards switched on (None or False: off). forbidden holds, by part,
     the dotted names and modules a part may not use. info says each part in words, and singular names one instance
-    of the `each` folder, for `where`.
+    of the `each` folder, for `where`. excluded holds the folders below the app that are not its source: no check reads
+    a file below one.
     """
     parts: dict[str, tuple[str, ...]]
     rules: dict[str, tuple[Target, ...]]
@@ -119,6 +138,7 @@ class Profile:
     forbidden: dict[str, tuple[tuple[str, ...], ...]] = field(default_factory=dict)
     info: dict[str, PartInfo] = field(default_factory=dict)
     singular: str = ""
+    excluded: tuple[Exclusion, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -157,6 +177,19 @@ class Call:
     (name, value), each value a Ref; unpacked is whether it also passes *args or **kwargs."""
     line: int
     func: tuple[str, ...]
+    args: tuple[Ref, ...] = ()
+    keywords: tuple[tuple[str, Ref], ...] = ()
+    unpacked: bool = False
+
+
+@dataclass(frozen=True)
+class ParameterCall:
+    """A call of a method of a function's parameter, `<parameter>.<method>(...)`, and the line it is on: the names of
+    the parameter and of the method, and the arguments as a Call holds them. Only a parameter its function's
+    signature alone binds is read: one the body rebinds, or that is no function's parameter, is not."""
+    line: int
+    parameter: str
+    method: str
     args: tuple[Ref, ...] = ()
     keywords: tuple[tuple[str, Ref], ...] = ()
     unpacked: bool = False
@@ -231,7 +264,9 @@ class Function:
 class SourceFile:
     """A Python file as parsed, never run: how it is shown (e.g. "app/kernel/x.py"), its path below the root, what
     it imports, its comments, its functions (at module level and in its classes), its unions, its calls, its
-    classes and the uses of the names it reads. error is how it fails to parse, as (line, message), and then it
+    classes, the calls of the methods of its functions' parameters, the uses of the names it reads and the names it
+    defines at module level as functions, in order (module_functions: a name that one `def` binds and nothing else
+    binds, so that what it names is a function). error is how it fails to parse, as (line, message), and then it
     holds nothing else."""
     name: str
     path: tuple[str, ...]
@@ -243,6 +278,8 @@ class SourceFile:
     calls: tuple[Call, ...] = ()
     classes: tuple[Class, ...] = ()
     uses: tuple[Use, ...] = ()
+    parameter_calls: tuple[ParameterCall, ...] = ()
+    module_functions: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -332,11 +369,19 @@ class Finding:
 
 
 @dataclass(frozen=True)
+class Excluded:
+    """A folder the profile leaves out of every check, as it is shown (such as "app/examples"), and why."""
+    folder: str
+    reason: str
+
+
+@dataclass(frozen=True)
 class Enforcement:
     """The state of the check's own enforcement, beside its violations: where the profile comes from and how loose
     it is; the app's Python files no part and no folder of the layout governs (never read, so never checked), as
     shown; the init files missing or changed; the tests skipped or expected to fail, and the dynamic imports, where
-    they are; the checks satisfied to the letter only; and strict, the findings `--strict` fails on."""
+    they are; the checks satisfied to the letter only; and strict, the findings `--strict` fails on; and the folders
+    the profile excludes, which no check reads."""
     origin: Origin = Origin()
     ungoverned: tuple[str, ...] = ()
     init_files: tuple[Drift, ...] = ()
@@ -344,6 +389,7 @@ class Enforcement:
     dynamic: tuple[At, ...] = ()
     weak: tuple[Weak, ...] = ()
     strict: tuple[Finding, ...] = ()
+    excluded: tuple[Excluded, ...] = ()
 
 
 @dataclass(frozen=True)

@@ -454,8 +454,9 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
                     f"table (columns {shown}) in `{file.replace(NAME, '<name>')}` among the {tier} tests (section 5.2), "
                     f"or is named by a standalone test of that file; every row is a `{'.'.join(table.row)}` with "
                     f"an `{table.id}`, and a table test has no `if`, `match`, `try`, `for` or `while`.")
-        case StandIns(mocks, _, spec):
-            return _stand_ins_line(architecture, mocks[0][-1], spec[0])
+        case StandIns(mocks, _, spec, fixtures):
+            built = f"{fixtures[0].name}.{fixtures[0].mocks[0]}" if fixtures else ""
+            return _stand_ins_line(architecture, mocks[0][-1], spec[0], built)
         case ClosedTree():
             return ("`closed-tree`: every Python file of the app lies in a part, or is the package file "
                     "(`__init__.py`) of a folder of the layout.")
@@ -464,13 +465,14 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
                     "(`# type: ignore`, `# noqa`, `# pragma:`) stay.")
 
 
-def _stand_ins_line(architecture: Architecture, mock: str, spec: str) -> str:
+def _stand_ins_line(architecture: Architecture, mock: str, spec: str, built: str = "") -> str:
     fakes = architecture.fakes
     assert fakes is not None
     parts = _and([f"`{_shown(architecture, architecture.parts[p])}`" for p in fakes.stand_in_for])
     tiers = _and([t.name for t in architecture.tiers if any(s.part in fakes.stand_in_for for s in t.subject)])
-    mocks = (f"; and every mock in the {tiers} tests names what it stands in for, `{mock}({spec}=<Port>)`, never a "
-             "read port") if tiers else ""
+    fixture = f" (or, from a fixture, `{built}({spec}=<Port>)`)" if built else ""
+    mocks = (f"; and every mock in the {tiers} tests names what it stands in for, `{mock}({spec}=<Port>)`{fixture}, "
+             "never a read port") if tiers else ""
     return (f"`stand-ins`: every `Protocol` in {parts} is fire-only (every method returns `None`) or read (any "
             "method returns a value), each method annotated; every read port `<Port>` has a fake "
             f"`{fakes.prefix}<Port>` in `{'/'.join(fakes.path)}/`{mocks} (section 6).")

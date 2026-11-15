@@ -12,16 +12,16 @@ from xarch.modules.rules.domain.imports import dotted
 from xarch.modules.rules.domain.places import place
 from xarch.modules.rules.domain.values import Profile
 
-MESSAGE = ("lies in no part and no folder of the layout: move it into a part, or add its folder to the layout "
-           "(closed-tree)")
-FIX = "move it into a part, or add its folder to the layout"
+MESSAGE = "lies in no part and no folder of the layout (closed-tree)"
 
 
 def violations(paths: Iterable[tuple[str, ...]], profile: Profile, shown: str) -> list[Violation]:
     """paths are below the app root, shown as shown/<path>."""
     if not profile.closed_tree:
         return []
-    return [Violation(file, 0, MESSAGE, "closed-tree", FIX) for file in ungoverned(paths, profile, shown)]
+    return [Violation(file, 0, MESSAGE, "closed-tree",
+                      f"move {file} into the part that fits it (run xarch where {file}), or add its folder to the layout")
+            for file in ungoverned(paths, profile, shown)]
 
 
 def ungoverned(paths: Iterable[tuple[str, ...]], profile: Profile, shown: str) -> list[str]:

@@ -203,3 +203,40 @@ def test_init_never_changes_a_recorded_profile():
     report = controller(files).init(Init(ROOT, "web")).report
     assert PYPROJECT not in files.texts and PYPROJECT in report.skipped
 
+
+
+SHOP = Path("/src/shop")
+
+
+@pytest.mark.parametrize("root, text, written, where", [
+    pytest.param(SHOP, None, '[tool.xarch]\nprofile = "web"\napp = "shop"\n', "created",
+                 id="a new pyproject records an app folder that is not the default, after the profile"),
+    pytest.param(SHOP, '[project]\nname = "x"\n', '[project]\nname = "x"\n\n[tool.xarch]\nprofile = "web"\n'
+                 'app = "shop"\n', "updated", id="a pyproject with no table gets it with both"),
+    pytest.param(SHOP, '[tool.xarch]\ntests = "t"\n\n[tool.other]\n',
+                 '[tool.xarch]\nprofile = "web"\napp = "shop"\ntests = "t"\n\n[tool.other]\n', "updated",
+                 id="an existing table gets both at its top"),
+    pytest.param(SHOP, '[tool.xarch]\nprofile = "web"\n', '[tool.xarch]\nprofile = "web"\napp = "shop"\n',
+                 "updated", id="a recorded profile is left, and the app folder is still recorded"),
+    pytest.param(SHOP, '[tool.xarch]\napp = "other"\n', '[tool.xarch]\nprofile = "web"\napp = "other"\n', "updated",
+                 id="a recorded app folder is left, and the profile is still recorded"),
+    pytest.param(SHOP, '[tool.xarch]\nprofile = "cli"\napp = "other"\n', None, "skipped",
+                 id="a profile and an app folder already recorded are never rewritten"),
+    pytest.param(ROOT, None, '[tool.xarch]\nprofile = "web"\n', "created",
+                 id="the default app folder is not recorded"),
+    pytest.param(ROOT, '[tool.xarch]\nprofile = "web"\n', None, "skipped",
+                 id="the default app folder with a recorded profile has nothing to record"),
+])
+def test_init_records_an_app_folder_that_is_not_the_default_and_never_rewrites_a_value(root, text, written, where):
+    files = FakeFiles(texts={PYPROJECT: text} if text is not None else None)
+    report = controller(files).init(Init(root, "web")).report
+    assert files.texts.get(PYPROJECT) == written
+    assert PYPROJECT in getattr(report, where)
+    assert (PYPROJECT in report.created) == (where == "created")
+
+
+def test_the_app_folder_is_recorded_relative_to_the_pyproject_found_above_it_as_posix():
+    files = FakeFiles(texts={PYPROJECT: '[project]\nname = "x"\n'})
+    controller(files).init(Init(Path("/src/services/shop"), "web"))
+    assert files.texts[PYPROJECT].endswith('[tool.xarch]\nprofile = "web"\napp = "services/shop"\n')
+    assert files.texts[PYPROJECT].startswith('[project]\nname = "x"\n')

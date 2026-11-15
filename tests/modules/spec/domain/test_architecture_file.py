@@ -214,8 +214,8 @@ def test_an_unknown_version_is_rejected(version):
 def test_unknown_top_level_keys_are_rejected():
     document = layered() | {"profile": "cli", "extra": 1}
     assert problems(document) == ["layered.yaml: unknown keys 'extra', 'profile': "
-                                  "use docs, examples, fakes, files, forbidden, guards, layers, layout, libraries, name, "
-                                  "naming, notes, parts, placement, rules, tests, tiers, xarch"]
+                                  "use docs, examples, excluded, fakes, files, forbidden, guards, hints, layers, layout, "
+                                  "libraries, name, naming, notes, parts, placement, rules, tests, tiers, xarch"]
 
 
 def test_missing_required_keys_are_reported():
@@ -334,8 +334,8 @@ def test_every_problem_is_listed_at_once():
     document["parts"]["api"]["path"] = "src/*/nope"
     document["rules"]["store"] = ["store@mine"]
     assert problems(document) == [
-        "layered.yaml: unknown key 'extra': use docs, examples, fakes, files, forbidden, guards, layers, layout, "
-        "libraries, name, naming, notes, parts, placement, rules, tests, tiers, xarch",
+        "layered.yaml: unknown key 'extra': use docs, examples, excluded, fakes, files, forbidden, guards, hints, "
+        "layers, layout, libraries, name, naming, notes, parts, placement, rules, tests, tiers, xarch",
         "layered.yaml: parts.api.path: 'src/*/nope' matches no folder or file in layout",
         "layered.yaml: rules.store: 'store@mine' has an unknown scope '@mine': use @own (the importer's own `each` "
         "folder) or @any (any `each` folder)",
@@ -524,3 +524,12 @@ def test_a_part_is_shown_as_the_docs_show_it_below_its_instance_and_ending_in_a_
     architecture = parse_architecture(document, "layered.yaml", lambda r: True)
     assert {name: architecture.shown(part) for name, part in architecture.parts.items()} == {
         "core": "core/", "main": "main.py", "src": "src/"}
+
+
+def test_a_file_at_the_top_of_the_layout_is_a_file_and_may_hold_a_part():
+    document = layered()
+    document["layout"]["__main__.py"] = "file"
+    document["parts"]["main"] = {"path": "__main__.py", "role": "the entry shim"}
+    architecture = parse_architecture(document, "layered.yaml", lambda r: True)
+    assert architecture.top_level_tree()["__main__.py"] is None
+    assert architecture.is_file(("__main__.py",)) and architecture.shown(architecture.parts["main"]) == "__main__.py"
