@@ -95,3 +95,13 @@ def must_import(files: Iterable[SourceFile], profile: Profile, root: str) -> lis
 def must_import_tiers(tests: Iterable[SourceFile], app: Iterable[SourceFile], profile: Profile, root: str,
                       tests_root: str) -> list[Violation | Weak]:
     return run(expansion.must_import_tiers(profile), facts_of(app, tests, profile, root, tests_root), profile)
+
+
+def dead_code(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile,
+              has_tests: bool = True) -> list[Violation | Weak]:
+    return run(expansion.dead_code(profile), facts_of(app, tests if has_tests else [], profile, ""), profile)
+
+
+def untested(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile, root: str,
+             tests_root: str) -> list[Violation | Weak]:
+    return run(expansion.untested(profile), facts_of(app, tests, profile, root, tests_root), profile)
