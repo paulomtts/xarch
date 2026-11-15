@@ -37,5 +37,6 @@ def targets_of(profile: Profile, part: str) -> tuple[Target, ...]:
     return with_itself(part, profile.parts[part], profile.rules.get(part, ())) if part in profile.parts else ()
 
 
-def allowed(profile: Profile, src: Place, dst: Place) -> bool:
-    return src.part is not None and any(reaches(target, src, dst) for target in targets_of(profile, src.part))
+def allowed(profile: Profile, src: Place, dst: Place, name: str | None = None) -> bool:
+    """Whether the part at src may import the name from dst, or (None) dst as a whole."""
+    return src.part is not None and any(reaches(target, src, dst, name) for target in targets_of(profile, src.part))

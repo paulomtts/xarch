@@ -1,8 +1,11 @@
 """The import rules on hand-made source files: a file's dotted path, the targets its imports point to inside the app's
 package, and the imports between governed places that the profile's rules forbid."""
+from dataclasses import replace
+
 import pytest
 
 from tests.modules.rules.builders import PROFILE, imp, source, steps
+from xarch.kernel.logic.placement import Target
 from xarch.modules.rules.domain.imports import dotted, targets, violations
 
 
@@ -85,3 +88,33 @@ def test_a_violation_names_its_rule():
 ])
 def test_a_violation_says_what_to_do(file, fix):
     assert [v.fix for v in violations([file, *APP], PROFILE, "app")] == [fix]
+
+
+NARROWED = replace(PROFILE, rules={**PROFILE.rules, "contract": (Target("domain", "own", ("values",), "*Id"),
+                                                                  Target("kernel"))})
+CONTRACT = "modules/docs/contract/__init__.py"
+VALUES = source("modules/docs/domain/values.py")
+
+
+@pytest.mark.parametrize("imports, expected", [
+    pytest.param([imp(1, "app.modules.docs.domain.values", "DocumentId", "OwnerId")], [],
+                 id="names that match the pattern"),
+    pytest.param([imp(1, "app.modules.docs.domain.values", "DocumentId", "Document")],
+                 ["app/modules/docs/contract/__init__.py:1: contract/ of modules/docs may import only *Id from "
+                  "domain/ of modules/docs, not Document (app.modules.docs.domain.values.Document)"],
+                 id="a name that does not"),
+    pytest.param([imp(1, "app.modules.docs.domain", "values")],
+                 ["app/modules/docs/contract/__init__.py:1: contract/ of modules/docs may import only *Id from "
+                  "domain/ of modules/docs, not the file as a whole (app.modules.docs.domain.values)"],
+                 id="the file as a whole"),
+    pytest.param([imp(1, "app.modules.docs.domain.values")],
+                 ["app/modules/docs/contract/__init__.py:1: contract/ of modules/docs may import only *Id from "
+                  "domain/ of modules/docs, not the file as a whole (app.modules.docs.domain.values)"],
+                 id="a plain import of the file"),
+])
+def test_a_target_with_a_name_pattern_allows_only_the_names_it_matches(imports, expected):
+    found = violations([source(CONTRACT, *imports), VALUES], NARROWED, "app")
+    assert [str(v) for v in found] == expected
+    assert {v.fix for v in found} <= {
+        "import from domain/ of modules/docs only names that match *Id (parts.contract.may_import), or move what needs "
+        "the rest to a part that may import it"}

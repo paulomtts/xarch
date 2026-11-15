@@ -28,6 +28,7 @@ from xarch.modules.spec.contract import (
     NoDuplicates,
     PackageOnly,
     PassThrough,
+    PrivateImports,
     ProfileOrigin,
     ProjectFile,
     ScenarioCoverage,
@@ -77,7 +78,15 @@ class SpecProfiles:
                        no_duplicates=next((g.min_statements for g in architecture.guards
                                            if isinstance(g, NoDuplicates)), None),
                        dead_code=any(isinstance(g, DeadCode) for g in architecture.guards),
+                       untested=any(isinstance(g, DeadCode) and g.untested for g in architecture.guards),
                        pass_through=next((g.parts for g in architecture.guards if isinstance(g, PassThrough)), ()),
+                       holds={name: part.holds for name, part in architecture.parts.items() if part.holds},
+                       types_only={name: part.types_only for name, part in architecture.parts.items()
+                                   if part.types_only},
+                       no_callbacks=tuple(name for name, part in architecture.parts.items() if part.no_callbacks),
+                       names={name: part.names for name, part in architecture.parts.items() if part.names},
+                       built_by={name: part.built_by for name, part in architecture.parts.items() if part.built_by},
+                       private_imports=any(isinstance(g, PrivateImports) for g in architecture.guards),
                        framework=Framework(architecture.framework.files, architecture.framework.functions,
                                            architecture.framework.skips)
                        if architecture.framework is not None else None,
@@ -118,4 +127,4 @@ def _tier(architecture: Architecture, tier: Tier) -> TestTier:
     subject = tuple(Target(s.part, "own" if architecture.parts[s.part].in_instance else "none", s.sub)
                     for s in tier.subject)
     return TestTier(tier.name, subject, tier.folder, tier.types_only, tier.forbidden, tier.proves, tier.may_touch, tier.litmus,
-                    tier.one_file_per, tier.may_import)
+                    tier.one_file_per, tier.may_import, tier.must_import)

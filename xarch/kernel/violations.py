@@ -4,8 +4,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 RULES = ("rules", "libraries", "forbidden", "tiers", "types-only", "cycles", "package-only", "scenario-coverage",
-         "no-comments", "stand-ins", "closed-tree", "must-import", "no-duplicates", "dead-code", "pass-through", "structure",
-         "test-tree", "syntax")
+         "no-comments", "stand-ins", "closed-tree", "must-import", "no-duplicates", "dead-code", "pass-through", "holds",
+         "no-callbacks", "names", "built-by", "private-imports", "structure", "test-tree", "syntax")
 """The stable ids of the checks, as a violation names them: the only values its rule may take."""
 
 

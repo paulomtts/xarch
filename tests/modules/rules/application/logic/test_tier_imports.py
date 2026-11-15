@@ -189,3 +189,22 @@ def test_may_use_fakes(checked, tier, expected):
 def test_a_violation_says_what_to_do(path, imports, fix):
     found = violations([in_tests(path, *imports), *HELPERS], APP, PROFILE, "app", "tests")
     assert [(v.rule, v.fix) for v in found] == [("tiers", fix)]
+
+
+OTHER_TEST = in_tests("modules/docs/domain/test_values.py")
+
+
+@pytest.mark.parametrize("imports, expected", [
+    pytest.param([imp(1, "tests.modules.docs.domain.test_values", "BASE")],
+                 ["1: a test may not import another test file (tests.modules.docs.domain.test_values): what tests "
+                  "share lives in test code that is no test file"], id="an absolute import of a test file"),
+    pytest.param([imp(1, "", "test_values", level=1)],
+                 ["1: a test may not import another test file (tests.modules.docs.domain.test_values): what tests "
+                  "share lives in test code that is no test file"], id="a relative import of a test file"),
+    pytest.param([imp(1, "tests.modules.docs", "builders")], [], id="test code that is no test file"),
+])
+def test_a_test_imports_no_test_file(imports, expected):
+    found = violations([in_tests(DOMAIN_TEST, *imports), OTHER_TEST, *HELPERS], APP, PROFILE, "app", "tests")
+    assert [str(v).removeprefix(f"tests/{DOMAIN_TEST}:").lstrip() for v in found] == expected
+    assert {v.fix for v in found} <= {"move what tests.modules.docs.domain.test_values holds that this test needs "
+                                      "into test code of its folder that is no test file, and import it from there"}

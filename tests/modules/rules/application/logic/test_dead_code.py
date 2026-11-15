@@ -1,9 +1,9 @@
 """The dead-code check on hand-made source files: a port no other file of the app names, and a fake no test names."""
 import pytest
 
-from tests.modules.rules.builders import in_tests, profile, source
-from xarch.modules.rules.application.logic.dead_code import violations
-from xarch.modules.rules.domain.values import Class, Method
+from tests.modules.rules.builders import imp, in_tests, profile, source
+from xarch.modules.rules.application.logic.dead_code import untested, violations
+from xarch.modules.rules.domain.values import Class, Function, Method, Weak
 
 PROTOCOL = ("typing", "Protocol")
 PORT_FILE = "modules/docs/application/ports/repo.py"
@@ -97,3 +97,67 @@ def test_the_violations_say_what_to_do():
     gone = in_tests("fakes/repo.py", classes=(fake("FakeRepo"),))
     [unused] = violations([PORTS, uses(SERVICE, "Repo", "Notifier")], [gone], ON, True)
     assert unused.fix == "delete FakeRepo, or write the test that uses it"
+
+
+UNTESTED = profile(dead_code=True, untested=True)
+CODE = (Function(3, "run", statements=2),)
+
+
+def untested_files(app, tests, checked=UNTESTED) -> list[str]:
+    return [f"{w.file}: {w.message}" for w in untested(app, tests, checked, "app", "tests")]
+
+
+def test_a_file_of_a_tiered_part_that_no_test_of_its_tier_imports_is_listed_with_what_to_do():
+    rule = source("modules/docs/domain/rule.py", functions=CODE)
+    assert untested([rule], [], UNTESTED, "app", "tests") == [Weak(
+        "dead-code", "app/modules/docs/domain/rule.py", 0,
+        "a file of domain/ of modules/docs that no unit test reaches (guards.dead-code.untested)",
+        "write its unit test in tests/modules/docs/domain/, or delete what nothing uses")]
+
+
+def test_a_file_a_test_of_its_tier_imports_is_reached_and_so_is_what_it_imports_in_parts_of_that_tier():
+    rule = source("modules/docs/domain/rule.py", imp(1, "app.modules.docs.domain.helper", "x"), functions=CODE)
+    helper = source("modules/docs/domain/helper.py", imp(1, "app.modules.docs.application.logic", "deep"),
+                    functions=CODE)
+    deep = source("modules/docs/application/logic/deep.py", functions=CODE)
+    test = in_tests("modules/docs/domain/test_rule.py", imp(1, "app.modules.docs.domain", "rule"))
+    assert untested_files([rule, helper, deep], [test]) == []
+
+
+def test_what_a_reached_file_of_another_tier_imports_is_not_reached():
+    controller = source("modules/docs/application/controller.py", imp(1, "app.modules.docs.domain.rule", "x"),
+                        functions=CODE)
+    rule = source("modules/docs/domain/rule.py", functions=CODE)
+    test = in_tests("modules/docs/application/test_publish.py", imp(1, "app.modules.docs.application", "controller"))
+    assert untested_files([controller, rule], [test]) == [
+        "app/modules/docs/domain/rule.py: a file of domain/ of modules/docs that no unit test reaches "
+        "(guards.dead-code.untested)"]
+
+
+def test_a_test_of_another_tier_does_not_reach_it():
+    rule = source("modules/docs/domain/rule.py", functions=CODE)
+    test = in_tests("modules/docs/application/test_publish.py", imp(1, "app.modules.docs.domain", "rule"))
+    assert len(untested_files([rule], [test])) == 1
+
+
+def test_test_code_that_is_no_test_reaches_it_too():
+    rule = source("modules/docs/domain/rule.py", functions=CODE)
+    builder = in_tests("modules/docs/domain/builders.py", imp(1, "app.modules.docs.domain.rule", "make"))
+    assert untested_files([rule], [builder]) == []
+
+
+@pytest.mark.parametrize("file", [
+    pytest.param(source("modules/docs/domain/__init__.py", functions=CODE), id="a package file"),
+    pytest.param(source("modules/docs/domain/values.py"), id="a file with no code"),
+    pytest.param(source("platform/sql.py", functions=CODE), id="a part with no tier"),
+    pytest.param(source("modules/docs/domain/errors.py", classes=(Class(3, "Gone", exception=True),),
+                        functions=(Function(4, "__init__", owner="Gone", statements=1),)), id="a file of exceptions"),
+    pytest.param(source("scripts/seed.py", functions=CODE), id="a file in no part"),
+])
+def test_what_has_no_code_or_no_tier_is_not_listed(file):
+    assert untested_files([file], []) == []
+
+
+def test_it_is_off_unless_asked():
+    rule = source("modules/docs/domain/rule.py", functions=CODE)
+    assert untested_files([rule], [], checked=profile(dead_code=True)) == []

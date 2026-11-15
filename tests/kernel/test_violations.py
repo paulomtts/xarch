@@ -33,7 +33,7 @@ def test_a_violation_of_an_unknown_rule_cannot_be_made():
 
 
 def test_the_rule_ids_are_the_stable_ids_of_every_check():
-    assert sorted(RULES) == ["closed-tree", "cycles", "dead-code", "forbidden", "libraries", "must-import",
-                             "no-comments", "no-duplicates", "package-only", "pass-through", "rules",
-                             "scenario-coverage", "stand-ins", "structure", "syntax", "test-tree", "tiers",
-                             "types-only"]
+    assert sorted(RULES) == ["built-by", "closed-tree", "cycles", "dead-code", "forbidden", "holds", "libraries",
+                             "must-import", "names", "no-callbacks", "no-comments", "no-duplicates", "package-only",
+                             "pass-through", "private-imports", "rules", "scenario-coverage", "stand-ins",
+                             "structure", "syntax", "test-tree", "tiers", "types-only"]

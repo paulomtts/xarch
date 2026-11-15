@@ -5,7 +5,7 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.rules.builders import GUARD, PROFILE, RENDERING, in_tests, profile, source
-from xarch.modules.rules.application.logic.types_only import violations
+from xarch.modules.rules.application.logic.types_only import part_violations, violations
 from xarch.modules.rules.domain.values import Call, Use
 
 RENDERING_TEST = "web/test_docs.py"
@@ -133,3 +133,48 @@ def test_the_source_tree_has_to_say_the_name_is_a_function_else_the_check_stays_
     unknown = [source("modules/docs/application/controller.py")]
     assert problems(RENDERING_TEST, uses=(Use(5, MAKE, 6),), app=unknown) == []
     assert problems(RENDERING_TEST, uses=(Use(5, MAKE, 6),), app=[]) == []
+
+
+PARTS_ON = profile(types_only={"services": ("contract",)})
+SERVICE = "modules/docs/application/services/doc.py"
+RESULT = ("app", "modules", "docs", "contract", "Published")
+CONTRACT_FILE = source("modules/docs/contract/results.py", module_functions=("published",))
+
+
+def part_problems(path: str = SERVICE, *calls: Call, checked=PARTS_ON, uses: tuple[Use, ...] = (),
+                  others=(CONTRACT_FILE,)) -> list[str]:
+    return [str(v) for v in part_violations([source(path, calls=calls, uses=uses), *others], checked, "app")]
+
+
+def test_a_part_that_uses_a_part_only_as_a_type_may_not_call_it():
+    assert part_problems(SERVICE, Call(4, RESULT), Call(5, (*RESULT, "of"))) == [
+        f"app/{SERVICE}:4: services/ of modules/docs uses contract/ of modules/docs only as a type: it may not call "
+        "app.modules.docs.contract.Published (parts.services.types_only)",
+        f"app/{SERVICE}:5: services/ of modules/docs uses contract/ of modules/docs only as a type: it may not call "
+        "app.modules.docs.contract.Published.of (parts.services.types_only)"]
+
+
+def test_the_fix_names_the_parts_that_may_call_it():
+    found = part_violations([source(SERVICE, calls=(Call(4, RESULT),))], PARTS_ON, "app")
+    assert [v.fix for v in found] == [
+        "use contract/ here only as a type, and leave the call to controller/, adapters/ or web/, which may make it"]
+
+
+def test_a_part_may_not_reference_a_function_of_a_types_only_part():
+    use = Use(6, ("app", "modules", "docs", "contract", "results", "published"), 6)
+    assert part_problems(SERVICE, uses=(use,)) == [
+        f"app/{SERVICE}:6: services/ of modules/docs uses contract/ of modules/docs only as a type: it may not "
+        "reference app.modules.docs.contract.results.published, a function (parts.services.types_only)"]
+
+
+@pytest.mark.parametrize("path, call", [
+    pytest.param("modules/docs/application/controller.py", Call(4, RESULT), id="a part that does not list it"),
+    pytest.param(SERVICE, Call(4, ("app", "modules", "docs", "domain", "doc", "Document")), id="another part"),
+    pytest.param(SERVICE, Call(4, ("shop", "modules", "docs", "contract", "Published")), id="another package"),
+])
+def test_only_the_listed_parts_of_a_listing_part_are_held(path, call):
+    assert part_problems(path, call) == []
+
+
+def test_it_is_off_without_the_key():
+    assert part_problems(SERVICE, Call(4, RESULT), checked=PROFILE) == []

@@ -5,6 +5,7 @@ from pathlib import Path
 
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic import (
+    built_by,
     closed_tree,
     comments,
     cycles,
@@ -12,10 +13,14 @@ from xarch.modules.rules.application.logic import (
     duplicates,
     enforcement,
     forbidden,
+    holds,
     libraries,
     must_import,
+    names,
+    no_callbacks,
     package_only,
     pass_through,
+    private_imports,
     scenarios,
     stand_ins,
     tier_imports,
@@ -71,6 +76,12 @@ class ImportCheck:
         found += scenarios.violations(app, test_files, rules)
         found += stand_ins.violations(app, test_files, rules, package, tests is not None)
         found += must_import.violations(app, rules, package)
+        found += must_import.tier_violations(test_files, app, rules, package, tests_root)
+        found += types_only.part_violations(app, rules, package)
+        found += no_callbacks.violations(app, rules)
+        found += names.violations(app, rules)
+        found += built_by.violations(app, rules, package)
+        found += private_imports.violations(app, test_files, rules, package, tests_root)
         found += duplicates.violations(app, rules)
         found += dead_code.violations(app, test_files, rules, tests is not None)
         if rules.no_comments:
@@ -78,15 +89,18 @@ class ImportCheck:
         shown = root.absolute().resolve().name
         found += closed_tree.violations(paths, rules, shown)
         state = self._enforcement(root, package, profile, rules, app, test_files,
-                                  closed_tree.ungoverned(paths, rules, shown))
+                                  closed_tree.ungoverned(paths, rules, shown), tests_root if tests is not None else None)
         return found, replace(state, strict=enforcement.strict_findings(state))
 
     def _enforcement(self, root: Path, package: str, location: str, rules: Profile, app: list[SourceFile],
-                     tests: list[SourceFile], ungoverned: list[str]) -> Enforcement:
+                     tests: list[SourceFile], ungoverned: list[str], tests_root: str | None) -> Enforcement:
         project = root.absolute().resolve().parent
         files = self._profiles.init_files(location, package)
         texts = [self._tree.text(project.joinpath(*file.path)) for file in files]
         weak = stand_ins.weak(app, tests, rules) + scenarios.weak(app, tests, rules) + pass_through.weak(app, rules)
+        weak += holds.weak(app, rules, package)
+        if tests_root is not None:
+            weak += dead_code.untested(app, tests, rules, package, tests_root)
         shown = [Excluded("/".join((root.absolute().resolve().name, *e.path)), e.reason) for e in rules.excluded]
         return Enforcement(self._profiles.origin(location), tuple(ungoverned), tuple(enforcement.drift(files, texts)),
                            skipped=tuple(enforcement.skipped(tests, rules)),

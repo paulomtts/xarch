@@ -1,12 +1,16 @@
 """The import check itself: every import between places the profile governs must be allowed by its rules.
 
-Files in places the profile does not govern are not checked, and imports into such places are ignored.
+Files in places the profile does not govern are not checked, and imports into such places are ignored. A target of
+the rules with a name pattern allows only `from <place> import <name>` for a name the pattern matches: a name that does
+not match, and an import of the place's file as a whole (`import m`, or `from <package> import m` for its file m), is
+reported, naming the pattern.
 """
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
+from dataclasses import replace
 
-from xarch.kernel.logic.placement import EVERYTHING, Place
+from xarch.kernel.logic.placement import EVERYTHING, Place, reaches
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.domain.places import allowed, label, place, targets_of
 from xarch.modules.rules.domain.values import Import, Profile, SourceFile
@@ -28,10 +32,18 @@ def targets(imports: Iterable[Import], package: tuple[str, ...], known: set[tupl
 
     `from m import n` names the module m.n when it is a known file, else the module m.
     """
+    for line, target, _ in named_targets(imports, package, known, root):
+        yield line, target
+
+
+def named_targets(imports: Iterable[Import], package: tuple[str, ...], known: set[tuple[str, ...]],
+                  root: str) -> Iterator[tuple[int, tuple[str, ...], str | None]]:
+    """What targets yields, with the name imported from the target: n for `from m import n` when m.n is no known file,
+    else None, the target imported as a whole."""
     for imp in imports:
         if imp.names is None:
             if imp.module[:1] == (root,):
-                yield imp.line, imp.module[1:]
+                yield imp.line, imp.module[1:], None
             continue
         if imp.level:
             keep = len(package) - (imp.level - 1)
@@ -44,7 +56,7 @@ def targets(imports: Iterable[Import], package: tuple[str, ...], known: set[tupl
             base = imp.module[1:]
         for name in imp.names:
             candidate = base + (name,)
-            yield imp.line, candidate if candidate in known else base
+            yield (imp.line, candidate, None) if candidate in known else (imp.line, base, name)
 
 
 def violations(files: Iterable[SourceFile], profile: Profile, root: str) -> list[Violation]:
@@ -57,13 +69,31 @@ def violations(files: Iterable[SourceFile], profile: Profile, root: str) -> list
         if src is None:
             continue
         package = steps if is_package else steps[:-1]
-        for line, target in targets(file.imports, package, known, root):
+        for line, target, name in named_targets(file.imports, package, known, root):
             dst = place(profile, target)
-            if dst is not None and not allowed(profile, src, dst):
-                shown = ".".join((root, *target))
-                found.append(Violation(file.name, line, f"{label(profile, src)} may not import {label(profile, dst)} ({shown})",
-                                       "rules", _fix(profile, src, dst)))
+            if dst is None or allowed(profile, src, dst, name):
+                continue
+            shown = ".".join((root, *target, *([name] if name is not None else [])))
+            patterns = _patterns(profile, src, dst)
+            if patterns:
+                what = f"not {name}" if name is not None else "not the file as a whole"
+                found.append(Violation(file.name, line, f"{label(profile, src)} may import only {patterns} from "
+                                                        f"{label(profile, dst)}, {what} ({shown})", "rules",
+                                       f"import from {label(profile, dst)} only names that match {patterns} "
+                                       f"(parts.{src.part}.may_import), or move what needs the rest to a part that "
+                                       "may import it"))
+            else:
+                found.append(Violation(file.name, line, f"{label(profile, src)} may not import {label(profile, dst)} "
+                                                        f"({'.'.join((root, *target))})", "rules",
+                                       _fix(profile, src, dst)))
     return found
+
+
+def _patterns(profile: Profile, src: Place, dst: Place) -> str:
+    """The name patterns of the targets that reach the place but for their pattern, as "*Id or *Key"; "" for none."""
+    narrowed = [t.names for t in (targets_of(profile, src.part) if src.part is not None else ())
+                if t.names and reaches(replace(t, names=""), src, dst)]
+    return " or ".join(dict.fromkeys(narrowed))
 
 
 def _fix(profile: Profile, src: Place, dst: Place) -> str:

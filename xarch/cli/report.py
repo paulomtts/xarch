@@ -69,7 +69,7 @@ def enforcement_lines(state: Enforcement, strict: bool, hints: Mapping[str, str]
     if state.dynamic:
         lines.append(_line("dynamic", f"{_count(len(state.dynamic), 'dynamic import')} ({_places(state.dynamic)})", 2))
     for weak in state.weak:
-        lines.append(_line("weak", f"{weak.file}:{weak.line}: {weak.message}", 2))
+        lines.append(_line("weak", f"{weak.file}{f':{weak.line}' if weak.line else ''}: {weak.message}", 2))
         if weak.fix:
             lines.append(f"{INDENT}{' ' * 2}fix: {weak.fix}")
             if weak.rule in (hints or {}):

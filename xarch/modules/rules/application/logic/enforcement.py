@@ -50,5 +50,6 @@ def strict_findings(enforcement: Enforcement) -> tuple[Finding, ...]:
     found += [Finding("init_files", f"{item.file} is {item.state}") for item in enforcement.init_files]
     found += [Finding("skipped", f"{at.file}:{at.line}") for at in enforcement.skipped]
     found += [Finding("dynamic", f"{at.file}:{at.line}") for at in enforcement.dynamic]
-    found += [Finding("weak", f"{weak.file}:{weak.line}: {weak.message}") for weak in enforcement.weak]
+    found += [Finding("weak", f"{weak.file}{f':{weak.line}' if weak.line else ''}: {weak.message}")
+              for weak in enforcement.weak]
     return tuple(found)

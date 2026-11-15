@@ -1,11 +1,13 @@
 """The must-import check on hand-made source files: a file of a part that lists `must_import` imports one of the listed
 parts or an outside package, or reaches one through a file of its own part, unless it is a package marker or holds no
 code of its own."""
+from dataclasses import replace
+
 import pytest
 
-from tests.modules.rules.builders import imp, profile, source
+from tests.modules.rules.builders import GUARD, INTEGRATION, RENDERING, imp, in_tests, profile, source
 from xarch.kernel.logic.placement import Target
-from xarch.modules.rules.application.logic.must_import import violations
+from xarch.modules.rules.application.logic.must_import import tier_violations, violations
 from xarch.modules.rules.domain.values import Function
 
 REQUIRED = profile(must_import={"adapters": (Target("platform"), Target("contract", "any"))})
@@ -83,3 +85,60 @@ def test_the_violation_is_for_the_whole_file_and_says_what_to_do():
     assert (found.line, found.rule) == (0, "must-import")
     assert found.fix == ("import what it wraps from platform/ or contract/, or an outside package, or move its code to "
                          "a part that needs no technology")
+
+
+WIRED = profile(tiers=(replace(INTEGRATION, must_import=("controller",)), RENDERING, GUARD))
+TEST = "modules/docs/application/test_publish.py"
+TEST_MESSAGE = ("tests/modules/docs/application/{name}: an integration test imports nothing from controller/, directly "
+                "or through test code it imports (tiers.integration.must_import)")
+
+
+APP = [source("modules/docs/application/controller.py")]
+
+
+def tier_problems(*tests, checked=WIRED) -> list[str]:
+    return [str(v) for v in tier_violations(list(tests), APP, checked, "app", "tests")]
+
+
+def test_a_test_of_a_tier_imports_a_part_its_tier_must_reach():
+    assert tier_problems(in_tests(TEST, imp(1, "app.modules.docs.application.controller", "C"), functions=CODE)) == []
+    assert tier_problems(in_tests(TEST, imp(1, "app.modules.docs.contract", "Published"), functions=CODE)) == [
+        TEST_MESSAGE.format(name="test_publish.py")]
+
+
+def test_a_file_of_the_part_imported_by_its_package_counts():
+    assert tier_problems(in_tests(TEST, imp(1, "app.modules.docs.application", "controller"), functions=CODE)) == []
+
+
+def test_a_part_of_any_instance_counts():
+    assert tier_problems(in_tests(TEST, imp(1, "app.modules.other.application.controller", "C"), functions=CODE)) == []
+
+
+def test_it_reaches_the_part_through_test_code_that_is_no_test():
+    helper = in_tests("modules/docs/application/helpers.py", imp(1, "app.modules.docs.application.controller", "C"))
+    builder = in_tests("modules/docs/builders.py", imp(1, "tests.modules.docs.application.helpers", "make"))
+    test = in_tests(TEST, imp(1, "", "builders", level=2), functions=CODE)
+    assert tier_problems(test, builder, helper) == []
+
+
+def test_a_test_file_it_imports_is_no_way_to_the_part():
+    other = in_tests("modules/docs/application/test_other.py", imp(1, "app.modules.docs.application.controller", "C"),
+                     functions=CODE)
+    test = in_tests(TEST, imp(1, "tests.modules.docs.application.test_other", "x"), functions=CODE)
+    assert tier_problems(test, other) == [TEST_MESSAGE.format(name="test_publish.py")]
+
+
+def test_a_test_with_no_code_another_tier_and_test_code_that_is_no_test_are_not_checked():
+    assert tier_problems(in_tests(TEST), in_tests("modules/docs/application/helpers.py", functions=CODE),
+                         in_tests("web/test_page.py", functions=CODE)) == []
+
+
+def test_the_test_violation_is_for_the_whole_file_and_says_what_to_do():
+    [found] = tier_violations([in_tests(TEST, functions=CODE)], APP, WIRED, "app", "tests")
+    assert (found.line, found.rule) == (0, "must-import")
+    assert found.fix == ("drive what it proves through controller/, or move it to the tier of the part it calls "
+                         "directly")
+
+
+def test_tiers_with_nothing_to_reach_are_not_checked():
+    assert tier_problems(in_tests(TEST, functions=CODE), checked=profile()) == []
