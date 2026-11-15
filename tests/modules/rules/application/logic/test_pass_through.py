@@ -33,3 +33,12 @@ def test_only_the_parts_the_profile_lists_are_read():
 
 def test_it_is_off_without_a_listed_part():
     assert found(checked=profile()) == []
+
+
+def test_a_part_that_is_a_file_and_a_folder_part_are_read_alike():
+    wide = profile(pass_through=("controller", "adapters"))
+    method = (Function(4, "get", owner="X", forwards="self._fs.get"),)
+    assert [w.file for w in weak([source("modules/docs/application/controller.py", functions=method),
+                                  source("modules/docs/adapters/fs_repo.py", functions=method),
+                                  source(SERVICES, functions=method)], wide)] == [
+        "app/modules/docs/application/controller.py", "app/modules/docs/adapters/fs_repo.py"]
