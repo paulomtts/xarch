@@ -13,10 +13,17 @@ is read is what the file says:
                        after `import datetime`, a bare `open` that no scope binds; it is reported when it reaches the
                        entry or below it, unless the import that binds it already imported the entry, which was
                        reported there.
+    a method call      for an entry written `.<name>()` (held as ("", "<name>()")): a call `<expr>.<name>(...)` whose
+                       callee no import binds (see the MethodCall value), whatever expr is, a variable, a parameter or
+                       the result of another call; it is reported once per line. A call on the method's own object or
+                       a chain of attributes on it (`self.paths.resolve()`) is not: that is what the object holds,
+                       a port or a collaborator, or its own method. Only the parts whose list holds such an entry are
+                       read for it.
 
 It stays silent on what is not written in the file as such a name: a name reached through a variable or an
 assignment (`clock = datetime.datetime; clock.now()`), through `getattr` or a string, through an object
-(`Path(p).read_text()`), a builtin hidden by a star import, an annotation, and anything done on the part's behalf elsewhere: a
+(`Path(p).read_text()`) unless the list names the method, a method the list names called on something the object
+holds (`self.root.resolve()`), a builtin hidden by a star import, an annotation, and anything done on the part's behalf elsewhere: a
 helper in another file, or a part with no list, may do the I/O the part asked for. It is a ban list of names, not a
 proof that a part does no I/O.
 """
@@ -56,7 +63,7 @@ def violations(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: 
 def _file(file: SourceFile, part: str, who: str, tag: str, profile: Profile) -> Iterator[Violation]:
     names = profile.forbidden[part]
     seen: set[tuple[int, tuple[str, ...]]] = set()
-    for line, verb, hit in [*_imports(file, names), *_uses(file, names)]:
+    for line, verb, hit in [*_imports(file, names), *_uses(file, names), *_methods(file, names)]:
         if (line, hit) in seen:
             continue
         seen.add((line, hit))
@@ -73,6 +80,13 @@ def _imports(file: SourceFile, names: tuple[tuple[str, ...], ...]) -> Iterator[t
             hit = _hit(path, names)
             if hit is not None:
                 yield imp.line, "import", hit
+
+
+def _methods(file: SourceFile, names: tuple[tuple[str, ...], ...]) -> Iterator[tuple[int, str, tuple[str, ...]]]:
+    methods = {name[1].removesuffix("()"): name for name in names if len(name) == 2 and not name[0]}
+    for call in file.method_calls:
+        if not call.held and call.name in methods:
+            yield call.line, "call", methods[call.name]
 
 
 def _uses(file: SourceFile, names: tuple[tuple[str, ...], ...]) -> Iterator[tuple[int, str, tuple[str, ...]]]:

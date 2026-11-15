@@ -38,6 +38,8 @@ PART_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_-]*")
 PACKAGE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 DOTTED = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+")
 NAME_OR_DOTTED = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*")
+METHOD = re.compile(r"\.(?P<name>[A-Za-z_][A-Za-z0-9_]*)\(\)")
+"""A method in a `forbidden` list, called on anything: `.absolute()`."""
 FUNCTION_PATTERN = re.compile(r"[A-Za-z0-9_*]+")
 
 
@@ -569,16 +571,24 @@ def package_names(value: Any, where: str, problems: list[str], language: Languag
 def forbidden_names(value: Any, where: str, problems: list[str],
                     language: Language) -> tuple[tuple[str, ...], ...] | None:
     """The names a part may not use: dotted names, or modules by their import name; a builtin is written in the
-    language's namespace for them, <namespace>.<name>."""
+    language's namespace for them, <namespace>.<name>. A method called on anything is written `.<name>()` and kept as
+    written, split at its dot: ("", "<name>()")."""
     if not isinstance(value, list) or not value:
         problems.append(f"{where}: must be a non-empty list of dotted names or import names, such as "
                         "[datetime.datetime.now, socket]")
         return None
     found: list[tuple[str, ...]] = []
     for item in value:
-        if not isinstance(item, str) or not NAME_OR_DOTTED.fullmatch(item):
+        method = METHOD.fullmatch(item) if isinstance(item, str) else None
+        if method is not None and method["name"].startswith("__") and method["name"].endswith("__"):
+            problems.append(f"{where}: {item!r} is a dunder method, which no code calls by name")
+        elif method is None and isinstance(item, str) and item.startswith(".") and NAME_OR_DOTTED.fullmatch(item[1:]) \
+                and "." not in item[1:]:
+            problems.append(f"{where}: {item!r} is neither a dotted name nor a method: write {item}() for a method "
+                            "called on anything")
+        elif method is None and (not isinstance(item, str) or not NAME_OR_DOTTED.fullmatch(item)):
             problems.append(f"{where}: {item!r} is not a dotted name such as datetime.datetime.now, nor an import "
-                            "name such as socket")
+                            "name such as socket, nor a method such as .absolute()")
         elif "." not in item and item in language.builtin_names:
             problems.append(f"{where}: {item!r} is a {language.title} builtin, which a bare name does not ban: write "
                             f"{language.namespace}.{item}")

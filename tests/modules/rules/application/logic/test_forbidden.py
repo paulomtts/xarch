@@ -4,7 +4,7 @@ import pytest
 
 from xarch.kernel.logic.placement import Target
 from xarch.modules.rules.application.logic.forbidden import violations
-from xarch.modules.rules.domain.values import Fakes, Framework, Import, Profile, SourceFile, Use
+from xarch.modules.rules.domain.values import Fakes, Framework, Import, MethodCall, Profile, SourceFile, Use
 from xarch.modules.rules.domain.values import TestTier as Tier
 
 NOW = ("datetime", "datetime", "now")
@@ -101,3 +101,39 @@ def test_a_test_of_a_listed_part_in_a_tier_not_held_to_the_list_is_not_checked()
     test = SourceFile("tests/modules/docs/domain/test_doc.py", ("modules", "docs", "domain", "test_doc.py"), (),
                       uses=(Use(3, ("builtins", "open"), 0),))
     assert violations([], [test], loose) == []
+
+
+AMBIENT = Profile(parts={"services": ("modules", "*", "services")}, rules={},
+                  folders=((), ("modules",), ("modules", "*")),
+                  forbidden={"services": (("", "absolute()"), ("", "resolve()"), ("pathlib", "Path", "cwd"))})
+SERVICE = ("modules", "docs", "services", "doc.py")
+
+
+@pytest.mark.parametrize("calls, uses, problems", [
+    pytest.param([MethodCall(4, "absolute")], [],
+                 ["4: services/ of modules/docs may not call .absolute() (parts.services.forbidden)"],
+                 id="a listed method called on anything is reported where it is called"),
+    pytest.param([MethodCall(4, "absolute", held=True)], [], [],
+                 id="a method of the object itself or of what it holds is a port's or its own, not reported"),
+    pytest.param([MethodCall(4, "absolutely"), MethodCall(5, "name")], [], [], id="another method is not reported"),
+    pytest.param([MethodCall(4, "resolve"), MethodCall(4, "absolute")], [],
+                 ["4: services/ of modules/docs may not call .resolve() (parts.services.forbidden)",
+                  "4: services/ of modules/docs may not call .absolute() (parts.services.forbidden)"],
+                 id="two listed methods on one line are each reported"),
+    pytest.param([MethodCall(4, "resolve"), MethodCall(4, "resolve")], [],
+                 ["4: services/ of modules/docs may not call .resolve() (parts.services.forbidden)"],
+                 id="one method twice on one line is reported once"),
+    pytest.param([], [Use(3, ("pathlib", "Path", "cwd"), 2)],
+                 ["3: services/ of modules/docs may not use pathlib.Path.cwd (parts.services.forbidden)"],
+                 id="the dotted names of the same list are read as before"),
+])
+def test_a_method_listed_with_a_leading_dot_is_a_call_of_that_name_on_anything_the_object_does_not_hold(calls, uses,
+                                                                                                         problems):
+    file = SourceFile("app/modules/docs/services/doc.py", SERVICE, (), uses=tuple(uses), method_calls=tuple(calls))
+    assert [str(v).removeprefix("app/modules/docs/services/doc.py:") for v in violations([file], [], AMBIENT)] == problems
+
+
+def test_a_listed_method_says_what_to_do():
+    file = SourceFile("app/modules/docs/services/doc.py", SERVICE, (), method_calls=(MethodCall(4, "absolute"),))
+    assert violations([file], [], AMBIENT)[0].fix == ("do what needs .absolute() outside services/, and hand services/ "
+                                                      "the result")

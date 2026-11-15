@@ -463,9 +463,12 @@ def _forbidden_line(architecture: Architecture) -> str:
     listed = "; ".join(f"{_and(parts)}: {_ticked(tuple('.'.join(n) for n in names))}" for names, parts in groups.items())
     tiers = [tier.name for tier in architecture.tiers if tier.forbidden]
     tests = f", and neither do the {_and(tiers)} tests of those parts" if tiers else ""
+    methods = any(not entry[0] for names in groups for entry in names)
+    seen = (", and a method written `.name()` called on anything but the object itself and what it holds;" if methods
+            else ",")
     return (f"`forbidden`: a part neither imports nor uses by name what is listed for it ({listed}){tests}. It "
-            "catches what is written in the part's own files, through their imports and aliases, not a name reached "
-            "through a variable or `getattr`, nor I/O done on the part's behalf elsewhere.")
+            f"catches what is written in the part's own files, through their imports and aliases{seen} not a name "
+            "reached through a variable or `getattr`, nor I/O done on the part's behalf elsewhere.")
 
 
 def _structure_line(architecture: Architecture) -> str:

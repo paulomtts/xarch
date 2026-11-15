@@ -202,11 +202,16 @@ KEYS: tuple[Key, ...] = (
     _k(PROFILE, "forbidden", "named lists of names a part may not use",
        "a map {<list>: [<dotted name>, ...]}; a part points to one list with `forbidden: <list>`. An entry is a dotted "
        "name as an absolute import binds it (`datetime.datetime.now`; a builtin as `%namespace%.open`, a bare `open` is "
-       "refused) or a whole package (`socket`). A file may not import a listed package or anything below it, nor use "
-       "a listed name, called or not, as the file writes it (through the import that binds it, or a builtin by its "
-       "bare name where nothing shadows it). Silent on a name reached through a variable or `getattr`, a method of an "
-       "object, an annotation, and what a helper in another file does: a ban list, not a proof of purity",
-       "forbidden:\n  pure: [time.time, socket]\n" + _in_part("forbidden: pure\n"), rules=("forbidden",)),
+       "refused), a whole package (`socket`), or a method written with a leading dot and parentheses (`.absolute()`). "
+       "A file may not import a listed package or anything below it, nor use a listed name, called or not, as the "
+       "file writes it (through the import that binds it, or a builtin by its bare name where nothing shadows it), "
+       "nor call a listed method on anything no import names (a variable, a parameter, the result of a call), but on "
+       "the method's own object and what it holds (`self.paths.resolve()`: a port's or its own). A method entry "
+       "matches any object with a method of that name, so it belongs only in a list of parts that never call one "
+       "legitimately. Silent on a name reached through a variable or `getattr`, a method of an object the list does "
+       "not name, an annotation, and what a helper in another file does: a ban list, not a proof of purity",
+       "forbidden:\n  pure: [time.time, socket]\n  ambient: [pathlib.Path.cwd, .absolute()]\n"
+       + _in_part("forbidden: pure\n"), rules=("forbidden",)),
     _k(PROFILE, "layers", "chains of parts from the inside out",
        "a map {<name>: [<part>, ...]}: no part imports one after it in its chain; refused at load when a "
        "`may_import` breaks a chain", "layers:\n  stack: [core, documents]\n" + _TWO),

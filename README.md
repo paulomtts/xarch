@@ -74,7 +74,7 @@ xarch: 2*  name*  based_on  language  hints  excluded
 testing:  <preset> | {files*, functions*, skips, table, mocks}
 parts*:   {<part>: {path*, role*, litmus, may_import, must_import, libraries, forbidden, tier | untested,
                     package_only, folders, holds, types_only, no_callbacks, names, built_by}}
-forbidden: {<list>: [<dotted name>, ...]}       layers: {<chain>: [<part>, ...]}
+forbidden: {<list>: [<dotted name> | .<method>(), ...]}       layers: {<chain>: [<part>, ...]}
 tiers:    {<tier>: {proves, litmus, apply_forbidden, types_only, folder, may_import, must_import, docs}}
 fakes:    {folder*, for*, prefix}
 guards:   {scenario-coverage, no-comments, stand-ins, closed-tree, no-duplicates, no-twins, dead-code,
@@ -169,7 +169,7 @@ that switches or configures each (`-` for none: the rule is always on):
 | `structure` | a folder or file of the layout missing, at any depth, in the app and in every instance of each repeating folder | `parts.path`, `parts.folders` |
 | `rules` | an import between parts that the importing part's `may_import` does not allow, or a name its pattern does not match | `parts.may_import` |
 | `libraries` | an outside package a part does not list; the standard library is always allowed, tests are not checked | `parts.libraries` |
-| `forbidden` | a name or module a part (or, with `apply_forbidden`, its tests) may not use | `forbidden`, `parts.forbidden`, `tiers.apply_forbidden` |
+| `forbidden` | a name or module a part (or, with `apply_forbidden`, its tests) may not use, or a method written `.name()` it may not call on anything but its own object and what that holds | `forbidden`, `parts.forbidden`, `tiers.apply_forbidden` |
 | `tiers` | a test importing what its tier does not allow, or another test file, or a test in no tier | `tiers`, `tiers.folder`, `tiers.may_import`, `parts.tier` |
 | `test-tree` | a folder below `tests/<repeating folder>/` that mirrors no folder of the app | `tiers`, `testing` |
 | `types-only` | a test, or code of a part, calling what it may import only as a type | `tiers.types_only`, `parts.types_only` |

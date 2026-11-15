@@ -50,14 +50,20 @@ PURE = ["datetime.datetime.now", "datetime.datetime.utcnow", "datetime.datetime.
         "time.time", "time.time_ns", "time.monotonic", "time.perf_counter", "builtins.open", "builtins.print",
         "builtins.input", "sys.stdin", "sys.stdout", "sys.stderr", "os.environ", "os.getenv", "socket", "subprocess",
         "sqlite3", "urllib", "http", "shutil", "pathlib.Path.cwd", "pathlib.Path.absolute", "os.getcwd",
-        "os.path.abspath", "os.path.realpath"]
+        "os.path.abspath", "os.path.realpath", "pathlib.Path.resolve", "pathlib.Path.home", "pathlib.Path.expanduser",
+        "os.path.expanduser", "os.getcwdb", "os.chdir"]
+AMBIENT = ["pathlib.Path.cwd", "pathlib.Path.absolute", "pathlib.Path.resolve", "pathlib.Path.home",
+           "pathlib.Path.expanduser", "os.getcwd", "os.getcwdb", "os.chdir", "os.path.abspath", "os.path.realpath",
+           "os.path.expanduser", ".absolute()", ".resolve()", ".expanduser()"]
 
 
 @pytest.mark.parametrize("name", ["cli", "web"])
 def test_the_bundled_profiles_forbid_the_clock_and_io_in_the_pure_parts_and_their_unit_tests(name):
     architecture = load_architecture(name)
     pure = tuple(tuple(n.split(".")) for n in PURE)
-    assert architecture.forbidden == {part: pure for part in ("domain", "logic", "kernel", "ports", "contract")}
+    ambient = tuple(tuple(n.split(".")) for n in AMBIENT)
+    assert architecture.forbidden == {"domain": pure, "logic": pure, "ports": pure, "services": ambient,
+                                      "controller": ambient, "contract": pure, "kernel": pure}
     assert [tier.name for tier in architecture.tiers if tier.forbidden] == ["unit"]
 
 
@@ -73,9 +79,11 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
         "is always allowed, and tests are not checked.",
         "- `forbidden`: a part neither imports nor uses by name what is listed for it (`domain/`, "
         "`application/logic/`, `application/ports/`, `contract/` and `kernel/`: " + ", ".join(f"`{n}`" for n in PURE)
+        + "; `application/services/` and `application/controller.py`: " + ", ".join(f"`{n}`" for n in AMBIENT)
         + "), and neither do the unit tests of those parts. It catches what is written in the part's own files, "
-        "through their imports and aliases, not a name reached through a variable or `getattr`, nor I/O done on the "
-        "part's behalf elsewhere.",
+        "through their imports and aliases, and a method written `.name()` called on anything but the object itself "
+        "and what it holds; not a name reached through a variable or `getattr`, nor I/O done on the part's behalf "
+        "elsewhere.",
         "- `tiers`: a test lives in the folder that mirrors its subject in the app, and imports only that part and "
         "what it may import (a test in a folder that mirrors no part, its tier's subject and what that may import); "
         "only a test whose tier tests `application/ports/` imports the fakes in `tests/fakes/`; it imports no other "

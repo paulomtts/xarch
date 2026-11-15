@@ -386,7 +386,8 @@ class Architecture:
         instance, and the folder it repeats in
     framework: how the test framework names test files and functions; None when no tier or guard needs them
     files: the project files `init` writes besides the docs, in order
-    forbidden: the dotted names and modules a part may not use, by part; a part not listed has none
+    forbidden: the dotted names and modules a part may not use, and the methods it may not call on anything, each as
+        ("", "<name>()"), by part; a part not listed has none
     excluded: the folders below the app that are not its source, in the order of the file
     hints: the project's own advice for a rule id, shown after the built-in fix of a violation of that rule
     based_on: the bundled profile it says it was copied from; empty when it does not say
