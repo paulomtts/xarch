@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import pytest
 
+from tests.modules.spec.application.origins import BASE, PARTS, TESTING, TIER
 from tests.modules.spec.profiles_v2 import layered, parsed
 from xarch.modules.spec.application.logic.looseness import closest, looser, sentence
 
@@ -63,3 +64,19 @@ def test_the_bundled_profile_a_profile_says_it_is_based_on_wins_over_the_one_sha
 ])
 def test_sentence(looser, said):
     assert sentence(*looser) == said
+
+
+def test_every_way_a_profile_is_looser_than_another_is_found_in_order():
+    parts = {**PARTS, "core": {**PARTS["core"], "may_import": ["store"], "libraries": ["yaml"]},
+             "store": {"path": "store", "role": "storage", "may_import": ["core"],
+                       "libraries": ["sqlmodel", "requests"], "untested": "trust me"}}
+    custom = {**BASE, "parts": parts, "forbidden": {"pure": ["socket"]},
+              "tiers": {"unit": {key: value for key, value in TIER.items() if key != "types_only"}
+                        | {"apply_forbidden": False}},
+              "testing": {**TESTING, "skips": ["pytest.mark.skip"]}, "guards": {},
+              "files": {"tests/test_rules.py": {"from": "guard.py"}}}
+    assert looser(parsed(custom), parsed(BASE)) == [
+        ("may_import", "core", "store"), ("libraries", "core", "yaml"), ("libraries", "store", "requests"),
+        ("forbidden", "core", "time.time"), ("untested", "store", ""), ("types_only", "unit", "store"),
+        ("apply_forbidden", "unit", ""), ("testing.skips", "", "pytest.mark.xfail"),
+        ("files.pinned", "", "tests/test_rules.py")]
