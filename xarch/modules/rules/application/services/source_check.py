@@ -5,7 +5,6 @@ from pathlib import Path
 
 from xarch.modules.rules.application.logic import (
     closed_tree,
-    comments,
     cycles,
     dead_code,
     duplicates,
@@ -75,8 +74,7 @@ class SourceCheckService:
         found += duplicates.violations(app, rules)
         found += twins.violations(app, rules)
         found += dead_code.violations(app, test_files, rules, tests is not None)
-        if rules.no_comments:
-            found += comments.violations([*app, *test_files], rules.language)
+        found += run(book["no-comments"], facts, rules)
         resolved = self._tree.resolved(root)
         shown = resolved.name
         found += closed_tree.violations(paths, rules, shown)

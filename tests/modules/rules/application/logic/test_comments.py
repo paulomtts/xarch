@@ -2,8 +2,9 @@
 shebang on line 1 or an encoding declaration on line 1 or 2."""
 import pytest
 
+from tests.modules.rules.application.logic.checks import comment_allowed as allowed
+from tests.modules.rules.application.logic.checks import no_comments as violations
 from tests.modules.rules.builders import PYTHON, source
-from xarch.modules.rules.application.logic.comments import allowed, violations
 from xarch.modules.rules.domain.values import Comment
 
 

@@ -4,11 +4,14 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+from xarch.kernel.logic.language import LanguageView
 from xarch.kernel.violations import Violation, Weak
 from xarch.modules.rules.application.logic import expansion
 from xarch.modules.rules.application.logic.engine import run
 from xarch.modules.rules.application.logic.facts import facts_of
-from xarch.modules.rules.domain.values import Profile, SourceFile
+from xarch.modules.rules.application.logic.filters import holds
+from xarch.modules.rules.domain.rule import Fact, Found, Read
+from xarch.modules.rules.domain.values import Comment, Profile, SourceFile
 
 
 def libraries(files: Iterable[SourceFile], profile: Profile, root: str) -> list[Violation | Weak]:
@@ -61,3 +64,17 @@ def names(app: Iterable[SourceFile], profile: Profile) -> list[Violation | Weak]
 
 def no_callbacks(app: Iterable[SourceFile], profile: Profile) -> list[Violation | Weak]:
     return run(expansion.no_callbacks(profile), facts_of(app, [], profile, ""), profile)
+
+
+def no_comments(files: Iterable[SourceFile], language: LanguageView) -> list[Violation | Weak]:
+    profile = Profile(parts={}, rules={}, no_comments=True, language=language)
+    return run(expansion.no_comments(profile), facts_of(files, [], profile, ""), profile)
+
+
+def comment_allowed(comment: Comment, language: LanguageView) -> bool:
+    """Whether the no-comments rule excuses a comment: the language's tools read it."""
+    profile = Profile(parts={}, rules={}, no_comments=True, language=language)
+    (rule,) = expansion.no_comments(profile)
+    found = Found(rule, Read(SourceFile("x", ("x",), ()), ("x",), False, False), Fact("comment", comment.line,
+                                                                                       text=comment.text))
+    return holds("read-by-a-tool", found, facts_of([], [], profile, ""), profile)
