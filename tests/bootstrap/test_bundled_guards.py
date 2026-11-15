@@ -35,7 +35,7 @@ def test_the_bundled_profiles_use_every_guard_of_their_own(name):
         no_comments=True,
         stand_ins=StandInsView(tuple(("unittest", "mock", m) for m in mocks), (("unittest", "mock", "create_autospec"),),
                                ("spec", "spec_set"), (FixtureView("mocker", mocks, ("create_autospec",)),)),
-        no_duplicates=4, dead_code=True, untested=True, pass_through=("services", "controller", "adapters"),
+        no_duplicates=4, no_twins=3, dead_code=True, untested=True, pass_through=("services", "controller", "adapters"),
         private_imports=True)
     skips = ("pytest.mark.skip", "pytest.mark.skipif", "pytest.mark.xfail", "pytest.skip", "pytest.xfail",
              "pytest.importorskip", "unittest.skip", "unittest.skipIf", "unittest.skipUnless", "unittest.expectedFailure")
@@ -114,6 +114,8 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
         "(or, from a fixture, `mocker.Mock(spec=<Port>)`), never a read port (section 6).",
         "- `no-duplicates`: no two functions of the app have the same code, names and formatting aside, when each "
         "holds at least 4 statements; tests are not compared.",
+        "- `no-twins`: no two public classes in parts of different names declare the same fields in the same order, "
+        "when each declares at least 3; types and defaults aside, tests not read.",
         "- `dead-code`: every `Protocol` in `application/ports/` is named by another file of the app, and every fake "
         "in `tests/fakes/` by a test; the wiring and re-exports do not count. A file of a part with a tier that no "
         "test of that tier reaches, directly or through files of parts of the same tier, is listed in the "

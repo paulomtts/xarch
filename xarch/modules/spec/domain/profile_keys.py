@@ -26,6 +26,7 @@ FAKES = "fakes"
 GUARD = "guard"
 SCENARIO_COVERAGE = "guard.scenario-coverage"
 NO_DUPLICATES = "guard.no-duplicates"
+NO_TWINS = "guard.no-twins"
 DEAD_CODE = "guard.dead-code"
 PASS_THROUGH = "guard.pass-through"
 DOCS = "docs"
@@ -46,6 +47,7 @@ SCOPES = {
     GUARD: "guards",
     SCENARIO_COVERAGE: "guards.scenario-coverage",
     NO_DUPLICATES: "guards.no-duplicates",
+    NO_TWINS: "guards.no-twins",
     DEAD_CODE: "guards.dead-code",
     PASS_THROUGH: "guards.pass-through",
     DOCS: "docs",
@@ -174,8 +176,8 @@ def _guard(name: str, meaning: str, example: str) -> Key:
     return Key(GUARD, name, meaning, GUARDS[name], example, False, True, (name,), _GUARD_SCOPES.get(name, ""))
 
 
-_GUARD_SCOPES = {"scenario-coverage": SCENARIO_COVERAGE, "no-duplicates": NO_DUPLICATES, "dead-code": DEAD_CODE,
-                 "pass-through": PASS_THROUGH}
+_GUARD_SCOPES = {"scenario-coverage": SCENARIO_COVERAGE, "no-duplicates": NO_DUPLICATES, "no-twins": NO_TWINS,
+                 "dead-code": DEAD_CODE, "pass-through": PASS_THROUGH}
 
 
 KEYS: tuple[Key, ...] = (
@@ -400,6 +402,8 @@ KEYS: tuple[Key, ...] = (
     _guard("stand-ins", "a %interface% is faked, or mocked with a spec", _STAND_INS + _guarded("stand-ins: {}\n")),
     _guard("closed-tree", "every file lies in a part", _guarded("closed-tree: {}\n")),
     _guard("no-duplicates", "no two functions with the same code", _guarded("no-duplicates: {min_statements: 6}\n")),
+    _guard("no-twins", "no two classes in different parts with the same fields",
+           _guarded("no-twins: {min_fields: 3}\n")),
     _guard("dead-code", "no %interface% nothing names, no fake no test uses", _TWO + _FAKES + _guarded("dead-code: {}\n")),
     _guard("pass-through", "a method that only forwards is listed", _TWO + _guarded("pass-through:\n  parts: [documents]\n")),
     _guard("private-imports", "no name starting with `_` is imported from another file",
@@ -418,6 +422,9 @@ KEYS: tuple[Key, ...] = (
 
     _k(NO_DUPLICATES, "min_statements", "the fewest statements that count", "a whole number, 4 when left out",
        _guarded("no-duplicates: {min_statements: 6}\n"), rules=("no-duplicates",)),
+
+    _k(NO_TWINS, "min_fields", "the fewest fields that count", "a whole number, 3 when left out",
+       _guarded("no-twins: {min_fields: 3}\n"), rules=("no-twins",)),
 
     _k(DEAD_CODE, "untested", "also list the files no test of their tier reaches",
        "true or false: every file of a part that has a `tier`, which no test code of that tier (a file below the "

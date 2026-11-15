@@ -300,6 +300,12 @@ class NoDuplicates:
 
 
 @dataclass(frozen=True)
+class NoTwins:
+    """The guard no-twins: the fewest fields a class needs to count as a twin of another."""
+    min_fields: int = 3
+
+
+@dataclass(frozen=True)
 class DeadCode:
     """The guard dead-code: the ports and fakes come from `fakes`; untested: also list each file of a part with a
     tier that no test of that tier reaches."""
@@ -317,8 +323,8 @@ class PassThrough:
     parts: tuple[str, ...]
 
 
-Guard = (PackageOnly | ScenarioCoverage | NoComments | StandIns | ClosedTree | NoDuplicates | DeadCode | PassThrough
-         | PrivateImports)
+Guard = (PackageOnly | ScenarioCoverage | NoComments | StandIns | ClosedTree | NoDuplicates | NoTwins | DeadCode
+         | PassThrough | PrivateImports)
 
 
 @dataclass(frozen=True)

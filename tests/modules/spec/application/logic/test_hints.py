@@ -20,8 +20,8 @@ def test_every_rule_id_may_carry_a_hint(rule):
 
 
 KNOWN = ("built-by, closed-tree, cycles, dead-code, forbidden, holds, libraries, must-import, names, no-callbacks, "
-         "no-comments, no-duplicates, package-only, pass-through, private-imports, rules, scenario-coverage, "
-         "stand-ins, structure, syntax, test-tree, tiers, types-only")
+         "no-comments, no-duplicates, no-twins, package-only, pass-through, private-imports, rules, "
+         "scenario-coverage, stand-ins, structure, syntax, test-tree, tiers, types-only")
 
 
 @pytest.mark.parametrize("hints, problem", [

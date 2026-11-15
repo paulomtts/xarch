@@ -77,8 +77,8 @@ parts*:   {<part>: {path*, role*, litmus, may_import, must_import, libraries, fo
 forbidden: {<list>: [<dotted name>, ...]}       layers: {<chain>: [<part>, ...]}
 tiers:    {<tier>: {proves, litmus, apply_forbidden, types_only, folder, may_import, must_import, docs}}
 fakes:    {folder*, for*, prefix}
-guards:   {scenario-coverage, no-comments, stand-ins, closed-tree, no-duplicates, dead-code, pass-through,
-           private-imports}
+guards:   {scenario-coverage, no-comments, stand-ins, closed-tree, no-duplicates, no-twins, dead-code,
+           pass-through, private-imports}
 files:    {<path>: <from> | {from*, pinned, fill}}      docs: {entry, pages, naming, examples, example_notes}
 ```
 
@@ -181,9 +181,10 @@ that switches or configures each (`-` for none: the rule is always on):
 | `stand-ins` | a read port without a fake, or a mock without a spec or with a read port's | `guards.stand-ins`, `fakes` |
 | `closed-tree` | a Python file of the app that lies in no part | `guards.closed-tree` |
 | `no-duplicates` | two functions or methods of the app with the same code | `guards.no-duplicates` |
+| `no-twins` | two public classes in parts of different names that declare the same fields in the same order: one type written twice | `guards.no-twins` |
 | `dead-code` | a port no other file names, a fake no test uses; with `untested`, a file no test of its tier reaches, listed as `weak` only | `guards.dead-code`, `fakes` |
-| `pass-through` | a method that only forwards its arguments to a collaborator; never a violation: listed as `weak`, and fails only `--strict` | `guards.pass-through` |
-| `holds` | a public function at the top level of a part that holds classes, or a public class in one that holds functions; listed as `weak`, and fails only `--strict` | `parts.holds` |
+| `pass-through` | a method that only forwards its arguments to a collaborator, or returns an attribute of what that call answers; never a violation: listed as `weak`, and fails only `--strict` | `guards.pass-through` |
+| `holds` | a public function at the top level of a part that holds classes, or a class (whatever its name) in one that holds functions; listed as `weak`, and fails only `--strict` | `parts.holds` |
 | `no-callbacks` | a function of a part that calls one of its own parameters annotated as a callable | `parts.no_callbacks` |
 | `names` | a public class of a part whose name matches none of the part's patterns | `parts.names` |
 | `built-by` | a call of the constructor of a part's class from a part it does not list | `parts.built_by` |

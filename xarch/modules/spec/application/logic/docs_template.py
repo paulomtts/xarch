@@ -68,6 +68,7 @@ from xarch.modules.spec.domain.values import (
     Language,
     Layout,
     NoDuplicates,
+    NoTwins,
     PackageOnly,
     Part,
     PassThrough,
@@ -506,6 +507,9 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
         case PrivateImports():
             return ("`private-imports`: no file of the app or its tests imports a name that starts with `_` from "
                     "another file of them.")
+        case NoTwins(least):
+            return (f"`no-twins`: no two public classes in parts of different names declare the same fields in the "
+                    f"same order, when each declares at least {least}; types and defaults aside, tests not read.")
         case PassThrough(parts):
             shown = _and([f"`{_shown(architecture, architecture.parts[p])}`" for p in parts])
             return (f"`pass-through`: a method of {shown} whose whole body forwards to one call on a collaborator, or "

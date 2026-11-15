@@ -18,6 +18,7 @@ MODULES = {"modules/mod/__init__.py": "", "modules/mod/contract/__init__.py": ""
            "modules/mod/adapters/docs_review.py": "from app.modules.docs.contract import Published\n"}
 PORT = "from typing import Protocol\n\nclass Repo(Protocol):\n    def get(self) -> int: ...\n"
 NOTIFIER = "from typing import Protocol\n\n\nclass Notifier(Protocol):\n    def send(self) -> None: ...\n"
+TWIN = "class Doc:\n    title: str\n    body: str\n    author: str\n"
 COPY = "def copy(a):\n    b = a + 1\n    c = b * 2\n    d = c - 3\n    return d\n"
 BUNDLED = Path(xarch.__file__).parent / "architectures"
 
@@ -68,6 +69,9 @@ CASES = [
     pytest.param({"kernel/a.py": COPY, "kernel/b.py": COPY}, {}, "no-duplicates",
                  "keep one of the two and import it where the other is, or move it to a part both may import when they "
                  "cannot import each other", id="no-duplicates"),
+    pytest.param({"modules/docs/domain/document.py": TWIN, "modules/docs/contract/views.py": TWIN.replace("Doc", "DocView")},
+                 {}, "no-twins", "keep one of the two and import it from a part both may import, or give DocView the "
+                                 "fields its reader needs instead of a copy of Doc's", id="no-twins"),
     pytest.param({"modules/docs/application/ports/notifier.py": NOTIFIER}, {}, "dead-code",
                  "delete Notifier and its fake, or add the code that uses it", id="dead-code: a port"),
     pytest.param({}, {"fakes/notifier.py": "class FakeNotifier:\n    def send(self) -> None: ...\n"}, "dead-code",

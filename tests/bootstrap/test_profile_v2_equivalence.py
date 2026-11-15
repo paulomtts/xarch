@@ -11,7 +11,14 @@ import pytest
 import xarch
 from xarch.bootstrap.wiring import build_controllers, build_spec, load_architecture
 from xarch.modules.spec.contract import Migrated, MigrateProfile
-from xarch.modules.spec.domain.values import Architecture, DeadCode, NoDuplicates, PassThrough, PrivateImports
+from xarch.modules.spec.domain.values import (
+    Architecture,
+    DeadCode,
+    NoDuplicates,
+    NoTwins,
+    PassThrough,
+    PrivateImports,
+)
 
 FROZEN = Path(__file__).parent / "profiles_v1"
 CWD = {("pathlib", "Path", "cwd"), ("pathlib", "Path", "absolute"), ("os", "getcwd"), ("os", "path", "abspath"),
@@ -51,13 +58,13 @@ def comparable(architecture: Architecture) -> Architecture:
     migration one), the tiers' examples and subjects' order, the order of the parts, what the profile is based on, and
     what format 1 never had: each part's `must_import`, `holds`, `types_only`, `no_callbacks`, `names` and `built_by`,
     a tier's `must_import`, a name pattern on a target, the names that read the working directory in a `forbidden`
-    list, and the guards no-duplicates, dead-code, pass-through and private-imports."""
+    list, and the guards no-duplicates, no-twins, dead-code, pass-through and private-imports."""
     tiers = tuple(replace(tier, subject=tuple(sorted(tier.subject, key=lambda s: s.part)), example=None, helpers=(),
                           must_import=()) for tier in architecture.tiers)
     parts = {name: replace(part, must_import=(), holds="", types_only=(), no_callbacks=False, names=(), built_by=())
              for name, part in architecture.parts.items()}
     guards = tuple(g for g in architecture.guards
-                   if not isinstance(g, (NoDuplicates, DeadCode, PassThrough, PrivateImports)))
+                   if not isinstance(g, (NoDuplicates, NoTwins, DeadCode, PassThrough, PrivateImports)))
     rules = {name: tuple(replace(t, names="") for t in targets) for name, targets in architecture.rules.items()}
     forbidden = {name: tuple(n for n in names if n not in CWD) for name, names in architecture.forbidden.items()}
     return replace(architecture, tiers=tiers, examples={}, files=(), placement=(), based_on="", parts=parts,

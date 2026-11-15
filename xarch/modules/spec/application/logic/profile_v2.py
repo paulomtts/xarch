@@ -67,6 +67,7 @@ from xarch.modules.spec.domain.profile_keys import (
     MOCKS,
     MOVED,
     NO_DUPLICATES,
+    NO_TWINS,
     PART,
     PASS_THROUGH,
     PROFILE,
@@ -89,6 +90,7 @@ from xarch.modules.spec.domain.values import (
     Layout,
     NoComments,
     NoDuplicates,
+    NoTwins,
     PackageOnly,
     Part,
     PassThrough,
@@ -752,6 +754,8 @@ def _guards(value: Any, specs: dict[str, Any], parts: dict[str, Part], declared:
                 guards.append(guard)
         elif name == "no-duplicates":
             guards.append(_no_duplicates(spec, where, problems))
+        elif name == "no-twins":
+            guards.append(_no_twins(spec, where, problems))
         elif name == "pass-through":
             guard = _pass_through(spec, declared, parts, where, problems)
             if guard is not None:
@@ -881,6 +885,21 @@ def _no_duplicates(spec: Any, where: str, problems: list[str]) -> NoDuplicates:
                         f"{NoDuplicates.min_statements}")
         return NoDuplicates()
     return NoDuplicates(least)
+
+
+def _no_twins(spec: Any, where: str, problems: list[str]) -> NoTwins:
+    if spec in ({}, None):
+        return NoTwins()
+    if not isinstance(spec, Mapping):
+        problems.append(f"{where}: must be a mapping {{min_fields: <number>}}, or {{}} for the default")
+        return NoTwins()
+    problems += ck.unknown_keys(spec, names_of(NO_TWINS), where)
+    least = spec.get("min_fields", NoTwins.min_fields)
+    if isinstance(least, bool) or not isinstance(least, int) or least < 1:
+        problems.append(f"{where}.min_fields: must be a whole number of fields, at least 1, such as "
+                        f"{NoTwins.min_fields}")
+        return NoTwins()
+    return NoTwins(least)
 
 
 def _pass_through(spec: Any, declared: set[str], parts: dict[str, Part], where: str,

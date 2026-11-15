@@ -12,6 +12,7 @@ from xarch.modules.spec.domain.values import (
     Framework,
     NoComments,
     NoDuplicates,
+    NoTwins,
     PackageOnly,
     PassThrough,
     ScenarioCoverage,
@@ -346,8 +347,8 @@ def test_guards_are_off_unless_named_and_package_only_comes_first():
     pytest.param(3, ["layered.yaml: guards: must be a mapping of guard names to their parameters, such as "
                      "{no-comments: {}}"], id="not a mapping"),
     pytest.param({"colour": {}}, ["layered.yaml: guards: unknown guard 'colour': use closed-tree, dead-code, "
-                                  "no-comments, no-duplicates, pass-through, private-imports, scenario-coverage, "
-                                  "stand-ins"],
+                                  "no-comments, no-duplicates, no-twins, pass-through, private-imports, "
+                                  "scenario-coverage, stand-ins"],
                  id="an unknown guard"),
     pytest.param({"package-only": ["api"]}, ["layered.yaml: guards.package-only: a fact about a part in format 2: write "
                                              "`package_only: true` on each part"], id="package-only moved to the parts"),
@@ -367,6 +368,8 @@ def test_the_new_guards_take_their_parameters_and_dead_code_needs_fakes():
                                "pass-through": {"parts": ["service", "api"]}}, fakes=FAKES)
     assert parsed(document).guards == (NoDuplicates(6), DeadCode(), PassThrough(("service", "api")))
     assert parsed(covered(guards={"no-duplicates": {}})).guards == (NoDuplicates(4),)
+    assert parsed(covered(guards={"no-twins": {"min_fields": 5}})).guards == (NoTwins(5),)
+    assert parsed(covered(guards={"no-twins": {}})).guards == (NoTwins(3),)
 
 
 @pytest.mark.parametrize("guards, expected", [
@@ -377,6 +380,12 @@ def test_the_new_guards_take_their_parameters_and_dead_code_needs_fakes():
     pytest.param({"no-duplicates": {"min_statements": 0}},
                  ["layered.yaml: guards.no-duplicates.min_statements: must be a whole number of statements, at least "
                   "1, such as 4"], id="no-duplicates, zero"),
+    pytest.param({"no-twins": [3]}, ["layered.yaml: guards.no-twins: must be a mapping {min_fields: <number>}, or {} "
+                                     "for the default"], id="no-twins, no map"),
+    pytest.param({"no-twins": {"fields": 3}}, ["layered.yaml: guards.no-twins: unknown key 'fields': use min_fields"],
+                 id="no-twins, an unknown key"),
+    pytest.param({"no-twins": {"min_fields": 0}}, ["layered.yaml: guards.no-twins.min_fields: must be a whole number "
+                                                   "of fields, at least 1, such as 3"], id="no-twins, zero"),
     pytest.param({"no-duplicates": {"min_statements": True}},
                  ["layered.yaml: guards.no-duplicates.min_statements: must be a whole number of statements, at least "
                   "1, such as 4"], id="no-duplicates, a boolean"),

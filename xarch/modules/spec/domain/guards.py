@@ -27,6 +27,12 @@ GUARDS = {
                      "async or not, and number of parameters; what is called is part of it. A function counts when "
                      "it holds at least min_statements statements (nested ones counted; 4 when left out). The first "
                      "by file and line is the original; each other is reported naming it",
+    "no-twins": "{min_fields: <number>}: no two public classes of the app (never its tests), defined at the top level "
+                "of files of parts with different names, declare the same fields in the same order: the names their "
+                "bodies annotate, types and defaults aside, class variables left out. A class counts when it "
+                "declares at least min_fields of them (3 when left out) and is no %interface%; two classes of the "
+                "same part, in one instance of a repeating folder or two, are not compared. The first by file and "
+                "line is the original; each other is reported naming the first one before it in another part",
     "dead-code": "{untested: true|false}: every port (a %interface% in a part `fakes.for` names) is named by another file "
                  "of the app, in code or an annotation, and every fake (a top-level class of the fakes folder whose "
                  "name starts with `prefix`) is named by a test outside that folder or by a fake that is itself used. "

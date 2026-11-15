@@ -169,6 +169,7 @@ guards:
   closed-tree: {}
   stand-ins: {}
   no-duplicates: {min_statements: 4}
+  no-twins: {min_fields: 3}
   dead-code: {untested: true}
   pass-through: {parts: [services, controller, adapters]}
   private-imports: {}

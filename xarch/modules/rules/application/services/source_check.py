@@ -25,6 +25,7 @@ from xarch.modules.rules.application.logic import (
     stand_ins,
     syntax,
     tier_imports,
+    twins,
     types_only,
 )
 from xarch.modules.rules.application.logic.imports import violations
@@ -79,6 +80,7 @@ class SourceCheckService:
         found += built_by.violations(app, rules, package)
         found += private_imports.violations(app, test_files, rules, package, tests_root)
         found += duplicates.violations(app, rules)
+        found += twins.violations(app, rules)
         found += dead_code.violations(app, test_files, rules, tests is not None)
         if rules.no_comments:
             found += comments.violations([*app, *test_files])

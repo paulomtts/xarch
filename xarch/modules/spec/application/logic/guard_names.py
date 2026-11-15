@@ -7,6 +7,7 @@ from xarch.modules.spec.domain.values import (
     Guard,
     NoComments,
     NoDuplicates,
+    NoTwins,
     PackageOnly,
     PassThrough,
     PrivateImports,
@@ -16,7 +17,7 @@ from xarch.modules.spec.domain.values import (
 
 _GUARD_NAMES: dict[type, str] = {PackageOnly: "package-only", ScenarioCoverage: "scenario-coverage",
                                  NoComments: "no-comments", StandIns: "stand-ins", ClosedTree: "closed-tree",
-                                 NoDuplicates: "no-duplicates", DeadCode: "dead-code", PassThrough: "pass-through",
+                                 NoDuplicates: "no-duplicates", NoTwins: "no-twins", DeadCode: "dead-code", PassThrough: "pass-through",
                                  PrivateImports: "private-imports"}
 
 

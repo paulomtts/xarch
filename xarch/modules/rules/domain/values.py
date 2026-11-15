@@ -137,7 +137,8 @@ class Profile:
     forbidden holds, by part, the dotted names and modules a part may not use. info says each part in words. excluded
     holds the folders below the app that are not its source: no check reads a file below one. must_import holds, by
     part, the targets each of its files must import one of (or an outside package); no_duplicates is the fewest
-    statements a function needs to count as a duplicate (None: off); dead_code switches the unused ports and fakes
+    statements a function needs to count as a duplicate (None: off); no_twins the fewest fields a class needs to count
+    as a twin of another (None: off); dead_code switches the unused ports and fakes
     check on; pass_through lists the parts whose methods that only forward are listed (empty: off). untested lists,
     with dead_code, the files of a tiered part no test of its tier reaches. holds says, by part, what its files define
     ("classes" or "functions"); types_only, by part, the parts it may use as types only; no_callbacks the parts whose
@@ -163,6 +164,7 @@ class Profile:
     excluded: tuple[Exclusion, ...] = ()
     must_import: dict[str, tuple[Target, ...]] = field(default_factory=dict)
     no_duplicates: int | None = None
+    no_twins: int | None = None
     dead_code: bool = False
     pass_through: tuple[str, ...] = ()
     untested: bool = False

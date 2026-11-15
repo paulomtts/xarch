@@ -13,8 +13,8 @@ APP = Path("/p/app")
 MINE = {**BASE, "name": "mine", "based_on": "base"}
 WITH_EXAMPLE = {**MINE, "docs": {"examples": ["ex"]}}
 WITH_EXAMPLE_FILES = {"ex/core/rule.py": "from app.api import handler\n", "ex/api/handler.py": "X = 1\n"}
-OFF = ("package-only", "scenario-coverage", "no-comments", "stand-ins", "closed-tree", "no-duplicates", "dead-code",
-       "pass-through", "private-imports")
+OFF = ("package-only", "scenario-coverage", "no-comments", "stand-ins", "closed-tree", "no-duplicates", "no-twins",
+       "dead-code", "pass-through", "private-imports")
 
 
 @pytest.mark.parametrize("given, when, then", [

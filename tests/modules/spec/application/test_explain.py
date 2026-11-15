@@ -66,6 +66,7 @@ SHAPE = (
     Shown('guards.stand-ins', 1, 'a Protocol is faked, or mocked with a spec', False, True),
     Shown('guards.closed-tree', 1, 'every file lies in a part', False, True),
     Shown('guards.no-duplicates', 1, 'no two functions with the same code', False, True),
+    Shown('guards.no-twins', 1, 'no two classes in different parts with the same fields', False, True),
     Shown('guards.dead-code', 1, 'no Protocol nothing names, no fake no test uses', False, True),
     Shown('guards.pass-through', 1, 'a method that only forwards is listed', False, True),
     Shown('guards.private-imports', 1, 'no name starting with `_` is imported from another file', False, True),
