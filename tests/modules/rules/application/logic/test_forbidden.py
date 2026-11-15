@@ -2,11 +2,11 @@
 name it lists, and a test of a tier that says so is held to the list of the part it mirrors."""
 import pytest
 
+from tests.modules.rules.application.logic.checks import forbidden as violations
 from xarch.kernel.logic.placement import Target
 from xarch.kernel.logic.source import Import
 from xarch.kernel.logic.testing import Fakes, Framework
 from xarch.kernel.logic.testing import TierView as Tier
-from xarch.modules.rules.application.logic.forbidden import violations
 from xarch.modules.rules.domain.values import MethodCall, Profile, SourceFile, Use
 
 NOW = ("datetime", "datetime", "now")

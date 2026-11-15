@@ -13,3 +13,7 @@ from xarch.modules.rules.domain.values import Profile, SourceFile
 
 def libraries(files: Iterable[SourceFile], profile: Profile, root: str) -> list[Violation | Weak]:
     return run(expansion.libraries(profile), facts_of(files, [], profile, root), profile)
+
+
+def forbidden(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile) -> list[Violation | Weak]:
+    return run(expansion.forbidden(profile), facts_of(app, tests, profile, ""), profile)

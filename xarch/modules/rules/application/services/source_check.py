@@ -12,7 +12,6 @@ from xarch.modules.rules.application.logic import (
     duplicates,
     enforcement,
     expansion,
-    forbidden,
     holds,
     must_import,
     names,
@@ -67,7 +66,7 @@ class SourceCheckService:
         tests_root = self._tree.resolved(tests).name if tests is not None else ""
         facts = facts_of(app, test_files, rules, package, tests_root)
         found = broken + violations(app, rules, package) + run(expansion.libraries(rules), facts, rules)
-        found += forbidden.violations(app, test_files, rules)
+        found += run(expansion.forbidden(rules), facts, rules)
         found += cycles.violations(app, rules, package)
         found += tier_imports.violations(test_files, app, rules, package, tests_root)
         found += types_only.violations(test_files, app, rules, package)
