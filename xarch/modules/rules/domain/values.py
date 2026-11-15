@@ -18,7 +18,7 @@ class TestTier:
     places nothing. may_import is what the tests in that folder may import of the app; None: the tier's subject parts
     and whatever each may import. types_only holds the parts its tests may use as types but never call. forbidden: its tests are held to the
     forbidden list of the part they mirror. proves, may_touch, litmus and one_file_per are the profile's words for the
-    tier, which `where` shows.
+    tier, which `where` shows. must_import holds the parts one of which each of its test files must reach.
     """
     name: str
     subject: tuple[Target, ...]
@@ -30,6 +30,7 @@ class TestTier:
     litmus: str = ""
     one_file_per: str = ""
     may_import: tuple[Target, ...] | None = None
+    must_import: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -124,7 +125,11 @@ class Profile:
     holds the folders below the app that are not its source: no check reads a file below one. must_import holds, by
     part, the targets each of its files must import one of (or an outside package); no_duplicates is the fewest
     statements a function needs to count as a duplicate (None: off); dead_code switches the unused ports and fakes
-    check on; pass_through lists the parts whose methods that only forward are listed (empty: off).
+    check on; pass_through lists the parts whose methods that only forward are listed (empty: off). untested lists,
+    with dead_code, the files of a tiered part no test of its tier reaches. holds says, by part, what its files define
+    ("classes" or "functions"); types_only, by part, the parts it may use as types only; no_callbacks the parts whose
+    code calls none of its own parameters; names, by part, the patterns its public classes match one of; built_by, by
+    part, the parts that alone may build its classes; private_imports switches the private-imports guard on.
     """
     parts: dict[str, tuple[str, ...]]
     rules: dict[str, tuple[Target, ...]]
@@ -146,6 +151,13 @@ class Profile:
     no_duplicates: int | None = None
     dead_code: bool = False
     pass_through: tuple[str, ...] = ()
+    untested: bool = False
+    holds: dict[str, str] = field(default_factory=dict)
+    types_only: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    no_callbacks: tuple[str, ...] = ()
+    names: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    built_by: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    private_imports: bool = False
 
     def words(self) -> dict[str, str]:
         """The word of the repeating folder each part lies in; a part outside every one has none."""
@@ -208,6 +220,19 @@ class ParameterCall:
 
 
 @dataclass(frozen=True)
+class Callback:
+    """A call of a function's own parameter by its bare name, `<parameter>(...)`, and the line it is on: the name of
+    the function whose parameter it is ("<lambda>" for a lambda), and of the parameter; receiver is whether the
+    parameter is the first one of a method, the object or class it is called on; annotated whether its annotation
+    says it is a callable. Only a parameter its function's signature alone binds is read, as for a ParameterCall."""
+    line: int
+    function: str
+    parameter: str
+    receiver: bool = False
+    annotated: bool = False
+
+
+@dataclass(frozen=True)
 class Use:
     """A name read where it is used, called or not, as the dotted path it reaches, and the line it is on: `dt.now`
     after `from datetime import datetime as dt` is ("datetime", "datetime", "now"). bound is how many steps of the
@@ -231,13 +256,15 @@ class Method:
 class Class:
     """A module-level class: its bases, each a Ref (`Protocol[T]` names Protocol), the methods of its body, and its
     attributes: the names its body assigns, and those its methods assign on their first parameter (`self.x = ...`);
-    named: every name its bases and body mention, by its last step alone."""
+    named: every name its bases and body mention, by its last step alone; exception: it derives from one of Python's
+    builtin exceptions, named by its bare name, directly or through a class defined before it in the same file."""
     line: int
     name: str
     bases: tuple[Ref, ...] = ()
     methods: tuple[Method, ...] = ()
     attributes: tuple[str, ...] = ()
     named: frozenset[str] = frozenset()
+    exception: bool = False
 
 
 @dataclass(frozen=True)
@@ -270,7 +297,9 @@ class Function:
     is its code with the docstring dropped and every local name (its parameters and what it binds) numbered in order
     of appearance, as one text; "" when statements is 0. forwards is the dotted callee, such as `self.repo.get`, of
     a method with no decorator whose whole body is one return (or bare call) of one call on an attribute of its
-    first parameter, every other parameter passed straight through and nothing else; "" otherwise."""
+    first parameter, every other parameter passed straight through and nothing else; "" otherwise. returns_named is
+    every name its return annotation mentions, by its last step alone, a string annotation read as the expression it
+    holds."""
     line: int
     name: str
     tables: tuple[Table, ...] = ()
@@ -281,6 +310,7 @@ class Function:
     statements: int = 0
     shape: str = ""
     forwards: str = ""
+    returns_named: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -290,8 +320,8 @@ class SourceFile:
     classes, the calls of the methods of its functions' parameters, the uses of the names it reads and the names it
     defines at module level as functions, in order (module_functions: a name that one `def` binds and nothing else
     binds, so that what it names is a function). named is every name the file mentions anywhere, annotations
-    included, by its last step alone. error is how it fails to parse, as (line, message), and then it holds nothing
-    else."""
+    included, by its last step alone; callbacks are the calls of a function's own parameter. error is how it fails
+    to parse, as (line, message), and then it holds nothing else."""
     name: str
     path: tuple[str, ...]
     imports: tuple[Import, ...]
@@ -305,6 +335,7 @@ class SourceFile:
     parameter_calls: tuple[ParameterCall, ...] = ()
     module_functions: tuple[str, ...] = ()
     named: frozenset[str] = frozenset()
+    callbacks: tuple[Callback, ...] = ()
 
 
 @dataclass(frozen=True)

@@ -18,6 +18,15 @@ A use is every name read in the file's code, called or not, and every chain of a
 the whole chain), read the same way; a name no scope binds that is one of Python's builtins is the use
 ("builtins", <name>), unless the file holds a star import, which might bind it. Annotations are not read for uses.
 
+A call of a parameter itself by its bare name, `<parameter>(...)`, is listed as a callback under the same condition,
+with the name of the function whose parameter it is; the first parameter of a function defined in a class body is
+marked as its receiver, unless the function is decorated `staticmethod`, and a parameter whose annotation is
+`Callable` (of typing or collections.abc, read through the import that binds it; alone, subscripted, in a `|` union,
+inside `Optional[...]`, or as the text of a string annotation) is marked as annotated callable.
+
+A class is an exception when one of its bases is the bare name of a builtin exception that the module does not bind
+(and the file holds no star import), or a class defined before it in the file that is one.
+
 A file also lists every name it mentions (`named`), by its last step alone, in code and in annotations, a string
 annotation read as the expression it holds, and every imported name; a class lists the same for its bases and body.
 
@@ -44,6 +53,7 @@ from pathlib import Path
 
 from xarch.modules.rules.domain.values import (
     Call,
+    Callback,
     Class,
     Comment,
     Function,
@@ -95,7 +105,7 @@ def _parsed(name: str, path: tuple[str, ...], text: str, form: TableForm | None)
     return SourceFile(name, path, tuple(_imports(tree)), comments, _functions(tree, form),
                       tuple(_unions(tree)), calls=tuple(calls.found), classes=tuple(_classes(tree)),
                       uses=tuple(calls.uses), parameter_calls=tuple(calls.parameter_calls),
-                      module_functions=_module_functions(tree), named=_named(tree))
+                      module_functions=_module_functions(tree), named=_named(tree), callbacks=tuple(calls.callbacks))
 
 
 def _module_functions(tree: ast.Module) -> tuple[str, ...]:
@@ -156,8 +166,9 @@ def _function(node: ast.FunctionDef | ast.AsyncFunctionDef, scope: list[Scope], 
                    and (table := _table(d, scope, lists, form)) is not None)
     asserts = any(isinstance(n, ast.Assert) for n in inside)
     statements, shape = _shape(node)
+    returns = _named(node.returns) if node.returns is not None else frozenset()
     return Function(node.lineno, node.name, tables, mentions, branches, asserts, owner, statements, shape,
-                    _forwards(node))
+                    _forwards(node), returns)
 
 
 def _is_docstring(node: ast.stmt) -> bool:
@@ -495,7 +506,9 @@ class _Calls(ast.NodeVisitor):
         self._chain: list[Scope] = []
         self._parameters: list[frozenset[str]] = []
         self._classes: list[bool] = []
+        self._owners: list[tuple[str, str, frozenset[str]]] = []
         self.parameter_calls: list[ParameterCall] = []
+        self.callbacks: list[Callback] = []
 
     def visit_Module(self, node: ast.Module) -> None:
         self._within(node, node.body, is_class=False)
@@ -509,14 +522,20 @@ class _Calls(ast.NodeVisitor):
         a = node.args
         for child in [*node.decorator_list, *a.defaults, *(d for d in a.kw_defaults if d)]:
             self.visit(child)
-        self._within(node, node.body, is_class=False)
+        positional = [*a.posonlyargs, *a.args]
+        static = any(isinstance(d, ast.Name) and d.id == "staticmethod" for d in node.decorator_list)
+        method = bool(self._classes) and self._classes[0] and not static
+        receiver = positional[0].arg if method and positional else ""
+        callables = frozenset(x.arg for x in [*positional, *a.kwonlyargs]
+                              if x.annotation is not None and self._is_callable(x.annotation))
+        self._within(node, node.body, is_class=False, owner=(node.name, receiver, callables))
 
     visit_AsyncFunctionDef = visit_FunctionDef
 
     def visit_Lambda(self, node: ast.Lambda) -> None:
         for child in [*node.args.defaults, *(d for d in node.args.kw_defaults if d)]:
             self.visit(child)
-        self._within(node, [node.body], is_class=False)
+        self._within(node, [node.body], is_class=False, owner=("<lambda>", "", frozenset()))
 
     def _comprehension(self, node: ast.ListComp | ast.SetComp | ast.DictComp | ast.GeneratorExp) -> None:
         first, *rest = node.generators
@@ -527,19 +546,28 @@ class _Calls(ast.NodeVisitor):
 
     visit_ListComp = visit_SetComp = visit_DictComp = visit_GeneratorExp = _comprehension
 
-    def _within(self, node: ast.AST, body: list[ast.AST], is_class: bool) -> None:
+    def _within(self, node: ast.AST, body: list[ast.AST], is_class: bool,
+                owner: tuple[str, str, frozenset[str]] = ("", "", frozenset())) -> None:
         keep = [not c for c in self._classes]
         outer = [s for s, k in zip(self._chain, keep) if k]
         outer_parameters = [p for p, k in zip(self._parameters, keep) if k]
-        saved = self._chain, self._parameters, self._classes
+        outer_owners = [o for o, k in zip(self._owners, keep) if k]
+        saved = self._chain, self._parameters, self._classes, self._owners
         scope, parameters, _ = _bound(node)
         self._chain, self._parameters = [scope, *outer], [parameters, *outer_parameters]
         self._classes = [is_class, *([False] * len(outer))]
+        self._owners = [owner, *outer_owners]
         for child in body:
             self.visit(child)
-        self._chain, self._parameters, self._classes = saved
+        self._chain, self._parameters, self._classes, self._owners = saved
 
     def visit_Call(self, node: ast.Call) -> None:
+        if isinstance(node.func, ast.Name):
+            index = self._parameter_scope(node.func.id)
+            if index is not None:
+                function, receiver, callables = self._owners[index]
+                self.callbacks.append(Callback(node.lineno, function, node.func.id, node.func.id == receiver,
+                                               node.func.id in callables))
         func = _ref(node.func, self._chain)
         if func is not None or self._is_parameter_method(node.func):
             args = tuple(_ref(a, self._chain) for a in node.args if not isinstance(a, ast.Starred))
@@ -557,9 +585,27 @@ class _Calls(ast.NodeVisitor):
         """Whether func is `<name>.<attr>` and the nearest scope binding the name binds it as a parameter."""
         if not isinstance(func, ast.Attribute) or not isinstance(func.value, ast.Name):
             return False
-        name = func.value.id
+        return self._parameter_scope(func.value.id) is not None
+
+    def _is_callable(self, annotation: ast.expr) -> bool:
+        """Whether an annotation, read in the scope around the function, is a Callable (see the module's text)."""
+        if isinstance(annotation, ast.Constant) and isinstance(annotation.value, str):
+            try:
+                annotation = ast.parse(annotation.value.strip(), mode="eval").body
+            except SyntaxError:
+                return False
+        if isinstance(annotation, ast.BinOp) and isinstance(annotation.op, ast.BitOr):
+            return self._is_callable(annotation.left) or self._is_callable(annotation.right)
+        if isinstance(annotation, ast.Subscript):
+            if _ref(annotation.value, self._chain) == ("typing", "Optional"):
+                return self._is_callable(annotation.slice)
+            annotation = annotation.value
+        return _ref(annotation, self._chain) in _CALLABLE
+
+    def _parameter_scope(self, name: str) -> int | None:
+        """The index of the nearest scope binding the name, when it binds it as a parameter and nothing else."""
         index = next((i for i, scope in enumerate(self._chain) if name in scope), None)
-        return index is not None and name in self._parameters[index]
+        return index if index is not None and name in self._parameters[index] else None
 
     def visit_Name(self, node: ast.Name) -> None:
         if isinstance(node.ctx, ast.Load):
@@ -582,14 +628,28 @@ class _Calls(ast.NodeVisitor):
 
 def _classes(tree: ast.Module) -> list[Class]:
     scope = [_scope(tree)]
+    builtin = frozenset() if _star_import(tree) else _EXCEPTIONS - set(scope[0])
+    exceptions: set[str] = set()
     found: list[Class] = []
     for node in tree.body:
         if isinstance(node, ast.ClassDef):
             bases = tuple(_ref(b.value if isinstance(b, ast.Subscript) else b, scope) for b in node.bases)
             methods = tuple(Method(n.lineno, n.name, _annotation(n.returns)) for n in node.body
                             if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)))
-            found.append(Class(node.lineno, node.name, bases, methods, _attributes(node), _named(node) - {node.name}))
+            exception = any(isinstance(b, ast.Name) and (b.id in builtin or b.id in exceptions) for b in node.bases)
+            if exception:
+                exceptions.add(node.name)
+            found.append(Class(node.lineno, node.name, bases, methods, _attributes(node), _named(node) - {node.name},
+                               exception))
     return found
+
+
+_CALLABLE = (("typing", "Callable"), ("collections", "abc", "Callable"))
+"""Where Python's Callable is imported from, as the path its import binds."""
+
+_EXCEPTIONS = frozenset(name for name, value in vars(builtins).items()
+                        if isinstance(value, type) and issubclass(value, BaseException))
+"""The builtin exceptions, by the bare name that reads them."""
 
 
 def _attributes(node: ast.ClassDef) -> tuple[str, ...]:

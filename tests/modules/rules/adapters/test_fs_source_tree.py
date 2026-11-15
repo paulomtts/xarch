@@ -7,6 +7,7 @@ import pytest
 from xarch.modules.rules.adapters.fs_source_tree import FsSourceTree
 from xarch.modules.rules.domain.values import (
     Call,
+    Callback,
     Class,
     Method,
     ParameterCall,
@@ -471,3 +472,62 @@ def test_a_file_names_every_name_it_mentions_annotations_and_string_annotations_
     assert {"Repo", "Clock", "stores", "Store", "Notifier", "Late", "Sized"} <= named
     cls = parsed(tmp_path, text).classes[0]
     assert {"Repo", "Notifier", "Store"} <= cls.named and "Clock" not in cls.named
+
+
+@pytest.mark.parametrize("text, found", [
+    pytest.param("def a(check, path):\n    return check(path)\n", [Callback(2, "a", "check", False)],
+                 id="a function calls a parameter by its bare name"),
+    pytest.param("def a(rows, key):\n    return sorted(rows, key=key)\n", [],
+                 id="a parameter passed on is no call of it"),
+    pytest.param("def a(p):\n    return p.read()\n", [], id="a method of a parameter is no call of it"),
+    pytest.param("def a(f):\n    f = g\n    f()\n", [], id="a parameter the body rebinds is not read"),
+    pytest.param("def a(f):\n    def b():\n        return f()\n    return [f(x) for x in y]\n",
+                 [Callback(3, "a", "f", False), Callback(4, "a", "f", False)],
+                 id="a nested function and a comprehension call the parameter of the function around them"),
+    pytest.param("def a(f):\n    def b(f):\n        return f()\n", [Callback(3, "b", "f", False)],
+                 id="the nearest function's parameter is the one read"),
+    pytest.param("g = lambda f: f()\n", [Callback(1, "<lambda>", "f", False)], id="a lambda calls its parameter"),
+    pytest.param("class C:\n    def a(self, f):\n        self()\n        f()\n"
+                 "    @classmethod\n    def b(cls):\n        return cls()\n"
+                 "    @staticmethod\n    def c(f):\n        return f()\n",
+                 [Callback(3, "a", "self", True), Callback(4, "a", "f", False), Callback(7, "b", "cls", True),
+                  Callback(10, "c", "f", False)],
+                 id="the first parameter of a method is its receiver, but for a staticmethod"),
+    pytest.param("f = 1\nf()\n", [], id="a module-level name is no parameter"),
+])
+def test_a_call_of_a_parameter_by_its_bare_name_is_listed_with_its_function(tmp_path, text, found):
+    assert list(parsed(tmp_path, text).callbacks) == found
+
+
+@pytest.mark.parametrize("text, exceptions", [
+    pytest.param("class E(Exception): ...\nclass F(ValueError): ...\nclass G(E): ...\nclass H: ...\n",
+                 {"E": True, "F": True, "G": True, "H": False},
+                 id="a class deriving from a builtin exception, or from such a class of the file, is an exception"),
+    pytest.param("Exception = object\nclass E(Exception): ...\n", {"E": False},
+                 id="a name the file rebinds is no builtin"),
+    pytest.param("from app.errors import Base\nclass E(Base): ...\n", {"E": False},
+                 id="a base from another file is not known here"),
+])
+def test_a_class_says_whether_it_derives_from_a_builtin_exception(tmp_path, text, exceptions):
+    assert {c.name: c.exception for c in parsed(tmp_path, text).classes} == exceptions
+
+
+def test_a_function_lists_the_names_its_return_annotation_mentions(tmp_path):
+    text = "def a() -> 'Found | None':\n    ...\ndef b() -> list[Row]:\n    ...\ndef c():\n    ...\n"
+    assert {n: f.returns_named for n, f in functions_of(tmp_path, text).items()} == {
+        "a": frozenset({"Found"}), "b": frozenset({"list", "Row"}), "c": frozenset()}
+
+
+@pytest.mark.parametrize("annotation, annotated", [
+    pytest.param("Callable[[str], bool]", True, id="typing's Callable, subscripted"),
+    pytest.param("abc.Callable", True, id="collections.abc's"),
+    pytest.param("Callable | None", True, id="in a union"),
+    pytest.param("Optional[Callable]", True, id="inside Optional"),
+    pytest.param("'Callable[[str], bool]'", True, id="a string annotation"),
+    pytest.param("Check", False, id="another type"),
+    pytest.param("list[Callable]", False, id="a container of callables"),
+])
+def test_a_callback_says_whether_its_parameter_is_annotated_as_a_callable(tmp_path, annotation, annotated):
+    text = (f"from typing import Callable, Optional\nfrom collections import abc\n"
+            f"def a(check: {annotation}):\n    return check()\n")
+    assert [c.annotated for c in parsed(tmp_path, text).callbacks] == [annotated]
