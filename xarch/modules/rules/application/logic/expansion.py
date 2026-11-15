@@ -302,6 +302,19 @@ def untested(profile: Profile) -> tuple[Rule, ...]:
                  roots=Scope(TESTS, where=("tiered",)), spread=("edge",)),)
 
 
+def pass_through(profile: Profile) -> tuple[Rule, ...]:
+    """A method of a listed part that only forwards to one call, listed without failing."""
+    keep = "it stays listed and fails only `check --strict`"
+    return tuple(Rule("pass-through", Scope(APP, part), ("function",), MAY_NOT, EXISTING,
+                      (Saying("{method} only passes its arguments on to {forwarded} and returns its .{then}",
+                              f"have the caller use {{forwarded}}(...).{{then}}, or keep it as a deliberate plain "
+                              f"forward: {keep}", "returns-a-part"),
+                       Saying("{method} only passes its arguments on to {forwarded}",
+                              f"have the caller use {{forwarded}}, or keep it as a deliberate plain forward: {keep}")),
+                      keep=("forwards",), mode=LIST)
+                 for part in profile.pass_through)
+
+
 def book(profile: Profile) -> dict[str, tuple[Rule, ...]]:
     """Every check the engine runs, by the name of its group, each the rules its keys expand to."""
     return {"syntax": syntax(profile), "rules": rules(profile), "libraries": libraries(profile),
@@ -311,4 +324,4 @@ def book(profile: Profile) -> dict[str, tuple[Rule, ...]]:
             "private-imports": private_imports(profile), "no-comments": no_comments(profile),
             "closed-tree": closed_tree(profile), "holds": holds(profile), "must-import": must_import(profile),
             "must-import tiers": must_import_tiers(profile), "dead-code": dead_code(profile),
-            "untested": untested(profile)}
+            "untested": untested(profile), "pass-through": pass_through(profile)}

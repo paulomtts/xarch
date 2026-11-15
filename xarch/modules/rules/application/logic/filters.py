@@ -57,6 +57,8 @@ Of a fact:
     to-a-helper       a test file's import of test code that is no test file
     into-its-tier     an import of a file of the app that the tier of the importing file covers: a test's tier, or
                       the tier that covers an app file's part
+    forwards          a method that only forwards (see facts)
+    returns-a-part    a method that forwards and returns attributes of what the call answers
 """
 from __future__ import annotations
 
@@ -283,6 +285,14 @@ def _to_a_helper(found: Found, facts: Facts, profile: Profile) -> bool:
     return found.fact.target in facts.known_tests and found.fact.target not in facts.test_files
 
 
+def _forwards(found: Found, facts: Facts, profile: Profile) -> bool:
+    return _trait(found, "forwards")
+
+
+def _returns_a_part(found: Found, facts: Facts, profile: Profile) -> bool:
+    return bool(found.fact.target)
+
+
 def _into_its_tier(found: Found, facts: Facts, profile: Profile) -> bool:
     read = found.read
     tier = facts.tested_by.get(found.fact.target)
@@ -312,7 +322,7 @@ _FACT = {"absolute": _absolute, "has-a-path": _has_a_path, "unheld": _unheld, "p
          "record": _record, "read-by-a-tool": _read_by_a_tool, "a-package-file": _a_package_file,
          "a-package": _a_package, "no-code": _no_code, "exceptions-only": _exceptions_only, "port": _port,
          "a-fake-name": _a_fake_name, "own-part-instance": _own_part_instance, "to-a-helper": _to_a_helper,
-         "into-its-tier": _into_its_tier}
+         "into-its-tier": _into_its_tier, "forwards": _forwards, "returns-a-part": _returns_a_part}
 """Each filter of a fact by its name, the question it asks."""
 
 

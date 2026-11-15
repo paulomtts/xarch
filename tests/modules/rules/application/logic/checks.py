@@ -105,3 +105,7 @@ def dead_code(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: P
 def untested(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile, root: str,
              tests_root: str) -> list[Violation | Weak]:
     return run(expansion.untested(profile), facts_of(app, tests, profile, root, tests_root), profile)
+
+
+def pass_through(app: Iterable[SourceFile], profile: Profile) -> list[Violation | Weak]:
+    return run(expansion.pass_through(profile), facts_of(app, [], profile, ""), profile)

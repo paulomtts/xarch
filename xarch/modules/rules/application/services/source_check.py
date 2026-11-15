@@ -10,7 +10,6 @@ from xarch.modules.rules.application.logic import (
     duplicates,
     enforcement,
     expansion,
-    pass_through,
     scenarios,
     stand_ins,
     twins,
@@ -80,16 +79,19 @@ class SourceCheckService:
         found += run(book["closed-tree"], facts, rules)
         state = self._enforcement(resolved, package, profile, rules, app, test_files,
                                   closed_tree.ungoverned(paths, rules, shown), tests_root if tests is not None else None,
-                                  run(book["holds"], facts, rules), run(book["untested"], facts, rules))
+                                  run(book["holds"], facts, rules), run(book["untested"], facts, rules),
+                                  run(book["pass-through"], facts, rules))
         return Checked(tuple(found), replace(state, strict=enforcement.strict_findings(state)), rules)
 
     def _enforcement(self, resolved: Path, package: str, location: str, rules: Profile, app: list[SourceFile],
                      tests: list[SourceFile], ungoverned: list[str], tests_root: str | None,
-                     listed: list[Violation | Weak], untested: list[Violation | Weak]) -> Enforcement:
+                     listed: list[Violation | Weak], untested: list[Violation | Weak],
+                     forwarding: list[Violation | Weak]) -> Enforcement:
         project = resolved.parent
         standing = self._profiles.standing(location, package)
         texts = [self._tree.text(project.joinpath(*file.path)) for file in standing.init_files]
-        weak = stand_ins.weak(app, tests, rules) + scenarios.weak(app, tests, rules) + pass_through.weak(app, rules)
+        weak = stand_ins.weak(app, tests, rules) + scenarios.weak(app, tests, rules) + [
+            item for item in forwarding if isinstance(item, Weak)]
         weak += [item for item in listed if isinstance(item, Weak)]
         if tests_root is not None:
             weak += [item for item in untested if isinstance(item, Weak)]

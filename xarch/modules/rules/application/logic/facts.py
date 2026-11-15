@@ -21,7 +21,8 @@ a file of the app no part and no folder of the layout governs, which is not read
     class     each class defined at the top level, name its name, names those its bases and body mention; exception,
               record and port when it is one (below)
     function  each function defined at the top level or in a class of the top level, name its name, path its class
-              and its name; top-level when it is in no class
+              and its name; top-level when it is in no class; forwards when it is a method that only forwards
+              (below), text the callee it forwards to and target the attributes it returns of the call's result
     callback  each call of a function's own parameter by its bare name, path the function, name the parameter;
               receiver when the parameter is the first of a method, annotated when its annotation says it is a callable
 
@@ -38,19 +39,21 @@ and the facts derived from them over the whole app:
     record    a class with no method but the language's special methods that a top-level function of its file names
               in its return annotation
     port      a class with one of the language's interface names among its bases, the last of its name in its file
+    forwards  a method that only passes its arguments on to one call on what its object holds (see forwards)
 """
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
 from dataclasses import replace
 
+from xarch.kernel.logic.language import LanguageView
 from xarch.kernel.logic.placement import Place
 from xarch.modules.rules.application.logic.filters import in_scope
 from xarch.modules.rules.application.logic.imports import dotted, named_targets, targets
 from xarch.modules.rules.application.logic.places import place
 from xarch.modules.rules.application.logic.tier_of import tested
 from xarch.modules.rules.domain.rule import Defined, Fact, Facts, Read, Rule
-from xarch.modules.rules.domain.values import Class, Profile, SourceFile
+from xarch.modules.rules.domain.values import Class, Function, Profile, SourceFile
 
 Placements = dict[tuple[str, ...], Place | None]
 """Where each path below the root placed so far sits."""
@@ -64,6 +67,7 @@ _TRAITS = {(relative, standard, held): frozenset(name for name, on in (("relativ
            for relative in (False, True) for standard in (False, True) for held in (False, True)}
 """The traits of a fact, by whether it is relative, of the standard library and held."""
 _TOP = frozenset({"top-level"})
+_FORWARDS = frozenset({"forwards"})
 
 
 def facts_of(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile, root: str,
@@ -148,8 +152,7 @@ def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: 
             return tuple(Fact("class", c.line, (c.name,), c.name, _class(c, file, read, profile, defined, ports),
                               names=c.named) for c in file.classes)
         case "function":
-            return tuple(Fact("function", f.line, (f.owner, f.name) if f.owner else (f.name,), f.name,
-                              _TOP if not f.owner else frozenset()) for f in file.functions)
+            return tuple(_function(f, profile) for f in file.functions)
         case "callback":
             return tuple(Fact("callback", c.line, (c.function,), c.parameter,
                               frozenset(n for n, on in (("receiver", c.receiver), ("annotated", c.annotated)) if on))
@@ -211,6 +214,46 @@ def _class(cls: Class, file: SourceFile, read: Read, profile: Profile, defined: 
         cls.name in f.returns_named for f in file.functions if not f.owner)
     return frozenset(n for n, on in (("exception", exception), ("record", record), ("port", ports.get(cls.name) is cls))
                      if on)
+
+
+def _function(function: Function, profile: Profile) -> Fact:
+    path = (function.owner, function.name) if function.owner else (function.name,)
+    if not function.owner:
+        return Fact("function", function.line, path, function.name, _TOP)
+    callee = forwards(function, profile.language)
+    if not callee or function.sole_call is None:
+        return Fact("function", function.line, path, function.name)
+    return Fact("function", function.line, path, function.name, _FORWARDS, target=function.sole_call.then,
+                text=callee)
+
+
+def forwards(function: Function, language: LanguageView) -> str:
+    """The dotted callee a function forwards to, or "": it has no decorator, is no special method, and its whole body
+    (a docstring aside) is one call, perhaps awaited and returned, on a chain of at least two attributes of its own
+    first parameter (`self.repo.get(...)`), passing each of its other parameters straight through and nothing else,
+    perhaps returning a chain of attributes read on the call's result."""
+    call, signature = function.sole_call, function.signature
+    if function.decorated or language.is_special(function.name) or call is None or not signature.positional:
+        return ""
+    own, others = signature.positional[0], [*signature.positional[1:], *signature.keyword_only]
+    if call.callee[:1] != (own,) or len(call.callee) < 3:
+        return ""
+    passed: list[str] = []
+    for arg in call.args:
+        if (signature.star and arg == f"*{signature.star}") or (arg and not arg.startswith("*") and arg in others):
+            passed.append(arg)
+        else:
+            return ""
+    for keyword, value in call.keywords:
+        if keyword == "**" and signature.double and value == signature.double:
+            passed.append(f"**{value}")
+        elif keyword != "**" and value in others:
+            passed.append(value)
+        else:
+            return ""
+    wanted = [*others, *([f"*{signature.star}"] if signature.star else []),
+              *([f"**{signature.double}"] if signature.double else [])]
+    return ".".join(call.callee) if sorted(passed) == sorted(wanted) else ""
 
 
 def _file(file: SourceFile, read: Read, defined: Defined) -> frozenset[str]:

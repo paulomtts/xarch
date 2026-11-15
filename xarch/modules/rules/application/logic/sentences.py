@@ -38,6 +38,8 @@ out from the finding by its name, a closed list:
     wanted        the name patterns of the rule's targets, joined by "or"
     function      the function a callback is in
     file          the file, as shown
+    method        a method, as <class>.<name>
+    forwarded     the callee a method forwards to; then the attributes it returns of the call's result, dotted
     reach_targets the parts of the places a rule of reach names, each once as `<part>/`, joined by "or"
     wanted_parts  the parts its targets name, each as `<part>/`, joined by "or"
     a_tier        a test's tier with its article: "a unit", "an integration"
@@ -150,6 +152,12 @@ def value(name: str, found: Found, facts: Facts, profile: Profile) -> str:
             return fact.path[0]
         case "file":
             return read.file.name
+        case "method":
+            return ".".join(fact.path)
+        case "forwarded":
+            return fact.text
+        case "then":
+            return ".".join(fact.target)
         case "reach_targets":
             return " or ".join(dict.fromkeys(f"{t.part}/" for t in rule.targets.places))
         case "wanted_parts":
