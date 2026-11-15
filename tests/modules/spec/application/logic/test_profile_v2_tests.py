@@ -120,7 +120,7 @@ def test_what_only_fills_the_docs_sits_under_docs_and_loads_into_the_same_fields
     document["tiers"]["unit"]["docs"] = {
         "subject": "the services", "may_touch": "nothing", "one_file_per": "rule", "cases_from": "the invariants",
         "data": "built in the test", "example": example, "helpers": [helper]}
-    assert parsed(document, folder_files=EX.get).tiers[0] == Tier(
+    assert parsed(document, folders=EX).tiers[0] == Tier(
         "unit", (Subject("service"),), "a rule", "nothing", "Does it decide?\nIf yes, it is a unit test.",
         "the services", "rule", "the invariants", "built in the test",
         TierExample(("tests", "src", "billing", "service", "test_rules.py"), "ex/" + example, "one per rule"),
@@ -212,7 +212,7 @@ def test_the_folders_of_two_tiers_or_a_tier_and_the_fakes_may_not_overlap():
 def test_the_example_of_a_tier_with_a_folder_may_lie_in_it():
     document = covered(docs={"examples": ["ex"]})
     document["tiers"]["guard"] = {"folder": "checks", "docs": {"example": "tests/checks/rules/test_x.py"}}
-    assert parsed(document, folder_files=EX.get).tiers[2].example == TierExample(
+    assert parsed(document, folders=EX).tiers[2].example == TierExample(
         ("tests", "checks", "rules", "test_x.py"), "ex/tests/checks/rules/test_x.py")
 
 
@@ -220,7 +220,7 @@ def test_the_example_of_a_tier_with_a_folder_may_lie_in_it():
 def test_the_example_of_a_tier_with_a_folder_may_not_lie_outside_it(example):
     document = covered(docs={"examples": ["ex"]})
     document["tiers"]["guard"] = {"folder": "checks", "docs": {"example": example}}
-    assert problems(document, folder_files={"ex": (example,)}.get) == [
+    assert problems(document, folders={"ex": (example,)}) == [
         f"layered.yaml: tiers.guard.docs.example: '{example}' is not inside the tier's folder 'checks' below the "
         "tests folder: the docs would show a place `check` places in no tier"]
 
@@ -229,7 +229,7 @@ def test_a_bad_docs_of_a_tier_is_refused_with_the_address_of_each_key():
     document = covered(docs={"examples": ["ex"]})
     document["tiers"]["unit"]["docs"] = {"may_touch": "a\nb", "colour": 1, "example": 3, "helpers": ["x/../y.py", 4],
                                          "data": 3}
-    assert problems(document, folder_files=EX.get) == [
+    assert problems(document, folders=EX) == [
         "layered.yaml: tiers.unit.docs: unknown key 'colour': use cases_from, data, example, helpers, may_touch, "
         "one_file_per, subject",
         "layered.yaml: tiers.unit.docs.may_touch: must be one line of text",
@@ -242,7 +242,7 @@ def test_a_bad_docs_of_a_tier_is_refused_with_the_address_of_each_key():
 def test_the_example_and_helpers_of_a_tier_must_be_files_of_an_example_project():
     document = covered(docs={"examples": ["ex"]})
     document["tiers"]["unit"]["docs"] = {"example": "tests/x.py", "helpers": ["tests/y.py"]}
-    assert problems(document, folder_files=EX.get) == [
+    assert problems(document, folders=EX) == [
         "layered.yaml: tiers.unit.docs.example: no file 'tests/x.py' in any folder of docs.examples",
         "layered.yaml: tiers.unit.docs.helpers[0]: no file 'tests/y.py' in any folder of docs.examples"]
     document = covered()

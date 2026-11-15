@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from xarch.modules.spec.application.logic.migrate_examples import PLACEHOLDER, rewrite_examples
+from xarch.modules.spec.application.logic.migrate_examples import PLACEHOLDER, referenced_v1, rewrite_examples
 from xarch.modules.spec.application.logic.migrate_profile import Converted, convert
 from xarch.modules.spec.application.logic.profile_file import parse_profile
-from xarch.modules.spec.application.logic.profile_files import listing_in
+from xarch.modules.spec.application.logic.profile_listing import listing
 from xarch.modules.spec.application.logic.yaml_text import dump
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
 from xarch.modules.spec.application.ports.profile_output import ProfileOutput
@@ -31,9 +31,10 @@ class MigrationService:
         source = ArchitectureSource(location, bundled=False)
         raw = self._files.read(source)
         self._version(raw.document, location)
-        converted = convert(raw.document, location, self._files.testing_presets(),
-                            lambda relative: self._files.has_file(source, relative),
-                            lambda relative: self._files.files_under(source, relative))
+        named, folders = referenced_v1(raw.document)
+        files = listing((name for name in named if self._files.has_file(source, name)),
+                        {folder: self._files.files_under(source, folder) for folder in folders})
+        converted = convert(raw.document, location, self._files.testing_presets(), files)
         name = f"{cmd.path.stem}.yaml"
         contents, rewritten, by_hand = self._contents(source, converted)
         by_hand = (*converted.by_hand, *by_hand)
@@ -76,9 +77,8 @@ class MigrationService:
 
     def _validate(self, converted: Converted, location: str, outputs: dict[str, bytes], by_hand: tuple[str, ...]) -> None:
         try:
-            parse_profile(converted.document, location, lambda relative: relative in outputs,
-                          lambda relative: listing_in(outputs, relative),
-                          self._files.testing_presets(), self._files.bundled())
+            parse_profile(converted.document, location, tuple(outputs), self._files.testing_presets(),
+                          self._files.bundled())
         except InvalidArchitecture as e:
             lines = ["the converted profile does not load:", *(f"  {problem}" for problem in e.problems)]
             if by_hand:

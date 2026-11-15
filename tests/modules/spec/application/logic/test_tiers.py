@@ -35,13 +35,13 @@ def tiered() -> dict:
 
 
 def parse(document: dict):
-    return parsed(document, folder_files=FILES.get)
+    return parsed(document, folders=FILES)
 
 
 def found(document: dict, files=FILES) -> list[str]:
     """The problems of the document; none when it loads."""
     try:
-        parsed(document, folder_files=files.get)
+        parsed(document, folders=files)
     except InvalidArchitecture as error:
         return list(error.problems)
     return []
@@ -110,7 +110,7 @@ def test_a_bad_untested_reason_is_refused(untested):
                                       "folder of docs.examples"], id="a file that is not in the example project is refused"),
 ])
 def test_a_bad_example_is_refused(example, expected):
-    assert problems(with_docs(example=example), folder_files=FILES.get) == expected
+    assert problems(with_docs(example=example), folders=FILES) == expected
 
 
 @pytest.mark.parametrize("helpers, expected", [
@@ -121,7 +121,7 @@ def test_a_bad_example_is_refused(example, expected):
                  id="a bad helper is reported by its place in the list"),
 ])
 def test_bad_helpers_are_refused(helpers, expected):
-    assert problems(with_docs(helpers=helpers), folder_files=FILES.get) == expected
+    assert problems(with_docs(helpers=helpers), folders=FILES) == expected
 
 
 def test_the_helpers_of_a_tier_load_in_order_each_with_its_note():
@@ -234,7 +234,7 @@ def test_tier_examples_not_read_or_of_mixed_kinds_are_reported():
     files = {"ex": (*FILES["ex"], "tests/src/test_api.sql")}
     document["tiers"]["integration"]["docs"]["example"] = "tests/src/test_api.sql"
     with pytest.raises(InvalidTemplate) as caught:
-        fill("{{tier_examples}}", parsed(document, folder_files=files.get), "testing.md", tier_examples=TIER_TEXTS)
+        fill("{{tier_examples}}", parsed(document, folders=files), "testing.md", tier_examples=TIER_TEXTS)
     assert caught.value.problems == (
         "testing.md: {{tier_examples}}: one block cannot mix files of different kinds (.py, .sql)",)
 

@@ -4,10 +4,11 @@ every example file is copied to that path below one folder, and a template quote
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
+from collections.abc import Collection
 from dataclasses import dataclass, field
 from typing import Any
 
+from xarch.modules.spec.application.logic.profile_listing import listing_in
 from xarch.modules.spec.domain.migration import Copy
 
 PLACEHOLDER = re.compile(r"\{\{example:(.*?)\}\}")
@@ -25,6 +26,24 @@ class Gathered:
     pages: dict[str, Any] = field(default_factory=dict)
     files: dict[str, Any] = field(default_factory=dict)
     tiers: dict[str, tuple[str | None, list[str]]] = field(default_factory=dict)
+
+
+class _Copies:
+    """The files of the converted folder, each destination taken by one source: a second source for a taken
+    destination is reported, not copied."""
+
+    def __init__(self, found: Gathered, by_hand: list[str]):
+        self._found, self._by_hand = found, by_hand
+        self._taken: dict[str, str] = {}
+
+    def add(self, destination: str, source: str, label: str, rewritten: bool = False) -> None:
+        if self._taken.get(destination, source) != source:
+            self._by_hand.append(f"{label}: '{source}' would be copied to '{destination}', which "
+                                 f"'{self._taken[destination]}' already takes: give one of them another path")
+            return
+        if destination not in self._taken:
+            self._taken[destination] = source
+            self._found.copies.append(Copy(destination, source, rewritten))
 
 
 @dataclass(frozen=True)
@@ -62,50 +81,61 @@ def plain_note(note: str, label: str, changes: list[str]) -> str:
     return stripped
 
 
-def gather(old: Any, tiers: list[Any], has_file: Callable[[str], bool],
-           folder_files: Callable[[str], tuple[str, ...]], changes: list[str], by_hand: list[str]) -> Gathered:
-    """Everything the old profile names as a file, converted."""
-    items = _items(old, tiers, has_file, changes, by_hand)
+def referenced_v1(document: Any) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """The files and the folders a profile in format 1 names next to it, each as written and sorted: the templates of
+    `docs`, the files of `files` (a key ending in / names a folder), and the file of each example, helper included.
+    What is no mapping or no text is left out."""
+    files: set[str] = set()
+    folders: set[str] = set()
+    if not isinstance(document, dict):
+        return (), ()
+    files |= {spec["from"] for _, spec in _entries(document.get("docs")) if isinstance(spec.get("from"), str)}
+    for key, spec in _entries(document.get("files")):
+        (folders if key.endswith("/") else files).add(str(spec.get("from", "")))
+    examples = document.get("examples")
+    files |= {str(spec.get("file", "")) for spec in (examples.values() if isinstance(examples, dict) else ())
+              if isinstance(spec, dict)}
+    for tier in document.get("tiers") if isinstance(document.get("tiers"), list) else ():
+        if not isinstance(tier, dict):
+            continue
+        helpers = tier.get("helpers") if isinstance(tier.get("helpers"), list) else []
+        files |= {str(spec.get("file", "")) for spec in (tier.get("example"), *helpers) if isinstance(spec, dict)}
+    return tuple(sorted(files)), tuple(sorted(folders))
+
+
+def gather(old: Any, tiers: list[Any], files: Collection[str], changes: list[str], by_hand: list[str]) -> Gathered:
+    """Everything the old profile names as a file, converted; files are the files next to it that it names, and every
+    file below the folders it names, each as a path from the profile's folder (see referenced_v1)."""
+    items = _items(old, tiers, files, changes, by_hand)
     held = {item.source for item in items}
-    plain = _sources(old, held, has_file, folder_files, by_hand)
+    plain = _sources(old, held, files, by_hand)
     root = _root(plain)
     found = Gathered(root=root if items else "")
-    taken: dict[str, str] = {}
-
-    def copy(destination: str, source: str, label: str, rewritten: bool = False) -> bool:
-        if taken.get(destination, source) != source:
-            by_hand.append(f"{label}: '{source}' would be copied to '{destination}', which '{taken[destination]}' "
-                           "already takes: give one of them another path")
-            return False
-        if destination not in taken:
-            taken[destination] = source
-            found.copies.append(Copy(destination, source, rewritten))
-        return True
-
+    copies = _Copies(found, by_hand)
     for key, spec in _entries(old.get("docs")):
         source = spec.get("from")
-        if source is not None and not has_file(source):
+        if source is not None and source not in files:
             by_hand.append(f"docs.{key}: no file '{source}' next to the profile: the page is not converted")
             continue
         found.pages[key] = _page(spec)
         if source is not None:
-            copy(source, source, f"docs.{key}", True)
+            copies.add(source, source, f"docs.{key}", True)
     pending: dict[str, dict[str, Any]] = {}
     for key, spec in _entries(old.get("files")):
         source = spec.get("from", "")
         if key.endswith("/"):
             found.files[key] = _file(spec)
-            for relative in folder_files(source):
-                copy(f"{source.rstrip('/')}/{relative}", f"{source.rstrip('/')}/{relative}", f"files.{key}")
+            for relative in listing_in(files, source) or ():
+                copies.add(f"{source.rstrip('/')}/{relative}", f"{source.rstrip('/')}/{relative}", f"files.{key}")
         elif source in held:
             found.files[key] = {}
             pending[key] = spec
-        elif has_file(source):
+        elif source in files:
             found.files[key] = _file(spec)
-            copy(source, source, f"files.{key}")
+            copies.add(source, source, f"files.{key}")
         else:
             by_hand.append(f"files.{key}: no file '{source}' next to the profile: the entry is not converted")
-    where = _examples(items, root, copy, found, by_hand, changes)
+    where = _examples(items, root, copies, found, by_hand, changes)
     for key, spec in pending.items():
         found.files[key] = _file(spec | {"from": where[spec["from"]]})
     found.tiers = _tier_paths(tiers, items)
@@ -126,8 +156,7 @@ def _file(spec: dict[str, Any]) -> Any:
     return spec["from"] if set(spec) == {"from"} else spec
 
 
-def _items(old: Any, tiers: list[Any], has_file: Callable[[str], bool], changes: list[str],
-           by_hand: list[str]) -> list[_Item]:
+def _items(old: Any, tiers: list[Any], files: Collection[str], changes: list[str], by_hand: list[str]) -> list[_Item]:
     found: list[_Item] = []
     examples = old.get("examples")
     for name, spec in (examples.items() if isinstance(examples, dict) else ()):
@@ -143,7 +172,7 @@ def _items(old: Any, tiers: list[Any], has_file: Callable[[str], bool], changes:
     for item in found:
         if not item.path or not item.source:
             by_hand.append(f"{item.label}: no path or no file: the example is not converted")
-        elif not has_file(item.source):
+        elif item.source not in files:
             by_hand.append(f"{item.label}: no file '{item.source}' next to the profile: the example is not converted")
         else:
             kept.append(item)
@@ -156,18 +185,17 @@ def _tier_item(spec: dict[str, Any], label: str, changes: list[str]) -> _Item:
     return _Item(label, str(spec.get("path", "")).strip("/"), str(spec.get("file", "")), note, False)
 
 
-def _sources(old: Any, held: set[str], has_file: Callable[[str], bool],
-             folder_files: Callable[[str], tuple[str, ...]], by_hand: list[str]) -> set[str]:
+def _sources(old: Any, held: set[str], files: Collection[str], by_hand: list[str]) -> set[str]:
     """The files the profile names that are not examples, by the path they keep."""
     found: set[str] = set()
     for key, spec in _entries(old.get("docs")):
-        if "from" in spec and has_file(spec["from"]):
+        if "from" in spec and spec["from"] in files:
             found.add(spec["from"])
     for key, spec in _entries(old.get("files")):
         source = spec.get("from", "")
         if key.endswith("/"):
-            found |= {f"{source.rstrip('/')}/{relative}" for relative in folder_files(source)}
-        elif source not in held and has_file(source):
+            found |= {f"{source.rstrip('/')}/{relative}" for relative in listing_in(files, source) or ()}
+        elif source not in held and source in files:
             found.add(source)
     return found
 
@@ -181,7 +209,7 @@ def _root(taken: set[str]) -> str:
         n += 1
 
 
-def _examples(items: list[_Item], root: str, copy: Callable[..., bool], found: Gathered, by_hand: list[str],
+def _examples(items: list[_Item], root: str, copies: _Copies, found: Gathered, by_hand: list[str],
               changes: list[str]) -> dict[str, str]:
     """Copies each example to its path below the root; returns where each source went."""
     owners: dict[str, str] = {}
@@ -192,7 +220,7 @@ def _examples(items: list[_Item], root: str, copy: Callable[..., bool], found: G
                            "named by its path in format 2, so only the first is converted")
             continue
         owners[item.path] = item.source
-        copy(f"{root}/{item.path}", item.source, item.label)
+        copies.add(f"{root}/{item.path}", item.source, item.label)
         where.setdefault(item.source, f"{root}/{item.path}")
         if item.label.startswith("examples."):
             found.names[item.label.removeprefix("examples.")] = item.path

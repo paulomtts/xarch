@@ -8,6 +8,8 @@ from xarch.modules.spec.application.logic.docs_files import DOCS_ROOT, doc_files
 from xarch.modules.spec.application.logic.example_imports import example_problems
 from xarch.modules.spec.application.logic.looseness import closest, guards_off, looser
 from xarch.modules.spec.application.logic.profile_file import parse_profile, source_of
+from xarch.modules.spec.application.logic.profile_files import pointed_files
+from xarch.modules.spec.application.logic.profile_listing import listing, referenced
 from xarch.modules.spec.application.logic.project_files import EXAMPLE_APP, project_files, with_app
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
 from xarch.modules.spec.contract import DocFile, Docs, Loosened, ProfileOrigin, ProjectFile
@@ -30,6 +32,12 @@ class ArchitectureService:
         InvalidArchitecture if the file cannot be loaded or an example read."""
         source, architecture = self._load(location)
         return tuple(example_problems(architecture, self._example_texts(source, architecture)))
+
+    def pointed(self, location: str | Path) -> tuple[str, ...]:
+        """Every file next to the profile that it points to, as pointed_files lists them; raises InvalidArchitecture."""
+        source, architecture = self._load(location)
+        return pointed_files(architecture, {entry.source: self._files.files_under(source, entry.source)
+                                            for entry in architecture.files if entry.folder})
 
     def docs(self, location: str | Path) -> Docs:
         """The project docs the architecture declares, each filled from its template; raises InvalidArchitecture or
@@ -95,9 +103,10 @@ class ArchitectureService:
         if source.bundled and source.location in self._bundled:
             return self._bundled[source.location]
         raw = self._files.read(source)
-        loaded = source, parse_profile(raw.document, raw.source, lambda relative: self._files.has_file(source, relative),
-                                       lambda relative: self._files.files_under(source, relative) or None,
-                                       self._presets(), self._files.bundled())
+        named, folders = referenced(raw.document)
+        files = listing((name for name in named if self._files.has_file(source, name)),
+                        {folder: self._files.files_under(source, folder) for folder in folders})
+        loaded = source, parse_profile(raw.document, raw.source, files, self._presets(), self._files.bundled())
         if source.bundled:
             self._bundled[source.location] = loaded
         return loaded

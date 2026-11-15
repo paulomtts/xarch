@@ -3,10 +3,12 @@ service, store) and a shared/ part, written in format 2, each document built afr
 and how a document is parsed, or rejected with its problems."""
 from __future__ import annotations
 
+from collections.abc import Collection, Mapping
 from copy import deepcopy
 
 import pytest
 
+from xarch.modules.spec.application.logic.profile_listing import listing, referenced
 from xarch.modules.spec.application.logic.profile_v2 import parse_v2
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import Architecture
@@ -20,7 +22,7 @@ TESTING = {"files": ["test_*.py", "*_test.py"], "functions": "test_*", "skips": 
                      "fixtures": {"mocker": {"calls": ["Mock", "MagicMock"], "autospec": ["create_autospec"]}}}}
 PRESETS = {"pytest": TESTING}
 EX = {"ex": ("tests/src/billing/service/test_rules.py", "tests/src/billing/builders.py", "tests/checks/rules/test_x.py")}
-"""The files of one example project, by its folder: what folder_files answers for `docs.examples: [ex]`."""
+"""The files of one example project, by its folder: what the listing holds for `docs.examples: [ex]`."""
 
 
 def layered(**changes) -> dict:
@@ -57,13 +59,21 @@ def covered(**changes) -> dict:
     return document | changes
 
 
-def parsed(document: dict, has_file=lambda relative: True, presets=PRESETS, bundled=("cli", "web"),
-           folder_files=None) -> Architecture:
-    return parse_v2(document, SOURCE, has_file, folder_files, presets, bundled)
+def listed(document: dict, files: Collection[str] | None = None, folders: Mapping[str, tuple[str, ...]] | None = None,
+           missing: Collection[str] = ()) -> tuple[str, ...]:
+    """The listing the loader reads: the files given, or else every file the document names, but those missing, and
+    every file of each folder in folders."""
+    named = referenced(document)[0] if files is None else files
+    return listing((name for name in named if name not in missing), folders or {})
 
 
-def problems(document: dict, has_file=lambda relative: True, presets=PRESETS, bundled=("cli", "web"),
-             folder_files=None) -> list[str]:
+def parsed(document: dict, files: Collection[str] | None = None, presets=PRESETS, bundled=("cli", "web"),
+           folders: Mapping[str, tuple[str, ...]] | None = None, missing: Collection[str] = ()) -> Architecture:
+    return parse_v2(document, SOURCE, listed(document, files, folders, missing), presets, bundled)
+
+
+def problems(document: dict, files: Collection[str] | None = None, presets=PRESETS, bundled=("cli", "web"),
+             folders: Mapping[str, tuple[str, ...]] | None = None, missing: Collection[str] = ()) -> list[str]:
     with pytest.raises(InvalidArchitecture) as caught:
-        parsed(document, has_file, presets, bundled, folder_files)
+        parsed(document, files, presets, bundled, folders, missing)
     return list(caught.value.problems)

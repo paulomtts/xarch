@@ -16,7 +16,7 @@ would hold, then what the project would; a path that is in none of them is not p
 from __future__ import annotations
 
 import os
-from collections.abc import Callable, Iterable
+from collections.abc import Collection, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -47,13 +47,20 @@ class Resolved:
     exists: bool
 
 
-def resolve(path: Path, cwd: Path, app: Path, tests: Path | None, exists: Callable[[Path], bool]) -> Resolved | None:
-    """The path as the working folder, the project root or the app folder would have it; None when it is outside the
-    project."""
+def candidates(path: Path, cwd: Path, app: Path) -> tuple[Path, ...]:
+    """Each path the given one may mean, from the working folder, the project root or the app folder, in that order,
+    each once; a path that starts with `..` or is absolute is the working folder's alone."""
     root = app.parent
     bases = [cwd / path] if path.is_absolute() or path.parts[:1] == (os.pardir,) else [cwd / path, root / path, app / path]
-    found = [Resolved(kind, base.relative_to(folder).parts, base, exists(base))
-             for base in dict.fromkeys(Path(os.path.normpath(b)) for b in bases)
+    return tuple(dict.fromkeys(Path(os.path.normpath(b)) for b in bases))
+
+
+def resolve(path: Path, cwd: Path, app: Path, tests: Path | None, existing: Collection[Path]) -> Resolved | None:
+    """The path as the working folder, the project root or the app folder would have it, existing being those of its
+    candidates that exist; None when it is outside the project."""
+    root = app.parent
+    found = [Resolved(kind, base.relative_to(folder).parts, base, base in existing)
+             for base in candidates(path, cwd, app)
              for kind, folder in [_folder(base, app, tests, root)] if kind is not None and folder is not None]
     for wanted in (lambda f: f.exists and f.kind != "project", lambda f: f.exists, lambda f: f.kind != "project",
                    lambda f: True):

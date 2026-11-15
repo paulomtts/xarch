@@ -12,8 +12,7 @@ PARTS = {"src": {"path": "src", "role": "code"}}
 
 def architecture(files: dict, parts: dict | None = None):
     document = {"xarch": 2, "name": "layered", "parts": parts or PARTS, "files": files}
-    return parsed(document, lambda relative: relative != "preset",
-                  folder_files=lambda relative: ("x",) if relative == "preset" else None)
+    return parsed(document, missing={"preset"}, folders={"preset": ("x",)})
 
 
 FILE_IN_SRC = PARTS | {"a": {"path": "src/a.py", "role": "code"}}

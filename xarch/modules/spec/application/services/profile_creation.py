@@ -4,7 +4,6 @@ from pathlib import Path
 
 from xarch.modules.spec.application.logic.profile_copy import copied_text, recorded, valid_name
 from xarch.modules.spec.application.logic.profile_file import parse_profile, source_of
-from xarch.modules.spec.application.logic.profile_files import listing_in, pointed_files
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
 from xarch.modules.spec.application.ports.profile_output import ProfileOutput
 from xarch.modules.spec.application.services.architecture import ArchitectureService
@@ -34,11 +33,10 @@ class ProfileCreation:
         if cmd.source not in self._files.bundled():
             raise UnknownProfile(cmd.source, self._files.bundled())
         source = source_of(cmd.source, self._files.bundled())
-        architecture = self._architectures.load(cmd.source)
+        pointed = self._architectures.pointed(cmd.source)
         text = copied_text(self._files.read_text(source, f"{cmd.source}{SUFFIX}"), cmd.name, cmd.source)
         if text is None:
             raise NewProfileRefused(f"the bundled profile '{cmd.source}' has no `name` line to rename")
-        pointed = pointed_files(architecture, lambda folder: self._files.files_under(source, folder))
         profile = f"{cmd.name}{SUFFIX}"
         outputs = {profile: text.encode("utf-8"), **{name: self._files.read_bytes(source, name) for name in pointed}}
         self._validate(cmd, source, outputs)
@@ -54,8 +52,7 @@ class ProfileCreation:
         document = self._files.read(source).document
         copy = {**document, "name": cmd.name, "based_on": cmd.source}
         try:
-            parse_profile(copy, f"{cmd.name}{SUFFIX}", lambda relative: relative in outputs,
-                          lambda relative: listing_in(outputs, relative), self._files.testing_presets(),
+            parse_profile(copy, f"{cmd.name}{SUFFIX}", tuple(outputs), self._files.testing_presets(),
                           self._files.bundled())
         except InvalidArchitecture as e:
             raise NewProfileRefused("the copy does not load:\n" + "\n".join(f"  {p}" for p in e.problems)) from e

@@ -9,7 +9,7 @@ from xarch.modules.spec.domain.errors import InvalidArchitecture
 
 
 def load(document):
-    return parse_profile(document, SOURCE, lambda relative: True, None, PRESETS, ("cli",))
+    return parse_profile(document, SOURCE, (), PRESETS, ("cli",))
 
 
 def problems(document) -> list[str]:
@@ -20,7 +20,7 @@ def problems(document) -> list[str]:
 
 def test_format_2_is_read_by_its_own_loader():
     document = layered(based_on="cli")
-    assert load(document) == parse_v2(document, SOURCE, lambda relative: True, None, PRESETS, ("cli",))
+    assert load(document) == parse_v2(document, SOURCE, (), PRESETS, ("cli",))
     assert load(document).based_on == "cli"
 
 

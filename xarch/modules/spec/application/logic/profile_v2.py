@@ -49,7 +49,7 @@ file and saying what to write instead; a problem that makes the rest meaningless
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Collection, Mapping
+from collections.abc import Collection, Mapping
 from dataclasses import dataclass, field, replace
 from typing import Any
 
@@ -134,12 +134,12 @@ class _Layout:
     repeats: list[Repeat] = field(default_factory=list)
 
 
-def parse_v2(document: Any, source: str, has_file: Callable[[str], bool],
-             folder_files: Callable[[str], tuple[str, ...] | None] | None = None,
-             presets: Mapping[str, Any] | None = None, bundled: Collection[str] = ()) -> Architecture:
-    """The architecture the document describes; raises InvalidArchitecture listing every problem. folder_files says
-    which files lie under a folder next to the profile file, None when it is no folder; presets are the documents of
-    the `testing` presets by name; bundled are the names of the bundled profiles, which `based_on` may name."""
+def parse_v2(document: Any, source: str, files: Collection[str] = (), presets: Mapping[str, Any] | None = None,
+             bundled: Collection[str] = ()) -> Architecture:
+    """The architecture the document describes; raises InvalidArchitecture listing every problem. files are the files
+    next to the profile file that it names, and every file below the folders it names, each as a path from the folder
+    holding it (see profile_listing.py); presets are the documents of the `testing` presets by name; bundled are the
+    names of the bundled profiles, which `based_on` may name."""
     if not isinstance(document, Mapping):
         raise InvalidArchitecture(source, [f"must be a mapping of keys, starting with `xarch: {VERSION}`"])
     problems: list[str] = []
@@ -154,7 +154,7 @@ def parse_v2(document: Any, source: str, has_file: Callable[[str], bool],
     declared = set(specs)
     built = _layout(specs, problems)
     parts = built.parts
-    examples = ex.example_files(document.get("docs", {}), folder_files or (lambda relative: None), problems)
+    examples = ex.example_files(document.get("docs", {}), files, problems)
     rules = {part: _may_import(specs[part].get("may_import"), item, parts, declared, f"parts.{part}.may_import",
                                problems, patterns=True) for part, item in parts.items()}
     libraries = {part: _libraries(specs[part], f"parts.{part}.libraries", problems) for part in parts}
@@ -169,17 +169,16 @@ def parse_v2(document: Any, source: str, has_file: Callable[[str], bool],
     problems += ck.folder_clashes(tiers, fakes)
     guards = _guards(document.get("guards", {}), specs, parts, declared, tiers, fakes, testing, problems)
     problems += _needs_testing(document)
-    entry, pages, naming = _docs(document.get("docs", {}), declared, has_file, problems)
+    entry, pages, naming = _docs(document.get("docs", {}), declared, files, problems)
     parts = {part: replace(item, entry=True) if part == entry else item for part, item in parts.items()}
-    files = ck.init_files(_bare_from(document.get("files", {})), pages, has_file, folder_files or (lambda relative: None),
-                          problems, "docs.pages")
+    written = ck.init_files(_bare_from(document.get("files", {})), pages, files, problems, "docs.pages")
     excluded = ck.excluded_folders(document["excluded"], built.tree, problems) if "excluded" in document else ()
     hints = ck.rule_hints(document["hints"], problems) if "hints" in document else {}
     if problems:
         raise InvalidArchitecture(source, problems)
     shown = ex.examples_of(examples, built.tree, parts)
     return Architecture(name, built.tree, parts, rules, pages, shown, built.notes, layers, tuple(parts), naming, tiers,
-                        libraries, guards, fakes, tuple(built.repeats), files, testing.framework if testing else None, forbidden,
+                        libraries, guards, fakes, tuple(built.repeats), written, testing.framework if testing else None, forbidden,
                         excluded, hints, based_on)
 
 
@@ -924,8 +923,7 @@ def _needs_testing(document: Mapping[Any, Any]) -> list[str]:
             "<preset>, or testing: {files: [<pattern>, ...], functions: <pattern>}"]
 
 
-def _docs(value: Any, declared: set[str], has_file: Callable[[str], bool],
-          problems: list[str]) -> tuple[str, tuple, tuple]:
+def _docs(value: Any, declared: set[str], files: Collection[str], problems: list[str]) -> tuple[str, tuple, tuple]:
     """What only fills the docs, but for the examples: the entry point's name ("" if none), the pages and the naming
     table."""
     if not isinstance(value, Mapping):
@@ -936,6 +934,6 @@ def _docs(value: Any, declared: set[str], has_file: Callable[[str], bool],
     if "entry" in value and (not isinstance(entry, str) or entry not in declared):
         problems.append(f"docs.entry: no part named {entry!r}")
         entry = ""
-    pages = ck.doc_pages(_bare_from(value["pages"]), has_file, problems, "docs.pages") if "pages" in value else ()
+    pages = ck.doc_pages(_bare_from(value["pages"]), files, problems, "docs.pages") if "pages" in value else ()
     naming = ck.naming_rows(value["naming"], problems, "docs.naming") if "naming" in value else ()
     return entry, pages, naming

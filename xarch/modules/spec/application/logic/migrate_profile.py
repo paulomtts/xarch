@@ -8,7 +8,7 @@ has no form in format 2 is listed in `by_hand`, each with what to write; nothing
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Mapping
+from collections.abc import Collection, Mapping
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
@@ -36,9 +36,9 @@ class Converted:
     by_hand: tuple[str, ...]
 
 
-def convert(document: Any, source: str, presets: Mapping[str, Any], has_file: Callable[[str], bool],
-            folder_files: Callable[[str], tuple[str, ...]]) -> Converted:
-    """The conversion of a profile in format 1; raises InvalidArchitecture when the document cannot be read as one."""
+def convert(document: Any, source: str, presets: Mapping[str, Any], files: Collection[str]) -> Converted:
+    """The conversion of a profile in format 1; raises InvalidArchitecture when the document cannot be read as one.
+    files are the files next to it that it names, and every file below the folders it names (see referenced_v1)."""
     old = read_v1(document, source)
     changes: list[str] = []
     by_hand = [f"`{key}`: not a key of format 1, so nothing of it is converted: write it by hand if it still matters"
@@ -53,7 +53,7 @@ def convert(document: Any, source: str, presets: Mapping[str, Any], has_file: Ca
     assigned = _assigned(tiers, old, changes, by_hand)
     folders = _folders(old, by_hand)
     lists, forbidden_of = _forbidden(old)
-    gathered = gather(old.raw, tiers, has_file, folder_files, changes, by_hand)
+    gathered = gather(old.raw, tiers, files, changes, by_hand)
     package_only = _package_only(old)
     parts = {name: _part(old, name, rows, assigned, folders, forbidden_of, package_only, changes, by_hand)
              for name in order}

@@ -11,7 +11,7 @@ def test_a_tier_example_under_tests_is_only_parsed_and_one_in_a_part_obeys_its_r
     document["parts"]["service"]["may_import"] = []
     document["tiers"]["unit"]["docs"] = {"example": UNIT}
     document["tiers"]["integration"]["docs"] = {"example": INTEGRATION}
-    architecture = parsed(document, folder_files={"ex": (UNIT, INTEGRATION)}.get)
+    architecture = parsed(document, folders={"ex": (UNIT, INTEGRATION)})
     texts = {UNIT: "from app.src.tax.store import anything\n", INTEGRATION: "from app.src.tax.store import x\n"}
     assert example_problems(architecture, texts) == [
         "example (src/billing/service/test_api.py): imports app.src.tax.store which service may not import "

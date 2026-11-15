@@ -26,7 +26,7 @@ def test_the_docs_pages_are_files_written_from_templates_and_folders_with_a_note
 def test_a_bad_docs_page_is_refused_with_its_address_under_pages():
     pages = {"a.md": 3, "b.md": {"from": "gone.md"}, "c/": {"from": "x"}, "d/": {"note": "empty"}, "e.md": {"note": "x"},
              "../f.md": "x"}
-    assert problems(layered(docs={"pages": pages}), has_file=lambda relative: relative != "gone.md") == [
+    assert problems(layered(docs={"pages": pages}), missing={"gone.md"}) == [
         "layered.yaml: docs.pages.a.md: must be a mapping such as {from: <file>, note: <text>}",
         "layered.yaml: docs.pages.b.md.from: no file 'gone.md' next to the architecture file",
         "layered.yaml: docs.pages.c/: a folder takes only `note`",
@@ -74,7 +74,7 @@ def test_the_examples_are_the_folders_of_example_projects_and_every_file_below_t
                "tests/src/billing/api/test_page.py")}
     notes = {"src/billing/store/repo.py": "the only file that names sql"}
     examples = parsed(layered(docs={"examples": ["ex/shared", "ex/web"], "example_notes": notes}),
-                      folder_files=folders.get).examples
+                      folders=folders).examples
     assert list(examples) == ["shared/text.py", "src/billing/store/repo.py", "src/billing/api/page.py",
                               "tests/src/billing/api/test_page.py"]
     assert examples["src/billing/store/repo.py"] == Example(
@@ -88,7 +88,7 @@ def test_the_examples_are_the_folders_of_example_projects_and_every_file_below_t
 def test_a_bad_example_root_or_note_is_refused_with_its_address_under_docs():
     folders = {"a": ("x.py",), "b": ("x.py",), "empty": ()}
     docs = {"examples": ["a", "b", "gone", "empty", 3], "example_notes": {"x.py": "ok", "y.py": "no such file", "z": 1}}
-    assert problems(layered(docs=docs), folder_files=folders.get) == [
+    assert problems(layered(docs=docs), folders=folders) == [
         "layered.yaml: docs.examples[2]: no folder 'gone' holding a file next to the profile file",
         "layered.yaml: docs.examples[3]: no folder 'empty' holding a file next to the profile file",
         "layered.yaml: docs.examples[4]: must be a folder next to the profile file, such as examples/shared",
@@ -99,22 +99,22 @@ def test_a_bad_example_root_or_note_is_refused_with_its_address_under_docs():
 
 def test_the_examples_and_their_notes_must_have_the_shape_the_message_says():
     folders = {"a": ("x.py",)}
-    assert problems(layered(docs={"examples": "a"}), folder_files=folders.get) == [
+    assert problems(layered(docs={"examples": "a"}), folders=folders) == [
         "layered.yaml: docs.examples: must be a list of folders next to the profile file, each an example project, "
         "such as [examples/shared]"]
     assert problems(layered(docs={"example_notes": {"x.py": "n"}})) == [
         "layered.yaml: docs.example_notes.x.py: no file 'x.py' in any folder of docs.examples"]
-    assert problems(layered(docs={"examples": ["a"], "example_notes": {"x.py": "a\nb"}}), folder_files=folders.get) == [
+    assert problems(layered(docs={"examples": ["a"], "example_notes": {"x.py": "a\nb"}}), folders=folders) == [
         "layered.yaml: docs.example_notes.x.py: must be one line of text"]
-    assert problems(layered(docs={"examples": ["a"], "example_notes": ["x.py"]}), folder_files=folders.get) == [
+    assert problems(layered(docs={"examples": ["a"], "example_notes": ["x.py"]}), folders=folders) == [
         "layered.yaml: docs.example_notes: must be a mapping of paths in an example project to one line of text"]
 
 
 def test_files_are_written_from_templates_and_a_bare_string_is_from():
     files = {"AGENTS.md": "agents.md", "tests/test_rules.py": {"from": "guard.py", "pinned": True},
              "{{app}}/web/ui/": {"from": "ui"}}
-    architecture = parsed(layered(files=files), has_file=lambda relative: relative in {"agents.md", "guard.py"},
-                          folder_files=lambda relative: ("a.py",) if relative == "ui" else None)
+    architecture = parsed(layered(files=files), files={"agents.md", "guard.py"},
+                          folders={"ui": ("a.py",)})
     assert architecture.files == (
         ProjectFile(("AGENTS.md",), "agents.md"), ProjectFile(("tests", "test_rules.py"), "guard.py", True),
         ProjectFile(("{{app}}", "web", "ui"), "ui", False, True, False))
@@ -122,7 +122,7 @@ def test_files_are_written_from_templates_and_a_bare_string_is_from():
 
 def test_a_bad_file_is_refused_with_its_address_and_what_to_write():
     files = {"a.md": 3, "b.md": {"from": "gone.md", "colour": 1}, "c.md": {"from": "x.md", "pinned": "yes"}}
-    assert problems(layered(files=files), has_file=lambda relative: relative == "x.md") == [
+    assert problems(layered(files=files), files={"x.md"}) == [
         "layered.yaml: files.a.md: must be a mapping such as {from: <file>}",
         "layered.yaml: files.b.md: unknown key 'colour': use fill, from, pinned",
         "layered.yaml: files.b.md.from: no file 'gone.md' next to the architecture file",

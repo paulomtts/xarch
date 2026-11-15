@@ -32,7 +32,7 @@ def test_the_example_of_a_part_nested_in_another_part_belongs_to_the_nested_part
     document = layered(docs={"examples": ["ex"]})
     document["parts"]["sql"] = {"path": "src/<module>/store/sql", "role": "queries"}
     files = {"ex": ("src/b/store/sql/q.py", "src/b/store/repo.py")}
-    examples = parsed(document, folder_files=files.get).examples
+    examples = parsed(document, folders=files).examples
     assert {path: example.part for path, example in examples.items()} == {
         "src/b/store/sql/q.py": "sql", "src/b/store/repo.py": "store"}
 
@@ -82,7 +82,7 @@ def test_the_docs_pages_keep_their_order_and_notes_below_nested_folders():
                  id="a template that does not exist"),
 ])
 def test_a_bad_docs_page_is_refused_saying_what_to_write(pages, expected):
-    assert problems(layered(docs={"pages": pages}), lambda relative: relative == "x.md") == [
+    assert problems(layered(docs={"pages": pages}), {"x.md"}) == [
         f"layered.yaml: {line}" for line in expected]
 
 
@@ -122,18 +122,17 @@ def test_files_keep_their_order_and_name_their_template():
                  ["files.docs/project/a.md/b: 'docs/project/a.md' is a file, not a folder"], id="a file below a file"),
 ])
 def test_bad_files_are_refused_saying_what_to_write(files, expected):
-    assert problems(layered(files=files), lambda relative: relative == "x.py") == [
+    assert problems(layered(files=files), {"x.py"}) == [
         f"layered.yaml: {line}" for line in expected]
 
 
-def folders(relative):
-    return {"preset": ("a.txt", "sub/b.bin"), "empty": ()}.get(relative.rstrip("/"))
+FOLDERS = {"preset": ("a.txt", "sub/b.bin"), "empty": ()}
 
 
 def test_a_key_ending_in_a_slash_is_a_folder_entry_which_is_not_filled_unless_it_says_so():
     files = {"{{app}}/web/ui/design/": {"from": "preset/"}, "docs/": {"from": "preset", "fill": True},
              "x.txt": {"from": "x.py"}, "y.txt": {"from": "x.py", "fill": False}}
-    found = parsed(layered(files=files), lambda relative: relative == "x.py", folder_files=folders).files
+    found = parsed(layered(files=files), {"x.py"}, folders=FOLDERS).files
     assert found == (ProjectFile(("{{app}}", "web", "ui", "design"), "preset", False, True, False),
                      ProjectFile(("docs",), "preset", False, True, True),
                      ProjectFile(("x.txt",), "x.py", False, False, True),
@@ -148,8 +147,8 @@ def test_a_key_ending_in_a_slash_is_a_folder_entry_which_is_not_filled_unless_it
                  id="a folder entry copying a file"),
     pytest.param({"d/": {"from": "nowhere"}}, ["files.d/.from: no folder 'nowhere' next to the architecture file"],
                  id="a folder that does not exist"),
-    pytest.param({"d/": {"from": "empty"}}, ["files.d/.from: the folder 'empty' holds no file"],
-                 id="a folder holding no file"),
+    pytest.param({"d/": {"from": "empty"}}, ["files.d/.from: no folder 'empty' next to the architecture file"],
+                 id="a folder holding no file is no folder"),
     pytest.param({"d/": {"from": "preset", "pinned": True}},
                  ["files.d/.pinned: a folder entry cannot be pinned: a project edits what it copies"],
                  id="a pinned folder entry"),
@@ -176,7 +175,7 @@ def test_a_key_ending_in_a_slash_is_a_folder_entry_which_is_not_filled_unless_it
 ])
 def test_bad_folder_entries_are_refused_saying_what_to_write(files, expected):
     document = layered(docs={"pages": {"statement.md": {"from": "x.py"}}}, files=files)
-    assert problems(document, lambda relative: relative == "x.py", folder_files=folders) == [
+    assert problems(document, {"x.py"}, folders=FOLDERS) == [
         f"layered.yaml: {line}" for line in expected]
 
 

@@ -4,11 +4,12 @@ example project, and every file below one is an example, named by its path in th
 something after a path. Which part an example illustrates is the part its path lies in."""
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Collection, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
 from xarch.modules.spec.application.logic import profile_checks as ck
+from xarch.modules.spec.application.logic.profile_listing import listing_in
 from xarch.modules.spec.domain.values import EACH, Architecture, Example, Layout, Part, TierExample
 
 PYCACHE = "__pycache__"
@@ -22,21 +23,20 @@ class Examples:
     notes: dict[str, str] = field(default_factory=dict)
 
 
-def example_files(docs: Any, folder_files: Callable[[str], tuple[str, ...] | None], problems: list[str]) -> Examples:
+def example_files(docs: Any, files: Collection[str], problems: list[str]) -> Examples:
     """The files below the folders `docs.examples` lists, and their notes; a docs that is no mapping is reported
     elsewhere."""
     found = Examples()
     if not isinstance(docs, Mapping):
         return found
     if "examples" in docs:
-        _roots(docs["examples"], folder_files, found, problems)
+        _roots(docs["examples"], files, found, problems)
     if "example_notes" in docs:
         _notes(docs["example_notes"], found, problems)
     return found
 
 
-def _roots(value: Any, folder_files: Callable[[str], tuple[str, ...] | None], found: Examples,
-           problems: list[str]) -> None:
+def _roots(value: Any, files: Collection[str], found: Examples, problems: list[str]) -> None:
     if not isinstance(value, list):
         problems.append("docs.examples: must be a list of folders next to the profile file, each an example project, "
                         "such as [examples/shared]")
@@ -48,7 +48,7 @@ def _roots(value: Any, folder_files: Callable[[str], tuple[str, ...] | None], fo
         if not ck.text(root):
             problems.append(f"{where}: must be a folder next to the profile file, such as examples/shared")
             continue
-        listing = folder_files(root)
+        listing = listing_in(files, root)
         if not listing:
             problems.append(f"{where}: no folder '{root}' holding a file next to the profile file")
             continue

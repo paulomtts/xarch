@@ -6,7 +6,7 @@ refused too.
 """
 from __future__ import annotations
 
-from collections.abc import Callable, Collection, Mapping
+from collections.abc import Collection, Mapping
 from pathlib import Path
 from typing import Any
 
@@ -19,9 +19,8 @@ VERSION = 2
 MIGRATE = "xarch profile migrate"
 
 
-def parse_profile(document: Any, source: str, has_file: Callable[[str], bool],
-                  folder_files: Callable[[str], tuple[str, ...] | None] | None = None,
-                  presets: Mapping[str, Any] | None = None, bundled: Collection[str] = ()) -> Architecture:
+def parse_profile(document: Any, source: str, files: Collection[str] = (), presets: Mapping[str, Any] | None = None,
+                  bundled: Collection[str] = ()) -> Architecture:
     """The architecture the document describes; raises InvalidArchitecture listing every problem. See parse_v2 for what
     the arguments are."""
     written = f"`xarch: {VERSION}`"
@@ -34,7 +33,7 @@ def parse_profile(document: Any, source: str, has_file: Callable[[str], bool],
         raise InvalidArchitecture(source, [f"format 1 is no longer read: run `{MIGRATE} {source}` to convert it to "
                                            f"format {VERSION}"])
     if type(version) is int and version == VERSION:
-        return parse_v2(document, source, has_file, folder_files, presets, bundled)
+        return parse_v2(document, source, files, presets, bundled)
     raise InvalidArchitecture(source, [f"unknown format version {version!r}: this xarch reads {written}"])
 
 

@@ -7,7 +7,7 @@ from __future__ import annotations
 import builtins
 import re
 import sys
-from collections.abc import Callable, Collection, Mapping
+from collections.abc import Collection, Mapping
 from fnmatch import fnmatchcase
 from typing import Any
 
@@ -15,6 +15,7 @@ from xarch.kernel.logic.placement import place_of
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic.docs_files import DOCS_ROOT
 from xarch.modules.spec.application.logic.key_lookup import names_of, required_of
+from xarch.modules.spec.application.logic.profile_listing import listing_in
 from xarch.modules.spec.application.logic.project_files import APP_PLACEHOLDER
 from xarch.modules.spec.domain.profile_keys import FILE, NAMING, PAGE, TABLE
 from xarch.modules.spec.domain.values import (
@@ -117,7 +118,7 @@ def strings(value: Any) -> tuple[str, ...] | None:
     return None
 
 
-def doc_pages(value: Any, has_file: Callable[[str], bool], problems: list[str], at: str) -> tuple[Doc, ...]:
+def doc_pages(value: Any, listed: Collection[str], problems: list[str], at: str) -> tuple[Doc, ...]:
     """The project docs: files with the template each is filled from, and folders with a note."""
     if not isinstance(value, Mapping):
         problems.append(f"{at}: must be a mapping of paths to {{from, note}}, such as {{statement.md: {{from: docs/statement.md}}}}")
@@ -139,7 +140,7 @@ def doc_pages(value: Any, has_file: Callable[[str], bool], problems: list[str], 
         problems += unknown_keys(spec, names_of(PAGE), where)
         if "note" in spec and not line(spec["note"]):
             problems.append(f"{where}.note: must be one line of text")
-        source = doc_source(spec, where, folder, has_file, problems)
+        source = doc_source(spec, where, folder, listed, problems)
         if len(problems) == count:
             docs.append(Doc(steps, source, spec.get("note", "")))
             (folders if folder else files).add(steps)
@@ -148,8 +149,7 @@ def doc_pages(value: Any, has_file: Callable[[str], bool], problems: list[str], 
     return tuple(docs)
 
 
-def init_files(value: Any, docs: tuple[Doc, ...], has_file: Callable[[str], bool],
-               folder_files: Callable[[str], tuple[str, ...] | None], problems: list[str],
+def init_files(value: Any, docs: tuple[Doc, ...], files: Collection[str], problems: list[str],
                docs_at: str) -> tuple[ProjectFile, ...]:
     """The project files: each path below the project root with the template, or the folder, it is written from."""
     if not isinstance(value, Mapping):
@@ -172,8 +172,8 @@ def init_files(value: Any, docs: tuple[Doc, ...], has_file: Callable[[str], bool
             continue
         count = len(problems)
         problems += unknown_keys(spec, names_of(FILE), where)
-        source = (folder_source(spec, where, has_file, folder_files, problems) if folder
-                  else file_source(spec, where, has_file, folder_files, problems))
+        source = (folder_source(spec, where, files, problems) if folder
+                  else file_source(spec, where, files, problems))
         pinned = spec.get("pinned", False)
         if not isinstance(pinned, bool):
             problems.append(f"{where}.pinned: must be true or false: whether `check` reports the file when it differs "
@@ -213,36 +213,32 @@ def file_clashes(file: ProjectFile, files: list[ProjectFile], docs: tuple[Doc, .
     return found
 
 
-def file_source(spec: Mapping[Any, Any], where: str, has_file: Callable[[str], bool],
-                 folder_files: Callable[[str], tuple[str, ...] | None], problems: list[str]) -> str | None:
-    if text(spec.get("from")) and not has_file(spec["from"]) and folder_files(spec["from"]):
+def file_source(spec: Mapping[Any, Any], where: str, files: Collection[str], problems: list[str]) -> str | None:
+    if text(spec.get("from")) and spec["from"] not in files and listing_in(files, spec["from"]):
         problems.append(f"{where}.from: '{spec['from']}' is a folder, not a file: end the key with / to copy a folder")
         return None
-    return doc_source(spec, where, False, has_file, problems)
+    return doc_source(spec, where, False, files, problems)
 
 
-def folder_source(spec: Mapping[Any, Any], where: str, has_file: Callable[[str], bool],
-                   folder_files: Callable[[str], tuple[str, ...] | None], problems: list[str]) -> str | None:
+def folder_source(spec: Mapping[Any, Any], where: str, files: Collection[str], problems: list[str]) -> str | None:
     if "from" not in spec:
         problems.append(f"{where}: missing `from`, the folder")
     elif not text(spec["from"]):
         problems.append(f"{where}.from: must be a folder name")
     else:
         folder = spec["from"].removesuffix("/")
-        held = folder_files(folder)
-        if has_file(folder):
+        held = listing_in(files, folder)
+        if folder in files:
             problems.append(f"{where}.from: '{folder}' is a file, not a folder: a folder entry copies a folder")
         elif held is None:
             problems.append(f"{where}.from: no folder '{folder}' next to the architecture file")
-        elif not held:
-            problems.append(f"{where}.from: the folder '{folder}' holds no file")
         else:
             return folder
     return None
 
 
-def doc_source(spec: Mapping[Any, Any], where: str, folder: bool, has_file: Callable[[str], bool],
-                problems: list[str]) -> str | None:
+def doc_source(spec: Mapping[Any, Any], where: str, folder: bool, files: Collection[str],
+               problems: list[str]) -> str | None:
     if folder:
         if "from" in spec:
             problems.append(f"{where}: a folder takes only `note`")
@@ -251,7 +247,7 @@ def doc_source(spec: Mapping[Any, Any], where: str, folder: bool, has_file: Call
         problems.append(f"{where}: missing `from`, the template file")
     elif not text(spec["from"]):
         problems.append(f"{where}.from: must be a file name")
-    elif not has_file(spec["from"]):
+    elif spec["from"] not in files:
         problems.append(f"{where}.from: no file '{spec['from']}' next to the architecture file")
     else:
         return spec["from"]

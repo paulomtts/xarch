@@ -14,9 +14,9 @@ def architecture() -> Architecture:
 
 
 def test_every_template_init_file_folder_entry_and_example_is_listed_once_in_the_order_the_profile_names_them():
-    assert pointed_files(architecture(), lambda folder: LISTING[folder]) == (
+    assert pointed_files(architecture(), LISTING) == (
         "docs/statement.md", "agents.md", "presets/a.txt", "presets/deep/b.txt", "examples/src/x.py")
 
 
 def test_a_profile_that_points_to_nothing_lists_nothing():
-    assert pointed_files(Architecture("mine", {}, {}, {}), lambda folder: ()) == ()
+    assert pointed_files(Architecture("mine", {}, {}, {}), {}) == ()

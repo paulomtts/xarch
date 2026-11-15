@@ -49,6 +49,7 @@ import copy
 import hashlib
 import io
 import tokenize
+from collections.abc import Iterable
 from pathlib import Path
 
 from xarch.modules.rules.domain.values import (
@@ -75,8 +76,8 @@ class FsSourceTree:
     def __init__(self, fs: FileSystem):
         self._fs = fs
 
-    def is_dir(self, root: Path) -> bool:
-        return self._fs.is_dir(root)
+    def absent(self, roots: Iterable[Path]) -> list[Path]:
+        return [root for root in roots if not self._fs.is_dir(root)]
 
     def paths(self, root: Path) -> list[tuple[str, ...]]:
         return [f.relative_to(root).parts for f in self._fs.files(root, "*.py")]
@@ -85,8 +86,8 @@ class FsSourceTree:
         return [_parsed(root.joinpath(*path).relative_to(root.parent).as_posix(), path,
                         self._fs.read_text(root.joinpath(*path)), table) for path in paths]
 
-    def exists(self, path: Path) -> bool:
-        return self._fs.exists(path)
+    def existing(self, paths: Iterable[Path]) -> frozenset[Path]:
+        return frozenset(path for path in paths if self._fs.exists(path))
 
     def text(self, path: Path) -> str | None:
         return self._fs.read_text(path) if self._fs.is_file(path) else None

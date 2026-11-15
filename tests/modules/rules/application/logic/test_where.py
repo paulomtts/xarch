@@ -63,23 +63,23 @@ def where(*steps, exists=False, closed=False, profile=PROFILE):
 ])
 def test_a_path_is_taken_from_the_working_folder_the_project_root_or_the_app_folder(given, existing, expected):
     cwd = ROOT / "sub" if given.startswith("..") else ROOT
-    resolved = resolve(Path(given), cwd, APP, TESTS, lambda path: path.as_posix() in existing)
+    resolved = resolve(Path(given), cwd, APP, TESTS, {Path(p) for p in existing})
     assert resolved is not None
     assert (resolved.kind, resolved.steps, resolved.exists) == expected
 
 
 def test_a_path_taken_from_a_folder_of_the_app_resolves_against_that_folder_first():
-    resolved = resolve(Path("x.py"), APP / "kernel", APP, TESTS, lambda path: path == APP / "kernel" / "x.py")
+    resolved = resolve(Path("x.py"), APP / "kernel", APP, TESTS, {APP / "kernel" / "x.py"})
     assert resolved == Resolved("app", ("kernel", "x.py"), APP / "kernel" / "x.py", True)
 
 
 @pytest.mark.parametrize("given", ["/etc/passwd", "../../elsewhere/x.py", "/p/../q/x.py", "../kernel/x.py"])
 def test_a_path_outside_the_project_is_not_placed(given):
-    assert resolve(Path(given), ROOT, APP, TESTS, lambda path: False) is None
+    assert resolve(Path(given), ROOT, APP, TESTS, ()) is None
 
 
 def test_the_tests_folder_may_lie_outside_the_project_root():
-    resolved = resolve(Path("/elsewhere/t/a.py"), ROOT, APP, Path("/elsewhere/t"), lambda path: False)
+    resolved = resolve(Path("/elsewhere/t/a.py"), ROOT, APP, Path("/elsewhere/t"), ())
     assert resolved == Resolved("tests", ("a.py",), Path("/elsewhere/t/a.py"), False)
 
 
@@ -248,7 +248,7 @@ def test_a_target_below_a_folder_part_is_shown_without_the_folders_slash():
 
 def test_what_exists_in_the_app_beats_what_exists_elsewhere_in_the_project():
     existing = {"/p/kernel/x.py", "/p/app/kernel/x.py"}
-    resolved = resolve(Path("kernel/x.py"), ROOT, APP, TESTS, lambda path: path.as_posix() in existing)
+    resolved = resolve(Path("kernel/x.py"), ROOT, APP, TESTS, {Path(p) for p in existing})
     assert resolved == Resolved("app", ("kernel", "x.py"), APP / "kernel" / "x.py", True)
 
 

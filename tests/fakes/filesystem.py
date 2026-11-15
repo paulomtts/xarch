@@ -1,6 +1,7 @@
 """In-memory implementations of the modules' filesystem ports. Not adapters: test doubles only."""
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import replace
 from pathlib import Path
 
@@ -18,8 +19,8 @@ class FakeSourceTree:
         self._trees = {root: files, **(more or {})}
         self._texts = dict(texts or {})
 
-    def is_dir(self, root: Path) -> bool:
-        return root in self._trees
+    def absent(self, roots: Iterable[Path]) -> list[Path]:
+        return [root for root in roots if root not in self._trees]
 
     def paths(self, root: Path) -> list[tuple[str, ...]]:
         return [tuple(rel.split("/")) for rel in sorted(self._trees[root])]
@@ -31,9 +32,9 @@ class FakeSourceTree:
     def text(self, path: Path) -> str | None:
         return self._texts.get(path)
 
-    def exists(self, path: Path) -> bool:
+    def existing(self, paths: Iterable[Path]) -> frozenset[Path]:
         held = [root / rel for root, files in self._trees.items() for rel in files] + list(self._texts)
-        return any(path == file or path in file.parents for file in held)
+        return frozenset(path for path in paths if any(path == file or path in file.parents for file in held))
 
 
 def _source(name: str, path: tuple[str, ...], given: list[Import] | SourceFile) -> SourceFile:

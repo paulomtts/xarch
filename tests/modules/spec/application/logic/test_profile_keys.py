@@ -8,6 +8,7 @@ import yaml
 from tests.modules.spec.profiles_v2 import PRESETS, parsed, problems
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic.key_lookup import keys_of, plain
+from xarch.modules.spec.application.logic.profile_listing import referenced
 from xarch.modules.spec.domain.guards import GUARDS
 from xarch.modules.spec.domain.profile_keys import (
     CHOICE_BUNDLED,
@@ -47,8 +48,13 @@ def document_of(key: Key) -> dict:
     return merged(BASE, yaml.safe_load(filled(key.example)))
 
 
+def every_folder(document: dict) -> dict[str, tuple[str, ...]]:
+    """LISTING as the files below every folder the document names."""
+    return dict.fromkeys(referenced(document)[1], LISTING)
+
+
 def load(document: dict):
-    return parsed(document, bundled=BUNDLED, folder_files=lambda relative: LISTING)
+    return parsed(document, bundled=BUNDLED, folders=every_folder(document))
 
 
 def containers(node, steps: list[str]):
@@ -117,7 +123,7 @@ def test_a_required_key_is_missing_in_the_loader_when_left_out(key):
     for holder in holders(key, document):
         holder.pop(key.name, None)
     assert any(f"missing `{key.name}`" in problem for problem in problems(document, bundled=BUNDLED,
-                                                                         folder_files=lambda relative: LISTING))
+                                                                         folders=every_folder(document)))
 
 
 def test_the_smallest_profile_loads_and_every_symbol_is_explained():
@@ -129,7 +135,7 @@ def test_the_smallest_profile_loads_and_every_symbol_is_explained():
 def test_the_keys_the_loader_names_in_its_unknown_key_message_are_the_keys_of_the_table(scope):
     document = document_of(keys_of(scope)[0])
     holders(keys_of(scope)[0], document)[0]["zz_unknown"] = 1
-    found = [p for p in problems(document, bundled=BUNDLED, folder_files=lambda relative: LISTING) if "zz_unknown" in p]
+    found = [p for p in problems(document, bundled=BUNDLED, folders=every_folder(document)) if "zz_unknown" in p]
     assert found, f"{scope}: the loader accepts an unknown key"
     named = set(found[0].split(": use ")[-1].split(", "))
     assert named == {key.name for key in keys_of(scope)}

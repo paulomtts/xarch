@@ -18,7 +18,7 @@ PATHS = {"shared": "shared/x.py", "store": "src/billing/store/x.py", "sql": "src
 
 def project(texts: dict[str, str]) -> list[str]:
     """The problems of an example project whose files are the paths given, each holding its text."""
-    architecture = v2(PROFILE | {"docs": {"examples": ["ex"]}}, folder_files={"ex": tuple(texts)}.get)
+    architecture = v2(PROFILE | {"docs": {"examples": ["ex"]}}, folders={"ex": tuple(texts)})
     return example_problems(architecture, texts)
 
 
@@ -89,7 +89,7 @@ def test_an_example_in_no_part_or_not_valid_python_is_reported_and_other_files_a
 def test_every_python_file_of_an_example_project_is_checked_by_its_path_and_test_code_is_only_parsed():
     files = ("src/billing/api/x.py", "src/billing/store/x.py", "shared/text.py", "tests/src/billing/test_x.py",
              "tests/src/billing/test_y.py", "other/x.py", "notes.md")
-    architecture = v2(layered_v2(docs={"examples": ["ex"]}), folder_files={"ex": files}.get)
+    architecture = v2(layered_v2(docs={"examples": ["ex"]}), folders={"ex": files})
     texts = {"src/billing/api/x.py": "from app.src.billing.service import S\n",
              "src/billing/store/x.py": "from app.shared import text\nfrom app.src.billing.api import A\n",
              "shared/text.py": "import os\n",

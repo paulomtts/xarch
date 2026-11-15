@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from xarch.modules.spec.application.logic.profile_file import source_of
-from xarch.modules.spec.application.logic.profile_files import pointed_files
 from xarch.modules.spec.application.logic.profile_in_force import choose
 from xarch.modules.spec.application.logic.profile_view import view
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
@@ -27,11 +26,10 @@ class ProfileReview:
         """Raises NoProfile or UnknownProfile; a profile that does not load is reported, not raised."""
         location = self._location(cmd.app, cmd.target)
         try:
-            architecture = self._architectures.load(location)
+            self._architectures.load(location)
         except InvalidArchitecture as e:
             return ProfileChecked(location, tuple(Problem(LOAD, problem) for problem in e.problems), 0, None)
-        source = source_of(location, self._files.bundled())
-        files = pointed_files(architecture, lambda folder: self._files.files_under(source, folder))
+        files = self._architectures.pointed(location)
         found = [Problem(EXAMPLES, problem) for problem in self._architectures.check_examples(location)]
         return ProfileChecked(location, tuple(found), len(files), self._architectures.origin(location))
 

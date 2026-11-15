@@ -219,8 +219,15 @@ def test_a_file_or_a_folder_exists_and_a_path_that_is_not_there_does_not(tmp_pat
     (tmp_path / "a").mkdir()
     (tmp_path / "a" / "x.py").write_text("")
     tree = FsSourceTree(FileSystem())
-    assert [tree.exists(tmp_path / "a"), tree.exists(tmp_path / "a" / "x.py"), tree.exists(tmp_path / "b")] == [
-        True, True, False]
+    assert tree.existing([tmp_path / "a", tmp_path / "a" / "x.py", tmp_path / "b"]) == {tmp_path / "a",
+                                                                                         tmp_path / "a" / "x.py"}
+
+
+def test_a_root_that_is_no_folder_is_absent_in_the_order_given(tmp_path):
+    (tmp_path / "a").mkdir()
+    (tmp_path / "f.py").write_text("")
+    tree = FsSourceTree(FileSystem())
+    assert tree.absent([tmp_path / "f.py", tmp_path / "a", tmp_path / "b"]) == [tmp_path / "f.py", tmp_path / "b"]
 
 
 @pytest.mark.parametrize("text, calls", [

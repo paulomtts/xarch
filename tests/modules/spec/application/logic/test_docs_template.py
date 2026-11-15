@@ -35,12 +35,12 @@ def parts(**changes) -> dict:
 
 
 def filled(template: str, **extra) -> str:
-    return fill(template, parsed(layered(**extra), folder_files=EXAMPLES.get), "layered.md", TEXTS)
+    return fill(template, parsed(layered(**extra), folders=EXAMPLES), "layered.md", TEXTS)
 
 
 def problems(template: str, document: dict | None = None) -> list[str]:
     with pytest.raises(InvalidTemplate) as caught:
-        fill(template, parsed(document or layered(), folder_files=EXAMPLES.get), "layered.md", TEXTS)
+        fill(template, parsed(document or layered(), folders=EXAMPLES), "layered.md", TEXTS)
     assert caught.value.reason == "\n".join(caught.value.problems)
     return list(caught.value.problems)
 

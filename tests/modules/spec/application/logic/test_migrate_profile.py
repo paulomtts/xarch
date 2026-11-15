@@ -5,7 +5,9 @@ from copy import deepcopy
 import pytest
 
 from tests.modules.spec.profiles_v2 import PRESETS, TESTING, parsed
+from xarch.modules.spec.application.logic.migrate_examples import referenced_v1
 from xarch.modules.spec.application.logic.migrate_profile import Converted, convert
+from xarch.modules.spec.application.logic.profile_listing import listing
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 
 KIT = {"files": ["test_*.py"], "functions": "test_*"}
@@ -32,13 +34,14 @@ def tiered(**changes) -> dict:
 
 def made(document: dict, files: dict[str, tuple[str, ...]] | None = None, presets=None,
          missing: frozenset[str] | set[str] = frozenset()) -> Converted:
-    held = files or {}
-    return convert(document, "layered.yaml", presets or {}, lambda relative: relative not in missing,
-                   lambda relative: held.get(relative.rstrip("/"), ()))
+    """The conversion, with every file the document names next to it but those missing, and the folders in files."""
+    named = referenced_v1(document)[0]
+    return convert(document, "layered.yaml", presets or {},
+                   listing((name for name in named if name not in missing), files or {}))
 
 
-def loads(converted: Converted, folder_files=None, presets=None):
-    return parsed(converted.document, folder_files=folder_files, presets=presets or {"kit": KIT}, bundled=())
+def loads(converted: Converted, folders=None, presets=None):
+    return parsed(converted.document, folders=folders, presets=presets or {"kit": KIT}, bundled=())
 
 
 def test_the_converted_profile_starts_with_the_version_the_name_and_the_language():

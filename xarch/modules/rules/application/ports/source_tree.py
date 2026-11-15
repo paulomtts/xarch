@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Protocol
 
@@ -9,7 +10,9 @@ from xarch.modules.rules.domain.values import SourceFile, TableForm
 class SourceTree(Protocol):
     """The Python files below a root folder, listed, then read already parsed."""
 
-    def is_dir(self, root: Path) -> bool: ...
+    def absent(self, roots: Iterable[Path]) -> list[Path]:
+        """The roots that are no folder, in the order given."""
+        ...
 
     def paths(self, root: Path) -> list[tuple[str, ...]]:
         """The path below root of every .py file, sorted."""
@@ -20,8 +23,8 @@ class SourceTree(Protocol):
         tables written in the form `table` names; with none, no table is recognised."""
         ...
 
-    def exists(self, path: Path) -> bool:
-        """Whether a file or a folder is at path."""
+    def existing(self, paths: Iterable[Path]) -> frozenset[Path]:
+        """The paths at which a file or a folder is."""
         ...
 
     def text(self, path: Path) -> str | None:

@@ -54,9 +54,9 @@ class ImportCheck:
         below a folder the profile excludes is not looked at at all, and the folder is named in the enforcement. Every
         file below tests is read. The init files are looked for in the folder holding root, where `init` writes them.
         """
-        for folder in (root, tests):
-            if folder is not None and not self._tree.is_dir(folder):
-                raise RootMissing(folder)
+        absent = self._tree.absent(folder for folder in (root, tests) if folder is not None)
+        if absent:
+            raise RootMissing(absent[0])
         rules = self._profiles.profile(profile)
         paths = [p for p in self._tree.paths(root) if not _excluded(rules, p)]
         app = self._tree.read(root, [p for p in paths if _governed(rules, p)])
