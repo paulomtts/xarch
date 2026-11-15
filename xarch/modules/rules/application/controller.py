@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from xarch.kernel.logic.placement import Place
+from xarch.kernel.logic.testing import TierView
 from xarch.modules.rules.application.logic import enforcement
 from xarch.modules.rules.application.services.app_check import AppCheckService
 from xarch.modules.rules.application.services.locate import LocateService
@@ -10,23 +12,42 @@ from xarch.modules.rules.contract import (
     CheckAppResult,
     CheckImports,
     CheckResult,
+    CoveringTest,
     DriftView,
     EnforcementView,
     ExcludedView,
+    Fake,
     FindingView,
     ImportsChecked,
+    InPart,
+    InStructure,
+    InTests,
     Locate,
     Located,
     LocateResult,
     NearestView,
     NotADirectory,
     Outside,
+    PartShown,
     ReachView,
+    Support,
     TierInfoView,
-    WhereView,
+    Ungoverned,
+    Untested,
+    WhereAnswer,
 )
 from xarch.modules.rules.domain.errors import OutsideProject, RootMissing
-from xarch.modules.rules.domain.values import Enforcement, Where
+from xarch.modules.rules.domain.values import (
+    Enforcement,
+    FakePlace,
+    PartAt,
+    PartInfo,
+    PartPlace,
+    Placed,
+    StructurePlace,
+    SuitePlace,
+    UngovernedPlace,
+)
 
 
 class RulesController:
@@ -65,13 +86,47 @@ def _enforcement(state: Enforcement) -> EnforcementView:
         state.language)
 
 
-def _where(found: Where) -> WhereView:
-    tier = found.tier
-    return WhereView(
-        found.kind, found.path, found.exists, found.part, found.role, found.litmus, found.folder, found.instance,
-        found.singular, tuple(ReachView(r.part, r.scope, r.folder, r.path) for r in found.may_import),
-        found.may_import_text, found.libraries, found.forbidden,
-        TierInfoView(tier.name, tier.proves, tier.may_touch, tier.litmus) if tier is not None else None,
-        found.untested, found.test_folder, found.test_file,
-        tuple(NearestView(n.part, n.folder, n.path) for n in found.nearest), found.closed_tree, found.may_use_fakes,
-        found.fakes_path, found.types_only, found.test_code_from, found.note)
+def _where(found: Placed) -> WhereAnswer:
+    match found:
+        case PartPlace():
+            return InPart(found.found.shown, found.found.exists, _part(found.place, found.info, found.singular),
+                          _reaches(found.reaches), found.may_import_text, found.libraries, found.forbidden,
+                          _tested(found))
+        case StructurePlace():
+            return InStructure(found.found.shown, found.found.exists, _nearest(found.nearest))
+        case UngovernedPlace():
+            return Ungoverned(found.found.shown, found.found.exists, _nearest(found.nearest), found.closed_tree,
+                              found.note)
+        case SuitePlace():
+            kind = InTests if found.test else Support
+            tier = found.tier
+            mirrors = (_part(found.place, found.info, found.singular)
+                       if found.place is not None and found.info is not None else None)
+            return kind(found.found.shown, found.found.exists, mirrors, _reaches(found.reaches),
+                        found.may_import_text, tier.types_only if tier is not None else (), found.forbidden,
+                        _tier(tier) if tier is not None else None, found.may_use_fakes, found.fakes_path,
+                        found.test_code_from, found.note)
+        case FakePlace():
+            return Fake(found.found.shown, found.found.exists, found.fakes_path, found.test_code_from, found.note)
+
+
+def _part(place: Place, info: PartInfo, singular: str) -> PartShown:
+    return PartShown(place.part or "", info.shown, place.instance or "", singular, info.role, info.litmus)
+
+
+def _reaches(reaches: tuple[PartAt, ...]) -> tuple[ReachView, ...]:
+    return tuple(ReachView(r.target.part, r.target.scope, r.folder, r.path) for r in reaches)
+
+
+def _nearest(nearest: tuple[PartAt, ...]) -> tuple[NearestView, ...]:
+    return tuple(NearestView(n.target.part, n.folder, n.path) for n in nearest)
+
+
+def _tier(tier: TierView) -> TierInfoView:
+    return TierInfoView(tier.name, tier.proves, tier.may_touch, tier.litmus)
+
+
+def _tested(found: PartPlace) -> CoveringTest | Untested | None:
+    if found.tier is not None:
+        return CoveringTest(_tier(found.tier), found.test_folder, found.test_file, found.test_folder + found.test_file)
+    return Untested(found.untested) if found.untested else None

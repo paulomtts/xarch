@@ -3,12 +3,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import ClassVar
 
 from xarch.kernel.logic.origin import Origin
 from xarch.kernel.violations import At, Violation, Weak
 
-__all__ = ["DriftView", "FindingView", "ExcludedView", "EnforcementView", "ReachView", "NearestView", "TierInfoView", "WhereView", "CheckImports", "ImportsChecked",
-           "NotADirectory", "CheckResult", "CheckApp", "AppChecked", "CheckAppResult", "Locate", "Located", "Outside", "LocateResult"]
+__all__ = ["DriftView", "FindingView", "ExcludedView", "EnforcementView", "ReachView", "NearestView", "TierInfoView",
+           "PartShown", "CoveringTest", "Untested", "InPart", "InStructure", "Ungoverned", "InTests", "Support", "Fake",
+           "WhereAnswer", "CheckImports", "ImportsChecked", "NotADirectory", "CheckResult", "CheckApp", "AppChecked",
+           "CheckAppResult", "Locate", "Located", "Outside", "LocateResult"]
 
 
 @dataclass(frozen=True)
@@ -79,39 +82,115 @@ class TierInfoView:
 
 
 @dataclass(frozen=True)
-class WhereView:
-    """What a place is and what code there may do, the answer of `xarch where`: its kind (part, structure, ungoverned,
-    test, fake or support), its path below the folder holding the app and whether it is there now; the part claiming it
-    (for a test, the part it mirrors), its role and litmus test, its name in the docs, its instance and the word of
-    one; what it may import, as places and in the docs' words; the outside packages it may import (None: not checked)
-    and the names it may not use; the tier that tests it (or why none does) and where its test would live; the parts
-    around a place in no part, and whether a file there is a violation; for a test, whether it may import the fakes
-    and where they live, the parts it may use as types only and the folder it may import test code from; and a note
-    where the kind alone does not say it."""
-    kind: str
-    path: str
-    exists: bool
-    part: str = ""
-    role: str = ""
-    litmus: str = ""
-    folder: str = ""
+class PartShown:
+    """The part claiming a place, or the one a test mirrors: its name, its name as the docs show it (folder), the
+    instance of its repeating folder the place is in ("" for none) and the word one instance is called by, and its
+    role and litmus test."""
+    name: str
+    folder: str
     instance: str = ""
     singular: str = ""
-    may_import: tuple[ReachView, ...] = ()
-    may_import_text: str = ""
-    libraries: tuple[str, ...] | None = None
-    forbidden: tuple[str, ...] = ()
-    tier: TierInfoView | None = None
-    untested: str = ""
-    test_folder: str = ""
-    test_file: str = ""
-    nearest: tuple[NearestView, ...] = ()
-    closed_tree: bool = False
-    may_use_fakes: bool = False
-    fakes_path: str = ""
-    types_only: tuple[str, ...] = ()
-    test_code_from: str = ""
-    note: str = ""
+    role: str = ""
+    litmus: str = ""
+
+
+@dataclass(frozen=True)
+class CoveringTest:
+    """The tier that tests a place and where its test lives: the folder below the project root, the file's name (a
+    name pattern when the file is not its own, "" when the place is no source file), and the two as one path."""
+    tier: TierInfoView
+    folder: str
+    file: str
+    path: str
+
+
+@dataclass(frozen=True)
+class Untested:
+    """No tier tests a place, and the profile says why."""
+    reason: str
+
+
+@dataclass(frozen=True)
+class InPart:
+    """A place in a part: its path below the folder holding the app and whether it is there now; the part; what its
+    code may import, as places and in the docs' words; the outside packages it may import (None: not checked); the
+    names it may not use; and what tests it: CoveringTest, Untested, or None when no tier does and the profile says
+    nothing."""
+    kind: ClassVar[str] = "part"
+    path: str
+    exists: bool
+    part: PartShown
+    may_import: tuple[ReachView, ...]
+    may_import_text: str
+    libraries: tuple[str, ...] | None
+    forbidden: tuple[str, ...]
+    tested: CoveringTest | Untested | None
+
+
+@dataclass(frozen=True)
+class InStructure:
+    """A folder of the layout no part claims: its path, whether it is there now, and the parts below it."""
+    kind: ClassVar[str] = "structure"
+    path: str
+    exists: bool
+    nearest: tuple[NearestView, ...]
+
+
+@dataclass(frozen=True)
+class Ungoverned:
+    """A place in no part and no folder of the layout, below a folder the profile excludes, or outside the app and its
+    tests: its path, whether it is there now, the parts near it, whether a file there is a violation (None when no
+    part is near), and why it is ungoverned when that is not plain ("" for nothing to say)."""
+    kind: ClassVar[str] = "ungoverned"
+    path: str
+    exists: bool
+    nearest: tuple[NearestView, ...]
+    closed_tree: bool | None
+    note: str
+
+
+@dataclass(frozen=True)
+class InTests:
+    """A test file, or the folder of one, below the tests root: its path, whether it is there now; the part it mirrors
+    (None: none); what it may import, as places and in the docs' words; the parts it may use as types only; the names
+    it may not use; its tier (None: it lies in none); whether it may import the fakes and where they live; the one
+    folder it may import test code from; and why it lies in no tier ("" for nothing to say)."""
+    kind: ClassVar[str] = "test"
+    path: str
+    exists: bool
+    mirrors: PartShown | None
+    may_import: tuple[ReachView, ...]
+    may_import_text: str
+    types_only: tuple[str, ...]
+    forbidden: tuple[str, ...]
+    tier: TierInfoView | None
+    may_use_fakes: bool
+    fakes_path: str
+    code_from: str
+    note: str
+
+
+@dataclass(frozen=True)
+class Support(InTests):
+    """A file below the tests root that is no test, such as a helper: told as a test is."""
+    kind: ClassVar[str] = "support"
+
+
+@dataclass(frozen=True)
+class Fake:
+    """A test fake: its path, whether it is there now, where the fakes live, the one folder it may import test code
+    from, and that it is no test."""
+    kind: ClassVar[str] = "fake"
+    path: str
+    exists: bool
+    fakes_path: str
+    code_from: str
+    note: str
+
+
+WhereAnswer = InPart | InStructure | Ungoverned | InTests | Fake
+"""What a place is and what code there may do, the answer of `xarch where`: one variant per kind of place, each
+named by its kind (Support is an InTests)."""
 
 
 @dataclass(frozen=True)
@@ -175,7 +254,7 @@ class Locate:
 
 @dataclass(frozen=True)
 class Located:
-    where: WhereView
+    where: WhereAnswer
 
 
 @dataclass(frozen=True)

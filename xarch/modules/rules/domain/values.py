@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from xarch.kernel.logic.language import LanguageView
 from xarch.kernel.logic.origin import Origin
-from xarch.kernel.logic.placement import Excluded, Repeat, Target, repeat_of
+from xarch.kernel.logic.placement import Excluded, Place, Repeat, Target, repeat_of
 from xarch.kernel.logic.testing import Fakes, Framework, ScenarioCoverage, StandIns, TierView
 from xarch.kernel.violations import At, Weak
 
@@ -352,73 +353,98 @@ class Enforcement:
 
 
 @dataclass(frozen=True)
-class Reach:
-    """One thing a place may import: a part, in which scope (own, any, none), the part as the docs name it, and the
-    folder it is at below the project root (a placeholder for an instance that is not fixed, such as <module>)."""
-    part: str
-    scope: str
-    folder: str
-    path: str
-
-
-@dataclass(frozen=True)
-class Nearest:
-    """A part near a place no part claims: the part, as the docs name it, and its folder below the project root."""
-    part: str
-    folder: str
-    path: str
-
-
-@dataclass(frozen=True)
-class TierInfo:
-    """A kind of test as `where` tells it: the profile's words for what it proves, may touch and its litmus test."""
-    name: str
-    proves: str = ""
-    may_touch: str = ""
-    litmus: str = ""
-
-
-@dataclass(frozen=True)
-class Where:
-    """What a place is and what code there may do, the answer of `xarch where`.
-
-    kind: part (code in a part), structure (a folder of the layout no part claims), ungoverned (in no part and no
-    folder of the layout, or outside the app and its tests), test (a test file, or the folder of one), fake (a test
-    fake) or support (a file below the tests root that is no test, such as a helper)
-    path: below the folder holding the app; exists: whether it is there now
-    part, role, litmus, folder, instance: the part claiming it (for a test, the part it mirrors), its role and litmus
-    test, its name as the docs show it, the instance of the repeating folder it is in and the word that names one
-    instance of it (singular)
-    may_import, may_import_text: the folders its code may import, and the same in the docs' words; libraries: the
-    outside packages it may import (None: not checked); forbidden: the names it may not use
-    tier, untested, test_folder, test_file: the kind of test that tests it (or why none does), and where its test
-    file would live; test_file is a name pattern when the file is not its own (one file per use case)
-    nearest: for a place in no part, the parts around it; closed_tree: whether a file there is a violation
-    may_use_fakes, fakes_path, types_only, test_code_from: for a test, whether it may import the fakes and where
-    they live, the parts it may use as types only, and the one folder it may import test code from
-    note: one line of explanation where the kind alone does not say it
-    """
-    kind: str
-    path: str
+class Resolved:
+    """A path settled: which folder it lies in (app, tests or project), its steps below that folder, the path in full,
+    whether it exists, and how it is shown: below the folder holding the app, or in full when it lies outside it."""
+    within: str
+    steps: tuple[str, ...]
+    path: Path
     exists: bool
-    part: str = ""
-    role: str = ""
-    litmus: str = ""
-    folder: str = ""
-    instance: str = ""
-    singular: str = ""
-    may_import: tuple[Reach, ...] = ()
-    may_import_text: str = ""
-    libraries: tuple[str, ...] | None = None
-    forbidden: tuple[str, ...] = ()
-    tier: TierInfo | None = None
-    untested: str = ""
-    test_folder: str = ""
-    test_file: str = ""
-    nearest: tuple[Nearest, ...] = ()
-    closed_tree: bool = False
-    may_use_fakes: bool = False
-    fakes_path: str = ""
-    types_only: tuple[str, ...] = ()
-    test_code_from: str = ""
-    note: str = ""
+    shown: str
+
+
+@dataclass(frozen=True)
+class PartAt:
+    """A part as a target names it (the part, its scope, a path below it), how the docs name it, and its folder below
+    the project root (a placeholder for an instance that is not fixed, such as <module>): what a place may import, and
+    the parts near a place no part claims."""
+    target: Target
+    folder: str
+    path: str
+
+
+@dataclass(frozen=True)
+class PartPlace:
+    """A place in a part: the path as resolved; the part claiming it (place: its name, the instance it is in and the
+    path below), its words (info) and the word of one instance of its repeating folder (singular); what its code may
+    import, as places and in the docs' words; the outside packages it may import (None: not checked) and the names it
+    may not use; and the tier that tests it with the folder and the file its test would be in (the file a name
+    pattern when it is not its own, empty when the place is no source file), or None when no tier does, and then why
+    (untested; "" when the profile does not say)."""
+    found: Resolved
+    place: Place
+    info: PartInfo
+    singular: str
+    reaches: tuple[PartAt, ...]
+    may_import_text: str
+    libraries: tuple[str, ...] | None
+    forbidden: tuple[str, ...]
+    tier: TierView | None
+    test_folder: str
+    test_file: str
+    untested: str
+
+
+@dataclass(frozen=True)
+class StructurePlace:
+    """A folder of the layout no part claims: the path as resolved, and the parts below it."""
+    found: Resolved
+    nearest: tuple[PartAt, ...]
+
+
+@dataclass(frozen=True)
+class UngovernedPlace:
+    """A place in no part and no folder of the layout, below a folder the profile excludes, or outside the app and its
+    tests: the path as resolved; the parts near it (none when it is excluded or outside the app); whether a file there
+    is a violation (None when no part is near, so that the closed-tree guard has nothing to say); and why it is
+    ungoverned when that is not plain."""
+    found: Resolved
+    nearest: tuple[PartAt, ...]
+    closed_tree: bool | None
+    note: str
+
+
+@dataclass(frozen=True)
+class SuitePlace:
+    """A file or folder below the tests root that is no fake: the path as resolved; whether it is a test (else a
+    helper or other support); the tier it lies in (None: none), the part it mirrors (place, with its words and the
+    word of one instance of its folder, None when it mirrors none) and what it may import, as places and in the docs'
+    words; the names it may not use; whether it may import the fakes and where they live; and the one folder it may
+    import test code from; note, why it is in no tier, for a test."""
+    found: Resolved
+    test: bool
+    tier: TierView | None
+    place: Place | None
+    info: PartInfo | None
+    singular: str
+    reaches: tuple[PartAt, ...]
+    may_import_text: str
+    forbidden: tuple[str, ...]
+    may_use_fakes: bool
+    fakes_path: str
+    test_code_from: str
+    note: str
+
+
+@dataclass(frozen=True)
+class FakePlace:
+    """A test fake: the path as resolved, where the fakes live, the one folder it may import test code from, and that
+    it is no test."""
+    found: Resolved
+    fakes_path: str
+    test_code_from: str
+    note: str
+
+
+Placed = PartPlace | StructurePlace | UngovernedPlace | SuitePlace | FakePlace
+"""What a place is and what code there may do, the answer of `xarch where`, one variant per kind of place."""

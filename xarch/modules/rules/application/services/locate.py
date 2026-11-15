@@ -5,7 +5,7 @@ from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.application.ports.source_tree import SourceTree
 from xarch.modules.rules.contract import Locate
 from xarch.modules.rules.domain.errors import OutsideProject
-from xarch.modules.rules.domain.values import Where
+from xarch.modules.rules.domain.values import Placed
 
 
 class LocateService:
@@ -14,7 +14,7 @@ class LocateService:
     def __init__(self, tree: SourceTree, profiles: Profiles):
         self._tree, self._profiles = tree, profiles
 
-    def locate(self, cmd: Locate) -> Where:
+    def locate(self, cmd: Locate) -> Placed:
         """What the path is, placed or not; raises OutsideProject for a path outside the project."""
         app = cmd.app.absolute().resolve()
         tests = cmd.tests.absolute().resolve() if cmd.tests is not None else None

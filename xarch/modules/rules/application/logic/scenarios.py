@@ -4,7 +4,7 @@ A use case is a module-level union `<Name><suffix> = A | B | ...` of plain names
 an instance of a repeating folder: <Name> is the use case and A, B, ... its variants. Its test file is the guard's
 `file` with `{name}` replaced by <Name> in snake_case (PublishDocument: publish_document), among the files of the
 table tier in the same instance (see tier_of). That file must hold a table, read from its syntax tree; the
-decorator, the row and the keyword of a row's id are the names the guard is given (see TableForm), a test function
+decorator, the row and the keyword of a row's id are the names the guard is given (see CaseTable), a test function
 is one whose name matches the profile's pattern:
 
     a test function decorated `<decorator>(<names>, <rows>)`, whose names include the three columns the guard is

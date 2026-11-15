@@ -34,5 +34,5 @@ def register(app: typer.Typer, rules: RulesController, spec: SpecController) -> 
                 if output is Format.json:
                     typer.echo(where_document(chosen, found))
                 else:
-                    for line in where_lines(chosen, found):
+                    for line in where_lines(found):
                         typer.echo(line)
