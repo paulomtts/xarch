@@ -14,6 +14,8 @@ from xarch.modules.rules.domain.rule import (
     LIST,
     MAY_NOT,
     MAY_ONLY,
+    MUST_BE_REACHED,
+    MUST_REACH,
     STRUCTURE,
     TESTS,
     Rule,
@@ -238,6 +240,68 @@ def holds(profile: Profile) -> tuple[Rule, ...]:
     return tuple(found)
 
 
+def must_import(profile: Profile) -> tuple[Rule, ...]:
+    """Each file of a part that lists `must_import` imports one of the targets or an outside package, itself or
+    through the files of its own part and instance it imports, however far; a package file and a file with no real
+    statement are not said."""
+    return tuple(Rule("must-import", Scope(APP, part), ("import", "edge"), MUST_REACH,
+                      Targets("places-or-outside", places=wanted),
+                      (Saying("{part} imports nothing from {reach_targets} and no outside package, so it touches no "
+                              "technology ({key})",
+                              "import what it wraps from {reach_targets}, or an outside package, or move its code to "
+                              "a part that needs no technology"),),
+                      exempt=("a-package-file", "no-code"), key=f"parts.{part}.must_import", part=part, links=("edge",),
+                      via="own-part-instance")
+                 for part, wanted in profile.must_import.items())
+
+
+def must_import_tiers(profile: Profile) -> tuple[Rule, ...]:
+    """Each test file of a tier that lists `must_import` reaches one of the parts, in any instance, by an import into
+    the app or through test code it imports that is no test file, however far; one with no real statement is not
+    said."""
+    return tuple(Rule("must-import", Scope(TESTS, tier=tier.name, where=("a-test",)), ("edge",), MUST_REACH,
+                      Targets("parts", words=tier.must_import),
+                      (Saying("{a_tier} test imports nothing from {wanted_parts}, directly or through test code it "
+                              "imports ({key})",
+                              "drive what it proves through {wanted_parts}, or move it to the tier of the part it "
+                              "calls directly"),),
+                      keep=("placed",), exempt=("no-code",), key=f"tiers.{tier.name}.must_import",
+                      links=("suite_edge",), via="to-a-helper")
+                 for tier in profile.tiers if tier.must_import)
+
+
+def dead_code(profile: Profile) -> tuple[Rule, ...]:
+    """A port that no other file of the app names, by any name it reads, but a package file and the wiring; and a
+    fake that no test outside the fakes' folder names, nor a fake named so, however far."""
+    if not profile.dead_code or profile.fakes is None:
+        return ()
+    ports = [Rule("dead-code", Scope(APP, part), ("class",), MUST_BE_REACHED, EXISTING,
+                  (Saying("{name} is a port that nothing else in the app names (dead-code)",
+                          "delete {name} and its fake, or add the code that uses it"),),
+                  keep=("port",), links=("names",),
+                  roots=Scope(APP, where=("not-a-package-file", "not-wiring", "another-file")))
+             for part in profile.fakes.stand_in_for]
+    fakes = Rule("dead-code", Scope(TESTS, where=("in-the-fakes",)), ("class",), MUST_BE_REACHED, EXISTING,
+                 (Saying("{name} is a fake that no test names (dead-code)",
+                         "delete {name}, or write the test that uses it"),),
+                 keep=("a-fake-name",), links=("names",), roots=Scope(TESTS, where=("not-in-the-fakes",)),
+                 spread=("class",))
+    return (*ports, fakes)
+
+
+def untested(profile: Profile) -> tuple[Rule, ...]:
+    """A file of a part a tier tests that no test code of that tier reaches, by an import, or through files of parts
+    of that same tier, however far; listed. A package file, a file with no real statement and a file of exceptions
+    only are not."""
+    if not profile.dead_code or not profile.untested:
+        return ()
+    return (Rule("dead-code", Scope(APP, where=("tested-by-a-tier",)), ("file",), MUST_BE_REACHED, EXISTING,
+                 (Saying("a file of {part} that no {tested_by} test reaches (guards.dead-code.untested)",
+                         "write its {tested_by} test in {tests_folder}/, or delete what nothing uses"),),
+                 exempt=("a-package", "exceptions-only", "no-code"), mode=LIST, links=("edge",), via="into-its-tier",
+                 roots=Scope(TESTS, where=("tiered",)), spread=("edge",)),)
+
+
 def book(profile: Profile) -> dict[str, tuple[Rule, ...]]:
     """Every check the engine runs, by the name of its group, each the rules its keys expand to."""
     return {"syntax": syntax(profile), "rules": rules(profile), "libraries": libraries(profile),
@@ -245,4 +309,6 @@ def book(profile: Profile) -> dict[str, tuple[Rule, ...]]:
             "package-only": package_only(profile), "types-only parts": types_only_parts(profile),
             "no-callbacks": no_callbacks(profile), "names": names(profile), "built-by": built_by(profile),
             "private-imports": private_imports(profile), "no-comments": no_comments(profile),
-            "closed-tree": closed_tree(profile), "holds": holds(profile)}
+            "closed-tree": closed_tree(profile), "holds": holds(profile), "must-import": must_import(profile),
+            "must-import tiers": must_import_tiers(profile), "dead-code": dead_code(profile),
+            "untested": untested(profile)}

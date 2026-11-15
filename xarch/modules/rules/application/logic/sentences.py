@@ -38,6 +38,11 @@ out from the finding by its name, a closed list:
     wanted        the name patterns of the rule's targets, joined by "or"
     function      the function a callback is in
     file          the file, as shown
+    reach_targets the parts of the places a rule of reach names, each once as `<part>/`, joined by "or"
+    wanted_parts  the parts its targets name, each as `<part>/`, joined by "or"
+    a_tier        a test's tier with its article: "a unit", "an integration"
+    tested_by     the tier whose tests cover a file of the app
+    tests_folder  the folder of the tests where a file of the app is tested, from the tests' root
     function_parts, class_parts
                   a part that holds functions, or classes, naming the first of those the profile has
 """
@@ -145,6 +150,16 @@ def value(name: str, found: Found, facts: Facts, profile: Profile) -> str:
             return fact.path[0]
         case "file":
             return read.file.name
+        case "reach_targets":
+            return " or ".join(dict.fromkeys(f"{t.part}/" for t in rule.targets.places))
+        case "wanted_parts":
+            return " or ".join(f"{p}/" for p in rule.targets.words)
+        case "a_tier":
+            return f"a{'n' if read.tier[:1] in 'aeiou' else ''} {read.tier}"
+        case "tested_by":
+            return read.tested_by
+        case "tests_folder":
+            return "/".join((facts.tests_root, *read.file.path[:-1]))
         case "function_parts":
             return _holding(profile, "functions")
         case "class_parts":

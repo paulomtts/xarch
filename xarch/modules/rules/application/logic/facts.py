@@ -3,7 +3,9 @@ what it says, by kind, each fact as a rule reads it (see Fact). A file that does
 a file of the app no part and no folder of the layout governs, which is not read, only that it is there.
 
     error     how a file fails to parse: the line, text the parser's message
-    file      the file as a whole, at line 0
+    file      the file as a whole, at line 0; code when a function or method of it holds a real statement,
+              exceptions-only when it defines classes, every one an exception (below), and no top-level function
+    names     every name the file mentions, annotations included, by its last step alone
     import    each import as written: the module it names (path), relative, standard
     imported  each name an import takes, path the module and the name (the module alone for an import of a whole
               module), the name it takes (None for a whole module); its traits are the import's
@@ -16,7 +18,8 @@ a file of the app no part and no folder of the layout governs, which is not read
               when that is no file; a test's relative imports are its own and none is an edge
     suite_edge each import of a test file into the tests' own package, the target it reaches below the tests root
     comment   each line comment, text as written
-    class     each class defined at the top level, name its name; exception and record when it is one (below)
+    class     each class defined at the top level, name its name, names those its bases and body mention; exception,
+              record and port when it is one (below)
     function  each function defined at the top level or in a class of the top level, name its name, path its class
               and its name; top-level when it is in no class
     callback  each call of a function's own parameter by its bare name, path the function, name the parameter;
@@ -34,6 +37,7 @@ and the facts derived from them over the whole app:
               that binds it)
     record    a class with no method but the language's special methods that a top-level function of its file names
               in its return annotation
+    port      a class with one of the language's interface names among its bases, the last of its name in its file
 """
 from __future__ import annotations
 
@@ -51,8 +55,8 @@ from xarch.modules.rules.domain.values import Class, Profile, SourceFile
 Placements = dict[tuple[str, ...], Place | None]
 """Where each path below the root placed so far sits."""
 
-KINDS = ("error", "file", "import", "imported", "use", "method", "call", "build", "reference", "edge", "suite_edge",
-         "comment", "class", "function", "callback")
+KINDS = ("error", "file", "names", "import", "imported", "use", "method", "call", "build", "reference", "edge",
+         "suite_edge", "comment", "class", "function", "callback")
 """Every kind of fact, in the order a file's facts are worked out."""
 
 _TRAITS = {(relative, standard, held): frozenset(name for name, on in (("relative", relative), ("standard", standard),
@@ -77,17 +81,26 @@ def facts_of(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Pr
                              for c in f.classes},
                       {steps: frozenset(f.module_functions) for f, steps in parsed},
                       frozenset(exceptions(parsed, root)))
-    placed = [Read(file, steps, package, False, _placed(profile, cache, steps)) for file, steps, package in app]
+    covered = {s.part: tier.name for tier in reversed(profile.tiers) for s in tier.subject}
+    placed = [_covered(Read(file, steps, package, False, _placed(profile, cache, steps)), covered)
+              for file, steps, package in app]
     placed += [Read(file, steps, package, False, _placed(profile, cache, steps)) for file, steps, package in
                ((f, *dotted(f.path, marks)) for f in unread)]
     placed += [_tested(file, steps, package, profile) for file, steps, package in tests]
     bare = Facts((), root, tests_root, known, known_tests,
-                 frozenset(r.steps for r in placed if r.test and r.is_test and r.file.error is None))
+                 frozenset(r.steps for r in placed if r.test and r.is_test and r.file.error is None),
+                 {r.steps: r.tested_by for r in placed if r.tested_by and r.file.error is None})
     rules = tuple(rules) if rules is not None else None
     read = tuple(replace(r, facts={kind: _facts(kind, r, profile, cache, defined, bare)
                                    for kind in (KINDS if rules is None else _read(r, rules, bare, profile))})
                  for r in placed)
     return replace(bare, files=read)
+
+
+def _covered(read: Read, covered: dict[str, str]) -> Read:
+    """The file with the tier whose tests cover its part, the first that does."""
+    part = read.place.part if read.place is not None else None
+    return replace(read, tested_by=covered.get(part, "")) if part is not None else read
 
 
 def _tested(file: SourceFile, steps: tuple[str, ...], package: bool, profile: Profile) -> Read:
@@ -97,10 +110,21 @@ def _tested(file: SourceFile, steps: tuple[str, ...], package: bool, profile: Pr
 
 
 def _read(read: Read, rules: tuple[Rule, ...], facts: Facts, profile: Profile) -> tuple[str, ...]:
-    """The kinds of fact the rules whose scope holds the file read, a call for those that excuse a reference read as
-    the callee of a call."""
-    kinds = [kind for rule in rules if in_scope(rule.scope, read, facts, profile)
-             for kind in (*rule.facts, *(("call",) if "called" in rule.exempt else ()))]
+    """The kinds of fact the rules read of the file: those whose scope holds it read their kinds, a call too for those
+    that excuse a reference read as the callee of a call, and their spread; a rule of reach reads the kinds and the
+    links of every file on its scope's side, and the links of its roots, and a rule that a file must reach reads the
+    file of each file of its scope, which it says."""
+    kinds: list[str] = []
+    for rule in rules:
+        if in_scope(rule.scope, read, facts, profile):
+            kinds += [*rule.facts, *(("call",) if "called" in rule.exempt else ()), *rule.spread, *rule.links,
+                      *(("file",) if rule.quantifier == "must_reach" else ())]
+        if rule.quantifier == "must_reach" and in_scope(replace(rule.scope, part="*", tier="", where=()), read, facts,
+                                                        profile):
+            kinds += [*rule.facts, *rule.links]
+        if rule.roots is not None and in_scope(replace(rule.roots, where=tuple(
+                w for w in rule.roots.where if w != "another-file")), read, facts, profile):
+            kinds += rule.links
     return tuple(dict.fromkeys(kinds))
 
 
@@ -114,12 +138,15 @@ def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: 
         case "error":
             return ()
         case "file":
-            return (Fact("file", 0),)
+            return (Fact("file", 0, traits=_file(file, read, defined)),)
+        case "names":
+            return (Fact("names", 0, names=file.named),)
         case "comment":
             return tuple(Fact("comment", c.line, text=c.text) for c in file.comments)
         case "class":
-            return tuple(Fact("class", c.line, (c.name,), c.name, _class(c, file, read, profile, defined))
-                         for c in file.classes)
+            ports = {c.name: c for c in file.classes if any(base in profile.language.interface for base in c.bases)}
+            return tuple(Fact("class", c.line, (c.name,), c.name, _class(c, file, read, profile, defined, ports),
+                              names=c.named) for c in file.classes)
         case "function":
             return tuple(Fact("function", f.line, (f.owner, f.name) if f.owner else (f.name,), f.name,
                               _TOP if not f.owner else frozenset()) for f in file.functions)
@@ -177,11 +204,20 @@ def _placed(profile: Profile, cache: Placements, path: tuple[str, ...]) -> Place
     return cache[path]
 
 
-def _class(cls: Class, file: SourceFile, read: Read, profile: Profile, defined: Defined) -> frozenset[str]:
+def _class(cls: Class, file: SourceFile, read: Read, profile: Profile, defined: Defined,
+           ports: dict[str, Class]) -> frozenset[str]:
     exception = (read.steps, cls.name) in defined.exceptions and not read.test
     record = all(profile.language.is_special(m.name) for m in cls.methods) and any(
         cls.name in f.returns_named for f in file.functions if not f.owner)
-    return frozenset(n for n, on in (("exception", exception), ("record", record)) if on)
+    return frozenset(n for n, on in (("exception", exception), ("record", record), ("port", ports.get(cls.name) is cls))
+                     if on)
+
+
+def _file(file: SourceFile, read: Read, defined: Defined) -> frozenset[str]:
+    code = any(f.real_statements for f in file.functions)
+    raising = bool(file.classes) and not read.test and all(
+        (read.steps, c.name) in defined.exceptions for c in file.classes) and not any(not f.owner for f in file.functions)
+    return frozenset(n for n, on in (("code", code), ("exceptions-only", raising)) if on)
 
 
 def exceptions(files: Iterable[tuple[SourceFile, tuple[str, ...]]], root: str) -> set[tuple[tuple[str, ...], str]]:

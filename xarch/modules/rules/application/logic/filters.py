@@ -10,6 +10,11 @@ Of a file:
     not-a-fake        a file below the tests root outside the fakes' folder
     not-a-package     a file that does not stand for its folder
     ungoverned        a file of the app that no part and no folder of the layout governs
+    not-a-package-file a file whose name is not the language's package file
+    not-wiring        a file of no part that may import everything (the wiring, which only binds what others use)
+    in-the-fakes      a file below the fakes' folder; not-in-the-fakes, a test file outside it
+    tested-by-a-tier  a file of the app whose part a tier tests
+    another-file      a root other than the file of the declaration it reaches (see engine)
 
 Of a fact:
 
@@ -42,6 +47,16 @@ Of a fact:
     record            a class that is a record (see facts)
     read-by-a-tool    a comment the language's tools read: a directive after the comment marker (a space in one
                       standing for any spaces), a shebang on line 1, an encoding declaration on line 1 or 2
+    a-package-file    the file a fact is in is named as the language's package file; a-package, it stands for its
+                      folder
+    no-code           a file no function or method of which holds a real statement
+    exceptions-only   a file that defines classes, every one an exception, and no top-level function
+    port              a class that is a port (see facts)
+    a-fake-name       a class whose name starts with the fakes' prefix and is more than it
+    own-part-instance an import of another file of the file's own part and instance
+    to-a-helper       a test file's import of test code that is no test file
+    into-its-tier     an import of a file of the app that the tier of the importing file covers: a test's tier, or
+                      the tier that covers an app file's part
 """
 from __future__ import annotations
 
@@ -68,10 +83,19 @@ def in_scope(scope: Scope, read: Read, facts: Facts, profile: Profile) -> bool:
         return False
     if scope.tier and read.tier != scope.tier:
         return False
-    return all(_file(name, read) for name in scope.where)
+    return all(_file(name, read, profile) for name in scope.where)
 
 
-def _file(name: str, read: Read) -> bool:
+def _wiring(profile: Profile) -> set[str]:
+    """The parts that may import everything: the wiring, which only binds what others use."""
+    return {part for part, targets in profile.rules.items() if any(t.part == EVERYTHING for t in targets)}
+
+
+def _in_the_fakes(read: Read, profile: Profile) -> bool:
+    return profile.fakes is not None and read.test and read.file.path[:len(profile.fakes.folder)] == profile.fakes.folder
+
+
+def _file(name: str, read: Read, profile: Profile) -> bool:
     match name:
         case "tiered":
             return bool(read.tier)
@@ -85,6 +109,16 @@ def _file(name: str, read: Read) -> bool:
             return not read.package
         case "ungoverned":
             return not read.test and read.place is None
+        case "not-a-package-file":
+            return read.file.path[-1:] != (profile.language.package_file,)
+        case "not-wiring":
+            return not (read.place is not None and read.place.part in _wiring(profile))
+        case "in-the-fakes":
+            return _in_the_fakes(read, profile)
+        case "not-in-the-fakes":
+            return not _in_the_fakes(read, profile)
+        case "tested-by-a-tier":
+            return bool(read.tested_by)
     raise ValueError(f"no filter of a file is named {name!r}")
 
 
@@ -216,6 +250,45 @@ def _record(found: Found, facts: Facts, profile: Profile) -> bool:
     return _trait(found, "record")
 
 
+def _a_package_file(found: Found, facts: Facts, profile: Profile) -> bool:
+    return found.read.file.path[-1:] == (profile.language.package_file,)
+
+
+def _a_package(found: Found, facts: Facts, profile: Profile) -> bool:
+    return found.read.package
+
+
+def _no_code(found: Found, facts: Facts, profile: Profile) -> bool:
+    return not _trait(found, "code")
+
+
+def _exceptions_only(found: Found, facts: Facts, profile: Profile) -> bool:
+    return _trait(found, "exceptions-only")
+
+
+def _port(found: Found, facts: Facts, profile: Profile) -> bool:
+    return _trait(found, "port")
+
+
+def _a_fake_name(found: Found, facts: Facts, profile: Profile) -> bool:
+    prefix, name = profile.fakes.prefix if profile.fakes is not None else "", found.fact.name or ""
+    return name.startswith(prefix) and name != prefix
+
+
+def _own_part_instance(found: Found, facts: Facts, profile: Profile) -> bool:
+    return _same_part_instance(found, facts, profile) and found.fact.target != found.read.steps
+
+
+def _to_a_helper(found: Found, facts: Facts, profile: Profile) -> bool:
+    return found.fact.target in facts.known_tests and found.fact.target not in facts.test_files
+
+
+def _into_its_tier(found: Found, facts: Facts, profile: Profile) -> bool:
+    read = found.read
+    tier = facts.tested_by.get(found.fact.target)
+    return tier is not None and tier == (read.tier if read.test else read.tested_by)
+
+
 def _read_by_a_tool(found: Found, facts: Facts, profile: Profile) -> bool:
     language, comment = profile.language, found.fact
     marker = re.escape(language.comment)
@@ -236,7 +309,10 @@ _FACT = {"absolute": _absolute, "has-a-path": _has_a_path, "unheld": _unheld, "p
          "narrowed": _narrowed, "permits-nothing": _permits_nothing, "into-the-fakes": _into_the_fakes,
          "into-a-test": _into_a_test, "a-call": _a_call, "mirroring": _mirroring, "public": _public,
          "top-level": _top_level, "annotated": _annotated, "receiver": _receiver, "exception": _exception,
-         "record": _record, "read-by-a-tool": _read_by_a_tool}
+         "record": _record, "read-by-a-tool": _read_by_a_tool, "a-package-file": _a_package_file,
+         "a-package": _a_package, "no-code": _no_code, "exceptions-only": _exceptions_only, "port": _port,
+         "a-fake-name": _a_fake_name, "own-part-instance": _own_part_instance, "to-a-helper": _to_a_helper,
+         "into-its-tier": _into_its_tier}
 """Each filter of a fact by its name, the question it asks."""
 
 

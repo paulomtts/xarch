@@ -13,6 +13,8 @@ target it matches; under MAY_ONLY when it matches none.
     allowance  the place a test's import into the app reaches is one that what the test's subject may import
                reaches, from the instance the test mirrors (see tier_of)
     patterns   the name a declaration carries matches one of the patterns, `*` standing for any text
+    places-or-outside an import of an outside package (neither relative, nor of the app's own package, nor of the
+               standard library), or an import into the app whose place one of the places reaches from the file's
     test-code  a test file's import into the tests' package is of test code it may import: the fakes when its
                tier tests a part they stand in for, any other file that is no test file in its own folder
 """
@@ -105,6 +107,17 @@ def _patterns(targets: Targets, found: Found, facts: Facts, profile: Profile) ->
     return next(((p,) for p in targets.words if name_matches(p, name)), None)
 
 
-_KINDS = {"patterns": _patterns, "existing": _existing, "packages": _packages, "names": _names, "private": _private, "parts": _parts,
+def _places_or_outside(targets: Targets, found: Found, facts: Facts, profile: Profile) -> tuple[str, ...] | None:
+    fact, src = found.fact, found.read.place
+    if fact.kind == "import":
+        outside = ("relative" not in fact.traits and bool(fact.path) and fact.path[0] != facts.root
+                   and "standard" not in fact.traits)
+        return fact.path if outside else None
+    return fact.target if src is not None and fact.at is not None and any(
+        reaches(t, src, fact.at) for t in targets.places) else None
+
+
+_KINDS = {"places-or-outside": _places_or_outside, "patterns": _patterns,
+          "existing": _existing, "packages": _packages, "names": _names, "private": _private, "parts": _parts,
           "places": _places, "allowance": _allowance, "test-code": _test_code}
 """How a fact is matched against each kind of target, by its name."""

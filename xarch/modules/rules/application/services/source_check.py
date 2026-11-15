@@ -11,7 +11,6 @@ from xarch.modules.rules.application.logic import (
     duplicates,
     enforcement,
     expansion,
-    must_import,
     pass_through,
     scenarios,
     stand_ins,
@@ -68,8 +67,8 @@ class SourceCheckService:
         found += run(book["package-only"], facts, rules)
         found += scenarios.violations(app, test_files, rules)
         found += stand_ins.violations(app, test_files, rules, package, tests_root if tests is not None else None)
-        found += must_import.violations(app, rules, package)
-        found += must_import.tier_violations(test_files, app, rules, package, tests_root)
+        found += run(book["must-import"], facts, rules)
+        found += run(book["must-import tiers"], facts, rules)
         found += run(book["types-only parts"], facts, rules)
         found += run(book["no-callbacks"], facts, rules)
         found += run(book["names"], facts, rules)

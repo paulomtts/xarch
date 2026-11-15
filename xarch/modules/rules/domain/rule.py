@@ -23,8 +23,12 @@ STRUCTURE = ""
 APP, TESTS, ALL = "app", "tests", "all"
 """The files a scope reads: the app's, the tests', or both, the app's first."""
 
-MAY_NOT, MAY_ONLY, MUST = "may_not", "may_only", "must"
-"""What a kept fact does with the targets: matches none of them, matches one of them, or has what they say."""
+MAY_NOT, MAY_ONLY = "may_not", "may_only"
+"""What a kept fact does with the targets: matches none of them, or matches one of them."""
+MUST_REACH, MUST_BE_REACHED = "must_reach", "must_be_reached"
+"""What a file or a declaration does through links: a file of the scope reaches a target, by one of its own facts or
+through the files its links lead to, however far; a declaration of the scope is reached from a root, by the link of a
+root, or of a declaration reached already when the rule spreads through it."""
 
 FAIL, LIST = "fail", "list"
 """What a finding is: a violation, or a weak finding listed in the enforcement section."""
@@ -71,7 +75,12 @@ class Rule:
     """One sentence of a check: its rule id; the scope of files it reads; the kinds of fact it reads of each, in
     order; the named filters a fact must pass to be read (keep); what it does with the targets (quantifier); the named
     filters that excuse a fact (exempt); what a finding is (mode); the sayings, the first whose condition holds being
-    the one said; and the key of the profile it expands from, `{key}` in a saying, with the part it names, if any."""
+    the one said; and the key of the profile it expands from, `{key}` in a saying, with the part it names, if any.
+
+    A rule of reach also says how it reaches: the kinds of fact that link a file to what it reaches (links) and the
+    named filter a link passes (via); for MUST_BE_REACHED, the files the reach starts from (roots) and the kinds of fact
+    through which a declaration reached already reaches further (spread). A link reaches the declarations it names
+    (the names it mentions, for a fact that has them) or the file it leads to (its target)."""
     id: str
     scope: Scope
     facts: tuple[str, ...]
@@ -83,14 +92,19 @@ class Rule:
     mode: str = FAIL
     key: str = ""
     part: str = ""
+    links: tuple[str, ...] = ()
+    via: str = ""
+    roots: Scope | None = None
+    spread: tuple[str, ...] = ()
 
 
 class Fact(NamedTuple):
     """One thing a file says, as a rule reads it: its kind, the line it is on (0: the file as a whole), the dotted path
     it names (what an import imports, the name a use reaches, the callee of a call), a name it carries (a name an
     import takes, a method called, a parameter), the traits the reader recorded of it by name (relative, standard,
-    held, receiver, annotated), how many steps of its path the import binding it bound, and, for an import into the
-    app or the tests, the file or package it reaches below that root and where that sits. A run holds a fact for
+    held, receiver, annotated), how many steps of its path the import binding it bound, for an import into the
+    app or the tests, the file or package it reaches below that root and where that sits, a text it says, and the
+    names it mentions (a class's or a file's). A run holds a fact for
     every import, name read and call of every file, so a fact is a named tuple, which is made several times faster
     than a frozen dataclass and is as immutable."""
     kind: str
@@ -102,6 +116,7 @@ class Fact(NamedTuple):
     target: tuple[str, ...] = ()
     at: Place | None = None
     text: str = ""
+    names: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -109,7 +124,8 @@ class Read:
     """A file as the rules read it: the file as parsed; its steps below its root as the language names it, and
     whether it is the file that stands for its folder; whether it is a test file (of the tests root) or the app's;
     where it sits (place: in the app, None when it is a test or ungoverned; tier, instance, own folder, subject parts
-    and kind for a test); and its facts by kind, each in the order the file says them."""
+    and kind for a test; for a file of the app, the tier whose tests cover its part, tested_by, "" for none); and its
+    facts by kind, each in the order the file says them."""
     file: SourceFile
     steps: tuple[str, ...]
     package: bool
@@ -122,19 +138,22 @@ class Read:
     is_test: bool = False
     is_fake: bool = False
     facts: dict[str, tuple[Fact, ...]] = field(default_factory=dict)
+    tested_by: str = ""
 
 
 @dataclass(frozen=True)
 class Facts:
     """The facts of a run, read once: every file read, the app's first, then the tests'; the root package of the app
     and of the tests; the steps of every file of each, so that an import of a name that is a file is read as the
-    file; and those of the test files (the files below the tests root whose name the profile's test files match)."""
+    file; those of the test files (the files below the tests root whose name the profile's test files match); and the
+    tier whose tests cover each file of the app, by its steps (a file of a part no tier tests is not held)."""
     files: tuple[Read, ...]
     root: str
     tests_root: str = ""
     known: frozenset[tuple[str, ...]] = frozenset()
     known_tests: frozenset[tuple[str, ...]] = frozenset()
     test_files: frozenset[tuple[str, ...]] = frozenset()
+    tested_by: dict[tuple[str, ...], str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

@@ -5,9 +5,10 @@ from dataclasses import replace
 
 import pytest
 
+from tests.modules.rules.application.logic.checks import must_import as violations
+from tests.modules.rules.application.logic.checks import must_import_tiers as tier_violations
 from tests.modules.rules.builders import GUARD, INTEGRATION, RENDERING, imp, in_tests, profile, source
 from xarch.kernel.logic.placement import Target
-from xarch.modules.rules.application.logic.must_import import tier_violations, violations
 from xarch.modules.rules.domain.values import Function
 
 REQUIRED = profile(must_import={"adapters": (Target("platform"), Target("contract", "any"))})

@@ -86,3 +86,12 @@ def closed_tree(paths: Iterable[tuple[str, ...]], profile: Profile, shown: str) 
 
 def holds(app: Iterable[SourceFile], profile: Profile, root: str) -> list[Violation | Weak]:
     return run(expansion.holds(profile), facts_of(app, [], profile, root), profile)
+
+
+def must_import(files: Iterable[SourceFile], profile: Profile, root: str) -> list[Violation | Weak]:
+    return run(expansion.must_import(profile), facts_of(files, [], profile, root), profile)
+
+
+def must_import_tiers(tests: Iterable[SourceFile], app: Iterable[SourceFile], profile: Profile, root: str,
+                      tests_root: str) -> list[Violation | Weak]:
+    return run(expansion.must_import_tiers(profile), facts_of(app, tests, profile, root, tests_root), profile)
