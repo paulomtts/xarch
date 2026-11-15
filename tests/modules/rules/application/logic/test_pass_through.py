@@ -72,7 +72,9 @@ def test_a_part_that_is_a_file_and_a_folder_part_are_read_alike():
     pytest.param(None, "", id="a condition"),
     pytest.param(SoleCall(('self', 'helper'), ('id',)), "", id="a method of the object itself, no collaborator"),
     pytest.param(SoleCall(('other', 'repo', 'get'), ('id',)), "", id="a chain that does not start at the first parameter"),
-    pytest.param(None, "", id="a read of the result"),
+    pytest.param(SoleCall(('self', 'repo', 'get'), ('id',), then=('name',)), "self.repo.get", id="a read of the result"),
+    pytest.param(SoleCall(('self', 'repo', 'get'), ('id', ''), then=('name',)), "",
+                 id="a read of the result of a call that does not forward"),
     pytest.param(SoleCall(('self', 'repo', 'get'), ('', 'id')), "", id="a call inside the arguments"),
 ])
 def test_a_method_forwards_when_its_one_call_passes_each_parameter_once_to_a_collaborator(call, callee):
@@ -97,3 +99,13 @@ def test_a_method_forwards_when_its_one_call_passes_each_parameter_once_to_a_col
 ])
 def test_a_decorator_a_dunder_or_a_starred_parameter_passed_whole_decides_too(function, callee):
     assert forwards(function) == callee
+
+
+def test_a_method_that_returns_an_attribute_of_what_it_forwards_to_says_which():
+    method = Function(4, "language", owner="SpecSkeleton", signature=Signature(("self", "profile")),
+                      sole_call=SoleCall(("self", "_spec", "skeleton"), ("profile",), then=("view", "language")))
+    assert weak([source(SERVICES, functions=(method,))], ON) == [Weak(
+        "pass-through", f"app/{SERVICES}", 4,
+        "SpecSkeleton.language only passes its arguments on to self._spec.skeleton and returns its .view.language",
+        "have the caller use self._spec.skeleton(...).view.language, or keep it as a deliberate plain forward: it "
+        "stays listed and fails only `check --strict`")]

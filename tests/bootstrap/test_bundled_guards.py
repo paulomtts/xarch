@@ -119,8 +119,8 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
         "test of that tier reaches, directly or through files of parts of the same tier, is listed in the "
         "enforcement section, and fails `check --strict` only.",
         "- `pass-through`: a method of `application/services/`, `application/controller.py` and `adapters/` whose "
-        "whole body forwards to one call on a collaborator is listed in the enforcement section, and fails `check "
-        "--strict` only.",
+        "whole body forwards to one call on a collaborator, or returns an attribute of what that call answers, is "
+        "listed in the enforcement section, and fails `check --strict` only.",
         "- `private-imports`: no file of the app or its tests imports a name that starts with `_` from another file "
         "of them.",
     ])

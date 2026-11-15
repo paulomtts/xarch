@@ -508,8 +508,9 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
                     "another file of them.")
         case PassThrough(parts):
             shown = _and([f"`{_shown(architecture, architecture.parts[p])}`" for p in parts])
-            return (f"`pass-through`: a method of {shown} whose whole body forwards to one call on a collaborator is "
-                    "listed in the enforcement section, and fails `check --strict` only.")
+            return (f"`pass-through`: a method of {shown} whose whole body forwards to one call on a collaborator, or "
+                    "returns an attribute of what that call answers, is listed in the enforcement section, and fails "
+                    "`check --strict` only.")
         case ClosedTree():
             language = architecture.language
             return (f"`closed-tree`: every {language.title} file of the app lies in a part, or is the package file "

@@ -37,10 +37,12 @@ GUARDS = {
     "pass-through": "{parts: [<part>, ...]}: a method of those parts whose whole body (a docstring aside) is one "
                     "`return` or bare statement of one call, perhaps awaited, on a chain of at least two attributes "
                     "of its own first parameter (`self.repo.get(...)`), passing every other parameter straight "
-                    "through and nothing more, is listed as `weak` in the enforcement section and fails `check "
-                    "--strict` only. Any other statement, a changed, extra or dropped argument, a decorator, a "
-                    "dunder method, a function outside a class or a call on something not held by the object "
-                    "(`self.helper(...)`) is not one",
+                    "through and nothing more, or one `return` of a chain of attributes read on the result of such "
+                    "a call (`return self.repo.get(id).name`), is listed as `weak` in the enforcement section and "
+                    "fails `check --strict` only. Any other statement, any other use of the result (an item, an "
+                    "operator, a call on it), a changed, extra or dropped argument, a decorator, a dunder method, a "
+                    "function outside a class or a call on something not held by the object (`self.helper(...)`) "
+                    "is not one",
     "private-imports": "{}: no file of the app or its tests imports a name that starts with `_` (a dunder name "
                        "aside) from a file of the app or its tests, `from x import _y`; an import of a whole "
                        "file, whatever its name, and an import from an outside package or the standard library "
