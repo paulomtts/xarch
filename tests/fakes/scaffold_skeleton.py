@@ -1,6 +1,8 @@
 """In-memory implementation of scaffold's Skeleton port. Not an adapter: a test double only."""
 from __future__ import annotations
 
+from xarch.modules.scaffold.domain.values import Language
+
 
 class FakeSkeleton:
     """Satisfies scaffold's Skeleton: the same entries, kinds and docs under every profile, and the project files
@@ -20,14 +22,8 @@ class FakeSkeleton:
     def top_level(self, profile: str) -> list[tuple[tuple[str, ...], bool]]:
         return list(self._top)
 
-    def package_file(self, profile: str) -> str:
-        return self._package
-
-    def language(self, profile: str) -> str:
-        return self._language
-
-    def reserved(self, profile: str) -> frozenset[str]:
-        return self._reserved
+    def language(self, profile: str) -> Language:
+        return Language(self._language, self._package, self._reserved)
 
     def kinds(self, profile: str) -> dict[str, tuple[tuple[str, ...], list[tuple[tuple[str, ...], bool]]]]:
         return dict(self._kinds)

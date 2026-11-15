@@ -12,13 +12,13 @@ file of the layout), or land on a file another entry writes.
 """
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, Sequence
 
 from xarch.kernel.logic.placement import EACH
 from xarch.kernel.logic.project_file import ProjectFile
 from xarch.modules.spec.application.logic.layout_walk import walk
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.values import Architecture, FileEntry
+from xarch.modules.spec.domain.values import Architecture, FileEntry, Layout
 
 APP_PLACEHOLDER = "{{app}}"
 """The one placeholder of a project file's template: the name of the app folder."""
@@ -49,7 +49,8 @@ def project_files(architecture: Architecture, contents: Mapping[str, str | bytes
     problems: list[str] = []
     found: list[ProjectFile] = []
     owners: dict[tuple[str, ...], str] = {}
-    reserved = _Reserved(architecture, app)
+    package = architecture.language.package_file
+    files, folders_written = _skeleton_files(architecture.layout, package), _skeleton_folders(architecture.layout)
     for entry in architecture.files:
         where = f"files.{'/'.join(entry.path)}{'/' if entry.folder else ''}"
         base = tuple(with_app(step, app) for step in entry.path)
@@ -57,7 +58,7 @@ def project_files(architecture: Architecture, contents: Mapping[str, str | bytes
             if entry.folder else ((None, entry.source),)
         for rel, name in names:
             target = base + (tuple(rel.split("/")) if rel is not None else ())
-            problem = reserved.problem(target)
+            problem = _problem(target, app, package, files, folders_written)
             if problem is None and target in owners:
                 problem = f"'{'/'.join(target)}' is also written by {owners[target]}"
             if problem is not None:
@@ -85,39 +86,37 @@ def _content(raw: str | bytes, entry: FileEntry, app: str, name: str, where: str
         return None
 
 
-class _Reserved:
-    """What the skeleton writes for an app, as patterns below the app folder, `EACH` matching any instance."""
+def _skeleton_files(layout: Layout, package: str) -> tuple[tuple[str, ...], ...]:
+    """The files the skeleton writes, as patterns below the app folder, `EACH` matching any instance: the package file
+    of each folder, the app folder's first, and each file of the layout."""
+    return ((package,), *(path + (package,) if is_dir else path for path, is_dir, _ in walk(layout)))
 
-    def __init__(self, architecture: Architecture, app: str):
-        self._app = app
-        package = architecture.language.package_file
-        self._package = package
-        self._files: list[tuple[str, ...]] = [(package,)]
-        self._folders: list[tuple[str, ...]] = [()]
-        for path, is_dir, _ in walk(architecture.layout):
-            if is_dir:
-                self._folders.append(path)
-                self._files.append(path + (package,))
-            else:
-                self._files.append(path)
 
-    def problem(self, target: tuple[str, ...]) -> str | None:
-        """What is wrong with a file landing at target (below the folder holding the app), or None."""
-        if target[0] != self._app:
-            return None
-        inside = target[1:]
-        shown = "/".join(target)
-        if not inside:
-            return f"'{shown}' is the app folder"
-        for pattern in self._files:
-            if _matches(pattern, inside):
-                kind = "the package file the skeleton writes" if pattern[-1] == self._package else "a file of the layout"
-                return f"'{shown}' is {kind}"
-            if len(inside) > len(pattern) and _matches(pattern, inside[:len(pattern)]):
-                return f"'{'/'.join(target[:len(pattern) + 1])}' is a file of the layout"
-        if any(_matches(pattern, inside) for pattern in self._folders):
-            return f"'{shown}' is a folder of the layout"
+def _skeleton_folders(layout: Layout) -> tuple[tuple[str, ...], ...]:
+    """The folders the skeleton writes, as patterns below the app folder: the app folder itself, then each folder of
+    the layout."""
+    return ((), *(path for path, is_dir, _ in walk(layout) if is_dir))
+
+
+def _problem(target: tuple[str, ...], app: str, package: str, files: Sequence[tuple[str, ...]],
+             folders: Sequence[tuple[str, ...]]) -> str | None:
+    """What is wrong with a file landing at target (below the folder holding the app folder named app), given what the
+    skeleton writes there, or None."""
+    if target[0] != app:
         return None
+    inside = target[1:]
+    shown = "/".join(target)
+    if not inside:
+        return f"'{shown}' is the app folder"
+    for pattern in files:
+        if _matches(pattern, inside):
+            kind = "the package file the skeleton writes" if pattern[-1] == package else "a file of the layout"
+            return f"'{shown}' is {kind}"
+        if len(inside) > len(pattern) and _matches(pattern, inside[:len(pattern)]):
+            return f"'{'/'.join(target[:len(pattern) + 1])}' is a file of the layout"
+    if any(_matches(pattern, inside) for pattern in folders):
+        return f"'{shown}' is a folder of the layout"
+    return None
 
 
 def _matches(pattern: tuple[str, ...], path: tuple[str, ...]) -> bool:

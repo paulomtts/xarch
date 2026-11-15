@@ -18,3 +18,13 @@ class Touched:
     already held what would be written."""
     path: Path
     done: str
+
+
+@dataclass(frozen=True)
+class Language:
+    """The language of the app as scaffolding needs it: how a message names it, the file it has stand for each folder
+    (which every folder of the skeleton holds), and the words no name of an instance may be."""
+    title: str
+    package_file: str
+    reserved: frozenset[str]
+

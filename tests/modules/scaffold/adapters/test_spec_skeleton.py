@@ -4,6 +4,7 @@ import pytest
 from xarch.kernel.logic.project_file import ProjectFile
 from xarch.modules.scaffold.adapters.spec_skeleton import SpecSkeleton
 from xarch.modules.scaffold.domain.errors import ProfileUnusable
+from xarch.modules.scaffold.domain.values import Language
 from xarch.modules.spec.contract import (
     DocFile,
     Docs,
@@ -64,13 +65,5 @@ def test_files_spec_refuses_are_refused_with_its_reason():
         skeleton().files("broken", "shop")
 
 
-def test_the_package_file_is_the_one_the_language_of_the_profile_has_stand_for_a_folder():
-    assert skeleton().package_file("cli") == "__init__.py"
-
-
-def test_the_language_is_how_spec_names_the_language_of_the_profile():
-    assert skeleton().language("cli") == "Python"
-
-
-def test_the_reserved_words_are_those_spec_gives_for_the_language_of_the_profile():
-    assert skeleton().reserved("cli") == frozenset({"class"})
+def test_the_language_is_how_spec_names_it_the_file_it_has_stand_for_a_folder_and_its_reserved_words():
+    assert skeleton().language("cli") == Language("Python", "__init__.py", frozenset({"class"}))

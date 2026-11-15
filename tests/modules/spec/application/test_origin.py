@@ -1,9 +1,12 @@
 """Use case: where the profile in force comes from, and how it is looser than the bundled profile it resembles."""
+import pytest
+
 from tests.fakes.architecture_files import FakeArchitectureFiles
 from tests.modules.spec.application.helpers import controller as spec_controller
 from tests.modules.spec.application.origins import BASE, OFF, OTHER, PARTS, TESTING, TIER, part
 from xarch.kernel.logic.origin import Loosened, Origin
 from xarch.modules.spec.application.controller import SpecController
+from xarch.modules.spec.contract import ProfileRefused
 
 
 def controller(custom: dict) -> SpecController:
@@ -11,9 +14,14 @@ def controller(custom: dict) -> SpecController:
                                                  {"guard.py": "check()\n"}))
 
 
-def test_a_bundled_profile_lists_the_guards_it_leaves_off_as_its_own_defaults():
-    origin = controller(BASE).origin("base")
-    assert origin == Origin("base", True, None, OFF, OFF, ())
+@pytest.mark.parametrize("given, when, then", [
+    pytest.param(BASE, "base", Origin("base", True, None, OFF, OFF, ()),
+                 id="a bundled profile lists the guards it leaves off as its own defaults"),
+    pytest.param({"xarch": 2, "name": "mine"}, "mine.yaml", ProfileRefused("mine.yaml: missing `parts`"),
+                 id="a profile that does not load is refused with why"),
+])
+def test_origin(given, when, then):
+    assert controller(given).origin(when) == then
 
 
 def test_a_copy_of_a_bundled_profile_is_compared_with_it_and_found_no_looser():

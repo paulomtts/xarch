@@ -27,7 +27,7 @@ class ScaffoldingService:
         file is reached."""
         absolute = root.absolute()
         files = self._skeleton.files(profile, app_name(root, absolute.resolve()))
-        package = self._skeleton.package_file(profile)
+        package = self._skeleton.language(profile).package_file
         touched = self._build(root, self._skeleton.top_level(profile), package)
         base = holder(root, absolute)
         touched.append(self._record(base, root, profile))
@@ -39,8 +39,9 @@ class ScaffoldingService:
 
     def new(self, root: Path, kind: str, name: str, profile: str) -> list[Touched]:
         """Refused unless the name is valid, the kind is declared, init ran and nothing would be overwritten."""
-        if not valid_name(name, self._skeleton.reserved(profile)):
-            raise InvalidName(name, self._skeleton.language(profile))
+        language = self._skeleton.language(profile)
+        if not valid_name(name, language.reserved):
+            raise InvalidName(name, language.title)
         kinds = self._skeleton.kinds(profile)
         if kind not in kinds:
             raise UnknownKind(kind, kinds, {word: "/".join(path) for word, (path, _) in kinds.items()})
@@ -51,7 +52,7 @@ class ScaffoldingService:
         base = parent / name
         if self._files.kind(base) is not None:
             raise AlreadyExists(name, base)
-        return self._build(base, entries, self._skeleton.package_file(profile))
+        return self._build(base, entries, language.package_file)
 
     def _record(self, base: Path, root: Path, profile: str) -> Touched:
         """Record the profile, then the app folder when it is not the default, in the pyproject.toml of the project."""

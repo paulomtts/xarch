@@ -28,22 +28,16 @@ class Gathered:
     tiers: dict[str, tuple[str | None, list[str]]] = field(default_factory=dict)
 
 
-class _Copies:
-    """The files of the converted folder, each destination taken by one source: a second source for a taken
-    destination is reported, not copied."""
-
-    def __init__(self, found: Gathered, by_hand: list[str]):
-        self._found, self._by_hand = found, by_hand
-        self._taken: dict[str, str] = {}
-
-    def add(self, destination: str, source: str, label: str, rewritten: bool = False) -> None:
-        if self._taken.get(destination, source) != source:
-            self._by_hand.append(f"{label}: '{source}' would be copied to '{destination}', which "
-                                 f"'{self._taken[destination]}' already takes: give one of them another path")
-            return
-        if destination not in self._taken:
-            self._taken[destination] = source
-            self._found.copies.append(Copy(destination, source, rewritten))
+def _copy(found: Gathered, by_hand: list[str], destination: str, source: str, label: str,
+          rewritten: bool = False) -> None:
+    """Add a file to the converted folder, each destination taken by one source: a second source for a taken
+    destination is reported in by_hand, not copied."""
+    taken = next((copy.source for copy in found.copies if copy.destination == destination), None)
+    if taken is None:
+        found.copies.append(Copy(destination, source, rewritten))
+    elif taken != source:
+        by_hand.append(f"{label}: '{source}' would be copied to '{destination}', which '{taken}' already takes: give "
+                       "one of them another path")
 
 
 @dataclass(frozen=True)
@@ -120,7 +114,6 @@ def gather(old: Any, tiers: list[Any], files: Collection[str], changes: list[str
     plain = _sources(old, held, files, by_hand)
     root = _root(plain)
     found = Gathered(root=root if items else "")
-    copies = _Copies(found, by_hand)
     for key, spec in _entries(old.get("docs")):
         source = spec.get("from")
         if source is not None and source not in files:
@@ -128,23 +121,24 @@ def gather(old: Any, tiers: list[Any], files: Collection[str], changes: list[str
             continue
         found.pages[key] = _page(spec)
         if source is not None:
-            copies.add(source, source, f"docs.{key}", True)
+            _copy(found, by_hand, source, source, f"docs.{key}", True)
     pending: dict[str, dict[str, Any]] = {}
     for key, spec in _entries(old.get("files")):
         source = spec.get("from", "")
         if key.endswith("/"):
             found.files[key] = _file(spec)
             for relative in listing_in(files, source) or ():
-                copies.add(f"{source.rstrip('/')}/{relative}", f"{source.rstrip('/')}/{relative}", f"files.{key}")
+                _copy(found, by_hand, f"{source.rstrip('/')}/{relative}", f"{source.rstrip('/')}/{relative}",
+                      f"files.{key}")
         elif source in held:
             found.files[key] = {}
             pending[key] = spec
         elif source in files:
             found.files[key] = _file(spec)
-            copies.add(source, source, f"files.{key}")
+            _copy(found, by_hand, source, source, f"files.{key}")
         else:
             by_hand.append(f"files.{key}: no file '{source}' next to the profile: the entry is not converted")
-    where = _examples(items, root, copies, found, by_hand, changes)
+    where = _examples(items, root, found, by_hand, changes)
     for key, spec in pending.items():
         found.files[key] = _file(spec | {"from": where[spec["from"]]})
     found.tiers = _tier_paths(tiers, items)
@@ -218,8 +212,7 @@ def _root(taken: set[str]) -> str:
         n += 1
 
 
-def _examples(items: list[_Item], root: str, copies: _Copies, found: Gathered, by_hand: list[str],
-              changes: list[str]) -> dict[str, str]:
+def _examples(items: list[_Item], root: str, found: Gathered, by_hand: list[str], changes: list[str]) -> dict[str, str]:
     """Copies each example to its path below the root; returns where each source went."""
     owners: dict[str, str] = {}
     where: dict[str, str] = {}
@@ -229,7 +222,7 @@ def _examples(items: list[_Item], root: str, copies: _Copies, found: Gathered, b
                            "named by its path in format 2, so only the first is converted")
             continue
         owners[item.path] = item.source
-        copies.add(f"{root}/{item.path}", item.source, item.label)
+        _copy(found, by_hand, f"{root}/{item.path}", item.source, item.label)
         where.setdefault(item.source, f"{root}/{item.path}")
         if item.label.startswith("examples."):
             found.names[item.label.removeprefix("examples.")] = item.path

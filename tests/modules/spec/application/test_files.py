@@ -21,30 +21,28 @@ def controller(files: dict | None) -> SpecController:
 
 
 @pytest.mark.parametrize("given, when, then", [
-    pytest.param(GUARD, "shop", (ProjectFile(("tests", "architecture", "test_rules.py"), "check('shop')\n"),),
+    pytest.param(GUARD, "shop", ProjectFiles((ProjectFile(("tests", "architecture", "test_rules.py"), "check('shop')\n"),)),
                  id="a file is its template with the app folder's name filled in"),
-    pytest.param(None, "shop", (), id="a profile without files writes none"),
+    pytest.param(None, "shop", ProjectFiles(()), id="a profile without files writes none"),
     pytest.param({"tests/rules.py": {"from": "guard.py", "pinned": True}}, "shop",
-                 (ProjectFile(("tests", "rules.py"), "check('shop')\n", pinned=True),),
+                 ProjectFiles((ProjectFile(("tests", "rules.py"), "check('shop')\n", pinned=True),)),
                  id="a pinned file says so"),
     pytest.param(INTO_APP, "shop",
-                 (ProjectFile(("shop", "src", "design", "fonts", "f.woff"), b"\xff\x00", preset=True),
-                  ProjectFile(("shop", "src", "design", "tokens.css"), b"a {{app}}\n", preset=True)),
+                 ProjectFiles((ProjectFile(("shop", "src", "design", "fonts", "f.woff"), b"\xff\x00", preset=True),
+                               ProjectFile(("shop", "src", "design", "tokens.css"), b"a {{app}}\n", preset=True))),
                  id="a folder entry is copied unchanged below a target inside the app, file by file"),
+    pytest.param({"d/": {"from": "preset", "fill": True}}, "shop", ProfileRefused(
+        "cli: files.d/: 'preset/fonts/f.woff' is not valid UTF-8 text: set `fill: false` to copy it unchanged"),
+                 id="a filled preset that holds a binary file is refused naming the file"),
 ])
 def test_files(given, when, then):
-    assert controller(given).files("cli", when) == ProjectFiles(then)
+    assert controller(given).files("cli", when) == then
 
 
 def test_the_presets_can_be_left_out_so_that_a_check_reads_only_the_single_files():
     files = controller(GUARD | INTO_APP).files("cli", "shop", presets=False)
     assert isinstance(files, ProjectFiles)
     assert [file.path for file in files.files] == [("tests", "architecture", "test_rules.py")]
-
-
-def test_a_filled_preset_that_holds_a_binary_file_is_refused_naming_the_file():
-    assert controller({"d/": {"from": "preset", "fill": True}}).files("cli", "shop") == ProfileRefused(
-        "cli: files.d/: 'preset/fonts/f.woff' is not valid UTF-8 text: set `fill: false` to copy it unchanged")
 
 
 def test_a_file_the_skeleton_writes_is_refused_with_the_profile_named():
