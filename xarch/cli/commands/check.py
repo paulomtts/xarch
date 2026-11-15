@@ -54,7 +54,7 @@ def register(app: typer.Typer, rules: RulesController, layout: LayoutController,
         if output is Format.json:
             typer.echo(json_document(chosen, found, enforcement, strict, hints))
         else:
-            for line in [*text_lines(found, hints), *enforcement_lines(enforcement, strict)]:
+            for line in [*text_lines(found, hints), *enforcement_lines(enforcement, strict, hints)]:
                 typer.echo(line)
         if not passed(found, enforcement, strict):
             raise typer.Exit(1)

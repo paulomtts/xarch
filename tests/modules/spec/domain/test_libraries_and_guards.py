@@ -39,7 +39,8 @@ def test_guards_name_the_pre_built_checks_in_use_with_their_parameters_and_packa
 
 
 def test_the_pre_built_checks_are_known_by_name_with_one_line_each():
-    assert list(GUARDS) == ["package-only", "scenario-coverage", "no-comments", "stand-ins", "closed-tree"]
+    assert list(GUARDS) == ["package-only", "scenario-coverage", "no-comments", "stand-ins", "closed-tree", "no-duplicates",
+                             "dead-code", "pass-through"]
     assert all(text and "\n" not in text for text in GUARDS.values())
 
 

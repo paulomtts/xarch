@@ -20,8 +20,10 @@ LAYERED = {"xarch": 2, "name": "layered", "parts": {"api": {"path": "src/<module
 def controller(configured: Configured | None = None, error: Exception | None = None, tests: Path | None = None,
                files: dict | None = None, at: Path | None = None, app: Path | None = None,
                from_folder: Path | None = None) -> SpecController:
-    architectures = ArchitectureService(FakeArchitectureFiles({"cli": LAYERED, "web": LAYERED}, files))
-    return SpecController(SkeletonService(FakeSettings(configured, error, tests, at, app, from_folder), architectures), architectures)
+    port = FakeArchitectureFiles({"cli": LAYERED, "web": LAYERED}, files)
+    architectures = ArchitectureService(port)
+    settings = FakeSettings(configured, error, tests, at, app, from_folder)
+    return SpecController(SkeletonService(settings, architectures, port), architectures, settings, port)
 
 
 FILE = "/src/layered.yaml"

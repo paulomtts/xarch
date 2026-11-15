@@ -122,7 +122,10 @@ class Profile:
     no_comments, stand_ins and closed_tree are the guards switched on (None or False: off). forbidden holds, by part,
     the dotted names and modules a part may not use. info says each part in words, and singular names one instance
     of the `each` folder, for `where`. excluded holds the folders below the app that are not its source: no check reads
-    a file below one.
+    a file below one. must_import holds, by part, the targets each of its files must import one of (or an outside
+    package); no_duplicates is the fewest statements a function needs to count as a duplicate (None: off); dead_code
+    switches the unused ports and fakes check on; pass_through lists the parts whose methods that only forward are
+    listed (empty: off).
     """
     parts: dict[str, tuple[str, ...]]
     rules: dict[str, tuple[Target, ...]]
@@ -141,6 +144,10 @@ class Profile:
     info: dict[str, PartInfo] = field(default_factory=dict)
     singular: str = ""
     excluded: tuple[Exclusion, ...] = ()
+    must_import: dict[str, tuple[Target, ...]] = field(default_factory=dict)
+    no_duplicates: int | None = None
+    dead_code: bool = False
+    pass_through: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -220,12 +227,14 @@ class Method:
 @dataclass(frozen=True)
 class Class:
     """A module-level class: its bases, each a Ref (`Protocol[T]` names Protocol), the methods of its body, and its
-    attributes: the names its body assigns, and those its methods assign on their first parameter (`self.x = ...`)."""
+    attributes: the names its body assigns, and those its methods assign on their first parameter (`self.x = ...`);
+    named: every name its bases and body mention, by its last step alone."""
     line: int
     name: str
     bases: tuple[Ref, ...] = ()
     methods: tuple[Method, ...] = ()
     attributes: tuple[str, ...] = ()
+    named: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -253,13 +262,22 @@ class Table:
 class Function:
     """A function at module level or in a class: its tables, every name its body uses (`mentions`), and each
     `if`, `match`, `try`, `for` or `while` statement of its body as (line, keyword); asserts: its body holds an
-    `assert` statement."""
+    `assert` statement. owner is the class it is defined in ("" at module level). statements counts the real
+    statements of its body: every statement, nested ones included, but a docstring, `pass` and a bare `...`. shape
+    is its code with the docstring dropped and every local name (its parameters and what it binds) numbered in order
+    of appearance, as one text; "" when statements is 0. forwards is the dotted callee, such as `self.repo.get`, of
+    a method with no decorator whose whole body is one return (or bare call) of one call on an attribute of its
+    first parameter, every other parameter passed straight through and nothing else; "" otherwise."""
     line: int
     name: str
     tables: tuple[Table, ...] = ()
     mentions: frozenset[str] = frozenset()
     branches: tuple[tuple[int, str], ...] = ()
     asserts: bool = False
+    owner: str = ""
+    statements: int = 0
+    shape: str = ""
+    forwards: str = ""
 
 
 @dataclass(frozen=True)
@@ -268,8 +286,9 @@ class SourceFile:
     it imports, its comments, its functions (at module level and in its classes), its unions, its calls, its
     classes, the calls of the methods of its functions' parameters, the uses of the names it reads and the names it
     defines at module level as functions, in order (module_functions: a name that one `def` binds and nothing else
-    binds, so that what it names is a function). error is how it fails to parse, as (line, message), and then it
-    holds nothing else."""
+    binds, so that what it names is a function). named is every name the file mentions anywhere, annotations
+    included, by its last step alone. error is how it fails to parse, as (line, message), and then it holds nothing
+    else."""
     name: str
     path: tuple[str, ...]
     imports: tuple[Import, ...]
@@ -282,6 +301,7 @@ class SourceFile:
     uses: tuple[Use, ...] = ()
     parameter_calls: tuple[ParameterCall, ...] = ()
     module_functions: tuple[str, ...] = ()
+    named: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -314,6 +334,10 @@ class Loosened:
                 return f"{self.part} may also import {self.what} (parts.{self.part}.libraries)"
             case "forbidden":
                 return f"{self.part} no longer forbids {self.what} (parts.{self.part}.forbidden)"
+            case "must_import" if not self.what:
+                return f"{self.part} no longer has to import anything (parts.{self.part}.must_import)"
+            case "must_import":
+                return f"{self.part} may also meet must_import with {self.what} (parts.{self.part}.must_import)"
             case "untested":
                 return f"{self.part} is newly marked untested (parts.{self.part}.untested)"
             case "types_only":
@@ -359,11 +383,13 @@ class At:
 
 @dataclass(frozen=True)
 class Weak:
-    """A check satisfied to the letter only, which is not a violation: the guard it concerns, where, and why."""
+    """A check satisfied to the letter only, which is not a violation: the guard it concerns, where, and why; fix is
+    what to do about it, empty when there is no advice."""
     rule: str
     file: str
     line: int
     message: str
+    fix: str = ""
 
 
 @dataclass(frozen=True)

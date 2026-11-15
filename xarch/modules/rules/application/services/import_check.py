@@ -8,10 +8,14 @@ from xarch.modules.rules.application.logic import (
     closed_tree,
     comments,
     cycles,
+    dead_code,
+    duplicates,
     enforcement,
     forbidden,
     libraries,
+    must_import,
     package_only,
+    pass_through,
     scenarios,
     stand_ins,
     tier_imports,
@@ -66,6 +70,9 @@ class ImportCheck:
         found += package_only.violations(app, test_files, rules, package)
         found += scenarios.violations(app, test_files, rules)
         found += stand_ins.violations(app, test_files, rules, package, tests is not None)
+        found += must_import.violations(app, rules, package)
+        found += duplicates.violations(app, rules)
+        found += dead_code.violations(app, test_files, rules, tests is not None)
         if rules.no_comments:
             found += comments.violations([*app, *test_files])
         shown = root.absolute().resolve().name
@@ -79,7 +86,7 @@ class ImportCheck:
         project = root.absolute().resolve().parent
         files = self._profiles.init_files(location, package)
         texts = [self._tree.text(project.joinpath(*file.path)) for file in files]
-        weak = stand_ins.weak(app, tests, rules) + scenarios.weak(app, tests, rules)
+        weak = stand_ins.weak(app, tests, rules) + scenarios.weak(app, tests, rules) + pass_through.weak(app, rules)
         shown = [Excluded("/".join((root.absolute().resolve().name, *e.path)), e.reason) for e in rules.excluded]
         return Enforcement(self._profiles.origin(location), tuple(ungoverned), tuple(enforcement.drift(files, texts)),
                            skipped=tuple(enforcement.skipped(tests, rules)),

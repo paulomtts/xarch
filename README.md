@@ -120,6 +120,9 @@ The symbols:
 - `everything`: for `may_import`, every part; for `libraries`, every outside package, unchecked. A part that writes
   no `libraries` may import none (the standard library is always allowed).
 - `forbidden: pure` on a part: the part may not use the names of the top-level list `forbidden.pure`.
+- `must_import: [<target>, ...]` on a part: its files must touch something outside themselves; see
+  [`must-import`](#what-check-checks). Targets are written as in `may_import` (`platform`, `contract@any`), and each
+  one must be a target the part may import.
 - `folders`: folders below a part that the layout shows, each with its note.
 
 `based_on` names the bundled profile a file was copied from, which the enforcement section compares it with. The bundled
@@ -179,6 +182,17 @@ From the profile itself:
 Switched on by name in `guards`, each a map (`{}` when it takes nothing):
 
 - `package_only: true` on a part: the part is imported as a package, never by its files, from outside it.
+- `must_import: [<target>, ...]` on a part: every source file of the part imports one of the targets (written as in
+  `may_import`, each one the part may import; a bare name is the importer's own instance, `@any` any instance), or an
+  outside package, which is a top-level package that is neither the standard library nor the app's own, whatever the
+  part's `libraries` say (that is `libraries`' check). A file also meets it by importing a file of its own part and
+  instance that meets it, however far that chain goes: it reaches the technology through a sibling; two files that
+  only import each other meet nothing. Exempt: a package marker (`__init__.py`) and a file that holds no function or
+  method with a real statement (a statement other than a docstring, `pass` or `...`), such as a file of types or
+  constants or of Protocol stubs. A file that fails is reported once, as a whole, with rule `must-import`. The bundled
+  profiles write `must_import: [platform, contract@any]` on `adapters`: an adapter is code that touches technology, or
+  one that wraps another module's `contract/`, which their litmus test allows; so the check cannot tell an adapter that
+  imports its own module's `contract/` from one that wraps another's. xarch's own `architecture.yaml` writes the same.
 - `scenario-coverage: {results, tier, suffix, columns: [<state>, <command>, <result>], file}`: every union
   `<Name><suffix> = A | B` in a file of the `results` part has a test file named by `file` (`{name}` is `<Name>` in
   snake_case) among the `tier` tests of the same instance, read from its syntax tree and never run. The file holds a
@@ -200,6 +214,33 @@ Switched on by name in `guards`, each a map (`{}` when it takes nothing):
 - `closed-tree: {}`: every Python file of the app lies in a part or is the `__init__.py` of a folder of the layout,
   which only holds the tree together (a folder the profile `excluded` is not looked at). Off in both bundled
   profiles, whose tree is a protocol, not a closed world.
+
+- `no-duplicates: {min_statements: 4}`: no two functions or methods of the app have the same code. Two do when,
+  with their formatting, docstrings, annotations, defaults, decorators and local names (parameters and anything the
+  body binds, each numbered by first appearance) ignored, what is left is the same tree: the same statements, calls,
+  attributes read, constants, keyword names, async or not, and number of parameters. What is called or read is part of
+  the code, so two functions that each make one call to something different are different. A function counts when it
+  holds at least `min_statements` statements (nested ones counted; a docstring, `pass` and `...` do not; 4 when left
+  out), and one with no statement, such as a Protocol stub, never does. Tests are neither compared nor compared with
+  (their setup repeats on purpose, and a fake would match the adapter it stands in for). Of a group, the first by file
+  and line is the original; each other one is reported at its own place, naming the original's. The fix says to keep one
+  and import it, or move it to a part both may import.
+- `dead-code: {}` (needs `fakes`): a port, which is what `stand-ins` calls one (a Protocol in a part `fakes.for` names),
+  must be named by another file of the app, in code or in an annotation, whatever the file does with it. The port's own
+  file does not count, nor a package file (`__init__.py`, which only re-exports), nor a file of a part that may import
+  `everything`, the wiring, which only binds what others use. A fake, a module-level class in the `fakes` folder whose
+  name starts with the `prefix` (every class when there is none), must be named by a test file outside that folder or
+  by a fake that is itself used; a fake used only by an unused fake, or by itself, is reported. Names are compared by
+  their last step alone, so an unrelated name that equals a port's can only hide a finding, never make one. Without a
+  tests folder only ports are read.
+- `pass-through: {parts: [<part>, ...]}`: a method of those parts whose whole body (a docstring aside) is one `return`
+  or bare statement of one call, perhaps awaited, on an attribute of its own first parameter (`self.repo.get(...)`: a
+  chain of at least two attributes), passing every other parameter straight through (a keyword argument, or `*args` and
+  `**kwargs`, count) and nothing more, is listed in the enforcement section as `weak` with its fix. Any other statement,
+  condition, extra call, or a changed, extra, dropped or repeated argument, a read of the result, a decorator, a dunder
+  method, a function at module level, or a call that is not on a collaborator held by the object (`self.helper(...)`,
+  a global) is not one. It fails `check --strict` and never `check`: a pure forward is often a legitimate simple read,
+  and failing it would push filler code into the method.
 
 ### The test framework
 
@@ -241,7 +282,8 @@ a finding for `--strict`. `xarch where` on a path inside one says it is excluded
 `hints: {<rule id>: <text>}` adds the project's own advice to a rule: one line of text, shown after the built-in `fix`
 of every violation of that rule, as a `hint:` line in the text output and as `hint` in the JSON. The rule id is the
 `rule` a violation names (`rules`, `libraries`, `forbidden`, `tiers`, `types-only`, `test-tree`, `cycles`,
-`structure`, `package-only`, `scenario-coverage`, `no-comments`, `stand-ins`, `closed-tree`, `syntax`); any other id
+`structure`, `package-only`, `scenario-coverage`, `no-comments`, `stand-ins`, `closed-tree`, `must-import`,
+`no-duplicates`, `dead-code`, `pass-through`, `syntax`); any other id
 is refused when the profile loads, naming the ones there are. The bundled profiles set none.
 
 ```yaml
@@ -306,13 +348,14 @@ and rule ids may be added, but an existing one keeps its name and meaning.
   it, always a non-empty string (a violation cannot be made without one); `hint` the profile's own advice for the
   rule, else `null`. `rule` is one of: `rules`, `libraries`, `forbidden`, `tiers`
   (a test's imports, or a test in no tier), `types-only`, `test-tree`, `cycles`, `structure`, `package-only`,
-  `scenario-coverage`, `no-comments`, `stand-ins`, `closed-tree`, and `syntax` (a file that does not parse).
+  `scenario-coverage`, `no-comments`, `stand-ins`, `closed-tree`, `must-import`, `no-duplicates`, `dead-code`,
+  `pass-through` (never a violation: a `weak` item), and `syntax` (a file that does not parse).
 - `enforcement`: every key always present, empty when there is nothing to report. `profile.looser` items are
   `{"key", "part", "what", "sentence"}` with `key` one of `may_import`, `libraries`, `forbidden`, `untested`,
-  `types_only`, `apply_forbidden`, `testing.skips`, `files.pinned` (the `sentence` names the full address, such as
+  `types_only`, `apply_forbidden`, `testing.skips`, `files.pinned`, `must_import` (the `sentence` names the full address, such as
   `parts.kernel.may_import`); `excluded` items `{"folder", "reason"}`; `init_files` items `{"file", "state"}`, `state` `missing` or
   `changed`; `skipped.at` and `dynamic.at` items `{"file", "line"}`; `weak` items `{"rule", "file", "line",
-  "message"}`; `strict_failures` items `{"key", "detail"}`, `key` one of `guards_off`, `ungoverned`, `init_files`,
+  "message", "fix"}` (`fix` is `null` for a weak check that has none); `strict_failures` items `{"key", "detail"}`, `key` one of `guards_off`, `ungoverned`, `init_files`,
   `skipped`, `dynamic`, `weak`. `strict_failures` is filled whether or not `--strict` was given: it
   is what `--strict` fails on.
 - A refusal (exit 2: an unknown or invalid profile, a missing folder) prints `{"ok": false, "error": "<reason>"}` on
@@ -336,6 +379,8 @@ enforcement
   skipped:     1 skip (tests/modules/docs/domain/test_x.py:4)
   dynamic:     1 dynamic import (app/kernel/dyn.py:3)
   weak:        tests/fakes/repo.py:1: FakeRepo does not define save, which Repo declares (app/...)
+  weak:        app/modules/docs/application/services/doc.py:9: DocService.get only passes its arguments on to self.repo.get
+      fix: have the caller use self.repo.get, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`
 ```
 
 - `profile`: the bundled name, or the custom file's path and the bundled profile it is based on or, failing that,
@@ -344,7 +389,7 @@ enforcement
   name: a target added to a part's `may_import`, an outside package added to its `libraries` (or `everything`), a
   name of its `forbidden` list no entry covers any more, a part newly `untested`, a part dropped from a tier's
   `types_only`, a tier no longer `apply_forbidden`, a name dropped from `testing.skips`, a `files` entry no longer
-  `pinned`. A profile that says `based_on: <bundled name>` is compared with that one, else with the one sharing the
+  `pinned`, a target added to a part's `must_import` or the key dropped. A profile that says `based_on: <bundled name>` is compared with that one, else with the one sharing the
   most part names.
   Stricter differences, new parts, the layout and the guards' parameters are not compared. This comparison is
   information: the profile defines the architecture, so how it differs from another is no finding for `--strict`.
@@ -360,7 +405,8 @@ enforcement
   `__import__`: Python's own, so they need no entry in the profile; the import rules cannot see what they import.
 - `weak`, met to the letter only, never a violation: a fake `<prefix><Port>` that defines in its own body (methods,
   or names its body or `self.` assigns) less than every port of its name declares; and a `Result` variant that no
-  row covers, credited only to standalone tests that name it and hold no `assert`.
+  row covers, credited only to standalone tests that name it and hold no `assert`; and a method `pass-through` finds.
+  A weak check that has a fix shows it on an indented `fix:` line under its own.
 
 Without `--strict` the section never changes the exit code. `--strict` fails (exit 1) on every finding listed in
 `strict_failures`: what the profile in force leaves unenforced or unseen: each guard left off that the bundled profile

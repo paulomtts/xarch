@@ -44,8 +44,9 @@ def text_lines(found: Iterable[Violation], hints: Mapping[str, str] | None = Non
     return [*lines, f"{len(found)} violation(s) in {files} file(s)"]
 
 
-def enforcement_lines(state: Enforcement, strict: bool) -> list[str]:
-    """The enforcement section; with strict, the findings it fails on after it."""
+def enforcement_lines(state: Enforcement, strict: bool, hints: Mapping[str, str] | None = None) -> list[str]:
+    """The enforcement section; with strict, the findings it fails on after it. A weak check that has a fix shows it
+    under its line, then the profile's hint for its rule when there is one."""
     origin = state.origin
     if origin.bundled:
         where = "bundled"
@@ -67,7 +68,12 @@ def enforcement_lines(state: Enforcement, strict: bool) -> list[str]:
         lines.append(_line("skipped", f"{_count(len(state.skipped), 'skip')} ({_places(state.skipped)})", 2))
     if state.dynamic:
         lines.append(_line("dynamic", f"{_count(len(state.dynamic), 'dynamic import')} ({_places(state.dynamic)})", 2))
-    lines += [_line("weak", f"{weak.file}:{weak.line}: {weak.message}", 2) for weak in state.weak]
+    for weak in state.weak:
+        lines.append(_line("weak", f"{weak.file}:{weak.line}: {weak.message}", 2))
+        if weak.fix:
+            lines.append(f"{INDENT}{' ' * 2}fix: {weak.fix}")
+            if weak.rule in (hints or {}):
+                lines.append(f"{INDENT}{' ' * 2}hint: {(hints or {})[weak.rule]}")
     if strict and state.strict:
         lines.append(_line("strict", f"{_count(len(state.strict), 'finding')} fail the check", 0)
                      if len(state.strict) > 1 else _line("strict", "1 finding fails the check", 0))
@@ -118,8 +124,8 @@ def enforcement_document(state: Enforcement) -> dict[str, Any]:
         "init_files": [{"file": item.file, "state": item.state} for item in state.init_files],
         "skipped": {"count": len(state.skipped), "at": _at(state.skipped)},
         "dynamic": {"count": len(state.dynamic), "at": _at(state.dynamic)},
-        "weak": [{"rule": weak.rule, "file": weak.file, "line": weak.line, "message": weak.message}
-                 for weak in state.weak],
+        "weak": [{"rule": weak.rule, "file": weak.file, "line": weak.line, "message": weak.message,
+                  "fix": weak.fix or None} for weak in state.weak],
         "strict_failures": [_finding(f) for f in state.strict],
     }
 

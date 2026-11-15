@@ -19,6 +19,8 @@ MOCKS = "testing.mocks"
 FIXTURE = "testing.fixture"
 FAKES = "fakes"
 SCENARIO_COVERAGE = "guard.scenario-coverage"
+NO_DUPLICATES = "guard.no-duplicates"
+PASS_THROUGH = "guard.pass-through"
 DOCS = "docs"
 PAGE = "docs.page"
 NAMING = "docs.naming"
@@ -35,6 +37,8 @@ SCOPES = {
     FIXTURE: "testing.mocks.fixtures.<parameter>",
     FAKES: "fakes",
     SCENARIO_COVERAGE: "guards.scenario-coverage",
+    NO_DUPLICATES: "guards.no-duplicates",
+    PASS_THROUGH: "guards.pass-through",
     DOCS: "docs",
     PAGE: "docs.pages.<path>",
     NAMING: "docs.naming[]",
@@ -94,6 +98,9 @@ KEYS: tuple[Key, ...] = (
     _k(PART, "litmus", "the question that tells code belongs here", False, False),
     _k(PART, "may_import", "what the part may import besides itself: [<part>, <part>@any, <part>/<path>, ...] "
                            "or everything"),
+    _k(PART, "must_import", "each source file of the part imports one of these targets (as `may_import` writes them, each "
+                            "one the part may import) or an outside package, or reaches one through a file of the "
+                            "part: [<part>, <part>@any, ...]"),
     _k(PART, "libraries", "the outside packages the part may import by top-level name, or everything; none by default"),
     _k(PART, "forbidden", "the name of a top-level `forbidden` list the part may not use"),
     _k(PART, "tier", "the tier whose tests cover the part; one tier per part"),
@@ -145,6 +152,12 @@ KEYS: tuple[Key, ...] = (
     _k(SCENARIO_COVERAGE, "suffix", "how a union's name ends", True),
     _k(SCENARIO_COVERAGE, "columns", "the three parameter names of a table: its state, its command, its result", True),
     _k(SCENARIO_COVERAGE, "file", "the name of a use case's test file, {name} for the use case", True),
+
+    _k(NO_DUPLICATES, "min_statements", "the fewest statements a function needs to count as a duplicate; 4 when left "
+                                        "out"),
+
+    _k(PASS_THROUGH, "parts", "the parts whose methods are listed when their whole body only forwards to one call: "
+                              "[<part>, ...]", True),
 
     _k(DOCS, "entry", "the part that is the entry point, which drives the rest", False, False),
     _k(DOCS, "pages", "the project docs `init` writes below docs/project/: {<path>: <from> or {from, note}}", False,

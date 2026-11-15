@@ -19,14 +19,19 @@ MINE = {"xarch": 2, "name": "mine", "testing": "kit", "parts": {
     "forbidden": {"pure": ["socket"]}}
 
 
+def ports(custom: dict) -> FakeArchitectureFiles:
+    return FakeArchitectureFiles({"base": BASE, "other": OTHER}, {"mine.yaml": custom},
+                                 {"guard.py": "check()\n"}, {"kit": PRESET})
+
+
 def service(custom: dict) -> ArchitectureService:
-    return ArchitectureService(FakeArchitectureFiles({"base": BASE, "other": OTHER}, {"mine.yaml": custom},
-                                                      {"guard.py": "check()\n"}, {"kit": PRESET}))
+    return ArchitectureService(ports(custom))
 
 
 def controller(custom: dict) -> SpecController:
-    architectures = service(custom)
-    return SpecController(SkeletonService(FakeSettings(None, None, None), architectures), architectures)
+    files, settings = ports(custom), FakeSettings(None, None, None)
+    architectures = ArchitectureService(files)
+    return SpecController(SkeletonService(settings, architectures, files), architectures, settings, files)
 
 
 def test_a_profile_in_format_2_is_loaded_with_its_preset_read_from_the_files_port():

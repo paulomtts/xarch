@@ -18,8 +18,9 @@ INTO_APP = {"{{app}}/src/design/": {"from": "preset/"}}
 
 def controller(files: dict | None) -> SpecController:
     document = LAYERED | ({"files": files} if files is not None else {})
-    architectures = ArchitectureService(FakeArchitectureFiles({"cli": document}, texts=TEXTS))
-    return SpecController(SkeletonService(FakeSettings(None, None, None), architectures), architectures)
+    files_port = FakeArchitectureFiles({"cli": document}, texts=TEXTS)
+    architectures, settings = ArchitectureService(files_port), FakeSettings(None, None, None)
+    return SpecController(SkeletonService(settings, architectures, files_port), architectures, settings, files_port)
 
 
 @pytest.mark.parametrize("given, when, then", [

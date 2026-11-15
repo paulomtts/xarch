@@ -10,7 +10,14 @@ import pytest
 
 import xarch
 from xarch.bootstrap.wiring import build_architectures, build_controllers, load_architecture
-from xarch.modules.spec.contract import Architecture, Migrated, MigrateProfile
+from xarch.modules.spec.contract import (
+    Architecture,
+    DeadCode,
+    Migrated,
+    MigrateProfile,
+    NoDuplicates,
+    PassThrough,
+)
 
 FROZEN = Path(__file__).parent / "profiles_v1"
 OWN = Path(xarch.__file__).parent.parent / "architecture.yaml"
@@ -44,10 +51,14 @@ def both(name: str, tmp_path: Path) -> tuple[Architecture, Architecture]:
 
 def comparable(architecture: Architecture) -> Architecture:
     """Without what differs by design: where the example files sit (the shipped profiles keep two folders of examples, a
-    migration one), the tiers' examples and subjects' order, the order of the parts, and what the profile is based on."""
+    migration one), the tiers' examples and subjects' order, the order of the parts, what the profile is based on, and
+    what format 1 never had: each part's `must_import` and the guards no-duplicates, dead-code and pass-through."""
     tiers = tuple(replace(tier, subject=tuple(sorted(tier.subject, key=lambda s: s.part)), example=None, helpers=())
                   for tier in architecture.tiers)
-    return replace(architecture, tiers=tiers, examples={}, files=(), placement=(), based_on="")
+    parts = {name: replace(part, must_import=()) for name, part in architecture.parts.items()}
+    guards = tuple(g for g in architecture.guards if not isinstance(g, (NoDuplicates, DeadCode, PassThrough)))
+    return replace(architecture, tiers=tiers, examples={}, files=(), placement=(), based_on="", parts=parts,
+                   guards=guards)
 
 
 @pytest.mark.parametrize("name", ["web", "cli", "xarch"])

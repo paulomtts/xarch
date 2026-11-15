@@ -163,7 +163,7 @@ def test_a_folder_that_is_a_part_is_refused_since_its_note_is_its_role():
                  ["layered.yaml: parts.x.role: must be a string", "layered.yaml: parts.x.litmus: must be a string"],
                  id="texts that are no strings"),
     pytest.param({"x": {"path": "x", "role": "r", "colour": 1}},
-                 ["layered.yaml: parts.x: unknown key 'colour': use folders, forbidden, libraries, litmus, may_import, "
+                 ["layered.yaml: parts.x: unknown key 'colour': use folders, forbidden, libraries, litmus, may_import, must_import, "
                   "package_only, path, role, tier, untested"], id="an unknown key"),
     pytest.param({"x": {"path": "x", "role": "r", "package_only": "yes"}},
                  ["layered.yaml: parts.x.package_only: must be true or false"], id="package_only that is no boolean"),
@@ -389,3 +389,38 @@ def test_every_problem_of_a_profile_is_reported_at_once():
         "language, layers, name, parts, testing, tiers, xarch",
         "layered.yaml: language: 'ruby' is not a language xarch reads: use python",
         "layered.yaml: parts.store.may_import: 'repo' names no part 'repo'"]
+
+
+def test_a_part_says_what_its_files_must_import_with_the_targets_of_may_import():
+    document = layered()
+    document["parts"]["store"]["must_import"] = ["shared"]
+    document["parts"]["api"]["must_import"] = ["service"]
+    architecture = parsed(document)
+    assert architecture.parts["store"].must_import == (Target("shared"),)
+    assert architecture.parts["api"].must_import == (Target("service", "own"),)
+    assert architecture.parts["shared"].must_import == ()
+
+
+@pytest.mark.parametrize("value, expected", [
+    pytest.param("everything", "layered.yaml: parts.store.must_import: must be a list of targets such as "
+                               "[<part>, <part>@any]", id="no everything"),
+    pytest.param([], "layered.yaml: parts.store.must_import: must be a list of targets such as [<part>, <part>@any]",
+                 id="an empty list"),
+    pytest.param(["ghost"], "layered.yaml: parts.store.must_import: 'ghost' names no part 'ghost'", id="no such part"),
+    pytest.param(["api"], "layered.yaml: parts.store.must_import: 'api' is not in `may_import`, so no file could "
+                          "import it: add it there, or name a part the part may import", id="a part it may not import"),
+    pytest.param(["store"], "layered.yaml: parts.store.must_import: 'store' is implied: a part may always import "
+                            "itself, its own instance of the repeating folder; remove it (store@any, another "
+                            "instance's too, stays allowed)", id="the part itself"),
+])
+def test_a_bad_must_import_is_refused(value, expected):
+    document = layered()
+    document["parts"]["store"]["must_import"] = value
+    assert problems(document) == [expected]
+
+
+def test_a_part_that_may_import_everything_may_be_asked_to_reach_any_part():
+    document = layered()
+    document["parts"]["store"]["may_import"] = "everything"
+    document["parts"]["store"]["must_import"] = ["api"]
+    assert parsed(document).parts["store"].must_import == (Target("api", "own"),)

@@ -43,6 +43,7 @@ parts:
     path: modules/<module>/adapters
     role: implement the ports on the filesystem or another module's contract
     may_import: [ports, domain, kernel, platform, contract@any]
+    must_import: [platform, contract@any]
     tier: unit
 
   platform:
@@ -142,6 +143,9 @@ guards:
   no-comments: {}
   closed-tree: {}
   stand-ins: {}
+  no-duplicates: {min_statements: 4}
+  dead-code: {}
+  pass-through: {parts: [services]}
 
 excluded:
   architectures/examples: >-

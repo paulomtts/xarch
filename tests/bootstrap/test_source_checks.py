@@ -97,3 +97,36 @@ def test_each_check_is_wired(tmp_path, app, tests, found):
 def test_a_folder_named_like_a_source_file_is_not_read_as_one(tmp_path, where):
     (tmp_path / where).mkdir(parents=True)
     assert problems(tmp_path) == []
+
+
+COPY = "def copy(a):\n    b = a + 1\n    c = b * 2\n    d = c - 3\n    return d\n"
+
+
+def test_the_same_function_in_two_places_of_the_app_is_reported_at_the_later_one(tmp_path):
+    assert problems(tmp_path, {"kernel/a.py": COPY, "kernel/b.py": COPY.replace("copy", "clone")}) == [
+        "app/kernel/b.py:1: clone has the same code as copy at app/kernel/a.py:1, whatever the names (no-duplicates)"]
+
+
+def test_the_same_function_in_two_tests_or_a_test_and_the_app_is_not_compared(tmp_path):
+    assert problems(tmp_path, {"kernel/a.py": COPY}, {"modules/docs/domain/test_a.py": COPY + "\n\n" + COPY.replace(
+        "copy", "clone"), "modules/docs/domain/test_b.py": COPY}) == []
+
+
+def test_a_file_of_the_adapters_that_touches_no_technology_is_reported_unless_it_reaches_one_through_a_sibling(tmp_path):
+    ports = "from app.modules.docs.application.ports.repo import Repo\n"
+    engine = "from app.platform.sql import engine\n\n\ndef open_engine():\n    return engine\n"
+    wraps = "from app.modules.docs.adapters.engine import open_engine\n\n\ndef query():\n    return open_engine()\n"
+    lone = ports + "\n\ndef size(repo: Repo):\n    return 1\n"
+    assert problems(tmp_path, {"platform/sql.py": "engine = 1\n", "modules/docs/adapters/engine.py": engine,
+                               "modules/docs/adapters/query.py": wraps}) == []
+    assert problems(tmp_path, {"modules/docs/adapters/lone.py": lone}) == [
+        "app/modules/docs/adapters/lone.py: adapters/ of modules/docs imports nothing from platform/ or contract/ and no "
+        "outside package, so it touches no technology (parts.adapters.must_import)"]
+
+
+def test_a_port_no_service_names_and_a_fake_no_test_names_are_reported(tmp_path):
+    notifier = "from typing import Protocol\n\n\nclass Notifier(Protocol):\n    def send(self) -> None: ...\n"
+    assert problems(tmp_path, {"modules/docs/application/ports/notifier.py": notifier},
+                    {"fakes/notifier.py": "class FakeNotifier:\n    def send(self): ...\n"}) == [
+        "app/modules/docs/application/ports/notifier.py:4: Notifier is a port that nothing else in the app names (dead-code)",
+        "tests/fakes/notifier.py:1: FakeNotifier is a fake that no test names (dead-code)"]

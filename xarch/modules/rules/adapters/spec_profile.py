@@ -23,8 +23,11 @@ from xarch.modules.rules.domain.values import StandIns as StandInNames
 from xarch.modules.spec.contract import (
     Architecture,
     ClosedTree,
+    DeadCode,
     NoComments,
+    NoDuplicates,
     PackageOnly,
+    PassThrough,
     ProfileOrigin,
     ProjectFile,
     ScenarioCoverage,
@@ -69,6 +72,12 @@ class SpecProfiles:
                                                     tuple(Fixture(f.name, f.mocks, f.autospec) for f in g.fixtures))
                                        for g in architecture.guards if isinstance(g, StandIns)), None),
                        closed_tree=any(isinstance(g, ClosedTree) for g in architecture.guards),
+                       must_import={name: part.must_import for name, part in architecture.parts.items()
+                                    if part.must_import},
+                       no_duplicates=next((g.min_statements for g in architecture.guards
+                                           if isinstance(g, NoDuplicates)), None),
+                       dead_code=any(isinstance(g, DeadCode) for g in architecture.guards),
+                       pass_through=next((g.parts for g in architecture.guards if isinstance(g, PassThrough)), ()),
                        framework=Framework(architecture.framework.files, architecture.framework.functions,
                                            architecture.framework.skips)
                        if architecture.framework is not None else None,

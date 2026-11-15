@@ -72,6 +72,7 @@ parts:
       goes here. If it knows no module's types and is only a client or engine for a technology, it belongs in
       `platform/`. If it contains a business rule, it belongs in `domain/`.
     may_import: [ports, domain, kernel, platform, contract@any]
+    must_import: [platform, contract@any]
     libraries: [sqlmodel]
     tier: unit
 
@@ -232,6 +233,9 @@ guards:
     file: test_{name}.py
   no-comments: {}
   stand-ins: {}
+  no-duplicates: {min_statements: 4}
+  dead-code: {}
+  pass-through: {parts: [services]}
 
 files:
   tests/architecture/test_rules.py: {from: examples/shared/tests/architecture/test_rules.py, pinned: true}

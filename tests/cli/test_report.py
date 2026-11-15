@@ -6,7 +6,7 @@ import pytest
 
 from xarch.cli.report import enforcement_lines, folders, json_document, ordered, text_lines
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.contract import At, Enforcement, Excluded, Origin
+from xarch.modules.rules.contract import At, Enforcement, Excluded, Origin, Weak
 
 A = Violation("app/a.py", 3, "a problem", "rules", "do this")
 B = Violation("app/a.py", 7, "another", "rules", "do that")
@@ -95,3 +95,27 @@ def test_the_json_document_lists_every_excluded_folder_with_its_reason():
     state = Enforcement(Origin("web"), excluded=(Excluded("app/examples", "shipped as data"),))
     document = json.loads(json_document("web", [], state, False))
     assert document["enforcement"]["excluded"] == [{"folder": "app/examples", "reason": "shipped as data"}]
+
+
+PASS = Weak("pass-through", "app/s.py", 4, "S.get only passes its arguments on to self.repo.get", "use self.repo.get")
+OLD = Weak("stand-ins", "tests/fakes/r.py", 1, "FakeR does not define get, which R declares")
+
+
+def test_a_weak_check_with_a_fix_shows_it_under_its_line_and_the_hint_of_its_rule_after_it():
+    state = Enforcement(origin=Origin("web"), weak=(OLD, PASS))
+    assert enforcement_lines(state, False, {"pass-through": "see the ADR"})[-4:] == [
+        "  weak:        tests/fakes/r.py:1: FakeR does not define get, which R declares",
+        "  weak:        app/s.py:4: S.get only passes its arguments on to self.repo.get",
+        "      fix: use self.repo.get",
+        "      hint: see the ADR"]
+    assert enforcement_lines(state, False)[-2:] == [
+        "  weak:        app/s.py:4: S.get only passes its arguments on to self.repo.get", "      fix: use self.repo.get"]
+
+
+def test_the_json_weak_items_hold_their_fix_or_null():
+    document = json.loads(json_document("web", [], Enforcement(origin=Origin("web"), weak=(OLD, PASS)), False))
+    assert document["enforcement"]["weak"] == [
+        {"rule": "stand-ins", "file": "tests/fakes/r.py", "line": 1,
+         "message": "FakeR does not define get, which R declares", "fix": None},
+        {"rule": "pass-through", "file": "app/s.py", "line": 4,
+         "message": "S.get only passes its arguments on to self.repo.get", "fix": "use self.repo.get"}]

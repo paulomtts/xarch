@@ -17,6 +17,8 @@ MODULES = {"modules/mod/__init__.py": "", "modules/mod/contract/__init__.py": ""
            "modules/docs/adapters/mod_review.py": "from app.modules.mod.contract import Clean\n",
            "modules/mod/adapters/docs_review.py": "from app.modules.docs.contract import Published\n"}
 PORT = "from typing import Protocol\n\nclass Repo(Protocol):\n    def get(self) -> int: ...\n"
+NOTIFIER = "from typing import Protocol\n\n\nclass Notifier(Protocol):\n    def send(self) -> None: ...\n"
+COPY = "def copy(a):\n    b = a + 1\n    c = b * 2\n    d = c - 3\n    return d\n"
 BUNDLED = Path(xarch.__file__).parent / "architectures"
 
 
@@ -59,6 +61,17 @@ CASES = [
                  "say it in a docstring or a name, and delete the comment", id="no-comments"),
     pytest.param({"modules/docs/application/ports/repo.py": PORT}, {}, "stand-ins",
                  "write FakeRepo under tests/fakes/", id="stand-ins"),
+    pytest.param({"modules/docs/adapters/x.py": "from app.modules.docs.application.ports.repo import Repo\n\n\n"
+                                                 "def size(repo: Repo):\n    return 1\n"}, {}, "must-import",
+                 "import what it wraps from platform/ or contract/, or an outside package, or move its code to a part that needs no "
+                 "technology", id="must-import"),
+    pytest.param({"kernel/a.py": COPY, "kernel/b.py": COPY}, {}, "no-duplicates",
+                 "keep one of the two and import it where the other is, or move it to a part both may import when they "
+                 "cannot import each other", id="no-duplicates"),
+    pytest.param({"modules/docs/application/ports/notifier.py": NOTIFIER}, {}, "dead-code",
+                 "delete Notifier and its fake, or write the service step that uses it", id="dead-code: a port"),
+    pytest.param({}, {"fakes/notifier.py": "class FakeNotifier:\n    def send(self) -> None: ...\n"}, "dead-code",
+                 "delete FakeNotifier, or write the test that uses it", id="dead-code: a fake"),
     pytest.param({"kernel/x.py": "def (:\n"}, {}, "syntax", "correct the syntax so that the file can be read",
                  id="syntax"),
 ]
@@ -98,7 +111,21 @@ def test_a_closed_tree_names_its_rule_and_its_fix(tmp_path):
 
 def test_every_rule_id_has_a_case_here_that_produces_a_violation_with_a_fix():
     cases = {case.values[2] for case in CASES}
-    assert cases | {"structure", "test-tree", "closed-tree"} == set(RULES)
+    assert cases | {"structure", "test-tree", "closed-tree", "pass-through"} == set(RULES)
+
+
+def test_a_pass_through_is_listed_as_weak_with_its_fix_and_is_no_violation(tmp_path):
+    service = ("class DocService:\n    def __init__(self, repo):\n        self.repo = repo\n\n"
+               "    def get(self, id):\n        return self.repo.get(id)\n")
+    app = write(tmp_path / "app", {**APP, "modules/docs/application/services/doc.py": service})
+    result = build_controllers().rules.check(CheckImports(app, "app", "web", write(tmp_path / "tests", TESTS)))
+    assert isinstance(result, ImportsChecked)
+    assert [(w.rule, w.line, w.fix) for w in result.enforcement.weak] == [
+        ("pass-through", 5, "have the caller use self.repo.get, or keep it as a deliberate plain forward: it stays listed and fails "
+                            "only `check --strict`")]
+    assert [f.detail for f in result.enforcement.strict if f.key == "weak"] == [
+        "app/modules/docs/application/services/doc.py:5: DocService.get only passes its arguments on to self.repo.get"]
+    assert [v.rule for v in result.violations] == []
 
 
 def test_every_violation_of_a_check_names_a_rule(tmp_path):

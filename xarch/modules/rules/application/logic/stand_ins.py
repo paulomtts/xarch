@@ -98,6 +98,11 @@ def weak(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profil
     return found
 
 
+def ports_of(app: Iterable[SourceFile], profile: Profile) -> list[Port]:
+    """The ports of the parts the fakes stand in for, in the order of the files."""
+    return list(_ports(app, profile)[0].values())
+
+
 def _ports(app: Iterable[SourceFile], profile: Profile) -> tuple[dict[tuple[tuple[str, ...], str], Port],
                                                                  list[Violation]]:
     """The ports of the parts the fakes stand in for, by module and name, and the problems of their annotations."""

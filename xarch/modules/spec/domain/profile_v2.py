@@ -63,7 +63,9 @@ from xarch.modules.spec.domain.profile_keys import (
     FAKES,
     MOCKS,
     MOVED,
+    NO_DUPLICATES,
     PART,
+    PASS_THROUGH,
     PROFILE,
     SCENARIO_COVERAGE,
     TESTING,
@@ -78,13 +80,16 @@ from xarch.modules.spec.domain.values import (
     Architecture,
     CaseTable,
     ClosedTree,
+    DeadCode,
     Fakes,
     Framework,
     Guard,
     Layout,
     NoComments,
+    NoDuplicates,
     PackageOnly,
     Part,
+    PassThrough,
     ScenarioCoverage,
     StandIns,
     Subject,
@@ -152,6 +157,8 @@ def parse_v2(document: Any, source: str, has_file: Callable[[str], bool],
     rules = {part: _may_import(specs[part].get("may_import"), item, parts, declared, f"parts.{part}.may_import",
                                problems) for part, item in parts.items()}
     libraries = {part: _libraries(specs[part], f"parts.{part}.libraries", problems) for part in parts}
+    parts = {part: replace(item, must_import=_must_import(specs[part], item, parts, declared, rules[part], problems))
+             for part, item in parts.items()}
     forbidden = _forbidden_refs(specs, parts, lists, problems)
     layers = ck.layer_chains(document["layers"], parts, declared, rules, problems) if "layers" in document else {}
     testing = _testing(document["testing"], presets or {}, problems) if "testing" in document else None
@@ -714,6 +721,20 @@ def _guards(value: Any, specs: dict[str, Any], parts: dict[str, Part], declared:
             guard = _stand_ins(spec, fakes, testing, where, problems)
             if guard is not None:
                 guards.append(guard)
+        elif name == "no-duplicates":
+            guards.append(_no_duplicates(spec, where, problems))
+        elif name == "pass-through":
+            guard = _pass_through(spec, declared, parts, where, problems)
+            if guard is not None:
+                guards.append(guard)
+        elif name == "dead-code":
+            if spec not in ({}, None):
+                problems.append(f"{where}: takes no parameters: write {{}}")
+            elif fakes is None:
+                problems.append(f"{where}: needs `fakes`: it reads the Protocols of the parts `fakes.for` names "
+                                "and the classes in `fakes.folder`")
+            else:
+                guards.append(DeadCode())
         elif spec not in ({}, None):
             problems.append(f"{where}: takes no parameters: write {{}}")
         else:
@@ -760,6 +781,57 @@ def _stand_ins(spec: Any, fakes: Fakes | None, testing: _Testing | None, where: 
         problems.append(f"{where}: needs `testing.mocks`: the calls that build a mock and the keywords a mock is "
                         "given its spec by")
     return testing.mocks if testing is not None else None
+
+
+def _no_duplicates(spec: Any, where: str, problems: list[str]) -> NoDuplicates:
+    if spec in ({}, None):
+        return NoDuplicates()
+    if not isinstance(spec, Mapping):
+        problems.append(f"{where}: must be a mapping {{min_statements: <number>}}, or {{}} for the default")
+        return NoDuplicates()
+    problems += ck.unknown_keys(spec, names_of(NO_DUPLICATES), where)
+    least = spec.get("min_statements", NoDuplicates.min_statements)
+    if isinstance(least, bool) or not isinstance(least, int) or least < 1:
+        problems.append(f"{where}.min_statements: must be a whole number of statements, at least 1, such as "
+                        f"{NoDuplicates.min_statements}")
+        return NoDuplicates()
+    return NoDuplicates(least)
+
+
+def _pass_through(spec: Any, declared: set[str], parts: dict[str, Part], where: str,
+                  problems: list[str]) -> PassThrough | None:
+    if not isinstance(spec, Mapping):
+        problems.append(f"{where}: must be a mapping {{parts: [<part>, ...]}}: the parts whose methods are listed "
+                        "when they only forward")
+        return None
+    count = len(problems)
+    problems += ck.unknown_keys(spec, names_of(PASS_THROUGH), where)
+    problems += [f"{where}: missing `{key}`" for key in required_of(PASS_THROUGH) if key not in spec]
+    names = ck.part_names(spec["parts"], declared, f"{where}.parts", problems) if "parts" in spec else []
+    if len(problems) != count:
+        return None
+    return PassThrough(tuple(n for n in names if n in parts))
+
+
+def _must_import(spec: Any, owner: Part, parts: dict[str, Part], declared: set[str],
+                 may_import: tuple[Target, ...], problems: list[str]) -> tuple[Target, ...]:
+    """The targets a part's files must import one of: each one its `may_import` allows."""
+    where = f"parts.{owner.name}.must_import"
+    if not isinstance(spec, Mapping) or "must_import" not in spec:
+        return ()
+    value = spec["must_import"]
+    if not isinstance(value, list) or not value:
+        problems.append(f"{where}: must be a list of targets such as [<part>, <part>@any]")
+        return ()
+    count = len(problems)
+    found = _may_import(value, owner, parts, declared, where, problems)
+    if len(problems) != count:
+        return ()
+    for item, target in zip(value, found):
+        if not any(t.part == EVERYTHING or t == target for t in may_import):
+            problems.append(f"{where}: {item!r} is not in `may_import`, so no file could import it: add it there, or "
+                            "name a part the part may import")
+    return found if len(problems) == count else ()
 
 
 def _needs_testing(document: Mapping[Any, Any]) -> list[str]:

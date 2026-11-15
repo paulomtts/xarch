@@ -14,6 +14,11 @@ from xarch.modules.rules.domain.values import Loosened
                  id="a part left unchecked"),
     pytest.param(Loosened("forbidden", "domain", "time.time"),
                  "domain no longer forbids time.time (parts.domain.forbidden)", id="a forbidden name dropped"),
+    pytest.param(Loosened("must_import", "adapters", "contract@any"),
+                 "adapters may also meet must_import with contract@any (parts.adapters.must_import)",
+                 id="a must_import target added"),
+    pytest.param(Loosened("must_import", "adapters"), "adapters no longer has to import anything "
+                                                      "(parts.adapters.must_import)", id="must_import dropped"),
     pytest.param(Loosened("untested", "platform"), "platform is newly marked untested (parts.platform.untested)",
                  id="a part marked untested"),
     pytest.param(Loosened("types_only", "rendering", "controller"),

@@ -30,6 +30,7 @@ class Part:
     role: one line; also the part's note in the docs' tree
     entry: the entry point, which drives the rest; at most one part is
     untested: why no tier tests it, e.g. "reached through the adapters that use it"
+    must_import: the targets each of its files must import one of (or an outside package); empty: no such rule
     """
     name: str
     path: tuple[str, ...]
@@ -37,6 +38,7 @@ class Part:
     litmus: str = ""
     entry: bool = False
     untested: str = ""
+    must_import: tuple[Target, ...] = ()
 
     @property
     def in_instance(self) -> bool:
@@ -262,7 +264,24 @@ class ClosedTree:
     """The guard closed-tree."""
 
 
-Guard = PackageOnly | ScenarioCoverage | NoComments | StandIns | ClosedTree
+@dataclass(frozen=True)
+class NoDuplicates:
+    """The guard no-duplicates: the fewest statements a function needs to count as a duplicate of another."""
+    min_statements: int = 4
+
+
+@dataclass(frozen=True)
+class DeadCode:
+    """The guard dead-code: the ports and fakes come from `fakes`."""
+
+
+@dataclass(frozen=True)
+class PassThrough:
+    """The guard pass-through: the parts whose methods that only forward are listed."""
+    parts: tuple[str, ...]
+
+
+Guard = PackageOnly | ScenarioCoverage | NoComments | StandIns | ClosedTree | NoDuplicates | DeadCode | PassThrough
 
 
 @dataclass(frozen=True)

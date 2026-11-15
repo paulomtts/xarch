@@ -16,6 +16,7 @@ PARTS = {"core": {"path": "core", "role": "rules", "may_import": [], "forbidden"
 BASE = {"xarch": 2, "name": "base", "parts": PARTS, "forbidden": {"pure": ["time.time", "socket"]},
         "testing": TESTING, "tiers": {"unit": TIER}, "guards": {"no-comments": {}},
         "files": {"tests/test_rules.py": {"from": "guard.py", "pinned": True}}}
+OFF = ("package-only", "scenario-coverage", "stand-ins", "closed-tree", "no-duplicates", "dead-code", "pass-through")
 OTHER = {"xarch": 2, "name": "other", "parts": {"web": {"path": "web", "role": "all"}}}
 
 
@@ -24,15 +25,14 @@ def part(name: str, **changes) -> dict:
 
 
 def controller(custom: dict) -> SpecController:
-    architectures = ArchitectureService(FakeArchitectureFiles({"base": BASE, "other": OTHER},
-                                                              {"mine.yaml": custom}, {"guard.py": "check()\n"}))
-    return SpecController(SkeletonService(FakeSettings(None, None, None), architectures), architectures)
+    files = FakeArchitectureFiles({"base": BASE, "other": OTHER}, {"mine.yaml": custom}, {"guard.py": "check()\n"})
+    architectures, settings = ArchitectureService(files), FakeSettings(None, None, None)
+    return SpecController(SkeletonService(settings, architectures, files), architectures, settings, files)
 
 
 def test_a_bundled_profile_lists_the_guards_it_leaves_off_as_its_own_defaults():
     origin = controller(BASE).origin("base")
-    assert origin == ProfileOrigin("base", True, None, ("package-only", "scenario-coverage", "stand-ins", "closed-tree"),
-                                   ("package-only", "scenario-coverage", "stand-ins", "closed-tree"), ())
+    assert origin == ProfileOrigin("base", True, None, OFF, OFF, ())
 
 
 def test_a_copy_of_a_bundled_profile_is_compared_with_it_and_found_no_looser():
@@ -53,8 +53,8 @@ def test_every_way_a_custom_profile_is_looser_than_the_bundled_one_it_resembles_
               "files": {"tests/test_rules.py": {"from": "guard.py"}}}
     origin = controller(custom).origin("mine.yaml")
     assert origin.closest == "base"
-    assert origin.guards_off == ("package-only", "scenario-coverage", "no-comments", "stand-ins", "closed-tree")
-    assert origin.baseline_off == ("package-only", "scenario-coverage", "stand-ins", "closed-tree")
+    assert origin.guards_off == ("package-only", "scenario-coverage", "no-comments", *OFF[2:])
+    assert origin.baseline_off == OFF
     assert origin.looser == (
         Loosened("may_import", "core", "store"),
         Loosened("libraries", "core", "yaml"), Loosened("libraries", "store", "requests"),
@@ -81,7 +81,7 @@ def test_a_custom_profile_sharing_no_part_resembles_no_bundled_profile_and_has_n
     custom = {"xarch": 2, "name": "mine", "parts": {"x": {"path": "x", "role": "all"}}}
     origin = controller(custom).origin("mine.yaml")
     assert (origin.closest, origin.baseline_off, origin.looser) == (None, (), ())
-    assert origin.guards_off == ("package-only", "scenario-coverage", "no-comments", "stand-ins", "closed-tree")
+    assert origin.guards_off == ("package-only", "scenario-coverage", "no-comments", *OFF[2:])
 
 
 def test_the_closest_bundled_profile_is_the_one_sharing_the_most_parts_the_first_by_name_on_a_tie():
@@ -91,3 +91,19 @@ def test_the_closest_bundled_profile_is_the_one_sharing_the_most_parts_the_first
     assert controller(OTHER).origin("mine.yaml").closest == "other"
     tie = {**OTHER, "parts": {**OTHER["parts"], "core": {"path": "core", "role": "x"}}}
     assert controller(tie).origin("mine.yaml").closest == "base"
+
+
+def test_a_part_that_no_longer_has_to_import_or_may_meet_it_with_more_is_looser():
+    base = {**BASE, "parts": part("store", may_import=["core", "edge"], must_import=["core"])}
+    dropped = {**base, "parts": part("store", may_import=["core"])}
+    wider = {**base, "parts": part("store", may_import=["core", "edge"], must_import=["core", "edge"])}
+    same = {**base, "parts": part("store", may_import=["core", "edge"], must_import=["core"])}
+    stricter = {**BASE, "parts": part("store", may_import=["core", "edge"], must_import=["core"])}
+    files = FakeArchitectureFiles({"base": base}, {"dropped.yaml": dropped, "wider.yaml": wider, "same.yaml": same,
+                                                   "stricter.yaml": stricter}, {"guard.py": "check()\n"})
+    controllers, settings = ArchitectureService(files), FakeSettings(None, None, None)
+    spec = SpecController(SkeletonService(settings, controllers, files), controllers, settings, files)
+    assert spec.origin("dropped.yaml").looser == (Loosened("must_import", "store"),)
+    assert spec.origin("wider.yaml").looser == (Loosened("must_import", "store", "edge"),)
+    assert spec.origin("same.yaml").looser == ()
+    assert spec.origin("stricter.yaml").looser == ()

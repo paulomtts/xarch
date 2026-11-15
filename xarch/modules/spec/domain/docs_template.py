@@ -62,11 +62,14 @@ from xarch.modules.spec.domain.values import (
     NAME,
     Architecture,
     ClosedTree,
+    DeadCode,
     Doc,
     Guard,
     Layout,
+    NoDuplicates,
     PackageOnly,
     Part,
+    PassThrough,
     ScenarioCoverage,
     StandIns,
     Subject,
@@ -423,6 +426,7 @@ def _guards(architecture: Architecture, _: str, __: _Context) -> str:
         lines.append(f"`test tree`: every folder below `tests/{'/'.join(root)}/` mirrors a folder of the app.")
         lines.append(f"`cycles`: no `{'/'.join(root)}/<name>/` imports from another that imports, directly or through "
                      "others, from it; each cycle is reported once, with the imports that close it.")
+    lines += [_must_import_line(architecture, part) for part in architecture.parts.values() if part.must_import]
     lines += [_guard_line(architecture, guard) for guard in architecture.guards]
     return "\n".join(f"- {line}" for line in lines)
 
@@ -466,12 +470,32 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
         case StandIns(mocks, _, spec, fixtures):
             built = f"{fixtures[0].name}.{fixtures[0].mocks[0]}" if fixtures else ""
             return _stand_ins_line(architecture, mocks[0][-1], spec[0], built)
+        case NoDuplicates(least):
+            return (f"`no-duplicates`: no two functions of the app have the same code, names and formatting aside, "
+                    f"when each holds at least {least} statements; tests are not compared.")
+        case DeadCode():
+            fakes = architecture.fakes
+            assert fakes is not None
+            ports = _and([f"`{_shown(architecture, architecture.parts[p])}`" for p in fakes.stand_in_for])
+            return (f"`dead-code`: every `Protocol` in {ports} is named by another file of the app, and every fake in "
+                    f"`{'/'.join(('tests', *fakes.folder))}/` by a test; the wiring and re-exports do not count.")
+        case PassThrough(parts):
+            shown = _and([f"`{_shown(architecture, architecture.parts[p])}`" for p in parts])
+            return (f"`pass-through`: a method of {shown} whose whole body forwards to one call on a collaborator is "
+                    "listed in the enforcement section, and fails `check --strict` only.")
         case ClosedTree():
             return ("`closed-tree`: every Python file of the app lies in a part, or is the package file "
                     "(`__init__.py`) of a folder of the layout.")
         case _:
             return ("`no-comments`: no `#` comments in the app or its tests; docstrings and tool directives "
                     "(`# type: ignore`, `# noqa`, `# pragma:`) stay.")
+
+
+def _must_import_line(architecture: Architecture, part: Part) -> str:
+    wanted = may_import(part.must_import, _folders(architecture), architecture.singular).replace(" and ", " or ")
+    return (f"`must-import`: every file of `{_shown(architecture, part)}` imports from {wanted}, or an outside "
+            "package, or reaches one through a file of its own part, so that it touches technology; a package file "
+            "and a file with no code of its own are exempt.")
 
 
 def _stand_ins_line(architecture: Architecture, mock: str, spec: str, built: str = "") -> str:

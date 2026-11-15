@@ -17,11 +17,27 @@ assignment, class or `global`), so that the name is a function and not a class o
 A use is every name read in the file's code, called or not, and every chain of attributes on one (`a.b.c` once, as
 the whole chain), read the same way; a name no scope binds that is one of Python's builtins is the use
 ("builtins", <name>), unless the file holds a star import, which might bind it. Annotations are not read for uses.
+
+A file also lists every name it mentions (`named`), by its last step alone, in code and in annotations, a string
+annotation read as the expression it holds, and every imported name; a class lists the same for its bases and body.
+
+A function lists how many real statements its body holds (every statement, nested ones included, but a docstring, `pass`
+and a bare `...`) and its shape: its body without the docstring, written as a tree in which every local name (a
+parameter, or a name the body binds in any way) is replaced by its number in order of appearance, so that formatting
+and local names do not show; what it calls, reads (attributes, globals), its constants, its keyword names, async or
+not, and how many parameters of each kind it has, do show. Its annotations, defaults and decorators are no part of it.
+
+A function forwards when it has no decorator, is no dunder method, and its whole body, a docstring left out, is one
+`return` or bare statement of one call, perhaps awaited, whose callee is a chain of at least two attributes starting at
+the function's first parameter (`self.repo.get`), whose arguments are bare names of the other parameters (a keyword
+argument, or `*args` and `**kwargs` of the same names) and pass each of them exactly once.
 """
 from __future__ import annotations
 
 import ast
 import builtins
+import copy
+import hashlib
 import io
 import tokenize
 from pathlib import Path
@@ -79,7 +95,7 @@ def _parsed(name: str, path: tuple[str, ...], text: str, form: TableForm | None)
     return SourceFile(name, path, tuple(_imports(tree)), comments, _functions(tree, form),
                       tuple(_unions(tree)), calls=tuple(calls.found), classes=tuple(_classes(tree)),
                       uses=tuple(calls.uses), parameter_calls=tuple(calls.parameter_calls),
-                      module_functions=_module_functions(tree))
+                      module_functions=_module_functions(tree), named=_named(tree))
 
 
 def _module_functions(tree: ast.Module) -> tuple[str, ...]:
@@ -125,13 +141,13 @@ def _functions(tree: ast.Module, form: TableForm | None) -> tuple[Function, ...]
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             found.append(_function(node, scope, lists, form))
         elif isinstance(node, ast.ClassDef):
-            found += [_function(n, scope, lists, form) for n in node.body
+            found += [_function(n, scope, lists, form, node.name) for n in node.body
                       if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
     return tuple(found)
 
 
 def _function(node: ast.FunctionDef | ast.AsyncFunctionDef, scope: list[Scope], lists: dict[str, ast.expr],
-              form: TableForm | None) -> Function:
+              form: TableForm | None, owner: str = "") -> Function:
     inside = [n for statement in node.body for n in ast.walk(statement)]
     mentions = frozenset(n.id if isinstance(n, ast.Name) else n.attr for n in inside
                          if isinstance(n, (ast.Name, ast.Attribute)))
@@ -139,7 +155,158 @@ def _function(node: ast.FunctionDef | ast.AsyncFunctionDef, scope: list[Scope], 
     tables = tuple(table for d in node.decorator_list if form is not None
                    and (table := _table(d, scope, lists, form)) is not None)
     asserts = any(isinstance(n, ast.Assert) for n in inside)
-    return Function(node.lineno, node.name, tables, mentions, branches, asserts)
+    statements, shape = _shape(node)
+    return Function(node.lineno, node.name, tables, mentions, branches, asserts, owner, statements, shape,
+                    _forwards(node))
+
+
+def _is_docstring(node: ast.stmt) -> bool:
+    return isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant) and isinstance(node.value.value, str)
+
+
+def _real(node: ast.AST) -> bool:
+    """Whether a node is a statement that does something: not `pass`, a docstring, or a bare `...`."""
+    if not isinstance(node, ast.stmt) or isinstance(node, ast.Pass):
+        return False
+    return not (isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant)
+                and (isinstance(node.value.value, str) or node.value.value is Ellipsis))
+
+
+def _shape(node: ast.FunctionDef | ast.AsyncFunctionDef) -> tuple[int, str]:
+    count = sum(1 for statement in node.body for n in ast.walk(statement) if _real(n))
+    if count == 0:
+        return 0, ""
+    body = [copy.deepcopy(s) for s in node.body if not _is_docstring(s)]
+    a = node.args
+    parameters = [x.arg for x in [*a.posonlyargs, *a.args, *a.kwonlyargs, *(v for v in (a.vararg, a.kwarg) if v)]]
+    numbered: dict[str, str] = {name: f"_{i}" for i, name in enumerate(dict.fromkeys(parameters))}
+    local = _Locals(numbered)
+    wrapped = ast.Module(body, [])
+    local.visit(wrapped)
+    local.rename = True
+    renamed = local.visit(wrapped)
+    arity = (len(a.posonlyargs), len(a.args), len(a.kwonlyargs), a.vararg is not None, a.kwarg is not None)
+    text = f"{type(node).__name__}{arity}{ast.dump(renamed)}"
+    return count, hashlib.sha1(text.encode()).hexdigest()
+
+
+class _Locals(ast.NodeTransformer):
+    """Numbers the names a function binds, in order of appearance: a first pass finds them, the second renames."""
+
+    def __init__(self, numbered: dict[str, str]) -> None:
+        self.numbered = numbered
+        self.rename = False
+
+    def _bind(self, name: str) -> None:
+        self.numbered.setdefault(name, f"_{len(self.numbered)}")
+
+    def visit_Name(self, node: ast.Name) -> ast.AST:
+        if not self.rename and not isinstance(node.ctx, ast.Load):
+            self._bind(node.id)
+        elif self.rename and node.id in self.numbered:
+            node.id = self.numbered[node.id]
+        return node
+
+    def visit_arg(self, node: ast.arg) -> ast.AST:
+        if not self.rename:
+            self._bind(node.arg)
+        else:
+            node.arg = self.numbered[node.arg]
+            node.annotation = None
+        return node
+
+    def _definition(self, node: ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef) -> ast.AST:
+        if not self.rename:
+            self._bind(node.name)
+        else:
+            node.name = self.numbered[node.name]
+            node.decorator_list = []
+            if not isinstance(node, ast.ClassDef):
+                node.returns = None
+        node.body = [s for s in node.body if not _is_docstring(s)] or node.body
+        self.generic_visit(node)
+        return node
+
+    visit_FunctionDef = visit_AsyncFunctionDef = visit_ClassDef = _definition
+
+    def visit_ExceptHandler(self, node: ast.ExceptHandler) -> ast.AST:
+        if node.name:
+            if not self.rename:
+                self._bind(node.name)
+            else:
+                node.name = self.numbered[node.name]
+        self.generic_visit(node)
+        return node
+
+
+def _forwards(node: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
+    """The dotted callee a method forwards to, or "" (see the module's text)."""
+    a = node.args
+    body = [s for s in node.body if not _is_docstring(s)]
+    if node.decorator_list or (node.name.startswith("__") and node.name.endswith("__")) or len(body) != 1:
+        return ""
+    positional = [*a.posonlyargs, *a.args]
+    if not positional:
+        return ""
+    own = positional[0].arg
+    others = [x.arg for x in [*positional[1:], *a.kwonlyargs]]
+    star, double = (a.vararg.arg if a.vararg else None), (a.kwarg.arg if a.kwarg else None)
+    statement = body[0]
+    call = statement.value if isinstance(statement, (ast.Return, ast.Expr)) else None
+    if isinstance(call, ast.Await):
+        call = call.value
+    if not isinstance(call, ast.Call):
+        return ""
+    names: list[str] = []
+    chain: ast.expr = call.func
+    while isinstance(chain, ast.Attribute):
+        names.insert(0, chain.attr)
+        chain = chain.value
+    if not isinstance(chain, ast.Name) or chain.id != own or len(names) < 2:
+        return ""
+    passed: list[str] = []
+    for arg in call.args:
+        if isinstance(arg, ast.Starred) and isinstance(arg.value, ast.Name) and arg.value.id == star:
+            passed.append(f"*{star}")
+        elif isinstance(arg, ast.Name) and arg.id in others:
+            passed.append(arg.id)
+        else:
+            return ""
+    for keyword in call.keywords:
+        if keyword.arg is None and isinstance(keyword.value, ast.Name) and keyword.value.id == double:
+            passed.append(f"**{double}")
+        elif keyword.arg is not None and isinstance(keyword.value, ast.Name) and keyword.value.id in others:
+            passed.append(keyword.value.id)
+        else:
+            return ""
+    wanted = [*others, *(f"*{star}" for _ in [star] if star), *(f"**{double}" for _ in [double] if double)]
+    if sorted(passed) != sorted(wanted):
+        return ""
+    return ".".join([own, *names])
+
+
+def _named(tree: ast.AST) -> frozenset[str]:
+    """Every name the tree mentions: names, attributes, imported names and the names inside string annotations."""
+    found: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name):
+            found.add(node.id)
+        elif isinstance(node, ast.Attribute):
+            found.add(node.attr)
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            found.update(alias.name.rsplit(".", 1)[-1] for alias in node.names)
+        elif isinstance(node, ast.Constant) and isinstance(node.value, str):
+            found.update(_in_string(node.value))
+    return frozenset(found)
+
+
+def _in_string(text: str) -> set[str]:
+    """The names an expression written as a string holds; nothing when the string is no expression."""
+    try:
+        tree = ast.parse(text.strip(), mode="eval")
+    except SyntaxError:
+        return set()
+    return {n.id if isinstance(n, ast.Name) else n.attr for n in ast.walk(tree) if isinstance(n, (ast.Name, ast.Attribute))}
 
 
 def _lists(tree: ast.Module) -> dict[str, ast.expr]:
@@ -421,7 +588,7 @@ def _classes(tree: ast.Module) -> list[Class]:
             bases = tuple(_ref(b.value if isinstance(b, ast.Subscript) else b, scope) for b in node.bases)
             methods = tuple(Method(n.lineno, n.name, _annotation(n.returns)) for n in node.body
                             if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)))
-            found.append(Class(node.lineno, node.name, bases, methods, _attributes(node)))
+            found.append(Class(node.lineno, node.name, bases, methods, _attributes(node), _named(node) - {node.name}))
     return found
 
 

@@ -341,10 +341,14 @@ A fake is checked against its port twice. `xarch check` requires it to exist: ev
 - `types-only`: a rendering test uses `application/controller.py` only as a type: it may import it and annotate with it, and never calls it.
 - `test tree`: every folder below `tests/modules/` mirrors a folder of the app.
 - `cycles`: no `modules/<name>/` imports from another that imports, directly or through others, from it; each cycle is reported once, with the imports that close it.
+- `must-import`: every file of `adapters/` imports from `platform/`, any module's `contract/`, or an outside package, or reaches one through a file of its own part, so that it touches technology; a package file and a file with no code of its own are exempt.
 - `package-only`: `contract/` is imported as a package, never by its files, from outside it.
 - `scenario-coverage`: every variant of a union named `<Name>Result` in `contract/` is the `then` of a row of the table (columns `given`, `when`, `then`) in `test_<name>.py` among the integration tests (section 5.2), or is named by a standalone test of that file; every row is a `pytest.param` with an `id`, and a table test has no `if`, `match`, `try`, `for` or `while`.
 - `no-comments`: no `#` comments in the app or its tests; docstrings and tool directives (`# type: ignore`, `# noqa`, `# pragma:`) stay.
 - `stand-ins`: every `Protocol` in `application/ports/` is fire-only (every method returns `None`) or read (any method returns a value), each method annotated; every read port `<Port>` has a fake `Fake<Port>` in `tests/fakes/`; and every mock in the integration tests names what it stands in for, `Mock(spec=<Port>)` (or, from a fixture, `mocker.Mock(spec=<Port>)`), never a read port (section 6).
+- `no-duplicates`: no two functions of the app have the same code, names and formatting aside, when each holds at least 4 statements; tests are not compared.
+- `dead-code`: every `Protocol` in `application/ports/` is named by another file of the app, and every fake in `tests/fakes/` by a test; the wiring and re-exports do not count.
+- `pass-through`: a method of `application/services/` whose whole body forwards to one call on a collaborator is listed in the enforcement section, and fails `check --strict` only.
 
 One line per guard. A guard the project adds itself is a check of its own under `tests/architecture/`, written up from `artifacts/guards/_template.md`.
 

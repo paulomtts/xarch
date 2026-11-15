@@ -4,12 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from xarch.bootstrap.wiring import build_architectures
+from xarch.bootstrap.wiring import build_architectures, build_spec
 
 
 def test_the_bundled_examples_obey_their_architectures_rules():
     service = build_architectures()
-    for profile in service.bundled():
+    for profile in build_spec().profiles():
         assert service.check_examples(profile) == (), profile
 
 

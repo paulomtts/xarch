@@ -21,9 +21,6 @@ class ArchitectureService:
         self._bundled: dict[str, tuple[ArchitectureSource, Architecture]] = {}
         self._testing: dict[str, Any] | None = None
 
-    def bundled(self) -> tuple[str, ...]:
-        return self._files.bundled()
-
     def load(self, location: str | Path) -> Architecture:
         """The architecture in a bundled file, by name, or in a file at a path; raises InvalidArchitecture."""
         return self._load(location)[1]
@@ -67,7 +64,7 @@ class ArchitectureService:
         off = guards_off(architecture)
         if source.bundled:
             return ProfileOrigin(source.location, True, None, off, off, ())
-        bundled = {name: self.load(name) for name in self.bundled()}
+        bundled = {name: self.load(name) for name in self._files.bundled()}
         name = closest(architecture, bundled)
         if name is None:
             return ProfileOrigin(source.location, False, None, off, (), ())

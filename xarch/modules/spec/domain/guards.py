@@ -4,9 +4,12 @@ from __future__ import annotations
 
 from xarch.modules.spec.domain.values import (
     ClosedTree,
+    DeadCode,
     Guard,
     NoComments,
+    NoDuplicates,
     PackageOnly,
+    PassThrough,
     ScenarioCoverage,
     StandIns,
 )
@@ -26,10 +29,18 @@ GUARDS = {
                  "a spec, never a read port's",
     "closed-tree": "{}: every Python file of the app lies in a part or is the package file of a folder of the layout; "
                    "off unless switched on, since a profile is a protocol, not a closed world",
+    "no-duplicates": "{min_statements: <number>}: no two functions of the app (never its tests) have the same code once "
+                     "names and formatting are ignored, when each holds at least min_statements statements (4 when "
+                     "left out)",
+    "dead-code": "{}: every port (a Protocol in a part `fakes.for` names) is named by some other file of the app, and "
+                 "every fake is named by some test; the wiring and re-exports do not count",
+    "pass-through": "{parts: [<part>, ...]}: a method of those parts whose whole body forwards to one call on a "
+                    "collaborator is listed in the enforcement section, and fails `check --strict` only",
 }
 """The pre-built checks a profile may switch on, each with the parameters it takes."""
 _GUARD_NAMES: dict[type, str] = {PackageOnly: "package-only", ScenarioCoverage: "scenario-coverage",
-                                 NoComments: "no-comments", StandIns: "stand-ins", ClosedTree: "closed-tree"}
+                                 NoComments: "no-comments", StandIns: "stand-ins", ClosedTree: "closed-tree",
+                                 NoDuplicates: "no-duplicates", DeadCode: "dead-code", PassThrough: "pass-through"}
 
 
 def guard_name(guard: Guard) -> str:

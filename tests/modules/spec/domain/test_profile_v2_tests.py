@@ -6,11 +6,14 @@ from tests.modules.spec.profiles_v2 import EX, PRESETS, covered, layered, parsed
 from xarch.modules.spec.domain.values import (
     CaseTable,
     ClosedTree,
+    DeadCode,
     Fakes,
     Fixture,
     Framework,
     NoComments,
+    NoDuplicates,
     PackageOnly,
+    PassThrough,
     ScenarioCoverage,
     StandIns,
     Subject,
@@ -342,8 +345,9 @@ def test_guards_are_off_unless_named_and_package_only_comes_first():
 @pytest.mark.parametrize("guards, expected", [
     pytest.param(3, ["layered.yaml: guards: must be a mapping of guard names to their parameters, such as "
                      "{no-comments: {}}"], id="not a mapping"),
-    pytest.param({"colour": {}}, ["layered.yaml: guards: unknown guard 'colour': use closed-tree, no-comments, "
-                                  "scenario-coverage, stand-ins"], id="an unknown guard"),
+    pytest.param({"colour": {}}, ["layered.yaml: guards: unknown guard 'colour': use closed-tree, dead-code, "
+                                  "no-comments, no-duplicates, pass-through, scenario-coverage, stand-ins"],
+                 id="an unknown guard"),
     pytest.param({"package-only": ["api"]}, ["layered.yaml: guards.package-only: a fact about a part in format 2: write "
                                              "`package_only: true` on each part"], id="package-only moved to the parts"),
     pytest.param({"no-comments": {"x": 1}}, ["layered.yaml: guards.no-comments: takes no parameters: write {}"],
@@ -355,6 +359,44 @@ def test_guards_are_off_unless_named_and_package_only_comes_first():
 ])
 def test_a_bad_guard_is_refused(guards, expected):
     assert problems(covered(guards=guards, fakes=FAKES)) == expected
+
+
+def test_the_new_guards_take_their_parameters_and_dead_code_needs_fakes():
+    document = covered(guards={"no-duplicates": {"min_statements": 6}, "dead-code": {},
+                               "pass-through": {"parts": ["service", "api"]}}, fakes=FAKES)
+    assert parsed(document).guards == (NoDuplicates(6), DeadCode(), PassThrough(("service", "api")))
+    assert parsed(covered(guards={"no-duplicates": {}})).guards == (NoDuplicates(4),)
+
+
+@pytest.mark.parametrize("guards, expected", [
+    pytest.param({"no-duplicates": 3}, ["layered.yaml: guards.no-duplicates: must be a mapping "
+                                        "{min_statements: <number>}, or {} for the default"], id="no-duplicates, no map"),
+    pytest.param({"no-duplicates": {"min": 3}}, ["layered.yaml: guards.no-duplicates: unknown key 'min': use "
+                                                 "min_statements"], id="no-duplicates, an unknown key"),
+    pytest.param({"no-duplicates": {"min_statements": 0}},
+                 ["layered.yaml: guards.no-duplicates.min_statements: must be a whole number of statements, at least "
+                  "1, such as 4"], id="no-duplicates, zero"),
+    pytest.param({"no-duplicates": {"min_statements": True}},
+                 ["layered.yaml: guards.no-duplicates.min_statements: must be a whole number of statements, at least "
+                  "1, such as 4"], id="no-duplicates, a boolean"),
+    pytest.param({"dead-code": {"x": 1}}, ["layered.yaml: guards.dead-code: takes no parameters: write {}"],
+                 id="dead-code, a parameter"),
+    pytest.param({"pass-through": {}}, ["layered.yaml: guards.pass-through: missing `parts`"],
+                 id="pass-through, no parts"),
+    pytest.param({"pass-through": []}, ["layered.yaml: guards.pass-through: must be a mapping {parts: [<part>, ...]}: "
+                                        "the parts whose methods are listed when they only forward"],
+                 id="pass-through, no map"),
+    pytest.param({"pass-through": {"parts": ["ghost"]}}, ["layered.yaml: guards.pass-through.parts: no part named "
+                                                          "'ghost'"], id="pass-through, a part that is not there"),
+])
+def test_a_bad_new_guard_is_refused(guards, expected):
+    assert problems(covered(guards=guards, fakes=FAKES)) == expected
+
+
+def test_dead_code_without_fakes_is_refused():
+    assert problems(covered(guards={"dead-code": {}})) == [
+        "layered.yaml: guards.dead-code: needs `fakes`: it reads the Protocols of the parts `fakes.for` names and the "
+        "classes in `fakes.folder`"]
 
 
 def test_scenario_coverage_reads_its_table_from_the_framework_and_says_so_when_there_is_none():

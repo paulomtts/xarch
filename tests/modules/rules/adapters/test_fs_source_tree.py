@@ -1,4 +1,5 @@
 """FsSourceTree on real files: the calls and classes a file holds, each name read through the import that binds it."""
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -76,7 +77,7 @@ def test_a_class_lists_its_bases_as_paths_and_its_methods_with_their_return_anno
             '    def save(self, x) -> None: ...\n    def raw(self): ...\n'
             '    async def later(self) -> "None": ...\n    size: int\n'
             'class Typed(typing.Protocol[T], Base):\n    pass\n')
-    assert parsed(tmp_path, text).classes == (
+    assert tuple(replace(c, named=frozenset()) for c in parsed(tmp_path, text).classes) == (
         Class(4, "Repo", (("typing", "Protocol"),),
               (Method(5, "get", "str | None"), Method(6, "save", "None"), Method(7, "raw", None),
                Method(8, "later", "None")), ("size",)),
@@ -374,3 +375,99 @@ def test_the_names_a_file_defines_as_functions_at_module_level_are_listed(tmp_pa
 def test_only_files_are_listed_as_source(tmp_path, make, listed):
     make(tmp_path)
     assert FsSourceTree(FileSystem()).paths(tmp_path) == listed
+
+
+def functions_of(tmp_path: Path, text: str):
+    return {f.name: f for f in parsed(tmp_path, text).functions}
+
+
+def test_a_function_counts_its_real_statements_nested_ones_too_and_not_a_docstring_pass_or_ellipsis(tmp_path):
+    text = ('def a(x):\n    """Doc."""\n    if x:\n        return 1\n    return 2\n\n'
+            'def b():\n    """Doc."""\n    pass\n\ndef c():\n    ...\n\nclass K:\n    def m(self):\n        return 1\n')
+    found = functions_of(tmp_path, text)
+    assert (found["a"].statements, found["b"].statements, found["c"].statements, found["m"].statements) == (3, 0, 0, 1)
+    assert (found["b"].shape, found["c"].shape) == ("", "")
+    assert (found["a"].owner, found["m"].owner) == ("", "K")
+
+
+def test_two_functions_have_one_shape_when_only_formatting_docstrings_and_local_names_differ(tmp_path):
+    text = ('def a(items, limit):\n    """One."""\n    out = []\n    for item in items:\n        out.append(item.name)\n'
+            '    return out[:limit]\n\n'
+            'def b(rows,   cap):\n    result=[]\n    for row in rows:\n        result.append( row.name )\n'
+            '    return result[:cap]\n')
+    found = functions_of(tmp_path, text)
+    assert found["a"].shape == found["b"].shape != ""
+
+
+@pytest.mark.parametrize("other", [
+    pytest.param("def b(items, limit):\n    out = []\n    for item in items:\n        out.append(item.title)\n"
+                 "    return out[:limit]\n", id="another attribute"),
+    pytest.param("def b(items, limit):\n    out = []\n    for item in items:\n        out.add(item.name)\n"
+                 "    return out[:limit]\n", id="another method called"),
+    pytest.param("def b(items, limit):\n    out = []\n    for item in items:\n        out.append(item.name)\n"
+                 "    return out[:3]\n", id="another constant"),
+    pytest.param("def b(items):\n    out = []\n    for item in items:\n        out.append(item.name)\n"
+                 "    return out[:2]\n", id="another number of parameters"),
+    pytest.param("async def b(items, limit):\n    out = []\n    for item in items:\n        out.append(item.name)\n"
+                 "    return out[:limit]\n", id="async"),
+    pytest.param("def b(items, limit):\n    out = []\n    for item in items:\n        sink(item.name)\n"
+                 "    return out[:limit]\n", id="another function called"),
+])
+def test_a_change_of_what_is_called_or_read_changes_the_shape(tmp_path, other):
+    one = 'def a(items, limit):\n    out = []\n    for item in items:\n        out.append(item.name)\n    return out[:limit]\n'
+    found = functions_of(tmp_path, one + "\n" + other)
+    assert found["a"].shape != found["b"].shape
+
+
+def test_annotations_defaults_and_decorators_are_no_part_of_the_shape(tmp_path):
+    text = ('def a(x: int, y=1) -> int:\n    z = x + y\n    return z\n\n'
+            '@staticmethod\ndef b(p: str, q="s") -> str:\n    r = p + q\n    return r\n')
+    found = functions_of(tmp_path, text)
+    assert found["a"].shape == found["b"].shape
+
+
+@pytest.mark.parametrize("body, forwards", [
+    pytest.param("return self.repo.get(id)", "self.repo.get", id="a return of one call on a collaborator"),
+    pytest.param("self.repo.save(id)", "self.repo.save", id="a bare call"),
+    pytest.param("return await self.repo.get(id)", "self.repo.get", id="an awaited call"),
+    pytest.param("return self.repo.get(id=id)", "self.repo.get", id="a keyword with the parameter's value"),
+    pytest.param("return self.repo.get(other=id)", "self.repo.get", id="a keyword of another name"),
+    pytest.param("return self.a.b.get(id)", "self.a.b.get", id="a deeper chain"),
+    pytest.param('"""Doc."""\n        return self.repo.get(id)', "self.repo.get", id="a docstring is no statement"),
+    pytest.param("return self.repo.get(id, 1)", "", id="an extra argument"),
+    pytest.param("return self.repo.get(id + 1)", "", id="a changed argument"),
+    pytest.param("return self.repo.get(str(id))", "", id="a transformed argument"),
+    pytest.param("return self.repo.get()", "", id="a parameter that is not passed"),
+    pytest.param("return self.repo.get(id, id)", "", id="a parameter passed twice"),
+    pytest.param("return self.repo.get(id) or None", "", id="a changed result"),
+    pytest.param("x = self.repo.get(id)\n        return x", "", id="two statements"),
+    pytest.param("if id:\n            return self.repo.get(id)", "", id="a condition"),
+    pytest.param("return self.helper(id)", "", id="a method of the object itself, no collaborator"),
+    pytest.param("return other.repo.get(id)", "", id="a chain that does not start at the first parameter"),
+    pytest.param("return self.repo.get(id).name", "", id="a read of the result"),
+    pytest.param("return self.repo.get(self.repo.size(), id)", "", id="a call inside the arguments"),
+])
+def test_a_method_that_only_forwards_names_the_call_it_forwards_to(tmp_path, body, forwards):
+    text = f"class S:\n    async def get(self, id):\n        {body}\n"
+    assert functions_of(tmp_path, text)["get"].forwards == forwards
+
+
+def test_a_method_forwards_its_starred_arguments_and_nothing_else_does(tmp_path):
+    text = ("class S:\n    def a(self, *args, **kwargs):\n        return self.r.a(*args, **kwargs)\n"
+            "    def b(self, *args):\n        return self.r.b(args)\n"
+            "    @property\n    def c(self):\n        return self.r.c()\n"
+            "    def __len__(self):\n        return self.r.size()\n"
+            "    def d(self):\n        return self.r.d()\n")
+    found = functions_of(tmp_path, text)
+    assert [(n, f.forwards) for n, f in found.items()] == [
+        ("a", "self.r.a"), ("b", ""), ("c", ""), ("__len__", ""), ("d", "self.r.d")]
+
+
+def test_a_file_names_every_name_it_mentions_annotations_and_string_annotations_included(tmp_path):
+    text = ("from app.ports import Repo, Clock as C\nimport app.stores as stores\n\n\n"
+            "class S:\n    def __init__(self, repo: Repo, other: 'Notifier | None', extra: list['Late']) -> None:\n"
+            "        self.s = stores.Store()\n        self.size: Sized = 0\n")
+    named = parsed(tmp_path, text).named
+    assert {"Repo", "Clock", "stores", "Store", "Notifier", "Late", "Sized"} <= named
+    cls = parsed(tmp_path, text).classes[0]
+    assert {"Repo", "Notifier", "Store"} <= cls.named and "Clock" not in cls.named

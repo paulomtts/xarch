@@ -8,11 +8,14 @@ from xarch.modules.spec.domain.values import (
     Architecture,
     CaseTable,
     ClosedTree,
+    DeadCode,
     Fixture,
     Framework,
     NoComments,
+    NoDuplicates,
     PackageOnly,
     Part,
+    PassThrough,
     ScenarioCoverage,
     StandIns,
     Subject,
@@ -21,7 +24,8 @@ from xarch.modules.spec.domain.values import (
     TierExample,
 )
 
-__all__ = ["Architecture", "CaseTable", "ClosedTree", "Fixture", "Framework", "NoComments", "PackageOnly", "Part",
+__all__ = ["Architecture", "CaseTable", "ClosedTree", "DeadCode", "Fixture", "Framework", "NoComments", "NoDuplicates",
+           "PackageOnly", "Part", "PassThrough",
            "ScenarioCoverage", "StandIns", "Subject", "Target", "Tier", "TierExample", "Entry", "Skeleton", "DocFile",
            "Docs", "ProjectFile", "Loosened", "ProfileOrigin", "SelectProfile", "ProfileSelected", "ProfileRefused",
            "ProfileResult", "MigrateProfile", "MigratedFile", "Migrated", "MigrationRefused", "MigrateResult"]
@@ -93,6 +97,7 @@ class Loosened:
 
         may_import      part may also import what (a target as written)
         libraries       part may also import the outside package what; with no part, outside packages are unchecked
+        must_import     part may also meet must_import with the target what; with no what, it has none now
         forbidden       part no longer forbids what
         untested        part is newly marked untested
         types_only      the tests of tier part may now call what

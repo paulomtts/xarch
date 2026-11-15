@@ -4,10 +4,13 @@ import pytest
 from xarch.bootstrap.wiring import build_architectures, load_architecture
 from xarch.modules.spec.contract import (
     CaseTable,
+    DeadCode,
     Fixture,
     Framework,
     NoComments,
+    NoDuplicates,
     PackageOnly,
+    PassThrough,
     ScenarioCoverage,
     StandIns,
 )
@@ -33,7 +36,8 @@ def test_the_bundled_profiles_use_every_guard_of_their_own(name):
         ScenarioCoverage("contract", "integration", "Result", ("given", "when", "then"), table, "test_{name}.py"),
         NoComments(),
         StandIns(tuple(("unittest", "mock", m) for m in mocks), (("unittest", "mock", "create_autospec"),),
-                 ("spec", "spec_set"), (Fixture("mocker", mocks, ("create_autospec",)),)))
+                 ("spec", "spec_set"), (Fixture("mocker", mocks, ("create_autospec",)),)),
+        NoDuplicates(4), DeadCode(), PassThrough(("services",)))
     skips = ("pytest.mark.skip", "pytest.mark.skipif", "pytest.mark.xfail", "pytest.skip", "pytest.xfail",
              "pytest.importorskip", "unittest.skip", "unittest.skipIf", "unittest.skipUnless", "unittest.expectedFailure")
     assert load_architecture(name).framework == Framework(("test_*.py", "*_test.py"), "test_*",
@@ -81,6 +85,9 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
         "- `test tree`: every folder below `tests/modules/` mirrors a folder of the app.",
         "- `cycles`: no `modules/<name>/` imports from another that imports, directly or through others, from it; "
         "each cycle is reported once, with the imports that close it.",
+        "- `must-import`: every file of `adapters/` imports from `platform/`, any module's `contract/`, or an outside "
+        "package, or reaches one through a file of its own part, so that it touches technology; a package file and "
+        "a file with no code of its own are exempt.",
         "- `package-only`: `contract/` is imported as a package, never by its files, from outside it.",
         "- `scenario-coverage`: every variant of a union named `<Name>Result` in `contract/` is the `then` of a row "
         "of the table (columns `given`, `when`, `then`) in `test_<name>.py` among the integration tests (section "
@@ -92,4 +99,17 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
         "(any method returns a value), each method annotated; every read port `<Port>` has a fake `Fake<Port>` in "
         "`tests/fakes/`; and every mock in the integration tests names what it stands in for, `Mock(spec=<Port>)` "
         "(or, from a fixture, `mocker.Mock(spec=<Port>)`), never a read port (section 6).",
+        "- `no-duplicates`: no two functions of the app have the same code, names and formatting aside, when each "
+        "holds at least 4 statements; tests are not compared.",
+        "- `dead-code`: every `Protocol` in `application/ports/` is named by another file of the app, and every fake "
+        "in `tests/fakes/` by a test; the wiring and re-exports do not count.",
+        "- `pass-through`: a method of `application/services/` whose whole body forwards to one call on a "
+        "collaborator is listed in the enforcement section, and fails `check --strict` only.",
     ])
+
+
+@pytest.mark.parametrize("name", ["cli", "web"])
+def test_the_bundled_profiles_say_that_an_adapter_reaches_the_platform_or_wraps_another_module_s_contract(name):
+    architecture = load_architecture(name)
+    assert {n: [(t.part, t.scope) for t in p.must_import] for n, p in architecture.parts.items() if p.must_import} == {
+        "adapters": [("platform", "none"), ("contract", "any")]}

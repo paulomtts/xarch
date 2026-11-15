@@ -27,7 +27,8 @@ def controller(documents: dict, texts: dict | None = None, existing: set[Path] |
     output = FakeProfileOutput(existing)
     files = FakeArchitectureFiles({}, documents, texts or {})
     architectures = ArchitectureService(files)
-    spec = SpecController(SkeletonService(FakeSettings(None, None, None), architectures), architectures,
+    settings = FakeSettings(None, None, None)
+    spec = SpecController(SkeletonService(settings, architectures, files), architectures, settings, files,
                           MigrationService(files, output))
     return spec, output
 

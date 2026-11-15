@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from xarch.kernel.errors import DomainError
+from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
+from xarch.modules.spec.application.ports.settings import Settings
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.application.services.migration import MigrationService
 from xarch.modules.spec.application.services.skeleton import SkeletonService
@@ -26,8 +28,9 @@ class SpecController:
     """Publishes the skeleton of a profile, and decides which profile is in force."""
 
     def __init__(self, service: SkeletonService, architectures: ArchitectureService,
-                 migration: MigrationService | None = None):
-        self._service, self._architectures, self._migration = service, architectures, migration
+                 settings: Settings, files: ArchitectureFiles, migration: MigrationService | None = None):
+        self._service, self._architectures, self._settings, self._files = service, architectures, settings, files
+        self._migration = migration
 
     def skeleton(self, profile: str) -> Skeleton:
         """The skeleton of a known profile: callers get the name from select() or profiles()."""
@@ -54,10 +57,10 @@ class SpecController:
     def configured_app(self, start: Path) -> Path | None:
         """The app folder the project holding the folder start records under [tool.xarch], looked up from start upward,
         or None; raises UnreadableSettings."""
-        return self._service.configured_app(start)
+        return self._settings.configured_app(start)
 
     def profiles(self) -> tuple[str, ...]:
-        return self._service.profiles()
+        return self._files.bundled()
 
     def select(self, cmd: SelectProfile) -> ProfileResult:
         """An unknown profile, unreadable settings or an invalid architecture file is refused with its reason."""

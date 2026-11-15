@@ -4,11 +4,12 @@ looser than the one it resembles.
 The closest bundled profile is the one a profile says it is based on, else the one sharing the most part names, the
 first by name on a tie; one sharing none resembles no bundled profile. Looser is compared only where both have the
 same name (a part, a tier, a file), and only in these ways, each one entry: a target added to a part's `may_import`; an
-outside package added to a part's `libraries`, or `libraries` dropped as a whole; a name the bundled `forbidden` list
-of a part holds that no entry of the custom list covers (`time` covers `time.time`); a part newly marked `untested`; a
-part dropped from a tier's `types_only`; a tier no longer `apply_forbidden`; a name dropped from `testing.skips`; a `files`
-entry no longer `pinned`. Anything stricter, and what is compared in no way above (the layout, new parts, the guards'
-parameters, `fakes`), is not listed.
+outside package added to a part's `libraries`, or `libraries` dropped as a whole; a target added to a part's
+`must_import`, or the key dropped from a part that has it; a name the bundled `forbidden` list of a part holds that no
+entry of the custom list covers (`time` covers `time.time`); a part newly marked `untested`; a part dropped from a
+tier's `types_only`; a tier no longer `apply_forbidden`; a name dropped from `testing.skips`; a `files` entry no longer
+`pinned`. Anything stricter, and what is compared in no way above (the layout, new parts, the guards' parameters,
+`fakes`), is not listed.
 """
 from __future__ import annotations
 
@@ -52,6 +53,12 @@ def looser(custom: Architecture, base: Architecture) -> list[Loosening]:
         kept = custom.forbidden.get(name, ())
         found += [("forbidden", name, ".".join(banned)) for banned in base.forbidden.get(name, ())
                   if not any(banned[:len(entry)] == entry for entry in kept)]
+    for name in shared:
+        before, now = base.parts[name].must_import, custom.parts[name].must_import
+        if before and not now:
+            found.append(("must_import", name, ""))
+        else:
+            found += [("must_import", name, _shown(t)) for t in now if before and t not in before]
     found += [("untested", name, "") for name in shared if custom.parts[name].untested and not base.parts[name].untested]
     tiers = {tier.name: tier for tier in custom.tiers}
     for tier in base.tiers:

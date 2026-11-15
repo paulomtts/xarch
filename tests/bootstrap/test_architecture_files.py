@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from xarch.bootstrap.wiring import build_architectures, load_architecture
+from xarch.bootstrap.wiring import build_spec, load_architecture
 from xarch.modules.spec.contract import Part, Target
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 
@@ -268,4 +268,4 @@ def test_an_unknown_bundled_name_is_reported():
 
 
 def test_the_bundled_names_are_listed():
-    assert build_architectures().bundled() == ("cli", "web")
+    assert build_spec().profiles() == ("cli", "web")

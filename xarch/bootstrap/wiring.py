@@ -42,7 +42,8 @@ def build_spec(fs: FileSystem | None = None) -> SpecController:
     fs = fs or FileSystem()
     files = FsArchitectureFiles(fs, DataFileReader())
     architectures = ArchitectureService(files)
-    return SpecController(SkeletonService(PyprojectSettings(fs, TomlReader()), architectures), architectures,
+    settings = PyprojectSettings(fs, TomlReader())
+    return SpecController(SkeletonService(settings, architectures, files), architectures, settings, files,
                           MigrationService(files, FsProfileOutput(fs)))
 
 
