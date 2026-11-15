@@ -3,9 +3,9 @@ top level, and one of a part that holds functions no public class but an excepti
 each one is listed as weak, never as a violation."""
 import pytest
 
+from tests.modules.rules.application.logic.checks import holds as weak
 from tests.modules.rules.builders import profile, source
 from xarch.kernel.violations import Weak
-from xarch.modules.rules.application.logic.holds import weak
 from xarch.modules.rules.domain.values import Class, Function, Method
 
 ON = profile(holds={"domain": "classes", "logic": "functions"})

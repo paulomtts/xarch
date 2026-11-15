@@ -6,10 +6,9 @@ from collections.abc import Iterable
 
 from xarch.kernel.logic.language import LanguageView
 from xarch.kernel.violations import Violation, Weak
-from xarch.modules.rules.application.logic import expansion
+from xarch.modules.rules.application.logic import expansion, filters
 from xarch.modules.rules.application.logic.engine import run
 from xarch.modules.rules.application.logic.facts import facts_of
-from xarch.modules.rules.application.logic.filters import holds
 from xarch.modules.rules.domain.rule import Fact, Found, Read
 from xarch.modules.rules.domain.values import Comment, Profile, SourceFile
 
@@ -77,9 +76,13 @@ def comment_allowed(comment: Comment, language: LanguageView) -> bool:
     (rule,) = expansion.no_comments(profile)
     found = Found(rule, Read(SourceFile("x", ("x",), ()), ("x",), False, False), Fact("comment", comment.line,
                                                                                        text=comment.text))
-    return holds("read-by-a-tool", found, facts_of([], [], profile, ""), profile)
+    return filters.holds("read-by-a-tool", found, facts_of([], [], profile, ""), profile)
 
 
 def closed_tree(paths: Iterable[tuple[str, ...]], profile: Profile, shown: str) -> list[Violation | Weak]:
     unread = [SourceFile("/".join((shown, *path)), path, ()) for path in paths]
     return run(expansion.closed_tree(profile), facts_of([], [], profile, "", unread=unread), profile)
+
+
+def holds(app: Iterable[SourceFile], profile: Profile, root: str) -> list[Violation | Weak]:
+    return run(expansion.holds(profile), facts_of(app, [], profile, root), profile)

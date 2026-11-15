@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from pathlib import Path
 
+from xarch.kernel.violations import Violation, Weak
 from xarch.modules.rules.application.logic import (
     closed_tree,
     cycles,
@@ -10,7 +11,6 @@ from xarch.modules.rules.application.logic import (
     duplicates,
     enforcement,
     expansion,
-    holds,
     must_import,
     pass_through,
     scenarios,
@@ -81,16 +81,18 @@ class SourceCheckService:
         found += run(book["no-comments"], facts, rules)
         found += run(book["closed-tree"], facts, rules)
         state = self._enforcement(resolved, package, profile, rules, app, test_files,
-                                  closed_tree.ungoverned(paths, rules, shown), tests_root if tests is not None else None)
+                                  closed_tree.ungoverned(paths, rules, shown), tests_root if tests is not None else None,
+                                  run(book["holds"], facts, rules))
         return Checked(tuple(found), replace(state, strict=enforcement.strict_findings(state)), rules)
 
     def _enforcement(self, resolved: Path, package: str, location: str, rules: Profile, app: list[SourceFile],
-                     tests: list[SourceFile], ungoverned: list[str], tests_root: str | None) -> Enforcement:
+                     tests: list[SourceFile], ungoverned: list[str], tests_root: str | None,
+                     listed: list[Violation | Weak]) -> Enforcement:
         project = resolved.parent
         standing = self._profiles.standing(location, package)
         texts = [self._tree.text(project.joinpath(*file.path)) for file in standing.init_files]
         weak = stand_ins.weak(app, tests, rules) + scenarios.weak(app, tests, rules) + pass_through.weak(app, rules)
-        weak += holds.weak(app, rules, package)
+        weak += [item for item in listed if isinstance(item, Weak)]
         if tests_root is not None:
             weak += dead_code.untested(app, tests, rules, package, tests_root)
         return Enforcement(standing.origin, tuple(ungoverned), tuple(enforcement.drift(standing.init_files, texts)),

@@ -27,7 +27,7 @@ from collections.abc import Iterable
 
 from xarch.kernel.logic.placement import EVERYTHING
 from xarch.kernel.violations import Violation, Weak
-from xarch.modules.rules.application.logic.holds import exceptions
+from xarch.modules.rules.application.logic.facts import exceptions
 from xarch.modules.rules.application.logic.imports import dotted, targets
 from xarch.modules.rules.application.logic.places import label, place
 from xarch.modules.rules.application.logic.stand_ins import ports_of
@@ -110,7 +110,7 @@ def untested(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Pr
                 if target in files and tiers.get(target) == tier_name and (target, tier_name) not in reached:
                     reached.add((target, tier_name))
                     grown = True
-    raised = exceptions(app, root, profile)
+    raised = exceptions([(f, dotted(f.path, profile.language.marks)[0]) for f in app], root)
     found: list[Weak] = []
     for steps, file in files.items():
         tier_name = tiers.get(steps)
