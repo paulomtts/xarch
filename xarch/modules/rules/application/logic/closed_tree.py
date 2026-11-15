@@ -28,3 +28,13 @@ def ungoverned(paths: Iterable[tuple[str, ...]], profile: Profile, shown: str) -
     """The files in no part and no folder of the layout, whether the guard is on or not, each shown as
     shown/<path>: no check reads them."""
     return ["/".join((shown, *path)) for path in paths if place(profile, dotted(path)[0]) is None]
+
+
+def excluded(profile: Profile, path: tuple[str, ...]) -> bool:
+    """Whether the file at path below the app lies below a folder the profile excludes."""
+    return any(path[:len(e.path)] == e.path for e in profile.excluded)
+
+
+def governed(profile: Profile, path: tuple[str, ...]) -> bool:
+    """Whether a part or a folder of the layout governs the file at path below the app, so that it is read."""
+    return place(profile, dotted(path)[0]) is not None

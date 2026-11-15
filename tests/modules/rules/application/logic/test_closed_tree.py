@@ -1,7 +1,9 @@
 """The closed-tree guard on a hand-built profile: a Python file in no part and no folder of the layout is reported."""
+import pytest
+
 from xarch.kernel.logic.placement import Target
-from xarch.modules.rules.application.logic.closed_tree import ungoverned, violations
-from xarch.modules.rules.domain.values import Profile
+from xarch.modules.rules.application.logic.closed_tree import excluded, governed, ungoverned, violations
+from xarch.modules.rules.domain.values import Exclusion, Profile
 
 PROFILE = Profile(parts={"domain": ("modules", "*", "domain"), "entry": ("cli",),
                          "controller": ("modules", "*", "application", "controller.py")},
@@ -49,3 +51,23 @@ def test_the_ungoverned_files_are_listed_whether_the_guard_is_on_or_not():
 def test_a_package_file_of_a_folder_of_the_layout_below_an_instance_passes_but_a_module_beside_it_does_not():
     assert [v.file for v in violations(paths("modules/docs/application/__init__.py", "modules/docs/application/x.py"),
                                        PROFILE, "app")] == ["app/modules/docs/application/x.py"]
+
+
+@pytest.mark.parametrize("path, is_excluded", [
+    pytest.param("examples/x.py", True, id="a file below an excluded folder"),
+    pytest.param("examples/deep/y.py", True, id="at any depth"),
+    pytest.param("examples_x/y.py", False, id="a folder that only starts with the excluded name"),
+    pytest.param("modules/docs/domain/doc.py", False, id="a file of a part"),
+])
+def test_excluded(path, is_excluded):
+    profile = Profile(**{**PROFILE.__dict__, "excluded": (Exclusion(("examples",), "shipped as data"),)})
+    assert excluded(profile, tuple(path.split("/"))) is is_excluded
+
+
+@pytest.mark.parametrize("path, is_governed", [
+    pytest.param("modules/docs/domain/doc.py", True, id="a file of a part"),
+    pytest.param("modules/__init__.py", True, id="a package file of the layout"),
+    pytest.param("stray/run.py", False, id="a file in no part and no folder of the layout"),
+])
+def test_governed(path, is_governed):
+    assert governed(PROFILE, tuple(path.split("/"))) is is_governed

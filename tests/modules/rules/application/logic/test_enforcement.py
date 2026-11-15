@@ -2,11 +2,13 @@
 and which findings --strict fails on."""
 import pytest
 
-from xarch.modules.rules.application.logic.enforcement import drift, dynamic, skipped, strict_findings
+from xarch.modules.rules.application.logic.enforcement import drift, dynamic, excluded, skipped, strict_findings
 from xarch.modules.rules.domain.values import (
     At,
     Drift,
     Enforcement,
+    Excluded,
+    Exclusion,
     Finding,
     Framework,
     InitFile,
@@ -102,3 +104,8 @@ def test_how_a_custom_profile_differs_from_the_closest_bundled_one_is_never_a_st
     differing = Origin("mine.yaml", False, "web", (), (), (Loosened("rules", "domain", "platform"),
                                                            Loosened("libraries", "", ""), Loosened("pinned", "", "x")))
     assert strict_findings(Enforcement(differing)) == ()
+
+
+def test_the_excluded_folders_are_shown_below_the_app_folder_with_why():
+    profile = Profile({}, {}, excluded=(Exclusion(("examples",), "shipped as data"), Exclusion(("a", "b"), "copied")))
+    assert excluded(profile, "pkg") == [Excluded("pkg/examples", "shipped as data"), Excluded("pkg/a/b", "copied")]

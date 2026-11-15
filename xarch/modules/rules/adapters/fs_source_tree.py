@@ -36,10 +36,9 @@ parameter, or a name the body binds in any way) is replaced by its number in ord
 and local names do not show; what it calls, reads (attributes, globals), its constants, its keyword names, async or
 not, and how many parameters of each kind it has, do show. Its annotations, defaults and decorators are no part of it.
 
-A function forwards when it has no decorator, is no dunder method, and its whole body, a docstring left out, is one
-`return` or bare statement of one call, perhaps awaited, whose callee is a chain of at least two attributes starting at
-the function's first parameter (`self.repo.get`), whose arguments are bare names of the other parameters (a keyword
-argument, or `*args` and `**kwargs` of the same names) and pass each of them exactly once.
+A function records whether it is decorated, its parameters by kind, and, when its whole body, a docstring left out, is
+one `return` or bare statement of one call, perhaps awaited, that call: its callee as a chain of names, and each of its
+arguments as the bare name it passes (a starred one marked), or as nothing for any other expression.
 """
 from __future__ import annotations
 
@@ -63,6 +62,8 @@ from xarch.modules.rules.domain.values import (
     ParameterCall,
     Ref,
     Row,
+    Signature,
+    SoleCall,
     SourceFile,
     Table,
     TableForm,
@@ -169,7 +170,7 @@ def _function(node: ast.FunctionDef | ast.AsyncFunctionDef, scope: list[Scope], 
     statements, shape = _shape(node)
     returns = _named(node.returns) if node.returns is not None else frozenset()
     return Function(node.lineno, node.name, tables, mentions, branches, asserts, owner, statements, shape,
-                    _forwards(node), returns)
+                    bool(node.decorator_list), _signature(node), _sole_call(node), returns)
 
 
 def _is_docstring(node: ast.stmt) -> bool:
@@ -251,50 +252,31 @@ class _Locals(ast.NodeTransformer):
         return node
 
 
-def _forwards(node: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
-    """The dotted callee a method forwards to, or "" (see the module's text)."""
+def _signature(node: ast.FunctionDef | ast.AsyncFunctionDef) -> Signature:
     a = node.args
+    return Signature(tuple(x.arg for x in [*a.posonlyargs, *a.args]), tuple(x.arg for x in a.kwonlyargs),
+                     a.vararg.arg if a.vararg else "", a.kwarg.arg if a.kwarg else "")
+
+
+def _sole_call(node: ast.FunctionDef | ast.AsyncFunctionDef) -> SoleCall | None:
     body = [s for s in node.body if not _is_docstring(s)]
-    if node.decorator_list or (node.name.startswith("__") and node.name.endswith("__")) or len(body) != 1:
-        return ""
-    positional = [*a.posonlyargs, *a.args]
-    if not positional:
-        return ""
-    own = positional[0].arg
-    others = [x.arg for x in [*positional[1:], *a.kwonlyargs]]
-    star, double = (a.vararg.arg if a.vararg else None), (a.kwarg.arg if a.kwarg else None)
-    statement = body[0]
+    statement = body[0] if len(body) == 1 else None
     call = statement.value if isinstance(statement, (ast.Return, ast.Expr)) else None
     if isinstance(call, ast.Await):
         call = call.value
     if not isinstance(call, ast.Call):
-        return ""
+        return None
     names: list[str] = []
     chain: ast.expr = call.func
     while isinstance(chain, ast.Attribute):
         names.insert(0, chain.attr)
         chain = chain.value
-    if not isinstance(chain, ast.Name) or chain.id != own or len(names) < 2:
-        return ""
-    passed: list[str] = []
-    for arg in call.args:
-        if isinstance(arg, ast.Starred) and isinstance(arg.value, ast.Name) and arg.value.id == star:
-            passed.append(f"*{star}")
-        elif isinstance(arg, ast.Name) and arg.id in others:
-            passed.append(arg.id)
-        else:
-            return ""
-    for keyword in call.keywords:
-        if keyword.arg is None and isinstance(keyword.value, ast.Name) and keyword.value.id == double:
-            passed.append(f"**{double}")
-        elif keyword.arg is not None and isinstance(keyword.value, ast.Name) and keyword.value.id in others:
-            passed.append(keyword.value.id)
-        else:
-            return ""
-    wanted = [*others, *(f"*{star}" for _ in [star] if star), *(f"**{double}" for _ in [double] if double)]
-    if sorted(passed) != sorted(wanted):
-        return ""
-    return ".".join([own, *names])
+    callee = (chain.id, *names) if isinstance(chain, ast.Name) else ()
+    args = tuple(f"*{arg.value.id}" if isinstance(arg, ast.Starred) and isinstance(arg.value, ast.Name)
+                 else arg.id if isinstance(arg, ast.Name) else "" for arg in call.args)
+    keywords = tuple((keyword.arg if keyword.arg is not None else "**",
+                      keyword.value.id if isinstance(keyword.value, ast.Name) else "") for keyword in call.keywords)
+    return SoleCall(callee, args, keywords)
 
 
 def _named(tree: ast.AST) -> frozenset[str]:

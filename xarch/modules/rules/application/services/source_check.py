@@ -23,18 +23,15 @@ from xarch.modules.rules.application.logic import (
     private_imports,
     scenarios,
     stand_ins,
+    syntax,
     tier_imports,
     types_only,
 )
-from xarch.modules.rules.application.logic.imports import dotted, violations
-from xarch.modules.rules.application.logic.places import place
+from xarch.modules.rules.application.logic.imports import violations
 from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.application.ports.source_tree import SourceTree
 from xarch.modules.rules.domain.errors import RootMissing
-from xarch.modules.rules.domain.values import Enforcement, Excluded, Profile, SourceFile
-
-SYNTAX = "syntax"
-"""The rule of a file that does not parse."""
+from xarch.modules.rules.domain.values import Enforcement, Profile, SourceFile
 
 
 class SourceCheckService:
@@ -58,12 +55,11 @@ class SourceCheckService:
         if absent:
             raise RootMissing(absent[0])
         rules = self._profiles.profile(profile)
-        paths = [p for p in self._tree.paths(root) if not _excluded(rules, p)]
-        app = self._tree.read(root, [p for p in paths if _governed(rules, p)])
+        paths = [p for p in self._tree.paths(root) if not closed_tree.excluded(rules, p)]
+        app = self._tree.read(root, [p for p in paths if closed_tree.governed(rules, p)])
         table = rules.scenarios.table if rules.scenarios is not None else None
         test_files = self._tree.read(tests, self._tree.paths(tests), table) if tests is not None else []
-        broken = [Violation(f.name, f.error[0], f.error[1], SYNTAX, "correct the syntax so that the file can be read")
-                  for f in (*app, *test_files) if f.error is not None]
+        broken = syntax.violations([*app, *test_files])
         app = [f for f in app if f.error is None]
         test_files = [f for f in test_files if f.error is None]
         tests_root = tests.absolute().resolve().name if tests is not None else ""
@@ -101,17 +97,9 @@ class SourceCheckService:
         weak += holds.weak(app, rules, package)
         if tests_root is not None:
             weak += dead_code.untested(app, tests, rules, package, tests_root)
-        shown = [Excluded("/".join((root.absolute().resolve().name, *e.path)), e.reason) for e in rules.excluded]
+        shown = enforcement.excluded(rules, root.absolute().resolve().name)
         return Enforcement(self._profiles.origin(location), tuple(ungoverned), tuple(enforcement.drift(files, texts)),
                            skipped=tuple(enforcement.skipped(tests, rules)),
                            dynamic=tuple(enforcement.dynamic([*app, *tests])), weak=tuple(weak),
                            excluded=tuple(shown))
-
-
-def _excluded(profile: Profile, path: tuple[str, ...]) -> bool:
-    return any(path[:len(e.path)] == e.path for e in profile.excluded)
-
-
-def _governed(profile: Profile, path: tuple[str, ...]) -> bool:
-    return place(profile, dotted(path)[0]) is not None
 

@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 
-from xarch.modules.rules.domain.values import At, Drift, Enforcement, Finding, InitFile, Profile, SourceFile
+from xarch.modules.rules.domain.values import At, Drift, Enforcement, Excluded, Finding, InitFile, Profile, SourceFile
 
 DYNAMIC = (("importlib", "import_module"), ("importlib", "__import__"), ("builtins", "__import__"))
 """The callables of Python itself that import by a name computed at run time."""
@@ -53,3 +53,8 @@ def strict_findings(enforcement: Enforcement) -> tuple[Finding, ...]:
     found += [Finding("weak", f"{weak.file}{f':{weak.line}' if weak.line else ''}: {weak.message}")
               for weak in enforcement.weak]
     return tuple(found)
+
+
+def excluded(profile: Profile, app: str) -> list[Excluded]:
+    """The folders the profile excludes, as shown below the app folder named app, with why."""
+    return [Excluded("/".join((app, *e.path)), e.reason) for e in profile.excluded]

@@ -12,6 +12,8 @@ from xarch.modules.rules.domain.values import (
     Method,
     ParameterCall,
     Row,
+    Signature,
+    SoleCall,
     SourceFile,
     Table,
     TableForm,
@@ -434,41 +436,45 @@ def test_annotations_defaults_and_decorators_are_no_part_of_the_shape(tmp_path):
     assert found["a"].shape == found["b"].shape
 
 
-@pytest.mark.parametrize("body, forwards", [
-    pytest.param("return self.repo.get(id)", "self.repo.get", id="a return of one call on a collaborator"),
-    pytest.param("self.repo.save(id)", "self.repo.save", id="a bare call"),
-    pytest.param("return await self.repo.get(id)", "self.repo.get", id="an awaited call"),
-    pytest.param("return self.repo.get(id=id)", "self.repo.get", id="a keyword with the parameter's value"),
-    pytest.param("return self.repo.get(other=id)", "self.repo.get", id="a keyword of another name"),
-    pytest.param("return self.a.b.get(id)", "self.a.b.get", id="a deeper chain"),
-    pytest.param('"""Doc."""\n        return self.repo.get(id)', "self.repo.get", id="a docstring is no statement"),
-    pytest.param("return self.repo.get(id, 1)", "", id="an extra argument"),
-    pytest.param("return self.repo.get(id + 1)", "", id="a changed argument"),
-    pytest.param("return self.repo.get(str(id))", "", id="a transformed argument"),
-    pytest.param("return self.repo.get()", "", id="a parameter that is not passed"),
-    pytest.param("return self.repo.get(id, id)", "", id="a parameter passed twice"),
-    pytest.param("return self.repo.get(id) or None", "", id="a changed result"),
-    pytest.param("x = self.repo.get(id)\n        return x", "", id="two statements"),
-    pytest.param("if id:\n            return self.repo.get(id)", "", id="a condition"),
-    pytest.param("return self.helper(id)", "", id="a method of the object itself, no collaborator"),
-    pytest.param("return other.repo.get(id)", "", id="a chain that does not start at the first parameter"),
-    pytest.param("return self.repo.get(id).name", "", id="a read of the result"),
-    pytest.param("return self.repo.get(self.repo.size(), id)", "", id="a call inside the arguments"),
+@pytest.mark.parametrize("body, call", [
+    pytest.param("return self.repo.get(id)", SoleCall(('self', 'repo', 'get'), ('id',)), id="a return of one call on a collaborator"),
+    pytest.param("self.repo.save(id)", SoleCall(('self', 'repo', 'save'), ('id',)), id="a bare call"),
+    pytest.param("return await self.repo.get(id)", SoleCall(('self', 'repo', 'get'), ('id',)), id="an awaited call"),
+    pytest.param("return self.repo.get(id=id)", SoleCall(('self', 'repo', 'get'), (), (('id', 'id'),)),
+                 id="a keyword with the parameter's value"),
+    pytest.param("return self.repo.get(other=id)", SoleCall(('self', 'repo', 'get'), (), (('other', 'id'),)),
+                 id="a keyword of another name"),
+    pytest.param("return self.a.b.get(id)", SoleCall(('self', 'a', 'b', 'get'), ('id',)), id="a deeper chain"),
+    pytest.param('"""Doc."""\n        return self.repo.get(id)', SoleCall(('self', 'repo', 'get'), ('id',)),
+                 id="a docstring is no statement"),
+    pytest.param("return self.repo.get(id, 1)", SoleCall(('self', 'repo', 'get'), ('id', '')), id="an extra argument"),
+    pytest.param("return self.repo.get(id + 1)", SoleCall(('self', 'repo', 'get'), ('',)), id="a changed argument"),
+    pytest.param("return self.repo.get(str(id))", SoleCall(('self', 'repo', 'get'), ('',)), id="a transformed argument"),
+    pytest.param("return self.repo.get()", SoleCall(('self', 'repo', 'get')), id="a parameter that is not passed"),
+    pytest.param("return self.repo.get(id, id)", SoleCall(('self', 'repo', 'get'), ('id', 'id')), id="a parameter passed twice"),
+    pytest.param("return self.repo.get(id) or None", None, id="a changed result"),
+    pytest.param("x = self.repo.get(id)\n        return x", None, id="two statements"),
+    pytest.param("if id:\n            return self.repo.get(id)", None, id="a condition"),
+    pytest.param("return self.helper(id)", SoleCall(('self', 'helper'), ('id',)), id="a method of the object itself, no collaborator"),
+    pytest.param("return other.repo.get(id)", SoleCall(('other', 'repo', 'get'), ('id',)),
+                 id="a chain that does not start at the first parameter"),
+    pytest.param("return self.repo.get(id).name", None, id="a read of the result"),
+    pytest.param("return self.repo.get(self.repo.size(), id)", SoleCall(('self', 'repo', 'get'), ('', 'id')),
+                 id="a call inside the arguments"),
 ])
-def test_a_method_that_only_forwards_names_the_call_it_forwards_to(tmp_path, body, forwards):
+def test_the_one_call_a_whole_body_makes_is_recorded_with_its_callee_and_arguments(tmp_path, body, call):
     text = f"class S:\n    async def get(self, id):\n        {body}\n"
-    assert functions_of(tmp_path, text)["get"].forwards == forwards
+    found = functions_of(tmp_path, text)["get"]
+    assert (found.sole_call, found.signature, found.decorated) == (call, Signature(("self", "id")), False)
 
 
-def test_a_method_forwards_its_starred_arguments_and_nothing_else_does(tmp_path):
+def test_a_function_records_its_parameters_by_kind_and_whether_it_is_decorated(tmp_path):
     text = ("class S:\n    def a(self, *args, **kwargs):\n        return self.r.a(*args, **kwargs)\n"
-            "    def b(self, *args):\n        return self.r.b(args)\n"
-            "    @property\n    def c(self):\n        return self.r.c()\n"
-            "    def __len__(self):\n        return self.r.size()\n"
-            "    def d(self):\n        return self.r.d()\n")
+            "    @property\n    def c(self, k, *, only):\n        return self.r.c(k, only=only)\n")
     found = functions_of(tmp_path, text)
-    assert [(n, f.forwards) for n, f in found.items()] == [
-        ("a", "self.r.a"), ("b", ""), ("c", ""), ("__len__", ""), ("d", "self.r.d")]
+    assert (found["a"].signature, found["a"].sole_call, found["a"].decorated) == (
+        Signature(("self",), (), "args", "kwargs"), SoleCall(("self", "r", "a"), ("*args",), (("**", "kwargs"),)), False)
+    assert (found["c"].signature, found["c"].decorated) == (Signature(("self", "k"), ("only",)), True)
 
 
 def test_a_file_names_every_name_it_mentions_annotations_and_string_annotations_included(tmp_path):

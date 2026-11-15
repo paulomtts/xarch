@@ -16,7 +16,7 @@ from collections.abc import Iterable
 
 from xarch.modules.rules.application.logic.imports import dotted
 from xarch.modules.rules.application.logic.places import place
-from xarch.modules.rules.domain.values import Profile, SourceFile, Weak
+from xarch.modules.rules.domain.values import Function, Profile, SourceFile, Weak
 
 RULE = "pass-through"
 
@@ -30,10 +30,38 @@ def weak(app: Iterable[SourceFile], profile: Profile) -> list[Weak]:
         if where is None or where.part not in profile.pass_through:
             continue
         for function in file.functions:
-            if function.forwards and function.owner:
+            callee = forwards(function)
+            if callee and function.owner:
                 name = f"{function.owner}.{function.name}"
                 found.append(Weak(RULE, file.name, function.line,
-                                  f"{name} only passes its arguments on to {function.forwards}",
-                                  f"have the caller use {function.forwards}, or keep it as a deliberate plain forward: it stays "
+                                  f"{name} only passes its arguments on to {callee}",
+                                  f"have the caller use {callee}, or keep it as a deliberate plain forward: it stays "
                                   "listed and fails only `check --strict`"))
     return found
+
+
+def forwards(function: Function) -> str:
+    """The dotted callee the function forwards to, or "": see the module's text."""
+    call, signature = function.sole_call, function.signature
+    dunder = function.name.startswith("__") and function.name.endswith("__")
+    if function.decorated or dunder or call is None or not signature.positional:
+        return ""
+    own, others = signature.positional[0], [*signature.positional[1:], *signature.keyword_only]
+    if call.callee[:1] != (own,) or len(call.callee) < 3:
+        return ""
+    passed: list[str] = []
+    for arg in call.args:
+        if (signature.star and arg == f"*{signature.star}") or (arg and not arg.startswith("*") and arg in others):
+            passed.append(arg)
+        else:
+            return ""
+    for keyword, value in call.keywords:
+        if keyword == "**" and signature.double and value == signature.double:
+            passed.append(f"**{value}")
+        elif keyword != "**" and value in others:
+            passed.append(value)
+        else:
+            return ""
+    wanted = [*others, *([f"*{signature.star}"] if signature.star else []),
+              *([f"**{signature.double}"] if signature.double else [])]
+    return ".".join(call.callee) if sorted(passed) == sorted(wanted) else ""

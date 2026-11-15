@@ -288,17 +288,36 @@ class Table:
 
 
 @dataclass(frozen=True)
+class Signature:
+    """The parameters of a function by kind: its positional ones in order (the first of a method is its receiver),
+    its keyword-only ones, and the names of its `*` and `**` parameters ("" for none)."""
+    positional: tuple[str, ...] = ()
+    keyword_only: tuple[str, ...] = ()
+    star: str = ""
+    double: str = ""
+
+
+@dataclass(frozen=True)
+class SoleCall:
+    """The one call a function's whole body returns or makes, a docstring aside, perhaps awaited: its callee as the
+    chain of names it is (("self", "repo", "get")), empty when it is no such chain; each positional argument as the
+    bare name it passes, `*` before a starred one, "" for any other expression; and each keyword argument as (its
+    keyword, or `**` for an unpacked one; the bare name it passes, "" for any other expression)."""
+    callee: tuple[str, ...]
+    args: tuple[str, ...] = ()
+    keywords: tuple[tuple[str, str], ...] = ()
+
+
+@dataclass(frozen=True)
 class Function:
     """A function at module level or in a class: its tables, every name its body uses (`mentions`), and each
     `if`, `match`, `try`, `for` or `while` statement of its body as (line, keyword); asserts: its body holds an
     `assert` statement. owner is the class it is defined in ("" at module level). statements counts the real
     statements of its body: every statement, nested ones included, but a docstring, `pass` and a bare `...`. shape
     is its code with the docstring dropped and every local name (its parameters and what it binds) numbered in order
-    of appearance, as one text; "" when statements is 0. forwards is the dotted callee, such as `self.repo.get`, of
-    a method with no decorator whose whole body is one return (or bare call) of one call on an attribute of its
-    first parameter, every other parameter passed straight through and nothing else; "" otherwise. returns_named is
-    every name its return annotation mentions, by its last step alone, a string annotation read as the expression it
-    holds."""
+    of appearance, as one text; "" when statements is 0. decorated: it has a decorator; signature: its parameters;
+    sole_call: the one call its whole body makes, None when it does not (see SoleCall). returns_named is every name
+    its return annotation mentions, by its last step alone, a string annotation read as the expression it holds."""
     line: int
     name: str
     tables: tuple[Table, ...] = ()
@@ -308,7 +327,9 @@ class Function:
     owner: str = ""
     statements: int = 0
     shape: str = ""
-    forwards: str = ""
+    decorated: bool = False
+    signature: Signature = Signature()
+    sole_call: SoleCall | None = None
     returns_named: frozenset[str] = frozenset()
 
 
