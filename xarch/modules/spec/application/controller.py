@@ -139,7 +139,8 @@ class SpecController:
         """No profile asked for or configured comes back with the known ones; an unknown profile, unreadable settings
         or an invalid architecture file is refused with its reason."""
         try:
-            name, tests = self._selection.select(cmd.app, cmd.override, cmd.tests)
+            name = self._selection.select(cmd.app, cmd.override)
+            tests = self._selection.tests(cmd.app, cmd.tests)
         except NoProfile as e:
             return NoProfileChosen(e.known)
         except DomainError as e:
