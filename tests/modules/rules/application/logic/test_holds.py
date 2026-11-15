@@ -25,12 +25,25 @@ def test_a_public_function_of_a_part_that_holds_classes_is_listed_with_what_to_d
         "make clean a method of the class whose rule it is, or move it to a part that holds functions: logic/")]
 
 
-def test_a_public_class_of_a_part_that_holds_functions_is_listed_with_what_to_do():
-    file = source(LOGIC, classes=(Class(3, "Checker", methods=(Method(4, "run", None),)), Class(8, "_Walk")))
+def test_a_class_of_a_part_that_holds_functions_is_listed_with_what_to_do():
+    file = source(LOGIC, classes=(Class(3, "Checker", methods=(Method(4, "run", None),)),))
     assert weak([file], ON, "app") == [Weak(
         "holds", f"app/{LOGIC}", 3, "Checker is a class, but logic/ of modules/docs holds functions "
                                     "(parts.logic.holds)",
         "move Checker to a part that holds classes: domain/, or make what it does functions")]
+
+
+@pytest.mark.parametrize("cls, function, expected", [
+    pytest.param(Class(3, "_Walk", methods=(Method(4, "step", None),)), Function(8, "walk"), ["_Walk"],
+                 id="a private class with a method"),
+    pytest.param(Class(3, "_Context"), Function(8, "fill"), ["_Context"], id="a private record no function returns"),
+    pytest.param(Class(3, "_Found"), Function(8, "_find", returns_named=frozenset({"_Found"})), [],
+                 id="a private record a function of the file returns"),
+    pytest.param(Class(3, "_Refused", exception=True), Function(8, "walk"), [], id="a private exception"),
+])
+def test_a_private_class_is_held_to_the_same_rule_as_a_public_one(cls, function, expected):
+    file = source(LOGIC, classes=(cls,), functions=(function,))
+    assert [w.message.split(" ")[0] for w in weak([file], ON, "app")] == expected
 
 
 def test_an_exception_class_is_not_listed():

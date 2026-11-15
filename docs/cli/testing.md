@@ -343,7 +343,7 @@ A fake is checked against its port twice. `xarch check` requires it to exist: ev
 - `cycles`: no `modules/<name>/` imports from another that imports, directly or through others, from it; each cycle is reported once, with the imports that close it.
 - `must-import`: every file of `adapters/` imports from `platform/`, any module's `contract/`, or an outside package, or reaches one through a file of its own part, so that it touches technology; a package file and a file with no code of its own are exempt.
 - `types-only`: `application/services/` uses `contract/` only as a type: it imports it to annotate and never calls it.
-- `holds`: a file of `domain/`, `application/services/` and `application/controller.py` defines classes, never a public function at the top level; a file of `application/logic/` defines functions, never a public class but exceptions and the records its functions return; listed in the enforcement section, and fails `check --strict` only.
+- `holds`: a file of `domain/`, `application/services/` and `application/controller.py` defines classes, never a public function at the top level; a file of `application/logic/` defines functions, never a class (a private one too) but exceptions and the records its functions return; listed in the enforcement section, and fails `check --strict` only.
 - `no-callbacks`: no function of `domain/` and `application/logic/` calls a parameter annotated as a callable: it is handed values, never a way to fetch them.
 - `names`: every class of `application/services/` is named `*Service`.
 - `names`: every class of `application/controller.py` is named `*Controller`.

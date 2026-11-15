@@ -19,7 +19,7 @@ TESTS = SRC.parent / "tests"
 REFACTOR_PENDING = pytest.mark.xfail(
     strict=True,
     reason="branch refactor/profile-consistency, second round: the checks that close the loopholes the audits found "
-           "(pass-through on a returned attribute of a forwarded call) are on in architecture.yaml, and xarch's own "
+           "(pass-through on a returned attribute of a forwarded call, holds on a private class) are on in architecture.yaml, and xarch's own "
            "code breaks them until it is refactored. Remove this mark once `uv run xarch check --strict` passes on "
            "xarch.")
 

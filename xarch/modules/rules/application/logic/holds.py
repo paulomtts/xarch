@@ -4,11 +4,12 @@ failing.
 holds: classes. A function defined at the top level of a file of the part (a function with no owner class) whose
 name does not start with `_` is listed: a private helper and a dunder name are not.
 
-holds: functions. A class defined at the top level of a file of the part whose name does not start with `_` is listed,
-but for two kinds of class a file of functions needs: an exception, which derives from a builtin exception directly or
-through classes of the app (a base read through the absolute import that binds it, as a class of a file of the app
-that is an exception itself, however far that goes); and a record, a class with no method but dunder methods, that a
-top-level function of the same file names in its return annotation, so that it is what that function answers.
+holds: functions. A class defined at the top level of a file of the part is listed, whatever its name (a class whose
+name starts with `_` holds state and methods all the same), but for two kinds of class a file of functions needs: an
+exception, which derives from a builtin exception directly or through classes of the app (a base read through the
+absolute import that binds it, as a class of a file of the app that is an exception itself, however far that goes);
+and a record, a class with no method but dunder methods, that a top-level function of the same file (private or not)
+names in its return annotation, so that it is what that function answers.
 
 A package file (the file that stands for its folder) is not read: it only gathers what its package holds. It is listed in the enforcement
 section like a weak check and fails `check --strict` only: where a part's code belongs by its kind is the profile's
@@ -51,7 +52,7 @@ def weak(app: Iterable[SourceFile], profile: Profile, root: str) -> list[Weak]:
             found += [Weak(RULE, file.name, c.line, f"{c.name} is a class, but {label(profile, where)} holds "
                                                    f"functions {key}",
                            f"move {c.name} to {_others(profile, CLASSES)}, or make what it does functions")
-                      for c in file.classes if not c.name.startswith("_") and (steps, c.name) not in found_exceptions
+                      for c in file.classes if (steps, c.name) not in found_exceptions
                       and not _record(c, file)]
     return found
 

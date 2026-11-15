@@ -91,8 +91,8 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
         "- `types-only`: `application/services/` uses `contract/` only as a type: it imports it to annotate and never "
         "calls it.",
         "- `holds`: a file of `domain/`, `application/services/` and `application/controller.py` defines classes, "
-        "never a public function at the top level; a file of `application/logic/` defines functions, never a public "
-        "class but exceptions and the records its functions return; listed in the enforcement section, and fails "
+        "never a public function at the top level; a file of `application/logic/` defines functions, never a class "
+        "(a private one too) but exceptions and the records its functions return; listed in the enforcement section, and fails "
         "`check --strict` only.",
         "- `no-callbacks`: no function of `domain/` and `application/logic/` calls a parameter annotated as a "
         "callable: it is handed values, never a way to fetch them.",

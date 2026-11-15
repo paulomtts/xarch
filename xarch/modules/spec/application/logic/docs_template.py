@@ -543,8 +543,8 @@ def _part_lines(architecture: Architecture) -> list[str]:
         if holds["classes"]:
             said.append(f"a file of {shown(holds['classes'])} defines classes, never a public function at the top level")
         if holds["functions"]:
-            said.append(f"a file of {shown(holds['functions'])} defines functions, never a public class but exceptions "
-                        "and the records its functions return")
+            said.append(f"a file of {shown(holds['functions'])} defines functions, never a class (a private one too) but "
+                        "exceptions and the records its functions return")
         lines.append(f"`holds`: {'; '.join(said)}; listed in the enforcement section, and fails `check --strict` "
                      "only.")
     callbacks = [p.name for p in parts if p.no_callbacks]

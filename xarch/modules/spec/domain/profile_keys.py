@@ -267,10 +267,10 @@ KEYS: tuple[Key, ...] = (
        "only, as `tiers.<tier>.types_only` reads a test", _in_two("types_only: [core]\n"), rules=("types-only",)),
     _k(PART, "holds", "what the files of the part define at the top level",
        "classes or functions. classes: no file of the part defines a public function at the top level (a name that "
-       "does not start with `_`). functions: no file of the part defines a public class at the top level, but for an "
-       "exception class (one that derives from a builtin exception, directly or through classes of the app) and a "
-       "record (a class with no method of its own, dunder methods aside) that a top-level function of the same "
-       "file names in its return annotation. A package file (`%package_file%`) is exempt. Each one is listed as "
+       "does not start with `_`). functions: no file of the part defines a class at the top level, whatever its name, "
+       "but for an exception class (one that derives from a builtin exception, directly or through classes of the "
+       "app) and a record (a class with no method of its own, dunder methods aside) that a top-level function of the "
+       "same file names in its return annotation. A package file (`%package_file%`) is exempt. Each one is listed as "
        "`weak` in the enforcement section, and fails `check --strict` only", _in_part("holds: classes\n"),
        rules=("holds",)),
     _k(PART, "no_callbacks", "its code calls none of its own parameters",
