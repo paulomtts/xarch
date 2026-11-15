@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from xarch.kernel.logic.source import Import, Unparsable
 from xarch.kernel.logic.testing import CaseTable
 from xarch.modules.rules.adapters.fs_source_tree import FsSourceTree
 from xarch.modules.rules.domain.values import (
@@ -595,3 +596,26 @@ def test_a_path_is_resolved_from_the_working_folder_with_its_links_followed(tmp_
     (tmp_path / "link").symlink_to(tmp_path / "real")
     monkeypatch.chdir(tmp_path)
     assert FsSourceTree(FileSystem()).resolved(Path("link")) == (tmp_path / "real").resolve()
+
+
+@pytest.mark.parametrize("text, imports", [
+    pytest.param("import os.path\n", (Import(1, ("os", "path"), standard=True, written="os.path"),),
+         id="a module imported as a whole, of the standard library"),
+    pytest.param("from app.kernel import ids, Name\n", (Import(1, ("app", "kernel"), ("ids", "Name"), written="app.kernel"),),
+         id="names imported from a module named from the top"),
+    pytest.param("from . import doc\nfrom ..store import Repo\n",
+         (Import(1, (), ("doc",), True, 0, written="."), Import(2, ("store",), ("Repo",), True, 1, written="..store")),
+         id="a relative import climbs one folder fewer than its dots"),
+    pytest.param("from app.kernel import *\n", (Import(1, ("app", "kernel"), ("*",), written="app.kernel", every=True),),
+         id="a star import imports every public name"),
+])
+def test_the_imports_are_recorded_in_terms_no_language_owns(text, imports):
+    assert FsSourceTree(FileSystem()).parsed(text).imports == imports
+
+
+@pytest.mark.parametrize("text, error", [
+    pytest.param("def f(:\n", Unparsable(1, "invalid syntax"), id="a syntax error is the parser's message at its line"),
+    pytest.param("x = 1\n", None, id="a text that parses has none"),
+])
+def test_a_text_in_no_file_is_parsed_as_a_file_is(text, error):
+    assert FsSourceTree(FileSystem()).parsed(text).error == error
