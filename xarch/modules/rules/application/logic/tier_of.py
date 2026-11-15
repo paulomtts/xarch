@@ -8,6 +8,9 @@ A file at tests/<path> mirrors the app's <path>. Its tier is, in order:
 3. else, the first tier whose example test lies in its folder or a folder above it.
 A file under the fakes' folder is a fake, which no tier holds. A file in none of these has no tier.
 
+Its subject is the part its folder mirrors (1.), or the file parts of its folder (2.); a file placed by its tier's
+example folder (3.) mirrors no part and has none.
+
 Its own folder is the instance of the `each` folder it mirrors (tests/<each root>/<name>/), else the top folder below
 the tests root: the folder whose helpers it may import.
 """
@@ -22,12 +25,14 @@ from xarch.modules.rules.domain.values import Profile, TestTier
 @dataclass(frozen=True)
 class Tested:
     """A file below the tests root: its tier (None if none), the instance of the `each` folder it is in, its own
-    folder, and whether it is a test (test_*.py or *_test.py) or a fake."""
+    folder, whether it is a test (test_*.py or *_test.py) or a fake, and the parts it mirrors (its subject; empty
+    when its tier was found by its example's folder)."""
     tier: TestTier | None
     instance: str | None
     own: tuple[str, ...]
     is_test: bool
     is_fake: bool
+    parts: tuple[str, ...] = ()
 
 
 def is_test(path: tuple[str, ...]) -> bool:
@@ -36,24 +41,24 @@ def is_test(path: tuple[str, ...]) -> bool:
 
 def tested(profile: Profile, path: tuple[str, ...]) -> Tested:
     fake = profile.fakes is not None and path[:len(profile.fakes.path)] == profile.fakes.path
-    tier, instance = (None, None) if fake else _tier(profile, path)
-    return Tested(tier, instance or _instance(profile, path), _own(profile, path), is_test(path), fake)
+    tier, instance, parts = (None, None, ()) if fake else _tier(profile, path)
+    return Tested(tier, instance or _instance(profile, path), _own(profile, path), is_test(path), fake, parts)
 
 
-def _tier(profile: Profile, path: tuple[str, ...]) -> tuple[TestTier | None, str | None]:
+def _tier(profile: Profile, path: tuple[str, ...]) -> tuple[TestTier | None, str | None, tuple[str, ...]]:
     where = place_of(profile.parts, path)
     if where.part is not None:
         tier = _first(profile, lambda t: any(s.part == where.part and where.sub[:len(s.sub)] == s.sub
                                              for s in t.subject))
-        return tier, where.instance
+        return tier, where.instance, (where.part,)
     folder = path[:-1]
     file_parts = [name for name, pattern in profile.parts.items()
                   if pattern and pattern[-1].endswith(".py") and matches(pattern[:-1], folder)]
     tiers = {id(t): t for name in file_parts for t in [_first(profile, lambda t, n=name: _tests(t, n))] if t}
     if len(tiers) == 1:
         instance = place_of({"": profile.parts[file_parts[0]][:-1]}, folder).instance
-        return next(iter(tiers.values())), instance
-    return _first(profile, lambda t: t.folder is not None and folder[:len(t.folder)] == t.folder), None
+        return next(iter(tiers.values())), instance, tuple(file_parts)
+    return _first(profile, lambda t: t.folder is not None and folder[:len(t.folder)] == t.folder), None, ()
 
 
 def _tests(tier: TestTier, part: str) -> bool:

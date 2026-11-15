@@ -23,8 +23,9 @@ stops early. The file's keys:
                                is empty), one_file_per, cases_from, data and example ({path, file, note}: its example
                                test, where it would live in a project, the file holding it and a note shown right
                                after its path, as written) and helpers (a list of such files that its tests share,
-                               such as builders or a fixture) are optional. With tiers, every part is in some tier's
-                               subject or says `untested`, never both
+                               such as builders or a fixture) are optional, and so is types_only (a list of parts its
+                               tests may import and use as types, never call: `x: Part` is fine, `Part(...)` is not).
+                               With tiers, every part is in some tier's subject or says `untested`, never both
     docs: {<path>: {from, note}}              optional; the project docs `init` writes below docs/project/, in this
                                order: each path is a file, written from the template file `from` (relative to this
                                file) after its placeholders are filled, see docs_template.py; a path ending in `/`
@@ -35,8 +36,10 @@ stops early. The file's keys:
     libraries: {<part>: [<package>, ...]}     optional; the outside packages each part may import, by top-level
                                import name; the standard library is always allowed, and a part not listed may import
                                no outside package. Without `libraries`, outside packages are not checked
-    fakes: {path, for}         optional; the folder of the test fakes (path, below the tests root as in tests/fakes)
-                               and the parts they stand in for: only a tier whose subject holds one may import them
+    fakes: {path, for, prefix} optional; the folder of the test fakes (path, below the tests root as in tests/fakes)
+                               and the parts they stand in for: only a tier whose subject holds one may import them;
+                               prefix, optional, is how a fake's name starts (Fake: the fake of DocumentRepo is
+                               FakeDocumentRepo), which the guard stand-ins needs
     guards: {<name>: <parameters>}   optional; the pre-built checks in use, each named in GUARDS with its parameters
     examples: {<name>: {part, path, file, note}}   optional; the docs' code examples, each one file of the example
                                project: the part it illustrates, where it would live (path, inside that part and no
@@ -55,9 +58,10 @@ from pathlib import Path
 from typing import Any
 
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.values import (EACH, EVERYTHING, Architecture, ArchitectureSource, Doc, Example, Fakes,
+from xarch.modules.spec.domain.values import (EACH, EVERYTHING, Architecture, ArchitectureSource, ClosedTree, Doc,
+                                              Example, Fakes,
                                               Guard, Layout, NoComments, Naming, PackageOnly, Part, ScenarioCoverage,
-                                              Scope, Subject, Target, Tier, TierExample)
+                                              Scope, StandIns, Subject, Target, Tier, TierExample)
 
 VERSION = 1
 EACH_KEY = "each"
@@ -77,16 +81,23 @@ _DOC_KEYS = {"from", "note"}
 _TIER_REQUIRED = ("name", "subject", "proves", "may_touch", "litmus")
 _TIER_TEXTS = ("proves", "may_touch", "subject_text", "one_file_per", "cases_from", "data")
 """The keys of a tier that hold one line of text each."""
-_TIER_KEYS = {*_TIER_REQUIRED, *_TIER_TEXTS, "example", "helpers"}
+_TIER_KEYS = {*_TIER_REQUIRED, *_TIER_TEXTS, "example", "helpers", "types_only"}
 _TIER_EXAMPLE_KEYS = {"path", "file", "note"}
 _PART_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_-]*")
 _PACKAGE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 GUARDS = {
     "package-only": "[<part>, ...]: parts that are imported only as a package, never by their files, from outside it",
-    "scenario-coverage": "{results: <part>, tier: <tier>, suffix: <text>}: every variant of a union named "
-                         "<Name><suffix> in a results part has a scenario in the header of its use case's test file "
-                         "of that tier, and every scenario a test of the same name",
+    "scenario-coverage": "{results: <part>, tier: <tier>, suffix: <text>, columns: [<state>, <command>, <result>]}: "
+                         "every variant of a union named <Name><suffix> in a results part is the result column of a "
+                         "row of the table in its use case's test file of that tier; every row is a pytest.param "
+                         "with an id, and a table test has no branching",
     "no-comments": "{}: no `#` comments in the app or its tests; docstrings and tool directives stay",
+    "stand-ins": "{}: every Protocol in a part `fakes` stands in for is fire-only (every method returns None) or read "
+                 "(any one returns a value), each method annotated; every read port has a fake <prefix><Port> "
+                 "under `fakes.path`; and a test of a tier that may import the fakes gives every mock a spec, never "
+                 "a read port's",
+    "closed-tree": "{}: every Python file of the app lies in a part or is the package file of a folder of the layout; "
+                   "off unless switched on, since a profile is a protocol, not a closed world",
 }
 """The pre-built checks a file may switch on in `guards`, each with the parameters it takes."""
 
@@ -123,7 +134,7 @@ def parse_architecture(document: Any, source: str, has_file: Callable[[str], boo
     examples = _examples(document.get("examples", {}), parts, declared, layout, has_file, problems)
     libraries = _libraries(document["libraries"], parts, declared, problems) if "libraries" in document else None
     fakes = _fakes(document["fakes"], parts, declared, problems) if "fakes" in document else None
-    guards = _guards(document.get("guards", {}), parts, declared, tiers, problems)
+    guards = _guards(document.get("guards", {}), parts, declared, tiers, fakes, problems)
     if problems:
         raise InvalidArchitecture(source, problems)
     return Architecture(name, layout, parts, rules, docs, examples, notes, layers, placement, naming, tiers,
@@ -510,12 +521,14 @@ def _tiers(value: Any, parts: dict[str, Part], declared: set[str], has_file: Cal
             problems.append(f"{where}: a subject with no part needs `subject_text`, such as 'the source tree'")
         example = _tier_example(spec["example"], has_file, f"{where}.example", problems) if "example" in spec else None
         helpers = _tier_helpers(spec["helpers"], has_file, f"{where}.helpers", problems) if "helpers" in spec else ()
+        types_only = (tuple(_part_names(spec["types_only"], declared, f"{where}.types_only", problems))
+                      if "types_only" in spec else ())
         for item in subject:
             claimed.setdefault(item.part, name if _line(name) else where)
         if len(problems) == count:
             tiers.append(Tier(name, subject, spec["proves"], spec["may_touch"], spec["litmus"].strip("\n"),
                               spec.get("subject_text", ""), spec.get("one_file_per", ""), spec.get("cases_from", ""),
-                              spec.get("data", ""), example, helpers))
+                              spec.get("data", ""), example, helpers, tuple(p for p in types_only if p in parts)))
     for part in parts.values():
         if part.untested and part.name in claimed:
             problems.append(f"tiers: part '{part.name}' is in the subject of tier '{claimed[part.name]}' "
@@ -606,9 +619,13 @@ def _libraries(value: Any, parts: dict[str, Part], declared: set[str],
 
 def _fakes(value: Any, parts: dict[str, Part], declared: set[str], problems: list[str]) -> Fakes | None:
     where = "fakes"
-    if not isinstance(value, Mapping) or set(value) != {"path", "for"}:
-        problems.append(f"{where}: must be a mapping {{path, for}}: the folder of the fakes, such as tests/fakes, and "
-                        "the parts they stand in for")
+    if not isinstance(value, Mapping) or not {"path", "for"} <= set(value) <= {"path", "for", "prefix"}:
+        problems.append(f"{where}: must be a mapping {{path, for}} and optionally prefix: the folder of the fakes, "
+                        "such as tests/fakes, the parts they stand in for, and how a fake's name starts")
+        return None
+    prefix = value.get("prefix", "")
+    if "prefix" in value and (not isinstance(prefix, str) or not _PACKAGE.fullmatch(prefix)):
+        problems.append(f"{where}.prefix: must be the start of a class name, such as Fake")
         return None
     path = value["path"]
     steps = tuple(path.strip("/").split("/")) if _text(path) else ()
@@ -616,7 +633,7 @@ def _fakes(value: Any, parts: dict[str, Part], declared: set[str], problems: lis
         problems.append(f"{where}.path: must be a folder below the tests root, such as tests/fakes")
         return None
     names = _part_names(value["for"], declared, f"{where}.for", problems)
-    return Fakes(steps, tuple(n for n in names if n in parts))
+    return Fakes(steps, tuple(n for n in names if n in parts), prefix)
 
 
 def _part_names(value: Any, declared: set[str], where: str, problems: list[str]) -> list[str]:
@@ -634,7 +651,7 @@ def _part_names(value: Any, declared: set[str], where: str, problems: list[str])
     return found
 
 
-def _guards(value: Any, parts: dict[str, Part], declared: set[str], tiers: tuple[Tier, ...],
+def _guards(value: Any, parts: dict[str, Part], declared: set[str], tiers: tuple[Tier, ...], fakes: Fakes | None,
             problems: list[str]) -> tuple[Guard, ...]:
     if not isinstance(value, Mapping):
         problems.append("guards: must be a mapping of guard names to their parameters, such as {no-comments: {}}")
@@ -653,6 +670,15 @@ def _guards(value: Any, parts: dict[str, Part], declared: set[str], tiers: tuple
                 guards.append(guard)
         elif spec not in ({}, None):
             problems.append(f"{where}: takes no parameters: write {{}}")
+        elif name == "closed-tree":
+            guards.append(ClosedTree())
+        elif name == "stand-ins":
+            if fakes is None or not fakes.prefix:
+                problems.append(f"{where}: needs `fakes` with a `prefix`, such as {{path: tests/fakes, for: [<part>], "
+                                "prefix: Fake}: the parts whose Protocols the fakes stand in for, where they live and "
+                                "how a fake is named")
+            else:
+                guards.append(StandIns())
         else:
             guards.append(NoComments())
     return tuple(guards)
@@ -660,10 +686,11 @@ def _guards(value: Any, parts: dict[str, Part], declared: set[str], tiers: tuple
 
 def _scenario_coverage(spec: Any, parts: dict[str, Part], declared: set[str], tiers: tuple[Tier, ...], where: str,
                        problems: list[str]) -> ScenarioCoverage | None:
-    keys = {"results", "tier", "suffix"}
+    keys = {"results", "tier", "suffix", "columns"}
     if not isinstance(spec, Mapping) or set(spec) != keys:
-        problems.append(f"{where}: must be a mapping {{results, tier, suffix}}: the part holding the result unions, "
-                        "the tier whose test files hold the scenarios, and how a union's name ends")
+        problems.append(f"{where}: must be a mapping {{results, tier, suffix, columns}}: the part holding the result "
+                        "unions, the tier whose test files hold their tables, how a union's name ends, and the three "
+                        "names of a table's parameters: its state, its command and its result")
         return None
     count = len(problems)
     results, tier, suffix = spec["results"], spec["tier"], spec["suffix"]
@@ -681,7 +708,21 @@ def _scenario_coverage(spec: Any, parts: dict[str, Part], declared: set[str], ti
         problems.append(f"{where}.tier: tier '{tier}' does not test part '{results}'")
     if not isinstance(suffix, str) or not _PACKAGE.fullmatch(suffix):
         problems.append(f"{where}.suffix: must be the end of a name, such as Result")
-    return ScenarioCoverage(results, tier, suffix) if len(problems) == count else None
+    columns = _columns(spec["columns"], f"{where}.columns", problems)
+    return ScenarioCoverage(results, tier, suffix, columns) if len(problems) == count and columns else None
+
+
+def _columns(value: Any, where: str, problems: list[str]) -> tuple[str, str, str] | None:
+    if not isinstance(value, list) or len(value) != 3 or not all(isinstance(v, str) for v in value):
+        problems.append(f"{where}: must be a list of three names, such as [given, when, then]")
+        return None
+    count = len(problems)
+    for i, name in enumerate(value):
+        if not name.isidentifier():
+            problems.append(f"{where}: {name!r} is not a name a parameter can have")
+        elif name in value[:i]:
+            problems.append(f"{where}: {name!r} is listed twice")
+    return (value[0], value[1], value[2]) if len(problems) == count else None
 
 
 def _examples(value: Any, parts: dict[str, Part], declared: set[str], layout: Layout,

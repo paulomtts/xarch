@@ -1,16 +1,11 @@
 """The test tiers of an architecture file: parsed, validated, and every part covered or marked untested."""
-from pathlib import Path
 
 import pytest
 
-from xarch.bootstrap.wiring import build_architectures, load_architecture
-from xarch.modules.spec.application.logic.example_imports import example_problems
 from xarch.modules.spec.domain.architecture_file import parse_architecture
 from xarch.modules.spec.domain.docs_template import fill
 from xarch.modules.spec.domain.errors import InvalidArchitecture, InvalidTemplate
 from xarch.modules.spec.domain.values import Subject, Tier, TierExample
-
-DOCS = Path(__file__).resolve().parents[4] / "docs"
 
 
 def layered(*tiers: dict, **parts: dict) -> dict:
@@ -93,20 +88,6 @@ def test_a_sub_path_of_a_part_covers_the_part():
         Subject("service", ("rules",)),)
 
 
-@pytest.mark.parametrize("profile", ["cli", "web"])
-def test_every_part_of_a_bundled_architecture_is_tested_or_says_why_not(profile):
-    """Rendering tests the entry point."""
-    architecture = load_architecture(profile)
-    tested = {subject.part for tier in architecture.tiers for subject in tier.subject}
-    untested = {name for name, part in architecture.parts.items() if part.untested}
-    assert tested | untested == set(architecture.parts) and not tested & untested
-    assert untested == {"platform", "bootstrap"}
-    assert [tier.name for tier in architecture.tiers] == ["unit", "integration", "rendering",
-                                                          "guard"]
-    assert architecture.tiers[2].subject[0] == Subject(profile)
-    assert all(tier.litmus and tier.example for tier in architecture.tiers)
-
-
 def test_a_subject_naming_no_part_or_a_bad_path_is_rejected():
     assert problems(layered(unit(subject=["service", "repo", "service/../x", "store/", 3]), integration())) == [
         "layered.yaml: tiers[0].subject: no part named 'repo'",
@@ -117,6 +98,19 @@ def test_a_subject_naming_no_part_or_a_bad_path_is_rejected():
     assert problems(layered(unit(subject="service"), integration(subject=["api", "store", "service"]))) == [
         "layered.yaml: tiers[0].subject: must be a list of parts, each optionally followed by /<path>, "
         "such as [api, shared/text]"]
+
+
+def test_a_tier_names_the_parts_its_tests_use_as_types_only():
+    assert parsed(layered(unit(), integration(types_only=["service"]))).tiers[1].types_only == ("service",)
+    assert parsed(layered()).tiers[1].types_only == ()
+
+
+def test_a_bad_types_only_entry_is_rejected():
+    assert problems(layered(unit(), integration(types_only=["repo", "service", "service"]))) == [
+        "layered.yaml: tiers[1].types_only: no part named 'repo'",
+        "layered.yaml: tiers[1].types_only: 'service' is listed twice"]
+    assert problems(layered(unit(), integration(types_only="service"))) == [
+        "layered.yaml: tiers[1].types_only: must be a list of part names"]
 
 
 def test_duplicate_tier_names_are_rejected():
@@ -136,7 +130,7 @@ def test_a_tier_missing_its_litmus_or_another_required_key_is_rejected():
 def test_bad_tier_keys_and_texts_are_rejected():
     assert problems(layered(unit(colour="red", proves="two\nlines", data=3, name=""), integration())) == [
         "layered.yaml: tiers[0]: unknown key 'colour': use cases_from, data, example, helpers, litmus, may_touch, name, "
-        "one_file_per, proves, subject, subject_text",
+        "one_file_per, proves, subject, subject_text, types_only",
         "layered.yaml: tiers[0].name: must be one line of text, such as 'unit'",
         "layered.yaml: tiers[0].proves: must be one line of text",
         "layered.yaml: tiers[0].data: must be one line of text",
@@ -290,102 +284,3 @@ def test_tier_examples_not_read_or_of_mixed_kinds_are_reported():
 def test_a_tier_placeholder_with_an_argument_is_unknown():
     assert template_problems("{{tiers:unit}} {{tier_litmus}}")[0].startswith(
         "testing.md: unknown placeholder {{tiers:unit}}")
-
-
-def test_a_tier_example_under_tests_is_only_parsed_and_one_in_a_part_obeys_its_rules():
-    """A tier example whose path lies in a part (here service) obeys that part's rules."""
-    document = tiered()
-    document["rules"] = {"service": ["service@own"]}
-    document["tiers"][1]["example"]["path"] = "src/billing/service/test_api.py"
-    architecture = parsed(document)
-    texts = {"unit": "from app.src.tax.store import anything\n", "integration": "from app.src.tax.store import x\n"}
-    assert example_problems(architecture, {}, texts) == [
-        "tier integration's example (src/billing/service/test_api.py): imports app.src.tax.store which service may "
-        "not import (rules.service)"]
-    assert example_problems(architecture, {}, {"unit": "def f(:\n"}) == [
-        "tier unit's example (tests/src/billing/service/test_rules.py): is not valid Python: invalid syntax (line 1)"]
-
-
-@pytest.mark.parametrize("profile", ["cli", "web"])
-def test_the_bundled_tier_examples_pass_the_example_check(profile):
-    assert build_architectures().check_examples(profile) == ()
-
-
-CUSTOM = """\
-xarch: 1
-name: layered
-layout: {src: {singular: module, each: {api: {}, store: {}}}, shared: {}}
-parts:
-  api:    {path: "src/*/api", role: handlers, entry: true}
-  store:  {path: "src/*/store", role: database access}
-  shared: {path: shared, role: helpers, untested: reached through the parts that use it}
-rules: {api: [store@own]}
-tiers:
-  - name: unit
-    subject: [store]
-    proves: a query
-    may_touch: an in-memory database
-    litmus: |
-      Does it query?
-      If yes, it is a unit test.
-    data: built in the test
-    example: {path: tests/store/test_store.py, file: examples/unit.py}
-  - name: driver
-    subject: [api]
-    proves: routing
-    may_touch: a fake store
-    litmus: Does it route?
-    data: none
-    example: {path: tests/api/test_api.py, file: examples/driver.py, note: ", one per route"}
-docs:
-  architecture.md: {from: layered.md}
-  testing.md: {from: layered-testing.md}
-"""
-
-
-def write(path: Path, text: str) -> Path:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text)
-    return path
-
-
-def test_a_custom_architecture_with_its_own_tiers_gets_its_own_testing_md(tmp_path):
-    write(tmp_path / "layered.md", "# Layered\n")
-    write(tmp_path / "layered-testing.md", "# Testing of {{entry}}\n\n{{tiers}}\n\n{{untested}}\n\n{{tier_litmus:3}}\n\n"
-                                          "Run it: `<command>`\n\n{{tier_data}}\n\n{{tier_examples}}\n")
-    write(tmp_path / "examples" / "unit.py", "def test_a_query(): ...\n")
-    write(tmp_path / "examples" / "driver.py", "def test_a_route(): ...\n")
-    docs = build_architectures().docs(write(tmp_path / "layered.yaml", CUSTOM))
-    texts = {"/".join(f.path): f.template for f in docs.files}
-    assert texts["testing.md"] == (
-        "# Testing of src/*/api\n\n"
-        "| Tier | Subject | Proves | May touch |\n|---|---|---|---|\n"
-        "| unit | `store/` | a query | an in-memory database |\n"
-        "| driver | `api/` | routing | a fake store |\n\n"
-        "`shared/` gets no tier of its own: reached through the parts that use it.\n\n"
-        "### 3.1 unit\n\n> [!TIP]\n> **Litmus test.** Does it query? If yes, it is a unit test.\n\n"
-        "### 3.2 driver\n\n> [!TIP]\n> **Litmus test.** Does it route?\n\n"
-        "Run it: `<command>`\n\n"
-        "| Tier | Where its data comes from |\n|---|---|\n| unit | built in the test |\n| driver | none |\n\n"
-        "```python\n# unit: tests/store/test_store.py\ndef test_a_query(): ...\n\n"
-        "# driver: tests/api/test_api.py, one per route\ndef test_a_route(): ...\n```\n")
-    assert [f.path for f in docs.files] == [("architecture.md",), ("testing.md",)]
-
-
-def test_a_custom_testing_template_with_a_bad_placeholder_fails_naming_it(tmp_path):
-    write(tmp_path / "layered.md", "# Layered\n")
-    write(tmp_path / "layered-testing.md", "{{tier_files}}\n{{tier}}\n")
-    write(tmp_path / "examples" / "unit.py", "")
-    write(tmp_path / "examples" / "driver.py", "")
-    with pytest.raises(InvalidTemplate) as caught:
-        build_architectures().docs(write(tmp_path / "layered.yaml", CUSTOM))
-    assert caught.value.problems[0] == (
-        "layered-testing.md: {{tier_files}}: tier 'unit' has no `one_file_per`, tier 'unit' has no `cases_from`, "
-        "tier 'driver' has no `one_file_per`, tier 'driver' has no `cases_from`")
-    assert caught.value.problems[1].startswith("layered-testing.md: unknown placeholder {{tier}}: use {{tree}}")
-
-
-@pytest.mark.parametrize("profile", ["cli", "web"])
-def test_the_bundled_tiers_and_testing_template_generate_the_checked_in_testing_md(profile):
-    generated = {"/".join(f.path): f.template for f in build_architectures().docs(profile).files}
-    assert generated["testing.md"] == (DOCS / profile / "testing.md").read_text(encoding="utf-8")

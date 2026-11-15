@@ -1,11 +1,9 @@
-"""Tests for the docs layout the spec module publishes: every document and folder of docs/project/, with templates."""
+"""The docs of the bundled profiles, as the wired spec module publishes them: every document and folder of
+docs/project/, with templates."""
 import pytest
 
-from xarch.bootstrap.wiring import build_architectures
-from xarch.modules.spec.application.controller import SpecController
-from xarch.modules.spec.application.services.skeleton import SkeletonService
+from xarch.bootstrap.wiring import build_spec
 from xarch.modules.spec.contract import Docs
-from tests.fakes.settings import FakeSettings
 
 QUESTIONS = {
     "statement.md": "What problems are we trying to solve? What must the system do?",
@@ -29,7 +27,7 @@ TEMPLATES = [path for path in QUESTIONS if path not in CONTENT]
 
 
 def docs(profile: str = "cli") -> Docs:
-    return SpecController(SkeletonService(FakeSettings(), build_architectures()), build_architectures()).docs(profile)
+    return build_spec().docs(profile)
 
 
 def templates(profile: str = "cli") -> dict[str, str]:
@@ -80,18 +78,50 @@ def test_testing_unit_tests_pure_logic(profile):
     assert "or by calling a pure function from `logic/`" in text.split("## 3. Placement")[1]
 
 
-def test_testing_puts_scenarios_in_the_integration_tier_only_with_the_name_rule():
+def test_testing_makes_the_given_when_then_table_the_standard_for_a_use_case():
     text = templates()["testing.md"]
     files = text.split("## 5. Files")[1].split("\n## ")[0]
-    assert "| integration | use case, headed by its scenarios |" in files
-    assert "Scenarios belong to the integration tier only" in files
-    assert "A scenario's name is its test's name" in files
-    assert "Scenario: a document with a title is published" in files
-    assert "def test_a_document_with_a_title_is_published" in files
+    assert "| integration | use case |" in files and "headed by" not in text
+    assert "### 5.2 Tables" in files and "### 5.3 Tables in the other tiers" in files
+    table = files.split("### 5.2 Tables")[1].split("### 5.3 ")[0]
+    for rule in ["`given`", "`when`", "`then`", "`pytest.param(..., id=\"<a sentence stating the outcome>\")`",
+                 "`controller(**given)`", "no `if`, `match`, `try`, `for` or `while`", "fire-only", "fresh id",
+                 "dict(review=Denied(\"spam\"))", "own test"]:
+        assert rule in table, rule
+    other = files.split("### 5.3 ")[1]
+    assert "inputs" in other and "answer" in other and "no status-code or exit-code column" in other
     guards = text.split("## 9. Guards")[1]
-    outside = text.replace(files, "").replace(guards, "")
     assert "`scenario-coverage`" in guards
-    assert outside.count("cenario") == 2 and "[[#5.2 Scenarios]]" in outside and "(section 5.2)" in outside
+    outside = text.replace(guards, "")
+    assert "Scenario" not in text and "header" not in text
+    assert "[[#5.2 Tables]]" in outside and "[[#5.3 Tables in the other tiers]]" in outside and "(section 5.2)" in outside
+
+
+def test_testing_names_a_table_test_for_the_use_case_and_a_standalone_test_for_its_outcome():
+    text = templates()["testing.md"]
+    naming = text.split("### 8.2 How tests are named")[1].split("\n### ")[0]
+    assert "`test_publish`" in naming and "`test_is_stale`" in naming
+    assert "id" in naming and "never" in naming
+    assert "def test_publish(): ...      " not in naming
+    assert "> [!TIP]\n> **Litmus test.** When the test fails" in naming
+    assert "its name is its scenario's name" not in naming and "a scenario's name is its test's name" not in text
+
+
+def test_testing_takes_the_data_of_an_integration_test_from_its_given_column():
+    text = templates()["testing.md"]
+    data = text.split("## 7. Data")[1].split("\n## ")[0]
+    assert "| integration | the `given` column" in data
+
+
+def test_the_helper_builds_the_fakes_from_their_starting_state_for_both_forms_of_given():
+    text = templates()["testing.md"]
+    helpers = text.split("### 8.1 Where helpers live")[1].split("\n### ")[0]
+    assert "def controller(repo: Iterable[Document] = (), review: Allowed | Denied = Allowed()" in helpers
+    assert "FakeDocumentRepo(repo)" in helpers and "FakeContentReview(review)" in helpers
+    fake = text.split("## 6. Fakes and mocks")[1].split("\n## ")[0]
+    assert "def __init__(self, docs: Iterable[Document] = ()): self.docs = {d.id: d for d in docs}" in fake
+    assert "def save(self, doc): self.docs[doc.id] = doc\n" in fake
+    assert "def save(self, doc: Document) -> None: ..." in fake and "-> Document: ..." not in fake
 
 
 def test_testing_gives_every_tier_a_litmus_test_in_placement():
@@ -110,13 +140,16 @@ def test_testing_fakes_stateful_ports_and_mocks_fire_only_ones():
     """The names follow the naming table."""
     text = templates()["testing.md"]
     section = text.split("## 6. Fakes and mocks")[1].split("\n## ")[0]
-    assert "| reads back what it wrote | stateful | a fake" in section
-    assert "| only fires and never reads | fire-only | a mock" in section
+    assert "| reads back what it wrote | read (stateful) | at least one returns a value | a fake" in section
+    assert "| only fires and never reads | fire-only | every one returns `None` | a mock that names the port" in section
     assert "a mock is not a fake" in section
     assert "class DocumentRepo(Protocol):" in section and "class FakeDocumentRepo:" in section
     assert "class DbDocumentRepo:" in section and "DocsRepo" not in text
     assert "> [!TIP]\n> **Litmus test.** Does the use case ever read back" in section
-    assert "If a port does both, split the port" in section
+    assert "If a port does both, split the port" not in section
+    assert "A port that is written and then read back is a read port" in section
+    assert "two unrelated needs" in section and "`check` does not report it" in section
+    assert "| reads back what it wrote | read (stateful) | at least one returns a value | a fake" in section
 
 
 @pytest.mark.parametrize("profile", ["cli", "web"])
@@ -274,18 +307,40 @@ def test_architecture_names_the_reviews_outcomes_apart_from_the_create_results_v
 
 @pytest.mark.parametrize("profile", ["cli", "web"])
 def test_testing_tells_the_same_story_as_architecture(profile):
-    """One scenario per variant of the publish Result."""
+    """One row per variant of the publish Result."""
     text = templates(profile)["testing.md"]
     examples = text.split("## 4. Examples")[1].split("\n## ")[0]
     assert "One module, `documents`, with a use case `publish`" in examples
     for name in ["Draft", "Refused", "Publish(", "a_draft", "`docs`", "tests/modules/docs/", "test_docs_repo"]:
         assert name not in text, name
-    for name in ["PublishDocument", "Rejected", "FakeDocumentRepo", "DbDocumentRepo", "DocumentIncomplete", "Published"]:
+    for name in ["PublishDocument", "Rejected", "Missing", "Published", "DbDocumentRepo", "DocumentIncomplete",
+                 "is_stale"]:
         assert name in examples, name
-    scenarios = text.split("## 5. Files")[1].split("\n## ")[0]
+    table = examples.split("# integration:")[1].split("# rendering:")[0]
     for variant in ["is published", "is missing", "is rejected"]:
-        assert f"Scenario: a document" in scenarios and variant in scenarios
-        assert f"def test_a_document" in scenarios
+        assert f'id="a document' in table and variant in table
+    assert "def test_publish(given, when, then):" in table and "pytest.param(" in table
+
+
+@pytest.mark.parametrize("profile", ["cli", "web"])
+def test_the_rendering_example_is_a_table_of_the_result_and_what_is_shown_with_no_code(profile):
+    examples = templates(profile)["testing.md"].split("## 4. Examples")[1].split("\n## ")[0]
+    rendering = examples.split("# rendering:")[1].split("# guard:")[0]
+    assert '@pytest.mark.parametrize("result, shown", [' in rendering
+    assert "def test_publish(client, result, shown):" in rendering
+    assert rendering.count("pytest.param(") == 3 and rendering.count('id="a ') == 3
+    for word in ["status", "exit", "404", "422", "code"]:
+        assert word not in rendering, word
+    assert "given" not in rendering and "when" not in rendering
+
+
+@pytest.mark.parametrize("profile", ["cli", "web"])
+def test_the_unit_example_is_a_table_of_a_rules_inputs_and_its_answer(profile):
+    examples = templates(profile)["testing.md"].split("## 4. Examples")[1].split("\n## ")[0]
+    unit = examples.split("# unit:")[1].split("# integration:")[0]
+    assert '@pytest.mark.parametrize("published_at, now, stale", [' in unit
+    assert "def test_is_stale(published_at, now, stale):" in unit and unit.count("pytest.param(") == 3
+    assert "given" not in unit and "then" not in unit
 
 
 def test_testing_drives_each_profiles_entry_point_its_own_way():

@@ -31,8 +31,8 @@ architecture. Prose, diagrams and code examples stay as the author wrote them; o
     {{tier_helpers}}       the helper files of all tiers in one block, each under its header line, `# <path>` (its
                            note right after it, as written)
     {{guards}}             one line per check `xarch check` runs: the structure, the rules, the libraries (with
-                           `libraries`), the tiers (with `tiers`), the test tree (with an `each` folder), then each
-                           guard of `guards`, in order
+                           `libraries`), the tiers (with `tiers`), types-only (one line per tier with `types_only`),
+                           the test tree and the cycles (with an `each` folder), then each guard of `guards`, in order
     {{tier_examples}}      each tier's example test in one block, under its header line `# <tier>: <path>` (its note
                            right after the path, as written), as {{example:...}} writes them; a tier with no example
                            is left out
@@ -53,8 +53,8 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
 from xarch.modules.spec.domain.errors import InvalidTemplate
-from xarch.modules.spec.domain.values import (EACH, EVERYTHING, Architecture, Doc, Guard, Layout, PackageOnly, Part,
-                                              ScenarioCoverage, Subject, Target, Tier)
+from xarch.modules.spec.domain.values import (EACH, EVERYTHING, Architecture, ClosedTree, Doc, Guard, Layout,
+                                              PackageOnly, Part, ScenarioCoverage, StandIns, Subject, Target, Tier)
 
 PLACEHOLDER = re.compile(r"\{\{(.*?)\}\}")
 FENCE = re.compile(r"^```", re.MULTILINE)
@@ -399,11 +399,19 @@ def _guards(architecture: Architecture, _: str, __: _Context) -> str:
             parts = _and([f"`{_shown(architecture, architecture.parts[p])}`" for p in architecture.fakes.stand_in_for])
             fakes = (f"; only a test whose tier tests {parts} imports the fakes in "
                      f"`{'/'.join(architecture.fakes.path)}/`")
-        lines.append("`tiers`: a test lives in the folder that mirrors its subject in the app, and imports only its "
-                     f"tier's subject and what that subject may import{fakes}.")
+        lines.append("`tiers`: a test lives in the folder that mirrors its subject in the app, and imports only that "
+                     "part and what it may import (a test in a folder that mirrors no part, its tier's subject and "
+                     f"what that may import){fakes}.")
+        for tier in architecture.tiers:
+            if tier.types_only:
+                shown = _and([f"`{_shown(architecture, architecture.parts[p])}`" for p in tier.types_only])
+                lines.append(f"`types-only`: a {tier.name} test uses {shown} only as a type: it may import it and "
+                             "annotate with it, and never calls it.")
     root = architecture.instance_root()
     if root is not None:
         lines.append(f"`test tree`: every folder below `tests/{'/'.join(root)}/` mirrors a folder of the app.")
+        lines.append(f"`cycles`: no `{'/'.join(root)}/<name>/` imports from another that imports, directly or through "
+                     "others, from it; each cycle is reported once, with the imports that close it.")
     lines += [_guard_line(architecture, guard) for guard in architecture.guards]
     return "\n".join(f"- {line}" for line in lines)
 
@@ -420,14 +428,33 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
             shown = _and([f"`{_shown(architecture, architecture.parts[p])}`" for p in parts])
             return (f"`package-only`: {shown} {'is' if len(parts) == 1 else 'are'} imported as a package, never by "
                     "its files, from outside it.")
-        case ScenarioCoverage(results, tier, suffix):
+        case ScenarioCoverage(results, tier, suffix, columns):
+            shown = ", ".join(f"`{c}`" for c in columns)
             return (f"`scenario-coverage`: every variant of a union named `<Name>{suffix}` in "
-                    f"`{_shown(architecture, architecture.parts[results])}` has a scenario in the header of "
-                    f"`test_<name>.py` among the {tier} tests (section 5.2), and every scenario has a test of the "
-                    "same name.")
+                    f"`{_shown(architecture, architecture.parts[results])}` is the `{columns[-1]}` of a row of the "
+                    f"table (columns {shown}) in `test_<name>.py` among the {tier} tests (section 5.2), or is named "
+                    "by a standalone test of that file; every row is a `pytest.param` with an `id`, and a table "
+                    "test has no `if`, `match`, `try`, `for` or `while`.")
+        case StandIns():
+            return _stand_ins_line(architecture)
+        case ClosedTree():
+            return ("`closed-tree`: every Python file of the app lies in a part, or is the package file "
+                    "(`__init__.py`) of a folder of the layout.")
         case _:
             return ("`no-comments`: no `#` comments in the app or its tests; docstrings and tool directives "
                     "(`# type: ignore`, `# noqa`, `# pragma:`) stay.")
+
+
+def _stand_ins_line(architecture: Architecture) -> str:
+    fakes = architecture.fakes
+    assert fakes is not None
+    parts = _and([f"`{_shown(architecture, architecture.parts[p])}`" for p in fakes.stand_in_for])
+    tiers = _and([t.name for t in architecture.tiers if any(s.part in fakes.stand_in_for for s in t.subject)])
+    mocks = (f"; and every mock in the {tiers} tests names what it stands in for, `Mock(spec=<Port>)`, never a "
+             "read port") if tiers else ""
+    return (f"`stand-ins`: every `Protocol` in {parts} is fire-only (every method returns `None`) or read (any "
+            "method returns a value), each method annotated; every read port `<Port>` has a fake "
+            f"`{fakes.prefix}<Port>` in `{'/'.join(fakes.path)}/`{mocks} (section 6).")
 
 
 _RENDERERS: dict[str, Callable[[Architecture, str, _Context], str]] = {

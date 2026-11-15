@@ -1,15 +1,12 @@
-"""Tests for the spec module: the skeleton of architecture.md section 1 per profile, published through the controller."""
+"""The skeleton of architecture.md section 1 of each bundled profile, published through the wired spec controller."""
 import pytest
 
-from xarch.bootstrap.wiring import build_architectures
-from xarch.modules.spec.application.controller import SpecController
-from xarch.modules.spec.application.services.skeleton import SkeletonService
+from xarch.bootstrap.wiring import build_spec
 from xarch.modules.spec.contract import Entry
-from tests.fakes.settings import FakeSettings
 
 
 def skeleton(profile: str):
-    return SpecController(SkeletonService(FakeSettings(), build_architectures()), build_architectures()).skeleton(profile)
+    return build_spec().skeleton(profile)
 
 
 def test_top_level_lists_every_folder_parents_before_children():
@@ -56,4 +53,4 @@ def test_a_folder_with_children_is_not_a_leaf():
 
 
 def test_the_profiles_are_listed():
-    assert SpecController(SkeletonService(FakeSettings(), build_architectures()), build_architectures()).profiles() == ("cli", "web")
+    assert build_spec().profiles() == ("cli", "web")

@@ -3,7 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.application.logic import comments, libraries, package_only, scenarios, tier_imports
+from xarch.modules.rules.application.logic import (closed_tree, comments, cycles, libraries, package_only,
+                                                   scenarios, stand_ins, tier_imports, types_only)
 from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.application.ports.source_tree import SourceTree
 from xarch.modules.rules.domain.errors import RootMissing
@@ -29,18 +30,23 @@ class ImportCheck:
             if folder is not None and not self._tree.is_dir(folder):
                 raise RootMissing(folder)
         rules = self._profiles.profile(profile)
-        app = self._tree.read(root, [p for p in self._tree.paths(root) if _governed(rules, p)])
+        paths = self._tree.paths(root)
+        app = self._tree.read(root, [p for p in paths if _governed(rules, p)])
         test_files = self._tree.read(tests, self._tree.paths(tests)) if tests is not None else []
         broken = [Violation(f.name, f.error[0], f.error[1]) for f in (*app, *test_files) if f.error is not None]
         app = [f for f in app if f.error is None]
         test_files = [f for f in test_files if f.error is None]
         tests_root = tests.absolute().resolve().name if tests is not None else ""
         found = broken + violations(app, rules, package) + libraries.violations(app, rules, package)
+        found += cycles.violations(app, rules, package)
         found += tier_imports.violations(test_files, app, rules, package, tests_root)
+        found += types_only.violations(test_files, rules, package)
         found += package_only.violations(app, test_files, rules, package)
         found += scenarios.violations(app, test_files, rules)
+        found += stand_ins.violations(app, test_files, rules, package, tests is not None)
         if rules.no_comments:
             found += comments.violations([*app, *test_files])
+        found += closed_tree.violations(paths, rules, root.absolute().resolve().name)
         return found
 
 

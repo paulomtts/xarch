@@ -125,6 +125,7 @@ class Tier:
     subject_text: the Subject cell as written, in place of the subject's parts
     data: where its test data comes from
     helpers: files its tests share (builders, a fixture), shown with {{tier_helpers}}
+    types_only: parts its tests may import and use as types, but never call
     """
     name: str
     subject: tuple[Subject, ...]
@@ -137,13 +138,16 @@ class Tier:
     data: str = ""
     example: TierExample | None = None
     helpers: tuple[TierExample, ...] = ()
+    types_only: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
 class Fakes:
-    """Where the test fakes live, below the tests root, and the parts they stand in for."""
+    """Where the test fakes live, below the tests root, the parts they stand in for, and how a fake's name starts
+    (the fake of port X is <prefix>X; empty when the file does not say)."""
     path: tuple[str, ...]
     stand_in_for: tuple[str, ...]
+    prefix: str = ""
 
 
 @dataclass(frozen=True)
@@ -154,11 +158,12 @@ class PackageOnly:
 
 @dataclass(frozen=True)
 class ScenarioCoverage:
-    """The guard scenario-coverage: the part holding the result unions, the tier holding their scenarios, and how a
-    union's name ends."""
+    """The guard scenario-coverage: the part holding the result unions, the tier holding their tables, how a union's
+    name ends, and the names of the three parameters of a table: its state, its command and its result."""
     results: str
     tier: str
     suffix: str
+    columns: tuple[str, str, str]
 
 
 @dataclass(frozen=True)
@@ -166,7 +171,17 @@ class NoComments:
     """The guard no-comments."""
 
 
-Guard = PackageOnly | ScenarioCoverage | NoComments
+@dataclass(frozen=True)
+class StandIns:
+    """The guard stand-ins: its parameters are those of `fakes`."""
+
+
+@dataclass(frozen=True)
+class ClosedTree:
+    """The guard closed-tree."""
+
+
+Guard = PackageOnly | ScenarioCoverage | NoComments | StandIns | ClosedTree
 
 
 @dataclass(frozen=True)

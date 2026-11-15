@@ -4,10 +4,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from xarch.modules.spec.domain.values import (Architecture, NoComments, PackageOnly, Part, ScenarioCoverage, Subject,
-                                              Target, Tier, TierExample)
+from xarch.modules.spec.domain.values import (Architecture, ClosedTree, NoComments, PackageOnly, Part, ScenarioCoverage,
+                                              StandIns, Subject, Target, Tier, TierExample)
 
-__all__ = ["Architecture", "NoComments", "PackageOnly", "Part", "ScenarioCoverage", "Subject", "Target", "Tier",
+__all__ = ["Architecture", "ClosedTree", "NoComments", "PackageOnly", "Part", "ScenarioCoverage", "StandIns", "Subject",
+           "Target", "Tier",
            "TierExample", "Entry", "Skeleton", "DocFile", "Docs",
            "SelectProfile", "ProfileSelected", "ProfileRefused", "ProfileResult"]
 

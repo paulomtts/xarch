@@ -1,3 +1,3 @@
-def controller(repo: DocumentRepo, review: ContentReview | None = None, clock: Clock | None = None) -> DocumentController:
-    service = DocumentService(repo, review or FakeContentReview(), clock or FakeClock(NOW))   # what the test omits is a fake
+def controller(repo: Iterable[Document] = (), review: Allowed | Denied = Allowed(), now: datetime = NOW) -> DocumentController:
+    service = DocumentService(FakeDocumentRepo(repo), FakeContentReview(review), FakeClock(now))   # each argument is a fake's starting state
     return DocumentController(service)

@@ -1,22 +1,25 @@
 """Unit tests for the structure check on an in-memory disk."""
 from pathlib import Path
 
-from xarch.bootstrap.wiring import build_spec
-from xarch.modules.layout.adapters.spec_skeleton import SpecSkeleton
 from xarch.modules.layout.application.controller import LayoutController
 from xarch.modules.layout.application.services.structure_check import StructureCheck
 from xarch.modules.layout.contract import CheckStructure
 from tests.fakes.filesystem import FakeDisk
+from tests.fakes.layout_skeleton import FakeSkeleton
 
 ROOT = Path("/src/pkg")
 TOP = {ROOT / n for n in ["bootstrap", "kernel", "modules", "platform", "cli"]}
 MODULE = {ROOT / "modules/docs" / p for p in ["", "contract", "domain", "application/services",
                                                "application/logic", "application/ports", "adapters"]}
 CONTROLLER = ROOT / "modules/docs/application/controller.py"
+SKELETON = FakeSkeleton(["bootstrap", "kernel", "modules", "platform", "cli"], ("modules",),
+                        [(("contract",), True), (("domain",), True), (("application", "controller.py"), False),
+                         (("application", "services"), True), (("application", "logic"), True),
+                         (("application", "ports"), True), (("adapters",), True)])
 
 
 def run(disk: FakeDisk, package="app") -> list[str]:
-    controller = LayoutController(StructureCheck(disk, SpecSkeleton(build_spec())))
+    controller = LayoutController(StructureCheck(disk, SKELETON))
     return [str(v) for v in controller.check(CheckStructure(ROOT, package, "cli")).violations]
 
 
@@ -37,7 +40,7 @@ TESTS = Path("/src/tests")
 
 
 def run_with_tests(disk: FakeDisk) -> list[str]:
-    controller = LayoutController(StructureCheck(disk, SpecSkeleton(build_spec())))
+    controller = LayoutController(StructureCheck(disk, SKELETON))
     return [str(v) for v in controller.check(CheckStructure(ROOT, "app", "cli", TESTS)).violations]
 
 

@@ -1,17 +1,20 @@
-"""The tier-imports check: a test imports only what its tier may touch, derived from the profile's rules.
+"""The tier-imports check: a test imports only what the part it mirrors may import, by the rules.
 
-A file below the tests root that has a tier (see tier_of) may import, of the app, its tier's subject parts and
-whatever those parts may import under `rules`, where @own means the instance of the `each` folder the test mirrors.
-Of the test code, it may import the fakes only when its tier's subject holds a part the fakes stand in for, and any
-other file only from its own folder (see tier_of). A test file that has no tier is a violation; any other file with
-no tier (a conftest.py or builders.py above every part's folder) and the fakes are not checked. Imports of the
-standard library and outside packages are not this check's business.
+A file below the tests root that has a tier (see tier_of) may import, of the app, the part its folder mirrors (its
+subject, see tier_of) and whatever that part may import under `rules`, where @own means the instance of the `each`
+folder the test mirrors; a file in the folder of file parts (such as a controller.py) has those parts as its
+subject. A file with no subject, placed by its tier's example folder (such as the guard tier's), may import its
+tier's subject parts and whatever those may import. Of the test code, it may import the fakes only when its tier's
+subject holds a part the fakes stand in for, and any other file only from its own folder (see tier_of). A test file
+that has no tier is a violation; any other file with no tier (a conftest.py or builders.py above every part's
+folder) and the fakes are not checked. Imports of the standard library and outside packages are not this check's
+business.
 """
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
 
-from xarch.kernel.logic.placement import Target, reaches
+from xarch.kernel.logic.placement import EACH, Target, reaches
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.tier_of import Tested, as_place, tested
 from xarch.modules.rules.domain.imports import dotted, targets
@@ -25,6 +28,15 @@ NO_TIER = ("lies in no tier: no part's folder and no tier's example folder is mi
 def may_import(profile: Profile, tier: TestTier) -> tuple[Target, ...]:
     """The tier's subject parts, and what each of them may import."""
     return tuple(t for s in tier.subject for t in (s, *profile.rules.get(s.part, ())))
+
+
+def allowance(profile: Profile, where: Tested) -> tuple[Target, ...]:
+    """What a test may import of the app: its subject parts and what each may import, else its tier's."""
+    if not where.parts:
+        assert where.tier is not None
+        return may_import(profile, where.tier)
+    own = tuple(Target(p, "own" if EACH in profile.parts[p] else "none") for p in where.parts)
+    return tuple(t for s in own for t in (s, *profile.rules.get(s.part, ())))
 
 
 def may_use_fakes(profile: Profile, tier: TestTier) -> bool:
@@ -55,13 +67,17 @@ def violations(tests: Iterable[SourceFile], app: Iterable[SourceFile], profile: 
 def _app_imports(file: SourceFile, where: Tested, profile: Profile, root: str,
                  known: set[tuple[str, ...]]) -> Iterator[Violation]:
     assert where.tier is not None
-    allowed = may_import(profile, where.tier)
+    allowed = allowance(profile, where)
+    subject = " and ".join(f"{p}/" for p in where.parts)
+    why = (f": it imports only what {subject} may ({', '.join(f'rules.{p}' for p in where.parts)})"
+           if where.parts else "")
+    test = f"a test of {subject} ({where.tier.name} tier)" if where.parts else f"a {where.tier.name} test"
     absolute = tuple(i for i in file.imports if not i.level)
     for line, target in targets(absolute, (), known, root):
         dst = place(profile, target)
         if dst is not None and not any(reaches(t, as_place(where.instance), dst) for t in allowed):
-            yield Violation(file.name, line, f"a {where.tier.name} test may not import {label(profile, dst)} "
-                                             f"({'.'.join((root, *target))})")
+            yield Violation(file.name, line, f"{test} may not import {label(profile, dst)} "
+                                             f"({'.'.join((root, *target))}){why}")
 
 
 def _test_imports(file: SourceFile, where: Tested, profile: Profile, tests_root: str,

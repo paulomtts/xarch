@@ -181,7 +181,9 @@ naming:
 # says otherwise. Every part is in some tier's subject, or says why not with `untested` (see platform).
 # helpers: the files that test code shares, written like an example (path, file, note); {{tier_helpers}} shows them.
 # example: the tier's example test, where it would live in the project (path) and the file holding it (file, next
-# to this one); its note is shown right after the path, as written.
+# to this one); its note is shown right after the path, as written. types_only: the parts its tests may import and
+# use as types, never call (the rendering tier types its fake with the controller's class, and never builds one).
+# A test imports only what the part its folder mirrors may import under `rules`, not all its tier may touch.
 tiers:
   - name: unit
     subject: [kernel, kernel/logic, domain, logic, adapters]
@@ -193,39 +195,41 @@ tiers:
       If yes, it is a unit test. If it needs a port to get an answer, it is an integration test. If it asserts how
       a port was called, it is testing nothing.
     one_file_per: domain object or rule
-    cases_from: the invariants in the module doc
-    data: built in the test
-    example: {path: tests/modules/documents/domain/test_document.py, file: examples/shared/tiers/unit.py}
+    cases_from: "the invariants in the module doc; a rule's cases are a table of its inputs and its answer"
+    data: "built in the test; a rule's inputs are the columns of its table"
+    example: {path: tests/modules/documents/application/logic/test_staleness.py, file: examples/shared/tiers/unit.py}
     helpers:
       - {path: tests/modules/documents/builders.py, file: examples/shared/tiers/builders.py}
   - name: integration
     subject: [controller, services, ports, contract]
     subject_text: "`application/controller.py`, with the services behind it"
     proves: one `Result` variant per path, driven through the controller
-    may_touch: "real controllers only; their ports are `tests/fakes/`, or mocks for fire-only ports"
+    may_touch: "real controllers only; their ports are `tests/fakes/`, or `Mock(spec=<Port>)` for fire-only ports"
     litmus: >-
-      Does it drive one use case through its real controller and assert one `Result` variant? If yes, it is an
-      integration test. If it asserts what a fake holds instead of the `Result`, check first that the `Result`
-      would not already say it. If it asserts how a row is stored or read back, it is a unit test of the adapter.
-      If it mocks a repo to assert it was called, fake the repo and assert the `Result`.
-    one_file_per: use case, headed by its scenarios
-    cases_from: "the scenarios: one per `Result` variant, happy and unhappy"
-    data: the test loads the fake before acting; a builder per aggregate for the common shape, never a shared dataset
+      Does it drive one use case through its real controller, from the state in `given` with the command in `when`,
+      and assert the `Result` in `then`? If yes, it is an integration test. If it asserts what a fake holds instead
+      of the `Result`, check first that the `Result` would not already say it. If it asserts how a row is stored or
+      read back, it is a unit test of the adapter. If it mocks a repo to assert it was called, fake the repo and
+      assert the `Result`.
+    one_file_per: use case
+    cases_from: "a Given / When / Then table: a row for every `Result` variant, happy and unhappy"
+    data: "the `given` column: the state the fakes start with; a builder per aggregate for the common shape, never a shared dataset"
     example: {path: tests/modules/documents/application/test_publish.py, file: examples/shared/tiers/integration.py,
-              note: " (its header is in section 5.2)"}
+              note: " (its table is in section 5.2)"}
     helpers:
       - {path: tests/modules/documents/application/helpers.py, file: examples/shared/tiers/helpers.py}
   - name: rendering
     subject: [web]
     proves: what the page shows for each `Result`; never a business outcome
-    may_touch: a fake controller, injected
+    may_touch: "a fake controller, injected; the real controller's class only as a type, never called"
+    types_only: [controller]
     litmus: >-
-      Does it prove what the page shows for one `Result`, with a fake controller injected? If yes, it is a
-      rendering test. If it asserts what the use case did, or needs the real controller to mean anything, it is an
-      integration test wearing a screen.
+      Does it prove what the page shows for one `Result`, with a fake controller injected, asserting only what is
+      shown and never a status code? If yes, it is a rendering test. If it asserts what the use case did, or needs
+      the real controller to mean anything, it is an integration test wearing a screen.
     one_file_per: command or page
-    cases_from: the `Result` variants it shows
-    data: "none: the fake controller returns the `Result` under test"
+    cases_from: "a table of the `Result` and what is shown, a row for every variant it shows"
+    data: "none: the `result` column is what the fake controller returns"
     example: {path: tests/web/test_publish.py, file: examples/web/tiers/rendering.py}
     helpers:
       - {path: tests/web/conftest.py, file: examples/web/tiers/client.py}
@@ -242,18 +246,25 @@ tiers:
     data: none
     example: {path: tests/architecture/test_rules.py, file: examples/shared/tiers/guard.py}
 
-# Where the test fakes live (path, below the tests root) and the parts they stand in for (for): only a test whose
-# tier's subject holds one of those parts may import them.
-fakes: {path: tests/fakes, for: [ports]}
+# Where the test fakes live (path, below the tests root), the parts they stand in for (for) and how a fake's name
+# starts (prefix: the fake of DocumentRepo is FakeDocumentRepo): only a test whose tier's subject holds one of those
+# parts may import them.
+fakes: {path: tests/fakes, for: [ports], prefix: Fake}
 
 # The pre-built checks `xarch check` runs besides those it derives from rules, libraries and tiers, each by name with
 # its parameters. package-only: the parts imported only as a package from outside them. scenario-coverage: the part
-# holding the result unions (results), the tier whose test files hold their scenarios (tier), and how a union's name
-# ends (suffix). no-comments: none.
+# holding the result unions (results), the tier whose test files hold their tables (tier), how a union's name ends
+# (suffix), and the three parameter names of a table, its state, its command and its result (columns): each variant
+# of a union is the result of a row, every row is a pytest.param with an id, and a table test does not branch.
+# no-comments: none. stand-ins: none, it reads `fakes`: a port is read when any of its methods
+# returns a value and fire-only when all return None (by its return annotations), every read port has a fake, and an
+# integration test's mocks name a fire-only port. Also available,
+# and off here because the tree is a protocol, not a closed world: closed-tree, every Python file lies in a part.
 guards:
   package-only:      [contract]
-  scenario-coverage: {results: contract, tier: integration, suffix: Result}
+  scenario-coverage: {results: contract, tier: integration, suffix: Result, columns: [given, when, then]}
   no-comments:       {}
+  stand-ins:         {}
 
 # The project docs `xarch init` writes below docs/project/, in this order, and how the docs tree shows them. A key
 # is a path: a file takes `from`, the template file it is written from (next to this one, placeholders filled as

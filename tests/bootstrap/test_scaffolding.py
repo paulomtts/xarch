@@ -143,3 +143,11 @@ def test_init_and_new_module_leave_pre_existing_extras_alone(tmp_path):
     assert {p: p.read_text() for p in extras} == extras
     violations = build_controllers().layout.check(CheckStructure(app, "app", "cli")).violations
     assert {v.file for v in violations} == {"app/modules/documents"}
+
+
+@pytest.mark.parametrize("profile", ["cli", "web"])
+def test_init_writes_each_doc_of_the_profile_with_its_template(tmp_path, profile):
+    init(tmp_path / "app", profile)
+    docs = build_controllers().spec.docs(profile)
+    assert {f.path: (tmp_path / "docs" / "project").joinpath(*f.path).read_text() for f in docs.files} == {
+        f.path: f.template for f in docs.files}

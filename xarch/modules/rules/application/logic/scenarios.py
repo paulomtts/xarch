@@ -1,58 +1,39 @@
-"""The scenario-coverage guard: every use case's result union is covered by the scenarios of its test file.
+"""The scenario-coverage guard: every use case's result union is covered by the rows of a table in its test file.
 
 A use case is a module-level union `<Name><suffix> = A | B | ...` of plain names in a file of the results part, in
 an instance of the `each` folder: <Name> is the use case and A, B, ... its variants. Its test file is
-`test_<name>.py`, <Name> in snake_case (PublishDocument: test_publish_document.py), among the files of the scenario
-tier in the same instance (see tier_of). Its module docstring is the header, read line by line, each stripped:
+`test_<name>.py`, <Name> in snake_case (PublishDocument: test_publish_document.py), among the files of the table
+tier in the same instance (see tier_of). That file must hold a table, read from its syntax tree:
 
-    Scenario: <title>                    starts a scenario; the title is the rest of the line
-      ... Then the <suffix> is <Variant> on this line or a later one before the next scenario: the scenario's variant,
-                                         the name right after "is" (Rejected("why") names Rejected)
-
-Every variant has a scenario, every scenario names one of the variants, and every scenario has a test function (at
-module level or in a class) named `test_` and the title in snake_case: lowercased, each run of characters other than
-letters and digits made one "_", none at either end.
+    a test function decorated `pytest.mark.parametrize(<names>, <rows>)`, whose names include the three columns
+    the guard is given (state, command, result), as one comma-separated string or a list or tuple of strings;
+    <rows> is a list or tuple literal, or the name of one assigned once at the top of the file; any other form
+    (a call, a concatenation, a comprehension, a starred element) is a violation, since a table that cannot be read
+    cannot be checked.
+    every row is `pytest.param(..., id="<a sentence>")`, with a non-empty string literal as its id: a bare tuple,
+    a row without an id or one whose id is not a literal is a violation.
+    the head of each row's result value (the callee of `Rejected("why")`, or a bare name) is a variant of the
+    union; every variant heads the result of at least one row, or is named in the body of a standalone test
+    function (one with no table) of the same file, for a case that does not fit a row.
+    the body of a table test holds no `if`, `match`, `try`, `for` or `while`: the odd case is its own test.
 """
 from __future__ import annotations
 
 import re
 from collections.abc import Iterable
-from dataclasses import dataclass
 
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.tier_of import tested
 from xarch.modules.rules.domain.imports import dotted
 from xarch.modules.rules.domain.places import place
-from xarch.modules.rules.domain.values import Profile, SourceFile
+from xarch.modules.rules.domain.values import Function, Profile, Row, SourceFile, Table
 
-SCENARIO = "Scenario:"
-
-
-@dataclass(frozen=True)
-class Scenario:
-    title: str
-    variant: str | None
+CASE = 'write pytest.param(..., id="<a sentence stating the outcome>")'
 
 
 def snake_name(name: str) -> str:
     """CamelCase to snake_case: MarkRead is mark_read, HTTPCheck is http_check."""
     return re.sub(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])", "_", name).lower()
-
-
-def snake_title(title: str) -> str:
-    return re.sub(r"[^0-9a-zA-Z]+", "_", title.lower()).strip("_")
-
-
-def scenarios(docstring: str, suffix: str) -> list[Scenario]:
-    then = re.compile(rf"\bThen the {re.escape(suffix)} is ([A-Za-z_][A-Za-z0-9_]*)")
-    found: list[Scenario] = []
-    for line in docstring.splitlines():
-        line = line.strip()
-        if line.startswith(SCENARIO):
-            found.append(Scenario(line.removeprefix(SCENARIO).strip(), None))
-        elif found and found[-1].variant is None and (match := then.search(line)):
-            found[-1] = Scenario(found[-1].title, match[1])
-    return found
 
 
 def violations(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile) -> list[Violation]:
@@ -76,7 +57,7 @@ def violations(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: 
                                                               f"{guard.tier} tests of {where.instance} "
                                                               "(scenario-coverage)"))
             for test in files:
-                found += _covered(test, union.name, union.members, guard.suffix)
+                found += _covered(test, union.name, union.members, guard.columns)
     return found
 
 
@@ -85,14 +66,51 @@ def _in(profile: Profile, test: SourceFile, tier: str, instance: str) -> bool:
     return where.tier is not None and where.tier.name == tier and where.instance == instance
 
 
-def _covered(test: SourceFile, union: str, variants: tuple[str, ...], suffix: str) -> list[Violation]:
-    found = scenarios(test.docstring or "", suffix)
-    problems = [f"{union} variant {v} has no scenario" for v in variants if v not in {s.variant for s in found}]
-    for s in found:
-        if s.variant is None:
-            problems.append(f"scenario '{s.title}' names no variant: end it with `Then the {suffix} is <Variant>`")
-        elif s.variant not in variants:
-            problems.append(f"scenario '{s.title}' ends in {s.variant}, which is not a variant of {union}")
-        if f"test_{snake_title(s.title)}" not in test.functions:
-            problems.append(f"scenario '{s.title}' has no test test_{snake_title(s.title)}")
-    return [Violation(test.name, 1, f"{p} (scenario-coverage)") for p in problems]
+def _covered(test: SourceFile, union: str, variants: tuple[str, ...], columns: tuple[str, str, str]) -> list[Violation]:
+    functions = [f for f in test.functions if f.name.startswith("test_")]
+    tables = [(f, t) for f in functions for t in f.tables if set(columns) <= set(t.columns)]
+    if not tables:
+        return [Violation(test.name, 1, "no table test: add a parametrized test whose parameters are "
+                                        f"{', '.join(columns)} (scenario-coverage)")]
+    problems: list[tuple[int, str]] = []
+    covered: set[str] = set()
+    for function, table in tables:
+        problems += _branches(function) + _rows(table, union, variants, columns[-1], covered)
+    standalone = set().union(*(f.mentions for f in functions if not f.tables))
+    line = tables[0][1].line
+    if all(table.rows is not None for _, table in tables):
+        problems += [(line, f"{union} variant {v} has no row in the table and no standalone test naming it")
+                     for v in variants if v not in covered | standalone]
+    return [Violation(test.name, line, f"{problem} (scenario-coverage)") for line, problem in problems]
+
+
+def _branches(function: Function) -> list[tuple[int, str]]:
+    return [(line, f"{function.name} has {'an' if keyword == 'if' else 'a'} `{keyword}` in its body: arrange from "
+                   "given, act with when, assert == then, and give the odd case its own test")
+            for line, keyword in function.branches]
+
+
+def _rows(table: Table, union: str, variants: tuple[str, ...], result: str, covered: set[str]) -> list[tuple[int, str]]:
+    if table.rows is None:
+        return [(table.line, "the rows of the table cannot be read: write them as a list, or as the name of a list "
+                             "assigned at the top of the file")]
+    problems: list[tuple[int, str]] = []
+    for row in table.rows:
+        if not row.param:
+            problems.append((row.line, f"row is not a pytest.param(...): {CASE}"))
+        elif row.id is None:
+            problems.append((row.line, f"row has no id: {CASE}"))
+        if row.param or row.cells:
+            problems += _result(row, table.columns.index(result), union, variants, result, covered)
+    return problems
+
+
+def _result(row: Row, index: int, union: str, variants: tuple[str, ...], column: str,
+            covered: set[str]) -> list[tuple[int, str]]:
+    head = row.cells[index] if index < len(row.cells) else None
+    if head in variants:
+        covered.add(head)
+        return []
+    if head is None:
+        return [(row.line, f"row '{row.id}' names no variant in its {column} column: use one of {', '.join(variants)}")]
+    return [(row.line, f"row '{row.id}' has {head} in its {column} column, which is not a variant of {union}")]

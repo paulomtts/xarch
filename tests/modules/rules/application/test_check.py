@@ -1,36 +1,53 @@
-"""Use case: check the imports of an app, on an in-memory source tree: no filesystem, no ast.
-
-Scenario: a forbidden absolute import is reported
-  Given a kernel file importing platform   When it is checked   Then the Result is ImportsChecked
-Scenario: a missing root is reported as such
-  Given no folder at the root              When it is checked   Then the Result is NotADirectory
-"""
+"""Use case: check the imports of an app, on an in-memory source tree: no filesystem, no ast."""
+from dataclasses import replace
 from pathlib import Path
 
-from xarch.bootstrap.wiring import build_spec
-from xarch.modules.rules.adapters.spec_profile import SpecProfiles
+import pytest
+
+from xarch.kernel.logic.placement import Target
+from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.controller import RulesController
 from xarch.modules.rules.application.services.import_check import ImportCheck
 from xarch.modules.rules.contract import CheckImports, ImportsChecked, NotADirectory
-from xarch.modules.rules.domain.values import Import
+from xarch.modules.rules.domain.values import Import, Profile
 from tests.fakes.filesystem import FakeSourceTree
+from tests.fakes.profiles import FakeProfiles
 
 ROOT = Path("/src/pkg")
 
 
+def profile(entry: str) -> Profile:
+    """A small profile entered through entry: a kernel, a platform, and a domain and services in every module."""
+    parts = {"kernel": ("kernel",), "platform": ("platform",), "domain": ("modules", "*", "domain"),
+             "services": ("modules", "*", "application", "services"), entry: (entry,)}
+    rules = {"kernel": (Target("kernel"),), "platform": (Target("platform"), Target("kernel")),
+             "domain": (Target("domain", "own"), Target("kernel")),
+             "services": (Target("services", "own"), Target("domain", "own"), Target("kernel")),
+             entry: (Target(entry), Target("kernel"))}
+    folders = ((), ("kernel",), ("platform",), ("modules",), ("modules", "*"), ("modules", "*", "domain"),
+               ("modules", "*", "application"), ("modules", "*", "application", "services"), (entry,))
+    return Profile(parts, rules, folders, libraries={name: () for name in parts}, each_root=("modules",))
+
+
+PROFILES = FakeProfiles({"cli": profile("cli"), "web": profile("web")})
+
+
 def run(files, package="app", root=ROOT, profile="cli"):
-    controller = RulesController(ImportCheck(FakeSourceTree(ROOT, files), SpecProfiles(build_spec())))
+    controller = RulesController(ImportCheck(FakeSourceTree(ROOT, files), PROFILES))
     return controller.check(CheckImports(root, package, profile))
 
 
-def test_a_missing_root_is_reported_as_such():
-    assert run({}, root=Path("/nowhere")) == NotADirectory(Path("/nowhere"))
-
-
-def test_a_forbidden_absolute_import_is_reported():
-    result = run({"kernel/x.py": [Import(3, ("app", "platform", "sql"))]})
-    assert isinstance(result, ImportsChecked)
-    assert [str(v) for v in result.violations] == ["pkg/kernel/x.py:3: kernel/ may not import platform/ (app.platform.sql)"]
+@pytest.mark.parametrize("given, when, then", [
+    pytest.param({"kernel/x.py": [Import(3, ("app", "platform", "sql"))]}, CheckImports(ROOT, "app", "cli"),
+                 ImportsChecked((Violation("pkg/kernel/x.py", 3, "kernel/ may not import platform/ (app.platform.sql)"),)),
+                 id="a forbidden absolute import is reported"),
+    pytest.param({"kernel/x.py": [Import(3, ("app", "kernel", "y"))]}, CheckImports(ROOT, "app", "cli"),
+                 ImportsChecked(()), id="an allowed import is no violation"),
+    pytest.param({}, CheckImports(Path("/nowhere"), "app", "cli"), NotADirectory(Path("/nowhere")),
+                 id="a missing root is reported as such"),
+])
+def test_check(given, when, then):
+    assert RulesController(ImportCheck(FakeSourceTree(ROOT, given), PROFILES)).check(when) == then
 
 
 def test_the_root_package_name_is_a_parameter():
@@ -57,3 +74,11 @@ def test_the_profile_decides_the_entry_point():
     assert run(files, profile="cli").violations == ()
     assert [str(v) for v in run(files, profile="web").violations] == [
         "pkg/web/routes/x.py:4: web/ may not import platform/ (app.platform)"]
+
+
+def test_a_closed_tree_reports_a_file_in_no_part_and_no_folder_of_the_layout():
+    closed = FakeProfiles({"cli": replace(profile("cli"), closed_tree=True)})
+    controller = RulesController(ImportCheck(FakeSourceTree(ROOT, {"stray.py": [], "kernel/x.py": []}), closed))
+    assert [str(v) for v in controller.check(CheckImports(ROOT, "app", "cli")).violations] == [
+        "pkg/stray.py: lies in no part and no folder of the layout: move it into a part, or add its folder to the "
+        "layout (closed-tree)"]
