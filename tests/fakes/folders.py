@@ -13,3 +13,6 @@ class FakeFolders:
 
     def existing(self, folders: Iterable[Path]) -> tuple[Path, ...]:
         return tuple(folder for folder in folders if folder in self._folders)
+
+    def working_folder(self) -> Path:
+        return Path.cwd()

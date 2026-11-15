@@ -104,6 +104,9 @@ class FsSourceTree:
     def text(self, path: Path) -> str | None:
         return self._fs.read_text(path) if self._fs.is_file(path) else None
 
+    def resolved(self, path: Path) -> Path:
+        return path.absolute().resolve()
+
 
 def _parsed(name: str, path: tuple[str, ...], text: str, form: CaseTable | None) -> SourceFile:
     try:

@@ -25,7 +25,7 @@ class StructureCheckService:
         found = missing(required, self._disk.present(root, required))
         if tests is not None:
             for each in roots:
-                found += unmirrored(tests.absolute().name, package, each, self._disk.below(tests, each),
+                found += unmirrored((self._disk.working_folder() / tests).name, package, each, self._disk.below(tests, each),
                                     set(self._disk.below(root, each)))
         return found
 

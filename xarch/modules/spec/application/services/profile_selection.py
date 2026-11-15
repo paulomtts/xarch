@@ -42,4 +42,4 @@ class ProfileSelectionService:
         configured = self._settings.configured_tests(app)
         if configured is not None:
             return location, configured
-        return location, next(iter(self._folders.existing([default_tests(app.absolute())])), None)
+        return location, next(iter(self._folders.existing([default_tests(self._folders.working_folder() / app)])), None)

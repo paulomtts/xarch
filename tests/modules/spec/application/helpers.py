@@ -23,8 +23,8 @@ def controller(files: FakeArchitectureFiles, settings: FakeSettings | None = Non
     settings = settings if settings is not None else FakeSettings()
     output = output if output is not None else FakeProfileOutput()
     architectures = ArchitectureService(files, runtime)
-    selection = ProfileSelectionService(settings, architectures, files,
-                                        folders if folders is not None else FakeFolders())
+    folders = folders if folders is not None else FakeFolders()
+    selection = ProfileSelectionService(settings, architectures, files, folders)
     return SpecController(architectures, selection, ProfileReviewService(selection, architectures, files),
                           ExplainService(files), MigrationService(files, architectures, output, FakeProfileFormat()),
-                          ProfileCreationService(files, architectures, output))
+                          ProfileCreationService(files, architectures, output, folders))

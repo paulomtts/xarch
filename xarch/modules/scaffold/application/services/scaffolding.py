@@ -25,12 +25,13 @@ class ScaffoldingService:
         """The app's top level, then the profile (and the app folder, when it is not the default) recorded in the
         project's pyproject.toml, then the project docs and the profile's other project files, in the order each
         file is reached."""
-        absolute = root.absolute()
-        files = self._skeleton.files(profile, app_name(root, absolute.resolve()))
+        cwd = self._files.working_folder()
+        absolute = cwd / root
+        files = self._skeleton.files(profile, app_name(root, self._files.resolved(absolute)))
         package = self._skeleton.language(profile).package_file
         touched = self._build(root, self._skeleton.top_level(profile), package)
         base = holder(root, absolute)
-        touched.append(self._record(base, root, profile))
+        touched.append(self._record(base, root, profile, cwd))
         for rel, template in self._skeleton.docs(profile):
             touched.append(self._write(base.joinpath(*rel), template))
         for rel, text in files:
@@ -54,12 +55,12 @@ class ScaffoldingService:
             raise AlreadyExists(name, base)
         return self._build(base, entries, language.package_file)
 
-    def _record(self, base: Path, root: Path, profile: str) -> Touched:
-        """Record the profile, then the app folder when it is not the default, in the pyproject.toml of the project."""
-        absolute = base.absolute()
+    def _record(self, base: Path, root: Path, profile: str, cwd: Path) -> Touched:
+        """Record the profile, then the app folder when it is not the default, in the pyproject.toml of the project;
+        relative paths are read from cwd, the working folder."""
+        absolute = cwd / base
         found = self._files.pyproject(absolute)
         target = pyproject_target(found[0] if found is not None else None, base, absolute)
-        cwd = Path.cwd()
         changed = recorded_text(found[1] if found is not None else None,
                                 recorded_location(profile, target.parent, cwd), recorded_app(root, target.parent, cwd))
         if changed is None:

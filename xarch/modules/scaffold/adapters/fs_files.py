@@ -30,3 +30,9 @@ class FsFiles:
     def pyproject(self, start: Path) -> tuple[Path, str] | None:
         found = self._fs.find_upward(start, PYPROJECT)
         return None if found is None else (found, self._fs.read_text(found))
+
+    def working_folder(self) -> Path:
+        return Path.cwd()
+
+    def resolved(self, path: Path) -> Path:
+        return path.absolute().resolve()

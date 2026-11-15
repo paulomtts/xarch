@@ -16,8 +16,8 @@ class LocateService:
 
     def locate(self, cmd: Locate) -> Placed:
         """What the path is, placed or not; raises OutsideProject for a path outside the project."""
-        app = cmd.app.absolute().resolve()
-        tests = cmd.tests.absolute().resolve() if cmd.tests is not None else None
+        app = self._tree.resolved(cmd.app)
+        tests = self._tree.resolved(cmd.tests) if cmd.tests is not None else None
         existing = self._tree.existing(candidates(cmd.path, cmd.cwd, app))
         found = resolve(cmd.path, cmd.cwd, app, tests, existing)
         if found is None:

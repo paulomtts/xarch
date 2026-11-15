@@ -13,4 +13,4 @@ from xarch.modules.rules.application.services.source_check import SourceCheckSer
 def controller(tree: FakeSourceTree, profiles: FakeProfiles, structure: FakeStructure | None = None) -> RulesController:
     source = SourceCheckService(tree, profiles)
     return RulesController(source, LocateService(tree, profiles),
-                           AppCheckService(source, structure if structure is not None else FakeStructure()))
+                           AppCheckService(source, structure if structure is not None else FakeStructure(), tree))

@@ -588,3 +588,10 @@ def test_a_class_lists_its_fields_the_names_its_body_annotates_in_order(tmp_path
 def test_a_call_of_an_attribute_no_import_binds_is_listed_as_a_method_call(tmp_path, text, found):
     assert sorted(parsed(tmp_path, text).method_calls, key=lambda c: (c.line, c.name, c.held)) == sorted(
         found, key=lambda c: (c.line, c.name, c.held))
+
+
+def test_a_path_is_resolved_from_the_working_folder_with_its_links_followed(tmp_path, monkeypatch):
+    (tmp_path / "real").mkdir()
+    (tmp_path / "link").symlink_to(tmp_path / "real")
+    monkeypatch.chdir(tmp_path)
+    assert FsSourceTree(FileSystem()).resolved(Path("link")) == (tmp_path / "real").resolve()

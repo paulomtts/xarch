@@ -26,3 +26,6 @@ class FsDisk:
 
     def below(self, root: Path, each: tuple[str, ...]) -> list[tuple[str, ...]]:
         return self._fs.folders(root.joinpath(*each))
+
+    def working_folder(self) -> Path:
+        return Path.cwd()

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from xarch.modules.spec.application.logic.profile_copy import (
     copied_document,
     copied_text,
@@ -13,6 +11,7 @@ from xarch.modules.spec.application.logic.profile_copy import (
 from xarch.modules.spec.application.logic.profile_file import source_of
 from xarch.modules.spec.application.logic.taken_paths import taken_phrase
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
+from xarch.modules.spec.application.ports.folders import Folders
 from xarch.modules.spec.application.ports.profile_output import ProfileOutput
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.contract import NewProfile
@@ -25,8 +24,9 @@ class ProfileCreationService:
     from, and every file it points to, so the copy loads on its own. It checks the copy loads before writing, and never
     writes over a file."""
 
-    def __init__(self, files: ArchitectureFiles, architectures: ArchitectureService, output: ProfileOutput):
-        self._files, self._architectures, self._output = files, architectures, output
+    def __init__(self, files: ArchitectureFiles, architectures: ArchitectureService, output: ProfileOutput,
+                 folders: Folders):
+        self._files, self._architectures, self._output, self._folders = files, architectures, output, folders
 
     def create(self, cmd: NewProfile) -> ProfileCopy:
         """Raises NewProfileRefused, UnknownProfile or InvalidArchitecture."""
@@ -53,4 +53,4 @@ class ProfileCreationService:
             raise NewProfileRefused(f"{taken}: nothing was written; `new` writes only new files, so pass "
                                     "`--out <folder>` to write somewhere else, or choose another name")
         self._output.write(folder, outputs)
-        return ProfileCopy(folder, profile, tuple(pointed), recorded(folder / profile, cmd.root, Path.cwd()))
+        return ProfileCopy(folder, profile, tuple(pointed), recorded(folder / profile, cmd.root, self._folders.working_folder()))

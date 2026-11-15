@@ -39,6 +39,9 @@ class FakeSourceTree:
         held = [root / rel for root, files in self._trees.items() for rel in files] + list(self._texts)
         return frozenset(path for path in paths if any(path == file or path in file.parents for file in held))
 
+    def resolved(self, path: Path) -> Path:
+        return path
+
 
 def _source(name: str, path: tuple[str, ...], given: list[Import] | SourceFile) -> SourceFile:
     if isinstance(given, SourceFile):
@@ -63,6 +66,9 @@ class FakeDisk:
     def below(self, root: Path, each: tuple[str, ...]) -> list[tuple[str, ...]]:
         base = root.joinpath(*each)
         return sorted(d.relative_to(base).parts for d in self._dirs if d != base and d.is_relative_to(base))
+
+    def working_folder(self) -> Path:
+        return Path.cwd()
 
 
 class FakeFiles:
@@ -89,6 +95,12 @@ class FakeFiles:
             if found in self._files:
                 return found, str(self._files[found])
         return None
+
+    def working_folder(self) -> Path:
+        return Path.cwd()
+
+    def resolved(self, path: Path) -> Path:
+        return path.absolute().resolve()
 
     def content(self, path: Path) -> str | bytes | None:
         """What the file at path holds, or None when there is none: for reading back what was written."""

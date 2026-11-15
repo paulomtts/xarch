@@ -31,3 +31,8 @@ class SourceTree(Protocol):
     def text(self, path: Path) -> str | None:
         """The text of any file at path, None when there is no file there."""
         ...
+
+    def resolved(self, path: Path) -> Path:
+        """The path in full, from the working folder when it is relative, every link followed: the folder a path
+        given on the command line names."""
+        ...

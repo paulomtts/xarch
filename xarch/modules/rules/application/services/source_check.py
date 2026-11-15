@@ -61,7 +61,7 @@ class SourceCheckService:
         broken = syntax.violations([*app, *test_files])
         app = [f for f in app if f.error is None]
         test_files = [f for f in test_files if f.error is None]
-        tests_root = tests.absolute().resolve().name if tests is not None else ""
+        tests_root = self._tree.resolved(tests).name if tests is not None else ""
         found = broken + violations(app, rules, package) + libraries.violations(app, rules, package)
         found += forbidden.violations(app, test_files, rules)
         found += cycles.violations(app, rules, package)
@@ -82,15 +82,16 @@ class SourceCheckService:
         found += dead_code.violations(app, test_files, rules, tests is not None)
         if rules.no_comments:
             found += comments.violations([*app, *test_files])
-        shown = root.absolute().resolve().name
+        resolved = self._tree.resolved(root)
+        shown = resolved.name
         found += closed_tree.violations(paths, rules, shown)
-        state = self._enforcement(root, package, profile, rules, app, test_files,
+        state = self._enforcement(resolved, package, profile, rules, app, test_files,
                                   closed_tree.ungoverned(paths, rules, shown), tests_root if tests is not None else None)
         return Checked(tuple(found), replace(state, strict=enforcement.strict_findings(state)), rules)
 
-    def _enforcement(self, root: Path, package: str, location: str, rules: Profile, app: list[SourceFile],
+    def _enforcement(self, resolved: Path, package: str, location: str, rules: Profile, app: list[SourceFile],
                      tests: list[SourceFile], ungoverned: list[str], tests_root: str | None) -> Enforcement:
-        project = root.absolute().resolve().parent
+        project = resolved.parent
         standing = self._profiles.standing(location, package)
         texts = [self._tree.text(project.joinpath(*file.path)) for file in standing.init_files]
         weak = stand_ins.weak(app, tests, rules) + scenarios.weak(app, tests, rules) + pass_through.weak(app, rules)
@@ -100,4 +101,4 @@ class SourceCheckService:
         return Enforcement(standing.origin, tuple(ungoverned), tuple(enforcement.drift(standing.init_files, texts)),
                            skipped=tuple(enforcement.skipped(tests, rules)),
                            dynamic=tuple(enforcement.dynamic([*app, *tests], rules)), weak=tuple(weak),
-                           excluded=rules.excluded, app=root.absolute().resolve().name, language=rules.language.title)
+                           excluded=rules.excluded, app=resolved.name, language=rules.language.title)

@@ -15,3 +15,6 @@ class FsFolders:
 
     def existing(self, folders: Iterable[Path]) -> tuple[Path, ...]:
         return tuple(folder for folder in folders if self._fs.is_dir(folder))
+
+    def working_folder(self) -> Path:
+        return Path.cwd()
