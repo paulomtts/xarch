@@ -34,7 +34,8 @@ class MigrationService:
         named, folders = referenced_v1(raw.document)
         files = listing((name for name in named if self._files.has_file(source, name)),
                         {folder: self._files.files_under(source, folder) for folder in folders})
-        converted = convert(raw.document, location, self._files.testing_presets(), files)
+        converted = convert(raw.document, location, self._files.testing_presets(), files,
+                            self._architectures.default_language().name)
         name = converted_name(cmd.path)
         contents, rewritten, by_hand = self._contents(source, converted)
         by_hand = (*converted.by_hand, *by_hand)

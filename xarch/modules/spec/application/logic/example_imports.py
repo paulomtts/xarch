@@ -1,4 +1,4 @@
-"""The example check: every import of a Python example must be one its part may make by the architecture's rules.
+"""The example check: every import of an example must be one its part may make by the architecture's rules.
 
 An example is one file of an example project of the docs, so it is checked as if it lived at its `path`: the
 importer's part is the part its path lies in, and each import of the app's own code is resolved to a part the same
@@ -8,9 +8,9 @@ or the same part, in the importer's instance (a bare name), in any instance (@an
 and below its /<path> if it names one. Structure is reached only by everything. Imports outside the app's root
 package (the standard library, third parties) are not the architecture's business and are ignored.
 
-Every Python file below the example projects is checked, so a file that lies in no part is reported, except the test
-code below tests/: no rule of the architecture governs it (a test may import whatever it tests), so it is only parsed
-and must be valid Python.
+Every source file of the language below the example projects is checked, so a file that lies in no part is reported,
+except the test code below tests/: no rule of the architecture governs it (a test may import whatever it tests), so it
+is only parsed and must be valid.
 """
 from __future__ import annotations
 
@@ -22,17 +22,16 @@ from xarch.modules.spec.domain.values import Architecture
 
 ROOT_PACKAGE = "app"
 """The examples' app, as the docs name it: they import `app.<path>`."""
-PYTHON = ".py"
 TESTS = "tests"
 """The folder of an example project that holds test code, which no rule governs, so that it is only parsed."""
 
 
 def example_problems(architecture: Architecture, texts: Mapping[str, str]) -> list[str]:
-    """Every import of a Python example its part may not make, and every example that lies in no part; texts holds
+    """Every import of an example its part may not make, and every example that lies in no part; texts holds
     each example's file, by its path."""
     problems: list[str] = []
     for example in architecture.examples.values():
-        if example.file.endswith(PYTHON):
+        if example.file.endswith(architecture.language.extension):
             problems += _problems(architecture, "example", example.path, texts[example.name], example.path[0] != TESTS)
     return problems
 
@@ -50,7 +49,7 @@ def _problems(architecture: Architecture, name: str, path: tuple[str, ...], text
     try:
         tree = ast.parse(text)
     except SyntaxError as e:
-        return [f"{shown}: is not valid Python: {e.msg} (line {e.lineno})"]
+        return [f"{shown}: is not valid {architecture.language.title}: {e.msg} (line {e.lineno})"]
     if source.part is None:
         return []
     rule = architecture.targets_of(source.part)

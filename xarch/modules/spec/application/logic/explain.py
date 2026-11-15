@@ -2,15 +2,29 @@
 types it, an example with the names xarch ships filled in, and the nearest keys to an address that does not exist."""
 from __future__ import annotations
 
+import re
 from difflib import get_close_matches
 
 from xarch.modules.spec.application.logic.key_lookup import keys_of, plain
 from xarch.modules.spec.domain.profile_keys import KEYS, PROFILE, Key
+from xarch.modules.spec.domain.values import Language
 
 NEAREST = 3
 """How many keys an unknown one is answered with, at most."""
-_TOKENS = {"bundled": "<bundled>", "presets": "<preset>"}
+_TOKENS = {"bundled": "<bundled>", "presets": "<preset>", "languages": "<language>"}
 """What the example of a key writes in place of a name xarch ships, by the list the name comes from."""
+
+
+_WORD = re.compile(r"%(\w+)%")
+
+
+def said(text: str, language: Language) -> str:
+    """The text with each `%word%` replaced by what the language says for it: the title, the extension, the package file,
+    the name of an interface and its dotted path, and the namespace of the names bound without an import; a word it has none for stays."""
+    words = {"language": language.title, "extension": language.extension, "package_file": language.package_file,
+             "interface": language.interface_name, "interface_path": ".".join(language.interface[0]) if language.interface else "",
+             "namespace": language.namespace}
+    return _WORD.sub(lambda found: words.get(found[1], found[0]), text)
 
 
 def overview_keys() -> list[tuple[Key, int]]:

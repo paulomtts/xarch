@@ -3,7 +3,7 @@ folder mirrors.
 
 A file at tests/<path> mirrors the app's <path>. Its tier is, in order:
 1. the first tier whose subject holds the part that claims <path> (below the subject's sub-path, if it names one);
-2. else, when its folder is the folder of parts that are files (such as a controller.py), the tier of those parts,
+2. else, when its folder is the folder of parts that are files (such as an application controller), the tier of those parts,
    if they share one;
 3. else, the first tier whose `folder` holds it: the file lies in that folder or below it.
 A file under the fakes' folder is a fake, which no tier holds. A file in none of these has no tier.
@@ -49,17 +49,18 @@ def tested(profile: Profile, path: tuple[str, ...]) -> Tested:
 
 
 def _tier(profile: Profile, path: tuple[str, ...]) -> tuple[TestTier | None, str | None, tuple[str, ...]]:
-    where = place_of(profile.parts, path)
+    where = place_of(profile.parts, path, profile.language.marks)
     if where.part is not None:
         tier = _first(profile, lambda t: any(s.part == where.part and where.sub[:len(s.sub)] == s.sub
                                              for s in t.subject))
         return tier, where.instance, (where.part,)
     folder = path[:-1]
     file_parts = [name for name, pattern in profile.parts.items()
-                  if pattern and pattern[-1].endswith(".py") and matches(pattern[:-1], folder)]
+                  if pattern and pattern[-1].endswith(profile.language.extension)
+                  and matches(pattern[:-1], folder, profile.language.marks)]
     tiers = {id(t): t for name in file_parts for t in [_first(profile, lambda t, n=name: _tests(t, n))] if t}
     if len(tiers) == 1:
-        instance = place_of({"": profile.parts[file_parts[0]][:-1]}, folder).instance
+        instance = place_of({"": profile.parts[file_parts[0]][:-1]}, folder, profile.language.marks).instance
         return next(iter(tiers.values())), instance, tuple(file_parts)
     return _first(profile, lambda t: bool(t.folder) and folder[:len(t.folder)] == t.folder), None, ()
 

@@ -20,10 +20,10 @@ def violations(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: 
     if not profile.package_only:
         return []
     app = list(app)
-    known = {dotted(f.path)[0] for f in app}
+    known = {dotted(f.path, profile.language.marks)[0] for f in app}
     found: list[Violation] = []
     for file, in_app in [*((f, True) for f in app), *((f, False) for f in tests)]:
-        steps, is_package = dotted(file.path)
+        steps, is_package = dotted(file.path, profile.language.marks)
         src = place(profile, steps) if in_app else None
         imports = file.imports if in_app else tuple(i for i in file.imports if not i.level)
         for line, target in targets(imports, steps if is_package else steps[:-1], known, root):

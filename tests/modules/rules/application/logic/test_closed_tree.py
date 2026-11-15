@@ -1,6 +1,7 @@
-"""The closed-tree guard on a hand-built profile: a Python file in no part and no folder of the layout is reported."""
+"""The closed-tree guard on a hand-built profile: a source file in no part and no folder of the layout is reported."""
 import pytest
 
+from tests.modules.rules.builders import PYTHON
 from xarch.kernel.logic.placement import Target
 from xarch.modules.rules.application.logic.closed_tree import excluded, governed, ungoverned, violations
 from xarch.modules.rules.domain.values import Exclusion, Profile
@@ -10,7 +11,7 @@ PROFILE = Profile(parts={"domain": ("modules", "*", "domain"), "entry": ("cli",)
                   rules={"domain": (Target("domain", "own"),)},
                   folders=((), ("modules",), ("modules", "*"), ("modules", "*", "domain"), ("modules", "*", "application"),
                            ("cli",)),
-                  closed_tree=True)
+                  closed_tree=True, language=PYTHON)
 
 
 def paths(*written: str) -> list[tuple[str, ...]]:
@@ -43,7 +44,7 @@ def test_a_file_outside_the_tree_names_its_rule_and_its_fix():
 
 
 def test_the_ungoverned_files_are_listed_whether_the_guard_is_on_or_not():
-    off = Profile(PROFILE.parts, PROFILE.rules, PROFILE.folders)
+    off = Profile(PROFILE.parts, PROFILE.rules, PROFILE.folders, language=PYTHON)
     written = paths("main.py", "modules/docs/domain/doc.py", "modules/docs/__init__.py", "scripts/run.py")
     assert ungoverned(written, off, "app") == ungoverned(written, PROFILE, "app") == ["app/main.py", "app/scripts/run.py"]
 

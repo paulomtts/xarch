@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Iterator
 from dataclasses import replace
 
-from xarch.kernel.logic.placement import EVERYTHING, Place, reaches
+from xarch.kernel.logic.placement import EVERYTHING, Marks, Place, reaches
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.places import allowed, label, place, targets_of
 from xarch.modules.rules.domain.values import Import, Profile, SourceFile
@@ -19,10 +19,11 @@ OWNERS = 3
 """How many parts that may import a place a fix names before it says "or another part"."""
 
 
-def dotted(path: tuple[str, ...]) -> tuple[tuple[str, ...], bool]:
-    """A file's dotted path below the root, and whether it is a package's __init__."""
-    steps = path[:-1] + (path[-1].removesuffix(".py"),) if path else path
-    is_package = bool(steps) and steps[-1] == "__init__"
+def dotted(path: tuple[str, ...], marks: Marks) -> tuple[tuple[str, ...], bool]:
+    """A file's dotted path below the root, and whether it is the file that stands for its folder."""
+    steps = path[:-1] + (path[-1].removesuffix(marks.extension),) if path else path
+    stem = marks.package_file.removesuffix(marks.extension)
+    is_package = bool(steps) and bool(stem) and steps[-1] == stem
     return (steps[:-1] if is_package else steps), is_package
 
 
@@ -61,7 +62,7 @@ def named_targets(imports: Iterable[Import], package: tuple[str, ...], known: se
 
 def violations(files: Iterable[SourceFile], profile: Profile, root: str) -> list[Violation]:
     """Check files below the root package named root against the profile's rules."""
-    parsed = [(f, *dotted(f.path)) for f in files]
+    parsed = [(f, *dotted(f.path, profile.language.marks)) for f in files]
     known = {steps for _, steps, _ in parsed}
     found: list[Violation] = []
     for file, steps, is_package in parsed:

@@ -12,10 +12,10 @@ from xarch.modules.rules.domain.values import Profile
 
 def place(profile: Profile, path: tuple[str, ...]) -> Place | None:
     """Where a path below the root package sits: in a part, Place(None) in the structure, or None if ungoverned."""
-    found = place_of(profile.parts, path)
+    found = place_of(profile.parts, path, profile.language.marks)
     if found.part is not None:
         return found
-    if not path or any(matches(folder, path) for folder in profile.folders):
+    if not path or any(matches(folder, path, profile.language.marks) for folder in profile.folders):
         return found
     return None
 

@@ -57,7 +57,8 @@ SCOPES = {
 
 CHOICE_BUNDLED = "bundled"
 CHOICE_PRESETS = "presets"
-"""What a key may name from a list xarch ships: the bundled profiles, or the `testing` presets."""
+CHOICE_LANGUAGES = "languages"
+"""What a key may name from a list xarch ships: the bundled profiles, the `testing` presets or the languages."""
 
 SMALLEST = """\
 xarch: 2
@@ -76,14 +77,14 @@ SYMBOLS: tuple[tuple[str, str], ...] = (
     ("store/schema", "only what lies below that path of the part"),
     ("store:*Id", "in may_import, after `:`: only the names that match the pattern, `*` for any text"),
     ("everything", "in may_import or libraries: no limit"),
-    ("a path ending in .py", "a last path step with a dot: the part is one file, not a folder"),
+    ("a path ending in %extension%", "a last path step with a dot: the part is one file, not a folder"),
 )
 """The symbols a profile writes in paths and imports, each with what it means."""
 
 _PART = "parts:\n  documents:\n    path: documents\n    role: the documents\n"
 _TWO = ("parts:\n  core:\n    path: core\n    role: the rules of the documents\n  documents:\n    path: documents\n"
         "    role: the documents\n    may_import: [core]\n")
-_TESTING = 'testing:\n  files: [check_*.py]\n  functions: "check_*"\n'
+_TESTING = 'testing:\n  files: [check_*%extension%]\n  functions: "check_*"\n'
 _FAKES = "fakes:\n  folder: fakes\n  for: [core]\n  prefix: Fake\n"
 _MOCKS = "    calls: [doubles.make]\n    spec_keywords: [spec]\n"
 
@@ -124,7 +125,7 @@ _COVERAGE = (_TESTING + _TABLE_BLOCK + "tiers:\n  integration:\n    proves: a us
              "  results:\n    path: units/<unit>/results\n    role: the result unions\n    tier: integration\n")
 _COVERAGE_GUARD = _COVERAGE + (
     "guards:\n  scenario-coverage:\n    results: results\n    tier: integration\n    suffix: Result\n"
-    "    columns: [given, when, then]\n    file: check_{name}.py\n")
+    "    columns: [given, when, then]\n    file: check_{name}%extension%\n")
 _STAND_INS = (_TESTING + "  mocks:\n" + _MOCKS + _TWO + _FAKES)
 _PAGES = _docs("pages:\n  statement.md:\n    from: docs/statement.md\n    note: the problem the documents solve\n")
 
@@ -141,8 +142,8 @@ class Key:
     enforced: it changes what `xarch check` does; False: it only feeds the generated docs or a report
     rules: the rule ids of `check` the key feeds; none for a key the loader alone enforces
     opens: the scope of the keys its value holds
-    choices: CHOICE_BUNDLED or CHOICE_PRESETS when it names something from a list xarch ships; `<bundled>` and
-        `<preset>` in the example stand for the first of that list
+    choices: CHOICE_BUNDLED, CHOICE_PRESETS or CHOICE_LANGUAGES when it names something from a list xarch ships;
+        `<bundled>`, `<preset>` and `<language>` in the example stand for the first of that list
     """
     scope: str
     name: str
@@ -183,19 +184,22 @@ KEYS: tuple[Key, ...] = (
     _k(PROFILE, "based_on", "the bundled profile this was copied from",
        "the name of a bundled profile: `profile check` reports how this one is looser than it", "based_on: <bundled>",
        False, False, choices=CHOICE_BUNDLED),
-    _k(PROFILE, "language", "the language of the app", "python: the default, and the only one", "language: python"),
+    _k(PROFILE, "language", "the language of the app",
+       "the name of a language xarch ships, read from its data file: the ending of a source file, the package file, what "
+       "marks an interface, the names bound without an import and the standard library; the first by name is the default",
+       "language: <language>", choices=CHOICE_LANGUAGES),
     _k(PROFILE, "testing", "how the test framework names things",
        "a preset name, or a map {files, functions, skips, table, mocks}; needed with `tiers` and the guards "
-       "scenario-coverage and stand-ins. Dotted names are what an absolute import binds; what stays Python is "
-       "`typing.Protocol` as the mark of a port, `__init__.py`, the syntax tree, import resolution and the standard "
-       "library's names", 'testing:\n  files: [check_*.py]\n  functions: "check_*"',
+       "scenario-coverage and stand-ins. Dotted names are what an absolute import binds; what stays %language% is "
+       "`%interface_path%` as the mark of a port, `%package_file%`, the syntax tree, import resolution and the standard "
+       "library's names", 'testing:\n  files: [check_*%extension%]\n  functions: "check_*"',
        rules=("tiers", "test-tree"), opens=TESTING, choices=CHOICE_PRESETS),
     _k(PROFILE, "parts", "where code sits, in the order their litmus tests run",
        "a map {<part>: {path, role, ...}}: each part is a folder or a file below the app; the layout is made of "
        "their paths and `folders`", _TWO, True, rules=("structure", "rules"), opens=PART),
     _k(PROFILE, "forbidden", "named lists of names a part may not use",
        "a map {<list>: [<dotted name>, ...]}; a part points to one list with `forbidden: <list>`. An entry is a dotted "
-       "name as an absolute import binds it (`datetime.datetime.now`; a builtin as `builtins.open`, a bare `open` is "
+       "name as an absolute import binds it (`datetime.datetime.now`; a builtin as `%namespace%.open`, a bare `open` is "
        "refused) or a whole package (`socket`). A file may not import a listed package or anything below it, nor use "
        "a listed name, called or not, as the file writes it (through the import that binds it, or a builtin by its "
        "bare name where nothing shadows it). Silent on a name reached through a variable or `getattr`, a method of an "
@@ -218,7 +222,7 @@ KEYS: tuple[Key, ...] = (
        "a map {<guard>: {...}}: a guard left out is off; `xarch profile explain guards.<guard>` says what one checks",
        "guards:\n  no-comments: {}\n  no-duplicates: {min_statements: 6}\n", opens=GUARD),
     _k(PROFILE, "excluded", "folders below the app that are not its source",
-       "a map {<folder>: <reason>}: a path below the app, never a folder of the layout; no check reads a Python file "
+       "a map {<folder>: <reason>}: a path below the app, never a folder of the layout; no check reads a %language% file "
        "below one (`closed-tree` and the `ungoverned` list leave it out); `check` lists each under `enforcement` and "
        "`where` says so; not a finding for `--strict`",
        "excluded:\n  generated: written by a tool, not by hand\n", rules=()),
@@ -253,8 +257,8 @@ KEYS: tuple[Key, ...] = (
        "[<target>, ...] written as `may_import` writes them, each one the part may import: each file imports one "
        "of them, or an outside package (top-level, neither standard library nor the app's own, whatever `libraries` "
        "says), or imports a file of its own part that does, however far the chain; files that only import each other "
-       "meet nothing. Exempt: `__init__.py` and a file with no function or method holding a real statement (types, "
-       "constants, Protocol stubs). A failing file is reported once, as a whole", _in_two("must_import: [core]\n"),
+       "meet nothing. Exempt: `%package_file%` and a file with no function or method holding a real statement (types, "
+       "constants, %interface% stubs). A failing file is reported once, as a whole", _in_two("must_import: [core]\n"),
        rules=("must-import",)),
     _k(PART, "types_only", "the parts its files may use only as types",
        "[<part>, ...], each one `may_import` allows: a file of the part may import them to annotate, and for "
@@ -266,15 +270,15 @@ KEYS: tuple[Key, ...] = (
        "does not start with `_`). functions: no file of the part defines a public class at the top level, but for an "
        "exception class (one that derives from a builtin exception, directly or through classes of the app) and a "
        "record (a class with no method of its own, dunder methods aside) that a top-level function of the same "
-       "file names in its return annotation. A package file (`__init__.py`) is exempt. Each one is listed as "
+       "file names in its return annotation. A package file (`%package_file%`) is exempt. Each one is listed as "
        "`weak` in the enforcement section, and fails `check --strict` only", _in_part("holds: classes\n"),
        rules=("holds",)),
     _k(PART, "no_callbacks", "its code calls none of its own parameters",
        "true: no function, method or nested function of the part calls, by its bare name, a parameter of a function "
-       "it lies in that is annotated as a callable (`Callable` of typing or collections.abc, alone, subscripted, in "
-       "a union or `Optional`), as in `check(path)` for `check: Callable[[str], bool]`. Not read: the first "
-       "parameter of a method (`self`, `cls`; a staticmethod has none), a parameter with no such annotation, one "
-       "passed on (`sorted(rows, key=key)`), one whose method is called (`p.read()`), and one the body rebinds",
+       "it lies in that is annotated as a callable type (alone, subscripted, in a union or as an optional), as in "
+       "`check(path)` for `check: Callable[[str], bool]`. Not read: the first parameter of a method (`self`, `cls`; "
+       "a staticmethod has none), a parameter with no such annotation, one passed on (`sorted(rows, key=key)`), one "
+       "whose method is called (`p.read()`), and one the body rebinds",
        _in_part("no_callbacks: true\n"), rules=("no-callbacks",)),
     _k(PART, "names", "how the classes of the part are named",
        "a pattern, or a list of them, with `*` for any text: every public class (a name that does not start with "
@@ -342,11 +346,12 @@ KEYS: tuple[Key, ...] = (
     _k(TIER_DOCS, "data", "where its test data comes from", "one line of text",
        _tiered("docs:\n  data: built in the test\n"), False, False),
     _k(TIER_DOCS, "example", "its example test", "a path in an example project listed in `docs.examples`",
-       "docs:\n  examples: [examples]\n" + _tiered("docs:\n  example: tests/documents/check_documents.py\n"), False, False),
+       "docs:\n  examples: [examples]\n" + _tiered("docs:\n  example: tests/documents/check_documents%extension%\n"),
+       False, False),
     _k(TIER_DOCS, "helpers", "the files its tests share", "[<path in an example project>, ...]",
-       "docs:\n  examples: [examples]\n" + _tiered("docs:\n  helpers: [tests/documents/builders.py]\n"), False, False),
+       "docs:\n  examples: [examples]\n" + _tiered("docs:\n  helpers: [tests/documents/builders%extension%]\n"), False, False),
 
-    _k(TESTING, "files", "patterns of a test file's name", "a list of .py names with `*` for any text",
+    _k(TESTING, "files", "patterns of a test file's name", "a list of %extension% names with `*` for any text",
        _tests(""), True, rules=("tiers", "test-tree")),
     _k(TESTING, "functions", "the pattern of a test function's name", "a name with `*` for any text",
        _tests(""), True, rules=("scenario-coverage", "stand-ins")),
@@ -385,17 +390,17 @@ KEYS: tuple[Key, ...] = (
 
     _k(FAKES, "folder", "the folder of the fakes", "a folder below the tests folder", _TWO + _FAKES, True,
        rules=("stand-ins", "dead-code")),
-    _k(FAKES, "for", "the parts whose Protocols the fakes stand in for", "[<part>, ...]", _TWO + _FAKES, True,
+    _k(FAKES, "for", "the parts whose %interface%s the fakes stand in for", "[<part>, ...]", _TWO + _FAKES, True,
        rules=("stand-ins", "dead-code")),
     _k(FAKES, "prefix", "how a fake's name starts", "the start of a class name: the fake of DocumentRepo is "
        "FakeDocumentRepo", _TWO + _FAKES, rules=("stand-ins", "dead-code")),
 
     _guard("scenario-coverage", "every result of a use case has a row", _COVERAGE_GUARD),
     _guard("no-comments", "no `#` comments in the app or its tests", _guarded("no-comments: {}\n")),
-    _guard("stand-ins", "a Protocol is faked, or mocked with a spec", _STAND_INS + _guarded("stand-ins: {}\n")),
+    _guard("stand-ins", "a %interface% is faked, or mocked with a spec", _STAND_INS + _guarded("stand-ins: {}\n")),
     _guard("closed-tree", "every file lies in a part", _guarded("closed-tree: {}\n")),
     _guard("no-duplicates", "no two functions with the same code", _guarded("no-duplicates: {min_statements: 6}\n")),
-    _guard("dead-code", "no Protocol nothing names, no fake no test uses", _TWO + _FAKES + _guarded("dead-code: {}\n")),
+    _guard("dead-code", "no %interface% nothing names, no fake no test uses", _TWO + _FAKES + _guarded("dead-code: {}\n")),
     _guard("pass-through", "a method that only forwards is listed", _TWO + _guarded("pass-through:\n  parts: [documents]\n")),
     _guard("private-imports", "no name starting with `_` is imported from another file",
            _guarded("private-imports: {}\n")),
@@ -418,7 +423,7 @@ KEYS: tuple[Key, ...] = (
        "true or false: every file of a part that has a `tier`, which no test code of that tier (a file below the "
        "tests folder that the tier holds, test or not) imports, directly or through files of parts of that same tier "
        "that it reaches, is listed as `weak` in the enforcement section and fails `check --strict` only. Exempt: a "
-       "package file, and a file with no function or method holding a real statement (types, constants, Protocol "
+       "package file, and a file with no function or method holding a real statement (types, constants, %interface% "
        "stubs). Read only with a tests folder", _TWO + _FAKES + _guarded("dead-code: {untested: true}\n"),
        rules=("dead-code",)),
 
@@ -435,7 +440,7 @@ KEYS: tuple[Key, ...] = (
        "[<folder>, ...]: a template quotes one of its files by its path with {{example:<path>}}",
        _docs("examples: [examples]\n"), False, False),
     _k(DOCS, "example_notes", "a note for an example", "a map {<path>: <note>}, shown after the example's path",
-       _docs("examples: [examples]\nexample_notes:\n  src/documents.py: the documents\n"), False, False),
+       _docs("examples: [examples]\nexample_notes:\n  src/documents%extension%: the documents\n"), False, False),
 
     _k(PAGE, "from", "the template file, next to the profile", "a path", _PAGES, False, False),
     _k(PAGE, "note", "shown after its line in the docs tree", "one line of text", _PAGES, False, False),
@@ -455,11 +460,12 @@ KEYS: tuple[Key, ...] = (
 
     _k(FILE, "from", "the template file, or the folder of a path ending in /",
        "a path next to the profile: a file, or a folder when the key ends in /",
-       "files:\n  tests/rules.py:\n    from: guard.py\n", True),
+       "files:\n  tests/rules%extension%:\n    from: guard%extension%\n", True),
     _k(FILE, "pinned", "`check` reports the file when it differs",
-       "true: the project keeps the file as `init` writes it", "files:\n  tests/rules.py:\n    from: guard.py\n    pinned: true\n"),
+       "true: the project keeps the file as `init` writes it",
+       "files:\n  tests/rules%extension%:\n    from: guard%extension%\n    pinned: true\n"),
     _k(FILE, "fill", "whether {{app}} is filled in", "false: the bytes are copied unchanged",
-       "files:\n  tests/rules.py:\n    from: guard.py\n    fill: false\n"),
+       "files:\n  tests/rules%extension%:\n    from: guard%extension%\n    fill: false\n"),
 )
 """Every key of every scope, in the order a file writes them."""
 

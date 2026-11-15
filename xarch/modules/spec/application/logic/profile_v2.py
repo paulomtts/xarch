@@ -6,7 +6,8 @@ each means and whether it is enforced are in profile_keys, which the messages be
     xarch: 2
     name: <name>
     based_on: <bundled name>   optional; the bundled profile this one was copied from, which a report compares with
-    language: python           optional; the language of the app, python by default and the only one
+    language: <language>       optional; the language of the app: the name of a language xarch ships (the first by name
+                               when left out), read from its data file
     testing: <preset> | {files, functions, skips, table, mocks}
                                how the test framework names things; a preset is a name, read from data shipped with
                                xarch. Required with `tiers` and with the guards scenario-coverage and stand-ins
@@ -84,6 +85,7 @@ from xarch.modules.spec.domain.values import (
     Fakes,
     Framework,
     Guard,
+    Language,
     Layout,
     NoComments,
     NoDuplicates,
@@ -99,8 +101,6 @@ from xarch.modules.spec.domain.values import (
     TierExample,
 )
 
-LANGUAGES = ("python",)
-"""The languages an app may be in; the first is the default."""
 WORD = "everything"
 """How a file writes EVERYTHING: for what a part may import and for its libraries."""
 _REPEATING = re.compile(r"<([A-Za-z_][A-Za-z0-9_-]*)>")
@@ -135,11 +135,11 @@ class _Layout:
 
 
 def parse_v2(document: Any, source: str, files: Collection[str] = (), presets: Mapping[str, Any] | None = None,
-             bundled: Collection[str] = ()) -> Architecture:
+             bundled: Collection[str] = (), languages: Mapping[str, Language] | None = None) -> Architecture:
     """The architecture the document describes; raises InvalidArchitecture listing every problem. files are the files
     next to the profile file that it names, and every file below the folders it names, each as a path from the folder
-    holding it (see profile_listing.py); presets are the documents of the `testing` presets by name; bundled are the
-    names of the bundled profiles, which `based_on` may name."""
+    holding it (see profile_listing); presets are the documents of the `testing` presets by name; bundled are the
+    names of the bundled profiles, which `based_on` may name; languages are the languages xarch ships, by name."""
     if not isinstance(document, Mapping):
         raise InvalidArchitecture(source, [f"must be a mapping of keys, starting with `xarch: {VERSION}`"])
     problems: list[str] = []
@@ -147,39 +147,39 @@ def parse_v2(document: Any, source: str, files: Collection[str] = (), presets: M
     name = document.get("name")
     if "name" in document and not ck.text(name):
         problems.append("`name` must be a non-empty string")
-    _language(document, problems)
+    language = _language(document, languages or {}, problems)
     based_on = _based_on(document["based_on"], bundled, problems) if "based_on" in document else ""
-    lists = _forbidden_lists(document["forbidden"], problems) if "forbidden" in document else {}
+    lists = _forbidden_lists(document["forbidden"], problems, language) if "forbidden" in document else {}
     specs = _specs(document.get("parts", {}), problems)
     declared = set(specs)
     built = _layout(specs, problems)
     parts = built.parts
-    examples = ex.example_files(document.get("docs", {}), files, problems)
+    examples = ex.example_files(document.get("docs", {}), files, problems, language)
     rules = {part: _may_import(specs[part].get("may_import"), item, parts, declared, f"parts.{part}.may_import",
                                problems, patterns=True) for part, item in parts.items()}
-    libraries = {part: _libraries(specs[part], f"parts.{part}.libraries", problems) for part in parts}
+    libraries = {part: _libraries(specs[part], f"parts.{part}.libraries", problems, language) for part in parts}
     parts = {part: replace(item, must_import=_must_import(specs[part], item, parts, declared, rules[part], problems))
              for part, item in parts.items()}
     parts = {part: _substance(specs[part], item, declared, rules[part], problems) for part, item in parts.items()}
     forbidden = _forbidden_refs(specs, parts, lists, problems)
     layers = ck.layer_chains(document["layers"], parts, declared, rules, problems) if "layers" in document else {}
-    testing = _testing(document["testing"], presets or {}, problems) if "testing" in document else None
-    tiers = _tiers(document, specs, parts, declared, examples, problems)
+    testing = _testing(document["testing"], presets or {}, problems, language) if "testing" in document else None
+    tiers = _tiers(document, specs, parts, declared, examples, problems, language)
     fakes = _fakes(document["fakes"], parts, declared, problems) if "fakes" in document else None
     problems += ck.folder_clashes(tiers, fakes)
-    guards = _guards(document.get("guards", {}), specs, parts, declared, tiers, fakes, testing, problems)
+    guards = _guards(document.get("guards", {}), specs, parts, declared, tiers, fakes, testing, problems, language)
     problems += _needs_testing(document)
     entry, pages, naming = _docs(document.get("docs", {}), declared, files, problems)
     parts = {part: replace(item, entry=True) if part == entry else item for part, item in parts.items()}
-    written = ck.init_files(_bare_from(document.get("files", {})), pages, files, problems, "docs.pages")
+    written = ck.init_files(_bare_from(document.get("files", {})), pages, files, problems, "docs.pages", language)
     excluded = ck.excluded_folders(document["excluded"], built.tree, problems) if "excluded" in document else ()
     hints = ck.rule_hints(document["hints"], problems) if "hints" in document else {}
     if problems:
         raise InvalidArchitecture(source, problems)
-    shown = ex.examples_of(examples, built.tree, parts)
+    shown = ex.examples_of(examples, built.tree, parts, language)
     return Architecture(name, built.tree, parts, rules, pages, shown, built.notes, layers, tuple(parts), naming, tiers,
                         libraries, guards, fakes, tuple(built.repeats), written, testing.framework if testing else None, forbidden,
-                        excluded, hints, based_on)
+                        excluded, hints, based_on, language)
 
 
 def _keys(document: Mapping[Any, Any]) -> list[str]:
@@ -193,10 +193,14 @@ def _keys(document: Mapping[Any, Any]) -> list[str]:
     return problems
 
 
-def _language(document: Mapping[Any, Any], problems: list[str]) -> None:
-    language = document.get("language", LANGUAGES[0])
-    if language not in LANGUAGES:
-        problems.append(f"language: {language!r} is not a language xarch reads: use {', '.join(LANGUAGES)}")
+def _language(document: Mapping[Any, Any], languages: Mapping[str, Language], problems: list[str]) -> Language:
+    """The language the file names, the first of the languages by name when it names none; Language() when there are
+    none to choose from."""
+    name = document.get("language", min(languages, default=""))
+    if not isinstance(name, str) or (name not in languages and (languages or "language" in document)):
+        problems.append(f"language: {name!r} is not a language xarch reads: use {', '.join(sorted(languages))}")
+        return Language()
+    return languages.get(name, Language())
 
 
 def _based_on(value: Any, bundled: Collection[str], problems: list[str]) -> str:
@@ -487,7 +491,7 @@ def _implied(where: str, value: str, part: Part) -> str:
             f"folder; remove it ({part.name}@any, another instance's too, stays allowed)")
 
 
-def _libraries(spec: Mapping[Any, Any], where: str, problems: list[str]) -> tuple[str, ...]:
+def _libraries(spec: Mapping[Any, Any], where: str, problems: list[str], language: Language) -> tuple[str, ...]:
     """The outside packages of a part: none unless it lists them; (EVERYTHING,) leaves them unchecked."""
     if "libraries" not in spec:
         return ()
@@ -497,10 +501,11 @@ def _libraries(spec: Mapping[Any, Any], where: str, problems: list[str]) -> tupl
     if not isinstance(value, list):
         problems.append(f"{where}: must be a list of top-level import names such as [sqlmodel], or {WORD}")
         return ()
-    return ck.package_names(value, where, problems) or ()
+    return ck.package_names(value, where, problems, language) or ()
 
 
-def _forbidden_lists(value: Any, problems: list[str]) -> dict[str, tuple[tuple[str, ...], ...] | None] | None:
+def _forbidden_lists(value: Any, problems: list[str],
+                     language: Language) -> dict[str, tuple[tuple[str, ...], ...] | None] | None:
     """The named lists of names a part may not use; a list already reported is None. None: `forbidden` is no mapping."""
     if not isinstance(value, Mapping):
         problems.append("forbidden: must be a mapping of list names to lists of dotted names, such as "
@@ -511,7 +516,7 @@ def _forbidden_lists(value: Any, problems: list[str]) -> dict[str, tuple[tuple[s
         if not ck.text(name) or not ck.PART_NAME.fullmatch(name):
             problems.append(f"forbidden: {name!r} is not a list name: use letters, digits, '_' and '-'")
         else:
-            lists[name] = ck.forbidden_names(names, f"forbidden.{name}", problems)
+            lists[name] = ck.forbidden_names(names, f"forbidden.{name}", problems, language)
     return lists
 
 
@@ -535,7 +540,7 @@ def _forbidden_refs(specs: dict[str, Any], parts: dict[str, Part],
     return forbidden
 
 
-def _testing(value: Any, presets: Mapping[str, Any], problems: list[str]) -> _Testing | None:
+def _testing(value: Any, presets: Mapping[str, Any], problems: list[str], language: Language) -> _Testing | None:
     """How the test framework names things: the map in the file, or the one a preset holds, validated the same."""
     if isinstance(value, str):
         if value not in presets:
@@ -548,7 +553,7 @@ def _testing(value: Any, presets: Mapping[str, Any], problems: list[str]) -> _Te
                         "and of a test function's")
         return None
     count = len(problems)
-    framework = ck.framework_patterns(value, problems, "testing", names_of(TESTING))
+    framework = ck.framework_patterns(value, problems, "testing", names_of(TESTING), language)
     table = ck.case_table(value["table"], "testing.table", problems) if "table" in value else None
     mocks = _mocks(value["mocks"], problems) if "mocks" in value else None
     if len(problems) != count or framework is None:
@@ -580,7 +585,7 @@ def _mocks(value: Any, problems: list[str]) -> StandIns | None:
 
 
 def _tiers(document: Mapping[Any, Any], specs: dict[str, Any], parts: dict[str, Part], declared: set[str],
-           examples: ex.Examples, problems: list[str]) -> tuple[Tier, ...]:
+           examples: ex.Examples, problems: list[str], language: Language) -> tuple[Tier, ...]:
     """The tiers in the order of the file, each with the parts that say they are tested by it; then the coverage:
     with tiers, every part names one or is untested, and without them none names one."""
     value = document.get("tiers")
@@ -598,7 +603,7 @@ def _tiers(document: Mapping[Any, Any], specs: dict[str, Any], parts: dict[str, 
             problems.append(f"tiers: {name!r} is not a tier name: one line of text")
             continue
         subject = tuple(Subject(part) for part in parts if assigned.get(part) == name)
-        tier = _tier(name, spec, subject, parts, declared, examples, problems)
+        tier = _tier(name, spec, subject, parts, declared, examples, problems, language)
         if tier is not None:
             tiers.append(tier)
     return tuple(tiers)
@@ -634,7 +639,7 @@ def _coverage(specs: dict[str, Any], parts: dict[str, Part], names: list[str] | 
 
 
 def _tier(name: str, spec: Any, subject: tuple[Subject, ...], parts: dict[str, Part], declared: set[str],
-          examples: ex.Examples, problems: list[str]) -> Tier | None:
+          examples: ex.Examples, problems: list[str], language: Language) -> Tier | None:
     where = f"tiers.{name}"
     if not isinstance(spec, Mapping):
         problems.append(f"{where}: must be a mapping, {{}} if it takes nothing")
@@ -651,13 +656,13 @@ def _tier(name: str, spec: Any, subject: tuple[Subject, ...], parts: dict[str, P
                         "`forbidden` list of the part they mirror")
     types_only = (ck.part_names(spec["types_only"], declared, f"{where}.types_only", problems)
                   if "types_only" in spec else [])
-    folder = ck.tier_folder(spec["folder"], parts, f"{where}.folder", problems) if "folder" in spec else None
+    folder = ck.tier_folder(spec["folder"], parts, f"{where}.folder", problems, language) if "folder" in spec else None
     if "folder" not in spec and "may_import" in spec:
         problems.append(f"{where}.may_import: only a tier with a `folder` has an allowance of its own: without one, its "
                         "tests import what the part they mirror may")
     allowance = (_may_import(spec.get("may_import"), None, parts, declared, f"{where}.may_import", problems)
                  if "folder" in spec else None)
-    docs = _tier_docs(spec["docs"], folder, examples, f"{where}.docs", problems) if "docs" in spec else {}
+    docs = _tier_docs(spec["docs"], folder, examples, f"{where}.docs", problems, language) if "docs" in spec else {}
     reach = (ck.part_names(spec["must_import"], declared, f"{where}.must_import", problems)
              if "must_import" in spec else [])
     if len(problems) != count:
@@ -669,7 +674,7 @@ def _tier(name: str, spec: Any, subject: tuple[Subject, ...], parts: dict[str, P
 
 
 def _tier_docs(value: Any, folder: tuple[str, ...] | None, examples: ex.Examples, where: str,
-               problems: list[str]) -> dict[str, Any]:
+               problems: list[str], language: Language) -> dict[str, Any]:
     """What a tier says only for the docs: its texts, its example and its helpers."""
     if not isinstance(value, Mapping):
         problems.append(f"{where}: must be a mapping of {{{', '.join(key.name for key in keys_of(TIER_DOCS))}}}")
@@ -678,22 +683,23 @@ def _tier_docs(value: Any, folder: tuple[str, ...] | None, examples: ex.Examples
     problems += [f"{where}.{key}: must be one line of text" for key in _TIER_TEXTS if key in value and not ck.line(value[key])]
     found: dict[str, Any] = {key: value[key] for key in _TIER_TEXTS if key in value and ck.line(value[key])}
     if "example" in value:
-        example = ex.example_of(value["example"], examples, f"{where}.example", problems)
+        example = ex.example_of(value["example"], examples, f"{where}.example", problems, language)
         if example is not None and folder is not None and example.path[1:-1][:len(folder)] != folder:
             problems.append(f"{where}.example: '{'/'.join(example.path)}' is not inside the tier's folder "
                             f"'{'/'.join(folder)}' below the tests folder: the docs would show a place `check` places "
                             "in no tier")
         found["example"] = example
     if "helpers" in value:
-        found["helpers"] = _helpers(value["helpers"], examples, f"{where}.helpers", problems)
+        found["helpers"] = _helpers(value["helpers"], examples, f"{where}.helpers", problems, language)
     return found
 
 
-def _helpers(value: Any, examples: ex.Examples, where: str, problems: list[str]) -> tuple[TierExample, ...]:
+def _helpers(value: Any, examples: ex.Examples, where: str, problems: list[str],
+             language: Language) -> tuple[TierExample, ...]:
     if not isinstance(value, list):
         problems.append(f"{where}: must be a list of paths in an example project")
         return ()
-    helpers = [ex.example_of(item, examples, f"{where}[{i}]", problems) for i, item in enumerate(value)]
+    helpers = [ex.example_of(item, examples, f"{where}[{i}]", problems, language) for i, item in enumerate(value)]
     return tuple(helper for helper in helpers if helper is not None)
 
 
@@ -721,7 +727,8 @@ def _fakes(value: Any, parts: dict[str, Part], declared: set[str], problems: lis
 
 
 def _guards(value: Any, specs: dict[str, Any], parts: dict[str, Part], declared: set[str], tiers: tuple[Tier, ...],
-            fakes: Fakes | None, testing: _Testing | None, problems: list[str]) -> tuple[Guard, ...]:
+            fakes: Fakes | None, testing: _Testing | None, problems: list[str],
+            language: Language) -> tuple[Guard, ...]:
     guards: list[Guard] = []
     package_only = tuple(name for name in parts if specs[name].get("package_only") is True)
     if package_only:
@@ -736,11 +743,11 @@ def _guards(value: Any, specs: dict[str, Any], parts: dict[str, Part], declared:
         elif name not in _GUARDS:
             problems.append(f"guards: unknown guard {name!r}: use {', '.join(sorted(_GUARDS))}")
         elif name == "scenario-coverage":
-            guard = _scenario_coverage(spec, parts, declared, tiers, testing, where, problems)
+            guard = _scenario_coverage(spec, parts, declared, tiers, testing, where, problems, language)
             if guard is not None:
                 guards.append(guard)
         elif name == "stand-ins":
-            guard = _stand_ins(spec, fakes, testing, where, problems)
+            guard = _stand_ins(spec, fakes, testing, where, problems, language)
             if guard is not None:
                 guards.append(guard)
         elif name == "no-duplicates":
@@ -750,7 +757,7 @@ def _guards(value: Any, specs: dict[str, Any], parts: dict[str, Part], declared:
             if guard is not None:
                 guards.append(guard)
         elif name == "dead-code":
-            guard = _dead_code(spec, fakes, where, problems)
+            guard = _dead_code(spec, fakes, where, problems, language)
             if guard is not None:
                 guards.append(guard)
         elif spec not in ({}, None):
@@ -761,7 +768,8 @@ def _guards(value: Any, specs: dict[str, Any], parts: dict[str, Part], declared:
 
 
 def _scenario_coverage(spec: Any, parts: dict[str, Part], declared: set[str], tiers: tuple[Tier, ...],
-                       testing: _Testing | None, where: str, problems: list[str]) -> ScenarioCoverage | None:
+                       testing: _Testing | None, where: str, problems: list[str],
+                       language: Language) -> ScenarioCoverage | None:
     if not isinstance(spec, Mapping):
         problems.append(f"{where}: must be a mapping {{results, tier, suffix, columns, file}}: the part holding the "
                         "result unions, the tier whose test files hold their tables, how a union's name ends, the "
@@ -779,21 +787,21 @@ def _scenario_coverage(spec: Any, parts: dict[str, Part], declared: set[str], ti
     ck.scenario_places(spec["results"], spec["tier"], spec["suffix"], parts, declared, tiers, where, problems)
     columns = ck.column_names(spec["columns"], f"{where}.columns", problems)
     framework = testing.framework if testing is not None else None
-    file = ck.use_case_file(spec["file"], framework, f"{where}.file", problems, "testing.files")
+    file = ck.use_case_file(spec["file"], framework, f"{where}.file", problems, language, "testing.files")
     if len(problems) != count or columns is None or file is None or testing is None or testing.table is None:
         return None
     return ScenarioCoverage(spec["results"], spec["tier"], spec["suffix"], columns, testing.table, file)
 
 
 def _stand_ins(spec: Any, fakes: Fakes | None, testing: _Testing | None, where: str,
-               problems: list[str]) -> StandIns | None:
+               problems: list[str], language: Language) -> StandIns | None:
     if spec not in ({}, None):
         problems.append(f"{where}: takes no parameters: write {{}}")
         return None
     if fakes is None or not fakes.prefix:
         problems.append(f"{where}: needs `fakes` with a `prefix`, such as {{folder: fakes, for: [<part>], prefix: "
-                        "Fake}: the parts whose Protocols the fakes stand in for, where they live and how a fake is "
-                        "named")
+                        f"Fake}}: the parts whose {language.interface_name}s the fakes stand in for, where they live "
+                        "and how a fake is named")
         return None
     if testing is not None and testing.mocks is None:
         problems.append(f"{where}: needs `testing.mocks`: the calls that build a mock and the keywords a mock is "
@@ -801,7 +809,8 @@ def _stand_ins(spec: Any, fakes: Fakes | None, testing: _Testing | None, where: 
     return testing.mocks if testing is not None else None
 
 
-def _dead_code(spec: Any, fakes: Fakes | None, where: str, problems: list[str]) -> DeadCode | None:
+def _dead_code(spec: Any, fakes: Fakes | None, where: str, problems: list[str],
+               language: Language) -> DeadCode | None:
     if spec is None:
         spec = {}
     if not isinstance(spec, Mapping):
@@ -815,8 +824,8 @@ def _dead_code(spec: Any, fakes: Fakes | None, where: str, problems: list[str]) 
     if len(problems) != count:
         return None
     if fakes is None:
-        problems.append(f"{where}: needs `fakes`: it reads the Protocols of the parts `fakes.for` names and the "
-                        "classes in `fakes.folder`")
+        problems.append(f"{where}: needs `fakes`: it reads the {language.interface_name}s of the parts `fakes.for` "
+                        "names and the classes in `fakes.folder`")
         return None
     return DeadCode(untested)
 

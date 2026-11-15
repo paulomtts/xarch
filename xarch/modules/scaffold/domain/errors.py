@@ -7,8 +7,9 @@ from xarch.kernel.errors import DomainError
 
 
 class InvalidName(DomainError):
-    def __init__(self, name: str):
-        super().__init__(f"'{name}' is not a valid name: use a lowercase Python identifier, e.g. 'documents'")
+    def __init__(self, name: str, language: str = ""):
+        identifier = f"{language} identifier".lstrip()
+        super().__init__(f"'{name}' is not a valid name: use a lowercase {identifier}, e.g. 'documents'")
 
 
 class UnknownKind(DomainError):

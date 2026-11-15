@@ -8,6 +8,7 @@ from copy import deepcopy
 
 import pytest
 
+from tests.modules.spec.languages import PYTHON
 from xarch.modules.spec.application.logic.profile_listing import listing, referenced
 from xarch.modules.spec.application.logic.profile_v2 import parse_v2
 from xarch.modules.spec.domain.errors import InvalidArchitecture
@@ -21,6 +22,7 @@ TESTING = {"files": ["test_*.py", "*_test.py"], "functions": "test_*", "skips": 
                      "autospec": ["unittest.mock.create_autospec"], "spec_keywords": ["spec", "spec_set"],
                      "fixtures": {"mocker": {"calls": ["Mock", "MagicMock"], "autospec": ["create_autospec"]}}}}
 PRESETS = {"pytest": TESTING}
+LANGUAGES = {"python": PYTHON}
 EX = {"ex": ("tests/src/billing/service/test_rules.py", "tests/src/billing/builders.py", "tests/checks/rules/test_x.py")}
 """The files of one example project, by its folder: what the listing holds for `docs.examples: [ex]`."""
 
@@ -68,12 +70,14 @@ def listed(document: dict, files: Collection[str] | None = None, folders: Mappin
 
 
 def parsed(document: dict, files: Collection[str] | None = None, presets=PRESETS, bundled=("cli", "web"),
-           folders: Mapping[str, tuple[str, ...]] | None = None, missing: Collection[str] = ()) -> Architecture:
-    return parse_v2(document, SOURCE, listed(document, files, folders, missing), presets, bundled)
+           folders: Mapping[str, tuple[str, ...]] | None = None, missing: Collection[str] = (),
+           languages=LANGUAGES) -> Architecture:
+    return parse_v2(document, SOURCE, listed(document, files, folders, missing), presets, bundled, languages)
 
 
 def problems(document: dict, files: Collection[str] | None = None, presets=PRESETS, bundled=("cli", "web"),
-             folders: Mapping[str, tuple[str, ...]] | None = None, missing: Collection[str] = ()) -> list[str]:
+             folders: Mapping[str, tuple[str, ...]] | None = None, missing: Collection[str] = (),
+             languages=LANGUAGES) -> list[str]:
     with pytest.raises(InvalidArchitecture) as caught:
-        parsed(document, files, presets, bundled, folders, missing)
+        parsed(document, files, presets, bundled, folders, missing, languages)
     return list(caught.value.problems)

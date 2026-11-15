@@ -2,10 +2,13 @@
 import pytest
 
 from tests.modules.spec.application.builders import spec_controller
+from tests.modules.spec.languages import PYTHON
+from xarch.modules.spec.application.logic.explain import said
 from xarch.modules.spec.contract import Explain, FormatExplained, KeyExplained, Shown, Symbol, UnknownKey
 from xarch.modules.spec.domain.profile_keys import SMALLEST, SYMBOLS
 
 BUNDLED = {"base": {}, "other": {}}
+SAID = tuple(Symbol(said(symbol, PYTHON), said(meaning, PYTHON)) for symbol, meaning in SYMBOLS)
 
 
 def explained(key: str):
@@ -83,7 +86,7 @@ SHAPE = (
 
 
 @pytest.mark.parametrize("given, when, then", [
-    pytest.param(BUNDLED, Explain(), FormatExplained(2, SHAPE, tuple(Symbol(s, m) for s, m in SYMBOLS), SMALLEST),
+    pytest.param(BUNDLED, Explain(), FormatExplained(2, SHAPE, SAID, SMALLEST),
                  id="with no key the whole format is explained"),
     pytest.param(BUNDLED, Explain("based_on"),
                  KeyExplained("based_on", "the file", "the bundled profile this was copied from",
@@ -101,7 +104,7 @@ def test_explain(given, when, then):
 
 def test_the_whole_format_is_the_keys_of_the_file_their_symbols_and_the_smallest_profile():
     assert FORMAT.version == 2 and FORMAT.smallest == SMALLEST
-    assert FORMAT.symbols == tuple(Symbol(symbol, meaning) for symbol, meaning in SYMBOLS)
+    assert FORMAT.symbols == SAID
     assert FORMAT.shape[0] == Shown("xarch", 0, "the format version", True, False)
     assert Shown("parts.may_import", 1, "what the part may import besides itself", False, True) in FORMAT.shape
 
@@ -115,7 +118,8 @@ def test_a_key_says_what_it_accepts_whether_check_enforces_it_through_which_rule
         ("fakes.folder", True), ("fakes.for", True), ("fakes.prefix", False)]
 
 
-def test_the_choices_are_the_bundled_profiles_and_the_testing_presets_the_files_hold():
+def test_the_choices_are_the_bundled_profiles_the_testing_presets_and_the_languages_the_files_hold():
     assert BASED_ON.choices == ("base", "other") and "based_on: base" in BASED_ON.example
+    assert explained("language").choices == ("python",) and explained("language").example == "language: python"
     assert explained("testing").choices == ("pytest",)
     assert explained("parts").choices == ()

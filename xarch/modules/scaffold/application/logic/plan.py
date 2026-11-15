@@ -8,10 +8,10 @@ from collections.abc import Iterable
 from pathlib import Path
 
 
-def plan(entries: Iterable[tuple[tuple[str, ...], bool]]) -> list[tuple[str, ...]]:
-    files = [("__init__.py",)]
+def plan(entries: Iterable[tuple[tuple[str, ...], bool]], package_file: str) -> list[tuple[str, ...]]:
+    files = [(package_file,)]
     for path, is_dir in entries:
-        files.append(path + ("__init__.py",) if is_dir else path)
+        files.append(path + (package_file,) if is_dir else path)
     return files
 
 

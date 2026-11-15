@@ -8,6 +8,7 @@ from typing import Any
 from xarch.kernel.logic.placement import (
     EACH,
     EVERYTHING,
+    Marks,
     Place,
     Repeat,
     Scope,
@@ -91,7 +92,7 @@ class Doc:
 class FileEntry:
     """A file `init` writes beside the app folder, in the folder holding it.
 
-    path: below the folder holding the app, e.g. ("tests", "architecture", "test_rules.py")
+    path: below the folder holding the app, e.g. ("tests", "architecture", "test_rules<ending>")
     source: the template the file is written from, relative to the architecture file; for a folder entry, the folder
     pinned: the project keeps it as `init` writes it; `check` reports it when it differs
     folder: the entry is a folder: every file under source is copied below path, keeping its relative path
@@ -111,7 +112,7 @@ class Example:
 
     name: how the docs template refers to it: its path in its project, written with `/`
     part: the part it illustrates; empty for what no part claims, such as test code
-    path: where the example would live in an app, e.g. ("src", "billing", "service", "charge.py")
+    path: where the example would live in an app, e.g. ("src", "billing", "service", "charge<ending>")
     file: the file holding its code, relative to the architecture file
     note: shown after its path on its header line in the docs
     """
@@ -151,7 +152,7 @@ class Subject:
 class TierExample:
     """A tier's example test: where it would live in a project, and the file holding it.
 
-    path: e.g. ("tests", "modules", "documents", "domain", "test_document.py")
+    path: e.g. ("tests", "modules", "documents", "domain", "test_document<ending>")
     file: the file holding its code, relative to the architecture file
     note: plain text, shown after its path on its header line in parentheses
     """
@@ -321,6 +322,46 @@ Guard = (PackageOnly | ScenarioCoverage | NoComments | StandIns | ClosedTree | N
 
 
 @dataclass(frozen=True)
+class Language:
+    """What is true of the language of the app as a whole, read from the data file of its preset (and from the runtime
+    for the names only it knows).
+
+    title: how a message names the language
+    extension: the ending of a source file's name
+    package_file: the name of the file that stands for the folder holding it
+    interface: the dotted names that mark a class as an interface
+    dynamic: the dotted names of what imports by a name worked out when the code runs
+    namespace: the namespace of the names bound without an import
+    standard: where the names of the standard library are known from
+    cache: the folder in which its tools keep what they compile; empty: none
+    standard_names: the top-level names of the standard library
+    builtin_names: the names bound without an import
+    reserved_names: the words no name may be
+    """
+    name: str = ""
+    title: str = ""
+    extension: str = ""
+    package_file: str = ""
+    interface: tuple[tuple[str, ...], ...] = ()
+    dynamic: tuple[tuple[str, ...], ...] = ()
+    namespace: str = ""
+    standard: str = ""
+    cache: str = ""
+    standard_names: frozenset[str] = frozenset()
+    builtin_names: frozenset[str] = frozenset()
+    reserved_names: frozenset[str] = frozenset()
+
+    @property
+    def marks(self) -> Marks:
+        return Marks(self.extension, self.package_file)
+
+    @property
+    def interface_name(self) -> str:
+        """What an interface is called in the language: the last step of the first name that marks one."""
+        return self.interface[0][-1] if self.interface else ""
+
+
+@dataclass(frozen=True)
 class Architecture:
     """An architecture as described in an architecture file (format version 1).
 
@@ -343,6 +384,7 @@ class Architecture:
     excluded: the folders below the app that are not its source, in the order of the file
     hints: the project's own advice for a rule id, shown after the built-in fix of a violation of that rule
     based_on: the bundled profile it says it was copied from; empty when it does not say
+    language: the language of the app
     """
     name: str
     layout: Layout
@@ -365,6 +407,7 @@ class Architecture:
     excluded: tuple[Excluded, ...] = ()
     hints: dict[str, str] = field(default_factory=dict)
     based_on: str = ""
+    language: Language = Language()
 
     @property
     def entry(self) -> Part | None:
@@ -391,10 +434,10 @@ class Architecture:
         return with_itself(part, self.parts[part].path, self.rules.get(part, ())) if part in self.parts else ()
 
     def place_of(self, path: tuple[str, ...]) -> Place:
-        """Where a path below the app root sits, e.g. ("modules", "billing", "domain", "invoice.py") or the dotted
-        module ("modules", "billing", "domain", "invoice"): the part whose pattern it lies in, the deepest when parts
-        nest, with `*` capturing the module; a path no part claims is structure."""
-        return place_of(self.patterns(), path)
+        """Where a path below the app root sits, written as a file or as the language names it without the file's
+        ending: the part whose pattern it lies in, the deepest when parts nest, with `*` capturing the module; a path no
+        part claims is structure."""
+        return place_of(self.patterns(), path, self.language.marks)
 
     def patterns(self) -> dict[str, tuple[str, ...]]:
         """Every part's path pattern, by name."""

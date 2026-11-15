@@ -68,7 +68,7 @@ def _enforcement(state: Enforcement) -> EnforcementView:
         tuple(AtView(a.file, a.line) for a in state.skipped), tuple(AtView(a.file, a.line) for a in state.dynamic),
         tuple(WeakView(w.rule, w.file, w.line, w.message, w.fix) for w in state.weak),
         tuple(FindingView(f.key, f.detail) for f in state.strict),
-        tuple(ExcludedView(e.folder, e.reason) for e in state.excluded))
+        tuple(ExcludedView(e.folder, e.reason) for e in state.excluded), state.language)
 
 
 def _where(found: Where) -> WhereView:

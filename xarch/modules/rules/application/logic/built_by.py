@@ -27,13 +27,13 @@ def violations(app: Iterable[SourceFile], profile: Profile, root: str) -> list[V
     app = list(app)
     classes: dict[tuple[str, ...], tuple[str, Place]] = {}
     for file in app:
-        steps, _ = dotted(file.path)
+        steps, _ = dotted(file.path, profile.language.marks)
         where = place(profile, steps)
         if where is not None and where.part in profile.built_by:
             classes.update({(root, *steps, c.name): (where.part, where) for c in file.classes})
     found: list[Violation] = []
     for file in app:
-        src = place(profile, dotted(file.path)[0])
+        src = place(profile, dotted(file.path, profile.language.marks)[0])
         for call in file.calls:
             if call.func not in classes:
                 continue

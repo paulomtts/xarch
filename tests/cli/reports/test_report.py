@@ -85,9 +85,10 @@ def test_the_json_document_holds_the_violations_in_order_and_both_lists_of_guard
 
 def test_an_excluded_folder_is_named_with_its_reason_after_the_ungoverned_files():
     state = EnforcementView(OriginView("web"), ("app/stray.py",), excluded=(ExcludedView("app/examples", "shipped as data"),
-                                                                  ExcludedView("app/kernel/legacy", "copied code")))
+                                                                  ExcludedView("app/kernel/legacy", "copied code")),
+                            language="Pascal")
     assert enforcement_lines(state, False)[2:] == [
-        "  ungoverned:  1 Python file outside every part (app/stray.py)",
+        "  ungoverned:  1 Pascal file outside every part (app/stray.py)",
         "  excluded:    app/examples/ (shipped as data)",
         "  excluded:    app/kernel/legacy/ (copied code)"]
 
@@ -121,3 +122,8 @@ def test_the_json_weak_items_hold_their_fix_or_null():
          "message": "FakeR does not define get, which R declares", "fix": None},
         {"rule": "pass-through", "file": "app/s.py", "line": 4,
          "message": "S.get only passes its arguments on to self.repo.get", "fix": "use self.repo.get"}]
+
+
+def test_ungoverned_files_are_source_files_when_the_language_is_not_named():
+    state = EnforcementView(OriginView("web"), ("app/a.src", "app/b.src"))
+    assert enforcement_lines(state, False)[2:] == ["  ungoverned:  2 source files outside every part (app/a.src, app/b.src)"]

@@ -13,12 +13,12 @@ GUARDS = {
                          "read from the syntax tree, never run",
     "no-comments": "{}: no `#` comments in the app or its tests, whole-line or trailing; docstrings stay, and so do "
                    "`# type: ignore`, `# noqa`, `# pragma:`, a shebang and an encoding line",
-    "stand-ins": "{}: every Protocol in a part `fakes` stands in for is fire-only (every method returns None) or read "
+    "stand-ins": "{}: every %interface% in a part `fakes` stands in for is fire-only (every method returns None) or read "
                  "(any one returns a value), each method annotated; every read port has a fake <prefix><Port> in "
                  "`fakes.folder`; and a test of a tier that may import the fakes gives every mock (`testing.mocks`) "
                  "a spec, never a read port's; silent where it cannot read the code: `*args`, a spec that is a "
                  "variable, a re-exported port, mocks made by `patch`",
-    "closed-tree": "{}: every Python file of the app lies in a part or is the package file of a folder of the layout; "
+    "closed-tree": "{}: every %language% file of the app lies in a part or is the package file of a folder of the layout; "
                    "off unless switched on, since a profile is a protocol, not a closed world; a folder the profile "
                    "`excluded` is not looked at",
     "no-duplicates": "{min_statements: <number>}: no two functions or methods of the app (never its tests) have the "
@@ -27,7 +27,7 @@ GUARDS = {
                      "async or not, and number of parameters; what is called is part of it. A function counts when "
                      "it holds at least min_statements statements (nested ones counted; 4 when left out). The first "
                      "by file and line is the original; each other is reported naming it",
-    "dead-code": "{untested: true|false}: every port (a Protocol in a part `fakes.for` names) is named by another file "
+    "dead-code": "{untested: true|false}: every port (a %interface% in a part `fakes.for` names) is named by another file "
                  "of the app, in code or an annotation, and every fake (a top-level class of the fakes folder whose "
                  "name starts with `prefix`) is named by a test outside that folder or by a fake that is itself used. "
                  "The port's own file, package files and the wiring (a part that may import `everything`) do not "

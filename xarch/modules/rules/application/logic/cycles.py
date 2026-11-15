@@ -23,7 +23,7 @@ Edge = tuple[str, int, str]
 def violations(files: Iterable[SourceFile], profile: Profile, root: str) -> list[Violation]:
     if not profile.repeats:
         return []
-    parsed = [(f, *dotted(f.path)) for f in files]
+    parsed = [(f, *dotted(f.path, profile.language.marks)) for f in files]
     known = {steps for _, steps, _ in parsed}
     edges: dict[str, dict[str, Edge]] = {}
     for file, steps, is_package in sorted(parsed, key=lambda p: p[0].name):

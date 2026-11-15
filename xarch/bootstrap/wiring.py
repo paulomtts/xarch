@@ -22,6 +22,7 @@ from xarch.modules.scaffold.application.services.scaffolding import ScaffoldingS
 from xarch.modules.spec.adapters.fs_architecture_files import FsArchitectureFiles
 from xarch.modules.spec.adapters.fs_folders import FsFolders
 from xarch.modules.spec.adapters.fs_profile_output import FsProfileOutput
+from xarch.modules.spec.adapters.interpreter_runtime import InterpreterRuntime
 from xarch.modules.spec.adapters.pyproject_settings import PyprojectSettings
 from xarch.modules.spec.adapters.yaml_profile_format import YamlProfileFormat
 from xarch.modules.spec.application.controller import SpecController
@@ -53,7 +54,7 @@ class Controllers:
 def build_spec(fs: FileSystem | None = None) -> SpecController:
     fs = fs or FileSystem()
     files = FsArchitectureFiles(fs, DataFileReader(), BUNDLED)
-    architectures = ArchitectureService(files)
+    architectures = ArchitectureService(files, InterpreterRuntime())
     settings = PyprojectSettings(fs, TomlReader())
     output = FsProfileOutput(fs)
     selection = ProfileSelectionService(settings, architectures, files, FsFolders(fs))
@@ -63,7 +64,7 @@ def build_spec(fs: FileSystem | None = None) -> SpecController:
 
 
 def build_architectures(fs: FileSystem | None = None) -> ArchitectureService:
-    return ArchitectureService(FsArchitectureFiles(fs or FileSystem(), DataFileReader(), BUNDLED))
+    return ArchitectureService(FsArchitectureFiles(fs or FileSystem(), DataFileReader(), BUNDLED), InterpreterRuntime())
 
 
 def load_architecture(location: str | Path) -> Architecture:

@@ -12,6 +12,8 @@ from xarch.platform.package_data import PackageData
 
 PRESETS = "presets/testing"
 """Where the presets of `testing` are, below the bundled folder: one YAML file each, named for the preset."""
+LANGUAGES = "presets/language"
+"""Where the data files of the languages are, below the bundled folder: one YAML file each, named for the language."""
 
 
 class FsArchitectureFiles:
@@ -25,14 +27,20 @@ class FsArchitectureFiles:
                      if name.endswith(PROFILE_SUFFIX))
 
     def testing_presets(self) -> dict[str, Any]:
+        return self._documents(PRESETS)
+
+    def language_presets(self) -> dict[str, Any]:
+        return self._documents(LANGUAGES)
+
+    def _documents(self, folder: str) -> dict[str, Any]:
         found: dict[str, Any] = {}
-        for name in self._package.files_in(PRESETS):
+        for name in self._package.files_in(folder):
             if name.endswith(PROFILE_SUFFIX):
                 try:
                     found[name.removesuffix(PROFILE_SUFFIX)] = self._reader.parse(
-                        self._package.read_text(f"{PRESETS}/{name}"))
+                        self._package.read_text(f"{folder}/{name}"))
                 except (OSError, UnicodeDecodeError, DataFileError) as e:
-                    raise InvalidArchitecture(f"{PRESETS}/{name}", [f"cannot read the preset: {e}"]) from e
+                    raise InvalidArchitecture(f"{folder}/{name}", [f"cannot read the preset: {e}"]) from e
         return found
 
     def read(self, source: ArchitectureSource) -> ArchitectureDocument:

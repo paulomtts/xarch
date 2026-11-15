@@ -27,7 +27,8 @@ class ScaffoldingService:
         file is reached."""
         absolute = root.absolute()
         files = self._skeleton.files(profile, app_name(root, absolute.resolve()))
-        touched = self._build(root, self._skeleton.top_level(profile))
+        package = self._skeleton.package_file(profile)
+        touched = self._build(root, self._skeleton.top_level(profile), package)
         base = holder(root, absolute)
         touched.append(self._record(base, root, profile))
         for rel, template in self._skeleton.docs(profile):
@@ -38,8 +39,8 @@ class ScaffoldingService:
 
     def new(self, root: Path, kind: str, name: str, profile: str) -> list[Touched]:
         """Refused unless the name is valid, the kind is declared, init ran and nothing would be overwritten."""
-        if not valid_name(name):
-            raise InvalidName(name)
+        if not valid_name(name, self._skeleton.reserved(profile)):
+            raise InvalidName(name, self._skeleton.language(profile))
         kinds = self._skeleton.kinds(profile)
         if kind not in kinds:
             raise UnknownKind(kind, kinds, {word: "/".join(path) for word, (path, _) in kinds.items()})
@@ -50,7 +51,7 @@ class ScaffoldingService:
         base = parent / name
         if self._files.kind(base) is not None:
             raise AlreadyExists(name, base)
-        return self._build(base, entries)
+        return self._build(base, entries, self._skeleton.package_file(profile))
 
     def _record(self, base: Path, root: Path, profile: str) -> Touched:
         """Record the profile, then the app folder when it is not the default, in the pyproject.toml of the project."""
@@ -65,8 +66,8 @@ class ScaffoldingService:
         self._files.lay_down(target, changed)
         return Touched(target, CREATED if found is None else UPDATED)
 
-    def _build(self, base: Path, entries: Iterable[tuple[tuple[str, ...], bool]]) -> list[Touched]:
-        return [self._write(base.joinpath(*rel), "") for rel in plan(entries)]
+    def _build(self, base: Path, entries: Iterable[tuple[tuple[str, ...], bool]], package_file: str) -> list[Touched]:
+        return [self._write(base.joinpath(*rel), "") for rel in plan(entries, package_file)]
 
     def _write(self, target: Path, content: str | bytes) -> Touched:
         """Never overwrites: what exists is reported skipped."""

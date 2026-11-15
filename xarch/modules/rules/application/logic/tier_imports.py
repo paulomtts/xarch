@@ -2,12 +2,12 @@
 
 A file below the tests root that has a tier (see tier_of) may import, of the app, the part its folder mirrors (its
 subject, see tier_of) and whatever that part may import under `rules`, where @own means the instance of the `each`
-folder the test mirrors; a file in the folder of file parts (such as a controller.py) has those parts as its
+folder the test mirrors; a file in the folder of file parts (such as an application controller) has those parts as its
 subject. A file with no subject, placed by its tier's folder (such as the guard tier's), may import its
 tier's subject parts and whatever those may import. Of the test code, it may import the fakes only when its tier's
 subject holds a part the fakes stand in for, and any other file only from its own folder (see tier_of), never a test
 file (a file whose name the profile's test files match): what tests share lives in test code that is no test. A test
-file that has no tier is a violation; any other file with no tier (a conftest.py or builders.py above every part's
+file that has no tier is a violation; any other file with no tier (a shared configuration or a builders file above every part's
 folder) and the fakes are not checked. Imports of the standard library and outside packages are not this check's
 business.
 """
@@ -57,9 +57,9 @@ def violations(tests: Iterable[SourceFile], app: Iterable[SourceFile], profile: 
     if not profile.tiers:
         return []
     tests = list(tests)
-    known_app = {dotted(f.path)[0] for f in app}
-    known_tests = {dotted(f.path)[0] for f in tests}
-    test_files = {dotted(f.path)[0] for f in tests if is_test(profile, f.path)}
+    known_app = {dotted(f.path, profile.language.marks)[0] for f in app}
+    known_tests = {dotted(f.path, profile.language.marks)[0] for f in tests}
+    test_files = {dotted(f.path, profile.language.marks)[0] for f in tests if is_test(profile, f.path)}
     found: list[Violation] = []
     for file in tests:
         where = tested(profile, file.path)
@@ -93,7 +93,7 @@ def _app_imports(file: SourceFile, where: Tested, profile: Profile, root: str,
 def _test_imports(file: SourceFile, where: Tested, profile: Profile, tests_root: str,
                   known: set[tuple[str, ...]], test_files: set[tuple[str, ...]]) -> Iterator[Violation]:
     assert where.tier is not None
-    steps, is_package = dotted(file.path)
+    steps, is_package = dotted(file.path, profile.language.marks)
     seen: set[tuple[int, tuple[str, ...]]] = set()
     for line, target in targets(file.imports, steps if is_package else steps[:-1], known, tests_root):
         shown = ".".join((tests_root, *target))

@@ -8,14 +8,14 @@ from xarch.modules.rules.domain.values import SourceFile, TableForm
 
 
 class SourceTree(Protocol):
-    """The Python files below a root folder, listed, then read already parsed."""
+    """The source files below a root folder, listed, then read already parsed."""
 
     def absent(self, roots: Iterable[Path]) -> list[Path]:
         """The roots that are no folder, in the order given."""
         ...
 
     def paths(self, root: Path) -> list[tuple[str, ...]]:
-        """The path below root of every .py file, sorted."""
+        """The path below root of every source file, sorted."""
         ...
 
     def read(self, root: Path, paths: list[tuple[str, ...]], table: TableForm | None = None) -> list[SourceFile]:

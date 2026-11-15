@@ -9,7 +9,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class Requirement:
     """Something that must exist below the root: owner is who is incomplete without it (e.g. "app" or
-    "app/modules/docs"), and shown how it is named when missing (e.g. "kernel/" or "application/controller.py")."""
+    "app/modules/docs"), and shown how it is named when missing (e.g. "kernel/" or "application/controller" and its ending)."""
     owner: str
     path: tuple[str, ...]
     is_dir: bool

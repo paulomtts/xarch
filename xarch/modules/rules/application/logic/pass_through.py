@@ -26,7 +26,7 @@ def weak(app: Iterable[SourceFile], profile: Profile) -> list[Weak]:
         return []
     found: list[Weak] = []
     for file in app:
-        where = place(profile, dotted(file.path)[0])
+        where = place(profile, dotted(file.path, profile.language.marks)[0])
         if where is None or where.part not in profile.pass_through:
             continue
         for function in file.functions:

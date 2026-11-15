@@ -76,7 +76,8 @@ class ExcludedView:
 class EnforcementView:
     """The state of the check's own enforcement, beside its violations: the origin of the profile; the files no part
     governs; the init files missing or changed; the skipped tests and dynamic imports; the checks met to the letter
-    only; the findings `--strict` fails on; and the folders the profile excludes."""
+    only; the findings `--strict` fails on; the folders the profile excludes; and how the language of the app is
+    named."""
     origin: OriginView = OriginView()
     ungoverned: tuple[str, ...] = ()
     init_files: tuple[DriftView, ...] = ()
@@ -85,6 +86,7 @@ class EnforcementView:
     weak: tuple[WeakView, ...] = ()
     strict: tuple[FindingView, ...] = ()
     excluded: tuple[ExcludedView, ...] = ()
+    language: str = ""
 
 
 @dataclass(frozen=True)

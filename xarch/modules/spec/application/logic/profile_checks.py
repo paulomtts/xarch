@@ -4,9 +4,7 @@ parsed, or None when it found problems. The keys a mapping accepts come from pro
 write the same way."""
 from __future__ import annotations
 
-import builtins
 import re
-import sys
 from collections.abc import Collection, Mapping
 from fnmatch import fnmatchcase
 from typing import Any
@@ -28,6 +26,7 @@ from xarch.modules.spec.domain.values import (
     FileEntry,
     Fixture,
     Framework,
+    Language,
     Layout,
     Naming,
     Part,
@@ -39,9 +38,17 @@ PART_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_-]*")
 PACKAGE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 DOTTED = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+")
 NAME_OR_DOTTED = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*")
-FILE_PATTERN = re.compile(r"[A-Za-z0-9_.*-]+\.py")
-FILE_NAME = re.compile(r"[A-Za-z0-9_.-]+\.py")
 FUNCTION_PATTERN = re.compile(r"[A-Za-z0-9_*]+")
+
+
+def file_pattern(language: Language) -> re.Pattern[str]:
+    """What a file name pattern is: letters, digits, `_`, `.`, `-` and `*`, ending in the language's extension."""
+    return re.compile(rf"[A-Za-z0-9_.*-]+{re.escape(language.extension)}")
+
+
+def file_name(language: Language) -> re.Pattern[str]:
+    """What a file name is: letters, digits, `_`, `.` and `-`, ending in the language's extension."""
+    return re.compile(rf"[A-Za-z0-9_.-]+{re.escape(language.extension)}")
 
 
 def resolves(path: tuple[str, ...], layout: Layout) -> bool:
@@ -150,10 +157,11 @@ def doc_pages(value: Any, listed: Collection[str], problems: list[str], at: str)
 
 
 def init_files(value: Any, docs: tuple[Doc, ...], files: Collection[str], problems: list[str],
-               docs_at: str) -> tuple[FileEntry, ...]:
+               docs_at: str, language: Language) -> tuple[FileEntry, ...]:
     """The project files: each path below the project root with the template, or the folder, it is written from."""
     if not isinstance(value, Mapping):
-        problems.append("files: must be a mapping of paths to {from}, such as {tests/rules.py: {from: guard.py}}")
+        problems.append("files: must be a mapping of paths to {from}, such as {tests/rules"
+                        f"{language.extension}: {{from: guard{language.extension}}}}}")
         return ()
     found: list[FileEntry] = []
     for key, spec in value.items():
@@ -263,14 +271,15 @@ def doc_clashes(doc: Doc, files: set[tuple[str, ...]], folders: set[tuple[str, .
     return found
 
 
-def tier_folder(value: Any, parts: dict[str, Part], where: str, problems: list[str]) -> tuple[str, ...] | None:
+def tier_folder(value: Any, parts: dict[str, Part], where: str, problems: list[str],
+                language: Language) -> tuple[str, ...] | None:
     """The folder below the tests folder where a tier's tests live when they mirror no part."""
     steps = tuple(value.split("/")) if line(value) and not value.startswith("/") else ()
     if not steps or any(step in ("", ".", "..") or EACH in step for step in steps):
         problems.append(f"{where}: must be a folder below the tests folder, such as architecture: relative, with no "
                         "`..`, no empty step and no `*`")
         return None
-    mirrored = place_of({name: part.path for name, part in parts.items()}, steps).part
+    mirrored = place_of({name: part.path for name, part in parts.items()}, steps, language.marks).part
     if mirrored is not None:
         problems.append(f"{where}: '{value}' is the folder of part '{mirrored}', which places its tests: give `folder` "
                         "only to a folder that mirrors no part")
@@ -375,14 +384,14 @@ def case_table(value: Any, where: str, problems: list[str]) -> CaseTable | None:
     return CaseTable(decorator, row, value["id"], (keywords[0], keywords[1]) if keywords else None)
 
 
-def use_case_file(value: Any, framework: Framework | None, where: str, problems: list[str],
+def use_case_file(value: Any, framework: Framework | None, where: str, problems: list[str], language: Language,
                   files_key: str = "tests.files") -> str | None:
     if not isinstance(value, str) or value.count(NAME) != 1:
-        problems.append(f"{where}: must hold `{NAME}` once, such as a_{NAME}.py")
+        problems.append(f"{where}: must hold `{NAME}` once, such as a_{NAME}{language.extension}")
         return None
     name = value.replace(NAME, "x")
-    if not FILE_NAME.fullmatch(name):
-        problems.append(f"{where}: must be a file name below the test folders, such as a_{NAME}.py")
+    if not file_name(language).fullmatch(name):
+        problems.append(f"{where}: must be a file name below the test folders, such as a_{NAME}{language.extension}")
         return None
     if framework is not None and not any(fnmatchcase(name, pattern) for pattern in framework.files):
         problems.append(f"{where}: {value!r} is not a name `{files_key}` recognises as a test file")
@@ -459,7 +468,8 @@ def identifiers(value: Any, where: str, problems: list[str], noun: str, example:
     return tuple(found)
 
 
-def framework_patterns(value: Any, problems: list[str], where: str, known: Collection[str]) -> Framework | None:
+def framework_patterns(value: Any, problems: list[str], where: str, known: Collection[str],
+                       language: Language) -> Framework | None:
     """How the test framework names test files and functions, the map written at `where`; `known` are the keys the
     map may hold, which the caller may widen with what it reads itself."""
     if not isinstance(value, Mapping):
@@ -469,7 +479,7 @@ def framework_patterns(value: Any, problems: list[str], where: str, known: Colle
     count = len(problems)
     problems += unknown_keys(value, known, where)
     problems += [f"{where}: missing `{key}`" for key in ("files", "functions") if key not in value]
-    files = file_patterns(value["files"], problems, f"{where}.files") if "files" in value else None
+    files = file_patterns(value["files"], problems, f"{where}.files", language) if "files" in value else None
     skips = dotted_names(value["skips"], f"{where}.skips", problems) if "skips" in value else ()
     functions = value.get("functions")
     if "functions" in value and not (isinstance(functions, str) and FUNCTION_PATTERN.fullmatch(functions)
@@ -480,16 +490,17 @@ def framework_patterns(value: Any, problems: list[str], where: str, known: Colle
     return Framework(files, functions, skips)
 
 
-def file_patterns(value: Any, problems: list[str], where: str) -> tuple[str, ...] | None:
+def file_patterns(value: Any, problems: list[str], where: str, language: Language) -> tuple[str, ...] | None:
     if not isinstance(value, list) or not value:
-        problems.append(f"{where}: must be a non-empty list of file name patterns, each a .py name with `*` for any "
-                        "text")
+        problems.append(f"{where}: must be a non-empty list of file name patterns, each a {language.extension} name "
+                        "with `*` for any text")
         return None
+    pattern = file_pattern(language)
     found: list[str] = []
     for item in value:
-        if not isinstance(item, str) or not FILE_PATTERN.fullmatch(item):
-            problems.append(f"{where}: {item!r} is not a file name pattern: a name ending in .py, with `*` for any "
-                            "text")
+        if not isinstance(item, str) or not pattern.fullmatch(item):
+            problems.append(f"{where}: {item!r} is not a file name pattern: a name ending in {language.extension}, "
+                            "with `*` for any text")
         elif item in found:
             problems.append(f"{where}: {item!r} is listed twice")
         else:
@@ -537,7 +548,7 @@ def quoted(names: list[str]) -> str:
     return ", ".join(f"'{n}'" for n in names)
 
 
-def package_names(value: Any, where: str, problems: list[str]) -> tuple[str, ...] | None:
+def package_names(value: Any, where: str, problems: list[str], language: Language) -> tuple[str, ...] | None:
     """The outside packages a part may import, by top-level import name; the standard library is no entry."""
     if not isinstance(value, list):
         problems.append(f"{where}: must be a list of top-level import names, such as [sqlmodel]")
@@ -546,7 +557,7 @@ def package_names(value: Any, where: str, problems: list[str]) -> tuple[str, ...
     for package in value:
         if not isinstance(package, str) or not PACKAGE.fullmatch(package):
             problems.append(f"{where}: {package!r} is not a top-level import name, such as sqlmodel")
-        elif package in sys.stdlib_module_names:
+        elif package in language.standard_names:
             problems.append(f"{where}: {package!r} is in the standard library, which every part may import")
         elif package in found:
             problems.append(f"{where}: {package!r} is listed twice")
@@ -555,8 +566,10 @@ def package_names(value: Any, where: str, problems: list[str]) -> tuple[str, ...
     return tuple(found)
 
 
-def forbidden_names(value: Any, where: str, problems: list[str]) -> tuple[tuple[str, ...], ...] | None:
-    """The names a part may not use: dotted names, or modules by their import name; a builtin is builtins.<name>."""
+def forbidden_names(value: Any, where: str, problems: list[str],
+                    language: Language) -> tuple[tuple[str, ...], ...] | None:
+    """The names a part may not use: dotted names, or modules by their import name; a builtin is written in the
+    language's namespace for them, <namespace>.<name>."""
     if not isinstance(value, list) or not value:
         problems.append(f"{where}: must be a non-empty list of dotted names or import names, such as "
                         "[datetime.datetime.now, socket]")
@@ -566,9 +579,9 @@ def forbidden_names(value: Any, where: str, problems: list[str]) -> tuple[tuple[
         if not isinstance(item, str) or not NAME_OR_DOTTED.fullmatch(item):
             problems.append(f"{where}: {item!r} is not a dotted name such as datetime.datetime.now, nor an import "
                             "name such as socket")
-        elif "." not in item and hasattr(builtins, item):
-            problems.append(f"{where}: {item!r} is a Python builtin, which a bare name does not ban: write "
-                            f"builtins.{item}")
+        elif "." not in item and item in language.builtin_names:
+            problems.append(f"{where}: {item!r} is a {language.title} builtin, which a bare name does not ban: write "
+                            f"{language.namespace}.{item}")
         elif tuple(item.split(".")) in found:
             problems.append(f"{where}: {item!r} is listed twice")
         else:

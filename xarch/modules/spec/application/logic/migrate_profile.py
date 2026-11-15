@@ -36,9 +36,11 @@ class Converted:
     by_hand: tuple[str, ...]
 
 
-def convert(document: Any, source: str, presets: Mapping[str, Any], files: Collection[str]) -> Converted:
+def convert(document: Any, source: str, presets: Mapping[str, Any], files: Collection[str],
+            language: str) -> Converted:
     """The conversion of a profile in format 1; raises InvalidArchitecture when the document cannot be read as one.
-    files are the files next to it that it names, and every file below the folders it names (see referenced_v1)."""
+    files are the files next to it that it names, and every file below the folders it names (see referenced_v1);
+    language is the language it is written for, which format 1 never named."""
     old = read_v1(document, source)
     changes: list[str] = []
     by_hand = [f"`{key}`: not a key of format 1, so nothing of it is converted: write it by hand if it still matters"
@@ -57,7 +59,7 @@ def convert(document: Any, source: str, presets: Mapping[str, Any], files: Colle
     package_only = _package_only(old)
     parts = {name: _part(old, name, rows, assigned, folders, forbidden_of, package_only, changes, by_hand)
              for name in order}
-    out: dict[str, Any] = {"xarch": 2, "name": old.name, "language": "python"}
+    out: dict[str, Any] = {"xarch": 2, "name": old.name, "language": language}
     testing = _testing(old, presets)
     if testing is not None:
         out["testing"] = testing

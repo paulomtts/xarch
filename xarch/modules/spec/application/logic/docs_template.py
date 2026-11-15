@@ -39,7 +39,7 @@ architecture. Prose, diagrams and code examples stay as the author wrote them; o
                            is left out
 
 Where {{example:...}} or {{tier_examples}} stands alone, it writes the whole fenced block, whose language comes from the files' extension
-(.py is python), so the examples of one block share an extension. Written inside a fenced block of the template's
+(the language of the app names its own), so the examples of one block share an extension. Written inside a fenced block of the template's
 own, it writes only the examples, and the template adds the rest of the block: an excerpt that is not a file of the
 example project, such as a few lines of a function, stays in the template as the author wrote it.
 
@@ -65,6 +65,7 @@ from xarch.modules.spec.domain.values import (
     DeadCode,
     Doc,
     Guard,
+    Language,
     Layout,
     NoDuplicates,
     PackageOnly,
@@ -81,7 +82,9 @@ from xarch.modules.spec.domain.values import (
 PLACEHOLDER = re.compile(r"\{\{(.*?)\}\}")
 FENCE = re.compile(r"^```", re.MULTILINE)
 """A line that opens or closes a fenced block."""
-_LANGUAGE = {".py": "python", ".sh": "bash", ".yml": "yaml", ".js": "javascript", ".ts": "typescript", ".md": "markdown"}
+_LANGUAGE = {".sh": "bash", ".yml": "yaml", ".js": "javascript", ".ts": "typescript", ".md": "markdown"}
+"""The language of a code block by its file's extension, besides the language of the app, whose own name the block
+uses; any other extension is named by itself."""
 _COMMENT = {".js": "//", ".ts": "//", ".go": "//", ".rs": "//", ".java": "//", ".kt": "//", ".sql": "--"}
 """The line-comment marker of a code block by its file's extension; any other extension uses "#"."""
 DOCS_NOTE_GAP = 8
@@ -253,10 +256,10 @@ def _example(architecture: Architecture, names: str, context: _Context) -> str:
         raise _Missing(f"the file of example {_quoted(unread)} was not read")
     examples = [architecture.examples[name] for name in chosen]
     return _block([(f"{'/'.join(example.path)}{': ' + example.note if example.note else ''}", example.file,
-                    context.examples[example.name]) for example in examples], context.in_fence)
+                    context.examples[example.name]) for example in examples], context.in_fence, architecture.language)
 
 
-def _block(files: list[tuple[str, str, str]], in_fence: bool) -> str:
+def _block(files: list[tuple[str, str, str]], in_fence: bool, language: Language) -> str:
     """(header, file, text): each text under its header as a comment, one blank line apart, fenced unless in_fence."""
     suffixes = {_suffix(file) for _, file, _ in files}
     if len(suffixes) > 1:
@@ -266,7 +269,8 @@ def _block(files: list[tuple[str, str, str]], in_fence: bool) -> str:
     body = "\n\n".join(f"{comment} {header}\n" + text.rstrip("\n") for header, _, text in files)
     if in_fence:
         return body
-    return f"```{_LANGUAGE.get(suffix, suffix.lstrip('.'))}\n{body}\n```"
+    named = language.name if suffix == language.extension else _LANGUAGE.get(suffix, suffix.lstrip('.'))
+    return f"```{named}\n{body}\n```"
 
 
 def _tiers(architecture: Architecture, _: str, __: _Context) -> str:
@@ -333,7 +337,8 @@ def _tier_examples(architecture: Architecture, _: str, context: _Context) -> str
     if unread:
         raise _Missing(f"the example of tier {_quoted(unread)} was not read")
     return _block([(f"{tier.name}: {'/'.join(tier.example.path)}{_aside(tier.example.note)}", tier.example.file,
-                    context.tier_examples[tier.name]) for tier in tiers if tier.example is not None], context.in_fence)
+                    context.tier_examples[tier.name]) for tier in tiers if tier.example is not None], context.in_fence,
+                  architecture.language)
 
 
 def _aside(note: str) -> str:
@@ -348,7 +353,7 @@ def _tier_helpers(architecture: Architecture, _: str, context: _Context) -> str:
     if unread:
         raise _Missing(f"the helper file {_quoted(unread)} was not read")
     return _block([(f"{'/'.join(helper.path)}{_aside(helper.note)}", helper.file, context.tier_examples[helper.file])
-                   for helper in helpers], context.in_fence)
+                   for helper in helpers], context.in_fence, architecture.language)
 
 
 def _tiers_of(architecture: Architecture) -> tuple[Tier, ...]:
@@ -494,7 +499,8 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
             reached = (" A file of a part with a tier that no test of that tier reaches, directly or through files of "
                        "parts of the same tier, is listed in the enforcement section, and fails `check --strict` "
                        "only." if untested else "")
-            return (f"`dead-code`: every `Protocol` in {ports} is named by another file of the app, and every fake in "
+            interface = architecture.language.interface_name
+            return (f"`dead-code`: every `{interface}` in {ports} is named by another file of the app, and every fake in "
                     f"`{'/'.join(('tests', *fakes.folder))}/` by a test; the wiring and re-exports do not "
                     f"count.{reached}")
         case PrivateImports():
@@ -505,8 +511,9 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
             return (f"`pass-through`: a method of {shown} whose whole body forwards to one call on a collaborator is "
                     "listed in the enforcement section, and fails `check --strict` only.")
         case ClosedTree():
-            return ("`closed-tree`: every Python file of the app lies in a part, or is the package file "
-                    "(`__init__.py`) of a folder of the layout.")
+            language = architecture.language
+            return (f"`closed-tree`: every {language.title} file of the app lies in a part, or is the package file "
+                    f"(`{language.package_file}`) of a folder of the layout.")
         case _:
             return ("`no-comments`: no `#` comments in the app or its tests; docstrings and tool directives "
                     "(`# type: ignore`, `# noqa`, `# pragma:`) stay.")
@@ -569,7 +576,8 @@ def _stand_ins_line(architecture: Architecture, mock: str, spec: str, built: str
     fixture = f" (or, from a fixture, `{built}({spec}=<Port>)`)" if built else ""
     mocks = (f"; and every mock in the {tiers} tests names what it stands in for, `{mock}({spec}=<Port>)`{fixture}, "
              "never a read port") if tiers else ""
-    return (f"`stand-ins`: every `Protocol` in {parts} is fire-only (every method returns `None`) or read (any "
+    interface = architecture.language.interface_name
+    return (f"`stand-ins`: every `{interface}` in {parts} is fire-only (every method returns `None`) or read (any "
             "method returns a value), each method annotated; every read port `<Port>` has a fake "
             f"`{fakes.prefix}<Port>` in `{'/'.join(('tests', *fakes.folder))}/`{mocks} (section 6).")
 

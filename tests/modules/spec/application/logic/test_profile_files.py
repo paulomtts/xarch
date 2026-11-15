@@ -1,6 +1,9 @@
 """The files a profile points to: its templates, init files (a folder as every file under it) and examples."""
+from dataclasses import replace
+
+from tests.modules.spec.languages import PYTHON
 from xarch.modules.spec.application.logic.profile_files import pointed_files
-from xarch.modules.spec.domain.values import Architecture, Doc, Example, FileEntry
+from xarch.modules.spec.domain.values import Architecture, Doc, Example, FileEntry, Language
 
 LISTING = {"presets": ("a.txt", "deep/b.txt", "__pycache__/c.pyc")}
 
@@ -10,7 +13,8 @@ def architecture() -> Architecture:
         "mine", {}, {}, {},
         docs=(Doc(("statement.md",), "docs/statement.md"), Doc(("adrs",), None), Doc(("again.md",), "docs/statement.md")),
         examples={"src/x.py": Example("src/x.py", "", ("src", "x.py"), "examples/src/x.py")},
-        files=(FileEntry(("AGENTS.md",), "agents.md"), FileEntry(("tests",), "presets", folder=True)))
+        files=(FileEntry(("AGENTS.md",), "agents.md"), FileEntry(("tests",), "presets", folder=True)),
+        language=PYTHON)
 
 
 def test_every_template_init_file_folder_entry_and_example_is_listed_once_in_the_order_the_profile_names_them():
@@ -20,3 +24,7 @@ def test_every_template_init_file_folder_entry_and_example_is_listed_once_in_the
 
 def test_a_profile_that_points_to_nothing_lists_nothing():
     assert pointed_files(Architecture("mine", {}, {}, {}), {}) == ()
+
+
+def test_a_language_with_no_cache_folder_leaves_every_file_listed():
+    assert "presets/__pycache__/c.pyc" in pointed_files(replace(architecture(), language=Language()), LISTING)

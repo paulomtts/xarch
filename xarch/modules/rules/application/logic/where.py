@@ -29,7 +29,6 @@ from xarch.modules.rules.domain.values import Nearest, Profile, Reach, TestTier,
 
 TESTS_FOLDER = "tests"
 """Where the tests are shown to be when no tests folder is known."""
-FALLBACK_FILE = "x.py"
 SAMPLE = "x"
 STAND_IN = "<name>"
 OUTSIDE_NOTE = "it lies outside the app folder and the tests folder"
@@ -119,16 +118,17 @@ def _app(profile: Profile, found: Resolved, shown: str, app: str, tests: str) ->
 
 def _mirror(profile: Profile, part: str, steps: tuple[str, ...]) -> tuple[tuple[str, ...], str, TestTier | None]:
     """The folder below the tests root that mirrors the path, the name of the test file there ("" when it is no
-    Python file) and the tier that tests it: the answer the tests' own mapping (tier_of) gives for that folder."""
+    source file) and the tier that tests it: the answer the tests' own mapping (tier_of) gives for that folder."""
     pattern = profile.framework.files[0] if profile.framework is not None and profile.framework.files else ""
-    is_python = bool(steps) and steps[-1].endswith(".py")
-    whole_file = profile.parts[part][-1].endswith(".py")
-    folder = steps[:-1] if is_python else steps
-    sample = pattern.replace("*", SAMPLE) if pattern else FALLBACK_FILE
+    language = profile.language
+    is_source = bool(steps) and steps[-1].endswith(language.extension)
+    whole_file = profile.parts[part][-1].endswith(language.extension)
+    folder = steps[:-1] if is_source else steps
+    sample = pattern.replace("*", SAMPLE) if pattern else f"{SAMPLE}{language.extension}"
     tier = tested(profile, (*folder, sample)).tier
-    if not pattern or not is_python or steps[-1] == "__init__.py":
+    if not pattern or not is_source or steps[-1] == language.package_file:
         return folder, "", tier
-    stem = steps[-1].removesuffix(".py")
+    stem = steps[-1].removesuffix(language.extension)
     if whole_file:
         stem = f"<{tier.one_file_per}>" if tier is not None and tier.one_file_per else STAND_IN
     return folder, pattern.replace("*", stem), tier
@@ -177,7 +177,7 @@ def _singular(profile: Profile, part: str) -> str:
 def _nearest(profile: Profile, steps: tuple[str, ...], exact: bool, app: str) -> tuple[Nearest, ...]:
     """The parts below the nearest folder of the layout that holds the path, or is the path."""
     for depth in range(len(steps) if exact else len(steps) - 1, -1, -1):
-        folder = next((f for f in profile.folders if matches(f, steps[:depth])), None)
+        folder = next((f for f in profile.folders if matches(f, steps[:depth], profile.language.marks)), None)
         if folder is not None:
             break
     else:

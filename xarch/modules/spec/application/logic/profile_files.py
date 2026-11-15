@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
-from xarch.modules.spec.application.logic.profile_examples import PYCACHE
 from xarch.modules.spec.domain.values import Architecture
 
 
@@ -16,4 +15,5 @@ def pointed_files(architecture: Architecture, folders: Mapping[str, Sequence[str
         found += ([f"{entry.source.rstrip('/')}/{name}" for name in folders.get(entry.source, ())] if entry.folder
                   else [entry.source])
     found += [example.file for example in architecture.examples.values()]
-    return tuple(name for name in dict.fromkeys(found) if PYCACHE not in name.split("/"))
+    cache = architecture.language.cache
+    return tuple(name for name in dict.fromkeys(found) if not cache or cache not in name.split("/"))

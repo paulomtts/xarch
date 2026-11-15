@@ -1,7 +1,10 @@
 """The enforcement findings on hand-built values: the skipped tests, the dynamic imports, the init files that drifted,
 and which findings --strict fails on."""
+from dataclasses import replace
+
 import pytest
 
+from tests.modules.rules.builders import PYTHON
 from xarch.modules.rules.application.logic.enforcement import drift, dynamic, excluded, skipped, strict_findings
 from xarch.modules.rules.domain.values import (
     At,
@@ -12,6 +15,7 @@ from xarch.modules.rules.domain.values import (
     Finding,
     Framework,
     InitFile,
+    Language,
     Loosened,
     Origin,
     Profile,
@@ -21,7 +25,7 @@ from xarch.modules.rules.domain.values import (
 )
 
 SKIPS = (("pytest", "mark", "skip"), ("pytest", "mark", "xfail"), ("pytest", "skip"))
-PROFILE = Profile(parts={}, rules={}, framework=Framework(("test_*.py",), "test_*", SKIPS))
+PROFILE = Profile(parts={}, rules={}, framework=Framework(("test_*.py",), "test_*", SKIPS), language=PYTHON)
 
 
 def file(name: str, *uses: Use) -> SourceFile:
@@ -44,7 +48,7 @@ def test_a_dynamic_import_is_a_use_of_importlib_s_import_module_or_of_import():
     files = [file("app/kernel/dyn.py", Use(2, ("importlib", "import_module"), 1), Use(3, ("builtins", "__import__"), 0),
                   Use(4, ("importlib", "resources", "files"), 1)),
              file("tests/test_x.py", Use(9, ("importlib", "__import__"), 2))]
-    assert dynamic(files) == [At("app/kernel/dyn.py", 2), At("app/kernel/dyn.py", 3), At("tests/test_x.py", 9)]
+    assert dynamic(files, PROFILE) == [At("app/kernel/dyn.py", 2), At("app/kernel/dyn.py", 3), At("tests/test_x.py", 9)]
 
 
 @pytest.mark.parametrize("found, expected", [
@@ -84,10 +88,17 @@ def test_a_framework_that_lists_no_skips_counts_none():
     assert skipped(tests, Profile(parts={}, rules={}, framework=Framework(("test_*.py",), "test_*"))) == []
 
 
+def test_a_dynamic_import_is_what_the_language_of_the_profile_lists():
+    files = [file("app/a.py", Use(2, ("sys", "load"), 1), Use(3, ("importlib", "import_module"), 1))]
+    other = replace(PROFILE, language=Language(dynamic=(("sys", "load"),)))
+    assert dynamic(files, other) == [At("app/a.py", 2)]
+    assert dynamic(files, replace(PROFILE, language=Language())) == []
+
+
 def test_a_name_beside_a_dynamic_import_is_no_dynamic_import():
     files = [file("app/kernel/a.py", Use(2, ("importlib", "reload"), 1), Use(3, ("builtins", "__build_class__"), 0),
                   Use(4, ("importlib",), 1))]
-    assert dynamic(files) == []
+    assert dynamic(files, PROFILE) == []
 
 
 def test_a_pinned_file_as_init_writes_it_and_a_changed_one_are_told_apart_in_order():

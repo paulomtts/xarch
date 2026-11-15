@@ -1,7 +1,7 @@
-"""The closed-tree guard: every Python file of the app lies in a part, or is the package file of a folder of the
-layout (the root's `__init__.py`, `modules/__init__.py`, `modules/<name>/__init__.py` and the like), which only holds
-the tree together. Anything else, such as `modules/<name>/helpers.py`, an extra top-level folder or a script at the
-root, is a violation. Only .py files are looked at.
+"""The closed-tree guard: every source file of the app lies in a part, or is the package file of a folder of the
+layout (the file the language has stand for the root, for `modules`, for `modules/<name>` and the like), which only
+holds the tree together. Anything else, such as a file `modules/<name>/helpers`, an extra top-level folder or a script
+at the root, is a violation. Only source files, the ones the reader lists, are looked at.
 """
 from __future__ import annotations
 
@@ -27,7 +27,8 @@ def violations(paths: Iterable[tuple[str, ...]], profile: Profile, shown: str) -
 def ungoverned(paths: Iterable[tuple[str, ...]], profile: Profile, shown: str) -> list[str]:
     """The files in no part and no folder of the layout, whether the guard is on or not, each shown as
     shown/<path>: no check reads them."""
-    return ["/".join((shown, *path)) for path in paths if place(profile, dotted(path)[0]) is None]
+    return ["/".join((shown, *path)) for path in paths
+            if place(profile, dotted(path, profile.language.marks)[0]) is None]
 
 
 def excluded(profile: Profile, path: tuple[str, ...]) -> bool:
@@ -37,4 +38,4 @@ def excluded(profile: Profile, path: tuple[str, ...]) -> bool:
 
 def governed(profile: Profile, path: tuple[str, ...]) -> bool:
     """Whether a part or a folder of the layout governs the file at path below the app, so that it is read."""
-    return place(profile, dotted(path)[0]) is not None
+    return place(profile, dotted(path, profile.language.marks)[0]) is not None

@@ -25,7 +25,7 @@ def violations(app: Iterable[SourceFile], profile: Profile) -> list[Violation]:
         return []
     found: list[Violation] = []
     for file in app:
-        where = place(profile, dotted(file.path)[0])
+        where = place(profile, dotted(file.path, profile.language.marks)[0])
         if where is None or where.part not in profile.no_callbacks:
             continue
         found += [Violation(file.name, call.line, f"{call.function} calls its parameter {call.parameter}: "

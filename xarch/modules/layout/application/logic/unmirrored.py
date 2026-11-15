@@ -7,7 +7,7 @@ from xarch.kernel.violations import Violation
 
 
 def hidden(path: tuple[str, ...]) -> bool:
-    """A folder such as __pycache__ or .cache, which mirrors nothing and is never checked."""
+    """A folder such as one of compiled files or `.cache`, which mirrors nothing and is never checked."""
     return any(step.startswith(("_", ".")) for step in path)
 
 

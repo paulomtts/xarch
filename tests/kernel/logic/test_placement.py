@@ -3,6 +3,7 @@ import pytest
 
 from xarch.kernel.logic.placement import (
     EVERYTHING,
+    Marks,
     Place,
     Repeat,
     Target,
@@ -14,10 +15,12 @@ from xarch.kernel.logic.placement import (
     with_itself,
 )
 
+MARKS = Marks(".src", "pkg.src")
+
 PATTERNS = {
     "kernel": ("kernel",),
     "domain": ("modules", "*", "domain"),
-    "controller": ("modules", "*", "application", "controller.py"),
+    "controller": ("modules", "*", "application", "controller.src"),
     "services": ("modules", "*", "application", "services"),
     "migrations": ("bootstrap", "migrations"),
     "bootstrap": ("bootstrap",),
@@ -25,24 +28,24 @@ PATTERNS = {
 
 
 @pytest.mark.parametrize("path, place", [
-    (("kernel", "errors.py"), Place("kernel", None, ("errors",))),
-    (("kernel", "__init__.py"), Place("kernel")),
-    (("modules", "docs", "domain", "values.py"), Place("domain", "docs", ("values",))),
+    (("kernel", "errors.src"), Place("kernel", None, ("errors",))),
+    (("kernel", "pkg.src"), Place("kernel")),
+    (("modules", "docs", "domain", "values.src"), Place("domain", "docs", ("values",))),
     (("modules", "docs", "domain", "values"), Place("domain", "docs", ("values",))),
-    (("modules", "docs", "application", "controller.py"), Place("controller", "docs")),
-    (("modules", "docs", "application", "services", "x.py"), Place("services", "docs", ("x",))),
-    (("bootstrap", "migrations", "m.py"), Place("migrations", None, ("m",))),
-    (("bootstrap", "app.py"), Place("bootstrap", None, ("app",))),
-    (("modules", "docs", "application", "helpers.py"), Place(None)),
+    (("modules", "docs", "application", "controller.src"), Place("controller", "docs")),
+    (("modules", "docs", "application", "services", "x.src"), Place("services", "docs", ("x",))),
+    (("bootstrap", "migrations", "m.src"), Place("migrations", None, ("m",))),
+    (("bootstrap", "app.src"), Place("bootstrap", None, ("app",))),
+    (("modules", "docs", "application", "helpers.src"), Place(None)),
     (("modules", "docs"), Place(None)),
     ((), Place(None)),
 ])
 def test_a_path_sits_in_the_deepest_pattern_it_lies_in(path, place):
-    assert place_of(PATTERNS, path) == place
+    assert place_of(PATTERNS, path, MARKS) == place
 
 
 def test_a_star_does_not_match_a_literal_star():
-    assert place_of(PATTERNS, ("modules", "*", "domain", "x.py")) == Place(None)
+    assert place_of(PATTERNS, ("modules", "*", "domain", "x.src"), MARKS) == Place(None)
 
 
 @pytest.mark.parametrize("target, src, dst, answer", [
@@ -66,13 +69,13 @@ def test_a_target_reaches_its_part_in_its_scope_below_its_path(target, src, dst,
 
 @pytest.mark.parametrize("path, answer", [
     (("modules", "docs", "application"), True),
-    (("modules", "docs", "application", "__init__.py"), True),
+    (("modules", "docs", "application", "pkg.src"), True),
     (("modules", "docs"), False),
     (("modules", "*", "application"), False),
-    (("modules", "docs", "application", "x.py"), False),
+    (("modules", "docs", "application", "x.src"), False),
 ])
 def test_a_path_matches_a_pattern_only_exactly(path, answer):
-    assert matches(("modules", "*", "application"), path) is answer
+    assert matches(("modules", "*", "application"), path, MARKS) is answer
 
 
 REPEATS = (Repeat("module", ("modules",)), Repeat("plugin", ("plugins",)))
@@ -100,10 +103,18 @@ def test_a_pattern_belongs_to_the_repeating_folder_that_sits_at_its_root(pattern
 
 def test_each_repeating_folder_captures_its_own_instances():
     patterns = {"domain": ("modules", "*", "domain"), "hooks": ("plugins", "*", "hooks"), "kernel": ("kernel",)}
-    assert place_of(patterns, ("modules", "a", "domain", "x.py")) == Place("domain", "a", ("x",))
-    assert place_of(patterns, ("plugins", "a", "hooks", "x.py")) == Place("hooks", "a", ("x",))
-    assert place_of(patterns, ("plugins", "a", "domain", "x.py")) == Place(None)
+    assert place_of(patterns, ("modules", "a", "domain", "x.src"), MARKS) == Place("domain", "a", ("x",))
+    assert place_of(patterns, ("plugins", "a", "hooks", "x.src"), MARKS) == Place("hooks", "a", ("x",))
+    assert place_of(patterns, ("plugins", "a", "domain", "x.src"), MARKS) == Place(None)
 
 
 def test_a_part_may_always_import_itself_in_its_own_repeating_folder_whichever_it_is():
     assert with_itself("hooks", ("plugins", "*", "hooks"), []) == (Target("hooks", "own"),)
+
+
+def test_a_path_is_read_with_the_marks_it_is_given_and_with_none_as_written():
+    patterns = {"domain": ("domain",), "main": ("main.src",)}
+    assert place_of(patterns, ("domain", "index.mod"), Marks(".mod", "index.mod")) == Place("domain")
+    assert place_of(patterns, ("domain", "x.src"), Marks()) == Place("domain", None, ("x.src",))
+    assert place_of(patterns, ("main.src",), Marks()) == Place("main")
+    assert matches(("domain", "x"), ("domain", "x.src"), Marks()) is False

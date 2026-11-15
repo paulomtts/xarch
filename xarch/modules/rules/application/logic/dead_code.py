@@ -1,23 +1,23 @@
 """The dead-code check: a port no other file of the app names, and a fake no test names.
 
-A port is what the stand-ins guard calls one (a Protocol class of a part `fakes.for` names). It is used when another
+A port is what the stand-ins guard calls one (an interface class of a part `fakes.for` names). It is used when another
 file of the app names it, by any name it reads, in code or in an annotation, whatever the file does with it, so that a
 service's `repo: Repo`, an adapter's `Repo` and a call all count. These do not: the port's own file, a package file
-(`__init__.py`, which only re-exports), and a file of a part that may import everything, the wiring, which only binds
+(which only re-exports), and a file of a part that may import everything, the wiring, which only binds
 what others use. A port named only by one of those is reported. Names are compared by their last step alone, so two
 ports of one name in two places use each other's mention: a miss, never a false finding.
 
 A fake is a module-level class in a file below the fakes folder whose name starts with the fakes' prefix (every class
 there when there is none). It is used when a test file outside that folder names it, or a fake that is itself used
 names it; a fake named only by an unused fake, or by itself, is not used. A file of the fakes folder with no class
-(such as its `__init__.py`) names nothing. Without a tests folder only ports are read.
+(such as its package file) names nothing. Without a tests folder only ports are read.
 
 With `untested`, a file of a part that has a tier is listed as weak, failing `check --strict` only, when no test code
 of that tier reaches it. Test code of a tier is a file below the tests root that the tier holds (see tier_of), a test
 or not; a file is reached when such test code imports it (`targets` reads the import), or when a reached file of a
 part of the same tier imports it, however far that goes: a service a controller's test reaches through the controller
 is reached, while a rule of a part of another tier that the service imports is not. Not listed: a package file; a
-file that holds no function or method with a real statement, such as one of types, constants or Protocol stubs; and
+file that holds no function or method with a real statement, such as one of types, constants or interface stubs; and
 a file of exceptions only (every class an exception, see holds, and no function at the top level), which the code
 that raises them is tested through.
 """
@@ -35,7 +35,6 @@ from xarch.modules.rules.application.logic.tier_of import tested
 from xarch.modules.rules.domain.values import Profile, SourceFile, Weak
 
 RULE = "dead-code"
-PACKAGE_FILE = "__init__.py"
 
 
 def violations(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile,
@@ -55,8 +54,8 @@ def _wiring(profile: Profile) -> set[str]:
 
 def _dead_ports(app: list[SourceFile], profile: Profile) -> list[Violation]:
     wiring = _wiring(profile)
-    users = [f for f in app if f.path[-1] != PACKAGE_FILE
-             and (where := place(profile, dotted(f.path)[0])) is not None and where.part not in wiring]
+    users = [f for f in app if f.path[-1] != profile.language.package_file
+             and (where := place(profile, dotted(f.path, profile.language.marks)[0])) is not None and where.part not in wiring]
     return [Violation(port.file, port.line, f"{port.name} is a port that nothing else in the app names ({RULE})", RULE,
                       f"delete {port.name} and its fake, or add the code that uses it")
             for port in ports_of(app, profile)
@@ -89,7 +88,7 @@ def untested(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Pr
     if not profile.dead_code or not profile.untested:
         return []
     app = list(app)
-    files = {dotted(f.path)[0]: f for f in app}
+    files = {dotted(f.path, profile.language.marks)[0]: f for f in app}
     known = set(files)
     tier_of = {s.part: tier.name for tier in reversed(profile.tiers) for s in tier.subject}
     tiers = {steps: tier_of.get(where.part) for steps in files
@@ -106,18 +105,18 @@ def untested(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Pr
         grown = False
         for steps, tier_name in list(reached):
             file = files[steps]
-            package = steps if dotted(file.path)[1] else steps[:-1]
+            package = steps if dotted(file.path, profile.language.marks)[1] else steps[:-1]
             for _, target in targets(file.imports, package, known, root):
                 if target in files and tiers.get(target) == tier_name and (target, tier_name) not in reached:
                     reached.add((target, tier_name))
                     grown = True
-    raised = exceptions(app, root)
+    raised = exceptions(app, root, profile)
     found: list[Weak] = []
     for steps, file in files.items():
         tier_name = tiers.get(steps)
         only_exceptions = bool(file.classes) and all((steps, c.name) in raised for c in file.classes) and not any(
             not f.owner for f in file.functions)
-        if (tier_name is None or (steps, tier_name) in reached or dotted(file.path)[1] or only_exceptions
+        if (tier_name is None or (steps, tier_name) in reached or dotted(file.path, profile.language.marks)[1] or only_exceptions
                 or not any(f.statements for f in file.functions)):
             continue
         where = place(profile, steps)

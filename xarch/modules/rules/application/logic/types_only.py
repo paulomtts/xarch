@@ -38,7 +38,7 @@ OWNERS = 3
 def violations(tests: Iterable[SourceFile], app: Iterable[SourceFile], profile: Profile,
                root: str) -> list[Violation]:
     """tests are the files below the tests root; app the app's files, below the root package root."""
-    functions = {dotted(f.path)[0]: set(f.module_functions) for f in app}
+    functions = {dotted(f.path, profile.language.marks)[0]: set(f.module_functions) for f in app}
     found: list[Violation] = []
     for file in tests:
         tier = tested(profile, file.path).tier
@@ -55,10 +55,10 @@ def part_violations(app: Iterable[SourceFile], profile: Profile, root: str) -> l
     if not profile.types_only:
         return []
     app = list(app)
-    functions = {dotted(f.path)[0]: set(f.module_functions) for f in app}
+    functions = {dotted(f.path, profile.language.marks)[0]: set(f.module_functions) for f in app}
     found: list[Violation] = []
     for file in app:
-        src = place(profile, dotted(file.path)[0])
+        src = place(profile, dotted(file.path, profile.language.marks)[0])
         if src is None or src.part not in profile.types_only:
             continue
         who, key = label(profile, src), f"parts.{src.part}.types_only"

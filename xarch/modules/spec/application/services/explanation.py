@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
-from xarch.modules.spec.domain.profile_keys import CHOICE_BUNDLED, CHOICE_PRESETS, Key
+from xarch.modules.spec.domain.profile_keys import CHOICE_BUNDLED, CHOICE_LANGUAGES, CHOICE_PRESETS, Key
 
 
 class ExplainService:
@@ -11,7 +11,9 @@ class ExplainService:
         self._files = files
 
     def choices(self, key: Key) -> tuple[str, ...]:
-        """The bundled profiles, or the `testing` presets, for a key that names one of them; else none."""
+        """The bundled profiles, the `testing` presets or the languages, for a key that names one of them; else none."""
         if key.choices == CHOICE_BUNDLED:
             return self._files.bundled()
+        if key.choices == CHOICE_LANGUAGES:
+            return tuple(sorted(self._files.language_presets()))
         return tuple(self._files.testing_presets()) if key.choices == CHOICE_PRESETS else ()

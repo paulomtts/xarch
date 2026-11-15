@@ -5,13 +5,16 @@ from copy import deepcopy
 import pytest
 import yaml
 
+from tests.modules.spec.languages import PYTHON
 from tests.modules.spec.profiles_v2 import PRESETS, parsed, problems
 from xarch.kernel.violations import RULES
+from xarch.modules.spec.application.logic.explain import said
 from xarch.modules.spec.application.logic.key_lookup import keys_of, plain
 from xarch.modules.spec.application.logic.profile_listing import referenced
 from xarch.modules.spec.domain.guards import GUARDS
 from xarch.modules.spec.domain.profile_keys import (
     CHOICE_BUNDLED,
+    CHOICE_LANGUAGES,
     CHOICE_PRESETS,
     GUARD,
     KEYS,
@@ -21,17 +24,18 @@ from xarch.modules.spec.domain.profile_keys import (
     SYMBOLS,
     Key,
 )
+from xarch.modules.spec.domain.values import Language
 
 BASE = {"xarch": 2, "name": "example", "parts": {"documents": {"path": "documents", "role": "the documents"}}}
 LISTING = ("src/documents.py", "tests/documents/check_documents.py", "tests/documents/builders.py")
 BUNDLED = ("base",)
-SUBSTITUTIONS = {"<bundled>": "base", "<preset>": "pytest"}
+SUBSTITUTIONS = {"<bundled>": "base", "<preset>": "pytest", "<language>": "python"}
 
 
 def filled(example: str) -> str:
     for token, name in SUBSTITUTIONS.items():
         example = example.replace(token, name)
-    return example
+    return said(example, PYTHON)
 
 
 def merged(base: dict, extra: dict) -> dict:
@@ -141,6 +145,19 @@ def test_the_keys_the_loader_names_in_its_unknown_key_message_are_the_keys_of_th
     assert named == {key.name for key in keys_of(scope)}
 
 
-def test_the_choices_a_key_offers_are_bundled_names_or_testing_presets():
-    assert {key.choices for key in KEYS if key.choices} == {CHOICE_BUNDLED, CHOICE_PRESETS}
+def test_the_choices_a_key_offers_are_bundled_names_testing_presets_or_languages():
+    assert {key.choices for key in KEYS if key.choices} == {CHOICE_BUNDLED, CHOICE_PRESETS, CHOICE_LANGUAGES}
     assert set(PRESETS) == {"pytest"}
+
+
+def test_every_text_of_the_table_is_said_in_the_words_of_a_language_with_no_word_left_over():
+    texts = [*(text for key in KEYS for text in (key.meaning, key.accepts, key.example)), *GUARDS.values(),
+             *(text for pair in SYMBOLS for text in pair), SMALLEST]
+    assert [text for text in texts if "%" in said(text, PYTHON)] == []
+
+
+def test_a_word_of_the_table_is_what_the_language_says_for_it():
+    assert said("every %language% file, `%package_file%`, a list of %extension% names, `%namespace%.open`", PYTHON) == (
+        "every Python file, `__init__.py`, a list of .py names, `builtins.open`")
+    assert said("a %interface% as `%interface_path%`; %other%", PYTHON) == "a Protocol as `typing.Protocol`; %other%"
+    assert said("%interface%s", Language()) == "s"

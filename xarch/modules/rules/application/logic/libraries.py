@@ -1,12 +1,11 @@
 """The outside-libraries check: code in a part imports only the outside packages `libraries` lists for that part.
 
-The standard library (sys.stdlib_module_names) and the app's own package are always allowed, and relative imports
+The standard library (an import the reader marks as of it) and the app's own package are always allowed, and relative imports
 are the app's own. Only code in a part is checked: the structure and ungoverned places are not. A part whose list
 is EVERYTHING may import any outside package.
 """
 from __future__ import annotations
 
-import sys
 from collections.abc import Iterable
 
 from xarch.kernel.logic.placement import EVERYTHING
@@ -21,7 +20,7 @@ def violations(files: Iterable[SourceFile], profile: Profile, root: str) -> list
         return []
     found: list[Violation] = []
     for file in files:
-        src = place(profile, dotted(file.path)[0])
+        src = place(profile, dotted(file.path, profile.language.marks)[0])
         if src is None or src.part is None:
             continue
         allowed = profile.libraries.get(src.part, ())
@@ -32,7 +31,7 @@ def violations(files: Iterable[SourceFile], profile: Profile, root: str) -> list
             if imp.level or not imp.module:
                 continue
             top = imp.module[0]
-            if top == root or top in sys.stdlib_module_names or top in allowed or (imp.line, top) in seen:
+            if top == root or imp.standard or top in allowed or (imp.line, top) in seen:
                 continue
             seen.add((imp.line, top))
             owners = [name for name, packages in profile.libraries.items() if top in packages and name != src.part]

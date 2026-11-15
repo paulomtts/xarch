@@ -1,10 +1,10 @@
 """The stand-ins guard: a port is fire-only or read by its signatures, every read port has a fake, and a mock in a
 test that may use the fakes names a fire-only port.
 
-A port is a module-level class, in a file of a part the fakes stand in for, with `Protocol` (typing's or
-typing_extensions', `Protocol[T]` too) among its bases; any other class there is not a port. Its methods are the
-functions of its own body (inherited ones are not followed), dunder methods left out but for __call__, the method a
-callable port is; a property, a classmethod or a staticmethod counts as the method it is. By its methods' return
+A port is a module-level class, in a file of a part the fakes stand in for, with one of the language's interface
+names (its data file's `interface`, generic forms too) among its bases; any other class there is not a port. Its
+methods are the functions of its own body (inherited ones are not followed), dunder methods left out but for
+__call__, the method a callable port is; a property, a classmethod or a staticmethod counts as the method it is. By its methods' return
 annotations a port is:
 
     read         any method returns something else than None: the port is written and read back, so it has a fake
@@ -48,7 +48,6 @@ from xarch.modules.rules.application.logic.tier_imports import may_use_fakes
 from xarch.modules.rules.application.logic.tier_of import tested
 from xarch.modules.rules.domain.values import Class, Profile, Ref, SourceFile, StandIns, Weak
 
-PROTOCOLS = {("typing", "Protocol"), ("typing_extensions", "Protocol")}
 NONE = "None"
 RULE = "stand-ins"
 GUARD = f"({RULE})"
@@ -110,18 +109,18 @@ def _ports(app: Iterable[SourceFile], profile: Profile) -> tuple[dict[tuple[tupl
     found: list[Violation] = []
     ports: dict[tuple[tuple[str, ...], str], Port] = {}
     for file in app:
-        where = place(profile, dotted(file.path)[0])
+        where = place(profile, dotted(file.path, profile.language.marks)[0])
         if where is None or where.part not in profile.fakes.stand_in_for:
             continue
         for cls in file.classes:
-            if any(base in PROTOCOLS for base in cls.bases):
-                port, problems = _classified(file, cls)
+            if any(base in profile.language.interface for base in cls.bases):
+                port, problems = _classified(file, cls, profile)
                 ports[(port.module, port.name)] = port
                 found += problems
     return ports, found
 
 
-def _classified(file: SourceFile, cls: Class) -> tuple[Port, list[Violation]]:
+def _classified(file: SourceFile, cls: Class, profile: Profile) -> tuple[Port, list[Violation]]:
     methods = [m for m in cls.methods if not _dunder(m.name) or m.name == "__call__"]
     bare = [m for m in methods if m.returns is None]
     problems = [Violation(file.name, m.line, f"{cls.name}.{m.name} has no return annotation, and whether {cls.name} "
@@ -131,7 +130,8 @@ def _classified(file: SourceFile, cls: Class) -> tuple[Port, list[Violation]]:
     kind = None
     if not bare and methods:
         kind = "read" if any(m.returns != NONE for m in methods) else "fire-only"
-    return Port(file.name, dotted(file.path)[0], cls.line, cls.name, kind, tuple(m.name for m in methods)), problems
+    module = dotted(file.path, profile.language.marks)[0]
+    return Port(file.name, module, cls.line, cls.name, kind, tuple(m.name for m in methods)), problems
 
 
 def _missing_fakes(ports: Iterable[Port], tests: list[SourceFile], profile: Profile) -> list[Violation]:

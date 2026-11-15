@@ -60,7 +60,7 @@ def enforcement_lines(state: EnforcementView, strict: bool, hints: Mapping[str, 
     lines += [_line(item.key, item.sentence, 4) for item in origin.looser]
     if state.ungoverned:
         count = len(state.ungoverned)
-        lines.append(_line("ungoverned", f"{_count(count, 'Python file')} outside every part "
+        lines.append(_line("ungoverned", f"{_count(count, f'{state.language or "source"} file')} outside every part "
                                          f"({', '.join(folders(state.ungoverned))})", 2))
     lines += [_line("excluded", f"{item.folder}/ ({item.reason})", 2) for item in state.excluded]
     lines += [_line("init files", f"{item.file} is {item.state}", 2) for item in state.init_files]

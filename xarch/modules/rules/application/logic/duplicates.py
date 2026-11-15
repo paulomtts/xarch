@@ -8,7 +8,7 @@ decorators and formatting left out. What a function calls or reads is part of th
 make one call to something different are different.
 
 Only a function with at least `no_duplicates` real statements counts (nested ones counted, a docstring, `pass` and a
-bare `...` not), and one with none (a Protocol stub, a bare docstring) never does, whatever the minimum.
+bare `...` not), and one with none (an interface stub, a bare docstring) never does, whatever the minimum.
 
 Of every group of functions that match, the first by file name and line is the original: each other one is reported at
 its own place, naming the original's.

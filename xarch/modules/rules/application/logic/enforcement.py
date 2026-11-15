@@ -4,9 +4,8 @@ pass over, read from the same parsed files.
     skipped    a use, in a test file, of a name the profile's `testing.skips` lists, or one below it: a marker such as
                `pytest.mark.skip`, `pytest.mark.skipif(...)` (a name of its own, so listed on its own) or a call such
                as `pytest.skip(...)`, read through imports like any use (see the Use value); one per use
-    dynamic    a use, in a file read, of what Python imports by a computed or string name with:
-               `importlib.import_module`, `importlib.__import__` and the builtin `__import__`; the import rules
-               cannot see what those import
+    dynamic    a use, in a file read, of what the language of the app imports by a computed or string name with,
+               the names its data file lists; the import rules cannot see what those import
     drift      an init file (`files` in the profile) that is missing, or pinned and not what `init` would write now
 
 strict_findings lists what `--strict` fails on: what the profile in force leaves unenforced or unseen. That is every
@@ -21,8 +20,6 @@ from collections.abc import Iterable, Sequence
 
 from xarch.modules.rules.domain.values import At, Drift, Enforcement, Excluded, Finding, InitFile, Profile, SourceFile
 
-DYNAMIC = (("importlib", "import_module"), ("importlib", "__import__"), ("builtins", "__import__"))
-"""The callables of Python itself that import by a name computed at run time."""
 MISSING, CHANGED = "missing", "changed"
 
 
@@ -32,8 +29,8 @@ def skipped(tests: Iterable[SourceFile], profile: Profile) -> list[At]:
             if any(use.name[:len(skip)] == skip for skip in skips)]
 
 
-def dynamic(files: Iterable[SourceFile]) -> list[At]:
-    return [At(file.name, use.line) for file in files for use in file.uses if use.name in DYNAMIC]
+def dynamic(files: Iterable[SourceFile], profile: Profile) -> list[At]:
+    return [At(file.name, use.line) for file in files for use in file.uses if use.name in profile.language.dynamic]
 
 
 def drift(files: Sequence[InitFile], found: Sequence[str | None]) -> list[Drift]:

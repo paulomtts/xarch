@@ -5,8 +5,10 @@ from typing import Any
 
 from tests.fakes.architecture_files import FakeArchitectureFiles
 from tests.fakes.profile_output import FakeProfileOutput
+from tests.fakes.runtime import FakeRuntime
 from tests.fakes.settings import FakeSettings
 from tests.modules.spec.application.helpers import controller
+from tests.modules.spec.languages import RUNTIME
 
 TESTING = {"files": ["test_*.py"], "functions": "test_*"}
 BASE = {"xarch": 2, "name": "base", "testing": TESTING,
@@ -19,8 +21,9 @@ TEXTS = {"base.yaml": BASE_TEXT, "docs/a.md": "page\n", "agents.md": "agents\n"}
 
 def spec_controller(bundled: dict[str, Any] | None = None, files: dict[str, Any] | None = None,
                     texts: dict[str, str | bytes] | None = None, existing: set | None = None,
-                    settings: FakeSettings | None = None, presets: dict[str, Any] | None = None):
+                    settings: FakeSettings | None = None, presets: dict[str, Any] | None = None,
+                    languages: dict[str, Any] | None = None, runtime: FakeRuntime = RUNTIME):
     port = FakeArchitectureFiles({"base": BASE} if bundled is None else bundled, files, TEXTS | (texts or {}),
-                                 presets if presets is not None else {"pytest": TESTING})
+                                 presets if presets is not None else {"pytest": TESTING}, languages)
     output = FakeProfileOutput(existing)
-    return controller(port, settings, output), output
+    return controller(port, settings, output, runtime=runtime), output

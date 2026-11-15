@@ -7,6 +7,7 @@ import pytest
 from tests.fakes.filesystem import FakeSourceTree
 from tests.fakes.profiles import FakeProfiles
 from tests.modules.rules.application.helpers import controller
+from tests.modules.rules.builders import PYTHON
 from xarch.kernel.logic.placement import Repeat, Target
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.contract import (
@@ -114,6 +115,13 @@ def test_the_enforcement_holds_the_origin_the_ungoverned_files_the_init_files_an
         (DriftView("tests/test_rules.py", "changed"), DriftView("AGENTS.md", "missing")),
         strict=(FindingView("ungoverned", "pkg/stray.py"), FindingView("init_files", "tests/test_rules.py is changed"),
                 FindingView("init_files", "AGENTS.md is missing")))
+
+
+def test_the_enforcement_names_the_language_of_the_profile():
+    profiles = FakeProfiles({"cli": replace(profile("cli"), language=PYTHON)})
+    result = controller_of(FakeSourceTree(ROOT, {"kernel/x.py": []}), profiles).check(CheckImports(ROOT, "app", "cli"))
+    assert result.enforcement.language == "Python"
+    assert run({"kernel/x.py": []}).enforcement.language == ""
 
 
 def test_an_excluded_folder_is_never_read_nor_listed_as_ungoverned_and_is_named_in_the_enforcement():

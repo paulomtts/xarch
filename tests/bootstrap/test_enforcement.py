@@ -26,7 +26,8 @@ def enforcement(tmp_path: Path, app: dict[str, str] | None = None, tests: dict[s
 
 
 def test_a_clean_project_on_a_bundled_profile_reports_only_the_guards_it_ships_off(tmp_path):
-    assert enforcement(tmp_path) == EnforcementView(OriginView("web", True, None, ("closed-tree",), ("closed-tree",), ()))
+    assert enforcement(tmp_path) == EnforcementView(
+        OriginView("web", True, None, ("closed-tree",), ("closed-tree",), ()), language="Python")
 
 
 def test_a_python_file_no_part_governs_is_listed(tmp_path):

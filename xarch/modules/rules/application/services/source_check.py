@@ -100,6 +100,6 @@ class SourceCheckService:
         shown = enforcement.excluded(rules, root.absolute().resolve().name)
         return Enforcement(self._profiles.origin(location), tuple(ungoverned), tuple(enforcement.drift(files, texts)),
                            skipped=tuple(enforcement.skipped(tests, rules)),
-                           dynamic=tuple(enforcement.dynamic([*app, *tests])), weak=tuple(weak),
-                           excluded=tuple(shown))
+                           dynamic=tuple(enforcement.dynamic([*app, *tests], rules)), weak=tuple(weak),
+                           excluded=tuple(shown), language=rules.language.title)
 

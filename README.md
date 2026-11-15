@@ -82,6 +82,15 @@ guards:   {scenario-coverage, no-comments, stand-ins, closed-tree, no-duplicates
 files:    {<path>: <from> | {from*, pinned, fill}}      docs: {entry, pages, naming, examples, example_notes}
 ```
 
+`language` names the language of the app: `python`, which is the default and the only one xarch reads today. What is
+true of a language as a whole lives in a data file shipped beside the profiles, `xarch/architectures/presets/language/
+<name>.yaml`, the way `testing: pytest` resolves to `presets/testing/pytest.yaml`: the ending of a source file, the file
+that stands for a folder, what marks an interface, the namespace of the builtins, the callables that import by a
+computed name, the folder of compiled files, and where the standard library's names are known from (`interpreter`).
+The rest of what a check knows of the language is one adapter, the reader that turns source into facts
+(`modules/rules/adapters/fs_source_tree.py`), and the platform. `tests/architecture/test_language_seam.py` fails when
+any other file of xarch names the language.
+
 The smallest valid profile is a name and one part (it runs `structure`, the import rules, `libraries` and `syntax`):
 
 ```yaml
@@ -293,8 +302,9 @@ enforcement
   says `pinned: true`, that differs from what `init` would write now. The files of a folder entry (a preset) are
   copied once and not watched.
 - `skipped`: each use in the tests of a name of `testing.skips`, or one below it, read through imports.
-- `dynamic`: each use, in the files read, of `importlib.import_module`, `importlib.__import__` or the builtin
-  `__import__`: Python's own, so they need no entry in the profile; the import rules cannot see what they import.
+- `dynamic`: each use, in the files read, of a callable the language's data file lists as importing by a computed name
+  (for Python, `importlib.import_module`, `importlib.__import__` and the builtin `__import__`), so it needs no entry in
+  the profile; the import rules cannot see what it imports.
 - `weak`, met to the letter only, never a violation: a fake `<prefix><Port>` that defines in its own body (methods,
   or names its body or `self.` assigns) less than every port of its name declares; and a `Result` variant that no
   row covers, credited only to standalone tests that name it and hold no `assert`; and a method `pass-through` finds.

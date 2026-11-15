@@ -4,8 +4,8 @@ from dataclasses import replace
 
 import pytest
 
-from tests.modules.rules.builders import PROFILE, imp, source, steps
-from xarch.kernel.logic.placement import Target
+from tests.modules.rules.builders import PROFILE, PYTHON, imp, source, steps
+from xarch.kernel.logic.placement import Marks, Target
 from xarch.modules.rules.application.logic.imports import dotted, targets, violations
 
 
@@ -16,11 +16,17 @@ from xarch.modules.rules.application.logic.imports import dotted, targets, viola
     pytest.param("kernel/data.txt", (("kernel", "data.txt"), False), id="another file keeps its name"),
 ])
 def test_dotted(path, expected):
-    assert dotted(steps(path)) == expected
+    assert dotted(steps(path), PYTHON.marks) == expected
 
 
 def test_an_empty_path_is_the_root():
-    assert dotted(()) == ((), False)
+    assert dotted((), PYTHON.marks) == ((), False)
+
+
+def test_a_file_is_read_with_the_marks_of_the_language_and_with_none_as_written():
+    assert dotted(steps("kernel/ids.src"), Marks(".src", "index.src")) == (("kernel", "ids"), False)
+    assert dotted(steps("kernel/index.src"), Marks(".src", "index.src")) == (("kernel",), True)
+    assert dotted(steps("kernel/__init__.py"), Marks()) == (("kernel", "__init__.py"), False)
 
 
 KNOWN = {("kernel", "ids"), ("modules", "docs", "domain", "doc")}

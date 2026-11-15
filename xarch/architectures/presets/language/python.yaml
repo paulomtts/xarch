@@ -1,0 +1,15 @@
+# The language Python, as a profile names it with `language: python`: what is true of the language as a whole and is
+# needed outside the reader that turns source into facts. title is how a message says it; extension the ending of a
+# source file's name; package_file the file that stands for the folder holding it; interface the dotted names that mark
+# a class as an interface (a port); dynamic the callables that import by a name worked out when the code runs;
+# namespace the namespace of the names the language binds without an import; cache the folder its tools keep what they
+# compile in, which no check or example reads; standard where the names of the standard
+# library are known from (interpreter: the one running xarch).
+title: Python
+extension: .py
+package_file: __init__.py
+interface: [typing.Protocol, typing_extensions.Protocol]
+dynamic: [importlib.import_module, importlib.__import__, builtins.__import__]
+namespace: builtins
+cache: __pycache__
+standard: interpreter

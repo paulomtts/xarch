@@ -265,3 +265,11 @@ def test_every_kind_of_a_profile_with_several_repeating_folders_is_made_in_its_o
 def test_a_kind_the_profile_does_not_declare_is_refused_listing_every_word(kind, reason):
     two = controller(FakeFiles(dirs={ROOT / "modules"}), TWO_KINDS)
     assert two.new(New(ROOT, kind, "docs", "cli")) == Refused(reason)
+
+
+def test_the_language_of_the_profile_is_named_in_the_refusal_of_a_name_and_the_package_file_is_the_one_it_has():
+    pascal = FakeSkeleton([(("kernel",), True)], SKELETON.kinds("cli"), package_file="unit.pas", language="Pascal")
+    files = FakeFiles({ROOT / "modules" / "unit.pas"})
+    assert controller(files, pascal).new(New(ROOT, "module", "Docs", "cli")) == Refused(
+        "'Docs' is not a valid name: use a lowercase Pascal identifier, e.g. 'documents'")
+    assert controller(files, pascal).init(Init(ROOT, "cli")).report.created[0] == ROOT / "unit.pas"

@@ -8,6 +8,19 @@ class Skeleton(Protocol):
 
     def top_level(self, profile: str) -> list[tuple[tuple[str, ...], bool]]: ...
 
+    def package_file(self, profile: str) -> str:
+        """The name of the file the language of the app has stand for each folder, which every folder of the skeleton
+        holds."""
+        ...
+
+    def language(self, profile: str) -> str:
+        """How the language of the app is named."""
+        ...
+
+    def reserved(self, profile: str) -> frozenset[str]:
+        """The words no name of an instance may be."""
+        ...
+
     def kinds(self, profile: str) -> dict[str, tuple[tuple[str, ...], list[tuple[tuple[str, ...], bool]]]]:
         """Every folder of the layout that declares `each:`, by its path written with '/': the folder below the
         root, and what each instance of it holds."""

@@ -2,7 +2,8 @@
 lists; a test of a tier marked `forbidden` is held to the list of the part it mirrors.
 
 A listed entry is a dotted path: a call or attribute as an absolute import binds it (`datetime.datetime.now`), a
-builtin as `builtins.<name>`, or a module by its import name (`socket`). What is read is what the file says:
+builtin in the language's namespace for them, `<namespace>.<name>`, or a module by its import name (`socket`). What
+is read is what the file says:
 
     an import          `import a.b` imports a.b, `from a import x` imports a.x; it is reported when what it imports
                        is the entry or lies below it, so `import urllib.request` is `urllib`, `from time import time`
@@ -37,7 +38,7 @@ def violations(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: 
         return []
     found: list[Violation] = []
     for file in app:
-        where = place(profile, dotted(file.path)[0])
+        where = place(profile, dotted(file.path, profile.language.marks)[0])
         if where is None or where.part not in profile.forbidden:
             continue
         found += _file(file, where.part, label(profile, where), f"(parts.{where.part}.{RULE})", profile)

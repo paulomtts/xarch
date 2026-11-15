@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from tests.modules.rules.builders import PYTHON
 from xarch.kernel.logic.placement import EVERYTHING, Repeat, Target
 from xarch.modules.rules.application.logic.where import Resolved, describe, resolve
 from xarch.modules.rules.domain.values import Fakes, Framework, Nearest, PartInfo, Profile, Reach, TierInfo
@@ -35,7 +36,8 @@ PROFILE = Profile(
     framework=Framework(("test_*.py",), "test_*"),
     forbidden={"domain": (NOW, ("builtins", "open"))},
     info={name: PartInfo(f"the {name} role", f"Is it {name}?", SHOWN[name],
-                         "wraps a library" if name == "platform" else "") for name in PARTS})
+                         "wraps a library" if name == "platform" else "") for name in PARTS},
+    language=PYTHON)
 
 
 def found(kind="app", *steps, exists=False) -> Resolved:
@@ -183,13 +185,13 @@ def test_a_fake_and_a_helper_are_not_tests():
 
 
 def test_a_profile_that_checks_no_outside_package_has_no_libraries_to_list():
-    bare = Profile(PARTS, PROFILE.rules, PROFILE.folders, info=PROFILE.info)
+    bare = Profile(PARTS, PROFILE.rules, PROFILE.folders, info=PROFILE.info, language=PYTHON)
     assert where("kernel", "x.py", profile=bare).libraries is None
 
 
 def test_a_rule_that_allows_everything_says_so():
     everything = Profile({"entry": ("front",)}, {"entry": (Target(EVERYTHING),)}, ((), ("front",)),
-                         info={"entry": PartInfo("wires", "", "front/")})
+                         info={"entry": PartInfo("wires", "", "front/")}, language=PYTHON)
     here = describe(everything, found("app", "front", "x.py"), APP, None)
     assert (here.may_import, here.may_import_text) == ((), "everything")
 

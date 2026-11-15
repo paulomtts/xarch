@@ -2,8 +2,8 @@
 
 A pattern is a path whose one `*` step stands for any name: an instance's of the repeating folder it sits in. A path
 sits in the pattern it lies in, the deepest when patterns nest, with `*` capturing the name; what lies below the
-pattern is the place's sub-path. A path is compared as Python names it: no `.py` on its file, and a package's
-`__init__` is the package itself.
+pattern is the place's sub-path. A path is compared as its language names it (see Marks): no ending on its file, and
+the file that stands for a folder is the folder itself.
 
 A target names a part, a scope, an optional path below the part and an optional name pattern. Scope "own" reaches the
 part in the importer's instance, "any" in any instance, "none" a part outside the instances. EVERYTHING reaches every
@@ -44,6 +44,14 @@ class Target:
 
 
 @dataclass(frozen=True)
+class Marks:
+    """How the language of the app writes a path: the ending a source file's name carries, and the name of the file that
+    stands for the folder holding it. Empty marks leave a path as written."""
+    extension: str = ""
+    package_file: str = ""
+
+
+@dataclass(frozen=True)
 class Place:
     """Where a path sits: the part claiming it (None if none does), the instance `*` captured, and the path below."""
     part: str | None
@@ -62,20 +70,21 @@ def repeat_of(repeats: Iterable[Repeat], pattern: tuple[str, ...]) -> Repeat | N
     return next((repeat for repeat in repeats if repeat.root == root), None) if root is not None else None
 
 
-def python_steps(path: tuple[str, ...]) -> tuple[str, ...]:
-    """A path as Python names it: no .py on its file, and a package's __init__ is the package itself."""
-    if path and path[-1].endswith(".py"):
-        path = path[:-1] + (path[-1].removesuffix(".py"),)
-    return path[:-1] if path and path[-1] == "__init__" else path
+def module_steps(path: tuple[str, ...], marks: Marks) -> tuple[str, ...]:
+    """A path as the language names it: no ending on its file, and the file that stands for its folder is the folder."""
+    if path and path[-1].endswith(marks.extension):
+        path = path[:-1] + (path[-1].removesuffix(marks.extension),)
+    stem = marks.package_file.removesuffix(marks.extension)
+    return path[:-1] if path and stem and path[-1] == stem else path
 
 
-def place_of(patterns: Mapping[str, tuple[str, ...]], path: tuple[str, ...]) -> Place:
+def place_of(patterns: Mapping[str, tuple[str, ...]], path: tuple[str, ...], marks: Marks) -> Place:
     """The place of a path among patterns, by name; Place(None) when no pattern claims it."""
-    steps = python_steps(path)
+    steps = module_steps(path, marks)
     best = Place(None)
     depth = -1
     for name, raw in patterns.items():
-        pattern = python_steps(raw)
+        pattern = module_steps(raw, marks)
         if len(steps) < len(pattern) or len(pattern) <= depth:
             continue
         instance = None
@@ -89,9 +98,9 @@ def place_of(patterns: Mapping[str, tuple[str, ...]], path: tuple[str, ...]) -> 
     return best
 
 
-def matches(pattern: tuple[str, ...], path: tuple[str, ...]) -> bool:
+def matches(pattern: tuple[str, ...], path: tuple[str, ...], marks: Marks) -> bool:
     """Whether a path is exactly the pattern, `*` standing for any name."""
-    pattern, steps = python_steps(pattern), python_steps(path)
+    pattern, steps = module_steps(pattern, marks), module_steps(path, marks)
     return len(pattern) == len(steps) and all(
         step != EACH and want in (EACH, step) for want, step in zip(pattern, steps))
 

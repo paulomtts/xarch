@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from xarch.kernel.logic.placement import Repeat, Target, repeat_of
+from xarch.kernel.logic.placement import Marks, Repeat, Target, repeat_of
 
 
 @dataclass(frozen=True)
@@ -110,6 +110,22 @@ class PartInfo:
 
 
 @dataclass(frozen=True)
+class Language:
+    """The language of the app, as a check needs it: how a message names it, the ending of a source file's name, the
+    file that stands for the folder holding it, the dotted names that mark a class as an interface, and those of
+    what imports by a name worked out when the code runs."""
+    title: str = ""
+    extension: str = ""
+    package_file: str = ""
+    interface: tuple[tuple[str, ...], ...] = ()
+    dynamic: tuple[tuple[str, ...], ...] = ()
+
+    @property
+    def marks(self) -> Marks:
+        return Marks(self.extension, self.package_file)
+
+
+@dataclass(frozen=True)
 class Profile:
     """The architecture in force, in the checker's terms.
 
@@ -127,7 +143,7 @@ class Profile:
     ("classes" or "functions"); types_only, by part, the parts it may use as types only; no_callbacks the parts whose
     code calls none of its own parameters; names, by part, the patterns its public classes match one of; built_by, by
     part, the parts that alone may build its classes; private_imports switches the private-imports guard on. hints
-    holds the profile's own advice, by rule id.
+    holds the profile's own advice, by rule id. language is the language of the app.
     """
     parts: dict[str, tuple[str, ...]]
     rules: dict[str, tuple[Target, ...]]
@@ -157,6 +173,7 @@ class Profile:
     built_by: dict[str, tuple[str, ...]] = field(default_factory=dict)
     private_imports: bool = False
     hints: dict[str, str] = field(default_factory=dict)
+    language: Language = Language()
 
     def words(self) -> dict[str, str]:
         """The word of the repeating folder each part lies in; a part outside every one has none."""
@@ -166,11 +183,13 @@ class Profile:
 
 @dataclass(frozen=True)
 class Import:
-    """One imported name as written. names is None for `import a.b`, the imported names for `from a import x`."""
+    """One imported name as written. names is None for `import a.b`, the imported names for `from a import x`.
+    standard: it is of the standard library (an absolute import whose first step names one)."""
     line: int
     module: tuple[str, ...]
     level: int = 0
     names: tuple[str, ...] | None = None
+    standard: bool = False
 
 
 @dataclass(frozen=True)
@@ -236,7 +255,7 @@ class Use:
     """A name read where it is used, called or not, as the dotted path it reaches, and the line it is on: `dt.now`
     after `from datetime import datetime as dt` is ("datetime", "datetime", "now"). bound is how many steps of the
     path the import that binds its first name bound (2 here: `from datetime import datetime`); a builtin used by its
-    bare name is ("builtins", <name>), bound 0."""
+    bare name is (<its namespace>, <name>), bound 0."""
     line: int
     name: tuple[str, ...]
     bound: int
@@ -253,9 +272,9 @@ class Method:
 
 @dataclass(frozen=True)
 class Class:
-    """A module-level class: its bases, each a Ref (`Protocol[T]` names Protocol), the methods of its body, and its
+    """A module-level class: its bases, each a Ref (a generic interface names the interface alone), the methods of its body, and its
     attributes: the names its body assigns, and those its methods assign on their first parameter (`self.x = ...`);
-    named: every name its bases and body mention, by its last step alone; exception: it derives from one of Python's
+    named: every name its bases and body mention, by its last step alone; exception: it derives from one of the language's
     builtin exceptions, named by its bare name, directly or through a class defined before it in the same file."""
     line: int
     name: str
@@ -335,7 +354,7 @@ class Function:
 
 @dataclass(frozen=True)
 class SourceFile:
-    """A Python file as parsed, never run: how it is shown (e.g. "app/kernel/x.py"), its path below the root, what
+    """A source file as parsed, never run: how it is shown (e.g. "app/kernel/x" and its ending), its path below the root, what
     it imports, its comments, its functions (at module level and in its classes), its unions, its calls, its
     classes, the calls of the methods of its functions' parameters, the uses of the names it reads and the names it
     defines at module level as functions, in order (module_functions: a name that one `def` binds and nothing else
@@ -435,10 +454,10 @@ class Excluded:
 @dataclass(frozen=True)
 class Enforcement:
     """The state of the check's own enforcement, beside its violations: where the profile comes from and how loose
-    it is; the app's Python files no part and no folder of the layout governs (never read, so never checked), as
+    it is; the app's source files no part and no folder of the layout governs (never read, so never checked), as
     shown; the init files missing or changed; the tests skipped or expected to fail, and the dynamic imports, where
-    they are; the checks satisfied to the letter only; and strict, the findings `--strict` fails on; and the folders
-    the profile excludes, which no check reads."""
+    they are; the checks satisfied to the letter only; and strict, the findings `--strict` fails on; the folders
+    the profile excludes, which no check reads; and language, how the language of the app is named."""
     origin: Origin = Origin()
     ungoverned: tuple[str, ...] = ()
     init_files: tuple[Drift, ...] = ()
@@ -447,6 +466,7 @@ class Enforcement:
     weak: tuple[Weak, ...] = ()
     strict: tuple[Finding, ...] = ()
     excluded: tuple[Excluded, ...] = ()
+    language: str = ""
 
 
 @dataclass(frozen=True)

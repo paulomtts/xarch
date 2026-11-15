@@ -3,7 +3,7 @@ from __future__ import annotations
 from xarch.kernel.errors import DomainError
 from xarch.kernel.logic.placement import Target
 from xarch.modules.spec.application.logic.docs_files import DOCS_ROOT
-from xarch.modules.spec.application.logic.explain import cleaned, example_of, held_by, key_at, nearest, overview_keys
+from xarch.modules.spec.application.logic.explain import cleaned, example_of, held_by, key_at, nearest, overview_keys, said
 from xarch.modules.spec.application.logic.key_lookup import plain
 from xarch.modules.spec.application.logic.layout_walk import walk
 from xarch.modules.spec.application.logic.profile_view import view
@@ -31,6 +31,7 @@ from xarch.modules.spec.contract import (
     FrameworkView,
     GuardsView,
     KeyExplained,
+    LanguageView,
     Loosened,
     Migrated,
     MigratedFile,
@@ -72,6 +73,7 @@ from xarch.modules.spec.domain.values import (
     ClosedTree,
     DeadCode,
     Guard,
+    Language,
     Layout,
     NoComments,
     NoDuplicates,
@@ -102,7 +104,9 @@ class SpecController:
         repeating = tuple(Repeating(repeat.word, repeat.root, _entries(architecture.instance_tree(repeat)))
                           for repeat in architecture.repeats)
         return Skeleton(top_level=_entries(architecture.top_level_tree()), repeating=repeating,
-                        entry_point=entry.path[0] if entry is not None else "")
+                        entry_point=entry.path[0] if entry is not None else "",
+                        package_file=architecture.language.package_file, language=architecture.language.title,
+                        reserved=architecture.language.reserved_names)
 
     def profile(self, location: str) -> ProfileView:
         """The profile at a location callers got from select(), a bundled name or a path, as the checks read it;
@@ -153,15 +157,18 @@ class SpecController:
 
     def explain(self, cmd: Explain) -> ExplainResult:
         """The format of a profile, whole or one key; a key the format does not have comes back with the nearest ones."""
+        language = self._architectures.default_language()
         if cmd.key is None:
-            shape = tuple(_shown(key, depth) for key, depth in overview_keys())
-            return FormatExplained(VERSION, shape, tuple(Symbol(s, m) for s, m in SYMBOLS), SMALLEST)
+            shape = tuple(_shown(key, depth, language) for key, depth in overview_keys())
+            return FormatExplained(VERSION, shape, tuple(Symbol(said(s, language), said(m, language)) for s, m in SYMBOLS),
+                                   SMALLEST)
         key = key_at(cmd.key)
         if key is None:
             return UnknownKey(cleaned(cmd.key), nearest(cleaned(cmd.key)))
         names = self._explanation.choices(key)
-        return KeyExplained(plain(key.address), key.where, key.meaning, key.accepts, key.required, key.enforced,
-                            key.rules, example_of(key, names), names, tuple(_shown(held, 0) for held in held_by(key)))
+        return KeyExplained(plain(key.address), key.where, said(key.meaning, language), said(key.accepts, language),
+                            key.required, key.enforced, key.rules, said(example_of(key, names), language), names,
+                            tuple(_shown(held, 0, language) for held in held_by(key)))
 
     def view(self, cmd: ViewProfile) -> ViewResult:
         """The folder tree and import table of a profile; one that cannot be chosen or loaded is refused with why."""
@@ -204,8 +211,8 @@ def _origin(found: Origin) -> ProfileOrigin:
                          tuple(Loosened(item.key, item.part, item.what, item.sentence) for item in found.looser))
 
 
-def _shown(key: Key, depth: int) -> Shown:
-    return Shown(plain(key.address), depth, key.meaning, key.required, key.enforced)
+def _shown(key: Key, depth: int, language: Language) -> Shown:
+    return Shown(plain(key.address), depth, said(key.meaning, language), key.required, key.enforced)
 
 
 def _profile_view(architecture: Architecture) -> ProfileView:
@@ -224,7 +231,10 @@ def _profile_view(architecture: Architecture) -> ProfileView:
         if architecture.fakes is not None else None,
         framework=FrameworkView(architecture.framework.files, architecture.framework.functions,
                                 architecture.framework.skips) if architecture.framework is not None else None,
-        excluded=tuple(ExcludedView(e.path, e.reason) for e in architecture.excluded), hints=dict(architecture.hints))
+        excluded=tuple(ExcludedView(e.path, e.reason) for e in architecture.excluded), hints=dict(architecture.hints),
+        language=LanguageView(architecture.language.title, architecture.language.extension,
+                              architecture.language.package_file, architecture.language.interface,
+                              architecture.language.dynamic))
 
 
 def _guards_view(guards: tuple[Guard, ...]) -> GuardsView:

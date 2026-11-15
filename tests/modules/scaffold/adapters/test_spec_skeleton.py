@@ -11,7 +11,8 @@ class SpecStandIn:
             top_level=(Entry(("kernel",), True, False), Entry(("kernel", "rules.py"), False, True)),
             repeating=(Repeating("module", ("modules",), (Entry(("domain",), True, True),)),
                        Repeating("plugin", ("app", "plugins"), (Entry(("manifest.py",), False, True),))),
-            entry_point="")
+            entry_point="", package_file="__init__.py", language="Python",
+            reserved=frozenset({"class"}))
 
     def docs(self, profile: str) -> Docs:
         return Docs(("docs", "project"), (DocFile(("statement.md",), "# statement\n"),
@@ -41,3 +42,15 @@ def test_docs_are_placed_below_the_docs_root_with_their_template():
 
 def test_files_are_the_project_files_of_the_app_with_their_content_as_it_is():
     assert skeleton().files("cli", "shop") == [(("Makefile",), "all: shop\n"), (("shop", "logo.woff"), b"\xff\x00")]
+
+
+def test_the_package_file_is_the_one_the_language_of_the_profile_has_stand_for_a_folder():
+    assert skeleton().package_file("cli") == "__init__.py"
+
+
+def test_the_language_is_how_spec_names_the_language_of_the_profile():
+    assert skeleton().language("cli") == "Python"
+
+
+def test_the_reserved_words_are_those_spec_gives_for_the_language_of_the_profile():
+    assert skeleton().reserved("cli") == frozenset({"class"})

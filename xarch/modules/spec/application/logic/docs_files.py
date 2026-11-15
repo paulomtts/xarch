@@ -1,7 +1,7 @@
 """The project docs beside the app: the files the architecture declares, each filled from its template.
 
-The architecture file names every doc (`docs: {<path>: {from, note}}`, see profile_v2.py), so the set of docs,
-their order and their text come from it; a template is filled as docs_template.py says. The docs are not part of the
+The architecture file names every doc (`docs: {<path>: {from, note}}`, see profile_v2), so the set of docs,
+their order and their text come from it; a template is filled as docs_template says. The docs are not part of the
 app's structure: `check` does not require them.
 """
 from __future__ import annotations

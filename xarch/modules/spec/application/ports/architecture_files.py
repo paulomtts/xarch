@@ -17,6 +17,11 @@ class ArchitectureFiles(Protocol):
         same mapping a profile writes out, shipped as data with xarch."""
         ...
 
+    def language_presets(self) -> dict[str, Any]:
+        """The documents of the data files of the languages a profile may name under `language`, by name, e.g.
+        {"<name>": {...}}: shipped as data with xarch."""
+        ...
+
     def read(self, source: ArchitectureSource) -> ArchitectureDocument:
         """The file, parsed but not validated; raises InvalidArchitecture if it cannot be read or parsed."""
         ...

@@ -47,6 +47,7 @@ import builtins
 import copy
 import hashlib
 import io
+import sys
 import tokenize
 from collections.abc import Iterable
 from pathlib import Path
@@ -121,6 +122,10 @@ _BUILTINS = frozenset(name for name in vars(builtins) if not name.startswith("__
 """Python's builtins, as a bare name reads them; the dunder names the builtins namespace holds about itself left out."""
 
 
+def _standard(name: str) -> bool:
+    return name in sys.stdlib_module_names
+
+
 def _star_import(tree: ast.AST) -> bool:
     return any(isinstance(n, ast.ImportFrom) and any(a.name == "*" for a in n.names) for n in ast.walk(tree))
 
@@ -129,10 +134,12 @@ def _imports(tree: ast.AST) -> list[Import]:
     found: list[Import] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            found += [Import(node.lineno, tuple(alias.name.split("."))) for alias in node.names]
+            found += [Import(node.lineno, tuple(alias.name.split(".")), standard=_standard(alias.name.split(".")[0]))
+                      for alias in node.names]
         elif isinstance(node, ast.ImportFrom):
             module = tuple(node.module.split(".")) if node.module else ()
-            found.append(Import(node.lineno, module, node.level, tuple(a.name for a in node.names)))
+            found.append(Import(node.lineno, module, node.level, tuple(a.name for a in node.names),
+                                not node.level and bool(module) and _standard(module[0])))
     return found
 
 

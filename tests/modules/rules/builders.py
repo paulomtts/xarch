@@ -9,6 +9,7 @@ its folder, architecture/).
 """
 from __future__ import annotations
 
+import sys
 from dataclasses import replace
 
 from xarch.kernel.logic.placement import EVERYTHING, Repeat, Target
@@ -17,6 +18,7 @@ from xarch.modules.rules.domain.values import (
     Fixture,
     Framework,
     Import,
+    Language,
     Profile,
     Scenarios,
     SourceFile,
@@ -25,6 +27,8 @@ from xarch.modules.rules.domain.values import (
     TestTier,
 )
 
+PYTHON = Language("Python", ".py", "__init__.py", (("typing", "Protocol"), ("typing_extensions", "Protocol")),
+                  (("importlib", "import_module"), ("importlib", "__import__"), ("builtins", "__import__")))
 APP, TESTS = "app", "tests"
 MODULES = Repeat("module", ("modules",))
 EACH_PARTS = {"domain": ("domain",), "contract": ("contract",), "controller": ("application", "controller.py"),
@@ -76,7 +80,7 @@ PROFILE = Profile(
     stand_ins=StandIns((MOCK, ("unittest", "mock", "MagicMock")), (AUTOSPEC,), ("spec", "spec_set"),
                        (Fixture("mocker", ("Mock", "MagicMock"), ("create_autospec",)),)),
     framework=Framework(("test_*.py", "*_test.py"), "test_*"),
-    forbidden={"domain": (NOW, ("builtins", "open"), ("socket",))})
+    forbidden={"domain": (NOW, ("builtins", "open"), ("socket",))}, language=PYTHON)
 
 
 PLUGINS = Repeat("plugin", ("plugins",))
@@ -106,8 +110,10 @@ def dotted(name: str) -> tuple[str, ...]:
 
 
 def imp(line: int, module: str, *names: str, level: int = 0) -> Import:
-    """`import module` with no names, `from module import names` with some; level counts a relative import's dots."""
-    return Import(line, dotted(module) if module else (), level, names or None)
+    """`import module` with no names, `from module import names` with some; level counts a relative import's dots. It
+    is marked standard as the reader marks it: absolute, and a module of the standard library."""
+    steps = dotted(module) if module else ()
+    return Import(line, steps, level, names or None, not level and bool(steps) and steps[0] in sys.stdlib_module_names)
 
 
 def source(path: str, *imports: Import, root: str = APP, **fields) -> SourceFile:

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import keyword
+from collections.abc import Collection
 
 
-def valid_name(name: str) -> bool:
-    return (name.isascii() and name.isidentifier() and name == name.lower()
-            and not name.startswith("_") and not keyword.iskeyword(name))
+def valid_name(name: str, reserved: Collection[str]) -> bool:
+    return (name.isascii() and name.isidentifier() and name == name.lower() and not name.startswith("_")
+            and name not in reserved)

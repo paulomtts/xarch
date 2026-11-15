@@ -7,28 +7,31 @@ from typing import Any
 
 from xarch.modules.spec.application.logic.docs_files import doc_files
 from xarch.modules.spec.application.logic.example_imports import example_problems, shipped_problems
+from xarch.modules.spec.application.logic.language_file import language_of
 from xarch.modules.spec.application.logic.looseness import origin_of
 from xarch.modules.spec.application.logic.profile_file import parse_profile, source_of
 from xarch.modules.spec.application.logic.profile_files import pointed_files
 from xarch.modules.spec.application.logic.profile_listing import listing, referenced
 from xarch.modules.spec.application.logic.project_files import EXAMPLE_APP, Written, entries, project_files, with_app
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
+from xarch.modules.spec.application.ports.runtime import Runtime
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.values import Architecture, ArchitectureSource, Origin
+from xarch.modules.spec.domain.values import Architecture, ArchitectureSource, Language, Origin
 
 
 class ArchitectureService:
-    def __init__(self, files: ArchitectureFiles):
-        self._files = files
+    def __init__(self, files: ArchitectureFiles, runtime: Runtime):
+        self._files, self._runtime = files, runtime
         self._bundled: dict[str, tuple[ArchitectureSource, Architecture]] = {}
         self._testing: dict[str, Any] | None = None
+        self._languages: dict[str, Language] | None = None
 
     def load(self, location: str | Path) -> Architecture:
         """The architecture in a bundled file, by name, or in a file at a path; raises InvalidArchitecture."""
         return self._load(location)[1]
 
     def check_examples(self, location: str | Path) -> tuple[str, ...]:
-        """Every import of the architecture's Python examples that its rules forbid and every example in no part; raises
+        """Every import of the architecture's examples that its rules forbid and every example in no part; raises
         InvalidArchitecture if the file cannot be loaded or an example read."""
         source, architecture = self._load(location)
         return tuple(example_problems(architecture, self._example_texts(source, architecture)))
@@ -42,7 +45,8 @@ class ArchitectureService:
     def parse_copy(self, document: Any, source: str, outputs: Mapping[str, bytes]) -> Architecture:
         """The architecture a profile about to be written describes, its files being outputs, by their path from it;
         raises InvalidArchitecture."""
-        return parse_profile(document, source, tuple(outputs), self._presets(), self._files.bundled())
+        return parse_profile(document, source, tuple(outputs), self._presets(), self._files.bundled(),
+                             self._language_presets())
 
     def docs(self, location: str | Path) -> list[tuple[tuple[str, ...], str]]:
         """The project docs the architecture declares, by their path below the docs root, each filled from its
@@ -93,6 +97,22 @@ class ArchitectureService:
             self._testing = self._files.testing_presets()
         return self._testing
 
+    def default_language(self) -> Language:
+        """The language of an app whose profile names none: the first the data files of the languages give, by name."""
+        found = self._language_presets()
+        return found[min(found)] if found else Language()
+
+    def _language_presets(self) -> dict[str, Language]:
+        """The languages xarch ships, read once, each with the names only the runtime knows."""
+        if self._languages is None:
+            self._languages = {
+                name: replace(language, standard_names=self._runtime.standard_library(language.standard),
+                              builtin_names=self._runtime.builtin_names(),
+                              reserved_names=self._runtime.reserved_words())
+                for name, document in self._files.language_presets().items()
+                for language in [language_of(name, document)]}
+        return self._languages
+
     def _load(self, location: str | Path) -> tuple[ArchitectureSource, Architecture]:
         """The source and its architecture; a bundled one is read once, since it cannot change while xarch runs."""
         source = source_of(location, self._files.bundled())
@@ -102,7 +122,8 @@ class ArchitectureService:
         named, folders = referenced(raw.document)
         files = listing((name for name in named if self._files.has_file(source, name)),
                         {folder: self._files.files_under(source, folder) for folder in folders})
-        loaded = source, parse_profile(raw.document, raw.source, files, self._presets(), self._files.bundled())
+        loaded = source, parse_profile(raw.document, raw.source, files, self._presets(), self._files.bundled(),
+                                              self._language_presets())
         if source.bundled:
             self._bundled[source.location] = loaded
         return loaded

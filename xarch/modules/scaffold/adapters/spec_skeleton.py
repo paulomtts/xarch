@@ -25,6 +25,15 @@ class SpecSkeleton:
     def top_level(self, profile: str) -> list[tuple[tuple[str, ...], bool]]:
         return _entries(self._spec.skeleton(profile).top_level)
 
+    def package_file(self, profile: str) -> str:
+        return self._spec.skeleton(profile).package_file
+
+    def language(self, profile: str) -> str:
+        return self._spec.skeleton(profile).language
+
+    def reserved(self, profile: str) -> frozenset[str]:
+        return self._spec.skeleton(profile).reserved
+
     def kinds(self, profile: str) -> dict[str, tuple[tuple[str, ...], list[tuple[tuple[str, ...], bool]]]]:
         return {repeating.word: (repeating.root, _entries(repeating.entries))
                 for repeating in self._spec.skeleton(profile).repeating}

@@ -7,9 +7,9 @@ from xarch.modules.scaffold.application.logic.plan import app_name, holder, plan
 
 
 def test_plan_writes_a_package_file_for_the_root_and_every_folder_and_every_file_parents_first():
-    entries = [(("kernel",), True), (("kernel", "logic"), True), (("__main__.py",), False)]
-    assert plan(entries) == [("__init__.py",), ("kernel", "__init__.py"), ("kernel", "logic", "__init__.py"),
-                             ("__main__.py",)]
+    entries = [(("kernel",), True), (("kernel", "logic"), True), (("main.src",), False)]
+    assert plan(entries, "index.src") == [("index.src",), ("kernel", "index.src"), ("kernel", "logic", "index.src"),
+                                          ("main.src",)]
 
 
 @pytest.mark.parametrize("root, resolved, name", [

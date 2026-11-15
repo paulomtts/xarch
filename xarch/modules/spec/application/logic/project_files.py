@@ -1,11 +1,11 @@
 """The project files beside the app: the files the architecture declares besides the docs, each filled from its template.
 
-The architecture names every entry (`files: {<path>: {from, pinned, fill}}`, see profile_v2.py). A file entry
+The architecture names every entry (`files: {<path>: {from, pinned, fill}}`, see profile_v2). A file entry
 is its template; a folder entry (a key ending in `/`) is every file under its folder, written below the key with the
 relative paths kept. `{{app}}` in a key is the name of the app folder, so an entry may land inside the app; in a text it
 is replaced by the name when the entry is filled, and any other `{{...}}` is left alone: a template may hold code that
 has its own braces. An entry that is not filled is copied byte for byte. The files are not part of the app's
-structure: `check` does not require them, but a Python file that lands in a part is checked like any other.
+structure: `check` does not require them, but a source file that lands in a part is checked like any other.
 
 What an entry may not do, inside the app folder: replace what the skeleton itself writes (a package file, a folder or a
 file of the layout), or land on a file another entry writes.
@@ -24,7 +24,6 @@ APP_PLACEHOLDER = "{{app}}"
 """The one placeholder of a project file's template: the name of the app folder."""
 EXAMPLE_APP = "app"
 """The app folder's name in the docs' example project, which shows an example file with its placeholder filled."""
-PACKAGE_FILE = "__init__.py"
 
 
 @dataclass(frozen=True)
@@ -101,12 +100,14 @@ class _Reserved:
 
     def __init__(self, architecture: Architecture, app: str):
         self._app = app
-        self._files: list[tuple[str, ...]] = [(PACKAGE_FILE,)]
+        package = architecture.language.package_file
+        self._package = package
+        self._files: list[tuple[str, ...]] = [(package,)]
         self._folders: list[tuple[str, ...]] = [()]
         for path, is_dir, _ in walk(architecture.layout):
             if is_dir:
                 self._folders.append(path)
-                self._files.append(path + (PACKAGE_FILE,))
+                self._files.append(path + (package,))
             else:
                 self._files.append(path)
 
@@ -120,7 +121,7 @@ class _Reserved:
             return f"'{shown}' is the app folder"
         for pattern in self._files:
             if _matches(pattern, inside):
-                kind = "the package file the skeleton writes" if pattern[-1] == PACKAGE_FILE else "a file of the layout"
+                kind = "the package file the skeleton writes" if pattern[-1] == self._package else "a file of the layout"
                 return f"'{shown}' is {kind}"
             if len(inside) > len(pattern) and _matches(pattern, inside[:len(pattern)]):
                 return f"'{'/'.join(target[:len(pattern) + 1])}' is a file of the layout"

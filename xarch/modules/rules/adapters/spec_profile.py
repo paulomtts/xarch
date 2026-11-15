@@ -10,6 +10,7 @@ from xarch.modules.rules.domain.values import (
     Fixture,
     Framework,
     InitFile,
+    Language,
     Loosened,
     Origin,
     PartInfo,
@@ -64,7 +65,9 @@ class SpecProfiles:
                        if view.framework is not None else None,
                        forbidden={p.name: p.forbidden for p in parts if p.forbidden},
                        info={p.name: PartInfo(p.role, p.litmus, p.shown, p.untested) for p in parts},
-                       excluded=tuple(Exclusion(e.path, e.reason) for e in view.excluded), hints=dict(view.hints))
+                       excluded=tuple(Exclusion(e.path, e.reason) for e in view.excluded), hints=dict(view.hints),
+                       language=Language(view.language.title, view.language.extension, view.language.package_file,
+                                         view.language.interface, view.language.dynamic))
 
     def origin(self, location: str) -> Origin:
         found = self._spec.origin(location)

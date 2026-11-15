@@ -8,7 +8,7 @@ from xarch.kernel.logic.placement import Repeat, Target
 
 __all__ = ["Entry", "Repeating", "Skeleton", "DocFile", "Docs", "ProjectFile", "PartView", "TierView", "TableView",
            "ScenariosView", "FixtureView", "StandInsView", "GuardsView", "FakesView", "FrameworkView", "ExcludedView",
-           "ProfileView", "Loosened", "ProfileOrigin", "ChooseApp", "AppChosen", "ChooseAppResult",
+           "LanguageView", "ProfileView", "Loosened", "ProfileOrigin", "ChooseApp", "AppChosen", "ChooseAppResult",
            "SelectProfile", "ProfileSelected", "ProfileRefused",
            "NoProfileChosen", "SelectResult", "MigrateProfile", "MigratedFile", "Migrated", "MigrationRefused",
            "MigrateResult", "Shown", "Symbol", "Explain", "FormatExplained", "KeyExplained", "UnknownKey",
@@ -19,7 +19,7 @@ __all__ = ["Entry", "Repeating", "Skeleton", "DocFile", "Docs", "ProjectFile", "
 @dataclass(frozen=True)
 class Entry:
     """
-    path: e.g. ("application", "controller.py")
+    path: a folder or a file of the layout, e.g. ("application", "controller<ending>")
     leaf: a file, or a directory that holds nothing in the spec
     """
     path: tuple[str, ...]
@@ -40,10 +40,14 @@ class Repeating:
 class Skeleton:
     """The layout as entries: top_level below the app root, with every repeating folder empty; repeating, the
     repeating folders in the order of the profile; entry_point, the top-level folder of the part marked `entry` ("" if
-    none)."""
+    none); package_file, the file the language of the app has stand for each folder, which a folder of the layout holds;
+    language, how the language of the app is named; reserved, the words no name may be."""
     top_level: tuple[Entry, ...]
     repeating: tuple[Repeating, ...]
     entry_point: str
+    package_file: str = ""
+    language: str = ""
+    reserved: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -70,7 +74,7 @@ class Docs:
 class ProjectFile:
     """A file `init` writes beside the app folder, in the folder holding it.
 
-    path: below the folder holding the app, e.g. ("tests", "architecture", "test_rules.py"); a file inside the app
+    path: below the folder holding the app, e.g. ("tests", "architecture", "test_rules<ending>"); a file inside the app
         folder starts with the app folder's name
     content: the file's text, the app folder's name filled in, or, for a file that is not filled, its bytes as they are
     pinned: the project keeps it as written; `check` reports it when it differs
@@ -207,11 +211,23 @@ class ExcludedView:
 
 
 @dataclass(frozen=True)
+class LanguageView:
+    """The language of the app as a check reads it: how a message names it, the ending of a source file's name, the
+    file that stands for the folder holding it, the dotted names that mark a class as an interface, and those of what
+    imports by a name worked out when the code runs."""
+    title: str = ""
+    extension: str = ""
+    package_file: str = ""
+    interface: tuple[tuple[str, ...], ...] = ()
+    dynamic: tuple[tuple[str, ...], ...] = ()
+
+
+@dataclass(frozen=True)
 class ProfileView:
     """A profile as the checks read it, everything they need already worked out: its parts in order; every folder of
     the layout as a pattern; its tiers in order; the outside packages each part may import (None: unchecked); its
     repeating folders; the guards switched on; the fakes and the test framework (None: none); the excluded folders;
-    and the project's own advice for a rule, by rule id."""
+    the project's own advice for a rule, by rule id; and the language of the app."""
     parts: tuple[PartView, ...]
     folders: tuple[tuple[str, ...], ...] = ()
     tiers: tuple[TierView, ...] = ()
@@ -222,6 +238,7 @@ class ProfileView:
     framework: FrameworkView | None = None
     excluded: tuple[ExcludedView, ...] = ()
     hints: dict[str, str] = field(default_factory=dict)
+    language: LanguageView = LanguageView()
 
 
 @dataclass(frozen=True)

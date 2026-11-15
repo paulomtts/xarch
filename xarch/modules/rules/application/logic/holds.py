@@ -10,7 +10,7 @@ through classes of the app (a base read through the absolute import that binds i
 that is an exception itself, however far that goes); and a record, a class with no method but dunder methods, that a
 top-level function of the same file names in its return annotation, so that it is what that function answers.
 
-A package file (`__init__.py`) is not read: it only gathers what its package holds. It is listed in the enforcement
+A package file (the file that stands for its folder) is not read: it only gathers what its package holds. It is listed in the enforcement
 section like a weak check and fails `check --strict` only: where a part's code belongs by its kind is the profile's
 description, which code may follow for a reason the check cannot see.
 """
@@ -33,10 +33,10 @@ def weak(app: Iterable[SourceFile], profile: Profile, root: str) -> list[Weak]:
     if not profile.holds:
         return []
     app = list(app)
-    found_exceptions = exceptions(app, root)
+    found_exceptions = exceptions(app, root, profile)
     found: list[Weak] = []
     for file in app:
-        steps, is_package = dotted(file.path)
+        steps, is_package = dotted(file.path, profile.language.marks)
         where = place(profile, steps)
         if is_package or where is None or where.part not in profile.holds:
             continue
@@ -68,9 +68,9 @@ def _record(cls: Class, file: SourceFile) -> bool:
     return any(cls.name in f.returns_named for f in file.functions if not f.owner)
 
 
-def exceptions(app: list[SourceFile], root: str) -> set[tuple[tuple[str, ...], str]]:
+def exceptions(app: list[SourceFile], root: str, profile: Profile) -> set[tuple[tuple[str, ...], str]]:
     """Every class of the app that is an exception, as (dotted path of its file, name)."""
-    classes = {(dotted(f.path)[0], c.name): c for f in app for c in f.classes}
+    classes = {(dotted(f.path, profile.language.marks)[0], c.name): c for f in app for c in f.classes}
     found = {key for key, cls in classes.items() if cls.exception}
     grown = True
     while grown:

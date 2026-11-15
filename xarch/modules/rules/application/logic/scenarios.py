@@ -53,7 +53,7 @@ def violations(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: 
     tests = list(tests)
     found: list[Violation] = []
     for file in app:
-        where = place(profile, dotted(file.path)[0])
+        where = place(profile, dotted(file.path, profile.language.marks)[0])
         if where is None or where.part != guard.results or where.instance is None:
             continue
         for union in file.unions:
@@ -79,7 +79,7 @@ def weak(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profil
     tests = list(tests)
     found: list[Weak] = []
     for file in app:
-        where = place(profile, dotted(file.path)[0])
+        where = place(profile, dotted(file.path, profile.language.marks)[0])
         if where is None or where.part != guard.results or where.instance is None:
             continue
         for union in file.unions:
