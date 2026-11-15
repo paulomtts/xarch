@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from xarch.kernel.logic.placement import EVERYTHING, Target
+from xarch.kernel.logic.placement import EVERYTHING, Repeat, Target
 from xarch.modules.rules.application.logic.where import Resolved, describe, resolve
 from xarch.modules.rules.domain.values import Fakes, Framework, Nearest, PartInfo, Profile, Reach, TierInfo
 from xarch.modules.rules.domain.values import TestTier as Tier
@@ -31,12 +31,11 @@ PROFILE = Profile(
                 "a use case", "real controllers; fakes", "Does it drive a controller?", "use case"),
            Tier("guard", (), ("architecture",), (), False, "a rule holds", "the source tree")),
     libraries={"kernel": (), "domain": (), "platform": ("yaml",), "entry": ("typer",)},
-    fakes=Fakes(("fakes",), ("ports",), "Fake"), each_root=("modules",),
+    fakes=Fakes(("fakes",), ("ports",), "Fake"), repeats=(Repeat("module", ("modules",)),),
     framework=Framework(("test_*.py",), "test_*"),
     forbidden={"domain": (NOW, ("builtins", "open"))},
     info={name: PartInfo(f"the {name} role", f"Is it {name}?", SHOWN[name],
-                         "wraps a library" if name == "platform" else "") for name in PARTS},
-    singular="module")
+                         "wraps a library" if name == "platform" else "") for name in PARTS})
 
 
 def found(kind="app", *steps, exists=False) -> Resolved:
@@ -184,7 +183,7 @@ def test_a_fake_and_a_helper_are_not_tests():
 
 
 def test_a_profile_that_checks_no_outside_package_has_no_libraries_to_list():
-    bare = Profile(PARTS, PROFILE.rules, PROFILE.folders, info=PROFILE.info, singular="module")
+    bare = Profile(PARTS, PROFILE.rules, PROFILE.folders, info=PROFILE.info)
     assert where("kernel", "x.py", profile=bare).libraries is None
 
 
@@ -261,3 +260,43 @@ def test_a_test_of_a_listed_part_in_a_tier_not_held_to_the_list_is_told_no_forbi
     loose = Profile(**{**vars(PROFILE), "tiers": (Tier("unit", (Target("domain", "own"),)),)})
     here = describe(loose, found("tests", "modules", "docs", "domain", "test_invoice.py"), APP, TESTS)
     assert (here.tier.name, here.forbidden) == ("unit", ())
+
+
+TWO_ROOTS = Profile(
+    {**PARTS, "hooks": ("plugins", "*", "hooks")}, {**PROFILE.rules, "hooks": (Target("domain", "any"), Target("kernel"))},
+    (*PROFILE.folders, ("plugins",), ("plugins", "*"), ("plugins", "*", "hooks")),
+    tiers=(*PROFILE.tiers[:1], Tier("plugin", (Target("hooks", "own"),), None, (), False, "a hook", "nothing",
+                                     "Does it run a hook?"), *PROFILE.tiers[1:]),
+    framework=PROFILE.framework, fakes=PROFILE.fakes,
+    repeats=(Repeat("module", ("modules",)), Repeat("plugin", ("plugins",))),
+    info={**PROFILE.info, "hooks": PartInfo("what a plugin runs", "Does a plugin run it?", "hooks/")})
+
+
+def test_a_path_in_the_second_repeating_folder_is_told_by_its_own_word_and_what_it_may_import_by_each_words():
+    here = describe(TWO_ROOTS, found("app", "plugins", "seo", "hooks", "run.py"), APP, TESTS)
+    assert (here.part, here.instance, here.singular, here.may_import_text) == (
+        "hooks", "seo", "plugin", "its own plugin's `hooks/`, any module's `domain/`, `kernel/`")
+    assert [(r.part, r.path) for r in here.may_import] == [
+        ("hooks", "app/plugins/seo/hooks/"), ("domain", "app/modules/<module>/domain/"), ("kernel", "app/kernel/")]
+    assert (here.test_folder, here.tier.name) == ("tests/plugins/seo/hooks/", "plugin")
+
+
+def test_a_path_in_the_first_repeating_folder_keeps_its_word_beside_a_second_one():
+    here = describe(TWO_ROOTS, found("app", "modules", "docs", "domain", "x.py"), APP, TESTS)
+    assert (here.singular, here.instance) == ("module", "docs")
+
+
+def test_a_test_in_the_second_repeating_folder_is_told_by_its_own_word():
+    here = describe(TWO_ROOTS, found("tests", "plugins", "seo", "hooks", "test_run.py"), APP, TESTS)
+    assert (here.kind, here.part, here.instance, here.singular, here.test_code_from) == (
+        "test", "hooks", "seo", "plugin", "tests/plugins/seo/")
+
+
+def test_a_part_outside_every_repeating_folder_has_no_word_when_there_are_several_and_the_only_one_when_there_is_one():
+    assert describe(TWO_ROOTS, found("app", "kernel", "x.py"), APP, TESTS).singular == ""
+    assert describe(PROFILE, found("app", "kernel", "x.py"), APP, TESTS).singular == "module"
+
+
+def test_the_parts_near_a_path_in_the_second_repeating_folder_are_shown_with_its_word():
+    here = describe(TWO_ROOTS, found("app", "plugins", "seo", "stray.py"), APP, TESTS)
+    assert [(n.part, n.path) for n in here.nearest] == [("hooks", "app/plugins/seo/hooks/")]

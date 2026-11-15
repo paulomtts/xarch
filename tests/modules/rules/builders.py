@@ -1,7 +1,7 @@
 """Builders for the rules module's unit tests: a hand-made profile shaped like the bundled web profile, and source
 files written as the parser would hand them over, each argument defaulted so a test names only what it cares about.
 
-PROFILE's app is the package `app`, its tests the package `tests`; its `each` folder is modules/<module>/, holding
+PROFILE's app is the package `app`, its tests the package `tests`; its repeating folder is modules/<module>/, holding
 domain/, contract/, application/{controller.py, services/, logic/, ports/} and adapters/, beside kernel/, platform/,
 web/ (the entry) and bootstrap/. Its tiers are unit (kernel, domain, logic, adapters; held to `forbidden`),
 integration (controller, services, ports, contract), rendering (web; the controller as a type only) and guard (by
@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from xarch.kernel.logic.placement import EVERYTHING, Target
+from xarch.kernel.logic.placement import EVERYTHING, Repeat, Target
 from xarch.modules.rules.domain.values import (
     Fakes,
     Fixture,
@@ -26,6 +26,7 @@ from xarch.modules.rules.domain.values import (
 )
 
 APP, TESTS = "app", "tests"
+MODULES = Repeat("module", ("modules",))
 EACH_PARTS = {"domain": ("domain",), "contract": ("contract",), "controller": ("application", "controller.py"),
               "services": ("application", "services"), "logic": ("application", "logic"),
               "ports": ("application", "ports"), "adapters": ("adapters",)}
@@ -69,13 +70,26 @@ PROFILE = Profile(
     parts=PARTS, rules=RULES, folders=FOLDERS, tiers=(UNIT, INTEGRATION, RENDERING, GUARD),
     libraries={"platform": ("sqlmodel",), "adapters": ("sqlmodel",), "web": ("fastapi",),
                "bootstrap": ("sqlmodel", "fastapi")},
-    fakes=Fakes(("fakes",), ("ports",), "Fake"), each_root=("modules",), package_only=("contract",),
+    fakes=Fakes(("fakes",), ("ports",), "Fake"), repeats=(MODULES,), package_only=("contract",),
     scenarios=Scenarios("contract", "integration", "Result", ("given", "when", "then"), TABLE, "test_{name}.py"),
     no_comments=True,
     stand_ins=StandIns((MOCK, ("unittest", "mock", "MagicMock")), (AUTOSPEC,), ("spec", "spec_set"),
                        (Fixture("mocker", ("Mock", "MagicMock"), ("create_autospec",)),)),
     framework=Framework(("test_*.py", "*_test.py"), "test_*"),
-    forbidden={"domain": (NOW, ("builtins", "open"), ("socket",))}, singular="module")
+    forbidden={"domain": (NOW, ("builtins", "open"), ("socket",))})
+
+
+PLUGINS = Repeat("plugin", ("plugins",))
+PLUGIN_PARTS = {"hooks": ("plugins", "*", "hooks"), "manifest": ("plugins", "*", "manifest.py")}
+PLUGIN = TestTier("plugin", own("hooks", "manifest"), None)
+TWO = replace(
+    PROFILE, parts={**PARTS, **PLUGIN_PARTS},
+    rules={**RULES, "hooks": (*own("manifest"), Target("domain", "any"), Target("kernel")),
+           "manifest": (Target("kernel"),), "domain": (Target("kernel"), Target("hooks", "any"))},
+    folders=(*FOLDERS, ("plugins",), ("plugins", "*"), ("plugins", "*", "hooks")),
+    tiers=(UNIT, PLUGIN, INTEGRATION, RENDERING, GUARD), repeats=(MODULES, PLUGINS))
+"""PROFILE with a second repeating folder, plugins/<plugin>/, holding hooks/ and manifest.py: a plugin's hooks may
+import its own manifest, any module's domain and the kernel; a module's domain may import any plugin's hooks."""
 
 
 def profile(**changes) -> Profile:

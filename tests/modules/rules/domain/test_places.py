@@ -1,7 +1,7 @@
 """Where code sits in a hand-made profile, how a place is named, and whether an import between two places is allowed."""
 import pytest
 
-from tests.modules.rules.builders import PROFILE, profile, steps
+from tests.modules.rules.builders import PROFILE, TWO, profile, steps
 from xarch.kernel.logic.placement import Place, Target
 from xarch.modules.rules.domain.places import allowed, label, place, targets_of
 
@@ -91,3 +91,30 @@ def test_a_part_may_always_import_itself(checked, src, dst, expected):
 ])
 def test_what_a_part_may_import_starts_with_itself(part, expected):
     assert targets_of(PROFILE, part) == expected
+
+
+@pytest.mark.parametrize("path, expected", [
+    pytest.param("plugins/seo/hooks/run", Place("hooks", "seo", ("run",)), id="a file in a part of the second folder"),
+    pytest.param("plugins/seo/manifest", Place("manifest", "seo"), id="a file part of the second folder"),
+    pytest.param("plugins/seo", Place(None), id="the second folder's instance is structure"),
+    pytest.param("plugins/seo/domain/x", None, id="a folder the second repeating folder does not hold is ungoverned"),
+])
+def test_place_in_a_profile_with_two_repeating_folders(path, expected):
+    assert place(TWO, steps(path)) == expected
+
+
+def test_a_place_of_the_second_repeating_folder_is_named_by_its_full_folder():
+    assert label(TWO, Place("hooks", "seo")) == "hooks/ of plugins/seo"
+
+
+@pytest.mark.parametrize("src, dst, expected", [
+    pytest.param(Place("hooks", "a"), Place("manifest", "a"), True, id="a bare name is the importer's own instance"),
+    pytest.param(Place("hooks", "a"), Place("manifest", "b"), False, id="not another instance of its own folder"),
+    pytest.param(Place("hooks", "a"), Place("domain", "a"), True, id="@any reaches an instance of the other folder"),
+    pytest.param(Place("hooks", "a"), Place("domain", "b"), True, id="whichever its name"),
+    pytest.param(Place("hooks", "a"), Place("contract", "a"), False, id="a part of the other folder it does not list"),
+    pytest.param(Place("domain", "a"), Place("hooks", "a"), True, id="the other way round, by its own @any"),
+    pytest.param(Place("manifest", "a"), Place("hooks", "a"), False, id="what a row does not list stays refused"),
+])
+def test_allowed_across_repeating_folders(src, dst, expected):
+    assert allowed(TWO, src, dst) == expected

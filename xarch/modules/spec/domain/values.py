@@ -5,7 +5,17 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from xarch.kernel.logic.placement import EACH, EVERYTHING, Place, Scope, Target, place_of, with_itself
+from xarch.kernel.logic.placement import (
+    EACH,
+    EVERYTHING,
+    Place,
+    Repeat,
+    Scope,
+    Target,
+    place_of,
+    repeat_of,
+    with_itself,
+)
 
 
 @dataclass(frozen=True)
@@ -16,17 +26,17 @@ class Configured:
 
 
 Layout = dict[str, "Layout | None"]
-"""A layout tree: a dict is a folder, None a file; the key "*" is the `each` folder, one per instance."""
+"""A layout tree: a dict is a folder, None a file; the key "*" is a repeating folder, one per instance."""
 
 
-__all__ = ["EACH", "EVERYTHING", "Place", "Scope", "Target"]
+__all__ = ["EACH", "EVERYTHING", "Place", "Repeat", "Scope", "Target"]
 
 
 @dataclass(frozen=True)
 class Part:
     """Where code sits: a named path in the layout, with what goes there and how to tell.
 
-    path: in the layout; EACH stands for the name of an `each` folder, e.g. ("src", "*", "api")
+    path: in the layout; EACH stands for the name of a repeating folder, e.g. ("src", "*", "api")
     role: one line; also the part's note in the docs' tree
     entry: the entry point, which drives the rest; at most one part is
     untested: why no tier tests it, e.g. "reached through the adapters that use it"
@@ -299,7 +309,8 @@ class Architecture:
     libraries: the outside packages each part may import; None: unchecked
     guards: the pre-built checks in use
     fakes: where the test fakes live; None: no test may import them
-    singular: the name of one instance of the `each` folder, as the docs show it; empty if the layout has no `each`
+    repeats: the repeating folders of the layout, in the order of the profile: each its word, as the docs show one
+        instance, and the folder it repeats in
     framework: how the test framework names test files and functions; None when no tier or guard needs them
     files: the project files `init` writes besides the docs, in order
     forbidden: the dotted names and modules a part may not use, by part; a part not listed has none
@@ -321,7 +332,7 @@ class Architecture:
     libraries: dict[str, tuple[str, ...]] | None = None
     guards: tuple[Guard, ...] = ()
     fakes: Fakes | None = None
-    singular: str = ""
+    repeats: tuple[Repeat, ...] = ()
     files: tuple[ProjectFile, ...] = ()
     framework: Framework | None = None
     forbidden: dict[str, tuple[tuple[str, ...], ...]] = field(default_factory=dict)
@@ -336,8 +347,8 @@ class Architecture:
 
     def shown(self, part: Part) -> str:
         """A part as the docs name it: its path below its instance for an instance's part, ending in / for a folder."""
-        root = self.instance_root()
-        path = part.path[len(root) + 1:] if part.in_instance and root is not None else part.path
+        repeat = repeat_of(self.repeats, part.path)
+        path = part.path[len(repeat.root) + 1:] if repeat is not None else part.path
         return "/".join(path) + ("" if self.is_file(part.path) else "/")
 
     def is_file(self, path: tuple[str, ...]) -> bool:
@@ -350,7 +361,7 @@ class Architecture:
         return here is None
 
     def targets_of(self, part: str) -> tuple[Target, ...]:
-        """What a part may import: itself (its own instance, for a part in the `each` folder), then its row."""
+        """What a part may import: itself (its own instance, for a part in a repeating folder), then its row."""
         return with_itself(part, self.parts[part].path, self.rules.get(part, ())) if part in self.parts else ()
 
     def place_of(self, path: tuple[str, ...]) -> Place:
@@ -363,34 +374,21 @@ class Architecture:
         """Every part's path pattern, by name."""
         return {name: part.path for name, part in self.parts.items()}
 
-    def instance_root(self) -> tuple[str, ...] | None:
-        """The folder holding the modules, e.g. ("modules",), or None if the layout has no `each`."""
-        return _find_each(self.layout, ())
+    def words(self) -> dict[str, str]:
+        """The word of the repeating folder each part lies in; a part outside every one has none."""
+        return {name: repeat.word for name, part in self.parts.items()
+                if (repeat := repeat_of(self.repeats, part.path)) is not None}
 
-    def instance_tree(self) -> Layout:
-        """What every module holds."""
-        root = self.instance_root()
-        if root is None:
-            return {}
+    def instance_tree(self, repeat: Repeat) -> Layout:
+        """What every instance of a repeating folder holds."""
         folder = self.layout
-        for name in root:
+        for name in repeat.root:
             folder = folder[name] or {}
         return folder[EACH] or {}
 
     def top_level_tree(self) -> Layout:
-        """The layout below the app root, with the modules folder empty."""
+        """The layout below the app root, with every repeating folder empty."""
         return _without_each(self.layout)
-
-
-def _find_each(tree: Layout, prefix: tuple[str, ...]) -> tuple[str, ...] | None:
-    for name, sub in tree.items():
-        if name == EACH:
-            return prefix
-        if sub:
-            found = _find_each(sub, prefix + (name,))
-            if found is not None:
-                return found
-    return None
 
 
 def _without_each(tree: Layout) -> Layout:

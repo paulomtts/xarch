@@ -5,7 +5,7 @@ from pathlib import Path
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
 from xarch.modules.spec.application.ports.settings import Settings
 from xarch.modules.spec.application.services.architecture import ArchitectureService
-from xarch.modules.spec.contract import Entry, Skeleton
+from xarch.modules.spec.contract import Entry, Repeating, Skeleton
 from xarch.modules.spec.domain.skeleton import choose, walk
 from xarch.modules.spec.domain.values import Layout
 
@@ -20,9 +20,10 @@ class SkeletonService:
     def skeleton(self, location: str) -> Skeleton:
         architecture = self._architectures.load(location)
         entry = architecture.entry
-        return Skeleton(top_level=_entries(architecture.top_level_tree()), each_root=architecture.instance_root(),
-                        each=_entries(architecture.instance_tree()), entry_point=entry.path[0] if entry is not None else "",
-                        each_word=architecture.singular)
+        repeating = tuple(Repeating(repeat.word, repeat.root, _entries(architecture.instance_tree(repeat)))
+                          for repeat in architecture.repeats)
+        return Skeleton(top_level=_entries(architecture.top_level_tree()), repeating=repeating,
+                        entry_point=entry.path[0] if entry is not None else "")
 
     def select(self, app: Path, override: str | None, tests: Path | None = None) -> tuple[str, Path | None]:
         """The location in force, once its architecture loads, and the tests root: the explicit one, else the

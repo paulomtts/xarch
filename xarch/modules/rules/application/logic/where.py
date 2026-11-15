@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from xarch.kernel.logic.imports import may_import, shown_target
-from xarch.kernel.logic.placement import EACH, Target, matches
+from xarch.kernel.logic.placement import EACH, Target, matches, repeat_of
 from xarch.modules.rules.application.logic.tier_imports import NO_TIER, allowance, may_use_fakes
 from xarch.modules.rules.application.logic.tier_of import Tested, tested
 from xarch.modules.rules.domain.places import place, targets_of
@@ -102,8 +102,8 @@ def _app(profile: Profile, found: Resolved, shown: str, app: str, tests: str) ->
     folder, name, tier = _mirror(profile, part, steps)
     return Where(
         "part", shown, found.exists, part, info.role if info else "", info.litmus if info else "",
-        info.shown if info else "", where.instance or "", profile.singular,
-        _reaches(profile, targets, where.instance, app), may_import(targets, folders, profile.singular),
+        info.shown if info else "", where.instance or "", _singular(profile, part),
+        _reaches(profile, targets, where.instance, app), may_import(targets, folders, profile.words()),
         None if profile.libraries is None else profile.libraries.get(part, ()),
         tuple(".".join(n) for n in profile.forbidden.get(part, ())), _info(tier),
         info.untested if info and tier is None else "", f"{tests}/{'/'.join(folder)}/".replace("//", "/") if tier else "",
@@ -137,16 +137,34 @@ def _reaches(profile: Profile, targets: Iterable[Target], instance: str | None, 
     for target in dict.fromkeys(targets):
         if target.part not in folders:
             continue
-        steps = _concrete(profile.parts[target.part], instance if target.scope == "own" else None, profile.singular)
+        steps = _concrete(profile, profile.parts[target.part], instance if target.scope == "own" else None)
         shown = shown_target(target, folders)
         slash = "/" if folders[target.part].endswith("/") and not target.sub else ""
         reached.append(Reach(target.part, target.scope, shown, f"{'/'.join((app, *steps, *target.sub))}{slash}"))
     return tuple(reached)
 
 
-def _concrete(pattern: tuple[str, ...], instance: str | None, singular: str) -> tuple[str, ...]:
-    """A part's pattern with its `each` step named: the instance, or a placeholder for any."""
-    return tuple((instance or f"<{singular}>") if step == EACH else step for step in pattern)
+def _concrete(profile: Profile, pattern: tuple[str, ...], instance: str | None) -> tuple[str, ...]:
+    """A part's pattern with its repeating step named: the instance, or a placeholder for any."""
+    word = _word(profile, pattern)
+    return tuple((instance or f"<{word}>") if step == EACH else step for step in pattern)
+
+
+def _word(profile: Profile, pattern: tuple[str, ...]) -> str:
+    """The word of the repeating folder a pattern lies in; "" if it lies in none."""
+    repeat = repeat_of(profile.repeats, pattern)
+    return repeat.word if repeat is not None else ""
+
+
+def _word_of_instance(profile: Profile, where: Tested) -> str:
+    """The word of the repeating folder a test's own folder is an instance of; "" if it is in none."""
+    return next((r.word for r in profile.repeats if where.instance is not None and r.root == where.own[:-1]), "")
+
+
+def _singular(profile: Profile, part: str) -> str:
+    """The word of the part's repeating folder; for a part outside them, the profile's word when it has only one."""
+    word = _word(profile, profile.parts[part]) if part in profile.parts else ""
+    return word or (profile.repeats[0].word if len(profile.repeats) == 1 else "")
 
 
 def _nearest(profile: Profile, steps: tuple[str, ...], exact: bool, app: str) -> tuple[Nearest, ...]:
@@ -161,7 +179,8 @@ def _nearest(profile: Profile, steps: tuple[str, ...], exact: bool, app: str) ->
     for name, pattern in profile.parts.items():
         if len(pattern) > len(folder) and pattern[:len(folder)] == folder:
             shown = profile.info[name].shown if name in profile.info else name
-            below = tuple(steps[i] if step == EACH and i < depth else f"<{profile.singular}>" if step == EACH else step
+            word = _word(profile, pattern)
+            below = tuple(steps[i] if step == EACH and i < depth else f"<{word}>" if step == EACH else step
                           for i, step in enumerate(pattern))
             slash = "/" if shown.endswith("/") else ""
             found.append(Nearest(name, shown, f"{'/'.join((app, *below))}{slash}"))
@@ -187,8 +206,8 @@ def _tier_place(profile: Profile, where: Tested, kind: str, shown: str, exists: 
     targets = tuple(dict.fromkeys(allowance(profile, where)))
     names = tuple(".".join(n) for p in where.parts for n in profile.forbidden.get(p, ())) if where.tier.forbidden else ()
     return Where(kind, shown, exists, part, info.role if info else "", info.litmus if info else "",
-                 info.shown if info else "", where.instance or "", profile.singular,
-                 _reaches(profile, targets, where.instance, app), may_import(targets, folders, profile.singular),
+                 info.shown if info else "", where.instance or "", _word_of_instance(profile, where) or _singular(profile, part),
+                 _reaches(profile, targets, where.instance, app), may_import(targets, folders, profile.words()),
                  forbidden=names, tier=_info(where.tier), may_use_fakes=may_use_fakes(profile, where.tier),
                  fakes_path=_fakes(profile, tests), types_only=where.tier.types_only,
                  test_code_from=f"{tests}/{'/'.join(where.own)}/" if where.own else f"{tests}/")

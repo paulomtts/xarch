@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from xarch.kernel.logic.placement import EVERYTHING, Target
+from xarch.kernel.logic.placement import EVERYTHING, Repeat, Target, repeat_of
 
 NAME = "{name}"
 """Stands, in the file name the scenario-coverage guard expects, for the use case's name in snake_case."""
@@ -117,15 +117,14 @@ class Profile:
 
     parts maps each part to its path pattern, and rules to what it may import. folders holds every folder of the
     layout as a pattern: those no part claims are structure, the package files that hold the tree together. libraries
-    is None when outside packages are not checked. each_root is the folder holding the instances of the layout's
-    `each` folder. framework names the test files and functions; None: no file is a test. package_only, scenarios,
-    no_comments, stand_ins and closed_tree are the guards switched on (None or False: off). forbidden holds, by part,
-    the dotted names and modules a part may not use. info says each part in words, and singular names one instance
-    of the `each` folder, for `where`. excluded holds the folders below the app that are not its source: no check reads
-    a file below one. must_import holds, by part, the targets each of its files must import one of (or an outside
-    package); no_duplicates is the fewest statements a function needs to count as a duplicate (None: off); dead_code
-    switches the unused ports and fakes check on; pass_through lists the parts whose methods that only forward are
-    listed (empty: off).
+    is None when outside packages are not checked. repeats are the repeating folders of the layout, each its word and
+    the folder holding its instances. framework names the test files and functions; None: no file is a test.
+    package_only, scenarios, no_comments, stand_ins and closed_tree are the guards switched on (None or False: off).
+    forbidden holds, by part, the dotted names and modules a part may not use. info says each part in words. excluded
+    holds the folders below the app that are not its source: no check reads a file below one. must_import holds, by
+    part, the targets each of its files must import one of (or an outside package); no_duplicates is the fewest
+    statements a function needs to count as a duplicate (None: off); dead_code switches the unused ports and fakes
+    check on; pass_through lists the parts whose methods that only forward are listed (empty: off).
     """
     parts: dict[str, tuple[str, ...]]
     rules: dict[str, tuple[Target, ...]]
@@ -133,7 +132,7 @@ class Profile:
     tiers: tuple[TestTier, ...] = ()
     libraries: dict[str, tuple[str, ...]] | None = None
     fakes: Fakes | None = None
-    each_root: tuple[str, ...] | None = None
+    repeats: tuple[Repeat, ...] = ()
     package_only: tuple[str, ...] = ()
     scenarios: Scenarios | None = None
     no_comments: bool = False
@@ -142,12 +141,16 @@ class Profile:
     framework: Framework | None = None
     forbidden: dict[str, tuple[tuple[str, ...], ...]] = field(default_factory=dict)
     info: dict[str, PartInfo] = field(default_factory=dict)
-    singular: str = ""
     excluded: tuple[Exclusion, ...] = ()
     must_import: dict[str, tuple[Target, ...]] = field(default_factory=dict)
     no_duplicates: int | None = None
     dead_code: bool = False
     pass_through: tuple[str, ...] = ()
+
+    def words(self) -> dict[str, str]:
+        """The word of the repeating folder each part lies in; a part outside every one has none."""
+        return {name: repeat.word for name, pattern in self.parts.items()
+                if (repeat := repeat_of(self.repeats, pattern)) is not None}
 
 
 @dataclass(frozen=True)
@@ -459,7 +462,8 @@ class Where:
     fake) or support (a file below the tests root that is no test, such as a helper)
     path: below the folder holding the app; exists: whether it is there now
     part, role, litmus, folder, instance: the part claiming it (for a test, the part it mirrors), its role and litmus
-    test, its name as the docs show it, and the instance of the `each` folder it is in; singular names one instance
+    test, its name as the docs show it, the instance of the repeating folder it is in and the word that names one
+    instance of it (singular)
     may_import, may_import_text: the folders its code may import, and the same in the docs' words; libraries: the
     outside packages it may import (None: not checked); forbidden: the names it may not use
     tier, untested, test_folder, test_file: the kind of test that tests it (or why none does), and where its test

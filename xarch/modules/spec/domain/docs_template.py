@@ -32,7 +32,7 @@ architecture. Prose, diagrams and code examples stay as the author wrote them; o
                            note after it, in parentheses)
     {{guards}}             one line per check `xarch check` runs: the structure, the rules, the libraries (with
                            `libraries`), what each part may not use (with `forbidden`), the tiers (with `tiers`), types-only
-                           (one line per tier with `types_only`), the test tree and the cycles (with an `each` folder),
+                           (one line per tier with `types_only`), the test tree and the cycles (with a repeating folder),
                            then each guard of `guards`, in order
     {{tier_examples}}      each tier's example test in one block, under its header line `# <tier>: <path>` (its note
                            after the path, in parentheses), as {{example:...}} writes them; a tier with no example
@@ -55,7 +55,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
 from xarch.kernel.logic.imports import may_import, shown_target
-from xarch.kernel.logic.placement import EVERYTHING
+from xarch.kernel.logic.placement import EVERYTHING, Repeat
 from xarch.modules.spec.domain.errors import InvalidTemplate
 from xarch.modules.spec.domain.values import (
     EACH,
@@ -139,22 +139,23 @@ class _Missing(Exception):
 
 def _tree(architecture: Architecture, _: str, __: _Context) -> str:
     roles = {part.path: part.role for part in architecture.parts.values()}
-    lines = list(_tree_lines(architecture.layout, (), "", {**architecture.notes, **roles}, f"<{architecture.singular}>"))
+    lines = list(_tree_lines(architecture.layout, (), "", {**architecture.notes, **roles}, architecture.repeats))
     width = max((len(label) for label, note in lines if note), default=0) + NOTE_GAP
     return "\n".join(f"{label:<{width}}{note}" if note else label for label, note in lines)
 
 
 def _tree_lines(tree: Layout, path: tuple[str, ...], indent: str,
-                notes: dict[tuple[str, ...], str], instance: str) -> list[tuple[str, str]]:
-    """The tree's lines; the `each` folder is shown as instance, how one instance of it is named."""
+                notes: dict[tuple[str, ...], str], repeats: tuple[Repeat, ...]) -> list[tuple[str, str]]:
+    """The tree's lines; a repeating folder is shown as `<word>`, how one instance of it is named."""
     lines: list[tuple[str, str]] = []
     for i, (name, sub) in enumerate(tree.items()):
         last = i == len(tree) - 1
         here = path + (name,)
-        shown = (instance if name == EACH else name) + ("" if sub is None else "/")
+        word = next((repeat.word for repeat in repeats if repeat.root == path), "")
+        shown = (f"<{word}>" if name == EACH else name) + ("" if sub is None else "/")
         lines.append((f"{indent}{'└── ' if last else '├── '}{shown}", notes.get(here, "")))
         if sub:
-            lines += _tree_lines(sub, here, indent + ("    " if last else "│   "), notes, instance)
+            lines += _tree_lines(sub, here, indent + ("    " if last else "│   "), notes, repeats)
     return lines
 
 
@@ -196,7 +197,7 @@ def _rules_table(architecture: Architecture, _: str, __: _Context) -> str:
 
 def _may_import(architecture: Architecture, part: Part) -> str:
     """What a part may import besides itself, in the order of its rule."""
-    return may_import(architecture.rules.get(part.name, ()), _folders(architecture), architecture.singular)
+    return may_import(architecture.rules.get(part.name, ()), _folders(architecture), architecture.words())
 
 
 def _folders(architecture: Architecture) -> dict[str, str]:
@@ -389,7 +390,15 @@ def _ticked(names: tuple[str, ...]) -> str:
 
 
 def _and(items: list[str]) -> str:
-    return items[0] if len(items) == 1 else f"{', '.join(items[:-1])} and {items[-1]}"
+    return _joined(items, "and")
+
+
+def _or(items: list[str]) -> str:
+    return _joined(items, "or")
+
+
+def _joined(items: list[str], word: str) -> str:
+    return items[0] if len(items) == 1 else f"{', '.join(items[:-1])} {word} {items[-1]}"
 
 
 def _quoted(names: list[str]) -> str:
@@ -421,10 +430,12 @@ def _guards(architecture: Architecture, _: str, __: _Context) -> str:
                 shown = _and([f"`{_shown(architecture, architecture.parts[p])}`" for p in tier.types_only])
                 lines.append(f"`types-only`: a {tier.name} test uses {shown} only as a type: it may import it and "
                              "annotate with it, and never calls it.")
-    root = architecture.instance_root()
-    if root is not None:
-        lines.append(f"`test tree`: every folder below `tests/{'/'.join(root)}/` mirrors a folder of the app.")
-        lines.append(f"`cycles`: no `{'/'.join(root)}/<name>/` imports from another that imports, directly or through "
+    roots = [repeat.root for repeat in architecture.repeats]
+    if roots:
+        folders = _and([f"`tests/{'/'.join(root)}/`" for root in roots])
+        lines.append(f"`test tree`: every folder below {folders} mirrors a folder of the app.")
+        instances = _or([f"`{'/'.join(root)}/<name>/`" for root in roots])
+        lines.append(f"`cycles`: no {instances} imports from another that imports, directly or through "
                      "others, from it; each cycle is reported once, with the imports that close it.")
     lines += [_must_import_line(architecture, part) for part in architecture.parts.values() if part.must_import]
     lines += [_guard_line(architecture, guard) for guard in architecture.guards]
@@ -449,8 +460,8 @@ def _forbidden_line(architecture: Architecture) -> str:
 
 
 def _structure_line(architecture: Architecture) -> str:
-    root = architecture.instance_root()
-    every = f", in the app and in every `{'/'.join(root)}/<name>/`" if root is not None else ""
+    roots = [f"`{'/'.join(repeat.root)}/<name>/`" for repeat in architecture.repeats]
+    every = f", in the app and in every {_and(roots)}" if roots else ""
     return f"`structure`: every folder and file of the layout exists{every}."
 
 
@@ -492,7 +503,7 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
 
 
 def _must_import_line(architecture: Architecture, part: Part) -> str:
-    wanted = may_import(part.must_import, _folders(architecture), architecture.singular).replace(" and ", " or ")
+    wanted = may_import(part.must_import, _folders(architecture), architecture.words()).replace(" and ", " or ")
     return (f"`must-import`: every file of `{_shown(architecture, part)}` imports from {wanted}, or an outside "
             "package, or reaches one through a file of its own part, so that it touches technology; a package file "
             "and a file with no code of its own are exempt.")

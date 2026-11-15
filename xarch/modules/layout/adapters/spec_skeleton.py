@@ -24,8 +24,9 @@ class SpecSkeleton:
     def top_level_files(self, profile: str) -> list[tuple[str, ...]]:
         return [e.path for e in self._spec.skeleton(profile).top_level if not e.is_dir]
 
-    def each_root(self, profile: str) -> tuple[str, ...] | None:
-        return self._spec.skeleton(profile).each_root
+    def each_roots(self, profile: str) -> list[tuple[str, ...]]:
+        return [repeating.root for repeating in self._spec.skeleton(profile).repeating]
 
-    def each_parts(self, profile: str) -> list[tuple[tuple[str, ...], bool]]:
-        return [(e.path, e.is_dir) for e in self._spec.skeleton(profile).each if e.leaf]
+    def each_parts(self, profile: str, root: tuple[str, ...]) -> list[tuple[tuple[str, ...], bool]]:
+        repeating = next(r for r in self._spec.skeleton(profile).repeating if r.root == root)
+        return [(e.path, e.is_dir) for e in repeating.entries if e.leaf]

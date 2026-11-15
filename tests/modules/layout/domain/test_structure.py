@@ -2,7 +2,15 @@
 tests mirror no folder of the app."""
 import pytest
 
-from xarch.modules.layout.domain.structure import Requirement, hidden, is_instance_name, missing, requirements, unmirrored
+from xarch.modules.layout.domain.structure import (
+    Repeated,
+    Requirement,
+    hidden,
+    is_instance_name,
+    missing,
+    requirements,
+    unmirrored,
+)
 
 PARTS = [(("domain",), True), (("application", "controller.py"), False)]
 
@@ -43,16 +51,27 @@ def test_is_instance_name(name, instance):
                  id="an each folder below the top level is owned by its full path"),
 ])
 def test_requirements(each_root, instances, required):
-    assert requirements("app", [("kernel",), ("modules",)], each_root, PARTS, instances) == required
+    repeated = [] if each_root is None else [Repeated(each_root, PARTS, instances)]
+    assert requirements("app", [("kernel",), ("modules",)], repeated) == required
+
+
+def test_every_repeating_folder_requires_its_own_parts_of_its_own_instances():
+    repeated = [Repeated(("modules",), [(("domain",), True)], ["docs"]),
+                Repeated(("plugins",), [(("hooks",), True), (("manifest.py",), False)], ["seo", "_cache"])]
+    assert requirements("app", [("kernel",)], repeated) == [
+        Requirement("app", ("kernel",), True, "kernel/"),
+        Requirement("app/modules/docs", ("modules", "docs", "domain"), True, "domain/"),
+        Requirement("app/plugins/seo", ("plugins", "seo", "hooks"), True, "hooks/"),
+        Requirement("app/plugins/seo", ("plugins", "seo", "manifest.py"), False, "manifest.py")]
 
 
 def test_a_file_declared_at_the_top_level_is_required_as_a_file_after_the_folders():
-    assert requirements("app", [("kernel",)], None, [], [], [("__main__.py",)]) == [
+    assert requirements("app", [("kernel",)], [], [("__main__.py",)]) == [
         Requirement("app", ("kernel",), True, "kernel/"), Requirement("app", ("__main__.py",), False, "__main__.py")]
 
 
 def test_a_folder_or_file_below_a_top_level_folder_is_required_as_its_path_shows_it():
-    assert requirements("app", [("kernel",), ("kernel", "logic")], None, [], [], [("web", "app.py")]) == [
+    assert requirements("app", [("kernel",), ("kernel", "logic")], [], [("web", "app.py")]) == [
         Requirement("app", ("kernel",), True, "kernel/"), Requirement("app", ("kernel", "logic"), True, "kernel/logic/"),
         Requirement("app", ("web", "app.py"), False, "web/app.py")]
 

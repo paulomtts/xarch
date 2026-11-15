@@ -1,7 +1,7 @@
 """The scenario-coverage guard: every use case's result union is covered by the rows of a table in its test file.
 
 A use case is a module-level union `<Name><suffix> = A | B | ...` of plain names in a file of the results part, in
-an instance of the `each` folder: <Name> is the use case and A, B, ... its variants. Its test file is the guard's
+an instance of a repeating folder: <Name> is the use case and A, B, ... its variants. Its test file is the guard's
 `file` with `{name}` replaced by <Name> in snake_case (PublishDocument: publish_document), among the files of the
 table tier in the same instance (see tier_of). That file must hold a table, read from its syntax tree; the
 decorator, the row and the keyword of a row's id are the names the guard is given (see TableForm), a test function

@@ -3,12 +3,13 @@ from __future__ import annotations
 
 
 class FakeSkeleton:
-    """Satisfies layout's Skeleton: the same top-level folders, `each` folder and parts under every profile."""
+    """Satisfies layout's Skeleton: the same top-level folders and repeating folders under every profile; repeats
+    holds, by the folder of each repeating folder, the parts every instance of it holds."""
 
-    def __init__(self, top_level: list[tuple[str, ...]], each_root: tuple[str, ...] | None = None,
-                 each_parts: list[tuple[tuple[str, ...], bool]] | None = None,
+    def __init__(self, top_level: list[tuple[str, ...]],
+                 repeats: dict[tuple[str, ...], list[tuple[tuple[str, ...], bool]]] | None = None,
                  top_files: list[tuple[str, ...]] | None = None):
-        self._top, self._root, self._parts = list(top_level), each_root, list(each_parts or [])
+        self._top, self._repeats = list(top_level), dict(repeats or {})
         self._files = list(top_files or [])
 
     def top_level_files(self, profile: str) -> list[tuple[str, ...]]:
@@ -17,8 +18,8 @@ class FakeSkeleton:
     def top_level(self, profile: str) -> list[tuple[str, ...]]:
         return list(self._top)
 
-    def each_root(self, profile: str) -> tuple[str, ...] | None:
-        return self._root
+    def each_roots(self, profile: str) -> list[tuple[str, ...]]:
+        return list(self._repeats)
 
-    def each_parts(self, profile: str) -> list[tuple[tuple[str, ...], bool]]:
-        return list(self._parts)
+    def each_parts(self, profile: str, root: tuple[str, ...]) -> list[tuple[tuple[str, ...], bool]]:
+        return list(self._repeats[root])

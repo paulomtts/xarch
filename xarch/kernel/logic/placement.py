@@ -1,14 +1,15 @@
 """Where a path sits among named path patterns, and which places a rule's target reaches.
 
-A pattern is a path whose one `*` step stands for any name: an instance's. A path sits in the pattern it lies in, the
-deepest when patterns nest, with `*` capturing the name; what lies below the pattern is the place's sub-path. A path
-is compared as Python names it: no `.py` on its file, and a package's `__init__` is the package itself.
+A pattern is a path whose one `*` step stands for any name: an instance's of the repeating folder it sits in. A path
+sits in the pattern it lies in, the deepest when patterns nest, with `*` capturing the name; what lies below the
+pattern is the place's sub-path. A path is compared as Python names it: no `.py` on its file, and a package's
+`__init__` is the package itself.
 
 A target names a part, a scope and an optional path below the part. Scope "own" reaches the part in the importer's
 instance, "any" in any instance, "none" a part outside the instances. EVERYTHING reaches every
 place, including the places no part claims.
 
-A part may always import itself: its own instance for a part inside the `each` folder, the part for one outside. A rule
+A part may always import itself: its own instance for a part inside a repeating folder, the part for one outside. A rule
 never says so; `with_itself` adds it to the row of the part.
 """
 from __future__ import annotations
@@ -21,6 +22,13 @@ EACH = "*"
 EVERYTHING = "*"
 
 Scope = Literal["own", "any", "none"]
+
+
+@dataclass(frozen=True)
+class Repeat:
+    """A repeating folder: the word one instance of it is called by, and the folder it repeats in."""
+    word: str
+    root: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -37,6 +45,17 @@ class Place:
     part: str | None
     instance: str | None = None
     sub: tuple[str, ...] = ()
+
+
+def root_of(pattern: tuple[str, ...]) -> tuple[str, ...] | None:
+    """The folder the pattern's repeating step sits in; None when the pattern has none."""
+    return pattern[:pattern.index(EACH)] if EACH in pattern else None
+
+
+def repeat_of(repeats: Iterable[Repeat], pattern: tuple[str, ...]) -> Repeat | None:
+    """The repeating folder a pattern lies in."""
+    root = root_of(pattern)
+    return next((repeat for repeat in repeats if repeat.root == root), None) if root is not None else None
 
 
 def python_steps(path: tuple[str, ...]) -> tuple[str, ...]:

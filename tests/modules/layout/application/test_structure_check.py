@@ -13,10 +13,11 @@ MODULE = {ROOT / "modules/docs" / p for p in ["", "contract", "domain", "applica
                                                "application/logic", "application/ports", "adapters"]}
 CONTROLLER = ROOT / "modules/docs/application/controller.py"
 SKELETON = FakeSkeleton([("bootstrap",), ("kernel",), ("kernel", "logic"), ("modules",), ("platform",), ("cli",),
-                         ("cli", "commands")], ("modules",),
-                        [(("contract",), True), (("domain",), True), (("application", "controller.py"), False),
-                         (("application", "services"), True), (("application", "logic"), True),
-                         (("application", "ports"), True), (("adapters",), True)])
+                         ("cli", "commands")],
+                        {("modules",): [(("contract",), True), (("domain",), True),
+                                        (("application", "controller.py"), False), (("application", "services"), True),
+                                        (("application", "logic"), True), (("application", "ports"), True),
+                                        (("adapters",), True)]})
 
 
 def run(disk: FakeDisk, package="app") -> list[str]:
@@ -112,3 +113,35 @@ def test_a_test_folder_that_mirrors_nothing_is_a_test_tree_violation():
     assert [(v.rule, v.fix) for v in found] == [
         ("test-tree", "create app/modules/gone/ in the app, or move what it holds to the folder that mirrors its "
                       "subject, or remove it")]
+
+
+TWO = FakeSkeleton([("kernel",), ("modules",), ("plugins",)],
+                   {("modules",): [(("domain",), True)], ("plugins",): [(("hooks",), True), (("manifest.py",), False)]})
+TWO_APP = {ROOT / p for p in ["kernel", "modules", "modules/docs", "modules/docs/domain", "plugins", "plugins/seo",
+                              "plugins/seo/hooks"]}
+MANIFEST = ROOT / "plugins/seo/manifest.py"
+
+
+def run_two(disk: FakeDisk, tests: Path | None = None) -> list[str]:
+    return [str(v) for v in LayoutController(StructureCheck(disk, TWO)).check(
+        CheckStructure(ROOT, "app", "cli", tests)).violations]
+
+
+def test_every_instance_of_every_repeating_folder_must_hold_what_its_folder_declares():
+    assert run_two(FakeDisk(TWO_APP, {MANIFEST})) == []
+    assert run_two(FakeDisk(TWO_APP - {ROOT / "plugins/seo/hooks", ROOT / "modules/docs/domain"})) == [
+        "app/modules/docs: missing domain/", "app/plugins/seo: missing hooks/", "app/plugins/seo: missing manifest.py"]
+
+
+def test_an_instance_of_one_repeating_folder_is_not_asked_for_what_another_declares():
+    disk = FakeDisk(TWO_APP | {ROOT / "modules/other", ROOT / "modules/other/domain"}, {MANIFEST})
+    assert run_two(disk) == []
+
+
+def test_a_folder_below_the_tests_of_each_repeating_folder_must_mirror_an_app_folder():
+    tests = {TESTS / p for p in ["", "modules", "modules/docs/domain", "modules/gone", "plugins", "plugins/seo/hooks",
+                                 "plugins/seo/other", "plugins/ghost"]}
+    assert run_two(FakeDisk(TWO_APP | tests, {MANIFEST}), TESTS) == [
+        "tests/modules/gone: mirrors no folder of the app (app/modules/gone)",
+        "tests/plugins/ghost: mirrors no folder of the app (app/plugins/ghost)",
+        "tests/plugins/seo/other: mirrors no folder of the app (app/plugins/seo/other)"]

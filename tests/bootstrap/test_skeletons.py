@@ -29,7 +29,7 @@ def test_the_web_profile_has_web_with_routes_i18n_and_ui_instead_of_cli():
 
 @pytest.mark.parametrize("profile", ["cli", "web"])
 def test_module_lists_every_part_with_files_marked(profile):
-    assert skeleton(profile).each == (
+    assert skeleton(profile).repeating[0].entries == (
         Entry(("domain",), True, True),
         Entry(("application",), True, False),
         Entry(("application", "logic"), True, True),
@@ -44,7 +44,7 @@ def test_module_lists_every_part_with_files_marked(profile):
 @pytest.mark.parametrize("profile", ["cli", "web"])
 def test_kernel_holds_logic_and_every_module_holds_application_logic(profile):
     assert Entry(("kernel", "logic"), True, True) in skeleton(profile).top_level
-    assert Entry(("application", "logic"), True, True) in skeleton(profile).each
+    assert Entry(("application", "logic"), True, True) in skeleton(profile).repeating[0].entries
 
 
 def test_a_folder_with_children_is_not_a_leaf():

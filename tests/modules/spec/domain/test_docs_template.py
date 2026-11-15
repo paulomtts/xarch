@@ -183,3 +183,54 @@ def test_the_instance_is_named_by_the_word_in_the_paths_not_by_xarch():
     assert "└── <feature>/" in text
     assert "its own feature's `store/`, any feature's `api.py`" in text
     assert "<module>" not in text and "module's" not in text
+
+
+TWO = {
+    "service": {"path": "src/<module>/service", "role": "business logic", "litmus": "Does it decide?",
+                "may_import": ["hooks@any", "shared"]},
+    "hooks": {"path": "ext/<plugin>/hooks", "role": "what a plugin runs", "litmus": "Does a plugin run it?",
+              "may_import": ["service@any", "manifest", "shared"], "libraries": ["yaml"]},
+    "manifest": {"path": "ext/<plugin>/manifest.py", "role": "what a plugin declares", "litmus": "Does it declare?"},
+    "shared": {"path": "shared", "role": "code both use", "litmus": "Is it shared?"},
+}
+
+
+def two(template: str, **extra) -> str:
+    document = {"xarch": 2, "name": "two", "parts": TWO, "docs": {"entry": "shared"}} | extra
+    return fill(template, parsed(document), "two.md")
+
+
+def test_the_tree_shows_every_repeating_folder_by_its_own_word():
+    assert two("app/\n{{tree}}\n") == (
+        "app/\n"
+        "├── src/\n"
+        "│   └── <module>/\n"
+        "│       └── service/      business logic\n"
+        "├── ext/\n"
+        "│   └── <plugin>/\n"
+        "│       ├── hooks/        what a plugin runs\n"
+        "│       └── manifest.py   what a plugin declares\n"
+        "└── shared/               code both use\n")
+
+
+def test_the_rules_table_names_each_part_by_the_word_of_the_folder_it_lies_in():
+    assert two("{{rules_table}}") == (
+        "| Part | May import |\n"
+        "|---|---|\n"
+        "| `service/` | any plugin's `hooks/`, `shared/` |\n"
+        "| `hooks/` | any module's `service/`, its own plugin's `manifest.py`, `shared/` |\n"
+        "| `manifest.py` | nothing |\n"
+        "| `shared/` | nothing |")
+
+
+def test_the_guards_name_every_repeating_folder():
+    assert two("{{guards}}").splitlines() == [
+        "- `structure`: every folder and file of the layout exists, in the app and in every `src/<name>/` and "
+        "`ext/<name>/`.",
+        "- `rules`: every import between parts is one that the `may_import` of the importing part allows "
+        "(architecture.md, section 5).",
+        "- `libraries`: a part imports only the outside packages listed for it (`hooks/`: yaml); the standard "
+        "library is always allowed, and tests are not checked.",
+        "- `test tree`: every folder below `tests/src/` and `tests/ext/` mirrors a folder of the app.",
+        "- `cycles`: no `src/<name>/` or `ext/<name>/` imports from another that imports, directly or through "
+        "others, from it; each cycle is reported once, with the imports that close it."]

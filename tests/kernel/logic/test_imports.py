@@ -4,7 +4,9 @@ import pytest
 from xarch.kernel.logic.imports import may_import
 from xarch.kernel.logic.placement import EVERYTHING, Target
 
-FOLDERS = {"domain": "domain/", "kernel": "kernel/", "contract": "contract/", "ports": "ports/", "platform": "platform/"}
+FOLDERS = {"domain": "domain/", "kernel": "kernel/", "contract": "contract/", "ports": "ports/", "platform": "platform/",
+           "hooks": "hooks/"}
+WORDS = {"domain": "module", "contract": "module", "ports": "module", "hooks": "plugin"}
 
 
 @pytest.mark.parametrize("targets, expected", [
@@ -17,6 +19,11 @@ FOLDERS = {"domain": "domain/", "kernel": "kernel/", "contract": "contract/", "p
     pytest.param([Target("platform"), Target("contract", "any")], "`platform/`, any module's `contract/`",
                  id="another scope starts a new phrase"),
     pytest.param([Target("domain", "own", ("values",))], "its own module's `domain/values`", id="a path below a part"),
+    pytest.param([Target("contract", "any"), Target("hooks", "any"), Target("domain", "any")],
+                 "any module's `contract/`, any plugin's `hooks/`, any module's `domain/`",
+                 id="each repeating folder is named by its own word"),
+    pytest.param([Target("hooks", "any"), Target("domain", "any")], "any plugin's `hooks/`, any module's `domain/`",
+                 id="neighbours of one scope in two repeating folders do not share their phrase"),
 ])
 def test_what_a_part_may_import_in_words(targets, expected):
-    assert may_import(targets, FOLDERS, "module") == expected
+    assert may_import(targets, FOLDERS, WORDS) == expected

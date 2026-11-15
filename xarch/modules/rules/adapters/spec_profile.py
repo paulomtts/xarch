@@ -61,7 +61,7 @@ class SpecProfiles:
                        fakes=Fakes(architecture.fakes.folder, architecture.fakes.stand_in_for,
                                    architecture.fakes.prefix)
                        if architecture.fakes is not None else None,
-                       each_root=architecture.instance_root(),
+                       repeats=architecture.repeats,
                        package_only=tuple(p for g in architecture.guards if isinstance(g, PackageOnly) for p in g.parts),
                        scenarios=next((Scenarios(g.results, g.tier, g.suffix, g.columns,
                                                  TableForm(g.table.decorator, g.table.row, g.table.id, g.table.keywords),
@@ -84,7 +84,6 @@ class SpecProfiles:
                        forbidden=dict(architecture.forbidden),
                        info={name: PartInfo(part.role, part.litmus, architecture.shown(part), part.untested)
                              for name, part in architecture.parts.items()},
-                       singular=architecture.singular,
                        excluded=tuple(Exclusion(e.path, e.reason) for e in architecture.excluded))
 
 

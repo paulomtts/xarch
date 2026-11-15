@@ -50,10 +50,10 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable, Collection, Mapping
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from typing import Any
 
-from xarch.kernel.logic.placement import EVERYTHING
+from xarch.kernel.logic.placement import EVERYTHING, Repeat, root_of
 from xarch.modules.spec.domain import profile_checks as ck
 from xarch.modules.spec.domain import profile_examples as ex
 from xarch.modules.spec.domain.errors import InvalidArchitecture
@@ -125,12 +125,11 @@ class _Testing:
 @dataclass
 class _Layout:
     """The layout and what comes with it, built from the paths of the parts: the parts, the tree, the notes of the
-    folders, the one repeating word and the folder it repeats in."""
+    folders, and the repeating folders in the order they first appear."""
     parts: dict[str, Part]
     tree: Layout
     notes: dict[tuple[str, ...], str]
-    word: str = ""
-    root: tuple[str, ...] = ()
+    repeats: list[Repeat] = field(default_factory=list)
 
 
 def parse_v2(document: Any, source: str, has_file: Callable[[str], bool],
@@ -177,7 +176,7 @@ def parse_v2(document: Any, source: str, has_file: Callable[[str], bool],
         raise InvalidArchitecture(source, problems)
     shown = ex.examples_of(examples, built.tree, parts)
     return Architecture(name, built.tree, parts, rules, pages, shown, built.notes, layers, tuple(parts), naming, tiers,
-                        libraries, guards, fakes, built.word, files, testing.framework if testing else None, forbidden,
+                        libraries, guards, fakes, tuple(built.repeats), files, testing.framework if testing else None, forbidden,
                         excluded, hints, based_on)
 
 
@@ -287,7 +286,9 @@ def _path(value: Any, where: str, problems: list[str]) -> tuple[tuple[str, ...],
                         "the repeating folder as `<name>`")
         return None
     if len(words) > 1:
-        problems.append(f"{where}.path: '{value}' has two repeating steps: a path has one")
+        first, second = (match.group(1) for match in words[:2] if match)
+        problems.append(f"{where}.path: '{value}' has two repeating steps, <{first}> and <{second}>: a repeating "
+                        "folder cannot sit inside another, so give each its own folder")
         return None
     return (tuple(EACH if _REPEATING.fullmatch(step) else step for step in steps),
             words[0].group(1) if words and words[0] else "")
@@ -299,22 +300,24 @@ def _shown(steps: tuple[str, ...], word: str) -> str:
 
 def _repeats_alike(name: str, steps: tuple[str, ...], word: str, built: _Layout,
                    owners: dict[tuple[str, ...], str], where: str, value: str, problems: list[str]) -> bool:
-    """A profile has one repeating folder, under one parent, called by one word."""
-    if EACH not in steps:
+    """A word repeats in one folder, and a folder is repeated by one word."""
+    root = root_of(steps)
+    if root is None:
         return True
-    root = steps[:steps.index(EACH)]
-    if not built.word:
-        built.word, built.root = word, root
-        owners[(*root, EACH)] = name
-        return True
-    first = owners[(*built.root, EACH)]
-    if word != built.word:
-        problems.append(f"{where}.path: '{value}' calls the repeating folder <{word}>, but part '{first}' called it "
-                        f"<{built.word}>: use one word")
-    elif root != built.root:
-        problems.append(f"{where}.path: '{value}' repeats below '{'/'.join(root)}', but part '{first}' repeats "
-                        f"below '{'/'.join(built.root)}': a profile has one repeating folder")
+    here = next((repeat for repeat in built.repeats if repeat.root == root), None)
+    named = next((repeat for repeat in built.repeats if repeat.word == word), None)
+    if here is not None and here.word != word:
+        problems.append(f"{where}.path: '{value}' calls the repeating folder <{word}>, but part "
+                        f"'{owners[(*root, EACH)]}' called it <{here.word}> in the same folder '{'/'.join(root)}': two "
+                        "words may not share a parent, use one word")
+    elif named is not None and named.root != root:
+        problems.append(f"{where}.path: '{value}' repeats <{word}> below '{'/'.join(root)}', but part "
+                        f"'{owners[(*named.root, EACH)]}' repeats it below '{'/'.join(named.root)}': one word repeats "
+                        "in one folder, so give this one a word of its own")
     else:
+        if here is None:
+            built.repeats.append(Repeat(word, root))
+            owners[(*root, EACH)] = name
         return True
     return False
 
@@ -437,11 +440,15 @@ def _target(value: Any, owner: Part | None, parts: dict[str, Part], declared: se
         problems.append(f"{where}: {value!r} has an unknown scope '@{scope}': the only scope is @any, any instance of "
                         "the repeating folder")
         return None
-    inside = owner is not None and owner.in_instance
+    inside = owner is not None and owner.in_instance and root_of(owner.path) == root_of(part.path)
     if part.in_instance and scope == "own" and inside:
         problems.append(f"{where}: {value!r} says what a bare name already says: write {name}")
         return None
     if part.in_instance and not inside and scope != "any":
+        if owner is not None and owner.in_instance:
+            problems.append(f"{where}: {value!r} lies in another repeating folder than part '{owner.name}', which has "
+                            f"no own instance of it: write {name}@any")
+            return None
         importer = f"{owner.name} is" if owner is not None else "a tier's folder is"
         problems.append(f"{where}: {value!r} lies in the repeating folder, which {importer} not in: say {name}@any")
         return None

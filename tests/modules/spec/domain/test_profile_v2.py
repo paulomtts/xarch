@@ -2,9 +2,9 @@
 packages, the names it may not use, and the layers."""
 import pytest
 
-from tests.modules.spec.profiles_v2 import layered, parsed, problems
+from tests.modules.spec.profiles_v2 import layered, parsed, problems, two_folders
 from xarch.modules.spec.domain.profile_keys import KEYS, SCOPES, names_of
-from xarch.modules.spec.domain.values import Part, Target
+from xarch.modules.spec.domain.values import Part, Repeat, Target
 
 
 def test_the_smallest_profile_is_a_name_and_parts_and_checks_the_layout_and_the_imports():
@@ -16,7 +16,7 @@ def test_the_smallest_profile_is_a_name_and_parts_and_checks_the_layout_and_the_
     assert architecture.rules == {"core": (), "cli": (Target("core"),)}
     assert architecture.libraries == {"core": (), "cli": ("typer",)}
     assert architecture.tiers == () and architecture.guards == () and architecture.framework is None
-    assert architecture.singular == ""
+    assert architecture.repeats == ()
 
 
 def test_a_profile_says_what_it_does_not_have_by_leaving_it_out():
@@ -83,9 +83,8 @@ def test_based_on_names_a_bundled_profile_and_nothing_else():
 def test_the_layout_is_derived_from_the_paths_of_the_parts_and_a_repeating_step_is_one_star():
     architecture = parsed(layered())
     assert architecture.layout == {"src": {"*": {"api": {}, "service": {}, "store": {}}}, "shared": {}}
-    assert architecture.singular == "module"
+    assert architecture.repeats == (Repeat("module", ("src",)),)
     assert architecture.parts["api"] == Part("api", ("src", "*", "api"), "HTTP handlers")
-    assert architecture.instance_root() == ("src",)
 
 
 def test_the_order_of_the_parts_is_the_placement_order():
@@ -187,7 +186,8 @@ def test_a_bad_part_is_refused_with_every_problem(parts, expected):
                                   "repeating folder as `<name>`", id="a bracket that holds no word"),
     pytest.param("a/<x>b", "layered.yaml: parts.x.path: 'a/<x>b' has a step with `<` or `>` that is not "
                            "one word between them: write the repeating folder as `<name>`", id="a bracket inside a name"),
-    pytest.param("<a>/<b>/c", "layered.yaml: parts.x.path: '<a>/<b>/c' has two repeating steps: a path has one",
+    pytest.param("<a>/<b>/c", "layered.yaml: parts.x.path: '<a>/<b>/c' has two repeating steps, <a> and <b>: a "
+                              "repeating folder cannot sit inside another, so give each its own folder",
                  id="two repeating steps"),
     pytest.param("shared", "layered.yaml: parts.x.path: 'shared' is already claimed by part 'shared'", id="a path twice"),
     pytest.param("shared/", "layered.yaml: parts.x.path: 'shared' is already claimed by part 'shared'",
@@ -199,15 +199,76 @@ def test_a_bad_part_path_is_refused(path, expected):
     assert problems(document) == [expected]
 
 
-def test_two_parts_may_not_disagree_about_the_repeating_folder():
+def test_two_words_may_not_share_a_parent():
     document = layered()
     document["parts"]["x"] = {"path": "src/<doc>/x", "role": "r"}
-    document["parts"]["y"] = {"path": "other/<module>/y", "role": "r"}
     assert problems(document) == [
         "layered.yaml: parts.x.path: 'src/<doc>/x' calls the repeating folder <doc>, but part 'api' called it "
-        "<module>: use one word",
-        "layered.yaml: parts.y.path: 'other/<module>/y' repeats below 'other', but part 'api' repeats below 'src': "
-        "a profile has one repeating folder"]
+        "<module> in the same folder 'src': two words may not share a parent, use one word"]
+
+
+def test_one_word_repeats_in_one_folder_only():
+    document = layered()
+    document["parts"]["y"] = {"path": "other/<module>/y", "role": "r"}
+    assert problems(document) == [
+        "layered.yaml: parts.y.path: 'other/<module>/y' repeats <module> below 'other', but part 'api' repeats it "
+        "below 'src': one word repeats in one folder, so give this one a word of its own"]
+
+
+def test_a_profile_may_hold_several_repeating_folders_each_with_its_word_and_parent():
+    architecture = parsed(two_folders())
+    assert architecture.repeats == (Repeat("module", ("src",)), Repeat("plugin", ("ext",)))
+    assert architecture.layout == {"src": {"*": {"api": {}, "service": {}, "store": {}}},
+                                   "ext": {"*": {"hooks": {}, "manifest.py": None}}, "shared": {}}
+    assert architecture.parts["hooks"].path == ("ext", "*", "hooks")
+    assert architecture.top_level_tree() == {"src": {}, "ext": {}, "shared": {}}
+    assert architecture.instance_tree(architecture.repeats[1]) == {"hooks": {}, "manifest.py": None}
+
+
+def test_a_part_is_shown_below_its_own_repeating_folder():
+    architecture = parsed(two_folders())
+    assert [architecture.shown(architecture.parts[name]) for name in ("api", "hooks", "manifest", "shared")] == [
+        "api/", "hooks/", "manifest.py", "shared/"]
+
+
+def test_a_part_names_a_part_of_its_own_repeating_folder_bare_and_one_of_another_with_any():
+    document = two_folders()
+    document["parts"]["hooks"]["may_import"] = ["manifest", "service@any", "shared"]
+    document["parts"]["service"]["may_import"] = ["store", "shared", "hooks@any"]
+    rules = parsed(document).rules
+    assert rules["hooks"] == (Target("manifest", "own"), Target("service", "any"), Target("shared"))
+    assert rules["service"] == (Target("store", "own"), Target("shared"), Target("hooks", "any"))
+
+
+@pytest.mark.parametrize("importer, name, expected", [
+    pytest.param("hooks", "service", "layered.yaml: parts.hooks.may_import: 'service' lies in another repeating "
+                                     "folder than part 'hooks', which has no own instance of it: write service@any",
+                 id="a plugin part names a module part bare"),
+    pytest.param("service", "hooks", "layered.yaml: parts.service.may_import: 'hooks' lies in another repeating "
+                                     "folder than part 'service', which has no own instance of it: write hooks@any",
+                 id="a module part names a plugin part bare"),
+])
+def test_a_part_in_another_repeating_folder_has_no_own_instance_so_a_bare_name_is_refused(importer, name, expected):
+    document = two_folders()
+    document["parts"][importer]["may_import"] = [name]
+    assert problems(document) == [expected]
+
+
+def test_a_part_in_another_repeating_folder_may_not_be_said_as_own():
+    document = two_folders()
+    document["parts"]["hooks"]["may_import"] = ["service@own"]
+    assert problems(document) == [
+        "layered.yaml: parts.hooks.may_import: 'service@own' lies in another repeating folder than part 'hooks', "
+        "which has no own instance of it: write service@any"]
+
+
+def test_a_must_import_names_a_part_of_another_repeating_folder_with_any_as_well():
+    document = two_folders()
+    document["parts"]["hooks"]["may_import"] = ["service@any"]
+    document["parts"]["hooks"]["must_import"] = ["service"]
+    assert problems(document) == [
+        "layered.yaml: parts.hooks.must_import: 'service' lies in another repeating folder than part 'hooks', which "
+        "has no own instance of it: write service@any"]
 
 
 def test_a_file_cannot_hold_a_part_below_it():

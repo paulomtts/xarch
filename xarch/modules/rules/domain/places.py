@@ -21,7 +21,7 @@ def place(profile: Profile, path: tuple[str, ...]) -> Place | None:
 
 
 def label(profile: Profile, where: Place) -> str:
-    """How a place is named in a violation: its part, then the `each` folder it is in by its path, e.g.
+    """How a place is named in a violation: its part, then the repeating folder it is in by its path, e.g.
     "domain/ of src/billing"; the structure, which no part claims, as "structure/"."""
     if where.part is None:
         return "structure/"
@@ -33,7 +33,7 @@ def label(profile: Profile, where: Place) -> str:
 
 
 def targets_of(profile: Profile, part: str) -> tuple[Target, ...]:
-    """What a part may import: itself (its own instance, for a part in the `each` folder), then its row of rules."""
+    """What a part may import: itself (its own instance, for a part in a repeating folder), then its row of rules."""
     return with_itself(part, profile.parts[part], profile.rules.get(part, ())) if part in profile.parts else ()
 
 

@@ -22,7 +22,7 @@ def test_cli_and_web_are_bundled():
 def test_the_modules_live_under_modules(profile):
     architecture = load_architecture(profile)
     assert architecture.name == profile
-    assert architecture.instance_root() == ("modules",)
+    assert [repeat.root for repeat in architecture.repeats] == [("modules",)]
 
 
 def test_the_entry_point_is_the_part_marked_entry_and_is_the_profiles_folder(profile):

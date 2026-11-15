@@ -248,3 +248,27 @@ def test_the_app_folder_is_recorded_relative_to_the_pyproject_found_above_it_as_
     controller(files).init(Init(Path("/src/services/shop"), "web"))
     assert files.texts[PYPROJECT].endswith('[tool.xarch]\nprofile = "web"\napp = "services/shop"\n')
     assert files.texts[PYPROJECT].startswith('[project]\nname = "x"\n')
+
+
+TWO_KINDS = FakeSkeleton([], {"module": (("modules",), [(("domain",), True)]),
+                              "plugin": (("plugins",), [(("hooks",), True), (("manifest.py",), False)])})
+
+
+def test_every_kind_of_a_profile_with_several_repeating_folders_is_made_in_its_own_folder():
+    files = FakeFiles(dirs={ROOT / "modules", ROOT / "plugins"})
+    two = ScaffoldController(Scaffolding(files, TWO_KINDS))
+    assert two.new(New(ROOT, "module", "docs", "cli")) == Scaffolded(
+        Report(created=[ROOT / "modules/docs/__init__.py", ROOT / "modules/docs/domain/__init__.py"]))
+    assert two.new(New(ROOT, "plugin", "seo", "cli")) == Scaffolded(
+        Report(created=[ROOT / "plugins/seo/__init__.py", ROOT / "plugins/seo/hooks/__init__.py",
+                        ROOT / "plugins/seo/manifest.py"]))
+
+
+@pytest.mark.parametrize("kind, reason", [
+    pytest.param("feature", "no kind 'feature' in the profile: use module, plugin", id="an unknown kind lists every word"),
+    pytest.param("plugins", "no kind 'plugins' in the profile: that is the folder of the kind plugin: write "
+                            "`xarch new plugin <name>`", id="the folder of the second kind names its word"),
+])
+def test_a_kind_the_profile_does_not_declare_is_refused_listing_every_word(kind, reason):
+    two = ScaffoldController(Scaffolding(FakeFiles(dirs={ROOT / "modules"}), TWO_KINDS))
+    assert two.new(New(ROOT, kind, "docs", "cli")) == Refused(reason)

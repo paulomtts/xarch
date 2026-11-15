@@ -26,10 +26,8 @@ class SpecSkeleton:
         return _entries(self._spec.skeleton(profile).top_level)
 
     def kinds(self, profile: str) -> dict[str, tuple[tuple[str, ...], list[tuple[tuple[str, ...], bool]]]]:
-        skeleton = self._spec.skeleton(profile)
-        if skeleton.each_root is None or not skeleton.each_word:
-            return {}
-        return {skeleton.each_word: (skeleton.each_root, _entries(skeleton.each))}
+        return {repeating.word: (repeating.root, _entries(repeating.entries))
+                for repeating in self._spec.skeleton(profile).repeating}
 
     def docs(self, profile: str) -> list[tuple[tuple[str, ...], str]]:
         docs = self._spec.docs(profile)

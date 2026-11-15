@@ -1,7 +1,18 @@
 """Where a path sits among path patterns, and which places a rule's target reaches."""
 import pytest
 
-from xarch.kernel.logic.placement import EVERYTHING, Place, Target, matches, place_of, reaches
+from xarch.kernel.logic.placement import (
+    EVERYTHING,
+    Place,
+    Repeat,
+    Target,
+    matches,
+    place_of,
+    reaches,
+    repeat_of,
+    root_of,
+    with_itself,
+)
 
 PATTERNS = {
     "kernel": ("kernel",),
@@ -62,3 +73,37 @@ def test_a_target_reaches_its_part_in_its_scope_below_its_path(target, src, dst,
 ])
 def test_a_path_matches_a_pattern_only_exactly(path, answer):
     assert matches(("modules", "*", "application"), path) is answer
+
+
+REPEATS = (Repeat("module", ("modules",)), Repeat("plugin", ("plugins",)))
+
+
+@pytest.mark.parametrize("pattern, root", [
+    (("modules", "*", "domain"), ("modules",)),
+    (("plugins", "*"), ("plugins",)),
+    (("*", "domain"), ()),
+    (("kernel",), None),
+])
+def test_the_root_of_a_pattern_is_the_folder_its_repeating_step_sits_in(pattern, root):
+    assert root_of(pattern) == root
+
+
+@pytest.mark.parametrize("pattern, found", [
+    (("modules", "*", "domain"), REPEATS[0]),
+    (("plugins", "*", "hooks"), REPEATS[1]),
+    (("kernel",), None),
+    (("other", "*", "x"), None),
+])
+def test_a_pattern_belongs_to_the_repeating_folder_that_sits_at_its_root(pattern, found):
+    assert repeat_of(REPEATS, pattern) == found
+
+
+def test_each_repeating_folder_captures_its_own_instances():
+    patterns = {"domain": ("modules", "*", "domain"), "hooks": ("plugins", "*", "hooks"), "kernel": ("kernel",)}
+    assert place_of(patterns, ("modules", "a", "domain", "x.py")) == Place("domain", "a", ("x",))
+    assert place_of(patterns, ("plugins", "a", "hooks", "x.py")) == Place("hooks", "a", ("x",))
+    assert place_of(patterns, ("plugins", "a", "domain", "x.py")) == Place(None)
+
+
+def test_a_part_may_always_import_itself_in_its_own_repeating_folder_whichever_it_is():
+    assert with_itself("hooks", ("plugins", "*", "hooks"), []) == (Target("hooks", "own"),)

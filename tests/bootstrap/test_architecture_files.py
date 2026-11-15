@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from xarch.bootstrap.wiring import build_spec, load_architecture
-from xarch.modules.spec.contract import Part, Target
+from xarch.modules.spec.contract import Part, Repeat, Target
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 
 LAYERED = """\
@@ -50,9 +50,8 @@ def write(path: Path, text: str) -> Path:
 def test_a_valid_file_loads(tmp_path):
     architecture = load_architecture(write(tmp_path / "layered.yaml", LAYERED))
     assert architecture.name == "layered"
-    assert architecture.instance_root() == ("src",)
-    assert architecture.singular == "module"
-    assert architecture.instance_tree() == {"api": {}, "service": {}, "store": {}}
+    assert architecture.repeats == (Repeat("module", ("src",)),)
+    assert architecture.instance_tree(architecture.repeats[0]) == {"api": {}, "service": {}, "store": {}}
     assert architecture.top_level_tree() == {"src": {}}
     assert architecture.parts["api"] == Part("api", ("src", "*", "api"), "HTTP handlers",
                                              "Does it parse a request and call a service?")
@@ -162,7 +161,8 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
                   'hints: must be a mapping of rule ids to one line of text, such as {rules: see the docs}'],
                  id='every top-level value of the wrong type'),
     pytest.param('xarch: 2\nname: n\nparts: {a: {path: a/<x>/<y>, role: r}}\n',
-                 ["parts.a.path: 'a/<x>/<y>' has two repeating steps: a path has one"],
+                 ["parts.a.path: 'a/<x>/<y>' has two repeating steps, <x> and <y>: a repeating folder cannot sit inside "
+                  "another, so give each its own folder"],
                  id='a path with two repeating folders'),
     pytest.param('xarch: 2\nname: n\nparts: {1: {path: 1}, p: {path: [a]}, q: 3}\n',
                  ["parts: 1 is not a part name: use letters, digits, '_' and '-'",

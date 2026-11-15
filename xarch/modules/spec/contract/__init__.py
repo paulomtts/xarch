@@ -16,6 +16,7 @@ from xarch.modules.spec.domain.values import (
     PackageOnly,
     Part,
     PassThrough,
+    Repeat,
     ScenarioCoverage,
     StandIns,
     Subject,
@@ -25,8 +26,8 @@ from xarch.modules.spec.domain.values import (
 )
 
 __all__ = ["Architecture", "CaseTable", "ClosedTree", "DeadCode", "Fixture", "Framework", "NoComments", "NoDuplicates",
-           "PackageOnly", "Part", "PassThrough",
-           "ScenarioCoverage", "StandIns", "Subject", "Target", "Tier", "TierExample", "Entry", "Skeleton", "DocFile",
+           "PackageOnly", "Part", "PassThrough", "Repeat",
+           "ScenarioCoverage", "StandIns", "Subject", "Target", "Tier", "TierExample", "Entry", "Repeating", "Skeleton", "DocFile",
            "Docs", "ProjectFile", "Loosened", "ProfileOrigin", "SelectProfile", "ProfileSelected", "ProfileRefused",
            "ProfileResult", "MigrateProfile", "MigratedFile", "Migrated", "MigrationRefused", "MigrateResult", "Shown",
            "Symbol", "Explain", "FormatExplained", "KeyExplained", "UnknownKey", "ExplainResult", "ViewProfile",
@@ -46,16 +47,22 @@ class Entry:
 
 
 @dataclass(frozen=True)
+class Repeating:
+    """One repeating folder of the layout: word, what one instance is called (the word between `<` and `>` in a
+    path); root, the folder holding the instances; entries, what every instance holds."""
+    word: str
+    root: tuple[str, ...]
+    entries: tuple[Entry, ...]
+
+
+@dataclass(frozen=True)
 class Skeleton:
-    """The layout as entries: top_level below the app root, with the `each` folder's parent empty; each_root, the
-    folder holding the `each` instances (None if the layout has none); each, what every instance holds; entry_point,
-    the top-level folder of the part marked `entry` ("" if none); each_word, what one instance is called (the word
-    between `<` and `>` in a path), "" if the layout has no `each`."""
+    """The layout as entries: top_level below the app root, with every repeating folder empty; repeating, the
+    repeating folders in the order of the profile; entry_point, the top-level folder of the part marked `entry` ("" if
+    none)."""
     top_level: tuple[Entry, ...]
-    each_root: tuple[str, ...] | None
-    each: tuple[Entry, ...]
+    repeating: tuple[Repeating, ...]
     entry_point: str
-    each_word: str = ""
 
 
 @dataclass(frozen=True)

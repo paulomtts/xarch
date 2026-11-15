@@ -4,7 +4,7 @@ names come from the profile, and belong in xarch/architectures/ (the bundled pro
 Scope: every string literal in xarch's Python source outside xarch/architectures/, including the text of f-strings;
 docstrings are prose and are not scanned, nor are identifiers and import statements, so xarch's own package folders
 (xarch.modules, xarch.kernel, ...) and its own names do not count. A name is matched as a whole word. The names are
-every part and every layout folder of the bundled profiles, and the singular name of the repeating folder (`module`):
+every part and every layout folder of the bundled profiles, and the word of each repeating folder (`module`):
 as a string literal it is an architecture concept, while Python's own notion of a module (docstrings, `ast.Module`,
 `imp.module`, `sys.stdlib_module_names`) is an identifier or prose and never a string literal here. Nothing is allowed: ALLOWED stays empty.
 
@@ -60,7 +60,7 @@ def concept_names() -> set[str]:
 
     for profile in ("cli", "web"):
         architecture = load_architecture(profile)
-        names |= set(architecture.parts) | {architecture.singular}
+        names |= set(architecture.parts) | {repeat.word for repeat in architecture.repeats}
         walk(architecture.layout)
     return inflected(names - {"*"})
 

@@ -2,7 +2,7 @@
 else from the file parts of its folder when they share a tier, else from a tier's folder; a fake has none."""
 import pytest
 
-from tests.modules.rules.builders import GUARD, INTEGRATION, PARTS, PROFILE, RENDERING, UNIT, profile, steps
+from tests.modules.rules.builders import GUARD, INTEGRATION, PARTS, PROFILE, RENDERING, TWO, UNIT, profile, steps
 from xarch.kernel.logic.placement import EACH, Place, Target
 from xarch.modules.rules.application.logic import tier_of
 from xarch.modules.rules.application.logic.tier_of import as_place, is_test
@@ -94,3 +94,22 @@ def test_an_empty_path_is_no_test():
 
 def test_a_test_speaks_from_its_instance():
     assert as_place("docs") == Place(EACH, "docs")
+
+
+@pytest.mark.parametrize("path, tier, instance, own, parts", [
+    pytest.param("plugins/seo/hooks/test_run.py", "plugin", "seo", ("plugins", "seo"), ("hooks",),
+                 id="a test below the second repeating folder mirrors its part"),
+    pytest.param("plugins/seo/test_manifest.py", "plugin", "seo", ("plugins", "seo"), ("manifest",),
+                 id="a test in the folder of a file part of the second repeating folder"),
+    pytest.param("modules/docs/domain/test_doc.py", "unit", "docs", ("modules", "docs"), ("domain",),
+                 id="a test below the first repeating folder keeps its own"),
+    pytest.param("plugins/seo/hooks/builders.py", "plugin", "seo", ("plugins", "seo"), ("hooks",),
+                 id="a helper in the folder of a part of the second repeating folder"),
+    pytest.param("plugins/seo/other/builders.py", None, "seo", ("plugins", "seo"), (),
+                 id="a helper of an instance of the second repeating folder is its own folder's"),
+])
+def test_a_test_below_any_repeating_folder_takes_its_instance_and_its_own_folder(path, tier, instance, own, parts):
+    where = tier_of.tested(TWO, steps(path))
+    assert (where.tier.name if where.tier else None, where.instance, where.own, where.parts) == (
+        tier, instance, own, parts)
+

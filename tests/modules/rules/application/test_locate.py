@@ -6,7 +6,7 @@ import pytest
 
 from tests.fakes.filesystem import FakeSourceTree
 from tests.fakes.profiles import FakeProfiles
-from xarch.kernel.logic.placement import Target
+from xarch.kernel.logic.placement import Repeat, Target
 from xarch.modules.rules.application.controller import RulesController
 from xarch.modules.rules.application.services.import_check import ImportCheck
 from xarch.modules.rules.application.services.locate import Locator
@@ -20,10 +20,9 @@ PROFILE = Profile(
     rules={"kernel": (), "domain": (Target("kernel"),)},
     folders=((), ("kernel",), ("modules",), ("modules", "*"), ("modules", "*", "domain")),
     tiers=(Tier("unit", (Target("kernel"), Target("domain", "own")), None, (), False, "a rule", "nothing", "Does it?"),),
-    libraries={"kernel": (), "domain": ()}, each_root=("modules",),
+    libraries={"kernel": (), "domain": ()}, repeats=(Repeat("module", ("modules",)),),
     info={"kernel": PartInfo("primitives", "Is it a primitive?", "kernel/"),
-          "domain": PartInfo("invariants", "Is it an invariant?", "domain/")},
-    singular="module")
+          "domain": PartInfo("invariants", "Is it an invariant?", "domain/")})
 KERNEL = Where("part", "app/kernel/ids.py", True, "kernel", "primitives", "Is it a primitive?", "kernel/",
                singular="module", may_import=(Reach("kernel", "none", "kernel/", "app/kernel/"),),
                may_import_text="`kernel/`", libraries=(), tier=TierInfo("unit", "a rule", "nothing", "Does it?"),

@@ -581,7 +581,7 @@ def forbidden_names(value: Any, where: str, problems: list[str]) -> tuple[tuple[
 
 def scenario_places(results: Any, tier: Any, suffix: Any, parts: dict[str, Part], declared: set[str],
                     tiers: tuple[Tier, ...], where: str, problems: list[str]) -> None:
-    """The part holding the result unions lies in the `each` folder, the tier is declared and tests that part, and the
+    """The part holding the result unions lies in a repeating folder, the tier is declared and tests that part, and the
     suffix is the end of a name."""
     part = parts.get(results) if isinstance(results, str) else None
     if part is None:

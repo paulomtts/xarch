@@ -11,7 +11,7 @@ A file under the fakes' folder is a fake, which no tier holds. A file in none of
 Its subject is the part its folder mirrors (1.), or the file parts of its folder (2.); a file placed by its tier's
 folder (3.) mirrors no part and has none.
 
-Its own folder is the instance of the `each` folder it mirrors (tests/<each root>/<name>/), else the top folder below
+Its own folder is the instance of the repeating folder it mirrors (tests/<its root>/<name>/), else the top folder below
 the tests root: the folder whose helpers it may import.
 """
 from __future__ import annotations
@@ -19,15 +19,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from fnmatch import fnmatchcase
 
-from xarch.kernel.logic.placement import EACH, Place, matches, place_of
+from xarch.kernel.logic.placement import EACH, Place, Repeat, matches, place_of
 from xarch.modules.rules.domain.values import Profile, TestTier
 
 
 @dataclass(frozen=True)
 class Tested:
-    """A file below the tests root: its tier (None if none), the instance of the `each` folder it is in, its own
-    folder, whether it is a test (a name the profile's test files match) or a fake, and the parts it mirrors (its subject; empty
-    when its tier was found by its tier's folder)."""
+    """A file below the tests root: its tier (None if none), the instance of the repeating folder it is in, its own
+    folder, whether it is a test (a name the profile's test files match) or a fake, and the parts it mirrors (its
+    subject; empty when its tier was found by its tier's folder)."""
     tier: TestTier | None
     instance: str | None
     own: tuple[str, ...]
@@ -72,20 +72,24 @@ def _first(profile: Profile, wanted) -> TestTier | None:
     return next((t for t in profile.tiers if wanted(t)), None)
 
 
+def _repeat(profile: Profile, path: tuple[str, ...]) -> Repeat | None:
+    """The repeating folder a path lies below, an instance of it named."""
+    below = [r for r in profile.repeats if len(path) > len(r.root) + 1 and path[:len(r.root)] == r.root]
+    return max(below, key=lambda r: len(r.root), default=None)
+
+
 def _instance(profile: Profile, path: tuple[str, ...]) -> str | None:
-    root = profile.each_root
-    if root is None or len(path) <= len(root) + 1 or path[:len(root)] != root:
-        return None
-    return path[len(root)]
+    repeat = _repeat(profile, path)
+    return path[len(repeat.root)] if repeat is not None else None
 
 
 def _own(profile: Profile, path: tuple[str, ...]) -> tuple[str, ...]:
-    instance = _instance(profile, path)
-    if instance is not None and profile.each_root is not None:
-        return (*profile.each_root, instance)
+    repeat = _repeat(profile, path)
+    if repeat is not None:
+        return (*repeat.root, path[len(repeat.root)])
     return path[:1] if len(path) > 1 else ()
 
 
 def as_place(instance: str | None) -> Place:
-    """The place a test speaks from: its `each` instance, so that @own reaches that instance's parts."""
+    """The place a test speaks from: its repeating folder's instance, so that @own reaches that instance's parts."""
     return Place(EACH, instance)

@@ -1,5 +1,6 @@
-"""The cycles check: no instance of the `each` folder imports, through the others, from itself.
+"""The cycles check: no instance of a repeating folder imports, through the others, from itself.
 
+The instances of every repeating folder are the nodes of one graph: a module and a plugin may depend on each other.
 Instance A depends on instance B when a file below A imports from below B, absolutely or relatively, whatever the
 parts (under the bundled rules only an adapter can, importing B's contract). Every elementary cycle of that graph is
 one violation: its instances in order, starting from the one first by name, each followed by the import that makes it
@@ -10,6 +11,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+from xarch.kernel.logic.placement import Repeat
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.domain.imports import dotted, targets
 from xarch.modules.rules.domain.values import Profile, SourceFile
@@ -19,25 +21,28 @@ Edge = tuple[str, int, str]
 
 
 def violations(files: Iterable[SourceFile], profile: Profile, root: str) -> list[Violation]:
-    each = profile.each_root
-    if each is None:
+    if not profile.repeats:
         return []
     parsed = [(f, *dotted(f.path)) for f in files]
     known = {steps for _, steps, _ in parsed}
     edges: dict[str, dict[str, Edge]] = {}
     for file, steps, is_package in sorted(parsed, key=lambda p: p[0].name):
-        source = _instance(each, steps)
+        source = _instance(profile.repeats, steps)
         if source is None:
             continue
         for line, target in sorted(targets(file.imports, steps if is_package else steps[:-1], known, root)):
-            depends = _instance(each, target)
+            depends = _instance(profile.repeats, target)
             if depends is not None and depends != source:
                 edges.setdefault(source, {}).setdefault(depends, (file.name, line, ".".join((root, *target))))
-    return [_violation(cycle, edges, each) for cycle in _cycles(edges)]
+    return [_violation(cycle, edges) for cycle in _cycles(edges)]
 
 
-def _instance(each: tuple[str, ...], steps: tuple[str, ...]) -> str | None:
-    return steps[len(each)] if len(steps) > len(each) and steps[:len(each)] == each else None
+def _instance(repeats: tuple[Repeat, ...], steps: tuple[str, ...]) -> str | None:
+    """The instance a path lies in, as the folder holding it and its name, e.g. "modules/docs"."""
+    for repeat in repeats:
+        if len(steps) > len(repeat.root) and steps[:len(repeat.root)] == repeat.root:
+            return "/".join(steps[:len(repeat.root) + 1])
+    return None
 
 
 def _cycles(edges: dict[str, dict[str, Edge]]) -> list[list[str]]:
@@ -55,9 +60,9 @@ def _cycles(edges: dict[str, dict[str, Edge]]) -> list[list[str]]:
     return sorted(found)
 
 
-def _violation(cycle: list[str], edges: dict[str, dict[str, Edge]], each: tuple[str, ...]) -> Violation:
+def _violation(cycle: list[str], edges: dict[str, dict[str, Edge]]) -> Violation:
     hops = [edges[a][b] for a, b in zip(cycle, [*cycle[1:], cycle[0]])]
-    shown = " → ".join("/".join((*each, name)) for name in [*cycle, cycle[0]])
+    shown = " → ".join([*cycle, cycle[0]])
     why = "; ".join(f"{file}:{line} imports {target}" for file, line, target in hops)
     first = hops[0]
     fix = (f"break the cycle: remove the import of {first[2]} at {first[0]}:{first[1]}, or move what it needs to a "

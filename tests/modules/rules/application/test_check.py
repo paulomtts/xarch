@@ -6,7 +6,7 @@ import pytest
 
 from tests.fakes.filesystem import FakeSourceTree
 from tests.fakes.profiles import FakeProfiles
-from xarch.kernel.logic.placement import Target
+from xarch.kernel.logic.placement import Repeat, Target
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.controller import RulesController
 from xarch.modules.rules.application.services.import_check import ImportCheck
@@ -37,7 +37,7 @@ def profile(entry: str) -> Profile:
              entry: (Target(entry), Target("kernel"))}
     folders = ((), ("kernel",), ("platform",), ("modules",), ("modules", "*"), ("modules", "*", "domain"),
                ("modules", "*", "application"), ("modules", "*", "application", "services"), (entry,))
-    return Profile(parts, rules, folders, libraries={name: () for name in parts}, each_root=("modules",))
+    return Profile(parts, rules, folders, libraries={name: () for name in parts}, repeats=(Repeat("module", ("modules",)),))
 
 
 PROFILES = FakeProfiles({"cli": profile("cli"), "web": profile("web")})

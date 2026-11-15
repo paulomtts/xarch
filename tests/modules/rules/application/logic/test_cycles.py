@@ -1,8 +1,8 @@
-"""The cycles check on hand-made source files: no instance of the `each` folder imports, through the others, from
+"""The cycles check on hand-made source files: no instance of a repeating folder imports, through the others, from
 itself; each elementary cycle is one violation, from the instance first by name, at the first import that closes it."""
 import pytest
 
-from tests.modules.rules.builders import PROFILE, imp, profile, source
+from tests.modules.rules.builders import PROFILE, TWO, imp, profile, source
 from xarch.modules.rules.application.logic.cycles import violations
 
 
@@ -75,8 +75,8 @@ def test_cycles(files, expected):
     assert problems(*files) == expected
 
 
-def test_without_an_each_folder_there_are_no_cycles():
-    assert problems(adapter("a", uses(1, "b")), adapter("b", uses(1, "a")), checked=profile(each_root=None)) == []
+def test_without_a_repeating_folder_there_are_no_cycles():
+    assert problems(adapter("a", uses(1, "b")), adapter("b", uses(1, "a")), checked=profile(repeats=())) == []
 
 
 def test_a_cycle_names_its_rule():
@@ -89,3 +89,27 @@ def test_a_violation_says_which_import_to_remove():
     assert [(v.rule, v.fix) for v in found] == [
         ("cycles", "break the cycle: remove the import of app.modules.b.contract at "
                    "app/modules/a/adapters/peer.py:1, or move what it needs to a part that both may import")]
+
+
+def hooks(instance: str, *imports) -> object:
+    return source(f"plugins/{instance}/hooks/run.py", *imports)
+
+
+def test_instances_of_different_repeating_folders_form_a_cycle_when_they_import_each_other():
+    found = violations([adapter("a", imp(1, "app.plugins.p.hooks", "run")),
+                        hooks("p", imp(4, "app.modules.a.contract", "X"))], TWO, "app")
+    assert [str(v) for v in found] == [
+        "app/modules/a/adapters/peer.py:1: modules/a → plugins/p → modules/a import each other in a cycle: "
+        "app/modules/a/adapters/peer.py:1 imports app.plugins.p.hooks.run; "
+        "app/plugins/p/hooks/run.py:4 imports app.modules.a.contract (cycles)"]
+
+
+def test_a_module_and_a_plugin_of_the_same_name_are_two_instances():
+    assert [str(v) for v in violations([adapter("x", imp(1, "app.plugins.x.hooks", "run")),
+                                        hooks("x", imp(2, "app.kernel", "ids"))], TWO, "app")] == []
+
+
+def test_instances_of_one_repeating_folder_still_form_a_cycle_beside_another_one():
+    found = violations([adapter("a", uses(1, "b")), adapter("b", uses(1, "a")), hooks("p", imp(1, "app.kernel"))],
+                       TWO, "app")
+    assert [v.rule for v in found] == ["cycles"]

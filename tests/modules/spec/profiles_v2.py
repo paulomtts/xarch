@@ -37,6 +37,15 @@ def layered(**changes) -> dict:
     } | changes
 
 
+def two_folders(**changes) -> dict:
+    """layered(), with a second repeating folder, ext/<plugin>/, holding a hooks folder and a manifest.py file."""
+    document = layered()
+    document["parts"]["hooks"] = {"path": "ext/<plugin>/hooks", "role": "what a plugin runs"}
+    document["parts"]["manifest"] = {"path": "ext/<plugin>/manifest.py", "role": "what a plugin declares",
+                                     "may_import": ["hooks"]}
+    return document | changes
+
+
 def covered(**changes) -> dict:
     """layered(), with the test framework, a unit and an integration tier, and every part in a tier or untested."""
     document = layered(testing=deepcopy(TESTING),

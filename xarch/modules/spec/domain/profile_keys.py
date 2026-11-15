@@ -69,9 +69,9 @@ parts:
 """The smallest valid profile: one part, no rule, no test."""
 
 SYMBOLS: tuple[tuple[str, str], ...] = (
-    ("<word>", "in a path: the repeating folder, one per name, as in units/<unit>/store"),
-    ("store", "in may_import, a bare name: that part, in the importer's own instance of the repeating folder"),
-    ("store@any", "that part in any instance of the repeating folder"),
+    ("<word>", "in a path: a repeating folder, one per name, as in units/<unit>/store; there may be several"),
+    ("store", "in may_import, a bare name: that part, in the importer's own instance of its repeating folder"),
+    ("store@any", "that part in any instance; the only way to name a part of another repeating folder"),
     ("store/schema", "only what lies below that path of the part"),
     ("everything", "in may_import or libraries: no limit"),
     ("a path ending in .py", "a last path step with a dot: the part is one file, not a folder"),
@@ -192,19 +192,31 @@ KEYS: tuple[Key, ...] = (
     _k(PROFILE, "language", "the language of the app", "python: the default, and the only one", "language: python"),
     _k(PROFILE, "testing", "how the test framework names things",
        "a preset name, or a map {files, functions, skips, table, mocks}; needed with `tiers` and the guards "
-       "scenario-coverage and stand-ins", 'testing:\n  files: [check_*.py]\n  functions: "check_*"',
+       "scenario-coverage and stand-ins. Dotted names are what an absolute import binds; what stays Python is "
+       "`typing.Protocol` as the mark of a port, `__init__.py`, the syntax tree, import resolution and the standard "
+       "library's names", 'testing:\n  files: [check_*.py]\n  functions: "check_*"',
        rules=("tiers", "test-tree"), opens=TESTING, choices=CHOICE_PRESETS),
     _k(PROFILE, "parts", "where code sits, in the order their litmus tests run",
        "a map {<part>: {path, role, ...}}: each part is a folder or a file below the app; the layout is made of "
        "their paths and `folders`", _TWO, True, rules=("structure", "rules"), opens=PART),
     _k(PROFILE, "forbidden", "named lists of names a part may not use",
-       "a map {<list>: [<dotted name>, ...]}; a part points to one list with `forbidden: <list>`",
+       "a map {<list>: [<dotted name>, ...]}; a part points to one list with `forbidden: <list>`. An entry is a dotted "
+       "name as an absolute import binds it (`datetime.datetime.now`; a builtin as `builtins.open`, a bare `open` is "
+       "refused) or a whole package (`socket`). A file may not import a listed package or anything below it, nor use "
+       "a listed name, called or not, as the file writes it (through the import that binds it, or a builtin by its "
+       "bare name where nothing shadows it). Silent on a name reached through a variable or `getattr`, a method of an "
+       "object, an annotation, and what a helper in another file does: a ban list, not a proof of purity",
        "forbidden:\n  pure: [time.time, socket]\n" + _in_part("forbidden: pure\n"), rules=("forbidden",)),
     _k(PROFILE, "layers", "chains of parts from the inside out",
        "a map {<name>: [<part>, ...]}: no part imports one after it in its chain; refused at load when a "
        "`may_import` breaks a chain", "layers:\n  stack: [core, documents]\n" + _TWO),
     _k(PROFILE, "tiers", "the kinds of test, in the order their litmus tests run",
-       "a map {<tier>: {...}}; with tiers, every part names its `tier` or says why it is `untested`; needs `testing`",
+       "a map {<tier>: {...}}; with tiers, every part names its `tier` or says why it is `untested`; needs `testing`. "
+       "Tests mirror the app: tests/<path> for the app's <path>, and a test file has the tier of the part its folder "
+       "mirrors (a folder that mirrors no part belongs to the tier whose `folder` holds it). A test imports only the "
+       "part its folder mirrors and what that may import, a bare name meaning the instance it mirrors, and other test "
+       "code only from its own folder; a test in no tier is a violation. Every folder below tests/<a repeating "
+       "folder>/ mirrors a folder of the app",
        _tiered("proves: a rule of the documents\n"), rules=("tiers", "test-tree"), opens=TIER),
     _k(PROFILE, "fakes", "the folder of the test fakes, and what they stand in for",
        "a map {folder, for, prefix}", _TWO + _FAKES, rules=("stand-ins", "dead-code"), opens=FAKES),
@@ -212,10 +224,13 @@ KEYS: tuple[Key, ...] = (
        "a map {<guard>: {...}}: a guard left out is off; `xarch profile explain guards.<guard>` says what one checks",
        "guards:\n  no-comments: {}\n  no-duplicates: {min_statements: 6}\n", opens=GUARD),
     _k(PROFILE, "excluded", "folders below the app that are not its source",
-       "a map {<folder>: <reason>}: no check reads them; `check` lists them under `enforcement`",
+       "a map {<folder>: <reason>}: a path below the app, never a folder of the layout; no check reads a Python file "
+       "below one (`closed-tree` and the `ungoverned` list leave it out); `check` lists each under `enforcement` and "
+       "`where` says so; not a finding for `--strict`",
        "excluded:\n  generated: written by a tool, not by hand\n", rules=()),
     _k(PROFILE, "hints", "your own advice for a rule",
-       "a map {<rule id>: <text>}: shown after the built-in fix of a violation of that rule",
+       "a map {<rule id>: <text>}: shown after the built-in fix of a violation of that rule, as a `hint:` line in the "
+       "text output and `hint` in the JSON; an id that is no rule of `check` is refused when the profile loads",
        "hints:\n  rules: Ask the maintainer before adding an import.\n", False, False),
     _k(PROFILE, "files", "the files `init` writes besides the docs",
        "a map {<path>: <from> or {from, pinned, fill}}: `from` is a file or folder next to the profile",
@@ -225,8 +240,9 @@ KEYS: tuple[Key, ...] = (
        opens=DOCS),
 
     _k(PART, "path", "where the part lives below the app",
-       "a folder, or a file when its last step holds a dot; a step written `<word>` is the repeating folder, one "
-       "per name", "parts:\n  store:\n    path: units/<unit>/store\n    role: saves the documents of one unit\n",
+       "a folder, or a file when its last step holds a dot; a step written `<word>` is a repeating folder, one "
+       "per name: a profile may have several, each with a word of its own and one parent, and a path holds one",
+       "parts:\n  store:\n    path: units/<unit>/store\n    role: saves the documents of one unit\n",
        True, rules=("structure", "rules")),
     _k(PART, "role", "what the part is for, in one line", "one line of text: the note of its folder in the docs tree",
        _in_part("role: saves and loads documents\n"), True, False),
@@ -234,14 +250,19 @@ KEYS: tuple[Key, ...] = (
        _in_part("litmus: Does it save or load a document?\n"), False, False),
     _k(PART, "may_import", "what the part may import besides itself",
        "[<part>, <part>@any, <part>/<path>, ...] or everything: a bare name is that part in the importer's own "
-       "instance, `@any` any instance, `/<path>` only what lies below it; a part may always import itself",
+       "instance (a part of another repeating folder has none: write `@any`), `@any` any instance, `/<path>` only "
+       "what lies below it; a part may always import itself, so a target that only says so is refused",
        _TWO, rules=("rules",)),
     _k(PART, "must_import", "what each file of the part has to reach",
        "[<target>, ...] written as `may_import` writes them, each one the part may import: each file imports one "
-       "of them, or an outside package, or reaches one through another file of the part", _in_two("must_import: [core]\n"),
+       "of them, or an outside package (top-level, neither standard library nor the app's own, whatever `libraries` "
+       "says), or imports a file of its own part that does, however far the chain; files that only import each other "
+       "meet nothing. Exempt: `__init__.py` and a file with no function or method holding a real statement (types, "
+       "constants, Protocol stubs). A failing file is reported once, as a whole", _in_two("must_import: [core]\n"),
        rules=("must-import",)),
     _k(PART, "libraries", "the outside packages the part may import",
-       "[<package>, ...] by top-level name, or everything; none by default", _in_part("libraries: [yaml]\n"),
+       "[<package>, ...] by top-level name, or everything; none by default; the standard library is always allowed and "
+       "tests are not checked", _in_part("libraries: [yaml]\n"),
        rules=("libraries",)),
     _k(PART, "forbidden", "the list of names the part may not use",
        "the name of a top-level `forbidden` list", "forbidden:\n  pure: [time.time, socket]\n"
@@ -265,7 +286,9 @@ KEYS: tuple[Key, ...] = (
     _k(TIER, "apply_forbidden", "its tests keep to the forbidden list of the part they mirror",
        "true or false", _tiered("apply_forbidden: true\n"), rules=("forbidden",)),
     _k(TIER, "types_only", "the parts its tests may import only as types",
-       "[<part>, ...]: a test may import them to annotate, never to call", _tiered("types_only: [documents]\n"),
+       "[<part>, ...]: a test may import them to annotate, never to call: `def build(c: Controller)` is fine, "
+       "`Controller(...)` is not; a plain function of such a part may not be referenced at all, while "
+       "`isinstance`, exception matching and enum members stay allowed", _tiered("types_only: [documents]\n"),
        rules=("types-only",)),
     _k(TIER, "folder", "a folder of tests that mirror no part",
        "a folder below the tests folder, for a tier whose tests mirror no part of the app",

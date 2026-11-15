@@ -1,5 +1,5 @@
 """The package-only guard: a part it names is imported as a package, `from <its package> import <name>`, never by
-one of its files, from anywhere outside that part's own folder (its own instance, for a part in the `each` folder).
+one of its files, from anywhere outside that part's own folder (its own instance, for a part in a repeating folder).
 
 `from <its package> import <file>` imports a file too, so it is a violation when <file> is one of the app's files.
 """
