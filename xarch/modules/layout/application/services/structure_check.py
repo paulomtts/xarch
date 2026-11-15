@@ -3,9 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from xarch.kernel.violations import Violation
+from xarch.modules.layout.application.logic.requirements import missing, requirements
+from xarch.modules.layout.application.logic.unmirrored import unmirrored
 from xarch.modules.layout.application.ports.disk import Disk
 from xarch.modules.layout.application.ports.skeleton import Skeleton
-from xarch.modules.layout.domain.structure import Repeated, missing, requirements, unmirrored
+from xarch.modules.layout.domain.structure import Repeated
 
 
 class StructureCheck:

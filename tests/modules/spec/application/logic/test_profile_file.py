@@ -3,9 +3,9 @@ converts it, and any other version is refused."""
 import pytest
 
 from tests.modules.spec.profiles_v2 import PRESETS, SOURCE, layered
+from xarch.modules.spec.application.logic.profile_file import parse_profile
+from xarch.modules.spec.application.logic.profile_v2 import parse_v2
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.profile_file import parse_profile
-from xarch.modules.spec.domain.profile_v2 import parse_v2
 
 
 def load(document):

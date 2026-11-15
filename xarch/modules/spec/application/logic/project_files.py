@@ -16,8 +16,8 @@ from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 
 from xarch.kernel.logic.placement import EACH
+from xarch.modules.spec.application.logic.layout_walk import walk
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.skeleton import walk
 from xarch.modules.spec.domain.values import Architecture, ProjectFile
 
 APP_PLACEHOLDER = "{{app}}"

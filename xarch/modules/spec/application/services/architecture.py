@@ -4,14 +4,14 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+from xarch.modules.spec.application.logic.docs_files import DOCS_ROOT, doc_files
 from xarch.modules.spec.application.logic.example_imports import example_problems
 from xarch.modules.spec.application.logic.looseness import closest, guards_off, looser
+from xarch.modules.spec.application.logic.profile_file import parse_profile, source_of
+from xarch.modules.spec.application.logic.project_files import EXAMPLE_APP, project_files, with_app
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
 from xarch.modules.spec.contract import DocFile, Docs, Loosened, ProfileOrigin, ProjectFile
-from xarch.modules.spec.domain.docs import DOCS_ROOT, doc_files
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.profile_file import parse_profile, source_of
-from xarch.modules.spec.domain.project_files import EXAMPLE_APP, project_files, with_app
 from xarch.modules.spec.domain.values import Architecture, ArchitectureSource
 
 

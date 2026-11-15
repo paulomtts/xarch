@@ -12,7 +12,7 @@ from dataclasses import replace
 
 from xarch.kernel.logic.placement import EVERYTHING, Place, reaches
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.domain.places import allowed, label, place, targets_of
+from xarch.modules.rules.application.logic.places import allowed, label, place, targets_of
 from xarch.modules.rules.domain.values import Import, Profile, SourceFile
 
 OWNERS = 3

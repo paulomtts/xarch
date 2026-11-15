@@ -1,4 +1,4 @@
-"""Which architecture is in force, and the skeleton of section 1 as flat entries walked from its layout.
+"""Which architecture is in force.
 
 An architecture is named by a location: a bundled name such as "web", or a path to an architecture file. A path
 configured in a pyproject.toml is relative to the folder holding that file; one given on the command line, to the
@@ -6,11 +6,11 @@ current folder.
 """
 from __future__ import annotations
 
-from collections.abc import Collection, Iterator
+from collections.abc import Collection
 from pathlib import Path
 
 from xarch.modules.spec.domain.errors import NoProfile, UnknownProfile
-from xarch.modules.spec.domain.values import Configured, Layout
+from xarch.modules.spec.domain.values import Configured
 
 
 def is_path(location: str) -> bool:
@@ -35,14 +35,3 @@ def _checked(location: str, source: Path | None, bundled: Collection[str]) -> st
         raise UnknownProfile(location, bundled, source)
     return location
 
-
-def walk(tree: Layout, prefix: tuple[str, ...] = ()) -> Iterator[tuple[tuple[str, ...], bool, bool]]:
-    """Yield (path, is_dir, is_leaf) for every entry, parents before children.
-
-    A leaf is a file, or a directory that holds nothing in the spec.
-    """
-    for name, sub in tree.items():
-        path = prefix + (name,)
-        yield path, sub is not None, not sub
-        if sub:
-            yield from walk(sub, path)

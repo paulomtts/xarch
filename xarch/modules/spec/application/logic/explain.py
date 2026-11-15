@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from difflib import get_close_matches
 
-from xarch.modules.spec.domain.profile_keys import KEYS, PROFILE, Key, keys_of, plain
+from xarch.modules.spec.application.logic.key_lookup import keys_of, plain
+from xarch.modules.spec.domain.profile_keys import KEYS, PROFILE, Key
 
 VERSION = 2
 DEEPER = ("xarch profile explain parts.may_import        one key in full: what it accepts, its rule, an example\n"

@@ -29,12 +29,14 @@ from collections.abc import Iterable
 from fnmatch import fnmatchcase
 
 from xarch.kernel.violations import Violation
+from xarch.modules.rules.application.logic.imports import dotted
+from xarch.modules.rules.application.logic.places import place
 from xarch.modules.rules.application.logic.tier_of import tested
-from xarch.modules.rules.domain.imports import dotted
-from xarch.modules.rules.domain.places import place
-from xarch.modules.rules.domain.values import NAME, Function, Profile, Row, Scenarios, SourceFile, Table, Weak
+from xarch.modules.rules.domain.values import Function, Profile, Row, Scenarios, SourceFile, Table, Weak
 
 RULE = "scenario-coverage"
+NAME = "{name}"
+"""Stands, in the file name the scenario-coverage guard expects, for the use case's name in snake_case."""
 Problem = tuple[int, str, str]
 """A problem of a test file: its line, what is wrong, and how to fix it."""
 

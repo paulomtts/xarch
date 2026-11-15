@@ -7,6 +7,7 @@ import yaml
 
 from tests.modules.spec.profiles_v2 import PRESETS, parsed, problems
 from xarch.kernel.violations import RULES
+from xarch.modules.spec.application.logic.key_lookup import keys_of, plain
 from xarch.modules.spec.domain.guards import GUARDS
 from xarch.modules.spec.domain.profile_keys import (
     CHOICE_BUNDLED,
@@ -18,8 +19,6 @@ from xarch.modules.spec.domain.profile_keys import (
     SMALLEST,
     SYMBOLS,
     Key,
-    keys_of,
-    plain,
 )
 
 BASE = {"xarch": 2, "name": "example", "parts": {"documents": {"path": "documents", "role": "the documents"}}}

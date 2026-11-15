@@ -5,9 +5,6 @@ from dataclasses import dataclass, field
 
 from xarch.kernel.logic.placement import EVERYTHING, Repeat, Target, repeat_of
 
-NAME = "{name}"
-"""Stands, in the file name the scenario-coverage guard expects, for the use case's name in snake_case."""
-
 
 @dataclass(frozen=True)
 class TestTier:

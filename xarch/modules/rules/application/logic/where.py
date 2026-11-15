@@ -22,9 +22,9 @@ from pathlib import Path
 
 from xarch.kernel.logic.imports import may_import, shown_target
 from xarch.kernel.logic.placement import EACH, Target, matches, repeat_of
+from xarch.modules.rules.application.logic.places import place, targets_of
 from xarch.modules.rules.application.logic.tier_imports import NO_TIER, allowance, may_use_fakes
 from xarch.modules.rules.application.logic.tier_of import Tested, tested
-from xarch.modules.rules.domain.places import place, targets_of
 from xarch.modules.rules.domain.values import Nearest, Profile, Reach, TestTier, TierInfo, Where
 
 TESTS_FOLDER = "tests"

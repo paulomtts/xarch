@@ -3,13 +3,18 @@ from __future__ import annotations
 from collections.abc import Iterable
 from pathlib import Path
 
+from xarch.modules.scaffold.application.logic.names import valid_name
+from xarch.modules.scaffold.application.logic.plan import app_name, holder, plan
+from xarch.modules.scaffold.application.logic.pyproject_record import (
+    recorded_app,
+    recorded_location,
+    with_profile,
+    with_setting,
+)
 from xarch.modules.scaffold.application.ports.files import Files
 from xarch.modules.scaffold.application.ports.skeleton import Skeleton
 from xarch.modules.scaffold.contract import Report
 from xarch.modules.scaffold.domain.errors import AlreadyExists, FolderMissing, InvalidName, UnknownKind
-from xarch.modules.scaffold.domain.names import valid_name
-from xarch.modules.scaffold.domain.plan import app_name, holder, plan
-from xarch.modules.scaffold.domain.pyproject import recorded_app, recorded_location, with_profile, with_setting
 
 PYPROJECT = "pyproject.toml"
 
@@ -21,9 +26,10 @@ class Scaffolding:
     def init(self, root: Path, profile: str) -> Report:
         """The app's top level, then the profile (and the app folder, when it is not the default) recorded in the
         project's pyproject.toml, then the project docs and the profile's other project files."""
-        files = self._skeleton.files(profile, app_name(root))
+        absolute = root.absolute()
+        files = self._skeleton.files(profile, app_name(root, absolute.resolve()))
         report = self._build(root, self._skeleton.top_level(profile))
-        base = holder(root)
+        base = holder(root, absolute)
         self._record(base, root, profile, report)
         for rel, template in self._skeleton.docs(profile):
             self._write(base.joinpath(*rel), template, report)
@@ -53,8 +59,9 @@ class Scaffolding:
         found = self._files.find_upward(base.absolute(), PYPROJECT)
         target = base / PYPROJECT if found is None or found.parent == base.absolute() else found
         text = self._files.read_text(target) if found is not None else None
-        app = recorded_app(root, target.parent)
-        edited = with_profile(text, recorded_location(profile, target.parent))
+        cwd = Path.cwd()
+        app = recorded_app(root, target.parent, cwd)
+        edited = with_profile(text, recorded_location(profile, target.parent, cwd))
         changed = with_setting(edited if edited is not None else text, "app", app, after="profile") \
             if app is not None else edited
         changed = changed if changed is not None else edited

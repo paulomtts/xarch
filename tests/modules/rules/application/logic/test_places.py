@@ -3,7 +3,7 @@ import pytest
 
 from tests.modules.rules.builders import PROFILE, TWO, profile, steps
 from xarch.kernel.logic.placement import Place, Target
-from xarch.modules.rules.domain.places import allowed, label, place, targets_of
+from xarch.modules.rules.application.logic.places import allowed, label, place, targets_of
 
 
 @pytest.mark.parametrize("path, expected", [

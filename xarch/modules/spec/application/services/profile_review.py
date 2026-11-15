@@ -2,15 +2,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from xarch.modules.spec.application.logic.profile_file import source_of
 from xarch.modules.spec.application.logic.profile_files import pointed_files
+from xarch.modules.spec.application.logic.profile_in_force import choose
 from xarch.modules.spec.application.logic.profile_view import view
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
 from xarch.modules.spec.application.ports.settings import Settings
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.contract import CheckProfile, Problem, ProfileChecked, ProfileViewed, ViewProfile
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.profile_file import source_of
-from xarch.modules.spec.domain.skeleton import choose
 
 LOAD = "load"
 EXAMPLES = "examples"

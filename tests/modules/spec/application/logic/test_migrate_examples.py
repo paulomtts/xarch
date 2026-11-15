@@ -3,7 +3,8 @@ example projects, the templates quote it by that path, and a tier's example note
 import pytest
 
 from tests.modules.spec.application.logic.test_migrate_profile import made, old, tiered
-from xarch.modules.spec.application.logic.migrate_examples import Copy, rewrite_examples
+from xarch.modules.spec.application.logic.migrate_examples import rewrite_examples
+from xarch.modules.spec.domain.migration import Copy
 
 EXAMPLES = {
     "text": {"part": "shared", "path": "shared/text.py", "file": "ex/text.py", "note": "a pure function"},

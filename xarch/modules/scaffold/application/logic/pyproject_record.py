@@ -17,18 +17,19 @@ DEFAULT_APP = "app"
 _HEADER = re.compile(r"\s*\[")
 
 
-def recorded_location(location: str, folder: Path) -> str:
-    """The location as the pyproject.toml in folder records it."""
+def recorded_location(location: str, folder: Path, cwd: Path) -> str:
+    """The location as the pyproject.toml in folder records it; a relative path, and folder if relative, are read
+    from cwd."""
     path = Path(location)
     if len(path.parts) == 1 and not path.suffix:
         return location
-    return Path(os.path.relpath(path.absolute(), folder.absolute())).as_posix()
+    return Path(os.path.relpath(cwd / path, cwd / folder)).as_posix()
 
 
-def recorded_app(app: Path, folder: Path) -> str | None:
+def recorded_app(app: Path, folder: Path, cwd: Path) -> str | None:
     """The app folder as the pyproject.toml in folder records it: relative to it, as posix; None for the default
-    folder, which needs no record."""
-    shown = Path(os.path.relpath(app.absolute(), folder.absolute())).as_posix()
+    folder, which needs no record. A relative app or folder is read from cwd."""
+    shown = Path(os.path.relpath(cwd / app, cwd / folder)).as_posix()
     return None if shown == DEFAULT_APP else shown
 
 

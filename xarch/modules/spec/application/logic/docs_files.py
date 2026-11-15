@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator, Mapping
 
-from xarch.modules.spec.domain.docs_template import fill
+from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.modules.spec.domain.values import Architecture
 
 DOCS_ROOT = ("docs", "project")

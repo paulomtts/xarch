@@ -42,10 +42,10 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 
 from xarch.kernel.violations import Violation
+from xarch.modules.rules.application.logic.imports import dotted
+from xarch.modules.rules.application.logic.places import place
 from xarch.modules.rules.application.logic.tier_imports import may_use_fakes
 from xarch.modules.rules.application.logic.tier_of import tested
-from xarch.modules.rules.domain.imports import dotted
-from xarch.modules.rules.domain.places import place
 from xarch.modules.rules.domain.values import Class, Profile, Ref, SourceFile, StandIns, Weak
 
 PROTOCOLS = {("typing", "Protocol"), ("typing_extensions", "Protocol")}

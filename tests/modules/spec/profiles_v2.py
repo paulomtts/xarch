@@ -7,8 +7,8 @@ from copy import deepcopy
 
 import pytest
 
+from xarch.modules.spec.application.logic.profile_v2 import parse_v2
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.profile_v2 import parse_v2
 from xarch.modules.spec.domain.values import Architecture
 
 SOURCE = "layered.yaml"

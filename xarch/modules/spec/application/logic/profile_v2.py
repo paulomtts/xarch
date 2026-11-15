@@ -54,8 +54,9 @@ from dataclasses import dataclass, field, replace
 from typing import Any
 
 from xarch.kernel.logic.placement import EVERYTHING, Repeat, root_of
-from xarch.modules.spec.domain import profile_checks as ck
-from xarch.modules.spec.domain import profile_examples as ex
+from xarch.modules.spec.application.logic import profile_checks as ck
+from xarch.modules.spec.application.logic import profile_examples as ex
+from xarch.modules.spec.application.logic.key_lookup import keys_of, names_of, required_of
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.guards import GUARDS
 from xarch.modules.spec.domain.profile_keys import (
@@ -72,9 +73,6 @@ from xarch.modules.spec.domain.profile_keys import (
     TESTING,
     TIER,
     TIER_DOCS,
-    keys_of,
-    names_of,
-    required_of,
 )
 from xarch.modules.spec.domain.values import (
     EACH,

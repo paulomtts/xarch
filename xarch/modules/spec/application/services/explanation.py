@@ -10,9 +10,10 @@ from xarch.modules.spec.application.logic.explain import (
     nearest,
     overview_keys,
 )
+from xarch.modules.spec.application.logic.key_lookup import plain
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
 from xarch.modules.spec.contract import Explain, ExplainResult, FormatExplained, KeyExplained, Shown, Symbol, UnknownKey
-from xarch.modules.spec.domain.profile_keys import CHOICE_BUNDLED, CHOICE_PRESETS, SMALLEST, SYMBOLS, Key, plain
+from xarch.modules.spec.domain.profile_keys import CHOICE_BUNDLED, CHOICE_PRESETS, SMALLEST, SYMBOLS, Key
 
 
 class ExplainService:

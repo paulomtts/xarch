@@ -13,9 +13,10 @@ from typing import Any
 
 from xarch.kernel.logic.placement import place_of
 from xarch.kernel.violations import RULES
-from xarch.modules.spec.domain.docs import DOCS_ROOT
-from xarch.modules.spec.domain.profile_keys import FILE, NAMING, PAGE, TABLE, names_of, required_of
-from xarch.modules.spec.domain.project_files import APP_PLACEHOLDER
+from xarch.modules.spec.application.logic.docs_files import DOCS_ROOT
+from xarch.modules.spec.application.logic.key_lookup import names_of, required_of
+from xarch.modules.spec.application.logic.project_files import APP_PLACEHOLDER
+from xarch.modules.spec.domain.profile_keys import FILE, NAMING, PAGE, TABLE
 from xarch.modules.spec.domain.values import (
     EACH,
     NAME,

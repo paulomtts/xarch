@@ -18,7 +18,8 @@ from collections.abc import Mapping
 from dataclasses import replace
 
 from xarch.kernel.logic.placement import EVERYTHING, Target
-from xarch.modules.spec.domain.guards import GUARDS, guard_name
+from xarch.modules.spec.application.logic.guard_names import guard_name
+from xarch.modules.spec.domain.guards import GUARDS
 from xarch.modules.spec.domain.values import Architecture
 
 Loosening = tuple[str, str, str]

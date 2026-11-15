@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from xarch.modules.spec.application.logic.profile_copy import copied_text, recorded, valid_name
+from xarch.modules.spec.application.logic.profile_file import parse_profile, source_of
 from xarch.modules.spec.application.logic.profile_files import listing_in, pointed_files
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
 from xarch.modules.spec.application.ports.profile_output import ProfileOutput
@@ -8,7 +11,6 @@ from xarch.modules.spec.application.services.architecture import ArchitectureSer
 from xarch.modules.spec.application.services.profile_writer import ProfileWriter
 from xarch.modules.spec.contract import NewProfile, ProfileCreated
 from xarch.modules.spec.domain.errors import InvalidArchitecture, NewProfileRefused, UnknownProfile
-from xarch.modules.spec.domain.profile_file import parse_profile, source_of
 from xarch.modules.spec.domain.values import ArchitectureSource
 
 DEFAULT_FOLDER = "architecture"
@@ -46,7 +48,7 @@ class ProfileCreation:
             raise NewProfileRefused(f"{taken}: nothing was written; `new` writes only new files, so pass "
                                     "`--out <folder>` to write somewhere else, or choose another name")
         self._writer.write(folder, outputs)
-        return ProfileCreated(folder, folder / profile, tuple(outputs), recorded(folder / profile, cmd.root))
+        return ProfileCreated(folder, folder / profile, tuple(outputs), recorded(folder / profile, cmd.root, Path.cwd()))
 
     def _validate(self, cmd: NewProfile, source: ArchitectureSource, outputs: dict[str, bytes]) -> None:
         document = self._files.read(source).document

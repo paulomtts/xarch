@@ -24,9 +24,9 @@ from collections.abc import Iterable
 
 from xarch.kernel.logic.placement import reaches
 from xarch.kernel.violations import Violation
+from xarch.modules.rules.application.logic.imports import dotted, targets
+from xarch.modules.rules.application.logic.places import label, place
 from xarch.modules.rules.application.logic.tier_of import is_test, tested
-from xarch.modules.rules.domain.imports import dotted, targets
-from xarch.modules.rules.domain.places import label, place
 from xarch.modules.rules.domain.values import Profile, SourceFile
 
 RULE = "must-import"

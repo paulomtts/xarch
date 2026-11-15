@@ -4,6 +4,7 @@ from pathlib import Path
 
 from xarch.modules.spec.application.logic.migrate_examples import PLACEHOLDER, rewrite_examples
 from xarch.modules.spec.application.logic.migrate_profile import Converted, convert
+from xarch.modules.spec.application.logic.profile_file import parse_profile
 from xarch.modules.spec.application.logic.profile_files import listing_in
 from xarch.modules.spec.application.logic.yaml_text import dump
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
@@ -11,7 +12,6 @@ from xarch.modules.spec.application.ports.profile_output import ProfileOutput
 from xarch.modules.spec.application.services.profile_writer import ProfileWriter
 from xarch.modules.spec.contract import Migrated, MigratedFile, MigrateProfile
 from xarch.modules.spec.domain.errors import InvalidArchitecture, UnmigratableProfile
-from xarch.modules.spec.domain.profile_file import parse_profile
 from xarch.modules.spec.domain.values import ArchitectureSource
 
 SUFFIX = "-v2"

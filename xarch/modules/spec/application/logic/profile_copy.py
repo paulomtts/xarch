@@ -24,6 +24,7 @@ def copied_text(text: str, name: str, based_on: str) -> str | None:
     return _NAME.sub(lambda _: f"name: {name}\nbased_on: {based_on}", without, count=1)
 
 
-def recorded(profile: Path, root: Path) -> str:
-    """The profile file as pyproject.toml, in root, records it: relative to root, written with `/`."""
-    return Path(os.path.relpath(profile.absolute(), root.absolute())).as_posix()
+def recorded(profile: Path, root: Path, cwd: Path) -> str:
+    """The profile file as pyproject.toml, in root, records it: relative to root, written with `/`; a relative profile
+    or root is read from cwd."""
+    return Path(os.path.relpath(cwd / profile, cwd / root)).as_posix()

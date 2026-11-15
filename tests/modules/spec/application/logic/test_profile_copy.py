@@ -29,5 +29,5 @@ def test_a_name_is_letters_digits_dash_and_underscore_and_starts_with_a_letter_o
 
 
 def test_the_profile_is_recorded_relative_to_the_folder_holding_pyproject_as_posix():
-    assert recorded(Path("/p/architecture/mine/mine.yaml"), Path("/p")) == "architecture/mine/mine.yaml"
-    assert recorded(Path("/other/mine.yaml"), Path("/p")) == "../other/mine.yaml"
+    assert recorded(Path("/p/architecture/mine/mine.yaml"), Path("/p"), Path("/cwd")) == "architecture/mine/mine.yaml"
+    assert recorded(Path("/other/mine.yaml"), Path("/p"), Path("/cwd")) == "../other/mine.yaml"

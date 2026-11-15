@@ -13,7 +13,7 @@ from collections.abc import Iterable
 
 from xarch.kernel.logic.placement import Repeat
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.domain.imports import dotted, targets
+from xarch.modules.rules.application.logic.imports import dotted, targets
 from xarch.modules.rules.domain.values import Profile, SourceFile
 
 Edge = tuple[str, int, str]

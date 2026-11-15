@@ -8,17 +8,10 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from xarch.modules.spec.domain.migration import Copy
+
 PLACEHOLDER = re.compile(r"\{\{example:(.*?)\}\}")
 ROOT = "examples"
-
-
-@dataclass(frozen=True)
-class Copy:
-    """A file of the converted folder: where it goes, the file next to the old profile it is read from, and whether its
-    example placeholders are rewritten."""
-    destination: str
-    source: str
-    rewritten: bool = False
 
 
 @dataclass

@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from xarch.modules.spec.application.logic.layout_walk import walk
+from xarch.modules.spec.application.logic.profile_in_force import choose
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
 from xarch.modules.spec.application.ports.settings import Settings
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.contract import Entry, Repeating, Skeleton
-from xarch.modules.spec.domain.skeleton import choose, walk
 from xarch.modules.spec.domain.values import Layout
 
 

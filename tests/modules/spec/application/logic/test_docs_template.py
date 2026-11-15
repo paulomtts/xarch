@@ -2,7 +2,7 @@
 import pytest
 
 from tests.modules.spec.profiles_v2 import parsed
-from xarch.modules.spec.domain.docs_template import fill
+from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.modules.spec.domain.errors import InvalidTemplate
 
 PARTS = {

@@ -18,9 +18,9 @@ from dataclasses import replace
 
 from xarch.kernel.logic.placement import EACH, Target, reaches
 from xarch.kernel.violations import Violation
+from xarch.modules.rules.application.logic.imports import dotted, targets
+from xarch.modules.rules.application.logic.places import label, place, targets_of
 from xarch.modules.rules.application.logic.tier_of import Tested, as_place, is_test, tested
-from xarch.modules.rules.domain.imports import dotted, targets
-from xarch.modules.rules.domain.places import label, place, targets_of
 from xarch.modules.rules.domain.values import Profile, SourceFile, TestTier
 
 NO_TIER = "lies in no tier: no part's folder and no tier's `folder` is mirrored here"

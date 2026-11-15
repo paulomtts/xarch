@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Collection
 
-from xarch.modules.spec.domain.profile_examples import PYCACHE
+from xarch.modules.spec.application.logic.profile_examples import PYCACHE
 from xarch.modules.spec.domain.values import Architecture
 
 

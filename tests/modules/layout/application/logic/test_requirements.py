@@ -1,16 +1,8 @@
-"""The structure rules on plain values: what must exist below the root, what is missing, and which folders of the
-tests mirror no folder of the app."""
+"""The structure rule on plain values: what must exist below the root, and what is missing."""
 import pytest
 
-from xarch.modules.layout.domain.structure import (
-    Repeated,
-    Requirement,
-    hidden,
-    is_instance_name,
-    missing,
-    requirements,
-    unmirrored,
-)
+from xarch.modules.layout.application.logic.requirements import is_instance_name, missing, requirements
+from xarch.modules.layout.domain.structure import Repeated, Requirement
 
 PARTS = [(("domain",), True), (("application", "controller.py"), False)]
 
@@ -82,25 +74,3 @@ def test_missing_reports_what_is_not_present_with_its_owner_and_fix():
     found = missing([kernel, domain], [kernel])
     assert [(str(v), v.rule, v.fix) for v in found] == [
         ("app/modules/docs: missing domain/", "structure", "create app/modules/docs/domain/")]
-
-
-@pytest.mark.parametrize("path, is_hidden", [
-    pytest.param(("docs", "__pycache__"), True, id="a cache folder is hidden"),
-    pytest.param((".cache",), True, id="a dot folder is hidden"),
-    pytest.param(("_private", "x"), True, id="a folder below a private one is hidden"),
-    pytest.param(("docs", "domain"), False, id="a plain folder is not hidden"),
-])
-def test_hidden(path, is_hidden):
-    assert hidden(path) == is_hidden
-
-
-def test_unmirrored_reports_each_test_folder_that_mirrors_no_folder_of_the_app_in_order():
-    folders = [("docs", "gone"), ("docs",), ("docs", "__pycache__"), ("ghost",), ("docs", "domain")]
-    found = unmirrored("tests", "app", ("modules",), folders, {("docs",), ("docs", "domain")})
-    assert [(str(v), v.rule, v.fix) for v in found] == [
-        ("tests/modules/docs/gone: mirrors no folder of the app (app/modules/docs/gone)", "test-tree",
-         "create app/modules/docs/gone/ in the app, or move what it holds to the folder that mirrors its subject, "
-         "or remove it"),
-        ("tests/modules/ghost: mirrors no folder of the app (app/modules/ghost)", "test-tree",
-         "create app/modules/ghost/ in the app, or move what it holds to the folder that mirrors its subject, or "
-         "remove it")]

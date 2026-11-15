@@ -8,7 +8,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
-from xarch.modules.spec.domain import profile_checks as ck
+from xarch.modules.spec.application.logic import profile_checks as ck
 from xarch.modules.spec.domain.values import EACH, Architecture, Example, Layout, Part, TierExample
 
 PYCACHE = "__pycache__"

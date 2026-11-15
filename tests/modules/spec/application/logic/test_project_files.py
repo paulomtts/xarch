@@ -3,8 +3,8 @@
 import pytest
 
 from tests.modules.spec.profiles_v2 import SOURCE, parsed
+from xarch.modules.spec.application.logic.project_files import Written, project_files, with_app
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.project_files import Written, project_files, with_app
 
 PARTS = {"src": {"path": "src", "role": "code"}}
 """A profile of one part, the folder src."""

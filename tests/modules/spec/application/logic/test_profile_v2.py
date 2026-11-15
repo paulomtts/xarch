@@ -3,7 +3,8 @@ packages, the names it may not use, and the layers."""
 import pytest
 
 from tests.modules.spec.profiles_v2 import layered, parsed, problems, two_folders
-from xarch.modules.spec.domain.profile_keys import KEYS, SCOPES, names_of
+from xarch.modules.spec.application.logic.key_lookup import names_of
+from xarch.modules.spec.domain.profile_keys import KEYS, SCOPES
 from xarch.modules.spec.domain.values import Part, Repeat, Target
 
 

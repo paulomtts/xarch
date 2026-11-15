@@ -6,7 +6,7 @@ import pytest
 
 from tests.modules.rules.builders import PROFILE, imp, source, steps
 from xarch.kernel.logic.placement import Target
-from xarch.modules.rules.domain.imports import dotted, targets, violations
+from xarch.modules.rules.application.logic.imports import dotted, targets, violations
 
 
 @pytest.mark.parametrize("path, expected", [

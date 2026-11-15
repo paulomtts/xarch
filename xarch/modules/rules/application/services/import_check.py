@@ -26,11 +26,11 @@ from xarch.modules.rules.application.logic import (
     tier_imports,
     types_only,
 )
+from xarch.modules.rules.application.logic.imports import dotted, violations
+from xarch.modules.rules.application.logic.places import place
 from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.application.ports.source_tree import SourceTree
 from xarch.modules.rules.domain.errors import RootMissing
-from xarch.modules.rules.domain.imports import dotted, violations
-from xarch.modules.rules.domain.places import place
 from xarch.modules.rules.domain.values import Enforcement, Excluded, Profile, SourceFile
 
 SYNTAX = "syntax"

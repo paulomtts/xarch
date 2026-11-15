@@ -2,19 +2,6 @@
 `package_only: true`) uses, each with the parameters it takes."""
 from __future__ import annotations
 
-from xarch.modules.spec.domain.values import (
-    ClosedTree,
-    DeadCode,
-    Guard,
-    NoComments,
-    NoDuplicates,
-    PackageOnly,
-    PassThrough,
-    PrivateImports,
-    ScenarioCoverage,
-    StandIns,
-)
-
 GUARDS = {
     "package-only": "`package_only: true` on each part: parts that are imported only as a package, never by their "
                     "files, from outside it",
@@ -60,12 +47,3 @@ GUARDS = {
                        "are not read",
 }
 """The pre-built checks a profile may switch on, each with the parameters it takes."""
-_GUARD_NAMES: dict[type, str] = {PackageOnly: "package-only", ScenarioCoverage: "scenario-coverage",
-                                 NoComments: "no-comments", StandIns: "stand-ins", ClosedTree: "closed-tree",
-                                 NoDuplicates: "no-duplicates", DeadCode: "dead-code", PassThrough: "pass-through",
-                                 PrivateImports: "private-imports"}
-
-
-def guard_name(guard: Guard) -> str:
-    """The name a profile switches the guard on by, one of GUARDS."""
-    return _GUARD_NAMES[type(guard)]

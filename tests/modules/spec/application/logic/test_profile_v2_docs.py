@@ -4,7 +4,7 @@ import pytest
 
 from tests.modules.spec.profiles_v2 import layered, parsed, problems
 from xarch.kernel.violations import RULES
-from xarch.modules.spec.domain.docs_template import fill
+from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.modules.spec.domain.values import Doc, Example, Excluded, Naming, ProjectFile
 
 

@@ -3,7 +3,7 @@ tiers whose tests are held to the list of the part they mirror."""
 import pytest
 
 from tests.modules.spec.profiles_v2 import covered, parsed, problems
-from xarch.modules.spec.domain.docs_template import fill
+from xarch.modules.spec.application.logic.docs_template import fill
 
 DOTTED = "is not a dotted name such as datetime.datetime.now, nor an import name such as socket"
 
