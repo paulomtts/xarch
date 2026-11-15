@@ -7,7 +7,23 @@ from tests.modules.rules.builders import PROFILE, imp, in_tests, source
 from xarch.kernel.violations import Violation, Weak
 from xarch.modules.rules.application.logic.engine import run
 from xarch.modules.rules.application.logic.facts import facts_of
-from xarch.modules.rules.domain.rule import ALL, ANY, APP, LIST, MAY_NOT, MAY_ONLY, STRUCTURE, TESTS, Rule, Saying, Scope, Targets
+from xarch.modules.rules.domain.rule import (
+    ALL,
+    ANY,
+    APP,
+    LIST,
+    MAY_NOT,
+    MAY_ONLY,
+    MUST_BE_REACHED,
+    MUST_REACH,
+    STRUCTURE,
+    TESTS,
+    Rule,
+    Saying,
+    Scope,
+    Targets,
+)
+from xarch.modules.rules.domain.values import Class
 
 DOMAIN, KERNEL = "modules/docs/domain/doc.py", "kernel/ids.py"
 FILES = [source(DOMAIN, imp(1, "yaml"), imp(2, "json"), imp(3, "yaml", "load", "dump")),
@@ -97,3 +113,23 @@ def test_a_rule_in_list_mode_makes_weak_findings():
 def test_a_name_the_engine_does_not_know_is_refused_naming_it(bad):
     with pytest.raises(ValueError, match="named"):
         said(bad)
+
+
+def test_under_must_reach_a_file_reaches_by_its_own_fact_or_through_its_links_however_far():
+    files = [source("kernel/a.py", imp(1, "app.kernel", "b")), source("kernel/b.py", imp(1, "app.kernel", "c")),
+             source("kernel/c.py", imp(1, "yaml")), source("kernel/d.py", imp(1, "json"))]
+    reach = rule(scope=Scope(APP, "kernel"), facts=("import",), quantifier=MUST_REACH, links=("edge",),
+                 via="own-part-instance", sayings=(Saying("{part} reaches no {wanted}", "x"),))
+    found = run((reach,), facts_of(files, [], PROFILE, "app"), PROFILE)
+    assert [f"{v.file}: {v.message}" for v in found] == ["app/kernel/d.py: kernel/ reaches no yaml"]
+
+
+def test_under_must_be_reached_a_declaration_is_reached_from_a_root_or_from_a_declaration_reached_however_far():
+    tests = [in_tests("fakes/repo.py", classes=(Class(1, "FakeA", named=frozenset({"FakeB"})), Class(2, "FakeB"),
+                                                Class(3, "FakeC", named=frozenset({"FakeC"})))),
+             in_tests("modules/docs/domain/test_doc.py", named=frozenset({"FakeA"}))]
+    reached = rule(scope=Scope(TESTS, where=("in-the-fakes",)), facts=("class",), quantifier=MUST_BE_REACHED,
+                   links=("names",), roots=Scope(TESTS, where=("not-in-the-fakes",)), spread=("class",),
+                   sayings=(Saying("{name} is unnamed", "x"),))
+    found = run((reached,), facts_of([], tests, PROFILE, "app", "tests"), PROFILE)
+    assert [v.message for v in found] == ["FakeC is unnamed"]
