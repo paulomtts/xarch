@@ -21,6 +21,12 @@ folder is not `app/`.
 - `xarch check --format json` prints the same as one JSON document, each violation with its `rule`, `file`, `line`,
   `message`, `fix` and `hint` (null when the project has none).
 
+## When the rules themselves must change
+
+- Ask the maintainer first: the profile (`[tool.xarch]` names its file) is theirs to approve. To draft a change, run
+  `xarch profile explain` for the whole format on one screen, then `xarch profile explain <key>` (for example
+  `parts.may_import`) for one key, and `xarch profile check` to validate the edited profile before you show it.
+
 ## How tests are written
 
 - A test lives in the folder that mirrors what it tests, and imports only what that part may import. Its tier (unit,

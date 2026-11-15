@@ -28,7 +28,10 @@ __all__ = ["Architecture", "CaseTable", "ClosedTree", "DeadCode", "Fixture", "Fr
            "PackageOnly", "Part", "PassThrough",
            "ScenarioCoverage", "StandIns", "Subject", "Target", "Tier", "TierExample", "Entry", "Skeleton", "DocFile",
            "Docs", "ProjectFile", "Loosened", "ProfileOrigin", "SelectProfile", "ProfileSelected", "ProfileRefused",
-           "ProfileResult", "MigrateProfile", "MigratedFile", "Migrated", "MigrationRefused", "MigrateResult"]
+           "ProfileResult", "MigrateProfile", "MigratedFile", "Migrated", "MigrationRefused", "MigrateResult", "Shown",
+           "Symbol", "Explain", "FormatExplained", "KeyExplained", "UnknownKey", "ExplainResult", "ViewProfile",
+           "ProfileViewed", "ViewResult", "CheckProfile", "Problem", "ProfileChecked", "CheckResult", "NewProfile",
+           "ProfileCreated", "NewResult"]
 
 
 @dataclass(frozen=True)
@@ -187,3 +190,141 @@ class MigrationRefused:
 
 
 MigrateResult = Migrated | MigrationRefused
+
+
+@dataclass(frozen=True)
+class Shown:
+    """One key of the format, as a line: key is its address as a person types it (parts.may_import), depth how far
+    below the keys of the file it sits."""
+    key: str
+    depth: int
+    meaning: str
+    required: bool
+    enforced: bool
+
+
+@dataclass(frozen=True)
+class Symbol:
+    symbol: str
+    meaning: str
+
+
+@dataclass(frozen=True)
+class Explain:
+    """Explain the format of a profile: the whole of it, or the key at an address such as parts.may_import."""
+    key: str | None = None
+
+
+@dataclass(frozen=True)
+class FormatExplained:
+    """The whole format: version, the keys as a tree (shape), the symbols, the smallest valid profile (as text), and
+    how to go deeper."""
+    version: int
+    shape: tuple[Shown, ...]
+    symbols: tuple[Symbol, ...]
+    smallest: str
+    deeper: str
+
+
+@dataclass(frozen=True)
+class KeyExplained:
+    """One key: its address as typed, the scope it sits in, what it means and accepts, whether the profile needs it,
+    whether `check` enforces it and through which rule ids, an example, what it may be set to from a list xarch ships
+    (choices) and the keys it holds."""
+    key: str
+    where: str
+    meaning: str
+    accepts: str
+    required: bool
+    enforced: bool
+    rules: tuple[str, ...]
+    example: str
+    choices: tuple[str, ...]
+    keys: tuple[Shown, ...]
+
+
+@dataclass(frozen=True)
+class UnknownKey:
+    """A key the format does not have, with the nearest ones that exist."""
+    key: str
+    nearest: tuple[str, ...]
+
+
+ExplainResult = FormatExplained | KeyExplained | UnknownKey
+
+
+@dataclass(frozen=True)
+class ViewProfile:
+    """Show a profile at a glance: the profile chosen as `select` does, from target (a bundled name or a path), else
+    the one configured for the project holding app."""
+    app: Path
+    target: str | None = None
+
+
+@dataclass(frozen=True)
+class ProfileViewed:
+    """A profile's folder tree (with the role of each folder) and its import table, as text; bundled: it ships with
+    xarch."""
+    location: str
+    name: str
+    tree: str
+    imports: str
+    bundled: bool
+
+
+ViewResult = ProfileViewed | ProfileRefused
+
+
+@dataclass(frozen=True)
+class CheckProfile:
+    """Validate a profile without an app: target as for ViewProfile."""
+    app: Path
+    target: str | None = None
+
+
+@dataclass(frozen=True)
+class Problem:
+    """One thing wrong with a profile, by the check that found it: load (the loader, every problem at once, which
+    includes the files it points to) or examples (an example imports what its part may not)."""
+    check: str
+    text: str
+
+
+@dataclass(frozen=True)
+class ProfileChecked:
+    """What validating a profile found: its problems (none: valid), how many files it points to (when it loads), and,
+    when it loads, its origin: how it differs from the bundled profile it is based on, as information."""
+    location: str
+    problems: tuple[Problem, ...]
+    files: int
+    origin: ProfileOrigin | None
+
+    @property
+    def ok(self) -> bool:
+        return not self.problems
+
+
+CheckResult = ProfileChecked | ProfileRefused
+
+
+@dataclass(frozen=True)
+class NewProfile:
+    """Write a custom profile named name as a copy of the bundled profile source, with every file it points to, in
+    folder out (default: architecture/<name>/ in root, the folder holding the app folder); nothing is overwritten."""
+    name: str
+    source: str
+    root: Path
+    out: Path | None = None
+
+
+@dataclass(frozen=True)
+class ProfileCreated:
+    """The copy: its folder, its profile file, every file written (the profile first, paths relative to the folder),
+    and the profile file as pyproject.toml records it, for `profile = "..."` under [tool.xarch] to put it in force."""
+    folder: Path
+    profile: Path
+    files: tuple[str, ...]
+    location: str
+
+
+NewResult = ProfileCreated | ProfileRefused

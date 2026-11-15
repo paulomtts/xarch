@@ -69,7 +69,7 @@ CASES = [
                  "keep one of the two and import it where the other is, or move it to a part both may import when they "
                  "cannot import each other", id="no-duplicates"),
     pytest.param({"modules/docs/application/ports/notifier.py": NOTIFIER}, {}, "dead-code",
-                 "delete Notifier and its fake, or write the service step that uses it", id="dead-code: a port"),
+                 "delete Notifier and its fake, or add the code that uses it", id="dead-code: a port"),
     pytest.param({}, {"fakes/notifier.py": "class FakeNotifier:\n    def send(self) -> None: ...\n"}, "dead-code",
                  "delete FakeNotifier, or write the test that uses it", id="dead-code: a fake"),
     pytest.param({"kernel/x.py": "def (:\n"}, {}, "syntax", "correct the syntax so that the file can be read",

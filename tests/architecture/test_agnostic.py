@@ -36,6 +36,18 @@ ALLOWED: dict[tuple[str, str], str] = {}
 
 EXEMPT = {"mock", "mark", "param", "id", "spec", "test", "skip"}
 
+OWN_CONCEPTS = {"part", "parts", "tier", "tiers", "port", "ports", "fake", "fakes", "guard", "guards", "profile", "profiles",
+                "command", "migration"}
+
+
+def inflected(names: set[str]) -> set[str]:
+    forms: set[str] = set()
+    for name in names:
+        forms |= {name, name + "s"}
+        if name.endswith("s") and len(name) > 3 and not name.endswith("ss"):
+            forms.add(name[:-1])
+    return forms - OWN_CONCEPTS
+
 
 def concept_names() -> set[str]:
     names: set[str] = set()
@@ -50,7 +62,7 @@ def concept_names() -> set[str]:
         architecture = load_architecture(profile)
         names |= set(architecture.parts) | {architecture.singular}
         walk(architecture.layout)
-    return names - {"*"}
+    return inflected(names - {"*"})
 
 
 def framework_names() -> tuple[set[str], set[str]]:
@@ -144,6 +156,17 @@ def test_the_scan_would_catch_a_framework_name(tmp_path):
 def test_the_scan_would_catch_a_part_name(tmp_path):
     (tmp_path / "words.py").write_text('"""A docstring about cli."""\nNAME = "cli"\nOTHER = f"the {NAME} bootstrap"\n')
     assert literals_naming({"cli", "bootstrap"}, tmp_path) == [("words.py", 2, "cli"), ("words.py", 3, "bootstrap")]
+
+
+def test_the_scan_would_catch_the_singular_and_the_plural_of_a_part_name(tmp_path):
+    (tmp_path / "words.py").write_text('A = "write the service step"\nB = f"the {A} adapters"\nC = "a port and a part"\n')
+    assert literals_naming(inflected({"services", "adapter", "ports"}), tmp_path) == [
+        ("words.py", 1, "service"), ("words.py", 2, "adapters")]
+
+
+def test_the_singular_of_a_bundled_part_is_among_the_names_scanned():
+    assert {"service", "adapter", "controller", "services", "adapters"} <= concept_names()
+    assert not concept_names() & OWN_CONCEPTS
 
 
 def test_the_singular_name_of_the_repeating_folder_is_among_the_names_scanned():

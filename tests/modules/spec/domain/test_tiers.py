@@ -13,7 +13,7 @@ BUILDERS = "tests/src/builders.py"
 CONFTEST = "tests/src/conftest.py"
 FILES = {"ex": (UNIT, API, BUILDERS, CONFTEST)}
 EXAMPLE_PROBLEM = "layered.yaml: tiers.unit.docs.example: must be a path in an example project, such as " \
-                  "src/billing/service/charge.py"
+                  "src/billing/charge.py"
 FOLDER_PROBLEM = ("layered.yaml: tiers.unit.folder: must be a folder below the tests folder, such as architecture: "
                   "relative, with no `..`, no empty step and no `*`")
 TIERS_PROBLEM = ("layered.yaml: tiers: must be a mapping of tier names to {proves, litmus, ...}, in the order their "
@@ -117,7 +117,7 @@ def test_a_bad_example_is_refused(example, expected):
     pytest.param({"path": BUILDERS}, ["layered.yaml: tiers.unit.docs.helpers: must be a list of paths in an example "
                                       "project"], id="helpers that are not a list are refused"),
     pytest.param([BUILDERS, "tests/../b.py"], ["layered.yaml: tiers.unit.docs.helpers[1]: must be a path in an example "
-                                               "project, such as src/billing/service/charge.py"],
+                                               "project, such as src/billing/charge.py"],
                  id="a bad helper is reported by its place in the list"),
 ])
 def test_bad_helpers_are_refused(helpers, expected):

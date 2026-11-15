@@ -47,7 +47,7 @@ def _dead_ports(app: list[SourceFile], profile: Profile) -> list[Violation]:
     users = [f for f in app if f.path[-1] != PACKAGE_FILE
              and (where := place(profile, dotted(f.path)[0])) is not None and where.part not in wiring]
     return [Violation(port.file, port.line, f"{port.name} is a port that nothing else in the app names ({RULE})", RULE,
-                      f"delete {port.name} and its fake, or write the service step that uses it")
+                      f"delete {port.name} and its fake, or add the code that uses it")
             for port in ports_of(app, profile)
             if not any(port.name in f.named for f in users if f.name != port.file)]
 

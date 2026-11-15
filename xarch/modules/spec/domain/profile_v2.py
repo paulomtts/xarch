@@ -408,7 +408,7 @@ def _may_import(value: Any, owner: Part | None, parts: dict[str, Part], declared
     if value == WORD:
         return (Target(EVERYTHING),)
     if not isinstance(value, list):
-        problems.append(f"{where}: must be a list of targets such as [service, shared/text, api@any], or {WORD}")
+        problems.append(f"{where}: must be a list of targets such as [<part>, shared/text, api@any], or {WORD}")
         return ()
     found: list[Target] = []
     for item in value:

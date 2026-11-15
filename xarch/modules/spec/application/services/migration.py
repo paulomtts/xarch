@@ -4,9 +4,11 @@ from pathlib import Path
 
 from xarch.modules.spec.application.logic.migrate_examples import PLACEHOLDER, rewrite_examples
 from xarch.modules.spec.application.logic.migrate_profile import Converted, convert
+from xarch.modules.spec.application.logic.profile_files import listing_in
 from xarch.modules.spec.application.logic.yaml_text import dump
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
 from xarch.modules.spec.application.ports.profile_output import ProfileOutput
+from xarch.modules.spec.application.services.profile_writer import ProfileWriter
 from xarch.modules.spec.contract import Migrated, MigratedFile, MigrateProfile
 from xarch.modules.spec.domain.errors import InvalidArchitecture, UnmigratableProfile
 from xarch.modules.spec.domain.profile_file import parse_profile
@@ -21,7 +23,7 @@ class MigrationService:
     format 2 reads them. Validates the result with the loader of format 2 before writing, and never writes over a file."""
 
     def __init__(self, files: ArchitectureFiles, output: ProfileOutput):
-        self._files, self._output = files, output
+        self._files, self._writer = files, ProfileWriter(output)
 
     def migrate(self, cmd: MigrateProfile) -> Migrated:
         """Raises UnmigratableProfile, or InvalidArchitecture when the file cannot be read."""
@@ -41,8 +43,7 @@ class MigrationService:
         folder = cmd.out if cmd.out is not None else cmd.path.parent / f"{cmd.path.stem}{SUFFIX}"
         self._refuse_overwriting(folder, outputs)
         if not cmd.dry_run:
-            for relative, data in outputs.items():
-                self._output.write(folder / relative, data)
+            self._writer.write(folder, outputs)
         shown = (MigratedFile(name, None, 0),
                  *(MigratedFile(c.destination, c.source, rewritten.get(c.destination, 0)) for c in converted.copies))
         return Migrated(folder, folder / name, shown, converted.changes, by_hand, cmd.dry_run)
@@ -74,13 +75,9 @@ class MigrationService:
         return contents, rewritten, by_hand
 
     def _validate(self, converted: Converted, location: str, outputs: dict[str, bytes], by_hand: tuple[str, ...]) -> None:
-        def folder_files(relative: str) -> tuple[str, ...] | None:
-            prefix = relative.rstrip("/") + "/"
-            held = tuple(sorted(name.removeprefix(prefix) for name in outputs if name.startswith(prefix)))
-            return held or None
-
         try:
-            parse_profile(converted.document, location, lambda relative: relative in outputs, folder_files,
+            parse_profile(converted.document, location, lambda relative: relative in outputs,
+                          lambda relative: listing_in(outputs, relative),
                           self._files.testing_presets(), self._files.bundled())
         except InvalidArchitecture as e:
             lines = ["the converted profile does not load:", *(f"  {problem}" for problem in e.problems)]
@@ -89,9 +86,7 @@ class MigrationService:
             raise UnmigratableProfile("\n".join(lines)) from e
 
     def _refuse_overwriting(self, folder: Path, outputs: dict[str, bytes]) -> None:
-        taken = [(folder / relative).as_posix() for relative in outputs if self._output.exists(folder / relative)]
+        taken = self._writer.taken(folder, outputs)
         if taken:
-            verb = "exists" if len(taken) == 1 else "exist"
-            shown = ", ".join(taken[:3]) + (f" and {len(taken) - 3} more" if len(taken) > 3 else "")
-            raise UnmigratableProfile(f"{shown} already {verb}: migrate writes only new files; pass "
-                                      "`--out <folder>` to write somewhere else")
+            raise UnmigratableProfile(f"{taken}: migrate writes only new files; pass `--out <folder>` to write somewhere "
+                                      "else")

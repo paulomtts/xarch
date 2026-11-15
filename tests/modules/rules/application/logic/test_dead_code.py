@@ -93,7 +93,7 @@ def test_without_tests_the_fakes_are_not_looked_for_and_with_the_check_off_nothi
 
 def test_the_violations_say_what_to_do():
     port, = [v for v in violations([PORTS, uses(SERVICE, "Notifier")], [], ON, True)]
-    assert (port.rule, port.fix) == ("dead-code", "delete Repo and its fake, or write the service step that uses it")
+    assert (port.rule, port.fix) == ("dead-code", "delete Repo and its fake, or add the code that uses it")
     gone = in_tests("fakes/repo.py", classes=(fake("FakeRepo"),))
     [unused] = violations([PORTS, uses(SERVICE, "Repo", "Notifier")], [gone], ON, True)
     assert unused.fix == "delete FakeRepo, or write the test that uses it"

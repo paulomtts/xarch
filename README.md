@@ -17,6 +17,11 @@ xarch check [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|jso
 xarch where PATH [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json]
                                                              # what a path is and what code there may do, before it is written
 xarch profile migrate FILE [--out FOLDER] [--dry-run]        # convert a profile of format 1 to format 2, in a new folder
+xarch profile explain [KEY] [--profile NAME|FILE | --configured] [--format text|json]
+                                                             # the format of a profile, whole or one key; or a profile's
+                                                             # folder tree and import table
+xarch profile new NAME --from BUNDLED [--out FOLDER]         # copy a bundled profile into the project, with its files
+xarch profile check [NAME|FILE] [--format text|json]         # validate a profile without an app
 ```
 
 `WORD` is the word between `<` and `>` in the profile's paths: in both bundled profiles `<module>`, so
@@ -60,73 +65,71 @@ tests = "tests"          # optional; the default is tests/ beside the app folder
 
 ## The profile file
 
-A profile starts with `xarch: 2` and states each fact once, on the thing it is about. Its parts are listed in the
-order their litmus tests run, and that order is also the order of the generated docs' tree and rules table.
+A profile is one YAML file that states each fact once, on the thing it is about. Its parts are listed in the order their
+litmus tests run, which is also the order of the generated docs' tree and rules table. The shape (`*` is required;
+everything else is optional, and a key left out means off):
+
+```
+xarch: 2*  name*  based_on  language  hints  excluded
+testing:  <preset> | {files*, functions*, skips, table, mocks}
+parts*:   {<part>: {path*, role*, litmus, may_import, must_import, libraries, forbidden, tier | untested,
+                    package_only, folders}}
+forbidden: {<list>: [<dotted name>, ...]}       layers: {<chain>: [<part>, ...]}
+tiers:    {<tier>: {proves, litmus, apply_forbidden, types_only, folder, may_import, docs}}
+fakes:    {folder*, for*, prefix}
+guards:   {scenario-coverage, no-comments, stand-ins, closed-tree, no-duplicates, dead-code, pass-through}
+files:    {<path>: <from> | {from*, pinned, fill}}      docs: {entry, pages, naming, examples, example_notes}
+```
+
+The smallest valid profile is a name and one part (it runs `structure`, the import rules, `libraries` and `syntax`):
 
 ```yaml
 xarch: 2
-name: shop
-testing: pytest
+name: documents-app
 parts:
-  domain:
-    path: modules/<module>/domain
-    role: entities and values: invariants only
-    may_import: [kernel]
-    forbidden: pure
-    tier: unit
-  adapters:
-    path: modules/<module>/adapters
-    role: driven implementations of the module's ports
-    may_import: [domain, kernel, platform, contract@any]
-    libraries: [sqlmodel]
-    tier: unit
-  platform:
-    path: platform
-    role: clients of outside technology
-    may_import: [kernel]
-    libraries: [sqlmodel]
-    untested: reached through the adapters that use it
-  kernel:
-    path: kernel
-    role: pure primitives
-    forbidden: pure
-    tier: unit
-    folders: {logic: pure functions that modules share}
-forbidden:
-  pure: [datetime.datetime.now, time.time, builtins.open, builtins.print, socket]
-tiers:
-  unit: {proves: a rule or a translation, apply_forbidden: true}
+  documents:
+    path: documents
+    role: the documents
 ```
-
-The smallest valid profile is a name and its parts; it runs `structure`, the import rules, `libraries` and `syntax`:
-
-```yaml
-xarch: 2
-name: tiny
-parts:
-  core: {path: core, role: the rules}
-  cli:  {path: cli, role: commands and output, may_import: [core], libraries: [typer]}
-```
-
-Adding tests is `testing: pytest`, `tiers: {unit: {}}`, and `tier: unit` or `untested: <reason>` on each part.
 
 The symbols:
 
-- `<module>` in a `path`: the repeating folder, one instance per name; the word is what `xarch new` takes and what the
-  docs call one instance. A profile has one repeating folder. A last step with a dot (`controller.py`) is a file.
-- A bare name in `may_import` (`domain`): that part, in the importer's own instance when it lies in the repeating
-  folder. `domain@any`: any instance. `domain/values`: only that path below the part. A part may always import
-  itself, so it never lists itself.
-- `everything`: for `may_import`, every part; for `libraries`, every outside package, unchecked. A part that writes
-  no `libraries` may import none (the standard library is always allowed).
-- `forbidden: pure` on a part: the part may not use the names of the top-level list `forbidden.pure`.
-- `must_import: [<target>, ...]` on a part: its files must touch something outside themselves; see
-  [`must-import`](#what-check-checks). Targets are written as in `may_import` (`platform`, `contract@any`), and each
-  one must be a target the part may import.
-- `folders`: folders below a part that the layout shows, each with its note.
+- `<unit>` in a `path`: the repeating folder, one instance per name (`xarch new` takes the word). A last step with a dot
+  (`controller.py`) makes the part a file.
+- In `may_import`, a bare name is that part in the importer's own instance of the repeating folder; `store@any` any
+  instance; `store/schema` only that path below the part; `everything` no limit (also for `libraries`). A part may always
+  import itself.
 
-`based_on` names the bundled profile a file was copied from, which the enforcement section compares it with. The bundled
-`web.yaml` and `cli.yaml` are complete examples; a per-key reference will come from `xarch profile explain`.
+This is the whole format on one screen. The reference for each key (what it means, what it accepts, whether `check`
+enforces it and through which rule, an example that loads, the keys it holds) is the command, which reads the same
+table the loader does, so it cannot drift from what is accepted:
+
+```
+xarch profile explain                      # the whole format, symbols and smallest profile
+xarch profile explain parts.may_import     # one key; also: guards.no-duplicates, testing, tiers.folder, ...
+xarch profile explain --profile web        # a profile's folder tree and import table, for a human to approve
+xarch profile new mine --from web          # copy a bundled profile into architecture/mine/, with its files
+xarch profile check [NAME|FILE]            # validate a profile without an app
+```
+
+`explain` takes `--format json` (`{"ok", "key", "where", "meaning", "accepts", "required", "enforced", "rules",
+"example", "choices", "keys"}` for a key; `{"ok", "format", "shape", "symbols", "smallest", "deeper"}` for the whole) and
+exits 2 for a key the format does not have, naming the nearest. The key may be written with or without the placeholder
+steps (`parts.may_import` or `parts.<part>.may_import`). `--profile NAME|FILE` (or `--configured`, the project's profile)
+prints the folder tree with each folder's role and the table of what each part may import, as the generated docs show
+them.
+
+`new NAME --from BUNDLED` writes `architecture/NAME/NAME.yaml` (beside the app folder; `--out FOLDER` to choose) with
+`name: NAME` and `based_on: BUNDLED`, plus every file the profile points to (templates, docs pages, init files, example
+folders), so the copy loads on its own and passes `profile check` as it is. If any target file exists nothing is written
+and the ones that exist are named. `pyproject.toml` is never edited: it prints the `profile = "..."` line to add under
+`[tool.xarch]`, because that line changes what `check` enforces and `init` has usually set it already.
+
+`check` loads the profile (every problem at once, which includes every file it points to existing), runs the
+example-import check (the examples' imports obey the profile's own rules), and shows how it differs from the bundled
+profile it is based on, as information. With no argument it checks the project's configured profile. Exit 0 when valid,
+1 when it has problems, 2 when no profile can be chosen; `--format json` gives `{"ok", "profile", "problems":
+[{"check", "message"}], "files", "compared_with"}`.
 
 ### Migrating a profile of format 1
 
@@ -142,7 +145,7 @@ YAML comments are not carried over.
 `check` reads only the files the profile governs: a file in a part, or a package file of a folder of the layout (the
 folders the parts' paths and `folders` make). A file anywhere else is never read, and is listed as `ungoverned` in the
 enforcement section. A folder that is not the app's source at all (reference code kept as data, such as xarch's own
-`architectures/examples/`) is declared with [`excluded`](#excluded-and-hints) instead, and then no check looks at it.
+`architectures/examples/`) is declared with [`excluded`](#testing-excluded-and-hints) instead, and then no check looks at it.
 
 From the profile itself:
 
@@ -242,56 +245,27 @@ Switched on by name in `guards`, each a map (`{}` when it takes nothing):
   a global) is not one. It fails `check --strict` and never `check`: a pure forward is often a legitimate simple read,
   and failing it would push filler code into the method.
 
-### The test framework
+### Testing, excluded and hints
 
-xarch holds no test framework: a profile names it with `testing`, required with `tiers` and with `scenario-coverage`
-or `stand-ins`, the checks that must tell a test from a helper. `testing: pytest` is a preset shipped with xarch; for
-another framework write the map it stands for:
-
-```yaml
-testing:
-  files: ["test_*.py", "*_test.py"]
-  functions: "test_*"
-  skips: [pytest.mark.skip, pytest.skip, unittest.skip]
-  table: {decorator: pytest.mark.parametrize, row: pytest.param, id: id, keywords: [argnames, argvalues]}
-  mocks:
-    calls: [unittest.mock.Mock, unittest.mock.MagicMock]
-    autospec: [unittest.mock.create_autospec]
-    spec_keywords: [spec, spec_set]
-    fixtures: {mocker: {calls: [Mock, MagicMock], autospec: [create_autospec]}}
-```
-
-`skips` are the dotted names of what skips a test or expects it to fail, which `check` counts in its enforcement
-section. Dotted names are what an absolute import binds, so a decorator reached by `from house import cases` is read
-as `house.cases.table`; a fixture, which no import binds, is named by `mocks.fixtures`: the parameter and the methods
-that build a mock. What stays Python, and so in xarch's code: `typing.Protocol` as the mark of a port, `__init__.py`,
-the syntax tree, import resolution and the standard library's names. A framework whose tables or doubles do not have
-the shape of a decorator holding rows and a call that names its spec leaves `scenario-coverage` or `stand-ins` out.
-
-### Excluded and hints
-
-Two optional keys of a profile.
+`testing` names the test framework, since xarch holds none: required with `tiers` and with `scenario-coverage` or
+`stand-ins`, the checks that must tell a test from a helper. `testing: pytest` is a preset shipped with xarch (the map
+`{files, functions, skips, table, mocks}` is what a preset stands for). Dotted names are what an absolute import binds, so
+a decorator reached by `from house import cases` is read as `house.cases.table`; a fixture, which no import binds, is
+named by `mocks.fixtures`: the parameter and the methods that build a mock. What stays Python, and so in xarch's code:
+`typing.Protocol` as the mark of a port, `__init__.py`, the syntax tree, import resolution and the standard library's
+names. A framework whose tables or doubles do not have the shape of a decorator holding rows and a call that names its
+spec leaves `scenario-coverage` or `stand-ins` out.
 
 `excluded: {<folder>: <reason>}` names folders below the app that are not its source, such as example code shipped as
-data. A folder is a path below the app (`architectures/examples`) with no `..`, no leading `/` and no `*`; it may not
-be a folder of the layout, nor lie inside or hold another excluded folder; the reason is one line of text and is
-required. No check reads a Python file below an excluded folder (so `closed-tree` and the `ungoverned` list leave it
-out), and `check` lists each one with its reason in its enforcement section, so the exclusion stays visible. It is not
-a finding for `--strict`. `xarch where` on a path inside one says it is excluded and why.
+data: a path below the app, never a folder of the layout, with a one-line reason. No check reads a Python file below one
+(so `closed-tree` and the `ungoverned` list leave it out), `check` lists each in its enforcement section, and `xarch
+where` says so. It is not a finding for `--strict`.
 
-`hints: {<rule id>: <text>}` adds the project's own advice to a rule: one line of text, shown after the built-in `fix`
-of every violation of that rule, as a `hint:` line in the text output and as `hint` in the JSON. The rule id is the
-`rule` a violation names (`rules`, `libraries`, `forbidden`, `tiers`, `types-only`, `test-tree`, `cycles`,
-`structure`, `package-only`, `scenario-coverage`, `no-comments`, `stand-ins`, `closed-tree`, `must-import`,
-`no-duplicates`, `dead-code`, `pass-through`, `syntax`); any other id
-is refused when the profile loads, naming the ones there are. The bundled profiles set none.
-
-```yaml
-excluded:
-  architectures/examples: example projects the bundled profiles ship as data; never imported or run
-hints:
-  rules: the layers and what each may import are in docs/project/architecture.md
-```
+`hints: {<rule id>: <text>}` adds the project's own advice to a rule, shown after the built-in `fix` of every violation of
+that rule, as a `hint:` line in the text output and as `hint` in the JSON. The rule ids are the `rule` a violation names:
+`rules`, `libraries`, `forbidden`, `tiers`, `types-only`, `test-tree`, `cycles`, `structure`, `package-only`,
+`scenario-coverage`, `no-comments`, `stand-ins`, `closed-tree`, `must-import`, `no-duplicates`, `dead-code`,
+`pass-through`, `syntax`; any other is refused when the profile loads.
 
 ## The output of check
 
@@ -299,7 +273,7 @@ hints:
 
 Every violation says what to do about it. A finding is its line, `<file>[:<line>]: <message>`, then an indented line
 `fix: <what to do>`, one imperative sentence specific to the finding, and, when the profile has a
-[hint](#excluded-and-hints) for its rule, an indented `hint: <text>` line. The findings come in the order the checks
+[hint](#testing-excluded-and-hints) for its rule, an indented `hint: <text>` line. The findings come in the order the checks
 run (the source checks, then the structure), then a summary, `OK: no violations` or `<n> violation(s) in <m>
 file(s)`, then the enforcement section (below). Paths are relative to the folder holding the app folder
 (`app/kernel/x.py`, `tests/...`).

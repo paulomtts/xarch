@@ -212,7 +212,7 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
                   'tiers.integ.proves: must be one line of text',
                   'tiers.integ.litmus: must be text: the question that tells a test belongs to the tier',
                   'tiers.integ.docs.subject: must be one line of text',
-                  'tiers.integ.docs.example: must be a path in an example project, such as src/billing/service/charge.py',
+                  'tiers.integ.docs.example: must be a path in an example project, such as src/billing/charge.py',
                   'tiers.integ.docs.helpers: must be a list of paths in an example project',
                   'missing `testing`: `tiers` must recognise a test file by its name: write testing: <preset>, or '
                   'testing: {files: [<pattern>, ...], functions: <pattern>}'],

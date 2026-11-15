@@ -12,7 +12,7 @@ from xarch.modules.spec.domain import profile_checks as ck
 from xarch.modules.spec.domain.values import EACH, Architecture, Example, Layout, Part, TierExample
 
 PYCACHE = "__pycache__"
-_PATH_HINT = "a path in an example project, such as src/billing/service/charge.py"
+_PATH_HINT = "a path in an example project, such as src/billing/charge.py"
 
 
 @dataclass

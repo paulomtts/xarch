@@ -23,6 +23,7 @@ from xarch.modules.spec.adapters.pyproject_settings import PyprojectSettings
 from xarch.modules.spec.application.controller import SpecController
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.application.services.migration import MigrationService
+from xarch.modules.spec.application.services.profile_creation import ProfileCreation
 from xarch.modules.spec.application.services.skeleton import SkeletonService
 from xarch.modules.spec.domain.values import Architecture
 from xarch.platform.data_files import DataFileReader
@@ -43,8 +44,9 @@ def build_spec(fs: FileSystem | None = None) -> SpecController:
     files = FsArchitectureFiles(fs, DataFileReader())
     architectures = ArchitectureService(files)
     settings = PyprojectSettings(fs, TomlReader())
+    output = FsProfileOutput(fs)
     return SpecController(SkeletonService(settings, architectures, files), architectures, settings, files,
-                          MigrationService(files, FsProfileOutput(fs)))
+                          MigrationService(files, output), creation=ProfileCreation(files, architectures, output))
 
 
 def build_architectures(fs: FileSystem | None = None) -> ArchitectureService:

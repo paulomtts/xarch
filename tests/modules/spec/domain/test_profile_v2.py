@@ -259,9 +259,9 @@ def test_everything_is_a_part_that_may_import_everything_and_the_rest_a_part_wit
 
 
 @pytest.mark.parametrize("part, targets, expected", [
-    pytest.param("store", 3, "layered.yaml: parts.store.may_import: must be a list of targets such as [service, "
+    pytest.param("store", 3, "layered.yaml: parts.store.may_import: must be a list of targets such as [<part>, "
                               "shared/text, api@any], or everything", id="not a list"),
-    pytest.param("store", "all", "layered.yaml: parts.store.may_import: must be a list of targets such as [service, "
+    pytest.param("store", "all", "layered.yaml: parts.store.may_import: must be a list of targets such as [<part>, "
                                  "shared/text, api@any], or everything", id="a string that is not everything"),
     pytest.param("store", ["repo"], "layered.yaml: parts.store.may_import: 'repo' names no part 'repo'", id="no such part"),
     pytest.param("store", [3], "layered.yaml: parts.store.may_import: 3 is not a target: use <part>, <part>@any, "

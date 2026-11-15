@@ -234,9 +234,9 @@ def test_a_bad_docs_of_a_tier_is_refused_with_the_address_of_each_key():
         "one_file_per, subject",
         "layered.yaml: tiers.unit.docs.may_touch: must be one line of text",
         "layered.yaml: tiers.unit.docs.data: must be one line of text",
-        "layered.yaml: tiers.unit.docs.example: must be a path in an example project, such as src/billing/service/charge.py",
-        "layered.yaml: tiers.unit.docs.helpers[0]: must be a path in an example project, such as src/billing/service/charge.py",
-        "layered.yaml: tiers.unit.docs.helpers[1]: must be a path in an example project, such as src/billing/service/charge.py"]
+        "layered.yaml: tiers.unit.docs.example: must be a path in an example project, such as src/billing/charge.py",
+        "layered.yaml: tiers.unit.docs.helpers[0]: must be a path in an example project, such as src/billing/charge.py",
+        "layered.yaml: tiers.unit.docs.helpers[1]: must be a path in an example project, such as src/billing/charge.py"]
 
 
 def test_the_example_and_helpers_of_a_tier_must_be_files_of_an_example_project():

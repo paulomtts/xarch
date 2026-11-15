@@ -46,3 +46,7 @@ class InvalidTemplate(DomainError):
 
 class UnmigratableProfile(DomainError):
     """A profile that `xarch profile migrate` cannot convert, or whose conversion cannot be written; reason says why."""
+
+
+class NewProfileRefused(DomainError):
+    """A profile that `xarch profile new` cannot write, as asked; reason says why and what to do."""

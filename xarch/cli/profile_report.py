@@ -1,0 +1,205 @@
+"""How the `xarch profile` commands show what they found: as text lines, or (for explain and check) as one JSON
+document, `{"ok": ...}` first, a refusal being `{"ok": false, "error": ...}`.
+
+explain, no key: {"ok", "format", "shape", "symbols", "smallest", "deeper"}, each shape entry {"key", "depth",
+"meaning", "required", "enforced"}. explain, one key: {"ok", "key", "where", "meaning", "accepts", "required",
+"enforced", "rules", "example", "choices", "keys"}. explain, a profile: {"ok", "profile", "name", "tree", "imports"}.
+check: {"ok", "profile", "problems", "files", "compared_with"}, each problem {"check", "message"} and
+compared_with {"profile", "looser"} (null for a bundled profile or one that resembles none), each looser entry
+{"key", "part", "what", "sentence"}.
+"""
+from __future__ import annotations
+
+import json
+from collections.abc import Sequence
+from textwrap import fill
+from typing import Any
+
+from xarch.modules.rules.contract import Loosened
+from xarch.modules.spec.contract import (
+    FormatExplained,
+    KeyExplained,
+    ProfileChecked,
+    ProfileCreated,
+    ProfileViewed,
+    Shown,
+    UnknownKey,
+)
+
+WIDTH = 100
+KEY = 28
+"""The width of the column of keys in the overview."""
+NEED = 10
+"""The width of the column that says whether a key is required."""
+NO_RULE = "yes (the loader, or the `enforcement` section of `check`, not a rule id)"
+NEXT = ("edit {profile}", "xarch profile explain                 # the format, key by key",
+        "xarch profile check {profile}")
+
+
+def _need(shown: Shown) -> str:
+    return "required" if shown.required else "optional"
+
+
+def _enforcement(shown_enforced: bool) -> str:
+    return "enforced" if shown_enforced else "documentary"
+
+
+def _row(shown: Shown) -> str:
+    key = ("  " if shown.depth else "") + shown.key
+    return f"{key:<{KEY}} {_need(shown):<{NEED}} {_enforcement(shown.enforced):<12} {shown.meaning}"
+
+
+def overview_lines(whole: FormatExplained) -> list[str]:
+    lines = [f"xarch profile format {whole.version}: one yaml file; `check` enforces what is marked enforced, "
+             "the rest only fills the docs",
+             "need: a key under another is needed in the map it sits in, such as parts.path in each part", "",
+             f"{'key':<{KEY}} {'need':<{NEED}} {'check':<12} what it is"]
+    lines += [_row(shown) for shown in whole.shape]
+    lines += ["", "symbols"]
+    width = max(len(symbol.symbol) for symbol in whole.symbols)
+    lines += [f"  {symbol.symbol:<{width}}  {symbol.meaning}" for symbol in whole.symbols]
+    lines += ["", "smallest valid profile", *(f"  {line}" for line in whole.smallest.splitlines())]
+    lines += ["", "go deeper", *(f"  {line}" for line in whole.deeper.splitlines())]
+    return lines
+
+
+def key_lines(found: KeyExplained) -> list[str]:
+    lines = [found.key, f"  in: {found.where}", *_wrapped("what", found.meaning), *_wrapped("accepts", found.accepts)]
+    if found.choices:
+        lines += _wrapped("one of", ", ".join(found.choices))
+    lines.append(f"  required: {'yes' if found.required else 'no'}")
+    lines.append(f"  enforced: {_enforced(found)}")
+    lines += ["  example:", *(f"    {line}" for line in found.example.splitlines())]
+    if found.keys:
+        lines.append("  keys:")
+        lines += [f"    {_row(shown).strip()}" for shown in found.keys]
+    else:
+        lines.append("  keys: none")
+    return lines
+
+
+def _enforced(found: KeyExplained) -> str:
+    if not found.enforced:
+        return "no, it is documentary: it only fills the generated docs or a report"
+    if not found.rules:
+        return NO_RULE
+    noun = "rule" if len(found.rules) == 1 else "rules"
+    return f"yes, by the {noun} {', '.join(f'`{rule}`' for rule in found.rules)}"
+
+
+def _wrapped(label: str, text: str) -> list[str]:
+    return fill(f"{label}: {text}", width=WIDTH, initial_indent="  ", subsequent_indent="    ").splitlines()
+
+
+def unknown_message(found: UnknownKey) -> str:
+    return f"no key `{found.key}` in the format: the nearest are {', '.join(found.nearest)}"
+
+
+def overview_document(whole: FormatExplained) -> str:
+    return _dump({"ok": True, "format": whole.version, "shape": [_shown(shown) for shown in whole.shape],
+                  "symbols": [{"symbol": s.symbol, "meaning": s.meaning} for s in whole.symbols],
+                  "smallest": whole.smallest, "deeper": whole.deeper})
+
+
+def key_document(found: KeyExplained) -> str:
+    return _dump({"ok": True, "key": found.key, "where": found.where, "meaning": found.meaning,
+                  "accepts": found.accepts, "required": found.required, "enforced": found.enforced,
+                  "rules": list(found.rules), "example": found.example, "choices": list(found.choices),
+                  "keys": [_shown(shown) for shown in found.keys]})
+
+
+def unknown_document(found: UnknownKey) -> str:
+    return _dump({"ok": False, "error": unknown_message(found), "key": found.key, "nearest": list(found.nearest)})
+
+
+def _shown(shown: Shown) -> dict[str, Any]:
+    return {"key": shown.key, "depth": shown.depth, "meaning": shown.meaning, "required": shown.required,
+            "enforced": shown.enforced}
+
+
+def view_lines(seen: ProfileViewed) -> list[str]:
+    where = "bundled" if seen.bundled else f"custom, named {seen.name}"
+    return [f"{seen.location} ({where})", "folders", *(f"  {line}" for line in seen.tree.splitlines()), "imports",
+            *(f"  {line}" for line in seen.imports.splitlines())]
+
+
+def view_document(seen: ProfileViewed) -> str:
+    return _dump({"ok": True, "profile": seen.location, "name": seen.name, "tree": seen.tree,
+                  "imports": seen.imports})
+
+
+def check_lines(checked: ProfileChecked) -> list[str]:
+    origin = checked.origin
+    if origin is not None and origin.bundled:
+        where = "bundled"
+    elif origin is not None and origin.closest is not None:
+        where = f"custom; closest bundled: {origin.closest}"
+    else:
+        where = "custom"
+    lines = [f"checking {checked.location} ({where})"]
+    loads = [p for p in checked.problems if p.check == "load"]
+    examples = [p for p in checked.problems if p.check == "examples"]
+    lines += _section("loads", loads, "ok")
+    if origin is None:
+        lines.append("  examples: not checked: the profile does not load")
+    else:
+        lines.append(f"  files: all {checked.files} it points to are present")
+        lines += _section("examples", examples, "ok: they import only what their part may")
+        lines += _compared(checked)
+    lines.append("OK: the profile is valid" if checked.ok
+                 else f"INVALID: {len(checked.problems)} problem{'' if len(checked.problems) == 1 else 's'}")
+    return lines
+
+
+def _section(name: str, problems: Sequence[Any], ok: str) -> list[str]:
+    if not problems:
+        return [f"  {name}: {ok}"]
+    return [f"  {name}: {len(problems)} problem{'' if len(problems) == 1 else 's'}",
+            *(f"    {problem.text}" for problem in problems)]
+
+
+def _compared(checked: ProfileChecked) -> list[str]:
+    origin = checked.origin
+    if origin is None or origin.bundled or origin.closest is None:
+        return []
+    if not origin.looser:
+        return [f"  compared: no looser than {origin.closest}"]
+    return [f"  compared: looser than {origin.closest} (information, never a failure):",
+            *(f"    {Loosened(item.key, item.part, item.what).sentence}" for item in origin.looser)]
+
+
+def check_document(checked: ProfileChecked) -> str:
+    origin = checked.origin
+    compared = None
+    if origin is not None and not origin.bundled and origin.closest is not None:
+        compared = {"profile": origin.closest,
+                    "looser": [{"key": i.key, "part": i.part, "what": i.what,
+                                "sentence": Loosened(i.key, i.part, i.what).sentence} for i in origin.looser]}
+    return _dump({"ok": checked.ok, "profile": checked.location,
+                  "problems": [{"check": p.check, "message": p.text} for p in checked.problems],
+                  "files": checked.files, "compared_with": compared})
+
+
+def created_lines(done: ProfileCreated, source: str) -> list[str]:
+    profile = done.profile.as_posix()
+    lines = [f"wrote {done.folder.as_posix()}/, a copy of {source} named {done.profile.stem}, based_on: {source}"]
+    lines += [f"  {line}" for line in _summary(done.files)]
+    lines += ["to put it in force, add this under [tool.xarch] in pyproject.toml (`new` never edits it):",
+              f'  profile = "{done.location}"', "next:", *(f"  {step.format(profile=profile)}" for step in NEXT)]
+    return lines
+
+
+def _summary(files: Sequence[str]) -> list[str]:
+    folders: dict[str, list[str]] = {}
+    for name in files:
+        head, _, rest = name.partition("/")
+        folders.setdefault(head if rest else "", []).append(name)
+    lines = list(folders.get("", []))
+    for head, names in folders.items():
+        if head:
+            lines.append(f"{head}/ ({len(names)} file{'' if len(names) == 1 else 's'})")
+    return lines
+
+
+def _dump(document: dict[str, Any]) -> str:
+    return json.dumps(document, indent=2, ensure_ascii=False)

@@ -1,0 +1,62 @@
+"""Use case: validate a profile without an app: whether it loads (and so whether every file it points to is there),
+whether its examples keep to its own rules, and how it differs from the bundled profile it is based on."""
+from pathlib import Path
+
+import pytest
+
+from tests.fakes.settings import FakeSettings
+from tests.modules.spec.application.builders import BASE, spec_controller
+from xarch.modules.spec.contract import CheckProfile, Problem, ProfileChecked, ProfileOrigin, ProfileRefused
+from xarch.modules.spec.domain.values import Configured
+
+APP = Path("/p/app")
+MINE = {**BASE, "name": "mine", "based_on": "base"}
+WITH_EXAMPLE = {**MINE, "docs": {"examples": ["ex"]}}
+WITH_EXAMPLE_FILES = {"ex/core/rule.py": "from app.api import handler\n", "ex/api/handler.py": "X = 1\n"}
+OFF = ("package-only", "scenario-coverage", "no-comments", "stand-ins", "closed-tree", "no-duplicates", "dead-code",
+       "pass-through")
+
+
+@pytest.mark.parametrize("given, when, then", [
+    pytest.param(dict(files={"mine.yaml": MINE}), CheckProfile(APP, "mine.yaml"),
+                 ProfileChecked("mine.yaml", (), 2, ProfileOrigin("mine.yaml", False, "base", OFF, OFF, ())),
+                 id="a profile that loads and keeps to its rules is valid, with how many files it points to"),
+    pytest.param(dict(files={"mine.yaml": {**MINE, "colour": 1, "parts": {"core": {"path": "core"}}}}),
+                 CheckProfile(APP, "mine.yaml"),
+                 ProfileChecked("mine.yaml", (
+                     Problem("load", "mine.yaml: unknown key 'colour': use based_on, docs, excluded, fakes, files, "
+                                     "forbidden, guards, hints, language, layers, name, parts, testing, tiers, xarch"),
+                     Problem("load", "mine.yaml: parts.core: missing `role`")), 0, None),
+                 id="a profile that does not load has every problem reported at once"),
+    pytest.param(dict(files={"mine.yaml": WITH_EXAMPLE}, texts=WITH_EXAMPLE_FILES), CheckProfile(APP, "mine.yaml"),
+                 ProfileChecked("mine.yaml", (
+                     Problem("examples", "example (core/rule.py): imports app.api which core may not import "
+                                         "(parts.core.may_import)"),), 3,
+                                ProfileOrigin("mine.yaml", False, "base", OFF, OFF, ())),
+                 id="an example that imports what its part may not is a problem"),
+    pytest.param(dict(files={}), CheckProfile(APP, "gone.yaml"),
+                 ProfileChecked("gone.yaml", (Problem("load", "gone.yaml: cannot read the file: no such file"),), 0, None),
+                 id="a path that holds no file is a problem of the profile"),
+    pytest.param(dict(), CheckProfile(APP, None),
+                 ProfileRefused("no profile: pass --profile, or set `profile` under [tool.xarch] in pyproject.toml; "
+                                "the profiles found are base"),
+                 id="with no profile named and none configured nothing is chosen"),
+    pytest.param(dict(), CheckProfile(APP, "nope"), ProfileRefused("unknown profile 'nope': use one of base"),
+                 id="a name that is not a bundled profile is refused with the ones that are"),
+])
+def test_check_profile(given, when, then):
+    spec, _ = spec_controller(**given)
+    assert spec.check_profile(when) == then
+
+
+def test_with_no_profile_named_the_one_configured_for_the_project_is_checked():
+    settings = FakeSettings(Configured("mine.yaml", Path("/p/pyproject.toml")))
+    spec, _ = spec_controller(files={"/p/mine.yaml": MINE}, settings=settings)
+    checked = spec.check_profile(CheckProfile(APP, None))
+    assert isinstance(checked, ProfileChecked) and checked.ok and checked.location == "/p/mine.yaml"
+
+
+def test_a_bundled_profile_is_valid_and_is_compared_with_nothing():
+    spec, _ = spec_controller()
+    checked = spec.check_profile(CheckProfile(APP, "base"))
+    assert isinstance(checked, ProfileChecked) and checked.ok and checked.origin.bundled

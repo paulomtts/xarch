@@ -1,0 +1,35 @@
+"""Builders for the use cases of the spec module around fakes: its controller with every service."""
+from __future__ import annotations
+
+from typing import Any
+
+from tests.fakes.architecture_files import FakeArchitectureFiles
+from tests.fakes.profile_output import FakeProfileOutput
+from tests.fakes.settings import FakeSettings
+from xarch.modules.spec.application.controller import SpecController
+from xarch.modules.spec.application.services.architecture import ArchitectureService
+from xarch.modules.spec.application.services.migration import MigrationService
+from xarch.modules.spec.application.services.profile_creation import ProfileCreation
+from xarch.modules.spec.application.services.skeleton import SkeletonService
+
+TESTING = {"files": ["test_*.py"], "functions": "test_*"}
+BASE = {"xarch": 2, "name": "base", "testing": TESTING,
+        "parts": {"core": {"path": "core", "role": "the rules"},
+                  "api": {"path": "api", "role": "the handlers", "may_import": ["core"]}},
+        "docs": {"pages": {"a.md": {"from": "docs/a.md"}}}, "files": {"AGENTS.md": "agents.md"}}
+BASE_TEXT = "# the base\nxarch: 2\nname: base\ntesting: x\n"
+TEXTS = {"base.yaml": BASE_TEXT, "docs/a.md": "page\n", "agents.md": "agents\n"}
+
+
+def spec_controller(bundled: dict[str, Any] | None = None, files: dict[str, Any] | None = None,
+                    texts: dict[str, str | bytes] | None = None, existing: set | None = None,
+                    settings: FakeSettings | None = None, presets: dict[str, Any] | None = None):
+    port = FakeArchitectureFiles({"base": BASE} if bundled is None else bundled, files, TEXTS | (texts or {}),
+                                 presets if presets is not None else {"pytest": TESTING})
+    output = FakeProfileOutput(existing)
+    architectures = ArchitectureService(port)
+    settings = settings or FakeSettings()
+    spec = SpecController(SkeletonService(settings, architectures, port), architectures, settings, port,
+                          MigrationService(port, output),
+                          creation=ProfileCreation(port, architectures, output))
+    return spec, output
