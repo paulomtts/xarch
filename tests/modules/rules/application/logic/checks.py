@@ -31,3 +31,7 @@ def private_imports(app: Iterable[SourceFile], tests: Iterable[SourceFile], prof
 
 def built_by(app: Iterable[SourceFile], profile: Profile, root: str) -> list[Violation | Weak]:
     return run(expansion.built_by(profile), facts_of(app, [], profile, root), profile)
+
+
+def rules(files: Iterable[SourceFile], profile: Profile, root: str) -> list[Violation | Weak]:
+    return run(expansion.rules(profile), facts_of(files, [], profile, root), profile)

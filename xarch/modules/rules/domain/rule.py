@@ -50,8 +50,8 @@ class Targets:
     words: tuple[str, ...] = ()
 
 
-NONE = Targets("none")
-"""No targets: a rule whose kept facts are findings by being there."""
+EXISTING = Targets("existing")
+"""The targets every fact matches: under MAY_NOT, a rule whose kept facts are findings by being there."""
 
 
 @dataclass(frozen=True)

@@ -112,7 +112,48 @@ def value(name: str, found: Found, facts: Facts, profile: Profile) -> str:
             return _move(found, profile)
         case "permitted":
             return ", ".join(f"{part}/" for part in _permitted(found, profile))
+        case "callee":
+            return ".".join(fact.path)
+        case "subject":
+            return " and ".join(f"{p}/" for p in read.mirrors)
+        case "mirrored_keys":
+            return ", ".join(f"parts.{p}.may_import" for p in read.mirrors)
+        case "tests_target":
+            return ".".join((facts.tests_root, *fact.target))
+        case "own":
+            return "/".join((facts.tests_root, *read.own))
+        case "faked":
+            return ", ".join(profile.fakes.stand_in_for) if profile.fakes is not None else ""
+        case "tier_fix":
+            return _tier_fix(found, profile)
+        case "caller_fix":
+            return _caller_fix(found, profile)
     raise ValueError(f"no variable of a saying is named {name!r}")
+
+
+def _tier_fix(found: Found, profile: Profile) -> str:
+    """Use the part as a type only and drive the tier's subject, else leave what it does to a tier that may call it;
+    with the tier's own words for what it may touch."""
+    tier = next(t for t in profile.tiers if t.name == found.read.tier)
+    part = found.fact.at.part if found.fact.at is not None else None
+    driven = ", ".join(f"{s.part}/" for s in tier.subject)
+    fix = (f"use {part}/ here only as a type, and drive what you test through {driven}" if driven else
+           f"use {part}/ here only as a type, and test what it does from a tier that may call it")
+    return f"{fix} ({tier.name} tests may touch: {tier.may_touch})" if tier.may_touch else fix
+
+
+def _caller_fix(found: Found, profile: Profile) -> str:
+    """Use the part as a type only and leave the call to a part that may make it: one that may import it and does
+    not list it as a type only, named from the profile."""
+    src, dst = found.rule.part, found.fact.at.part if found.fact.at is not None else None
+    owners = [name for name, targets in profile.rules.items() if name not in (src, dst)
+              and any(t.part == dst for t in targets) and dst not in profile.types_only.get(name, ())]
+    shown = [f"{name}/" for name in owners[:OWNERS]]
+    if not shown:
+        return f"use {dst}/ here only as a type, and leave the call to code outside {src}/"
+    listed = shown[0] if len(shown) == 1 else f"{', '.join(shown[:-1])} or {shown[-1]}"
+    more = " or another part" if len(owners) > OWNERS else ""
+    return f"use {dst}/ here only as a type, and leave the call to {listed}{more}, which may make it"
 
 
 def _owners(found: Found, profile: Profile) -> list[str]:

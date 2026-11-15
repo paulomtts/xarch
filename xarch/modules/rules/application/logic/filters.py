@@ -32,6 +32,7 @@ Of a fact:
     into-the-fakes    a test file's import into the fakes' folder
     into-a-test       a test file's import of another test file
     a-call            a call, rather than a reference
+    mirroring         a fact of a test file that mirrors parts of the app
 """
 from __future__ import annotations
 
@@ -118,6 +119,8 @@ def holds(name: str, found: Found, facts: Facts, profile: Profile) -> bool:
             return fact.target in facts.test_files
         case "a-call":
             return fact.kind == "call"
+        case "mirroring":
+            return bool(read.mirrors)
     raise ValueError(f"no filter of a fact is named {name!r}")
 
 

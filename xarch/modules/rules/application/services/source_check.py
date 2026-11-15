@@ -25,7 +25,6 @@ from xarch.modules.rules.application.logic import (
 )
 from xarch.modules.rules.application.logic.engine import run
 from xarch.modules.rules.application.logic.facts import facts_of
-from xarch.modules.rules.application.logic.imports import violations
 from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.application.ports.source_tree import SourceTree
 from xarch.modules.rules.domain.errors import RootMissing
@@ -62,7 +61,7 @@ class SourceCheckService:
         test_files = [f for f in test_files if f.error is None]
         tests_root = self._tree.resolved(tests).name if tests is not None else ""
         facts = facts_of(app, test_files, rules, package, tests_root)
-        found = broken + violations(app, rules, package) + run(expansion.libraries(rules), facts, rules)
+        found = broken + run(expansion.rules(rules), facts, rules) + run(expansion.libraries(rules), facts, rules)
         found += run(expansion.forbidden(rules), facts, rules)
         found += cycles.violations(app, rules, package)
         found += tier_imports.violations(test_files, app, rules, package, tests_root)
