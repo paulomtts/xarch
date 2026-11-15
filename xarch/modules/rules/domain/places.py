@@ -1,58 +1,36 @@
-"""Where code sits in the architecture, and the dependency rules of docs/project/architecture.md section 5."""
+"""Where code sits in the profile, and whether an import between two places is allowed (section 5).
+
+A file lies in a part, in the structure (a folder of the layout no part claims, such as modules/<module>/, whose
+package files hold the tree together and import nothing), or in neither: xarch is a protocol, not a closed world, and
+what the profile does not govern is not checked.
+"""
 from __future__ import annotations
 
-from dataclasses import dataclass
-
-from xarch.modules.rules.domain.rules_table import EVERYTHING, RULES, Target
-from xarch.modules.rules.domain.values import Parts
+from xarch.kernel.logic.placement import EACH, Place, matches, place_of, reaches
+from xarch.modules.rules.domain.values import Profile
 
 
-@dataclass(frozen=True)
-class Place:
-    part: str                      # kernel, platform, entry, bootstrap, structure, or a part of a module
-    module: str | None = None      # the bounded module, for module parts
-    sub: tuple[str, ...] = ()      # path below the part, e.g. ("values",) for domain/values.py
-    folder: str = ""               # how the part is named when it is not its own folder: the entry point's
-
-
-def place_of(parts: tuple[str, ...], layout: Parts) -> Place | None:
-    """Where a dotted path below the root package sits in the architecture, or None if the profile does not govern it."""
-    if not parts or parts == ("modules",) or (len(parts) == 2 and parts[0] == "modules"):
-        return Place("structure")
-    if parts[0] == layout.entry_point:
-        return Place("entry", None, parts[1:], layout.entry_point)
-    if parts[0] in layout.top_level:
-        return Place(parts[0], None, parts[1:])
-    if parts[0] != "modules":
-        return None
-    module, rest = parts[1], parts[2:]
-    if rest == ("application",):
-        return Place("structure")
-    if rest and rest[0] in layout.module_folders:
-        return Place(rest[0], module, rest[1:])
-    if len(rest) >= 2 and rest[0] == "application" and rest[1] in layout.application_parts:
-        return Place(rest[1], module, rest[2:])
+def place(profile: Profile, path: tuple[str, ...]) -> Place | None:
+    """Where a path below the root package sits: in a part, Place(None) in the structure, or None if ungoverned."""
+    found = place_of(profile.parts, path)
+    if found.part is not None:
+        return found
+    if not path or any(matches(folder, path) for folder in profile.folders):
+        return found
     return None
 
 
-def label(place: Place) -> str:
-    return f"{place.folder or place.part}/" + (f" of module '{place.module}'" if place.module else "")
+def label(profile: Profile, where: Place) -> str:
+    """How a place is named in a violation: its part, then the `each` folder it is in by its path, e.g.
+    "domain/ of src/billing"; the structure, which no part claims, as "structure/"."""
+    if where.part is None:
+        return "structure/"
+    pattern = profile.parts.get(where.part, ())
+    if where.instance is None or EACH not in pattern:
+        return f"{where.part}/"
+    folder = pattern[:pattern.index(EACH)] + (where.instance,)
+    return f"{where.part}/ of {'/'.join(folder)}"
 
 
-def allowed(src: Place, dst: Place) -> bool:
-    return any(_reaches(target, src, dst) for target in RULES.get(src.part, ()))
-
-
-def _reaches(target: Target, src: Place, dst: Place) -> bool:
-    if target.part == EVERYTHING:
-        return True
-    if target.part != dst.part or dst.sub[:len(target.sub)] != target.sub:
-        return False
-    match target.scope:
-        case "own":
-            return src.module is not None and src.module == dst.module
-        case "any":
-            return dst.module is not None
-        case "none":
-            return dst.module is None
-    return False
+def allowed(profile: Profile, src: Place, dst: Place) -> bool:
+    return src.part is not None and any(reaches(target, src, dst) for target in profile.rules.get(src.part, ()))

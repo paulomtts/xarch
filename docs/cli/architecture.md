@@ -392,7 +392,7 @@ class DocumentController:
 ```
 
 > [!TIP]
-> **Litmus test.** Does it turn what a service returns or raises into a `Result` for the caller (exceptions into variants, entities into DTOs), without deciding any business rule? If yes, it goes here. If it names argument parsing or terminal output, it belongs in `cli/`. If it names SQL, it belongs in `adapters/`.
+> **Litmus test.** Does it turn what a service returns or raises into a `Result` for the caller (exceptions into variants, entities into DTOs), without deciding any business rule? If yes, it goes here. If it names argument parsing or terminal output, it belongs in `cli/`. If it handles a table row, it belongs in `adapters/`.
 
 > [!NOTE]
 > The name overlaps with the usual meaning of "controller" (the thing that receives a request). Here the thing that receives the request is the command in `cli/`. The controller never sees argv or the terminal.
@@ -700,7 +700,7 @@ def upgrade(engine: Engine) -> None:
 
 A scheduled job or an incoming event calls a controller exactly as a command does, and needs nothing else from the architecture:
 
-- **A job** is an entry point wired by `bootstrap/`, in `bootstrap/jobs/<job>.py`. It builds the app as `main` does, builds the command, calls the controller and exits. Its test is a driver test: the work is a function that takes the controller, so the test passes a fake one.
+- **A job** is an entry point wired by `bootstrap/`, in `bootstrap/jobs/<job>.py`. It builds the app as `main` does, builds the command, calls the controller and exits. The work is a function that takes the controller, so it can be handed a fake one.
 - **A request from another system**, such as a webhook, is still a request to the entry point's folder, so it lives in `cli/`. `cli/` cannot import `platform/`, so a check that needs a technology client, such as verifying a signature, is a port of the module that an adapter fills from `platform/` (section 8.7). A failed check is a `Result` variant like any other.
 - **A message from a queue** is handled like a job.
 

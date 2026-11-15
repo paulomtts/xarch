@@ -11,7 +11,7 @@ class RulesController:
 
     def check(self, cmd: CheckImports) -> CheckResult:
         try:
-            found = self._service.check(cmd.root, cmd.package, cmd.profile)
-        except RootMissing:
-            return NotADirectory(cmd.root)
+            found = self._service.check(cmd.root, cmd.package, cmd.profile, cmd.tests)
+        except RootMissing as e:
+            return NotADirectory(e.root)
         return ImportsChecked(tuple(found))

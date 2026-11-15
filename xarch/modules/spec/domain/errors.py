@@ -12,6 +12,12 @@ class UnknownProfile(DomainError):
         super().__init__(f"unknown profile '{name}'{where}: use one of {', '.join(known)}")
 
 
+class NoProfile(DomainError):
+    def __init__(self, known: Iterable[str]):
+        super().__init__("no profile: pass --profile, or set `profile` under [tool.xarch] in pyproject.toml; "
+                         f"the profiles found are {', '.join(known)}")
+
+
 class UnreadableSettings(DomainError):
     def __init__(self, source: Path, why: str):
         super().__init__(f"cannot read {source}: {why}")

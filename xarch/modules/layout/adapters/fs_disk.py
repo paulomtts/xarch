@@ -5,7 +5,9 @@ from pathlib import Path
 from xarch.platform.filesystem import FileSystem
 
 
-class FsDisk:                              # satisfies layout's Disk port
+class FsDisk:
+    """Satisfies layout's Disk port."""
+
     def __init__(self, fs: FileSystem):
         self._fs = fs
 
@@ -17,3 +19,6 @@ class FsDisk:                              # satisfies layout's Disk port
 
     def subdirectories(self, path: Path) -> list[str]:
         return self._fs.subdirectories(path)
+
+    def folders(self, path: Path) -> list[tuple[str, ...]]:
+        return self._fs.folders(path)

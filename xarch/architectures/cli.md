@@ -45,20 +45,7 @@ tests/                          each module's tests mirror its folder; architect
 
 docs/
 └── project/
-    ├── statement.md                problem statement and use cases
-    ├── domain.md                   domain diagram
-    ├── design.md                   design document
-    ├── architecture.md             this file
-    ├── testing.md                  how the system is tested: tiers, commands, placement, fakes, guards
-    ├── requirements.md
-    ├── adrs/                       architecture decision records
-    │   └── 0000-template.md
-    └── artifacts/
-        ├── standards/              _template.md
-        ├── audits/                 _template.md
-        ├── taxonomy/               _template.md
-        ├── modules/                _template.md
-        └── guards/                 _template.md; one per test that checks the codebase rather than the product
+{{docs_tree}}
 ```
 
 ## 2. The rings across the app
@@ -172,31 +159,7 @@ flowchart LR
   dadp --> mctrl
 ```
 
-```python
-# modules/documents/application/ports/content_review.py: documents' own words, no other module named
-@dataclass(frozen=True)
-class Allowed: ...
-@dataclass(frozen=True)
-class Denied: why: str
-
-class ContentReview(Protocol):
-    def review(self, title: str) -> Allowed | Denied: ...
-
-# modules/documents/adapters/moderation_content_review.py: the only file that names moderation
-from app.modules.moderation.contract import ReviewText, ReviewResult, Clean, Flagged
-from app.modules.documents.application.ports.content_review import Allowed, Denied
-
-class _Moderation(Protocol):                                  # the little we use of moderation's controller
-    def review(self, cmd: ReviewText) -> ReviewResult: ...
-
-class ModerationContentReview:                                # satisfies ContentReview, with no inheritance
-    def __init__(self, moderation: _Moderation): self._m = moderation
-
-    def review(self, title):
-        match self._m.review(ReviewText(title)):       # moderation's contract, translated to documents' words
-            case Clean():      return Allowed()
-            case Flagged(why): return Denied(why)
-```
+{{example:content_review, moderation_content_review}}
 
 `ReviewText`, `ReviewResult`, `Clean` and `Flagged` belong to moderation's `contract/`. `Allowed` and `Denied` are documents' own, defined beside the port. So is the error `ContentRejected`, which lives in `domain/errors.py`. The service turns `Denied` into that error, and the controller turns the error into the `Rejected` variant of the create `Result`.
 
@@ -233,51 +196,7 @@ The "if not" pointers inside each test name the usual near-miss. They are shortc
 
 What the module promises to everyone outside it: the inputs a caller sends the controller, what comes back, and the ids that name its things. A **Result** is the union of outcomes a controller returns for one use case, and each member of the union is a variant.
 
-```python
-# modules/documents/contract/commands.py
-from app.modules.documents.domain.values import DocumentId
-
-@dataclass(frozen=True)
-class PublishDocument:            # input: what a caller sends the controller
-    id: DocumentId
-
-@dataclass(frozen=True)
-class CreateDocument:             # input for the create use case
-    title: str
-
-# modules/documents/contract/views.py
-from app.modules.documents.domain.values import DocumentId
-
-@dataclass(frozen=True)
-class DocumentView:               # DTO: what comes back
-    id: DocumentId
-    title: str
-
-# modules/documents/contract/results.py
-from app.modules.documents.contract.views import DocumentView
-
-# the variants of the publish Result
-@dataclass(frozen=True)
-class Published: view: DocumentView
-@dataclass(frozen=True)
-class Missing: ...
-@dataclass(frozen=True)
-class Rejected: reason: str          # shared with the create Result
-
-PublishResult = Published | Missing | Rejected
-
-# the variants of the create Result
-@dataclass(frozen=True)
-class Created: view: DocumentView
-
-CreateResult = Created | Rejected
-
-# modules/documents/contract/__init__.py: the public names; what is not listed here is not part of the contract
-from app.modules.documents.domain.values import DocumentId     # re-exported on purpose; defined in domain/values.py
-from app.modules.documents.contract.commands import PublishDocument, CreateDocument
-from app.modules.documents.contract.views import DocumentView
-from app.modules.documents.contract.results import Published, Missing, Rejected, PublishResult, Created, CreateResult
-```
+{{example:contract_commands, contract_views, contract_results, contract_init}}
 
 {{litmus:contract}}
 
@@ -291,36 +210,7 @@ from app.modules.documents.contract.results import Published, Missing, Rejected,
 
 Entities and their state transitions, value objects (including typed ids) and their validation, and domain errors: the invariants of each entity and value. A pure rule that is not one entity's invariant goes in `application/logic/` (section 8.5).
 
-```python
-# modules/documents/domain/values.py
-DocumentId = NewType("DocumentId", UUID)
-
-# modules/documents/domain/errors.py: each module subclasses the kernel's base errors
-from app.kernel.errors import DomainError, NotFound
-
-class DocumentNotFound(NotFound):      reason = "The document does not exist."
-class DocumentIncomplete(DomainError): reason = "The document needs a title."
-class ContentRejected(DomainError):
-    def __init__(self, why: str): self.reason = why                    # the review's reason, passed on
-
-# modules/documents/domain/document.py
-from app.kernel.identifiers import new_id
-from app.modules.documents.domain.errors import DocumentIncomplete
-from app.modules.documents.domain.values import DocumentId
-
-class Document:
-    def __init__(self, id: DocumentId, title: str, published_at: datetime | None):
-        self.id, self.title, self.published_at = id, title, published_at
-
-    @classmethod
-    def new(cls, title: str) -> "Document":
-        return cls(DocumentId(new_id()), title, None)                  # new_id comes from kernel/
-
-    def publish(self, now: datetime) -> None:
-        if not self.title.strip():                                     # the rule: a document needs a title
-            raise DocumentIncomplete(self.id)
-        self.published_at = now
-```
+{{example:domain_values, domain_errors, document}}
 
 {{litmus:domain}}
 
@@ -328,38 +218,7 @@ class Document:
 
 The module's use-case façade. It delegates to a service, turns exceptions into a `Result` the caller can branch on and turns the entities the service returns into DTOs. It holds no business rules.
 
-```python
-# modules/documents/application/controller.py
-from app.modules.documents.contract import (
-    PublishDocument, CreateDocument, PublishResult, CreateResult, DocumentView, Published, Missing, Rejected, Created,
-)
-from app.modules.documents.domain.document import Document
-from app.modules.documents.domain.errors import DocumentNotFound, DocumentIncomplete, ContentRejected
-from app.modules.documents.application.services.document_service import DocumentService
-
-class DocumentController:
-    def __init__(self, service: DocumentService):
-        self._service = service
-
-    def publish(self, cmd: PublishDocument) -> PublishResult:
-        try:
-            doc = self._service.publish(cmd.id)
-        except DocumentNotFound:                         # exception -> Result
-            return Missing()
-        except DocumentIncomplete as e:
-            return Rejected(e.reason)
-        return Published(self._view(doc))                 # entity -> DTO
-
-    def create(self, cmd: CreateDocument) -> CreateResult:
-        try:
-            doc = self._service.create(cmd.title)
-        except ContentRejected as e:                     # raised after another module said no, see section 6
-            return Rejected(e.reason)
-        return Created(self._view(doc))
-
-    def _view(self, doc: Document) -> DocumentView:      # the DTO is built here: contract/ cannot import the entity
-        return DocumentView(id=doc.id, title=doc.title)
-```
+{{example:controller}}
 
 {{litmus:controller}}
 
@@ -370,34 +229,7 @@ class DocumentController:
 
 The sequence for one use case: load, check the preconditions, tell the domain to act, persist, notify. Services call ports, and never implement them. A precondition is that what the use case needs exists or is available. What is valid to do with it is the domain's call.
 
-```python
-# modules/documents/application/services/document_service.py
-from app.kernel.time import Clock
-from app.modules.documents.domain.document import Document
-from app.modules.documents.domain.errors import DocumentNotFound, ContentRejected
-from app.modules.documents.domain.values import DocumentId
-from app.modules.documents.application.ports.content_review import ContentReview, Denied
-from app.modules.documents.application.ports.document_repo import DocumentRepo
-
-class DocumentService:
-    def __init__(self, repo: DocumentRepo, review: ContentReview, clock: Clock):   # review: another module, see section 6
-        self._repo, self._review, self._clock = repo, review, clock
-
-    def publish(self, id: DocumentId) -> Document:
-        doc = self._repo.get(id)                                 # load
-        if doc is None:
-            raise DocumentNotFound(id)                           # precondition: it must exist
-        doc.publish(self._clock.now())                           # the domain decides if it is legal
-        self._repo.save(doc)                                     # persist
-        return doc
-
-    def create(self, title: str) -> Document:
-        match self._review.review(title):                        # another module, through a port (section 6)
-            case Denied(why): raise ContentRejected(why)         # the controller maps this to Rejected
-        doc = Document.new(title)
-        self._repo.save(doc)                                     # persist
-        return doc                                               # the entity; the controller builds the DTO
-```
+{{example:document_service}}
 
 {{litmus:services}}
 
@@ -406,11 +238,7 @@ class DocumentService:
 Pure functions over the module's domain objects, one file named for the rule it holds. A rule or step that is not one entity's invariant lives here, so a service calls it instead of holding it. It takes values and returns values: no port, no I/O, no clock.
 
 ```python
-# modules/documents/application/logic/staleness.py
-from app.modules.documents.domain.document import Document
-
-def is_stale(doc: Document, now: datetime) -> bool:
-    return doc.published_at is not None and now - doc.published_at > timedelta(days=365)
+{{example:staleness}}
 
 # in DocumentService (section 8.4), which calls the rule and does not hold it
 from app.modules.documents.application.logic.staleness import is_stale
@@ -425,13 +253,7 @@ from app.modules.documents.application.logic.staleness import is_stale
 `Protocol` definitions for repositories, search, email and anything else the application needs, written in the module's own vocabulary. A need that another module fulfills is declared the same way, in the consumer's words, and an adapter wraps the provider (section 6).
 
 ```python
-# modules/documents/application/ports/document_repo.py
-from app.modules.documents.domain.document import Document
-from app.modules.documents.domain.values import DocumentId
-
-class DocumentRepo(Protocol):
-    def get(self, id: DocumentId) -> Document | None: ...
-    def save(self, doc: Document) -> None: ...
+{{example:document_repo}}
 
 # modules/documents/application/ports/content_review.py: ContentReview and its outcomes Allowed and Denied;
 #   filled by an adapter that wraps moderation, see section 6
@@ -443,29 +265,7 @@ class DocumentRepo(Protocol):
 
 Code that implements this module's ports against a real system, using `platform/` clients for the technology: repositories, which translate between the module's types and the table models defined in `platform/`. The schema itself is created by `bootstrap/migrations/` (section 9.4 shows one), and no module owns a table exclusively. An adapter can also wrap another module's controller behind a port (section 6).
 
-```python
-# modules/documents/adapters/db_document_repo.py
-from app.modules.documents.domain.document import Document
-from app.modules.documents.domain.values import DocumentId
-from app.platform.sql import Session       # the engine and sessions are platform clients
-from app.platform.sql.tables.documents import DocumentRow   # the table model, defined once in platform/
-
-class DbDocumentRepo:                      # satisfies DocumentRepo
-    def __init__(self, session: Session): self._s = session
-
-    def get(self, id):
-        row = self._s.get(DocumentRow, id)
-        return self._to_domain(row) if row else None
-
-    def save(self, doc):
-        self._s.merge(self._from_domain(doc))
-
-    def _to_domain(self, row: DocumentRow) -> Document:   # table row in, domain entity out
-        return Document(DocumentId(row.id), row.title, row.published_at)
-
-    def _from_domain(self, doc: Document) -> DocumentRow: # domain entity in, table row out
-        return DocumentRow(id=doc.id, title=doc.title, published_at=doc.published_at)
-```
+{{example:db_document_repo}}
 
 The translation between the database's rows and the domain's entities lives here, in the adapter class, and never in `domain/` or in the table model: the domain never sees a row, and the service never sees one either.
 
@@ -490,22 +290,7 @@ An adapter's name starts with the system it talks to (a technology such as `Db` 
 
 Primitives with no business meaning: typed-id helpers, the base error hierarchy, lifecycle fields (created, updated, deleted), tracing carriers and the `Clock` protocol. `kernel/logic/` holds the pure functions that modules share, including a business rule two modules need: modules never import each other, so a shared rule is promoted here. Like the rest of `kernel/`, it imports nothing outside `kernel/`.
 
-```python
-# kernel/identifiers.py
-def new_id() -> UUID: return uuid4()
-
-# kernel/errors.py
-class DomainError(Exception):
-    reason: str                    # a message safe to show the caller
-class NotFound(DomainError): ...
-
-# kernel/time.py
-class Clock(Protocol):
-    def now(self) -> datetime: ...
-
-# kernel/logic/text.py: a pure function two modules need
-def normalized(title: str) -> str: return " ".join(title.split())
-```
+{{example:kernel_identifiers, kernel_errors, kernel_time, kernel_text}}
 
 {{litmus:kernel}}
 
@@ -513,22 +298,7 @@ def normalized(title: str) -> str: return " ".join(title.split())
 
 Clients and engines for technology used by several modules and owned by none: the LLM client, embeddings, email, crypto, blob storage, the SQL engine, sessions and table models, and the system clock. Module adapters use most of them, while `bootstrap/` passes `SystemClock` straight to services as the kernel's `Clock`. Platform implements no module's port and imports no module.
 
-```python
-# platform/email/smtp_client.py
-class SmtpClient:
-    def send(self, to: str, subject: str, body: str) -> None: ...
-
-# platform/clock.py
-class SystemClock:                 # satisfies kernel's Clock
-    def now(self) -> datetime: return datetime.now(UTC)
-
-# platform/sql/tables/documents.py: columns only, no module's types
-class DocumentRow(SQLModel, table=True):   # the table model: the database's shape, defined once
-    __tablename__ = "documents"
-    id: UUID = Field(primary_key=True)
-    title: str
-    published_at: datetime | None = None
-```
+{{example:smtp_client, system_clock, documents_table}}
 
 The email client speaks plain strings and knows no module. A module adapter that implements a notification port wraps it and translates the module's types into those strings. A table model is the same kind of thing: it names a table and its columns and knows no module's types, so every module's repo can use it and translate it into its own entities (section 8.7).
 
@@ -538,29 +308,7 @@ The email client speaks plain strings and knows no module. A module adapter that
 
 The only place that parses command-line arguments or prints to the terminal, whichever module's data it shows. Each command parses its arguments, builds the module's command object, calls the controller and renders the `Result` as text and an exit code.
 
-```python
-# cli/dependencies.py: how a command reaches its controller
-from app.modules.documents.application.controller import DocumentController
-
-def documents_controller(ctx: Context) -> DocumentController:
-    return ctx.obj.documents           # bootstrap/ passes the App as the context object
-
-# cli/commands/documents.py
-from app.modules.documents.contract import PublishDocument, DocumentId, Published, Missing, Rejected
-from app.cli.dependencies import documents_controller
-from app.cli.terminal import echo, fail          # cli/terminal.py: the output helpers
-
-app = Typer()                              # bootstrap/ adds this group to the program's Typer
-
-@app.command()
-def publish(ctx: Context, id: UUID):
-    documents = documents_controller(ctx)
-    result = documents.publish(PublishDocument(DocumentId(id)))                 # controller call
-    match result:                                # the command branches on the Result
-        case Published(view): echo(f"Published {view.title}")
-        case Missing():       fail("No such document", code=1)
-        case Rejected(why):   fail(why, code=2)
-```
+{{example:dependencies, documents_commands}}
 
 {{litmus:cli}}
 
@@ -574,68 +322,11 @@ def publish(ctx: Context, id: UUID):
 
 Builds each module's adapters, hands them to its services, and hands the services to its controller. It then hands the controllers to `cli/`. It wraps a provider module's controller in the consumer's adapter (section 6), and it holds the migrations, which define the schema for every module. The only place that decides which adapter fills which port. It is also where the program's entry point lives: only `bootstrap/` may see both the entry-point folder and the adapters, so the script that starts the program is wired here and not in `cli/`.
 
-```python
-# bootstrap/wiring.py
-from app.kernel.time import Clock
-from app.platform.sql import Session
-from app.modules.documents.adapters.db_document_repo import DbDocumentRepo
-from app.modules.documents.application.controller import DocumentController
-from app.modules.documents.application.ports.content_review import ContentReview
-from app.modules.documents.application.services.document_service import DocumentService
-# ... and the same three imports for moderation: DbFlagRepo, ModerationService, ModerationController
-
-def build_documents(session: Session, clock: Clock, review: ContentReview) -> DocumentController:
-    repo = DbDocumentRepo(session)                             # the adapter fills the port
-    service = DocumentService(repo, review, clock)             # injected into the service
-    return DocumentController(service)
-
-def build_moderation(session: Session) -> ModerationController:
-    repo = DbFlagRepo(session)                                 # the same shape for every module
-    service = ModerationService(repo)
-    return ModerationController(service)
-
-# bootstrap/app.py
-from app.cli.commands import documents as documents_commands
-from app.modules.documents.adapters.moderation_content_review import ModerationContentReview
-from app.modules.documents.application.controller import DocumentController
-from app.platform.clock import SystemClock
-from app.platform.sql import Session, create_engine
-from app.bootstrap.settings import Settings    # bootstrap/settings.py: reads the environment
-from app.bootstrap.wiring import build_documents, build_moderation
-
-@dataclass
-class App:                              # what main and the bootstrap test hold on to
-    cli: Typer
-    documents: DocumentController
-
-def build_app(settings: Settings) -> App:
-    engine = create_engine(settings.database_url)    # from platform/sql
-    session = Session(engine)
-    clock = SystemClock()                            # from platform/, used as the kernel's Clock
-    moderation = build_moderation(session)
-    documents = build_documents(session, clock, review=ModerationContentReview(moderation))   # an adapter wraps the provider's controller
-    cli = Typer()                                    # the program's own app object
-    cli.add_typer(documents_commands.app, name="documents")
-    return App(cli=cli, documents=documents)
-
-# bootstrap/main.py: the script that starts the program
-from app.bootstrap.app import build_app
-from app.bootstrap.settings import Settings
-
-def main() -> None:
-    app = build_app(Settings.from_env())
-    app.cli(obj=app)                   # the App is the context object that cli/dependencies.py reads
-```
+{{example:wiring, bootstrap_app, bootstrap_main}}
 
 The schema is created by the migrations, one file per change, applied in order. A migration builds its tables from the table models in `platform/`, which SQLModel turns into DDL:
 
-```python
-# bootstrap/migrations/0001_create_documents.py
-from app.platform.sql.tables.documents import DocumentRow   # importing it registers its table
-
-def upgrade(engine: Engine) -> None:
-    SQLModel.metadata.create_all(engine, tables=[DocumentRow.__table__])   # SQLModel builds the table from the table model
-```
+{{example:migration}}
 
 > [!NOTE]
 > A migration builds the table from the table model, so the table model declares the columns and the migration decides when the table is created. A later change to a column is a new migration file, never an edit of an old one. Every module that reads the table translates the same table model, so a column change reaches all of them through it.
@@ -646,7 +337,7 @@ def upgrade(engine: Engine) -> None:
 
 A scheduled job or an incoming event calls a controller exactly as a command does, and needs nothing else from the architecture:
 
-- **A job** is an entry point wired by `bootstrap/`, in `bootstrap/jobs/<job>.py`. It builds the app as `main` does, builds the command, calls the controller and exits. Its test is a driver test: the work is a function that takes the controller, so the test passes a fake one.
+- **A job** is an entry point wired by `bootstrap/`, in `bootstrap/jobs/<job>.py`. It builds the app as `main` does, builds the command, calls the controller and exits. The work is a function that takes the controller, so it can be handed a fake one.
 - **A request from another system**, such as a webhook, is still a request to the entry point's folder, so it lives in `cli/`. `cli/` cannot import `platform/`, so a check that needs a technology client, such as verifying a signature, is a port of the module that an adapter fills from `platform/` (section 8.7). A failed check is a `Result` variant like any other.
 - **A message from a queue** is handled like a job.
 

@@ -12,29 +12,72 @@ architecture. Prose, diagrams and code examples stay as the author wrote them; o
     {{litmus:<part>}}      the part's litmus test, as a "> [!TIP]" block
     {{naming}}             the `naming` rows as a table
     {{entry}}              the entry point's path, e.g. web
-    {{driver_proves}}      what a test of the entry point proves
-    {{driver_test}}        the entry point's example test, as its file holds it
+    {{docs_tree}}          the `docs` of the architecture as the contents of the project docs folder, one line per
+                           file and folder, each as the file declares it, indented to sit below a folder the
+                           template writes itself, with the notes aligned: a folder holding one file and declared no
+                           note of its own shows as `<file>; <note>` on its own line
+    {{example:<name>}}     an example of `examples`: its header line, `# <path>` (`: <note>` after it if it has one),
+                           then its file as the file holds it, without trailing blank lines
+    {{example:<a>, <b>}}   several examples one after another in one block, one blank line between them
+    {{tiers}}              the `tiers` as a table, one row per tier in order: its name, its subject (each part by its
+                           path, a part's sub-paths after it joined by "and"; or its `subject_text`), what it proves
+                           and what it may touch
+    {{untested}}           one paragraph per part marked `untested`: "`<part>/` gets no tier of its own: <reason>."
+    {{tier_index:<n>}}     the index entries of {{tier_litmus:<n>}}, one per tier, indented as a subsection of section <n>
+    {{tier_litmus:<n>}}    each tier as a subsection of section <n>, "### <n>.<i> <tier>", holding its litmus test as
+                           a "> [!TIP]" block, its lines joined into one
+    {{tier_files}}         each tier's `one_file_per` and `cases_from`, as a table
+    {{tier_data}}          each tier's `data`, as a table
+    {{tier_helpers}}       the helper files of all tiers in one block, each under its header line, `# <path>` (its
+                           note right after it, as written)
+    {{guards}}             one line per check `xarch check` runs: the structure, the rules, the libraries (with
+                           `libraries`), the tiers (with `tiers`), the test tree (with an `each` folder), then each
+                           guard of `guards`, in order
+    {{tier_examples}}      each tier's example test in one block, under its header line `# <tier>: <path>` (its note
+                           right after the path, as written), as {{example:...}} writes them; a tier with no example
+                           is left out
+
+Where {{example:...}} or {{tier_examples}} stands alone, it writes the whole fenced block, whose language comes from the files' extension
+(.py is python), so the examples of one block share an extension. Written inside a fenced block of the template's
+own, it writes only the examples, and the template adds the rest of the block: an excerpt that is not a file of the
+example project, such as a few lines of a function, stays in the template as the author wrote it.
 
 A placeholder the template does not use is fine. One that is unknown, or that needs what the architecture does not
-define (a part, a layer, an entry point, a placement), fails the whole template with every problem listed.
+define (a part, a layer, an entry point, a placement, an example, the tiers or what a tier leaves out), fails the whole template with every problem listed.
 """
 from __future__ import annotations
 
+import bisect
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 
 from xarch.modules.spec.domain.errors import InvalidTemplate
-from xarch.modules.spec.domain.values import EACH, EVERYTHING, Architecture, Layout, Part, Target
+from xarch.modules.spec.domain.values import (EACH, EVERYTHING, Architecture, Doc, Guard, Layout, PackageOnly, Part,
+                                              ScenarioCoverage, Subject, Target, Tier)
 
 PLACEHOLDER = re.compile(r"\{\{(.*?)\}\}")
-MODULE = "<module>"                    # how the tree shows the folder every module gets
-NOTE_GAP = 3                           # spaces between the longest line of the tree and its note
+FENCE = re.compile(r"^```", re.MULTILINE)
+"""A line that opens or closes a fenced block."""
+_LANGUAGE = {".py": "python", ".sh": "bash", ".yml": "yaml", ".js": "javascript", ".ts": "typescript", ".md": "markdown"}
+_COMMENT = {".js": "//", ".ts": "//", ".go": "//", ".rs": "//", ".java": "//", ".kt": "//", ".sql": "--"}
+"""The line-comment marker of a code block by its file's extension; any other extension uses "#"."""
+DOCS_NOTE_GAP = 8
+"""Spaces between the longest line of the docs tree and its notes."""
+NOTE_GAP = 3
+"""Spaces between the longest line of the tree and its note."""
 ARROW = " → "
 
 
-def fill(template: str, architecture: Architecture, source: str, driver_test: str | None = None) -> str:
-    """The template with every placeholder replaced; raises InvalidTemplate listing every problem."""
+def fill(template: str, architecture: Architecture, source: str, examples: Mapping[str, str] | None = None,
+         tier_examples: Mapping[str, str] | None = None) -> str:
+    """The template with every placeholder replaced; raises InvalidTemplate listing every problem.
+
+    examples is the text of each example's file, by name, and tier_examples the text of each tier's example test, by
+    tier name.
+    """
     problems: list[str] = []
+    fences = [m.start() for m in FENCE.finditer(template)]
 
     def replace(match: re.Match[str]) -> str:
         name, _, argument = match[1].strip().partition(":")
@@ -42,8 +85,10 @@ def fill(template: str, architecture: Architecture, source: str, driver_test: st
         if render is None or (argument == "") == (name in _WITH_ARGUMENT):
             problems.append(f"unknown placeholder {match[0]}: use {', '.join(_KNOWN)}")
             return match[0]
+        in_fence = bisect.bisect(fences, match.start()) % 2 == 1
         try:
-            return render(architecture, argument.strip(), driver_test)
+            return render(architecture, argument.strip(),
+                          _Context(examples or {}, tier_examples or {}, in_fence))
         except _Missing as missing:
             problems.append(f"{match[0]}: {missing}")
             return match[0]
@@ -54,44 +99,91 @@ def fill(template: str, architecture: Architecture, source: str, driver_test: st
     return text
 
 
+@dataclass(frozen=True)
+class _Context:
+    """What a placeholder is filled from besides the architecture, and where it stands.
+
+    examples: the text of each example's file, by name
+    tier_examples: the text of each tier's example test, by tier name
+    in_fence: whether the placeholder stands inside a fenced block the template writes
+    """
+    examples: Mapping[str, str]
+    tier_examples: Mapping[str, str]
+    in_fence: bool
+
+
 class _Missing(Exception):
     """What a placeholder needs and the architecture does not define."""
 
 
-def _tree(architecture: Architecture, _: str, __: str | None) -> str:
+def _tree(architecture: Architecture, _: str, __: _Context) -> str:
     roles = {part.path: part.role for part in architecture.parts.values()}
-    lines = list(_tree_lines(architecture.layout, (), "", {**architecture.notes, **roles}))
+    lines = list(_tree_lines(architecture.layout, (), "", {**architecture.notes, **roles}, f"<{architecture.singular}>"))
     width = max((len(label) for label, note in lines if note), default=0) + NOTE_GAP
     return "\n".join(f"{label:<{width}}{note}" if note else label for label, note in lines)
 
 
 def _tree_lines(tree: Layout, path: tuple[str, ...], indent: str,
-                notes: dict[tuple[str, ...], str]) -> list[tuple[str, str]]:
+                notes: dict[tuple[str, ...], str], instance: str) -> list[tuple[str, str]]:
+    """The tree's lines; the `each` folder is shown as instance, how one instance of it is named."""
     lines: list[tuple[str, str]] = []
     for i, (name, sub) in enumerate(tree.items()):
         last = i == len(tree) - 1
         here = path + (name,)
-        shown = (MODULE if name == EACH else name) + ("" if sub is None else "/")
+        shown = (instance if name == EACH else name) + ("" if sub is None else "/")
         lines.append((f"{indent}{'└── ' if last else '├── '}{shown}", notes.get(here, "")))
         if sub:
-            lines += _tree_lines(sub, here, indent + ("    " if last else "│   "), notes)
+            lines += _tree_lines(sub, here, indent + ("    " if last else "│   "), notes, instance)
     return lines
 
 
-def _rules_table(architecture: Architecture, _: str, __: str | None) -> str:
+def _docs_tree(architecture: Architecture, _: str, __: _Context) -> str:
+    if not architecture.docs:
+        raise _Missing("the architecture declares no `docs`")
+    lines = _doc_lines(architecture.docs, (), "    ")
+    width = max(len(label) for label, _ in lines) + DOCS_NOTE_GAP
+    return "\n".join(f"{label:<{width}}{note}" if note else label for label, note in lines)
+
+
+def _doc_lines(docs: tuple[Doc, ...], folder: tuple[str, ...], indent: str) -> list[tuple[str, str]]:
+    """(label, note) for what lies directly in a folder, in the order the docs declare it."""
+    below = [doc for doc in docs if doc.path[:len(folder)] == folder and len(doc.path) > len(folder)]
+    names = list(dict.fromkeys(doc.path[len(folder)] for doc in below))
+    lines: list[tuple[str, str]] = []
+    for i, name in enumerate(names):
+        last = i == len(names) - 1
+        here = folder + (name,)
+        own = next((doc for doc in below if doc.path == here), None)
+        inside = [doc for doc in below if doc.path[:len(here)] == here and len(doc.path) > len(here)]
+        branch = indent + ("└── " if last else "├── ")
+        if own is not None and not own.is_folder:
+            lines.append((branch + name, own.note))
+        elif own is None and len(inside) == 1 and not inside[0].is_folder and len(inside[0].path) == len(here) + 1:
+            note = inside[0].path[-1] + (f"; {inside[0].note}" if inside[0].note else "")
+            lines.append((f"{branch}{name}/", note))
+        else:
+            lines.append((f"{branch}{name}/", own.note if own is not None else ""))
+            lines += _doc_lines(docs, here, indent + ("    " if last else "│   "))
+    return lines
+
+
+def _rules_table(architecture: Architecture, _: str, __: _Context) -> str:
     rows = [f"| `{_shown(architecture, part)}` | {_may_import(architecture, part)} |"
             for part in architecture.parts.values()]
     return "\n".join(["| Part | May import |", "|---|---|", *rows])
 
 
 def _may_import(architecture: Architecture, part: Part) -> str:
-    """What a part may import, in the order of its rule: consecutive parts in one scope share their phrase."""
+    """What a part may import, in the order of its rule: consecutive parts in one scope share their phrase.
+
+    (scope phrase, the targets it covers).
+    """
     targets = [t for t in architecture.rules.get(part.name, ()) if t.part != part.name]
     if any(t.part == EVERYTHING for t in targets):
         return "everything"
-    phrases: list[tuple[str, list[str]]] = []          # (scope phrase, the targets it covers)
+    phrases: list[tuple[str, list[str]]] = []
     for target in targets:
-        scope = {"own": "its own module's ", "any": "any module's "}.get(target.scope, "")
+        scope = {"own": f"its own {architecture.singular}'s ", "any": f"any {architecture.singular}'s "}.get(target.scope, "")
         shown = f"`{_target(architecture, target)}`"
         if scope and phrases and phrases[-1][0] == scope:
             phrases[-1][1].append(shown)
@@ -105,27 +197,27 @@ def _target(architecture: Architecture, target: Target) -> str:
     return shown.removesuffix("/") + "/" + "/".join(target.sub) if target.sub else shown
 
 
-def _layers(architecture: Architecture, name: str, _: str | None) -> str:
+def _layers(architecture: Architecture, name: str, _: _Context) -> str:
     if name not in architecture.layers:
         known = ", ".join(architecture.layers) or "none"
         raise _Missing(f"the architecture has no layer '{name}' (its layers: {known})")
     return ARROW.join(f"`{_shown(architecture, architecture.parts[part])}`" for part in architecture.layers[name])
 
 
-def _placement(architecture: Architecture, _: str, __: str | None) -> str:
+def _placement(architecture: Architecture, _: str, __: _Context) -> str:
     if not architecture.placement:
         raise _Missing("the architecture has no `placement`")
     return ARROW.join(f"`{name}`" for name in architecture.placement)
 
 
-def _litmus(architecture: Architecture, name: str, _: str | None) -> str:
+def _litmus(architecture: Architecture, name: str, _: _Context) -> str:
     part = _part(architecture, name)
     if not part.litmus:
         raise _Missing(f"part '{name}' has no litmus test")
     return f"> [!TIP]\n> **Litmus test.** {part.litmus}"
 
 
-def _naming(architecture: Architecture, _: str, __: str | None) -> str:
+def _naming(architecture: Architecture, _: str, __: _Context) -> str:
     if not architecture.naming:
         raise _Missing("the architecture has no `naming`")
     rows = [f"| {row.kind} | {_ticked(row.where)} | {row.pattern} | {_ticked(row.example)} |"
@@ -133,22 +225,133 @@ def _naming(architecture: Architecture, _: str, __: str | None) -> str:
     return "\n".join(["| Kind | Where | Pattern | Example |", "|---|---|---|---|", *rows])
 
 
-def _entry(architecture: Architecture, _: str, __: str | None) -> str:
+def _entry(architecture: Architecture, _: str, __: _Context) -> str:
     return "/".join(_entry_part(architecture).path)
 
 
-def _driver_proves(architecture: Architecture, _: str, __: str | None) -> str:
-    entry = _entry_part(architecture)
-    if not entry.driver_proves:
-        raise _Missing(f"the entry point '{entry.name}' has no `driver_proves`")
-    return entry.driver_proves
+def _example(architecture: Architecture, names: str, context: _Context) -> str:
+    """The example files, each under its header line, one blank line apart; in a fence unless already in one."""
+    chosen = [name.strip() for name in names.split(",")]
+    unknown = [name for name in chosen if name not in architecture.examples]
+    if unknown:
+        known = ", ".join(architecture.examples) or "none"
+        raise _Missing(f"the architecture has no example {_quoted(unknown)} (its examples: {known})")
+    unread = [name for name in chosen if name not in context.examples]
+    if unread:
+        raise _Missing(f"the file of example {_quoted(unread)} was not read")
+    examples = [architecture.examples[name] for name in chosen]
+    return _block([(f"{'/'.join(example.path)}{': ' + example.note if example.note else ''}", example.file,
+                    context.examples[example.name]) for example in examples], context.in_fence)
 
 
-def _driver_test(architecture: Architecture, _: str, driver_test: str | None) -> str:
-    entry = _entry_part(architecture)
-    if driver_test is None:
-        raise _Missing(f"the entry point '{entry.name}' has no `driver_test`")
-    return driver_test
+def _block(files: list[tuple[str, str, str]], in_fence: bool) -> str:
+    """(header, file, text): each text under its header as a comment, one blank line apart, fenced unless in_fence."""
+    suffixes = {_suffix(file) for _, file, _ in files}
+    if len(suffixes) > 1:
+        raise _Missing(f"one block cannot mix files of different kinds ({', '.join(sorted(suffixes))})")
+    suffix = suffixes.pop()
+    comment = _COMMENT.get(suffix, "#")
+    body = "\n\n".join(f"{comment} {header}\n" + text.rstrip("\n") for header, _, text in files)
+    if in_fence:
+        return body
+    return f"```{_LANGUAGE.get(suffix, suffix.lstrip('.'))}\n{body}\n```"
+
+
+def _tiers(architecture: Architecture, _: str, __: _Context) -> str:
+    rows = [f"| {tier.name} | {_subject(architecture, tier)} | {tier.proves} | {tier.may_touch} |"
+            for tier in _tiers_of(architecture)]
+    return "\n".join(["| Tier | Subject | Proves | May touch |", "|---|---|---|---|", *rows])
+
+
+def _subject(architecture: Architecture, tier: Tier) -> str:
+    """The tier's subject_text, or its parts by path: consecutive paths of one part share an "and"."""
+    if tier.subject_text:
+        return tier.subject_text
+    groups: list[tuple[str, list[str]]] = []
+    for subject in tier.subject:
+        shown = f"`{_subject_path(architecture, subject)}`"
+        if groups and groups[-1][0] == subject.part:
+            groups[-1][1].append(shown)
+        else:
+            groups.append((subject.part, [shown]))
+    return ", ".join(_and(paths) for _, paths in groups)
+
+
+def _subject_path(architecture: Architecture, subject: Subject) -> str:
+    part = architecture.parts[subject.part]
+    shown = _shown(architecture, part)
+    if not subject.sub:
+        return shown
+    below = shown.removesuffix("/") + "/" + "/".join(subject.sub)
+    return below if architecture.is_file(part.path + subject.sub) else below + "/"
+
+
+def _untested(architecture: Architecture, _: str, __: _Context) -> str:
+    _tiers_of(architecture)
+    return "\n\n".join(f"`{_shown(architecture, part)}` gets no tier of its own: {part.untested.rstrip('.')}."
+                     for part in architecture.parts.values() if part.untested)
+
+
+def _tier_index(architecture: Architecture, section: str, _: _Context) -> str:
+    return "\n".join(f"  - [[#{section}.{i} {tier.name}]]" for i, tier in enumerate(_tiers_of(architecture), 1))
+
+
+def _tier_litmus(architecture: Architecture, section: str, _: _Context) -> str:
+    return "\n\n".join(f"### {section}.{i} {tier.name}\n\n> [!TIP]\n> **Litmus test.** "
+                        + " ".join(line.strip() for line in tier.litmus.splitlines())
+                        for i, tier in enumerate(_tiers_of(architecture), 1))
+
+
+def _tier_files(architecture: Architecture, _: str, __: _Context) -> str:
+    tiers = _tiers_needing(architecture, "one_file_per", "cases_from")
+    rows = [f"| {tier.name} | {tier.one_file_per} | {tier.cases_from} |" for tier in tiers]
+    return "\n".join(["| Tier | One file per | Its cases come from |", "|---|---|---|", *rows])
+
+
+def _tier_data(architecture: Architecture, _: str, __: _Context) -> str:
+    rows = [f"| {tier.name} | {tier.data} |" for tier in _tiers_needing(architecture, "data")]
+    return "\n".join(["| Tier | Where its data comes from |", "|---|---|", *rows])
+
+
+def _tier_examples(architecture: Architecture, _: str, context: _Context) -> str:
+    tiers = [tier for tier in _tiers_of(architecture) if tier.example is not None]
+    if not tiers:
+        raise _Missing("no tier has an `example`")
+    unread = [tier.name for tier in tiers if tier.name not in context.tier_examples]
+    if unread:
+        raise _Missing(f"the example of tier {_quoted(unread)} was not read")
+    return _block([(f"{tier.name}: {'/'.join(tier.example.path)}{tier.example.note}", tier.example.file,
+                    context.tier_examples[tier.name]) for tier in tiers if tier.example is not None], context.in_fence)
+
+
+def _tier_helpers(architecture: Architecture, _: str, context: _Context) -> str:
+    helpers = [helper for tier in _tiers_of(architecture) for helper in tier.helpers]
+    if not helpers:
+        raise _Missing("no tier has `helpers`")
+    unread = [helper.file for helper in helpers if helper.file not in context.tier_examples]
+    if unread:
+        raise _Missing(f"the helper file {_quoted(unread)} was not read")
+    return _block([(f"{'/'.join(helper.path)}{helper.note}", helper.file, context.tier_examples[helper.file])
+                   for helper in helpers], context.in_fence)
+
+
+def _tiers_of(architecture: Architecture) -> tuple[Tier, ...]:
+    if not architecture.tiers:
+        raise _Missing("the architecture has no `tiers`")
+    return architecture.tiers
+
+
+def _tiers_needing(architecture: Architecture, *keys: str) -> tuple[Tier, ...]:
+    tiers = _tiers_of(architecture)
+    lacking = [f"tier '{tier.name}' has no `{key}`" for tier in tiers for key in keys if not getattr(tier, key)]
+    if lacking:
+        raise _Missing(", ".join(lacking))
+    return tiers
+
+
+def _suffix(file: str) -> str:
+    name = file.rsplit("/", 1)[-1]
+    return "." + name.rsplit(".", 1)[1] if "." in name else ""
 
 
 def _entry_part(architecture: Architecture) -> Part:
@@ -164,9 +367,9 @@ def _part(architecture: Architecture, name: str) -> Part:
 
 
 def _shown(architecture: Architecture, part: Part) -> str:
-    """A part as the docs name it: its path below the module for a module's part, ending in / for a folder."""
-    root = architecture.module_root()
-    path = part.path[len(root) + 1:] if part.in_module and root is not None else part.path
+    """A part as the docs name it: its path below its instance for an instance's part, ending in / for a folder."""
+    root = architecture.instance_root()
+    path = part.path[len(root) + 1:] if part.in_instance and root is not None else part.path
     return "/".join(path) + ("" if architecture.is_file(part.path) else "/")
 
 
@@ -178,10 +381,62 @@ def _and(items: list[str]) -> str:
     return items[0] if len(items) == 1 else f"{', '.join(items[:-1])} and {items[-1]}"
 
 
-_RENDERERS: dict[str, Callable[[Architecture, str, str | None], str]] = {
+def _quoted(names: list[str]) -> str:
+    return ", ".join(f"'{n}'" for n in names)
+
+
+def _guards(architecture: Architecture, _: str, __: _Context) -> str:
+    lines = [_structure_line(architecture),
+             "`rules`: every import between parts is one that `rules` allows (architecture.md, section 5)."]
+    if architecture.libraries is not None:
+        listed = "; ".join(f"`{_shown(architecture, architecture.parts[name])}`: {', '.join(packages)}"
+                           for name, packages in architecture.libraries.items() if packages)
+        lines.append(f"`libraries`: a part imports only the outside packages listed for it ({listed}); the standard "
+                     "library is always allowed, and tests are not checked.")
+    if architecture.tiers:
+        fakes = ""
+        if architecture.fakes is not None:
+            parts = _and([f"`{_shown(architecture, architecture.parts[p])}`" for p in architecture.fakes.stand_in_for])
+            fakes = (f"; only a test whose tier tests {parts} imports the fakes in "
+                     f"`{'/'.join(architecture.fakes.path)}/`")
+        lines.append("`tiers`: a test lives in the folder that mirrors its subject in the app, and imports only its "
+                     f"tier's subject and what that subject may import{fakes}.")
+    root = architecture.instance_root()
+    if root is not None:
+        lines.append(f"`test tree`: every folder below `tests/{'/'.join(root)}/` mirrors a folder of the app.")
+    lines += [_guard_line(architecture, guard) for guard in architecture.guards]
+    return "\n".join(f"- {line}" for line in lines)
+
+
+def _structure_line(architecture: Architecture) -> str:
+    root = architecture.instance_root()
+    every = f", in the app and in every `{'/'.join(root)}/<name>/`" if root is not None else ""
+    return f"`structure`: every folder and file of the layout exists{every}."
+
+
+def _guard_line(architecture: Architecture, guard: Guard) -> str:
+    match guard:
+        case PackageOnly(parts):
+            shown = _and([f"`{_shown(architecture, architecture.parts[p])}`" for p in parts])
+            return (f"`package-only`: {shown} {'is' if len(parts) == 1 else 'are'} imported as a package, never by "
+                    "its files, from outside it.")
+        case ScenarioCoverage(results, tier, suffix):
+            return (f"`scenario-coverage`: every variant of a union named `<Name>{suffix}` in "
+                    f"`{_shown(architecture, architecture.parts[results])}` has a scenario in the header of "
+                    f"`test_<name>.py` among the {tier} tests (section 5.2), and every scenario has a test of the "
+                    "same name.")
+        case _:
+            return ("`no-comments`: no `#` comments in the app or its tests; docstrings and tool directives "
+                    "(`# type: ignore`, `# noqa`, `# pragma:`) stay.")
+
+
+_RENDERERS: dict[str, Callable[[Architecture, str, _Context], str]] = {
     "tree": _tree, "rules_table": _rules_table, "layers": _layers, "placement": _placement, "litmus": _litmus,
-    "naming": _naming, "entry": _entry, "driver_proves": _driver_proves, "driver_test": _driver_test,
+    "naming": _naming, "entry": _entry, "docs_tree": _docs_tree, "example": _example, "tiers": _tiers, "untested": _untested, "tier_litmus": _tier_litmus,
+    "tier_files": _tier_files, "tier_helpers": _tier_helpers, "tier_index": _tier_index, "tier_data": _tier_data, "tier_examples": _tier_examples,
+    "guards": _guards,
 }
-_WITH_ARGUMENT = {"layers", "litmus"}
-_KNOWN = [f"{{{{{name}:<{'part' if name == 'litmus' else 'name'}>}}}}" if name in _WITH_ARGUMENT
+_WITH_ARGUMENT = {"layers", "litmus", "example", "tier_index", "tier_litmus"}
+_ARGUMENT = {"litmus": "<part>", "example": "<name>, ...", "tier_index": "<section>", "tier_litmus": "<section>"}
+_KNOWN = [f"{{{{{name}:{_ARGUMENT.get(name, '<name>')}}}}}" if name in _WITH_ARGUMENT
           else f"{{{{{name}}}}}" for name in _RENDERERS]

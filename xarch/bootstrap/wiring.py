@@ -9,7 +9,7 @@ from xarch.modules.layout.adapters.spec_skeleton import SpecSkeleton as LayoutSk
 from xarch.modules.layout.application.controller import LayoutController
 from xarch.modules.layout.application.services.structure_check import StructureCheck
 from xarch.modules.rules.adapters.fs_source_tree import FsSourceTree
-from xarch.modules.rules.adapters.spec_skeleton import SpecSkeleton as RulesSkeleton
+from xarch.modules.rules.adapters.spec_profile import SpecProfiles
 from xarch.modules.rules.application.controller import RulesController
 from xarch.modules.rules.application.services.import_check import ImportCheck
 from xarch.modules.scaffold.adapters.fs_files import FsFiles
@@ -37,7 +37,8 @@ class Controllers:
 
 def build_spec(fs: FileSystem | None = None) -> SpecController:
     fs = fs or FileSystem()
-    return SpecController(SkeletonService(PyprojectSettings(fs, TomlReader())), build_architectures(fs))
+    architectures = build_architectures(fs)
+    return SpecController(SkeletonService(PyprojectSettings(fs, TomlReader()), architectures), architectures)
 
 
 def build_architectures(fs: FileSystem | None = None) -> ArchitectureService:
@@ -50,7 +51,7 @@ def load_architecture(location: str | Path) -> Architecture:
 
 
 def build_rules(fs: FileSystem, spec: SpecController) -> RulesController:
-    return RulesController(ImportCheck(FsSourceTree(fs), RulesSkeleton(spec)))
+    return RulesController(ImportCheck(FsSourceTree(fs), SpecProfiles(spec)))
 
 
 def build_layout(fs: FileSystem, spec: SpecController) -> LayoutController:
@@ -62,6 +63,7 @@ def build_scaffold(fs: FileSystem, spec: SpecController) -> ScaffoldController:
 
 
 def build_controllers() -> Controllers:
+    """One spec feeds rules, layout and scaffold: they cannot drift."""
     fs = FileSystem()
-    spec = build_spec(fs)                           # one spec feeds rules, layout and scaffold: they cannot drift
+    spec = build_spec(fs)
     return Controllers(build_rules(fs, spec), build_layout(fs, spec), build_scaffold(fs, spec), spec)

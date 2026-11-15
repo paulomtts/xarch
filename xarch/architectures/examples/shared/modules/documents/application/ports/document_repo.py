@@ -1,0 +1,6 @@
+from app.modules.documents.domain.document import Document
+from app.modules.documents.domain.values import DocumentId
+
+class DocumentRepo(Protocol):
+    def get(self, id: DocumentId) -> Document | None: ...
+    def save(self, doc: Document) -> None: ...

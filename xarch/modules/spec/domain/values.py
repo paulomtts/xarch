@@ -3,7 +3,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
+
+from xarch.kernel.logic.placement import EACH, EVERYTHING, Place, Scope, Target, place_of
 
 
 @dataclass(frozen=True)
@@ -13,67 +15,191 @@ class Configured:
     source: Path
 
 
-Layout = dict[str, "Layout | None"]    # as skeleton.Tree: a dict is a folder, None a file; the key "*" is every module
+Layout = dict[str, "Layout | None"]
+"""A layout tree: a dict is a folder, None a file; the key "*" is the `each` folder, one per instance."""
 
 
-EACH = "*"                             # the layout's `each`: the folder every module gets, named by the module
-EVERYTHING = "*"                       # the rule target that reaches every place
-
-Scope = Literal["own", "any", "none"]
-
-
-@dataclass(frozen=True)
-class Target:
-    """What a part may import: a part, in which module, and optionally only a path below it."""
-    part: str                          # a part name, or EVERYTHING
-    scope: Scope = "none"              # "own": the importer's module; "any": any module; "none": a part outside the modules
-    sub: tuple[str, ...] = ()          # only this path below the part, e.g. ("values",) for domain/values
+__all__ = ["EACH", "EVERYTHING", "Place", "Scope", "Target"]
 
 
 @dataclass(frozen=True)
 class Part:
-    """Where code sits: a named path in the layout, with what goes there and how to tell."""
+    """Where code sits: a named path in the layout, with what goes there and how to tell.
+
+    path: in the layout; EACH stands for the name of an `each` folder, e.g. ("src", "*", "api")
+    role: one line; also the part's note in the docs' tree
+    entry: the entry point, which drives the rest; at most one part is
+    untested: why no tier tests it, e.g. "reached through the adapters that use it"
+    """
     name: str
-    path: tuple[str, ...]              # in the layout; EACH stands for the module name, e.g. ("modules", "*", "domain")
-    role: str                          # one line; also the part's note in the docs' tree
+    path: tuple[str, ...]
+    role: str
     litmus: str = ""
-    entry: bool = False                # the entry point, which drives the modules; at most one part is
-    driver_proves: str = ""            # the entry point only: what a test of it proves, for testing.md
-    driver_test: str | None = None     # the entry point only: the file holding its example test, relative to the file
+    entry: bool = False
+    untested: str = ""
 
     @property
-    def in_module(self) -> bool:
+    def in_instance(self) -> bool:
         return EACH in self.path
 
 
 @dataclass(frozen=True)
+class Doc:
+    """A file or folder of the project docs the architecture declares.
+
+    path: below the docs folder, e.g. ("adrs", "0000-template.md")
+    source: the template the file is filled from, relative to the architecture file; None for a folder
+    note: shown after its line in the docs tree
+    """
+    path: tuple[str, ...]
+    source: str | None
+    note: str = ""
+
+    @property
+    def is_folder(self) -> bool:
+        return self.source is None
+
+
+@dataclass(frozen=True)
 class Example:
-    path: tuple[str, ...]              # where the example would live in an app, e.g. ("src", "billing", "service", "charge.py")
-    file: str                          # the file holding its code, relative to the architecture file
+    """One file of the docs' example project: the part it illustrates, where it would live, and the file holding it.
+
+    name: how the docs template refers to it, e.g. "charge"
+    part: the part it illustrates
+    path: where the example would live in an app, e.g. ("src", "billing", "service", "charge.py")
+    file: the file holding its code, relative to the architecture file
+    note: shown after its path on its header line in the docs
+    """
+    name: str
+    part: str
+    path: tuple[str, ...]
+    file: str
+    note: str = ""
 
 
 @dataclass(frozen=True)
 class Naming:
-    """One row of the docs' naming table: what a kind of thing is called, and where it lives."""
-    kind: str                          # e.g. "adapter"
-    where: tuple[str, ...]             # the folders it lives in, as the docs show them, e.g. ("adapters/",)
-    pattern: str                       # markdown, e.g. "`<System><PortName>`"
-    example: tuple[str, ...]           # names, e.g. ("DbDocumentRepo", "ModerationContentReview")
+    """One row of the docs' naming table: what a kind of thing is called, and where it lives.
+
+    kind: e.g. "adapter"
+    where: the folders it lives in, as the docs show them, e.g. ("adapters/",)
+    pattern: markdown, e.g. "`<System><PortName>`"
+    example: names, e.g. ("DbDocumentRepo", "ModerationContentReview")
+    """
+    kind: str
+    where: tuple[str, ...]
+    pattern: str
+    example: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class Subject:
+    """What a tier tests: a part, or only a path below it.
+
+    sub: e.g. ("jobs",) for bootstrap/jobs
+    """
+    part: str
+    sub: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class TierExample:
+    """A tier's example test: where it would live in a project, and the file holding it.
+
+    path: e.g. ("tests", "modules", "documents", "domain", "test_document.py")
+    file: the file holding its code, relative to the architecture file
+    note: shown right after its path on its header line, as written
+    """
+    path: tuple[str, ...]
+    file: str
+    note: str = ""
+
+
+@dataclass(frozen=True)
+class Tier:
+    """One kind of test: what it tests, what it proves and may touch, and how to tell a test belongs to it.
+
+    name: e.g. "use case"
+    subject: the parts it tests; every part is in some tier's subject or is `untested`
+    litmus: its placement litmus test; may span lines, kept as written
+    subject_text: the Subject cell as written, in place of the subject's parts
+    data: where its test data comes from
+    helpers: files its tests share (builders, a fixture), shown with {{tier_helpers}}
+    """
+    name: str
+    subject: tuple[Subject, ...]
+    proves: str
+    may_touch: str
+    litmus: str
+    subject_text: str = ""
+    one_file_per: str = ""
+    cases_from: str = ""
+    data: str = ""
+    example: TierExample | None = None
+    helpers: tuple[TierExample, ...] = ()
+
+
+@dataclass(frozen=True)
+class Fakes:
+    """Where the test fakes live, below the tests root, and the parts they stand in for."""
+    path: tuple[str, ...]
+    stand_in_for: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class PackageOnly:
+    """The guard package-only: these parts are imported only as a package from outside them."""
+    parts: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ScenarioCoverage:
+    """The guard scenario-coverage: the part holding the result unions, the tier holding their scenarios, and how a
+    union's name ends."""
+    results: str
+    tier: str
+    suffix: str
+
+
+@dataclass(frozen=True)
+class NoComments:
+    """The guard no-comments."""
+
+
+Guard = PackageOnly | ScenarioCoverage | NoComments
 
 
 @dataclass(frozen=True)
 class Architecture:
-    """An architecture as described in an architecture file (format version 1)."""
+    """An architecture as described in an architecture file (format version 1).
+
+    rules: every part, in the order of parts; a part with no row may import nothing
+    docs: the project docs, in order: the files `init` writes and the folders it gives a note
+    examples: by name, in the order of the file
+    notes: by layout path: a folder that is not a part
+    layers: named chains of parts, from the inside out
+    placement: every part once: the order the litmus tests run in
+    tiers: in the order their litmus tests run
+    libraries: the outside packages each part may import; None: unchecked
+    guards: the pre-built checks in use
+    fakes: where the test fakes live; None: no test may import them
+    singular: the name of one instance of the `each` folder, as the docs show it; empty if the layout has no `each`
+    """
     name: str
     layout: Layout
     parts: dict[str, Part]
-    rules: dict[str, tuple[Target, ...]]   # every part, in the order of parts; a part with no row may import nothing
-    docs_template: str | None = None       # relative to the architecture file
-    examples: dict[str, Example] = field(default_factory=dict)   # by part
-    notes: dict[tuple[str, ...], str] = field(default_factory=dict)   # by layout path: a folder that is not a part
-    layers: dict[str, tuple[str, ...]] = field(default_factory=dict)  # named chains of parts, from the inside out
-    placement: tuple[str, ...] = ()        # every part once: the order the litmus tests run in
+    rules: dict[str, tuple[Target, ...]]
+    docs: tuple[Doc, ...] = ()
+    examples: dict[str, Example] = field(default_factory=dict)
+    notes: dict[tuple[str, ...], str] = field(default_factory=dict)
+    layers: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    placement: tuple[str, ...] = ()
     naming: tuple[Naming, ...] = ()
+    tiers: tuple[Tier, ...] = ()
+    libraries: dict[str, tuple[str, ...]] | None = None
+    guards: tuple[Guard, ...] = ()
+    fakes: Fakes | None = None
+    singular: str = ""
 
     @property
     def entry(self) -> Part | None:
@@ -89,13 +215,23 @@ class Architecture:
             here = here[step]
         return here is None
 
-    def module_root(self) -> tuple[str, ...] | None:
+    def place_of(self, path: tuple[str, ...]) -> Place:
+        """Where a path below the app root sits, e.g. ("modules", "billing", "domain", "invoice.py") or the dotted
+        module ("modules", "billing", "domain", "invoice"): the part whose pattern it lies in, the deepest when parts
+        nest, with `*` capturing the module; a path no part claims is structure."""
+        return place_of(self.patterns(), path)
+
+    def patterns(self) -> dict[str, tuple[str, ...]]:
+        """Every part's path pattern, by name."""
+        return {name: part.path for name, part in self.parts.items()}
+
+    def instance_root(self) -> tuple[str, ...] | None:
         """The folder holding the modules, e.g. ("modules",), or None if the layout has no `each`."""
         return _find_each(self.layout, ())
 
-    def module_tree(self) -> Layout:
+    def instance_tree(self) -> Layout:
         """What every module holds."""
-        root = self.module_root()
+        root = self.instance_root()
         if root is None:
             return {}
         folder = self.layout
@@ -125,13 +261,20 @@ def _without_each(tree: Layout) -> Layout:
 
 @dataclass(frozen=True)
 class ArchitectureSource:
-    """Where an architecture file is: one bundled with xarch, by name, or a path."""
-    location: str                      # a bundled name, e.g. "cli", or a path to a .yaml, .yml or .json file
+    """Where an architecture file is: one bundled with xarch, by name, or a path.
+
+    location: a bundled name, e.g. "cli", or a path to a .yaml, .yml or .json file
+    """
+    location: str
     bundled: bool
 
 
 @dataclass(frozen=True)
 class ArchitectureDocument:
-    """An architecture file as parsed, not yet validated."""
-    source: str                        # how problems name the file, e.g. "cli.yaml" or "docs/layered.yaml"
-    document: Any                      # whatever the YAML or JSON parser returned
+    """An architecture file as parsed, not yet validated.
+
+    source: how problems name the file, e.g. "cli.yaml" or "docs/layered.yaml"
+    document: whatever the YAML or JSON parser returned
+    """
+    source: str
+    document: Any

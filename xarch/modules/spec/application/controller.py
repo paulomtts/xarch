@@ -3,8 +3,8 @@ from __future__ import annotations
 from xarch.kernel.errors import DomainError
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.application.services.skeleton import SkeletonService
-from xarch.modules.spec.contract import Docs, ProfileRefused, ProfileResult, ProfileSelected, SelectProfile, Skeleton
-from xarch.modules.spec.domain.skeleton import DEFAULT_PROFILE
+from xarch.modules.spec.contract import (Architecture, Docs, ProfileRefused, ProfileResult, ProfileSelected,
+                                         SelectProfile, Skeleton)
 
 
 class SpecController:
@@ -13,21 +13,25 @@ class SpecController:
     def __init__(self, service: SkeletonService, architectures: ArchitectureService):
         self._service, self._architectures = service, architectures
 
-    def skeleton(self, profile: str = DEFAULT_PROFILE) -> Skeleton:
+    def skeleton(self, profile: str) -> Skeleton:
         """The skeleton of a known profile: callers get the name from select() or profiles()."""
         return self._service.skeleton(profile)
 
-    def docs(self, profile: str = DEFAULT_PROFILE) -> Docs:
-        """The project docs and their text: architecture.md and testing.md are filled from the profile's bundled
-        architecture file."""
+    def architecture(self, location: str) -> Architecture:
+        """The architecture at a location callers got from select(): a bundled name or a path."""
+        return self._architectures.load(location)
+
+    def docs(self, profile: str) -> Docs:
+        """The project docs the profile declares, with their text."""
         return self._architectures.docs(profile)
 
     def profiles(self) -> tuple[str, ...]:
         return self._service.profiles()
 
     def select(self, cmd: SelectProfile) -> ProfileResult:
+        """An unknown profile, unreadable settings or an invalid architecture file is refused with its reason."""
         try:
-            name = self._service.select(cmd.app, cmd.override)
-        except DomainError as e:                                     # unknown profile, unreadable settings
+            name, tests = self._service.select(cmd.app, cmd.override, cmd.tests)
+        except DomainError as e:
             return ProfileRefused(e.reason)
-        return ProfileSelected(name)
+        return ProfileSelected(name, tests)

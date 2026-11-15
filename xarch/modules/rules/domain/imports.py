@@ -1,27 +1,29 @@
-"""The import check itself: every import between places the profile governs must be allowed by section 5.
+"""The import check itself: every import between places the profile governs must be allowed by its rules.
 
-xarch is a protocol, not a closed world: files in places the profile does not govern are not checked, and
-imports into such places are ignored.
+Files in places the profile does not govern are not checked, and imports into such places are ignored.
 """
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
-from pathlib import PurePosixPath
 
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.domain.places import allowed, label, place_of
-from xarch.modules.rules.domain.values import Import, Parts, SourceFile
+from xarch.modules.rules.domain.places import allowed, label, place
+from xarch.modules.rules.domain.values import Import, Profile, SourceFile
 
 
-def _dotted(path: tuple[str, ...]) -> tuple[tuple[str, ...], bool]:
-    parts = PurePosixPath(*path).with_suffix("").parts
-    is_package = parts[-1] == "__init__"
-    return (parts[:-1] if is_package else parts), is_package
+def dotted(path: tuple[str, ...]) -> tuple[tuple[str, ...], bool]:
+    """A file's dotted path below the root, and whether it is a package's __init__."""
+    steps = path[:-1] + (path[-1].removesuffix(".py"),) if path else path
+    is_package = bool(steps) and steps[-1] == "__init__"
+    return (steps[:-1] if is_package else steps), is_package
 
 
-def _targets(imports: Iterable[Import], package: tuple[str, ...], known: set[tuple[str, ...]],
-             root: str) -> Iterator[tuple[int, tuple[str, ...]]]:
-    """Yield (line, absolute path below the root package) for every import that points into it."""
+def targets(imports: Iterable[Import], package: tuple[str, ...], known: set[tuple[str, ...]],
+            root: str) -> Iterator[tuple[int, tuple[str, ...]]]:
+    """Yield (line, absolute path below the root package) for every import that points into it.
+
+    `from m import n` names the module m.n when it is a known file, else the module m.
+    """
     for imp in imports:
         if imp.names is None:
             if imp.module[:1] == (root,):
@@ -41,19 +43,19 @@ def _targets(imports: Iterable[Import], package: tuple[str, ...], known: set[tup
             yield imp.line, candidate if candidate in known else base
 
 
-def violations(files: Iterable[SourceFile], layout: Parts, root: str) -> list[Violation]:
-    """Check files below the root package named root; layout gives the folder names that place code."""
-    parsed = [(f, *_dotted(f.path)) for f in files]
-    known = {parts for _, parts, _ in parsed}
+def violations(files: Iterable[SourceFile], profile: Profile, root: str) -> list[Violation]:
+    """Check files below the root package named root against the profile's rules."""
+    parsed = [(f, *dotted(f.path)) for f in files]
+    known = {steps for _, steps, _ in parsed}
     found: list[Violation] = []
-    for file, parts, is_package in parsed:
-        src = place_of(parts, layout)
+    for file, steps, is_package in parsed:
+        src = place(profile, steps)
         if src is None:
             continue
-        package = parts if is_package else parts[:-1]
-        for line, target in _targets(file.imports, package, known, root):
-            dst = place_of(target, layout)
-            shown = f"{root}.{'.'.join(target)}"
-            if dst is not None and not allowed(src, dst):
-                found.append(Violation(file.name, line, f"{label(src)} may not import {label(dst)} ({shown})"))
+        package = steps if is_package else steps[:-1]
+        for line, target in targets(file.imports, package, known, root):
+            dst = place(profile, target)
+            if dst is not None and not allowed(profile, src, dst):
+                shown = ".".join((root, *target))
+                found.append(Violation(file.name, line, f"{label(profile, src)} may not import {label(profile, dst)} ({shown})"))
     return found

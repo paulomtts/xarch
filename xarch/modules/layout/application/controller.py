@@ -9,4 +9,4 @@ class LayoutController:
         self._service = service
 
     def check(self, cmd: CheckStructure) -> StructureChecked:
-        return StructureChecked(tuple(self._service.check(cmd.root, cmd.package, cmd.profile)))
+        return StructureChecked(tuple(self._service.check(cmd.root, cmd.package, cmd.profile, cmd.tests)))

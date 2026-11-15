@@ -8,6 +8,8 @@ layout:
   kernel:
     logic: {}
   modules:
+    # `each` is the repeating folder, one per instance; `singular` names one instance, as the docs show it
+    singular: module
     each:
       contract: {}
       domain: {}
@@ -59,7 +61,7 @@ parts:
     litmus: >-
       Does it turn what a service returns or raises into a `Result` for the caller (exceptions into variants,
       entities into DTOs), without deciding any business rule? If yes, it goes here. If it names argument parsing or
-      terminal output, it belongs in `cli/`. If it names SQL, it belongs in `adapters/`.
+      terminal output, it belongs in `cli/`. If it handles a table row, it belongs in `adapters/`.
   services:
     path: modules/*/application/services
     role: "use-case steps: load, check, act, persist"
@@ -101,6 +103,7 @@ parts:
       engine, table models) that knows none of the types of any one module? If yes, it goes here, named for the
       technology (a table model, for its table) and never for a module. If it translates a module's types for a
       port, it belongs in that module's `adapters/`.
+    untested: "it wraps outside technology; adapters are tested against a stub of it"
   cli:
     path: cli
     entry: true
@@ -109,8 +112,6 @@ parts:
       Does it parse arguments or print to the terminal, whichever module's data it shows? If yes, it goes here. If
       it reports a failure as a `Result`, it belongs in the controller. If it holds a business rule, it belongs in
       `domain/`.
-    driver_proves: "argument parsing, exit codes and terminal output"
-    driver_test: {file: examples/cli/driver.py}
   bootstrap:
     path: bootstrap
     role: "composition root: binds ports to adapters, hands controllers to cli/"
@@ -118,6 +119,7 @@ parts:
       Does it choose which adapter fills which port, build the services and controller around them, wrap one
       module's controller in another's adapter, or define the schema? If yes, it goes here, and nowhere else. If it
       only implements one module's port against a real system, it belongs in `adapters/`.
+    untested: "it wires the app and holds no rule; it has no test of its own"
 
 # What each part may import. <part>@own: in the importer's module; <part>@any: in any module; a bare <part>: a part
 # outside the modules; /<path> after it: only that path below the part; "*": everything (quoted: * starts a YAML alias).
@@ -134,6 +136,14 @@ rules:
   platform:   [platform, kernel]
   cli:        [cli, controller@any, contract@any, kernel]
   bootstrap:  ["*"]
+
+# The outside packages each part may import, by top-level import name (what follows `import`). The standard library
+# is always allowed and test code is not checked; a part not listed here may import no outside package.
+libraries:
+  platform:   [sqlmodel]
+  adapters:   [sqlmodel]
+  cli:       [typer]
+  bootstrap:  [sqlmodel, typer]
 
 # The layers of a module, each from the inside out: no part imports a part after it in its chain.
 layers:
@@ -161,5 +171,223 @@ naming:
   - {kind: table model,    where: platform/sql/tables/,  pattern: "thing and `Row`",             example: DocumentRow}
   - {kind: test fake,      where: tests/fakes/,          pattern: "`Fake` and the port's name",  example: FakeDocumentRepo}
 
+# The kinds of test, in the order their litmus tests run when a test's tier is not obvious: the first it passes wins.
+# subject: the parts it tests (<part>/<path> for only a path below one), shown as their folders unless subject_text
+# says otherwise. Every part is in some tier's subject, or says why not with `untested` (see platform).
+# helpers: the files that test code shares, written like an example (path, file, note); {{tier_helpers}} shows them.
+# example: the tier's example test, where it would live in the project (path) and the file holding it (file, next
+# to this one); its note is shown right after the path, as written.
+tiers:
+  - name: unit
+    subject: [kernel, kernel/logic, domain, logic, adapters]
+    proves: an invariant, a value rule, a state transition, a pure rule, an adapter's translation
+    may_touch: "nothing: no I/O, no clock, no fakes; an adapter gets a stub of its `platform/` client"
+    litmus: |-
+      Does it prove a rule, value or transition by building the object and asking it, or by calling a
+      pure function from `logic/`, or by handing an adapter a stub client and checking what it translates, with no
+      port in sight? If yes, it is a unit test. If it needs a port to get an
+      answer, it is an integration test. If it asserts how a port was called, it is testing nothing.
+    one_file_per: domain object or rule
+    cases_from: the invariants in the module doc
+    data: built in the test
+    example: {path: tests/modules/documents/domain/test_document.py, file: examples/shared/tiers/unit.py}
+    helpers:
+      - {path: tests/modules/documents/builders.py, file: examples/shared/tiers/builders.py}
+  - name: integration
+    subject: [controller, services, ports, contract]
+    subject_text: "`application/controller.py`, with the services behind it"
+    proves: one `Result` variant per path, driven through the controller
+    may_touch: "real controllers only; their ports are `tests/fakes/`, or mocks for fire-only ports"
+    litmus: |-
+      Does it drive one use case through its real controller and assert one `Result` variant? If yes,
+      it is an integration test. If it asserts what a fake holds instead of the `Result`,
+      check first that the `Result` would not already say it. If it asserts how a row is stored or read
+      back, it is a unit test of the adapter. If it mocks a repo to assert it was called, fake the repo and assert
+      the `Result`.
+    one_file_per: use case, headed by its scenarios
+    cases_from: "the scenarios: one per `Result` variant, happy and unhappy"
+    data: the test loads the fake before acting; a builder per aggregate for the common shape, never a shared dataset
+    example: {path: tests/modules/documents/application/test_publish.py, file: examples/shared/tiers/integration.py,
+              note: " (its header is in section 5.2)"}
+    helpers:
+      - {path: tests/modules/documents/application/helpers.py, file: examples/shared/tiers/helpers.py}
+  - name: rendering
+    subject: [cli]
+    proves: what the terminal output shows for each `Result`; never a business outcome
+    may_touch: a fake controller, injected
+    litmus: |-
+      Does it prove what the terminal output shows for one `Result`, with a fake controller injected? If yes,
+      it is a rendering test. If it asserts what the use case did, or needs the real controller to mean
+      anything, it is an integration test wearing a screen.
+    one_file_per: command or page
+    cases_from: the `Result` variants it shows
+    data: "none: the fake controller returns the `Result` under test"
+    example: {path: tests/cli/test_publish.py, file: examples/cli/tiers/rendering.py}
+    helpers:
+      - {path: tests/cli/conftest.py, file: examples/cli/tiers/client.py}
+  - name: guard
+    subject: []
+    subject_text: the source tree
+    proves: a rule of the architecture holds
+    may_touch: "`tests/architecture/`"
+    litmus: |-
+      Does it read the source tree and fail on a rule of architecture.md, whatever the app does? If
+      yes, it is a guard, and it has a file under `artifacts/guards/`. If it runs the app, it is not a guard.
+    one_file_per: rule
+    cases_from: the standard it enforces
+    data: none
+    example: {path: tests/architecture/test_rules.py, file: examples/shared/tiers/guard.py}
+
+# Where the test fakes live (path, below the tests root) and the parts they stand in for (for): only a test whose
+# tier's subject holds one of those parts may import them.
+fakes: {path: tests/fakes, for: [ports]}
+
+# The pre-built checks `xarch check` runs besides those it derives from rules, libraries and tiers, each by name with
+# its parameters. package-only: the parts imported only as a package from outside them. scenario-coverage: the part
+# holding the result unions (results), the tier whose test files hold their scenarios (tier), and how a union's name
+# ends (suffix). no-comments: none.
+guards:
+  package-only:      [contract]
+  scenario-coverage: {results: contract, tier: integration, suffix: Result}
+  no-comments:       {}
+
+# The project docs `xarch init` writes below docs/project/, in this order, and how the docs tree shows them. A key
+# is a path: a file takes `from`, the template file it is written from (next to this one, placeholders filled as
+# the docs template describes), and an optional one-line `note` for the tree; a key ending in `/` is a folder, which
+# takes only a `note`. A folder holding one file and given no entry of its own shows as `<file>; <note>` on one line.
+# A file is never overwritten. Without `docs`, `init` writes no docs.
 docs:
-  template: cli.md
+  statement.md:                      {from: docs/statement.md, note: problem statement and use cases}
+  domain.md:                         {from: docs/domain.md, note: domain diagram}
+  design.md:                         {from: docs/design.md, note: design document}
+  architecture.md:                   {from: cli.md, note: this file}
+  testing.md:                        {from: testing.md, note: "how the system is tested: tiers, commands, placement, fakes, guards"}
+  requirements.md:                   {from: docs/requirements.md}
+  adrs/:                             {note: architecture decision records}
+  adrs/0000-template.md:             {from: docs/adr.md}
+  artifacts/standards/_template.md:  {from: docs/standard.md}
+  artifacts/audits/_template.md:     {from: docs/audit.md}
+  artifacts/taxonomy/_template.md:   {from: docs/taxonomy.md}
+  artifacts/modules/_template.md:    {from: docs/module.md}
+  artifacts/guards/_template.md:     {from: docs/guard.md, note: one per test that checks the codebase rather than the product}
+
+# The code examples of the docs, one file of the example project each: the part it illustrates, where it would
+# live in the app (path), the file holding its code (file, next to this one) and an optional note for its header line.
+# The template shows them with {{example:<name>, ...}}; `xarch` checks that their imports obey the rules above.
+examples:
+  content_review:
+    part: ports
+    path: modules/documents/application/ports/content_review.py
+    file: examples/shared/modules/documents/application/ports/content_review.py
+    note: "documents' own words, no other module named"
+  moderation_content_review:
+    part: adapters
+    path: modules/documents/adapters/moderation_content_review.py
+    file: examples/shared/modules/documents/adapters/moderation_content_review.py
+    note: "the only file that names moderation"
+  contract_commands:
+    part: contract
+    path: modules/documents/contract/commands.py
+    file: examples/shared/modules/documents/contract/commands.py
+  contract_views:
+    part: contract
+    path: modules/documents/contract/views.py
+    file: examples/shared/modules/documents/contract/views.py
+  contract_results:
+    part: contract
+    path: modules/documents/contract/results.py
+    file: examples/shared/modules/documents/contract/results.py
+  contract_init:
+    part: contract
+    path: modules/documents/contract/__init__.py
+    file: examples/shared/modules/documents/contract/__init__.py
+    note: "the public names; what is not listed here is not part of the contract"
+  domain_values:
+    part: domain
+    path: modules/documents/domain/values.py
+    file: examples/shared/modules/documents/domain/values.py
+  domain_errors:
+    part: domain
+    path: modules/documents/domain/errors.py
+    file: examples/shared/modules/documents/domain/errors.py
+    note: "each module subclasses the kernel's base errors"
+  document:
+    part: domain
+    path: modules/documents/domain/document.py
+    file: examples/shared/modules/documents/domain/document.py
+  controller:
+    part: controller
+    path: modules/documents/application/controller.py
+    file: examples/shared/modules/documents/application/controller.py
+  document_service:
+    part: services
+    path: modules/documents/application/services/document_service.py
+    file: examples/shared/modules/documents/application/services/document_service.py
+  staleness:
+    part: logic
+    path: modules/documents/application/logic/staleness.py
+    file: examples/shared/modules/documents/application/logic/staleness.py
+  document_repo:
+    part: ports
+    path: modules/documents/application/ports/document_repo.py
+    file: examples/shared/modules/documents/application/ports/document_repo.py
+  db_document_repo:
+    part: adapters
+    path: modules/documents/adapters/db_document_repo.py
+    file: examples/shared/modules/documents/adapters/db_document_repo.py
+  kernel_identifiers:
+    part: kernel
+    path: kernel/identifiers.py
+    file: examples/shared/kernel/identifiers.py
+  kernel_errors:
+    part: kernel
+    path: kernel/errors.py
+    file: examples/shared/kernel/errors.py
+  kernel_time:
+    part: kernel
+    path: kernel/time.py
+    file: examples/shared/kernel/time.py
+  kernel_text:
+    part: kernel
+    path: kernel/logic/text.py
+    file: examples/shared/kernel/logic/text.py
+    note: "a pure function two modules need"
+  smtp_client:
+    part: platform
+    path: platform/email/smtp_client.py
+    file: examples/shared/platform/email/smtp_client.py
+  system_clock:
+    part: platform
+    path: platform/clock.py
+    file: examples/shared/platform/clock.py
+  documents_table:
+    part: platform
+    path: platform/sql/tables/documents.py
+    file: examples/shared/platform/sql/tables/documents.py
+    note: "columns only, no module's types"
+  dependencies:
+    part: cli
+    path: cli/dependencies.py
+    file: examples/cli/cli/dependencies.py
+    note: "how a command reaches its controller"
+  documents_commands:
+    part: cli
+    path: cli/commands/documents.py
+    file: examples/cli/cli/commands/documents.py
+  wiring:
+    part: bootstrap
+    path: bootstrap/wiring.py
+    file: examples/shared/bootstrap/wiring.py
+  bootstrap_app:
+    part: bootstrap
+    path: bootstrap/app.py
+    file: examples/cli/bootstrap/app.py
+  bootstrap_main:
+    part: bootstrap
+    path: bootstrap/main.py
+    file: examples/cli/bootstrap/main.py
+    note: "the script that starts the program"
+  migration:
+    part: bootstrap
+    path: bootstrap/migrations/0001_create_documents.py
+    file: examples/shared/bootstrap/migrations/0001_create_documents.py

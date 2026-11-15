@@ -1,0 +1,88 @@
+# The architecture xarch itself follows: the layout and rules of the bundled cli profile, the outside packages xarch
+# really uses, and the tests it really has. `xarch check --app xarch` reads it through [tool.xarch] in pyproject.toml.
+xarch: 1
+name: xarch
+
+layout:
+  bootstrap:
+    migrations: {}
+  kernel:
+    logic: {}
+  modules:
+    # `each` is the repeating folder, one per instance; `singular` names one instance, as the docs show it
+    singular: module
+    each:
+      contract: {}
+      domain: {}
+      application:
+        controller.py: file
+        services: {}
+        logic: {}
+        ports: {}
+      adapters: {}
+  platform: {}
+  cli:
+    commands: {}
+
+parts:
+  kernel:     {path: kernel, role: "pure primitives and the rules two modules share"}
+  domain:     {path: modules/*/domain, role: "entities, values, errors: invariants only"}
+  contract:   {path: modules/*/contract, role: "the module's published language: commands, Results"}
+  controller: {path: modules/*/application/controller.py, role: "maps failures to a Result"}
+  services:   {path: modules/*/application/services, role: "use-case steps: load, check, act"}
+  logic:      {path: modules/*/application/logic, role: "pure functions over the module's domain objects"}
+  ports:      {path: modules/*/application/ports, role: "Protocols for what the module needs from the outside"}
+  adapters:   {path: modules/*/adapters, role: "implement the ports on the filesystem or another module's contract"}
+  platform:   {path: platform, role: "the filesystem, TOML and YAML readers"}
+  cli:        {path: cli, entry: true, role: "the only place for commands and terminal output"}
+  bootstrap:  {path: bootstrap, role: "composition root: binds ports to adapters, hands controllers to cli/"}
+
+# The same rules as the bundled cli profile.
+rules:
+  kernel:     [kernel]
+  domain:     [domain@own, kernel]
+  contract:   [contract@own, domain@own/values, kernel]
+  controller: [controller@own, services@own, logic@own, domain@own, ports@own, contract@own, kernel]
+  services:   [services@own, logic@own, domain@own, ports@own, contract@own, kernel]
+  logic:      [logic@own, domain@own, kernel]
+  ports:      [ports@own, domain@own, kernel]
+  adapters:   [adapters@own, ports@own, domain@own, kernel, platform, contract@any]
+  platform:   [platform, kernel]
+  cli:        [cli, controller@any, contract@any, kernel]
+  bootstrap:  ["*"]
+
+# The outside packages xarch imports, where it imports them.
+libraries:
+  platform: [yaml]
+  cli:      [typer]
+
+# xarch's tests, as they are: the kernel's pure rules are unit-tested; everything else is tested through the app
+# that bootstrap/ wires, against real files in a temporary folder, so those tests may import anything; the guard
+# runs the wired check on xarch's own source.
+tiers:
+  - name: unit
+    subject: [kernel, kernel/logic]
+    proves: a pure rule of the kernel
+    may_touch: "nothing: no I/O"
+    litmus: Does it call a pure function of the kernel and check its answer?
+    example: {path: tests/kernel/logic/test_placement.py, file: tests/kernel/logic/test_placement.py}
+  - name: wired
+    subject: [domain, contract, controller, services, logic, ports, adapters, platform, cli, bootstrap]
+    proves: a rule or a use case, through the app bootstrap/ wires, or through a controller around fakes
+    may_touch: "anything bootstrap/ wires; temporary folders; tests/fakes/"
+    litmus: Does it drive xarch's own code, wired or around fakes, and check what comes out?
+    example: {path: tests/modules/rules/application/test_check.py, file: tests/modules/rules/application/test_check.py}
+  - name: guard
+    subject: [bootstrap]
+    subject_text: xarch's own source tree
+    proves: xarch follows the architecture it enforces
+    may_touch: "`tests/architecture/`"
+    litmus: Does it run the wired check on xarch's own source?
+    example: {path: tests/architecture/test_self_check.py, file: tests/architecture/test_self_check.py}
+
+fakes: {path: tests/fakes, for: [ports]}
+
+guards:
+  package-only:      [contract]
+  scenario-coverage: {results: contract, tier: wired, suffix: Result}
+  no-comments:       {}

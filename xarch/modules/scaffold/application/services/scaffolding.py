@@ -6,9 +6,12 @@ from pathlib import Path
 from xarch.modules.scaffold.application.ports.files import Files
 from xarch.modules.scaffold.application.ports.skeleton import Skeleton
 from xarch.modules.scaffold.contract import Report
-from xarch.modules.scaffold.domain.errors import InvalidModuleName, ModuleExists, ModulesFolderMissing
+from xarch.modules.scaffold.domain.errors import AlreadyExists, FolderMissing, InvalidName, UnknownKind
 from xarch.modules.scaffold.domain.names import valid_name
 from xarch.modules.scaffold.domain.plan import holder, plan
+from xarch.modules.scaffold.domain.pyproject import recorded_location, with_profile
+
+PYPROJECT = "pyproject.toml"
 
 
 class Scaffolding:
@@ -16,22 +19,40 @@ class Scaffolding:
         self._files, self._skeleton = files, skeleton
 
     def init(self, root: Path, profile: str) -> Report:
+        """The app's top level, then the profile recorded in the project's pyproject.toml, then the project docs."""
         report = self._build(root, self._skeleton.top_level(profile))
         base = holder(root)
-        for rel, template in self._skeleton.docs(profile):           # the project docs, after the app
+        self._record(base, profile, report)
+        for rel, template in self._skeleton.docs(profile):
             self._write(base.joinpath(*rel), template, report)
         return report
 
-    def new_module(self, root: Path, name: str, profile: str) -> Report:
+    def new(self, root: Path, kind: str, name: str, profile: str) -> Report:
+        """Refused unless the name is valid, the kind is declared, init ran and nothing would be overwritten."""
         if not valid_name(name):
-            raise InvalidModuleName(name)
-        modules = root / "modules"
-        if not self._files.is_dir(modules):
-            raise ModulesFolderMissing(modules)                      # precondition: init ran
-        base = modules / name
+            raise InvalidName(name)
+        kinds = self._skeleton.kinds(profile)
+        if kind.strip("/") not in kinds:
+            raise UnknownKind(kind, kinds)
+        folder, entries = kinds[kind.strip("/")]
+        parent = root.joinpath(*folder)
+        if not self._files.is_dir(parent):
+            raise FolderMissing(parent)
+        base = parent / name
         if self._files.exists(base):
-            raise ModuleExists(name, base)                           # precondition: nothing to overwrite
-        return self._build(base, self._skeleton.module(profile))
+            raise AlreadyExists(name, base)
+        return self._build(base, entries)
+
+    def _record(self, base: Path, profile: str, report: Report) -> None:
+        found = self._files.find_upward(base.absolute(), PYPROJECT)
+        target = base / PYPROJECT if found is None or found.parent == base.absolute() else found
+        text = self._files.read_text(target) if found is not None else None
+        changed = with_profile(text, recorded_location(profile, target.parent))
+        if changed is None:
+            report.skipped.append(target)
+            return
+        self._files.write_text(target, changed)
+        (report.created if found is None else report.updated).append(target)
 
     def _build(self, base: Path, entries: Iterable[tuple[tuple[str, ...], bool]]) -> Report:
         report = Report()
@@ -40,7 +61,8 @@ class Scaffolding:
         return report
 
     def _write(self, target: Path, text: str, report: Report) -> None:
-        if self._files.exists(target):                               # never overwrite
+        """Never overwrites: what exists is reported skipped."""
+        if self._files.exists(target):
             report.skipped.append(target)
             return
         if text:

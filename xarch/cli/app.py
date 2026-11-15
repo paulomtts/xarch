@@ -10,7 +10,7 @@ from xarch.modules.spec.application.controller import SpecController
 
 def build(rules: RulesController, layout: LayoutController, scaffolding: ScaffoldController,
           spec: SpecController) -> typer.Typer:
-    app = typer.Typer(help="Check and scaffold the architecture of docs/project/architecture.md.", no_args_is_help=True)
+    app = typer.Typer(help="Check and scaffold the architecture a profile describes.", no_args_is_help=True)
     check.register(app, rules, layout, spec)
     scaffold.register(app, scaffolding, spec)
     return app

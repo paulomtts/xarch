@@ -1,4 +1,5 @@
-"""What every command shares: the --app and --profile options, choosing the profile, and how a refusal reaches the terminal."""
+"""What every command shares: the --app, --profile and --tests options, choosing the profile, and how a refusal
+reaches the terminal."""
 from pathlib import Path
 from typing import Annotated
 
@@ -10,7 +11,11 @@ from xarch.modules.spec.contract import ProfileRefused, ProfileSelected, SelectP
 AppPath = Annotated[Path, typer.Option("--app", help="The app/ folder to work on.")]
 DEFAULT_APP = Path("app")
 ProfileName = Annotated[str | None, typer.Option(
-    "--profile", help="Skeleton profile: cli or web. Default: \\[tool.xarch] profile in pyproject.toml, else cli.")]
+    "--profile", help="The profile: the name of a bundled profile, or a path to a profile file (.yaml or .json). "
+                      "Default: \\[tool.xarch] profile in pyproject.toml; with neither, the command fails.")]
+TestsPath = Annotated[Path | None, typer.Option(
+    "--tests", help="The tests folder to check. Default: \\[tool.xarch] tests in pyproject.toml, else tests/ beside "
+                    "the app folder, if there is one.")]
 
 
 def fail(message: str) -> typer.Exit:
@@ -19,8 +24,17 @@ def fail(message: str) -> typer.Exit:
 
 
 def profile_for(spec: SpecController, app_path: Path, override: str | None) -> str:
-    match spec.select(SelectProfile(app_path, override)):
-        case ProfileSelected(name):
-            return name
+    return selection(spec, app_path, override, None)[0]
+
+
+def selection(spec: SpecController, app_path: Path, override: str | None,
+              tests: Path | None) -> tuple[str, Path | None]:
+    """The architecture in force and the tests root to check: the chosen one, else tests/ beside the app folder
+    when it exists, else None."""
+    match spec.select(SelectProfile(app_path, override, tests)):
+        case ProfileSelected(name, chosen):
+            if chosen is None and (app_path.absolute().parent / "tests").is_dir():
+                chosen = app_path.absolute().parent / "tests"
+            return name, chosen
         case ProfileRefused(reason):
             raise fail(reason)

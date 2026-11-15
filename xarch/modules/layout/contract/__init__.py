@@ -11,9 +11,12 @@ from xarch.kernel.violations import Violation
 
 @dataclass(frozen=True)
 class CheckStructure:
+    """Check that the layout of the architecture at profile exists below root, named package in violations, and
+    that the tests below tests (None: no tests) mirror the app's folders."""
     root: Path
-    package: str = "app"           # names the root in violations
-    profile: str = "cli"           # the skeleton profile whose folders must exist
+    package: str
+    profile: str
+    tests: Path | None = None
 
 
 @dataclass(frozen=True)

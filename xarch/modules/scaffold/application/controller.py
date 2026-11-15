@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from xarch.kernel.errors import DomainError
 from xarch.modules.scaffold.application.services.scaffolding import Scaffolding
-from xarch.modules.scaffold.contract import Init, NewModule, NewModuleResult, Refused, Scaffolded
+from xarch.modules.scaffold.contract import Init, New, NewResult, Refused, Scaffolded
 
 
 class ScaffoldController:
@@ -12,9 +12,10 @@ class ScaffoldController:
     def init(self, cmd: Init) -> Scaffolded:
         return Scaffolded(self._service.init(cmd.root, cmd.profile))
 
-    def new_module(self, cmd: NewModule) -> NewModuleResult:
+    def new(self, cmd: New) -> NewResult:
+        """Every refusal of the service carries its reason."""
         try:
-            report = self._service.new_module(cmd.root, cmd.name, cmd.profile)
-        except DomainError as e:                                     # every refusal carries its reason
+            report = self._service.new(cmd.root, cmd.kind, cmd.name, cmd.profile)
+        except DomainError as e:
             return Refused(e.reason)
         return Scaffolded(report)

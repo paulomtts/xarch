@@ -8,7 +8,10 @@ class Skeleton(Protocol):
 
     def top_level(self, profile: str) -> list[tuple[tuple[str, ...], bool]]: ...
 
-    def module(self, profile: str) -> list[tuple[tuple[str, ...], bool]]: ...
+    def kinds(self, profile: str) -> dict[str, tuple[tuple[str, ...], list[tuple[tuple[str, ...], bool]]]]:
+        """Every folder of the layout that declares `each:`, by its path written with '/': the folder below the
+        root, and what each instance of it holds."""
+        ...
 
     def docs(self, profile: str) -> list[tuple[tuple[str, ...], str]]:
         """(path below the folder holding the app, text) for every project doc."""

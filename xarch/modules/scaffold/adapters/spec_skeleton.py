@@ -6,21 +6,28 @@ from typing import Protocol
 from xarch.modules.spec.contract import Docs, Entry, Skeleton
 
 
-class _Spec(Protocol):                     # the little we use of spec's controller
+class _Spec(Protocol):
+    """The little scaffold uses of spec's controller."""
+
     def skeleton(self, profile: str) -> Skeleton: ...
 
     def docs(self, profile: str) -> Docs: ...
 
 
-class SpecSkeleton:                        # satisfies scaffold's Skeleton port
+class SpecSkeleton:
+    """Satisfies scaffold's Skeleton port."""
+
     def __init__(self, spec: _Spec):
         self._spec = spec
 
     def top_level(self, profile: str) -> list[tuple[tuple[str, ...], bool]]:
         return _entries(self._spec.skeleton(profile).top_level)
 
-    def module(self, profile: str) -> list[tuple[tuple[str, ...], bool]]:
-        return _entries(self._spec.skeleton(profile).module)
+    def kinds(self, profile: str) -> dict[str, tuple[tuple[str, ...], list[tuple[tuple[str, ...], bool]]]]:
+        skeleton = self._spec.skeleton(profile)
+        if skeleton.each_root is None:
+            return {}
+        return {"/".join(skeleton.each_root): (skeleton.each_root, _entries(skeleton.each))}
 
     def docs(self, profile: str) -> list[tuple[tuple[str, ...], str]]:
         docs = self._spec.docs(profile)

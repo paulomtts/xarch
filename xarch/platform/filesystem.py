@@ -20,6 +20,12 @@ class FileSystem:
             return []
         return [p.name for p in path.iterdir() if p.is_dir()]
 
+    def folders(self, path: Path) -> list[tuple[str, ...]]:
+        """Every folder below path, at any depth, as its path below it, sorted; [] if path is not a folder."""
+        if not path.is_dir():
+            return []
+        return sorted(p.relative_to(path).parts for p in path.rglob("*") if p.is_dir())
+
     def find_upward(self, start: Path, name: str) -> Path | None:
         """The nearest file called name in start or a folder above it (start made absolute first), or None."""
         here = start.absolute()

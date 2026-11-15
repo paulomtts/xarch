@@ -12,3 +12,8 @@ class Settings(Protocol):
     def configured_profile(self, app: Path) -> Configured | None:
         """The profile configured for the project holding app, or None; raises UnreadableSettings."""
         ...
+
+    def configured_tests(self, app: Path) -> Path | None:
+        """The tests root configured for the project holding app, relative paths resolved against the folder holding
+        its pyproject.toml, or None; raises UnreadableSettings."""
+        ...

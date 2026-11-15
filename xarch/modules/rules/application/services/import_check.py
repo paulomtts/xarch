@@ -3,17 +3,47 @@ from __future__ import annotations
 from pathlib import Path
 
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.application.ports.skeleton import Skeleton
+from xarch.modules.rules.application.logic import comments, libraries, package_only, scenarios, tier_imports
+from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.application.ports.source_tree import SourceTree
 from xarch.modules.rules.domain.errors import RootMissing
-from xarch.modules.rules.domain.imports import violations
+from xarch.modules.rules.domain.imports import dotted, violations
+from xarch.modules.rules.domain.places import place
+from xarch.modules.rules.domain.values import Profile
 
 
 class ImportCheck:
-    def __init__(self, tree: SourceTree, skeleton: Skeleton):
-        self._tree, self._skeleton = tree, skeleton
+    """Every check of what the source says: the app's imports, its outside packages, the tests' imports by tier and
+    the guards the profile switches on."""
 
-    def check(self, root: Path, package: str, profile: str) -> list[Violation]:
-        if not self._tree.is_dir(root):
-            raise RootMissing(root)                                  # precondition: the root must exist
-        return violations(self._tree.read(root), self._skeleton.parts(profile), package)
+    def __init__(self, tree: SourceTree, profiles: Profiles):
+        self._tree, self._profiles = tree, profiles
+
+    def check(self, root: Path, package: str, profile: str, tests: Path | None = None) -> list[Violation]:
+        """The violations below root and below tests; raises RootMissing when either is not a folder.
+
+        Only the app's files that the profile governs are read: a file in a folder that is neither a part nor a
+        folder of the layout (such as reference code kept as data) is never read. Every file below tests is read.
+        """
+        for folder in (root, tests):
+            if folder is not None and not self._tree.is_dir(folder):
+                raise RootMissing(folder)
+        rules = self._profiles.profile(profile)
+        app = self._tree.read(root, [p for p in self._tree.paths(root) if _governed(rules, p)])
+        test_files = self._tree.read(tests, self._tree.paths(tests)) if tests is not None else []
+        broken = [Violation(f.name, f.error[0], f.error[1]) for f in (*app, *test_files) if f.error is not None]
+        app = [f for f in app if f.error is None]
+        test_files = [f for f in test_files if f.error is None]
+        tests_root = tests.absolute().resolve().name if tests is not None else ""
+        found = broken + violations(app, rules, package) + libraries.violations(app, rules, package)
+        found += tier_imports.violations(test_files, app, rules, package, tests_root)
+        found += package_only.violations(app, test_files, rules, package)
+        found += scenarios.violations(app, test_files, rules)
+        if rules.no_comments:
+            found += comments.violations([*app, *test_files])
+        return found
+
+
+def _governed(profile: Profile, path: tuple[str, ...]) -> bool:
+    return place(profile, dotted(path)[0]) is not None
+

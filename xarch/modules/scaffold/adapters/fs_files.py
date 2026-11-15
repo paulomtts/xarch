@@ -5,7 +5,9 @@ from pathlib import Path
 from xarch.platform.filesystem import FileSystem
 
 
-class FsFiles:                             # satisfies scaffold's Files port
+class FsFiles:
+    """Satisfies scaffold's Files port."""
+
     def __init__(self, fs: FileSystem):
         self._fs = fs
 
@@ -20,3 +22,9 @@ class FsFiles:                             # satisfies scaffold's Files port
 
     def write_text(self, path: Path, text: str) -> None:
         self._fs.write_text(path, text)
+
+    def read_text(self, path: Path) -> str:
+        return self._fs.read_text(path)
+
+    def find_upward(self, start: Path, name: str) -> Path | None:
+        return self._fs.find_upward(start, name)

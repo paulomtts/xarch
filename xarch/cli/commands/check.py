@@ -1,7 +1,7 @@
-"""xarch check: import rules (rules module) and structure rules (layout module)."""
+"""xarch check: what the source says (rules module) and which folders exist (layout module)."""
 import typer
 
-from xarch.cli.terminal import DEFAULT_APP, AppPath, ProfileName, fail, profile_for
+from xarch.cli.terminal import DEFAULT_APP, AppPath, ProfileName, TestsPath, fail, selection
 from xarch.modules.layout.application.controller import LayoutController
 from xarch.modules.layout.contract import CheckStructure
 from xarch.modules.rules.application.controller import RulesController
@@ -11,14 +11,15 @@ from xarch.modules.spec.application.controller import SpecController
 
 def register(app: typer.Typer, rules: RulesController, layout: LayoutController, spec: SpecController) -> None:
     @app.command()
-    def check(app_path: AppPath = DEFAULT_APP, profile: ProfileName = None) -> None:
-        """Report import-rule and structure violations; extra folders and files are ignored."""
-        chosen = profile_for(spec, app_path, profile)
-        match rules.check(CheckImports(app_path, profile=chosen)):
+    def check(app_path: AppPath = DEFAULT_APP, profile: ProfileName = None, tests: TestsPath = None) -> None:
+        """Report every violation of the architecture in the app and its tests."""
+        chosen, tests_root = selection(spec, app_path, profile, tests)
+        package = app_path.absolute().resolve().name
+        match rules.check(CheckImports(app_path, package, chosen, tests_root)):
             case NotADirectory(root):
                 raise fail(f"{root} is not a directory")
             case ImportsChecked(violations):
-                found = violations + layout.check(CheckStructure(app_path, profile=chosen)).violations
+                found = violations + layout.check(CheckStructure(app_path, package, chosen, tests_root)).violations
         for violation in found:
             typer.echo(violation)
         if not found:

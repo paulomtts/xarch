@@ -17,7 +17,9 @@ def _bundled_folder() -> Traversable:
     return resources.files("xarch").joinpath("architectures")
 
 
-class FsArchitectureFiles:                 # satisfies spec's ArchitectureFiles port
+class FsArchitectureFiles:
+    """Satisfies spec's ArchitectureFiles port."""
+
     def __init__(self, fs: FileSystem, reader: DataFileReader):
         self._fs, self._reader = fs, reader
 

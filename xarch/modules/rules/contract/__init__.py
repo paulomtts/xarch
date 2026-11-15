@@ -9,9 +9,12 @@ from xarch.kernel.violations import Violation
 
 @dataclass(frozen=True)
 class CheckImports:
+    """Check the code below root, imported as package, and the tests below tests (None: no tests), against the
+    architecture at profile (a bundled name or a path)."""
     root: Path
-    package: str = "app"           # the import name of the root folder
-    profile: str = "cli"           # the skeleton profile; it names the entry-point folder
+    package: str
+    profile: str
+    tests: Path | None = None
 
 
 @dataclass(frozen=True)

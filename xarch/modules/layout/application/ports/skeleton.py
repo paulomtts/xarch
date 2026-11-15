@@ -8,6 +8,10 @@ class Skeleton(Protocol):
 
     def top_level(self, profile: str) -> list[str]: ...
 
-    def module_parts(self, profile: str) -> list[tuple[tuple[str, ...], bool]]:
-        """(path below the module, is_dir) for every part that must exist in each module."""
+    def each_root(self, profile: str) -> tuple[str, ...] | None:
+        """The folder holding the instances of the layout's `each` folder, or None if it has none."""
+        ...
+
+    def each_parts(self, profile: str) -> list[tuple[tuple[str, ...], bool]]:
+        """(path below an instance, is_dir) for every part that must exist in each instance."""
         ...

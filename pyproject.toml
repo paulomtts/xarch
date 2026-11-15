@@ -26,3 +26,6 @@ dev = [
 
 [tool.uv.build-backend]
 module-root = ""
+
+[tool.xarch]
+profile = "architecture.yaml"

@@ -1,0 +1,1 @@
+DocumentId = NewType("DocumentId", UUID)

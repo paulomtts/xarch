@@ -1,0 +1,82 @@
+"""The tier-imports check: a test imports only what its tier may touch, derived from the profile's rules.
+
+A file below the tests root that has a tier (see tier_of) may import, of the app, its tier's subject parts and
+whatever those parts may import under `rules`, where @own means the instance of the `each` folder the test mirrors.
+Of the test code, it may import the fakes only when its tier's subject holds a part the fakes stand in for, and any
+other file only from its own folder (see tier_of). A test file that has no tier is a violation; any other file with
+no tier (a conftest.py or builders.py above every part's folder) and the fakes are not checked. Imports of the
+standard library and outside packages are not this check's business.
+"""
+from __future__ import annotations
+
+from collections.abc import Iterable, Iterator
+
+from xarch.kernel.logic.placement import Target, reaches
+from xarch.kernel.violations import Violation
+from xarch.modules.rules.application.logic.tier_of import Tested, as_place, tested
+from xarch.modules.rules.domain.imports import dotted, targets
+from xarch.modules.rules.domain.places import label, place
+from xarch.modules.rules.domain.values import Profile, SourceFile, TestTier
+
+NO_TIER = ("lies in no tier: no part's folder and no tier's example folder is mirrored here; a test lives in the "
+           "folder that mirrors its subject's path in the app")
+
+
+def may_import(profile: Profile, tier: TestTier) -> tuple[Target, ...]:
+    """The tier's subject parts, and what each of them may import."""
+    return tuple(t for s in tier.subject for t in (s, *profile.rules.get(s.part, ())))
+
+
+def may_use_fakes(profile: Profile, tier: TestTier) -> bool:
+    return profile.fakes is not None and any(s.part in profile.fakes.stand_in_for for s in tier.subject)
+
+
+def violations(tests: Iterable[SourceFile], app: Iterable[SourceFile], profile: Profile, root: str,
+               tests_root: str) -> list[Violation]:
+    """tests are the files below the tests root, imported as the package tests_root; app the app's files, below the
+    root package root."""
+    if not profile.tiers:
+        return []
+    tests = list(tests)
+    known_app = {dotted(f.path)[0] for f in app}
+    known_tests = {dotted(f.path)[0] for f in tests}
+    found: list[Violation] = []
+    for file in tests:
+        where = tested(profile, file.path)
+        if where.tier is None:
+            if where.is_test and not where.is_fake:
+                found.append(Violation(file.name, 0, NO_TIER))
+            continue
+        found += _app_imports(file, where, profile, root, known_app)
+        found += _test_imports(file, where, profile, tests_root, known_tests)
+    return found
+
+
+def _app_imports(file: SourceFile, where: Tested, profile: Profile, root: str,
+                 known: set[tuple[str, ...]]) -> Iterator[Violation]:
+    assert where.tier is not None
+    allowed = may_import(profile, where.tier)
+    absolute = tuple(i for i in file.imports if not i.level)
+    for line, target in targets(absolute, (), known, root):
+        dst = place(profile, target)
+        if dst is not None and not any(reaches(t, as_place(where.instance), dst) for t in allowed):
+            yield Violation(file.name, line, f"a {where.tier.name} test may not import {label(profile, dst)} "
+                                             f"({'.'.join((root, *target))})")
+
+
+def _test_imports(file: SourceFile, where: Tested, profile: Profile, tests_root: str,
+                  known: set[tuple[str, ...]]) -> Iterator[Violation]:
+    assert where.tier is not None
+    steps, is_package = dotted(file.path)
+    for line, target in targets(file.imports, steps if is_package else steps[:-1], known, tests_root):
+        shown = ".".join((tests_root, *target))
+        if profile.fakes is not None and target[:len(profile.fakes.path)] == profile.fakes.path:
+            if not may_use_fakes(profile, where.tier):
+                parts = ", ".join(profile.fakes.stand_in_for)
+                yield Violation(file.name, line, f"a {where.tier.name} test may not import the fakes ({shown}): only "
+                                                 f"a tier that tests {parts} may")
+        elif target[:len(where.own)] != where.own or not where.own:
+            own = "/".join((tests_root, *where.own))
+            yield Violation(file.name, line, f"a test may import test code only from its own folder {own}/ "
+                                             f"({shown})")
+

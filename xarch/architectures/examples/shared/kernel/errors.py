@@ -1,0 +1,3 @@
+class DomainError(Exception):
+    reason: str                    # a message safe to show the caller
+class NotFound(DomainError): ...
