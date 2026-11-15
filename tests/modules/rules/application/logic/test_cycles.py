@@ -48,7 +48,7 @@ def hop(instance: str, line: int, to: str, file: str = "adapters/peer.py") -> st
                  [f"app/modules/a/adapters/other.py:5: modules/a → modules/b → modules/a import each other in a cycle: "
                   f"{hop('a', 5, 'b', 'adapters/other.py')}; {hop('b', 1, 'a')} (cycles)"],
                  id="and of the files, the first by name"),
-    pytest.param([adapter("a", imp(1, "b.contract", "X", level=3)), adapter("b", uses(1, "a"))],
+    pytest.param([adapter("a", imp(1, "b.contract", "X", up=2)), adapter("b", uses(1, "a"))],
                  [f"app/modules/a/adapters/peer.py:1: modules/a → modules/b → modules/a import each other in a cycle: "
                   f"{hop('a', 1, 'b')}; {hop('b', 1, 'a')} (cycles)"],
                  id="a relative import makes a dependency too"),
@@ -58,7 +58,7 @@ def hop(instance: str, line: int, to: str, file: str = "adapters/peer.py") -> st
                   "app/modules/a/domain/doc.py:1 imports app.modules.b.domain.doc; "
                   "app/modules/b/domain/doc.py:1 imports app.modules.a.domain.doc (cycles)"],
                  id="whatever the parts"),
-    pytest.param([adapter("a", uses(1, "a"), imp(2, "", "x", level=1))], [],
+    pytest.param([adapter("a", uses(1, "a"), imp(2, "", "x", up=0))], [],
                  id="an import within one instance is no dependency"),
     pytest.param([source("kernel/ids.py", uses(1, "a")), adapter("a", imp(1, "app.kernel", "ids"))], [],
                  id="a file in no instance is not the check's business"),

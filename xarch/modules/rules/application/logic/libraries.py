@@ -30,7 +30,7 @@ def violations(files: Iterable[SourceFile], profile: Profile, root: str) -> list
             continue
         seen: set[tuple[int, str]] = set()
         for imp in file.imports:
-            if imp.level or not imp.module:
+            if imp.relative or not imp.module:
                 continue
             top = imp.module[0]
             reserved = profile.reserved.get(top)

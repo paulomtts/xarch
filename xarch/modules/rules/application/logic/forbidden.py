@@ -74,7 +74,7 @@ def _file(file: SourceFile, part: str, who: str, tag: str, profile: Profile) -> 
 
 def _imports(file: SourceFile, names: tuple[tuple[str, ...], ...]) -> Iterator[tuple[int, str, tuple[str, ...]]]:
     for imp in file.imports:
-        if imp.level:
+        if imp.relative:
             continue
         for path in [imp.module] if imp.names is None else [(*imp.module, name) for name in imp.names]:
             hit = _hit(path, names)

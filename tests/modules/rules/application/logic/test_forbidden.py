@@ -3,10 +3,11 @@ name it lists, and a test of a tier that says so is held to the list of the part
 import pytest
 
 from xarch.kernel.logic.placement import Target
+from xarch.kernel.logic.source import Import
 from xarch.kernel.logic.testing import Fakes, Framework
 from xarch.kernel.logic.testing import TierView as Tier
 from xarch.modules.rules.application.logic.forbidden import violations
-from xarch.modules.rules.domain.values import Import, MethodCall, Profile, SourceFile, Use
+from xarch.modules.rules.domain.values import MethodCall, Profile, SourceFile, Use
 
 NOW = ("datetime", "datetime", "now")
 PROFILE = Profile(parts={"domain": ("modules", "*", "domain"), "adapters": ("modules", "*", "adapters")},
@@ -45,7 +46,7 @@ def file(path=DOMAIN, imports=(), uses=()) -> SourceFile:
     pytest.param([Import(1, ("datetime", "datetime"), names=("now",))], [Use(2, NOW, 3)],
                  ["1: domain/ of modules/docs may not import datetime.datetime.now (parts.domain.forbidden)"],
                  id="importing a listed name itself is reported at the import"),
-    pytest.param([Import(1, ("socket",), level=1)], [], [], id="a relative import is the app's own"),
+    pytest.param([Import(1, ("socket",), relative=True)], [], [], id="a relative import is the app's own"),
     pytest.param([Import(1, ("socket",), names=("socket", "create_connection"))], [],
                  ["1: domain/ of modules/docs may not import socket (parts.domain.forbidden)"],
                  id="two names of one listed module on one line are reported once"),

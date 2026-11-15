@@ -7,6 +7,7 @@ from pathlib import Path
 from xarch.kernel.logic.language import LanguageView
 from xarch.kernel.logic.origin import Origin
 from xarch.kernel.logic.placement import Excluded, Place, Repeat, Target, repeat_of
+from xarch.kernel.logic.source import Import, Unparsable
 from xarch.kernel.logic.testing import Fakes, Framework, ScenarioCoverage, StandIns, TierView
 from xarch.kernel.violations import At, Violation, Weak
 
@@ -80,17 +81,6 @@ class Profile:
         """The word of the repeating folder each part lies in; a part outside every one has none."""
         return {name: repeat.word for name, pattern in self.parts.items()
                 if (repeat := repeat_of(self.repeats, pattern)) is not None}
-
-
-@dataclass(frozen=True)
-class Import:
-    """One imported name as written. names is None for `import a.b`, the imported names for `from a import x`.
-    standard: it is of the standard library (an absolute import whose first step names one)."""
-    line: int
-    module: tuple[str, ...]
-    level: int = 0
-    names: tuple[str, ...] | None = None
-    standard: bool = False
 
 
 @dataclass(frozen=True)
@@ -279,15 +269,15 @@ class SourceFile:
     defines at module level as functions, in order (module_functions: a name that one `def` binds and nothing else
     binds, so that what it names is a function). named is every name the file mentions anywhere, annotations
     included, by its last step alone; callbacks are the calls of a function's own parameter; method_calls the calls
-    of an attribute no import binds (see MethodCall). error is how it fails to parse, as (line, message), and then it
-    holds nothing else."""
+    of an attribute no import binds (see MethodCall). error is how it fails to parse, and then it holds nothing
+    else."""
     name: str
     path: tuple[str, ...]
     imports: tuple[Import, ...]
     comments: tuple[Comment, ...] = ()
     functions: tuple[Function, ...] = ()
     unions: tuple[Union, ...] = ()
-    error: tuple[int, str] | None = None
+    error: Unparsable | None = None
     calls: tuple[Call, ...] = ()
     classes: tuple[Class, ...] = ()
     uses: tuple[Use, ...] = ()

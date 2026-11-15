@@ -81,7 +81,7 @@ def _app_imports(file: SourceFile, where: Tested, profile: Profile, root: str,
     why = (f": it imports only what {subject} may ({', '.join(f'parts.{p}.may_import' for p in where.parts)})"
            if where.parts else "")
     test = f"a test of {subject} ({where.tier.name} tier)" if where.parts else f"a {where.tier.name} test"
-    absolute = tuple(i for i in file.imports if not i.level)
+    absolute = tuple(i for i in file.imports if not i.relative)
     for line, target in targets(absolute, (), known, root):
         dst = place(profile, target)
         if dst is not None and not any(reaches(t, as_place(where.instance), dst) for t in allowed):

@@ -10,9 +10,10 @@ from tests.modules.rules.application.helpers import controller
 from tests.modules.rules.builders import PYTHON
 from xarch.kernel.logic.origin import Origin
 from xarch.kernel.logic.placement import Excluded, Repeat, Target
+from xarch.kernel.logic.source import Import
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.contract import CheckImports, DriftView, EnforcementView, ExcludedView, FindingView, ImportsChecked, NotADirectory
-from xarch.modules.rules.domain.values import Import, InitFile, Profile
+from xarch.modules.rules.domain.values import InitFile, Profile
 
 ROOT = Path("/src/pkg")
 
@@ -66,7 +67,7 @@ def test_the_root_package_name_is_a_parameter():
 
 
 def test_relative_imports_are_resolved_against_the_file_package():
-    files = {"modules/a/domain/x.py": [Import(2, ("application", "services"), level=2, names=("svc",))]}
+    files = {"modules/a/domain/x.py": [Import(2, ("application", "services"), names=("svc",), relative=True, up=1)]}
     assert [str(v) for v in run(files).violations] == [
         "pkg/modules/a/domain/x.py:2: domain/ of modules/a may not import services/ of modules/a "
         "(app.modules.a.application.services)"]

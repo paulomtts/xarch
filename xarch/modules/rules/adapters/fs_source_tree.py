@@ -61,6 +61,7 @@ import tokenize
 from collections.abc import Iterable
 from pathlib import Path
 
+from xarch.kernel.logic.source import Import, Unparsable
 from xarch.kernel.logic.testing import CaseTable
 from xarch.modules.rules.domain.values import (
     Call,
@@ -68,7 +69,6 @@ from xarch.modules.rules.domain.values import (
     Class,
     Comment,
     Function,
-    Import,
     Method,
     MethodCall,
     ParameterCall,
@@ -104,6 +104,9 @@ class FsSourceTree:
     def text(self, path: Path) -> str | None:
         return self._fs.read_text(path) if self._fs.is_file(path) else None
 
+    def parsed(self, text: str) -> SourceFile:
+        return _parsed("", (), text, None)
+
     def resolved(self, path: Path) -> Path:
         return path.absolute().resolve()
 
@@ -113,9 +116,9 @@ def _parsed(name: str, path: tuple[str, ...], text: str, form: CaseTable | None)
         tree = ast.parse(text)
         comments = _comments(text)
     except SyntaxError as e:
-        return SourceFile(name, path, (), error=(e.lineno or 0, f"not valid Python: {e.msg}"))
+        return SourceFile(name, path, (), error=Unparsable(e.lineno or 0, e.msg))
     except (tokenize.TokenError, IndentationError) as e:
-        return SourceFile(name, path, (), error=(0, f"not valid Python: {e}"))
+        return SourceFile(name, path, (), error=Unparsable(0, str(e)))
     calls = _Calls(_BUILTINS if not _star_import(tree) else frozenset())
     calls.visit(tree)
     return SourceFile(name, path, tuple(_imports(tree)), comments, _functions(tree, form),
@@ -148,12 +151,13 @@ def _imports(tree: ast.AST) -> list[Import]:
     found: list[Import] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            found += [Import(node.lineno, tuple(alias.name.split(".")), standard=_standard(alias.name.split(".")[0]))
-                      for alias in node.names]
+            found += [Import(node.lineno, tuple(alias.name.split(".")), standard=_standard(alias.name.split(".")[0]),
+                             written=alias.name) for alias in node.names]
         elif isinstance(node, ast.ImportFrom):
             module = tuple(node.module.split(".")) if node.module else ()
-            found.append(Import(node.lineno, module, node.level, tuple(a.name for a in node.names),
-                                not node.level and bool(module) and _standard(module[0])))
+            found.append(Import(node.lineno, module, tuple(a.name for a in node.names), node.level > 0,
+                                max(node.level - 1, 0), not node.level and bool(module) and _standard(module[0]),
+                                "." * node.level + (node.module or ""), any(a.name == "*" for a in node.names)))
     return found
 
 

@@ -28,7 +28,7 @@ def test_a_part_listed_as_everything_may_import_any_outside_package_while_anothe
     pytest.param("platform/sql.py", [imp(1, "json"), imp(2, "collections.abc", "Iterable"), imp(3, "__future__", "x")],
                  [], id="the standard library"),
     pytest.param("platform/sql.py", [imp(1, "app.kernel", "ids"), imp(2, "app")], [], id="the app's own package"),
-    pytest.param("platform/sql.py", [imp(1, "", "x", level=1), imp(2, "yaml", "load", level=2)], [],
+    pytest.param("platform/sql.py", [imp(1, "", "x", up=0), imp(2, "yaml", "load", up=1)], [],
                  id="a relative import is the app's own"),
     pytest.param("platform/sql.py", [imp(3, "fastapi", "FastAPI")],
                  [message("platform/sql.py", 3, "platform/", "platform", "fastapi")],

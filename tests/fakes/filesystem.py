@@ -5,22 +5,23 @@ from collections.abc import Iterable
 from dataclasses import replace
 from pathlib import Path
 
+from xarch.kernel.logic.source import Import
 from xarch.kernel.logic.testing import CaseTable
 from xarch.modules.layout.domain.structure import Requirement
-from xarch.modules.rules.domain.values import Import, SourceFile
+from xarch.modules.rules.domain.values import SourceFile
 from xarch.modules.scaffold.domain.values import FILE, FOLDER
 
 
 class FakeSourceTree:
     """Satisfies rules' SourceTree: root folders holding already-parsed source files, each given as its imports or
-    as a whole SourceFile (whose name and path are filled in), by its path below the root; and the text of any other
-    file, by its path."""
+    as a whole SourceFile (whose name and path are filled in), by its path below the root; the text of any other
+    file, by its path; and what a text that is in no file parses to, by the text."""
 
     def __init__(self, root: Path, files: dict[str, list[Import] | SourceFile],
                  more: dict[Path, dict[str, list[Import] | SourceFile]] | None = None,
-                 texts: dict[Path, str] | None = None):
+                 texts: dict[Path, str] | None = None, parsed: dict[str, list[Import] | SourceFile] | None = None):
         self._trees = {root: files, **(more or {})}
-        self._texts = dict(texts or {})
+        self._texts, self._parsed = dict(texts or {}), dict(parsed or {})
 
     def absent(self, roots: Iterable[Path]) -> list[Path]:
         return [root for root in roots if root not in self._trees]
@@ -41,6 +42,9 @@ class FakeSourceTree:
 
     def resolved(self, path: Path) -> Path:
         return path
+
+    def parsed(self, text: str) -> SourceFile:
+        return _source("", (), self._parsed[text])
 
 
 def _source(name: str, path: tuple[str, ...], given: list[Import] | SourceFile) -> SourceFile:

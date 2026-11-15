@@ -11,9 +11,10 @@ from collections.abc import Iterable, Iterator
 from dataclasses import replace
 
 from xarch.kernel.logic.placement import EVERYTHING, Marks, Place, reaches
+from xarch.kernel.logic.source import Import, relative_target
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.places import allowed, label, place, targets_of
-from xarch.modules.rules.domain.values import Import, Profile, SourceFile
+from xarch.modules.rules.domain.values import Profile, SourceFile
 
 OWNERS = 3
 """How many parts that may import a place a fix names before it says "or another part"."""
@@ -46,11 +47,10 @@ def named_targets(imports: Iterable[Import], package: tuple[str, ...], known: se
             if imp.module[:1] == (root,):
                 yield imp.line, imp.module[1:], None
             continue
-        if imp.level:
-            keep = len(package) - (imp.level - 1)
-            if keep < 0:
+        if imp.relative:
+            base = relative_target(imp, package)
+            if base is None:
                 continue
-            base = package[:keep] + imp.module
         else:
             if imp.module[:1] != (root,):
                 continue

@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from xarch.kernel.logic.placement import Place
+from xarch.kernel.logic.source import Import, Unparsable
 from xarch.kernel.logic.testing import TierView
 from xarch.modules.rules.application.logic import enforcement
 from xarch.modules.rules.application.logic.verdict import passed
 from xarch.modules.rules.application.services.app_check import AppCheckService
 from xarch.modules.rules.application.services.locate import LocateService
 from xarch.modules.rules.application.services.source_check import SourceCheckService
+from xarch.modules.rules.application.services.source_reading import SourceReadService
 from xarch.modules.rules.contract import (
     AppChecked,
     CheckApp,
@@ -37,7 +39,7 @@ from xarch.modules.rules.contract import (
     Untested,
     WhereAnswer,
 )
-from xarch.modules.rules.domain.errors import OutsideProject, RootMissing
+from xarch.modules.rules.domain.errors import OutsideProject, RootMissing, Unreadable
 from xarch.modules.rules.domain.values import (
     Enforcement,
     FakePlace,
@@ -77,6 +79,22 @@ class RulesController:
             return Located(_where(self._locator.locate(cmd)))
         except OutsideProject as e:
             return Outside(e.reason)
+
+
+class ReaderController:
+    """Reads source text with the reader of the app's language, for a module that holds source as data, such as spec
+    its examples: it answers in kernel values, so that such a module reads through it without importing rules. It
+    needs no profile, so it is built before the modules that read profiles."""
+
+    def __init__(self, reading: SourceReadService):
+        self._reading = reading
+
+    def imports(self, text: str) -> tuple[Import, ...] | Unparsable:
+        """What a text that is in no file imports, in order; one that does not parse comes back as where and why."""
+        try:
+            return self._reading.imports(text)
+        except Unreadable as e:
+            return e.found
 
 
 def _enforcement(state: Enforcement) -> EnforcementView:

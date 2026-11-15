@@ -22,11 +22,12 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from xarch.kernel.logic.placement import reaches
+from xarch.kernel.logic.source import Import
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.imports import dotted, targets
 from xarch.modules.rules.application.logic.places import label, place
 from xarch.modules.rules.application.logic.tier_of import is_test, tested
-from xarch.modules.rules.domain.values import Import, Profile, SourceFile
+from xarch.modules.rules.domain.values import Profile, SourceFile
 
 RULE = "must-import"
 
@@ -69,7 +70,7 @@ def violations(files: Iterable[SourceFile], profile: Profile, root: str) -> list
 
 
 def _outside(imp: Import, root: str) -> bool:
-    return not imp.level and bool(imp.module) and imp.module[0] != root and not imp.standard
+    return not imp.relative and bool(imp.module) and imp.module[0] != root and not imp.standard
 
 
 def tier_violations(tests: Iterable[SourceFile], app: Iterable[SourceFile], profile: Profile, root: str,
@@ -87,7 +88,7 @@ def tier_violations(tests: Iterable[SourceFile], app: Iterable[SourceFile], prof
     links: dict[tuple[str, ...], list[tuple[str, ...]]] = {}
     for file, steps, is_package in parsed:
         package = steps if is_package else steps[:-1]
-        absolute = tuple(i for i in file.imports if not i.level)
+        absolute = tuple(i for i in file.imports if not i.relative)
         reached = {found.part for _, target in targets(absolute, (), known_app, root)
                    if (found := place(profile, target)) is not None}
         for name, parts in wanted.items():

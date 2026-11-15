@@ -14,8 +14,9 @@ from dataclasses import replace
 
 from xarch.kernel.logic.language import LanguageView
 from xarch.kernel.logic.placement import EVERYTHING, Repeat, Target
+from xarch.kernel.logic.source import Import
 from xarch.kernel.logic.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns, TierView
-from xarch.modules.rules.domain.values import Import, Profile, SourceFile
+from xarch.modules.rules.domain.values import Profile, SourceFile
 
 PYTHON = LanguageView("Python", ".py", "__init__.py", (("typing", "Protocol"), ("typing_extensions", "Protocol")),
                   (("importlib", "import_module"), ("importlib", "__import__"), ("builtins", "__import__")))
@@ -99,11 +100,15 @@ def dotted(name: str) -> tuple[str, ...]:
     return tuple(name.split("."))
 
 
-def imp(line: int, module: str, *names: str, level: int = 0) -> Import:
-    """`import module` with no names, `from module import names` with some; level counts a relative import's dots. It
-    is marked standard as the reader marks it: absolute, and a module of the standard library."""
+def imp(line: int, module: str, *names: str, up: int | None = None) -> Import:
+    """`import module` with no names, `from module import names` with some; up, for a relative import, how many
+    folders above the importing file's own it climbs. It is marked standard, and written, as the Python reader marks
+    it: absolute and a module of the standard library; the module with one dot more than up before it."""
     steps = dotted(module) if module else ()
-    return Import(line, steps, level, names or None, not level and bool(steps) and steps[0] in sys.stdlib_module_names)
+    relative = up is not None
+    return Import(line, steps, names or None, relative, up or 0,
+                  not relative and bool(steps) and steps[0] in sys.stdlib_module_names,
+                  "." * ((up or 0) + 1) + module if relative else module)
 
 
 def source(path: str, *imports: Import, root: str = APP, **fields) -> SourceFile:

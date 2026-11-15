@@ -25,7 +25,7 @@ def violations(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: 
     for file, in_app in [*((f, True) for f in app), *((f, False) for f in tests)]:
         steps, is_package = dotted(file.path, profile.language.marks)
         src = place(profile, steps) if in_app else None
-        imports = file.imports if in_app else tuple(i for i in file.imports if not i.level)
+        imports = file.imports if in_app else tuple(i for i in file.imports if not i.relative)
         for line, target in targets(imports, steps if is_package else steps[:-1], known, root):
             dst = place(profile, target)
             if dst is None or dst.part not in profile.package_only or not dst.sub:

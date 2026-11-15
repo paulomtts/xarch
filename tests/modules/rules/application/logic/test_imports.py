@@ -40,11 +40,11 @@ PACKAGE = ("modules", "docs", "domain")
                  id="imports outside the root package are none of its targets"),
     pytest.param([imp(1, "app.kernel", "ids", "other")], [(1, ("kernel", "ids")), (1, ("kernel",))],
                  id="a name that is a known file is that module, any other its package"),
-    pytest.param([imp(1, "", "doc", level=1)], [(1, ("modules", "docs", "domain", "doc"))],
+    pytest.param([imp(1, "", "doc", up=0)], [(1, ("modules", "docs", "domain", "doc"))],
                  id="a relative import resolves against the importing package"),
-    pytest.param([imp(1, "kernel", "ids", level=4)], [(1, ("kernel", "ids"))],
+    pytest.param([imp(1, "kernel", "ids", up=3)], [(1, ("kernel", "ids"))],
                  id="each further dot climbs one package"),
-    pytest.param([imp(1, "", "x", level=5)], [], id="a relative import above the root is none"),
+    pytest.param([imp(1, "", "x", up=4)], [], id="a relative import above the root is none"),
 ])
 def test_targets(imports, expected):
     assert list(targets(imports, PACKAGE, KNOWN, "app")) == expected
@@ -54,7 +54,7 @@ APP = [source(p) for p in ["kernel/ids.py", "modules/docs/domain/doc.py", "platf
 
 
 @pytest.mark.parametrize("file, expected", [
-    pytest.param(source("modules/docs/domain/values.py", imp(1, "app.kernel", "ids"), imp(2, "", "doc", level=1)), [],
+    pytest.param(source("modules/docs/domain/values.py", imp(1, "app.kernel", "ids"), imp(2, "", "doc", up=0)), [],
                  id="imports the rules allow"),
     pytest.param(source("modules/docs/domain/values.py", imp(3, "app.platform", "sql")),
                  ["app/modules/docs/domain/values.py:3: domain/ of modules/docs may not import platform/ "

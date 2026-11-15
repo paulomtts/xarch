@@ -36,14 +36,14 @@ def adapter(name: str, *imports, functions=CODE, **fields):
     pytest.param([imp(1, "pathlib", "Path"), imp(2, "json")], ["{name}"], id="the standard library is no technology"),
     pytest.param([], ["{name}"], id="no import at all"),
     pytest.param([imp(1, "app.kernel.ids", "new_id")], ["{name}"], id="a part that may be imported but is not listed"),
-    pytest.param([imp(1, "", "sql", level=3)], ["{name}"], id="a relative import of what is not listed"),
+    pytest.param([imp(1, "", "sql", up=2)], ["{name}"], id="a relative import of what is not listed"),
 ])
 def test_a_file_of_the_part_imports_a_listed_part_or_an_outside_package(imports, expected):
     assert problems(adapter("db_repo", *imports)) == [MESSAGE.format(name="db_repo") for _ in expected]
 
 
 def test_a_relative_import_of_a_listed_part_counts():
-    assert problems(source("modules/docs/adapters/db_repo.py", imp(1, "platform", "sql", level=4), functions=CODE)) == []
+    assert problems(source("modules/docs/adapters/db_repo.py", imp(1, "platform", "sql", up=3), functions=CODE)) == []
 
 
 @pytest.mark.parametrize("name, fields", [
@@ -117,7 +117,7 @@ def test_a_part_of_any_instance_counts():
 def test_it_reaches_the_part_through_test_code_that_is_no_test():
     helper = in_tests("modules/docs/application/helpers.py", imp(1, "app.modules.docs.application.controller", "C"))
     builder = in_tests("modules/docs/builders.py", imp(1, "tests.modules.docs.application.helpers", "make"))
-    test = in_tests(TEST, imp(1, "", "builders", level=2), functions=CODE)
+    test = in_tests(TEST, imp(1, "", "builders", up=1), functions=CODE)
     assert tier_problems(test, builder, helper) == []
 
 

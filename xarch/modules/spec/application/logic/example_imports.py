@@ -6,96 +6,97 @@ way, through the parts' path patterns (the repeating folder captures the instanc
 part claims is structure). The import is allowed when a target in the importer's `may_import` reaches it: everything,
 or the same part, in the importer's instance (a bare name), in any instance (@any) or outside the repeating folder,
 and below its /<path> if it names one. Structure is reached only by everything. Imports outside the app's root
-package (the standard library, third parties) are not the architecture's business and are ignored.
+package (the standard library, third parties) are not the architecture's business and are ignored. The example
+project's app is the one the docs' example project names (EXAMPLE_APP), and its test code lies in the default tests
+folder.
 
-Every source file of the language below the example projects is checked, so a file that lies in no part is reported,
-except the test code below tests/: no rule of the architecture governs it (a test may import whatever it tests), so it
-is only parsed and must be valid.
+The examples are read by the reader of the app's language, as data: what each imports, or where and why it does not
+parse. Every source file of the language below the example projects is checked, so a file that lies in no part is
+reported, except the test code below the tests folder: no rule of the architecture governs it (a test may import
+whatever it tests), so it is only read and must be valid.
 """
 from __future__ import annotations
 
-import ast
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterable, Iterator, Mapping
 
 from xarch.kernel.logic.placement import reaches
-from xarch.modules.spec.domain.values import Architecture
+from xarch.kernel.logic.source import Import, Unparsable, relative_target
+from xarch.modules.spec.application.logic.defaults import TESTS
+from xarch.modules.spec.application.logic.project_files import EXAMPLE_APP
+from xarch.modules.spec.domain.values import Architecture, Example
 
-ROOT_PACKAGE = "app"
-"""The examples' app, as the docs name it: they import `app.<path>`."""
-TESTS = "tests"
-"""The folder of an example project that holds test code, which no rule governs, so that it is only parsed."""
+Read = tuple[Import, ...] | Unparsable
+"""An example as the reader read it: its imports in order, or where and why it does not parse."""
 
 
-def example_problems(architecture: Architecture, texts: Mapping[str, str]) -> list[str]:
-    """Every import of an example its part may not make, and every example that lies in no part; texts holds
-    each example's file, by its path."""
+def checked_examples(architecture: Architecture) -> tuple[Example, ...]:
+    """The examples the check reads: those whose file is a source file of the app's language."""
+    return tuple(example for example in architecture.examples.values()
+                 if example.file.endswith(architecture.language.extension))
+
+
+def example_problems(architecture: Architecture, reads: Mapping[str, Read]) -> list[str]:
+    """Every import of an example its part may not make, and every example that lies in no part or does not parse;
+    reads holds each checked example as read, by its name."""
     problems: list[str] = []
-    for example in architecture.examples.values():
-        if example.file.endswith(architecture.language.extension):
-            problems += _problems(architecture, "example", example.path, texts[example.name], example.path[0] != TESTS)
+    for example in checked_examples(architecture):
+        problems += _problems(architecture, example.path, reads[example.name], example.path[0] != TESTS)
     return problems
 
 
-def _problems(architecture: Architecture, name: str, path: tuple[str, ...], text: str,
-              in_part: bool) -> list[str]:
+def _problems(architecture: Architecture, path: tuple[str, ...], read: Read, in_part: bool) -> list[str]:
     """The example's problems; in_part: it must lie in a part, as an example of the app's own code does.
 
     Test code: no rule governs what it imports.
     """
-    shown = f"{name} ({'/'.join(path)})"
+    shown = f"example ({'/'.join(path)})"
     source = architecture.place_of(path)
     if source.part is None and in_part:
         return [f"{shown}: lies in no part of the architecture"]
-    try:
-        tree = ast.parse(text)
-    except SyntaxError as e:
-        return [f"{shown}: is not valid {architecture.language.title}: {e.msg} (line {e.lineno})"]
+    if isinstance(read, Unparsable):
+        return [f"{shown}: is not valid {architecture.language.title}: {read.message} (line {read.line})"]
     if source.part is None:
         return []
     rule = architecture.targets_of(source.part)
     found: list[str] = []
-    for target, steps, name in _targets(tree, path[:-1], architecture):
+    for target, steps, name in _targets(read, path[:-1], architecture):
         if not any(reaches(allowed, source, architecture.place_of(steps), name) for allowed in rule):
-            problem = (f"{shown}: imports {'.'.join((ROOT_PACKAGE, *target))} which {source.part} may not import "
+            problem = (f"{shown}: imports {'.'.join((EXAMPLE_APP, *target))} which {source.part} may not import "
                        f"(parts.{source.part}.may_import)")
             if problem not in found:
                 found.append(problem)
     return found
 
 
-def _targets(tree: ast.AST, package: tuple[str, ...],
+def _targets(imports: Iterable[Import], folder: tuple[str, ...],
              architecture: Architecture) -> Iterator[tuple[tuple[str, ...], tuple[str, ...], str | None]]:
     """(as shown, as checked, the name imported from it): the path below the root package of everything the code
-    imports from it.
+    imports from it, folder being the example's own folder.
 
-    `from m import n` may import a module n, so n is checked as part of the path when m is no part, or a part's own
-    folder; it is shown only when m is no part. The name is n when it is not checked as part of the path, else None:
-    what is imported is the whole of the path.
+    Importing names from m may import a module of that name, so a name is checked as part of the path when m is no
+    part, or a part's own folder; it is shown only when m is no part. The name is the one imported when it is not
+    checked as part of the path, else None: what is imported is the whole of the path.
     """
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                steps = tuple(alias.name.split("."))
-                if steps[0] == ROOT_PACKAGE:
-                    yield steps[1:], steps[1:], None
-        elif isinstance(node, ast.ImportFrom):
-            module = tuple(node.module.split(".")) if node.module else ()
-            if node.level:
-                keep = len(package) - (node.level - 1)
-                if keep < 0:
-                    continue
-                base = package[:keep] + module
-            elif module[:1] == (ROOT_PACKAGE,):
-                base = module[1:]
-            else:
+    for imp in imports:
+        if imp.names is None:
+            if imp.module[:1] == (EXAMPLE_APP,):
+                yield imp.module[1:], imp.module[1:], None
+            continue
+        if imp.relative:
+            base = relative_target(imp, folder)
+            if base is None:
                 continue
-            place = architecture.place_of(base)
-            for alias in node.names:
-                steps = base if alias.name == "*" or place.sub else base + (alias.name,)
-                yield (base if place.part is not None else steps), steps, alias.name if steps == base else None
+        elif imp.module[:1] == (EXAMPLE_APP,):
+            base = imp.module[1:]
+        else:
+            continue
+        place = architecture.place_of(base)
+        for name in imp.names:
+            steps = base if imp.every or place.sub else base + (name,)
+            yield (base if place.part is not None else steps), steps, name if steps == base else None
 
 
-def shipped_problems(architecture: Architecture, texts: Mapping[str, str], bundled: bool) -> list[str]:
+def shipped_problems(architecture: Architecture, reads: Mapping[str, Read], bundled: bool) -> list[str]:
     """The example problems a profile may not have when its docs are written: every one, for a bundled profile, which
     ships with xarch; none for a custom one, whose examples `profile check` reports instead."""
-    return example_problems(architecture, texts) if bundled else []
+    return example_problems(architecture, reads) if bundled else []

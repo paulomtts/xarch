@@ -4,7 +4,6 @@ import json
 import shutil
 from pathlib import Path
 
-import pytest
 from typer.testing import CliRunner
 
 import xarch
@@ -16,13 +15,6 @@ from xarch.modules.spec.contract import AppChosen, ChooseApp, ProfileSelected, S
 
 SRC = Path(xarch.__file__).parent
 TESTS = SRC.parent / "tests"
-REFACTOR_PENDING = pytest.mark.xfail(
-    strict=True,
-    reason="branch refactor/profile-consistency, second round: architecture.yaml switches on the checks that close the "
-           "loopholes the audits found (no-twins; the `ambient` forbidden list on services and controller; ast and "
-           "tokenize `reserved` for adapters; pass-through on a returned attribute of a forwarded call; holds on a "
-           "private class), and xarch's own code breaks them until it is refactored. Remove this mark once "
-           "`uv run xarch check --strict` passes on xarch.")
 
 
 def own_architecture() -> str:
@@ -39,7 +31,6 @@ def test_xarch_records_its_own_app_folder_so_a_bare_check_runs_here():
     assert build_controllers().spec.choose_app(ChooseApp(SRC.parent)) == AppChosen(SRC)
 
 
-@REFACTOR_PENDING
 def test_xarch_has_no_violations_in_its_source_or_its_tests():
     controllers = build_controllers()
     imports = controllers.rules.check(CheckImports(SRC, "xarch", own_architecture(), TESTS))
@@ -48,7 +39,6 @@ def test_xarch_has_no_violations_in_its_source_or_its_tests():
     assert [str(v) for v in imports.violations + structure.violations] == []
 
 
-@REFACTOR_PENDING
 def test_xarch_passes_its_own_check_in_strict_mode_leaving_nothing_unenforced():
     result = CliRunner().invoke(app, ["check", "--app", str(SRC), "--strict", "--format", "json"])
     document = json.loads(result.stdout)
@@ -63,7 +53,6 @@ def test_xarch_is_split_into_its_four_modules():
     assert modules == {"spec", "rules", "layout", "scaffold"}
 
 
-@REFACTOR_PENDING
 def test_the_self_check_would_catch_a_broken_rule(tmp_path):
     """Guards against a vacuous pass: the same check on a copy of xarch with one forbidden import fails."""
     copy = tmp_path / "xarch"

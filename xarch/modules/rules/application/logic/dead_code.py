@@ -97,7 +97,7 @@ def untested(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Pr
     for test in tests:
         tier = tested(profile, test.path).tier
         if tier is not None:
-            absolute = tuple(i for i in test.imports if not i.level)
+            absolute = tuple(i for i in test.imports if not i.relative)
             reached |= {(target, tier.name) for _, target in targets(absolute, (), known, root)
                         if target in files and tiers.get(target) == tier.name}
     grown = True

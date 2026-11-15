@@ -32,6 +32,11 @@ class SourceTree(Protocol):
         """The text of any file at path, None when there is no file there."""
         ...
 
+    def parsed(self, text: str) -> SourceFile:
+        """A source text of the app's language that is in no file, parsed as a file of it is; one that does not parse
+        holds its error."""
+        ...
+
     def resolved(self, path: Path) -> Path:
         """The path in full, from the working folder when it is relative, every link followed: the folder a path
         given on the command line names."""

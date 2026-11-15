@@ -8,7 +8,12 @@ from typing import Any
 from xarch.kernel.logic.origin import Origin
 from xarch.kernel.logic.project_file import ProjectFile
 from xarch.modules.spec.application.logic.docs_files import doc_files
-from xarch.modules.spec.application.logic.example_imports import example_problems, shipped_problems
+from xarch.modules.spec.application.logic.example_imports import (
+    Read,
+    checked_examples,
+    example_problems,
+    shipped_problems,
+)
 from xarch.modules.spec.application.logic.language_file import language_of
 from xarch.modules.spec.application.logic.looseness import origin_of
 from xarch.modules.spec.application.logic.profile_file import parse_profile, source_of
@@ -16,14 +21,15 @@ from xarch.modules.spec.application.logic.profile_files import pointed_files
 from xarch.modules.spec.application.logic.profile_listing import listing, referenced
 from xarch.modules.spec.application.logic.project_files import EXAMPLE_APP, entries, project_files, with_app
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
+from xarch.modules.spec.application.ports.example_reader import ExampleReader
 from xarch.modules.spec.application.ports.runtime import Runtime
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import Architecture, ArchitectureSource, Language
 
 
 class ArchitectureService:
-    def __init__(self, files: ArchitectureFiles, runtime: Runtime):
-        self._files, self._runtime = files, runtime
+    def __init__(self, files: ArchitectureFiles, runtime: Runtime, reader: ExampleReader):
+        self._files, self._runtime, self._reader = files, runtime, reader
         self._bundled: dict[str, tuple[ArchitectureSource, Architecture]] = {}
         self._testing: dict[str, Any] | None = None
         self._languages: dict[str, Language] | None = None
@@ -36,7 +42,7 @@ class ArchitectureService:
         """Every import of the architecture's examples that its rules forbid and every example in no part; raises
         InvalidArchitecture if the file cannot be loaded or an example read."""
         source, architecture = self._load(location)
-        return tuple(example_problems(architecture, self._example_texts(source, architecture)))
+        return tuple(example_problems(architecture, self._reads(architecture, self._example_texts(source, architecture))))
 
     def pointed(self, location: str | Path) -> tuple[str, ...]:
         """Every file next to the profile that it points to, as pointed_files lists them; raises InvalidArchitecture."""
@@ -58,7 +64,7 @@ class ArchitectureService:
         texts = {doc.source: self._files.read_text(source, doc.source) for doc in architecture.docs if doc.source}
         examples = self._example_texts(source, architecture)
         tier_examples = self._tier_example_texts(source, architecture)
-        problems = shipped_problems(architecture, examples, source.bundled)
+        problems = shipped_problems(architecture, self._reads(architecture, examples), source.bundled)
         if problems:
             raise InvalidArchitecture(source.location, problems)
         return list(doc_files(architecture, texts, examples, tier_examples))
@@ -84,6 +90,10 @@ class ArchitectureService:
 
     def _example_texts(self, source: ArchitectureSource, architecture: Architecture) -> dict[str, str]:
         return {name: self._files.read_text(source, example.file) for name, example in architecture.examples.items()}
+
+    def _reads(self, architecture: Architecture, texts: Mapping[str, str]) -> dict[str, Read]:
+        """Each example the check reads, as the reader of the app's language reads its text, by name."""
+        return {example.name: self._reader.imports(texts[example.name]) for example in checked_examples(architecture)}
 
     def _tier_example_texts(self, source: ArchitectureSource, architecture: Architecture) -> dict[str, str]:
         """A helper is keyed by its file; the app folder's placeholder is filled as the docs' example project has it."""

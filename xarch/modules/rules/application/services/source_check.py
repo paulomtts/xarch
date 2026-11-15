@@ -58,7 +58,7 @@ class SourceCheckService:
         app = self._tree.read(root, [p for p in paths if closed_tree.governed(rules, p)])
         table = rules.scenarios.table if rules.scenarios is not None else None
         test_files = self._tree.read(tests, self._tree.paths(tests), table) if tests is not None else []
-        broken = syntax.violations([*app, *test_files])
+        broken = syntax.violations([*app, *test_files], rules)
         app = [f for f in app if f.error is None]
         test_files = [f for f in test_files if f.error is None]
         tests_root = self._tree.resolved(tests).name if tests is not None else ""

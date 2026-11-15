@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from xarch.kernel.errors import DomainError
+from xarch.kernel.logic.source import Unparsable
 
 
 class RootMissing(DomainError):
@@ -16,6 +17,14 @@ class OutsideProject(DomainError):
 
     def __init__(self, path: Path, project: Path):
         super().__init__(f"{path.as_posix()} lies outside the project: it is not below {project.as_posix()}")
+
+
+class Unreadable(DomainError):
+    """A source text that does not parse, and where and why, as the reader says it."""
+
+    def __init__(self, found: Unparsable):
+        super().__init__(f"line {found.line}: {found.message}")
+        self.found = found
 
 
 class ProfileUnusable(DomainError):

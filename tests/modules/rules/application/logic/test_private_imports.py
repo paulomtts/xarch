@@ -24,7 +24,7 @@ def test_a_private_name_imported_from_the_app_is_reported_with_what_to_do():
 
 
 @pytest.mark.parametrize("imports, tests, expected", [
-    pytest.param([imp(1, "", "_helper", level=1)], False,
+    pytest.param([imp(1, "", "_helper", up=0)], False,
                  ["app/kernel/x.py:1: imports the private name _helper from . (private-imports)"],
                  id="a relative import"),
     pytest.param([imp(1, "tests.modules.docs.builders", "_make")], True,

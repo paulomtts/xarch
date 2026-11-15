@@ -9,9 +9,10 @@ from tests.fakes.profiles import FakeProfiles
 from tests.fakes.structure import FakeStructure
 from tests.modules.rules.application.helpers import controller
 from xarch.kernel.logic.placement import Target
+from xarch.kernel.logic.source import Import
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.contract import AppChecked, CheckApp, EnforcementView, FindingView, NotADirectory
-from xarch.modules.rules.domain.values import Import, Profile
+from xarch.modules.rules.domain.values import Profile
 
 ROOT = Path("/src/pkg")
 PROFILE = Profile({"kernel": ("kernel",), "platform": ("platform",)},

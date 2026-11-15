@@ -41,10 +41,6 @@ DATA = ("importlib", "resources")
 READERS: dict[str, tuple[set[str], str]] = {
     "modules/rules/adapters/fs_source_tree.py": (
         {"ast", "tokenize"}, "the seam: the SourceTree adapter, which parses the checked app's files into SourceFile"),
-    "modules/spec/application/logic/example_imports.py": (
-        {"ast"}, "the example check parses the bundled profiles' own Python examples, which ship with xarch as docs "
-                 "content and are Python because the docs' example project is; a profile in another language brings "
-                 "its own examples, and this check would go behind a port of the spec module then"),
 }
 
 

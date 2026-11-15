@@ -7,6 +7,7 @@ import pytest
 from tests.fakes.settings import FakeSettings
 from tests.modules.spec.application.builders import BASE, spec_controller
 from xarch.kernel.logic.origin import Origin
+from xarch.kernel.logic.source import Import
 from xarch.modules.spec.contract import CheckProfile, NoProfileChosen, Problem, ProfileChecked, ProfileRefused
 from xarch.modules.spec.domain.values import Configured
 
@@ -14,6 +15,7 @@ APP = Path("/p/app")
 MINE = {**BASE, "name": "mine", "based_on": "base"}
 WITH_EXAMPLE = {**MINE, "docs": {"examples": ["ex"]}}
 WITH_EXAMPLE_FILES = {"ex/core/rule.py": "from app.api import handler\n", "ex/api/handler.py": "X = 1\n"}
+WITH_EXAMPLE_READS = {"from app.api import handler\n": (Import(1, ("app", "api"), ("handler",)),)}
 OFF = ("package-only", "scenario-coverage", "no-comments", "stand-ins", "closed-tree", "no-duplicates", "no-twins",
        "dead-code", "pass-through", "private-imports")
 
@@ -29,7 +31,8 @@ OFF = ("package-only", "scenario-coverage", "no-comments", "stand-ins", "closed-
                                      "forbidden, guards, hints, language, layers, name, parts, reserved, testing, tiers, xarch"),
                      Problem("load", "mine.yaml: parts.core: missing `role`")), 0, None),
                  id="a profile that does not load has every problem reported at once"),
-    pytest.param(dict(files={"mine.yaml": WITH_EXAMPLE}, texts=WITH_EXAMPLE_FILES), CheckProfile(APP, "mine.yaml"),
+    pytest.param(dict(files={"mine.yaml": WITH_EXAMPLE}, texts=WITH_EXAMPLE_FILES, reads=WITH_EXAMPLE_READS),
+                 CheckProfile(APP, "mine.yaml"),
                  ProfileChecked("mine.yaml", (
                      Problem("examples", "example (core/rule.py): imports app.api which core may not import "
                                          "(parts.core.may_import)"),), 3,

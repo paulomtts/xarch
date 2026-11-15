@@ -11,10 +11,11 @@ from xarch.modules.layout.application.services.structure_check import StructureC
 from xarch.modules.rules.adapters.fs_source_tree import FsSourceTree
 from xarch.modules.rules.adapters.layout_structure import LayoutStructure
 from xarch.modules.rules.adapters.spec_profile import SpecProfiles
-from xarch.modules.rules.application.controller import RulesController
+from xarch.modules.rules.application.controller import ReaderController, RulesController
 from xarch.modules.rules.application.services.app_check import AppCheckService
 from xarch.modules.rules.application.services.locate import LocateService
 from xarch.modules.rules.application.services.source_check import SourceCheckService
+from xarch.modules.rules.application.services.source_reading import SourceReadService
 from xarch.modules.scaffold.adapters.fs_files import FsFiles
 from xarch.modules.scaffold.adapters.spec_skeleton import SpecSkeleton as ScaffoldSkeleton
 from xarch.modules.scaffold.application.controller import ScaffoldController
@@ -51,10 +52,15 @@ class Controllers:
     spec: SpecController
 
 
+def build_reader(fs: FileSystem) -> ReaderController:
+    """The reader of the app's language, which needs no profile: spec reads its examples with it, as its ExampleReader."""
+    return ReaderController(SourceReadService(FsSourceTree(fs)))
+
+
 def build_spec(fs: FileSystem | None = None) -> SpecController:
     fs = fs or FileSystem()
     files = FsArchitectureFiles(fs, DataFileReader(), BUNDLED)
-    architectures = ArchitectureService(files, InterpreterRuntime())
+    architectures = ArchitectureService(files, InterpreterRuntime(), build_reader(fs))
     settings = PyprojectSettings(fs, TomlReader())
     output = FsProfileOutput(fs)
     folders = FsFolders(fs)
@@ -65,7 +71,9 @@ def build_spec(fs: FileSystem | None = None) -> SpecController:
 
 
 def build_architectures(fs: FileSystem | None = None) -> ArchitectureService:
-    return ArchitectureService(FsArchitectureFiles(fs or FileSystem(), DataFileReader(), BUNDLED), InterpreterRuntime())
+    fs = fs or FileSystem()
+    return ArchitectureService(FsArchitectureFiles(fs, DataFileReader(), BUNDLED), InterpreterRuntime(),
+                               build_reader(fs))
 
 
 def load_architecture(location: str | Path) -> Architecture:

@@ -23,10 +23,9 @@ def violations(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: 
     found: list[Violation] = []
     for file in [*app, *tests]:
         for imp in file.imports:
-            if imp.names is None or not (imp.level or imp.module[:1] in ((root,), (tests_root,))):
+            if imp.names is None or not (imp.relative or imp.module[:1] in ((root,), (tests_root,))):
                 continue
-            source = "." * imp.level + ".".join(imp.module)
-            found += [Violation(file.name, imp.line, f"imports the private name {name} from {source} ({RULE})", RULE,
+            found += [Violation(file.name, imp.line, f"imports the private name {name} from {imp.written} ({RULE})", RULE,
                                 f"make {name} public where it is defined (drop the `_`), or move it to a file both "
                                 "may import")
                       for name in imp.names if _private(name)]
