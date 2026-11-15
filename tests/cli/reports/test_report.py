@@ -7,7 +7,7 @@ import pytest
 from xarch.cli.reports.report import enforcement_lines, json_document, ordered, text_lines
 from xarch.kernel.logic.origin import Origin
 from xarch.kernel.violations import At, Violation, Weak
-from xarch.modules.rules.contract import AppChecked, EnforcementView, ExcludedView
+from xarch.modules.rules.contract import AppChecked, ApproximateView, EnforcementView, ExcludedView
 
 A = Violation("app/a.py", 3, "a problem", "rules", "do this")
 B = Violation("app/a.py", 7, "another", "rules", "do that")
@@ -119,3 +119,16 @@ def test_the_json_weak_items_hold_their_fix_or_null():
 def test_ungoverned_files_are_source_files_when_the_language_is_not_named():
     state = EnforcementView(Origin("web"), ("app/a.src", "app/b.src"), ("app/a.src", "app/b.src"))
     assert enforcement_lines(state, False)[2:] == ["  ungoverned:  2 source files outside every part (app/a.src, app/b.src)"]
+
+
+APPROXIMATE = ApproximateView("parts.services.names", "class", "a class defined in a branch is not read",
+                              "parts.services.names reads class only partly: a class defined in a branch is not read")
+
+
+def test_a_key_read_approximately_has_a_line_of_its_own_and_is_an_item_of_the_json_document():
+    state = EnforcementView(origin=Origin("web"), approximate=(APPROXIMATE,))
+    assert enforcement_lines(state, False)[-1] == (
+        "  approximate: parts.services.names reads class only partly: a class defined in a branch is not read")
+    document = json.loads(json_document("web", AppChecked((), state, {}, True), False))
+    assert document["enforcement"]["approximate"] == [
+        {"key": "parts.services.names", "fact": "class", "note": "a class defined in a branch is not read"}]

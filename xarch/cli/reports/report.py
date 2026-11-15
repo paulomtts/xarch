@@ -24,7 +24,7 @@ INDENT = "    "
 SHOWN = 5
 """How many places a text line of skips or dynamic imports names before it counts the rest."""
 _KEYS = {"guards_off": "guards off", "ungoverned": "ungoverned", "init_files": "init files",
-         "skipped": "skipped", "dynamic": "dynamic", "weak": "weak"}
+         "skipped": "skipped", "dynamic": "dynamic", "weak": "weak", "approximate": "approximate"}
 
 
 def text_lines(found: Iterable[Violation], hints: Mapping[str, str] | None = None) -> list[str]:
@@ -74,6 +74,7 @@ def enforcement_lines(state: EnforcementView, strict: bool, hints: Mapping[str, 
             lines.append(f"{INDENT}{' ' * 2}fix: {weak.fix}")
             if weak.rule in (hints or {}):
                 lines.append(f"{INDENT}{' ' * 2}hint: {(hints or {})[weak.rule]}")
+    lines += [_line("approximate", item.sentence, 2) for item in state.approximate]
     if strict and state.strict:
         lines.append(_line("strict", f"{_count(len(state.strict), 'finding')} fail the check", 0)
                      if len(state.strict) > 1 else _line("strict", "1 finding fails the check", 0))
@@ -119,6 +120,7 @@ def enforcement_document(state: EnforcementView) -> dict[str, Any]:
         "dynamic": {"count": len(state.dynamic), "at": _at(state.dynamic)},
         "weak": [{"rule": weak.rule, "file": weak.file, "line": weak.line, "message": weak.message,
                   "fix": weak.fix or None} for weak in state.weak],
+        "approximate": [{"key": item.key, "fact": item.fact, "note": item.note} for item in state.approximate],
         "strict_failures": [_finding(f) for f in state.strict],
     }
 

@@ -23,6 +23,13 @@ and, all optional, the tokens of its code the checks and the docs need (empty: t
     shebang        how line 1 names the program that runs the file
     encoding       a regular expression: how line 1 or 2 declares the file's encoding, after the marker
     branching      the keywords of the statements that branch
+
+and the facts its reader supplies (see capabilities), each graded:
+
+    supplies       {<fact>: exact | {partial: <what it misses>}}: a fact it does not list it does not supply, so a
+                   key whose check needs one is refused; a partial one is listed as approximate where it is read.
+                   Left out, the file does not say what a reader supplies (no reader is written for it yet), and
+                   no key is held to it
 """
 from __future__ import annotations
 
@@ -30,13 +37,14 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
+from xarch.kernel.logic.capabilities import EXACT, FACTS, PARTIAL, Supply
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import Language
 
 FOLDER = "presets/language"
 """Where the data files of the languages are, below the bundled folder: one YAML file each, named for the language."""
 KEYS = ("title", "extension", "package_file", "interface", "dynamic", "namespace", "cache", "standard", "name", "private",
-        "special", "call", "nothing", "comment", "directives", "shebang", "encoding", "branching")
+        "special", "call", "nothing", "comment", "directives", "shebang", "encoding", "branching", "supplies")
 REQUIRED = ("title", "extension", "package_file", "namespace", "standard")
 _EXTENSION = re.compile(r"\.[A-Za-z0-9]+")
 _DOTTED = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*")
@@ -71,12 +79,13 @@ def language_of(name: str, document: Any) -> Language:
     encoding = _pattern(document, "encoding", problems)
     directives = _words(document, "directives", problems)
     branching = _words(document, "branching", problems)
+    supplies = _supplies(document["supplies"], problems) if "supplies" in document else None
     if problems:
         raise InvalidArchitecture(source, problems)
     return Language(name, title, extension, package_file, interface, dynamic, namespace, standard, cache,
                     names=names, private=tokens["private"], special=tokens["special"], call=tokens["call"],
                     nothing=tokens["nothing"], comment=tokens["comment"], directives=directives,
-                    shebang=tokens["shebang"], encoding=encoding, branching=branching)
+                    shebang=tokens["shebang"], encoding=encoding, branching=branching, supplies=supplies)
 
 
 def _text(document: Mapping[Any, Any], key: str, said: str, problems: list[str],
@@ -124,3 +133,21 @@ def _dotted(document: Mapping[Any, Any], key: str, problems: list[str]) -> tuple
         else:
             found.append(tuple(item.split(".")))
     return tuple(found)
+
+
+def _supplies(value: Any, problems: list[str]) -> tuple[Supply, ...]:
+    if not isinstance(value, Mapping):
+        problems.append(f"supplies: must be a mapping of facts to {EXACT} or {{{PARTIAL}: <what it misses>}}")
+        return ()
+    found: dict[str, Supply] = {}
+    for fact, grade in value.items():
+        if fact not in FACTS:
+            problems.append(f"supplies: {fact!r} is not a fact a check reads: use {', '.join(sorted(FACTS))}")
+        elif grade == EXACT:
+            found[fact] = Supply(fact, EXACT)
+        elif isinstance(grade, Mapping) and list(grade) == [PARTIAL] and isinstance(grade[PARTIAL], str) \
+                and grade[PARTIAL].strip():
+            found[fact] = Supply(fact, PARTIAL, grade[PARTIAL])
+        else:
+            problems.append(f"supplies.{fact}: must be {EXACT}, or {{{PARTIAL}: <what it misses>}} with a line of text")
+    return tuple(found.values())

@@ -11,6 +11,8 @@
 # line comment; directives, the comments its tools read as instructions, each after the marker (a space in one stands
 # for any spaces); shebang, how line 1 names the program that runs the file; encoding, how line 1 or 2 declares the
 # file's encoding (a regular expression, after the marker); branching, the keywords of the statements that branch.
+# supplies: the facts its reader turns the source into, each exact or {partial: what it misses}; a key whose check
+# needs a fact not listed here is refused, and one that reads a partial fact is listed as approximate.
 title: Python
 extension: .py
 package_file: __init__.py
@@ -29,3 +31,35 @@ directives: ["type: ignore", noqa, "pragma:"]
 shebang: "#!"
 encoding: 'coding[:=][ \t]*[-\w.]+'
 branching: [if, match, try, for, while]
+supplies:
+  file: exact
+  syntax: exact
+  import: exact
+  import.relative: exact
+  import.standard: exact
+  comment: exact
+  use: exact
+  call: exact
+  method_call: exact
+  parameter_call: exact
+  callback: exact
+  class: exact
+  class.methods: exact
+  class.attributes: exact
+  class.fields: exact
+  class.exception: exact
+  class.named: exact
+  function: exact
+  function.statements: exact
+  function.shape: exact
+  function.signature: exact
+  function.sole_call: exact
+  function.decorated: exact
+  function.returns: exact
+  function.blocks: exact
+  function.asserts: exact
+  function.mentions: exact
+  function.tables: exact
+  union: exact
+  module_functions: exact
+  named: exact

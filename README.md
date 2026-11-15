@@ -95,6 +95,14 @@ The rest of what a check knows of the language is one adapter, the reader that t
 `tests/architecture/test_language_seam.py` fails when any other file of xarch names the language or writes one of
 its tokens.
 
+The data file also says what its reader supplies, under `supplies`: each fact of the source a check reads (`import`,
+`class.fields`, `callback`, ...; `xarch/kernel/logic/capabilities.py` lists them and what each check reads), graded
+`exact` or `{partial: <what it misses>}`. Every key that configures a check needs the facts that check reads, which
+`xarch profile explain <key>` shows under `needs:`. A profile that sets a key whose facts its language does not
+supply is refused when it loads, naming the key, the fact and what to do; a key whose facts are supplied only partly
+runs, and is listed under `approximate` in the enforcement section, which `--strict` fails on. Python's reader
+supplies every fact exactly.
+
 The smallest valid profile is a name and one part (it runs `structure`, the import rules, `libraries` and `syntax`):
 
 ```yaml
@@ -242,6 +250,7 @@ and rule ids may be added, but an existing one keeps its name and meaning.
     "skipped": {"count": 0, "at": []},
     "dynamic": {"count": 0, "at": []},
     "weak": [],
+    "approximate": [],
     "strict_failures": []
   }
 }
@@ -261,8 +270,9 @@ and rule ids may be added, but an existing one keeps its name and meaning.
   `types_only`, `apply_forbidden`, `testing.skips`, `files.pinned`, `must_import` (the `sentence` names the full address, such as
   `parts.kernel.may_import`); `excluded` items `{"folder", "reason"}`; `init_files` items `{"file", "state"}`, `state` `missing` or
   `changed`; `skipped.at` and `dynamic.at` items `{"file", "line"}`; `weak` items `{"rule", "file", "line",
-  "message", "fix"}` (`fix` is `null` for a weak check that has none); `strict_failures` items `{"key", "detail"}`, `key` one of `guards_off`, `ungoverned`, `init_files`,
-  `skipped`, `dynamic`, `weak`. `strict_failures` is filled whether or not `--strict` was given: it
+  "message", "fix"}` (`fix` is `null` for a weak check that has none); `approximate` items `{"key", "fact", "note"}`;
+  `strict_failures` items `{"key", "detail"}`, `key` one of `guards_off`, `ungoverned`, `init_files`,
+  `skipped`, `dynamic`, `weak`, `approximate`. `strict_failures` is filled whether or not `--strict` was given: it
   is what `--strict` fails on.
 - A refusal (exit 2: an unknown or invalid profile, a missing folder) prints `{"ok": false, "error": "<reason>"}` on
   stdout, so a caller always gets JSON. Only an error in the command line itself (an unknown option, a `--format`
@@ -314,11 +324,16 @@ enforcement
   or names its body or `self.` assigns) less than every port of its name declares; and a `Result` variant that no
   row covers, credited only to standalone tests that name it and hold no `assert`; and a method `pass-through` finds.
   A weak check that has a fix shows it on an indented `fix:` line under its own.
+- `approximate`: each key the profile sets whose check reads a fact the language's reader supplies only partly, as
+  its data file grades it (`supplies`), with what the reader misses: the check runs, and may miss what it looks for.
+  A key whose check reads a fact the language does not supply at all is refused when the profile loads, naming the
+  key and the fact. Python's reader supplies every fact exactly, so a Python project never sees this line.
 
 Without `--strict` the section never changes the exit code. `--strict` fails (exit 1) on every finding listed in
 `strict_failures`: what the profile in force leaves unenforced or unseen: each guard left off that the bundled profile
 in force, or the one a custom profile is compared with, does not also leave off (with no profile to compare with,
-every guard left off); each ungoverned file; each missing or changed init file; each skip; each dynamic import; each weak finding. The text
+every guard left off); each ungoverned file; each missing or changed init file; each skip; each dynamic import; each weak finding;
+each approximate key. The text
 lists them after the section, under `strict:`. The guard test `init` writes runs `check` without `--strict`: a
 project opts in by running `xarch check --strict` in CI or a pre-commit hook.
 

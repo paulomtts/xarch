@@ -11,7 +11,8 @@ pass over, read from the same parsed files.
 strict_findings lists what `--strict` fails on: what the profile in force leaves unenforced or unseen. That is every
 guard it leaves off but those that the bundled profile in force, or the one a custom profile is compared with, also
 leaves off (with no profile to compare with, every guard left off), the ungoverned files, the init files missing or
-changed, the skips, the dynamic imports and the weak checks. How a custom profile differs from the closest bundled
+changed, the skips, the dynamic imports, the weak checks and the keys whose check reads a fact the language
+supplies only partly (approximate). How a custom profile differs from the closest bundled
 one (`origin.looser`) is information in the enforcement section and no finding: the profile defines the architecture.
 
 What the enforcement section shows of them is worked out here too: the folders holding the ungoverned files, a
@@ -21,6 +22,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 
+from xarch.kernel.logic.capabilities import Shortfall
 from xarch.kernel.logic.placement import Excluded
 from xarch.kernel.violations import At, Weak
 from xarch.modules.rules.domain.values import Drift, Enforcement, Finding, InitFile, Profile, SourceFile
@@ -53,12 +55,14 @@ def strict_findings(enforcement: Enforcement) -> tuple[Finding, ...]:
     found += [Finding("skipped", at) for at in enforcement.skipped]
     found += [Finding("dynamic", at) for at in enforcement.dynamic]
     found += [Finding("weak", weak) for weak in enforcement.weak]
+    found += [Finding("approximate", item) for item in enforcement.approximate]
     return tuple(found)
 
 
-def detail(item: str | Drift | At | Weak) -> str:
+def detail(item: str | Drift | At | Weak | Shortfall) -> str:
     """A finding's item in words: a guard or a file by its name, an init file with its state, a place as
-    `<file>:<line>`, a weak check as its place (the file alone for a whole file) and its message."""
+    `<file>:<line>`, a weak check as its place (the file alone for a whole file) and its message, a key whose check
+    reads a fact partly as the key, the fact and what the reader misses."""
     match item:
         case Drift(path, state):
             return f"{'/'.join(path)} is {state}"
@@ -66,8 +70,15 @@ def detail(item: str | Drift | At | Weak) -> str:
             return f"{file}:{line}"
         case Weak(file=file, line=line, message=message):
             return f"{file}{f':{line}' if line else ''}: {message}"
+        case Shortfall(address, fact, note):
+            return approximation(address, fact, note or "")
         case _:
             return item
+
+
+def approximation(address: str, fact: str, note: str) -> str:
+    """A key whose check reads a fact the language supplies only partly, in words."""
+    return f"{address} reads {fact} only partly: {note}"
 
 
 def folders(files: Sequence[str]) -> list[str]:

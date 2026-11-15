@@ -7,6 +7,7 @@ import pytest
 
 from tests.fakes.runtime import FakeRuntime
 from tests.modules.spec.application.builders import spec_controller
+from xarch.kernel.logic.capabilities import Shortfall
 from xarch.kernel.logic.language import LanguageView
 from xarch.modules.spec.contract import CheckProfile, ProfileChecked
 
@@ -53,3 +54,22 @@ def test_the_skeleton_names_the_language_and_the_words_the_runtime_reserves():
     spec, _ = spec_controller({"base": BASE}, languages={"pascal": PASCAL}, runtime=RUNTIME)
     skeleton = spec.skeleton("base")
     assert (skeleton.language, skeleton.package_file, skeleton.reserved) == ("Pascal", "unit.pas", frozenset({"begin"}))
+
+
+TOY = PASCAL | {"supplies": {"file": "exact", "import": "exact", "import.relative": "exact",
+                             "class": {"partial": "a class defined in a branch is not read"}}}
+
+
+def test_a_key_whose_check_the_reader_of_its_language_cannot_feed_is_refused_and_one_it_feeds_partly_is_approximate():
+    named = BASE | {"language": "toy", "parts": {"core": {"path": "core", "role": "r", "names": "*Rule",
+                                                          "no_callbacks": True}}}
+    spec, _ = spec_controller({"base": named}, languages={"toy": TOY}, runtime=RUNTIME)
+    checked = spec.check_profile(CheckProfile(APP, "base"))
+    assert [problem.text for problem in checked.problems] == [
+        "base: parts.core.no_callbacks: its check reads callback (each call of a function's own parameter, whether it "
+        "is the receiver and whether it is annotated as a callable), which the language toy does not supply: drop "
+        "parts.core.no_callbacks, or check the app with a language whose reader supplies callback"]
+    spec, _ = spec_controller({"base": named | {"parts": {"core": {"path": "core", "role": "r", "names": "*Rule"}}}},
+                              languages={"toy": TOY}, runtime=RUNTIME)
+    assert spec.profile("base").approximate == (
+        Shortfall("parts.core.names", "class", "a class defined in a branch is not read"),)

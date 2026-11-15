@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from xarch.kernel.logic.capabilities import Shortfall
 from xarch.kernel.logic.language import LanguageView
 from xarch.kernel.logic.origin import Origin
 from xarch.kernel.logic.placement import Excluded, Place, Repeat, Target, repeat_of
@@ -44,6 +45,7 @@ class Profile:
     part, the parts that alone may build its classes; private_imports switches the private-imports guard on. hints
     holds the profile's own advice, by rule id. language is the language of the app. reserved holds the
     standard-library modules (by top-level name, each with why) a part imports only when its libraries list them.
+    approximate holds the keys whose check reads a fact the language supplies only partly.
     """
     parts: dict[str, tuple[str, ...]]
     rules: dict[str, tuple[Target, ...]]
@@ -76,6 +78,7 @@ class Profile:
     hints: dict[str, str] = field(default_factory=dict)
     language: LanguageView = LanguageView()
     reserved: dict[str, str] = field(default_factory=dict)
+    approximate: tuple[Shortfall, ...] = ()
 
     def words(self) -> dict[str, str]:
         """The word of the repeating folder each part lies in; a part outside every one has none."""
@@ -336,9 +339,9 @@ class Drift:
 class Finding:
     """An enforcement finding that `--strict` fails on: the key of the enforcement section it is under, and the item
     there that fails: a guard left off or an ungoverned file (by name), an init file that drifted, a skip or a dynamic
-    import (where it is), or a weak check."""
+    import (where it is), a weak check, or a key whose check reads a fact the language supplies only partly."""
     key: str
-    item: str | Drift | At | Weak
+    item: str | Drift | At | Weak | Shortfall
 
 
 @dataclass(frozen=True)
@@ -347,8 +350,9 @@ class Enforcement:
     it is; the app's source files no part and no folder of the layout governs (never read, so never checked), as
     shown; the init files missing or changed; the tests skipped or expected to fail, and the dynamic imports, where
     they are; the checks satisfied to the letter only; and strict, the findings `--strict` fails on; the folders
-    the profile excludes, which no check reads; app, the name of the app folder the shown paths start with; and
-    language, how the language of the app is named."""
+    the profile excludes, which no check reads; app, the name of the app folder the shown paths start with;
+    language, how the language of the app is named; and approximate, the keys whose check reads a fact the language
+    supplies only partly, so that it may miss what it looks for."""
     origin: Origin = Origin()
     ungoverned: tuple[str, ...] = ()
     init_files: tuple[Drift, ...] = ()
@@ -359,6 +363,7 @@ class Enforcement:
     excluded: tuple[Excluded, ...] = ()
     app: str = ""
     language: str = ""
+    approximate: tuple[Shortfall, ...] = ()
 
 
 @dataclass(frozen=True)

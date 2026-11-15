@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from xarch.kernel.logic.capabilities import Shortfall, Supply
 from xarch.kernel.logic.origin import Origin
 from xarch.kernel.logic.placement import (
     EACH,
@@ -278,6 +279,8 @@ class Language:
     standard_names: the top-level names of the standard library
     builtin_names: the names bound without an import
     reserved_names: the words no name may be
+    supplies: the facts its reader supplies, each graded (see capabilities); None: no language is known,
+        and no key is held to what it reads
     """
     name: str = ""
     title: str = ""
@@ -301,6 +304,7 @@ class Language:
     standard_names: frozenset[str] = frozenset()
     builtin_names: frozenset[str] = frozenset()
     reserved_names: frozenset[str] = frozenset()
+    supplies: tuple[Supply, ...] | None = None
 
     @property
     def marks(self) -> Marks:
@@ -338,6 +342,7 @@ class Architecture:
     based_on: the bundled profile it says it was copied from; empty when it does not say
     language: the language of the app
     reserved: the standard-library modules only the parts whose `libraries` list them may import, each with why
+    approximate: the keys whose check reads a fact the language supplies only partly, with the reader's note
     """
     name: str
     layout: Layout
@@ -362,6 +367,7 @@ class Architecture:
     based_on: str = ""
     language: Language = Language()
     reserved: dict[str, str] = field(default_factory=dict)
+    approximate: tuple[Shortfall, ...] = ()
 
     @property
     def entry(self) -> Part | None:

@@ -1,0 +1,70 @@
+"""What the keys a profile sets need of its language's reader: a key whose check reads a fact the language does not
+supply is refused, naming the key, the fact and what to do; one that reads a fact supplied partly loads, and is kept
+as approximate with the reader's note. A hand-made language, Toy, grades only some facts."""
+from dataclasses import replace
+
+import pytest
+
+from tests.modules.spec.languages import PYTHON
+from tests.modules.spec.profiles_v2 import covered, layered, parsed, problems
+from xarch.kernel.logic.capabilities import EXACT, FACTS, NEEDS, PARTIAL, Shortfall, Supply
+from xarch.modules.spec.application.logic.profile_needs import configured
+from xarch.modules.spec.domain.profile_keys import KEYS
+
+TOY = replace(PYTHON, name="toy", title="Toy",
+              supplies=(Supply("file", EXACT), Supply("import", EXACT), Supply("import.relative", EXACT),
+                        Supply("import.standard", EXACT),
+                        Supply("class", PARTIAL, "a class defined in a branch is not read")))
+LANGUAGES = {"toy": TOY}
+
+
+def services(**keys) -> dict:
+    document = layered(language="toy")
+    document["parts"]["service"] |= keys
+    return document
+
+
+def test_a_key_whose_check_reads_a_fact_the_language_does_not_supply_is_refused_naming_key_fact_and_what_to_do():
+    assert problems(services(no_callbacks=True), languages=LANGUAGES) == [
+        "layered.yaml: parts.service.no_callbacks: its check reads callback (each call of a function's own parameter, "
+        "whether it is the receiver and whether it is annotated as a callable), which the language toy does not "
+        "supply: drop parts.service.no_callbacks, or check the app with a language whose reader supplies callback"]
+
+
+def test_a_key_set_to_false_configures_no_check_and_needs_nothing():
+    assert parsed(services(no_callbacks=False), languages=LANGUAGES).approximate == ()
+
+
+def test_a_key_whose_check_reads_a_fact_supplied_partly_loads_and_is_kept_as_approximate():
+    assert parsed(services(names="*Service"), languages=LANGUAGES).approximate == (
+        Shortfall("parts.service.names", "class", "a class defined in a branch is not read"),)
+
+
+def test_a_key_whose_facts_are_all_supplied_exactly_is_neither_refused_nor_approximate():
+    assert parsed(services(libraries=["sqlmodel"]), languages=LANGUAGES).approximate == ()
+
+
+def test_a_language_whose_data_file_says_nothing_of_its_reader_holds_no_key_to_it():
+    assert parsed(services(no_callbacks=True), languages={"toy": replace(TOY, supplies=None)}).approximate == ()
+
+
+def test_python_supplies_every_fact_a_bundled_check_reads():
+    assert {supply.fact: supply.grade for supply in PYTHON.supplies} == {fact: EXACT for fact in FACTS}
+
+
+def test_the_keys_a_profile_sets_are_found_in_every_scope_and_through_a_testing_preset():
+    document = covered(guards={"dead-code": {"untested": True}, "no-comments": {}}, reserved={"json": "only io"})
+    document["parts"]["service"]["holds"] = "classes"
+    document["tiers"]["unit"]["must_import"] = ["service"]
+    found = [address for address, _ in configured(document | {"testing": "pytest"},
+                                                  {"pytest": document["testing"]})]
+    assert found == ["reserved", "tiers", "parts.api.may_import", "parts.service.may_import", "parts.service.holds",
+                     "parts.store.may_import", "parts.store.libraries", "tiers.unit.must_import", "testing.skips",
+                     "testing.table", "testing.mocks", "guards.no-comments", "guards.dead-code",
+                     "guards.dead-code.untested"]
+
+
+@pytest.mark.parametrize("key", [key for key in KEYS if key.needs], ids=lambda key: key.address)
+def test_a_key_needs_only_facts_its_checks_read(key):
+    read = {fact for rule in key.rules for fact in NEEDS[rule]} if key.rules else set(FACTS)
+    assert set(key.needs) <= read

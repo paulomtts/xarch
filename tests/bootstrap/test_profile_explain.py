@@ -67,7 +67,7 @@ def test_json_gives_the_shape_the_symbols_and_the_smallest_profile_and_for_a_key
     key = json.loads(runner.invoke(app, ["profile", "explain", "parts.may_import", "--format", "json"]).output)
     assert key["ok"] is True and key["key"] == "parts.may_import" and key["rules"] == ["rules"]
     assert set(key) == {"ok", "key", "where", "meaning", "accepts", "required", "enforced", "rules", "example",
-                        "choices", "keys"}
+                        "choices", "keys", "needs", "language"}
     refused = runner.invoke(app, ["profile", "explain", "parts.colour", "--format", "json"])
     assert refused.exit_code == 2
     assert json.loads(refused.output)["ok"] is False and json.loads(refused.output)["nearest"]

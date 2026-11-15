@@ -3,7 +3,9 @@ document, `{"ok": ...}` first, a refusal being `{"ok": false, "error": ...}`.
 
 explain, no key: {"ok", "format", "shape", "symbols", "smallest", "deeper"}, each shape entry {"key", "depth",
 "meaning", "required", "enforced"}. explain, one key: {"ok", "key", "where", "meaning", "accepts", "required",
-"enforced", "rules", "example", "choices", "keys"}. explain, a profile: {"ok", "profile", "name", "tree", "imports"}.
+"enforced", "rules", "example", "choices", "keys", "needs", "language"}, each need {"fact", "meaning", "grade",
+"note"}: a fact of the source the key's check reads, and how the language named supplies it. explain, a profile:
+{"ok", "profile", "name", "tree", "imports"}.
 check: {"ok", "profile", "problems", "files", "compared_with"}, each problem {"check", "message"} and
 compared_with {"profile", "looser"} (null for a bundled profile or one that resembles none), each looser entry
 {"key", "part", "what", "sentence"}.
@@ -74,6 +76,8 @@ def key_lines(found: KeyExplained) -> list[str]:
         lines += _wrapped("one of", ", ".join(found.choices))
     lines.append(f"  required: {'yes' if found.required else 'no'}")
     lines.append(f"  enforced: {_enforced(found)}")
+    if found.needs:
+        lines += _wrapped("needs", _needs(found))
     lines += ["  example:", *(f"    {line}" for line in found.example.splitlines())]
     if found.keys:
         lines.append("  keys:")
@@ -90,6 +94,18 @@ def _enforced(found: KeyExplained) -> str:
         return NO_RULE
     noun = "rule" if len(found.rules) == 1 else "rules"
     return f"yes, by the {noun} {', '.join(f'`{rule}`' for rule in found.rules)}"
+
+
+def _needs(found: KeyExplained) -> str:
+    """The facts a key's check reads, then how the default language's reader supplies them."""
+    facts = ", ".join(need.fact for need in found.needs)
+    if not found.language or any(not need.grade for need in found.needs):
+        return f"{facts}: the facts of the source its check reads"
+    short = [f"{need.fact} partly ({need.note})" if need.note else f"not {need.fact}" for need in found.needs
+             if need.grade != "exact"]
+    if not short:
+        return f"{facts}: the facts of the source its check reads, which {found.language} supplies exactly"
+    return f"{facts}: the facts of the source its check reads; {found.language} supplies {', '.join(short)}"
 
 
 def _wrapped(label: str, text: str) -> list[str]:
@@ -110,7 +126,10 @@ def key_document(found: KeyExplained) -> str:
     return _dump({"ok": True, "key": found.key, "where": found.where, "meaning": found.meaning,
                   "accepts": found.accepts, "required": found.required, "enforced": found.enforced,
                   "rules": list(found.rules), "example": found.example, "choices": list(found.choices),
-                  "keys": [_shown(shown) for shown in found.keys]})
+                  "keys": [_shown(shown) for shown in found.keys],
+                  "needs": [{"fact": need.fact, "meaning": need.meaning, "grade": need.grade or None,
+                             "note": need.note or None} for need in found.needs],
+                  "language": found.language})
 
 
 def unknown_document(found: UnknownKey) -> str:

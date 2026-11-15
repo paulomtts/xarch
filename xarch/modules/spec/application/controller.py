@@ -5,7 +5,16 @@ from xarch.kernel.logic.language import LanguageView
 from xarch.kernel.logic.placement import Target
 from xarch.kernel.logic.testing import ScenarioCoverage, StandIns, TierView
 from xarch.modules.spec.application.logic.docs_files import DOCS_ROOT
-from xarch.modules.spec.application.logic.explain import cleaned, example_of, held_by, key_at, nearest, overview_keys, said
+from xarch.modules.spec.application.logic.explain import (
+    cleaned,
+    example_of,
+    graded,
+    held_by,
+    key_at,
+    nearest,
+    overview_keys,
+    said,
+)
 from xarch.modules.spec.application.logic.key_lookup import plain
 from xarch.modules.spec.application.logic.layout_walk import walk
 from xarch.modules.spec.application.logic.profile_view import view
@@ -37,6 +46,7 @@ from xarch.modules.spec.contract import (
     MigrateProfile,
     MigrateResult,
     MigrationRefused,
+    Need,
     NewProfile,
     NewResult,
     NoProfileChosen,
@@ -171,7 +181,9 @@ class SpecController:
         names = self._explanation.choices(key)
         return KeyExplained(plain(key.address), key.where, said(key.meaning, language), said(key.accepts, language),
                             key.required, key.enforced, key.rules, said(example_of(key, names), language), names,
-                            tuple(_shown(held, 0, language) for held in held_by(key)))
+                            tuple(_shown(held, 0, language) for held in held_by(key)),
+                            tuple(Need(*graded(fact, language)) for fact in key.needs),
+                            language.title if key.needs else "")
 
     def view(self, cmd: ViewProfile) -> ViewResult:
         """The folder tree and import table of a profile; one that cannot be chosen or loaded is refused with why."""
@@ -231,7 +243,7 @@ def _profile_view(architecture: Architecture) -> ProfileView:
         fakes=architecture.fakes, framework=architecture.framework, excluded=architecture.excluded,
         hints=dict(architecture.hints),
         language=_language_view(architecture.language),
-        reserved=dict(architecture.reserved))
+        reserved=dict(architecture.reserved), approximate=architecture.approximate)
 
 
 def _language_view(language: Language) -> LanguageView:

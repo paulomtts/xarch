@@ -102,4 +102,5 @@ class SourceCheckService:
         return Enforcement(standing.origin, tuple(ungoverned), tuple(enforcement.drift(standing.init_files, texts)),
                            skipped=tuple(enforcement.skipped(tests, rules)),
                            dynamic=tuple(enforcement.dynamic([*app, *tests], rules)), weak=tuple(weak),
-                           excluded=rules.excluded, app=resolved.name, language=rules.language.title)
+                           excluded=rules.excluded, app=resolved.name, language=rules.language.title,
+                           approximate=rules.approximate)

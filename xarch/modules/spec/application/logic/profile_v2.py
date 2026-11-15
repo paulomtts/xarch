@@ -60,6 +60,7 @@ from xarch.kernel.logic.placement import EVERYTHING, Repeat, root_of
 from xarch.kernel.logic.testing import CaseTable, Fakes, Framework, ScenarioCoverage, StandIns
 from xarch.modules.spec.application.logic import profile_checks as ck
 from xarch.modules.spec.application.logic import profile_examples as ex
+from xarch.modules.spec.application.logic import profile_needs as needs
 from xarch.modules.spec.application.logic.key_lookup import keys_of, names_of, required_of
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.guards import GUARDS
@@ -148,6 +149,8 @@ def parse_v2(document: Any, source: str, files: Collection[str] = (), presets: M
     if "name" in document and not ck.text(name):
         problems.append("`name` must be a non-empty string")
     language = _language(document, languages or {}, problems)
+    shortfalls = needs.short(document, presets or {}, language)
+    problems += needs.refused(shortfalls, language)
     based_on = _based_on(document["based_on"], bundled, problems) if "based_on" in document else ""
     lists = _forbidden_lists(document["forbidden"], problems, language) if "forbidden" in document else {}
     specs = _specs(document.get("parts", {}), problems)
@@ -181,7 +184,7 @@ def parse_v2(document: Any, source: str, files: Collection[str] = (), presets: M
     shown = ex.examples_of(examples, built.tree, parts, language)
     return Architecture(name, built.tree, parts, rules, pages, shown, built.notes, layers, tuple(parts), naming, tiers,
                         libraries, guards, fakes, tuple(built.repeats), written, testing.framework if testing else None, forbidden,
-                        excluded, hints, based_on, language, reserved)
+                        excluded, hints, based_on, language, reserved, needs.approximate(shortfalls))
 
 
 def _keys(document: Mapping[Any, Any]) -> list[str]:

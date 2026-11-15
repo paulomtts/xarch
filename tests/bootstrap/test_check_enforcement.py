@@ -44,6 +44,7 @@ def test_the_json_enforcement_always_holds_every_key():
         "skipped": {"count": 0, "at": []},
         "dynamic": {"count": 0, "at": []},
         "weak": [],
+        "approximate": [],
         "strict_failures": []}
 
 

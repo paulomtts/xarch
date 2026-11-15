@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from xarch.kernel.logic.capabilities import Shortfall
 from xarch.kernel.logic.language import LanguageView
 from xarch.kernel.logic.origin import Origin
 from xarch.kernel.logic.placement import Excluded, Repeat, Target
@@ -130,8 +131,9 @@ class ProfileView:
     """A profile as the checks read it, everything they need already worked out: its parts in order; every folder of
     the layout as a pattern; its tiers in order; the outside packages each part may import (None: unchecked); its
     repeating folders; the guards switched on; the fakes and the test framework (None: none); the excluded folders;
-    the project's own advice for a rule, by rule id; the language of the app; and the standard-library modules a
-    part imports only when its libraries list them, each with why."""
+    the project's own advice for a rule, by rule id; the language of the app; the standard-library modules a part
+    imports only when its libraries list them, each with why; and the keys whose check reads a fact the language
+    supplies only partly."""
     parts: tuple[PartView, ...]
     folders: tuple[tuple[str, ...], ...] = ()
     tiers: tuple[TierView, ...] = ()
@@ -144,6 +146,7 @@ class ProfileView:
     hints: dict[str, str] = field(default_factory=dict)
     language: LanguageView = LanguageView()
     reserved: dict[str, str] = field(default_factory=dict)
+    approximate: tuple[Shortfall, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -268,10 +271,20 @@ class FormatExplained:
 
 
 @dataclass(frozen=True)
+class Need:
+    """A fact of the source a key's check reads: its name, what it is, and how the default language's reader supplies
+    it: "exact", "partial" (with what it misses), "absent", or "" when that language does not say."""
+    fact: str
+    meaning: str
+    grade: str
+    note: str = ""
+
+
+@dataclass(frozen=True)
 class KeyExplained:
     """One key: its address as typed, the scope it sits in, what it means and accepts, whether the profile needs it,
     whether `check` enforces it and through which rule ids, an example, what it may be set to from a list xarch ships
-    (choices) and the keys it holds."""
+    (choices), the keys it holds, the facts of the source its check reads and the language they were graded for."""
     key: str
     where: str
     meaning: str
@@ -282,6 +295,8 @@ class KeyExplained:
     example: str
     choices: tuple[str, ...]
     keys: tuple[Shown, ...]
+    needs: tuple[Need, ...] = ()
+    language: str = ""
 
 
 @dataclass(frozen=True)

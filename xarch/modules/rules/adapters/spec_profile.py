@@ -48,7 +48,7 @@ class SpecProfiles:
                        forbidden={p.name: p.forbidden for p in parts if p.forbidden},
                        info={p.name: PartInfo(p.role, p.litmus, p.shown, p.untested) for p in parts},
                        excluded=view.excluded, hints=dict(view.hints), language=view.language,
-                       reserved=dict(view.reserved))
+                       reserved=dict(view.reserved), approximate=view.approximate)
 
     def standing(self, location: str, app: str) -> Standing:
         """No init files when the profile cannot write them for this app, which `init` reports when it refuses; a

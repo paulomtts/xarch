@@ -37,11 +37,22 @@ class ExcludedView:
 
 
 @dataclass(frozen=True)
+class ApproximateView:
+    """A key whose check reads a fact the language's reader supplies only partly: its address, the fact, what the
+    reader misses, and all of it in words."""
+    key: str
+    fact: str
+    note: str
+    sentence: str
+
+
+@dataclass(frozen=True)
 class EnforcementView:
     """The state of the check's own enforcement, beside its violations, as the enforcement section shows it: the
     origin of the profile; the files no part governs, and the top folders holding them (each once, in order); the init
     files missing or changed; the skipped tests and dynamic imports; the checks met to the letter only; the findings
-    `--strict` fails on; the folders the profile excludes; and how the language of the app is named."""
+    `--strict` fails on; the folders the profile excludes; how the language of the app is named; and the keys whose
+    check reads a fact the language supplies only partly, each in words."""
     origin: Origin = Origin()
     ungoverned: tuple[str, ...] = ()
     ungoverned_folders: tuple[str, ...] = ()
@@ -52,6 +63,7 @@ class EnforcementView:
     strict: tuple[FindingView, ...] = ()
     excluded: tuple[ExcludedView, ...] = ()
     language: str = ""
+    approximate: tuple[ApproximateView, ...] = ()
 
 
 @dataclass(frozen=True)

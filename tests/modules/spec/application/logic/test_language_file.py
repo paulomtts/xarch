@@ -1,6 +1,7 @@
 """The data file of a language: what is true of the language as a whole, read from a preset and validated like a profile."""
 import pytest
 
+from xarch.kernel.logic.capabilities import EXACT, PARTIAL, Supply
 from xarch.modules.spec.application.logic.language_file import language_of
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import Language
@@ -28,7 +29,7 @@ def test_every_problem_of_a_document_is_listed_naming_the_preset():
     assert caught.value.source == "presets/language/odd.yaml"
     assert [problem.removeprefix("presets/language/odd.yaml: ") for problem in caught.value.problems] == [
         "unknown key 'extra': use branching, cache, call, comment, directives, dynamic, encoding, extension, "
-        "interface, name, namespace, nothing, package_file, private, shebang, special, standard, title",
+        "interface, name, namespace, nothing, package_file, private, shebang, special, standard, supplies, title",
         "missing `namespace`", "missing `standard`",
         "title: must be a non-empty string",
         "extension: must be a dot and a name, such as .pas",
@@ -66,4 +67,28 @@ def test_a_token_that_is_not_what_its_key_takes_is_a_problem(given, problem):
         language_of("odd", DOCUMENT | given)
     assert [p.removeprefix("presets/language/odd.yaml: ").split(":")[0] for p in caught.value.problems] == [
         problem.split(":")[0]]
+    assert caught.value.problems[0].removeprefix("presets/language/odd.yaml: ").startswith(problem)
+
+
+def test_the_facts_its_reader_supplies_are_read_each_with_its_grade():
+    language = language_of("pascal", DOCUMENT | {"supplies": {"import": "exact",
+                                                              "class": {"partial": "nested classes are not read"}}})
+    assert language.supplies == (Supply("import", EXACT), Supply("class", PARTIAL, "nested classes are not read"))
+
+
+def test_a_document_that_says_nothing_of_its_reader_supplies_no_grade():
+    assert language_of("pascal", DOCUMENT).supplies is None
+
+
+@pytest.mark.parametrize("supplies, problem", [
+    pytest.param({"imports": "exact"}, "supplies: 'imports' is not a fact a check reads", id="an unknown fact"),
+    pytest.param({"import": "good"}, "supplies.import: must be exact, or {partial: <what it misses>}",
+                 id="a grade that is neither"),
+    pytest.param({"import": {"partial": " "}}, "supplies.import: must be exact, or {partial: <what it misses>}",
+                 id="a partial grade with no note"),
+    pytest.param(["import"], "supplies: must be a mapping of facts", id="no mapping"),
+])
+def test_a_supply_that_is_not_what_the_key_takes_is_a_problem(supplies, problem):
+    with pytest.raises(InvalidArchitecture) as caught:
+        language_of("odd", DOCUMENT | {"supplies": supplies})
     assert caught.value.problems[0].removeprefix("presets/language/odd.yaml: ").startswith(problem)

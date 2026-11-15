@@ -8,11 +8,21 @@ from tests.fakes.filesystem import FakeSourceTree
 from tests.fakes.profiles import FakeProfiles
 from tests.modules.rules.application.helpers import controller
 from tests.modules.rules.builders import PYTHON
+from xarch.kernel.logic.capabilities import Shortfall
 from xarch.kernel.logic.origin import Origin
 from xarch.kernel.logic.placement import Excluded, Repeat, Target
 from xarch.kernel.logic.source import Import
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.contract import CheckImports, DriftView, EnforcementView, ExcludedView, FindingView, ImportsChecked, NotADirectory
+from xarch.modules.rules.contract import (
+    ApproximateView,
+    CheckImports,
+    DriftView,
+    EnforcementView,
+    ExcludedView,
+    FindingView,
+    ImportsChecked,
+    NotADirectory,
+)
 from xarch.modules.rules.domain.values import InitFile, Profile
 
 ROOT = Path("/src/pkg")
@@ -131,3 +141,13 @@ def test_an_excluded_folder_is_not_a_finding_strict_fails_on():
     result = controller_of(FakeSourceTree(ROOT, {"examples/x.py": [], "kernel/x.py": []}), excluding).check(
         CheckImports(ROOT, "app", "cli"))
     assert result.enforcement.strict == ()
+
+
+def test_a_key_whose_check_reads_a_fact_partly_is_listed_as_approximate_and_fails_strict():
+    partly = Shortfall("parts.services.names", "class", "a class defined in a branch is not read")
+    profiles = FakeProfiles({"cli": replace(profile("cli"), approximate=(partly,))})
+    result = controller_of(FakeSourceTree(ROOT, {"kernel/x.py": []}), profiles).check(CheckImports(ROOT, "app", "cli"))
+    said = "parts.services.names reads class only partly: a class defined in a branch is not read"
+    assert result.enforcement.approximate == (
+        ApproximateView("parts.services.names", "class", "a class defined in a branch is not read", said),)
+    assert result.enforcement.strict == (FindingView("approximate", said),)

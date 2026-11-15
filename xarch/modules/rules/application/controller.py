@@ -11,6 +11,7 @@ from xarch.modules.rules.application.services.source_check import SourceCheckSer
 from xarch.modules.rules.application.services.source_reading import SourceReadService
 from xarch.modules.rules.contract import (
     AppChecked,
+    ApproximateView,
     CheckApp,
     CheckAppResult,
     CheckImports,
@@ -103,7 +104,9 @@ def _enforcement(state: Enforcement) -> EnforcementView:
         tuple(DriftView("/".join(d.path), d.state) for d in state.init_files), state.skipped, state.dynamic,
         state.weak, tuple(FindingView(f.key, enforcement.detail(f.item)) for f in state.strict),
         tuple(ExcludedView(enforcement.excluded_folder(state.app, e), e.reason) for e in state.excluded),
-        state.language)
+        state.language, tuple(ApproximateView(a.address, a.fact, a.note or "",
+                                              enforcement.approximation(a.address, a.fact, a.note or ""))
+                              for a in state.approximate))
 
 
 def _where(found: Placed) -> WhereAnswer:

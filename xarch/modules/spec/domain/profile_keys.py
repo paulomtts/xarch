@@ -9,7 +9,7 @@ scope they sit in.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from textwrap import indent
 
 from xarch.modules.spec.domain.guards import GUARDS
@@ -146,6 +146,8 @@ class Key:
     opens: the scope of the keys its value holds
     choices: CHOICE_BUNDLED, CHOICE_PRESETS or CHOICE_LANGUAGES when it names something from a list xarch ships;
         `<bundled>`, `<preset>` and `<language>` in the example stand for the first of that list
+    needs: the facts of the source (see capabilities) the check it configures reads: a profile that sets it is
+        refused when its language's reader does not supply one of them
     """
     scope: str
     name: str
@@ -157,6 +159,7 @@ class Key:
     rules: tuple[str, ...] = ()
     opens: str = ""
     choices: str = ""
+    needs: tuple[str, ...] = ()
 
     @property
     def where(self) -> str:
@@ -180,7 +183,7 @@ _GUARD_SCOPES = {"scenario-coverage": SCENARIO_COVERAGE, "no-duplicates": NO_DUP
                  "dead-code": DEAD_CODE, "pass-through": PASS_THROUGH}
 
 
-KEYS: tuple[Key, ...] = (
+_KEYS: tuple[Key, ...] = (
     _k(PROFILE, "xarch", "the format version", "the number 2", "xarch: 2", True, False),
     _k(PROFILE, "name", "what the profile is called", "a non-empty string", "name: documents-app", True, False),
     _k(PROFILE, "based_on", "the bundled profile this was copied from",
@@ -484,6 +487,45 @@ KEYS: tuple[Key, ...] = (
     _k(FILE, "fill", "whether {{app}} is filled in", "false: the bytes are copied unchanged",
        "files:\n  tests/rules%extension%:\n    from: guard%extension%\n    fill: false\n"),
 )
+
+_IMPORTS = ("import", "import.relative")
+_FORBIDDEN = (*_IMPORTS, "use", "method_call")
+_TYPES_ONLY = ("call", "use", "module_functions")
+NEEDS: dict[str, tuple[str, ...]] = {
+    "parts.<part>.may_import": _IMPORTS,
+    "parts.<part>.must_import": (*_IMPORTS, "import.standard", "function.statements"),
+    "parts.<part>.types_only": _TYPES_ONLY,
+    "parts.<part>.holds": ("class", "class.methods", "class.exception", "function", "function.returns"),
+    "parts.<part>.no_callbacks": ("callback",),
+    "parts.<part>.names": ("class",),
+    "parts.<part>.built_by": ("class", "call"),
+    "parts.<part>.libraries": (*_IMPORTS, "import.standard"),
+    "parts.<part>.forbidden": _FORBIDDEN,
+    "parts.<part>.package_only": _IMPORTS,
+    "reserved": (*_IMPORTS, "import.standard"),
+    "tiers": _IMPORTS,
+    "tiers.<tier>.apply_forbidden": _FORBIDDEN,
+    "tiers.<tier>.types_only": _TYPES_ONLY,
+    "tiers.<tier>.must_import": (*_IMPORTS, "function.statements"),
+    "tiers.<tier>.may_import": _IMPORTS,
+    "testing.skips": ("use",),
+    "testing.table": ("function.tables",),
+    "testing.mocks": ("call", "parameter_call"),
+    "guards.scenario-coverage": ("union", "function.tables", "function.blocks", "function.asserts",
+                                 "function.mentions"),
+    "guards.no-comments": ("comment",),
+    "guards.stand-ins": ("class", "class.methods", "class.attributes", "call", "parameter_call"),
+    "guards.closed-tree": ("file",),
+    "guards.no-duplicates": ("function", "function.statements", "function.shape"),
+    "guards.no-twins": ("class", "class.fields"),
+    "guards.dead-code": ("class", "named"),
+    "guards.dead-code.untested": (*_IMPORTS, "function.statements", "class.exception"),
+    "guards.pass-through": ("function", "function.sole_call", "function.signature", "function.decorated"),
+    "guards.private-imports": _IMPORTS,
+}
+"""The facts of the source each key that configures a check needs, by its address."""
+
+KEYS: tuple[Key, ...] = tuple(replace(key, needs=NEEDS.get(key.address, ())) for key in _KEYS)
 """Every key of every scope, in the order a file writes them."""
 
 MOVED = {

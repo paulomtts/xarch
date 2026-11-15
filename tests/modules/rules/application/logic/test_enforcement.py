@@ -5,6 +5,7 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.rules.builders import PYTHON
+from xarch.kernel.logic.capabilities import Shortfall
 from xarch.kernel.logic.language import LanguageView
 from xarch.kernel.logic.origin import Loosened, Origin
 from xarch.kernel.logic.placement import Excluded
@@ -141,3 +142,9 @@ def test_the_excluded_folders_are_shown_below_the_app_folder():
 ])
 def test_folders(files, tops):
     assert folders(files) == tops
+
+
+def test_a_key_whose_check_reads_a_fact_partly_is_a_strict_finding_said_with_the_readers_note():
+    partly = Shortfall("parts.services.names", "class", "a class defined in a branch is not read")
+    assert strict_findings(Enforcement(Origin("web", True), approximate=(partly,))) == (Finding("approximate", partly),)
+    assert detail(partly) == "parts.services.names reads class only partly: a class defined in a branch is not read"
