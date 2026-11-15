@@ -19,7 +19,6 @@ from xarch.modules.rules.application.logic import (
     scenarios,
     stand_ins,
     syntax,
-    tier_imports,
     twins,
 )
 from xarch.modules.rules.application.logic.engine import run
@@ -63,7 +62,7 @@ class SourceCheckService:
         found = broken + run(expansion.rules(rules), facts, rules) + run(expansion.libraries(rules), facts, rules)
         found += run(expansion.forbidden(rules), facts, rules)
         found += cycles.violations(app, rules, package)
-        found += tier_imports.violations(test_files, app, rules, package, tests_root)
+        found += run(expansion.tiers(rules), facts, rules)
         found += run(expansion.types_only_tiers(rules), facts, rules)
         found += run(expansion.package_only(rules), facts, rules)
         found += scenarios.violations(app, test_files, rules)

@@ -44,3 +44,8 @@ def types_only(tests: Iterable[SourceFile], app: Iterable[SourceFile], profile: 
 
 def types_only_parts(app: Iterable[SourceFile], profile: Profile, root: str) -> list[Violation | Weak]:
     return run(expansion.types_only_parts(profile), facts_of(app, [], profile, root), profile)
+
+
+def tiers(tests: Iterable[SourceFile], app: Iterable[SourceFile], profile: Profile, root: str,
+          tests_root: str) -> list[Violation | Weak]:
+    return run(expansion.tiers(profile), facts_of(app, tests, profile, root, tests_root), profile)

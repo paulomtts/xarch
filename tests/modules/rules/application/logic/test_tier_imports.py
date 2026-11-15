@@ -3,11 +3,11 @@ what that part may import; of the test code, the fakes only when its tier tests 
 files only from its own folder."""
 import pytest
 
+from tests.modules.rules.application.logic.checks import tiers as violations
 from tests.modules.rules.builders import GUARD, INTEGRATION, PROFILE, UNIT, imp, in_tests, profile, source
 from xarch.kernel.logic.placement import Target
 from xarch.kernel.logic.testing import TierView as Tier
 from xarch.modules.rules.application.logic import tier_of
-from xarch.modules.rules.application.logic.tier_imports import violations
 from xarch.modules.rules.application.logic.tier_of import allowance, may_import, may_use_fakes
 
 APP = [source(p) for p in ["kernel/ids.py", "modules/docs/domain/doc.py", "modules/docs/domain/values.py",
