@@ -3,8 +3,7 @@ profile: a profile that names another framework of the same shape gets the same 
 names, with messages and fixes in its names."""
 from pathlib import Path
 
-from xarch.bootstrap.wiring import build_controllers
-from xarch.modules.rules.contract import CheckImports, ImportsChecked
+from tests.bootstrap.project import source_check
 
 PROFILE = """
 xarch: 2
@@ -74,9 +73,7 @@ def check(tmp_path: Path, tests: dict[str, str], without: tuple[str, ...] = ()) 
             (tmp_path / root / rel).parent.mkdir(parents=True, exist_ok=True)
             (tmp_path / root / rel).write_text(body)
     (tmp_path / "other.yaml").write_text(PROFILE)
-    result = build_controllers().rules.check(CheckImports(tmp_path / "app", "app", str(tmp_path / "other.yaml"),
-                                                          tmp_path / "tests"))
-    assert isinstance(result, ImportsChecked)
+    result = source_check(tmp_path / "app", str(tmp_path / "other.yaml"), tmp_path / "tests")
     return [f"{v}; fix: {v.fix}" for v in result.violations]
 
 
@@ -148,6 +145,4 @@ def test_a_profile_with_no_testing_key_names_no_framework_and_still_checks(tmp_p
     (tmp_path / "tests" / "test_a.py").write_text("import pytest\n")
     (tmp_path / "min.yaml").write_text('xarch: 2\nname: min\n'
                                        'parts: {sub: {path: sub, role: "the only part"}}\n')
-    result = build_controllers().rules.check(CheckImports(tmp_path / "app", "app", str(tmp_path / "min.yaml"),
-                                                          tmp_path / "tests"))
-    assert isinstance(result, ImportsChecked) and result.violations == ()
+    assert source_check(tmp_path / "app", str(tmp_path / "min.yaml"), tmp_path / "tests").violations == ()

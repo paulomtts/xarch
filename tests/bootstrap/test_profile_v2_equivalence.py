@@ -18,7 +18,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from xarch.bootstrap.wiring import build_controllers, build_spec, load_architecture
+from xarch.bootstrap.wiring import build_controllers, load_architecture
 from xarch.modules.spec.contract import Docs, Migrated, MigrateProfile
 
 FROZEN = Path(__file__).parent / "profiles_v1"
@@ -109,7 +109,7 @@ def test_every_example_keeps_its_name_its_part_its_note_and_its_text_though_its_
 @pytest.mark.parametrize("name", ["web", "cli"])
 def test_a_migrated_profile_makes_every_doc_its_frozen_profile_declares_with_every_template_filled(name, tmp_path):
     written = yaml.safe_load((frozen(name, tmp_path) / f"{name}.yaml").read_text())
-    docs = build_spec().docs(str(migrated(name, tmp_path).profile))
+    docs = build_controllers().spec.docs(str(migrated(name, tmp_path).profile))
     assert isinstance(docs, Docs), docs
     assert ([doc.path for doc in docs.files], [doc.path for doc in docs.files if "{{" in doc.template]) == (
         [tuple(path.split("/")) for path, entry in written["docs"].items() if "from" in entry], [])

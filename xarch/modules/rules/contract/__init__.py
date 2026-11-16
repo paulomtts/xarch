@@ -33,7 +33,7 @@ __all__ = ["At", "Weak", "Slot", "KeyFacts", "SECTIONS", "GUARDS_OFF", "UNGOVERN
            "WEAK", "APPROXIMATE", "VACUOUS", "UNPLACED", "ChecksCannotRun", "CheckRefused", "OwnCheckView",
            "Drift", "FindingView", "ExcludedView", "EnforcementView", "ReachView", "NearestView", "TierInfoView",
            "PartShown", "CoveringTest", "Untested", "InPart", "InStructure", "Ungoverned", "InTests", "Support", "Fake",
-           "WhereAnswer", "CheckImports", "ImportsChecked", "NotADirectory", "CheckResult", "CheckApp", "AppChecked",
+           "WhereAnswer", "NotADirectory", "CheckApp", "AppChecked",
            "CheckAppResult", "Locate", "Located", "Outside", "LocateResult", "ExplainWords", "NoWords",
            "WordLine", "CategoryShown", "ChecksShown", "WordsShown", "FieldShown", "WordShown", "UnknownWords",
            "WordsResult", "ExplainRule", "RuleShown", "KeyUnset", "NoRuleShown", "RuleResult", "ApproximateView",
@@ -236,23 +236,6 @@ named by its kind (Support is an InTests)."""
 
 
 @dataclass(frozen=True)
-class CheckImports:
-    """Check the code below root, imported as package, and the tests below tests (None: no tests), against the
-    architecture at profile (a bundled name or a path); root and tests are given in full."""
-    root: Path
-    package: str
-    profile: str
-    tests: Path | None = None
-
-
-@dataclass(frozen=True)
-class ImportsChecked:
-    """The violations, in the order the checks found them, and the state of the check's own enforcement."""
-    violations: tuple[Violation, ...]
-    enforcement: EnforcementView = EnforcementView()
-
-
-@dataclass(frozen=True)
 class NotADirectory:
     root: Path
 
@@ -267,9 +250,6 @@ class ChecksCannotRun:
 class CheckRefused:
     """The check cannot run on the profile in force; reason is safe to show the user as-is."""
     reason: str
-
-
-CheckResult = ImportsChecked | NotADirectory | ChecksCannotRun | CheckRefused
 
 
 @dataclass(frozen=True)

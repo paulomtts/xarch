@@ -1,5 +1,5 @@
-"""The checks of what source files say, wired: on a throwaway web project, each check is run by
-`build_controllers().rules.check` on files it reads from disk and reports what it finds. What each check decides is
+"""The checks of what source files say, wired: on a throwaway web project, each check is run by the check of the app
+(`build_controllers().rules.check_app`) on files it reads from disk and reports what it finds. What each check decides is
 proven by the unit tests of tests/modules/rules/ on hand-made values; here one case per check shows it is wired."""
 import pytest
 

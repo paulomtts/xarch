@@ -1,9 +1,10 @@
 """A throwaway web project for the wired checks: an app and its tests that follow every check, and the violations
-`build_controllers().rules.check` finds once files are added, replaced or (None) removed."""
+the check of its source finds once files are added, replaced or (None) removed."""
+from dataclasses import replace
 from pathlib import Path
 
-from xarch.bootstrap.wiring import build_controllers, build_spec
-from xarch.modules.rules.contract import CheckImports, ImportsChecked
+from xarch.bootstrap.wiring import build_controllers
+from xarch.modules.rules.contract import AppChecked, CheckApp
 from xarch.modules.spec.contract import CheckProfile, Explain, KeyExplained, ProfileChecked
 
 APP = {
@@ -64,10 +65,26 @@ def problems(tmp_path: Path, app: dict[str, str | None] | None = None,
              tests: dict[str, str | None] | None = None, profile: str = "web") -> list[str]:
     app_files = {k: v for k, v in {**APP, **(app or {})}.items() if v is not None}
     test_files = {k: v for k, v in {**TESTS, **(tests or {})}.items() if v is not None}
-    result = build_controllers().rules.check(CheckImports(write(tmp_path / "app", app_files), "app", profile,
-                                                          write(tmp_path / "tests", test_files)))
-    assert isinstance(result, ImportsChecked)
+    result = source_check(write(tmp_path / "app", app_files), profile, write(tmp_path / "tests", test_files))
     return [str(v) for v in result.violations]
+
+
+LAYOUT = ("structure", "test-tree")
+"""The ids of what layout finds of the folders, which `xarch check` adds to what the source says."""
+
+
+def app_check(root: Path, profile: str, tests: Path | None = None) -> AppChecked:
+    """What `xarch check` finds below root, the app, imported as the package its folder names, and below tests: the
+    violations, in order of file, line and rule, and the state of the enforcement."""
+    result = build_controllers().rules.check_app(CheckApp(root, profile, root.parent, tests))
+    assert isinstance(result, AppChecked), result
+    return result
+
+
+def source_check(root: Path, profile: str, tests: Path | None = None) -> AppChecked:
+    """What app_check finds, without what layout finds of the folders."""
+    result = app_check(root, profile, tests)
+    return replace(result, violations=tuple(v for v in result.violations if v.rule not in LAYOUT))
 
 
 def line_of(text: str, marker: str) -> int:
@@ -77,13 +94,13 @@ def line_of(text: str, marker: str) -> int:
 
 def bundled_profiles() -> tuple[str, ...]:
     """The names of the profiles xarch ships, as `based_on` may name them."""
-    found = build_spec().explain(Explain("based_on"))
+    found = build_controllers().spec.explain(Explain("based_on"))
     assert isinstance(found, KeyExplained)
     return found.choices
 
 
 def example_problems(location: str | Path) -> tuple[str, ...]:
     """What `profile check` finds wrong with the examples of the profile at location, which loads."""
-    checked = build_spec().check_profile(CheckProfile(Path("app"), str(location)))
+    checked = build_controllers().spec.check_profile(CheckProfile(Path("app"), str(location)))
     assert isinstance(checked, ProfileChecked) and all(p.check == "examples" for p in checked.problems), checked
     return tuple(problem.text for problem in checked.problems)

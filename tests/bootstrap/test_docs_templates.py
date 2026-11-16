@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from xarch.bootstrap.wiring import build_spec, load_architecture
+from xarch.bootstrap.wiring import build_controllers, load_architecture
 from xarch.modules.spec.contract import ProfileRefused
 
 DOCS = Path(__file__).resolve().parents[2] / "docs"
@@ -18,7 +18,7 @@ CHECKED_IN = [(profile, path.relative_to(DOCS / profile).as_posix()) for profile
 
 
 def generated(profile: str) -> dict[str, str]:
-    return {"/".join(f.path): f.template for f in build_spec().docs(profile).files}
+    return {"/".join(f.path): f.template for f in build_controllers().spec.docs(profile).files}
 
 
 @pytest.mark.parametrize("profile", PROFILES)
@@ -78,7 +78,7 @@ def test_a_custom_architecture_brings_its_own_template(tmp_path):
     """It names no testing template, so it gets no testing.md."""
     write(tmp_path / "notes.md", "# Notes\n")
     write(tmp_path / "layered.md", "# Layered\n\nsrc/\n{{tree}}\n\n{{rules_table}}\n\n{{litmus:api}}\n")
-    docs = build_spec().docs(str(write(tmp_path / "layered.yaml", ARCHITECTURE + "    notes.md: {from: notes.md}\n")))
+    docs = build_controllers().spec.docs(str(write(tmp_path / "layered.yaml", ARCHITECTURE + "    notes.md: {from: notes.md}\n")))
     texts = {"/".join(f.path): f.template for f in docs.files}
     assert texts["architecture.md"] == (
         "# Layered\n\nsrc/\n"
@@ -90,7 +90,7 @@ def test_a_custom_architecture_brings_its_own_template(tmp_path):
 
 def test_a_template_with_a_bad_placeholder_fails_naming_the_template(tmp_path):
     write(tmp_path / "layered.md", "{{litmus:repo}} {{tables}}\n")
-    refused = build_spec().docs(str(write(tmp_path / "layered.yaml", ARCHITECTURE)))
+    refused = build_controllers().spec.docs(str(write(tmp_path / "layered.yaml", ARCHITECTURE)))
     assert isinstance(refused, ProfileRefused)
     problems = refused.reason.split("\n")
     assert problems[0] == "layered.md: {{litmus:repo}}: the architecture defines no part 'repo'"
@@ -99,4 +99,4 @@ def test_a_template_with_a_bad_placeholder_fails_naming_the_template(tmp_path):
 
 def test_an_architecture_that_declares_no_docs_gets_none(tmp_path):
     path = write(tmp_path / "layered.yaml", ARCHITECTURE.split("docs:")[0])
-    assert build_spec().docs(str(path)).files == ()
+    assert build_controllers().spec.docs(str(path)).files == ()

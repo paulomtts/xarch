@@ -6,9 +6,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.bootstrap.project import app_check
 from xarch.bootstrap.wiring import build_controllers
-from xarch.modules.layout.contract import CheckStructure
-from xarch.modules.rules.contract import CheckImports
 from xarch.modules.scaffold.contract import InitProject, NewInstance, Scaffolded
 
 GUARD = Path("tests/architecture/test_rules.py")
@@ -38,10 +37,7 @@ def test_init_writes_the_guard_test_beside_the_app_and_a_second_init_skips_it(tm
 def test_the_written_guard_test_passes_the_check_of_its_own_project(tmp_path, profile):
     app = tmp_path / "app"
     init(app, profile)
-    controllers = build_controllers()
-    imports = controllers.rules.check(CheckImports(app, "app", profile, tmp_path / "tests")).violations
-    structure = controllers.layout.check(CheckStructure(app, "app", profile, tmp_path / "tests")).violations
-    assert imports + structure == ()
+    assert app_check(app, profile, tmp_path / "tests").violations == ()
 
 
 @pytest.mark.parametrize("profile", PROFILES)

@@ -6,7 +6,7 @@ import pytest
 from typer.testing import CliRunner
 
 from xarch.bootstrap.app import app
-from xarch.bootstrap.wiring import build_spec
+from xarch.bootstrap.wiring import build_controllers
 
 runner = CliRunner()
 PROFILE = """xarch: 2
@@ -66,5 +66,5 @@ def test_where_places_the_declared_file_in_its_part():
 
 
 def test_the_docs_tree_shows_the_declared_file_beside_the_folders():
-    text = {"/".join(f.path): f.template for f in build_spec().docs("shim.yaml").files}["architecture.md"]
+    text = {"/".join(f.path): f.template for f in build_controllers().spec.docs("shim.yaml").files}["architecture.md"]
     assert "__main__.py" in text and "core/" in text

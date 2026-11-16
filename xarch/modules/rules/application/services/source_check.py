@@ -25,7 +25,6 @@ from xarch.modules.rules.contract import (
     EnforcementView,
     ExcludedView,
     FindingView,
-    ImportsChecked,
     OwnCheckView,
 )
 from xarch.modules.rules.domain.errors import RootMissing
@@ -39,12 +38,6 @@ class SourceCheckService:
 
     def __init__(self, tree: SourceTree, profiles: Profiles):
         self._tree, self._profiles = tree, profiles
-
-    def imports(self, root: Path, package: str, profile: str, tests: Path | None = None) -> ImportsChecked:
-        """The violations below root and below tests, and the state of the check's enforcement, as the check of the
-        imports answers; raises as check does."""
-        checked = self.check(root, package, profile, tests)
-        return ImportsChecked(checked.violations, self.view(checked.enforcement))
 
     def view(self, state: Enforcement) -> EnforcementView:
         """The state of the check's enforcement as the enforcement section shows it."""

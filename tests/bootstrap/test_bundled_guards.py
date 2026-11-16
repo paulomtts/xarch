@@ -1,7 +1,7 @@
 """The libraries and guards of the bundled profiles, loaded through the wiring."""
 import pytest
 
-from xarch.bootstrap.wiring import build_spec, load_architecture
+from xarch.bootstrap.wiring import build_controllers, load_architecture
 from xarch.modules.spec.contract import GuardsView
 from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns
 
@@ -13,7 +13,7 @@ from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework, S
              "bootstrap": ("sqlmodel", "typer")}),
 ])
 def test_the_bundled_profiles_list_the_libraries_their_examples_use(name, expected):
-    profile = build_spec().profile(name)
+    profile = build_controllers().spec.profile(name)
     assert {part: packages for part, packages in (profile.libraries or {}).items() if packages} == expected
 
 
@@ -21,7 +21,7 @@ def test_the_bundled_profiles_list_the_libraries_their_examples_use(name, expect
 def test_the_bundled_profiles_use_every_guard_of_their_own(name):
     mocks = ("Mock", "MagicMock", "AsyncMock", "NonCallableMock", "NonCallableMagicMock")
     table = CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id", ("argnames", "argvalues"))
-    profile = build_spec().profile(name)
+    profile = build_controllers().spec.profile(name)
     assert profile.guards == GuardsView(
         package_only=("contract",),
         scenarios=ScenarioCoverage("contract", "integration", "Result", ("given", "when", "then"), table, "test_{name}.py"),
@@ -63,7 +63,7 @@ def test_the_bundled_profiles_forbid_the_clock_and_io_in_the_pure_parts_and_thei
 
 
 def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
-    testing = next(f.template for f in build_spec().docs("web").files if f.path == ("testing.md",))
+    testing = next(f.template for f in build_controllers().spec.docs("web").files if f.path == ("testing.md",))
     section = testing.split("\n\n## 9. Guards\n\n", 1)[1].split("\n\n")[1]
     assert section == "\n".join([
         "- `structure`: every folder and file of the layout exists, in the app and in every `modules/<name>/`.",

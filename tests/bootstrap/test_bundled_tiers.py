@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from tests.bootstrap.project import example_problems
-from xarch.bootstrap.wiring import build_spec, load_architecture
+from xarch.bootstrap.wiring import build_controllers, load_architecture
 from xarch.modules.spec.contract import ProfileRefused
 
 
@@ -81,7 +81,7 @@ def test_a_custom_architecture_with_its_own_tiers_gets_its_own_testing_md(tmp_pa
                                           "Run it: `<command>`\n\n{{tier_data}}\n\n{{tier_examples}}\n")
     write(tmp_path / "examples" / "tests/store/test_store.py", "def test_a_query(): ...\n")
     write(tmp_path / "examples" / "tests/api/test_api.py", "def test_a_route(): ...\n")
-    docs = build_spec().docs(str(write(tmp_path / "layered.yaml", CUSTOM)))
+    docs = build_controllers().spec.docs(str(write(tmp_path / "layered.yaml", CUSTOM)))
     texts = {"/".join(f.path): f.template for f in docs.files}
     assert texts["testing.md"] == (
         "# Testing of src/*/api\n\n"
@@ -103,7 +103,7 @@ def test_a_custom_testing_template_with_a_bad_placeholder_fails_naming_it(tmp_pa
     write(tmp_path / "layered-testing.md", "{{tier_files}}\n{{tier}}\n")
     write(tmp_path / "examples" / "tests/store/test_store.py", "")
     write(tmp_path / "examples" / "tests/api/test_api.py", "")
-    refused = build_spec().docs(str(write(tmp_path / "layered.yaml", CUSTOM)))
+    refused = build_controllers().spec.docs(str(write(tmp_path / "layered.yaml", CUSTOM)))
     assert isinstance(refused, ProfileRefused)
     problems = refused.reason.split("\n")
     assert problems[0] == (

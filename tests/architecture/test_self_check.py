@@ -9,8 +9,7 @@ from typer.testing import CliRunner
 import xarch
 from xarch.bootstrap.app import app
 from xarch.bootstrap.wiring import build_controllers
-from xarch.modules.layout.contract import CheckStructure
-from xarch.modules.rules.contract import CheckImports, ImportsChecked
+from xarch.modules.rules.contract import AppChecked, CheckApp
 from xarch.modules.spec.contract import AppChosen, ChooseApp, ProfileSelected, SelectProfile
 
 SRC = Path(xarch.__file__).parent
@@ -30,11 +29,9 @@ def test_xarch_records_its_own_app_folder_so_a_bare_check_runs_here():
 
 
 def test_xarch_has_no_violations_in_its_source_or_its_tests():
-    controllers = build_controllers()
-    imports = controllers.rules.check(CheckImports(SRC, "xarch", own_architecture(), TESTS))
-    structure = controllers.layout.check(CheckStructure(SRC, "xarch", own_architecture(), TESTS))
-    assert isinstance(imports, ImportsChecked)
-    assert [str(v) for v in imports.violations + structure.violations] == []
+    checked = build_controllers().rules.check_app(CheckApp(SRC, own_architecture(), SRC.parent, TESTS))
+    assert isinstance(checked, AppChecked)
+    assert [str(v) for v in checked.violations] == []
 
 
 def test_xarch_passes_its_own_check_in_strict_mode_leaving_nothing_unenforced():
@@ -56,7 +53,8 @@ def test_the_self_check_would_catch_a_broken_rule(tmp_path):
     copy = tmp_path / "xarch"
     shutil.copytree(SRC, copy, ignore=shutil.ignore_patterns("__pycache__"))
     (copy / "modules" / "rules" / "domain" / "bad.py").write_text("from xarch.platform import filesystem\n")
-    result = build_controllers().rules.check(CheckImports(copy, "xarch", own_architecture(), TESTS))
+    result = build_controllers().rules.check_app(CheckApp(copy, own_architecture(), copy.parent, TESTS))
+    assert isinstance(result, AppChecked)
     assert [str(v) for v in result.violations] == [
         "xarch/modules/rules/domain/bad.py:1: domain/ of modules/rules may not import platform/ "
         "(xarch.platform.filesystem)"]

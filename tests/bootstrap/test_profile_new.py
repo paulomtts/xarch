@@ -6,7 +6,7 @@ from typer.testing import CliRunner
 
 from tests.bootstrap.project import bundled_profiles
 from xarch.bootstrap.app import app
-from xarch.bootstrap.wiring import build_spec, load_architecture
+from xarch.bootstrap.wiring import build_controllers, load_architecture
 
 runner = CliRunner()
 BUNDLED = bundled_profiles()
@@ -37,7 +37,7 @@ def test_the_copy_holds_every_file_the_bundled_profile_points_to(tmp_path, bundl
     runner.invoke(app, ["profile", "new", "mine", "--from", bundled])
     written = {p.relative_to(tmp_path / "architecture" / "mine").as_posix()
                for p in (tmp_path / "architecture" / "mine").rglob("*") if p.is_file()}
-    pointed = build_spec().docs(bundled)
+    pointed = build_controllers().spec.docs(bundled)
     assert {"mine.yaml"} < written and len(written) > len(pointed.files)
     document = yaml.safe_load((tmp_path / "architecture" / "mine" / "mine.yaml").read_text())
     pages = document["docs"]["pages"].values()

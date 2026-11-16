@@ -6,15 +6,12 @@ from xarch.modules.rules.application.services.app_check import AppCheckService
 from xarch.modules.rules.application.services.examples import ExamplesService
 from xarch.modules.rules.application.services.explaining import ExplainingService
 from xarch.modules.rules.application.services.locate import LocateService
-from xarch.modules.rules.application.services.source_check import SourceCheckService
 from xarch.modules.rules.application.services.source_reading import SourceReadService
 from xarch.modules.rules.contract import (
     CheckApp,
     CheckAppResult,
-    CheckImports,
     CheckProfile,
     CheckRefused,
-    CheckResult,
     ChecksCannotRun,
     ExplainRule,
     ExplainWords,
@@ -33,10 +30,9 @@ from xarch.modules.rules.domain.errors import ChecksRefused, NoProfile, OutsideP
 
 
 class RulesController:
-    def __init__(self, service: SourceCheckService, locator: LocateService, app: AppCheckService,
-                 explaining: ExplainingService, examples: ExamplesService):
-        self._service, self._locator, self._app, self._explaining = service, locator, app, explaining
-        self._examples = examples
+    def __init__(self, locator: LocateService, app: AppCheckService, explaining: ExplainingService,
+                 examples: ExamplesService):
+        self._locator, self._app, self._explaining, self._examples = locator, app, explaining, examples
 
     def check_profile(self, cmd: CheckProfile) -> ProfileCheckResult:
         """Validates a profile without an app: every problem at once, what spec's check of it finds and what its own
@@ -75,17 +71,6 @@ class RulesController:
         own checks cannot run and one that cannot be used."""
         try:
             return self._app.check(cmd.root, cmd.profile, cmd.tests, cmd.cwd, cmd.strict)
-        except RootMissing as e:
-            return NotADirectory(e.root)
-        except ChecksRefused as e:
-            return ChecksCannotRun(e.problems)
-        except DomainError as e:
-            return CheckRefused(e.reason)
-
-    def check(self, cmd: CheckImports) -> CheckResult:
-        """The check of the imports below a root; refused as check_app refuses."""
-        try:
-            return self._service.imports(cmd.root, cmd.package, cmd.profile, cmd.tests)
         except RootMissing as e:
             return NotADirectory(e.root)
         except ChecksRefused as e:

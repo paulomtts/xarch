@@ -4,9 +4,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.bootstrap.project import app_check
 from xarch.bootstrap.wiring import build_controllers
-from xarch.modules.layout.contract import CheckStructure
-from xarch.modules.rules.contract import CheckImports, ImportsChecked
 from xarch.modules.scaffold.contract import InitProject, NewInstance, Scaffolded
 
 PROFILE = """\
@@ -46,11 +45,7 @@ def init(app: Path, profile: str | Path) -> Scaffolded:
 
 
 def problems(app: Path, profile: Path) -> list[tuple[str, str]]:
-    controllers = build_controllers()
-    checked = controllers.rules.check(CheckImports(app, app.name, str(profile)))
-    assert isinstance(checked, ImportsChecked)
-    found = checked.violations + controllers.layout.check(CheckStructure(app, app.name, str(profile))).violations
-    return [(v.file, v.rule) for v in found]
+    return [(v.file, v.rule) for v in app_check(app, str(profile)).violations]
 
 
 def test_a_preset_is_copied_below_the_app_folder_with_its_tree_and_every_byte_kept(tmp_path):
@@ -103,8 +98,6 @@ def test_a_fresh_project_of_a_bundled_profile_has_every_shipped_file_and_passes_
     assert isinstance(controllers.scaffold.new(NewInstance(app, "module", "documents", profile)), Scaffolded)
     shipped = controllers.spec.files(profile, "app").files
     assert shipped and all((tmp_path.joinpath(*file.path)).is_file() for file in shipped)
-    checked = controllers.rules.check(CheckImports(app, "app", profile, tmp_path / "tests"))
-    assert isinstance(checked, ImportsChecked)
-    structure = controllers.layout.check(CheckStructure(app, "app", profile, tmp_path / "tests")).violations
-    assert checked.violations + structure == ()
+    checked = app_check(app, profile, tmp_path / "tests")
+    assert checked.violations == ()
     assert checked.enforcement.init_files == ()

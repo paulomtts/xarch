@@ -2,9 +2,9 @@
 init files, the skipped tests, the dynamic imports and the checks met to the letter only."""
 from pathlib import Path
 
-from tests.bootstrap.project import APP, TABLE, TESTS, write
+from tests.bootstrap.project import APP, TABLE, TESTS, source_check, write
 from xarch.bootstrap.wiring import build_controllers
-from xarch.modules.rules.contract import At, CheckImports, Drift, EnforcementView, ImportsChecked, Weak
+from xarch.modules.rules.contract import At, Drift, EnforcementView, Weak
 from xarch.modules.spec.contract import Origin
 
 PORTS = "modules/docs/application/ports/"
@@ -19,11 +19,8 @@ def enforcement(tmp_path: Path, app: dict[str, str] | None = None, tests: dict[s
         (tmp_path.joinpath(*file.path)).parent.mkdir(parents=True, exist_ok=True)
         tmp_path.joinpath(*file.path).write_text(file.content)
     tests = {**TESTS, "architecture/test_rules.py": guard.content, **(tests or {})}
-    result = build_controllers().rules.check(CheckImports(
-        write(tmp_path / "app", {**APP, **(app or {})}), "app", profile,
-        write(tmp_path / "tests", {k: v for k, v in tests.items() if v is not None})))
-    assert isinstance(result, ImportsChecked)
-    return result.enforcement
+    return source_check(write(tmp_path / "app", {**APP, **(app or {})}), profile,
+                        write(tmp_path / "tests", {k: v for k, v in tests.items() if v is not None})).enforcement
 
 
 def test_a_clean_project_on_a_bundled_profile_reports_only_the_guards_it_ships_off(tmp_path):

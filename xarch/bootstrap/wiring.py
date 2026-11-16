@@ -58,24 +58,22 @@ as the interpreter running xarch says it; a second language needs its own beside
 
 
 @dataclass(frozen=True)
-class Controllers:
+class _Controllers:
     rules: RulesController
     layout: LayoutController
     scaffold: ScaffoldController
     spec: SpecController
 
 
-def build_reader(tree: FsSourceTree) -> ReaderController:
+def _build_reader(tree: FsSourceTree) -> ReaderController:
     """The reader of the app's language, which needs no profile: spec reads its examples with it, as its ExampleReader."""
     return ReaderController(SourceReadService(tree))
 
 
-def build_spec(fs: FileSystem | None = None, tree: FsSourceTree | None = None) -> SpecController:
-    """Spec, whose examples the reader reads: tree when one is given, else a reader of its own."""
-    fs = fs or FileSystem()
-    tree = tree or READER(fs)
+def _build_spec(fs: FileSystem, tree: FsSourceTree) -> SpecController:
+    """Spec, whose examples the reader of tree reads."""
     files = FsArchitectureFiles(fs, DataFileReader(), BUNDLED)
-    architectures = ArchitectureService(files, RUNTIME(), build_reader(tree))
+    architectures = ArchitectureService(files, RUNTIME(), _build_reader(tree))
     settings = PyprojectSettings(fs, TomlReader())
     output = FsProfileOutput(fs)
     folders = FsFolders(fs)
@@ -88,7 +86,7 @@ def build_spec(fs: FileSystem | None = None, tree: FsSourceTree | None = None) -
 
 def build_architectures(fs: FileSystem | None = None) -> ArchitectureService:
     fs = fs or FileSystem()
-    return ArchitectureService(FsArchitectureFiles(fs, DataFileReader(), BUNDLED), RUNTIME(), build_reader(READER(fs)))
+    return ArchitectureService(FsArchitectureFiles(fs, DataFileReader(), BUNDLED), RUNTIME(), _build_reader(READER(fs)))
 
 
 def load_architecture(location: str | Path) -> Architecture:
@@ -96,28 +94,28 @@ def load_architecture(location: str | Path) -> Architecture:
     return build_architectures().load(location)
 
 
-def build_rules(tree: FsSourceTree, spec: SpecController, layout: LayoutController) -> RulesController:
+def _build_rules(tree: FsSourceTree, spec: SpecController, layout: LayoutController) -> RulesController:
     profiles = SpecProfiles(spec)
     source = SourceCheckService(tree, profiles)
     explaining = ExplainingService(profiles, SpecCheckFormat(spec))
-    return RulesController(source, LocateService(tree, profiles), AppCheckService(source, LayoutStructure(layout), tree),
+    return RulesController(LocateService(tree, profiles), AppCheckService(source, LayoutStructure(layout), tree),
                            explaining, ExamplesService(tree, profiles))
 
 
-def build_layout(fs: FileSystem, spec: SpecController) -> LayoutController:
+def _build_layout(fs: FileSystem, spec: SpecController) -> LayoutController:
     return LayoutController(StructureCheckService(FsDisk(fs), LayoutSkeleton(spec)))
 
 
-def build_scaffold(fs: FileSystem, spec: SpecController) -> ScaffoldController:
+def _build_scaffold(fs: FileSystem, spec: SpecController) -> ScaffoldController:
     return ScaffoldController(ScaffoldingService(FsFiles(fs), ScaffoldSkeleton(spec)))
 
 
-def build_controllers() -> Controllers:
+def build_controllers() -> _Controllers:
     """Built in the order each needs the one before: the reader, which needs no profile; spec, which reads its
     examples with it; layout and scaffold, which read the skeleton spec gives; rules, which reads with the same reader
     the profile spec gives and the structure layout checks. One reader and one spec feed them all: they cannot drift."""
     fs = FileSystem()
     tree = READER(fs)
-    spec = build_spec(fs, tree)
-    layout = build_layout(fs, spec)
-    return Controllers(build_rules(tree, spec, layout), layout, build_scaffold(fs, spec), spec)
+    spec = _build_spec(fs, tree)
+    layout = _build_layout(fs, spec)
+    return _Controllers(_build_rules(tree, spec, layout), layout, _build_scaffold(fs, spec), spec)
