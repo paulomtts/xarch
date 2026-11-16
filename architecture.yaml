@@ -112,6 +112,7 @@ parts:
       it refuses a path not given in full.
     may_import: [kernel, kernel-logic]
     libraries: [yaml]
+    forbidden: environment
     tier: unit
 
   cli:
@@ -125,6 +126,7 @@ parts:
       it belongs in `reports/`. If it holds a business rule, it belongs in a module.
     may_import: [reports, controller@any, contract@any, kernel, kernel-logic]
     libraries: [typer]
+    forbidden: environment
     tier: wired
     folders: [commands]
 
@@ -145,6 +147,7 @@ parts:
     role: "`python -m xarch`: starts the same app as the console script"
     litmus: Does it only hand control to the app bootstrap/ builds, so that `python -m xarch` runs it?
     may_import: [bootstrap]
+    forbidden: environment
     untested: >-
       a two-line shim that runs the app bootstrap/ builds; no test runs `python -m xarch`, and the wired tests drive
       that same app
@@ -239,7 +242,8 @@ forbidden:
               os.getcwdb, os.chdir, typing.Any]
   ambient: [pathlib.Path.cwd, pathlib.Path.absolute, pathlib.Path.resolve, pathlib.Path.home, pathlib.Path.expanduser,
             os.getcwd, os.getcwdb, os.chdir, os.path.abspath, os.path.realpath, os.path.expanduser, .absolute(),
-            .resolve(), .expanduser(), .chdir()]
+            .resolve(), .expanduser(), .chdir(), os.environ, os.getenv]
+  environment: [os.environ, os.getenv]
 
 reserved:
   ast: only the reader adapter parses the checked language, so that another language needs one new reader
