@@ -6,8 +6,13 @@ piece is its text, after the file's opening lines (those before its first piece)
 from __future__ import annotations
 
 from xarch.modules.review.application.logic.lines import lines as cut
-from xarch.modules.review.domain.published import MERGE_CHARS, PIECE_CHARS, SPLIT_CHARS
+from xarch.modules.review.domain.published import PIECE_CHARS
 from xarch.modules.review.domain.values import Section, Span
+
+SPLIT_CHARS = 4000
+"""The most characters a class is judged whole with: a larger one is judged as its methods."""
+MERGE_CHARS = 200
+"""The fewest characters a piece holds alone: a smaller one is joined to the piece after it."""
 
 
 def _text(lines: list[str], span: tuple[int, int]) -> str:

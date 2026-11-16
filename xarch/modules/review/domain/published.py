@@ -47,10 +47,6 @@ MAX_PIECED = 20
 PIECE_CHARS = 1000
 """The fewest characters a piece judged holds: in the trials, half the well-placed pieces under 400 characters and over
 a third of those from 400 to 1,000 read as low as misplaced ones."""
-SPLIT_CHARS = 4000
-"""The most characters a class is judged whole with: a larger one is judged as its methods."""
-MERGE_CHARS = 200
-"""The fewest characters a piece holds alone: a smaller one is joined to the piece after it."""
 SHOWN = 3
 """How many pieces of a file are shown: the lowest, ranked."""
 NO_CONTEXT, IMPORTS = "none", "imports"
@@ -66,9 +62,6 @@ in the trials, reordering the options moved a file's probability by up to 0.09 i
 it."""
 FEWEST_SUMMED = 3
 """The fewest files of a part a run reads to say how they read: fewer say nothing of the part."""
-FEWEST_NOTED = 3
-"""The fewest files of a part that read as doubtful, more than a quarter of those read, for the run to say that the
-part's litmus may not describe its files."""
 NOT_CACHED, FAILED = "not-cached", "failed"
 """Why a question has no answer: it is not in the cache and nothing was sent (offline); or the decision model failed
 on it or on a question before it, and nothing more was sent."""
@@ -92,8 +85,6 @@ UNHELD = "it was never held to its examples"
 GAP = 0.4
 """How far above the mean of an eval's clean examples the mean of its flagged ones must read for it to pass: the
 weakest checks that passed the trials read +0.42 and +0.46, the one that failed +0.21."""
-LOWEST_LINE = 0.5
-"""The lowest line calibration sets an eval of a yes or no or a choice, when the profile writes none."""
 
 
 @dataclass(frozen=True)
@@ -194,7 +185,7 @@ class LeftOut:
 class PartRead:
     """How the files of one part read in a run: the part; how many of its files were read and how many read as
     doubtful; its line, and whether the profile sets it by hand; whether enough were read to say anything of the
-    part (FEWEST_SUMMED); whether so many read as doubtful (at least FEWEST_NOTED, and more than a quarter of
+    part (FEWEST_SUMMED); whether so many read as doubtful (at least logic's FEWEST_NOTED, and more than a quarter of
     those read) that its litmus may not describe them; and how the part stood when placement was held to its
     examples (PASSED, DISAGREE or ELSEWHERE; "" when placement is not calibrated)."""
     part: str

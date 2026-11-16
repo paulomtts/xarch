@@ -16,7 +16,6 @@ from xarch.modules.review.domain.published import (
     CHOOSE,
     FAILED_EXAMPLES,
     GAP,
-    LOWEST_LINE,
     SCORE,
     STALE,
     UNCALIBRATED,
@@ -27,6 +26,8 @@ from xarch.modules.review.domain.values import Answer, Calibration, EvalText
 
 LEVELS = 4
 """The highest level of a score: its value is the expected level over it."""
+LOWEST_LINE = 0.5
+"""The lowest line calibration sets an eval of a yes or no or a choice, when the profile writes none."""
 
 
 def orders(question: Choice) -> tuple[Choice, ...]:

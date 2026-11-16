@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from xarch.modules.review.domain.published import (
     BAND,
-    FEWEST_NOTED,
     FEWEST_SUMMED,
     MARKED_SMALL,
     SHOWN,
@@ -18,6 +17,10 @@ from xarch.modules.review.domain.published import (
     Request,
 )
 from xarch.modules.review.domain.values import Answer, CodeFile, PartText
+
+FEWEST_NOTED = 3
+"""The fewest files of a part that read as doubtful, more than a quarter of those read, for the run to say that the
+part's litmus may not describe its files."""
 
 
 def reading(request: Request, answer: Answer, part: PartText, orders: int = 1) -> Reading:
