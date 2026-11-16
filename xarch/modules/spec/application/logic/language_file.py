@@ -45,12 +45,10 @@ from collections.abc import Iterable, Mapping
 from typing import Any
 
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.values import Language
+from xarch.modules.spec.domain.values import LANGUAGES, Language
 from xarch.profile_values.capabilities import EXACT, FACTS, Supply
 from xarch.profile_values.language import CheckedLanguage, RecordMark
 
-FOLDER = "presets/language"
-"""Where the data files of the languages are, below the bundled folder: one YAML file each, named for the language."""
 KEYS = ("title", "extension", "package_file", "interface", "dynamic", "namespace", "cache", "standard", "name", "private",
         "special", "call", "nothing", "comment", "directives", "shebang", "encoding", "branching", "importing",
         "supplies", "immutable", "branching_expressions")
@@ -68,7 +66,7 @@ _MARK = re.compile(r"(?P<path>[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)
 
 def language_of(name: str, document: Any) -> Language:
     """The language the document of the preset called name describes; raises InvalidArchitecture."""
-    source = f"{FOLDER}/{name}.yaml"
+    source = f"{LANGUAGES}/{name}.yaml"
     if not isinstance(document, Mapping):
         raise InvalidArchitecture(source, ["must be a mapping of keys, such as title, extension and package_file"])
     problems: list[str] = []

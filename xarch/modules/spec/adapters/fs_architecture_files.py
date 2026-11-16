@@ -5,15 +5,13 @@ from pathlib import Path
 from typing import Any
 
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.values import PROFILE_SUFFIX, ArchitectureDocument, ArchitectureSource
+from xarch.modules.spec.domain.values import LANGUAGES, PROFILE_SUFFIX, ArchitectureDocument, ArchitectureSource
 from xarch.platform.data_files import DataFileError, DataFileReader
 from xarch.platform.filesystem import FileSystem
 from xarch.platform.package_data import PackageData
 
 PRESETS = "presets/testing"
 """Where the presets of `testing` are, below the bundled folder: one YAML file each, named for the preset."""
-LANGUAGES = "presets/language"
-"""Where the data files of the languages are, below the bundled folder: one YAML file each, named for the language."""
 
 
 class FsArchitectureFiles:

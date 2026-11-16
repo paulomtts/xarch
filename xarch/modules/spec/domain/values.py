@@ -26,6 +26,8 @@ VERSION = 2
 """The one format version of a profile this xarch reads and writes."""
 PROFILE_SUFFIX = ".yaml"
 """The suffix of every bundled profile file, and of each one xarch writes."""
+LANGUAGES = "presets/language"
+"""Where the data files of the languages are, below the bundled folder: one YAML file each, named for the language."""
 
 Layout = dict[str, "Layout | None"]
 """A layout tree: a dict is a folder, None a file; the key "*" is a repeating folder, one per instance."""
