@@ -21,6 +21,7 @@ from xarch.modules.review.contract import (
     LeftOut,
     NothingChosen,
     Option,
+    PartRead,
     Reading,
     Request,
     Review,
@@ -58,9 +59,16 @@ HIDDEN = "from <masked> import <masked>\nfrom dataclasses import dataclass\n" + 
     "title", "<masked>")
 LOW = Answer("m-1.0.1", (("domain", 0.1), ("main", 0.9)), 100, 5)
 HIGH = Answer("m-1.0.0", (("domain", 0.8), ("main", 0.2)), 90, 4)
-DOUBTFUL = Reading(DOCUMENT.file, "domain", len(DOCUMENT.text), 0.1, 0.3, True, LOW.probabilities, "m-1.0.1")
-PLACED = Reading(OTHER.file, "domain", len(OTHER.text), 0.8, 0.3, False, HIGH.probabilities, "m-1.0.0")
-PLACED_HERE = Reading(DOCUMENT.file, "domain", len(DOCUMENT.text), 0.8, 0.3, False, HIGH.probabilities, "m-1.0.0")
+DOUBTFUL = Reading(DOCUMENT.file, "domain", len(DOCUMENT.text), 0.1, 0.3, True, LOW.probabilities, "m-1.0.1",
+                   small=True)
+PLACED = Reading(OTHER.file, "domain", len(OTHER.text), 0.8, 0.3, False, HIGH.probabilities, "m-1.0.0", small=True)
+PLACED_HERE = Reading(DOCUMENT.file, "domain", len(DOCUMENT.text), 0.8, 0.3, False, HIGH.probabilities, "m-1.0.0",
+                      small=True)
+
+
+def read(count: int, doubtful: int) -> tuple[PartRead, ...]:
+    """How the domain files read: count of them, doubtful of those."""
+    return (PartRead("domain", count, doubtful, 0.3, False, False, False),)
 
 
 @dataclass(frozen=True)
@@ -114,17 +122,17 @@ def run(world: World, when: Review):
                  id="a file held back is held back however it is chosen"),
     pytest.param(World(answers={SENT: LOW}), review("app/modules/documents/domain"),
                  ReviewReading((BY_PATHS,), 3, (DOUBTFUL,), (GONE, LeftOut(SMALL_FILE.file, SMALL, 6)), (), SENDS, 1, 0,
-                               100, 5, "", ("main",)),
+                               100, 5, "", ("main",), read(1, 1)),
                  id="a file whose part holds less than the line is doubtful there, asked of the decision model"),
     pytest.param(World(answers={SENT: LOW, SENT_OTHER: HIGH}), review("app/two"),
-                 ReviewReading((BY_PATHS,), 2, (DOUBTFUL, PLACED), (), (), SENDS, 2, 0, 190, 9, "", ("main",)),
+                 ReviewReading((BY_PATHS,), 2, (DOUBTFUL, PLACED), (), (), SENDS, 2, 0, 190, 9, "", ("main",), read(2, 1)),
                  id="the readings are ranked, the most doubtful first"),
     pytest.param(World(earlier={SENT: HIGH}, keyed=False), review("app/x.py"),
-                 ReviewReading((BY_PATHS,), 1, (PLACED_HERE,), (), (), UNKEYED, 0, 1, 0, 0, "", ("main",)),
+                 ReviewReading((BY_PATHS,), 1, (PLACED_HERE,), (), (), UNKEYED, 0, 1, 0, 0, "", ("main",), read(1, 0)),
                  id="an answer kept is read, not asked again, and needs no key"),
     pytest.param(World(earlier={SENT: LOW}), review("app/two", offline=True),
                  ReviewReading((BY_PATHS,), 2, (DOUBTFUL,), (), (Unasked(OTHER.file, NOT_CACHED),), SENDS, 0, 1, 0, 0,
-                               "", ("main",)),
+                               "", ("main",), read(1, 1)),
                  id="offline, a file whose answer is not kept is unanswered and nothing is sent"),
     pytest.param(World(answers={SENT_OTHER: HIGH}), review("app/two"),
                  ReviewReading((BY_PATHS,), 2, (), (), (Unasked(DOCUMENT.file, FAILED), Unasked(OTHER.file, FAILED)),

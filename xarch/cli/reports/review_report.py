@@ -14,6 +14,8 @@ from xarch.modules.review.contract import (
     BY_PATHS,
     EXCLUDED,
     FAILED,
+    FEWEST_SUMMED,
+    MARKED_SMALL,
     MIN_CHARS,
     MISSING,
     NEVER,
@@ -24,6 +26,7 @@ from xarch.modules.review.contract import (
     UNPARSABLE,
     UNPLACED,
     LeftOut,
+    PartRead,
     Reading,
     Request,
     ReviewPlanned,
@@ -111,7 +114,8 @@ def plan_document(profile: str, planned: ReviewPlanned) -> str:
 
 def reading_lines(read: ReviewReading) -> list[str]:
     """The header, then the files doubtful here, the most doubtful first, each with what to do; the files that read as
-    placed, lowest first; the files left out and why; and those with no answer, and why."""
+    placed, lowest first; what small means, when a file is; how the files of each part read; the files left out and
+    why; and those with no answer, and why."""
     judged = len(read.readings) + len(read.unasked)
     lines = [f"review: advisory. {ADVISORY}",
              f"Model {read.sends.model}. {read.found} file(s) found ({', '.join(WAYS[way] for way in read.by)}), "
@@ -130,6 +134,11 @@ def reading_lines(read: ReviewReading) -> list[str]:
         lines.append("  no file judged reads as doubtful here")
     if placed:
         lines += ["", "placement: reads as placed (lowest first)", *(_reading(item) for item in placed)]
+    if any(item.small for item in read.readings):
+        lines += ["", f"small: under {MARKED_SMALL:,} characters; small files read lower for being small (in trials, a "
+                      "tenth of the smallest quarter of files read as doubtful, a fiftieth of the largest)"]
+    if read.parts:
+        lines += ["", "parts (read this run)", *(line for part in read.parts for line in _part(part))]
     if read.role_only:
         lines += ["", f"parts the question describes by their role only, having no litmus: {', '.join(read.role_only)}"]
     if read.left_out:
@@ -152,7 +161,8 @@ def reading_document(profile: str, read: ReviewReading) -> str:
         "selection": {"by": list(read.by), "found": read.found, "judged": len(read.readings) + len(read.unasked),
                       "left_out": [_left_out(item) for item in read.left_out]},
         "placement": {"calibration": {"state": "measured", "evidence": BASED_ON},
-                      "role_only": list(read.role_only), "files": [_file(item) for item in read.readings]},
+                      "role_only": list(read.role_only), "files": [_file(item) for item in read.readings],
+                      "parts": [_part_read(part) for part in read.parts]},
         "sends": _sends(read.sends),
         "sent": {"calls": read.sent, "cached": read.cached, "input_tokens": read.input_tokens,
                  "output_tokens": read.output_tokens},
@@ -194,14 +204,36 @@ def _why(item: LeftOut) -> str:
 
 def _reading(item: Reading) -> str:
     line = f"line {item.line:.2f}, set by the profile" if item.by_hand else f"line {item.line:.2f}"
+    small = ", small" if item.small else ""
     orders = f"   the mean of {item.orders} orders of the options" if item.orders > 1 else ""
-    return f"  {item.file}   {item.part}   {item.probability:.2f} ({line})   {item.chars:,} chars{orders}"
+    return f"  {item.file}   {item.part}   {item.probability:.2f} ({line})   {item.chars:,} chars{small}{orders}"
+
+
+def _part(part: PartRead) -> list[str]:
+    """How the files of a part read, and, when so many read as doubtful, what that usually means and what to do."""
+    line = f"line {part.line:.2f}, set by the profile" if part.by_hand else f"line {part.line:.2f}"
+    if not part.summed:
+        return [f"  {part.part}   {part.read} file(s) read: too few to say anything of the part (fewer than "
+                f"{FEWEST_SUMMED})"]
+    said = [f"  {part.part}   {part.read} files read   {part.doubtful} doubtful   {line}"]
+    if part.noted:
+        said.append(f"      {part.doubtful} of its {part.read} files read as doubtful, more than a quarter, which "
+                    "usually means its litmus does not describe them: read the litmus (`xarch where` on one of its "
+                    "files) before the files; if the litmus and the files are right, set "
+                    f"evals.placement.lines.{part.part} in the profile")
+    return said
 
 
 def _file(item: Reading) -> dict[str, Any]:
     return {"file": item.file, "part": item.part, "probability": item.probability, "line": item.line,
-            "line_by_hand": item.by_hand, "doubtful": item.doubtful, "chars": item.chars, "orders": item.orders, "model": item.model,
+            "line_by_hand": item.by_hand, "doubtful": item.doubtful, "chars": item.chars, "small": item.small,
+            "orders": item.orders, "model": item.model,
             "distribution": dict(item.distribution)}
+
+
+def _part_read(part: PartRead) -> dict[str, Any]:
+    return {"part": part.part, "read": part.read, "doubtful": part.doubtful, "line": part.line,
+            "line_by_hand": part.by_hand, "summed": part.summed, "litmus_note": part.noted}
 
 
 def _left_out(item: LeftOut) -> dict[str, Any]:

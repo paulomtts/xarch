@@ -24,6 +24,7 @@ from xarch.modules.review.contract import (
     Choice,
     LeftOut,
     Option,
+    PartRead,
     Reading,
     Request,
     ReviewPlanned,
@@ -156,6 +157,36 @@ def test_a_file_asked_in_several_orders_says_its_number_is_their_mean_and_a_dry_
     assert json.loads(plan_document("cli", replace(PLANNED, reorders=2)))["reorders"] == 2
 
 
+def test_a_small_file_is_marked_and_what_small_means_is_said_once():
+    small = replace(READ, readings=(replace(DOUBTFUL, chars=1540, small=True), replace(PLACED, small=True)))
+    lines = reading_lines(small)
+    assert "  app/modules/documents/adapters/export.py   adapters   0.08 (line 0.30)   1,540 chars, small" in lines
+    assert [line for line in lines if line.startswith("small:")] == [
+        "small: under 2,000 characters; small files read lower for being small (in trials, a tenth of the smallest "
+        "quarter of files read as doubtful, a fiftieth of the largest)"]
+    assert not any(line.startswith("small:") for line in reading_lines(READ))
+    assert json.loads(reading_document("cli", small))["placement"]["files"][0]["small"] is True
+
+
+PARTS = (PartRead("services", 3, 0, 0.3, False, True, False), PartRead("domain", 4, 3, 0.2, True, True, True),
+         PartRead("ports", 1, 1, 0.3, False, False, False))
+
+
+def test_each_part_read_says_how_its_files_read_and_a_part_low_across_the_board_points_at_its_litmus_first():
+    lines = reading_lines(replace(READ, parts=PARTS, left_out=()))
+    at = lines.index("parts (read this run)")
+    assert lines[at + 1:] == [
+        "  services   3 files read   0 doubtful   line 0.30",
+        "  domain   4 files read   3 doubtful   line 0.20, set by the profile",
+        "      3 of its 4 files read as doubtful, more than a quarter, which usually means its litmus does not describe "
+        "them: read the litmus (`xarch where` on one of its files) before the files; if the litmus and the files are "
+        "right, set evals.placement.lines.domain in the profile",
+        "  ports   1 file(s) read: too few to say anything of the part (fewer than 3)"]
+    assert json.loads(reading_document("cli", replace(READ, parts=PARTS)))["placement"]["parts"][1] == {
+        "part": "domain", "read": 4, "doubtful": 3, "line": 0.2, "line_by_hand": True, "summed": True,
+        "litmus_note": True}
+
+
 def test_a_reading_with_nothing_sent_says_no_more_than_where_it_read_from_and_one_with_no_doubt_says_so():
     lines = reading_lines(replace(READ, readings=(PLACED,), sent=0, left_out=(), role_only=("main",)))
     assert lines[1].endswith("Asked 0, from cache 1.") and lines[2] == ""
@@ -185,11 +216,12 @@ def test_the_json_of_a_reading_holds_each_file_with_the_probability_of_each_part
         "placement": {"calibration": {"state": "measured", "evidence": document["placement"]["calibration"]["evidence"]},
                       "role_only": [],
                       "files": [{"file": DOUBTFUL.file, "part": "adapters", "probability": 0.0812, "line": 0.3,
-                                 "line_by_hand": False, "doubtful": True, "chars": 2140, "orders": 1, "model": "m-1.0.1",
+                                 "line_by_hand": False, "doubtful": True, "chars": 2140, "small": False, "orders": 1, "model": "m-1.0.1",
                                  "distribution": {"adapters": 0.0812, "logic": 0.9188}},
                                 {"file": PLACED.file, "part": "domain", "probability": 0.71, "line": 0.3,
-                                 "line_by_hand": False, "doubtful": False, "chars": 1200, "orders": 1, "model": "m-1.0.1",
-                                 "distribution": {"domain": 0.71, "logic": 0.29}}]},
+                                 "line_by_hand": False, "doubtful": False, "chars": 1200, "small": False, "orders": 1, "model": "m-1.0.1",
+                                 "distribution": {"domain": 0.71, "logic": 0.29}}],
+                      "parts": []},
         "sends": {"name": "Model", "at": "https://model.example.test", "model": "m-1", "key": "MODEL_KEY", "keyed": True},
         "sent": {"calls": 1, "cached": 1, "input_tokens": 2400, "output_tokens": 3},
         "unanswered": [{"file": "app/c.py", "why": "not-cached"}], "failure": None}

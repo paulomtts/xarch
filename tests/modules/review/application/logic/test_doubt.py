@@ -2,8 +2,8 @@
 ranked, the most doubtful first."""
 import pytest
 
-from xarch.modules.review.application.logic.doubt import asked_again, averaged, ranked, reading
-from xarch.modules.review.domain.published import Reading, Request
+from xarch.modules.review.application.logic.doubt import asked_again, averaged, by_part, ranked, reading
+from xarch.modules.review.domain.published import PartRead, Reading, Request
 from xarch.modules.review.domain.values import Answer, PartText
 
 REQUEST = Request("app/a.py", "domain", 1200, "text")
@@ -59,3 +59,33 @@ def test_the_answers_in_several_orders_are_read_on_each_option_s_mean_in_the_ord
 
 def test_a_reading_says_in_how_many_orders_it_was_asked():
     assert reading(REQUEST, Answer("m", (("domain", 0.2),)), DOMAIN, 2).orders == 2
+
+
+def test_a_file_under_2000_characters_is_marked_small():
+    assert reading(Request("app/a.py", "domain", 1999, "t"), Answer("m", ()), DOMAIN).small is True
+    assert reading(Request("app/a.py", "domain", 2000, "t"), Answer("m", ()), DOMAIN).small is False
+
+
+def _read(part: str, *doubtful: bool) -> tuple[Reading, ...]:
+    return tuple(Reading(f"app/{part}{n}.py", part, 900, 0.1 if low else 0.9, 0.3, low, (), "m")
+                 for n, low in enumerate(doubtful))
+
+
+@pytest.mark.parametrize("doubtful, then", [
+    pytest.param((True, True), (2, 2, False, False), id="fewer than 3 read: too few to say anything of the part"),
+    pytest.param((False, False, False), (3, 0, True, False), id="3 read, none doubtful: summed, no note"),
+    pytest.param((True, False, False), (3, 1, True, False), id="1 doubtful of 3 is no pattern"),
+    pytest.param((True, True, True), (3, 3, True, True), id="3 doubtful of 3: the litmus note"),
+    pytest.param((True,) * 3 + (False,) * 9, (12, 3, True, False), id="3 doubtful of 12 is a quarter, not more"),
+    pytest.param((True,) * 3 + (False,) * 8, (11, 3, True, True), id="3 doubtful of 11 is more than a quarter"),
+])
+def test_each_part_says_how_its_files_read_and_notes_its_litmus_when_more_than_a_quarter_and_3_are_doubtful(doubtful,
+                                                                                                         then):
+    (part,) = by_part(_read("domain", *doubtful), (DOMAIN,))
+    assert (part.read, part.doubtful, part.summed, part.noted) == then
+
+
+def test_the_parts_are_said_in_the_profile_s_order_only_when_a_file_of_theirs_was_read_with_their_line():
+    parts = (PartText("main", "", "", "", 0.3), DOMAIN, PartText("logic", "", "", "", 0.2, True))
+    assert by_part(_read("domain", True) + _read("logic", False), parts) == (
+        PartRead("domain", 1, 1, 0.3, False, False, False), PartRead("logic", 1, 0, 0.2, True, False, False))

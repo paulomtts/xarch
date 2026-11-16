@@ -10,9 +10,11 @@ as review holds it, so there is nothing to reshape.
              asked, the variable its key is read from and whether the key is set
     Reading  what the decision model read of one file: the probability on the part it sits in, against that part's line
     Unasked  a file judged whose question has no answer, and why
+    PartRead how the files of one part read in a run: how many were read and how many read as doubtful
 
 and the reasons a file is left out, the size of the smallest file judged, how many files one run judges, the ways files
-are chosen, how near its line a file is asked again, and why a question has no answer.
+are chosen, how near its line a file is asked again, why a question has no answer, and how many files of a part a run
+must read, and read as doubtful, to say anything of the part.
 """
 from __future__ import annotations
 
@@ -27,6 +29,9 @@ never sends matches it; it does not parse; it is under the smallest size judged.
 MIN_CHARS = 800
 """The fewest characters a file judged holds: under it, a file is too small to be judged (the smallest file the trials
 measured held 817)."""
+MARKED_SMALL = 2000
+"""The fewest characters a file judged holds not to be marked small: small files read lower for being small (in the
+trials a tenth of the smallest quarter of files read as doubtful, a fiftieth of the largest)."""
 MAX_FILES = 50
 """How many files one run judges at most, unless told otherwise."""
 
@@ -36,6 +41,11 @@ BAND = 0.15
 """How near its part's line the first answer must put a file for it to be asked again in other orders of the options:
 in the trials, reordering the options moved a file's probability by up to 0.09 in this band and almost never outside
 it."""
+FEWEST_SUMMED = 3
+"""The fewest files of a part a run reads to say how they read: fewer say nothing of the part."""
+FEWEST_NOTED = 3
+"""The fewest files of a part that read as doubtful, more than a quarter of those read, for the run to say that the
+part's litmus may not describe its files."""
 NOT_CACHED, FAILED = "not-cached", "failed"
 """Why a question has no answer: it is not in the cache and nothing was sent (offline); or the decision model failed
 on it or on a question before it, and nothing more was sent."""
@@ -86,7 +96,7 @@ class Reading:
     characters it holds; the probability on that part; the line below which it is doubtful there; whether it is; the
     probability on each part, in the profile's order, the mean over the orders of the options it was asked in; the
     model version that answered first; whether the profile sets the part's line by hand; and in how many orders of the
-    options it was asked."""
+    options it was asked; and whether it holds fewer than MARKED_SMALL characters."""
     file: str
     part: str
     chars: int
@@ -97,6 +107,7 @@ class Reading:
     model: str
     by_hand: bool = False
     orders: int = 1
+    small: bool = False
 
 
 @dataclass(frozen=True)
@@ -115,3 +126,18 @@ class LeftOut:
     why: str
     chars: int = 0
     pattern: str = ""
+
+
+@dataclass(frozen=True)
+class PartRead:
+    """How the files of one part read in a run: the part; how many of its files were read and how many read as
+    doubtful; its line, and whether the profile sets it by hand; whether enough were read to say anything of the
+    part (FEWEST_SUMMED); and whether so many read as doubtful (at least FEWEST_NOTED, and more than a quarter of
+    those read) that its litmus may not describe them."""
+    part: str
+    read: int
+    doubtful: int
+    line: float
+    by_hand: bool
+    summed: bool
+    noted: bool

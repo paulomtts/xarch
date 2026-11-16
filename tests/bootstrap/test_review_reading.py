@@ -91,11 +91,14 @@ def test_a_review_sends_the_masked_text_and_the_question_with_the_key_as_the_hea
     lines = result.output.splitlines()
     assert lines[1] == "Model jev-1.14.0. 2 file(s) found (paths), 2 judged, 0 left out. Asked 2, from cache 0."
     assert lines[2] == f"Sent 2 request(s) to TypeSafe ({served.url}): 5,000 input tokens, 8 output tokens."
-    assert lines[6:8] == [f"  {VALUES}   domain   0.12 (line 0.30)   {len(VALUES_BODY):,} chars",
+    assert lines[6:8] == [f"  {VALUES}   domain   0.12 (line 0.30)   {len(VALUES_BODY):,} chars, small",
                           f"      what to do: read it against the litmus of domain (`xarch where {VALUES}`). If the "
                           "litmus says it belongs, leave it. In trials, about 1 in 2 to 1 in 3 files read this way "
                           "was really misplaced."]
     assert f"  {SERVICE}   services   0.90 (line 0.30)   {len(SERVICE_BODY):,} chars" in lines
+    assert lines[-3:] == ["parts (read this run)",
+                          "  domain   1 file(s) read: too few to say anything of the part (fewer than 3)",
+                          "  services   1 file(s) read: too few to say anything of the part (fewer than 3)"]
     assert "logic" not in result.output and KEY not in result.output
     (path, headers, body), _ = served.received
     assert (path, headers["Authorization"], body["model"]) == ("/v1/systemone", f"Bearer {KEY}", "jev-1.14.0")
@@ -186,8 +189,8 @@ def test_a_line_the_profile_sets_for_a_part_is_the_one_its_files_are_read_agains
     profile.write_text(profile.read_text() + "evals:\n  placement:\n    lines: {domain: 0.1}\n")
     result = review(SERVICE, VALUES, "--profile", str(profile), url=served.url)
     assert result.exit_code == 0, result.output
-    assert (f"  {VALUES}   domain   0.12 (line 0.10, set by the profile)   {len(VALUES_BODY):,} chars   the mean of 3 "
-            "orders of the options") in result.output.splitlines()
+    assert (f"  {VALUES}   domain   0.12 (line 0.10, set by the profile)   {len(VALUES_BODY):,} chars, small   the mean "
+            "of 3 orders of the options") in result.output.splitlines()
     orders = [list(body["questions"]["placement"]["criteria"]) for _, _, body in served.received
               if "Value0" in body["state"]]
     assert len(orders) == 3 and len({tuple(order) for order in orders}) == 3
@@ -196,3 +199,21 @@ def test_a_line_the_profile_sets_for_a_part_is_the_one_its_files_are_read_agains
     looser = runner.invoke(app, ["profile", "check", str(profile)]).output
     assert ("domain reads as doubtful only below 0.10, a lower line than the profile it is compared with gives it "
             "(evals.placement.lines)") in looser
+
+
+def test_a_part_whose_files_read_low_across_the_board_is_summed_up_and_points_at_its_litmus_first(served, tmp_path):
+    more = [f"app/modules/documents/domain/values_{n}.py" for n in (1, 2)]
+    for n, path in enumerate(more, 1):
+        (tmp_path / path).write_text(VALUES_BODY + f"\nEXTRA_{n} = {n}\n")
+    result = review(SERVICE, VALUES, *more, url=served.url)
+    assert result.exit_code == 0, result.output
+    lines = result.output.splitlines()
+    assert lines[lines.index("parts (read this run)") + 1:] == [
+        "  domain   3 files read   3 doubtful   line 0.30",
+        "      3 of its 3 files read as doubtful, more than a quarter, which usually means its litmus does not describe "
+        "them: read the litmus (`xarch where` on one of its files) before the files; if the litmus and the files are "
+        "right, set evals.placement.lines.domain in the profile",
+        "  services   1 file(s) read: too few to say anything of the part (fewer than 3)"]
+    document = json.loads(review(SERVICE, VALUES, *more, "--offline", "--format", "json", key=None).output)
+    assert document["placement"]["parts"][0] == {"part": "domain", "read": 3, "doubtful": 3, "line": 0.3,
+                                                 "line_by_hand": False, "summed": True, "litmus_note": True}

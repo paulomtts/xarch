@@ -1136,7 +1136,9 @@ keys:
       a map from the name of a part to a number above 0 and below 1: a file judged reads as doubtful where it sits
       when the probability on its part is below the part's line; a part not written has 0.3, the line the trials
       measured (about one well-placed file in ten read as doubtful at it). A file whose first answer falls within 0.15
-      of its part's line is asked again in two other orders of the options and read on the mean. Refused: a name
+      of its part's line is asked again in two other orders of the options and read on the mean. Every reading says a
+      line set here as set by the profile. Set one when the per-part summary of `xarch review` notes a part low across
+      the board and its litmus, read first, does describe its files. Refused: a name
       that is no part, a value that is no number above 0 and below 1. `profile check` lists a part whose line here is
       below the one the profile it is compared with gives it as looser
     example: |

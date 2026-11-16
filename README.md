@@ -552,6 +552,13 @@ a profile of two parts) and read on the mean, which the reading says ("the mean 
 order is its own question, kept in the cache on its own; offline, a file whose other orders are not all kept is
 unanswered. Whether a file needs them is known from the answers kept before anything is sent.
 
+A file judged under 2,000 characters is marked `small`: small files read lower for being small (in trials a tenth of
+the smallest quarter of files read as doubtful, a fiftieth of the largest). Every reading ends with the parts read:
+for each part a file of which was read, how many were read and how many read as doubtful, with its line. A part with
+fewer than 3 files read is said to be too few to say anything of. A part with at least 3 doubtful files, more than a
+quarter of those read, gets a note: that usually means its litmus does not describe its files, so read the litmus
+(`xarch where` on one of its files) before the files, and only if both are right set the part's own line (below).
+
 **What leaves the machine, and when.** The decision model is TypeSafe's (`https://api.typesafe.ai`), asked as the
 model `jev-1.14.0`, pinned. Review sends whenever `TYPESAFE_API_KEY` is set in the environment: **the key alone allows
 it**, so a key set for another purpose (a shell profile, a CI secret) starts sending the first time `xarch review` runs

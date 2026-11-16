@@ -13,6 +13,8 @@ from xarch.modules.review.domain.published import (
     BY_PATHS,
     EXCLUDED,
     FAILED,
+    FEWEST_SUMMED,
+    MARKED_SMALL,
     MAX_FILES,
     MIN_CHARS,
     MISSING,
@@ -26,16 +28,18 @@ from xarch.modules.review.domain.published import (
     Choice,
     LeftOut,
     Option,
+    PartRead,
     Reading,
     Request,
     Sender,
     Unasked,
 )
 
-__all__ = ["A_TEST", "BAND", "BY_ALL", "BY_LIST", "BY_PATHS", "EXCLUDED", "FAILED", "MAX_FILES", "MIN_CHARS", "MISSING",
-           "NEVER", "NOT_CACHED", "NOT_SOURCE", "OUTSIDE", "SMALL", "UNPARSABLE", "UNPLACED", "Choice", "LeftOut",
-           "Option", "Reading", "Request", "Sender", "Unasked", "Review", "ReviewPlanned", "ReviewReading",
-           "NothingChosen", "AllAndOthers", "TooManyFiles", "KeyMissing", "ReviewRefused", "ReviewResult"]
+__all__ = ["A_TEST", "BAND", "BY_ALL", "BY_LIST", "BY_PATHS", "EXCLUDED", "FAILED", "FEWEST_SUMMED", "MARKED_SMALL",
+           "MAX_FILES", "MIN_CHARS", "MISSING", "NEVER", "NOT_CACHED", "NOT_SOURCE", "OUTSIDE", "SMALL", "UNPARSABLE",
+           "UNPLACED", "Choice", "LeftOut", "Option", "PartRead", "Reading", "Request", "Sender", "Unasked", "Review",
+           "ReviewPlanned", "ReviewReading", "NothingChosen", "AllAndOthers", "TooManyFiles", "KeyMissing",
+           "ReviewRefused", "ReviewResult"]
 
 
 @dataclass(frozen=True)
@@ -84,7 +88,8 @@ class ReviewReading:
     many were found; a reading of each file answered, the most doubtful first; the files left out and why; the files
     judged with no answer, and why; what was sent to; how many questions were sent this run and how many answers were
     read from the cache; the tokens the questions sent cost; how the decision model failed, when it did ("" when it
-    did not), which stopped the sending; and the parts the question describes by their role alone."""
+    did not), which stopped the sending; the parts the question describes by their role alone; and how the files of
+    each part read, in the profile's order."""
     by: tuple[str, ...]
     found: int
     readings: tuple[Reading, ...]
@@ -97,6 +102,7 @@ class ReviewReading:
     output_tokens: int
     failure: str
     role_only: tuple[str, ...]
+    parts: tuple[PartRead, ...] = ()
 
     @property
     def complete(self) -> bool:

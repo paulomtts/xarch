@@ -4,7 +4,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from xarch.modules.review.application.logic.answers import cache_folder, request_key
-from xarch.modules.review.application.logic.doubt import asked_again, averaged, ranked, reading
+from xarch.modules.review.application.logic.doubt import asked_again, averaged, by_part, ranked, reading
 from xarch.modules.review.application.logic.questions import (
     characters,
     placement,
@@ -84,7 +84,7 @@ class ReviewService:
         cached += sum(answer is not None for answer in kept)
         return ReviewReading(by, total, ranked(tuple(readings)), left_out(files), tuple(unasked), sends, len(asked),
                              cached, sum(a.input_tokens for a in asked), sum(a.output_tokens for a in asked), failure,
-                             role_only(words.parts))
+                             role_only(words.parts), by_part(tuple(readings), words.parts))
 
     def _kept(self, folder: Path, model: str, text: str, question: Choice) -> Answer | None:
         return self._answers.get(folder, request_key(model, text, question))
