@@ -11,6 +11,9 @@ SKIPPED = "skipped"
 FILE = "file"
 FOLDER = "folder"
 
+PYPROJECT = "pyproject.toml"
+"""The file of the project that records the settings xarch reads, in its [tool.xarch] table."""
+
 
 @dataclass(frozen=True)
 class Touched:

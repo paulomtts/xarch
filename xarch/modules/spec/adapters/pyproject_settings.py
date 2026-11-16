@@ -9,6 +9,9 @@ from xarch.modules.spec.domain.values import Configured
 from xarch.platform.filesystem import FileSystem
 from xarch.platform.toml import TomlReader
 
+PYPROJECT = "pyproject.toml"
+"""The file of the project whose [tool.xarch] table holds the settings xarch reads."""
+
 
 class PyprojectSettings:
     """Satisfies spec's Settings port."""
@@ -29,7 +32,7 @@ class PyprojectSettings:
         return found[1].parent / found[0] if found is not None else None
 
     def _setting(self, folder: Path, key: str) -> tuple[str, Path] | None:
-        source = self._fs.find_upward(folder, "pyproject.toml")
+        source = self._fs.find_upward(folder, PYPROJECT)
         if source is None:
             return None
         try:

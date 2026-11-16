@@ -2,10 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from xarch.modules.scaffold.domain.values import FILE, FOLDER
+from xarch.modules.scaffold.domain.values import FILE, FOLDER, PYPROJECT
 from xarch.platform.filesystem import FileSystem
-
-PYPROJECT = "pyproject.toml"
 
 
 class FsFiles:

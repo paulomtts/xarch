@@ -11,7 +11,8 @@ import os
 import re
 from pathlib import Path
 
-PYPROJECT = "pyproject.toml"
+from xarch.modules.scaffold.domain.values import PYPROJECT
+
 TABLE = "[tool.xarch]"
 _HEADER = re.compile(r"\s*\[")
 
