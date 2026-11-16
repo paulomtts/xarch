@@ -50,10 +50,12 @@ def floor(question: Choice, flagged: tuple[str, ...]) -> float:
     return min(int(level) for level in flagged) / LEVELS if question.form == SCORE else LOWEST_LINE
 
 
-def held_as(asked: EvalText) -> str:
+def held_as(asked: EvalText, roots: tuple[str, ...] = (), mask: tuple[str, ...] = ()) -> str:
     """The hash of what an eval is held to its examples as: its question in order, its options flagged, what it reads
-    and where, the line it writes, and its examples; a change to any of them makes its record stale."""
-    canonical = json.dumps({"ask": asked.question.ask, "form": asked.question.form,
+    and where, the line it writes, its examples, and what decides how their text is masked (the import names of the
+    apps masked, roots, and the texts mask hides); a change to any of them makes its record stale."""
+    canonical = json.dumps({"ask": asked.question.ask, "form": asked.question.form, "roots": list(roots),
+                            "mask": list(mask),
                             "options": [[option.name, option.description] for option in asked.question.options],
                             "flagged": list(asked.flagged), "reads": asked.reads, "line": asked.line,
                             "examples": [list(map(list, asked.flagged_examples)), list(map(list, asked.clean_examples))]},
@@ -61,12 +63,14 @@ def held_as(asked: EvalText) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def state(asked: EvalText, record: Calibration | None, model: str) -> tuple[str, str]:
-    """Whether an eval runs, and why not: CALIBRATED ("") when its record passed, as it is written now and by the model
-    asked; else UNCALIBRATED, STALE or FAILED_EXAMPLES, with why."""
+def state(asked: EvalText, record: Calibration | None, model: str, roots: tuple[str, ...] = (),
+          mask: tuple[str, ...] = ()) -> tuple[str, str]:
+    """Whether an eval runs, and why not: CALIBRATED ("") when its record passed, as it is written now, masked as now
+    (roots and mask, as held_as takes them), and by the model asked; else UNCALIBRATED, STALE or FAILED_EXAMPLES, with
+    why."""
     if record is None:
         return UNCALIBRATED, UNHELD
-    if record.held != held_as(asked):
+    if record.held != held_as(asked, roots, mask):
         return STALE, "its question, answer, scope, line or examples changed since it was held to its examples"
     if record.model != model:
         return STALE, f"it was held to its examples by {record.model}, and {model} is asked now"

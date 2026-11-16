@@ -101,7 +101,8 @@ class CalibrationService:
             clean_read = tuple((item.path, item.value) for item in read if not item.flagged)
             passed, line, crossed = verdict(flagged_read, clean_read, asked.line, floor(asked.question, asked.flagged))
             held.append(EvalHeld(asked.asked, tuple(read), passed, line, crossed, by_hand=asked.line is not None))
-            record[asked.asked] = Calibration(held_as(asked), sends.model, models[0] if models else sends.model, passed,
+            record[asked.asked] = Calibration(held_as(asked, (cmd.app.name,), words.mask), sends.model,
+                                              models[0] if models else sends.model, passed,
                                               line, flagged_read, clean_read, crossed)
         reads: dict[str, list[tuple[CodeFile, dict[str, float]]]] = {CLEAN: [], FLAGGED: []}
         answered_by = ""
@@ -113,7 +114,9 @@ class CalibrationService:
                 reads[side].append((example, dict(answer.probabilities)))
                 answered_by = answered_by or answer.model
         whole = placed and not any(item.asked == PLACEMENT for item in unasked)
-        held_placement = PlacementHeld(held_as_placed(question, words.parts, (clean, flagged)), sends.model, answered_by,
+        held_placement = PlacementHeld(held_as_placed(question, words.parts, (clean, flagged),
+                                                      (cmd.app.name, words.examples_root), words.mask),
+                                       sends.model, answered_by,
                                        verdicts(words.parts, tuple(reads[CLEAN]), tuple(reads[FLAGGED]))) if whole else None
         if held_placement is not None:
             self._calibrations.put_placement(record_file(cmd.app), held_placement)

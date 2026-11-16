@@ -111,3 +111,9 @@ def test_what_an_eval_reads_is_the_lines_it_spans_or_the_text_whole_and_its_sent
     assert said("{name} at {file}:{line} reads {value}", "app/x.py", 4, "Doc.publish", 0.834) == (
         "Doc.publish at app/x.py:4 reads 0.83")
     assert said("{name} reads {value}", "app/x.py", 0, "", 0.5) == "app/x.py reads 0.50"
+
+
+def test_what_an_eval_is_held_as_changes_with_how_its_examples_are_masked():
+    plain = EvalText("rule", YES_OR_NO, ("yes",))
+    assert held_as(plain) != held_as(plain, ("shop",)) != held_as(plain, ("shop",), ("Doc*",))
+    assert held_as(plain, ("shop",), ("Doc*",)) == held_as(plain, ("shop",), ("Doc*",))

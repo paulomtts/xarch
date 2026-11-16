@@ -23,10 +23,11 @@ def below_app(file: str) -> str:
     return file.split("/", 1)[1] if "/" in file else file
 
 
-def standing(asked: EvalText, record: dict[str, Calibration], model: str) -> EvalRead:
-    """How an eval stands before it runs: its state and why it does not run; for one that runs, its line, its
-    examples and the model version that answered them."""
-    found, why = state(asked, record.get(asked.asked), model)
+def standing(asked: EvalText, record: dict[str, Calibration], model: str, roots: tuple[str, ...] = (),
+             mask: tuple[str, ...] = ()) -> EvalRead:
+    """How an eval stands before it runs, its examples masked with roots and mask as state takes them: its state and
+    why it does not run; for one that runs, its line, its examples and the model version that answered them."""
+    found, why = state(asked, record.get(asked.asked), model, roots, mask)
     held = record.get(asked.asked)
     question = asked.question
     if found != CALIBRATED or held is None:

@@ -89,3 +89,9 @@ def test_a_file_of_a_part_whose_examples_disagree_is_never_doubtful_and_each_par
     assert [item.doubtful for item in undoubted((doubted, other), stood)] == [False, True]
     parts = (PartRead("domain", 1, 0, 0.3, False, False, False), PartRead("services", 1, 0, 0.3, False, False, False))
     assert [part.held for part in marked(parts, stood)] == [DISAGREE, ""]
+
+
+def test_what_placement_is_held_as_changes_with_how_its_examples_are_masked():
+    plain = held_as(QUESTION, PARTS, ((VALUE,), ()))
+    assert plain != held_as(QUESTION, PARTS, ((VALUE,), ()), ("shop",))
+    assert plain != held_as(QUESTION, PARTS, ((VALUE,), ()), (), ("Value",))

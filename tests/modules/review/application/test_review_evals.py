@@ -161,3 +161,11 @@ def test_a_review_with_placement_held_to_other_examples_says_it_is_stale():
     result = controller(FakeCode({"app/x.py": Found((FILE,))}), profile, FakeDecisionModel({TEXT: DOUBTED}),
                         FakeAnswers(), calibrations).review(Review((Path("app/x.py"),), (), False, CWD, APP, "p"))
     assert isinstance(result, ReviewReading) and result.calibration.state == STALE
+
+
+def test_a_review_with_placement_held_under_another_mask_says_it_is_stale():
+    calibrations = held_placement(Answer("m-1.2", (("domain", 0.9), ("main", 0.1))))
+    profile = FakeProfile({"p": Words(PARTS, mask=("Value",))}, examples={"p": ((VALUE,), ())})
+    result = controller(FakeCode({"app/x.py": Found((FILE,))}), profile, FakeDecisionModel({TEXT: DOUBTED}),
+                        FakeAnswers(), calibrations).review(Review((Path("app/x.py"),), (), False, CWD, APP, "p"))
+    assert isinstance(result, ReviewReading) and result.calibration.state == STALE

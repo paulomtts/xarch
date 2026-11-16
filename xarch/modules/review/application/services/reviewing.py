@@ -69,7 +69,8 @@ class ReviewService:
         judging = within_cap(judged(files), cmd.max_files, cmd.pieces)
         sends = self._model.sends()
         calibration = placed(self._calibrations.placement(record_file(cmd.app)),
-                             held_as(question, words.parts, examples), sends.model)
+                             held_as(question, words.parts, examples, (cmd.app.name, words.examples_root), words.mask),
+                             sends.model)
         going, answering = Run(cache_folder(cmd.app, cmd.cache), cmd.offline), self._answering
         requests = tuple(request(file, cmd.app.name, words.mask) for file in judging)
         kept = tuple(answering.kept(going, item.text, question) for item in requests)
@@ -143,7 +144,7 @@ class ReviewService:
         running: list[Asking] = []
         idle: list[EvalRead] = []
         for asked in words.evals:
-            stood = standing(asked, record, model)
+            stood = standing(asked, record, model, (cmd.app.name,), words.mask)
             if stood.state != CALIBRATED:
                 idle.append(stood)
                 continue
