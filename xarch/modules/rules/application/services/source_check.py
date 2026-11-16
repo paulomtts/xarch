@@ -11,6 +11,7 @@ from xarch.modules.rules.application.logic import (
     enforcement,
     expansion,
     scenarios,
+    shared,
     stand_ins,
     twins,
 )
@@ -75,6 +76,7 @@ class SourceCheckService:
         found += run(book["private-imports"], facts, rules)
         found += duplicates.violations(app, rules)
         found += twins.violations(app, rules)
+        found += shared.violations(app, rules, package)
         found += run(book["dead-code"], facts, rules)
         found += run(book["no-comments"], facts, rules)
         found += run(book["closed-tree"], facts, rules)

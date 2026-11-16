@@ -65,6 +65,7 @@ class SpecProfiles:
                        no_callbacks=tuple(p.name for p in parts if p.no_callbacks),
                        names={p.name: p.names for p in parts if p.names},
                        built_by={p.name: p.built_by for p in parts if p.built_by},
+                       shared={p.name: p.shared for p in parts if p.shared is not None},
                        private_imports=guards.private_imports,
                        framework=view.framework,
                        forbidden={p.name: p.forbidden for p in parts if p.forbidden},

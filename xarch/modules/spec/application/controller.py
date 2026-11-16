@@ -237,7 +237,8 @@ def _profile_view(architecture: Architecture) -> ProfileView:
     patterns = architecture.patterns()
     parts = tuple(PartView(name, patterns[name], architecture.rules.get(name, ()), part.role, part.litmus,
                            architecture.shown(part), part.untested, architecture.forbidden.get(name, ()),
-                           part.must_import, part.holds, part.types_only, part.no_callbacks, part.names, part.built_by)
+                           part.must_import, part.holds, part.types_only, part.no_callbacks, part.names, part.built_by,
+                           part.shared)
                   for name, part in architecture.parts.items())
     return ProfileView(
         parts=parts, folders=tuple(_folders(architecture.layout, ())),

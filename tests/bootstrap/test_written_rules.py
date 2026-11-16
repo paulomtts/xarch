@@ -29,7 +29,7 @@ checks:
 """
 """The second check written for the explanation, which no word's example shows."""
 CORPORA = Path(__file__).parent / "corpora"
-HAND_WRITTEN = {"cycles", "stand-ins", "scenario-coverage", "no-duplicates", "no-twins", "structure", "test-tree",
+HAND_WRITTEN = {"cycles", "stand-ins", "scenario-coverage", "no-duplicates", "no-twins", "shared", "structure", "test-tree",
                 "syntax"}
 """The rule ids of the checks that are no rule of the engine: hand-written, or with no key (syntax)."""
 KEY = re.compile(r"\b(?:parts|tiers|guards|checks)\.[\w.<>-]+")

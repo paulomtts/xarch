@@ -561,6 +561,11 @@ def _part_lines(architecture: Architecture) -> list[str]:
             lines.append(f"`names`: every class of {shown([part.name])} is named "
                          f"{_or([f'`{n}`' for n in part.names])}.")
     for part in parts:
+        if part.shared is not None:
+            lines.append(f"`shared`: every public name of {shown([part.name])} is used by at least {part.shared} users "
+                         "(each instance of a repeating folder, or each part outside them; tests not read), or it "
+                         "belongs to the one that uses it.")
+    for part in parts:
         if part.built_by:
             lines.append(f"`built-by`: only code of {shown(list(part.built_by))} builds a class of "
                          f"{shown([part.name])}; tests are not read.")

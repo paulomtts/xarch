@@ -319,6 +319,15 @@ _KEYS: tuple[Key, ...] = (
        "of this part, `X(...)` or `m.X(...)`, read through absolute imports; code of this part counts as any other, "
        "and tests are not read. Silent on a class reached through a package file that re-exports it, built in its "
        "own file, or built through a variable or a parameter", _in_two("built_by: [core]\n"), rules=("built-by",)),
+    _k(PART, "shared", "the part is there to be shared, by at least this many users",
+       "a whole number, at least 2: every public name a file of the part defines at the top level (a class, a function, "
+       "a name an assignment binds) is used by at least this many users, or it is reported where it is defined. A "
+       "user is the instance of a repeating folder a using file lies in, or the part of one outside them; the tests, "
+       "a file in no part and the part's own place do not count. A file uses a name when it imports it and mentions "
+       "it again, or reads it through an import of its file; an import it never mentions again is a re-export, and "
+       "who imports the name from there uses it. A name another name of the part mentions (a field's type, a helper "
+       "a function calls) has that name's users too. A name with one user belongs to that user",
+       _in_two("shared: 2\n"), rules=("shared",)),
     _k(PART, "libraries", "the outside packages the part may import",
        "[<package>, ...] by top-level name, or everything; none by default; the standard library is always allowed, but "
        "for a name `reserved` holds, which a part lists here to import it; tests are not checked", _in_part("libraries: [yaml]\n"),
@@ -526,6 +535,8 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "parts.<part>.no_callbacks": ("callback",),
     "parts.<part>.names": ("class",),
     "parts.<part>.built_by": ("class", "call"),
+    "parts.<part>.shared": (*_IMPORTS, "import.mentioned", "use", "class", "class.named", "function", "function.named",
+                            "module_functions", "constant"),
     "parts.<part>.libraries": (*_IMPORTS, "import.standard"),
     "parts.<part>.forbidden": _FORBIDDEN,
     "parts.<part>.package_only": _IMPORTS,

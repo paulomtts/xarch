@@ -47,7 +47,8 @@ class Profile:
     with dead_code, the files of a tiered part no test of its tier reaches. holds says, by part, what its files define
     ("classes" or "functions"); types_only, by part, the parts it may use as types only; no_callbacks the parts whose
     code calls none of its own parameters; names, by part, the patterns its public classes match one of; built_by, by
-    part, the parts that alone may build its classes; private_imports switches the private-imports guard on. hints
+    part, the parts that alone may build its classes; shared, by part, the fewest users each public name of a part
+    declared shared must have (see shared); private_imports switches the private-imports guard on. hints
     holds the profile's own advice, by rule id. language is the language of the app. reserved holds the
     standard-library modules (by top-level name, each with why) a part imports only when its libraries list them.
     approximate holds the keys whose check reads a fact the language supplies only partly. checks are the checks the
@@ -82,6 +83,7 @@ class Profile:
     no_callbacks: tuple[str, ...] = ()
     names: dict[str, tuple[str, ...]] = field(default_factory=dict)
     built_by: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    shared: dict[str, int] = field(default_factory=dict)
     private_imports: bool = False
     hints: dict[str, str] = field(default_factory=dict)
     language: LanguageView = LanguageView()

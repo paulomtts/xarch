@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 RULES = ("rules", "libraries", "forbidden", "tiers", "types-only", "cycles", "package-only", "scenario-coverage",
          "no-comments", "stand-ins", "closed-tree", "must-import", "no-duplicates", "no-twins", "dead-code",
-         "pass-through", "holds", "no-callbacks", "names", "built-by", "private-imports", "structure", "test-tree",
+         "pass-through", "holds", "no-callbacks", "names", "built-by", "private-imports", "shared", "structure", "test-tree",
          "syntax")
 """The stable ids of the checks xarch has, as a violation names them."""
 OWN_ID = re.compile(r"[a-z][a-z0-9]*(?:-[a-z0-9]+)*")

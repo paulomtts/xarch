@@ -140,7 +140,7 @@ def test_a_closed_tree_names_its_rule_and_its_fix(tmp_path):
 
 def test_every_rule_id_has_a_case_here_that_produces_a_violation_with_a_fix():
     cases = {case.values[2] for case in CASES}
-    assert cases | {"structure", "test-tree", "closed-tree", "pass-through", "holds"} == set(RULES)
+    assert cases | {"structure", "test-tree", "closed-tree", "pass-through", "holds", "shared"} == set(RULES)
 
 
 def test_a_pass_through_is_listed_as_weak_with_its_fix_and_is_no_violation(tmp_path):
@@ -201,3 +201,17 @@ def test_a_file_no_test_of_its_tier_reaches_is_listed_as_weak_with_its_fix(tmp_p
     assert [(w.file, w.fix) for w in result.enforcement.weak if w.rule == "dead-code"] == [
         ("app/modules/docs/domain/rule.py", "write its unit test in tests/modules/docs/domain/, or delete what nothing "
                                             "uses")]
+
+
+def test_a_shared_part_names_its_rule_and_its_fix(tmp_path):
+    shutil.copytree(BUNDLED, tmp_path / "arch")
+    text = (BUNDLED / "web.yaml").read_text().replace("  kernel:\n    path: kernel\n",
+                                                       "  kernel:\n    path: kernel\n    shared: 2\n")
+    (tmp_path / "arch/shared.yaml").write_text(text)
+    write(tmp_path / "app", {"kernel/__init__.py": "", "kernel/ids.py": "PREFIX = 'doc'\n",
+                             "modules/docs/domain/values.py": "from app.kernel.ids import PREFIX\n\nNAME = PREFIX\n"})
+    result = build_controllers().rules.check(CheckImports(tmp_path / "app", "app", str(tmp_path / "arch/shared.yaml")))
+    assert isinstance(result, ImportsChecked)
+    assert [(v.rule, v.fix) for v in result.violations if v.rule == "shared"] == [
+        ("shared", "move PREFIX to modules/docs, its one user, or to the published types of modules/docs if others "
+                   "read it through them")]

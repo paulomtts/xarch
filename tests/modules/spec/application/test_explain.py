@@ -40,6 +40,7 @@ SHAPE = (
     Shown('parts.no_callbacks', 1, 'its code calls none of its own parameters', False, True),
     Shown('parts.names', 1, 'how the classes of the part are named', False, True),
     Shown('parts.built_by', 1, 'the only parts that may build its classes', False, True),
+    Shown('parts.shared', 1, 'the part is there to be shared, by at least this many users', False, True),
     Shown('parts.libraries', 1, 'the outside packages the part may import', False, True),
     Shown('parts.forbidden', 1, 'the list of names the part may not use', False, True),
     Shown('parts.tier', 1, 'the tier whose tests cover the part', False, True),

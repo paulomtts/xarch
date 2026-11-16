@@ -27,6 +27,11 @@ def test_the_keys_are_off_when_left_out():
     assert (part.holds, part.names, part.built_by, part.no_callbacks, part.types_only) == ("", (), (), False, ())
 
 
+def test_a_part_there_to_be_shared_says_by_how_many_users_and_is_not_shared_when_left_out():
+    assert parsed(with_part(shared=3)).parts["service"].shared == 3
+    assert parsed(layered()).parts["service"].shared is None
+
+
 def test_names_may_be_a_list_of_patterns():
     assert parsed(with_part(names=["*Service", "*Step"])).parts["service"].names == ("*Service", "*Step")
 
@@ -48,6 +53,10 @@ def test_names_may_be_a_list_of_patterns():
                  id="types_only, no such part"),
     pytest.param({"types_only": ["api"]}, "parts.service.types_only: 'api' is not in `may_import`, so no file could "
                                           "import it to use as a type: add it there, or drop it", id="types_only, not importable"),
+    pytest.param({"shared": 1}, "parts.service.shared: must be a whole number of users, at least 2, such as 2; leave it "
+                                "out for a part that is not there to be shared", id="shared, one user"),
+    pytest.param({"shared": True}, "parts.service.shared: must be a whole number of users, at least 2, such as 2; leave "
+                                   "it out for a part that is not there to be shared", id="shared, no number"),
 ])
 def test_a_bad_key_of_a_part_is_refused(keys, expected):
     assert problems(with_part(**keys)) == [f"layered.yaml: {expected}"]

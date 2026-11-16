@@ -762,8 +762,8 @@ def _dead_code(spec: Any, fakes: Fakes | None, where: str, problems: list[str],
 
 def _substance(spec: Any, part: Part, declared: set[str], may_import: tuple[Target, ...],
                problems: list[str]) -> Part:
-    """The keys of a part that say what its code holds and how it is used: holds, types_only, no_callbacks, names and
-    built_by."""
+    """The keys of a part that say what its code holds and how it is used: holds, types_only, no_callbacks, names,
+    built_by and shared."""
     where = f"parts.{part.name}"
     if not isinstance(spec, Mapping):
         return part
@@ -784,7 +784,13 @@ def _substance(spec: Any, part: Part, declared: set[str], may_import: tuple[Targ
         if not any(t.part in (EVERYTHING, name) for t in may_import):
             problems.append(f"{where}.types_only: {name!r} is not in `may_import`, so no file could import it to use as "
                             "a type: add it there, or drop it")
-    return replace(part, holds=holds, no_callbacks=no_callbacks, names=names, built_by=built_by, types_only=types_only)
+    shared = spec.get("shared")
+    if shared is not None and (isinstance(shared, bool) or not isinstance(shared, int) or shared < 2):
+        problems.append(f"{where}.shared: must be a whole number of users, at least 2, such as 2; leave it out for a "
+                        "part that is not there to be shared")
+        shared = None
+    return replace(part, holds=holds, no_callbacks=no_callbacks, names=names, built_by=built_by, types_only=types_only,
+                   shared=shared)
 
 
 def _class_patterns(value: Any, where: str, problems: list[str]) -> tuple[str, ...]:

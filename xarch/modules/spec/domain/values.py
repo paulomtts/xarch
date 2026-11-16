@@ -57,6 +57,7 @@ class Part:
     no_callbacks: no function of it calls one of its own parameters
     names: the patterns one of which every public class of it matches (`*` for any text); empty: any name
     built_by: the only parts whose code may call the constructor of a class of it; empty: any part
+    shared: the fewest users each public name it defines must have, being there to be shared; None: not shared
     """
     name: str
     path: tuple[str, ...]
@@ -70,6 +71,7 @@ class Part:
     no_callbacks: bool = False
     names: tuple[str, ...] = ()
     built_by: tuple[str, ...] = ()
+    shared: int | None = None
 
     @property
     def in_instance(self) -> bool:
