@@ -45,9 +45,13 @@ def test_the_standard_library_and_the_builtins_a_profile_is_checked_against_come
         "base: parts.core.libraries: 'strutils' is in the standard library, which every part may import unless `reserved` names it"]
 
 
-@pytest.mark.parametrize("languages", [{}, {"python": PYTHON}])
-def test_xarch_with_no_language_to_choose_from_or_one_reads_the_profile_all_the_same(languages):
-    assert isinstance(view(BASE, languages), CheckedLanguage)
+@pytest.mark.parametrize("languages, language", [
+    pytest.param({}, CheckedLanguage(), id="with no language to choose from, the language is said by nothing"),
+    pytest.param({"python": PYTHON}, CheckedLanguage("Python", ".py", "__init__.py", (("typing", "Protocol"),)),
+                 id="with one, it is that one"),
+])
+def test_xarch_with_no_language_to_choose_from_or_one_reads_the_profile_all_the_same(languages, language):
+    assert view(BASE, languages) == language
 
 
 def test_the_skeleton_names_the_language_and_the_words_the_runtime_reserves():

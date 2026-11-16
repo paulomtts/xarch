@@ -2,15 +2,22 @@
 import pytest
 
 from tests.modules.spec.application.builders import spec_controller
-from tests.modules.spec.languages import PYTHON
 from xarch.kernel.capabilities import EXACT, FACTS, Supply
-from xarch.modules.spec.application.logic.explain import said
 from xarch.modules.spec.application.logic.language_file import PARTIAL
 from xarch.modules.spec.contract import Explain, FormatExplained, KeyExplained, Need, Shown, Symbol, UnknownKey
-from xarch.modules.spec.domain.profile_keys import SMALLEST, SYMBOLS
+from xarch.modules.spec.domain.profile_keys import SMALLEST
 
 BUNDLED = {"base": {}, "other": {}}
-SAID = tuple(Symbol(said(symbol, PYTHON), said(meaning, PYTHON)) for symbol, meaning in SYMBOLS)
+SAID = (
+    Symbol("<word>", "in a path: a repeating folder, one per name, as in units/<unit>/store; there may be several"),
+    Symbol("store", "in may_import, a bare name: that part, in the importer's own instance of its repeating folder"),
+    Symbol("store@any", "that part in any instance; the only way to name a part of another repeating folder"),
+    Symbol("store/schema", "only what lies below that path of the part"),
+    Symbol("store:*Id", "in may_import, after `:`: only the names that match the pattern, `*` for any text"),
+    Symbol("everything", "in may_import or libraries: no limit"),
+    Symbol("a path ending in .py", "a last path step with a dot: the part is one file, not a folder"),
+)
+"""The symbols as the format says them for the default language, its extension in place of %extension%."""
 
 
 def explained(key: str):
