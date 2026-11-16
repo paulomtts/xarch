@@ -1,4 +1,5 @@
-"""SourceTree on the local filesystem: lists the .py files, and parses one with ast and tokenize, never running it.
+"""SourceTree on the local filesystem for Python, the one language xarch reads: lists the files of the extension it is
+given, and parses one as Python with ast and tokenize, never running it.
 
 A name in a call or a class base is read as Python scopes it: through the innermost function, lambda or
 comprehension that binds it (a class body only for its own statements), then the module. It is a Ref only when that

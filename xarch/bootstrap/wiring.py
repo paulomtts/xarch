@@ -46,6 +46,13 @@ from xarch.platform.yaml_writer import YamlWriter
 BUNDLED = PackageData("xarch", "architectures")
 """Where the bundled profiles, their files and the testing presets ship."""
 
+READER = FsSourceTree
+"""The reader of the checked source, the one language xarch reads (its own docstring says which). It reads whatever the
+profile's language names; a second language needs a reader of its own, chosen here by the language the profile names."""
+RUNTIME = InterpreterRuntime
+"""What that language says of itself (its standard library, reserved words and the names it binds before any code),
+as the interpreter running xarch says it; a second language needs its own, chosen here with its reader."""
+
 
 @dataclass(frozen=True)
 class Controllers:
@@ -55,15 +62,16 @@ class Controllers:
     spec: SpecController
 
 
-def build_reader(fs: FileSystem) -> ReaderController:
+def build_reader(tree: FsSourceTree) -> ReaderController:
     """The reader of the app's language, which needs no profile: spec reads its examples with it, as its ExampleReader."""
-    return ReaderController(SourceReadService(FsSourceTree(fs)))
+    return ReaderController(SourceReadService(tree))
 
 
-def build_spec(fs: FileSystem | None = None) -> SpecController:
+def build_spec(fs: FileSystem | None = None, tree: FsSourceTree | None = None) -> SpecController:
+    """Spec, whose examples the reader reads: tree when one is given, else a reader of its own."""
     fs = fs or FileSystem()
     files = FsArchitectureFiles(fs, DataFileReader(), BUNDLED)
-    architectures = ArchitectureService(files, InterpreterRuntime(), build_reader(fs))
+    architectures = ArchitectureService(files, RUNTIME(), build_reader(tree or READER(fs)))
     settings = PyprojectSettings(fs, TomlReader())
     output = FsProfileOutput(fs)
     folders = FsFolders(fs)
@@ -75,8 +83,7 @@ def build_spec(fs: FileSystem | None = None) -> SpecController:
 
 def build_architectures(fs: FileSystem | None = None) -> ArchitectureService:
     fs = fs or FileSystem()
-    return ArchitectureService(FsArchitectureFiles(fs, DataFileReader(), BUNDLED), InterpreterRuntime(),
-                               build_reader(fs))
+    return ArchitectureService(FsArchitectureFiles(fs, DataFileReader(), BUNDLED), RUNTIME(), build_reader(READER(fs)))
 
 
 def load_architecture(location: str | Path) -> Architecture:
@@ -84,8 +91,8 @@ def load_architecture(location: str | Path) -> Architecture:
     return build_architectures().load(location)
 
 
-def build_rules(fs: FileSystem, spec: SpecController, layout: LayoutController) -> RulesController:
-    tree, profiles = FsSourceTree(fs), SpecProfiles(spec)
+def build_rules(tree: FsSourceTree, spec: SpecController, layout: LayoutController) -> RulesController:
+    profiles = SpecProfiles(spec)
     source = SourceCheckService(tree, profiles)
     return RulesController(source, LocateService(tree, profiles),
                            AppCheckService(source, LayoutStructure(layout), tree), ExplainingService(profiles),
@@ -101,8 +108,11 @@ def build_scaffold(fs: FileSystem, spec: SpecController) -> ScaffoldController:
 
 
 def build_controllers() -> Controllers:
-    """One spec feeds rules, layout and scaffold: they cannot drift."""
+    """Built in the order each needs the one before: the reader, which needs no profile; spec, which reads its
+    examples with it; layout and scaffold, which read the skeleton spec gives; rules, which reads with the same reader
+    the profile spec gives and the structure layout checks. One reader and one spec feed them all: they cannot drift."""
     fs = FileSystem()
-    spec = build_spec(fs)
+    tree = READER(fs)
+    spec = build_spec(fs, tree)
     layout = build_layout(fs, spec)
-    return Controllers(build_rules(fs, spec, layout), layout, build_scaffold(fs, spec), spec)
+    return Controllers(build_rules(tree, spec, layout), layout, build_scaffold(fs, spec), spec)
