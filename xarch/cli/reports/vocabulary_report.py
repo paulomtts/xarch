@@ -73,9 +73,8 @@ def category_document(shown: WordsShown) -> str:
 
 def word_lines(shown: WordShown) -> list[str]:
     lines = [shown.address, *_filled(f"what: {shown.meaning}", "  ", "    ")]
-    if shown.about:
-        lines += [f"  about: the {shown.about}" + (" a fact is in" if shown.about == "file" else
-                                                   " a fact reaches" if shown.about == "target" else "")]
+    if shown.about_said:
+        lines += [f"  about: {shown.about_said}"]
     if shown.value:
         lines += [f"  value: {shown.value}"]
     if shown.side:

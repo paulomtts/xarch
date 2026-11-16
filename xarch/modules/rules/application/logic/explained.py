@@ -9,14 +9,17 @@ from collections.abc import Iterable
 from difflib import get_close_matches
 from string import Formatter
 
-from xarch.modules.rules.domain.published import Slot
+from xarch.modules.rules.domain.published import CHECKS, Slot
 from xarch.modules.rules.domain.rule import Rule
 from xarch.modules.rules.domain.vocabulary import (
+    FACT,
     FIELDS,
+    FILE,
     FILTERS,
     KINDS,
     QUANTIFIERS,
     SLOTS,
+    TARGET,
     TARGETS,
     VARIABLES,
     Filter,
@@ -43,8 +46,6 @@ MEANINGS = {
 }
 """What each category holds, in a line."""
 NEAREST = 3
-SLOTTED = "checks"
-"""The first step of the address of a slot of a check: checks.keep."""
 
 
 def word_at(address: str) -> tuple[str, Word] | None:
@@ -61,26 +62,44 @@ def category_at(address: str) -> str:
 
 def addresses() -> list[str]:
     return [*CATEGORIES, *(f"{category}.{word.name}" for category, words in CATEGORIES.items() for word in words),
-            *(f"{SLOTTED}.{slot.name}" for slot in SLOTS)]
+            *(f"{CHECKS}.{slot.name}" for slot in SLOTS)]
 
 
 def slot_at(address: str) -> Slot | None:
     """The slot of a check at an address, `checks.<slot>`; None when there is none."""
     prefix, _, name = address.strip().strip(".").partition(".")
-    return next((slot for slot in SLOTS if slot.name == name), None) if prefix == SLOTTED else None
+    return next((slot for slot in SLOTS if slot.name == name), None) if prefix == CHECKS else None
+
+
+def names_words(address: str) -> bool:
+    """Whether an address is one of the words a check is written in: its first step is `checks` or a category."""
+    first = address.strip().strip(".").partition(".")[0]
+    return first == CHECKS or first in CATEGORIES
+
+
+def close(typed: str) -> tuple[str, ...]:
+    """The addresses of words that read like one that does not exist, by the whole address or by the name alone;
+    none when none does."""
+    found = get_close_matches(typed.strip().strip("."), addresses(), n=NEAREST, cutoff=0.6)
+    if found:
+        return tuple(found)
+    name = typed.strip().strip(".").rpartition(".")[2]
+    by_name = {word.name: f"{category}.{word.name}" for category, words in CATEGORIES.items() for word in words}
+    return tuple(by_name[found] for found in get_close_matches(name, list(by_name), n=NEAREST, cutoff=0.6))
 
 
 def nearest(typed: str) -> tuple[str, ...]:
-    """The addresses closest to one that does not exist: those that read like it, by the whole address or by the
-    name alone; else the categories."""
-    known = addresses()
-    close = get_close_matches(typed.strip().strip("."), known, n=NEAREST, cutoff=0.6)
-    if close:
-        return tuple(close)
-    name = typed.strip().strip(".").rpartition(".")[2]
-    by_name = {word.name: f"{category}.{word.name}" for category, words in CATEGORIES.items() for word in words}
-    close = get_close_matches(name, list(by_name), n=NEAREST, cutoff=0.6)
-    return tuple(by_name[found] for found in close) if close else tuple(CATEGORIES)
+    """The addresses closest to one that does not exist: those that read like it (see close); else the categories."""
+    return close(typed) or tuple(CATEGORIES)
+
+
+ABOUT = {FILE: "the file a fact is in", FACT: "the fact", TARGET: "the target a fact reaches"}
+"""What a filter asks about, as it is said."""
+
+
+def about(word: Word) -> str:
+    """What a word asks about, as it is said; "" for a word that asks about nothing."""
+    return ABOUT.get(getattr(word, "about", ""), "")
 
 
 def applies(word: Word) -> tuple[str, ...]:

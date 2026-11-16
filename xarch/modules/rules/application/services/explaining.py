@@ -16,6 +16,7 @@ from xarch.modules.rules.contract import (
     FieldShown,
     KeyUnset,
     NoRuleShown,
+    NoWords,
     RuleShown,
     UnknownWords,
     WordLine,
@@ -23,13 +24,11 @@ from xarch.modules.rules.contract import (
     WordsResult,
     WordsShown,
 )
+from xarch.modules.rules.domain.published import CHECKS
 from xarch.modules.rules.domain.rule import Rule
 from xarch.modules.rules.domain.vocabulary import READING, SLOTS, Kind
 from xarch.modules.rules.domain.worked import WORKED
 from xarch.profile_values.language import CheckedLanguage
-
-CHECKS = "checks"
-"""The address of how a check is written."""
 
 
 class ExplainingService:
@@ -45,6 +44,8 @@ class ExplainingService:
         example drawn from the profiles the project holding app knows (none for no app); an address of no word comes
         back with the nearest ones."""
         typed = address.strip().strip(".")
+        if not explained.names_words(typed):
+            return NoWords(typed, explained.close(typed))
         examples_from = self._profiles.known(app) if app is not None else ()
         language = self.language(examples_from)
         if typed == CHECKS:
@@ -69,7 +70,8 @@ class ExplainingService:
         return WordShown(typed, category, word.name, word.meaning, getattr(word, "about", ""), explained.applies(word),
                          getattr(word, "side", ""), getattr(word, "value", "") or getattr(word, "values", ""),
                          tuple(FieldShown(*f) for f in explained.fields(kind)) if kind else (),
-                         explained.needs(kind) if kind else (), kind.verb if kind else "", key, location, example)
+                         explained.needs(kind) if kind else (), kind.verb if kind else "", key, location, example,
+                         explained.about(word))
 
     def _example(self, category: str, name: str, locations: tuple[str, ...],
                  language: CheckedLanguage) -> tuple[str, str, str]:

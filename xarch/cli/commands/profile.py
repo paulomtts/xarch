@@ -10,12 +10,12 @@ from xarch.cli.reports.refusal_report import reason
 from xarch.cli.terminal import AppPath, Format, FormatOption, app_for, echo, fail, in_full, refusal
 from xarch.modules.rules.application.controller import RulesController
 from xarch.modules.rules.contract import (
-    CATEGORIES,
     ChecksShown,
     ExplainRule,
     ExplainWords,
     KeyUnset,
     NoRuleShown,
+    NoWords,
     RuleShown,
     UnknownWords,
     WordShown,
@@ -106,9 +106,14 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
                 case NoRuleShown() as none:
                     raise refuse(words.no_rule_message(none))
             return
-        if key is not None and profile is None and not configured and key.strip(".").split(".")[0] in CATEGORIES:
-            _words(rules, spec, key, app_path, output)
-            return
+        close: tuple[str, ...] = ()
+        if key is not None and profile is None and not configured:
+            match rules.explain_words(ExplainWords(key)):
+                case NoWords(_, close):
+                    pass
+                case _:
+                    _words(rules, spec, key, app_path, output)
+                    return
         if profile is not None or configured:
             if key is not None or (profile is not None and configured):
                 raise refuse("give either a key or a profile (--profile or --configured), not both")
@@ -124,11 +129,10 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
             case KeyExplained() as found:
                 _show(output, report.key_document(found), report.key_lines(found))
             case UnknownKey() as unknown:
-                nearest = _nearest_words(rules, unknown.key)
                 if output is Format.json:
-                    typer.echo(report.unknown_document(unknown, nearest))
+                    typer.echo(report.unknown_document(unknown, close))
                     raise typer.Exit(2)
-                raise fail(report.unknown_message(unknown, nearest))
+                raise fail(report.unknown_message(unknown, close))
             case ProfileRefused(why):
                 raise refuse(why)
 
@@ -199,10 +203,3 @@ def _words(rules: RulesController, spec: SpecController, key: str, app_path: Pat
                 raise typer.Exit(2)
             raise fail(words.unknown_message(unknown))
 
-
-def _nearest_words(rules: RulesController, typed: str) -> tuple[str, ...]:
-    """The words of a check whose names read like a key that does not exist."""
-    match rules.explain_words(ExplainWords(typed)):
-        case UnknownWords(_, nearest) if set(nearest) != set(CATEGORIES[1:]):
-            return nearest
-    return ()

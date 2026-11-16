@@ -16,13 +16,7 @@ from xarch.modules.spec.contract import AppChosen, ChooseApp, ProfileSelected, S
 
 SRC = Path(xarch.__file__).parent
 TESTS = SRC.parent / "tests"
-PENDING = ("parts.controller.may_import narrowed to services, contract, domain/errors, kernel, kernel-logic and "
-           "profile-values", "the contract's forbidden list `published`, which names typing.Any",
-           "`.chdir()` in the ambient list, and the integration tier held to the forbidden list of the part it mirrors",
-           "a part redefined without the litmus the bundled profile gives it fails `check --strict`",
-           "parts.<part>.immutable on logic, kernel-logic and reports",
-           "scenario-coverage's no-branch rule reads the conditional expressions too",
-           "tiers.unit.plain_tables")
+PENDING = ("the expected failures of the two tables of language needs (engine #1), which `--strict` counts as skips",)
 """The checks the round-4 audits asked for, on in architecture.yaml, which xarch's own code breaks."""
 REFACTOR_PENDING = pytest.mark.xfail(
     strict=True,
@@ -45,7 +39,6 @@ def test_xarch_records_its_own_app_folder_so_a_bare_check_runs_here():
     assert build_controllers().spec.choose_app(ChooseApp(SRC.parent)) == AppChosen(SRC)
 
 
-@REFACTOR_PENDING
 def test_xarch_has_no_violations_in_its_source_or_its_tests():
     controllers = build_controllers()
     imports = controllers.rules.check(CheckImports(SRC, "xarch", own_architecture(), TESTS))
@@ -69,7 +62,6 @@ def test_xarch_is_split_into_its_four_modules():
     assert modules == {"spec", "rules", "layout", "scaffold"}
 
 
-@REFACTOR_PENDING
 def test_the_self_check_would_catch_a_broken_rule(tmp_path):
     """Guards against a vacuous pass: the same check on a copy of xarch with one forbidden import fails."""
     copy = tmp_path / "xarch"

@@ -13,7 +13,7 @@ __all__ = ["At", "Weak", "Slot", "KeyFacts", "ChecksCannotRun", "CheckRefused", 
            "Drift", "FindingView", "ExcludedView", "EnforcementView", "ReachView", "NearestView", "TierInfoView",
            "PartShown", "CoveringTest", "Untested", "InPart", "InStructure", "Ungoverned", "InTests", "Support", "Fake",
            "WhereAnswer", "CheckImports", "ImportsChecked", "NotADirectory", "CheckResult", "CheckApp", "AppChecked",
-           "CheckAppResult", "Locate", "Located", "Outside", "LocateResult", "CATEGORIES", "ExplainWords",
+           "CheckAppResult", "Locate", "Located", "Outside", "LocateResult", "ExplainWords", "NoWords",
            "WordLine", "CategoryShown", "ChecksShown", "WordsShown", "FieldShown", "WordShown", "UnknownWords",
            "WordsResult", "ExplainRule", "RuleShown", "KeyUnset", "NoRuleShown", "RuleResult", "CheckExamples", "ChecksHeld",
            "CheckExamplesResult", "ApproximateView"]
@@ -299,9 +299,6 @@ class Outside:
 LocateResult = Located | Outside | ChecksCannotRun | CheckRefused
 
 
-CATEGORIES = ("checks", "kinds", "quantifiers", "targets", "filters", "variables")
-"""The first steps of the addresses `explain` answers with the words a check is written in: how a check is written,
-and each category of its words."""
 
 
 @dataclass(frozen=True)
@@ -358,9 +355,10 @@ class FieldShown:
 @dataclass(frozen=True)
 class WordShown:
     """One word: its address, category, name and meaning; what it is about (a filter: the file, the fact or what the
-    fact reaches); the kinds of fact it applies to; the side of the files it applies to ("" both); what its value is
-    ("" none); for a kind, its fields, the facts of the source it needs and its verb; and an example, a whole check
-    written with the word, with the key and the profile it comes from ("" when none of them has one)."""
+    fact reaches), as a word, and as it is said in about_said; the kinds of fact it applies to; the side of the files
+    it applies to ("" both); what its value is ("" none); for a kind, its fields, the facts of the source it needs and
+    its verb; and an example, a whole check written with the word, with the key and the profile it comes from (""
+    when none of them has one)."""
     address: str
     category: str
     name: str
@@ -375,6 +373,7 @@ class WordShown:
     example_key: str = ""
     example_profile: str = ""
     example: str = ""
+    about_said: str = ""
 
 
 @dataclass(frozen=True)
@@ -384,7 +383,15 @@ class UnknownWords:
     nearest: tuple[str, ...]
 
 
-WordsResult = ChecksShown | WordsShown | WordShown | UnknownWords
+@dataclass(frozen=True)
+class NoWords:
+    """An address that names none of the words a check is written in, its first step being neither `checks` nor a
+    category of words: what was typed, and the words that read like it (none when none does)."""
+    typed: str
+    close: tuple[str, ...]
+
+
+WordsResult = ChecksShown | WordsShown | WordShown | UnknownWords | NoWords
 
 
 @dataclass(frozen=True)

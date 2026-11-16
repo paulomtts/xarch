@@ -7,10 +7,15 @@ contract's own.
     Slot  a slot of a check as a profile writes it, which `profile explain checks` shows
     Drift an init file as it stands against what `init` would write, which the enforcement section lists
     KeyFacts what the format says of a key the profile sets nowhere, which the command line shows
+
+and CHECKS, the address of how a check is written.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
+
+CHECKS = "checks"
+"""The address `profile explain` explains how a check is written at, and the first step of a slot's (checks.keep)."""
 
 
 @dataclass(frozen=True)

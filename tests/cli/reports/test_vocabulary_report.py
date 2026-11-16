@@ -35,7 +35,7 @@ from xarch.modules.rules.contract import (
 FILTERS = CategoryShown("filters", "what must be true", (WordLine("public", "the name is public"),))
 CHECK = "checks:\n  names:\n    read: class\n"
 WORD = WordShown("filters.public", "filters", "public", "the name is public", "fact", ("class", "function"), "", "",
-                 example_key="parts.store.names", example_profile="web", example=CHECK)
+                 example_key="parts.store.names", example_profile="web", example=CHECK, about_said="the fact")
 
 
 def test_how_a_check_reads_shows_its_slots_its_categories_and_an_example():
