@@ -7,20 +7,7 @@ from tests.modules.rules.builders import PROFILE, imp, in_tests, source
 from xarch.kernel.placement import Place
 from xarch.kernel.source import Unparsable
 from xarch.modules.rules.application.logic.facts import KINDS, facts_of
-from xarch.modules.rules.domain.rule import (
-    APP,
-    EXISTING,
-    MAY_NOT,
-    MUST_BE_REACHED,
-    MUST_REACH,
-    TESTS,
-    Condition,
-    Fact,
-    Match,
-    Rule,
-    Saying,
-    Scope,
-)
+from xarch.modules.rules.domain.rule import EXISTING, MAY_NOT, MUST_BE_REACHED, MUST_REACH, Fact, Match, Rule
 from xarch.modules.rules.domain.values import (
     Call,
     Callback,
@@ -34,6 +21,7 @@ from xarch.modules.rules.domain.values import (
     Use,
 )
 from xarch.modules.rules.domain.vocabulary import KINDS as VOCABULARY
+from xarch.profile_values.checks import APP, TESTS, Condition, Saying, Scope
 
 DOC = ("app", "modules", "docs", "domain", "doc", "Doc")
 MAKE = ("app", "modules", "docs", "domain", "doc", "make")

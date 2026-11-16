@@ -11,8 +11,9 @@ from collections.abc import Callable
 from xarch.kernel.logic.placement import name_matches
 from xarch.kernel.placement import EVERYTHING
 from xarch.modules.rules.application.logic.places import narrowed
-from xarch.modules.rules.domain.rule import ALL, ANY, APP, STRUCTURE, TESTS, Condition, Facts, Found, Read, Scope
+from xarch.modules.rules.domain.rule import Facts, Found, Read
 from xarch.modules.rules.domain.values import Profile
+from xarch.profile_values.checks import ALL, ANY, APP, STRUCTURE, TESTS, Condition, Scope
 
 Question = Callable[[Found, Facts, Profile], bool]
 """What a condition asks of a fact a rule found."""

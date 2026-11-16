@@ -29,7 +29,6 @@ from xarch.modules.rules.domain.vocabulary import (
     KEY_OF_RULE,
     KIND,
     KINDS,
-    NEGATION,
     PART_KEYS,
     QUANTIFIERS,
     RENAMED_VARIABLES,
@@ -40,15 +39,8 @@ from xarch.modules.rules.domain.vocabulary import (
     VARIABLES,
     Kind,
 )
+from xarch.profile_values.checks import ALL, APP, TESTS, Condition, Saying, Scope
 from xarch.profile_values.placement import Target
-
-ANY = "*"
-"""A scope's part that any file of its files is in: a part, the structure or no part."""
-STRUCTURE = ""
-"""A scope's part that is the structure: a folder of the layout no part claims."""
-
-APP, TESTS, ALL = "app", "tests", "all"
-"""The files a scope reads: the app's, the tests', or both, the app's first."""
 
 MAY_NOT, MAY_ONLY = "may_not", "may_only"
 """What a kept fact does with the targets: matches none of them, or matches one of them."""
@@ -75,41 +67,6 @@ _REACH = tuple(quantifier.name for quantifier in QUANTIFIERS if quantifier.reach
 
 
 @dataclass(frozen=True)
-class Condition:
-    """A filter as a rule names it: the filter's name, its value for one that takes one, and whether it is negated
-    (`not <name>`): the fact passes when the filter does not hold."""
-    name: str
-    value: str = ""
-    negated: bool = False
-
-    @classmethod
-    def of(cls, text: str) -> Condition:
-        """A condition as written: `[not ]<name>[ <value>]`."""
-        negated = text.startswith(NEGATION)
-        name, _, value = text.removeprefix(NEGATION).partition(" ")
-        return cls(name, value, negated)
-
-    def __str__(self) -> str:
-        return f"{NEGATION if self.negated else ''}{self.name}{f' {self.value}' if self.value else ''}"
-
-
-@dataclass(frozen=True)
-class Scope:
-    """The files a rule reads: of the app, of the tests or both (files); the part they belong to (part: its name,
-    STRUCTURE for the structure, ANY for any): the part a file of the app lies in, the part a test's folder mirrors; of
-    a tier (tier: its name, "" for any); and the filters about the file it passes besides (where)."""
-    files: str = APP
-    part: str = ANY
-    tier: str = ""
-    where: tuple[Condition, ...] = ()
-
-    @property
-    def named_part(self) -> str:
-        """The part the scope names, "" for any part or the structure."""
-        return self.part if self.part not in (ANY, STRUCTURE) else ""
-
-
-@dataclass(frozen=True)
 class Match:
     """One target of a rule: a kind of target and its values, places a part may import, dotted names, or words such
     as patterns and part names. A fact is compared with each target of its rule in turn; the first it matches is its
@@ -126,17 +83,6 @@ class Match:
 
 EXISTING = (Match(EXIST),)
 """The targets every fact matches: under MAY_NOT, a rule whose kept facts are findings by being there."""
-
-
-@dataclass(frozen=True)
-class Saying:
-    """How a finding is said, when the conditions hold of it (none: always): the message and the fix, each a sentence
-    with `{variable}`s of the vocabulary, and the variables by which a file's findings said this way are said once each
-    (empty: every one is said)."""
-    message: str
-    fix: str
-    when: tuple[Condition, ...] = ()
-    once: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

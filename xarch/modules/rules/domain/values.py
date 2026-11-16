@@ -11,6 +11,7 @@ from xarch.kernel.source import Import, Unparsable
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.domain.published import At, Drift, Weak
 from xarch.profile_values.capabilities import Shortfall
+from xarch.profile_values.checks import WrittenCheck
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.language import CheckedLanguage
 from xarch.profile_values.placement import Repeat, Target
@@ -57,8 +58,9 @@ class Profile:
     declared shared must have (see shared); private_imports switches the private-imports guard on. hints
     holds the profile's own advice, by rule id. language is the language of the app. reserved holds the
     standard-library modules (by top-level name, each with why) a part imports only when its libraries list them.
-    approximate holds the keys whose check reads a fact the language supplies only partly. checks are the checks the
-    profile writes itself, in its order. tests_folder is where the tests are, from the folder holding the app, when
+    approximate holds the keys whose check reads a fact the language supplies only partly. written are the checks the
+    profile writes itself, by id, as spec read them; checks are those checks made into rules, in the profile's order
+    (none until they are made, see own_checks). tests_folder is where the tests are, from the folder holding the app, when
     no tests folder is given or there.
     """
     parts: dict[str, tuple[str, ...]]
@@ -98,6 +100,7 @@ class Profile:
     language: CheckedLanguage = CheckedLanguage()
     reserved: dict[str, str] = field(default_factory=dict)
     approximate: tuple[Shortfall, ...] = ()
+    written: dict[str, WrittenCheck] = field(default_factory=dict)
     checks: tuple[OwnCheck, ...] = ()
     tests_folder: str = ""
 

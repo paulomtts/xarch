@@ -17,6 +17,7 @@ from xarch.modules.rules.application.logic import (
 )
 from xarch.modules.rules.application.logic.engine import read, run
 from xarch.modules.rules.application.logic.facts import facts_of
+from xarch.modules.rules.application.logic.own_checks import resolved
 from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.application.ports.source_tree import SourceTree
 from xarch.modules.rules.contract import (
@@ -69,7 +70,7 @@ class SourceCheckService:
         absent = self._tree.absent(folder for folder in (root, tests) if folder is not None)
         if absent:
             raise RootMissing(absent[0])
-        rules = self._profiles.profile(profile)
+        rules = resolved(self._profiles.profile(profile))
         extension = rules.language.extension
         paths = [p for p in self._tree.paths(root, extension) if not governed.excluded(rules, p)]
         marks = rules.language.immutable

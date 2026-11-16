@@ -4,6 +4,7 @@ from xarch.kernel.errors import DomainError
 from xarch.modules.rules.application.logic import expansion
 from xarch.modules.rules.application.logic.expandable import expands
 from xarch.modules.rules.application.logic.explained import keyed, uses
+from xarch.modules.rules.application.logic.own_checks import resolved
 from xarch.modules.rules.application.logic.written import written
 from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.contract import KeyUnset, NoRuleShown, RuleShown
@@ -31,7 +32,7 @@ class ExplainingService:
         """The language of the first of the profiles that can be read; none when none can."""
         for location in locations:
             try:
-                return self._profiles.profile(location).language
+                return resolved(self._profiles.profile(location)).language
             except DomainError:
                 continue
         return CheckedLanguage()
@@ -39,7 +40,7 @@ class ExplainingService:
     def rules_of(self, address: str, location: str) -> list[Rule]:
         """The rules of the profile at location that the key at address expands to; raises DomainError when the
         profile cannot be read."""
-        profile = self._profiles.profile(location)
+        profile = resolved(self._profiles.profile(location))
         return keyed([*(rule for rules in expansion.book(profile).values() for rule in rules),
                       *(check.rule for check in profile.checks)], address)
 
@@ -58,7 +59,7 @@ class ExplainingService:
 
     def _rules(self, location: str) -> list[Rule]:
         try:
-            profile = self._profiles.profile(location)
+            profile = resolved(self._profiles.profile(location))
         except DomainError:
             return []
         return [rule for rules in expansion.book(profile).values() for rule in rules]

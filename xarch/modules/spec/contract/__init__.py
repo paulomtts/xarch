@@ -3,10 +3,8 @@ force; a profile's skeleton as flat lists of entries, its docs, the files `init`
 it and where it comes from; and what explaining, viewing, checking, migrating and copying a profile found."""
 from __future__ import annotations
 
-from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 from xarch.modules.spec.domain.published import (
     DEFAULT_APP,
@@ -20,6 +18,7 @@ from xarch.modules.spec.domain.published import (
     ProjectFile,
 )
 from xarch.profile_values.capabilities import Shortfall, Supply
+from xarch.profile_values.checks import WrittenCheck
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.language import CheckedLanguage
 from xarch.profile_values.placement import Repeat, Target
@@ -148,7 +147,7 @@ class ProfileView:
     language: CheckedLanguage = CheckedLanguage()
     reserved: dict[str, str] = field(default_factory=dict)
     approximate: tuple[Shortfall, ...] = ()
-    checks: dict[str, Mapping[str, Any]] = field(default_factory=dict)
+    checks: dict[str, WrittenCheck] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

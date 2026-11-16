@@ -5,6 +5,7 @@ from dataclasses import replace
 from xarch.kernel.errors import DomainError
 from xarch.modules.rules.application.logic.engine import run
 from xarch.modules.rules.application.logic.facts import facts_of
+from xarch.modules.rules.application.logic.own_checks import resolved
 from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.application.ports.source_tree import SourceTree
 from xarch.modules.rules.domain.errors import ChecksRefused
@@ -27,7 +28,7 @@ class ExamplesService:
         """What is wrong with the profile's own checks, each problem at its address, and how many checks it has; a
         profile whose checks cannot be made has those problems."""
         try:
-            profile = self._profiles.profile(location)
+            profile = resolved(self._profiles.profile(location))
         except ChecksRefused as refused:
             return list(refused.problems), 0
         except DomainError as e:

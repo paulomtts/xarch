@@ -8,17 +8,16 @@ from tests.fakes.profiles import FakeProfiles
 from tests.modules.rules.application.helpers import controller
 from tests.modules.rules.builders import profile
 from xarch.modules.rules.contract import CheckExamples, ExamplesChecked
-from xarch.modules.rules.domain.rule import APP, EXISTING, MAY_NOT, OwnCheck, Rule, Saying, Scope
 from xarch.modules.rules.domain.values import Class, SourceFile
+from xarch.profile_values.checks import APP, Quantified, Saying, Scope, WrittenCheck, WrittenTarget
 
-RULE = Rule("no-managers", Scope(APP, "domain"), ("class",), MAY_NOT, EXISTING, (Saying("{name}", "rename it"),),
-            keep=(), key="checks.no-managers")
 PARSED = {"manager": SourceFile("", (), (), classes=(Class(1, "Manager"),)), "nothing": SourceFile("", (), ())}
 
 
 def held(flagged: str, clean: str, path: str = "modules/docs/domain/x.py") -> ExamplesChecked:
-    own = OwnCheck(RULE, ((path, flagged),), ((path, clean),))
-    profiles = FakeProfiles({"mine": profile(checks=(own,))}, refused={"broken": ("checks.x.read: no kind",)})
+    own = WrittenCheck(("class",), Scope(APP, "domain"), Quantified("may_not", (WrittenTarget("exist"),)),
+                       (Saying("{name}", "rename it"),), flagged=((path, flagged),), clean=((path, clean),))
+    profiles = FakeProfiles({"mine": profile(written={"no-managers": own})}, refused={"broken": ("checks.x.read: no kind",)})
     tree = FakeSourceTree(Path("/src/app"), {}, parsed=PARSED)
     return controller(tree, profiles).check_examples(CheckExamples("mine", "app"))
 

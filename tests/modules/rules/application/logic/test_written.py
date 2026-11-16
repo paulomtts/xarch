@@ -3,21 +3,8 @@ a word quoted only where the format would read it otherwise, and the sayings but
 import pytest
 
 from xarch.modules.rules.application.logic.written import check, filled, written
-from xarch.modules.rules.domain.rule import (
-    EXISTING,
-    LIST,
-    MAY_NOT,
-    MAY_ONLY,
-    MUST_BE_REACHED,
-    MUST_REACH,
-    STRUCTURE,
-    TESTS,
-    Condition,
-    Match,
-    Rule,
-    Saying,
-    Scope,
-)
+from xarch.modules.rules.domain.rule import EXISTING, LIST, MAY_NOT, MAY_ONLY, MUST_BE_REACHED, MUST_REACH, Match, Rule
+from xarch.profile_values.checks import STRUCTURE, TESTS, Condition, Saying, Scope
 from xarch.profile_values.language import CheckedLanguage
 from xarch.profile_values.placement import Target
 

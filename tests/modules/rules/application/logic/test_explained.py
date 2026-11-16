@@ -15,8 +15,9 @@ from xarch.modules.rules.application.logic.explained import (
     uses,
     word_at,
 )
-from xarch.modules.rules.domain.rule import EXISTING, MAY_NOT, Condition, Match, Rule, Saying, Scope
+from xarch.modules.rules.domain.rule import EXISTING, MAY_NOT, Match, Rule
 from xarch.modules.rules.domain.vocabulary import FILTERS, KINDS, QUANTIFIERS, TARGETS, VARIABLES
+from xarch.profile_values.checks import Condition, Saying, Scope
 
 RULE = Rule("names", Scope(part="store"), ("class",), MAY_NOT, (Match("name", words=("*Store",)),),
             (Saying("{name} is {targets}", "f"),), keep=(Condition("public"),), key="parts.store.names")

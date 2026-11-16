@@ -23,8 +23,9 @@ from tests.modules.rules.application.logic.world import (
 )
 from xarch.modules.rules.application.logic import sentences
 from xarch.modules.rules.application.logic.sentences import said, value
-from xarch.modules.rules.domain.rule import Match, Scope
+from xarch.modules.rules.domain.rule import Match
 from xarch.modules.rules.domain.vocabulary import VARIABLES
+from xarch.profile_values.checks import Scope
 from xarch.profile_values.placement import Target
 
 KEYED = replace(RULE, key="parts.domain.forbidden", scope=Scope(part="domain"))

@@ -8,9 +8,10 @@ from tests.modules.rules.application.logic.world import BUILT, FACTS, LISTED, NA
 from xarch.kernel.placement import Place
 from xarch.modules.rules.application.logic.filters import holds
 from xarch.modules.rules.application.logic.targets import matched
-from xarch.modules.rules.domain.rule import Condition, Fact, Found, Match, Rule, Saying, Scope
+from xarch.modules.rules.domain.rule import Fact, Found, Match, Rule
 from xarch.modules.rules.domain.vocabulary import FACT, FILTERS, TARGET, TARGETS, Kind
 from xarch.modules.rules.domain.vocabulary import KINDS as VOCABULARY
+from xarch.profile_values.checks import Condition, Saying, Scope
 from xarch.profile_values.placement import Target
 
 KINDS = {kind.name: kind for kind in VOCABULARY}

@@ -44,8 +44,6 @@ RENAMED_VARIABLES = {"part": "where"}
 PART_KEYS = ("built_by",)
 """The keys of a part a filter may name: lists of parts."""
 
-NEGATION = "not "
-"""How a filter is negated: written after `not `."""
 
 
 @dataclass(frozen=True)

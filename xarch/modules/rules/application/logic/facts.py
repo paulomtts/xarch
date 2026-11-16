@@ -63,9 +63,10 @@ from xarch.modules.rules.application.logic.filters import in_scope
 from xarch.modules.rules.application.logic.imports import dotted, named_targets, targets
 from xarch.modules.rules.application.logic.places import place
 from xarch.modules.rules.application.logic.tier_of import tested
-from xarch.modules.rules.domain.rule import MUST_REACH, Defined, Fact, Facts, Read, Rule, Scope
+from xarch.modules.rules.domain.rule import MUST_REACH, Defined, Fact, Facts, Read, Rule
 from xarch.modules.rules.domain.values import Class, Function, Profile, SourceFile
 from xarch.modules.rules.domain.vocabulary import KINDS as VOCABULARY
+from xarch.profile_values.checks import Scope
 
 Placements = dict[tuple[str, ...], Place | None]
 """Where each path below the root placed so far sits."""

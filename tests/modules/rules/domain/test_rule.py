@@ -6,21 +6,8 @@ nothing or crashed."""
 import pytest
 
 from xarch.modules.rules.domain.errors import RuleRefused
-from xarch.modules.rules.domain.rule import (
-    ALL,
-    APP,
-    EXISTING,
-    MAY_NOT,
-    MAY_ONLY,
-    MUST_BE_REACHED,
-    MUST_REACH,
-    TESTS,
-    Condition,
-    Match,
-    Rule,
-    Saying,
-    Scope,
-)
+from xarch.modules.rules.domain.rule import EXISTING, MAY_NOT, MAY_ONLY, MUST_BE_REACHED, MUST_REACH, Match, Rule
+from xarch.profile_values.checks import ALL, APP, TESTS, Condition, Saying, Scope
 
 YAML = (Match("package", words=("yaml",)),)
 

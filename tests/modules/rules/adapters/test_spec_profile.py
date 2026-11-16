@@ -1,10 +1,9 @@
-"""Rules' Profiles read from spec's contract: the profile view becomes the profile as the checks see it, the origin keeps
-each looseness, and the init files are compared as text."""
+"""Rules' Profiles read from spec's contract: the profile view becomes the profile as the checks see it (the checks it
+writes itself as spec read them), the origin keeps each looseness, and the init files are compared as text."""
 import pytest
 
-from xarch.modules.rules.adapters.spec_profile import SpecProfiles, WrittenChecks
+from xarch.modules.rules.adapters.spec_profile import SpecProfiles
 from xarch.modules.rules.domain.errors import ProfileUnusable
-from xarch.modules.rules.domain.rule import APP, MAY_NOT, Condition, Match, Rule, Saying, Scope
 from xarch.modules.rules.domain.values import InitFile, PartInfo, Profile, Standing
 from xarch.modules.spec.contract import (
     FilesResult,
@@ -18,9 +17,8 @@ from xarch.modules.spec.contract import (
     ProjectFile,
     ProjectFiles,
 )
-from xarch.profile_values.capabilities import EXACT, Shortfall, Supply
+from xarch.profile_values.checks import Quantified, Saying, Scope, WrittenCheck, WrittenTarget
 from xarch.profile_values.excluded import Excluded
-from xarch.profile_values.language import CheckedLanguage
 from xarch.profile_values.placement import Repeat, Target
 from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns
 from xarch.profile_values.tiers import CheckedTier
@@ -43,7 +41,9 @@ VIEW = ProfileView(
                       untested=True, pass_through=("api",),
                       private_imports=True),
     fakes=Fakes(("fakes",), ("api",), "Fake"), framework=Framework(("test_*.py",), "test_*", (("skip",),)),
-    excluded=(Excluded(("vendor",), "not ours"),), hints={"rules": "ask first"})
+    excluded=(Excluded(("vendor",), "not ours"),), hints={"rules": "ask first"},
+    checks={"no-print": WrittenCheck(("call",), Scope(), Quantified("may_not", (WrittenTarget("path", ("builtins.print",)),)),
+                                     (Saying("{where} prints", "log it"),))})
 
 
 ORIGIN = Origin("mine.yaml", False, "cli", ("closed-tree",), (), (Loosened("untested", "api"),))
@@ -83,7 +83,7 @@ def test_the_profile_view_becomes_the_profile_the_checks_see():
         no_twins_renamed=4, no_twins_subset=3,
         dead_code=True, pass_through=("api",), untested=True, holds={"core": "functions"}, immutable=("core",),
         types_only={"api": ("core",)}, no_callbacks=("core",), names={"api": ("*Api",)}, built_by={"api": ("core",)},
-        shared={"core": 2}, private_imports=True, hints={"rules": "ask first"}, tests_folder="tests")
+        shared={"core": 2}, private_imports=True, hints={"rules": "ask first"}, written=VIEW.checks, tests_folder="tests")
 
 
 def test_the_standing_keeps_the_guards_left_off_and_those_the_baseline_leaves_off_too():
@@ -108,41 +108,3 @@ def test_the_init_files_are_compared_as_text_and_none_when_the_profile_cannot_wr
 def test_a_profile_whose_origin_spec_refuses_cannot_be_checked():
     with pytest.raises(ProfileUnusable, match="no such profile"):
         SpecProfiles(Spec(origin=ProfileRefused("no such profile"))).standing("mine.yaml", "app")
-
-
-CHECK = {"read": ("call",), "in": {"files": "app", "part": "core", "tier": "", "where": ()}, "keep": ("target-placed",),
-         "except": (), "mode": "fail", "message": "{where} calls {path}", "fix": "do not", "once_per": ("line",),
-         "cases": ({"when": ("of-kind call",), "message": "c", "fix": "f", "once_per": ()},),
-         "examples": {"flagged": (("core/a.py", "x()\n"),), "clean": (("core/b.py", "\n"),)},
-         "may_not": ({"kind": "path", "values": ("app.api", ".run()")}, {"kind": "part", "values": ("api",)})}
-SUPPLIES = CheckedLanguage("Toy", supplies=(Supply("call", EXACT), Supply("import", "partial", "no star imports")))
-
-
-def test_a_check_the_profile_writes_becomes_a_rule_with_its_examples_and_its_key():
-    (own,) = WrittenChecks().own({"no-api": CHECK}, SUPPLIES)
-    assert own.rule == Rule("no-api", Scope(APP, "core"), ("call",), MAY_NOT,
-                            (Match("path", names=(("app", "api"), ("", "run()"))), Match("part", words=("api",))),
-                            (Saying("c", "f", (Condition("of-kind", "call"),)), Saying("{where} calls {path}", "do not",
-                                                                                      once=("line",))),
-                            keep=(Condition("target-placed"),), key="checks.no-api")
-    assert (own.flagged, own.clean) == ((("core/a.py", "x()\n"),), (("core/b.py", "\n"),))
-
-
-def test_a_check_with_words_that_do_not_apply_or_a_fact_the_language_lacks_is_refused_naming_each_problem():
-    bad = {**CHECK, "keep": ("publc",), "mode": "fial"}
-    lacking = {**CHECK, "read": ("class",), "keep": (), "cases": (), "message": "{name}", "may_not": (
-        {"kind": "exist", "values": ()},)}
-    with pytest.raises(ProfileUnusable) as refused:
-        WrittenChecks().own({"no-api": bad, "named": lacking}, SUPPLIES)
-    assert refused.value.reason == (
-        "checks.no-api.keep: no filter is named 'publc': did you mean public or placed?; checks.no-api.mode: is 'fial': "
-        "write fail (a finding fails the check) or list (it is listed as weak and fails only `check --strict`); "
-        "checks.named: needs class (the classes a file defines at the top level: name, bases, line), which the reader "
-        "of Toy does not supply: read another kind of fact, or drop the check")
-
-
-def test_a_check_that_reads_a_fact_the_language_supplies_partly_is_approximate():
-    importing = {**CHECK, "read": ("import",), "keep": (), "cases": (), "message": "{package}", "may_not": (
-        {"kind": "exist", "values": ()},)}
-    checks = WrittenChecks().own({"imports": importing}, SUPPLIES)
-    assert WrittenChecks().approximate(checks, SUPPLIES) == (Shortfall("checks.imports", "import", "no star imports"),)

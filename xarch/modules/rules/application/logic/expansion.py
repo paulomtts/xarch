@@ -7,24 +7,9 @@ from __future__ import annotations
 
 from xarch.kernel.placement import EVERYTHING
 from xarch.modules.rules.application.logic.tier_of import NO_TIER, NO_TIER_FIX
-from xarch.modules.rules.domain.rule import (
-    ALL,
-    APP,
-    EXISTING,
-    LIST,
-    MAY_NOT,
-    MAY_ONLY,
-    MUST_BE_REACHED,
-    MUST_REACH,
-    STRUCTURE,
-    TESTS,
-    Condition,
-    Match,
-    Rule,
-    Saying,
-    Scope,
-)
+from xarch.modules.rules.domain.rule import EXISTING, LIST, MAY_NOT, MAY_ONLY, MUST_BE_REACHED, MUST_REACH, Match, Rule
 from xarch.modules.rules.domain.values import Profile
+from xarch.profile_values.checks import ALL, APP, STRUCTURE, TESTS, Condition, Saying, Scope
 
 FORBIDDEN_FIX = "do what needs {hit} outside {scope_part}/, and hand {scope_part}/ the result"
 _of = Condition.of

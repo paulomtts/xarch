@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from xarch.kernel.placement import Place
+from xarch.modules.rules.application.logic.own_checks import resolved
 from xarch.modules.rules.application.logic.where import candidates, describe, resolve
 from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.application.ports.source_tree import SourceTree
@@ -49,7 +50,7 @@ class LocateService:
         found = resolve(cmd.path, cmd.cwd, app, tests, existing)
         if found is None:
             raise OutsideProject(cmd.path, app.parent)
-        return Located(_where(describe(self._profiles.profile(cmd.profile), found, app, tests)))
+        return Located(_where(describe(resolved(self._profiles.profile(cmd.profile)), found, app, tests)))
 
 
 def _where(found: Placed) -> WhereAnswer:

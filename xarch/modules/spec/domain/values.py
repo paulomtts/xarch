@@ -9,6 +9,7 @@ from typing import Any, ClassVar
 from xarch.kernel.logic.placement import place_of, repeat_of, with_itself
 from xarch.kernel.placement import EACH, Place
 from xarch.profile_values.capabilities import Shortfall
+from xarch.profile_values.checks import WrittenCheck
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.language import CheckedLanguage
 from xarch.profile_values.placement import Repeat, Target
@@ -327,7 +328,7 @@ class Architecture:
     language: the language of the app
     reserved: the standard-library modules only the parts whose `libraries` list them may import, each with why
     approximate: the keys whose check reads a fact the language supplies only partly, with the reader's note
-    checks: the checks the profile writes itself, by id, each as its slots are read (see written_checks): what the
+    checks: the checks the profile writes itself, by id, each as the format writes it (see written_checks): what the
         words in them mean is the rules module's
     """
     name: str
@@ -354,7 +355,7 @@ class Architecture:
     language: Language = Language()
     reserved: dict[str, str] = field(default_factory=dict)
     approximate: tuple[Shortfall, ...] = ()
-    checks: dict[str, Mapping[str, Any]] = field(default_factory=dict)
+    checks: dict[str, WrittenCheck] = field(default_factory=dict)
 
     @property
     def entry(self) -> Part | None:

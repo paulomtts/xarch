@@ -9,21 +9,8 @@ import json
 import re
 from collections.abc import Iterable
 
-from xarch.modules.rules.domain.rule import (
-    ANY,
-    APP,
-    EXISTING,
-    FAIL,
-    MUST_BE_REACHED,
-    MUST_REACH,
-    STRUCTURE,
-    Condition,
-    Match,
-    OwnCheck,
-    Rule,
-    Saying,
-    Scope,
-)
+from xarch.modules.rules.domain.rule import EXISTING, FAIL, MUST_BE_REACHED, MUST_REACH, Match, OwnCheck, Rule
+from xarch.profile_values.checks import ANY, APP, STRUCTURE, Condition, Saying, Scope
 from xarch.profile_values.language import CheckedLanguage
 from xarch.profile_values.placement import Target
 

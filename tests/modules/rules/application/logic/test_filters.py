@@ -24,8 +24,8 @@ from tests.modules.rules.application.logic.world import (
 )
 from xarch.modules.rules.application.logic import filters
 from xarch.modules.rules.application.logic.filters import holds
-from xarch.modules.rules.domain.rule import Condition
 from xarch.modules.rules.domain.vocabulary import FILTERS
+from xarch.profile_values.checks import Condition
 
 
 @pytest.mark.parametrize("text, file, kind, lines, profile, hit", [

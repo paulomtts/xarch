@@ -6,7 +6,8 @@ their parts and tiers are those of the smallest profile with a test tier: a part
 it, and test files named check_*."""
 from __future__ import annotations
 
-from xarch.modules.rules.domain.rule import APP, MAY_NOT, TESTS, Condition, Match, OwnCheck, Rule, Saying, Scope
+from xarch.modules.rules.domain.rule import MAY_NOT, Match, OwnCheck, Rule
+from xarch.profile_values.checks import APP, TESTS, Condition, Saying, Scope
 
 TODO = (Match("text", words=("*TODO*",)),)
 

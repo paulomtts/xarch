@@ -1,13 +1,23 @@
-"""The checks a profile writes itself, as the format writes them: a check comes back with each slot as the rules module
-reads it (lists as tuples, filters as their text, targets as kinds and values, places as targets, scopes with their
-defaults), and a check that breaks the format, or names an id, a part, a tier or a place the profile does not have,
-is said at its address and left out."""
+"""The checks a profile writes itself, as the format writes them: a check comes back as the record the rules module
+reads (lists as tuples, filters as conditions, targets as kinds and their values as written, scopes with their
+defaults), and a check that breaks the format, or names an id, a part or a tier the profile does not have, is said at
+its address and left out; what a target's values name is the rules module's to read."""
 import pytest
 
 from tests.modules.spec.languages import PYTHON
 from tests.modules.spec.profiles_v2 import layered, parsed
 from xarch.modules.spec.application.logic.written_checks import checks
-from xarch.profile_values.placement import Target
+from xarch.profile_values.checks import (
+    ANY,
+    APP,
+    TESTS,
+    Condition,
+    Quantified,
+    Saying,
+    Scope,
+    WrittenCheck,
+    WrittenTarget,
+)
 
 ARCHITECTURE = parsed(layered())
 EXAMPLES = {"flagged": {"src/billing/api/x.py": "print(1)\n"}, "clean": {"src/billing/api/y.py": "pass\n"}}
@@ -17,21 +27,20 @@ SMALL = {"read": "call", "may_not": {"path": ["builtins.print"]}, "message": "{w
 
 def read(value) -> tuple[dict, list[str]]:
     problems: list[str] = []
-    found = checks(value, ARCHITECTURE.parts, set(ARCHITECTURE.parts), ARCHITECTURE.tiers, PYTHON, problems)
+    found = checks(value, set(ARCHITECTURE.parts), ARCHITECTURE.tiers, PYTHON, problems)
     return found, problems
 
 
 def test_a_check_comes_back_with_each_slot_as_the_rules_read_it_and_the_defaults_filled_in():
     found, problems = read({"no-print": SMALL})
     assert problems == []
-    assert found == {"no-print": {
-        "read": ("call",), "in": {"files": "app", "part": "*", "tier": "", "where": ()}, "keep": (), "except": (),
-        "mode": "fail", "message": "{where} prints", "fix": "log it", "once_per": (), "cases": (),
-        "examples": {"flagged": (("src/billing/api/x.py", "print(1)\n"),), "clean": (("src/billing/api/y.py", "pass\n"),)},
-        "may_not": ({"kind": "path", "values": ("builtins.print",)},)}}
+    assert found == {"no-print": WrittenCheck(
+        ("call",), Scope(APP, ANY, "", ()), Quantified("may_not", (WrittenTarget("path", ("builtins.print",)),)),
+        (Saying("{where} prints", "log it"),), (), (), "fail", (("src/billing/api/x.py", "print(1)\n"),),
+        (("src/billing/api/y.py", "pass\n"),))}
 
 
-def test_a_reach_to_targets_reads_its_places_from_the_part_its_scope_names():
+def test_a_reach_to_targets_keeps_its_targets_as_written_and_its_filters_as_conditions():
     body = {**SMALL, "read": ["import", "import-into-app"], "in": {"part": "store", "where": ["not package-file",
                                                                                               {"not below": "x/y"}]},
             "keep": [{"named": "*Repo"}], "must_reach": {"targets": [{"place": ["shared"]}, "outside"],
@@ -41,12 +50,11 @@ def test_a_reach_to_targets_reads_its_places_from_the_part_its_scope_names():
     found, problems = read({"reach": body})
     assert problems == []
     check = found["reach"]
-    assert (check["in"], check["keep"], check["cases"]) == (
-        {"files": "app", "part": "store", "tier": "", "where": ("not package-file", "not below x/y")}, ("named *Repo",),
-        ({"when": ("relative",), "message": "m", "fix": "f", "once_per": ("line",)},))
-    assert check["must_reach"] == {"through": ("import-into-app",), "through_only": ("target-in-own-part",),
-                                   "targets": ({"kind": "place", "values": (Target("shared"),)},
-                                               {"kind": "outside", "values": ()})}
+    assert (check.within, check.keep, check.sayings[0]) == (
+        Scope(APP, "store", "", (Condition("package-file", negated=True), Condition("below", "x/y", True))),
+        (Condition("named", "*Repo"),), Saying("m", "f", (Condition("relative"),), ("line",)))
+    assert check.quantified == Quantified("must_reach", (WrittenTarget("place", ("shared",)), WrittenTarget("outside")),
+                                          ("import-into-app",), (Condition("target-in-own-part"),))
 
 
 def test_a_reach_from_roots_reads_its_roots_as_a_scope():
@@ -54,9 +62,8 @@ def test_a_reach_from_roots_reads_its_roots_as_a_scope():
                                                           "then_through": "class", "by_another_file": True}}
     del body["may_not"]
     found, problems = read({"used": body})
-    assert problems == [] and found["used"]["must_be_reached"] == {
-        "through": ("names-mentioned",), "through_only": (), "from": {"files": "tests", "part": "*", "tier": "", "where": ()},
-        "then_through": ("class",), "by_another_file": True}
+    assert problems == [] and found["used"].quantified == Quantified(
+        "must_be_reached", (), ("names-mentioned",), (), Scope(TESTS), ("class",), True)
 
 
 @pytest.mark.parametrize("value, problems", [
@@ -88,10 +95,10 @@ def test_a_reach_from_roots_reads_its_roots_as_a_scope():
                  ["checks.x.keep: {'named': 'a', 'x': 'b'} is not a filter: write a name, `not <name>`, or "
                   "{<name>: <value>}", "checks.x.keep: 3 is not a filter: write a name, `not <name>`, or "
                   "{<name>: <value>}"], id="filters written as no filter"),
-    pytest.param({"x": {**SMALL, "may_not": [{"place": ["nowhere"]}, {"path": 3}]}},
-                 ["checks.x.may_not.place: 'nowhere' names no part 'nowhere'",
-                  "checks.x.may_not: {'path': 3}: write the values of a target as a list of text"],
-                 id="a place of no part and values that are no text"),
+    pytest.param({"x": {**SMALL, "may_not": [{"path": 3}, 4]}},
+                 ["checks.x.may_not: {'path': 3}: write the values of a target as a list of text",
+                  "checks.x.may_not: 4 is not a target: write a kind, or {<kind>: [<value>, ...]}"],
+                 id="values that are no text, and a target that is no kind"),
     pytest.param({"x": {**SMALL, "examples": {"flagged": {"../x.py": "a"}, "clean": {}}}},
                  ["checks.x.examples.flagged: '../x.py' is not a path of a source file below the app (or tests/...), "
                   "ending in .py",
