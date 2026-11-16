@@ -1,4 +1,4 @@
-"""Use case: the whole check of an app, its source then its structure, with the profile's hints and whether it passes,
+"""Use case: the whole check of an app, its source and its structure, with the profile's hints and whether it passes,
 on an in-memory source tree and structure."""
 from pathlib import Path
 
@@ -48,8 +48,9 @@ def check(files: dict, when: CheckApp, structure: list[Violation] | None = None,
                  AppChecked((), EnforcementView(), {"rules": "ask first"}, True),
                  id="an app with nothing wrong passes, with the profile's hints"),
     pytest.param(dict(files=BAD, structure=[MISSING]), CheckApp(ROOT, "cli", ROOT.parent),
-                 AppChecked((IMPORT, MISSING), EnforcementView(), {"rules": "ask first"}, False),
-                 id="the source's violations come first, then the structure's, and the check fails"),
+                 AppChecked((MISSING, IMPORT), EnforcementView(), {"rules": "ask first"}, False),
+                 id="the source's and the structure's violations come in order of file, line and rule, and the check "
+                    "fails"),
     pytest.param(dict(files={**GOOD, "stray.py": []}), CheckApp(ROOT, "cli", ROOT.parent, strict=True),
                  AppChecked((), EnforcementView(ungoverned=("pkg/stray.py",), ungoverned_folders=("pkg/stray.py",),
                                             strict=(FindingView("ungoverned", "pkg/stray.py"),)),

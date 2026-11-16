@@ -1,7 +1,8 @@
 """The check on xarch's own source at earlier commits, where it found many violations, gives exactly the findings the
-hand-written checks gave before they became rules as data: each finding's rule, file, line, message and fix, in the
-order found, violations and weak findings alike. The source of a commit is kept beside this test as data, its
-Python files and its profile (`corpora/<commit>.tar.xz`, from `git archive <commit>`).
+hand-written checks gave before they became rules as data: each finding's rule, file, line, message and fix, the
+violations in order of file, line and rule, then the weak findings in the order found. The source of a commit is
+kept beside this test as data, its Python files and its profile (`corpora/<commit>.tar.xz`, from `git archive
+<commit>`).
 
     7cc6111   its own profile: 90 violations and 111 weak findings
     df537ca   its own profile: 48 violations and 6 weak findings
@@ -22,6 +23,8 @@ as `[kind, rule, file, line, message, fix]` with kind V or W:
 
     - A change of wording only (a message or a fix said differently): change the recorded text by a find and replace
       of that sentence, and review the diff line by line. Never dump what the code under test finds.
+    - A change of the order only: move the recorded findings' blocks by hand, each block's text and the file's layout
+      kept, and show for every file that the findings are the same and only their order differs.
     - A change of what a check finds: extend the oracle by the same change, in its own worktree, and record from it;
       recording from the code under test would make it test itself.
     - A new check, a new key or a new format of profile: add a corpus (a new archive and its findings, or a new

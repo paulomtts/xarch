@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from xarch.modules.rules.application.logic.ordered import ordered
 from xarch.modules.rules.application.logic.verdict import passed
 from xarch.modules.rules.application.ports.source_tree import SourceTree
 from xarch.modules.rules.application.ports.structure import Structure
@@ -18,9 +19,10 @@ class AppCheckService:
         self._source, self._structure, self._tree = source, structure, tree
 
     def check(self, root: Path, profile: str, tests: Path | None, cwd: Path, strict: bool) -> AppChecked:
-        """The violations of the source, then of the structure, a relative root or tests folder read from cwd, the
-        working folder; whether the check passes, under strict too on the findings of its enforcement. Raises
-        RootMissing, with the folder as given, when the app folder or the tests folder is no folder."""
+        """The violations of the source and of the structure, in order of file, line and rule, a relative root or
+        tests folder read from cwd, the working folder; whether the check passes, under strict too on the findings of
+        its enforcement. Raises RootMissing, with the folder as given, when the app folder or the tests folder is no
+        folder."""
         app, tested = cwd / root, (cwd / tests if tests is not None else None)
         absent = self._tree.absent(folder for folder in (app, tested) if folder is not None)
         if absent:
@@ -28,6 +30,6 @@ class AppCheckService:
         app, tested = self._tree.resolved(cwd, root), (self._tree.resolved(cwd, tests) if tests is not None else None)
         package = app.name
         checked = self._source.check(app, package, profile, tested)
-        violations = (*checked.violations, *self._structure.violations(app, package, profile, tested))
+        violations = ordered((*checked.violations, *self._structure.violations(app, package, profile, tested)))
         return AppChecked(violations, self._source.view(checked.enforcement), dict(checked.profile.hints),
                           passed(violations, checked.enforcement.strict, strict))

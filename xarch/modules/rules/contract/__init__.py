@@ -283,8 +283,9 @@ class CheckApp:
 
 @dataclass(frozen=True)
 class AppChecked:
-    """The violations of the source, then of the structure; the state of the check's enforcement; the profile's own
-    advice by rule id; and whether the check passes: no violation and, under strict, no finding of the enforcement."""
+    """The violations of the source and of the structure, in order of file, then line (a whole file first), then rule;
+    the state of the check's enforcement; the profile's own advice by rule id; and whether the check passes: no
+    violation and, under strict, no finding of the enforcement."""
     violations: tuple[Violation, ...]
     enforcement: EnforcementView
     hints: dict[str, str]

@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from xarch.cli.reports.report import LABELS, check_lines, enforcement_lines, json_document, ordered, text_lines
+from xarch.cli.reports.report import LABELS, check_lines, enforcement_lines, json_document, text_lines
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.contract import (
     SECTIONS,
@@ -55,11 +55,6 @@ def test_the_text_of_a_check_is_its_violations_then_its_enforcement_section():
         *text_lines((A,), {"rules": "see the docs"}), *enforcement_lines(Origin("web"), EnforcementView(), False)]
 
 
-def test_violations_are_ordered_by_file_then_line_then_rule():
-    later_rule = Violation("app/a.py", 3, "x", "tiers", "y")
-    assert ordered([C, later_rule, B, A, WHOLE]) == [WHOLE, A, later_rule, B, C]
-
-
 SKIPS = tuple(At("tests/test_a.py", line) for line in range(1, 8))
 
 
@@ -75,7 +70,7 @@ def test_a_line_of_skips_names_five_places_then_counts_the_rest(skipped, line):
 
 
 def test_the_json_document_gives_each_violation_its_fix_and_the_hint_of_its_rule_as_keys_of_their_own():
-    checked = AppChecked((C, A), EnforcementView(), {"rules": "see the docs"}, False)
+    checked = AppChecked((A, C), EnforcementView(), {"rules": "see the docs"}, False)
     document = json.loads(json_document("web", Origin("web"), checked, False))
     assert document["violations"] == [
         {"rule": "rules", "file": "app/a.py", "line": 3, "message": "a problem", "fix": "do this",
@@ -83,11 +78,11 @@ def test_the_json_document_gives_each_violation_its_fix_and_the_hint_of_its_rule
         {"rule": "tiers", "file": "app/b.py", "line": 1, "message": "a third", "fix": "do the other", "hint": None}]
 
 
-def test_the_json_document_holds_the_violations_in_order_and_both_lists_of_guards_off():
+def test_the_json_document_holds_the_violations_in_the_order_the_check_gives_them_and_both_lists_of_guards_off():
     origin = Origin("my.yaml", False, "web", ("closed-tree", "no-comments"), ("closed-tree",))
     document = json.loads(json_document("my.yaml", origin, AppChecked((C, A), EnforcementView(), {}, False), False))
     assert ([v["line"] for v in document["violations"]], document["enforcement"]["profile"]["guards_off"],
-            document["enforcement"]["profile"]["baseline_off"]) == ([3, 1], ["closed-tree", "no-comments"],
+            document["enforcement"]["profile"]["baseline_off"]) == ([1, 3], ["closed-tree", "no-comments"],
                                                                     ["closed-tree"])
 
 

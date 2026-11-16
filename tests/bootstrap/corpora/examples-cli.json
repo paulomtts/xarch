@@ -2,22 +2,6 @@
 "findings": [
 [
 "V",
-"scenario-coverage",
-"tests/modules/documents/application/test_publish.py",
-1,
-"no table test whose parameters are given, when, then (scenario-coverage)",
-"add a table test whose parameters are given, when, then"
-],
-[
-"V",
-"scenario-coverage",
-"app/modules/documents/contract/results.py",
-17,
-"CreateResult has no test file test_create.py among the integration tests of documents (scenario-coverage)",
-"write test_create.py among the integration tests of documents"
-],
-[
-"V",
 "no-comments",
 "app/bootstrap/app.py",
 6,
@@ -386,6 +370,14 @@
 ],
 [
 "V",
+"scenario-coverage",
+"app/modules/documents/contract/results.py",
+17,
+"CreateResult has no test file test_create.py among the integration tests of documents (scenario-coverage)",
+"write test_create.py among the integration tests of documents"
+],
+[
+"V",
 "no-comments",
 "app/modules/documents/contract/views.py",
 4,
@@ -463,6 +455,14 @@
 14,
 "a comment (no-comments)",
 "say it in a docstring or a name, and delete the comment"
+],
+[
+"V",
+"scenario-coverage",
+"tests/modules/documents/application/test_publish.py",
+1,
+"no table test whose parameters are given, when, then (scenario-coverage)",
+"add a table test whose parameters are given, when, then"
 ],
 [
 "W",

@@ -4,7 +4,7 @@ has one, then the state of its enforcement; or all of it as one JSON document.
 The JSON document is a contract (see the README): {"ok", "strict", "profile", "violations", "enforcement"}, each
 violation {"rule", "file", "line", "message", "fix", "hint"}, a line of 0 (the whole file or folder) shown as null,
 the fix what to do about it and the hint the profile's own advice for the rule (null when it has none), the
-violations in order of file, then line, then rule. A refusal is {"ok": false, "error"}.
+violations in the order the check gives them: of file, then line, then rule. A refusal is {"ok": false, "error"}.
 
 The text section leaves out a line with nothing to report; the JSON object always holds every key, but `checks` (each
 check the profile writes itself, {"id", "read", "said"}), which a profile that writes none does not have.
@@ -115,11 +115,6 @@ def _places(places: Sequence[At]) -> str:
     return shown + (f" and {len(places) - SHOWN} more" if len(places) > SHOWN else "")
 
 
-def ordered(found: Iterable[Violation]) -> list[Violation]:
-    """By file, then line (a whole file first), then rule; stable for the rest."""
-    return sorted(found, key=lambda v: (v.file, v.line, v.rule))
-
-
 def violation_document(violation: Violation, hints: Mapping[str, str] | None = None) -> dict[str, Any]:
     return {"rule": violation.rule, "file": violation.file, "line": violation.line or None,
             "message": violation.message, "fix": violation.fix, "hint": (hints or {}).get(violation.rule)}
@@ -156,5 +151,5 @@ def _finding(finding: FindingView) -> dict[str, str]:
 
 def json_document(profile: str, origin: Origin, checked: AppChecked, strict: bool) -> str:
     return document({"ok": checked.ok, "strict": strict, "profile": profile,
-                     "violations": [violation_document(v, checked.hints) for v in ordered(checked.violations)],
+                     "violations": [violation_document(v, checked.hints) for v in checked.violations],
                      "enforcement": enforcement_document(origin, checked.enforcement)})

@@ -2,6 +2,94 @@
 "findings": [
 [
 "V",
+"must-import",
+"tests/cli/test_report.py",
+0,
+"a test of the wired tier imports nothing from bootstrap/, directly or through test code it imports (tiers.wired.must_import)",
+"drive what it proves through bootstrap/, or move it to the tier of the part it calls directly"
+],
+[
+"V",
+"tiers",
+"tests/modules/spec/application/logic/test_migrate_examples.py",
+5,
+"a test may not import another test file (tests.modules.spec.application.logic.test_migrate_profile): what tests share lives in test code that is no test file",
+"move what tests.modules.spec.application.logic.test_migrate_profile holds that this test needs into test code of its folder that is no test file, and import it from there"
+],
+[
+"V",
+"tiers",
+"tests/modules/spec/application/test_profile_versions.py",
+7,
+"a test may not import another test file (tests.modules.spec.application.test_origin): what tests share lives in test code that is no test file",
+"move what tests.modules.spec.application.test_origin holds that this test needs into test code of its folder that is no test file, and import it from there"
+],
+[
+"V",
+"private-imports",
+"xarch/cli/commands/profile.py",
+8,
+"imports the private name _json_refusal from xarch.cli.commands.check (private-imports)",
+"make _json_refusal public where it is defined, or move it to a file both may import"
+],
+[
+"V",
+"private-imports",
+"xarch/cli/commands/where.py",
+7,
+"imports the private name _json_refusal from xarch.cli.commands.check (private-imports)",
+"make _json_refusal public where it is defined, or move it to a file both may import"
+],
+[
+"V",
+"names",
+"xarch/modules/layout/application/services/structure_check.py",
+11,
+"StructureCheck does not match *Service, as every class of services/ of modules/layout must (parts.services.names)",
+"rename StructureCheck to match *Service, or move it to the part whose kind of class it is"
+],
+[
+"V",
+"no-callbacks",
+"xarch/modules/rules/application/logic/where.py",
+55,
+"resolve calls its parameter exists: logic/ of modules/rules takes no callback (parts.logic.no_callbacks)",
+"have the caller call exists first and pass resolve the answer as a value"
+],
+[
+"V",
+"names",
+"xarch/modules/rules/application/services/import_check.py",
+40,
+"ImportCheck does not match *Service, as every class of services/ of modules/rules must (parts.services.names)",
+"rename ImportCheck to match *Service, or move it to the part whose kind of class it is"
+],
+[
+"V",
+"names",
+"xarch/modules/rules/application/services/locate.py",
+9,
+"Locator does not match *Service, as every class of services/ of modules/rules must (parts.services.names)",
+"rename Locator to match *Service, or move it to the part whose kind of class it is"
+],
+[
+"V",
+"types-only",
+"xarch/modules/rules/application/services/locate.py",
+21,
+"services/ of modules/rules uses contract/ of modules/rules only as a type: it may not call xarch.modules.rules.contract.Outside (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/rules/application/services/locate.py",
+22,
+"services/ of modules/rules uses contract/ of modules/rules only as a type: it may not call xarch.modules.rules.contract.Located (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
 "rules",
 "xarch/modules/rules/contract/__init__.py",
 8,
@@ -95,6 +183,342 @@
 8,
 "contract/ of modules/rules may import only *Id from domain/ of modules/rules, not Where (xarch.modules.rules.domain.values.Where)",
 "import from domain/ of modules/rules only names that match *Id (parts.contract.may_import), or move what needs the rest to a part that may import it"
+],
+[
+"V",
+"names",
+"xarch/modules/scaffold/application/services/scaffolding.py",
+17,
+"Scaffolding does not match *Service, as every class of services/ of modules/scaffold must (parts.services.names)",
+"rename Scaffolding to match *Service, or move it to the part whose kind of class it is"
+],
+[
+"V",
+"types-only",
+"xarch/modules/scaffold/application/services/scaffolding.py",
+68,
+"services/ of modules/scaffold uses contract/ of modules/scaffold only as a type: it may not call xarch.modules.scaffold.contract.Report (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"built-by",
+"xarch/modules/spec/application/controller.py",
+46,
+"controller/ of modules/spec builds ExplainService, a class of services/ of modules/spec, which only bootstrap/ may build (parts.services.built_by)",
+"take ExplainService as a parameter of the constructor, and build it in bootstrap/"
+],
+[
+"V",
+"built-by",
+"xarch/modules/spec/application/controller.py",
+46,
+"controller/ of modules/spec builds ProfileReview, a class of services/ of modules/spec, which only bootstrap/ may build (parts.services.built_by)",
+"take ProfileReview as a parameter of the constructor, and build it in bootstrap/"
+],
+[
+"V",
+"no-callbacks",
+"xarch/modules/spec/application/logic/migrate_examples.py",
+94,
+"gather calls its parameter has_file: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
+"have the caller call has_file first and pass gather the answer as a value"
+],
+[
+"V",
+"no-callbacks",
+"xarch/modules/spec/application/logic/migrate_examples.py",
+105,
+"gather calls its parameter folder_files: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
+"have the caller call folder_files first and pass gather the answer as a value"
+],
+[
+"V",
+"no-callbacks",
+"xarch/modules/spec/application/logic/migrate_examples.py",
+110,
+"gather calls its parameter has_file: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
+"have the caller call has_file first and pass gather the answer as a value"
+],
+[
+"V",
+"no-callbacks",
+"xarch/modules/spec/application/logic/migrate_examples.py",
+153,
+"_items calls its parameter has_file: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
+"have the caller call has_file first and pass _items the answer as a value"
+],
+[
+"V",
+"no-callbacks",
+"xarch/modules/spec/application/logic/migrate_examples.py",
+171,
+"_sources calls its parameter has_file: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
+"have the caller call has_file first and pass _sources the answer as a value"
+],
+[
+"V",
+"no-callbacks",
+"xarch/modules/spec/application/logic/migrate_examples.py",
+176,
+"_sources calls its parameter folder_files: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
+"have the caller call folder_files first and pass _sources the answer as a value"
+],
+[
+"V",
+"no-callbacks",
+"xarch/modules/spec/application/logic/migrate_examples.py",
+177,
+"_sources calls its parameter has_file: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
+"have the caller call has_file first and pass _sources the answer as a value"
+],
+[
+"V",
+"no-callbacks",
+"xarch/modules/spec/application/logic/migrate_examples.py",
+202,
+"_examples calls its parameter copy: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
+"have the caller call copy first and pass _examples the answer as a value"
+],
+[
+"V",
+"no-callbacks",
+"xarch/modules/spec/application/logic/profile_files.py",
+16,
+"pointed_files calls its parameter folder_files: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
+"have the caller call folder_files first and pass pointed_files the answer as a value"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/architecture.py",
+45,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Docs (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/architecture.py",
+45,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.DocFile (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/architecture.py",
+58,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.ProjectFile (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/architecture.py",
+66,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.ProfileOrigin (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/architecture.py",
+70,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.ProfileOrigin (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/architecture.py",
+72,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.ProfileOrigin (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/architecture.py",
+73,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Loosened (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/explanation.py",
+27,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.FormatExplained (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/explanation.py",
+27,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Symbol (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/explanation.py",
+30,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.UnknownKey (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/explanation.py",
+32,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.KeyExplained (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/explanation.py",
+42,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Shown (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"built-by",
+"xarch/modules/spec/application/services/migration.py",
+26,
+"services/ of modules/spec builds ProfileWriter, a class of services/ of modules/spec, which only bootstrap/ may build (parts.services.built_by)",
+"take ProfileWriter as a parameter of the constructor, and build it in bootstrap/"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/migration.py",
+47,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.MigratedFile (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/migration.py",
+48,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.MigratedFile (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/migration.py",
+49,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Migrated (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"names",
+"xarch/modules/spec/application/services/profile_creation.py",
+19,
+"ProfileCreation does not match *Service, as every class of services/ of modules/spec must (parts.services.names)",
+"rename ProfileCreation to match *Service, or move it to the part whose kind of class it is"
+],
+[
+"V",
+"built-by",
+"xarch/modules/spec/application/services/profile_creation.py",
+25,
+"services/ of modules/spec builds ProfileWriter, a class of services/ of modules/spec, which only bootstrap/ may build (parts.services.built_by)",
+"take ProfileWriter as a parameter of the constructor, and build it in bootstrap/"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/profile_creation.py",
+49,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.ProfileCreated (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"names",
+"xarch/modules/spec/application/services/profile_review.py",
+19,
+"ProfileReview does not match *Service, as every class of services/ of modules/spec must (parts.services.names)",
+"rename ProfileReview to match *Service, or move it to the part whose kind of class it is"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/profile_review.py",
+32,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.ProfileChecked (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/profile_review.py",
+32,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Problem (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/profile_review.py",
+35,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Problem (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/profile_review.py",
+36,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.ProfileChecked (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/profile_review.py",
+43,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.ProfileViewed (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"names",
+"xarch/modules/spec/application/services/profile_writer.py",
+11,
+"ProfileWriter does not match *Service, as every class of services/ of modules/spec must (parts.services.names)",
+"rename ProfileWriter to match *Service, or move it to the part whose kind of class it is"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/skeleton.py",
+23,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Repeating (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/skeleton.py",
+25,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Skeleton (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
+],
+[
+"V",
+"types-only",
+"xarch/modules/spec/application/services/skeleton.py",
+38,
+"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Entry (parts.services.types_only)",
+"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
 ],
 [
 "V",
@@ -250,326 +674,6 @@
 ],
 [
 "V",
-"tiers",
-"tests/modules/spec/application/logic/test_migrate_examples.py",
-5,
-"a test may not import another test file (tests.modules.spec.application.logic.test_migrate_profile): what tests share lives in test code that is no test file",
-"move what tests.modules.spec.application.logic.test_migrate_profile holds that this test needs into test code of its folder that is no test file, and import it from there"
-],
-[
-"V",
-"tiers",
-"tests/modules/spec/application/test_profile_versions.py",
-7,
-"a test may not import another test file (tests.modules.spec.application.test_origin): what tests share lives in test code that is no test file",
-"move what tests.modules.spec.application.test_origin holds that this test needs into test code of its folder that is no test file, and import it from there"
-],
-[
-"V",
-"must-import",
-"tests/cli/test_report.py",
-0,
-"a test of the wired tier imports nothing from bootstrap/, directly or through test code it imports (tiers.wired.must_import)",
-"drive what it proves through bootstrap/, or move it to the tier of the part it calls directly"
-],
-[
-"V",
-"types-only",
-"xarch/modules/rules/application/services/locate.py",
-21,
-"services/ of modules/rules uses contract/ of modules/rules only as a type: it may not call xarch.modules.rules.contract.Outside (parts.services.types_only)",
-"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
-],
-[
-"V",
-"types-only",
-"xarch/modules/rules/application/services/locate.py",
-22,
-"services/ of modules/rules uses contract/ of modules/rules only as a type: it may not call xarch.modules.rules.contract.Located (parts.services.types_only)",
-"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
-],
-[
-"V",
-"types-only",
-"xarch/modules/scaffold/application/services/scaffolding.py",
-68,
-"services/ of modules/scaffold uses contract/ of modules/scaffold only as a type: it may not call xarch.modules.scaffold.contract.Report (parts.services.types_only)",
-"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
-],
-[
-"V",
-"types-only",
-"xarch/modules/spec/application/services/architecture.py",
-45,
-"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Docs (parts.services.types_only)",
-"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
-],
-[
-"V",
-"types-only",
-"xarch/modules/spec/application/services/architecture.py",
-45,
-"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.DocFile (parts.services.types_only)",
-"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
-],
-[
-"V",
-"types-only",
-"xarch/modules/spec/application/services/architecture.py",
-58,
-"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.ProjectFile (parts.services.types_only)",
-"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
-],
-[
-"V",
-"types-only",
-"xarch/modules/spec/application/services/architecture.py",
-66,
-"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.ProfileOrigin (parts.services.types_only)",
-"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
-],
-[
-"V",
-"types-only",
-"xarch/modules/spec/application/services/architecture.py",
-70,
-"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.ProfileOrigin (parts.services.types_only)",
-"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
-],
-[
-"V",
-"types-only",
-"xarch/modules/spec/application/services/architecture.py",
-72,
-"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.ProfileOrigin (parts.services.types_only)",
-"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
-],
-[
-"V",
-"types-only",
-"xarch/modules/spec/application/services/architecture.py",
-73,
-"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Loosened (parts.services.types_only)",
-"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
-],
-[
-"V",
-"types-only",
-"xarch/modules/spec/application/services/explanation.py",
-27,
-"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.FormatExplained (parts.services.types_only)",
-"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
-],
-[
-"V",
-"types-only",
-"xarch/modules/spec/application/services/explanation.py",
-27,
-"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Symbol (parts.services.types_only)",
-"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
-],
-[
-"V",
-"types-only",
-"xarch/modules/spec/application/services/explanation.py",
-30,
-"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.UnknownKey (parts.services.types_only)",
-"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
-],
-[
-"V",
-"types-only",
-"xarch/modules/spec/application/services/explanation.py",
-32,
-"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.KeyExplained (parts.services.types_only)",
-"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
-],
-[
-"V",
-"types-only",
-"xarch/modules/spec/application/services/explanation.py",
-42,
-"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Shown (parts.services.types_only)",
-"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
-],
-[
-"V",
-"types-only",
-"xarch/modules/spec/application/services/migration.py",
-47,
-"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.MigratedFile (parts.services.types_only)",
-"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
-],
-[
-"V",
-"types-only",
-"xarch/modules/spec/application/services/migration.py",
-48,
-"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.MigratedFile (parts.services.types_only)",
-"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
-],
-[
-"V",
-"types-only",
-"xarch/modules/spec/application/services/migration.py",
-49,
-"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Migrated (parts.services.types_only)",
-"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
-],
-[
-"V",
-"types-only",
-"xarch/modules/spec/application/services/profile_creation.py",
-49,
-"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.ProfileCreated (parts.services.types_only)",
-"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
-],
-[
-"V",
-"types-only",
-"xarch/modules/spec/application/services/profile_review.py",
-32,
-"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.ProfileChecked (parts.services.types_only)",
-"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
-],
-[
-"V",
-"types-only",
-"xarch/modules/spec/application/services/profile_review.py",
-32,
-"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Problem (parts.services.types_only)",
-"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
-],
-[
-"V",
-"types-only",
-"xarch/modules/spec/application/services/profile_review.py",
-35,
-"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Problem (parts.services.types_only)",
-"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
-],
-[
-"V",
-"types-only",
-"xarch/modules/spec/application/services/profile_review.py",
-36,
-"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.ProfileChecked (parts.services.types_only)",
-"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
-],
-[
-"V",
-"types-only",
-"xarch/modules/spec/application/services/profile_review.py",
-43,
-"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.ProfileViewed (parts.services.types_only)",
-"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
-],
-[
-"V",
-"types-only",
-"xarch/modules/spec/application/services/skeleton.py",
-23,
-"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Repeating (parts.services.types_only)",
-"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
-],
-[
-"V",
-"types-only",
-"xarch/modules/spec/application/services/skeleton.py",
-25,
-"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Skeleton (parts.services.types_only)",
-"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
-],
-[
-"V",
-"types-only",
-"xarch/modules/spec/application/services/skeleton.py",
-38,
-"services/ of modules/spec uses contract/ of modules/spec only as a type: it may not call xarch.modules.spec.contract.Entry (parts.services.types_only)",
-"use contract/ here only as a type, and leave the call to controller/, adapters/ or cli/, which may make it"
-],
-[
-"V",
-"no-callbacks",
-"xarch/modules/rules/application/logic/where.py",
-55,
-"resolve calls its parameter exists: logic/ of modules/rules takes no callback (parts.logic.no_callbacks)",
-"have the caller call exists first and pass resolve the answer as a value"
-],
-[
-"V",
-"no-callbacks",
-"xarch/modules/spec/application/logic/migrate_examples.py",
-94,
-"gather calls its parameter has_file: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
-"have the caller call has_file first and pass gather the answer as a value"
-],
-[
-"V",
-"no-callbacks",
-"xarch/modules/spec/application/logic/migrate_examples.py",
-105,
-"gather calls its parameter folder_files: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
-"have the caller call folder_files first and pass gather the answer as a value"
-],
-[
-"V",
-"no-callbacks",
-"xarch/modules/spec/application/logic/migrate_examples.py",
-110,
-"gather calls its parameter has_file: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
-"have the caller call has_file first and pass gather the answer as a value"
-],
-[
-"V",
-"no-callbacks",
-"xarch/modules/spec/application/logic/migrate_examples.py",
-153,
-"_items calls its parameter has_file: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
-"have the caller call has_file first and pass _items the answer as a value"
-],
-[
-"V",
-"no-callbacks",
-"xarch/modules/spec/application/logic/migrate_examples.py",
-171,
-"_sources calls its parameter has_file: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
-"have the caller call has_file first and pass _sources the answer as a value"
-],
-[
-"V",
-"no-callbacks",
-"xarch/modules/spec/application/logic/migrate_examples.py",
-176,
-"_sources calls its parameter folder_files: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
-"have the caller call folder_files first and pass _sources the answer as a value"
-],
-[
-"V",
-"no-callbacks",
-"xarch/modules/spec/application/logic/migrate_examples.py",
-177,
-"_sources calls its parameter has_file: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
-"have the caller call has_file first and pass _sources the answer as a value"
-],
-[
-"V",
-"no-callbacks",
-"xarch/modules/spec/application/logic/migrate_examples.py",
-202,
-"_examples calls its parameter copy: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
-"have the caller call copy first and pass _examples the answer as a value"
-],
-[
-"V",
-"no-callbacks",
-"xarch/modules/spec/application/logic/profile_files.py",
-16,
-"pointed_files calls its parameter folder_files: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
-"have the caller call folder_files first and pass pointed_files the answer as a value"
-],
-[
-"V",
 "no-callbacks",
 "xarch/modules/spec/domain/profile_checks.py",
 217,
@@ -615,110 +719,6 @@
 51,
 "_roots calls its parameter folder_files: domain/ of modules/spec takes no callback (parts.domain.no_callbacks)",
 "have the caller call folder_files first and pass _roots the answer as a value"
-],
-[
-"V",
-"names",
-"xarch/modules/layout/application/services/structure_check.py",
-11,
-"StructureCheck does not match *Service, as every class of services/ of modules/layout must (parts.services.names)",
-"rename StructureCheck to match *Service, or move it to the part whose kind of class it is"
-],
-[
-"V",
-"names",
-"xarch/modules/rules/application/services/import_check.py",
-40,
-"ImportCheck does not match *Service, as every class of services/ of modules/rules must (parts.services.names)",
-"rename ImportCheck to match *Service, or move it to the part whose kind of class it is"
-],
-[
-"V",
-"names",
-"xarch/modules/rules/application/services/locate.py",
-9,
-"Locator does not match *Service, as every class of services/ of modules/rules must (parts.services.names)",
-"rename Locator to match *Service, or move it to the part whose kind of class it is"
-],
-[
-"V",
-"names",
-"xarch/modules/scaffold/application/services/scaffolding.py",
-17,
-"Scaffolding does not match *Service, as every class of services/ of modules/scaffold must (parts.services.names)",
-"rename Scaffolding to match *Service, or move it to the part whose kind of class it is"
-],
-[
-"V",
-"names",
-"xarch/modules/spec/application/services/profile_creation.py",
-19,
-"ProfileCreation does not match *Service, as every class of services/ of modules/spec must (parts.services.names)",
-"rename ProfileCreation to match *Service, or move it to the part whose kind of class it is"
-],
-[
-"V",
-"names",
-"xarch/modules/spec/application/services/profile_review.py",
-19,
-"ProfileReview does not match *Service, as every class of services/ of modules/spec must (parts.services.names)",
-"rename ProfileReview to match *Service, or move it to the part whose kind of class it is"
-],
-[
-"V",
-"names",
-"xarch/modules/spec/application/services/profile_writer.py",
-11,
-"ProfileWriter does not match *Service, as every class of services/ of modules/spec must (parts.services.names)",
-"rename ProfileWriter to match *Service, or move it to the part whose kind of class it is"
-],
-[
-"V",
-"built-by",
-"xarch/modules/spec/application/controller.py",
-46,
-"controller/ of modules/spec builds ExplainService, a class of services/ of modules/spec, which only bootstrap/ may build (parts.services.built_by)",
-"take ExplainService as a parameter of the constructor, and build it in bootstrap/"
-],
-[
-"V",
-"built-by",
-"xarch/modules/spec/application/controller.py",
-46,
-"controller/ of modules/spec builds ProfileReview, a class of services/ of modules/spec, which only bootstrap/ may build (parts.services.built_by)",
-"take ProfileReview as a parameter of the constructor, and build it in bootstrap/"
-],
-[
-"V",
-"built-by",
-"xarch/modules/spec/application/services/migration.py",
-26,
-"services/ of modules/spec builds ProfileWriter, a class of services/ of modules/spec, which only bootstrap/ may build (parts.services.built_by)",
-"take ProfileWriter as a parameter of the constructor, and build it in bootstrap/"
-],
-[
-"V",
-"built-by",
-"xarch/modules/spec/application/services/profile_creation.py",
-25,
-"services/ of modules/spec builds ProfileWriter, a class of services/ of modules/spec, which only bootstrap/ may build (parts.services.built_by)",
-"take ProfileWriter as a parameter of the constructor, and build it in bootstrap/"
-],
-[
-"V",
-"private-imports",
-"xarch/cli/commands/profile.py",
-8,
-"imports the private name _json_refusal from xarch.cli.commands.check (private-imports)",
-"make _json_refusal public where it is defined, or move it to a file both may import"
-],
-[
-"V",
-"private-imports",
-"xarch/cli/commands/where.py",
-7,
-"imports the private name _json_refusal from xarch.cli.commands.check (private-imports)",
-"make _json_refusal public where it is defined, or move it to a file both may import"
 ],
 [
 "W",

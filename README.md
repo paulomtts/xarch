@@ -262,8 +262,8 @@ about that finding, and a profile's `hints` add its own advice after it.
 
 Every violation says what to do about it. A finding is its line, `<file>[:<line>]: <message>`, then an indented line
 `fix: <what to do>`, one imperative sentence specific to the finding, and, when the profile has a
-hint (`xarch profile explain hints`) for its rule, an indented `hint: <text>` line. The findings come in the order the checks
-run (the source checks, then the structure), then a summary, `OK: no violations` or `<n> violation(s) in <m>
+hint (`xarch profile explain hints`) for its rule, an indented `hint: <text>` line. The findings come in order of
+file, then line (a whole file first), then rule, then a summary, `OK: no violations` or `<n> violation(s) in <m>
 file(s)`, then the enforcement section (below). Paths are relative to the folder holding the app folder
 (`app/kernel/x.py`, `tests/...`).
 
