@@ -299,7 +299,10 @@ guards:
   stand-ins: {}
   no-duplicates: {min_statements: 4}
   no-twins: {min_fields: 2, min_renamed: 3, min_subset: 3, translated: [adapters]}
-  dead-code: {untested: true}
+  dead-code:
+    untested: true
+    tests_only: true
+    known: [bootstrap/wiring.py:build_architectures, bootstrap/wiring.py:load_architecture]
   pass-through: {parts: [services, controller, adapters]}
   private-imports: {}
 
