@@ -9,7 +9,7 @@ from tests.modules.spec.languages import PYTHON
 from tests.modules.spec.profiles_v2 import covered, layered, parsed, problems
 from xarch.modules.spec.application.logic.key_table import KEYS
 from xarch.modules.spec.application.logic.language_file import PARTIAL
-from xarch.modules.spec.application.logic.profile_needs import configured
+from xarch.modules.spec.application.logic.profile_needs import short
 from xarch.profile_values.capabilities import EXACT, FACTS, Shortfall, Supply
 
 TOY = replace(PYTHON, name="toy", checked=replace(
@@ -59,12 +59,13 @@ def test_the_keys_a_profile_sets_are_found_in_every_scope_and_through_a_testing_
                        reserved={"json": "only io"})
     document["parts"]["service"]["holds"] = "classes"
     document["tiers"]["unit"]["must_import"] = ["service"]
-    found = [address for address, _ in configured(document | {"testing": "pytest"},
-                                                  {"pytest": document["testing"]})]
-    assert found == ["reserved", "tiers", "parts.api.may_import", "parts.service.may_import", "parts.service.holds",
-                     "parts.store.may_import", "parts.store.libraries", "tiers.unit.must_import", "testing.skips",
-                     "testing.table", "testing.mocks", "guards.no-comments", "guards.no-twins",
-                     "guards.no-twins.translated", "guards.dead-code", "guards.dead-code.untested"]
+    partly = replace(PYTHON, checked=replace(PYTHON.checked, supplies=tuple(Supply(f, PARTIAL, "partly") for f in FACTS)))
+    found = short(document | {"testing": "pytest"}, {"pytest": document["testing"]}, partly)
+    assert list(dict.fromkeys(item.address for item in found)) == [
+        "reserved", "tiers", "parts.api.may_import", "parts.service.may_import", "parts.service.holds",
+        "parts.store.may_import", "parts.store.libraries", "tiers.unit.must_import", "testing.skips", "testing.table",
+        "testing.mocks", "guards.no-comments", "guards.no-twins", "guards.no-twins.translated", "guards.dead-code",
+        "guards.dead-code.untested"]
 
 
 @pytest.mark.parametrize("key", [key for key in KEYS if key.needs], ids=lambda key: key.address)

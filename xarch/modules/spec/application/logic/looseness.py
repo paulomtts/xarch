@@ -29,13 +29,13 @@ Looser = tuple[str, str, str]
 """(key, part, what): one way a profile is looser, before it is said."""
 
 
-def guards_off(architecture: Architecture) -> tuple[str, ...]:
+def _guards_off(architecture: Architecture) -> tuple[str, ...]:
     """The guards xarch has that the profile does not switch on, in xarch's order."""
     on = {KEY[type(guard)] for guard in architecture.guards}
     return tuple(name for name in ORDER if name not in on)
 
 
-def closest(architecture: Architecture, bundled: Mapping[str, Architecture]) -> str | None:
+def _closest(architecture: Architecture, bundled: Mapping[str, Architecture]) -> str | None:
     """The bundled profile the architecture says it is based on, else the one sharing the most part names."""
     if architecture.based_on in bundled:
         return architecture.based_on
@@ -44,7 +44,7 @@ def closest(architecture: Architecture, bundled: Mapping[str, Architecture]) -> 
     return min(name for name, score in scores.items() if score == best) if best else None
 
 
-def looser(custom: Architecture, base: Architecture) -> list[Looser]:
+def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
     shared = [name for name in custom.parts if name in base.parts]
     found: list[Looser] = []
     for name in shared:
@@ -100,19 +100,19 @@ def origin_of(location: str, architecture: Architecture, bundled: bool,
               others: Mapping[str, Architecture]) -> Origin:
     """Where the architecture at location comes from: a bundled one is its own baseline; a custom one is compared with
     the closest of the others, the bundled architectures by name, and is looser than it in the ways it says."""
-    off = guards_off(architecture)
+    off = _guards_off(architecture)
     if bundled:
         return Origin(location, True, None, off, off, ())
-    name = closest(architecture, others)
+    name = _closest(architecture, others)
     if name is None:
         return Origin(location, False, None, off, (), ())
-    baseline = guards_off(others[name])
+    baseline = _guards_off(others[name])
     return Origin(location, False, name, off, tuple(g for g in off if g in baseline),
-                  tuple(Loosened(key, part, what, sentence(key, part, what))
-                        for key, part, what in looser(architecture, others[name])))
+                  tuple(Loosened(key, part, what, _sentence(key, part, what))
+                        for key, part, what in _looser(architecture, others[name])))
 
 
-def sentence(key: str, part: str, what: str = "") -> str:
+def _sentence(key: str, part: str, what: str = "") -> str:
     """How one way a profile is looser is said, naming the key of the profile that says it."""
     match key:
         case "may_import":
@@ -143,9 +143,7 @@ def sentence(key: str, part: str, what: str = "") -> str:
             return f"{what} is no longer counted as a skip (testing.skips)"
         case "files.pinned":
             return f"{what} is no longer pinned (files.{what}.pinned)"
-        case "reserved":
-            return f"{what} is no longer reserved (reserved.{what})"
-    return " ".join(filter(None, (key, part, what)))
+    return f"{what} is no longer reserved (reserved.{what})"
 
 
 def _shown(target: Target) -> str:

@@ -1,4 +1,4 @@
-"""Where code sits in the profile, and whether an import between two places is allowed (section 5).
+"""Where code sits in the profile, and what a part may import (section 5).
 
 A file lies in a part, in the structure (a folder of the layout no part claims, such as modules/<module>/, whose
 package files hold the tree together and import nothing), or in neither: xarch is a protocol, not a closed world, and
@@ -73,11 +73,6 @@ def instance_root(repeats: Iterable[Repeat], path: tuple[str, ...]) -> tuple[str
 def targets_of(profile: Profile, part: str) -> tuple[Target, ...]:
     """What a part may import: itself (its own instance, for a part in a repeating folder), then its row of rules."""
     return with_itself(part, profile.parts[part], profile.rules.get(part, ())) if part in profile.parts else ()
-
-
-def allowed(profile: Profile, src: Place, dst: Place, name: str | None = None) -> bool:
-    """Whether the part at src may import the name from dst, or (None) dst as a whole."""
-    return src.part is not None and any(reaches(target, src, dst, name) for target in targets_of(profile, src.part))
 
 
 def narrowed(src: Place | None, at: Place | None, profile: Profile) -> tuple[str, ...]:

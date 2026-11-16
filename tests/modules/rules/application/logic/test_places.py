@@ -4,9 +4,9 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.rules.builders import PROFILE, TWO, profile, steps
+from xarch.kernel.logic.placement import reaches
 from xarch.kernel.placement import Marks, Place
 from xarch.modules.rules.application.logic.places import (
-    allowed,
     excluded_by,
     instance_folder,
     instance_root,
@@ -15,8 +15,15 @@ from xarch.modules.rules.application.logic.places import (
     place,
     targets_of,
 )
+from xarch.modules.rules.domain.values import Profile
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.placement import Repeat, Target
+
+
+def allowed(checked: Profile, src: Place, dst: Place) -> bool:
+    """Whether the part at src may import dst as a whole: a target of what it may import (targets_of) reaches it, as
+    the rules of the engine ask of an import."""
+    return src.part is not None and any(reaches(target, src, dst) for target in targets_of(checked, src.part))
 
 
 @pytest.mark.parametrize("path, expected", [

@@ -156,7 +156,7 @@ def _mocks(tests: list[SourceFile], ports: dict[tuple[tuple[str, ...], str], _Po
 
 
 @dataclass(frozen=True)
-class Built:
+class _Built:
     """A call that builds a mock: the call as the source tree read it (of an imported name, or of a fixture's method),
     how it is shown (`Mock`, or `mocker.Mock` for a fixture's), and whether it is an autospec, which takes its spec by
     the argument at the profile's position or by the first spec keyword only."""
@@ -165,18 +165,18 @@ class Built:
     autospec: bool
 
 
-def _built(file: SourceFile, names: StandIns) -> list[Built]:
+def _built(file: SourceFile, names: StandIns) -> list[_Built]:
     """The calls of the file that build a mock, those of imported names first, then those of a fixture's methods."""
-    found = [Built(c, c.func[-1], c.func in names.autospec)
+    found = [_Built(c, c.func[-1], c.func in names.autospec)
              for c in file.calls if c.func in names.mocks or c.func in names.autospec]
     for call in file.parameter_calls:
         for fixture in names.fixtures:
             if call.parameter == fixture.name and call.method in (*fixture.mocks, *fixture.autospec):
-                found.append(Built(call, f"{call.parameter}.{call.method}", call.method in fixture.autospec))
+                found.append(_Built(call, f"{call.parameter}.{call.method}", call.method in fixture.autospec))
     return found
 
 
-def _mock(file: SourceFile, mock: Built, ports: dict[tuple[tuple[str, ...], str], _Port], profile: Profile,
+def _mock(file: SourceFile, mock: _Built, ports: dict[tuple[tuple[str, ...], str], _Port], profile: Profile,
           root: str) -> list[Violation]:
     assert profile.fakes is not None and profile.stand_ins is not None
     names = profile.stand_ins
@@ -198,7 +198,7 @@ def _mock(file: SourceFile, mock: Built, ports: dict[tuple[tuple[str, ...], str]
     return []
 
 
-def _spec(call: Built, names: tuple[str, ...], position: int | None) -> tuple[bool, tuple[str, ...] | None, bool]:
+def _spec(call: _Built, names: tuple[str, ...], position: int | None) -> tuple[bool, tuple[str, ...] | None, bool]:
     """Whether the call names a spec (or may, when it unpacks arguments), by its argument at position (None: by no
     argument) or one of the keywords names; the spec when it is a name; and whether the argument at position names it."""
     made = call.made

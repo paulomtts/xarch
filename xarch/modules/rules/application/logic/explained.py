@@ -107,7 +107,7 @@ def facets(word: Word) -> WordFacets:
     """What the word says besides its name and meaning, as its category has it."""
     match word:
         case Kind():
-            return WordFacets(side=word.side, fields=fields(word), needs=needs(word), verb=word.verb)
+            return WordFacets(side=word.side, fields=_fields(word), needs=_needs(word), verb=word.verb)
         case Filter():
             return WordFacets(about=word.about, side=word.side, value=word.value)
         case TargetKind():
@@ -140,13 +140,13 @@ def applies(word: Word) -> tuple[str, ...]:
     return tuple(kind.name for kind in KINDS if word.applies_to(kind))
 
 
-def fields(kind: Kind) -> tuple[tuple[str, str, str], ...]:
+def _fields(kind: Kind) -> tuple[tuple[str, str, str], ...]:
     """The fields of a kind of fact: each name, what it is, and the filter that must hold for the fact to carry it
     ("" when it always does)."""
     return tuple((name, FIELDS[name], kind.sometimes.get(name, "")) for name in (*kind.fields, *kind.sometimes))
 
 
-def needs(kind: Kind) -> tuple[str, ...]:
+def _needs(kind: Kind) -> tuple[str, ...]:
     """The facts of the source a kind needs of the language, those of its fields included."""
     return tuple(dict.fromkeys((*kind.needs, *(need for listed in kind.field_needs.values() for need in listed))))
 

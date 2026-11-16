@@ -43,7 +43,7 @@ class Tested:
     parts: tuple[str, ...] = ()
 
 
-def is_test(profile: Profile, path: tuple[str, ...]) -> bool:
+def _is_test(profile: Profile, path: tuple[str, ...]) -> bool:
     """Whether the file name matches one of the profile's test file patterns; no file is a test when it names none."""
     return bool(path) and profile.framework is not None and any(fnmatchcase(path[-1], pattern)
                                                                 for pattern in profile.framework.files)
@@ -52,7 +52,7 @@ def is_test(profile: Profile, path: tuple[str, ...]) -> bool:
 def tested(profile: Profile, path: tuple[str, ...]) -> Tested:
     fake = profile.fakes is not None and path[:len(profile.fakes.folder)] == profile.fakes.folder
     tier, instance, parts = (None, None, ()) if fake else _tier(profile, path)
-    return Tested(tier, instance or _instance(profile, path), _own(profile, path), is_test(profile, path), fake, parts)
+    return Tested(tier, instance or _instance(profile, path), _own(profile, path), _is_test(profile, path), fake, parts)
 
 
 def _tier(profile: Profile, path: tuple[str, ...]) -> tuple[CheckedTier | None, str | None, tuple[str, ...]]:
@@ -94,7 +94,7 @@ def _own(profile: Profile, path: tuple[str, ...]) -> tuple[str, ...]:
     return path[:1] if len(path) > 1 else ()
 
 
-def may_import(profile: Profile, tier: CheckedTier) -> tuple[Target, ...]:
+def _may_import(profile: Profile, tier: CheckedTier) -> tuple[Target, ...]:
     """What the tests in the tier's own folder may import: what the tier says, else its subject parts and what each of
     them may import; then what the tier's tests may also import."""
     if tier.may_import is not None:
@@ -108,7 +108,7 @@ def allowance(profile: Profile, where: Tested) -> tuple[Target, ...]:
     tier's tests may also import; a name pattern of a part's target does not narrow what its test imports."""
     assert where.tier is not None
     if not where.parts:
-        return may_import(profile, where.tier)
+        return _may_import(profile, where.tier)
     own = tuple(Target(p, "own" if EACH in profile.parts[p] else "none") for p in where.parts)
     return (*(replace(t, names="") for s in own for t in (s, *targets_of(profile, s.part))), *where.tier.may_also_import)
 

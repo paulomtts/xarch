@@ -19,7 +19,7 @@ _NESTED = {KEY[DeadCode]: ("untested",), KEY[NoTwins]: ("min_renamed", "translat
 """The keys of a guard's own map that configure a check of their own, by guard."""
 
 
-def configured(document: Mapping[Any, Any], presets: Mapping[str, Any]) -> Iterator[tuple[str, Key]]:
+def _configured(document: Mapping[Any, Any], presets: Mapping[str, Any]) -> Iterator[tuple[str, Key]]:
     """Each key the document sets that needs facts, with its address in the file, in the order of the file's scopes:
     the file, its parts, its tiers, its testing (a preset by what the preset holds), its guards."""
     yield from _set(document, keys_of(PROFILE), "")
@@ -59,7 +59,7 @@ def short(document: Mapping[Any, Any], presets: Mapping[str, Any], language: Lan
     if language.checked.supplies is None:
         return []
     supplies = {supply.fact: supply for supply in language.checked.supplies}
-    return [found for address, key in configured(document, presets)
+    return [found for address, key in _configured(document, presets)
             for found in shortfalls(address, key.needs, supplies)]
 
 

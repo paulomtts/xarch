@@ -34,10 +34,6 @@ def in_scope(scope: Scope, read: Read, facts: Facts, profile: Profile) -> bool:
     return all(_FILE[condition.name](read, profile, condition.value) != condition.negated for condition in scope.where)
 
 
-def holds(condition: Condition, found: Found, facts: Facts, profile: Profile) -> bool:
-    return question(condition)(found, facts, profile)
-
-
 def question(condition: Condition) -> Question:
     """The question a condition asks, by its filter's name."""
     about_file = _FILE.get(condition.name)

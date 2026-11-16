@@ -28,11 +28,11 @@ from xarch.profile_values.language import CheckedLanguage
 def resolved(profile: Profile) -> Profile:
     """The profile with the checks it writes itself made into rules, and those that read a fact the language supplies
     only partly added to its approximate keys; raises ChecksRefused with every problem when one cannot be made."""
-    checks = own(profile.written, profile)
-    return replace(profile, checks=checks, approximate=(*profile.approximate, *approximate(checks, profile.language)))
+    checks = _own(profile.written, profile)
+    return replace(profile, checks=checks, approximate=(*profile.approximate, *_approximate(checks, profile.language)))
 
 
-def own(written: Mapping[str, WrittenCheck], profile: Profile) -> tuple[OwnCheck, ...]:
+def _own(written: Mapping[str, WrittenCheck], profile: Profile) -> tuple[OwnCheck, ...]:
     """Each check as a rule with its examples, in the profile's order; raises ChecksRefused with every problem when
     one cannot be made."""
     found = made(written, profile)
@@ -56,7 +56,7 @@ def made(written: Mapping[str, WrittenCheck], profile: Profile) -> MadeChecks:
         except RuleRefused as refused:
             problems += [f"checks.{name}.{problem}" for problem in refused.problems]
             continue
-        lacking = supplied(name, rule, profile.language)
+        lacking = _supplied(name, rule, profile.language)
         problems += lacking
         if not lacking:
             found.append(OwnCheck(rule, check.flagged, check.clean))
@@ -73,7 +73,7 @@ def _rule_of(name: str, check: WrittenCheck, targets: tuple[Match, ...]) -> Rule
                 elsewhere=quantified.by_another_file)
 
 
-def supplied(name: str, rule: Rule, language: CheckedLanguage) -> list[str]:
+def _supplied(name: str, rule: Rule, language: CheckedLanguage) -> list[str]:
     """A problem for each fact the rule needs that the language's reader does not supply."""
     if language.supplies is None:
         return []
@@ -83,7 +83,7 @@ def supplied(name: str, rule: Rule, language: CheckedLanguage) -> list[str]:
             for short in shortfalls(rule.key, rule.needs, supplies) if short.note is None]
 
 
-def approximate(checks: tuple[OwnCheck, ...], language: CheckedLanguage) -> tuple[Shortfall, ...]:
+def _approximate(checks: tuple[OwnCheck, ...], language: CheckedLanguage) -> tuple[Shortfall, ...]:
     """The checks that read a fact the language's reader supplies only partly, by the fact."""
     supplies = {s.fact: s for s in language.supplies or ()}
     return tuple(short for check in checks for short in shortfalls(check.rule.key, check.rule.needs, supplies)

@@ -5,7 +5,7 @@ import pytest
 from tests.modules.rules.builders import GUARD, INTEGRATION, PARTS, PROFILE, RENDERING, TWO, UNIT, profile, steps
 from xarch.kernel.placement import EACH, Place
 from xarch.modules.rules.application.logic import tier_of
-from xarch.modules.rules.application.logic.tier_of import as_place, is_test
+from xarch.modules.rules.application.logic.tier_of import as_place
 from xarch.profile_values.placement import Target
 from xarch.profile_values.testing import Framework
 from xarch.profile_values.tiers import CheckedTier as Tier
@@ -85,12 +85,12 @@ def test_tested(checked, path, expected):
                  id="the patterns are the profile's"),
     pytest.param(profile(framework=None), "test_doc.py", False, id="without a framework no file is a test"),
 ])
-def test_is_test(checked, name, expected):
-    assert is_test(checked, ("modules", name)) == expected
+def test_a_file_is_a_test_when_a_test_file_pattern_of_the_profile_matches_its_name(checked, name, expected):
+    assert tier_of.tested(checked, ("modules", name)).is_test == expected
 
 
 def test_an_empty_path_is_no_test():
-    assert is_test(PROFILE, ()) is False
+    assert tier_of.tested(PROFILE, ()).is_test is False
 
 
 def test_a_test_speaks_from_its_instance():

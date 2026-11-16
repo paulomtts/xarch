@@ -22,9 +22,9 @@ _VALUED = frozenset(kind.name for kind in TARGETS if kind.values)
 
 
 def written(rules: Iterable[Rule]) -> dict[str, WrittenCheck]:
-    """The rules as checks of a profile, each under an id of its own (see ids)."""
+    """The rules as checks of a profile, each under an id of its own (see _ids)."""
     rules = list(rules)
-    return {name: check_of(rule) for rule, name in zip(rules, ids(rules))}
+    return {name: check_of(rule) for rule, name in zip(rules, _ids(rules))}
 
 
 def written_own(checks: Iterable[OwnCheck], language: CheckedLanguage) -> dict[str, WrittenCheck]:
@@ -34,7 +34,7 @@ def written_own(checks: Iterable[OwnCheck], language: CheckedLanguage) -> dict[s
             for own in checks}
 
 
-def ids(rules: list[Rule]) -> list[str]:
+def _ids(rules: list[Rule]) -> list[str]:
     """An id for each rule written as a check: its own, then the part its scope names, then a number when two would
     be the same."""
     found: list[str] = []

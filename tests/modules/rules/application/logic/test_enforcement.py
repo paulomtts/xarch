@@ -15,7 +15,6 @@ from xarch.modules.rules.application.logic.enforcement import (
     reading,
     skipped,
     strict_findings,
-    vacuous,
     weak_of,
 )
 from xarch.modules.rules.domain.published import At, Drift, Weak
@@ -152,13 +151,13 @@ def test_a_key_whose_check_reads_a_fact_partly_is_a_strict_finding_said_with_the
 
 
 def test_a_check_of_the_profile_s_own_that_read_nothing_fails_strict_and_one_that_read_something_does_not():
+    said = ("checks.no-todo reads nothing in the project, so it passes for want of anything to check: widen what it "
+            "reads, or drop it")
     state = Enforcement(checks=(("no-todo", 0), ("store-names", 3)))
-    assert strict_findings(state) == (Finding("vacuous", vacuous("no-todo")),)
+    assert strict_findings(state) == (Finding("vacuous", said),)
     assert reading("store-names", 3) == "checks.store-names read 3 facts"
     assert reading("one", 1) == "checks.one read 1 fact"
-    assert reading("no-todo", 0) == vacuous("no-todo") == (
-        "checks.no-todo reads nothing in the project, so it passes for want of anything to check: widen what it "
-        "reads, or drop it")
+    assert reading("no-todo", 0) == said
 
 
 def test_a_part_redefined_without_the_litmus_its_base_gives_it_fails_strict_as_said():
