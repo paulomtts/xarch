@@ -1,7 +1,7 @@
 [project]
 name = "xarch"
 version = "0.1.0"
-description = "Check and scaffold the architecture in docs/project/architecture.md"
+description = "Scaffold and check the architecture a profile file describes, for coding agents and people"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -9,10 +9,23 @@ authors = [
     { name = "Paulo Mattos Ferreira de Azevedo e Menezes", email = "paulomtts@outlook.com" }
 ]
 requires-python = ">=3.13"
+keywords = ["architecture", "scaffolding", "linter", "static-analysis", "coding-agents", "cli"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+]
 dependencies = [
     "pyyaml>=6.0.3",
     "typer>=0.27.3",
 ]
+
+[project.urls]
+Repository = "https://github.com/paulomtts/xarch"
+Issues = "https://github.com/paulomtts/xarch/issues"
 
 [project.scripts]
 xarch = "xarch.bootstrap.app:app"
