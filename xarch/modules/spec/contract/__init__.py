@@ -10,7 +10,7 @@ from typing import Any
 
 from xarch.kernel.capabilities import Shortfall, Supply
 from xarch.kernel.placement import Repeat, Target
-from xarch.modules.spec.domain.published import DEFAULT_APP, Copy, Loosened, Origin, ProjectFile
+from xarch.modules.spec.domain.published import DEFAULT_APP, Copy, DocFile, Entry, Loosened, Origin, ProjectFile
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.language import CheckedLanguage
 from xarch.profile_values.testing import Fakes, Framework, ScenarioCoverage, StandIns
@@ -26,17 +26,6 @@ __all__ = ["DEFAULT_APP", "Entry", "Repeating", "Skeleton", "DocFile", "Docs", "
            "ExplainResult", "Need", "ViewProfile", "ProfileViewed", "ViewResult", "CheckProfile", "LOAD", "EXAMPLES",
            "Problem", "ProfileChecked",
            "CheckResult", "NewProfile", "ProfileCreated", "NewResult"]
-
-
-@dataclass(frozen=True)
-class Entry:
-    """
-    path: a folder or a file of the layout, e.g. ("application", "controller<ending>")
-    leaf: a file, or a directory that holds nothing in the spec
-    """
-    path: tuple[str, ...]
-    is_dir: bool
-    leaf: bool
 
 
 @dataclass(frozen=True)
@@ -62,16 +51,6 @@ class Skeleton:
     reserved: frozenset[str] = frozenset()
     names: str = ""
     private: str = ""
-
-
-@dataclass(frozen=True)
-class DocFile:
-    """
-    path: below the docs root, e.g. ("adrs", "0000-template.md")
-    template: the text a new file starts with, filled from the profile's template
-    """
-    path: tuple[str, ...]
-    template: str
 
 
 @dataclass(frozen=True)

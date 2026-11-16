@@ -10,6 +10,8 @@ just as spec holds it, so there is nothing to reshape. Everything else spec hand
                  module compares a pinned one with
     DEFAULT_APP  the app folder read when none is given or recorded, which the module that scaffolds leaves
                  unrecorded
+    Entry        a folder or a file of a profile's layout, which the modules that check and build the layout read
+    DocFile      a project doc and the text it starts with, which the module that scaffolds writes
 """
 from __future__ import annotations
 
@@ -77,3 +79,24 @@ class ProjectFile:
     path: tuple[str, ...]
     content: str | bytes
     pinned: bool = False
+
+
+@dataclass(frozen=True)
+class Entry:
+    """
+    path: a folder or a file of the layout, e.g. ("application", "controller<ending>")
+    leaf: a file, or a directory that holds nothing in the spec
+    """
+    path: tuple[str, ...]
+    is_dir: bool
+    leaf: bool
+
+
+@dataclass(frozen=True)
+class DocFile:
+    """
+    path: below the docs root, e.g. ("adrs", "0000-template.md")
+    template: the text a new file starts with, filled from the profile's template
+    """
+    path: tuple[str, ...]
+    template: str

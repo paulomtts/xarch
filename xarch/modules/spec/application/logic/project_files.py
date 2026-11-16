@@ -89,13 +89,13 @@ def _content(raw: str | bytes, entry: FileEntry, app: str, name: str, where: str
 def _skeleton_files(layout: Layout, package: str) -> tuple[tuple[str, ...], ...]:
     """The files the skeleton writes, as patterns below the app folder, `EACH` matching any instance: the package file
     of each folder, the app folder's first, and each file of the layout."""
-    return ((package,), *(path + (package,) if is_dir else path for path, is_dir, _ in walk(layout)))
+    return ((package,), *(entry.path + (package,) if entry.is_dir else entry.path for entry in walk(layout)))
 
 
 def _skeleton_folders(layout: Layout) -> tuple[tuple[str, ...], ...]:
     """The folders the skeleton writes, as patterns below the app folder: the app folder itself, then each folder of
     the layout."""
-    return ((), *(path for path, is_dir, _ in walk(layout) if is_dir))
+    return ((), *(entry.path for entry in walk(layout) if entry.is_dir))
 
 
 def _problem(target: tuple[str, ...], app: str, package: str, files: Sequence[tuple[str, ...]],

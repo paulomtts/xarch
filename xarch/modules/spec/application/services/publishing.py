@@ -5,7 +5,6 @@ from xarch.modules.spec.application.logic.docs_files import DOCS_ROOT
 from xarch.modules.spec.application.logic.layout_walk import docs_name, walk
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.contract import (
-    DocFile,
     Docs,
     Entry,
     GuardsView,
@@ -55,7 +54,7 @@ class PublishingService:
                                part.built_by, part.shared)
                       for name, part in architecture.parts.items())
         return ProfileView(
-            parts=parts, folders=((), *(path for path, is_dir, _ in walk(architecture.layout) if is_dir)),
+            parts=parts, folders=((), *(entry.path for entry in walk(architecture.layout) if entry.is_dir)),
             tiers=tuple(checked_tier(architecture, tier) for tier in architecture.tiers),
             libraries=None if architecture.libraries is None else dict(architecture.libraries),
             repeats=architecture.repeats, guards=_guards_view(architecture.guards),
@@ -66,14 +65,14 @@ class PublishingService:
 
     def docs(self, profile: str) -> Docs:
         """Raises InvalidTemplate too, for a template that cannot be filled."""
-        return Docs(root=DOCS_ROOT, files=tuple(DocFile(path, text) for path, text in self._architectures.docs(profile)))
+        return Docs(root=DOCS_ROOT, files=tuple(self._architectures.docs(profile)))
 
     def files(self, profile: str, app: str, presets: bool = True) -> ProjectFiles:
         return ProjectFiles(tuple(self._architectures.files(profile, app, presets)))
 
 
 def _entries(tree: Layout) -> tuple[Entry, ...]:
-    return tuple(Entry(path, is_dir, leaf) for path, is_dir, leaf in walk(tree))
+    return tuple(walk(tree))
 
 
 def _guards_view(guards: tuple[Guard, ...]) -> GuardsView:

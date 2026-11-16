@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Iterator, Mapping
 
 from xarch.modules.spec.application.logic.docs_template import fill
+from xarch.modules.spec.domain.published import DocFile
 from xarch.modules.spec.domain.values import Architecture
 
 DOCS_ROOT = ("docs", "project")
@@ -16,8 +17,8 @@ DOCS_ROOT = ("docs", "project")
 
 
 def doc_files(architecture: Architecture, templates: Mapping[str, str], examples: Mapping[str, str] | None = None,
-              tier_examples: Mapping[str, str] | None = None) -> Iterator[tuple[tuple[str, ...], str]]:
-    """Yield (path, text) for every file the architecture declares, in its order.
+              tier_examples: Mapping[str, str] | None = None) -> Iterator[DocFile]:
+    """Every file the architecture declares, in its order, its text filled from its template.
 
     templates is the text of each template file, by the name the architecture gives it; examples is the text of each
     example's file, by name, and tier_examples the text of each tier's example test, by tier name. Raises
@@ -25,4 +26,4 @@ def doc_files(architecture: Architecture, templates: Mapping[str, str], examples
     """
     for doc in architecture.docs:
         if doc.source is not None:
-            yield doc.path, fill(templates[doc.source], architecture, doc.source, examples, tier_examples)
+            yield DocFile(doc.path, fill(templates[doc.source], architecture, doc.source, examples, tier_examples))

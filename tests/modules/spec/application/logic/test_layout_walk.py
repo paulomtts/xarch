@@ -2,13 +2,15 @@
 import pytest
 
 from xarch.modules.spec.application.logic.layout_walk import is_file, lies_in, walk
+from xarch.modules.spec.domain.published import Entry
 
 TREE = {"src": {"*": {"core": {}, "main.py": None}}, "README.md": None}
 
 
 def test_the_entries_are_walked_parents_first_each_a_folder_or_a_file_and_a_leaf_when_it_holds_nothing():
-    assert list(walk(TREE)) == [(("src",), True, False), (("src", "*"), True, False), (("src", "*", "core"), True, True),
-                                (("src", "*", "main.py"), False, True), (("README.md",), False, True)]
+    assert list(walk(TREE)) == [Entry(("src",), True, False), Entry(("src", "*"), True, False),
+                                Entry(("src", "*", "core"), True, True), Entry(("src", "*", "main.py"), False, True),
+                                Entry(("README.md",), False, True)]
 
 
 @pytest.mark.parametrize("path, there, file", [

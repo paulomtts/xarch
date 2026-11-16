@@ -5,17 +5,15 @@ from __future__ import annotations
 from collections.abc import Iterator
 
 from xarch.kernel.logic.placement import repeat_of
+from xarch.modules.spec.domain.published import Entry
 from xarch.modules.spec.domain.values import Architecture, Layout, Part
 
 
-def walk(tree: Layout, prefix: tuple[str, ...] = ()) -> Iterator[tuple[tuple[str, ...], bool, bool]]:
-    """Yield (path, is_dir, is_leaf) for every entry, parents before children.
-
-    A leaf is a file, or a directory that holds nothing in the spec.
-    """
+def walk(tree: Layout, prefix: tuple[str, ...] = ()) -> Iterator[Entry]:
+    """Every entry of the tree, parents before children: a leaf is a file, or a folder that holds nothing in it."""
     for name, sub in tree.items():
         path = prefix + (name,)
-        yield path, sub is not None, not sub
+        yield Entry(path, sub is not None, not sub)
         if sub:
             yield from walk(sub, path)
 

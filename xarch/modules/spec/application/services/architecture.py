@@ -23,7 +23,7 @@ from xarch.modules.spec.application.ports.architecture_files import Architecture
 from xarch.modules.spec.application.ports.example_reader import ExampleReader
 from xarch.modules.spec.application.ports.runtime import Runtime
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.published import Origin, ProjectFile
+from xarch.modules.spec.domain.published import DocFile, Origin, ProjectFile
 from xarch.modules.spec.domain.values import Architecture, ArchitectureSource, Language
 
 
@@ -56,7 +56,7 @@ class ArchitectureService:
         return parse_profile(document, source, tuple(outputs), self._presets(), self._files.bundled(),
                              self._language_presets())
 
-    def docs(self, location: str | Path) -> list[tuple[tuple[str, ...], str]]:
+    def docs(self, location: str | Path) -> list[DocFile]:
         """The project docs the architecture declares, by their path below the docs root, each filled from its
         template; raises InvalidArchitecture or InvalidTemplate. A bundled architecture's examples must also pass the
         example check."""
