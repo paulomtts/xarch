@@ -4,7 +4,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 from xarch.kernel.capabilities import Shortfall
 from xarch.kernel.logic.placement import place_of, repeat_of, with_itself
@@ -195,6 +195,7 @@ class Tier:
 @dataclass(frozen=True)
 class PackageOnly:
     """The guard package-only: these parts are imported only as a package from outside them."""
+    key: ClassVar[str] = "package-only"
     parts: tuple[str, ...]
 
 
@@ -205,16 +206,19 @@ NAME = "{name}"
 @dataclass(frozen=True)
 class NoComments:
     """The guard no-comments."""
+    key: ClassVar[str] = "no-comments"
 
 
 @dataclass(frozen=True)
 class ClosedTree:
     """The guard closed-tree."""
+    key: ClassVar[str] = "closed-tree"
 
 
 @dataclass(frozen=True)
 class NoDuplicates:
     """The guard no-duplicates: the fewest statements a function needs to count as a duplicate of another."""
+    key: ClassVar[str] = "no-duplicates"
     min_statements: int = 4
 
 
@@ -222,6 +226,7 @@ class NoDuplicates:
 class NoTwins:
     """The guard no-twins: the fewest fields a class needs to count as a twin of another; the fewest a renamed copy
     needs, and the fewest a copy of part of another's fields needs (None: that case is off)."""
+    key: ClassVar[str] = "no-twins"
     min_fields: int = 3
     min_renamed: int | None = None
     min_subset: int | None = None
@@ -231,17 +236,20 @@ class NoTwins:
 class DeadCode:
     """The guard dead-code: the ports and fakes come from `fakes`; untested: also list each file of a part with a
     tier that no test of that tier reaches."""
+    key: ClassVar[str] = "dead-code"
     untested: bool = False
 
 
 @dataclass(frozen=True)
 class PrivateImports:
     """The guard private-imports: no name starting with `_` is imported from another file."""
+    key: ClassVar[str] = "private-imports"
 
 
 @dataclass(frozen=True)
 class PassThrough:
     """The guard pass-through: the parts whose methods that only forward are listed."""
+    key: ClassVar[str] = "pass-through"
     parts: tuple[str, ...]
 
 
@@ -384,6 +392,13 @@ class ArchitectureSource:
     """
     location: str
     bundled: bool
+
+    @staticmethod
+    def names_a_file(location: str | Path) -> bool:
+        """Whether a location names a file rather than a bundled architecture: it is a path, or has a folder or a
+        suffix."""
+        path = Path(location)
+        return isinstance(location, Path) or len(path.parts) != 1 or bool(path.suffix)
 
 
 @dataclass(frozen=True)

@@ -10,13 +10,7 @@ from collections.abc import Collection
 from pathlib import Path
 
 from xarch.modules.spec.domain.errors import NoProfile, UnknownProfile
-from xarch.modules.spec.domain.values import Configured
-
-
-def is_path(location: str) -> bool:
-    """Whether a location names a file rather than a bundled architecture: it has a folder or a suffix."""
-    path = Path(location)
-    return len(path.parts) != 1 or bool(path.suffix)
+from xarch.modules.spec.domain.values import ArchitectureSource, Configured
 
 
 def choose(override: str | None, configured: Configured | None, bundled: Collection[str]) -> str:
@@ -29,7 +23,7 @@ def choose(override: str | None, configured: Configured | None, bundled: Collect
 
 
 def _checked(location: str, source: Path | None, bundled: Collection[str]) -> str:
-    if is_path(location):
+    if ArchitectureSource.names_a_file(location):
         return str(source.parent / location) if source is not None else location
     if location not in bundled:
         raise UnknownProfile(location, bundled, source)

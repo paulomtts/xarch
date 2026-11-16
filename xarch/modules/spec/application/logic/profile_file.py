@@ -37,8 +37,7 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
 
 def source_of(location: str | Path, bundled: Collection[str]) -> ArchitectureSource:
     """A bare name (no folder, no suffix) is a bundled architecture; anything else is a path to a file."""
-    path = Path(location)
-    if isinstance(location, Path) or len(path.parts) != 1 or path.suffix:
+    if ArchitectureSource.names_a_file(location):
         return ArchitectureSource(str(location), bundled=False)
     if location not in bundled:
         raise InvalidArchitecture(str(location), [f"no bundled architecture '{location}': use one of "

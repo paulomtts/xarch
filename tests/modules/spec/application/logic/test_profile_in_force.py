@@ -4,21 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from xarch.modules.spec.application.logic.profile_in_force import choose, is_path
+from xarch.modules.spec.application.logic.profile_in_force import choose
 from xarch.modules.spec.domain.errors import NoProfile, UnknownProfile
 from xarch.modules.spec.domain.values import Configured
 
 BUNDLED = ("cli", "web")
 CONFIGURED = Configured("profiles/arch.yaml", Path("/src/pyproject.toml"))
-
-
-@pytest.mark.parametrize("location, path", [
-    pytest.param("web", False, id="a bare name is bundled"),
-    pytest.param("arch.yaml", True, id="a suffix makes a path"),
-    pytest.param("profiles/arch", True, id="a folder makes a path"),
-])
-def test_is_path(location, path):
-    assert is_path(location) == path
 
 
 @pytest.mark.parametrize("override, configured, chosen", [
