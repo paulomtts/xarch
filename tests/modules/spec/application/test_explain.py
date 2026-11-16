@@ -4,10 +4,20 @@ import pytest
 from tests.modules.spec.application.builders import spec_controller
 from xarch.kernel.capabilities import EXACT, FACTS, Supply
 from xarch.modules.spec.application.logic.language_file import PARTIAL
-from xarch.modules.spec.contract import Explain, FormatExplained, KeyExplained, Need, Shown, Symbol, UnknownKey
+from xarch.modules.spec.contract import (
+    Explain,
+    FormatExplained,
+    KeyExplained,
+    Need,
+    ProfileRefused,
+    Shown,
+    Symbol,
+    UnknownKey,
+)
 from xarch.modules.spec.domain.profile_keys import SMALLEST
 
-BUNDLED = {"base": {}, "other": {}}
+BUNDLED = {"bundled": {"base": {}, "other": {}}}
+BROKEN = {"bundled": {"base": {}}, "languages": {"python": "not a mapping"}}
 SAID = (
     Symbol("<word>", "in a path: a repeating folder, one per name, as in units/<unit>/store; there may be several"),
     Symbol("store", "in may_import, a bare name: that part, in the importer's own instance of its repeating folder"),
@@ -21,11 +31,11 @@ SAID = (
 
 
 def explained(key: str):
-    return spec_controller(BUNDLED)[0].explain(Explain(key))
+    return spec_controller(**BUNDLED)[0].explain(Explain(key))
 
 
 BASED_ON = explained("based_on")
-FORMAT = spec_controller(BUNDLED)[0].explain(Explain())
+FORMAT = spec_controller(**BUNDLED)[0].explain(Explain())
 SHAPE = (
     Shown('xarch', 0, 'the format version', True, False),
     Shown('name', 0, 'what the profile is called', True, False),
@@ -109,9 +119,12 @@ SHAPE = (
     pytest.param(BUNDLED, Explain("parts.may_imports"),
                  UnknownKey("parts.may_imports", ("parts.may_import", "parts.must_import", "tiers.may_import")),
                  id="a key the format does not have is refused with the nearest keys"),
+    pytest.param(BROKEN, Explain(), ProfileRefused("presets/language/python.yaml: must be a mapping of keys, such as title, "
+                                                   "extension and package_file"),
+                 id="the format is refused with why when the data file of a language does not load"),
 ])
 def test_explain(given, when, then):
-    spec, _ = spec_controller(given)
+    spec, _ = spec_controller(**given)
     assert spec.explain(when) == then
 
 
@@ -148,7 +161,7 @@ def test_a_key_that_configures_a_check_names_the_facts_it_reads_as_the_default_l
 def test_a_fact_the_default_language_does_not_grade_is_said_to_be_absent():
     toy = {"title": "Toy", "extension": ".toy", "package_file": "pkg.toy", "namespace": "core",
            "standard": "interpreter", "supplies": {"class": {"partial": "nested classes are not read"}}}
-    spec, _ = spec_controller(BUNDLED, languages={"toy": toy})
+    spec, _ = spec_controller(**BUNDLED, languages={"toy": toy})
     found = spec.explain(Explain("parts.names"))
     assert (found.needs, found.graded) == ((Need("class", FACTS["class"], Supply("class", PARTIAL, "nested classes are not read")),), True)
     assert spec.explain(Explain("parts.no_callbacks")).needs == (Need("callback", FACTS["callback"]),)

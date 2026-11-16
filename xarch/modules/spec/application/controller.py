@@ -1,18 +1,6 @@
 from __future__ import annotations
 
-from xarch.kernel.capabilities import FACTS
 from xarch.kernel.errors import DomainError
-from xarch.modules.spec.application.logic.explain import (
-    cleaned,
-    example_of,
-    held_by,
-    key_at,
-    nearest,
-    overview_keys,
-    said,
-    supplied,
-)
-from xarch.modules.spec.application.logic.key_lookup import plain
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.application.services.explanation import ExplainService
 from xarch.modules.spec.application.services.migration import MigrationService
@@ -30,12 +18,9 @@ from xarch.modules.spec.contract import (
     ExplainResult,
     FilesResult,
     FilesTaken,
-    FormatExplained,
-    KeyExplained,
     MigrateProfile,
     MigrateResult,
     MigrationRefused,
-    Need,
     NewProfile,
     NewResult,
     NoProfileChosen,
@@ -44,19 +29,12 @@ from xarch.modules.spec.contract import (
     ProfileResult,
     SelectProfile,
     SelectResult,
-    Shown,
     SkeletonResult,
-    Symbol,
-    UnknownKey,
     ViewProfile,
     ViewResult,
 )
 from xarch.modules.spec.domain.errors import NoProfile, WouldOverwrite
-from xarch.modules.spec.domain.profile_keys import CHOICE_BUNDLED, KEYS, SMALLEST, SYMBOLS, Key
-from xarch.modules.spec.domain.values import (
-    VERSION,
-    Language,
-)
+from xarch.modules.spec.domain.profile_keys import CHOICE_BUNDLED, KEYS
 
 
 class SpecController:
@@ -137,22 +115,12 @@ class SpecController:
             return MigrationRefused(e.reason)
 
     def explain(self, cmd: Explain) -> ExplainResult:
-        """The format of a profile, whole or one key; a key the format does not have comes back with the nearest ones."""
-        language = self._architectures.default_language()
-        if cmd.key is None:
-            shape = tuple(_shown(key, depth, language) for key, depth in overview_keys())
-            return FormatExplained(VERSION, shape, tuple(Symbol(said(s, language), said(m, language)) for s, m in SYMBOLS),
-                                   SMALLEST)
-        key = key_at(cmd.key)
-        if key is None:
-            return UnknownKey(cleaned(cmd.key), nearest(cleaned(cmd.key)))
-        names = self._explanation.choices(key)
-        return KeyExplained(plain(key.address), key.where, said(key.meaning, language), said(key.accepts, language),
-                            key.required, key.enforced, key.rules, said(example_of(key, names), language), names,
-                            tuple(_shown(held, 0, language) for held in held_by(key)),
-                            tuple(Need(fact, FACTS[fact], supplied(fact, language)) for fact in key.needs),
-                            language.checked.title if key.needs else "",
-                            bool(key.needs) and language.checked.supplies is not None)
+        """The format of a profile, whole or one key; a key the format does not have comes back with the nearest ones,
+        and the data file of a language that does not load is refused with why."""
+        try:
+            return self._explanation.explain(cmd.key)
+        except DomainError as e:
+            return ProfileRefused(e.reason)
 
     def bundled(self) -> tuple[str, ...]:
         """The names of the bundled profiles: what a key that names one may name."""
@@ -186,8 +154,4 @@ class SpecController:
             return FilesTaken(e.taken)
         except DomainError as e:
             return ProfileRefused(e.reason)
-
-
-def _shown(key: Key, depth: int, language: Language) -> Shown:
-    return Shown(plain(key.address), depth, said(key.meaning, language), key.required, key.enforced)
 

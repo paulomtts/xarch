@@ -77,7 +77,8 @@ def build_spec(fs: FileSystem | None = None, tree: FsSourceTree | None = None) -
     folders = FsFolders(fs)
     selection = ProfileSelectionService(settings, architectures, files, folders)
     return SpecController(architectures, selection, ProfileReviewService(selection, architectures, files),
-                          ExplainService(files), MigrationService(files, architectures, output, YamlProfileFormat(YamlWriter())),
+                          ExplainService(files, architectures),
+                          MigrationService(files, architectures, output, YamlProfileFormat(YamlWriter())),
                           ProfileCreationService(files, architectures, output), PublishingService(architectures))
 
 

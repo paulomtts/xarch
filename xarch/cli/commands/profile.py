@@ -135,6 +135,8 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
                     typer.echo(report.unknown_document(unknown, nearest))
                     raise typer.Exit(2)
                 raise fail(report.unknown_message(unknown, nearest))
+            case ProfileRefused(why):
+                raise refuse(why)
 
     @group.command()
     def new(name: Annotated[str, typer.Argument(help="What the new profile is called: letters, digits, - and _.")],

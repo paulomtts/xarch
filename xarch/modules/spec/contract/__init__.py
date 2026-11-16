@@ -328,7 +328,7 @@ class UnknownKey:
     nearest: tuple[str, ...]
 
 
-ExplainResult = FormatExplained | KeyExplained | UnknownKey
+ExplainResult = FormatExplained | KeyExplained | UnknownKey | ProfileRefused
 
 
 @dataclass(frozen=True)
