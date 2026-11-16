@@ -12,6 +12,7 @@ from xarch.cli.reports.eval_report import (
     eval_documents,
     eval_lines,
     eval_plan_lines,
+    quoted,
     shown_from,
     standing_document,
     standing_lines,
@@ -191,3 +192,9 @@ def test_an_example_unanswered_says_whether_it_is_a_flagged_or_a_clean_one_in_te
     assert "  rule: flagged example services/a.py: not in the cache, and --offline sends nothing" in lines
     assert "  rule: clean example services/a.py: not in the cache, and --offline sends nothing" in lines
     assert [item["kind"] for item in json.loads(calibration_document(done, ""))["unanswered"]] == ["flagged", "clean"]
+
+
+def test_a_text_sent_is_quoted_with_each_character_a_terminal_would_not_show_written_as_its_code():
+    assert quoted("x = 1\n\x1b[8mhidden\x1b[0m\tkept\r\n\x0cfeed\u2028sep\n") == [
+        "    | x = 1", "    | \\x1b[8mhidden\\x1b[0m\tkept\\x0d", "    | \\x0cfeed\\u2028sep"]
+    assert quoted("no break at the end") == ["    | no break at the end"]

@@ -597,7 +597,8 @@ written, so a file that must not leave the machine is one not to choose, or one 
 
 `--dry-run` sends nothing and needs no key. It opens with what leaves the machine, to whom, and whether the key is set
 now, then prints the question once (it is the same for every file), the masks in force, and each file judged with the
-exact text it would send, marked when its answer is in the cache already (it would not be sent). It ends with the
+exact text it would send (in text, each character a terminal would not show as itself, such as an escape or a form
+feed, written as its code, `\x1b`; the JSON holds the text as it is) and how many characters that text holds, marked when its answer is in the cache already (it would not be sent). It ends with the
 characters in all and about how many tokens they make (one for every four characters), and how many more requests a
 file near its line may cost (its other orders, which a dry run cannot know it will need).
 
@@ -756,7 +757,8 @@ and when it was not, what to run.
 "role_only", "options": [{"name", "description"}]}, "requests": [{"file", "part", "chars", "cached", "text", "body",
 "piece", "kind", "first", "last", "eval"}], "pieces", "piece_question", "context", "characters", "tokens", "reorders",
 "mask", "evals", "sends": {"name", "at", "model", "key", "keyed"}}`: `body` the request as the decision model's service would receive it
-(JSON text, the key left out); `piece`, `kind`, `first` and `last` the piece a request is about and the lines it spans
+(JSON text, formatted: the same JSON value the service receives, not the same bytes; the key left out); `chars` how
+many characters the text sent holds, masked; `piece`, `kind`, `first` and `last` the piece a request is about and the lines it spans
 (null for a whole file); `pieces` whether pieces are asked, `piece_question` the question each piece carries (null
 without `--pieces`) and `context` `none` or `imports`; `reorders` how many other orders a file near its line is asked
 again in; `sends.key` the name of the variable the key is read from (never the key) and `keyed` whether it is set.

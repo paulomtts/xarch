@@ -62,7 +62,8 @@ def test_the_question_offers_every_part_of_the_profile_by_its_litmus():
     assert names[:4] == ["domain", "logic", "ports", "services"]
     assert all(option["description"] for option in document["question"]["options"])
     (sent,) = document["requests"]
-    assert (sent["file"], sent["part"], sent["chars"], document["sent"]) == (SERVICE, "services", len(BODY), False)
+    assert (sent["file"], sent["part"], sent["chars"], document["sent"]) == (SERVICE, "services", len(sent["text"]),
+                                                                              False)
     assert json.loads(sent["body"])["state"] == sent["text"] and "Authorization" not in sent["body"]
     assert document["sends"] == {"name": "TypeSafe", "at": "https://api.typesafe.ai", "model": "jev-1.14.0",
                                  "key": "TYPESAFE_API_KEY", "keyed": False}

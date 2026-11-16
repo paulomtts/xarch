@@ -21,6 +21,8 @@ SERVICE_BODY = ('"""Publishing documents."""\nfrom app.kernel.time import Clock\
                 + "".join(f"    def step_{n}(self, clock: Clock) -> None:\n        clock.now()\n\n" for n in range(30)))
 VALUES_BODY = ('"""The values of a document; mail docs@example.com."""\nfrom dataclasses import dataclass\n\n\n'
                + "".join(f"@dataclass(frozen=True)\nclass Value{n}:\n    text: str\n\n\n" for n in range(25)))
+SERVICE_SENT = len(SERVICE_BODY.replace("app.kernel.time", "<masked>"))
+VALUES_SENT = len(VALUES_BODY.replace("docs@example.com", "person@example.test"))
 
 
 class ModelServer:
@@ -93,11 +95,11 @@ def test_a_review_sends_the_masked_text_and_the_question_with_the_key_as_the_hea
     lines = result.output.splitlines()
     assert lines[1] == "Model jev-1.14.0. 2 file(s) found (paths), 2 judged, 0 left out. Asked 2, from cache 0."
     assert lines[2] == f"Sent 2 request(s) to TypeSafe ({served.url}): 5,000 input tokens, 8 output tokens."
-    assert lines[6:8] == [f"  {VALUES}   domain   0.12 (line 0.30)   {len(VALUES_BODY):,} chars, small",
+    assert lines[6:8] == [f"  {VALUES}   domain   0.12 (line 0.30)   {VALUES_SENT:,} chars, small",
                           f"      what to do: read it against the litmus of domain (`xarch where {VALUES}`). If the "
                           "litmus says it belongs, leave it. In trials, about 1 in 2 to 1 in 3 files read this way "
                           "was really misplaced."]
-    assert f"  {SERVICE}   services   0.90 (line 0.30)   {len(SERVICE_BODY):,} chars" in lines
+    assert f"  {SERVICE}   services   0.90 (line 0.30)   {SERVICE_SENT:,} chars" in lines
     assert lines[-3:] == ["parts (read this run)",
                           "  domain   1 file(s) read: too few to say anything of the part (fewer than 3)",
                           "  services   1 file(s) read: too few to say anything of the part (fewer than 3)"]
@@ -109,6 +111,13 @@ def test_a_review_sends_the_masked_text_and_the_question_with_the_key_as_the_hea
     kept = sorted((tmp_path / ".xarch" / "cache" / "review").iterdir())
     assert len(kept) == 2 and all(KEY not in file.read_text() and "DocumentService" not in file.read_text()
                                   for file in kept)
+
+
+def test_the_body_a_dry_run_shows_is_the_json_the_service_receives_for_the_same_file(served):
+    dry = json.loads(review(SERVICE, VALUES, "--dry-run", "--format", "json", url=served.url).output)
+    assert review(SERVICE, VALUES, url=served.url).exit_code == 0
+    assert [json.loads(item["body"]) for item in dry["requests"]] == [body for _, _, body in served.received]
+    assert [item["chars"] for item in dry["requests"]] == [len(body["state"]) for _, _, body in served.received]
 
 
 def test_answers_kept_are_read_back_offline_with_no_key_and_nothing_is_sent(served):
@@ -250,7 +259,7 @@ def test_a_line_the_profile_sets_for_a_part_is_the_one_its_files_are_read_agains
     profile.write_text(profile.read_text() + "evals:\n  placement:\n    lines: {domain: 0.1}\n")
     result = review(SERVICE, VALUES, "--profile", str(profile), url=served.url)
     assert result.exit_code == 0, result.output
-    assert (f"  {VALUES}   domain   0.12 (line 0.10, set by the profile)   {len(VALUES_BODY):,} chars, small   the mean "
+    assert (f"  {VALUES}   domain   0.12 (line 0.10, set by the profile)   {VALUES_SENT:,} chars, small   the mean "
             "of 3 orders of the options") in result.output.splitlines()
     orders = [list(body["questions"]["placement"]["criteria"]) for _, _, body in served.received
               if "Value0" in body["state"]]

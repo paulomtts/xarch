@@ -3,6 +3,7 @@ written now, by the model asked; else why not and what to run), its readings at 
 `xarch review calibrate`, which holds them to their examples and records the verdict, in text and as JSON."""
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -41,6 +42,8 @@ FORMS = {YES_NO: "yes or no, read as the probability of yes", SCORE: "a score of
          "over 4"}
 CHOICE_READ = "a choice, read as the probability of the options flagged, the mean of two orders of the options"
 QUOTE = "    | "
+UNSEEN = re.compile("[\x00-\x08\x0b-\x1f\x7f-\x9f\u2028\u2029]")
+"""The characters a terminal does not show as themselves, or acts on (a line feed and a tab are shown as they are)."""
 SANITY = ("the examples are short, and short files read lower for being short: a sanity check of the litmus texts, not "
           "a way to set lines")
 VERDICTS = {DISAGREE: "examples disagree", ELSEWHERE: "measured elsewhere only: no example of its own"}
@@ -100,6 +103,14 @@ def eval_documents(evals: tuple[EvalRead, ...]) -> list[dict[str, Any]]:
              "asked": item.read,
              "readings": [{"file": r.file, "line": r.line, "name": r.name or None, "value": r.value,
                            "message": r.message, "fix": r.fix} for r in item.readings]} for item in evals]
+
+
+def quoted(text: str) -> list[str]:
+    """A text sent, as the text output quotes it: line by line, each character a terminal would not show as itself
+    written as its code (\\x1b, \\u2028), so that what is sent is what is seen."""
+    seen = UNSEEN.sub(lambda found: f"\\x{ord(found.group()):02x}" if ord(found.group()) < 256
+                      else f"\\u{ord(found.group()):04x}", text)
+    return [f"{QUOTE}{line}".rstrip() for line in seen.split("\n")[:-1 if seen.endswith("\n") else None]]
 
 
 def model_said(asked: str, answered_by: tuple[str, ...]) -> str:
@@ -221,7 +232,7 @@ def calibration_plan_lines(planned: CalibrationPlanned) -> list[str]:
         kept = ", in the cache: not sent" if item.cached else ""
         what = f" {item.piece} (lines {item.lines[0]}-{item.lines[1]})" if item.piece else ""
         lines += ["", f"request {number} of {len(planned.requests)}: {item.asked}, {item.example} example {item.file}{what}, "
-                      f"{item.chars:,} characters{kept}", *(f"{QUOTE}{line}".rstrip() for line in item.text.splitlines())]
+                      f"{item.chars:,} characters{kept}", *quoted(item.text)]
     return lines
 
 

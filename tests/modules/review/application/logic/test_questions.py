@@ -29,10 +29,11 @@ def test_the_parts_with_no_litmus_are_said():
     assert role_only(PARTS) == ("main",)
 
 
-def test_a_request_sends_the_file_s_text_masked_with_its_size_before_masking():
+def test_a_request_sends_the_file_s_text_masked_with_the_size_of_what_it_sends():
     file = found()
-    assert request(file, "app") == Request(file.file, "domain", len(file.text),
-                                           f"from {MASK} import DocumentId\nfrom dataclasses import dataclass\n" + BODY)
+    sent = f"from {MASK} import DocumentId\nfrom dataclasses import dataclass\n" + BODY
+    assert request(file, "app") == Request(file.file, "domain", len(sent), sent)
+    assert len(sent) != len(file.text)
 
 
 def test_each_request_sends_the_question_with_its_text():
@@ -88,7 +89,7 @@ def test_each_piece_judged_sends_its_masked_text_with_its_name_kind_and_lines_an
 def test_with_context_each_piece_sends_the_file_s_opening_lines_masked_before_it():
     requests, _ = piece_requests(PIECED, "app", (), "imports")
     assert requests[0].text == f"from {MASK} import DocumentId\nfrom dataclasses import dataclass\n\n" + FIRST
-    assert requests[0].chars == len(FIRST)
+    assert requests[0].chars == len(requests[0].text)
 
 
 def test_a_piece_under_1000_characters_is_not_judged_but_counted():

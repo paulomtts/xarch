@@ -41,7 +41,7 @@ def piece_requests(file: CodeFile, root: str, mask: tuple[str, ...], context: st
     found = sections(text, file.spans)
     judged = large(found)
     before = opening(text, file.spans) if context == IMPORTS else ""
-    return (tuple(Request(file.file, file.part, len(section.text), sent(section, before), piece=section.name,
+    return (tuple(Request(file.file, file.part, len(sent(section, before)), sent(section, before), piece=section.name,
                           kind=section.kind, lines=section.lines) for section in judged), len(found) - len(judged))
 
 
@@ -53,7 +53,8 @@ def role_only(parts: tuple[PartText, ...]) -> tuple[str, ...]:
 def request(file: CodeFile, root: str, mask: tuple[str, ...] = (), also: tuple[str, ...] = ()) -> Request:
     """What the question about a file sends: its text masked, root being the app's import name (and also those of
     other apps it may be written for) and mask the texts the profile says review hides."""
-    return Request(file.file, file.part, len(file.text), masked(file.text, file.imports, root, mask, also))
+    text = masked(file.text, file.imports, root, mask, also)
+    return Request(file.file, file.part, len(text), text)
 
 
 def characters(requests: tuple[Request, ...], question: Choice) -> int:

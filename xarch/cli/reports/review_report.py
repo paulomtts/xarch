@@ -13,6 +13,7 @@ from xarch.cli.reports.eval_report import (
     eval_lines,
     eval_plan_lines,
     model_said,
+    quoted,
     sends_of,
     standing_document,
     standing_lines,
@@ -68,7 +69,6 @@ CONTEXTS = {NO_CONTEXT: "nothing: the piece alone",
                      "with numbers read without them"}
 MASKED = ("masked in each text: the dotted name each import of the app's own code imports from, and every e-mail "
           "address, always; and what review.mask hides")
-QUOTE = "    | "
 
 
 def _what_leaves(sends: Sender, pieced: bool = False) -> str:
@@ -235,7 +235,7 @@ def no_key(variable: str) -> str:
 
 
 def _quoted(item: Request) -> list[str]:
-    return [f"{QUOTE}{line}".rstrip() for line in item.text.splitlines()]
+    return quoted(item.text)
 
 
 def _why(item: LeftOut) -> str:

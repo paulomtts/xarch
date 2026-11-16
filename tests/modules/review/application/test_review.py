@@ -56,17 +56,17 @@ ASKED = len(PLACEMENT) + sum(len(o.name) + len(o.description) for o in QUESTION.
 SENDS = Sender("Model", "https://model.example.test", "m-1", "MODEL_KEY", True)
 UNKEYED = Sender("Model", "https://model.example.test", "m-1", "MODEL_KEY", False)
 BODY_SENT = f"{PLACEMENT} 2 {SENT}"
-REQUEST = Request(DOCUMENT.file, "domain", len(DOCUMENT.text), SENT, False, BODY_SENT)
+REQUEST = Request(DOCUMENT.file, "domain", len(SENT), SENT, False, BODY_SENT)
 CHARACTERS = len(SENT) + ASKED
 WORDS = {"p": Words(PARTS), "kept": Words(PARTS, ("modules/*/domain/document.py",), ("Doc*", "title"))}
 HIDDEN = "from <masked> import <masked>\nfrom dataclasses import dataclass\n" + BODY.replace("Document", "<masked>").replace(
     "title", "<masked>")
 LOW = Answer("m-1.0.1", (("domain", 0.1), ("main", 0.9)), 100, 5)
 HIGH = Answer("m-1.0.0", (("domain", 0.8), ("main", 0.2)), 90, 4)
-DOUBTFUL = Reading(DOCUMENT.file, "domain", len(DOCUMENT.text), 0.1, 0.3, True, LOW.probabilities, "m-1.0.1",
+DOUBTFUL = Reading(DOCUMENT.file, "domain", len(SENT), 0.1, 0.3, True, LOW.probabilities, "m-1.0.1",
                    small=True)
-PLACED = Reading(OTHER.file, "domain", len(OTHER.text), 0.8, 0.3, False, HIGH.probabilities, "m-1.0.0", small=True)
-PLACED_HERE = Reading(DOCUMENT.file, "domain", len(DOCUMENT.text), 0.8, 0.3, False, HIGH.probabilities, "m-1.0.0",
+PLACED = Reading(OTHER.file, "domain", len(SENT_OTHER), 0.8, 0.3, False, HIGH.probabilities, "m-1.0.0", small=True)
+PLACED_HERE = Reading(DOCUMENT.file, "domain", len(SENT), 0.8, 0.3, False, HIGH.probabilities, "m-1.0.0",
                       small=True)
 
 
@@ -110,7 +110,7 @@ def run(world: World, when: Review):
                                CHARACTERS, -(-CHARACTERS // 4), (), SENDS, 1),
                  id="a dry run says what each file judged would send, masked, and why the others are left out"),
     pytest.param(World(earlier={SENT: LOW}, keyed=False), review("app/x.py", dry_run=True),
-                 ReviewPlanned((BY_PATHS,), 1, (Request(DOCUMENT.file, "domain", len(DOCUMENT.text), SENT, True,
+                 ReviewPlanned((BY_PATHS,), 1, (Request(DOCUMENT.file, "domain", len(SENT), SENT, True,
                                                         BODY_SENT),), (), QUESTION, ("main",), CHARACTERS,
                                -(-CHARACTERS // 4), (), UNKEYED, 1),
                  id="a dry run says which request is in the cache already, and needs no key"),

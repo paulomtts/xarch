@@ -106,7 +106,7 @@ class Choice:
 @dataclass(frozen=True)
 class Request:
     """What one question about one file, or one piece of it, sends: the file, as `check` shows it; the part it lies in;
-    how many characters the file (or the piece) holds; the text sent, masked; whether its answer is in the cache
+    how many characters the text sent holds; the text sent, masked; whether its answer is in the cache
     already, so that it is not sent; the body the service receives, as JSON text, the key left out (it travels
     apart); and, for a piece, its name, its kind and the lines it spans ("" and (0, 0) for a whole file); and, for a
     question of an eval of the profile's own, its id ("" for placement's), the piece being what it reads (a whole file
