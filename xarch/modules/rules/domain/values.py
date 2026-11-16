@@ -110,15 +110,10 @@ class Comment:
 @dataclass(frozen=True)
 class Union:
     """A module-level name bound to one plain name or to plain names joined as alternatives (`Name = A | B | ...`),
-    and the line it is on; it is a union when it joins two or more (see is_union)."""
+    and the line it is on."""
     line: int
     name: str
     members: tuple[str, ...]
-
-    @property
-    def is_union(self) -> bool:
-        """Whether it joins two names or more, rather than naming one."""
-        return len(self.members) > 1
 
 
 Ref = tuple[str, ...] | None
@@ -229,19 +224,13 @@ class Constant:
 @dataclass(frozen=True)
 class Row:
     """One element of the rows of a table, and the line it is on. param is whether it is a call of the table's row
-    (a bare tuple or anything else is not); id is its id keyword when that is a string literal, as written, else None
-    (see given_id); cells
-    holds the name that heads each positional value (the callee of a call, a bare name, the last name of an
+    (a bare tuple or anything else is not); id is its id keyword when that is a string literal, as written, else None;
+    cells holds the name that heads each positional value (the callee of a call, a bare name, the last name of an
     attribute), None where a value has none."""
     line: int
     param: bool
     id: str | None
     cells: tuple[str | None, ...]
-
-    @property
-    def given_id(self) -> str | None:
-        """Its id when it says something: a literal of blanks alone is no id."""
-        return self.id if self.id is not None and self.id.strip() else None
 
 
 @dataclass(frozen=True)

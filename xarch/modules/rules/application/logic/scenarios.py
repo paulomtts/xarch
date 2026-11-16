@@ -34,7 +34,7 @@ from xarch.modules.rules.application.logic.imports import dotted
 from xarch.modules.rules.application.logic.places import place
 from xarch.modules.rules.application.logic.tier_of import tested
 from xarch.modules.rules.domain.published import Weak
-from xarch.modules.rules.domain.values import Function, Profile, Row, SourceFile, Table
+from xarch.modules.rules.domain.values import Function, Profile, Row, SourceFile, Table, Union
 from xarch.profile_values.testing import ScenarioCoverage
 
 RULE = "scenario-coverage"
@@ -59,11 +59,8 @@ def violations(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: 
         where = place(profile, dotted(file.path, profile.language.marks)[0])
         if where is None or where.part != guard.results or where.instance is None:
             continue
-        for union in (u for u in file.unions if u.is_union):
-            if not union.name.endswith(guard.suffix) or union.name == guard.suffix:
-                continue
-            use_case = union.name.removesuffix(guard.suffix)
-            name = guard.file.replace(NAME, snake_name(use_case))
+        for union in _use_cases(file, guard):
+            name = _test_file(union, guard)
             files = [t for t in tests if t.path[-1] == name and _in(profile, t, guard.tier, where.instance)]
             if not files:
                 found.append(Violation(file.name, union.line, f"{union.name} has no test file {name} among the "
@@ -85,13 +82,27 @@ def weak(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profil
         where = place(profile, dotted(file.path, profile.language.marks)[0])
         if where is None or where.part != guard.results or where.instance is None:
             continue
-        for union in (u for u in file.unions if u.is_union):
-            if not union.name.endswith(guard.suffix) or union.name == guard.suffix:
-                continue
-            name = guard.file.replace(NAME, snake_name(union.name.removesuffix(guard.suffix)))
+        for union in _use_cases(file, guard):
+            name = _test_file(union, guard)
             for test in (t for t in tests if t.path[-1] == name and _in(profile, t, guard.tier, where.instance)):
                 found += _credited(test, union.name, union.members, guard, profile.framework.functions)
     return found
+
+
+def _use_cases(file: SourceFile, guard: ScenarioCoverage) -> list[Union]:
+    """The unions of a file that are a use case's results: two names or more joined, named for the use case with the
+    guard's suffix (one name alone is an alias, and the suffix alone names no use case)."""
+    return [u for u in file.unions if len(u.members) > 1 and u.name.endswith(guard.suffix) and u.name != guard.suffix]
+
+
+def _test_file(union: Union, guard: ScenarioCoverage) -> str:
+    """The name of the test file the guard expects for the use case a union holds the results of."""
+    return guard.file.replace(NAME, snake_name(union.name.removesuffix(guard.suffix)))
+
+
+def _given_id(row: Row) -> str | None:
+    """A row's id when it says something: a literal of blanks alone is no id."""
+    return row.id if row.id is not None and row.id.strip() else None
 
 
 def _credited(test: SourceFile, union: str, variants: tuple[str, ...], guard: ScenarioCoverage,
@@ -157,7 +168,7 @@ def _rows(table: Table, union: str, variants: tuple[str, ...], guard: ScenarioCo
     for row in table.rows:
         if not row.param:
             problems.append((row.line, f"row is not a {written}(...)", case))
-        elif row.given_id is None:
+        elif _given_id(row) is None:
             problems.append((row.line, "row has no id", case))
         if row.param or row.cells:
             problems += _result(row, table.columns.index(result), union, variants, result, covered)
@@ -172,6 +183,6 @@ def _result(row: Row, index: int, union: str, variants: tuple[str, ...], column:
         return []
     fix = f"use one of {', '.join(variants)}"
     if head is None:
-        return [(row.line, f"row '{row.given_id}' names no variant in its {column} column", fix)]
-    return [(row.line, f"row '{row.given_id}' has {head} in its {column} column, which is not a variant of {union}",
+        return [(row.line, f"row '{_given_id(row)}' names no variant in its {column} column", fix)]
+    return [(row.line, f"row '{_given_id(row)}' has {head} in its {column} column, which is not a variant of {union}",
              fix)]

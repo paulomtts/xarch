@@ -69,6 +69,12 @@ FILE = "tests/modules/docs/application/test_publish.py"
     pytest.param([Function(8, "test_publish", (table(row("Published", id=None), row("Missing", 11)),))],
                  [f"{FILE}:10: row has no id (scenario-coverage)"],
                  id="a row without an id is reported"),
+    pytest.param([Function(8, "test_publish", (table(row("Published", id="  "), row("Missing", 11)),))],
+                 [f"{FILE}:10: row has no id (scenario-coverage)"],
+                 id="a row whose id is blanks alone is reported as having none"),
+    pytest.param([Function(8, "test_publish", (table(row("Published", id=""), row("Missing", 11)),))],
+                 [f"{FILE}:10: row has no id (scenario-coverage)"],
+                 id="a row whose id is empty is reported as having none"),
     pytest.param([Function(8, "test_publish", (table(row("Published"), row("Missing", 11), row("Gone", 12)),))],
                  [f"{FILE}:12: row 'an outcome' has Gone in its then column, which is not a variant of PublishResult "
                   "(scenario-coverage)"],
@@ -118,6 +124,7 @@ def test_the_test_file_of_a_use_case_is_its_own_instances(tests, expected):
 @pytest.mark.parametrize("unions", [
     pytest.param((Union(4, "Result", ("Published", "Missing")),), id="a union named exactly the suffix"),
     pytest.param((Union(4, "PublishOutcome", ("Published", "Missing")),), id="a union not named with the suffix"),
+    pytest.param((Union(4, "PublishResult", ("Published",)),), id="an alias of one name is no union"),
 ])
 def test_a_union_that_names_no_use_case_is_not_checked(unions):
     assert problems(app=(source("modules/docs/contract/results.py", unions=unions),)) == []
