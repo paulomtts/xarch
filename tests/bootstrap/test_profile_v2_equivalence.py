@@ -91,16 +91,19 @@ REWORDED = ("domain", "services", "controller", "contract", LOGIC)
 module came to hand out a value as it is from domain/published.py."""
 LITMUS_ADDED = ("reports",)
 """The parts that gained a litmus after format 1, saying what they may decide."""
+ROLE_RESTATED = ("platform",)
+"""The parts whose role came to name everything they hold, after format 1."""
 PUBLISHED = ("published",)
 VALUES = "profile-values"
 
 
 def assembled(architecture: Architecture) -> Architecture:
-    """The architecture without the role and litmus of the parts REWORDED, the litmus of LITMUS_ADDED, without the
-    target the contract gained for the values a module hands out as they are (domain/published), and without the
-    part VALUES and every target naming it, which format 1 never had."""
+    """The architecture without the role and litmus of the parts REWORDED, the litmus of LITMUS_ADDED and the role of
+    ROLE_RESTATED, without the target the contract gained for the values a module hands out as they are
+    (domain/published), and without the part VALUES and every target naming it, which format 1 never had."""
     parts = {name: replace(part, role="", litmus="") if name in REWORDED else
-             replace(part, litmus="") if name in LITMUS_ADDED else part
+             replace(part, litmus="") if name in LITMUS_ADDED else
+             replace(part, role="") if name in ROLE_RESTATED else part
              for name, part in architecture.parts.items() if name != VALUES}
     rules = {name: tuple(t for t in targets if not (t.part == "domain" and t.sub == PUBLISHED) and t.part != VALUES)
              for name, targets in architecture.rules.items() if name != VALUES}

@@ -64,7 +64,8 @@ parts:
 
   platform:
     path: platform
-    role: the filesystem, the package data, the TOML and YAML readers and the YAML writer
+    role: "the filesystem, the package data, the readers of TOML, YAML and JSON, the YAML writer, and what the interpreter
+      running xarch knows of its language"
     may_import: [kernel, kernel-logic]
     libraries: [yaml]
     tier: unit
