@@ -10,10 +10,10 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
+from xarch.kernel.placement import EACH
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.migration import OldPart, OldProfile, Tree
 
-EACH = "*"
 KEYS = ("xarch", "name", "layout", "notes", "parts", "rules", "layers", "placement", "naming", "tiers", "docs", "files",
         "examples", "libraries", "fakes", "guards", "tests", "forbidden", "excluded", "hints")
 _WORD = re.compile(r"[A-Za-z_][A-Za-z0-9_-]*")
