@@ -157,10 +157,12 @@ and the ones that exist are named. `pyproject.toml` is never edited: it prints t
 `[tool.xarch]`, because that line changes what `check` enforces and `init` has usually set it already.
 
 `check` loads the profile (every problem at once, which includes every file it points to existing), runs the
-example-import check (the examples' imports obey the profile's own rules), and shows how it differs from the bundled
-profile it is based on, as information. With no argument it checks the project's configured profile. Exit 0 when valid,
-1 when it has problems, 2 when no profile can be chosen; `--format json` gives `{"ok", "profile", "problems":
-[{"check", "message"}], "files", "compared_with"}`.
+example-import check (the examples' imports obey the profile's own rules), holds each check the profile writes itself
+to its examples, and shows how it differs from the bundled profile it is based on, as information (but for a part
+left without the litmus the bundled profile gives it, which fails `check --strict`). With no argument it checks the
+project's configured profile. Exit 0 when valid, 1 when it has problems, 2 when no profile can be chosen; `--format
+json` gives `{"ok", "profile", "problems": [{"check", "message"}], "files", "checks", "compared_with"}`, `checks`
+being how many checks the profile writes itself.
 
 ### Checks of your own
 
@@ -231,7 +233,7 @@ that switches or configures each (`-` for none: the rule is always on):
 | `types-only` | a test, or code of a part, calling what it may import only as a type | `tiers.types_only`, `parts.types_only` |
 | `cycles` | instances of the repeating folders that import each other, directly or through others (across repeating folders too); each elementary cycle is reported once, at its first import | - (needs a repeating folder) |
 | `package-only` | an import of a file of a part from outside it, where the part is imported as a package | `parts.package_only` |
-| `must-import` | a file of a part that never reaches the technology or contract the part must reach, or a test that never reaches what its tier must | `parts.must_import`, `tiers.must_import` |
+| `must-import` | a file of a part that never reaches any of the targets the part must reach, nor an outside package, or a test that never reaches what its tier must | `parts.must_import`, `tiers.must_import` |
 | `scenario-coverage` | a variant of a result union with no row in its use case's test table, or a branch (a statement of `branching`, an expression of `branching_expressions`) in a table test's body; with `plain_tables`, in any table test of that tier | `guards.scenario-coverage`, `tiers.plain_tables` |
 | `no-comments` | a `#` comment in the app or its tests | `guards.no-comments` |
 | `stand-ins` | a read port without a fake, or a mock without a spec or with a read port's | `guards.stand-ins`, `fakes` |

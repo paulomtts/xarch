@@ -232,7 +232,7 @@ def test_the_guards_lines_say_the_names_of_the_framework_the_file_declares():
         "- `scenario-coverage`: every variant of a union named `<Name>Result` in `api/` is the `then` of a row of "
         "the table (columns `given`, `when`, `then`) in `test_<name>.py` among the integration tests (section 5.2), "
         "or is named by a standalone test of that file; every row is a `pytest.param` with an `id`, and a table test "
-        "has no `if`, `match`, `try`, `for` or `while`.",
+        "has no `if`, `match`, `try`, `for` or `while` statement and no `if` expression.",
         "- `stand-ins`: every `Protocol` in `store/` is fire-only (every method returns `None`) or read (any method "
         "returns a value), each method annotated; every read port `<Port>` has a fake `Fake<Port>` in "
         "`tests/fakes/`; and every mock in the integration tests names what it stands in for, `Mock(spec=<Port>)` "
@@ -262,3 +262,23 @@ def test_testing_may_name_the_markers_and_calls_that_skip_a_test_or_expect_it_to
 ])
 def test_a_bad_skips_entry_is_refused(skips, expected):
     assert problems(with_testing(skips=skips)) == [f"layered.yaml: testing.skips: {expected}"]
+
+
+def test_a_tier_with_plain_tables_and_a_part_of_immutable_records_each_have_a_line_of_the_guards():
+    document = covered(guards={"scenario-coverage": SCENARIOS, "stand-ins": {}}, fakes=FAKES)
+    document["tiers"]["unit"]["plain_tables"] = True
+    document["parts"]["service"]["immutable"] = True
+    document["parts"]["service"]["holds"] = "functions"
+    lines = fill("{{guards}}", parsed(document), "layered.md").splitlines()
+    assert ("- `plain tables`: no table test of the unit tests holds a branch in its body: no `if`, `match`, `try`, "
+            "`for` or `while` statement and no `if` expression.") in lines
+    assert ("- `immutable`: every class of `service/` is an immutable record, as the Python data file marks one, or "
+            "an exception; listed in the enforcement section, and fails `check --strict` only.") in lines
+
+
+def test_dead_code_s_names_used_only_by_the_tests_are_said_when_they_are_listed():
+    document = covered(guards={"dead-code": {"tests_only": True}}, fakes=FAKES)
+    line = next(line for line in fill("{{guards}}", parsed(document), "layered.md").splitlines() if "dead-code" in line)
+    assert line.endswith("A public class or function of the app that no other file of the app names, so that only "
+                         "the tests use it, or nothing does, is listed in the enforcement section, and fails `check "
+                         "--strict` only.")

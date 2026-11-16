@@ -425,6 +425,10 @@ def _guards(architecture: Architecture, _: str, _q: Texts, _t: Texts, _f: bool) 
                 shown = _and([f"`{docs_name(architecture, architecture.parts[p])}`" for p in tier.types_only])
                 lines.append(f"`types-only`: a {tier.name} test uses {shown} only as a type: it may import it and "
                              "annotate with it, and never calls it.")
+        plain = [tier.name for tier in architecture.tiers if tier.plain_tables]
+        if plain:
+            lines.append(f"`plain tables`: no table test of the {_and(plain)} tests holds a branch in its body: no "
+                         f"{_branches(architecture)}.")
     roots = [repeat.root for repeat in architecture.repeats]
     if roots:
         folders = _and([f"`{'/'.join((DEFAULT_TESTS, *root))}/`" for root in roots])
@@ -477,21 +481,23 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
                     f"`{docs_name(architecture, architecture.parts[results])}` is the `{columns[-1]}` of a row of the "
                     f"table (columns {shown}) in `{file.replace(NAME, '<name>')}` among the {tier} tests (section 5.2), "
                     f"or is named by a standalone test of that file; every row is a `{'.'.join(table.row)}` with "
-                    f"an `{table.id}`, and a table test has no "
-                    f"{_or([f'`{word}`' for word in architecture.language.checked.branching])}.")
+                    f"an `{table.id}`, and a table test has no {_branches(architecture)}.")
         case StandIns(mocks, _, spec, fixtures):
             built = f"{fixtures[0].name}.{fixtures[0].mocks[0]}" if fixtures else ""
             return _stand_ins_line(architecture, mocks[0][-1], spec[0], built)
         case NoDuplicates(least):
             return (f"`no-duplicates`: no two functions of the app have the same code, names and formatting aside, "
                     f"when each holds at least {least} statements; tests are not compared.")
-        case DeadCode(untested):
+        case DeadCode(untested, tests_only):
             fakes = architecture.fakes
             assert fakes is not None
             ports = _and([f"`{docs_name(architecture, architecture.parts[p])}`" for p in fakes.stand_in_for])
             reached = (" A file of a part with a tier that no test of that tier reaches, directly or through files of "
                        "parts of the same tier, is listed in the enforcement section, and fails `check --strict` "
                        "only." if untested else "")
+            reached += (" A public class or function of the app that no other file of the app names, so that only the "
+                        "tests use it, or nothing does, is listed in the enforcement section, and fails `check "
+                        "--strict` only." if tests_only else "")
             interface = architecture.language.interface_name
             return (f"`dead-code`: every `{interface}` in {ports} is named by another file of the app, and every fake in "
                     f"`{'/'.join((DEFAULT_TESTS, *fakes.folder))}/` by a test; the wiring and re-exports do not "
@@ -551,6 +557,11 @@ def _part_lines(architecture: Architecture) -> list[str]:
                         "exceptions and the records its functions return")
         lines.append(f"`holds`: {'; '.join(said)}; listed in the enforcement section, and fails `check --strict` "
                      "only.")
+    immutable = [p.name for p in parts if p.immutable]
+    if immutable:
+        lines.append(f"`immutable`: every class of {shown(immutable)} is an immutable record, as the "
+                     f"{architecture.language.checked.title} data file marks one, or an exception; listed in the "
+                     "enforcement section, and fails `check --strict` only.")
     callbacks = [p.name for p in parts if p.no_callbacks]
     if callbacks:
         lines.append(f"`no-callbacks`: no function of {shown(callbacks)} calls a parameter annotated as a callable: it "
@@ -574,8 +585,17 @@ def _part_lines(architecture: Architecture) -> list[str]:
 def _must_import_line(architecture: Architecture, part: Part) -> str:
     wanted = may_import(part.must_import, _folders(architecture), architecture.words()).replace(" and ", " or ")
     return (f"`must-import`: every file of `{docs_name(architecture, part)}` imports from {wanted}, or an outside "
-            "package, or reaches one through a file of its own part, so that it touches technology; a package file "
-            "and a file with no code of its own are exempt.")
+            "package, or reaches one through a file of its own part; a package file and a file with no code of its own "
+            "are exempt.")
+
+
+def _branches(architecture: Architecture) -> str:
+    """What a branch is, in the language of the app: a statement that opens one, or an expression that chooses."""
+    checked = architecture.language.checked
+    said = [f"{_or([f'`{word}`' for word in checked.branching])} statement"] if checked.branching else []
+    said += [f"{_or([f'`{word}`' for word in checked.branching_expressions])} expression"] \
+        if checked.branching_expressions else []
+    return " and no ".join(said) or "branch"
 
 
 def _stand_ins_line(architecture: Architecture, mock: str, spec: str, built: str = "") -> str:

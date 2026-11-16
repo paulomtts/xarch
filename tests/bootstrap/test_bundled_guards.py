@@ -90,12 +90,14 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
         "- `cycles`: no `modules/<name>/` imports from another that imports, directly or through others, from it; "
         "each cycle is reported once, with the imports that close it.",
         "- `must-import`: every file of `adapters/` imports from `platform/`, any module's `contract/`, or an outside "
-        "package, or reaches one through a file of its own part, so that it touches technology; a package file and "
-        "a file with no code of its own are exempt.",
+        "package, or reaches one through a file of its own part; a package file and a file with no code of its own "
+        "are exempt.",
         "- `holds`: a file of `domain/`, `application/services/` and `application/controller.py` defines classes, "
         "never a public function at the top level; a file of `application/logic/` and `kernel/logic/` defines "
         "functions, never a class (a private one too) but exceptions and the records its functions return; listed in "
         "the enforcement section, and fails `check --strict` only.",
+        "- `immutable`: every class of `application/logic/` and `kernel/logic/` is an immutable record, as the Python "
+        "data file marks one, or an exception; listed in the enforcement section, and fails `check --strict` only.",
         "- `no-callbacks`: no function of `domain/` and `application/logic/` calls a parameter annotated as a "
         "callable: it is handed values, never a way to fetch them.",
         "- `names`: every class of `application/services/` is named `*Service`.",
@@ -107,7 +109,7 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
         "- `scenario-coverage`: every variant of a union named `<Name>Result` in `contract/` is the `then` of a row "
         "of the table (columns `given`, `when`, `then`) in `test_<name>.py` among the integration tests (section "
         "5.2), or is named by a standalone test of that file; every row is a `pytest.param` with an `id`, and a "
-        "table test has no `if`, `match`, `try`, `for` or `while`.",
+        "table test has no `if`, `match`, `try`, `for` or `while` statement and no `if` expression.",
         "- `no-comments`: no `#` comments in the app or its tests; docstrings and tool directives "
         "(`# type: ignore`, `# noqa`, `# pragma:`) stay.",
         "- `stand-ins`: every `Protocol` in `application/ports/` is fire-only (every method returns `None`) or read "
