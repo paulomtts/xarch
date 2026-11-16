@@ -124,9 +124,9 @@ guards:   {scenario-coverage, no-comments, stand-ins, closed-tree, no-duplicates
 files:    {<path>: <from> | {from*, pinned, fill}}      docs: {entry, pages, naming, examples, example_notes}
 checks:   {<id>: {read*, in, keep, may_not | may_only | must_reach | must_be_reached*, except, mode, message*, fix*,
                   once_per, cases, examples*}}
-review:   {never, mask}                                 what `xarch review` may send; `check` never reads it
+review:   {never, mask}                                 what `xarch review` may send; `check` never acts on it
 evals:    {placement: {lines, examples}, <id>: {ask*, answer*, yes, no, reads*, in, keep, line, message*, fix*,
-          examples*}}                                   what `xarch review` asks; `check` never reads it
+          examples*}}                                   what `xarch review` asks; `check` never acts on it
 ```
 
 `language` names the language of the app: `python`, which is the default and the only one xarch reads today. What is
@@ -418,7 +418,8 @@ enforcement
   `types_only`, a target added to a tier's `may_also_import`, a tier no longer `apply_forbidden`, a name dropped from `testing.skips`, a `files` entry no longer
   `pinned`, a target added to a part's `must_import` or the key dropped, a part redefined without the `litmus` the
   other gives it, a public name `guards.dead-code.known` accepts that the other's does not, a part
-  `guards.no-twins.translated` lists that the other's does not. A profile that says `based_on: <bundled name>` is compared with that one, else with the one sharing the
+  `guards.no-twins.translated` lists that the other's does not, a line under `evals.placement.lines` set below the
+  other's, an entry of `review.never` or `review.mask` the other holds and this one drops. A profile that says `based_on: <bundled name>` is compared with that one, else with the one sharing the
   most part names.
   Stricter differences, new parts, the layout and the guards' other parameters are not compared. This comparison is
   information: the profile defines the architecture, so how it differs from another is no finding for `--strict`, but
@@ -638,8 +639,9 @@ kept stay kept.
 
 ### What review may send: `review.never` and `review.mask`
 
-The profile may narrow what review sends, under a top-level `review` key that `check` never reads (it changes no
-finding and no exit code of `check`). Neither key can switch sending on.
+The profile may narrow what review sends, under a top-level `review` key that `check` never acts on: a value written
+wrong makes the profile invalid for every command, `check` included, and no finding and no exit code of `check`
+depends on what it says. Neither key can switch sending on.
 
 ```yaml
 review:
@@ -672,8 +674,9 @@ evals:
 ```
 
 Each value is a number above 0 and below 1; a part not written keeps 0.3, the line the trials measured. Every reading
-says a line set this way as "set by the profile", since the trials' numbers hold at 0.3 only. `check` never reads
-`evals`. `profile check` lists a part whose line is below the one the profile it is compared with gives it as looser:
+says a line set this way as "set by the profile", since the trials' numbers hold at 0.3 only. `check` never acts on
+`evals`: a value written wrong makes the profile invalid for every command, `check` included, and no finding and no
+exit code of `check` depends on what it says; its enforcement lists a line set lower as looser, for information only. `profile check` lists a part whose line is below the one the profile it is compared with gives it as looser:
 it flags less. `xarch profile explain evals.placement.lines` says it in full.
 
 ### Evals of the profile's own

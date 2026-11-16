@@ -79,7 +79,8 @@ def test_a_key_says_the_facts_its_check_reads_and_how_the_language_supplies_them
 def test_a_key_another_command_reads_is_said_to_be_read_by_it_and_never_by_check():
     held = KeyExplained("review.never", "review", "the files review never sends", "a list of paths", False, False,
                         (), "review:\n  never: [a]", (), (), read_by="review")
-    assert key_lines(held)[5] == "  enforced: no: check never reads it; only xarch review does"
+    assert key_lines(held)[5] == ("  enforced: no: check never acts on it (written wrong, the profile is invalid for "
+                                  "every command); only xarch review reads what it says")
     assert json.loads(key_document(held))["read_by"] == "review"
     shape = (Shown("docs", 0, "the docs", False, False), Shown("review", 0, "what review may send", False, False, "review"))
     rows = overview_lines(FormatExplained(2, shape, (Symbol("<word>", "a repeating folder"),), "xarch: 2\n"))[4:6]

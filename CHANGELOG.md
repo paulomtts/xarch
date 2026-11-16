@@ -46,9 +46,11 @@ The first release.
   model asked alone.
 - A profile's `review` key: `review.never`, the paths below the app of files review never sends (matched against a
   link and the file it links to), and `review.mask`,
-  texts it hides before it sends. `check` never reads either; `profile explain` says them, and `profile check` lists
+  texts it hides before it sends. `check` never acts on either (a value written wrong makes the profile invalid for
+  every command, `check` included; no finding and no exit code of `check` depends on them); `profile explain` says them, and `profile check` lists
   an entry the base profile has and the profile drops as looser.
-- A profile's `evals.placement.lines`: the line of a part, set by hand. `check` never reads it; `profile explain`
+- A profile's `evals.placement.lines`: the line of a part, set by hand. `check` never acts on it (its enforcement
+  lists a line set lower as looser, for information only); `profile explain`
   says it, and `profile check` lists a part whose line is below the base profile's as looser.
 - A profile's own evals under `evals.<id>`: one short question (`ask`), its answer form (`yes-no` with `yes` and
   `no`, a score of five levels 0 to 4 with `flagged_from`, or a choice of three options or more with `flagged`), what

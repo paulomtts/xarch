@@ -55,7 +55,7 @@ key_catalogue); the shape:
     evals: {placement: {lines, examples}, <id>: {ask, answer, reads, ...}}
                                how review reads what it asks: the line of each part below which a file reads as doubtful
                                there, the examples placement is held to besides the docs', and the evals of the
-                               profile's own; `check` never reads it (see evals)
+                               profile's own; `check` never acts on it (see evals)
 
 Every problem found is collected, so one InvalidArchitecture lists them all, each naming the key by its address in the
 file and saying what to write instead; a problem that makes the rest meaningless stops early.

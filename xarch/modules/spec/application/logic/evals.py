@@ -1,5 +1,6 @@
 """What `evals` says of the questions review asks, each refused at its address when it is written wrong; `check` never
-reads it. Under `placement`, the built-in eval, the line of each part below which a file reads as doubtful there
+acts on it, though a value written wrong makes the profile invalid for every command. Under `placement`, the built-in
+eval, the line of each part below which a file reads as doubtful there
 (`evals.placement.lines`) and the examples placement is held to besides the docs' (`evals.placement.examples`);
 under any other id, an eval of the profile's own:
 

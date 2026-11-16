@@ -269,7 +269,8 @@ keys:
     meaning: "what `xarch review` may send: never, mask"
     accepts: >-
       a map {never, mask}: the files review never sends, and the texts it hides in the others before it sends; `check`
-      never reads it, so it changes no finding and no exit code of `check`. Neither key can switch sending on: the key
+      never acts on it: a value written wrong makes the profile invalid for every command, `check` included, and no
+      finding and no exit code of `check` depends on what it says. Neither key can switch sending on: the key
       of the decision model's service, set in the environment, alone does that
     example: |
       review:
@@ -285,7 +286,9 @@ keys:
       filters a class or function must pass, `line` the value from which a reading is listed, `message` and `fix` what
       is said of one, and `examples`. Write one rule per question, about what the text shows. An eval of your own runs
       only once `xarch review calibrate` has held it to its examples with the model review asks, and only while it
-      stays as it was then. `check` never reads `evals`, so it changes no finding and no exit code of `check`
+      stays as it was then. `check` never acts on `evals`: a value written wrong makes the profile invalid for every
+      command, `check` included, and no finding and no exit code of `check` depends on what it says (its enforcement
+      lists a line set lower than the bundled profile's as looser, for information only)
     example: |
       evals:
         placement:

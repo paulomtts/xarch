@@ -108,7 +108,8 @@ def test_what_review_may_send_is_read_by_review_alone_and_its_keys_are_listed_in
     assert [line.split()[:3] for line in overview if line.split()[:1] in (["review"], ["review.never"])] == [
         ["review", "optional", "review"]]
     found = runner.invoke(app, ["profile", "explain", "review"]).output.splitlines()
-    assert "  enforced: no: check never reads it; only xarch review does" in found
+    assert ("  enforced: no: check never acts on it (written wrong, the profile is invalid for every command); only xarch "
+            "review reads what it says") in found
     assert [line.split()[0] for line in found[found.index("  keys:") + 1:]] == ["review.never", "review.mask"]
     never = json.loads(runner.invoke(app, ["profile", "explain", "review.never", "--format", "json"]).output)
     assert (never["where"], never["enforced"], never["read_by"], never["rules"]) == ("review", False, "review", [])

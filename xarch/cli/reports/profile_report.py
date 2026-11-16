@@ -104,7 +104,8 @@ def key_lines(found: KeyExplained) -> list[str]:
 
 def _enforced(found: KeyExplained) -> str:
     if not found.enforced and found.read_by:
-        return f"no: check never reads it; only xarch {found.read_by} does"
+        return (f"no: check never acts on it (written wrong, the profile is invalid for every command); only xarch "
+                f"{found.read_by} reads what it says")
     if not found.enforced:
         return "no, it is documentary: it only fills the generated docs or a report"
     if not found.rules:

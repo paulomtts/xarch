@@ -188,6 +188,19 @@ def test_placement_s_examples_are_masked_in_a_project_whose_app_has_another_name
     assert texts and not any("from app." in text or "import app." in text for text in texts)
 
 
+def test_check_never_acts_on_review_or_evals_but_a_value_written_wrong_makes_the_profile_invalid_for_it(tmp_path):
+    assert runner.invoke(app, ["profile", "new", "mine", "--from", "cli"]).exit_code == 0
+    profile = tmp_path / "architecture" / "mine" / "mine.yaml"
+    written = profile.read_text()
+    before = [runner.invoke(app, ["check", "--profile", str(profile), *strict]) for strict in ([], ["--strict"])]
+    profile.write_text(written + "review:\n  mask: [Northwind]\nevals:\n  placement:\n    lines: {domain: 0.1}\n")
+    after = [runner.invoke(app, ["check", "--profile", str(profile), *strict]) for strict in ([], ["--strict"])]
+    assert [result.exit_code for result in after] == [result.exit_code for result in before]
+    profile.write_text(written + "evals:\n  placement:\n    lines: {domain: 2}\n")
+    wrong = runner.invoke(app, ["check", "--profile", str(profile)])
+    assert wrong.exit_code == 2 and "evals.placement.lines.domain: 2 is not a line" in wrong.output
+
+
 def test_review_changes_nothing_check_finds():
     before = runner.invoke(app, ["check", "--format", "json"])
     review(SERVICE, "--dry-run")
