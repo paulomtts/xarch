@@ -107,6 +107,7 @@ def test_the_verdict_on_the_examples(flagged, clean, written, then):
 
 def test_what_an_eval_reads_is_the_lines_it_spans_or_the_text_whole_and_its_sentences_are_filled_in():
     assert cut("a\nb\nc\n", (2, 3)) == "b\nc\n" and cut("a\nb\n", (0, 0)) == "a\nb\n"
+    assert cut("a\x0c\u2028\nb\nc\n", (2, 2)) == "b\n"
     assert said("{name} at {file}:{line} reads {value}", "app/x.py", 4, "Doc.publish", 0.834) == (
         "Doc.publish at app/x.py:4 reads 0.83")
     assert said("{name} reads {value}", "app/x.py", 0, "", 0.5) == "app/x.py reads 0.50"

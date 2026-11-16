@@ -65,3 +65,9 @@ def test_the_texts_the_profile_says_review_hides_are_masked_after_the_rest(mask,
 def test_a_text_the_profile_hides_is_masked_after_the_imports_and_the_addresses():
     assert masked("from app.kernel.ids import DocumentId\n# ask ops@app.example\n", (OWN,), "app", ("app*",)) == (
         f"from {MASK} import DocumentId\n# ask {PERSON}\n")
+
+
+def test_a_line_separator_or_a_form_feed_above_an_import_moves_no_line_and_the_import_is_masked():
+    text = "# a note\u2028still the note\x0c\nfrom app.kernel.ids import DocumentId\n"
+    assert masked(text, (Import(2, ("app", "kernel", "ids"), ("DocumentId",), written="app.kernel.ids"),), "app") == (
+        f"# a note\u2028still the note\x0c\nfrom {MASK} import DocumentId\n")

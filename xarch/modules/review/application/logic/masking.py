@@ -8,6 +8,7 @@ from __future__ import annotations
 import re
 
 from xarch.kernel.source import Import
+from xarch.modules.review.application.logic.lines import lines as cut
 
 MASK = "<masked>"
 """What stands in a masked text for the dotted name an import of the app's own code imports from."""
@@ -33,7 +34,7 @@ def _hidden(pattern: str) -> re.Pattern[str]:
 def masked(text: str, imports: tuple[Import, ...], root: str, mask: tuple[str, ...] = ()) -> str:
     """The text with the module each import of the app's own code names replaced by MASK on the import's line, every
     e-mail address by PERSON, then each match of a text of mask by MASK, in mask's order."""
-    lines = text.splitlines(keepends=True)
+    lines = list(cut(text))
     for imported in imports:
         if own(imported, root) and imported.written and 0 < imported.line <= len(lines):
             lines[imported.line - 1] = lines[imported.line - 1].replace(imported.written, MASK, 1)

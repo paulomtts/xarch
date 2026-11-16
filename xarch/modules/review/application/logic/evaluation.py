@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 
+from xarch.modules.review.application.logic.lines import lines as split
 from xarch.modules.review.domain.published import (
     CALIBRATED,
     CHOOSE,
@@ -98,7 +99,7 @@ def cut(text: str, lines: tuple[int, int]) -> str:
     """The text of the lines given, counted from 1, ((0, 0): the whole text)."""
     if lines == (0, 0):
         return text
-    return "".join(text.splitlines(keepends=True)[lines[0] - 1:lines[1]])
+    return "".join(split(text)[lines[0] - 1:lines[1]])
 
 
 def said(sentence: str, file: str, line: int, name: str, found: float) -> str:

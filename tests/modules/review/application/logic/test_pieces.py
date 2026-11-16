@@ -70,3 +70,11 @@ def test_the_opening_lines_are_those_before_the_first_piece_and_are_sent_before_
     assert opening(text, (Span("function", "f", "", (4, 5)),)) == '"""Docs."""\nfrom app import x\n\n'
     assert sent(Section("f", "function", (4, 5), "def f():\n    pass\n"), "ctx\n") == "ctx\ndef f():\n    pass\n"
     assert opening(text, ()) == ""
+
+
+def test_form_feeds_above_the_pieces_move_no_line_and_each_piece_holds_its_own_text():
+    text = "\x0c\n" * 5 + "def alpha():\n    return 1\n" + "def beta():\n    return 2\n"
+    spans = (Span("function", "alpha", "", (6, 7)), Span("function", "beta", "", (8, 9)))
+    assert [(found.name, found.text) for found in sections(text, spans)] == [
+        ("alpha, beta", "def alpha():\n    return 1\ndef beta():\n    return 2\n")]
+    assert opening(text, spans) == "\x0c\n" * 5

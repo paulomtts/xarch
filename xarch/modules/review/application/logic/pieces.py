@@ -5,6 +5,7 @@ the last one to the one before; and of those, the ones of PIECE_CHARS characters
 piece is its text, after the file's opening lines (those before its first piece) when context is asked for."""
 from __future__ import annotations
 
+from xarch.modules.review.application.logic.lines import lines as cut
 from xarch.modules.review.domain.published import MERGE_CHARS, PIECE_CHARS, SPLIT_CHARS
 from xarch.modules.review.domain.values import Section, Span
 
@@ -52,7 +53,7 @@ def _closed(done: list[Section], small: Section, lines: list[str]) -> list[Secti
 
 def sections(text: str, spans: tuple[Span, ...]) -> tuple[Section, ...]:
     """The pieces of the text (the file's, masked) review ranks, in order, before any is left out for its size."""
-    lines = text.splitlines(keepends=True)
+    lines = list(cut(text))
     found = [section for span in spans if not span.owner for section in _whole(span, spans, lines)]
     return _merged(found, lines)
 
@@ -65,7 +66,7 @@ def large(found: tuple[Section, ...]) -> tuple[Section, ...]:
 def opening(text: str, spans: tuple[Span, ...]) -> str:
     """The lines of the text before its first piece: what `--context imports` sends before each piece."""
     first = min((span.lines[0] for span in spans), default=1)
-    return "".join(text.splitlines(keepends=True)[:first - 1])
+    return "".join(cut(text)[:first - 1])
 
 
 def sent(section: Section, context: str) -> str:
