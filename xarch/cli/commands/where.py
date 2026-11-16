@@ -16,6 +16,7 @@ from xarch.cli.terminal import (
     echo,
     in_full,
     refusal,
+    rewrapped,
     selection,
 )
 from xarch.modules.rules.application.controller import RulesController
@@ -30,12 +31,15 @@ PathArgument = Annotated[Path, typer.Argument(
 
 def register(app: typer.Typer, rules: RulesController, spec: SpecController) -> None:
     @app.command()
+    @rewrapped
     def where(path: PathArgument, app_path: AppPath = None, profile: ProfileName = None,
               tests: TestsPath = None, output: FormatOption = Format.text) -> None:
-        """Say what a path is and what code there may do, before writing it: its part (or that it is in none), the
-        part's role and litmus test, what it may import, the outside packages it may import, the names it may not
-        use, the tier that tests it and where its test lives; for a test, its tier, the part it mirrors and what
-        it may import. Exit 0 for any path in the project, 2 for one outside it or a profile that cannot be used."""
+        """Say what a path is and what code there may do, before writing it.
+
+        For a path of the app: its part (or that it is in none), the part's role and litmus test, what it may import,
+        the outside packages it may import, the names it may not use, the tier that tests it and where its test lives;
+        for a test, its tier, the part it mirrors and what it may import. Exit 0 for any path in the project, 2 for
+        one outside it or a profile that cannot be used."""
         refuse = refusal(output)
         cwd = in_full(Path())
         app_path = app_for(spec, cwd, app_path, refuse)

@@ -23,7 +23,7 @@ def build(rules: RulesController, scaffolding: ScaffoldController, spec: SpecCon
     @app.callback()
     def main(
         show_version: bool = typer.Option(
-            False, "--version", callback=print_version, is_eager=True, help="Print the version and exit."
+            False, "--version", callback=print_version, is_eager=True, metavar="", help="Print the version and exit."
         ),
     ) -> None:
         """Runs before any command; `--version` is handled by its callback."""

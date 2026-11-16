@@ -16,6 +16,7 @@ from xarch.cli.terminal import (
     echo,
     in_full,
     refusal,
+    rewrapped,
     selection,
 )
 from xarch.modules.rules.application.controller import RulesController
@@ -24,15 +25,18 @@ from xarch.modules.spec.application.controller import SpecController
 from xarch.modules.spec.contract import Origin, ProfileRefused
 
 StrictOption = Annotated[bool, typer.Option(
-    "--strict", help="Also fail (exit 1) on what the profile in force leaves unenforced, in the findings of the "
-                     "enforcement section: guards a bundled profile switches on but this one leaves off, ungoverned "
-                     "files, missing or changed init files, skipped tests, dynamic imports, and checks met to the "
-                     "letter only. How a custom profile differs from the closest bundled one is shown, never failed "
-                     "on.")]
+    "--strict", metavar="",
+    help="Also fail (exit 1) on every finding the enforcement section lists under `strict` (JSON `strict_failures`): "
+         "guards left off that the compared bundled profile switches on (every guard, when none is compared), "
+         "ungoverned files, missing or changed init files, skipped tests, dynamic imports, checks met to the letter "
+         "only (weak), approximate keys, checks of the profile's own that read nothing, and a part redefined without "
+         "the litmus the compared profile gives it. Every other way a custom profile differs from the compared one "
+         "is shown, never failed on.")]
 
 
 def register(app: typer.Typer, rules: RulesController, spec: SpecController) -> None:
     @app.command()
+    @rewrapped
     def check(app_path: AppPath = None, profile: ProfileName = None, tests: TestsPath = None,
               output: FormatOption = Format.text, strict: StrictOption = False) -> None:
         """Report every violation of the architecture in the app and its tests."""

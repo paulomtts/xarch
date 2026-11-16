@@ -1,5 +1,6 @@
 """What every command shares: the --app, --profile, --tests and --format options, choosing the app folder and the
-profile, and how a refusal reaches the terminal, as text or as JSON."""
+profile, how its help is wrapped, and how a refusal reaches the terminal, as text or as JSON."""
+import re
 from collections.abc import Callable, Iterable
 from enum import Enum
 from pathlib import Path
@@ -35,8 +36,15 @@ class Format(str, Enum):
 
 
 FormatOption = Annotated[Format, typer.Option(
-    "--format", help="text: one line per violation, then a summary (the default); json: one JSON document on stdout, "
-                     "described in the README.")]
+    "--format", help="text, the default, or json: one JSON document on stdout, described in the README.")]
+
+
+def rewrapped[C: Callable[..., None]](command: C) -> C:
+    """The command, each paragraph of its docstring made one line, so that its help is wrapped to the terminal's width
+    rather than at the docstring's own line breaks."""
+    paragraphs = re.split(r"\n\s*\n", (command.__doc__ or "").strip())
+    command.__doc__ = "\n\n".join(" ".join(paragraph.split()) for paragraph in paragraphs)
+    return command
 
 
 def fail(message: str) -> typer.Exit:
