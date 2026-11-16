@@ -5,6 +5,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+from xarch.modules.spec.application.logic.defaults import first_language
 from xarch.modules.spec.application.logic.docs_files import doc_files
 from xarch.modules.spec.application.logic.example_imports import (
     Read,
@@ -111,15 +112,15 @@ class ArchitectureService:
     def default_language(self) -> Language:
         """The language of an app whose profile names none: the first the data files of the languages give, by name."""
         found = self._language_presets()
-        return found[min(found)] if found else Language()
+        return found.get(first_language(found), Language())
 
     def _language_presets(self) -> dict[str, Language]:
         """The languages xarch ships, read once, each with the names only the runtime knows."""
         if self._languages is None:
             self._languages = {
                 name: replace(language, standard_names=self._runtime.standard_library(language.standard),
-                              builtin_names=self._runtime.builtin_names(),
-                              reserved_names=self._runtime.reserved_words())
+                              builtin_names=self._runtime.builtin_names(language.standard),
+                              reserved_names=self._runtime.reserved_words(language.standard))
                 for name, document in self._files.language_presets().items()
                 for language in [language_of(name, document)]}
         return self._languages

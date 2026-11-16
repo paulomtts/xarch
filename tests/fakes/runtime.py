@@ -12,8 +12,8 @@ class FakeRuntime:
     def standard_library(self, source: str) -> frozenset[str]:
         return self._standard
 
-    def reserved_words(self) -> frozenset[str]:
+    def reserved_words(self, source: str) -> frozenset[str]:
         return self._reserved
 
-    def builtin_names(self) -> frozenset[str]:
+    def builtin_names(self, source: str) -> frozenset[str]:
         return self._builtins

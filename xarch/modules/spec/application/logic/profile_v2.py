@@ -65,6 +65,7 @@ from xarch.modules.spec.application.logic import profile_checks as ck
 from xarch.modules.spec.application.logic import profile_examples as ex
 from xarch.modules.spec.application.logic import profile_needs as needs
 from xarch.modules.spec.application.logic import written_checks as own_checks
+from xarch.modules.spec.application.logic.defaults import first_language
 from xarch.modules.spec.application.logic.key_lookup import keys_of, names_of, required_of
 from xarch.modules.spec.application.logic.layout_walk import is_file
 from xarch.modules.spec.application.logic.targets_written import NAME_PATTERN, WORD, may_import
@@ -204,7 +205,7 @@ def _keys(document: Mapping[Any, Any]) -> list[str]:
 def _language(document: Mapping[Any, Any], languages: Mapping[str, Language], problems: list[str]) -> Language:
     """The language the file names, the first of the languages by name when it names none; Language() when there are
     none to choose from."""
-    name = document.get("language", min(languages, default=""))
+    name = document.get("language", first_language(languages))
     if not isinstance(name, str) or (name not in languages and (languages or "language" in document)):
         problems.append(f"language: {name!r} is not a language xarch reads: use {', '.join(sorted(languages))}")
         return Language()

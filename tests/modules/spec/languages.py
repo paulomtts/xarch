@@ -17,4 +17,5 @@ PYTHON_DOCUMENT = yaml.safe_load(resources.files("xarch").joinpath("architecture
                                  .read_text(encoding="utf-8"))
 RUNTIME = FakeRuntime(frozenset(sys.stdlib_module_names), frozenset(dir(builtins)), frozenset(keyword.kwlist))
 PYTHON = replace(language_of("python", PYTHON_DOCUMENT), standard_names=RUNTIME.standard_library("interpreter"),
-                 builtin_names=RUNTIME.builtin_names(), reserved_names=RUNTIME.reserved_words())
+                 builtin_names=RUNTIME.builtin_names("interpreter"),
+                 reserved_names=RUNTIME.reserved_words("interpreter"))
