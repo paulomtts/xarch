@@ -88,7 +88,10 @@ def test_reading(tmp_path, text, modules):
     assert reading(tmp_path / "f.py") == modules
 
 
+LANGUAGES = tuple(sorted((SRC / "architectures" / "presets" / "language").glob("*.yaml")))
+"""The data file of every language xarch reads: the guard holds the source to each."""
 LANGUAGE = SRC / "architectures" / "presets" / "language" / "python.yaml"
+"""The language the guard's own tests below are written for."""
 WORDS_BESIDES = {"stdlib_module_names": "the interpreter's list of the standard library, which no data file can hold "
                                         "current: the platform reads it and the reader marks each import with it"}
 NAMES_BESIDES = {"iskeyword", "kwlist", "isidentifier"}
@@ -110,9 +113,9 @@ EXEMPT: dict[tuple[str, str], str] = {
 }
 
 
-def language_words() -> tuple[re.Pattern[str], set[str]]:
+def language_words(language: Path = LANGUAGE) -> tuple[re.Pattern[str], set[str]]:
     """The pattern of the words the data file gives, as literal text, and the lowercase words of an identifier."""
-    data = yaml.safe_load(LANGUAGE.read_text(encoding="utf-8"))
+    data = yaml.safe_load(language.read_text(encoding="utf-8"))
     steps = {step for name in (*data["interface"], *data["dynamic"]) for step in name.split(".")}
     words = {data["namespace"], data["cache"], data["package_file"].removesuffix(data["extension"]), *steps,
              *WORDS_BESIDES}
@@ -128,20 +131,20 @@ TOKEN_KEYS = ("private", "special", "call", "nothing", "comment", "shebang")
 """The keys of the data file whose value is a token of the language's code."""
 
 
-def language_tokens() -> tuple[set[str], re.Pattern[str]]:
+def language_tokens(language: Path = LANGUAGE) -> tuple[set[str], re.Pattern[str]]:
     """The tokens a literal may not be, and the pattern of the directive words and of the branching keywords quoted as
     code."""
-    data = yaml.safe_load(LANGUAGE.read_text(encoding="utf-8"))
+    data = yaml.safe_load(language.read_text(encoding="utf-8"))
     tokens = {data[key] for key in TOKEN_KEYS}
     directives = "|".join(sorted((re.escape(word) for word in data["directives"]), key=len, reverse=True))
     branching = "|".join(re.escape(word) for word in data["branching"])
     return tokens, re.compile(rf"(?<![A-Za-z0-9_])(?:{directives})(?![A-Za-z0-9_])|`(?:{branching})`")
 
 
-def token_leaks(root: Path) -> list[tuple[str, int, str]]:
+def token_leaks(root: Path, language: Path = LANGUAGE) -> list[tuple[str, int, str]]:
     """(file below root, line, token) of every literal that is a token of the language, and every directive word or
     branching keyword quoted as code, outside the seam."""
-    tokens, words = language_tokens()
+    tokens, words = language_tokens(language)
     found: list[tuple[str, int, str]] = []
     for path in sorted(root.rglob("*.py")):
         relative = path.relative_to(root).as_posix()
@@ -190,17 +193,27 @@ def leaks(root: Path, pattern: re.Pattern[str], names: set[str]) -> list[tuple[s
     return found
 
 
-def test_no_file_outside_the_reader_and_the_platform_names_the_language_of_the_data_file():
-    pattern, names = language_words()
-    found = {(file, word) for file, _, word in leaks(SRC, pattern, names)}
-    assert sorted(found - set(EXEMPT)) == []
-    assert sorted(set(EXEMPT) - found - {(file, token) for file, _, token in token_leaks(SRC)}) == []
+def named(language: Path) -> set[tuple[str, str]]:
+    return {(file, word) for file, _, word in leaks(SRC, *language_words(language))}
 
 
-def test_no_file_outside_the_reader_and_the_platform_writes_a_token_of_the_language_of_the_data_file():
-    found = {(file, token) for file, _, token in token_leaks(SRC)}
-    assert sorted(found - set(EXEMPT)) == []
-    assert sorted(set(EXEMPT) - found - {(file, word) for file, _, word in leaks(SRC, *language_words())}) == []
+def written(language: Path) -> set[tuple[str, str]]:
+    return {(file, token) for file, _, token in token_leaks(SRC, language)}
+
+
+@pytest.mark.parametrize("language", LANGUAGES, ids=lambda path: path.stem)
+def test_no_file_outside_the_reader_and_the_platform_names_the_language_of_the_data_file(language):
+    assert sorted(named(language) - set(EXEMPT)) == []
+
+
+@pytest.mark.parametrize("language", LANGUAGES, ids=lambda path: path.stem)
+def test_no_file_outside_the_reader_and_the_platform_writes_a_token_of_the_language_of_the_data_file(language):
+    assert sorted(written(language) - set(EXEMPT)) == []
+
+
+def test_every_exemption_is_one_some_language_still_needs():
+    found = set().union(*(named(language) | written(language) for language in LANGUAGES))
+    assert LANGUAGES and sorted(set(EXEMPT) - found) == []
 
 
 @pytest.mark.parametrize("text, found", [

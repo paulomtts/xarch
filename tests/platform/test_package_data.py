@@ -1,4 +1,6 @@
 """The data files shipped inside a package: the files of a folder, every file below one, and their content."""
+from importlib import resources
+
 import pytest
 
 from xarch.platform.package_data import PackageData
@@ -21,6 +23,8 @@ def test_every_file_below_a_folder_is_listed_by_its_path_in_it_and_none_below_wh
 
 def test_a_file_is_read_as_text_or_bytes_and_a_missing_one_raises():
     assert BUNDLED.is_file("cli.yaml") and not BUNDLED.is_file("presets")
-    assert BUNDLED.read_text("cli.yaml").startswith(BUNDLED.read_bytes("cli.yaml").decode("utf-8")[:20])
+    shipped = resources.files("xarch").joinpath("architectures", "cli.yaml").read_bytes()
+    assert "\nname: cli\n" in BUNDLED.read_text("cli.yaml")
+    assert BUNDLED.read_bytes("cli.yaml") == shipped
     with pytest.raises(FileNotFoundError):
         BUNDLED.read_text("nowhere.yaml")
