@@ -6,9 +6,9 @@ from dataclasses import replace
 
 import pytest
 
-from tests.modules.spec.application.origins import BASE, PARTS, TESTING, TIER
+from tests.modules.spec.application.origins import BASE, PARTS, TESTING, TIER, part
 from tests.modules.spec.profiles_v2 import covered, layered, parsed
-from xarch.modules.spec.application.logic.looseness import origin_of
+from xarch.modules.spec.application.logic.looseness import LOOSER, origin_of
 from xarch.modules.spec.domain.published import Loosened
 from xarch.modules.spec.domain.values import Architecture
 
@@ -136,3 +136,28 @@ def test_a_part_whose_translations_no_twins_accepts_that_the_base_does_not_list_
         Loosened("translated", "store", "",
                  "no-twins accepts each pair of classes a function of store translates (guards.no-twins.translated)"),)
     assert loosened(parsed(translated("api")), parsed(translated("api", "store"))) == ()
+
+
+def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
+    """Each case of LOOSER is reached by one of these pairs (custom, base), and each key is said its own way."""
+    store = {key: value for key, value in PARTS["store"].items() if key != "tier"}
+    every = {**BASE, "parts": {**PARTS, "store": store | {"untested": "trust me", "libraries": ["sqlmodel", "requests"]},
+                               "core": {**PARTS["core"], "may_import": ["store"]}},
+             "forbidden": {"pure": ["socket"]}, "testing": {**TESTING, "skips": ["pytest.mark.skip"]},
+             "tiers": {"unit": {key: value for key, value in TIER.items() if key != "types_only"}
+                       | {"apply_forbidden": False, "may_also_import": ["edge"]}},
+             "files": {"tests/test_rules.py": {"from": "guard.py"}}}
+    litmus = layered()
+    litmus["parts"]["api"]["litmus"] = "Does it answer a request?"
+    pairs = [
+        (parsed(every), parsed(BASE)),
+        (parsed(BASE), parsed({**BASE, "parts": part("store", must_import=["core"])})),
+        (parsed(layered()), parsed(litmus)),
+        (parsed(layered()), parsed(layered(reserved={"ast": "the reader's"}))),
+        (parsed(covered(guards={"dead-code": {"tests_only": True, "known": ["shared/wiring.py:build"]}},
+                        fakes={"folder": "fakes", "for": ["store"]})), parsed(covered())),
+        (parsed(covered(guards={"no-twins": {"translated": ["api"]}})), parsed(covered())),
+    ]
+    found = [item for custom, base in pairs for item in loosened(custom, base)]
+    assert sorted({item.key for item in found}) == sorted(LOOSER)
+    assert [item.key for item in found if "is no longer reserved" in item.sentence] == ["reserved"]

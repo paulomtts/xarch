@@ -29,6 +29,9 @@ from xarch.profile_values.placement import Target
 
 Looser = tuple[str, str, str]
 """(key, part, what): one way a profile is looser, before it is said."""
+LOOSER = ("may_import", "libraries", "forbidden", "must_import", "untested", LITMUS, "types_only", "may_also_import",
+          "apply_forbidden", "testing.skips", "files.pinned", "reserved", "known", "translated")
+"""Every key a way a profile is looser is listed under, each said by a sentence of its own."""
 
 
 def _guards_off(architecture: Architecture) -> tuple[str, ...]:
@@ -163,7 +166,9 @@ def _sentence(key: str, part: str, what: str = "") -> str:
             return f"the tests-only check accepts {what} as a name only the tests use (guards.dead-code.known)"
         case "translated":
             return f"no-twins accepts each pair of classes a function of {part} translates (guards.no-twins.translated)"
-    return f"{what} is no longer reserved (reserved.{what})"
+        case "reserved":
+            return f"{what} is no longer reserved (reserved.{what})"
+    raise ValueError(f"no sentence says how a profile is looser under {key!r}")
 
 
 def _shown(target: Target) -> str:
