@@ -312,7 +312,7 @@ _KEYS: tuple[Key, ...] = (
        "but for an exception class. A package file (`%package_file%`) is exempt. Each other one is listed as `weak` "
        "in the enforcement section, and fails `check --strict` only. Written beside `holds: functions`, it keeps the "
        "records a part of functions returns from being changed by the code they are handed to",
-       _in_part("holds: functions\nimmutable: true\n"), rules=("holds",)),
+       _in_part("holds: functions\nimmutable: true\n"), rules=("immutable",)),
     _k(PART, "no_callbacks", "its code calls none of its own parameters",
        "true: no function, method or nested function of the part calls, by its bare name, a parameter of a function "
        "it lies in that is annotated as a callable type (alone, subscripted, in a union or as an optional), as in "

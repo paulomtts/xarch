@@ -135,7 +135,7 @@ def test_a_closed_tree_names_its_rule_and_its_fix(tmp_path):
 
 def test_every_rule_id_has_a_case_here_that_produces_a_violation_with_a_fix():
     cases = {case.values[2] for case in (*CASES, *OWNED)}
-    assert cases | {"structure", "test-tree", "closed-tree", "pass-through", "holds", "shared"} == set(RULES)
+    assert cases | {"structure", "test-tree", "closed-tree", "pass-through", "holds", "immutable", "shared"} == set(RULES)
 
 
 def test_a_pass_through_is_listed_as_weak_with_its_fix_and_is_no_violation(tmp_path):
@@ -164,6 +164,16 @@ def test_a_function_of_a_part_that_holds_classes_is_listed_as_weak_with_its_fix_
     result = build_controllers().rules.check(CheckImports(app, "app", "web", write(tmp_path / "tests", TESTS)))
     assert isinstance(result, ImportsChecked)
     assert [(w.rule, w.line, bool(w.fix)) for w in result.enforcement.weak if w.rule == "holds"] == [("holds", 1, True)]
+    assert [v.rule for v in result.violations] == []
+
+
+def test_a_class_that_is_no_immutable_record_in_a_part_of_records_is_listed_as_weak_under_its_own_id(tmp_path):
+    logic = "class Rows:\n    items: list\n\n\ndef rows() -> Rows:\n    return Rows()\n"
+    app = write(tmp_path / "app", {**APP, "modules/docs/application/logic/rows.py": logic})
+    result = build_controllers().rules.check(CheckImports(app, "app", "web", write(tmp_path / "tests", TESTS)))
+    assert isinstance(result, ImportsChecked)
+    assert [(w.rule, w.line, bool(w.fix)) for w in result.enforcement.weak if w.rule in ("holds", "immutable")] == [
+        ("immutable", 1, True)]
     assert [v.rule for v in result.violations] == []
 
 

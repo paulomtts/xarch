@@ -91,8 +91,8 @@ def test_a_record_of_a_part_whose_classes_are_immutable_that_is_not_one_is_liste
     file = source(LOGIC, classes=(Class(3, "Found"),),
                   functions=(Function(8, "find", returns_named=frozenset({"Found"})),))
     assert weak([file], IMMUTABLE, "app") == [Weak(
-        "holds", f"app/{LOGIC}", 3, "Found is a class that is no immutable record, but every class of logic/ of "
-                                    "modules/docs is one (parts.logic.immutable)",
+        "immutable", f"app/{LOGIC}", 3, "Found is a class that is no immutable record, but every class of logic/ of "
+                                        "modules/docs is one (parts.logic.immutable)",
         "make Found an immutable record (the Python data file's `immutable` says how), or move it to a part that "
         "holds classes")]
 
