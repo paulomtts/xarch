@@ -4,19 +4,23 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol
 
-from xarch.modules.rules.domain.errors import ProfileUnusable
-from xarch.modules.rules.domain.published import KeyFacts
+from xarch.modules.rules.domain.errors import NoProfile, ProfileUnusable, Unloaded
+from xarch.modules.rules.domain.published import KeyFacts, Loosened, Resemblance, Reviewed
 from xarch.modules.rules.domain.values import InitFile, PartInfo, Profile, Standing
 from xarch.modules.spec.contract import (
     DEFAULT_TESTS,
     LITMUS,
+    CheckProfile,
+    CheckResult,
     Explain,
     ExplainResult,
     FilesResult,
     KeyExplained,
     KnownProfiles,
+    NoProfileChosen,
     Origin,
     OriginResult,
+    ProfileChecked,
     ProfileRefused,
     ProfileResult,
     ProfileView,
@@ -36,6 +40,8 @@ class _Spec(Protocol):
     def known(self, app: Path) -> KnownProfiles: ...
 
     def explain(self, cmd: Explain) -> ExplainResult: ...
+
+    def check_profile(self, cmd: CheckProfile) -> CheckResult: ...
 
 
 class SpecProfiles:
@@ -89,6 +95,21 @@ class SpecProfiles:
             case KeyExplained() as explained:
                 return KeyFacts(explained.example, explained.name, explained.holder)
         return KeyFacts()
+
+    def reviewed(self, app: Path, target: str | None) -> Reviewed:
+        """What spec's check of the profile found, in rules' terms: a profile that does not load raises Unloaded with
+        the loader's problems, none chosen NoProfile with the profiles known, and one spec refuses ProfileUnusable."""
+        match self._spec.check_profile(CheckProfile(app, target)):
+            case ProfileChecked(location, problems, _, None):
+                raise Unloaded(location, tuple(problem.text for problem in problems))
+            case ProfileChecked(location, problems, files, Origin() as origin):
+                looser = tuple(Loosened(item.key, item.part, item.what, item.sentence) for item in origin.looser)
+                return Reviewed(location, tuple(problem.text for problem in problems), files,
+                                Resemblance(origin.bundled, origin.closest, looser))
+            case NoProfileChosen(known):
+                raise NoProfile(known)
+            case ProfileRefused(reason):
+                raise ProfileUnusable(reason)
 
     def standing(self, location: str, app: str) -> Standing:
         """No init files when the profile cannot write them for this app, which `init` reports when it refuses; a

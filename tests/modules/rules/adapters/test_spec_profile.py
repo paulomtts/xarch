@@ -1,14 +1,18 @@
 """Rules' Profiles read from spec's contract: the profile view becomes the profile as the checks see it (the checks it
-writes itself as spec read them), the origin keeps each looseness, and the init files are compared as text."""
+writes itself as spec read them), the origin keeps each looseness, the init files are compared as text, and spec's
+check of a profile becomes what rules reviews, or why it cannot."""
 from pathlib import Path
 
 import pytest
 
 from xarch.modules.rules.adapters.spec_profile import SpecProfiles
-from xarch.modules.rules.domain.errors import ProfileUnusable
-from xarch.modules.rules.domain.published import KeyFacts
+from xarch.modules.rules.domain import published
+from xarch.modules.rules.domain.errors import NoProfile, ProfileUnusable, Unloaded
+from xarch.modules.rules.domain.published import KeyFacts, Resemblance, Reviewed
 from xarch.modules.rules.domain.values import InitFile, PartInfo, Profile, Standing
 from xarch.modules.spec.contract import (
+    CheckProfile,
+    CheckResult,
     Explain,
     ExplainResult,
     FilesResult,
@@ -16,9 +20,12 @@ from xarch.modules.spec.contract import (
     KeyExplained,
     KnownProfiles,
     Loosened,
+    NoProfileChosen,
     Origin,
     OriginResult,
     PartView,
+    Problem,
+    ProfileChecked,
     ProfileRefused,
     ProfileView,
     ProjectFile,
@@ -60,8 +67,9 @@ ORIGIN = Origin("mine.yaml", False, "cli", ("closed-tree",), (), (Loosened("unte
 class Spec:
     """Spec's controller as rules' adapter uses it, answering from fixed values."""
 
-    def __init__(self, files: tuple[ProjectFile, ...] | None = None, origin: OriginResult = ORIGIN):
-        self._files, self._origin = files, origin
+    def __init__(self, files: tuple[ProjectFile, ...] | None = None, origin: OriginResult = ORIGIN,
+                 checked: CheckResult | None = None):
+        self._files, self._origin, self._checked = files, origin, checked
 
     def profile(self, location: str) -> ProfileView:
         return VIEW
@@ -77,6 +85,10 @@ class Spec:
 
     def explain(self, cmd: Explain) -> ExplainResult:
         return KEY if cmd.key == KEY.key else UnknownKey(cmd.key, ())
+
+    def check_profile(self, cmd: CheckProfile) -> CheckResult:
+        assert cmd == CheckProfile(Path("/p/app"), "mine.yaml"), cmd
+        return self._checked
 
 
 KEY = KeyExplained("parts.types_only", "parts.<part>", "m", "a", False, True, ("types-only",), "parts:\n  a: {}\n", (),
@@ -136,3 +148,35 @@ def test_the_profiles_a_project_knows_are_spec_s():
 def test_what_the_format_says_of_a_key_is_its_example_its_name_and_what_holds_it_and_nothing_for_no_key():
     assert SpecProfiles(Spec()).key("parts.types_only") == KeyFacts("parts:\n  a: {}\n", "types_only", "part")
     assert SpecProfiles(Spec()).key("parts.nothing") == KeyFacts()
+
+
+@pytest.mark.parametrize("checked, then", [
+    pytest.param(ProfileChecked("mine.yaml", (Problem("examples", "example (core/a.py): imports app.api"),), 3, ORIGIN),
+                 Reviewed("mine.yaml", ("example (core/a.py): imports app.api",), 3,
+                          Resemblance(False, "cli", (published.Loosened("untested", "api"),))),
+                 id="a profile that loads keeps its example problems, its files and how it resembles the bundled ones"),
+    pytest.param(ProfileChecked("cli", (), 48, Origin("cli")), Reviewed("cli", (), 48, Resemblance(True)),
+                 id="a bundled profile resembles itself and nothing else"),
+])
+def test_spec_s_check_of_a_profile_that_loads_is_what_rules_reviews(checked, then):
+    assert SpecProfiles(Spec(checked=checked)).reviewed(Path("/p/app"), "mine.yaml") == then
+
+
+def test_spec_s_check_of_a_profile_that_does_not_load_raises_with_where_it_is_and_every_problem():
+    checked = ProfileChecked("mine.yaml", (Problem("load", "mine.yaml: unknown key 'colour'"),
+                                           Problem("load", "mine.yaml: parts.core: missing `role`")), 0, None)
+    with pytest.raises(Unloaded) as found:
+        SpecProfiles(Spec(checked=checked)).reviewed(Path("/p/app"), "mine.yaml")
+    assert (found.value.location, found.value.problems) == (
+        "mine.yaml", ("mine.yaml: unknown key 'colour'", "mine.yaml: parts.core: missing `role`"))
+
+
+def test_spec_choosing_no_profile_raises_with_the_profiles_known():
+    with pytest.raises(NoProfile) as found:
+        SpecProfiles(Spec(checked=NoProfileChosen(("cli", "web")))).reviewed(Path("/p/app"), "mine.yaml")
+    assert found.value.known == ("cli", "web")
+
+
+def test_a_profile_spec_refuses_to_check_raises_with_spec_s_reason():
+    with pytest.raises(ProfileUnusable, match="^unknown profile 'nope'$"):
+        SpecProfiles(Spec(checked=ProfileRefused("unknown profile 'nope'"))).reviewed(Path("/p/app"), "mine.yaml")

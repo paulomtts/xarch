@@ -1,6 +1,6 @@
 """What the rules module promises: check an app, its imports, its tests and its structure against a profile; say what a
-path is and what code there may do; explain the words a check is written in and the rules a key expands to; and hold
-a profile's own checks to their examples."""
+path is and what code there may do; explain the words a check is written in and the rules a key expands to; and check
+a profile without an app, its own checks held to their examples."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -22,10 +22,12 @@ from xarch.modules.rules.domain.published import (
     At,
     Drift,
     KeyFacts,
+    Loosened,
+    Resemblance,
+    Reviewed,
     Slot,
     Weak,
 )
-from xarch.profile_values.checks import ChecksHeld
 
 __all__ = ["At", "Weak", "Slot", "KeyFacts", "SECTIONS", "GUARDS_OFF", "UNGOVERNED", "INIT_FILES", "SKIPPED", "DYNAMIC",
            "WEAK", "APPROXIMATE", "VACUOUS", "UNPLACED", "ChecksCannotRun", "CheckRefused", "OwnCheckView",
@@ -34,8 +36,9 @@ __all__ = ["At", "Weak", "Slot", "KeyFacts", "SECTIONS", "GUARDS_OFF", "UNGOVERN
            "WhereAnswer", "CheckImports", "ImportsChecked", "NotADirectory", "CheckResult", "CheckApp", "AppChecked",
            "CheckAppResult", "Locate", "Located", "Outside", "LocateResult", "ExplainWords", "NoWords",
            "WordLine", "CategoryShown", "ChecksShown", "WordsShown", "FieldShown", "WordShown", "UnknownWords",
-           "WordsResult", "ExplainRule", "RuleShown", "KeyUnset", "NoRuleShown", "RuleResult", "CheckExamples", "ChecksHeld",
-           "CheckExamplesResult", "ApproximateView"]
+           "WordsResult", "ExplainRule", "RuleShown", "KeyUnset", "NoRuleShown", "RuleResult", "ApproximateView",
+           "Loosened", "Resemblance", "Reviewed", "CheckProfile", "ChecksHeld", "ProfileHeld", "ProfileUnloaded",
+           "NoProfileChosen", "ProfileCheckResult"]
 
 
 @dataclass(frozen=True)
@@ -456,11 +459,46 @@ RuleResult = RuleShown | KeyUnset | NoRuleShown
 
 
 @dataclass(frozen=True)
-class CheckExamples:
-    """Hold the checks the profile at location writes itself to their examples, the app being the package app
-    names."""
-    profile: str
-    app: str
+class CheckProfile:
+    """Check a profile without an app: the one target names (a bundled name or a path), else the one configured for
+    the project holding the app folder, whose name its own checks' examples are read below."""
+    app: Path
+    target: str | None = None
 
 
-CheckExamplesResult = ChecksHeld | CheckRefused
+@dataclass(frozen=True)
+class ChecksHeld:
+    """What holding the checks a profile writes itself to their examples found: every problem, in the profile's
+    order, each at its address in the profile (why a check cannot be made, or how one made does not find what its
+    examples say; none: each finds something in its flagged code and nothing in its clean code), and how many checks
+    the profile writes itself, made or not."""
+    problems: tuple[str, ...]
+    checks: int
+
+
+@dataclass(frozen=True)
+class ProfileHeld:
+    """A profile that loads, checked: what checking it found before its own checks are held, and what holding them to
+    their examples found; ok when neither found a problem."""
+    reviewed: Reviewed
+    own: ChecksHeld
+
+    @property
+    def ok(self) -> bool:
+        return not self.reviewed.examples and not self.own.problems
+
+
+@dataclass(frozen=True)
+class ProfileUnloaded:
+    """A profile that does not load: where it is, and every problem the loader found, each in words."""
+    location: str
+    problems: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class NoProfileChosen:
+    """No profile is given and none is configured for the project: the profiles it knows, to choose one from."""
+    known: tuple[str, ...]
+
+
+ProfileCheckResult = ProfileHeld | ProfileUnloaded | NoProfileChosen | CheckRefused

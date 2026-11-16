@@ -3,8 +3,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from xarch.kernel.errors import DomainError
 from xarch.modules.rules.domain.errors import ChecksRefused, ProfileUnusable
-from xarch.modules.rules.domain.published import KeyFacts
+from xarch.modules.rules.domain.published import KeyFacts, Reviewed
 from xarch.modules.rules.domain.values import InitFile, Profile, Standing
 
 
@@ -18,10 +19,11 @@ class FakeProfiles:
     def __init__(self, profiles: dict[str, Profile], guards: dict[str, Standing] | None = None,
                  files: dict[str, tuple[InitFile, ...]] | None = None, refused: dict[str, tuple[str, ...]] | None = None,
                  unusable: dict[str, str] | None = None, known: tuple[str, ...] | None = None,
-                 keys: dict[str, KeyFacts] | None = None):
+                 keys: dict[str, KeyFacts] | None = None,
+                 reviewed: dict[str | None, Reviewed | DomainError] | None = None):
         self._profiles, self._guards, self._files = profiles, dict(guards or {}), dict(files or {})
         self._known = tuple(profiles) if known is None else known
-        self._keys = dict(keys or {})
+        self._keys, self._reviewed = dict(keys or {}), dict(reviewed or {})
         self._refused, self._unusable = dict(refused or {}), dict(unusable or {})
 
     def profile(self, location: str) -> Profile:
@@ -36,6 +38,12 @@ class FakeProfiles:
 
     def key(self, address: str) -> KeyFacts:
         return self._keys.get(address, KeyFacts())
+
+    def reviewed(self, app: Path, target: str | None) -> Reviewed:
+        found = self._reviewed[target]
+        if isinstance(found, DomainError):
+            raise found
+        return found
 
     def standing(self, location: str, app: str) -> Standing:
         guards = self._guards.get(location, Standing((), (), ()))

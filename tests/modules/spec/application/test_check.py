@@ -1,6 +1,6 @@
 """Use case: validate a profile without an app: whether it loads (and so whether every file it points to is there),
-whether its examples keep to its own rules, whether the checks it writes itself find what their examples say, and how
-it differs from the bundled profile it is based on."""
+whether its examples keep to its own rules, and how it differs from the bundled profile it is based on. The checks
+the profile writes itself are held to their examples by rules, which asks spec for the rest."""
 from pathlib import Path
 
 import pytest
@@ -10,7 +10,6 @@ from tests.modules.spec.application.builders import BASE, spec_controller
 from xarch.kernel.source import Import
 from xarch.modules.spec.contract import CheckProfile, NoProfileChosen, Origin, Problem, ProfileChecked, ProfileRefused
 from xarch.modules.spec.domain.values import Configured
-from xarch.profile_values.checks import ChecksHeld
 
 APP = Path("/p/app")
 MINE = {**BASE, "name": "mine", "based_on": "base"}
@@ -39,13 +38,6 @@ OFF = ("package-only", "scenario-coverage", "no-comments", "stand-ins", "closed-
                                          "(parts.core.may_import)"),), 3,
                                 Origin("mine.yaml", False, "base", OFF, OFF, ())),
                  id="an example that imports what its part may not is a problem"),
-    pytest.param(dict(files={"mine.yaml": MINE}, own={"mine.yaml": ChecksHeld(("checks.x.examples.flagged: the check "
-                                                                                 "finds nothing in it",), 2)}),
-                 CheckProfile(APP, "mine.yaml"),
-                 ProfileChecked("mine.yaml", (Problem("checks", "checks.x.examples.flagged: the check finds nothing in "
-                                                                "it"),), 2,
-                                Origin("mine.yaml", False, "base", OFF, OFF, ()), 2),
-                 id="the checks the profile writes itself are held to their examples, and counted"),
     pytest.param(dict(files={}), CheckProfile(APP, "gone.yaml"),
                  ProfileChecked("gone.yaml", (Problem("load", "gone.yaml: cannot read the file: no such file"),), 0, None),
                  id="a path that holds no file is a problem of the profile"),

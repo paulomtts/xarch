@@ -11,9 +11,8 @@ from xarch.modules.rules.application.services.source_reading import SourceReadSe
 from xarch.modules.rules.contract import (
     CheckApp,
     CheckAppResult,
-    CheckExamples,
-    CheckExamplesResult,
     CheckImports,
+    CheckProfile,
     CheckRefused,
     CheckResult,
     ChecksCannotRun,
@@ -21,13 +20,16 @@ from xarch.modules.rules.contract import (
     ExplainWords,
     Locate,
     LocateResult,
+    NoProfileChosen,
     NoRuleShown,
     NotADirectory,
     Outside,
+    ProfileCheckResult,
+    ProfileUnloaded,
     RuleResult,
     WordsResult,
 )
-from xarch.modules.rules.domain.errors import ChecksRefused, OutsideProject, RootMissing, Unreadable
+from xarch.modules.rules.domain.errors import ChecksRefused, NoProfile, OutsideProject, RootMissing, Unloaded, Unreadable
 
 
 class RulesController:
@@ -36,11 +38,17 @@ class RulesController:
         self._service, self._locator, self._app, self._explaining = service, locator, app, explaining
         self._examples = examples
 
-    def check_examples(self, cmd: CheckExamples) -> CheckExamplesResult:
-        """The profile's own checks held to their examples, and to the vocabulary; every problem at once, a check that
-        cannot be made among them. A profile that cannot be used is refused with why."""
+    def check_profile(self, cmd: CheckProfile) -> ProfileCheckResult:
+        """Validates a profile without an app: every problem at once, what spec's check of it finds and what its own
+        checks find against their examples and the vocabulary, with how it differs from the bundled one it is based
+        on. One that does not load comes back with the loader's problems, none chosen with the profiles known, and
+        one that cannot be used is refused with why."""
         try:
-            return self._examples.held(cmd.profile, cmd.app)
+            return self._examples.check(cmd.app, cmd.target)
+        except Unloaded as e:
+            return ProfileUnloaded(e.location, e.problems)
+        except NoProfile as e:
+            return NoProfileChosen(e.known)
         except DomainError as e:
             return CheckRefused(e.reason)
 

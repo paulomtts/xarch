@@ -31,7 +31,7 @@ __all__ = ["DEFAULT_APP", "DEFAULT_TESTS", "Entry", "Repeating", "Skeleton", "Do
            "NoProfileChosen", "SelectResult", "MigrateProfile", "MigratedFile", "Origin", "Loosened", "LITMUS",
            "Migrated", "FilesTaken", "MigrationRefused",
            "MigrateResult", "Shown", "Symbol", "Explain", "FormatExplained", "KeyExplained", "UnknownKey",
-           "ExplainResult", "Need", "ViewProfile", "ProfileViewed", "ViewResult", "CheckProfile", "LOAD", "EXAMPLES", "CHECKS",
+           "ExplainResult", "Need", "ViewProfile", "ProfileViewed", "ViewResult", "CheckProfile", "LOAD", "EXAMPLES",
            "Problem", "ProfileChecked",
            "CheckResult", "KnownProfiles", "NewProfile", "ProfileCreated", "NewResult", "Supply", "Shortfall"]
 
@@ -354,30 +354,28 @@ class CheckProfile:
     target: str | None = None
 
 
-LOAD, EXAMPLES, CHECKS = "load", "examples", "checks"
-"""The checks a Problem names: the loader, which finds every problem at once, the examples' imports, and the checks
-the profile writes itself, held to their examples."""
+LOAD, EXAMPLES = "load", "examples"
+"""The checks a Problem names: the loader, which finds every problem at once, and the examples' imports."""
 
 
 @dataclass(frozen=True)
 class Problem:
     """One thing wrong with a profile, by the check that found it: load (the loader, every problem at once, which
-    includes the files it points to), examples (an example imports what its part may not) or checks (a check of the
-    profile's own cannot be made, or does not find what its examples say)."""
+    includes the files it points to) or examples (an example imports what its part may not). The checks the profile
+    writes itself are held to their examples by the module that knows what their words mean."""
     check: str
     text: str
 
 
 @dataclass(frozen=True)
 class ProfileChecked:
-    """What validating a profile found: its problems (none: valid), how many files it points to (when it loads), and,
-    when it loads, its origin: how it differs from the bundled profile it is based on, as information; and how many
-    checks it writes itself (when it loads)."""
+    """What validating a profile found, its own checks aside: its problems (none: valid), how many files it points to
+    (when it loads), and, when it loads, its origin: how it differs from the bundled profile it is based on, as
+    information."""
     location: str
     problems: tuple[Problem, ...]
     files: int
     origin: Origin | None
-    checks: int = 0
 
     @property
     def ok(self) -> bool:

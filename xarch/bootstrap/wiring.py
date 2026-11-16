@@ -4,7 +4,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from xarch.bootstrap.own_checks import RulesOwnChecks
 from xarch.modules.layout.adapters.fs_disk import FsDisk
 from xarch.modules.layout.adapters.spec_skeleton import SpecSkeleton as LayoutSkeleton
 from xarch.modules.layout.application.controller import LayoutController
@@ -72,8 +71,7 @@ def build_reader(tree: FsSourceTree) -> ReaderController:
 
 
 def build_spec(fs: FileSystem | None = None, tree: FsSourceTree | None = None) -> SpecController:
-    """Spec, whose examples the reader reads: tree when one is given, else a reader of its own. Its check of a
-    profile holds the profile's own checks to their examples with rules built around this same spec, when it asks."""
+    """Spec, whose examples the reader reads: tree when one is given, else a reader of its own."""
     fs = fs or FileSystem()
     tree = tree or READER(fs)
     files = FsArchitectureFiles(fs, DataFileReader(), BUNDLED)
@@ -83,11 +81,9 @@ def build_spec(fs: FileSystem | None = None, tree: FsSourceTree | None = None) -
     folders = FsFolders(fs)
     form = YamlProfileFormat(YamlWriter())
     selection = ProfileSelectionService(settings, architectures, files, folders)
-    own = RulesOwnChecks(lambda: build_rules(tree, spec, build_layout(fs, spec)))
-    spec = SpecController(architectures, selection, ProfileReviewService(selection, architectures, files, own),
+    return SpecController(architectures, selection, ProfileReviewService(selection, architectures, files),
                           ExplainService(files, architectures), MigrationService(files, architectures, output, form),
                           ProfileCreationService(files, architectures, output, form), PublishingService(architectures))
-    return spec
 
 
 def build_architectures(fs: FileSystem | None = None) -> ArchitectureService:

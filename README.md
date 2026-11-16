@@ -164,7 +164,7 @@ to its examples, and shows how it differs from the bundled profile it is based o
 left without the litmus the bundled profile gives it, which fails `check --strict`). With no argument it checks the
 project's configured profile. Exit 0 when valid, 1 when it has problems, 2 when no profile can be chosen; `--format
 json` gives `{"ok", "profile", "problems": [{"check", "message"}], "files", "checks", "compared_with"}`, `checks`
-being how many checks the profile writes itself.
+being how many checks the profile writes itself, made or not.
 
 ### Checks of your own
 

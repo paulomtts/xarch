@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol
 
-from xarch.modules.rules.domain.published import KeyFacts
+from xarch.modules.rules.domain.published import KeyFacts, Reviewed
 from xarch.modules.rules.domain.values import Profile, Standing
 
 
@@ -23,4 +23,10 @@ class Profiles(Protocol):
 
     def key(self, address: str) -> KeyFacts:
         """What the format says of the key at address; nothing for an address of no key."""
+        ...
+
+    def reviewed(self, app: Path, target: str | None) -> Reviewed:
+        """The profile target names (a bundled name or a path), else the one configured for the project holding the
+        app folder, checked but for its own checks; raises Unloaded with every problem when it does not load,
+        NoProfile when none is given or configured, and ProfileUnusable when it cannot be chosen."""
         ...
