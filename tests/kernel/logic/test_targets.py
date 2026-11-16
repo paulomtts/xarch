@@ -1,22 +1,32 @@
-"""How a profile writes a target, read against the parts by their paths and the part that writes it."""
+"""How a profile writes a target, read against the parts by their paths and the part that writes it, and written back
+as it is read."""
 import pytest
 
-from xarch.kernel.logic.targets import target
+from xarch.kernel.logic.targets import target, target_written
 from xarch.profile_values.placement import Target
 
 PARTS = {"domain": ("modules", "*", "domain"), "services": ("modules", "*", "services"), "kernel": ("kernel",)}
 SERVICES = ("services", PARTS["services"])
 
 
-@pytest.mark.parametrize("written, owner, found", [
+READ = [
     pytest.param("domain", SERVICES, Target("domain", "own"), id="a bare name in the importer's repeating folder is its own instance"),
     pytest.param("domain@any/values", SERVICES, Target("domain", "any", ("values",)), id="any instance, and a path below"),
     pytest.param("kernel:*Id", SERVICES, Target("kernel", "none", (), "*Id"), id="a part outside, narrowed by a name pattern"),
     pytest.param("domain@any", None, Target("domain", "any"), id="a scope of no part reaches an instance only by @any"),
-])
+]
+
+
+@pytest.mark.parametrize("written, owner, found", READ)
 def test_a_target_is_read_from_its_written_form(written, owner, found):
     problems: list[str] = []
     assert (target(written, owner, PARTS, PARTS, "at", problems, patterns=True), problems) == (found, [])
+
+
+@pytest.mark.parametrize("written, owner, found", READ)
+def test_a_target_is_written_as_it_is_read_and_reads_back_as_itself(written, owner, found):
+    assert (target_written(found), target(target_written(found), owner, PARTS, PARTS, "at", [], patterns=True)) == (
+        written, found)
 
 
 @pytest.mark.parametrize("written, owner, problem", [

@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from xarch.kernel.logic.placement import with_itself
+from xarch.kernel.logic.targets import target_written
 from xarch.kernel.placement import EACH, EVERYTHING
 from xarch.modules.spec.application.logic.migrate_examples import Gathered, gather, rewrite_examples
 from xarch.modules.spec.application.logic.profile_v1 import read_v1
@@ -123,20 +124,14 @@ def _rows(old: OldProfile) -> dict[str, list[Target]]:
 
 
 def _target_text(old: OldProfile, target: Target, owner: str | None, label: str, changes: list[str]) -> str:
-    text = target.part
     inside = owner is not None and _inside(old, owner)
     scope = target.scope
     if scope == "own" and not inside:
         scope = "any"
         changes.append(f"{label}: '{target.part}@own' is written '{target.part}@any': the importer is not in the "
                        "repeating folder, so there is no own instance")
-    if _inside(old, target.part) and scope != "own" or (_inside(old, target.part) and not inside):
-        text += "@any"
-    elif scope == "any":
-        text += "@any"
-    if target.sub:
-        text += "/" + "/".join(target.sub)
-    return text
+    any_instance = scope == "any" or _inside(old, target.part) and (scope != "own" or not inside)
+    return target_written(Target(target.part, "any" if any_instance else "none", target.sub))
 
 
 def _may_import(old: OldProfile, name: str, rows: dict[str, list[Target]], changes: list[str]) -> Any:
@@ -335,8 +330,7 @@ def _allowance(tier: dict[str, Any], old: OldProfile, rows: dict[str, list[Targe
         return "everything"
     texts: list[str] = []
     for target in found:
-        text = target.part + ("@any" if _inside(old, target.part) else "") + (
-            "/" + "/".join(target.sub) if target.sub else "")
+        text = target_written(Target(target.part, "any" if _inside(old, target.part) else "none", target.sub))
         if target.scope == "own":
             changes.append(f"{label}: '{target.part}@own' is written '{target.part}@any': the tests in the folder are "
                            "in no instance of the repeating folder")

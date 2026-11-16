@@ -8,10 +8,10 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable
 
+from xarch.kernel.logic.targets import target_written
 from xarch.modules.rules.domain.rule import EXISTING, MUST_BE_REACHED, Match, OwnCheck, Rule
 from xarch.profile_values.checks import Quantified, WrittenCheck, WrittenTarget
 from xarch.profile_values.language import CheckedLanguage
-from xarch.profile_values.placement import Target
 
 _IMPORT = re.compile(r"%import (?P<dotted>[^ %]+) (?P<name>[^ %]+)%")
 """The token of a line that imports a name from a file of the app, in the code of a check written for the
@@ -70,12 +70,8 @@ def _filled(files: tuple[tuple[str, str], ...], language: CheckedLanguage) -> tu
 def _target(match: Match) -> WrittenTarget:
     if (match,) == EXISTING:
         return WrittenTarget(match.kind)
-    return WrittenTarget(match.kind, (*(_place(t) for t in match.places), *(_dotted(n) for n in match.names),
+    return WrittenTarget(match.kind, (*map(target_written, match.places), *(_dotted(n) for n in match.names),
                                       *match.words))
-
-
-def _place(target: Target) -> str:
-    return target.part + ("@any" if target.scope == "any" else "") + ("/" + "/".join(target.sub) if target.sub else "")
 
 
 def _dotted(name: tuple[str, ...]) -> str:
