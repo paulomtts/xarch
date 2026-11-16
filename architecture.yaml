@@ -13,9 +13,9 @@ parts:
       Is it an invariant of one of this module's values or records (a validation that refuses to build a wrong one),
       or an error the module raises, that runs with no file read and no clock? If yes, it goes here, on that value. If
       it is a value the module hands out as it is, with nothing to reshape, it goes in `domain/published.py`, which
-      `contract/` re-exports. If spec builds it and rules reads it in full, it belongs in `profile_values/`. If it is
-      a pure rule that is not one value's invariant, it belongs in `application/logic/`. If it must read anything, it
-      is a service step through a port.
+      `contract/` re-exports. If it is a value a profile or its language's data file says, which spec builds and rules
+      reads in full too, it belongs in `profile_values/`. If it is a pure rule that is not one value's invariant, it
+      belongs in `application/logic/`. If it must read anything, it is a service step through a port.
     may_import: [kernel, kernel-logic, profile-values]
     forbidden: pure
     holds: classes
@@ -42,8 +42,9 @@ parts:
     litmus: >-
       Is it something a use case of this module needs from outside it (files on disk, the source a reader parses,
       another module's answer), declared as a `Protocol` in this module's own words, with no body? If yes, it goes
-      here. If it has a body that reads a file or calls another module, it belongs in `adapters/`. If it is a value
-      the port hands back, it belongs in `domain/`.
+      here. If it has a body that reads a file or calls another module, it belongs in `adapters/`. A value the port
+      hands back belongs in `domain/`, unless it is already a value of `profile_values/` or `kernel/` that the port
+      hands back as it is.
     may_import: [domain, kernel, kernel-logic, profile-values]
     forbidden: pure
     holds: classes
@@ -70,10 +71,11 @@ parts:
     role: maps failures to Result variants
     litmus: >-
       Does it turn each error a service raises into the Result variant that says it, and return what the service
-      assembled, deciding nothing else? If yes, it goes here, and no error of the module leaves it past here. A method
-      that only hands a command to a use case that cannot fail is honest here. If it builds a Result from logic or
-      domain values itself, that assembly belongs in a service. If it parses arguments or prints, it belongs in
-      `cli/`.
+      assembled, deciding nothing else? If yes, it goes here, and no error of the module leaves it past here. A use
+      case that cannot fail has its method here too, handing the service the fields of its command and returning what
+      the service assembled; a method that only passes its own parameters on adds nothing, and `pass-through` lists
+      it. If it builds a Result from logic or domain values itself, that assembly belongs in a service. If it parses
+      arguments or prints, it belongs in `cli/`.
     may_import: [services, contract, domain/errors, kernel, kernel-logic, profile-values]
     holds: classes
     names: "*Controller"
@@ -118,8 +120,9 @@ parts:
     role: the only place for commands and terminal output
     litmus: >-
       Does it parse arguments, call controllers, and print what `reports/` words, whichever module's data it shows? If
-      yes, it goes here. If it builds one use case out of the Results of two modules, or decodes the conventions of a
-      Result, that belongs in a module's service, or in `bootstrap/` when it wires two modules. If it chooses words,
+      yes, it goes here. If it computes a value out of one module's Result for another, merges two Results into one,
+      or decodes the conventions of a Result, that belongs in a module's service. Passing a field of one Result
+      unchanged into another module's command, or showing two Results side by side, is the cli's. If it chooses words,
       it belongs in `reports/`. If it holds a business rule, it belongs in a module.
     may_import: [reports, controller@any, contract@any, kernel, kernel-logic]
     libraries: [typer]
@@ -151,9 +154,10 @@ parts:
     path: bootstrap
     role: "composition root: binds ports to adapters, hands controllers to cli/"
     litmus: >-
-      Does it choose which adapter fills which port, build the services and controllers around them, or wrap one
-      module's controller for another module's port? If yes, it goes here, and nowhere else. If it implements one
-      module's port against a real system, it belongs in `adapters/`. If it decides a rule, it belongs in a module.
+      Does it choose which adapter fills which port, build the services and controllers around them, and hand one
+      module's controller to the adapter of another module that wraps it? If yes, it goes here, and nowhere else. A
+      class that implements a port, even against another module's controller, is an adapter and belongs in
+      `adapters/`. If it decides a rule, it belongs in a module.
     may_import: everything
     tier: wired
     folders: [migrations]
@@ -164,8 +168,8 @@ parts:
     litmus: >-
       Is it part of what the module promises callers outside it: a command a caller sends, a Result that comes back,
       or an id? If yes, it goes here, typed in full, with no field of an opaque type. A value with nothing to reshape
-      is listed in `domain/published.py` and re-exported here; everything else the module hands out is a type of its
-      own here. If it is a domain value, a service type or a port, it stays where it is, and a type of the contract
+      is listed in `domain/published.py`, or is a value of `profile_values/`, and is re-exported here; everything else
+      the module hands out is a type of its own here. If it is a domain value, a service type or a port, it stays where it is, and a type of the contract
       goes here instead.
     may_import: ["domain/values:*Id", "domain/published", kernel, kernel-logic, profile-values]
     forbidden: published
@@ -174,17 +178,15 @@ parts:
 
   profile-values:
     path: profile_values
-    role: the values of a profile, of the language it names and of what its own checks found, which spec and rules both
-      need as they are
+    role: the values a profile and the data file of the language it names say, which spec builds and rules reads in full
     litmus: >-
-      Is it a value with business meaning that spec and rules both need as it is: a value of the profile (a target,
-      a tier, a check the profile writes, what holding that check to its examples found) or of the language a check
-      reads (a fact a reader supplies, and how well), which one of the two builds and the other reads in full, field by
-      field, or which a rule of `kernel/logic/` takes or returns?
-      If yes, it goes here, as a record with no rule beyond its own invariants. If rules reads less than all of it,
-      spec hands it out in its contract and rules holds a smaller value of its own. If only one module needs it, it
-      belongs in that module's `domain/`. If it has no business meaning, one that could be lifted unchanged into an
-      unrelated system, it belongs in `kernel/`.
+      Is it a value that a profile, or the data file of the language it names, says, which spec builds and rules reads
+      in full, field by field? If yes, it goes here, as a record with no rule beyond its own invariants. What a rule of
+      `kernel/logic/` grades of such values (a key's shortfall of the facts a language supplies), which spec and rules
+      both read in full, goes here too. If it is what a use case of one module found, it is that module's Result, in
+      its `contract/`. If rules reads less than all of it, spec hands it out in its contract and rules holds a smaller
+      value of its own. If only one module needs it, it belongs in that module's `domain/`. If it has no business
+      meaning, one that could be lifted unchanged into an unrelated system, it belongs in `kernel/`.
     may_import: [kernel]
     shared: 2
     holds: classes
