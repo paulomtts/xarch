@@ -11,6 +11,7 @@ from dataclasses import replace
 from xarch.kernel.logic.placement import module_steps, place_of, reaches, with_itself
 from xarch.kernel.placement import EACH, Marks, Place, Target
 from xarch.modules.rules.domain.values import Profile
+from xarch.profile_values.excluded import Excluded
 
 
 def place(profile: Profile, path: tuple[str, ...]) -> Place | None:
@@ -21,6 +22,11 @@ def place(profile: Profile, path: tuple[str, ...]) -> Place | None:
     if not path or any(matches(folder, path, profile.language.marks) for folder in profile.folders):
         return found
     return None
+
+
+def excluded_by(profile: Profile, path: tuple[str, ...]) -> Excluded | None:
+    """The folder the profile excludes that a path below the app lies below, if any: nothing there is the app's source."""
+    return next((e for e in profile.excluded if path[:len(e.path)] == e.path), None)
 
 
 def matches(pattern: tuple[str, ...], path: tuple[str, ...], marks: Marks) -> bool:

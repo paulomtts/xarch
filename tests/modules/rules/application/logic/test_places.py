@@ -1,9 +1,12 @@
 """Where code sits in a hand-made profile, how a place is named, and whether an import between two places is allowed."""
+from dataclasses import replace
+
 import pytest
 
 from tests.modules.rules.builders import PROFILE, TWO, profile, steps
 from xarch.kernel.placement import Marks, Place, Target
-from xarch.modules.rules.application.logic.places import allowed, label, matches, place, targets_of
+from xarch.modules.rules.application.logic.places import allowed, excluded_by, label, matches, place, targets_of
+from xarch.profile_values.excluded import Excluded
 
 
 @pytest.mark.parametrize("path, expected", [
@@ -136,3 +139,16 @@ def test_a_path_matches_a_pattern_only_exactly(path, answer):
 
 def test_a_path_is_matched_with_the_marks_it_is_given_and_with_none_as_written():
     assert matches(("domain", "x"), ("domain", "x.src"), Marks()) is False
+
+
+EXAMPLES, VENDOR = Excluded(("examples",), "shipped as data"), Excluded(("vendor", "lib"), "not ours")
+
+
+@pytest.mark.parametrize("path, expected", [
+    pytest.param(("examples", "x.py"), EXAMPLES, id="a file below an excluded folder is excluded by it"),
+    pytest.param(("vendor", "lib", "deep", "y.py"), VENDOR, id="at any depth, by the folder it lies below"),
+    pytest.param(("vendor", "other.py"), None, id="a folder that only begins an excluded one excludes nothing"),
+    pytest.param(("examples_x", "y.py"), None, id="nor one that only starts with its name"),
+])
+def test_the_folder_that_excludes_a_path_is_the_one_it_lies_below(path, expected):
+    assert excluded_by(replace(PROFILE, excluded=(EXAMPLES, VENDOR)), path) == expected

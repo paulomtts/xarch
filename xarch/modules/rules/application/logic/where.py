@@ -24,7 +24,7 @@ from pathlib import Path
 from xarch.kernel.logic.imports import may_import, shown_target
 from xarch.kernel.logic.placement import repeat_of
 from xarch.kernel.placement import EACH, Place, Target
-from xarch.modules.rules.application.logic.places import matches, place, targets_of
+from xarch.modules.rules.application.logic.places import excluded_by, matches, place, targets_of
 from xarch.modules.rules.application.logic.tier_of import NO_TIER, Tested, allowance, may_use_fakes, tested
 from xarch.modules.rules.domain.values import (
     FakePlace,
@@ -96,9 +96,9 @@ def _relative(path: Path, root: Path) -> str:
 
 def _app(profile: Profile, found: Resolved, app: str, tests: str) -> Placed:
     steps = found.steps
-    for exclusion in profile.excluded:
-        if steps[:len(exclusion.path)] == exclusion.path:
-            return UngovernedPlace(found, (), None, f"{EXCLUDED_NOTE}: {exclusion.reason}")
+    exclusion = excluded_by(profile, steps)
+    if exclusion is not None:
+        return UngovernedPlace(found, (), None, f"{EXCLUDED_NOTE}: {exclusion.reason}")
     where = place(profile, steps)
     if where is None:
         nearest = _nearest(profile, steps, False, app)

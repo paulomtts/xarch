@@ -5,11 +5,11 @@ from pathlib import Path
 
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic import (
-    closed_tree,
     cycles,
     duplicates,
     enforcement,
     expansion,
+    governed,
     scenarios,
     shared,
     stand_ins,
@@ -72,13 +72,13 @@ class SourceCheckService:
             raise RootMissing(absent[0])
         rules = self._profiles.profile(profile)
         extension = rules.language.extension
-        paths = [p for p in self._tree.paths(root, extension) if not closed_tree.excluded(rules, p)]
-        app = self._tree.read(root, [p for p in paths if closed_tree.governed(rules, p)])
+        paths = [p for p in self._tree.paths(root, extension) if not governed.excluded(rules, p)]
+        app = self._tree.read(root, [p for p in paths if governed.governed(rules, p)])
         table = rules.scenarios.table if rules.scenarios is not None else None
         test_files = self._tree.read(tests, self._tree.paths(tests, extension), table) if tests is not None else []
         tests_root = tests.name if tests is not None else ""
         shown = root.name
-        unread = [SourceFile("/".join((shown, *p)), p, ()) for p in paths if not closed_tree.governed(rules, p)]
+        unread = [SourceFile("/".join((shown, *p)), p, ()) for p in paths if not governed.governed(rules, p)]
         book = expansion.book(rules)
         own = tuple(check.rule for check in rules.checks)
         facts = facts_of(app, test_files, rules, package, tests_root,
@@ -110,7 +110,7 @@ class SourceCheckService:
         written = run(own, facts, rules)
         found += [item for item in written if isinstance(item, Violation)]
         state = self._enforcement(root, package, profile, rules, app, test_files,
-                                  closed_tree.ungoverned(paths, rules, shown), tests_root if tests is not None else None,
+                                  governed.ungoverned(paths, rules, shown), tests_root if tests is not None else None,
                                   run(book["holds"], facts, rules), run(book["untested"], facts, rules),
                                   [*run(book["pass-through"], facts, rules), *written])
         state = replace(state, checks=tuple((rule.id, read(rule, facts, rules)) for rule in own))

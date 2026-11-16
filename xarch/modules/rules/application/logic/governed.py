@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from xarch.modules.rules.application.logic.imports import dotted
-from xarch.modules.rules.application.logic.places import place
+from xarch.modules.rules.application.logic.places import excluded_by, place
 from xarch.modules.rules.domain.values import Profile
 
 
@@ -23,7 +23,7 @@ def ungoverned(paths: Iterable[tuple[str, ...]], profile: Profile, shown: str) -
 
 def excluded(profile: Profile, path: tuple[str, ...]) -> bool:
     """Whether the file at path below the app lies below a folder the profile excludes."""
-    return any(path[:len(e.path)] == e.path for e in profile.excluded)
+    return excluded_by(profile, path) is not None
 
 
 def governed(profile: Profile, path: tuple[str, ...]) -> bool:
