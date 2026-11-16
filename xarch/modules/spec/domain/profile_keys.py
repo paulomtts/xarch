@@ -323,10 +323,11 @@ _KEYS: tuple[Key, ...] = (
        "a whole number, at least 2: every public name a file of the part defines at the top level (a class, a function, "
        "a name an assignment binds) is used by at least this many users, or it is reported where it is defined. A "
        "user is the instance of a repeating folder a using file lies in, or the part of one outside them; the tests, "
-       "a file in no part and the part's own place do not count. A file uses a name when it imports it and mentions "
-       "it again, or reads it through an import of its file; an import it never mentions again is a re-export, and "
-       "who imports the name from there uses it. A name another name of the part mentions (a field's type, a helper "
-       "a function calls) has that name's users too. A name with one user belongs to that user",
+       "a file in no part, a file of a part that is shared itself and the part's own place do not count. A file uses "
+       "a name when it imports it and mentions it again, or reads it through an import of its file; an import it "
+       "never mentions again is a re-export, and who imports the name from there uses it. A name another name of a "
+       "shared part mentions (a field's type, a helper a function calls) has that name's users too. A name with one "
+       "user belongs to that user",
        _in_two("shared: 2\n"), rules=("shared",)),
     _k(PART, "libraries", "the outside packages the part may import",
        "[<package>, ...] by top-level name, or everything; none by default; the standard library is always allowed, but "

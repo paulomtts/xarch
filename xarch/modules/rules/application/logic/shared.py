@@ -4,8 +4,10 @@ binds, a name an assignment binds) is used by at least least users, or it is rep
 
 A user is where a file of the app that uses the name lies: the instance of a repeating folder it is in, for a file of
 a part in one (every part of that instance counts as that one user), else its part. A file in no part (the structure,
-or ungoverned) is no user, the tests are never read, and the place the name is defined in is never its own user (for
-a part outside every repeating folder, another file of the part itself; for one inside, a file of its own instance).
+or ungoverned) is no user, nor is a file of a part declared shared, which passes on the users of its own names that
+mention the name instead (below); the tests are never read, and the place the name is defined in is never its own
+user (for a part outside every repeating folder, another file of the part itself; for one inside, a file of its own
+instance).
 
 A file uses a name when it imports it from the file that defines it (`from <file> import <name>`) and mentions it
 anywhere else, in code or an annotation; or reads it through an import of its file or package (a use of
@@ -49,7 +51,7 @@ def violations(app: Iterable[SourceFile], profile: Profile, root: str) -> list[V
     users: dict[Name, set[str]] = {key: set() for key in defined}
     for file, steps, package in files:
         own = _user(where[steps], profile)
-        if own is None:
+        if own is None or where[steps].part in profile.shared:
             continue
         for key in _used(file, steps, package, known, passed, defined, root):
             if own != _user(where[key[0]], profile):

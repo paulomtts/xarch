@@ -118,3 +118,16 @@ def test_the_mention_is_followed_through_the_imports_of_the_part_s_own_files_and
 def test_the_check_is_off_for_a_part_that_is_not_shared():
     assert problems(WEAK, checked=profile()) == []
     assert problems(source("modules/rules/domain/values.py", classes=(Class(3, "Only"),))) == []
+
+
+def test_a_file_of_another_shared_part_is_no_user_but_passes_on_the_users_of_its_names_that_mention_the_name():
+    both = profile(shared={"kernel": 2, "web": 2})
+    helper = source("kernel/steps.py", functions=(Function(3, "steps"),), module_functions=("steps",))
+    plain = source("web/report.py", imp(1, "app.kernel.steps", "steps"))
+    assert problems(helper, plain, user("modules/rules/domain/values.py", "steps", module="app.kernel.steps"),
+                    checked=both)[0].startswith("app/kernel/steps.py:3: the function steps is used by modules/rules alone")
+    mentioning = source("web/report.py", imp(1, "app.kernel.steps", "steps"),
+                        functions=(Function(5, "report", named=frozenset({"steps"})),), module_functions=("report",))
+    users = [user(path, "report", module="app.web.report") for path in ("modules/rules/domain/values.py",
+                                                                       "modules/spec/domain/values.py")]
+    assert problems(helper, mentioning, *users, checked=both) == []
