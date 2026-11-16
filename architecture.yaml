@@ -87,12 +87,12 @@ parts:
     path: modules/<module>/adapters
     role: implement the ports on the filesystem or another module's contract
     litmus: >-
-      Does it implement one of this module's ports against the filesystem, the checked language's source or another
-      module's controller, translating between that and the module's own types, and naming no other module but the
-      `contract/` of the one whose controller it wraps? If yes, it goes here. If it decides a rule of the module (what
-      a check finds, whether a fact is supplied), that rule belongs in `application/logic/`, and the adapter hands it
-      the translated values. If it knows no module's types and only wraps a technology (YAML, TOML, the interpreter),
-      it belongs in `platform/`.
+      Does it implement one of this module's ports against something outside the module (a technology, through a
+      client or reader of `platform/`; the checked language's source; or another module's controller), translating
+      between that and the module's own types, and naming no other module but the `contract/` of the one whose
+      controller it wraps? If yes, it goes here. If it decides a rule of the module (what a check finds, whether a
+      fact is supplied), that rule belongs in `application/logic/`, and the adapter hands it the translated values. If
+      it knows no module's types and only wraps a technology, it belongs in `platform/`.
     may_import: [ports, domain, kernel, kernel-logic, profile-values, platform, contract@any]
     must_import: [platform, contract@any]
     libraries: [ast, tokenize]
@@ -105,9 +105,9 @@ parts:
     path: platform
     role: "the clients and readers of the technologies xarch uses, knowing no module"
     litmus: >-
-      Is it a client or reader for a technology xarch uses (the filesystem, the package data, the installed package's
-      metadata, TOML, YAML, JSON, the interpreter running xarch) that knows none of any module's types? If yes, it goes here, named for the
-      technology. If it translates a module's types for a port, it belongs in that module's `adapters/`. Which folder
+      Is it a client or reader of one technology xarch uses, wherever that technology lives (on the machine, in the
+      interpreter running xarch, or as a service across the network), that knows none of any module's types? If yes,
+      it goes here, named for the technology. If it translates a module's types for a port, it belongs in that module's `adapters/`. Which folder
       a relative path is read from is its caller's to say: a method that makes a path whole or walks the folders above
       it refuses a path not given in full.
     may_import: [kernel, kernel-logic]
