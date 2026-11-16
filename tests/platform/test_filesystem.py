@@ -41,6 +41,11 @@ def test_the_nearest_file_of_a_name_is_found_in_the_folder_or_above_it(tmp_path)
     assert fs.find_upward(tmp_path / "a" / "b", "nothing.here") is None
 
 
+def test_a_relative_start_is_refused_by_the_upward_search():
+    with pytest.raises(ValueError, match="is not a path in full"):
+        FileSystem().find_upward(Path("a"), "pyproject.toml")
+
+
 def test_writing_makes_the_folders_above_and_reads_back(tmp_path):
     fs = FileSystem()
     fs.write_text(tmp_path / "new" / "deep" / "a.txt", "text")

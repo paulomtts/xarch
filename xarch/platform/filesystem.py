@@ -27,9 +27,11 @@ class FileSystem:
         return sorted(p.relative_to(path).parts for p in path.rglob("*") if p.is_dir())
 
     def find_upward(self, start: Path, name: str) -> Path | None:
-        """The nearest file called name in start or a folder above it (start made absolute first), or None."""
-        here = start.absolute()
-        for folder in [here, *here.parents]:
+        """The nearest file called name in start, given in full, or a folder above it, or None; a relative start is
+        refused (ValueError), since which folder it is read from is its caller's to say."""
+        if not start.is_absolute():
+            raise ValueError(f"{start} is not a path in full: say which folder it is read from")
+        for folder in [start, *start.parents]:
             if (folder / name).is_file():
                 return folder / name
         return None

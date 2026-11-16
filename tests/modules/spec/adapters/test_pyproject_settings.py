@@ -36,10 +36,9 @@ def test_the_nearest_pyproject_decides_even_without_the_key(tmp_path):
     assert settings().configured_profile(tmp_path / "inner" / "app") is None
 
 
-def test_a_relative_app_path_is_looked_up_from_the_working_directory(tmp_path, monkeypatch):
-    pyproject = write(tmp_path / "pyproject.toml", '[tool.xarch]\nprofile = "web"\n')
-    monkeypatch.chdir(tmp_path)
-    assert settings().configured_profile(Path("app")) == Configured("web", pyproject)
+def test_a_relative_app_path_is_refused():
+    with pytest.raises(ValueError, match="is not a path in full"):
+        settings().configured_profile(Path("app"))
 
 
 def test_no_pyproject_means_nothing_configured(tmp_path):
@@ -77,10 +76,9 @@ def test_the_app_folder_is_read_relative_to_the_pyproject_looked_up_from_the_fol
     assert settings().configured_app(tmp_path) == tmp_path / "services" / "shop"
 
 
-def test_a_relative_folder_asked_from_is_looked_up_from_the_working_directory(tmp_path, monkeypatch):
-    write(tmp_path / "pyproject.toml", '[tool.xarch]\napp = "shop"\n')
-    monkeypatch.chdir(tmp_path)
-    assert settings().configured_app(Path(".")) == tmp_path / "shop"
+def test_a_relative_folder_asked_from_is_refused():
+    with pytest.raises(ValueError, match="is not a path in full"):
+        settings().configured_app(Path("."))
 
 
 @pytest.mark.parametrize("text", [
