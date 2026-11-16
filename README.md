@@ -610,7 +610,8 @@ below 0.3. A file with fewer than 2 pieces judged has nothing to rank, and its p
 --pieces` is refused: a sweep over pieces is noise. By default nothing but the piece is sent; `--context imports`
 sends the file's opening lines first (those before its first piece: for most files its docstring and imports),
 masked. In trials that cut false alarms and missed more misplaced pieces, and it raises every number, so the two are
-never compared; the reading says which was used.
+never compared; the reading says which was used. `--dry-run --pieces` lists each piece's request after the files',
+with its name, kind and lines, and the exact text it would send.
 
 Exit codes: 0 when the review ran to the end, whatever it read (doubtful files are not failures); 2 when it refused
 before sending anything (no selection, `--all` with paths, `--all --pieces`, over `--max-files`, no key, a path

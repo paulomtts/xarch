@@ -63,11 +63,12 @@ MASKED = ("masked in each text: the dotted name each import of the app's own cod
 QUOTE = "    | "
 
 
-def _what_leaves(sends: Sender) -> str:
+def _what_leaves(sends: Sender, pieced: bool = False) -> str:
     """What leaves the machine in a review that sends, to whom, and that the key alone allows it."""
     now = "set" if sends.keyed else "not set"
+    each = "each file and each piece of a file" if pieced else "each file"
     return (f"Without --dry-run, review sends to {sends.service} ({sends.at}), as the model {sends.model}, the masked "
-            "text of each file below that is not in the cache and the question after it: nothing else of the project. "
+            f"text of {each} below that is not in the cache and the question after it: nothing else of the project. "
             f"It sends whenever {sends.key} is set: the key alone allows it, and the key is {now} now.")
 
 
@@ -77,7 +78,7 @@ def plan_lines(planned: ReviewPlanned) -> list[str]:
     asked = len(planned.requests)
     judged = sum(not item.piece for item in planned.requests)
     cached = sum(item.cached for item in planned.requests)
-    lines = [f"review: advisory. {ADVISORY}", NOTHING_SENT, _what_leaves(planned.sends),
+    lines = [f"review: advisory. {ADVISORY}", NOTHING_SENT, _what_leaves(planned.sends, bool(planned.piece_ask)),
              f"{planned.found} file(s) found ({', '.join(WAYS[way] for way in planned.by)}), {judged} to be judged, "
              f"{len(planned.left_out)} left out; {asked} request(s), {planned.characters:,} characters, about "
              f"{planned.tokens:,} tokens; {cached} in the cache already.", *_reasked(planned.reorders), "",

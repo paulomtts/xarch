@@ -285,6 +285,7 @@ def test_a_dry_run_with_pieces_says_the_question_of_a_piece_what_is_sent_before_
     lines = plan_lines(planned)
     assert lines[3].startswith("3 file(s) found (paths, --files-from), 1 to be judged, 2 left out; 2 request(s)")
     assert "  a request of a piece of a file asks instead: Which part? One piece." in lines
+    assert "the masked text of each file and each piece of a file below that is not in the cache" in lines[2]
     assert "  sent before each piece: nothing: the piece alone" in lines
     assert "request 2 of 2: app/a.py piece f (function, lines 3-40, domain, 1,100 characters)" in lines
     document = json.loads(plan_document("cli", planned))
