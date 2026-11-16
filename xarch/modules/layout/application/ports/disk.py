@@ -19,6 +19,6 @@ class Disk(Protocol):
         ...
 
     def below(self, root: Path, each: tuple[str, ...]) -> list[tuple[str, ...]]:
-        """Every folder at any depth inside the repeating folder each of root, as its path below it; [] if there is
-        none."""
+        """Every folder at any depth inside the repeating folder each of root that the disk shows (none it hides), as its
+        path below it; [] if there is none."""
         ...

@@ -6,14 +6,11 @@ from collections.abc import Collection, Iterable
 from xarch.kernel.violations import Violation
 from xarch.modules.layout.domain.structure import Naming
 
-HIDDEN = "."
-"""How the name of a folder starts that the filesystem hides, such as `.cache`."""
-
 
 def hidden(path: tuple[str, ...], naming: Naming) -> bool:
-    """A folder the filesystem hides, or whose name is private in the language (such as one of compiled files), which
-    mirrors nothing and is never checked."""
-    return any(step.startswith(HIDDEN) or (naming.private and step.startswith(naming.private)) for step in path)
+    """A folder whose name, or the name of a folder above it, is private in the language (such as one of compiled
+    files), which mirrors nothing and is never checked."""
+    return bool(naming.private) and any(step.startswith(naming.private) for step in path)
 
 
 def unmirrored(tests: str, root: str, each_root: tuple[str, ...], folders: Iterable[tuple[str, ...]],

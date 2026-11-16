@@ -3,6 +3,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+HIDDEN = "."
+"""How the name of a file or folder starts that the filesystem hides, such as `.cache`."""
+
 
 class FileSystem:
     def exists(self, path: Path) -> bool:
@@ -21,10 +24,12 @@ class FileSystem:
         return [p.name for p in path.iterdir() if p.is_dir()]
 
     def folders(self, path: Path) -> list[tuple[str, ...]]:
-        """Every folder below path, at any depth, as its path below it, sorted; [] if path is not a folder."""
+        """Every folder below path, at any depth, that the filesystem shows, as its path below it, sorted: none it
+        hides, such as `.cache`, nor any inside one; [] if path is not a folder."""
         if not path.is_dir():
             return []
-        return sorted(p.relative_to(path).parts for p in path.rglob("*") if p.is_dir())
+        below = (p.relative_to(path).parts for p in path.rglob("*") if p.is_dir())
+        return sorted(steps for steps in below if not any(step.startswith(HIDDEN) for step in steps))
 
     def find_upward(self, start: Path, name: str) -> Path | None:
         """The nearest file called name in start, given in full, or a folder above it, or None; a relative start is

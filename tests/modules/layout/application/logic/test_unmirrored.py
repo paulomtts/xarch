@@ -8,8 +8,8 @@ from xarch.modules.layout.application.logic.unmirrored import hidden, unmirrored
 
 
 @pytest.mark.parametrize("path, is_hidden", [
-    pytest.param(("docs", "__pycache__"), True, id="a cache folder is hidden"),
-    pytest.param((".cache",), True, id="a dot folder is hidden"),
+    pytest.param(("docs", "__pycache__"), True, id="a folder of compiled files is hidden"),
+    pytest.param((".cache",), False, id="a folder the filesystem hides is the disk's to leave out, not the language's"),
     pytest.param(("_private", "x"), True, id="a folder below a private one is hidden"),
     pytest.param(("docs", "domain"), False, id="a plain folder is not hidden"),
 ])
