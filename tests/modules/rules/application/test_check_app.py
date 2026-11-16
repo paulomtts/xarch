@@ -42,20 +42,20 @@ def check(files: dict, when: CheckApp, structure: list[Violation] | None = None,
 
 
 @pytest.mark.parametrize("given, when, then", [
-    pytest.param(dict(files=GOOD), CheckApp(ROOT, "cli"),
+    pytest.param(dict(files=GOOD), CheckApp(ROOT, "cli", ROOT.parent),
                  AppChecked((), EnforcementView(), {"rules": "ask first"}, True),
                  id="an app with nothing wrong passes, with the profile's hints"),
-    pytest.param(dict(files=BAD, structure=[MISSING]), CheckApp(ROOT, "cli"),
+    pytest.param(dict(files=BAD, structure=[MISSING]), CheckApp(ROOT, "cli", ROOT.parent),
                  AppChecked((IMPORT, MISSING), EnforcementView(), {"rules": "ask first"}, False),
                  id="the source's violations come first, then the structure's, and the check fails"),
-    pytest.param(dict(files={**GOOD, "stray.py": []}), CheckApp(ROOT, "cli", strict=True),
+    pytest.param(dict(files={**GOOD, "stray.py": []}), CheckApp(ROOT, "cli", ROOT.parent, strict=True),
                  AppChecked((), EnforcementView(ungoverned=("pkg/stray.py",), ungoverned_folders=("pkg/stray.py",),
                                             strict=(FindingView("ungoverned", "pkg/stray.py"),)),
                             {"rules": "ask first"}, False),
                  id="under strict a finding of the enforcement fails the check too"),
-    pytest.param(dict(files=GOOD), CheckApp(Path("/elsewhere"), "cli"), NotADirectory(Path("/elsewhere")),
+    pytest.param(dict(files=GOOD), CheckApp(Path("/elsewhere"), "cli", ROOT.parent), NotADirectory(Path("/elsewhere")),
                  id="an app folder that is no folder is refused"),
-    pytest.param(dict(files=GOOD), CheckApp(ROOT, "broken"), ChecksCannotRun(REFUSED),
+    pytest.param(dict(files=GOOD), CheckApp(ROOT, "broken", ROOT.parent), ChecksCannotRun(REFUSED),
                  id="a profile whose own checks cannot run is refused with every problem"),
 ])
 def test_check_app(given, when, then):
@@ -63,5 +63,5 @@ def test_check_app(given, when, then):
 
 
 def test_without_strict_a_finding_of_the_enforcement_does_not_fail_the_check():
-    result = check({**GOOD, "stray.py": []}, CheckApp(ROOT, "cli"))
+    result = check({**GOOD, "stray.py": []}, CheckApp(ROOT, "cli", ROOT.parent))
     assert isinstance(result, AppChecked) and result.ok

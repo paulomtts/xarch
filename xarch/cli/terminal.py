@@ -70,10 +70,16 @@ def refusal(output: Format) -> Callable[[str], typer.Exit]:
     return json_refusal if output is Format.json else fail
 
 
+def in_full(path: Path) -> Path:
+    """A path given on the command line, read from the working folder when it is relative: the one place xarch reads
+    the folder it was started in, which every module is handed as a path in full."""
+    return Path.cwd() / path
+
+
 def app_for(spec: SpecController, app_path: Path | None, refuse: Callable[[str], typer.Exit] = fail) -> Path:
     """The app folder to work on, as spec chooses it from --app and the working folder; a refusal is raised as what
     refuse makes of its reason."""
-    match spec.choose_app(ChooseApp(Path.cwd(), app_path)):
+    match spec.choose_app(ChooseApp(in_full(Path()), app_path)):
         case AppChosen(app):
             return app
         case ProfileRefused(reason):
@@ -88,7 +94,7 @@ def selection(spec: SpecController, app_path: Path, override: str | None,
               tests: Path | None, refuse: Callable[[str], typer.Exit] = fail) -> tuple[str, Path | None]:
     """The architecture in force and the tests root to check, as spec selects them; a refusal is raised as what
     refuse makes of its reason."""
-    match spec.select(SelectProfile(app_path, override, tests)):
+    match spec.select(SelectProfile(in_full(app_path), override, tests)):
         case ProfileSelected(name, chosen):
             return name, chosen
         case NoProfileChosen(known):

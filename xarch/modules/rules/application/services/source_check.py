@@ -31,8 +31,8 @@ class SourceCheckService:
         self._tree, self._profiles = tree, profiles
 
     def check(self, root: Path, package: str, profile: str, tests: Path | None = None) -> Checked:
-        """The violations below root and below tests, and the state of the check's enforcement; raises RootMissing
-        when either is not a folder.
+        """The violations below root and below tests, each given in full with its links followed, and the state of the
+        check's enforcement; raises RootMissing when either is not a folder.
 
         Only the app's files that the profile governs are read: a file in a folder that is neither a part nor a
         folder of the layout (such as reference code kept as data) is never read, and is listed as ungoverned; a file
@@ -48,9 +48,8 @@ class SourceCheckService:
         app = self._tree.read(root, [p for p in paths if closed_tree.governed(rules, p)])
         table = rules.scenarios.table if rules.scenarios is not None else None
         test_files = self._tree.read(tests, self._tree.paths(tests, extension), table) if tests is not None else []
-        tests_root = self._tree.resolved(tests).name if tests is not None else ""
-        resolved = self._tree.resolved(root)
-        shown = resolved.name
+        tests_root = tests.name if tests is not None else ""
+        shown = root.name
         unread = [SourceFile("/".join((shown, *p)), p, ()) for p in paths if not closed_tree.governed(rules, p)]
         book = expansion.book(rules)
         own = tuple(check.rule for check in rules.checks)
@@ -82,7 +81,7 @@ class SourceCheckService:
         found += run(book["closed-tree"], facts, rules)
         written = run(own, facts, rules)
         found += [item for item in written if isinstance(item, Violation)]
-        state = self._enforcement(resolved, package, profile, rules, app, test_files,
+        state = self._enforcement(root, package, profile, rules, app, test_files,
                                   closed_tree.ungoverned(paths, rules, shown), tests_root if tests is not None else None,
                                   run(book["holds"], facts, rules), run(book["untested"], facts, rules),
                                   [*run(book["pass-through"], facts, rules), *written])

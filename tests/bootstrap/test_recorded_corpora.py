@@ -48,7 +48,7 @@ def archived(name: str, into: Path) -> Path:
 
 
 def findings(project: Path, profile: str, app: str = "xarch") -> list[list]:
-    checked = build_controllers().rules.check_app(CheckApp(project / app, profile, project / "tests", True))
+    checked = build_controllers().rules.check_app(CheckApp(project / app, profile, project, project / "tests", True))
     assert isinstance(checked, AppChecked)
     return ([["V", v.rule, v.file, v.line, v.message, v.fix] for v in checked.violations]
             + [["W", w.rule, w.file, w.line, w.message, w.fix] for w in checked.enforcement.weak])

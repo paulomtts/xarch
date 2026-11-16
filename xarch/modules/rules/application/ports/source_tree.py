@@ -37,7 +37,7 @@ class SourceTree(Protocol):
         holds its error."""
         ...
 
-    def resolved(self, path: Path) -> Path:
-        """The path in full, from the working folder when it is relative, every link followed: the folder a path
-        given on the command line names."""
+    def resolved(self, folder: Path, path: Path) -> Path:
+        """The path, read from folder (given in full) when it is relative, in full with every link followed and every
+        `..` taken."""
         ...

@@ -7,7 +7,7 @@ import typer
 
 from xarch.cli.reports import profile_report as report
 from xarch.cli.reports import vocabulary_report as words
-from xarch.cli.terminal import AppPath, Format, FormatOption, app_for, fail, no_profile, refusal
+from xarch.cli.terminal import AppPath, Format, FormatOption, app_for, fail, in_full, no_profile, refusal
 from xarch.modules.rules.application.controller import RulesController
 from xarch.modules.rules.contract import (
     CATEGORIES,
@@ -115,7 +115,7 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
         if profile is not None or configured:
             if key is not None or (profile is not None and configured):
                 raise refuse("give either a key or a profile (--profile or --configured), not both")
-            match spec.view(ViewProfile(app_for(spec, app_path, refuse), profile)):
+            match spec.view(ViewProfile(in_full(app_for(spec, app_path, refuse)), profile)):
                 case ProfileViewed() as seen:
                     _show(output, report.view_document(seen), report.view_lines(seen))
                 case NoProfileChosen(known):
@@ -147,7 +147,7 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
         own and passes `xarch profile check` as it is. Nothing is overwritten: when any file exists nothing is written
         and the ones that exist are named. pyproject.toml is not edited: the line to put the copy in force is printed."""
         root = app_for(spec, app_path).parent
-        match spec.new_profile(NewProfile(name, source, root, out)):
+        match spec.new_profile(NewProfile(name, source, root, in_full(Path()), out)):
             case ProfileCreated() as done:
                 for line in report.created_lines(done, source):
                     typer.echo(line)
@@ -166,7 +166,7 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
         problems, 2 when no profile can be chosen."""
         refuse = refusal(output)
         app = app_for(spec, app_path, refuse)
-        match spec.check_profile(CheckProfile(app, target)):
+        match spec.check_profile(CheckProfile(in_full(app), target)):
             case ProfileChecked() as checked:
                 count = 0
                 if checked.origin is not None:
@@ -189,7 +189,7 @@ def _show(output: Format, document: str, lines: list[str]) -> None:
 
 def _configured(spec: SpecController, app: Path, refuse) -> str:
     """The profile the project configures; refused when it configures none."""
-    match spec.select(SelectProfile(app, None, None)):
+    match spec.select(SelectProfile(in_full(app), None, None)):
         case ProfileSelected(name, _):
             return name
         case NoProfileChosen(known):
@@ -200,7 +200,7 @@ def _configured(spec: SpecController, app: Path, refuse) -> str:
 
 def _examples_from(spec: SpecController, app_path: Path | None) -> tuple[str, ...]:
     """The profiles whose rules are examples of a word: the one the project configures, if any, then the bundled."""
-    match spec.select(SelectProfile(app_for(spec, app_path), None, None)):
+    match spec.select(SelectProfile(in_full(app_for(spec, app_path)), None, None)):
         case ProfileSelected(name, _):
             return (name, *spec.bundled())
     return spec.bundled()

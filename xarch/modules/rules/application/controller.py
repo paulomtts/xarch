@@ -151,7 +151,7 @@ class RulesController:
         """The whole check of an app; a root or tests folder that is no folder is refused, and so is a profile whose
         own checks cannot run."""
         try:
-            checked = self._app.check(cmd.root, cmd.profile, cmd.tests)
+            checked = self._app.check(cmd.root, cmd.profile, cmd.tests, cmd.cwd)
         except RootMissing as e:
             return NotADirectory(e.root)
         except ChecksRefused as e:

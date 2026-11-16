@@ -5,7 +5,18 @@ from typing import Annotated
 import typer
 
 from xarch.cli.reports.where_report import where_document, where_lines
-from xarch.cli.terminal import AppPath, Format, FormatOption, ProfileName, TestsPath, app_for, cannot_run, refusal, selection
+from xarch.cli.terminal import (
+    AppPath,
+    Format,
+    FormatOption,
+    ProfileName,
+    TestsPath,
+    app_for,
+    cannot_run,
+    in_full,
+    refusal,
+    selection,
+)
 from xarch.modules.rules.application.controller import RulesController
 from xarch.modules.rules.contract import ChecksCannotRun, Locate, Located, Outside
 from xarch.modules.spec.application.controller import SpecController
@@ -27,7 +38,7 @@ def register(app: typer.Typer, rules: RulesController, spec: SpecController) -> 
         refuse = refusal(output)
         app_path = app_for(spec, app_path, refuse)
         chosen, tests_root = selection(spec, app_path, profile, tests, refuse)
-        match rules.locate(Locate(path, Path.cwd().resolve(), app_path, chosen, tests_root)):
+        match rules.locate(Locate(path, in_full(Path()).resolve(), app_path, chosen, tests_root)):
             case Outside(reason):
                 raise refuse(reason)
             case ChecksCannotRun(problems):

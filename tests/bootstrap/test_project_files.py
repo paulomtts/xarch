@@ -16,7 +16,7 @@ PROFILES = ["cli", "web"]
 
 
 def init(app: Path, profile: str) -> Scaffolded:
-    result = build_controllers().scaffold.init(Init(app, profile))
+    result = build_controllers().scaffold.init(Init(app, profile, Path.cwd()))
     assert isinstance(result, Scaffolded)
     return result
 

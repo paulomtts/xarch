@@ -31,8 +31,5 @@ class FsFiles:
         found = self._fs.find_upward(start, PYPROJECT)
         return None if found is None else (found, self._fs.read_text(found))
 
-    def working_folder(self) -> Path:
-        return Path.cwd()
-
-    def resolved(self, path: Path) -> Path:
-        return path.absolute().resolve()
+    def resolved(self, folder: Path, path: Path) -> Path:
+        return self._fs.real(folder / path)

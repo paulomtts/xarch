@@ -1,6 +1,7 @@
 """In-memory implementations of the modules' filesystem ports. Not adapters: test doubles only."""
 from __future__ import annotations
 
+import os
 from collections.abc import Iterable
 from dataclasses import replace
 from pathlib import Path
@@ -40,8 +41,8 @@ class FakeSourceTree:
         held = [root / rel for root, files in self._trees.items() for rel in files] + list(self._texts)
         return frozenset(path for path in paths if any(path == file or path in file.parents for file in held))
 
-    def resolved(self, path: Path) -> Path:
-        return path
+    def resolved(self, folder: Path, path: Path) -> Path:
+        return folder / path
 
     def parsed(self, text: str) -> SourceFile:
         return _source("", (), self._parsed[text])
@@ -71,9 +72,6 @@ class FakeDisk:
         base = root.joinpath(*each)
         return sorted(d.relative_to(base).parts for d in self._dirs if d != base and d.is_relative_to(base))
 
-    def working_folder(self) -> Path:
-        return Path.cwd()
-
 
 class FakeFiles:
     """Satisfies scaffold's Files: the files that exist (the folders above them exist too), the folders that exist
@@ -100,11 +98,8 @@ class FakeFiles:
                 return found, str(self._files[found])
         return None
 
-    def working_folder(self) -> Path:
-        return Path.cwd()
-
-    def resolved(self, path: Path) -> Path:
-        return path.absolute().resolve()
+    def resolved(self, folder: Path, path: Path) -> Path:
+        return Path(os.path.normpath(folder / path))
 
     def content(self, path: Path) -> str | bytes | None:
         """What the file at path holds, or None when there is none: for reading back what was written."""

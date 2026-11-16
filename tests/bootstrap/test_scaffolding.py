@@ -14,7 +14,7 @@ MODULE = ["contract", "domain", "application", "application/services", "applicat
 
 
 def init(app: Path, profile: str = "cli") -> Report:
-    result = build_controllers().scaffold.init(Init(app, profile))
+    result = build_controllers().scaffold.init(Init(app, profile, Path.cwd()))
     assert isinstance(result, Scaffolded)
     return result.report
 

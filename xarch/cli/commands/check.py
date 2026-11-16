@@ -1,10 +1,22 @@
 """xarch check: what the source says and which folders exist (rules module), as text or JSON."""
+from pathlib import Path
 from typing import Annotated
 
 import typer
 
 from xarch.cli.reports.report import enforcement_lines, json_document, text_lines
-from xarch.cli.terminal import AppPath, Format, FormatOption, ProfileName, TestsPath, app_for, cannot_run, refusal, selection
+from xarch.cli.terminal import (
+    AppPath,
+    Format,
+    FormatOption,
+    ProfileName,
+    TestsPath,
+    app_for,
+    cannot_run,
+    in_full,
+    refusal,
+    selection,
+)
 from xarch.modules.rules.application.controller import RulesController
 from xarch.modules.rules.contract import AppChecked, CheckApp, ChecksCannotRun, NotADirectory
 from xarch.modules.spec.application.controller import SpecController
@@ -25,7 +37,7 @@ def register(app: typer.Typer, rules: RulesController, spec: SpecController) -> 
         refuse = refusal(output)
         app_path = app_for(spec, app_path, refuse)
         chosen, tests_root = selection(spec, app_path, profile, tests, refuse)
-        match rules.check_app(CheckApp(app_path, chosen, tests_root, strict)):
+        match rules.check_app(CheckApp(app_path, chosen, in_full(Path()), tests_root, strict)):
             case NotADirectory(root):
                 raise refuse(f"{root} is not a directory")
             case ChecksCannotRun(problems):

@@ -1,10 +1,11 @@
 """xarch init and xarch new (scaffold module)."""
+from pathlib import Path
 from typing import Annotated
 
 import typer
 
 from xarch.cli.reports.scaffold_report import report_lines
-from xarch.cli.terminal import AppPath, ProfileName, app_for, fail, profile_for
+from xarch.cli.terminal import AppPath, ProfileName, app_for, fail, in_full, profile_for
 from xarch.kernel.errors import DomainError
 from xarch.modules.scaffold.application.controller import ScaffoldController
 from xarch.modules.scaffold.contract import Init, New, Refused, Scaffolded
@@ -18,7 +19,7 @@ def register(app: typer.Typer, scaffold: ScaffoldController, spec: SpecControlle
         write the docs and files; never overwrites."""
         app_path = app_for(spec, app_path)
         try:
-            _echo(report_lines(scaffold.init(Init(app_path, profile_for(spec, app_path, profile))).report))
+            _echo(report_lines(scaffold.init(Init(app_path, profile_for(spec, app_path, profile), in_full(Path()))).report))
         except DomainError as e:
             raise fail(e.reason)
 

@@ -21,13 +21,12 @@ class ScaffoldingService:
     def __init__(self, files: Files, skeleton: Skeleton):
         self._files, self._skeleton = files, skeleton
 
-    def init(self, root: Path, profile: str) -> list[Touched]:
+    def init(self, root: Path, profile: str, cwd: Path) -> list[Touched]:
         """The app's top level, then the profile (and the app folder, when it is not the default) recorded in the
         project's pyproject.toml, then the project docs and the profile's other project files, in the order each
-        file is reached."""
-        cwd = self._files.working_folder()
+        file is reached; a relative root or location is read from cwd, the working folder."""
         absolute = cwd / root
-        files = self._skeleton.files(profile, app_name(root, self._files.resolved(absolute)))
+        files = self._skeleton.files(profile, app_name(root, self._files.resolved(cwd, root)))
         package = self._skeleton.language(profile).package_file
         touched = self._build(root, self._skeleton.top_level(profile), package)
         base = holder(root, absolute)

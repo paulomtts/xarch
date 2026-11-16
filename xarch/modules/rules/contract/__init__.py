@@ -222,7 +222,7 @@ named by its kind (Support is an InTests)."""
 @dataclass(frozen=True)
 class CheckImports:
     """Check the code below root, imported as package, and the tests below tests (None: no tests), against the
-    architecture at profile (a bundled name or a path)."""
+    architecture at profile (a bundled name or a path); root and tests are given in full."""
     root: Path
     package: str
     profile: str
@@ -253,9 +253,11 @@ CheckResult = ImportsChecked | NotADirectory | ChecksCannotRun
 @dataclass(frozen=True)
 class CheckApp:
     """Check the app below root, its imports and its structure, and the tests below tests (None: no tests), against
-    the architecture at profile (a bundled name or a path); strict also fails on the enforcement's findings."""
+    the architecture at profile (a bundled name or a path); strict also fails on the enforcement's findings. cwd is the
+    working folder, in full, that a relative root or tests folder is read from."""
     root: Path
     profile: str
+    cwd: Path
     tests: Path | None = None
     strict: bool = False
 

@@ -12,7 +12,7 @@ from xarch.kernel.violations import Violation
 @dataclass(frozen=True)
 class CheckStructure:
     """Check that the layout of the architecture at profile exists below root, named package in violations, and
-    that the tests below tests (None: no tests) mirror the app's folders."""
+    that the tests below tests (None: no tests) mirror the app's folders; root and tests are given in full."""
     root: Path
     package: str
     profile: str

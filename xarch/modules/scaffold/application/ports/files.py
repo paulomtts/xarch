@@ -20,10 +20,7 @@ class Files(Protocol):
         """The nearest pyproject.toml in start or a folder above it, with its text, or None."""
         ...
 
-    def working_folder(self) -> Path:
-        """The folder a relative path given on the command line is read from, in full."""
-        ...
-
-    def resolved(self, path: Path) -> Path:
-        """The path in full, every link followed and every `..` taken."""
+    def resolved(self, folder: Path, path: Path) -> Path:
+        """The path, read from folder (given in full) when it is relative, in full with every link followed and every
+        `..` taken."""
         ...

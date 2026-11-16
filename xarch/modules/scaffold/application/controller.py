@@ -11,7 +11,7 @@ class ScaffoldController:
         self._service = service
 
     def init(self, cmd: Init) -> Scaffolded:
-        return Scaffolded(_report(self._service.init(cmd.root, cmd.profile)))
+        return Scaffolded(_report(self._service.init(cmd.root, cmd.profile, cmd.cwd)))
 
     def new(self, cmd: New) -> NewResult:
         """Every refusal of the service carries its reason."""

@@ -56,14 +56,8 @@ def test_pyproject_is_none_when_there_is_none(tmp_path):
     assert files().pyproject(start) is None
 
 
-def test_the_working_folder_is_the_one_the_process_works_in(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-    assert files().working_folder() == tmp_path.resolve()
-
-
-def test_a_path_is_resolved_from_the_working_folder_with_its_links_followed_and_its_dots_taken(tmp_path, monkeypatch):
+def test_a_path_is_resolved_from_the_folder_given_with_its_links_followed_and_its_dots_taken(tmp_path):
     (tmp_path / "real").mkdir()
     (tmp_path / "link").symlink_to(tmp_path / "real")
-    monkeypatch.chdir(tmp_path / "real")
-    assert (files().resolved(Path("..") / "link"), files().resolved(Path("."))) == (
-        (tmp_path / "real").resolve(), (tmp_path / "real").resolve())
+    assert (files().resolved(tmp_path / "real", Path("..") / "link"), files().resolved(tmp_path / "real", Path("."))) == (
+        tmp_path / "real", tmp_path / "real")

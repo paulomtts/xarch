@@ -40,7 +40,7 @@ def profile_in(tmp_path: Path, palette: bytes = b"BRAND = '#036'\n", font: bytes
 
 
 def init(app: Path, profile: str | Path) -> Scaffolded:
-    result = build_controllers().scaffold.init(Init(app, str(profile)))
+    result = build_controllers().scaffold.init(Init(app, str(profile), Path.cwd()))
     assert isinstance(result, Scaffolded)
     return result
 

@@ -18,10 +18,6 @@ class Disk(Protocol):
         """The names of the folders inside the repeating folder each of root; [] if there is none."""
         ...
 
-    def working_folder(self) -> Path:
-        """The folder a relative root is below, in full."""
-        ...
-
     def below(self, root: Path, each: tuple[str, ...]) -> list[tuple[str, ...]]:
         """Every folder at any depth inside the repeating folder each of root, as its path below it; [] if there is
         none."""

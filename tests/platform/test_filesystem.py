@@ -1,5 +1,9 @@
 """The local filesystem in plain paths: what is there, the files and folders below a folder, the nearest file of a name
 above a folder, and writing that makes the folders above."""
+from pathlib import Path
+
+import pytest
+
 from xarch.platform.filesystem import FileSystem
 
 
@@ -45,3 +49,14 @@ def test_writing_makes_the_folders_above_and_reads_back(tmp_path):
     assert fs.read_text(tmp_path / "new" / "deep" / "a.txt") == "text"
     assert fs.read_bytes(tmp_path / "new" / "b.bin") == b"\x00\x01"
     assert fs.read_text(tmp_path / "c" / "e.py") == ""
+
+
+def test_a_path_in_full_is_read_with_its_links_followed_and_its_dots_taken(tmp_path):
+    (tmp_path / "real").mkdir()
+    (tmp_path / "link").symlink_to(tmp_path / "real")
+    assert FileSystem().real(tmp_path / "real" / ".." / "link") == tmp_path / "real"
+
+
+def test_a_relative_path_is_refused_since_its_caller_says_which_folder_it_is_read_from():
+    with pytest.raises(ValueError, match="is not a path in full"):
+        FileSystem().real(Path("link"))

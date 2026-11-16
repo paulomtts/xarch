@@ -7,9 +7,11 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class Init:
-    """Build the top level of the architecture at a location (a bundled name or a path) below root."""
+    """Build the top level of the architecture at a location (a bundled name or a path) below root; cwd is the working
+    folder, in full, that a relative root or location is read from."""
     root: Path
     profile: str
+    cwd: Path
 
 
 @dataclass(frozen=True)

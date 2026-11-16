@@ -125,8 +125,8 @@ class FsSourceTree:
     def parsed(self, text: str) -> SourceFile:
         return _parsed("", (), text, None)
 
-    def resolved(self, path: Path) -> Path:
-        return path.absolute().resolve()
+    def resolved(self, folder: Path, path: Path) -> Path:
+        return self._fs.real(folder / path)
 
 
 def _parsed(name: str, path: tuple[str, ...], text: str, form: CaseTable | None) -> SourceFile:

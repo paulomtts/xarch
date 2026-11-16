@@ -16,7 +16,7 @@ class StructureCheckService:
 
     def check(self, root: Path, package: str, profile: str, tests: Path | None = None) -> list[Violation]:
         """What the layout requires and is missing below root, then every folder below the tests of each repeating
-        folder that mirrors no folder of the app."""
+        folder that mirrors no folder of the app; root and tests are given in full."""
         roots = self._skeleton.each_roots(profile)
         repeated = [Repeated(each, self._skeleton.each_parts(profile, each),
                              self._disk.instances(root, each)) for each in roots]
@@ -26,7 +26,7 @@ class StructureCheckService:
         found = missing(required, self._disk.present(root, required))
         if tests is not None:
             for each in roots:
-                found += unmirrored((self._disk.working_folder() / tests).name, package, each, self._disk.below(tests, each),
+                found += unmirrored(tests.name, package, each, self._disk.below(tests, each),
                                     set(self._disk.below(root, each)), naming)
         return found
 

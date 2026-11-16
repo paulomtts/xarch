@@ -39,11 +39,11 @@ class ProfileSelectionService:
         return location
 
     def tests(self, app: Path, given: Path | None) -> Path | None:
-        """The tests root that goes with the app: the one given, else the configured one, else the default one when it
-        is a folder, else None; raises UnreadableSettings."""
+        """The tests root that goes with the app, given in full: the one given, else the configured one, else the
+        default one when it is a folder, else None; raises UnreadableSettings."""
         if given is not None:
             return given
         configured = self._settings.configured_tests(app)
         if configured is not None:
             return configured
-        return next(iter(self._folders.existing([default_tests(self._folders.working_folder() / app)])), None)
+        return next(iter(self._folders.existing([default_tests(app)])), None)

@@ -692,11 +692,10 @@ def test_a_call_of_an_attribute_no_import_binds_is_listed_as_a_method_call(tmp_p
         found, key=lambda c: (c.line, c.name, c.held))
 
 
-def test_a_path_is_resolved_from_the_working_folder_with_its_links_followed(tmp_path, monkeypatch):
+def test_a_path_is_resolved_from_the_folder_given_with_its_links_followed(tmp_path):
     (tmp_path / "real").mkdir()
     (tmp_path / "link").symlink_to(tmp_path / "real")
-    monkeypatch.chdir(tmp_path)
-    assert FsSourceTree(FileSystem()).resolved(Path("link")) == (tmp_path / "real").resolve()
+    assert FsSourceTree(FileSystem()).resolved(tmp_path, Path("link")) == tmp_path / "real"
 
 
 @pytest.mark.parametrize("text, imports", [

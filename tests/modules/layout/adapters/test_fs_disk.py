@@ -23,8 +23,3 @@ def test_the_disk_lists_the_instances_and_the_folders_of_a_repeating_folder(tmp_
     assert disk.instances(tmp_path, ("modules",)) == ["docs"]
     assert disk.below(tmp_path, ("modules",)) == [("docs",), ("docs", "domain")]
     assert (disk.instances(tmp_path, ("plugins",)), disk.below(tmp_path, ("plugins",))) == ([], [])
-
-
-def test_the_working_folder_is_the_one_the_process_works_in(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-    assert FsDisk(FileSystem()).working_folder() == tmp_path.resolve()

@@ -45,6 +45,13 @@ class FileSystem:
             return []
         return sorted(p.relative_to(path).as_posix() for p in path.rglob("*") if p.is_file())
 
+    def real(self, path: Path) -> Path:
+        """The path, given in full, with every link followed and every `..` taken; a relative path is refused
+        (ValueError), since which folder it is read from is its caller's to say."""
+        if not path.is_absolute():
+            raise ValueError(f"{path} is not a path in full: say which folder it is read from")
+        return path.resolve()
+
     def read_text(self, path: Path) -> str:
         return path.read_text()
 
