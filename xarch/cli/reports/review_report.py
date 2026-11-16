@@ -12,6 +12,7 @@ from xarch.cli.reports.eval_report import (
     eval_documents,
     eval_lines,
     eval_plan_lines,
+    model_said,
     sends_of,
     standing_document,
     standing_lines,
@@ -146,7 +147,7 @@ def reading_lines(read: ReviewReading) -> list[str]:
     why; and those with no answer, and why."""
     judged = len(read.readings) + sum(not item.piece and not item.asked for item in read.unasked)
     lines = [f"review: advisory. {ADVISORY}",
-             f"Model {read.sends.model}. {read.found} file(s) found ({', '.join(WAYS[way] for way in read.by)}), "
+             f"{model_said(read.sends.model, read.answered_by)}. {read.found} file(s) found ({', '.join(WAYS[way] for way in read.by)}), "
              f"{judged} judged, {len(read.left_out)} left out. Asked {read.sent}, from cache {read.cached}."]
     if read.sent:
         lines.append(f"Sent {read.sent} request(s) to {read.sends.service} ({read.sends.at}): "
@@ -189,7 +190,7 @@ def reading_document(profile: str, read: ReviewReading) -> str:
     those with no answer, and what was sent to."""
     content: dict[str, Any] = {
         "ok": True, "advisory": ADVISORY, "profile": profile, "dry_run": False, "complete": read.complete,
-        "model": read.sends.model,
+        "model": read.sends.model, "answered_by": list(read.answered_by),
         "selection": {"by": list(read.by), "found": read.found,
                       "judged": len(read.readings) + sum(not item.piece and not item.asked for item in read.unasked),
                       "left_out": [_left_out(item) for item in read.left_out]},

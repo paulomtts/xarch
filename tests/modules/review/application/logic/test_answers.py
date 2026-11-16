@@ -6,8 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from xarch.modules.review.application.logic.answers import cache_folder, record_file, request_key
+from xarch.modules.review.application.logic.answers import cache_folder, fits, record_file, request_key, versions
 from xarch.modules.review.domain.published import SCORE, YES_NO, Choice, Option
+from xarch.modules.review.domain.values import Answer
 
 QUESTION = Choice("Which part?", (Option("domain", "Is it a value?"), Option("main", "starts the app")))
 KEY = request_key("m-1", "class Document: ...\n", QUESTION)
@@ -54,3 +55,22 @@ def test_a_choice_keeps_the_key_it_had_before_questions_had_forms_and_another_fo
 
 def test_the_record_of_the_evals_held_to_their_examples_lies_below_the_folder_holding_the_app():
     assert record_file(Path("/work/app")) == Path("/work/.xarch/calibration.json")
+
+
+@pytest.mark.parametrize("probabilities, tokens, then", [
+    pytest.param((("domain", 0.3), ("main", 0.7)), (10, 1), True, id="a probability for each option, summing to 1"),
+    pytest.param((("main", 0.7), ("domain", 0.305)), (10, 1), True, id="in any order, within rounding of 1"),
+    pytest.param((), (10, 1), False, id="no probability at all"),
+    pytest.param((("domain", 1.0),), (10, 1), False, id="an option left out"),
+    pytest.param((("domain", 0.3), ("main", 0.7), ("other", 0.0)), (10, 1), False, id="an option the question has not"),
+    pytest.param((("domain", 1.0), ("main", 1.0)), (10, 1), False, id="probabilities summing above 1"),
+    pytest.param((("domain", 0.3), ("domain", 0.7)), (10, 1), False, id="an option named twice"),
+    pytest.param((("domain", 0.3), ("main", 0.7)), (-1, 1), False, id="a count of tokens below 0"),
+])
+def test_an_answer_kept_answers_the_question_only_when_it_is_of_its_shape(probabilities, tokens, then):
+    assert fits(Answer("m", probabilities, *tokens), QUESTION) is then
+
+
+def test_the_versions_that_answered_are_each_said_once_sorted():
+    assert versions(Answer("m-2", ()), Answer("m-1", ()), Answer("m-2", ())) == ("m-1", "m-2")
+    assert versions() == ()

@@ -135,7 +135,8 @@ class ReviewReading:
     did not), which stopped the sending; the parts the question describes by their role alone; and how the files of
     each part read, in the profile's order; and, when pieces were asked for, the pieces of each file judged, ranked
     inside it; how each eval of the profile's own went, in the profile's order: those that do not run with why,
-    those that ran with their readings; and how placement stands held to its examples."""
+    those that ran with their readings; how placement stands held to its examples; and the model versions that gave
+    the answers read, asked or kept, each once, sorted."""
     by: tuple[str, ...]
     found: int
     readings: tuple[Reading, ...]
@@ -152,6 +153,7 @@ class ReviewReading:
     pieces: tuple[PiecesRead, ...] = ()
     evals: tuple[EvalRead, ...] = ()
     calibration: PlacementStanding = PlacementStanding(UNCALIBRATED, UNHELD)
+    answered_by: tuple[str, ...] = ()
 
     @property
     def complete(self) -> bool:
@@ -233,8 +235,9 @@ class Calibrated:
     answer, and nothing was written); the questions with no answer, and why; what was sent to; how many questions were
     sent and how many answers were read from the cache; the tokens the questions sent cost; how the decision model
     failed, when it did ("" when it did not); and placement held to its examples, each part's verdict (None when it was
-    not asked for, has no example, or some example has no answer). A part whose examples disagree does not fail the
-    calibration: it is said, and review then never marks its files doubtful."""
+    not asked for, has no example, or some example has no answer); and the model versions that gave the answers read,
+    asked or kept, each once, sorted. A part whose examples disagree does not fail the calibration: it is said, and
+    review then never marks its files doubtful."""
     held: tuple[EvalHeld, ...]
     record: Path | None
     unasked: tuple[Unasked, ...]
@@ -245,6 +248,7 @@ class Calibrated:
     output_tokens: int
     failure: str
     placement: PlacementHeld | None = None
+    answered_by: tuple[str, ...] = ()
 
     @property
     def complete(self) -> bool:

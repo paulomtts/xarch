@@ -39,7 +39,11 @@ The first release.
   only. Exit 0 when it ran, 2 when it refused, 3 when a file has no answer. It never changes what `check` finds. A
   file reached through a link to a file outside the app, or to no source file, is left out and never read. The key
   is read without the whitespace around it; one a request header cannot carry is refused (exit 2) before anything is
-  sent, and the key is in no message; a redirect is never followed.
+  sent, and the key is in no message; a redirect is never followed. An answer kept that does not answer its question
+  is asked again; the cache and the record are never read or written through a link; a cache folder that is a file,
+  a record that cannot be read, a record or cache that cannot be written, and a `--files-from` list that is not UTF-8
+  are refused (exit 2), never a traceback; the header names the model versions that answered when they are not the
+  model asked alone.
 - A profile's `review` key: `review.never`, the paths below the app of files review never sends (matched against a
   link and the file it links to), and `review.mask`,
   texts it hides before it sends. `check` never reads either; `profile explain` says them, and `profile check` lists

@@ -72,3 +72,15 @@ def test_a_path_in_full_is_read_with_its_links_followed_and_its_dots_taken(tmp_p
 def test_a_relative_path_is_refused_since_its_caller_says_which_folder_it_is_read_from():
     with pytest.raises(ValueError, match="is not a path in full"):
         FileSystem().real(Path("link"))
+
+
+def test_a_link_is_known_as_one_and_removing_it_leaves_what_it_points_to(tmp_path):
+    fs = FileSystem()
+    (tmp_path / "kept.txt").write_text("precious")
+    (tmp_path / "link.txt").symlink_to(tmp_path / "kept.txt")
+    (tmp_path / "dangling").symlink_to(tmp_path / "gone")
+    assert [fs.is_link(tmp_path / name) for name in ("link.txt", "dangling", "kept.txt", "absent")] == [
+        True, True, False, False]
+    fs.remove(tmp_path / "link.txt")
+    fs.remove(tmp_path / "absent")
+    assert not (tmp_path / "link.txt").exists() and (tmp_path / "kept.txt").read_text() == "precious"

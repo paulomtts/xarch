@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from xarch.modules.review.application.logic.answers import cache_folder, record_file
+from xarch.modules.review.application.logic.answers import cache_folder, record_file, versions
 from xarch.modules.review.application.logic.doubt import (
     asked_again,
     averaged,
@@ -133,7 +133,7 @@ class ReviewService:
                              len(going.asked), len(going.reused), sum(a.input_tokens for a in going.asked),
                              sum(a.output_tokens for a in going.asked), going.failure, role_only(words.parts),
                              marked(by_part(judged_files, words.parts), stood), tuple(ranked_pieces),
-                             in_order(idle + tuple(ran), words.evals), stood)
+                             in_order(idle + tuple(ran), words.evals), stood, versions(*going.asked, *going.reused))
 
     def _evals(self, cmd: Review, words: Words, judging: tuple[CodeFile, ...],
                model: str) -> tuple[tuple[Asking, ...], tuple[EvalRead, ...]]:

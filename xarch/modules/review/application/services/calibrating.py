@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from xarch.modules.review.application.logic.answers import cache_folder, record_file
+from xarch.modules.review.application.logic.answers import cache_folder, record_file, versions
 from xarch.modules.review.application.logic.evaluation import floor, held_as, orders, verdict
 from xarch.modules.review.application.logic.judging import asked_of, example_value, unasked_of
 from xarch.modules.review.application.logic.masking import masked
@@ -123,7 +123,8 @@ class CalibrationService:
                                                           if name in known})
         return Calibrated(tuple(held), record_file(cmd.app) if written or held_placement else None, tuple(unasked),
                           sends, len(going.asked), len(going.reused), sum(a.input_tokens for a in going.asked),
-                          sum(a.output_tokens for a in going.asked), going.failure, held_placement)
+                          sum(a.output_tokens for a in going.asked), going.failure, held_placement,
+                          versions(*going.asked, *going.reused))
 
     def _examples(self, cmd: Calibrate, asked: EvalText, mask: tuple[str, ...]) -> tuple[Example, ...]:
         """Each example file of the eval, flagged ones first, with one question about each thing it reads in it, its

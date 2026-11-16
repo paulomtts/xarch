@@ -167,6 +167,16 @@ def test_an_import_over_several_lines_or_with_blanks_around_its_dots_is_masked_i
     assert "app.modules" not in sent["text"] and "kernel" not in sent["text"]
 
 
+def test_a_record_that_cannot_be_read_is_refused_with_exit_2_naming_it_and_is_never_rewritten(tmp_path):
+    record = tmp_path / ".xarch" / "calibration.json"
+    record.parent.mkdir()
+    record.write_text('<<<<<<< HEAD\n{"evals": {}}\n=======\n{}\n>>>>>>> other\n')
+    runs = [review(SERVICE, "--dry-run"), review(SERVICE, "--offline"), review("calibrate", "--offline")]
+    assert [result.exit_code for result in runs] == [2, 2, 2]
+    assert all(f"the record {record} cannot be read (it is not JSON)" in result.output for result in runs)
+    assert record.read_text().startswith("<<<<<<< HEAD")
+
+
 def test_review_changes_nothing_check_finds():
     before = runner.invoke(app, ["check", "--format", "json"])
     review(SERVICE, "--dry-run")

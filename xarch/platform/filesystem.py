@@ -17,6 +17,14 @@ class FileSystem:
     def is_file(self, path: Path) -> bool:
         return path.is_file()
 
+    def is_link(self, path: Path) -> bool:
+        """Whether path is a link, whatever it points to, or to nothing."""
+        return path.is_symlink()
+
+    def remove(self, path: Path) -> None:
+        """Remove the file or the link at path, never what a link points to; nothing there is nothing to remove."""
+        path.unlink(missing_ok=True)
+
     def subdirectories(self, path: Path) -> list[str]:
         """Names of the folders directly inside path that the filesystem shows, none it hides such as `.cache`; [] if
         path is not a folder."""

@@ -606,7 +606,10 @@ per question, named by a hash of the model asked, the masked text and the questi
 that answered, the probability of each part and the tokens spent, and no code, no question and no key. Commit the
 folder: agents and CI then share the answers without spending calls, and a model upgrade shows as a diff of answers.
 An identical question is never sent twice. `--cache DIR` keeps them elsewhere. `--offline` sends nothing, needs no
-key, and reads the cache only.
+key, and reads the cache only. An answer kept that does not answer the question (a probability for other options than
+its own, probabilities not summing to 1, a count of tokens below 0) is no answer, and the question is asked again. A
+cache folder that is a file or a link is refused (exit 2) before anything is sent; an answer kept through a link is
+none, and keeping one replaces the link, never writing through it.
 
 **Pieces.** A whole-file reading does not move when one piece inside a good file is misplaced, so `--pieces` also
 ranks the pieces of each file chosen, inside that file only. A piece is a function or a class at the top level, as the
@@ -625,8 +628,9 @@ never compared; the reading says which was used. `--dry-run --pieces` lists each
 with its name, kind and lines, and the exact text it would send.
 
 Exit codes: 0 when the review ran to the end, whatever it read (doubtful files are not failures); 2 when it refused
-before sending anything (no selection, `--all` with paths, `--all --pieces`, over `--max-files`, no key, a path
-outside the project, a profile that cannot be used); 3 when some file or piece judged has no answer: not cached under `--offline`, or the decision
+before sending anything (no selection, `--all` with paths, `--all --pieces`, over `--max-files`, no key or one that
+cannot be used, a path outside the project, a profile that cannot be used, a `--files-from` list that is not UTF-8, a
+cache folder that cannot keep answers, a record that cannot be read), or when what it got cannot be written; 3 when some file or piece judged has no answer: not cached under `--offline`, or the decision
 model failed (unreachable, rate-limited after retries, a request refused), after which nothing more is sent. What was
 answered is printed, the rest is listed as unanswered with why and the decision model's words, and the answers already
 kept stay kept.
@@ -728,9 +732,12 @@ what to do: make it one short rule about what the text shows; add a clean exampl
 
 The verdicts go to `.xarch/calibration.json` in the project's root: for each eval, a hash of what it was held as, the
 model asked and the version that answered, the verdict, the line and the value of each example by path; no code and
-no question. Commit it, as the cache, so that agents and CI read the same verdicts. Exit codes: 0 when every eval
-passed, 1 when one failed (a defect of the profile), 2 when it refused (no key, an eval it does not write, a profile
-that cannot be used), 3 when an example has no answer, and nothing of that eval is recorded.
+no question. Commit it, as the cache, so that agents and CI read the same verdicts. A record that cannot be read (a
+merge left its marks in it, say) is refused, naming it, by every review that reads it and by calibrate, and is never
+rewritten while it cannot be read: mend it, or remove it to hold every eval again; nor is a record that is a link read
+or written. Exit codes: 0 when every eval passed, 1 when one failed (a defect of the profile), 2 when it refused (no
+key, an eval it does not write, a profile that cannot be used, a record that cannot be read or written), 3 when an
+example has no answer, and nothing of that eval is recorded.
 
 Placement is held to its examples in the same run (and alone with `--eval placement`): every file of `docs.examples`
 lying in a part, read as clean, and the profile's own under `evals.placement.examples: {flagged, clean}` (a flagged
@@ -754,7 +761,7 @@ and when it was not, what to run.
 without `--pieces`) and `context` `none` or `imports`; `reorders` how many other orders a file near its line is asked
 again in; `sends.key` the name of the variable the key is read from (never the key) and `keyed` whether it is set.
 
-A review: `{"ok", "advisory", "profile", "dry_run": false, "complete", "model", "selection", "placement":
+A review: `{"ok", "advisory", "profile", "dry_run": false, "complete", "model", "answered_by", "selection", "placement":
 {"calibration": {"state", "evidence", "examples": {"state", "why", "parts": [{"part", "verdict", "crossed",
 "examples"}]}}, "role_only", "files": [{"file", "part", "probability", "line", "line_by_hand", "doubtful", "chars",
 "small", "orders", "model", "distribution"}], "parts": [{"part", "read", "doubtful", "line", "line_by_hand", "summed",
@@ -762,7 +769,8 @@ A review: `{"ok", "advisory", "profile", "dry_run": false, "complete", "model", 
 [{"rank", "kind", "name", "first", "last", "chars", "probability", "distribution"}]}], "evals": [{"id", "state", "why",
 "run", "line", "ask", "form", "examples": {"flagged", "clean"}, "model", "asked", "readings": [{"file", "line", "name",
 "value", "message", "fix"}]}], "sends", "sent": {"calls", "cached", "input_tokens", "output_tokens"}, "unanswered":
-[{"file", "why", "piece", "eval"}], "failure"}`: the files
+[{"file", "why", "piece", "eval"}], "failure"}`: `answered_by` the model versions that gave the answers read, asked
+or kept, each once (the text header names them when they are not the model asked alone); the files
 ranked from the lowest probability; `line_by_hand` whether the profile sets the part's line; `small` whether the file
 is under 2,000 characters; `orders` how many orders of the options it was asked in (`probability` and `distribution`
 are their mean); `distribution` the probability on each part by name, the only place another part is named (also for
@@ -781,7 +789,8 @@ refusal is `{"ok": false, "error"}`.
 
 A calibration: `{"ok", "calibrated": [{"id", "complete", "passed", "line", "line_by_hand", "crossed", "examples":
 [{"path", "flagged", "value"}]}], "placement": {"model", "answered_by", "parts": [{"part", "verdict", "crossed",
-"examples"}]}, "passed", "complete", "record", "model", "sends", "sent", "unanswered": [{"id", "file", "why", "name"}],
+"examples"}]}, "passed", "complete", "record", "model", "answered_by", "sends", "sent", "unanswered": [{"id", "file",
+"why", "name"}],
 "failure"}` (`placement` null when it was not held); its dry run: `{"ok", "dry_run": true, "sent": false, "evals",
 "requests": [{"id", "example", "kind", "part", "name", "first", "last", "chars", "cached", "text", "body"}],
 "characters", "tokens", "mask", "sends"}`, `kind` `flagged` or `clean`.

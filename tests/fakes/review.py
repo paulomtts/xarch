@@ -78,10 +78,15 @@ class FakeDecisionModel:
 
 
 class FakeAnswers:
-    """Satisfies review's Answers: the answers kept, by folder and key; every answer kept here recorded."""
+    """Satisfies review's Answers: the answers kept, by folder and key; every answer kept here recorded; a folder in
+    unready cannot keep answers, and is refused with its reason."""
 
-    def __init__(self, kept: dict[tuple[Path, str], Answer] | None = None):
-        self.kept = dict(kept or {})
+    def __init__(self, kept: dict[tuple[Path, str], Answer] | None = None, unready: dict[Path, str] | None = None):
+        self.kept, self._unready = dict(kept or {}), dict(unready or {})
+
+    def ready(self, folder: Path) -> None:
+        if folder in self._unready:
+            raise Refused(self._unready[folder])
 
     def get(self, folder: Path, key: str) -> Answer | None:
         return self.kept.get((folder, key))

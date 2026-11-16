@@ -6,6 +6,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from xarch.modules.review.domain.errors import Refused
 from xarch.modules.review.domain.published import PartHeld, PlacementHeld
 from xarch.modules.review.domain.values import Calibration
 from xarch.platform.data_files import DataFileError, DataFileReader, DataFileWriter
@@ -22,7 +23,7 @@ class FsCalibrations:
         self._fs, self._reader, self._writer = fs, reader, writer
 
     def get(self, record: Path) -> dict[str, Calibration]:
-        """A file that cannot be read is no record; an entry not of the shape written is left out."""
+        """An entry not of the shape written is left out."""
         evals = self._document(record).get("evals")
         if not isinstance(evals, dict):
             return {}
@@ -31,7 +32,7 @@ class FsCalibrations:
     def put(self, record: Path, held: dict[str, Calibration]) -> None:
         document = self._document(record)
         document["evals"] = {name: _entry(entry) for name, entry in sorted(held.items())}
-        self._fs.write_text(record, self._writer.json(dict(sorted(document.items()))))
+        self._write(record, document)
 
     def placement(self, record: Path) -> PlacementHeld | None:
         """A record of placement not of the shape written is none."""
@@ -42,17 +43,39 @@ class FsCalibrations:
         document["placement"] = {"hash": held.held, "model": held.model, "answered_by": held.answered,
                                  "parts": {part.part: {"verdict": part.verdict, "crossed": part.crossed,
                                                        "examples": part.examples} for part in held.parts}}
-        self._fs.write_text(record, self._writer.json(dict(sorted(document.items()))))
+        self._write(record, document)
+
+    def _write(self, record: Path, document: dict[str, Any]) -> None:
+        try:
+            self._fs.write_text(record, self._writer.json(dict(sorted(document.items()))))
+        except OSError as e:
+            raise Refused(f"cannot write the record {record}: {e.strerror or type(e).__name__}") from None
 
     def _document(self, record: Path) -> dict[str, Any]:
-        """The record as written; empty when there is none, or none that can be read."""
-        if not self._fs.is_file(record):
+        """The record as written; empty when there is none. A link, or a record that cannot be read, raises Refused
+        naming it, and is never rewritten."""
+        if self._fs.is_link(record):
+            raise Refused(f"the record {record} is a link: review reads and writes no record through a link")
+        if not self._fs.exists(record):
             return {}
         try:
             kept = self._reader.parse(self._fs.read_text(record), json_syntax=True)
-        except (DataFileError, OSError, UnicodeDecodeError):
-            return {}
-        return kept if isinstance(kept, dict) else {}
+        except (DataFileError, OSError, UnicodeDecodeError) as e:
+            raise Refused(f"the record {record} cannot be read ({_why(e)}): mend it, or remove it to hold every eval "
+                          "again; it is not rewritten while it cannot be read") from None
+        if not isinstance(kept, dict):
+            raise Refused(f"the record {record} cannot be read (it is not a JSON object): mend it, or remove it to "
+                          "hold every eval again; it is not rewritten while it cannot be read")
+        return kept
+
+
+def _why(error: Exception) -> str:
+    """Why a record cannot be read, in a few words."""
+    if isinstance(error, UnicodeDecodeError):
+        return "it is not UTF-8 text"
+    if isinstance(error, OSError):
+        return error.strerror or type(error).__name__
+    return "it is not JSON"
 
 
 def _entry(entry: Calibration) -> dict[str, Any]:

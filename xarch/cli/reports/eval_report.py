@@ -97,10 +97,18 @@ def eval_documents(evals: tuple[EvalRead, ...]) -> list[dict[str, Any]]:
                            "message": r.message, "fix": r.fix} for r in item.readings]} for item in evals]
 
 
+def model_said(asked: str, answered_by: tuple[str, ...]) -> str:
+    """The model asked, and the versions that answered when they are not that one alone."""
+    if answered_by in ((), (asked,)):
+        return f"Model {asked}"
+    return f"Model {asked}, answered by {', '.join(answered_by)}"
+
+
 def calibration_lines(done: Calibrated, record: str) -> list[str]:
     """Each eval held to its examples: its verdict and line, the value of each example, and what to do when it failed;
     then where the record is, and what had no answer."""
-    lines = [CALIBRATION, f"Model {done.sends.model}. Asked {done.sent}, from cache {done.cached}."]
+    lines = [CALIBRATION, f"{model_said(done.sends.model, done.answered_by)}. Asked {done.sent}, from cache "
+                          f"{done.cached}."]
     if done.sent:
         lines.append(f"Sent {done.sent} request(s) to {done.sends.service} ({done.sends.at}): "
                      f"{done.input_tokens:,} input tokens, {done.output_tokens:,} output tokens.")
@@ -176,7 +184,7 @@ def calibration_document(done: Calibrated, record: str) -> str:
             "parts": [{"part": part.part, "verdict": part.verdict, "crossed": part.crossed or None,
                        "examples": part.examples} for part in done.placement.parts]},
         "passed": done.passed, "complete": done.complete, "record": record if done.record is not None else None,
-        "model": done.sends.model, "sends": sends_of(done.sends),
+        "model": done.sends.model, "answered_by": list(done.answered_by), "sends": sends_of(done.sends),
         "sent": {"calls": done.sent, "cached": done.cached, "input_tokens": done.input_tokens,
                  "output_tokens": done.output_tokens},
         "unanswered": [{"id": item.asked, "file": item.file, "why": item.why, "name": item.piece or None}

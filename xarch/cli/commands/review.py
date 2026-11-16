@@ -144,7 +144,10 @@ def register(app: typer.Typer, reviewing: ReviewController, spec: SpecController
         if evals:
             raise refuse("--eval names the evals calibrate holds to their examples: write `xarch review calibrate "
                          "--eval <id>`; a review asks every eval that may run")
-        listed = tuple(Path(line.strip()) for line in files_from or () if line.strip())
+        try:
+            listed = tuple(Path(line.strip()) for line in files_from or () if line.strip())
+        except UnicodeDecodeError:
+            raise refuse("the list given with --files-from is not UTF-8 text: give one path per line, as UTF-8") from None
         kept = cwd / cache if cache is not None else None
         match reviewing.review(Review(tuple(paths or ()), listed, every, cwd, app_path, chosen, tests_root, dry_run,
                                       max_files, offline, kept, pieces, context.value)):

@@ -6,6 +6,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from xarch.modules.review.domain.errors import Refused
 from xarch.modules.review.domain.values import Answer
 from xarch.platform.data_files import DataFileError, DataFileReader, DataFileWriter
 from xarch.platform.filesystem import FileSystem
@@ -20,10 +21,17 @@ class FsAnswers:
     def __init__(self, fs: FileSystem, reader: DataFileReader, writer: DataFileWriter):
         self._fs, self._reader, self._writer = fs, reader, writer
 
+    def ready(self, folder: Path) -> None:
+        if self._fs.is_link(folder):
+            raise Refused(f"cannot keep answers in {folder}: it is a link, and review writes through none")
+        if self._fs.exists(folder) and not self._fs.is_dir(folder):
+            raise Refused(f"cannot keep answers in {folder}: it is a file, not a folder")
+
     def get(self, folder: Path, key: str) -> Answer | None:
-        """A file that cannot be read, or holds no answer of the shape written, is no answer."""
+        """A file that cannot be read, holds no answer of the shape written, or is reached through a link, is no
+        answer."""
         path = folder / f"{key}{ENDING}"
-        if not self._fs.is_file(path):
+        if self._fs.is_link(folder) or self._fs.is_link(path) or not self._fs.is_file(path):
             return None
         try:
             kept = self._reader.parse(self._fs.read_text(path), json_syntax=True)
@@ -32,9 +40,16 @@ class FsAnswers:
         return _answer(kept)
 
     def put(self, folder: Path, key: str, answer: Answer) -> None:
-        self._fs.write_text(folder / f"{key}{ENDING}", self._writer.json({
-            "model": answer.model, "probabilities": dict(answer.probabilities),
-            "input_tokens": answer.input_tokens, "output_tokens": answer.output_tokens}))
+        self.ready(folder)
+        path = folder / f"{key}{ENDING}"
+        try:
+            if self._fs.is_link(path):
+                self._fs.remove(path)
+            self._fs.write_text(path, self._writer.json({
+                "model": answer.model, "probabilities": dict(answer.probabilities),
+                "input_tokens": answer.input_tokens, "output_tokens": answer.output_tokens}))
+        except OSError as e:
+            raise Refused(f"cannot keep an answer in {folder}: {e.strerror or type(e).__name__}") from None
 
 
 def _answer(kept: Any) -> Answer | None:

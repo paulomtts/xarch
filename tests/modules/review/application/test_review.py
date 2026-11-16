@@ -127,17 +127,19 @@ def run(world: World, when: Review):
                  id="a file held back is held back however it is chosen"),
     pytest.param(World(answers={SENT: LOW}), review("app/modules/documents/domain"),
                  ReviewReading((BY_PATHS,), 3, (DOUBTFUL,), (GONE, LeftOut(SMALL_FILE.file, SMALL, 6)), (), SENDS, 1, 0,
-                               100, 5, "", ("main",), read(1, 1)),
+                               100, 5, "", ("main",), read(1, 1), answered_by=("m-1.0.1",)),
                  id="a file whose part holds less than the line is doubtful there, asked of the decision model"),
     pytest.param(World(answers={SENT: LOW, SENT_OTHER: HIGH}), review("app/two"),
-                 ReviewReading((BY_PATHS,), 2, (DOUBTFUL, PLACED), (), (), SENDS, 2, 0, 190, 9, "", ("main",), read(2, 1)),
+                 ReviewReading((BY_PATHS,), 2, (DOUBTFUL, PLACED), (), (), SENDS, 2, 0, 190, 9, "", ("main",), read(2, 1),
+                               answered_by=("m-1.0.0", "m-1.0.1")),
                  id="the readings are ranked, the most doubtful first"),
     pytest.param(World(earlier={SENT: HIGH}, keyed=False), review("app/x.py"),
-                 ReviewReading((BY_PATHS,), 1, (PLACED_HERE,), (), (), UNKEYED, 0, 1, 0, 0, "", ("main",), read(1, 0)),
+                 ReviewReading((BY_PATHS,), 1, (PLACED_HERE,), (), (), UNKEYED, 0, 1, 0, 0, "", ("main",), read(1, 0),
+                               answered_by=("m-1.0.0",)),
                  id="an answer kept is read, not asked again, and needs no key"),
     pytest.param(World(earlier={SENT: LOW}), review("app/two", offline=True),
                  ReviewReading((BY_PATHS,), 2, (DOUBTFUL,), (), (Unasked(OTHER.file, NOT_CACHED),), SENDS, 0, 1, 0, 0,
-                               "", ("main",), read(1, 1)),
+                               "", ("main",), read(1, 1), answered_by=("m-1.0.1",)),
                  id="offline, a file whose answer is not kept is unanswered and nothing is sent"),
     pytest.param(World(answers={SENT_OTHER: HIGH}), review("app/two"),
                  ReviewReading((BY_PATHS,), 2, (), (), (Unasked(DOCUMENT.file, FAILED), Unasked(OTHER.file, FAILED)),
@@ -366,3 +368,21 @@ def test_every_file_of_the_app_in_pieces_is_refused_before_anything_is_read():
     model = FakeDecisionModel({})
     assert controller(code, FakeProfile(WORDS), model, FakeAnswers()).review(review(every=True, pieces=True)) == (
         AllInPieces())
+
+
+def test_an_answer_kept_that_is_not_of_the_question_s_shape_is_no_answer_and_the_question_is_asked_again():
+    answers = FakeAnswers()
+    _review(FakeDecisionModel({SENT: LOW}), answers, review("app/x.py"))
+    for key in answers.kept:
+        answers.kept[key] = Answer("m-1.0.1", (("domain", 1.0), ("main", 1.0)), 100, 5)
+    model = FakeDecisionModel({SENT: HIGH})
+    result = _review(model, answers, review("app/x.py"))
+    assert model.asked == [SENT] and isinstance(result, ReviewReading) and result.readings[0].model == HIGH.model
+
+
+def test_a_cache_folder_that_cannot_keep_answers_is_refused_before_anything_is_sent():
+    model = FakeDecisionModel({SENT: LOW})
+    answers = FakeAnswers(unready={FOLDER: f"cannot keep answers in {FOLDER}: it is a file, not a folder"})
+    assert _review(model, answers, review("app/x.py")) == ReviewRefused(
+        f"cannot keep answers in {FOLDER}: it is a file, not a folder")
+    assert model.asked == []

@@ -214,6 +214,29 @@ def test_a_key_echoed_back_escaped_in_json_is_cut_from_what_the_decision_model_s
     assert "secret-7f3a" not in result.output
 
 
+def test_a_cache_that_is_a_file_or_a_list_that_is_not_utf8_is_refused_with_exit_2_before_anything_is_sent(
+        served, tmp_path):
+    (tmp_path / "taken").write_text("not a folder")
+    cached = review(SERVICE, "--cache", "taken", url=served.url)
+    assert cached.exit_code == 2 and f"cannot keep answers in {tmp_path / 'taken'}: it is a file, not a folder" in (
+        cached.output)
+    (tmp_path / "list.txt").write_bytes(b"\xff\xfeapp\n")
+    listed = review("--files-from", "list.txt", url=served.url)
+    assert listed.exit_code == 2 and "the list given with --files-from is not UTF-8 text" in listed.output
+    assert served.received == [] and (tmp_path / "taken").read_text() == "not a folder"
+
+
+def test_an_answer_kept_through_a_link_is_never_read_nor_written_through(served, tmp_path):
+    assert review(SERVICE, url=served.url).exit_code == 0
+    (kept,) = (tmp_path / ".xarch" / "cache" / "review").iterdir()
+    victim = tmp_path / "victim.txt"
+    victim.write_text("precious")
+    kept.unlink()
+    kept.symlink_to(victim)
+    assert review(SERVICE, url=served.url).exit_code == 0
+    assert victim.read_text() == "precious" and not kept.is_symlink() and len(served.received) == 2
+
+
 def test_an_unreachable_decision_model_leaves_the_files_unanswered_and_shows_no_key():
     result = review(SERVICE, "--format", "json", url="http://127.0.0.1:9")
     assert result.exit_code == 3

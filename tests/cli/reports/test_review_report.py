@@ -221,7 +221,7 @@ def test_the_json_of_a_reading_holds_each_file_with_the_probability_of_each_part
     document = json.loads(reading_document("cli", replace(READ, unasked=(Unasked("app/c.py", NOT_CACHED),))))
     assert document == {
         "ok": True, "advisory": ADVISORY, "profile": "cli", "dry_run": False, "complete": False, "model": "m-1",
-        "selection": {"by": ["paths"], "found": 4, "judged": 3,
+        "answered_by": [], "selection": {"by": ["paths"], "found": 4, "judged": 3,
                       "left_out": [{"file": "app/b.py", "why": "small", "chars": 612, "pattern": None}]},
         "placement": {"calibration": {"state": "measured", "evidence": document["placement"]["calibration"]["evidence"],
                                       "examples": {"state": "uncalibrated", "why": "it was never held to its examples",
@@ -303,3 +303,9 @@ def test_a_dry_run_with_pieces_says_the_question_of_a_piece_what_is_sent_before_
 
 def test_every_file_in_pieces_is_refused_saying_why():
     assert all_in_pieces().startswith("--pieces ranks the pieces of files already chosen, never of every file")
+
+
+def test_the_model_versions_that_answered_are_said_when_they_are_not_the_model_asked_alone():
+    assert reading_lines(replace(READ, answered_by=("m-1",)))[1].startswith("Model m-1. ")
+    assert reading_lines(replace(READ, answered_by=("m-0.9", "m-1")))[1].startswith("Model m-1, answered by m-0.9, m-1. ")
+    assert json.loads(reading_document("cli", replace(READ, answered_by=("m-0.9",))))["answered_by"] == ["m-0.9"]

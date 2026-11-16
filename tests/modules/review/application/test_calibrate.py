@@ -82,19 +82,19 @@ def calibrate(given: Given, cmd: Calibrate):
 
 @pytest.mark.parametrize("given, when, then", [
     pytest.param(Given(), Calibrate(CWD, APP, "cli"),
-                 Calibrated((EvalHeld("rule", EXAMPLES, True, 0.5),), RECORD, (), SENDS, 4, 0, 40, 4, ""),
+                 Calibrated((EvalHeld("rule", EXAMPLES, True, 0.5),), RECORD, (), SENDS, 4, 0, 40, 4, "", None, ("m-1.2",)),
                  id="an eval whose flagged examples read above its clean ones by the gap passes, its line set midway"),
     pytest.param(Given(answers=NARROW), Calibrate(CWD, APP, "cli"), Calibrated((EvalHeld("rule", (
         ExampleRead("domain/a.py", True, 0.6), ExampleRead("domain/b.py", True, 0.6),
         ExampleRead("domain/a.py", False, 0.3), ExampleRead("domain/b.py", False, 0.4)), False, 0.5,
         "the flagged examples read 0.25 above the clean ones on the mean, under 0.4"),), RECORD, (), SENDS, 4, 0, 40, 4,
-        ""),
+        "", None, ("m-1.2",)),
                  id="an eval whose examples are apart by less than the gap fails"),
     pytest.param(Given(answers=CROSSED), Calibrate(CWD, APP, "cli"), Calibrated((EvalHeld("rule", (
         ExampleRead("domain/a.py", True, 0.9), ExampleRead("domain/b.py", True, 0.3),
         ExampleRead("domain/a.py", False, 0.1), ExampleRead("domain/b.py", False, 0.4)), False, 0.5,
         "clean example domain/b.py reads 0.40, not below flagged example domain/b.py at 0.30"),), RECORD, (), SENDS, 4,
-        0, 40, 4, ""),
+        0, 40, 4, "", None, ("m-1.2",)),
                  id="an eval a clean example of which reads above a flagged one fails, naming both"),
     pytest.param(Given(evals=(SENDING,), answers={}, by_order={
         (BAD, "reads"): pick(0.9), (BAD, "sends"): pick(0.3), (WORSE, "reads"): pick(0.9), (WORSE, "sends"): pick(0.9),
@@ -102,7 +102,7 @@ def calibrate(given: Given, cmd: Calibrate):
                  Calibrate(CWD, APP, "cli"), Calibrated((EvalHeld("sending", (
                      ExampleRead("domain/a.py", True, 0.6), ExampleRead("domain/b.py", True, 0.9),
                      ExampleRead("domain/a.py", False, 0.1), ExampleRead("domain/b.py", False, 0.1)), True, 0.6,
-                     by_hand=True),), RECORD, (), SENDS, 8, 0, 0, 0, ""),
+                     by_hand=True),), RECORD, (), SENDS, 8, 0, 0, 0, "", None, ("m-1.2",)),
                  id="a choice is asked in both orders and read on their mean, against the line the profile writes"),
     pytest.param(Given(answers={BAD: yes(0.9), WORSE: yes(0.8), GOOD: yes(0.1)}), Calibrate(CWD, APP, "cli", offline=True),
                  Calibrated((EvalHeld("rule", (), False, 0.0, "", False),), None, tuple(

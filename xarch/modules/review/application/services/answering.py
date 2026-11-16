@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from xarch.modules.review.application.logic.answers import request_key
+from xarch.modules.review.application.logic.answers import fits, request_key
 from xarch.modules.review.application.logic.sending import asks
 from xarch.modules.review.application.ports.answers import Answers
 from xarch.modules.review.application.ports.decision_model import DecisionModel
@@ -20,8 +20,11 @@ class AnsweringService:
         self._model, self._answers = model, answers
 
     def kept(self, run: Run, text: str, question: Choice) -> Answer | None:
-        """The answer kept for the question about the text; None when there is none."""
-        return self._answers.get(run.folder, request_key(self._model.sends().model, text, question))
+        """The answer kept for the question about the text; None when there is none, or the one kept does not answer
+        it; raises Refused when the run's folder cannot keep answers, which is known before anything is sent."""
+        self._answers.ready(run.folder)
+        found = self._answers.get(run.folder, request_key(self._model.sends().model, text, question))
+        return found if found is not None and fits(found, question) else None
 
     def answer(self, run: Run, text: str, question: Choice) -> tuple[Answer | None, Run]:
         """The answer kept, else the decision model's, which is kept; None when there is none (offline, or the decision

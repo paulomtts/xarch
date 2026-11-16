@@ -1,11 +1,13 @@
 """The record of the evals held to their examples on the filesystem: one JSON file, each eval by id with the hash of
 what it was held as, the models, the verdict, the line, the value of each example by path (four decimals) and what
-crossed, and no code and no question; a file or an entry not of that shape is no record of it."""
+crossed, and no code and no question; an entry not of that shape is no record of it, and a file that cannot be read,
+or is a link, is refused, naming it, and never rewritten."""
 import json
 
 import pytest
 
 from xarch.modules.review.adapters.fs_calibrations import FsCalibrations
+from xarch.modules.review.domain.errors import Refused
 from xarch.modules.review.domain.published import DISAGREE, ELSEWHERE, PartHeld, PlacementHeld
 from xarch.modules.review.domain.values import Calibration
 from xarch.platform.data_files import DataFileReader, DataFileWriter
@@ -34,7 +36,6 @@ def test_no_file_is_no_record(tmp_path):
 
 
 @pytest.mark.parametrize("text", [
-    pytest.param("not json", id="a file that is not JSON"),
     pytest.param('{"evals": []}', id="evals that are not an object"),
     pytest.param('{"evals": {"rule": {"hash": "x", "model": "m", "answered_by": "m", "passed": "yes", "line": 0.5, '
                  '"flagged": {}, "clean": {}, "crossed": ""}}}', id="a verdict that is not true or false"),
@@ -75,3 +76,45 @@ def test_a_record_of_placement_not_of_the_shape_written_is_none(tmp_path, text):
     record = tmp_path / "calibration.json"
     record.write_text(text)
     assert calibrations().placement(record) is None and calibrations().placement(tmp_path / "none.json") is None
+
+
+@pytest.mark.parametrize("use", [
+    pytest.param(lambda held, record: held.get(record), id="reading the evals"),
+    pytest.param(lambda held, record: held.placement(record), id="reading placement"),
+    pytest.param(lambda held, record: held.put(record, {"rule": HELD}), id="writing the evals"),
+    pytest.param(lambda held, record: held.put_placement(record, PlacementHeld("h", "m", "m", ())),
+                 id="writing placement"),
+])
+@pytest.mark.parametrize("written, why", [
+    pytest.param(b"<<<<<<< HEAD\n{}\n", "it is not JSON", id="a record a merge left its marks in"),
+    pytest.param(b"[]", "it is not a JSON object", id="a document that is not an object"),
+    pytest.param(b"\xff\xfe", "it is not UTF-8 text", id="a file that is not UTF-8"),
+])
+def test_a_record_that_cannot_be_read_is_refused_naming_it_and_never_rewritten(tmp_path, use, written, why):
+    record = tmp_path / "calibration.json"
+    record.write_bytes(written)
+    with pytest.raises(Refused, match=f"the record {record} cannot be read \\({why}\\)"):
+        use(calibrations(), record)
+    assert record.read_bytes() == written
+
+
+def test_a_record_that_is_a_link_is_neither_read_nor_written_through(tmp_path):
+    victim = tmp_path / "victim.txt"
+    victim.write_text("precious")
+    record = tmp_path / "calibration.json"
+    record.symlink_to(victim)
+    for use in (lambda: calibrations().get(record), lambda: calibrations().put(record, {"rule": HELD})):
+        with pytest.raises(Refused, match="is a link"):
+            use()
+    assert victim.read_text() == "precious"
+
+
+def test_a_record_that_cannot_be_written_is_refused_naming_it(tmp_path):
+    folder = tmp_path / "ro"
+    folder.mkdir()
+    folder.chmod(0o500)
+    try:
+        with pytest.raises(Refused, match=f"cannot write the record {folder / 'calibration.json'}"):
+            calibrations().put(folder / "calibration.json", {"rule": HELD})
+    finally:
+        folder.chmod(0o700)
