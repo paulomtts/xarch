@@ -6,6 +6,7 @@ from xarch.kernel.logic.placement import Place
 from xarch.kernel.logic.source import Import, Unparsable
 from xarch.kernel.logic.testing import TierView
 from xarch.modules.rules.application.logic import enforcement, explained
+from xarch.modules.rules.application.logic.expandable import expands
 from xarch.modules.rules.application.logic.verdict import passed
 from xarch.modules.rules.application.logic.written import written, written_own
 from xarch.modules.rules.application.services.app_check import AppCheckService
@@ -39,6 +40,7 @@ from xarch.modules.rules.contract import (
     InPart,
     InStructure,
     InTests,
+    KeyUnset,
     Locate,
     Located,
     LocateResult,
@@ -132,12 +134,14 @@ class RulesController:
         return (own.rule.key, "", written_own((own,), language)) if own is not None else ("", "", "")
 
     def explain_rule(self, cmd: ExplainRule) -> RuleResult:
-        """The rules a key of a profile expands to, written as checks; a key that expands to none comes back with
-        why."""
+        """The rules a key of a profile expands to, written as checks; a key the engine expands that the profile sets
+        nowhere comes back as unset, and any other key that expands to none with why."""
         try:
             rules = self._explaining.rules_of(cmd.address, cmd.profile)
         except DomainError as e:
             return NoRuleShown(cmd.address, cmd.profile, e.reason)
+        if not rules and expands(cmd.address):
+            return KeyUnset(cmd.address, cmd.profile)
         if not rules:
             return NoRuleShown(cmd.address, cmd.profile, "it expands to no rule of the engine here: the profile does not "
                                                          "set it, or it is checked by a check of its own")

@@ -333,17 +333,19 @@ def test_testing_drives_each_profiles_entry_point_its_own_way():
 
 
 @pytest.mark.parametrize("profile", ["cli", "web"])
-def test_the_controller_builds_the_dto_and_the_service_returns_the_entity(profile):
+def test_the_service_builds_the_dto_and_the_controller_maps_failures(profile):
     text = templates(profile)["architecture.md"]
     controller = text.split("### 8.3 ")[1].split("### 8.4 ")[0]
     service = text.split("### 8.4 ")[1].split("### 8.5 ")[0]
-    assert "return Published(self._view(doc))" in controller and "return Created(self._view(doc))" in controller
-    assert "def _view(self, doc: Document) -> DocumentView:" in controller
-    assert "entities into DTOs" in controller
-    assert "def publish(self, id: DocumentId) -> Document:" in service and "def create(self, title: str) -> Document:" in service
-    assert "DocumentView" not in service
-    assert "without building the `Result` or the DTO" in service
-    assert "which the controller builds from the entity (section 8.3)" in text
+    assert "return Published(view)" in controller and "return Created(view)" in controller
+    assert "return Missing()" in controller and "return Rejected(e.reason)" in controller
+    assert "_view" not in controller and "DocumentView" not in controller
+    assert "def publish(self, id: DocumentId) -> DocumentView:" in service
+    assert "def create(self, title: str) -> DocumentView:" in service
+    assert "def _view(self, doc: Document) -> DocumentView:" in service
+    assert "turn each exception a service raises into the `Result` variant that says it" in controller
+    assert "assemble what the use case hands out on success" in service
+    assert "which the service builds from the entity (section 8.4)" in text
 
 
 @pytest.mark.parametrize("profile", ["cli", "web"])

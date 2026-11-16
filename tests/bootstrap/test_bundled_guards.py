@@ -92,8 +92,6 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
         "- `must-import`: every file of `adapters/` imports from `platform/`, any module's `contract/`, or an outside "
         "package, or reaches one through a file of its own part, so that it touches technology; a package file and "
         "a file with no code of its own are exempt.",
-        "- `types-only`: `application/services/` uses `contract/` only as a type: it imports it to annotate and never "
-        "calls it.",
         "- `holds`: a file of `domain/`, `application/services/` and `application/controller.py` defines classes, "
         "never a public function at the top level; a file of `application/logic/` and `kernel/logic/` defines "
         "functions, never a class (a private one too) but exceptions and the records its functions return; listed in "

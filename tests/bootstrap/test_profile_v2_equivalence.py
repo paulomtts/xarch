@@ -64,8 +64,9 @@ def comparable(architecture: Architecture) -> Architecture:
     list (and a list of nothing else), the names `reserved` holds and the parts' libraries that list them, and the
     guards no-duplicates, no-twins, dead-code, pass-through and private-imports; and `kernel/logic/`, a folder of
     `kernel/` in format 1 and a part of its own now, which every part that may import `kernel/` may import too, as
-    the part it was a folder of (see kernel_logic)."""
-    architecture = kernel_logic(architecture)
+    the part it was a folder of (see kernel_logic); and what changed when services came to assemble what a use case
+    hands out (see assembled)."""
+    architecture = assembled(kernel_logic(architecture))
     tiers = tuple(replace(tier, subject=tuple(sorted(tier.subject, key=lambda s: s.part)), example=None, helpers=(),
                           must_import=()) for tier in architecture.tiers)
     parts = {name: replace(part, must_import=(), holds="", types_only=(), no_callbacks=False, names=(), built_by=(),
@@ -84,6 +85,21 @@ def comparable(architecture: Architecture) -> Architecture:
 
 
 LOGIC = "kernel-logic"
+REWORDED = ("domain", "services", "controller", "contract", LOGIC)
+"""The parts whose role and litmus were reworded when services came to assemble what a use case hands out and a
+module came to hand out a value as it is from domain/published.py."""
+PUBLISHED = ("published",)
+
+
+def assembled(architecture: Architecture) -> Architecture:
+    """The architecture without the role and litmus of the parts REWORDED, and without the target the contract gained
+    for the values a module hands out as they are (domain/published), which format 1 never had."""
+    parts = {name: replace(part, role="", litmus="") if name in REWORDED else part
+             for name, part in architecture.parts.items()}
+    rules = {name: tuple(t for t in targets if not (t.part == "domain" and t.sub == PUBLISHED))
+             for name, targets in architecture.rules.items()}
+    return replace(architecture, parts=parts, rules=rules)
+
 
 
 def kernel_logic(architecture: Architecture) -> Architecture:

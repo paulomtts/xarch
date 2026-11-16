@@ -23,6 +23,8 @@ and, all optional, the tokens of its code the checks and the docs need (empty: t
     shebang        how line 1 names the program that runs the file
     encoding       a regular expression: how line 1 or 2 declares the file's encoding, after the marker
     branching      the keywords of the statements that branch
+    importing      how a file imports a name from another file of the app: {dotted} stands for that file's dotted
+                   path, {name} for the name
 
 and the facts its reader supplies (see capabilities), each graded:
 
@@ -44,12 +46,14 @@ from xarch.modules.spec.domain.values import Language
 FOLDER = "presets/language"
 """Where the data files of the languages are, below the bundled folder: one YAML file each, named for the language."""
 KEYS = ("title", "extension", "package_file", "interface", "dynamic", "namespace", "cache", "standard", "name", "private",
-        "special", "call", "nothing", "comment", "directives", "shebang", "encoding", "branching", "supplies")
+        "special", "call", "nothing", "comment", "directives", "shebang", "encoding", "branching", "importing",
+        "supplies")
 REQUIRED = ("title", "extension", "package_file", "namespace", "standard")
 _EXTENSION = re.compile(r"\.[A-Za-z0-9]+")
 _DOTTED = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*")
 _WORD = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 _FOLDER = re.compile(r"[A-Za-z0-9_.-]+")
+_IMPORTING = re.compile(r"(?=[^\n]*\{dotted\})(?=[^\n]*\{name\})[^\n]+")
 
 
 def language_of(name: str, document: Any) -> Language:
@@ -79,13 +83,15 @@ def language_of(name: str, document: Any) -> Language:
     encoding = _pattern(document, "encoding", problems)
     directives = _words(document, "directives", problems)
     branching = _words(document, "branching", problems)
+    importing = _text(document, "importing", "must be a line holding {dotted} and {name}", problems, _IMPORTING)
     supplies = _supplies(document["supplies"], problems) if "supplies" in document else None
     if problems:
         raise InvalidArchitecture(source, problems)
     return Language(name, title, extension, package_file, interface, dynamic, namespace, standard, cache,
                     names=names, private=tokens["private"], special=tokens["special"], call=tokens["call"],
                     nothing=tokens["nothing"], comment=tokens["comment"], directives=directives,
-                    shebang=tokens["shebang"], encoding=encoding, branching=branching, supplies=supplies)
+                    shebang=tokens["shebang"], encoding=encoding, branching=branching, supplies=supplies,
+                    importing=importing)
 
 
 def _text(document: Mapping[Any, Any], key: str, said: str, problems: list[str],

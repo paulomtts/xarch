@@ -17,7 +17,9 @@ class LanguageView:
     value, the marker of a line comment, the comments its tools read (after the marker, a space standing for any
     spaces), how line 1 names the program that runs the file, how line 1 or 2 declares the encoding (a regular
     expression, after the marker), and the keywords of the statements that branch. An empty token: the language has
-    none. supplies are the facts its reader supplies, each graded (None: its data file does not say)."""
+    none. supplies are the facts its reader supplies, each graded (None: its data file does not say); importing is how a
+    file imports a name from another file of the app, {dotted} standing for that file's dotted path and {name} for the
+    name (empty: its data file does not say)."""
     title: str = ""
     extension: str = ""
     package_file: str = ""
@@ -33,6 +35,7 @@ class LanguageView:
     encoding: str = ""
     branching: tuple[str, ...] = ()
     supplies: tuple[Supply, ...] | None = None
+    importing: str = ""
 
     @property
     def marks(self) -> Marks:

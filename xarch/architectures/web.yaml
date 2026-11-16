@@ -10,9 +10,10 @@ parts:
     role: "entities, values (incl. ids), errors: invariants only"
     litmus: >-
       Is it an invariant of one of this module's entities or values (a state transition or a validation) that can run
-      with no database and no clock? If yes, it goes here, on that entity or value. If it is a pure rule that is not
-      one entity's invariant, it belongs in `application/logic/`. If it must load or save anything, it is a service
-      step. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
+      with no database and no clock? If yes, it goes here, on that entity or value. If it is a value the module hands
+      out as it is, with nothing to reshape, it goes in `domain/published.py`, which `contract/` re-exports. If it is
+      a pure rule that is not one entity's invariant, it belongs in `application/logic/`. If it must load or save
+      anything, it is a service step. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
     may_import: [kernel, kernel-logic]
     forbidden: pure
     holds: classes
@@ -48,14 +49,15 @@ parts:
 
   services:
     path: modules/<module>/application/services
-    role: "use-case steps: load, check, act, persist"
+    role: "use-case steps: load, check, act, persist; they assemble what the use case hands out"
     litmus: >-
-      Does it run one use case as the sequence "load → check preconditions → act → persist → notify" by calling ports
-      and domain objects, without building the `Result` or the DTO? If yes, it goes here. If it decides what is valid,
-      it belongs in `domain/`. If it is a pure rule with no port, it belongs in `application/logic/`. If it builds the
-      `Result` or the DTO, it belongs in the controller. If it touches a database, it belongs in `adapters/`.
+      Does it run one use case as the sequence "load → check preconditions → act → persist → notify", calling ports,
+      logic and domain objects, and then assemble what the use case hands out on success (the DTO, or the `Result`
+      variant that carries it) from the values they return? If yes, it goes here. If it decides what is valid, it
+      belongs in `domain/`. If it is a pure rule with no port, or a decision about what the DTO says (a condition, a
+      default, a sentence), it belongs in `application/logic/`, and the service calls it. If it turns a failure into
+      a `Result` variant, it belongs in the controller. If it touches a database, it belongs in `adapters/`.
     may_import: [logic, domain, ports, contract, kernel, kernel-logic]
-    types_only: [contract]
     holds: classes
     names: "*Service"
     forbidden: ambient
@@ -64,11 +66,13 @@ parts:
 
   controller:
     path: modules/<module>/application/controller.py
-    role: maps failures to a Result
+    role: maps failures to Result variants
     litmus: >-
-      Does it turn what a service returns or raises into a `Result` for the caller (exceptions into variants, entities
-      into DTOs), without deciding any business rule? If yes, it goes here. If it names HTTP status codes, templates
-      or translated text, it belongs in `web/`. If it handles a table row, it belongs in `adapters/`.
+      Does it turn each exception a service raises into the `Result` variant that says it, and return what the service
+      assembled on success, without deciding any business rule? If yes, it goes here, and no module's error leaves
+      the module past it. When a use case cannot fail, it builds the `Result` from the plain values the service
+      returns. If it names HTTP status codes, templates or translated text, it belongs in `web/`. If it handles a
+      table row, it belongs in `adapters/`.
     may_import: [services, logic, domain, ports, contract, kernel, kernel-logic]
     holds: classes
     names: "*Controller"
@@ -139,9 +143,11 @@ parts:
     litmus: >-
       Is it part of what the module promises to callers outside it: an input a caller sends, an output that comes
       back, or an id that names the module's things? If yes, it goes here, and an id is defined in `domain/values.py`
-      and re-exported here. If it is a `domain/` entity, a service type or a port, it stays where it is, and a DTO
-      goes here instead.
-    may_import: ["domain/values:*Id", kernel, kernel-logic]
+      and re-exported here. A value with nothing to reshape may be handed out as it is: it is listed, on purpose, in
+      `domain/published.py`, and re-exported here as an id is; everything else the module hands out is a type of its
+      own here. If it is a `domain/` entity, a service type or a port, it stays where it is, and a DTO goes here
+      instead.
+    may_import: ["domain/values:*Id", "domain/published", kernel, kernel-logic]
     forbidden: pure
     tier: integration
     package_only: true

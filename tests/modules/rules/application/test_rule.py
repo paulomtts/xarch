@@ -1,12 +1,12 @@
 """Use case: the rules a key of a profile expands to, written as checks a profile could write; a key that expands to
-none in that profile comes back with why."""
+none in that profile comes back unset when the engine expands it and the profile sets it nowhere, else with why."""
 import pytest
 
 from tests.fakes.filesystem import FakeSourceTree
 from tests.fakes.profiles import FakeProfiles
 from tests.modules.rules.application.helpers import controller
 from tests.modules.rules.builders import profile
-from xarch.modules.rules.contract import ExplainRule, NoRuleShown, RuleShown
+from xarch.modules.rules.contract import ExplainRule, KeyUnset, NoRuleShown, RuleShown
 
 NAMED = profile(names={"services": ("*Service",), "controller": ("*Controller",)})
 TEXT = """checks:
@@ -27,6 +27,10 @@ TEXT = """checks:
                  NoRuleShown("parts.path", "named", "it expands to no rule of the engine here: the profile does not "
                                                     "set it, or it is checked by a check of its own"),
                  id="a key of no rule of the engine comes back with why"),
+    pytest.param({"named": NAMED}, ExplainRule("parts.types_only", "named"), KeyUnset("parts.types_only", "named"),
+                 id="a key the engine expands that the profile sets on no part comes back unset"),
+    pytest.param({"named": NAMED}, ExplainRule("parts.services.holds", "named"),
+                 KeyUnset("parts.services.holds", "named"), id="so does such a key of one part"),
 ])
 def test_rule(given, when, then):
     assert controller(FakeSourceTree(None, {}), FakeProfiles(given)).explain_rule(when) == then

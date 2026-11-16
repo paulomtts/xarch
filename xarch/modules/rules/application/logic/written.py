@@ -30,6 +30,9 @@ from xarch.modules.rules.domain.rule import (
 PLAIN = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_./@()-]*(?: [A-Za-z0-9_./@()-]+)*")
 """A word written without quotes: what YAML reads as the text it is, in a list or a map written on one line."""
 INDENT = "  "
+_IMPORT = re.compile(r"%import (?P<dotted>[^ %]+) (?P<name>[^ %]+)%")
+"""The token of a line that imports a name from a file of the app, in the code of a check written for the
+explanation."""
 
 
 def written(rules: Iterable[Rule], ids: Iterable[str]) -> str:
@@ -42,7 +45,7 @@ def written(rules: Iterable[Rule], ids: Iterable[str]) -> str:
 
 def written_own(checks: Iterable[OwnCheck], language: LanguageView) -> str:
     """Checks of a profile's own as its `checks` are written, each under its id with its examples, the tokens of
-    the language (`%extension%`, `%comment%`) in their code filled in."""
+    the language (see filled) in their code filled in."""
     lines = ["checks:"]
     for own in checks:
         lines += [f"{INDENT}{own.rule.id}:", *(INDENT * 2 + line for line in check(own.rule)),
@@ -58,8 +61,13 @@ def _files(files: tuple[tuple[str, str], ...], language: LanguageView) -> str:
 
 
 def filled(text: str, language: LanguageView) -> str:
-    """The text with the tokens of the language filled in: `%extension%`, `%comment%`."""
-    return text.replace("%extension%", language.extension).replace("%comment%", language.comment)
+    """The text with the tokens of the language filled in: `%extension%`, `%comment%`, and `%import <dotted> <name>%`,
+    a line that imports name from the file of the app that dotted names, as the language's importing says
+    (left as written when it does not say)."""
+    text = text.replace("%extension%", language.extension).replace("%comment%", language.comment)
+    if not language.importing:
+        return text
+    return _IMPORT.sub(lambda found: language.importing.format(dotted=found["dotted"], name=found["name"]), text)
 
 
 def check(rule: Rule) -> list[str]:

@@ -2,8 +2,9 @@
 a word quoted only where the format would read it otherwise, and the sayings but the last as cases."""
 import pytest
 
+from xarch.kernel.logic.language import LanguageView
 from xarch.kernel.logic.placement import Target
-from xarch.modules.rules.application.logic.written import check, written
+from xarch.modules.rules.application.logic.written import check, filled, written
 from xarch.modules.rules.domain.rule import (
     EXISTING,
     LIST,
@@ -62,3 +63,14 @@ def test_rules_are_written_as_the_checks_of_a_profile_each_under_its_id():
     assert written((rule, rule), ("one", "two")) == (
         'checks:\n  one:\n    read: comment\n    may_not: exist\n    message: "a \\"comment\\""\n    fix: "f"\n'
         '  two:\n    read: comment\n    may_not: exist\n    message: "a \\"comment\\""\n    fix: "f"\n')
+
+
+@pytest.mark.parametrize("text, importing, written_out", [
+    pytest.param("%import app.docs.rules trim%\n", "from {dotted} import {name}", "from app.docs.rules import trim\n",
+                 id="the import token is written as the language imports a name"),
+    pytest.param("%import app.docs.rules trim%\n", "", "%import app.docs.rules trim%\n",
+                 id="a language that does not say how it imports leaves the token as written"),
+    pytest.param("%comment% a note in notes%extension%", "", "# a note in notes.py", id="the other tokens as before"),
+])
+def test_the_tokens_of_the_language_are_filled_in(text, importing, written_out):
+    assert filled(text, LanguageView(extension=".py", comment="#", importing=importing)) == written_out

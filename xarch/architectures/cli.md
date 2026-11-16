@@ -204,7 +204,7 @@ What the module promises to everyone outside it: the inputs a caller sends the c
 > A contract grows into several files, and `__init__.py` lists the public names. Other code imports from `contract`, never from its files, so the split can change without touching a caller.
 
 > [!NOTE]
-> Typed ids are re-exported from `domain/values.py` on purpose. Nothing else from `domain/`, `services/` or `ports/` is exposed through `contract/` without a deliberate decision to do so. If a caller needs a domain entity, add a DTO here, which the controller builds from the entity (section 8.3). The entity itself does not get exposed.
+> Typed ids are re-exported from `domain/values.py` on purpose. Nothing else from `domain/`, `services/` or `ports/` is exposed through `contract/` without a deliberate decision to do so. If a caller needs a domain entity, add a DTO here, which the service builds from the entity (section 8.4). The entity itself does not get exposed. A value with nothing to reshape may be handed out as it is: it is listed, on purpose, in `domain/published.py`, and re-exported here as an id is.
 
 ### 8.2 domain/
 
@@ -216,7 +216,7 @@ Entities and their state transitions, value objects (including typed ids) and th
 
 ### 8.3 application/controller.py
 
-The module's use-case façade. It delegates to a service, turns exceptions into a `Result` the caller can branch on and turns the entities the service returns into DTOs. It holds no business rules.
+The module's use-case façade. It delegates to a service and turns the exceptions it raises into a `Result` the caller can branch on; the service hands it the DTO. It holds no business rules.
 
 {{example:modules/documents/application/controller.py}}
 
@@ -227,7 +227,7 @@ The module's use-case façade. It delegates to a service, turns exceptions into 
 
 ### 8.4 application/services/
 
-The sequence for one use case: load, check the preconditions, tell the domain to act, persist, notify. Services call ports, and never implement them. A precondition is that what the use case needs exists or is available. What is valid to do with it is the domain's call.
+The sequence for one use case: load, check the preconditions, tell the domain to act, persist, notify. It ends by assembling what the use case hands out: the DTO of `contract/`, built from the entities it acted on. Services call ports, and never implement them. A precondition is that what the use case needs exists or is available. What is valid to do with it is the domain's call.
 
 {{example:modules/documents/application/services/document_service.py}}
 

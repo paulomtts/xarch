@@ -14,7 +14,7 @@ __all__ = ["ChecksCannotRun", "OwnCheckView",
            "WhereAnswer", "CheckImports", "ImportsChecked", "NotADirectory", "CheckResult", "CheckApp", "AppChecked",
            "CheckAppResult", "Locate", "Located", "Outside", "LocateResult", "CATEGORIES", "ExplainWords", "SlotShown",
            "WordLine", "CategoryShown", "ChecksShown", "WordsShown", "FieldShown", "WordShown", "UnknownWords",
-           "WordsResult", "ExplainRule", "RuleShown", "NoRuleShown", "RuleResult", "CheckExamples", "ExamplesChecked"]
+           "WordsResult", "ExplainRule", "RuleShown", "KeyUnset", "NoRuleShown", "RuleResult", "CheckExamples", "ExamplesChecked"]
 
 
 @dataclass(frozen=True)
@@ -411,6 +411,13 @@ class RuleShown:
 
 
 @dataclass(frozen=True)
+class KeyUnset:
+    """A key the engine expands to rules when a profile sets it, which that profile sets nowhere."""
+    address: str
+    profile: str
+
+
+@dataclass(frozen=True)
 class NoRuleShown:
     """A key that expands to no rule in that profile, and why (the profile does not set it, it is checked by a check
     of its own, or the profile cannot be read)."""
@@ -419,7 +426,7 @@ class NoRuleShown:
     reason: str
 
 
-RuleResult = RuleShown | NoRuleShown
+RuleResult = RuleShown | KeyUnset | NoRuleShown
 
 
 @dataclass(frozen=True)

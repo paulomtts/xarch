@@ -84,11 +84,6 @@ CASES = [
     pytest.param({}, {"modules/docs/domain/test_x.py": "from tests.modules.docs.domain.test_document import X\n"},
                  "tiers", "move what tests.modules.docs.domain.test_document holds that this test needs into test code "
                           "of its folder that is no test file, and import it from there", id="tiers: a test file"),
-    pytest.param({"modules/docs/application/services/doc.py":
-                  "from app.modules.docs.contract import Published\n\n\nclass DocService:\n"
-                  "    def run(self):\n        return Published()\n"}, {}, "types-only",
-                 "use contract/ here only as a type, and leave the call to controller/, adapters/ or web/, which may "
-                 "make it", id="types-only: a part"),
     pytest.param({"modules/docs/domain/rule.py": "from typing import Callable\n\n\nclass Rule:\n"
                                                  "    def ok(self, has: Callable[[str], bool]):\n"
                                                  "        return has('x')\n"}, {}, "no-callbacks",
@@ -215,3 +210,22 @@ def test_a_shared_part_names_its_rule_and_its_fix(tmp_path):
     assert [(v.rule, v.fix) for v in result.violations if v.rule == "shared"] == [
         ("shared", "move PREFIX to modules/docs, its one user, or to the published types of modules/docs if others "
                    "read it through them")]
+
+
+def test_a_part_used_only_as_a_type_names_its_rule_and_its_fix(tmp_path):
+    """No bundled profile holds a part to types_only now that services build their module's contract types, so the
+    web profile is given one."""
+    shutil.copytree(BUNDLED, tmp_path / "arch")
+    services = "    may_import: [logic, domain, ports, contract, kernel, kernel-logic]\n    holds: classes\n"
+    text = (BUNDLED / "web.yaml").read_text()
+    assert text.count(services) == 1
+    (tmp_path / "arch/typed.yaml").write_text(text.replace(services, services + "    types_only: [contract]\n"))
+    app = write(tmp_path / "app", {**APP, "modules/docs/application/services/doc.py":
+                                   "from app.modules.docs.contract import Published\n\n\nclass DocService:\n"
+                                   "    def run(self):\n        return Published()\n"})
+    result = build_controllers().rules.check(CheckImports(app, "app", str(tmp_path / "arch/typed.yaml"),
+                                                          write(tmp_path / "tests", TESTS)))
+    assert isinstance(result, ImportsChecked)
+    assert [(v.rule, v.fix) for v in result.violations] == [
+        ("types-only", "use contract/ here only as a type, and leave the call to controller/, adapters/ or web/, which "
+                       "may make it")]

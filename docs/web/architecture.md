@@ -45,8 +45,8 @@ app/
 │       ├── application/
 │       │   ├── logic/          pure functions over the module's domain objects, one file per rule
 │       │   ├── ports/          Protocols for what the module needs from the outside
-│       │   ├── services/       use-case steps: load, check, act, persist
-│       │   └── controller.py   maps failures to a Result
+│       │   ├── services/       use-case steps: load, check, act, persist; they assemble what the use case hands out
+│       │   └── controller.py   maps failures to Result variants
 │       ├── adapters/           driven only: repos, which translate the platform/ table models; use platform/ clients
 │       └── contract/           the module's published language: commands, DTOs, Results (one union per use case), ids
 ├── platform/                   shared technology clients: llm, embeddings, email, crypto, blob_storage, system clock, sql engine, sessions and table models
@@ -171,7 +171,7 @@ Dependencies point inward: a part imports only from the rings inside it (section
 | `platform/` | `kernel/`, `kernel/logic/` |
 | `web/` | any module's `application/controller.py` and `contract/`, `kernel/`, `kernel/logic/` |
 | `bootstrap/` | everything |
-| `contract/` | its own module's `domain/values:*Id`, `kernel/`, `kernel/logic/` |
+| `contract/` | its own module's `domain/values:*Id` and `domain/published`, `kernel/`, `kernel/logic/` |
 | `kernel/logic/` | `kernel/` |
 | `kernel/` | nothing |
 
@@ -311,13 +311,13 @@ from app.modules.documents.contract.results import Published, Missing, Rejected,
 ```
 
 > [!TIP]
-> **Litmus test.** Is it part of what the module promises to callers outside it: an input a caller sends, an output that comes back, or an id that names the module's things? If yes, it goes here, and an id is defined in `domain/values.py` and re-exported here. If it is a `domain/` entity, a service type or a port, it stays where it is, and a DTO goes here instead.
+> **Litmus test.** Is it part of what the module promises to callers outside it: an input a caller sends, an output that comes back, or an id that names the module's things? If yes, it goes here, and an id is defined in `domain/values.py` and re-exported here. A value with nothing to reshape may be handed out as it is: it is listed, on purpose, in `domain/published.py`, and re-exported here as an id is; everything else the module hands out is a type of its own here. If it is a `domain/` entity, a service type or a port, it stays where it is, and a DTO goes here instead.
 
 > [!NOTE]
 > A contract grows into several files, and `__init__.py` lists the public names. Other code imports from `contract`, never from its files, so the split can change without touching a caller.
 
 > [!NOTE]
-> Typed ids are re-exported from `domain/values.py` on purpose. Nothing else from `domain/`, `services/` or `ports/` is exposed through `contract/` without a deliberate decision to do so. If a caller needs a domain entity, add a DTO here, which the controller builds from the entity (section 8.3). The entity itself does not get exposed.
+> Typed ids are re-exported from `domain/values.py` on purpose. Nothing else from `domain/`, `services/` or `ports/` is exposed through `contract/` without a deliberate decision to do so. If a caller needs a domain entity, add a DTO here, which the service builds from the entity (section 8.4). The entity itself does not get exposed. A value with nothing to reshape may be handed out as it is: it is listed, on purpose, in `domain/published.py`, and re-exported here as an id is.
 
 ### 8.2 domain/
 
@@ -355,18 +355,17 @@ class Document:
 ```
 
 > [!TIP]
-> **Litmus test.** Is it an invariant of one of this module's entities or values (a state transition or a validation) that can run with no database and no clock? If yes, it goes here, on that entity or value. If it is a pure rule that is not one entity's invariant, it belongs in `application/logic/`. If it must load or save anything, it is a service step. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
+> **Litmus test.** Is it an invariant of one of this module's entities or values (a state transition or a validation) that can run with no database and no clock? If yes, it goes here, on that entity or value. If it is a value the module hands out as it is, with nothing to reshape, it goes in `domain/published.py`, which `contract/` re-exports. If it is a pure rule that is not one entity's invariant, it belongs in `application/logic/`. If it must load or save anything, it is a service step. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
 
 ### 8.3 application/controller.py
 
-The module's use-case façade. It delegates to a service, turns exceptions into a `Result` the caller can branch on and turns the entities the service returns into DTOs. It holds no business rules.
+The module's use-case façade. It delegates to a service and turns the exceptions it raises into a `Result` the caller can branch on; the service hands it the DTO. It holds no business rules.
 
 ```python
 # modules/documents/application/controller.py
 from app.modules.documents.contract import (
-    PublishDocument, CreateDocument, PublishResult, CreateResult, DocumentView, Published, Missing, Rejected, Created,
+    PublishDocument, CreateDocument, PublishResult, CreateResult, Published, Missing, Rejected, Created,
 )
-from app.modules.documents.domain.document import Document
 from app.modules.documents.domain.errors import DocumentNotFound, DocumentIncomplete, ContentRejected
 from app.modules.documents.application.services.document_service import DocumentService
 
@@ -376,37 +375,35 @@ class DocumentController:
 
     def publish(self, cmd: PublishDocument) -> PublishResult:
         try:
-            doc = self._service.publish(cmd.id)
+            view = self._service.publish(cmd.id)
         except DocumentNotFound:                         # exception -> Result
             return Missing()
         except DocumentIncomplete as e:
             return Rejected(e.reason)
-        return Published(self._view(doc))                 # entity -> DTO
+        return Published(view)                           # the service built the DTO
 
     def create(self, cmd: CreateDocument) -> CreateResult:
         try:
-            doc = self._service.create(cmd.title)
+            view = self._service.create(cmd.title)
         except ContentRejected as e:                     # raised after another module said no, see section 6
             return Rejected(e.reason)
-        return Created(self._view(doc))
-
-    def _view(self, doc: Document) -> DocumentView:      # the DTO is built here: contract/ cannot import the entity
-        return DocumentView(id=doc.id, title=doc.title)
+        return Created(view)
 ```
 
 > [!TIP]
-> **Litmus test.** Does it turn what a service returns or raises into a `Result` for the caller (exceptions into variants, entities into DTOs), without deciding any business rule? If yes, it goes here. If it names HTTP status codes, templates or translated text, it belongs in `web/`. If it handles a table row, it belongs in `adapters/`.
+> **Litmus test.** Does it turn each exception a service raises into the `Result` variant that says it, and return what the service assembled on success, without deciding any business rule? If yes, it goes here, and no module's error leaves the module past it. When a use case cannot fail, it builds the `Result` from the plain values the service returns. If it names HTTP status codes, templates or translated text, it belongs in `web/`. If it handles a table row, it belongs in `adapters/`.
 
 > [!NOTE]
 > The name overlaps with the usual meaning of "controller" (the thing that receives a request). Here the thing that receives the request is the route in `web/`. The controller never sees HTTP or the browser.
 
 ### 8.4 application/services/
 
-The sequence for one use case: load, check the preconditions, tell the domain to act, persist, notify. Services call ports, and never implement them. A precondition is that what the use case needs exists or is available. What is valid to do with it is the domain's call.
+The sequence for one use case: load, check the preconditions, tell the domain to act, persist, notify. It ends by assembling what the use case hands out: the DTO of `contract/`, built from the entities it acted on. Services call ports, and never implement them. A precondition is that what the use case needs exists or is available. What is valid to do with it is the domain's call.
 
 ```python
 # modules/documents/application/services/document_service.py
 from app.kernel.time import Clock
+from app.modules.documents.contract import DocumentView
 from app.modules.documents.domain.document import Document
 from app.modules.documents.domain.errors import DocumentNotFound, ContentRejected
 from app.modules.documents.domain.values import DocumentId
@@ -417,24 +414,27 @@ class DocumentService:
     def __init__(self, repo: DocumentRepo, review: ContentReview, clock: Clock):   # review: another module, see section 6
         self._repo, self._review, self._clock = repo, review, clock
 
-    def publish(self, id: DocumentId) -> Document:
+    def publish(self, id: DocumentId) -> DocumentView:
         doc = self._repo.get(id)                                 # load
         if doc is None:
             raise DocumentNotFound(id)                           # precondition: it must exist
         doc.publish(self._clock.now())                           # the domain decides if it is legal
         self._repo.save(doc)                                     # persist
-        return doc
+        return self._view(doc)
 
-    def create(self, title: str) -> Document:
+    def create(self, title: str) -> DocumentView:
         match self._review.review(title):                        # another module, through a port (section 6)
             case Denied(why): raise ContentRejected(why)         # the controller maps this to Rejected
         doc = Document.new(title)
         self._repo.save(doc)                                     # persist
-        return doc                                               # the entity; the controller builds the DTO
+        return self._view(doc)
+
+    def _view(self, doc: Document) -> DocumentView:      # the DTO is built here: contract/ cannot import the entity
+        return DocumentView(id=doc.id, title=doc.title)
 ```
 
 > [!TIP]
-> **Litmus test.** Does it run one use case as the sequence "load → check preconditions → act → persist → notify" by calling ports and domain objects, without building the `Result` or the DTO? If yes, it goes here. If it decides what is valid, it belongs in `domain/`. If it is a pure rule with no port, it belongs in `application/logic/`. If it builds the `Result` or the DTO, it belongs in the controller. If it touches a database, it belongs in `adapters/`.
+> **Litmus test.** Does it run one use case as the sequence "load → check preconditions → act → persist → notify", calling ports, logic and domain objects, and then assemble what the use case hands out on success (the DTO, or the `Result` variant that carries it) from the values they return? If yes, it goes here. If it decides what is valid, it belongs in `domain/`. If it is a pure rule with no port, or a decision about what the DTO says (a condition, a default, a sentence), it belongs in `application/logic/`, and the service calls it. If it turns a failure into a `Result` variant, it belongs in the controller. If it touches a database, it belongs in `adapters/`.
 
 ### 8.5 application/logic/
 

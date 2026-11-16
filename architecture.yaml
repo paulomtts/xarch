@@ -8,7 +8,7 @@ testing: pytest
 parts:
   domain:
     path: modules/<module>/domain
-    role: "entities, values, errors: invariants only"
+    role: "entities, values, errors: invariants only; in published.py, the values handed out as they are"
     may_import: [kernel, kernel-logic]
     forbidden: pure
     holds: classes
@@ -33,9 +33,8 @@ parts:
 
   services:
     path: modules/<module>/application/services
-    role: "use-case steps: load, check, act"
+    role: "use-case steps: load, check, act; they assemble what the use case hands out"
     may_import: [logic, domain, ports, contract, kernel, kernel-logic]
-    types_only: [contract]
     holds: classes
     names: "*Service"
     forbidden: ambient
@@ -44,7 +43,7 @@ parts:
 
   controller:
     path: modules/<module>/application/controller.py
-    role: maps failures to a Result
+    role: maps failures to Result variants
     may_import: [services, logic, domain, ports, contract, kernel, kernel-logic]
     holds: classes
     names: "*Controller"
@@ -105,14 +104,14 @@ parts:
   contract:
     path: modules/<module>/contract
     role: "the module's published language: commands, Results"
-    may_import: ["domain/values:*Id", kernel, kernel-logic]
+    may_import: ["domain/values:*Id", "domain/published", kernel, kernel-logic]
     forbidden: pure
     tier: integration
     package_only: true
 
   kernel-logic:
     path: kernel/logic
-    role: pure functions that modules share, including a rule two modules need
+    role: "pure functions that modules share, including a rule two modules need, over kernel/'s values: no type of its own"
     may_import: [kernel]
     shared: 2
     forbidden: pure
@@ -124,6 +123,7 @@ parts:
     role: pure primitives that modules share
     shared: 2
     forbidden: pure
+    holds: classes
     tier: unit
 
 forbidden:

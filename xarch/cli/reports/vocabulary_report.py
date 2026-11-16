@@ -17,6 +17,7 @@ from typing import Any
 from xarch.modules.rules.contract import (
     CategoryShown,
     ChecksShown,
+    KeyUnset,
     NoRuleShown,
     RuleShown,
     UnknownWords,
@@ -126,6 +127,25 @@ def rule_lines(shown: RuleShown) -> list[str]:
 def rule_document(shown: RuleShown) -> str:
     return _dump({"ok": True, "key": shown.address, "profile": shown.profile, "rules": shown.count,
                   "checks": shown.text})
+
+
+def unset_lines(unset: KeyUnset, example: str) -> list[str]:
+    """A key the profile sets nowhere: where it would be set, and how a profile writes it."""
+    lines = [f"{unset.address} in {unset.profile}: {_nowhere(unset.address)}, so it expands to no rule"]
+    return [*lines, "", "a profile writes it so:", *(f"  {line}" for line in example.splitlines())] if example else lines
+
+
+def unset_document(unset: KeyUnset, example: str) -> str:
+    return _dump({"ok": True, "key": unset.address, "profile": unset.profile, "rules": 0, "checks": "",
+                  "set": False, "example": example or None})
+
+
+def _nowhere(address: str) -> str:
+    steps = address.strip().strip(".").split(".")
+    held = {"parts": "part", "tiers": "tier"}.get(steps[0])
+    if held is None:
+        return "the profile does not set it"
+    return f"the profile sets {steps[-1]} on no {held}"
 
 
 def no_rule_message(none: NoRuleShown) -> str:

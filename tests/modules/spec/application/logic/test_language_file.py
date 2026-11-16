@@ -29,7 +29,8 @@ def test_every_problem_of_a_document_is_listed_naming_the_preset():
     assert caught.value.source == "presets/language/odd.yaml"
     assert [problem.removeprefix("presets/language/odd.yaml: ") for problem in caught.value.problems] == [
         "unknown key 'extra': use branching, cache, call, comment, directives, dynamic, encoding, extension, "
-        "interface, name, namespace, nothing, package_file, private, shebang, special, standard, supplies, title",
+        "importing, interface, name, namespace, nothing, package_file, private, shebang, special, standard, supplies, "
+        "title",
         "missing `namespace`", "missing `standard`",
         "title: must be a non-empty string",
         "extension: must be a dot and a name, such as .pas",
@@ -61,6 +62,10 @@ def test_the_tokens_of_the_code_are_read_when_the_document_gives_them():
     pytest.param({"directives": "noqa"}, "directives: must be a list of non-empty strings", id="directives not a list"),
     pytest.param({"branching": ["if", ""]}, "branching: must be a list of non-empty strings", id="an empty keyword"),
     pytest.param({"comment": ""}, "comment: must be a non-empty string", id="an empty comment marker"),
+    pytest.param({"importing": "import {dotted}"}, "importing: must be a line holding {dotted} and {name}",
+                 id="an import that names no name"),
+    pytest.param({"importing": "from {dotted}\nimport {name}"}, "importing: must be a line holding {dotted} and {name}",
+                 id="an import of two lines"),
 ])
 def test_a_token_that_is_not_what_its_key_takes_is_a_problem(given, problem):
     with pytest.raises(InvalidArchitecture) as caught:
@@ -68,6 +73,11 @@ def test_a_token_that_is_not_what_its_key_takes_is_a_problem(given, problem):
     assert [p.removeprefix("presets/language/odd.yaml: ").split(":")[0] for p in caught.value.problems] == [
         problem.split(":")[0]]
     assert caught.value.problems[0].removeprefix("presets/language/odd.yaml: ").startswith(problem)
+
+
+def test_how_a_file_imports_a_name_is_read_when_the_document_gives_it():
+    assert language_of("pascal", DOCUMENT | {"importing": "uses {dotted}.{name};"}).importing == "uses {dotted}.{name};"
+    assert language_of("pascal", DOCUMENT).importing == ""
 
 
 def test_the_facts_its_reader_supplies_are_read_each_with_its_grade():

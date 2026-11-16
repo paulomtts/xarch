@@ -133,12 +133,12 @@ def keyed(rules: Iterable[Rule], address: str) -> list[Rule]:
     found: list[Rule] = []
     for rule in rules:
         keys = [key.strip() for key in rule.key.split(";")] if rule.key else []
-        if any(typed in (key, _general(key)) for key in keys) and rule not in found:
+        if any(typed in (key, general(key)) for key in keys) and rule not in found:
             found.append(rule)
     return found
 
 
-def _general(key: str) -> str:
+def general(key: str) -> str:
     """A key with the part or tier it names left out: parts.services.names as parts.names."""
     steps = key.split(".")
     return ".".join((steps[0], *steps[2:])) if steps[0] in ("parts", "tiers") and len(steps) > 2 else key

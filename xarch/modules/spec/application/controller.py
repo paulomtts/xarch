@@ -255,7 +255,7 @@ def _language_view(language: Language) -> LanguageView:
     return LanguageView(language.title, language.extension, language.package_file, language.interface,
                         language.dynamic, language.private, language.special, language.call, language.nothing,
                         language.comment, language.directives, language.shebang, language.encoding,
-                        language.branching, language.supplies)
+                        language.branching, language.supplies, language.importing)
 
 
 def _guards_view(guards: tuple[Guard, ...]) -> GuardsView:

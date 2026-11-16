@@ -286,6 +286,8 @@ class Language:
     reserved_names: the words no name may be
     supplies: the facts its reader supplies, each graded (see capabilities); None: no language is known,
         and no key is held to what it reads
+    importing: how a file imports a name from another file of the app, {dotted} standing for that file's dotted path
+        and {name} for the name; empty: the data file does not say
     """
     name: str = ""
     title: str = ""
@@ -310,6 +312,7 @@ class Language:
     builtin_names: frozenset[str] = frozenset()
     reserved_names: frozenset[str] = frozenset()
     supplies: tuple[Supply, ...] | None = None
+    importing: str = ""
 
     @property
     def marks(self) -> Marks:

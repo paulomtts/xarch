@@ -15,6 +15,7 @@ from xarch.modules.rules.contract import (
     ChecksShown,
     ExplainRule,
     ExplainWords,
+    KeyUnset,
     NoRuleShown,
     RuleShown,
     UnknownWords,
@@ -101,6 +102,10 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
             match rules.explain_rule(ExplainRule(key, location)):
                 case RuleShown() as shown:
                     _show(output, words.rule_document(shown), words.rule_lines(shown))
+                case KeyUnset() as unset:
+                    explained = spec.explain(Explain(unset.address))
+                    example = explained.example if isinstance(explained, KeyExplained) else ""
+                    _show(output, words.unset_document(unset, example), words.unset_lines(unset, example))
                 case NoRuleShown() as none:
                     raise refuse(words.no_rule_message(none))
             return

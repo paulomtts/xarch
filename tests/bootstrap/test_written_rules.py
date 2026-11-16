@@ -82,7 +82,7 @@ def test_every_rule_of_a_bundled_profile_written_as_a_check_finds_what_the_key_f
     checks: dict = {}
     for address in addresses():
         shown = ask(address, "--rule")
-        if shown["ok"]:
+        if shown["ok"] and shown["rules"]:
             for name, body in yaml.safe_load(shown["checks"])["checks"].items():
                 if body not in checks.values():
                     checks[f"{name}-{len(checks)}"] = body
@@ -99,7 +99,8 @@ def test_every_rule_of_a_bundled_profile_written_as_a_check_finds_what_the_key_f
 
 
 def test_the_checks_written_for_the_explanation_load_and_behave_as_their_examples_say(tmp_path):
-    shown = [ask(address) for address in ("checks", "targets.text", "filters.placed", "variables.file")]
+    shown = [ask(address) for address in ("checks", "targets.text", "filters.placed", "variables.file",
+                                          "variables.type_only_fix")]
     written = {}
     for item in shown:
         written |= yaml.safe_load(item["example"]["check"])["checks"]
@@ -110,7 +111,7 @@ def test_the_checks_written_for_the_explanation_load_and_behave_as_their_example
     (tmp_path / "worked.yaml").write_text(yaml.safe_dump(profile, sort_keys=False))
     checked = runner.invoke(app, ["profile", "check", "worked.yaml"])
     assert checked.exit_code == 0, checked.output
-    assert set(written) == {"no-todo", "no-todo-in-tests"}
+    assert set(written) == {"no-todo", "no-todo-in-tests", "types-stay-types"}
 
 
 def test_every_word_of_every_category_has_an_example():

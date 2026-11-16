@@ -12,6 +12,8 @@ from xarch.cli.reports.vocabulary_report import (
     rule_lines,
     unknown_document,
     unknown_message,
+    unset_document,
+    unset_lines,
     word_document,
     word_lines,
 )
@@ -19,6 +21,7 @@ from xarch.modules.rules.contract import (
     CategoryShown,
     ChecksShown,
     FieldShown,
+    KeyUnset,
     NoRuleShown,
     RuleShown,
     SlotShown,
@@ -79,6 +82,17 @@ def test_the_rules_of_a_key_are_said_as_checks_and_a_key_of_none_says_why():
     assert json.loads(rule_document(shown)) == {"ok": True, "key": "parts.names", "profile": "web", "rules": 1,
                                                 "checks": CHECK}
     assert no_rule_message(NoRuleShown("parts.path", "web", "no rule")) == "parts.path in web: no rule"
+
+
+def test_a_key_set_nowhere_says_where_it_would_be_set_and_how_a_profile_writes_it():
+    unset = KeyUnset("parts.types_only", "web")
+    assert unset_lines(unset, "parts:\n  a: {}\n") == [
+        "parts.types_only in web: the profile sets types_only on no part, so it expands to no rule", "",
+        "a profile writes it so:", "  parts:", "    a: {}"]
+    assert unset_lines(KeyUnset("guards.closed-tree", "web"), "") == [
+        "guards.closed-tree in web: the profile does not set it, so it expands to no rule"]
+    assert json.loads(unset_document(unset, "x\n")) == {"ok": True, "key": "parts.types_only", "profile": "web",
+                                                        "rules": 0, "checks": "", "set": False, "example": "x\n"}
 
 
 def test_a_word_that_does_not_exist_is_said_with_the_nearest_ones():
