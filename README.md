@@ -714,7 +714,7 @@ evals:
 
 `profile check` refuses every slot written wrong at its address (`evals.<id>.answer.choice: two options are a yes or
 no: ...`), a filter of `keep` the vocabulary does not have, and an example file in which the eval reads nothing.
-`xarch profile explain evals.ask` (and each other slot) says each in full. The bundled profiles write none.
+`xarch profile explain evals.<id>.ask` (or `evals.title-rule.ask`, any id; and each other slot) says each in full. The bundled profiles write none.
 
 An eval runs only once it was held to its examples (calibrated), as it is written now, by the model review asks, and
 passed. Otherwise review does not run it and says why and what to run: `uncalibrated` (never held), `failed` (with what

@@ -120,11 +120,14 @@ def test_how_review_reads_what_it_asks_is_read_by_review_alone_down_to_the_line_
     assert [line.split()[:3] for line in overview if line.split()[:1] in (["evals"], ["evals.placement"])] == [
         ["evals", "optional", "review"]]
     evals = runner.invoke(app, ["profile", "explain", "evals"]).output.splitlines()
-    assert [line.split()[0] for line in evals[evals.index("  keys:") + 1:]] == [
-        "evals.placement", "evals.ask", "evals.answer", "evals.yes", "evals.no", "evals.reads", "evals.in", "evals.keep",
-        "evals.line", "evals.message", "evals.fix", "evals.examples"]
-    ask = json.loads(runner.invoke(app, ["profile", "explain", "evals.ask", "--format", "json"]).output)
-    assert (ask["where"], ask["required"], ask["enforced"], ask["read_by"]) == ("evals.<id>", True, False, "review")
+    assert [line.split()[0] for line in evals[evals.index("  keys:") + 1:]] == ["evals.placement", *(
+        f"evals.<id>.{slot}" for slot in ("ask", "answer", "yes", "no", "reads", "in", "keep", "line", "message", "fix",
+                                          "examples"))]
+    ask = json.loads(runner.invoke(app, ["profile", "explain", "evals.title-rule.ask", "--format", "json"]).output)
+    assert (ask["key"], ask["where"], ask["required"], ask["enforced"], ask["read_by"]) == (
+        "evals.<id>.ask", "evals.<id>", True, False, "review")
+    assert runner.invoke(app, ["profile", "explain", "evals.<id>.ask"]).output.splitlines()[0] == "evals.<id>.ask"
+    assert runner.invoke(app, ["profile", "explain", "evals.ask"]).exit_code == 2
     lines = json.loads(runner.invoke(app, ["profile", "explain", "evals.placement.lines", "--format", "json"]).output)
     assert (lines["where"], lines["enforced"], lines["read_by"]) == ("evals.placement", False, "review")
 

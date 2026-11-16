@@ -15,7 +15,7 @@ from xarch.modules.spec.application.logic.explain import (
     supplied,
 )
 from xarch.modules.spec.application.logic.key_catalogue import catalogue_of
-from xarch.modules.spec.application.logic.key_lookup import plain
+from xarch.modules.spec.application.logic.key_lookup import shown
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.contract import FormatExplained, KeyExplained, Need, Shown, Symbol, UnknownKey
@@ -51,7 +51,7 @@ class ExplainService:
         if key is None:
             return UnknownKey(cleaned(address), nearest(cleaned(address)))
         names, text = self.choices(key), catalogue.text(key.address)
-        return KeyExplained(plain(key.address), key.where, said(text.meaning, language), said(text.accepts, language),
+        return KeyExplained(shown(key), key.where, said(text.meaning, language), said(text.accepts, language),
                             key.required, key.enforced, key.rules, said(example_of(key, text.example, names), language),
                             names, tuple(_shown(held, 0, catalogue, language) for held in held_by(key)),
                             tuple(Need(fact, FACTS[fact], supplied(fact, language)) for fact in key.needs),
@@ -74,5 +74,5 @@ class ExplainService:
 
 
 def _shown(key: Key, depth: int, catalogue: Catalogue, language: Language) -> Shown:
-    return Shown(plain(key.address), depth, said(catalogue.text(key.address).meaning, language), key.required,
+    return Shown(shown(key), depth, said(catalogue.text(key.address).meaning, language), key.required,
                  key.enforced, key.read_by)

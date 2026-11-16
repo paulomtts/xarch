@@ -7,9 +7,9 @@ import re
 from difflib import get_close_matches
 
 from xarch.kernel.logic.capabilities import shortfalls
-from xarch.modules.spec.application.logic.key_lookup import keys_of, plain
+from xarch.modules.spec.application.logic.key_lookup import keys_of, plain, shown
 from xarch.modules.spec.application.logic.key_table import KEYS, SLOTS
-from xarch.modules.spec.domain.profile_keys import HELD, PART, PROFILE, TIER, Key
+from xarch.modules.spec.domain.profile_keys import HELD, PART, PROFILE, SCOPES, TIER, Key
 from xarch.modules.spec.domain.values import Language
 from xarch.profile_values.capabilities import Shortfall, Supply
 
@@ -90,8 +90,22 @@ def cleaned(address: str) -> str:
 
 
 def key_at(address: str) -> Key | None:
+    """The key at the address as typed: a key by its plain address, or a slot of an entry of a map of ids written with
+    any id in the id's step (evals.title-rule.ask) or with the placeholder itself (evals.<id>.ask)."""
     typed = cleaned(address)
-    return next((key for key in (*KEYS, *SLOTS) if plain(key.address) == typed), None)
+    written = address.strip().strip(".")
+    found = next((key for key in KEYS if plain(key.address) == typed), None)
+    return found or next((slot for slot in SLOTS if written == slot.address or _of_an_entry(typed, slot)), None)
+
+
+def _of_an_entry(typed: str, slot: Key) -> bool:
+    """Whether a typed address is the slot's under an id of an entry: the map's address, an id that is no key of the
+    map, and the slot's name."""
+    holder, _, name = typed.rpartition(".")
+    above, _, entry = holder.rpartition(".")
+    keys = {key.name for key in keys_of(HELD.get(slot.scope, ""))}
+    return (name == slot.name and above == SCOPES.get(HELD.get(slot.scope, ""), "") and bool(entry)
+            and entry not in keys)
 
 
 def held_by(key: Key) -> tuple[Key, ...]:
@@ -110,14 +124,14 @@ def example_of(key: Key, example: str, names: tuple[str, ...]) -> str:
 def nearest(typed: str) -> tuple[str, ...]:
     """The addresses closest to one that does not exist: those that read like it, else the keys of the deepest
     existing key it starts with, else the keys of the file."""
-    known = [plain(key.address) for key in (*KEYS, *SLOTS)]
+    known = [shown(key) for key in (*KEYS, *SLOTS)]
     close = get_close_matches(typed, known, n=NEAREST, cutoff=0.6)
     if close:
         return tuple(close)
     steps = typed.split(".")
     for size in range(len(steps) - 1, 0, -1):
         parent = ".".join(steps[:size])
-        held = [plain(k.address) for k in (*KEYS, *SLOTS) if plain(k.address).rpartition(".")[0] == parent]
+        held = [shown(k) for k in (*KEYS, *SLOTS) if shown(k).rpartition(".")[0] == parent]
         if held:
             return tuple(held[:NEAREST + 2])
     return tuple(key.name for key in keys_of(PROFILE))[:NEAREST + 2]
