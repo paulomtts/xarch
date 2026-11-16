@@ -220,20 +220,21 @@ def test_init_never_changes_a_recorded_profile():
 SHOP = Path("/src/shop")
 
 
-@pytest.mark.parametrize("root, text, written, where", [
-    pytest.param(SHOP, None, '[tool.xarch]\nprofile = "web"\napp = "shop"\n', "created",
+@pytest.mark.parametrize("given, then", [
+    pytest.param({}, ('[tool.xarch]\nprofile = "web"\napp = "shop"\n', (True, False, False)),
                  id="a new pyproject records an app folder that is not the default, after the profile"),
-    pytest.param(SHOP, '[project]\nname = "x"\n', '[project]\nname = "x"\n\n[tool.xarch]\nprofile = "web"\n'
-                 'app = "shop"\n', "updated", id="a pyproject with no table gets it with both"),
-    pytest.param(SHOP, '[tool.xarch]\nprofile = "cli"\napp = "other"\n', '[tool.xarch]\nprofile = "cli"\napp = "other"\n',
-                 "skipped", id="a profile and an app folder already recorded are never rewritten"),
+    pytest.param({PYPROJECT: '[project]\nname = "x"\n'},
+                 ('[project]\nname = "x"\n\n[tool.xarch]\nprofile = "web"\napp = "shop"\n', (False, True, False)),
+                 id="a pyproject with no table gets it with both"),
+    pytest.param({PYPROJECT: '[tool.xarch]\nprofile = "cli"\napp = "other"\n'},
+                 ('[tool.xarch]\nprofile = "cli"\napp = "other"\n', (False, False, True)),
+                 id="a profile and an app folder already recorded are never rewritten"),
 ])
-def test_init_records_an_app_folder_that_is_not_the_default_and_never_rewrites_a_value(root, text, written, where):
-    files = FakeFiles(texts={PYPROJECT: text} if text is not None else None)
-    report = controller(files).init(InitProject(root, "web", CWD)).report
-    assert pyproject(files) == written
-    assert PYPROJECT in getattr(report, where)
-    assert (PYPROJECT in report.created) == (where == "created")
+def test_init_records_an_app_folder_that_is_not_the_default_and_never_rewrites_a_value(given, then):
+    files = FakeFiles(texts=given)
+    report = controller(files).init(InitProject(SHOP, "web", CWD)).report
+    assert (pyproject(files), (PYPROJECT in report.created, PYPROJECT in report.updated,
+                               PYPROJECT in report.skipped)) == then
 
 
 def test_the_app_folder_is_recorded_relative_to_the_pyproject_found_above_it_as_posix():

@@ -258,6 +258,7 @@ tiers:
     proves: a use case, through its controller around fakes
     litmus: Does it drive a controller around fakes and check the Result it returns?
     apply_forbidden: true
+    plain_tables: true
     must_import: [controller]
     docs:
       may_touch: what the part it mirrors may import; `tests/fakes/`
