@@ -9,7 +9,7 @@ from xarch.kernel.logic.placement import repeat_of
 from xarch.kernel.placement import Place
 from xarch.kernel.source import Import, Unparsable
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.domain.published import At, Drift, KnownName, Translation, Weak
+from xarch.modules.rules.domain.published import At, Drift, KnownName, Loosened, Translation, Weak
 from xarch.profile_values.capabilities import Shortfall
 from xarch.profile_values.checks import WrittenCheck
 from xarch.profile_values.excluded import Excluded
@@ -375,12 +375,12 @@ class Known:
 class Standing:
     """How the profile in force stands, besides its rules: the guards xarch has that it leaves off, in xarch's order,
     and those the bundled profile it is, or is compared with, leaves off too (baseline_off); the files `init` would
-    write now beside the app folder, in the profile's order; and, for a custom profile, each part it redefines without
-    the litmus the bundled profile it is compared with gives it, as said (unplaced)."""
+    write now beside the app folder, in the profile's order; and, for a custom profile, every way it is looser than the
+    bundled profile it is compared with (looser)."""
     guards_off: tuple[str, ...]
     baseline_off: tuple[str, ...]
     init_files: tuple[InitFile, ...]
-    unplaced: tuple[str, ...] = ()
+    looser: tuple[Loosened, ...] = ()
 
 
 @dataclass(frozen=True)

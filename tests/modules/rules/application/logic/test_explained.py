@@ -8,15 +8,17 @@ from xarch.modules.rules.application.logic.explained import (
     MEANINGS,
     applies,
     category_at,
+    example_key,
     facets,
     fallback,
     keyed,
     nearest,
     searched,
+    slot_meaning,
     uses,
     word_at,
 )
-from xarch.modules.rules.domain.published import CHECKS
+from xarch.modules.rules.domain.published import CHECKS, Slot
 from xarch.modules.rules.domain.rule import EXISTING, MAY_NOT, Match, Rule
 from xarch.modules.rules.domain.values import Known
 from xarch.modules.rules.domain.vocabulary import FIELDS, FILTERS, KINDS, QUANTIFIERS, TARGETS, VARIABLES, WordFacets
@@ -132,3 +134,17 @@ def test_a_word_no_profile_shows_falls_back_to_a_check_written_for_the_explanati
 ])
 def test_an_example_is_searched_for_in_the_profile_in_force_then_the_bundled_ones(known, found):
     assert searched(known) == found
+
+
+def test_a_slot_is_said_as_what_it_is_for_and_what_it_accepts():
+    assert slot_meaning(Slot("read", "the kind of fact the check reads", "a kind")) == (
+        "the kind of fact the check reads: a kind")
+
+
+@pytest.mark.parametrize("rule, key", [
+    pytest.param(RULE, "parts.store.names", id="a rule a key expands to is named by its key"),
+    pytest.param(Rule("mine", Scope(), ("class",), MAY_NOT, EXISTING, (Saying("m", "f"),)), "mine",
+                 id="one of the profile's own checks by its id"),
+])
+def test_a_rule_shown_as_an_example_is_named_by_its_key_else_its_id(rule, key):
+    assert example_key(rule) == key

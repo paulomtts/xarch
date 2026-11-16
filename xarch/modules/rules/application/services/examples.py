@@ -3,17 +3,16 @@ from __future__ import annotations
 from dataclasses import replace
 from pathlib import Path
 
-from xarch.kernel.logic.examples import is_test_example
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.engine import run
 from xarch.modules.rules.application.logic.facts import facts_of
-from xarch.modules.rules.application.logic.own_checks import held_problems, made
+from xarch.modules.rules.application.logic.own_checks import held_problems, made, placed
 from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.application.ports.source_tree import SourceTree
 from xarch.modules.rules.contract import ChecksHeld, ProfileHeld
 from xarch.modules.rules.domain.published import Weak
 from xarch.modules.rules.domain.rule import OwnCheck
-from xarch.modules.rules.domain.values import Profile, SourceFile
+from xarch.modules.rules.domain.values import Profile
 
 
 class ExamplesService:
@@ -49,12 +48,8 @@ class ExamplesService:
     def _found(self, own: OwnCheck, files: tuple[tuple[str, str], ...], profile: Profile,
                app: str) -> list[Violation | Weak]:
         tests = profile.default_tests
-        read = [(tuple(path.split("/")), self._tree.parsed(code)) for path, code in files]
-        app_files = [self._placed(parsed, (app, *steps), steps) for steps, parsed in read
-                     if not is_test_example(steps, tests)]
-        test_files = [self._placed(parsed, steps, steps[1:]) for steps, parsed in read if is_test_example(steps, tests)]
+        read = [(placed(path, app, tests), self._tree.parsed(code)) for path, code in files]
+        app_files = [replace(parsed, name="/".join(shown), path=steps) for (shown, steps, test), parsed in read if not test]
+        test_files = [replace(parsed, name="/".join(shown), path=steps) for (shown, steps, test), parsed in read if test]
         rules = (own.rule,)
         return run(rules, facts_of(app_files, test_files, profile, app, tests, rules), profile)
-
-    def _placed(self, parsed: SourceFile, shown: tuple[str, ...], path: tuple[str, ...]) -> SourceFile:
-        return replace(parsed, name="/".join(shown), path=path)

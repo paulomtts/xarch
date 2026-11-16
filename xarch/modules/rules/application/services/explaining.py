@@ -58,7 +58,7 @@ class ExplainingService:
         if slot is not None:
             key, location, example = self._example("quantifiers", slot.name, examples_from, language,
                                                    explained.fallback(CHECKS, slot.name))
-            return WordShown(typed, CHECKS, slot.name, f"{slot.meaning}: {slot.accepts}", value=slot.takes,
+            return WordShown(typed, CHECKS, slot.name, explained.slot_meaning(slot), value=slot.takes,
                              example_key=key, example_profile=location, example=example)
         at = explained.word_at(typed)
         if at is None:
@@ -77,7 +77,7 @@ class ExplainingService:
         found = self.example(category, name, locations)
         if found is not None:
             location, rule = found
-            return rule.key or rule.id, location, self._form.written({rule.id: check_of(rule)})
+            return explained.example_key(rule), location, self._form.written({rule.id: check_of(rule)})
         return (own.rule.key, "", self._form.written(written_own((own,), language))) if own is not None else ("", "", "")
 
     def example(self, category: str, name: str, locations: tuple[str, ...]) -> tuple[str, Rule] | None:

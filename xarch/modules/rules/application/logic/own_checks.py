@@ -13,6 +13,7 @@ from collections.abc import Mapping
 from dataclasses import replace
 
 from xarch.kernel.logic.capabilities import shortfalls
+from xarch.kernel.logic.examples import is_test_example
 from xarch.kernel.logic.targets import target
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.domain.errors import ChecksRefused, RuleRefused
@@ -117,6 +118,16 @@ def _match(written: WrittenTarget, owner: tuple[str, tuple[str, ...]] | None, pr
         return Match(kind, names=tuple(("", value[1:]) if value.startswith(".") else tuple(value.split("."))
                                        for value in values))
     return Match(kind, words=values)
+
+
+def placed(path: str, app: str, tests: str) -> tuple[tuple[str, ...], tuple[str, ...], bool]:
+    """Where a file of a check's example sits, by its path below the folder holding the app, written with "/": how it
+    is shown, its steps below its root (the app folder, or the folder of the tests, which a test's path starts with),
+    and whether it is test code."""
+    steps = tuple(path.split("/"))
+    if is_test_example(steps, tests):
+        return steps, steps[1:], True
+    return (app, *steps), steps, False
 
 
 def held_problems(check_id: str, flagged: list[Violation | Weak], clean: list[Violation | Weak]) -> list[str]:

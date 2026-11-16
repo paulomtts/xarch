@@ -127,17 +127,19 @@ def test_the_standing_keeps_the_guards_left_off_and_those_the_baseline_leaves_of
     assert (standing.guards_off, standing.baseline_off) == (("closed-tree",), ())
 
 
-def test_the_standing_keeps_each_part_the_profile_redefines_without_its_litmus_as_spec_says_it():
+def test_the_standing_keeps_every_way_the_profile_is_looser_as_spec_says_it():
     said = "cli has no litmus, though the profile it is compared with gives it one (parts.cli.litmus)"
     origin = Origin("mine.yaml", False, "cli", (), (), (Loosened("untested", "api"), Loosened("litmus", "cli", "", said)))
-    assert SpecProfiles(Spec(origin=origin)).standing("mine.yaml", "app").unplaced == (said,)
-    assert SpecProfiles(Spec()).standing("mine.yaml", "app").unplaced == ()
+    assert SpecProfiles(Spec(origin=origin)).standing("mine.yaml", "app").looser == (
+        published.Loosened("untested", "api"), published.Loosened("litmus", "cli", "", said))
+    assert SpecProfiles(Spec(origin=Origin("mine.yaml", False, "cli"))).standing("mine.yaml", "app").looser == ()
 
 
 def test_the_init_files_are_compared_as_text_and_none_when_the_profile_cannot_write_them():
     files = (ProjectFile(("AGENTS.md",), "agents\n", True), ProjectFile(("logo.bin",), b"\xffok"))
     assert SpecProfiles(Spec(files)).standing("mine.yaml", "app") == Standing(("closed-tree",), (), (
-        InitFile(("AGENTS.md",), "agents\n", True), InitFile(("logo.bin",), "�ok", False)))
+        InitFile(("AGENTS.md",), "agents\n", True), InitFile(("logo.bin",), "�ok", False)),
+        (published.Loosened("untested", "api"),))
     assert SpecProfiles(Spec()).standing("mine.yaml", "app").init_files == ()
 
 

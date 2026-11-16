@@ -53,4 +53,4 @@ class FakeProfiles:
 
     def standing(self, location: str, app: str) -> Standing:
         guards = self._guards.get(location, Standing((), (), ()))
-        return Standing(guards.guards_off, guards.baseline_off, self._files.get(location, ()), guards.unplaced)
+        return Standing(guards.guards_off, guards.baseline_off, self._files.get(location, ()), guards.looser)

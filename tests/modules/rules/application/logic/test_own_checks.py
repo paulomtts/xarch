@@ -7,7 +7,7 @@ import pytest
 
 from tests.modules.rules.builders import profile
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.application.logic.own_checks import held_problems, made, resolved
+from xarch.modules.rules.application.logic.own_checks import held_problems, made, placed, resolved
 from xarch.modules.rules.domain.errors import ChecksRefused
 from xarch.modules.rules.domain.rule import MAY_NOT, MadeChecks, Match, OwnCheck, Rule
 from xarch.profile_values.capabilities import EXACT, Shortfall, Supply
@@ -119,3 +119,13 @@ FOUND = Violation("app/a.py", 3, "a finding", "names", "f")
 ])
 def test_a_check_holds_to_its_examples_when_it_finds_something_flagged_and_nothing_clean(flagged, clean, problems):
     assert held_problems("mine", flagged, clean) == problems
+
+
+@pytest.mark.parametrize("path, placement", [
+    pytest.param("kernel/x.py", (("app", "kernel", "x.py"), ("kernel", "x.py"), False),
+                 id="a file of the app is shown below the app folder"),
+    pytest.param("tests/kernel/test_x.py", (("tests", "kernel", "test_x.py"), ("kernel", "test_x.py"), True),
+                 id="a file below the folder of the tests is test code, its steps below that folder"),
+])
+def test_a_file_of_a_checks_example_is_placed_in_the_app_or_the_tests(path, placement):
+    assert placed(path, "app", "tests") == placement

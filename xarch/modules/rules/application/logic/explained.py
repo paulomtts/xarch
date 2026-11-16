@@ -122,6 +122,16 @@ def about(word: Word) -> str:
     return ABOUT.get(facets(word).about, "")
 
 
+def slot_meaning(slot: Slot) -> str:
+    """What a slot of a check is for, and what it accepts, as one sentence."""
+    return f"{slot.meaning}: {slot.accepts}"
+
+
+def example_key(rule: Rule) -> str:
+    """The key a rule shown as a word's example is named by: the key it expands from, else its id."""
+    return rule.key or rule.id
+
+
 def fallback(category: str, name: str) -> OwnCheck | None:
     """The check written for the explanation that shows a word when no profile's rule does: the first written with it,
     None when none is. For how a check is written (CHECKS), or a slot of it (CHECKS and the slot's name), the first

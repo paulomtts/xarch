@@ -37,6 +37,7 @@ from xarch.modules.rules.domain.published import (
     WEAK,
     At,
     Drift,
+    Loosened,
     Weak,
 )
 from xarch.modules.rules.domain.values import Enforcement, Finding, InitFile, Profile, SourceFile
@@ -61,6 +62,12 @@ def drift(files: Sequence[InitFile], found: Sequence[str | None]) -> list[Drift]
     states = [(file, MISSING if text is None else CHANGED if file.pinned and text != file.text else None)
               for file, text in zip(files, found)]
     return [Drift(file.path, state) for file, state in states if state is not None]
+
+
+def unplaced(looser: Iterable[Loosened]) -> tuple[str, ...]:
+    """Each way a profile is looser that `--strict` fails on, as said: a part redefined without the litmus the bundled
+    profile it is compared with gives it, whose key is the key of its section of the enforcement."""
+    return tuple(item.sentence for item in looser if item.key == UNPLACED)
 
 
 def strict_findings(enforcement: Enforcement) -> tuple[Finding, ...]:

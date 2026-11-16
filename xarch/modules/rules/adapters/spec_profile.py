@@ -9,7 +9,6 @@ from xarch.modules.rules.domain.published import KeyFacts, Loosened, Resemblance
 from xarch.modules.rules.domain.values import InitFile, Known, PartInfo, Profile, Standing
 from xarch.modules.spec.contract import (
     DEFAULT_TESTS,
-    LITMUS,
     CheckProfile,
     CheckResult,
     Explain,
@@ -136,7 +135,7 @@ class SpecProfiles:
             case ProfileRefused():
                 found = ()
         return Standing(origin.guards_off, origin.baseline_off, found,
-                        tuple(item.sentence for item in origin.looser if item.key == LITMUS))
+                        tuple(Loosened(item.key, item.part, item.what, item.sentence) for item in origin.looser))
 
 
 def _text(content: str | bytes) -> str:

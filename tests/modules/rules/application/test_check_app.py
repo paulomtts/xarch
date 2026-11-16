@@ -23,6 +23,7 @@ from xarch.modules.rules.contract import (
     ExcludedView,
     FindingView,
     KnownName,
+    Loosened,
     NotADirectory,
     Weak,
 )
@@ -151,7 +152,9 @@ def test_the_enforcement_holds_the_ungoverned_files_the_init_files_and_what_stri
 
 def test_a_part_the_profile_redefines_without_its_litmus_is_what_strict_fails_on():
     said = "cli has no litmus, though the profile it is compared with gives it one (parts.cli.litmus)"
-    profiles = FakeProfiles({"cli": entered("cli")}, {"cli": Standing((), (), (), (said,))})
+    looser = (Loosened("untested", "api", "", "api is newly marked untested (parts.api.untested)"),
+              Loosened("litmus", "cli", "", said))
+    profiles = FakeProfiles({"cli": entered("cli")}, {"cli": Standing((), (), (), looser)})
     assert checked({"kernel/x.py": []}, profiles).enforcement.strict == (FindingView("litmus", said),)
 
 
