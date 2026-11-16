@@ -55,9 +55,9 @@ def _set(mapping: Mapping[Any, Any], keys: tuple[Key, ...], prefix: str) -> Iter
 def short(document: Mapping[Any, Any], presets: Mapping[str, Any], language: Language) -> list[Shortfall]:
     """The facts the keys the document sets need that its language supplies partly or not at all; none when no
     language is known."""
-    if language.supplies is None:
+    if language.checked.supplies is None:
         return []
-    supplies = {supply.fact: supply for supply in language.supplies}
+    supplies = {supply.fact: supply for supply in language.checked.supplies}
     return [found for address, key in configured(document, presets)
             for found in shortfalls(address, key.needs, supplies)]
 

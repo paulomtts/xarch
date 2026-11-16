@@ -185,14 +185,14 @@ def test_a_type_that_is_itself_a_twin_counts_as_the_type_it_copies():
 
 def test_a_copy_that_kept_part_of_the_fields_in_order_is_reported_at_the_later_part():
     language = Class(5, "Language", fields=("title", "name", "extension", "package_file", "cache"))
-    view = Class(9, "LanguageView", fields=("title", "extension", "package_file"))
+    view = Class(9, "CheckedLanguage", fields=("title", "extension", "package_file"))
     found = violations([source(DOMAIN, classes=(language,)), source("kernel/language.py", classes=(view,))], SUBSET)
     assert [(str(v), v.fix) for v in found] == [(
-        "app/modules/docs/domain/values.py:5: Language declares the fields of LanguageView at app/kernel/language.py:9 "
+        "app/modules/docs/domain/values.py:5: Language declares the fields of CheckedLanguage at app/kernel/language.py:9 "
         "in the same order, and 2 more (name, cache) (title, name, extension, package_file and 1 more): domain/ of "
         "modules/docs and kernel/ hold one type written twice (no-twins)",
         "keep one of the two and import it from a part both may import, or give Language the fields its reader needs "
-        "instead of a copy of LanguageView's")]
+        "instead of a copy of CheckedLanguage's")]
 
 
 def test_the_copy_that_kept_part_is_said_so_when_it_is_the_one_reported():

@@ -7,11 +7,12 @@ from pathlib import Path
 from typing import Any
 
 from xarch.kernel.capabilities import Shortfall
-from xarch.kernel.logic.language import LanguageView
-from xarch.kernel.logic.placement import Excluded
-from xarch.kernel.logic.testing import Fakes, Framework, ScenarioCoverage, StandIns, TierView
 from xarch.kernel.placement import Repeat, Target
 from xarch.modules.spec.domain.published import DEFAULT_APP, Copy, Loosened, Origin, ProjectFile
+from xarch.profile_values.excluded import Excluded
+from xarch.profile_values.language import CheckedLanguage
+from xarch.profile_values.testing import Fakes, Framework, ScenarioCoverage, StandIns
+from xarch.profile_values.tiers import CheckedTier
 
 __all__ = ["DEFAULT_APP", "Entry", "Repeating", "Skeleton", "DocFile", "Docs", "ProjectFile", "ProjectFiles",
            "FilesResult", "OriginResult", "PartView",
@@ -145,7 +146,7 @@ class ProfileView:
     the vocabulary in them are the rules module's to read)."""
     parts: tuple[PartView, ...]
     folders: tuple[tuple[str, ...], ...] = ()
-    tiers: tuple[TierView, ...] = ()
+    tiers: tuple[CheckedTier, ...] = ()
     libraries: dict[str, tuple[str, ...]] | None = None
     repeats: tuple[Repeat, ...] = ()
     guards: GuardsView = GuardsView()
@@ -153,7 +154,7 @@ class ProfileView:
     framework: Framework | None = None
     excluded: tuple[Excluded, ...] = ()
     hints: dict[str, str] = field(default_factory=dict)
-    language: LanguageView = LanguageView()
+    language: CheckedLanguage = CheckedLanguage()
     reserved: dict[str, str] = field(default_factory=dict)
     approximate: tuple[Shortfall, ...] = ()
     checks: dict[str, Mapping[str, Any]] = field(default_factory=dict)

@@ -65,7 +65,8 @@ def comparable(architecture: Architecture) -> Architecture:
     guards no-duplicates, no-twins, dead-code, pass-through and private-imports; and `kernel/logic/`, a folder of
     `kernel/` in format 1 and a part of its own now, which every part that may import `kernel/` may import too, as
     the part it was a folder of (see kernel_logic); and what changed when services came to assemble what a use case
-    hands out (see assembled)."""
+    hands out, and the part xarch's own profile gained for the values spec builds and rules reads in full (see
+    assembled)."""
     architecture = assembled(kernel_logic(architecture))
     tiers = tuple(replace(tier, subject=tuple(sorted(tier.subject, key=lambda s: s.part)), example=None, helpers=(),
                           must_import=()) for tier in architecture.tiers)
@@ -89,16 +90,27 @@ REWORDED = ("domain", "services", "controller", "contract", LOGIC)
 """The parts whose role and litmus were reworded when services came to assemble what a use case hands out and a
 module came to hand out a value as it is from domain/published.py."""
 PUBLISHED = ("published",)
+VALUES = "profile-values"
 
 
 def assembled(architecture: Architecture) -> Architecture:
-    """The architecture without the role and litmus of the parts REWORDED, and without the target the contract gained
-    for the values a module hands out as they are (domain/published), which format 1 never had."""
+    """The architecture without the role and litmus of the parts REWORDED, without the target the contract gained
+    for the values a module hands out as they are (domain/published), and without the part VALUES and every target
+    naming it, which format 1 never had."""
     parts = {name: replace(part, role="", litmus="") if name in REWORDED else part
-             for name, part in architecture.parts.items()}
-    rules = {name: tuple(t for t in targets if not (t.part == "domain" and t.sub == PUBLISHED))
-             for name, targets in architecture.rules.items()}
-    return replace(architecture, parts=parts, rules=rules)
+             for name, part in architecture.parts.items() if name != VALUES}
+    rules = {name: tuple(t for t in targets if not (t.part == "domain" and t.sub == PUBLISHED) and t.part != VALUES)
+             for name, targets in architecture.rules.items() if name != VALUES}
+    forbidden = {name: names for name, names in architecture.forbidden.items() if name != VALUES}
+    tiers = tuple(replace(tier, subject=tuple(s for s in tier.subject if s.part != VALUES)) for tier in architecture.tiers)
+    notes = {path: note for path, note in architecture.notes.items()
+             if VALUES not in architecture.parts or path != architecture.parts[VALUES].path}
+    layout = {name: sub for name, sub in architecture.layout.items()
+              if VALUES not in architecture.parts or (name,) != architecture.parts[VALUES].path}
+    libraries = None if architecture.libraries is None else {
+        name: packages for name, packages in architecture.libraries.items() if name != VALUES}
+    return replace(architecture, parts=parts, rules=rules, forbidden=forbidden, tiers=tiers, notes=notes, layout=layout,
+                   libraries=libraries)
 
 
 
@@ -166,7 +178,7 @@ def test_xarch_s_own_profile_differs_in_what_the_shipped_one_chose_to_change(tmp
     does."""
     old, new = both("xarch", tmp_path)
     assert (old.based_on, new.based_on) == ("", "cli")
-    assert sorted(old.parts) == sorted(kernel_logic(new).parts) and old.placement != new.placement
+    assert sorted(old.parts) == sorted(assembled(kernel_logic(new)).parts) and old.placement != new.placement
     assert sorted(old.examples) == sorted(f"tests/{relative}" for relative in OWN_EXAMPLES) and new.examples == {}
     assert old.tiers[3].may_import == new.tiers[3].may_import
     assert [tier.example is None for tier in old.tiers] == [False] * 4

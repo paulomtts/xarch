@@ -23,17 +23,19 @@ def said(text: str, language: Language) -> str:
     """The text with each `%word%` replaced by what the language says for it: the title, the extension, the package file,
     the name of an interface and its dotted path, the namespace of the names bound without an import, the marker of a
     line comment and the comments its tools read, each quoted after the marker; a word it has none for stays."""
-    words = {"language": language.title, "extension": language.extension, "package_file": language.package_file,
-             "interface": language.interface_name, "interface_path": ".".join(language.interface[0]) if language.interface else "",
-             "namespace": language.namespace, "comment": language.comment,
-             "directives": ", ".join(f"`{language.comment} {word}`" for word in language.directives)}
+    checked = language.checked
+    words = {"language": checked.title, "extension": checked.extension, "package_file": checked.package_file,
+             "interface": language.interface_name,
+             "interface_path": ".".join(checked.interface[0]) if checked.interface else "",
+             "namespace": language.namespace, "comment": checked.comment,
+             "directives": ", ".join(f"`{checked.comment} {word}`" for word in checked.directives)}
     return _WORD.sub(lambda found: words.get(found[1], found[0]), text)
 
 
 def graded(fact: str, language: Language) -> tuple[str, str, str, str]:
     """A fact a key needs, what it is, and how the language's reader supplies it: its grade and note, "absent" when
     the language does not supply it, "" when its data file does not say."""
-    supplies = {supply.fact: supply for supply in language.supplies} if language.supplies is not None else None
+    supplies = {supply.fact: supply for supply in language.checked.supplies} if language.checked.supplies is not None else None
     if supplies is None:
         return fact, FACTS[fact], "", ""
     supply = supplies.get(fact)

@@ -3,9 +3,6 @@ each looseness, and the init files are compared as text."""
 import pytest
 
 from xarch.kernel.capabilities import EXACT, Shortfall, Supply
-from xarch.kernel.logic.language import LanguageView
-from xarch.kernel.logic.placement import Excluded
-from xarch.kernel.logic.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns, TierView
 from xarch.kernel.placement import Repeat, Target
 from xarch.modules.rules.adapters.spec_profile import SpecProfiles, WrittenChecks
 from xarch.modules.rules.domain.errors import ProfileUnusable
@@ -23,6 +20,10 @@ from xarch.modules.spec.contract import (
     ProjectFile,
     ProjectFiles,
 )
+from xarch.profile_values.excluded import Excluded
+from xarch.profile_values.language import CheckedLanguage
+from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns
+from xarch.profile_values.tiers import CheckedTier
 
 TABLE = CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id")
 VIEW = ProfileView(
@@ -32,7 +33,7 @@ VIEW = ProfileView(
                     untested="it only wires", must_import=(Target("core"),), types_only=("core",), names=("*Api",),
                     built_by=("core",))),
     folders=((), ("core",), ("src",), ("src", "*"), ("src", "*", "api")),
-    tiers=(TierView("unit", (Target("core", "none"),), None, ("api",), True, "a rule", "nothing", "Does it?"),),
+    tiers=(CheckedTier("unit", (Target("core", "none"),), None, ("api",), True, "a rule", "nothing", "Does it?"),),
     libraries={"core": (), "api": ("fastapi",)}, repeats=(Repeat("module", ("src",)),),
     guards=GuardsView(package_only=("api",), scenarios=ScenarioCoverage("api", "unit", "Result", ("a", "b", "c"), TABLE,
                                                                      "test_{name}.py"),
@@ -68,7 +69,7 @@ def test_the_profile_view_becomes_the_profile_the_checks_see():
     assert SpecProfiles(Spec()).profile("mine.yaml") == Profile(
         parts={"core": ("core",), "api": ("src", "*", "api")}, rules={"core": (), "api": (Target("core"),)},
         folders=((), ("core",), ("src",), ("src", "*"), ("src", "*", "api")),
-        tiers=(TierView("unit", (Target("core", "none"),), None, ("api",), True, "a rule", "nothing", "Does it?"),),
+        tiers=(CheckedTier("unit", (Target("core", "none"),), None, ("api",), True, "a rule", "nothing", "Does it?"),),
         libraries={"core": (), "api": ("fastapi",)}, fakes=Fakes(("fakes",), ("api",), "Fake"),
         repeats=(Repeat("module", ("src",)),), package_only=("api",),
         scenarios=ScenarioCoverage("api", "unit", "Result", ("a", "b", "c"),
@@ -107,7 +108,7 @@ CHECK = {"read": ("call",), "in": {"files": "app", "part": "core", "tier": "", "
          "cases": ({"when": ("of-kind call",), "message": "c", "fix": "f", "once_per": ()},),
          "examples": {"flagged": (("core/a.py", "x()\n"),), "clean": (("core/b.py", "\n"),)},
          "may_not": ({"kind": "path", "values": ("app.api", ".run()")}, {"kind": "part", "values": ("api",)})}
-SUPPLIES = LanguageView("Toy", supplies=(Supply("call", EXACT), Supply("import", "partial", "no star imports")))
+SUPPLIES = CheckedLanguage("Toy", supplies=(Supply("call", EXACT), Supply("import", "partial", "no star imports")))
 
 
 def test_a_check_the_profile_writes_becomes_a_rule_with_its_examples_and_its_key():

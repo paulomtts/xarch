@@ -9,7 +9,7 @@ parts:
   domain:
     path: modules/<module>/domain
     role: "entities, values, errors: invariants only; in published.py, the values handed out as they are"
-    may_import: [kernel, kernel-logic]
+    may_import: [kernel, kernel-logic, profile-values]
     forbidden: pure
     holds: classes
     no_callbacks: true
@@ -18,7 +18,7 @@ parts:
   logic:
     path: modules/<module>/application/logic
     role: pure functions over the module's domain objects
-    may_import: [domain, kernel, kernel-logic]
+    may_import: [domain, kernel, kernel-logic, profile-values]
     forbidden: pure
     holds: functions
     tier: unit
@@ -26,7 +26,7 @@ parts:
   ports:
     path: modules/<module>/application/ports
     role: Protocols for what the module needs from the outside
-    may_import: [domain, kernel, kernel-logic]
+    may_import: [domain, kernel, kernel-logic, profile-values]
     forbidden: pure
     holds: classes
     tier: integration
@@ -34,7 +34,7 @@ parts:
   services:
     path: modules/<module>/application/services
     role: "use-case steps: load, check, act; they assemble what the use case hands out"
-    may_import: [logic, domain, ports, contract, kernel, kernel-logic]
+    may_import: [logic, domain, ports, contract, kernel, kernel-logic, profile-values]
     holds: classes
     names: "*Service"
     forbidden: ambient
@@ -44,7 +44,7 @@ parts:
   controller:
     path: modules/<module>/application/controller.py
     role: maps failures to Result variants
-    may_import: [services, logic, domain, ports, contract, kernel, kernel-logic]
+    may_import: [services, logic, domain, ports, contract, kernel, kernel-logic, profile-values]
     holds: classes
     names: "*Controller"
     forbidden: ambient
@@ -54,7 +54,7 @@ parts:
   adapters:
     path: modules/<module>/adapters
     role: implement the ports on the filesystem or another module's contract
-    may_import: [ports, domain, kernel, kernel-logic, platform, contract@any]
+    may_import: [ports, domain, kernel, kernel-logic, profile-values, platform, contract@any]
     must_import: [platform, contract@any]
     libraries: [ast, tokenize]
     forbidden: ambient
@@ -104,10 +104,26 @@ parts:
   contract:
     path: modules/<module>/contract
     role: "the module's published language: commands, Results"
-    may_import: ["domain/values:*Id", "domain/published", kernel, kernel-logic]
+    may_import: ["domain/values:*Id", "domain/published", kernel, kernel-logic, profile-values]
     forbidden: pure
     tier: integration
     package_only: true
+
+  profile-values:
+    path: profile_values
+    role: the values of the profile that spec builds and rules reads in full
+    litmus: >-
+      Is it a value of the profile that spec, the module that reads profiles, builds, and that rules, the module that
+      checks code against them, reads in full, field by field, so that rules could hold no smaller value of its own?
+      If yes, it goes here, as a record with no rule beyond its own invariants, used by both modules: it has
+      business meaning, which is why it is not in `kernel/`. If rules reads less than all of it, spec hands it out
+      in its contract and rules holds a smaller value of its own. If it has no business meaning, it belongs in
+      `kernel/`.
+    may_import: [kernel]
+    shared: 2
+    holds: classes
+    forbidden: pure
+    tier: unit
 
   kernel-logic:
     path: kernel/logic

@@ -80,7 +80,7 @@ def example_of(value: Any, found: Examples, where: str, problems: list[str], lan
     of `docs.example_notes`."""
     steps = tuple(value.strip("/").split("/")) if ck.text(value) else ()
     if not steps or any(step in ("", ".", "..") or EACH in step or "<" in step or "\\" in step for step in steps):
-        problems.append(f"{where}: must be a path in an example project, such as src/billing/charge{language.extension}")
+        problems.append(f"{where}: must be a path in an example project, such as src/billing/charge{language.checked.extension}")
         return None
     path = "/".join(steps)
     if path not in found.files:

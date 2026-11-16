@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from xarch.kernel.errors import DomainError
-from xarch.kernel.logic.language import LanguageView
-from xarch.kernel.logic.testing import ScenarioCoverage, StandIns, TierView
 from xarch.kernel.placement import Target
 from xarch.modules.spec.application.logic.docs_files import DOCS_ROOT
 from xarch.modules.spec.application.logic.explain import (
@@ -79,6 +77,8 @@ from xarch.modules.spec.domain.values import (
     PrivateImports,
     Tier,
 )
+from xarch.profile_values.testing import ScenarioCoverage, StandIns
+from xarch.profile_values.tiers import CheckedTier
 
 
 class SpecController:
@@ -99,9 +99,9 @@ class SpecController:
                           for repeat in architecture.repeats)
         return Skeleton(top_level=_entries(architecture.top_level_tree()), repeating=repeating,
                         entry_point=entry.path[0] if entry is not None else "",
-                        package_file=architecture.language.package_file, language=architecture.language.title,
+                        package_file=architecture.language.checked.package_file, language=architecture.language.checked.title,
                         reserved=architecture.language.reserved_names, names=architecture.language.names,
-                        private=architecture.language.private)
+                        private=architecture.language.checked.private)
 
     def profile(self, location: str) -> ProfileView:
         """The profile at a location callers got from select(), a bundled name or a path, as the checks read it;
@@ -169,7 +169,7 @@ class SpecController:
                             key.required, key.enforced, key.rules, said(example_of(key, names), language), names,
                             tuple(_shown(held, 0, language) for held in held_by(key)),
                             tuple(Need(*graded(fact, language)) for fact in key.needs),
-                            language.title if key.needs else "")
+                            language.checked.title if key.needs else "")
 
     def bundled(self) -> tuple[str, ...]:
         """The names of the bundled profiles: what a key that names one may name."""
@@ -225,15 +225,8 @@ def _profile_view(architecture: Architecture) -> ProfileView:
         repeats=architecture.repeats, guards=_guards_view(guards),
         fakes=architecture.fakes, framework=architecture.framework, excluded=architecture.excluded,
         hints=dict(architecture.hints),
-        language=_language_view(architecture.language),
+        language=architecture.language.checked,
         reserved=dict(architecture.reserved), approximate=architecture.approximate, checks=dict(architecture.checks))
-
-
-def _language_view(language: Language) -> LanguageView:
-    return LanguageView(language.title, language.extension, language.package_file, language.interface,
-                        language.dynamic, language.private, language.special, language.call, language.nothing,
-                        language.comment, language.directives, language.shebang, language.encoding,
-                        language.branching, language.supplies, language.importing)
 
 
 def _guards_view(guards: tuple[Guard, ...]) -> GuardsView:
@@ -253,10 +246,10 @@ def _guards_view(guards: tuple[Guard, ...]) -> GuardsView:
         private_imports=any(isinstance(g, PrivateImports) for g in guards))
 
 
-def _tier_view(architecture: Architecture, tier: Tier) -> TierView:
+def _tier_view(architecture: Architecture, tier: Tier) -> CheckedTier:
     subject = tuple(Target(s.part, "own" if architecture.parts[s.part].in_instance else "none", s.sub)
                     for s in tier.subject)
-    return TierView(tier.name, subject, tier.folder, tier.types_only, tier.forbidden, tier.proves, tier.may_touch,
+    return CheckedTier(tier.name, subject, tier.folder, tier.types_only, tier.forbidden, tier.proves, tier.may_touch,
                     tier.litmus, tier.one_file_per, tier.may_import, tier.must_import)
 
 

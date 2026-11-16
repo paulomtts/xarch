@@ -272,9 +272,9 @@ def _examples(value: Any, where: str, language: Language, problems: list[str]) -
         listed: list[tuple[str, str]] = []
         for path, code in files.items():
             steps = path.split("/") if isinstance(path, str) else []
-            if not steps or any(step in ("", ".", "..") for step in steps) or not path.endswith(language.extension):
+            if not steps or any(step in ("", ".", "..") for step in steps) or not path.endswith(language.checked.extension):
                 problems.append(f"{where}.{side}: {path!r} is not a path of a source file below the app (or tests/...)"
-                                f", ending in {language.extension}")
+                                f", ending in {language.checked.extension}")
             elif not isinstance(code, str):
                 problems.append(f"{where}.{side}.{path}: must be the code of the file, as text")
             else:

@@ -49,7 +49,7 @@ def project_files(architecture: Architecture, contents: Mapping[str, str | bytes
     problems: list[str] = []
     found: list[ProjectFile] = []
     owners: dict[tuple[str, ...], str] = {}
-    package = architecture.language.package_file
+    package = architecture.language.checked.package_file
     files, folders_written = _skeleton_files(architecture.layout, package), _skeleton_folders(architecture.layout)
     for entry in architecture.files:
         where = f"files.{'/'.join(entry.path)}{'/' if entry.folder else ''}"

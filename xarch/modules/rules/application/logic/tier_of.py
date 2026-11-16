@@ -20,10 +20,10 @@ from dataclasses import dataclass, replace
 from fnmatch import fnmatchcase
 
 from xarch.kernel.logic.placement import place_of
-from xarch.kernel.logic.testing import TierView
 from xarch.kernel.placement import EACH, Place, Repeat, Target
 from xarch.modules.rules.application.logic.places import matches, targets_of
 from xarch.modules.rules.domain.values import Profile
+from xarch.profile_values.tiers import CheckedTier
 
 NO_TIER = "lies in no tier: no part's folder and no tier's `folder` is mirrored here"
 NO_TIER_FIX = "move it to the folder that mirrors its subject's path in the app, or into a tier's `folder`"
@@ -34,7 +34,7 @@ class Tested:
     """A file below the tests root: its tier (None if none), the instance of the repeating folder it is in, its own
     folder, whether it is a test (a name the profile's test files match) or a fake, and the parts it mirrors (its
     subject; empty when its tier was found by its tier's folder)."""
-    tier: TierView | None
+    tier: CheckedTier | None
     instance: str | None
     own: tuple[str, ...]
     is_test: bool
@@ -54,7 +54,7 @@ def tested(profile: Profile, path: tuple[str, ...]) -> Tested:
     return Tested(tier, instance or _instance(profile, path), _own(profile, path), is_test(profile, path), fake, parts)
 
 
-def _tier(profile: Profile, path: tuple[str, ...]) -> tuple[TierView | None, str | None, tuple[str, ...]]:
+def _tier(profile: Profile, path: tuple[str, ...]) -> tuple[CheckedTier | None, str | None, tuple[str, ...]]:
     where = place_of(profile.parts, path, profile.language.marks)
     if where.part is not None:
         tier = _first(profile, lambda t: any(s.part == where.part and where.sub[:len(s.sub)] == s.sub
@@ -71,11 +71,11 @@ def _tier(profile: Profile, path: tuple[str, ...]) -> tuple[TierView | None, str
     return _first(profile, lambda t: bool(t.folder) and folder[:len(t.folder)] == t.folder), None, ()
 
 
-def _tests(tier: TierView, part: str) -> bool:
+def _tests(tier: CheckedTier, part: str) -> bool:
     return any(s.part == part for s in tier.subject)
 
 
-def _first(profile: Profile, wanted) -> TierView | None:
+def _first(profile: Profile, wanted) -> CheckedTier | None:
     return next((t for t in profile.tiers if wanted(t)), None)
 
 
@@ -97,7 +97,7 @@ def _own(profile: Profile, path: tuple[str, ...]) -> tuple[str, ...]:
     return path[:1] if len(path) > 1 else ()
 
 
-def may_import(profile: Profile, tier: TierView) -> tuple[Target, ...]:
+def may_import(profile: Profile, tier: CheckedTier) -> tuple[Target, ...]:
     """What the tests in the tier's own folder may import: what the tier says, else its subject parts and what each of
     them may import."""
     if tier.may_import is not None:
@@ -115,7 +115,7 @@ def allowance(profile: Profile, where: Tested) -> tuple[Target, ...]:
     return tuple(replace(t, names="") for s in own for t in (s, *targets_of(profile, s.part)))
 
 
-def may_use_fakes(profile: Profile, tier: TierView) -> bool:
+def may_use_fakes(profile: Profile, tier: CheckedTier) -> bool:
     """Whether the tests of the tier may import the fakes: its subject holds a part they stand in for."""
     return profile.fakes is not None and any(s.part in profile.fakes.stand_in_for for s in tier.subject)
 

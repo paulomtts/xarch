@@ -12,10 +12,10 @@ from xarch.modules.spec.application.logic.language_file import PARTIAL
 from xarch.modules.spec.application.logic.profile_needs import configured
 from xarch.modules.spec.domain.profile_keys import KEYS
 
-TOY = replace(PYTHON, name="toy", title="Toy",
-              supplies=(Supply("file", EXACT), Supply("import", EXACT), Supply("import.relative", EXACT),
-                        Supply("import.standard", EXACT),
-                        Supply("class", PARTIAL, "a class defined in a branch is not read")))
+TOY = replace(PYTHON, name="toy", checked=replace(
+    PYTHON.checked, title="Toy",
+    supplies=(Supply("file", EXACT), Supply("import", EXACT), Supply("import.relative", EXACT),
+              Supply("import.standard", EXACT), Supply("class", PARTIAL, "a class defined in a branch is not read"))))
 LANGUAGES = {"toy": TOY}
 
 
@@ -46,11 +46,12 @@ def test_a_key_whose_facts_are_all_supplied_exactly_is_neither_refused_nor_appro
 
 
 def test_a_language_whose_data_file_says_nothing_of_its_reader_holds_no_key_to_it():
-    assert parsed(services(no_callbacks=True), languages={"toy": replace(TOY, supplies=None)}).approximate == ()
+    silent = replace(TOY, checked=replace(TOY.checked, supplies=None))
+    assert parsed(services(no_callbacks=True), languages={"toy": silent}).approximate == ()
 
 
 def test_python_supplies_every_fact_a_bundled_check_reads():
-    assert {supply.fact: supply.grade for supply in PYTHON.supplies} == {fact: EXACT for fact in FACTS}
+    assert {supply.fact: supply.grade for supply in PYTHON.checked.supplies} == {fact: EXACT for fact in FACTS}
 
 
 def test_the_keys_a_profile_sets_are_found_in_every_scope_and_through_a_testing_preset():

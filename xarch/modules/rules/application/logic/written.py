@@ -9,7 +9,6 @@ import json
 import re
 from collections.abc import Iterable
 
-from xarch.kernel.logic.language import LanguageView
 from xarch.kernel.placement import Target
 from xarch.modules.rules.domain.rule import (
     ANY,
@@ -26,6 +25,7 @@ from xarch.modules.rules.domain.rule import (
     Saying,
     Scope,
 )
+from xarch.profile_values.language import CheckedLanguage
 
 PLAIN = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_./@()-]*(?: [A-Za-z0-9_./@()-]+)*")
 """A word written without quotes: what YAML reads as the text it is, in a list or a map written on one line."""
@@ -43,7 +43,7 @@ def written(rules: Iterable[Rule], ids: Iterable[str]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def written_own(checks: Iterable[OwnCheck], language: LanguageView) -> str:
+def written_own(checks: Iterable[OwnCheck], language: CheckedLanguage) -> str:
     """Checks of a profile's own as its `checks` are written, each under its id with its examples, the tokens of
     the language (see filled) in their code filled in."""
     lines = ["checks:"]
@@ -55,12 +55,12 @@ def written_own(checks: Iterable[OwnCheck], language: LanguageView) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _files(files: tuple[tuple[str, str], ...], language: LanguageView) -> str:
+def _files(files: tuple[tuple[str, str], ...], language: CheckedLanguage) -> str:
     shown = [f"{_word(filled(path, language))}: {_quoted(filled(code, language))}" for path, code in files]
     return f"{{{', '.join(shown)}}}"
 
 
-def filled(text: str, language: LanguageView) -> str:
+def filled(text: str, language: CheckedLanguage) -> str:
     """The text with the tokens of the language filled in: `%extension%`, `%comment%`, and `%import <dotted> <name>%`,
     a line that imports name from the file of the app that dotted names, as the language's importing says
     (left as written when it does not say)."""

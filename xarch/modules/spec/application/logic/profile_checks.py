@@ -9,8 +9,7 @@ from collections.abc import Collection, Mapping
 from fnmatch import fnmatchcase
 from typing import Any
 
-from xarch.kernel.logic.placement import Excluded, place_of
-from xarch.kernel.logic.testing import CaseTable, Fakes, Fixture, Framework
+from xarch.kernel.logic.placement import place_of
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic.docs_files import DOCS_ROOT
 from xarch.modules.spec.application.logic.key_lookup import names_of, required_of
@@ -18,6 +17,8 @@ from xarch.modules.spec.application.logic.profile_listing import listing_in
 from xarch.modules.spec.application.logic.project_files import APP_PLACEHOLDER
 from xarch.modules.spec.domain.profile_keys import FILE, NAMING, PAGE, TABLE
 from xarch.modules.spec.domain.values import EACH, NAME, Doc, FileEntry, Language, Layout, Naming, Part, Target, Tier
+from xarch.profile_values.excluded import Excluded
+from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework
 
 PART_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_-]*")
 PACKAGE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
@@ -37,16 +38,16 @@ def is_name(text: str, language: Language) -> bool:
 def is_special(name: str, language: Language) -> bool:
     """Whether a name is one the language reserves for itself: it starts and ends as its data file says such a name
     does."""
-    return bool(language.special) and name.startswith(language.special) and name.endswith(language.special)
+    return bool(language.checked.special) and name.startswith(language.checked.special) and name.endswith(language.checked.special)
 
 def file_pattern(language: Language) -> re.Pattern[str]:
     """What a file name pattern is: letters, digits, `_`, `.`, `-` and `*`, ending in the language's extension."""
-    return re.compile(rf"[A-Za-z0-9_.*-]+{re.escape(language.extension)}")
+    return re.compile(rf"[A-Za-z0-9_.*-]+{re.escape(language.checked.extension)}")
 
 
 def file_name(language: Language) -> re.Pattern[str]:
     """What a file name is: letters, digits, `_`, `.` and `-`, ending in the language's extension."""
-    return re.compile(rf"[A-Za-z0-9_.-]+{re.escape(language.extension)}")
+    return re.compile(rf"[A-Za-z0-9_.-]+{re.escape(language.checked.extension)}")
 
 
 def resolves(path: tuple[str, ...], layout: Layout) -> bool:
@@ -159,7 +160,7 @@ def init_files(value: Any, docs: tuple[Doc, ...], files: Collection[str], proble
     """The project files: each path below the project root with the template, or the folder, it is written from."""
     if not isinstance(value, Mapping):
         problems.append("files: must be a mapping of paths to {from}, such as {tests/rules"
-                        f"{language.extension}: {{from: guard{language.extension}}}}}")
+                        f"{language.checked.extension}: {{from: guard{language.checked.extension}}}}}")
         return ()
     found: list[FileEntry] = []
     for key, spec in value.items():
@@ -277,7 +278,7 @@ def tier_folder(value: Any, parts: dict[str, Part], where: str, problems: list[s
         problems.append(f"{where}: must be a folder below the tests folder, such as architecture: relative, with no "
                         "`..`, no empty step and no `*`")
         return None
-    mirrored = place_of({name: part.path for name, part in parts.items()}, steps, language.marks).part
+    mirrored = place_of({name: part.path for name, part in parts.items()}, steps, language.checked.marks).part
     if mirrored is not None:
         problems.append(f"{where}: '{value}' is the folder of part '{mirrored}', which places its tests: give `folder` "
                         "only to a folder that mirrors no part")
@@ -385,11 +386,11 @@ def case_table(value: Any, where: str, problems: list[str], language: Language) 
 def use_case_file(value: Any, framework: Framework | None, where: str, problems: list[str], language: Language,
                   files_key: str = "tests.files") -> str | None:
     if not isinstance(value, str) or value.count(NAME) != 1:
-        problems.append(f"{where}: must hold `{NAME}` once, such as a_{NAME}{language.extension}")
+        problems.append(f"{where}: must hold `{NAME}` once, such as a_{NAME}{language.checked.extension}")
         return None
     name = value.replace(NAME, "x")
     if not file_name(language).fullmatch(name):
-        problems.append(f"{where}: must be a file name below the test folders, such as a_{NAME}{language.extension}")
+        problems.append(f"{where}: must be a file name below the test folders, such as a_{NAME}{language.checked.extension}")
         return None
     if framework is not None and not any(fnmatchcase(name, pattern) for pattern in framework.files):
         problems.append(f"{where}: {value!r} is not a name `{files_key}` recognises as a test file")
@@ -492,14 +493,14 @@ def framework_patterns(value: Any, problems: list[str], where: str, known: Colle
 
 def file_patterns(value: Any, problems: list[str], where: str, language: Language) -> tuple[str, ...] | None:
     if not isinstance(value, list) or not value:
-        problems.append(f"{where}: must be a non-empty list of file name patterns, each a {language.extension} name "
+        problems.append(f"{where}: must be a non-empty list of file name patterns, each a {language.checked.extension} name "
                         "with `*` for any text")
         return None
     pattern = file_pattern(language)
     found: list[str] = []
     for item in value:
         if not isinstance(item, str) or not pattern.fullmatch(item):
-            problems.append(f"{where}: {item!r} is not a file name pattern: a name ending in {language.extension}, "
+            problems.append(f"{where}: {item!r} is not a file name pattern: a name ending in {language.checked.extension}, "
                             "with `*` for any text")
         elif item in found:
             problems.append(f"{where}: {item!r} is listed twice")
@@ -559,7 +560,7 @@ def reserved_modules(value: Any, problems: list[str], language: Language) -> dic
         if not isinstance(name, str) or not PACKAGE.fullmatch(name):
             problems.append(f"reserved: {name!r} is not a top-level import name, such as ast")
         elif name not in language.standard_names:
-            problems.append(f"reserved: {name!r} is not in the {language.title} standard library: an outside package "
+            problems.append(f"reserved: {name!r} is not in the {language.checked.title} standard library: an outside package "
                             "is imported only by the parts whose `libraries` list it already")
         elif not line(reason):
             problems.append(f"reserved.{name}: must say in one line why it is reserved")
@@ -611,7 +612,7 @@ def forbidden_names(value: Any, where: str, problems: list[str],
             problems.append(f"{where}: {item!r} is not a dotted name such as datetime.datetime.now, nor an import "
                             "name such as socket, nor a method such as .absolute()")
         elif "." not in item and item in language.builtin_names:
-            problems.append(f"{where}: {item!r} is a {language.title} builtin, which a bare name does not ban: write "
+            problems.append(f"{where}: {item!r} is a {language.checked.title} builtin, which a bare name does not ban: write "
                             f"{language.namespace}.{item}")
         elif tuple(item.split(".")) in found:
             problems.append(f"{where}: {item!r} is listed twice")

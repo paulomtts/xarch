@@ -5,6 +5,7 @@ from xarch.kernel.capabilities import EXACT, Supply
 from xarch.modules.spec.application.logic.language_file import PARTIAL, language_of
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import Language
+from xarch.profile_values.language import CheckedLanguage
 
 DOCUMENT = {"title": "Pascal", "extension": ".pas", "package_file": "unit.pas", "interface": ["sys.Contract"],
             "dynamic": ["sys.load", "sys.Contract.load"], "namespace": "system", "cache": ".objs",
@@ -13,13 +14,14 @@ DOCUMENT = {"title": "Pascal", "extension": ".pas", "package_file": "unit.pas", 
 
 def test_a_language_is_read_from_the_document_of_its_preset_by_name():
     assert language_of("pascal", DOCUMENT) == Language(
-        "pascal", "Pascal", ".pas", "unit.pas", (("sys", "Contract"),), (("sys", "load"), ("sys", "Contract", "load")),
+        "pascal", CheckedLanguage("Pascal", ".pas", "unit.pas", (("sys", "Contract"),),
+                                  (("sys", "load"), ("sys", "Contract", "load"))),
         "system", "interpreter", ".objs")
 
 
 def test_the_marks_of_a_language_are_its_extension_and_its_package_file():
-    assert language_of("pascal", DOCUMENT).marks.extension == ".pas"
-    assert language_of("pascal", DOCUMENT).marks.package_file == "unit.pas"
+    assert language_of("pascal", DOCUMENT).checked.marks.extension == ".pas"
+    assert language_of("pascal", DOCUMENT).checked.marks.package_file == "unit.pas"
 
 
 def test_every_problem_of_a_document_is_listed_naming_the_preset():
@@ -52,8 +54,9 @@ def test_the_tokens_of_the_code_are_read_when_the_document_gives_them():
               "comment": "//", "directives": ["lint: off"], "shebang": "#!", "encoding": "utf-8",
               "branching": ["if", "case"]}
     language = language_of("pascal", DOCUMENT | tokens)
-    assert (language.names, language.private, language.special, language.call, language.nothing, language.comment,
-            language.directives, language.shebang, language.encoding, language.branching) == (
+    checked = language.checked
+    assert (language.names, checked.private, checked.special, checked.call, checked.nothing, checked.comment,
+            checked.directives, checked.shebang, checked.encoding, checked.branching) == (
         "[a-z]+", "_", "__", "__call__", "None", "//", ("lint: off",), "#!", "utf-8", ("if", "case"))
 
 
@@ -76,18 +79,18 @@ def test_a_token_that_is_not_what_its_key_takes_is_a_problem(given, problem):
 
 
 def test_how_a_file_imports_a_name_is_read_when_the_document_gives_it():
-    assert language_of("pascal", DOCUMENT | {"importing": "uses {dotted}.{name};"}).importing == "uses {dotted}.{name};"
-    assert language_of("pascal", DOCUMENT).importing == ""
+    assert language_of("pascal", DOCUMENT | {"importing": "uses {dotted}.{name};"}).checked.importing == "uses {dotted}.{name};"
+    assert language_of("pascal", DOCUMENT).checked.importing == ""
 
 
 def test_the_facts_its_reader_supplies_are_read_each_with_its_grade():
     language = language_of("pascal", DOCUMENT | {"supplies": {"import": "exact",
                                                               "class": {"partial": "nested classes are not read"}}})
-    assert language.supplies == (Supply("import", EXACT), Supply("class", PARTIAL, "nested classes are not read"))
+    assert language.checked.supplies == (Supply("import", EXACT), Supply("class", PARTIAL, "nested classes are not read"))
 
 
 def test_a_document_that_says_nothing_of_its_reader_supplies_no_grade():
-    assert language_of("pascal", DOCUMENT).supplies is None
+    assert language_of("pascal", DOCUMENT).checked.supplies is None
 
 
 @pytest.mark.parametrize("supplies, problem", [

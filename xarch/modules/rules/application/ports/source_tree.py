@@ -4,8 +4,8 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Protocol
 
-from xarch.kernel.logic.testing import CaseTable
 from xarch.modules.rules.domain.values import SourceFile
+from xarch.profile_values.testing import CaseTable
 
 
 class SourceTree(Protocol):

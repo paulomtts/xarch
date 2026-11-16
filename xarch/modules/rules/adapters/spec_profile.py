@@ -6,7 +6,6 @@ from typing import Any, Protocol
 
 from xarch.kernel.capabilities import FACTS, Shortfall
 from xarch.kernel.logic.capabilities import shortfalls
-from xarch.kernel.logic.language import LanguageView
 from xarch.modules.rules.domain.errors import ChecksRefused, ProfileUnusable, RuleRefused
 from xarch.modules.rules.domain.rule import (
     EXISTING,
@@ -24,6 +23,7 @@ from xarch.modules.rules.domain.rule import (
 from xarch.modules.rules.domain.values import InitFile, PartInfo, Profile, Standing
 from xarch.modules.rules.domain.vocabulary import NAMES, PLACES, TARGETS
 from xarch.modules.spec.contract import FilesResult, Origin, OriginResult, ProfileRefused, ProfileView, ProjectFiles
+from xarch.profile_values.language import CheckedLanguage
 
 
 class _Spec(Protocol):
@@ -100,7 +100,7 @@ class WrittenChecks:
     check that names a word the vocabulary does not hold, or one that does not apply, or that needs a fact the
     language's reader does not supply, is refused with every problem of every check at once (ChecksRefused)."""
 
-    def own(self, checks: Mapping[str, Mapping[str, Any]], language: LanguageView) -> tuple[OwnCheck, ...]:
+    def own(self, checks: Mapping[str, Mapping[str, Any]], language: CheckedLanguage) -> tuple[OwnCheck, ...]:
         found: list[OwnCheck] = []
         problems: list[str] = []
         for name, body in checks.items():
@@ -115,13 +115,13 @@ class WrittenChecks:
             raise ChecksRefused(tuple(problems))
         return tuple(found)
 
-    def approximate(self, checks: tuple[OwnCheck, ...], language: LanguageView) -> tuple[Shortfall, ...]:
+    def approximate(self, checks: tuple[OwnCheck, ...], language: CheckedLanguage) -> tuple[Shortfall, ...]:
         """The checks that read a fact the language's reader supplies only partly, by the fact."""
         supplies = {s.fact: s for s in language.supplies or ()}
         return tuple(short for check in checks for short in shortfalls(check.rule.key, check.rule.needs, supplies)
                      if short.note is not None)
 
-    def _supplied(self, name: str, rule: Rule, language: LanguageView) -> list[str]:
+    def _supplied(self, name: str, rule: Rule, language: CheckedLanguage) -> list[str]:
         if language.supplies is None:
             return []
         supplies = {s.fact: s for s in language.supplies}

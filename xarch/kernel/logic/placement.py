@@ -17,20 +17,8 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
 
 from xarch.kernel.placement import EACH, EVERYTHING, Marks, Place, Repeat, Target
-
-
-@dataclass(frozen=True)
-class Excluded:
-    """A folder below the app that is not its source, and why: no check reads it.
-
-    path: below the app folder, e.g. ("architectures", "examples")
-    reason: one line, shown in the enforcement section
-    """
-    path: tuple[str, ...]
-    reason: str
 
 
 def root_of(pattern: tuple[str, ...]) -> tuple[str, ...] | None:

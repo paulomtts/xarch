@@ -7,8 +7,9 @@ import pytest
 from tests.modules.spec.languages import PYTHON
 from tests.modules.spec.profiles_v2 import covered, layered, parsed, problems
 from xarch.modules.spec.domain.values import Language
+from xarch.profile_values.language import CheckedLanguage
 
-PASCAL = replace(Language(), name="pascal", title="Pascal", extension=".pas", package_file="unit.pas",
+PASCAL = replace(Language(), name="pascal", checked=CheckedLanguage("Pascal", ".pas", "unit.pas"),
                  namespace="system", standard_names=frozenset({"strutils"}), builtin_names=frozenset({"writeln"}))
 BOTH = {"pascal": PASCAL, "python": PYTHON}
 
@@ -53,4 +54,4 @@ def test_the_standard_library_and_the_builtins_are_those_of_the_language():
 def test_a_path_is_placed_by_the_marks_of_the_language(language, name):
     architecture = replace(parsed(layered(), languages=BOTH), language=language)
     assert architecture.place_of(("shared", name)).part == "shared"
-    assert architecture.place_of(("shared", f"x{language.extension}")).sub == ("x",)
+    assert architecture.place_of(("shared", f"x{language.checked.extension}")).sub == ("x",)

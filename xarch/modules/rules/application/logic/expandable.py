@@ -4,16 +4,17 @@ that expands to no rule in a profile is either one that profile sets nowhere, wh
 check of xarch's own reads."""
 from __future__ import annotations
 
-from xarch.kernel.logic.testing import Fakes, Framework, TierView
 from xarch.kernel.placement import Target
 from xarch.modules.rules.application.logic.expansion import book
 from xarch.modules.rules.application.logic.explained import general, keyed
 from xarch.modules.rules.domain.values import PartInfo, Profile
+from xarch.profile_values.testing import Fakes, Framework
+from xarch.profile_values.tiers import CheckedTier
 
 _SET = Profile(
     parts={"one": ("one",), "two": ("two",)}, rules={"one": (Target("two"),), "two": ()},
     libraries={"one": ("outside",)}, forbidden={"one": (("outside",),)},
-    tiers=(TierView("tier", (Target("one"),), ("tier",), types_only=("two",), forbidden=True,
+    tiers=(CheckedTier("tier", (Target("one"),), ("tier",), types_only=("two",), forbidden=True,
                     may_import=(Target("two"),), must_import=("two",)),),
     package_only=("two",), types_only={"one": ("two",)}, no_callbacks=("one",), names={"one": ("*",)},
     built_by={"two": ("one",)}, private_imports=True, no_comments=True, closed_tree=True, holds={"one": "classes"},

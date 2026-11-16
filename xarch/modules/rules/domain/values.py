@@ -6,12 +6,14 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from xarch.kernel.capabilities import Shortfall
-from xarch.kernel.logic.language import LanguageView
-from xarch.kernel.logic.placement import Excluded, repeat_of
-from xarch.kernel.logic.testing import Fakes, Framework, ScenarioCoverage, StandIns, TierView
+from xarch.kernel.logic.placement import repeat_of
 from xarch.kernel.placement import Place, Repeat, Target
 from xarch.kernel.source import Import, Unparsable
 from xarch.kernel.violations import At, Violation, Weak
+from xarch.profile_values.excluded import Excluded
+from xarch.profile_values.language import CheckedLanguage
+from xarch.profile_values.testing import Fakes, Framework, ScenarioCoverage, StandIns
+from xarch.profile_values.tiers import CheckedTier
 
 if TYPE_CHECKING:
     from xarch.modules.rules.domain.rule import OwnCheck
@@ -57,7 +59,7 @@ class Profile:
     parts: dict[str, tuple[str, ...]]
     rules: dict[str, tuple[Target, ...]]
     folders: tuple[tuple[str, ...], ...] = ()
-    tiers: tuple[TierView, ...] = ()
+    tiers: tuple[CheckedTier, ...] = ()
     libraries: dict[str, tuple[str, ...]] | None = None
     fakes: Fakes | None = None
     repeats: tuple[Repeat, ...] = ()
@@ -86,7 +88,7 @@ class Profile:
     shared: dict[str, int] = field(default_factory=dict)
     private_imports: bool = False
     hints: dict[str, str] = field(default_factory=dict)
-    language: LanguageView = LanguageView()
+    language: CheckedLanguage = CheckedLanguage()
     reserved: dict[str, str] = field(default_factory=dict)
     approximate: tuple[Shortfall, ...] = ()
     checks: tuple[OwnCheck, ...] = ()
@@ -453,7 +455,7 @@ class PartPlace:
     may_import_text: str
     libraries: tuple[str, ...] | None
     forbidden: tuple[str, ...]
-    tier: TierView | None
+    tier: CheckedTier | None
     test_folder: str
     test_file: str
     untested: str
@@ -487,7 +489,7 @@ class SuitePlace:
     import test code from; note, why it is in no tier, for a test."""
     found: Resolved
     test: bool
-    tier: TierView | None
+    tier: CheckedTier | None
     place: Place | None
     info: PartInfo | None
     singular: str

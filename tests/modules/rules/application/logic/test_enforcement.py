@@ -6,9 +6,6 @@ import pytest
 
 from tests.modules.rules.builders import PYTHON
 from xarch.kernel.capabilities import Shortfall
-from xarch.kernel.logic.language import LanguageView
-from xarch.kernel.logic.placement import Excluded
-from xarch.kernel.logic.testing import Framework
 from xarch.kernel.violations import At, Weak
 from xarch.modules.rules.application.logic.enforcement import (
     detail,
@@ -22,6 +19,9 @@ from xarch.modules.rules.application.logic.enforcement import (
     vacuous,
 )
 from xarch.modules.rules.domain.values import Drift, Enforcement, Finding, InitFile, Profile, SourceFile, Use
+from xarch.profile_values.excluded import Excluded
+from xarch.profile_values.language import CheckedLanguage
+from xarch.profile_values.testing import Framework
 
 SKIPS = (("pytest", "mark", "skip"), ("pytest", "mark", "xfail"), ("pytest", "skip"))
 PROFILE = Profile(parts={}, rules={}, framework=Framework(("test_*.py",), "test_*", SKIPS), language=PYTHON)
@@ -103,9 +103,9 @@ def test_a_framework_that_lists_no_skips_counts_none():
 
 def test_a_dynamic_import_is_what_the_language_of_the_profile_lists():
     files = [file("app/a.py", Use(2, ("sys", "load"), 1), Use(3, ("importlib", "import_module"), 1))]
-    other = replace(PROFILE, language=LanguageView(dynamic=(("sys", "load"),)))
+    other = replace(PROFILE, language=CheckedLanguage(dynamic=(("sys", "load"),)))
     assert dynamic(files, other) == [At("app/a.py", 2)]
-    assert dynamic(files, replace(PROFILE, language=LanguageView())) == []
+    assert dynamic(files, replace(PROFILE, language=CheckedLanguage())) == []
 
 
 def test_a_name_beside_a_dynamic_import_is_no_dynamic_import():

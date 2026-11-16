@@ -6,10 +6,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from xarch.kernel.capabilities import Shortfall, Supply
-from xarch.kernel.logic.placement import Excluded, place_of, repeat_of, with_itself
-from xarch.kernel.logic.testing import Fakes, Framework, ScenarioCoverage, StandIns
-from xarch.kernel.placement import EACH, EVERYTHING, Marks, Place, Repeat, Scope, Target
+from xarch.kernel.capabilities import Shortfall
+from xarch.kernel.logic.placement import place_of, repeat_of, with_itself
+from xarch.kernel.placement import EACH, EVERYTHING, Place, Repeat, Scope, Target
+from xarch.profile_values.excluded import Excluded
+from xarch.profile_values.language import CheckedLanguage
+from xarch.profile_values.testing import Fakes, Framework, ScenarioCoverage, StandIns
 
 
 @dataclass(frozen=True)
@@ -255,61 +257,30 @@ class Language:
     """What is true of the language of the app as a whole, read from the data file of its preset (and from the runtime
     for the names only it knows).
 
-    title: how a message names the language
-    extension: the ending of a source file's name
-    package_file: the name of the file that stands for the folder holding it
-    interface: the dotted names that mark a class as an interface
-    dynamic: the dotted names of what imports by a name worked out when the code runs
+    name: how a profile names it
+    checked: the language as the checks read it, which spec builds and the checking module reads in full
     namespace: the namespace of the names bound without an import
     standard: where the names of the standard library are known from
     cache: the folder in which its tools keep what they compile; empty: none
-    names: a regular expression, what a name may be; private: what a name private to its file or folder starts with;
-        special: what a name the language reserves for itself starts and ends with; call: the special method calling
-        an instance runs; nothing: the return annotation of no value; comment: the marker of a line comment;
-        directives: the comments its tools read, after the marker; shebang: how line 1 names the program that runs
-        the file; encoding: a regular expression, how line 1 or 2 declares the encoding; branching: the keywords of
-        the statements that branch (each empty: the language has none)
+    names: a regular expression, what a name may be (empty: the language does not say)
     standard_names: the top-level names of the standard library
     builtin_names: the names bound without an import
     reserved_names: the words no name may be
-    supplies: the facts its reader supplies, each graded (see capabilities); None: no language is known,
-        and no key is held to what it reads
-    importing: how a file imports a name from another file of the app, {dotted} standing for that file's dotted path
-        and {name} for the name; empty: the data file does not say
     """
     name: str = ""
-    title: str = ""
-    extension: str = ""
-    package_file: str = ""
-    interface: tuple[tuple[str, ...], ...] = ()
-    dynamic: tuple[tuple[str, ...], ...] = ()
+    checked: CheckedLanguage = CheckedLanguage()
     namespace: str = ""
     standard: str = ""
     cache: str = ""
     names: str = ""
-    private: str = ""
-    special: str = ""
-    call: str = ""
-    nothing: str = ""
-    comment: str = ""
-    directives: tuple[str, ...] = ()
-    shebang: str = ""
-    encoding: str = ""
-    branching: tuple[str, ...] = ()
     standard_names: frozenset[str] = frozenset()
     builtin_names: frozenset[str] = frozenset()
     reserved_names: frozenset[str] = frozenset()
-    supplies: tuple[Supply, ...] | None = None
-    importing: str = ""
-
-    @property
-    def marks(self) -> Marks:
-        return Marks(self.extension, self.package_file)
 
     @property
     def interface_name(self) -> str:
         """What an interface is called in the language: the last step of the first name that marks one."""
-        return self.interface[0][-1] if self.interface else ""
+        return self.checked.interface[0][-1] if self.checked.interface else ""
 
 
 @dataclass(frozen=True)
@@ -396,7 +367,7 @@ class Architecture:
         """Where a path below the app root sits, written as a file or as the language names it without the file's
         ending: the part whose pattern it lies in, the deepest when parts nest, with `*` capturing the module; a path no
         part claims is structure."""
-        return place_of(self.patterns(), path, self.language.marks)
+        return place_of(self.patterns(), path, self.language.checked.marks)
 
     def patterns(self) -> dict[str, tuple[str, ...]]:
         """Every part's path pattern, by name."""

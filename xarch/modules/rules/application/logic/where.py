@@ -23,7 +23,6 @@ from pathlib import Path
 
 from xarch.kernel.logic.imports import may_import, shown_target
 from xarch.kernel.logic.placement import repeat_of
-from xarch.kernel.logic.testing import TierView
 from xarch.kernel.placement import EACH, Place, Target
 from xarch.modules.rules.application.logic.places import matches, place, targets_of
 from xarch.modules.rules.application.logic.tier_of import NO_TIER, Tested, allowance, may_use_fakes, tested
@@ -39,6 +38,7 @@ from xarch.modules.rules.domain.values import (
     SuitePlace,
     UngovernedPlace,
 )
+from xarch.profile_values.tiers import CheckedTier
 
 TESTS_FOLDER = "tests"
 """Where the tests are shown to be when no tests folder is known."""
@@ -118,7 +118,7 @@ def _app(profile: Profile, found: Resolved, app: str, tests: str) -> Placed:
         info.untested if info and tier is None else "")
 
 
-def _mirror(profile: Profile, part: str, steps: tuple[str, ...]) -> tuple[tuple[str, ...], str, TierView | None]:
+def _mirror(profile: Profile, part: str, steps: tuple[str, ...]) -> tuple[tuple[str, ...], str, CheckedTier | None]:
     """The folder below the tests root that mirrors the path, the name of the test file there ("" when it is no
     source file) and the tier that tests it: the answer the tests' own mapping (tier_of) gives for that folder."""
     pattern = profile.framework.files[0] if profile.framework is not None and profile.framework.files else ""

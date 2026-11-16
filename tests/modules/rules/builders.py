@@ -12,13 +12,14 @@ from __future__ import annotations
 import sys
 from dataclasses import replace
 
-from xarch.kernel.logic.language import LanguageView
-from xarch.kernel.logic.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns, TierView
 from xarch.kernel.placement import EVERYTHING, Repeat, Target
 from xarch.kernel.source import Import
 from xarch.modules.rules.domain.values import Profile, SourceFile
+from xarch.profile_values.language import CheckedLanguage
+from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns
+from xarch.profile_values.tiers import CheckedTier
 
-PYTHON = LanguageView("Python", ".py", "__init__.py", (("typing", "Protocol"), ("typing_extensions", "Protocol")),
+PYTHON = CheckedLanguage("Python", ".py", "__init__.py", (("typing", "Protocol"), ("typing_extensions", "Protocol")),
                       (("importlib", "import_module"), ("importlib", "__import__"), ("builtins", "__import__")),
                       "_", "__", "__call__", "None", "#", ("type: ignore", "noqa", "pragma:"), "#!",
                       r"coding[:=][ \t]*[-\w.]+", ("if", "match", "try", "for", "while"))
@@ -54,12 +55,12 @@ FOLDERS = ((), ("bootstrap",), ("kernel",), ("kernel", "logic"), ("modules",), (
                                                   ("application", "services"), ("application", "logic"),
                                                   ("application", "ports"), ("adapters",)]),
            ("platform",), ("web",), ("web", "routes"))
-UNIT = TierView("unit", (Target("kernel"), *own("domain", "logic", "adapters")), ("modules", "docs", "domain"),
+UNIT = CheckedTier("unit", (Target("kernel"), *own("domain", "logic", "adapters")), ("modules", "docs", "domain"),
                 forbidden=True)
-INTEGRATION = TierView("integration", own("controller", "services", "ports", "contract"),
+INTEGRATION = CheckedTier("integration", own("controller", "services", "ports", "contract"),
                        ("modules", "docs", "application"))
-RENDERING = TierView("rendering", (Target("web"),), ("web",), types_only=("controller",))
-GUARD = TierView("guard", (), ("architecture",))
+RENDERING = CheckedTier("rendering", (Target("web"),), ("web",), types_only=("controller",))
+GUARD = CheckedTier("guard", (), ("architecture",))
 NOW = ("datetime", "datetime", "now")
 MOCK = ("unittest", "mock", "Mock")
 AUTOSPEC = ("unittest", "mock", "create_autospec")
@@ -79,7 +80,7 @@ PROFILE = Profile(
 
 PLUGINS = Repeat("plugin", ("plugins",))
 PLUGIN_PARTS = {"hooks": ("plugins", "*", "hooks"), "manifest": ("plugins", "*", "manifest.py")}
-PLUGIN = TierView("plugin", own("hooks", "manifest"), None)
+PLUGIN = CheckedTier("plugin", own("hooks", "manifest"), None)
 TWO = replace(
     PROFILE, parts={**PARTS, **PLUGIN_PARTS},
     rules={**RULES, "hooks": (*own("manifest"), Target("domain", "any"), Target("kernel")),

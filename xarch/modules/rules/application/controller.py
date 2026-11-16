@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from xarch.kernel.errors import DomainError
-from xarch.kernel.logic.language import LanguageView
-from xarch.kernel.logic.testing import TierView
 from xarch.kernel.placement import Place
 from xarch.kernel.source import Import, Unparsable
 from xarch.modules.rules.application.logic import enforcement, explained
@@ -80,6 +78,8 @@ from xarch.modules.rules.domain.values import (
 )
 from xarch.modules.rules.domain.vocabulary import READING, SLOTS, Kind
 from xarch.modules.rules.domain.worked import WORKED
+from xarch.profile_values.language import CheckedLanguage
+from xarch.profile_values.tiers import CheckedTier
 
 
 class RulesController:
@@ -124,7 +124,7 @@ class RulesController:
                          explained.needs(kind) if kind else (), kind.verb if kind else "", key, location, example)
 
     def _example(self, category: str, name: str, locations: tuple[str, ...],
-                 language: LanguageView) -> tuple[str, str, str]:
+                 language: CheckedLanguage) -> tuple[str, str, str]:
         """The key, the profile ("" for a check written for the explanation) and the text of a word's example."""
         found = self._explaining.example(category, name, locations)
         if found is not None:
@@ -265,7 +265,7 @@ def _nearest(nearest: tuple[PartAt, ...]) -> tuple[NearestView, ...]:
     return tuple(NearestView(n.target.part, n.folder, n.path) for n in nearest)
 
 
-def _tier(tier: TierView) -> TierInfoView:
+def _tier(tier: CheckedTier) -> TierInfoView:
     return TierInfoView(tier.name, tier.proves, tier.may_touch, tier.litmus)
 
 

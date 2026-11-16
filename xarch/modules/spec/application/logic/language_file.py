@@ -42,6 +42,7 @@ from typing import Any
 from xarch.kernel.capabilities import EXACT, FACTS, Supply
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import Language
+from xarch.profile_values.language import CheckedLanguage
 
 FOLDER = "presets/language"
 """Where the data files of the languages are, below the bundled folder: one YAML file each, named for the language."""
@@ -89,11 +90,10 @@ def language_of(name: str, document: Any) -> Language:
     supplies = _supplies(document["supplies"], problems) if "supplies" in document else None
     if problems:
         raise InvalidArchitecture(source, problems)
-    return Language(name, title, extension, package_file, interface, dynamic, namespace, standard, cache,
-                    names=names, private=tokens["private"], special=tokens["special"], call=tokens["call"],
-                    nothing=tokens["nothing"], comment=tokens["comment"], directives=directives,
-                    shebang=tokens["shebang"], encoding=encoding, branching=branching, supplies=supplies,
-                    importing=importing)
+    checked = CheckedLanguage(title, extension, package_file, interface, dynamic, tokens["private"], tokens["special"],
+                              tokens["call"], tokens["nothing"], tokens["comment"], directives, tokens["shebang"],
+                              encoding, branching, supplies, importing)
+    return Language(name, checked, namespace, standard, cache, names)
 
 
 def _text(document: Mapping[Any, Any], key: str, said: str, problems: list[str],

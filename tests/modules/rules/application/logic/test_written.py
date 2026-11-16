@@ -2,7 +2,6 @@
 a word quoted only where the format would read it otherwise, and the sayings but the last as cases."""
 import pytest
 
-from xarch.kernel.logic.language import LanguageView
 from xarch.kernel.placement import Target
 from xarch.modules.rules.application.logic.written import check, filled, written
 from xarch.modules.rules.domain.rule import (
@@ -20,6 +19,7 @@ from xarch.modules.rules.domain.rule import (
     Saying,
     Scope,
 )
+from xarch.profile_values.language import CheckedLanguage
 
 
 def c(*texts: str) -> tuple[Condition, ...]:
@@ -73,4 +73,4 @@ def test_rules_are_written_as_the_checks_of_a_profile_each_under_its_id():
     pytest.param("%comment% a note in notes%extension%", "", "# a note in notes.py", id="the other tokens as before"),
 ])
 def test_the_tokens_of_the_language_are_filled_in(text, importing, written_out):
-    assert filled(text, LanguageView(extension=".py", comment="#", importing=importing)) == written_out
+    assert filled(text, CheckedLanguage(extension=".py", comment="#", importing=importing)) == written_out

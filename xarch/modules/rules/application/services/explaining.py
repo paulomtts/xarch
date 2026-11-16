@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from xarch.kernel.errors import DomainError
-from xarch.kernel.logic.language import LanguageView
 from xarch.modules.rules.application.logic import expansion
 from xarch.modules.rules.application.logic.explained import keyed, uses
 from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.domain.rule import Rule
+from xarch.profile_values.language import CheckedLanguage
 
 
 class ExplainingService:
@@ -24,14 +24,14 @@ class ExplainingService:
                     return location, rule
         return None
 
-    def language(self, locations: tuple[str, ...]) -> LanguageView:
+    def language(self, locations: tuple[str, ...]) -> CheckedLanguage:
         """The language of the first of the profiles that can be read; none when none can."""
         for location in locations:
             try:
                 return self._profiles.profile(location).language
             except DomainError:
                 continue
-        return LanguageView()
+        return CheckedLanguage()
 
     def rules_of(self, address: str, location: str) -> list[Rule]:
         """The rules of the profile at location that the key at address expands to; raises DomainError when the

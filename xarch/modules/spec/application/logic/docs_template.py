@@ -54,7 +54,6 @@ import re
 from collections.abc import Callable, Mapping
 
 from xarch.kernel.logic.imports import may_import, shown_target
-from xarch.kernel.logic.testing import ScenarioCoverage, StandIns
 from xarch.kernel.placement import EVERYTHING, Repeat
 from xarch.modules.spec.application.logic.defaults import TESTS
 from xarch.modules.spec.domain.errors import InvalidTemplate
@@ -79,6 +78,7 @@ from xarch.modules.spec.domain.values import (
     Target,
     Tier,
 )
+from xarch.profile_values.testing import ScenarioCoverage, StandIns
 
 PLACEHOLDER = re.compile(r"\{\{(.*?)\}\}")
 FENCE = re.compile(r"^```", re.MULTILINE)
@@ -253,11 +253,11 @@ def _block(files: list[tuple[str, str, str]], in_fence: bool, language: Language
     if len(suffixes) > 1:
         raise _Missing(f"one block cannot mix files of different kinds ({', '.join(sorted(suffixes))})")
     suffix = suffixes.pop()
-    comment = _COMMENT.get(suffix, language.comment)
+    comment = _COMMENT.get(suffix, language.checked.comment)
     body = "\n\n".join(f"{comment} {header}\n" + text.rstrip("\n") for header, _, text in files)
     if in_fence:
         return body
-    named = language.name if suffix == language.extension else _LANGUAGE.get(suffix, suffix.lstrip('.'))
+    named = language.name if suffix == language.checked.extension else _LANGUAGE.get(suffix, suffix.lstrip('.'))
     return f"```{named}\n{body}\n```"
 
 
@@ -479,7 +479,7 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
                     f"table (columns {shown}) in `{file.replace(NAME, '<name>')}` among the {tier} tests (section 5.2), "
                     f"or is named by a standalone test of that file; every row is a `{'.'.join(table.row)}` with "
                     f"an `{table.id}`, and a table test has no "
-                    f"{_or([f'`{word}`' for word in architecture.language.branching])}.")
+                    f"{_or([f'`{word}`' for word in architecture.language.checked.branching])}.")
         case StandIns(mocks, _, spec, fixtures):
             built = f"{fixtures[0].name}.{fixtures[0].mocks[0]}" if fixtures else ""
             return _stand_ins_line(architecture, mocks[0][-1], spec[0], built)
@@ -499,7 +499,7 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
                     f"count.{reached}")
         case PrivateImports():
             return ("`private-imports`: no file of the app or its tests imports a name that starts with "
-                    f"`{architecture.language.private}` from another file of them.")
+                    f"`{architecture.language.checked.private}` from another file of them.")
         case NoTwins(least, renamed, subset):
             copies = [said for minimum, said in (
                 (renamed, f"renames some of its fields (from {renamed} fields: more than half of its names kept in "
@@ -516,11 +516,11 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
                     "`check --strict` only.")
         case ClosedTree():
             language = architecture.language
-            return (f"`closed-tree`: every {language.title} file of the app lies in a part, or is the package file "
-                    f"(`{language.package_file}`) of a folder of the layout.")
+            return (f"`closed-tree`: every {language.checked.title} file of the app lies in a part, or is the package file "
+                    f"(`{language.checked.package_file}`) of a folder of the layout.")
         case _:
-            comment = architecture.language.comment
-            directives = ", ".join(f"`{comment} {word}`" for word in architecture.language.directives)
+            comment = architecture.language.checked.comment
+            directives = ", ".join(f"`{comment} {word}`" for word in architecture.language.checked.directives)
             return (f"`no-comments`: no `{comment}` comments in the app or its tests; docstrings and tool directives "
                     f"({directives}) stay.")
 
@@ -589,7 +589,7 @@ def _stand_ins_line(architecture: Architecture, mock: str, spec: str, built: str
              "never a read port") if tiers else ""
     interface = architecture.language.interface_name
     return (f"`stand-ins`: every `{interface}` in {parts} is fire-only (every method returns "
-            f"`{architecture.language.nothing}`) or read (any method returns a value), each method annotated; every "
+            f"`{architecture.language.checked.nothing}`) or read (any method returns a value), each method annotated; every "
             f"read port `<Port>` has a fake `{fakes.prefix}<Port>` in `{'/'.join((TESTS, *fakes.folder))}/`{mocks} "
             "(section 6).")
 

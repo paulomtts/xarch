@@ -9,7 +9,6 @@ from tests.fakes.profiles import FakeProfiles
 from tests.modules.rules.application.helpers import controller
 from tests.modules.rules.builders import PYTHON
 from xarch.kernel.capabilities import Shortfall
-from xarch.kernel.logic.placement import Excluded
 from xarch.kernel.placement import Repeat, Target
 from xarch.kernel.source import Import
 from xarch.kernel.violations import Violation
@@ -25,6 +24,7 @@ from xarch.modules.rules.contract import (
     NotADirectory,
 )
 from xarch.modules.rules.domain.values import InitFile, Profile, Standing
+from xarch.profile_values.excluded import Excluded
 
 ROOT = Path("/src/pkg")
 

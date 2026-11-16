@@ -9,7 +9,7 @@ from xarch.kernel.placement import Marks
 
 
 @dataclass(frozen=True)
-class LanguageView:
+class CheckedLanguage:
     """The language of the app as a check reads it: how a message names it, the ending of a source file's name, the
     file that stands for the folder holding it, the dotted names that mark a class as an interface, and those of what
     imports by a name worked out when the code runs; and the tokens of its code: what a private name starts with, what

@@ -2,8 +2,8 @@
 import pytest
 
 from xarch.bootstrap.wiring import build_spec, load_architecture
-from xarch.kernel.logic.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns
 from xarch.modules.spec.contract import GuardsView
+from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns
 
 
 @pytest.mark.parametrize("name, expected", [

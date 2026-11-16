@@ -33,7 +33,7 @@ Read = tuple[Import, ...] | Unparsable
 def checked_examples(architecture: Architecture) -> tuple[Example, ...]:
     """The examples the check reads: those whose file is a source file of the app's language."""
     return tuple(example for example in architecture.examples.values()
-                 if example.file.endswith(architecture.language.extension))
+                 if example.file.endswith(architecture.language.checked.extension))
 
 
 def example_problems(architecture: Architecture, reads: Mapping[str, Read]) -> list[str]:
@@ -55,7 +55,7 @@ def _problems(architecture: Architecture, path: tuple[str, ...], read: Read, in_
     if source.part is None and in_part:
         return [f"{shown}: lies in no part of the architecture"]
     if isinstance(read, Unparsable):
-        return [f"{shown}: is not valid {architecture.language.title}: {read.message} (line {read.line})"]
+        return [f"{shown}: is not valid {architecture.language.checked.title}: {read.message} (line {read.line})"]
     if source.part is None:
         return []
     rule = architecture.targets_of(source.part)

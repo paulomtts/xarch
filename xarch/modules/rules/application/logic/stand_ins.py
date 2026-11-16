@@ -41,12 +41,12 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-from xarch.kernel.logic.testing import StandIns
 from xarch.kernel.violations import Violation, Weak
 from xarch.modules.rules.application.logic.imports import dotted
 from xarch.modules.rules.application.logic.places import place
 from xarch.modules.rules.application.logic.tier_of import may_use_fakes, tested
 from xarch.modules.rules.domain.values import Class, Profile, Ref, SourceFile
+from xarch.profile_values.testing import StandIns
 
 RULE = "stand-ins"
 GUARD = f"({RULE})"

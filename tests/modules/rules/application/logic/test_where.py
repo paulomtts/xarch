@@ -5,8 +5,6 @@ from pathlib import Path
 import pytest
 
 from tests.modules.rules.builders import PYTHON
-from xarch.kernel.logic.testing import Fakes, Framework
-from xarch.kernel.logic.testing import TierView as Tier
 from xarch.kernel.placement import EVERYTHING, Place, Repeat, Target
 from xarch.modules.rules.application.logic.where import describe, resolve
 from xarch.modules.rules.domain.values import (
@@ -20,6 +18,8 @@ from xarch.modules.rules.domain.values import (
     SuitePlace,
     UngovernedPlace,
 )
+from xarch.profile_values.testing import Fakes, Framework
+from xarch.profile_values.tiers import CheckedTier as Tier
 
 ROOT, APP, TESTS = Path("/p"), Path("/p/app"), Path("/p/tests")
 NOW = ("datetime", "datetime", "now")

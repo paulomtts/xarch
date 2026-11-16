@@ -3,10 +3,10 @@ hints, each with the address it has in the file."""
 import pytest
 
 from tests.modules.spec.profiles_v2 import layered, parsed, problems
-from xarch.kernel.logic.placement import Excluded
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.modules.spec.domain.values import Doc, Example, FileEntry, Naming
+from xarch.profile_values.excluded import Excluded
 
 
 def test_the_entry_point_is_the_part_docs_names():

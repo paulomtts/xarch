@@ -5,13 +5,13 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from xarch.kernel.logic.language import LanguageView
 from xarch.kernel.violations import Violation, Weak
 from xarch.modules.rules.application.logic import expansion
 from xarch.modules.rules.application.logic.engine import run
 from xarch.modules.rules.application.logic.facts import facts_of
 from xarch.modules.rules.domain.rule import Rule
 from xarch.modules.rules.domain.values import Comment, Profile, SourceFile
+from xarch.profile_values.language import CheckedLanguage
 
 
 def checked(rules: Iterable[Rule], profile: Profile, app: Iterable[SourceFile] = (), tests: Iterable[SourceFile] = (),
@@ -72,12 +72,12 @@ def no_callbacks(app: Iterable[SourceFile], profile: Profile) -> list[Violation 
     return checked(expansion.no_callbacks(profile), profile, app)
 
 
-def no_comments(files: Iterable[SourceFile], language: LanguageView) -> list[Violation | Weak]:
+def no_comments(files: Iterable[SourceFile], language: CheckedLanguage) -> list[Violation | Weak]:
     profile = Profile(parts={}, rules={}, no_comments=True, language=language)
     return checked(expansion.no_comments(profile), profile, files)
 
 
-def comment_allowed(comment: Comment, language: LanguageView) -> bool:
+def comment_allowed(comment: Comment, language: CheckedLanguage) -> bool:
     """Whether the no-comments rule excuses a comment: the language's tools read it."""
     return not no_comments([SourceFile("x", ("x",), (), comments=(comment,))], language)
 

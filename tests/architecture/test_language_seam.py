@@ -266,7 +266,7 @@ SYNTAX = {"signature", "positional", "keyword_only", "star", "double", "decorate
 its decorators, the arguments of its one call. What they mean (a method that only forwards) is the reader's to say."""
 SAID = {"marks", "interface", "is_special", "is_public", "is_private", "comment", "directives", "shebang", "encoding",
         "title", "dynamic"}
-"""What the engine may read of the language: what its data file says (see LanguageView)."""
+"""What the engine may read of the language: what its data file says (see CheckedLanguage)."""
 
 
 def read_attributes(path: Path) -> set[str]:
