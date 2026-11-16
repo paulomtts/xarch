@@ -535,31 +535,58 @@ be added, an existing one keeps its name and meaning. A field that does not appl
   may import the fakes, where they live, the parts it may use as types and never call, and the folder it may import test
   code from. `note`: one line where the kind alone does not say it.
 
-## xarch review: an advisory reading (dry run only)
+## xarch review: an advisory reading
 
 `review` is a second, advisory command, apart from `check`: it never runs inside `check`, never changes what `check`
-finds or its exit code, and never exits 1. It will ask a decision model, for each file chosen, which part of the
-profile the file belongs in, with every part's litmus test (its role, for a part with none) as the options. This
-version builds that question and shows it, and **sends nothing**: it runs only with `--dry-run`, and refuses (exit 2)
-without it.
+finds or its exit code, and never exits 1. For each file chosen it asks a decision model which part of the profile the
+file belongs in, with every part's litmus test (its role, for a part with none) as the options, and prints the
+model's reading, ranked: a file whose probability on the part it sits in is below that part's line (0.3 for every part
+today) reads as **doubtful here**. That is a reason to read the file against its part's litmus, not a finding: in
+trials, about 7 to 10% of well-placed files read as doubtful, and about 1 in 2 to 1 in 3 doubtful files was really
+misplaced. The text output names no other part; the JSON gives the probability on every part.
+
+**What leaves the machine, and when.** The decision model is TypeSafe's (`https://api.typesafe.ai`), asked as the
+model `jev-1.14.0`, pinned. Review sends whenever `TYPESAFE_API_KEY` is set in the environment: **the key alone allows
+it**, so a key set for another purpose (a shell profile, a CI secret) starts sending the first time `xarch review` runs
+without `--dry-run` or `--offline`. With no key set, a review that would send refuses (exit 2): "no key: set
+TYPESAFE_API_KEY, or run --dry-run to see what would be sent, or --offline to use cached answers only". What is sent
+is, for each file judged whose answer is not cached, its masked text (below) and the question; the key travels as the
+`Authorization` header only, with `User-Agent: xarch`. The key is never printed, logged, cached or written. Nothing
+else of the project is sent: no path, no file name, no project name, no git data, no telemetry.
 
 It reads only the files it is given, and refuses (exit 2) when none is: name them as paths (a folder stands for the
 source files below it), pipe a list with `--files-from -` (one path per line, such as
-`git diff --name-only main | xarch review --files-from - --dry-run`), or take every file of the app with `--all`
+`git diff --name-only main | xarch review --files-from -`), or take every file of the app with `--all`
 (alone). A path is read as `xarch where` reads one; one outside the project is refused. Of the files found, a source
 file of the app in a part, that parses and holds at least 800 characters, is judged; every other is listed as left out,
-with why (not there, no source file, a test, outside the app folder, excluded, in no part, does not parse, too small).
-A run judges at most `--max-files` files (50); past that it refuses, naming how many it chose.
+with why (not there, no source file, a test, outside the app folder, excluded, in no part, held back by
+`review.never`, does not parse, too small). A run judges at most `--max-files` files (50); past that it refuses,
+naming how many it chose.
 
-`--dry-run` prints what a review would send, exactly: the question once (it is the same for every file), then each
-file judged with the text it would send. That text is the file's own, masked: the module each import of the app's own
-code names (an import named from the importing file's folder, or whose first step is the app's import name) is
-replaced by `<masked>` on the import's line, since it would say the part; every e-mail address becomes
-`person@example.test`; then each text the profile's `review.mask` hides (below). Nothing else is masked: docstrings,
-comments and string literals are sent as written, so a file that must not leave the machine is one not to choose, or
-one for `review.never`. The path of a file, the project's name and anything else of the
-project are never part of what is sent. It ends with the characters in all and about how many tokens they make (one
-for every four characters).
+The text a file is judged by is its own, masked: the module each import of the app's own code names (an import named
+from the importing file's folder, or whose first step is the app's import name) is replaced by `<masked>` on the
+import's line, since it would say the part; every e-mail address becomes `person@example.test`; then each text the
+profile's `review.mask` hides (below). Nothing else is masked: docstrings, comments and string literals are sent as
+written, so a file that must not leave the machine is one not to choose, or one for `review.never`.
+
+`--dry-run` sends nothing and needs no key. It opens with what leaves the machine, to whom, and whether the key is set
+now, then prints the question once (it is the same for every file), the masks in force, and each file judged with the
+exact text it would send, marked when its answer is in the cache already (it would not be sent). It ends with the
+characters in all and about how many tokens they make (one for every four characters).
+
+Answers are kept in `.xarch/cache/review/` in the project's root (the folder holding the app folder), one JSON file
+per question, named by a hash of the model asked, the masked text and the question; each holds the model version
+that answered, the probability of each part and the tokens spent, and no code, no question and no key. Commit the
+folder: agents and CI then share the answers without spending calls, and a model upgrade shows as a diff of answers.
+An identical question is never sent twice. `--cache DIR` keeps them elsewhere. `--offline` sends nothing, needs no
+key, and reads the cache only.
+
+Exit codes: 0 when the review ran to the end, whatever it read (doubtful files are not failures); 2 when it refused
+before sending anything (no selection, `--all` with paths, over `--max-files`, no key, a path outside the project, a
+profile that cannot be used); 3 when some file judged has no answer: not cached under `--offline`, or the decision
+model failed (unreachable, rate-limited after retries, a request refused), after which nothing more is sent. What was
+answered is printed, the rest is listed as unanswered with why and the decision model's words, and the answers already
+kept stay kept.
 
 ### What review may send: `review.never` and `review.mask`
 
@@ -583,12 +610,22 @@ review:
 `profile check` lists, as looser, an entry of either that the profile it is compared with holds and this one does not:
 it sends more. `xarch profile explain review.never` (or `review.mask`) says each in full.
 
-`--format json` prints one document: `{"ok", "advisory", "profile", "dry_run", "sent", "selection": {"by", "found",
-"judged", "left_out": [{"file", "why", "chars", "pattern"}]}, "question": {"ask", "role_only", "options": [{"name",
-"description"}]}, "requests": [{"file", "part", "chars", "text"}], "characters", "tokens", "mask"}`, `why` one of
+### JSON
+
+`--format json` prints one document. A dry run: `{"ok", "advisory", "profile", "dry_run": true, "sent": false,
+"selection": {"by", "found", "judged", "left_out": [{"file", "why", "chars", "pattern"}]}, "question": {"ask",
+"role_only", "options": [{"name", "description"}]}, "requests": [{"file", "part", "chars", "cached", "text", "body"}],
+"characters", "tokens", "mask", "sends": {"name", "at", "model", "key", "keyed"}}`, `body` the request as the
+decision model's service would receive it (JSON text, the key left out), `sends.key` the name of the variable the key
+is read from (never the key) and `keyed` whether it is set. A review: `{"ok", "advisory", "profile", "dry_run": false,
+"complete", "model", "selection", "placement": {"calibration": {"state", "evidence"}, "role_only", "files": [{"file",
+"part", "probability", "line", "doubtful", "chars", "model", "distribution"}]}, "sends", "sent": {"calls", "cached",
+"input_tokens", "output_tokens"}, "unanswered": [{"file", "why"}], "failure"}`, the files ranked from the lowest
+probability, `distribution` the probability on each part by name, `why` of an unanswered file `not-cached` or
+`failed`, `failure` the decision model's words when it failed (else null). In both, `why` of a file left out is one of
 `missing`, `not-source`, `test`, `outside`, `excluded`, `unplaced`, `never`, `unparsable`, `small`, `pattern` the
-`review.never` path that matched (null for any other `why`), `mask` the profile's `review.mask`; a refusal is
-`{"ok": false, "error"}`.
+`review.never` path that matched (null for any other `why`); a dry run's `mask` is the profile's `review.mask`. A
+refusal is `{"ok": false, "error"}`.
 
 ## Project docs
 

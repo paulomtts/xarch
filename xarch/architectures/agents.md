@@ -40,6 +40,15 @@ folder is not `app/`.
 - A port the use case reads back is faked (`Fake<Port>` in the fakes folder); a fire-only port is a mock with a spec.
 - Test code follows `docs/project/testing.md`; do not copy another shape.
 
+## A second reading, advisory
+
+`xarch review` asks a decision model where each file you give it belongs, by the parts' litmus tests. It never
+replaces `xarch check`: run it once the check is clean, on what you changed, as
+`git diff --name-only <base> | xarch review --files-from - --format json`. It sends the masked text of those files to
+the model's service whenever the model's key is set in the environment, and nothing when it is not; `--dry-run` shows
+what would leave the machine. For a file it reads as doubtful, read its part's litmus (`xarch where <path>`), then
+leave it or move it, and say why in one line. Never edit code or docstrings to raise a number.
+
 ## What not to do to get a green check
 
 - Do not move code into a folder that no part covers, to escape a rule.
