@@ -4,7 +4,7 @@ import pytest
 
 from tests.modules.spec.application.logic.old_profiles import made, old, tiered
 from xarch.modules.spec.application.logic.migrate_examples import rewrite_examples
-from xarch.modules.spec.domain.published import Copy
+from xarch.modules.spec.domain.migration import Copy
 
 EXAMPLES = {
     "text": {"part": "shared", "path": "shared/text.py", "file": "ex/text.py", "note": "a pure function"},

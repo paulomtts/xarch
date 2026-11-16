@@ -294,10 +294,10 @@ def migrated_lines(done: Migrated) -> list[str]:
     lines = [f"{'dry run, nothing written: would write' if done.dry_run else 'wrote'} to {where}/",
              f"  {done.profile.relative_to(done.folder).as_posix()}"]
     for file in done.files:
-        notes = [f"from {file.copy.source}"]
+        notes = [f"from {file.source}"]
         if file.placeholders:
             notes.append(f"{file.placeholders} example placeholder{'s' if file.placeholders > 1 else ''} rewritten")
-        lines.append(f"  {file.copy.destination}  ({', '.join(notes)})")
+        lines.append(f"  {file.destination}  ({', '.join(notes)})")
     if done.changes:
         lines += ["changed:", *(f"  {item}" for item in done.changes)]
     if done.by_hand:

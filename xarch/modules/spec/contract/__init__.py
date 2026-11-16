@@ -10,7 +10,6 @@ from xarch.modules.spec.domain.published import (
     DEFAULT_APP,
     DEFAULT_TESTS,
     LITMUS,
-    Copy,
     DocFile,
     Entry,
     Loosened,
@@ -29,7 +28,7 @@ __all__ = ["DEFAULT_APP", "DEFAULT_TESTS", "Entry", "Repeating", "Skeleton", "Do
            "FilesResult", "SkeletonResult", "ProfileResult", "DocsResult", "OriginResult", "PartView",
            "GuardsView", "ProfileView", "ChooseApp", "AppChosen", "ChooseAppResult",
            "SelectProfile", "ProfileSelected", "ProfileRefused",
-           "NoProfileChosen", "SelectResult", "MigrateProfile", "Copy", "MigratedFile", "Origin", "Loosened", "LITMUS",
+           "NoProfileChosen", "SelectResult", "MigrateProfile", "MigratedFile", "Origin", "Loosened", "LITMUS",
            "Migrated", "FilesTaken", "MigrationRefused",
            "MigrateResult", "Shown", "Symbol", "Explain", "FormatExplained", "KeyExplained", "UnknownKey",
            "ExplainResult", "Need", "ViewProfile", "ProfileViewed", "ViewResult", "CheckProfile", "LOAD", "EXAMPLES", "CHECKS",
@@ -213,9 +212,10 @@ class MigrateProfile:
 
 @dataclass(frozen=True)
 class MigratedFile:
-    """A file the conversion copied beside the converted profile: the copy, and how many `{{example:...}}` placeholders
-    of a template it rewrote (placeholders)."""
-    copy: Copy
+    """A file the conversion copied beside the converted profile: where it goes, the file next to the old profile it is
+    read from, and how many `{{example:...}}` placeholders of a template it rewrote (placeholders)."""
+    destination: str
+    source: str
     placeholders: int
 
 

@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from xarch.modules.spec.application.logic.profile_listing import listing_in
-from xarch.modules.spec.domain.published import Copy
+from xarch.modules.spec.domain.migration import Copy
 
 PLACEHOLDER = re.compile(r"\{\{example:(.*?)\}\}")
 ROOT = "examples"

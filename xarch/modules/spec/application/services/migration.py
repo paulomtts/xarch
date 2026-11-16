@@ -51,7 +51,8 @@ class MigrationService:
             raise WouldOverwrite(taken)
         if not cmd.dry_run:
             self._output.write(folder, outputs)
-        files = tuple(MigratedFile(copy, rewritten.get(copy.destination, 0)) for copy in converted.copies)
+        files = tuple(MigratedFile(copy.destination, copy.source, rewritten.get(copy.destination, 0))
+                      for copy in converted.copies)
         return Migrated(folder, folder / name, files, converted.changes, by_hand, cmd.dry_run)
 
     def _contents(self, source: ArchitectureSource, converted: Converted) -> tuple[dict[str, bytes], dict[str, int],

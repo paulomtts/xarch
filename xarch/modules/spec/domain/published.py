@@ -1,8 +1,6 @@
 """The values spec hands out as they are, which its contract re-exports as it does an id: each is read outside spec
 just as spec holds it, so there is nothing to reshape. Everything else spec hands out is a type of the contract's own.
 
-    Copy         a file the conversion of a profile copies, which the command line shows: where it goes, and
-                 from where
     Origin       where the profile in force comes from and how far it can be trusted, which the command line shows
                  and the checking module reads the guards of
     Loosened     one way a profile is looser than the bundled one it resembles, held by Origin and shown as it is
@@ -28,15 +26,6 @@ DEFAULT_TESTS = "tests"
 LITMUS = "litmus"
 """The key of a Loosened that says a part lost the litmus the bundled profile gives it: the one way of being looser
 that leaves the code with no question to place it by, which `check --strict` fails on."""
-
-
-@dataclass(frozen=True)
-class Copy:
-    """A file of the converted folder: where it goes, the file next to the old profile it is read from, and whether its
-    example placeholders are rewritten."""
-    destination: str
-    source: str
-    rewritten: bool = False
 
 
 @dataclass(frozen=True)

@@ -17,11 +17,10 @@ from xarch.kernel.logic.placement import with_itself
 from xarch.kernel.placement import EACH, EVERYTHING
 from xarch.modules.spec.application.logic.migrate_examples import Gathered, gather, rewrite_examples
 from xarch.modules.spec.application.logic.profile_v1 import read_v1
-from xarch.modules.spec.domain.migration import OldPart, OldProfile, Tree
-from xarch.modules.spec.domain.published import Copy
+from xarch.modules.spec.domain.migration import Copy, OldPart, OldProfile, Tree
 from xarch.profile_values.placement import Target
 
-__all__ = ["Converted", "Copy", "convert", "rewrite_examples"]
+__all__ = ["Converted", "convert", "rewrite_examples"]
 
 _TARGET = re.compile(r"(?P<part>[^@/]*)(?:@(?P<scope>[^/]*))?(?:/(?P<sub>.*))?")
 _TIER_DOCS = ("subject_text", "may_touch", "one_file_per", "cases_from", "data")

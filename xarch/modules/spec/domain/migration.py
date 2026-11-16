@@ -1,5 +1,5 @@
-"""The values of converting a profile from format 1: what the old file says (the files the converted folder copies are
-handed out as they are, in published)."""
+"""The values of converting a profile from format 1: what the old file says, and each file the converted folder
+copies."""
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -7,6 +7,15 @@ from dataclasses import dataclass, field
 from typing import Any
 
 Tree = dict[str, "Tree | None"]
+
+
+@dataclass(frozen=True)
+class Copy:
+    """A file of the converted folder: where it goes, the file next to the old profile it is read from, and whether its
+    example placeholders are rewritten."""
+    destination: str
+    source: str
+    rewritten: bool = False
 
 
 @dataclass(frozen=True)
