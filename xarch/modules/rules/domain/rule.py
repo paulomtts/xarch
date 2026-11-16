@@ -131,8 +131,8 @@ class Rule:
         """The facts of the source (FACTS of capabilities) the rule reads: those of its kinds of fact, and those of the
         fields its words read, in order."""
         kinds = [_KINDS[name] for name in (*self.facts, *self.links, *self.spread, *self.said_kinds) if name in _KINDS]
-        words = [*(_FILTERS.get(c.name) for c in self._conditions()), *(_TARGETS.get(m.kind) for m in self.targets),
-                 *(_VARIABLES.get(name) for name in self._variables())]
+        words = [*(_FILTERS.get(c.name) for c in self.conditions), *(_TARGETS.get(m.kind) for m in self.targets),
+                 *(_VARIABLES.get(name) for name in self.variables)]
         found = [need for kind in kinds for need in kind.needs]
         found += [need for kind in kinds for word in words if word is not None for name in word.reads
                   if kind.carries(name) for need in kind.field_needs.get(name, ())]
@@ -161,13 +161,18 @@ class Rule:
         found += _sayings(self, said, side)
         return found
 
-    def _conditions(self) -> list[Condition]:
-        return [*self.scope.where, *self.keep, *self.exempt, *self.via, *(self.roots.where if self.roots else ()),
-                *(c for s in self.sayings for c in s.when)]
+    @property
+    def conditions(self) -> tuple[Condition, ...]:
+        """Every filter the rule is written with, in every slot that takes one."""
+        return (*self.scope.where, *self.keep, *self.exempt, *self.via, *(self.roots.where if self.roots else ()),
+                *(c for s in self.sayings for c in s.when))
 
-    def _variables(self) -> list[str]:
-        return [name for s in self.sayings for text in (s.message, s.fix) for _, name, _, _ in Formatter().parse(text)
-                if name] + [name for s in self.sayings for name in s.once]
+    @property
+    def variables(self) -> tuple[str, ...]:
+        """Every variable the rule is written with: in a message or a fix of its sayings, or by which one is said
+        once."""
+        return (*(name for s in self.sayings for text in (s.message, s.fix) for _, name, _, _ in Formatter().parse(text)
+                  if name), *(name for s in self.sayings for name in s.once))
 
 
 @dataclass(frozen=True)

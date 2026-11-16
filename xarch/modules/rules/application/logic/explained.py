@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from difflib import get_close_matches
-from string import Formatter
 
 from xarch.modules.rules.domain.published import CHECKS, Slot
 from xarch.modules.rules.domain.rule import Rule
@@ -132,17 +131,10 @@ def uses(rule: Rule, category: str, name: str) -> bool:
         case "targets":
             return any(match.kind == name for match in rule.targets)
         case "filters":
-            conditions = (*rule.scope.where, *rule.keep, *rule.exempt, *rule.via,
-                          *(rule.roots.where if rule.roots else ()), *(c for s in rule.sayings for c in s.when))
-            return any(condition.name == name for condition in conditions)
+            return any(condition.name == name for condition in rule.conditions)
         case "variables":
-            return name in _variables(rule)
+            return name in rule.variables
     return False
-
-
-def _variables(rule: Rule) -> set[str]:
-    return {found for s in rule.sayings for text in (s.message, s.fix) for _, found, _, _ in Formatter().parse(text)
-            if found} | {once for s in rule.sayings for once in s.once}
 
 
 def keyed(rules: Iterable[Rule], address: str) -> list[Rule]:

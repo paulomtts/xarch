@@ -226,3 +226,10 @@ def test_a_rule_needs_the_facts_of_its_kinds_and_of_the_fields_its_words_read():
     assert made(keep=c("not relative")).needs == ("import", "import.relative")
     assert made(facts=("class",), targets=EXISTING, exempt=c("exception"), sayings=say("{name}")).needs == (
         "class", "class.exception")
+
+
+def test_a_rule_names_every_filter_and_every_variable_it_is_written_with_in_slot_order():
+    rule = made(scope=Scope(APP, "store", where=c("placed")), keep=c("not relative"), exempt=c("standard"),
+                sayings=(*say("{package} in {line}", "drop {package}", "standard", once=("package",)), *say("{line}")))
+    assert ([x.name for x in rule.conditions], rule.variables) == (
+        ["placed", "relative", "standard", "standard"], ("package", "line", "package", "line", "package"))
