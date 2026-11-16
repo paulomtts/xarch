@@ -20,7 +20,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Iterator, Mapping
 
 from xarch.kernel.logic.placement import reaches
-from xarch.kernel.logic.source import relative_target
+from xarch.kernel.logic.source import imported_module
 from xarch.kernel.source import Import, Unparsable
 from xarch.modules.spec.application.logic.defaults import TESTS
 from xarch.modules.spec.application.logic.project_files import EXAMPLE_APP
@@ -79,17 +79,11 @@ def _targets(imports: Iterable[Import], folder: tuple[str, ...],
     checked as part of the path, else None: what is imported is the whole of the path.
     """
     for imp in imports:
-        if imp.names is None:
-            if imp.module[:1] == (EXAMPLE_APP,):
-                yield imp.module[1:], imp.module[1:], None
+        base = imported_module(imp, folder, EXAMPLE_APP)
+        if base is None:
             continue
-        if imp.relative:
-            base = relative_target(imp, folder)
-            if base is None:
-                continue
-        elif imp.module[:1] == (EXAMPLE_APP,):
-            base = imp.module[1:]
-        else:
+        if imp.names is None:
+            yield base, base, None
             continue
         place = architecture.place_of(base)
         for name in imp.names:

@@ -6,7 +6,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Iterator
 
 from xarch.kernel.logic.placement import module_steps, stands_for_folder
-from xarch.kernel.logic.source import relative_target
+from xarch.kernel.logic.source import imported_module
 from xarch.kernel.placement import Marks
 from xarch.kernel.source import Import
 
@@ -31,18 +31,12 @@ def named_targets(imports: Iterable[Import], package: tuple[str, ...], known: se
     """What targets yields, with the name imported from the target: n for `from m import n` when m.n is no known file,
     else None, the target imported as a whole."""
     for imp in imports:
-        if imp.names is None:
-            if imp.module[:1] == (root,):
-                yield imp.line, imp.module[1:], None
+        base = imported_module(imp, package, root)
+        if base is None:
             continue
-        if imp.relative:
-            base = relative_target(imp, package)
-            if base is None:
-                continue
-        else:
-            if imp.module[:1] != (root,):
-                continue
-            base = imp.module[1:]
+        if imp.names is None:
+            yield imp.line, base, None
+            continue
         for name in imp.names:
             candidate = base + (name,)
             yield (imp.line, candidate, None) if candidate in known else (imp.line, base, name)
