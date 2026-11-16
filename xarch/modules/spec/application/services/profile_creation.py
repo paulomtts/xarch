@@ -10,12 +10,11 @@ from xarch.modules.spec.application.logic.profile_copy import (
     valid_name,
 )
 from xarch.modules.spec.application.logic.profile_file import source_of
-from xarch.modules.spec.application.logic.taken_paths import taken_phrase
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
 from xarch.modules.spec.application.ports.profile_output import ProfileOutput
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.contract import NewProfile, ProfileCreated
-from xarch.modules.spec.domain.errors import InvalidArchitecture, NewProfileRefused, UnknownProfile
+from xarch.modules.spec.domain.errors import InvalidArchitecture, NewProfileRefused, UnknownProfile, WouldOverwrite
 
 
 class ProfileCreationService:
@@ -27,7 +26,7 @@ class ProfileCreationService:
         self._files, self._architectures, self._output = files, architectures, output
 
     def create(self, cmd: NewProfile) -> ProfileCreated:
-        """Raises NewProfileRefused, UnknownProfile or InvalidArchitecture."""
+        """Raises NewProfileRefused, WouldOverwrite, UnknownProfile or InvalidArchitecture."""
         if not valid_name(cmd.name):
             raise NewProfileRefused(f"'{cmd.name}' is not a profile name: use letters, digits, '-' and '_', starting "
                                     "with a letter or a digit")
@@ -47,9 +46,8 @@ class ProfileCreationService:
             raise NewProfileRefused("the copy does not load:\n" + "\n".join(f"  {p}" for p in e.problems)) from e
         root = project_root(cmd.app)
         folder = copy_folder(root, cmd.name, cmd.out)
-        taken = taken_phrase(self._output.taken(folder, outputs))
+        taken = self._output.taken(folder, outputs)
         if taken:
-            raise NewProfileRefused(f"{taken}: nothing was written; `new` writes only new files, so pass "
-                                    "`--out <folder>` to write somewhere else, or choose another name")
+            raise WouldOverwrite(taken)
         self._output.write(folder, outputs)
         return ProfileCreated(folder, folder / profile, (profile, *pointed), recorded(folder / profile, root, cmd.cwd))

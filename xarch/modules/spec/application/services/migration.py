@@ -4,13 +4,12 @@ from xarch.modules.spec.application.logic.migrate_examples import referenced_v1,
 from xarch.modules.spec.application.logic.migrate_output import converted_folder, converted_name, not_format_1
 from xarch.modules.spec.application.logic.migrate_profile import Converted, convert
 from xarch.modules.spec.application.logic.profile_listing import listing
-from xarch.modules.spec.application.logic.taken_paths import taken_phrase
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
 from xarch.modules.spec.application.ports.profile_format import ProfileFormat
 from xarch.modules.spec.application.ports.profile_output import ProfileOutput
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.contract import Migrated, MigratedFile, MigrateProfile
-from xarch.modules.spec.domain.errors import InvalidArchitecture, UnmigratableProfile
+from xarch.modules.spec.domain.errors import InvalidArchitecture, UnmigratableProfile, WouldOverwrite
 from xarch.modules.spec.domain.values import ArchitectureSource
 
 
@@ -23,7 +22,7 @@ class MigrationService:
         self._files, self._architectures, self._output, self._form = files, architectures, output, form
 
     def migrate(self, cmd: MigrateProfile) -> Migrated:
-        """Raises UnmigratableProfile, or InvalidArchitecture when the file cannot be read."""
+        """Raises UnmigratableProfile, WouldOverwrite, or InvalidArchitecture when the file cannot be read."""
         location = str(cmd.path)
         source = ArchitectureSource(location, bundled=False)
         raw = self._files.read(source)
@@ -47,10 +46,9 @@ class MigrationService:
                 lines += ["not converted:", *(f"  {item}" for item in by_hand)]
             raise UnmigratableProfile("\n".join(lines)) from e
         folder = converted_folder(cmd.path, cmd.out)
-        taken = taken_phrase(self._output.taken(folder, outputs))
+        taken = self._output.taken(folder, outputs)
         if taken:
-            raise UnmigratableProfile(f"{taken}: migrate writes only new files; pass `--out <folder>` to write somewhere "
-                                      "else")
+            raise WouldOverwrite(taken)
         if not cmd.dry_run:
             self._output.write(folder, outputs)
         files = tuple(MigratedFile(copy, rewritten.get(copy.destination, 0)) for copy in converted.copies)

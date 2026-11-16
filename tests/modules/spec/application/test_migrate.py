@@ -7,7 +7,7 @@ import pytest
 from tests.fakes.architecture_files import FakeArchitectureFiles
 from tests.fakes.profile_output import FakeProfileOutput
 from tests.modules.spec.application.helpers import controller as spec_controller
-from xarch.modules.spec.contract import Copy, Migrated, MigratedFile, MigrateProfile, MigrationRefused
+from xarch.modules.spec.contract import Copy, FilesTaken, Migrated, MigratedFile, MigrateProfile, MigrationRefused
 
 OLD = {"xarch": 1, "name": "small", "layout": {"core": {}, "cli": {}},
        "parts": {"core": {"path": "core", "role": "the rules"}, "cli": {"path": "cli", "role": "the commands"}},
@@ -90,15 +90,13 @@ def test_the_converted_profile_is_validated_before_anything_is_written_and_the_l
 def test_a_file_that_exists_is_never_overwritten_and_then_nothing_is_written_at_all():
     spec, output = controller({"old.yaml": WITH_EXAMPLES}, TEXTS, {Path("old-v2/architecture.md")})
     result = spec.migrate(MigrateProfile(Path("old.yaml")))
-    assert result == MigrationRefused("old-v2/architecture.md already exists: migrate writes only new files; "
-                                      "pass `--out <folder>` to write somewhere else")
+    assert result == FilesTaken((Path("old-v2/architecture.md"),))
     assert output.written == {}
 
 
-def test_many_files_that_exist_are_named_three_at_a_time():
+def test_every_file_that_exists_is_named_in_the_order_written():
     document = WITH_EXAMPLES | {"files": {"AGENTS.md": {"from": "agents.md"}}}
     existing = {Path("old-v2") / name for name in ("old.yaml", "architecture.md", "examples/core/rule.py", "agents.md")}
     spec, _ = controller({"old.yaml": document}, TEXTS | {"agents.md": "x"}, existing)
-    assert spec.migrate(MigrateProfile(Path("old.yaml"))) == MigrationRefused(
-        "old-v2/old.yaml, old-v2/architecture.md, old-v2/agents.md and 1 more already exist: migrate writes only new "
-        "files; pass `--out <folder>` to write somewhere else")
+    assert spec.migrate(MigrateProfile(Path("old.yaml"))) == FilesTaken(tuple(Path("old-v2") / name for name in (
+        "old.yaml", "architecture.md", "agents.md", "examples/core/rule.py")))

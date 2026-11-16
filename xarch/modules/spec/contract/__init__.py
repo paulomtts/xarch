@@ -19,7 +19,7 @@ __all__ = ["DEFAULT_APP", "Entry", "Repeating", "Skeleton", "DocFile", "Docs", "
            "GuardsView", "ProfileView", "ChooseApp", "AppChosen", "ChooseAppResult",
            "SelectProfile", "ProfileSelected", "ProfileRefused",
            "NoProfileChosen", "SelectResult", "MigrateProfile", "Copy", "MigratedFile", "Origin", "Loosened",
-           "Migrated", "MigrationRefused",
+           "Migrated", "FilesTaken", "MigrationRefused",
            "MigrateResult", "Shown", "Symbol", "Explain", "FormatExplained", "KeyExplained", "UnknownKey",
            "ExplainResult", "ViewProfile", "ProfileViewed", "ViewResult", "CheckProfile", "LOAD", "EXAMPLES", "Problem", "ProfileChecked",
            "CheckResult", "NewProfile", "ProfileCreated", "NewResult"]
@@ -248,7 +248,14 @@ class MigrationRefused:
     reason: str
 
 
-MigrateResult = Migrated | MigrationRefused
+@dataclass(frozen=True)
+class FilesTaken:
+    """A profile that would be written over files that exist, which are named, in the order written: nothing was
+    written."""
+    taken: tuple[Path, ...]
+
+
+MigrateResult = Migrated | FilesTaken | MigrationRefused
 
 
 @dataclass(frozen=True)
@@ -403,4 +410,4 @@ class ProfileCreated:
     location: str
 
 
-NewResult = ProfileCreated | ProfileRefused
+NewResult = ProfileCreated | FilesTaken | ProfileRefused

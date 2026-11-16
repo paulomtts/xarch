@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 
 from xarch.kernel.errors import DomainError
@@ -47,8 +47,16 @@ class InvalidTemplate(DomainError):
 
 
 class UnmigratableProfile(DomainError):
-    """A profile that `xarch profile migrate` cannot convert, or whose conversion cannot be written; reason says why."""
+    """A profile that its migration cannot convert, or whose conversion cannot be written; reason says why."""
 
 
 class NewProfileRefused(DomainError):
-    """A profile that `xarch profile new` cannot write, as asked; reason says why and what to do."""
+    """A copy of a bundled profile that cannot be written, as asked; reason says why and what to do."""
+
+
+class WouldOverwrite(DomainError):
+    """Files a profile would be written to that something is at already, in the order written: nothing is written."""
+
+    def __init__(self, taken: Sequence[Path]):
+        self.taken = tuple(taken)
+        super().__init__(f"{', '.join(path.as_posix() for path in self.taken)} already exist")

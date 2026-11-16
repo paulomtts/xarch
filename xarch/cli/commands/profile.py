@@ -28,6 +28,7 @@ from xarch.modules.spec.contract import (
     CHECKS,
     CheckProfile,
     Explain,
+    FilesTaken,
     FormatExplained,
     KeyExplained,
     Migrated,
@@ -66,6 +67,8 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
         match spec.migrate(MigrateProfile(path, out, dry_run)):
             case Migrated() as done:
                 echo(report.migrated_lines(done))
+            case FilesTaken() as taken:
+                raise fail(report.migrate_taken(taken))
             case MigrationRefused(why):
                 raise fail(why)
 
@@ -147,6 +150,8 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
         match spec.new_profile(NewProfile(name, source, app_for(spec, app_path), in_full(Path()), out)):
             case ProfileCreated() as done:
                 echo(report.created_lines(done, source))
+            case FilesTaken() as taken:
+                raise fail(report.new_taken(taken))
             case ProfileRefused(why):
                 raise fail(why)
 

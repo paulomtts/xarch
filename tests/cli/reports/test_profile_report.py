@@ -9,12 +9,23 @@ from xarch.cli.reports.profile_report import (
     created_lines,
     key_document,
     key_lines,
+    migrate_taken,
+    new_taken,
     origin_words,
+    taken_phrase,
     unknown_document,
     unknown_message,
 )
 from xarch.kernel.capabilities import EXACT, Supply
-from xarch.modules.spec.contract import KeyExplained, Need, Origin, ProfileChecked, ProfileCreated, UnknownKey
+from xarch.modules.spec.contract import (
+    FilesTaken,
+    KeyExplained,
+    Need,
+    Origin,
+    ProfileChecked,
+    ProfileCreated,
+    UnknownKey,
+)
 
 
 def test_an_unknown_key_is_said_with_the_nearest_ones_in_text_and_in_json():
@@ -65,3 +76,22 @@ def test_where_a_profile_comes_from_is_said_the_same_by_profile_check_and_by_che
 
 def test_a_profile_that_does_not_load_is_said_to_be_custom_and_nothing_more():
     assert check_lines(ProfileChecked("mine.yaml", (), 0, None))[0] == "checking mine.yaml (custom)"
+
+
+@pytest.mark.parametrize("taken, phrase", [
+    pytest.param([], "", id="nothing taken says nothing"),
+    pytest.param([Path("out/a.yaml")], "out/a.yaml already exists", id="one file exists"),
+    pytest.param([Path("a"), Path("b")], "a, b already exist", id="two files exist"),
+    pytest.param([Path(n) for n in "abcde"], "a, b, c and 2 more already exist", id="past three the rest are counted"),
+])
+def test_taken_phrase(taken, phrase):
+    assert taken_phrase(taken) == phrase
+
+
+def test_a_profile_that_would_be_written_over_files_names_them_and_says_how_to_write_elsewhere():
+    taken = FilesTaken((Path("old-v2/architecture.md"),))
+    assert (migrate_taken(taken), new_taken(taken)) == (
+        "old-v2/architecture.md already exists: migrate writes only new files; pass `--out <folder>` to write "
+        "somewhere else",
+        "old-v2/architecture.md already exists: nothing was written; `new` writes only new files, so pass "
+        "`--out <folder>` to write somewhere else, or choose another name")

@@ -29,6 +29,7 @@ from xarch.modules.spec.contract import (
     Explain,
     ExplainResult,
     FilesResult,
+    FilesTaken,
     FormatExplained,
     KeyExplained,
     MigrateProfile,
@@ -50,7 +51,7 @@ from xarch.modules.spec.contract import (
     ViewProfile,
     ViewResult,
 )
-from xarch.modules.spec.domain.errors import NoProfile
+from xarch.modules.spec.domain.errors import NoProfile, WouldOverwrite
 from xarch.modules.spec.domain.profile_keys import CHOICE_BUNDLED, KEYS, SMALLEST, SYMBOLS, Key
 from xarch.modules.spec.domain.values import (
     VERSION,
@@ -126,9 +127,12 @@ class SpecController:
             return ProfileRefused(e.reason)
 
     def migrate(self, cmd: MigrateProfile) -> MigrateResult:
-        """Converts a profile of format 1 to format 2; a profile it cannot convert, or cannot write, is refused with why."""
+        """Converts a profile of format 1 to format 2; one that would be written over files is refused naming them, and
+        one it cannot convert, or cannot write, with why."""
         try:
             return self._migration.migrate(cmd)
+        except WouldOverwrite as e:
+            return FilesTaken(e.taken)
         except DomainError as e:
             return MigrationRefused(e.reason)
 
@@ -174,9 +178,12 @@ class SpecController:
             return ProfileRefused(e.reason)
 
     def new_profile(self, cmd: NewProfile) -> NewResult:
-        """Copies a bundled profile into the project, with its files; a copy that cannot be written is refused with why."""
+        """Copies a bundled profile into the project, with its files; a copy that would be written over files is refused
+        naming them, and one that cannot be written with why."""
         try:
             return self._creation.create(cmd)
+        except WouldOverwrite as e:
+            return FilesTaken(e.taken)
         except DomainError as e:
             return ProfileRefused(e.reason)
 

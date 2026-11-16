@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from tests.modules.spec.application.builders import spec_controller
-from xarch.modules.spec.contract import NewProfile, ProfileCreated, ProfileRefused
+from xarch.modules.spec.contract import FilesTaken, NewProfile, ProfileCreated, ProfileRefused
 
 ROOT = Path("/p")
 APP = ROOT / "app"
@@ -22,13 +22,10 @@ MINE = ROOT / "architecture" / "mine"
                                 ("mine.yaml", "docs/a.md", "agents.md"), "elsewhere/mine.yaml"),
                  id="a copy goes to the folder asked for"),
     pytest.param({MINE / "mine.yaml"}, NewProfile("mine", "base", APP, ROOT),
-                 ProfileRefused("/p/architecture/mine/mine.yaml already exists: nothing was written; `new` writes only "
-                                "new files, so pass `--out <folder>` to write somewhere else, or choose another name"),
+                 FilesTaken((MINE / "mine.yaml",)),
                  id="a copy over a file that exists is refused naming it"),
     pytest.param({MINE / "agents.md", MINE / "docs/a.md"}, NewProfile("mine", "base", APP, ROOT),
-                 ProfileRefused("/p/architecture/mine/docs/a.md, /p/architecture/mine/agents.md already exist: nothing "
-                                "was written; `new` writes only new files, so pass `--out <folder>` to write somewhere "
-                                "else, or choose another name"),
+                 FilesTaken((MINE / "docs/a.md", MINE / "agents.md")),
                  id="every file that exists is named"),
     pytest.param(set(), NewProfile("mine", "nope", APP, ROOT), ProfileRefused("unknown profile 'nope': use one of base"),
                  id="a profile that is not bundled is refused with the ones that are"),
