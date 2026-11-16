@@ -184,6 +184,14 @@ class OwnCheck:
     clean: tuple[tuple[str, str], ...] = ()
 
 
+@dataclass(frozen=True)
+class MadeChecks:
+    """The checks a profile writes itself, made: those that could be made into rules, with their examples, in the
+    profile's order, and every problem of those that could not, each at its address in the profile."""
+    checks: tuple[OwnCheck, ...]
+    problems: tuple[str, ...]
+
+
 def _nearest(name: str, known: dict) -> str:
     close = get_close_matches(name, list(known), n=NEAREST, cutoff=0.5)
     return f": did you mean {' or '.join(close)}?" if close else f": write one of {_listed(known)}"

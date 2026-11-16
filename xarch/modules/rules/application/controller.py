@@ -37,12 +37,10 @@ class RulesController:
         self._examples = examples
 
     def check_examples(self, cmd: CheckExamples) -> CheckExamplesResult:
-        """The profile's own checks held to their examples, and to the vocabulary; every problem at once. A profile
-        whose checks cannot be made is refused with their problems, and one that cannot be used with why."""
+        """The profile's own checks held to their examples, and to the vocabulary; every problem at once, a check that
+        cannot be made among them. A profile that cannot be used is refused with why."""
         try:
             return self._examples.held(cmd.profile, cmd.app)
-        except ChecksRefused as e:
-            return ChecksCannotRun(e.problems)
         except DomainError as e:
             return CheckRefused(e.reason)
 

@@ -6,7 +6,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from xarch.modules.rules.application.controller import RulesController
-from xarch.modules.rules.contract import CheckExamples, CheckRefused, ChecksCannotRun
+from xarch.modules.rules.contract import CheckExamples, CheckRefused
 from xarch.profile_values.checks import ChecksHeld
 
 
@@ -21,7 +21,5 @@ class RulesOwnChecks:
         match self._rules().check_examples(CheckExamples(location, app)):
             case ChecksHeld() as held:
                 return held
-            case ChecksCannotRun(problems):
-                return ChecksHeld(problems, 0)
             case CheckRefused(reason):
                 return ChecksHeld((reason,), 0)

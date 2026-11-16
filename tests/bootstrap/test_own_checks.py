@@ -1,6 +1,7 @@
 """Checks a profile writes itself, through the real app: `profile check` holds each to its words and its examples,
 `check` runs it and lists it under `enforcement` with how much it read (one that read nothing fails `--strict`), a
-check whose words do not exist or do not apply is refused with every problem, a hint may name it, and the same rule
+check whose words do not exist or do not apply is refused by `check` with every problem and listed by `profile check`
+while the others are still held and counted, a hint may name it, and the same rule
 written by a key and by hand finds the same."""
 import json
 
@@ -69,6 +70,20 @@ def test_a_check_broken_is_said_by_profile_check_at_its_address(tmp_path, change
     project(tmp_path, {"store-names": {**CHECK, **changes}}, {"store/a.py": "class Thing: ...\n"})
     checked = runner.invoke(app, ["profile", "check"])
     assert checked.exit_code == 1 and f"    {said}" in checked.output.splitlines()
+
+
+def test_a_check_badly_written_does_not_stop_profile_check_counting_every_check_and_holding_the_others(tmp_path):
+    misfiring = {**CHECK, "examples": {"flagged": {"store/x.py": "class ThingStore: ...\n"},
+                                       "clean": {"store/x.py": "class DocumentStore: ...\n"}}}
+    project(tmp_path, {"misspelt": {**CHECK, "keep": ["publc"]}, "store-names": misfiring}, {})
+    checked = runner.invoke(app, ["profile", "check", "--format", "json"])
+    assert checked.exit_code == 1
+    document = json.loads(checked.output)
+    assert (document["checks"], document["problems"]) == (2, [
+        {"check": "checks", "message": "checks.misspelt.keep: no filter is named 'publc': did you mean public or "
+                                       "placed?"},
+        {"check": "checks", "message": "checks.store-names.examples.flagged: the check finds nothing in it: make the "
+                                       "code hold what the check is written to find, or correct the check"}])
 
 
 def test_a_check_whose_words_do_not_exist_stops_check_with_every_problem(tmp_path):

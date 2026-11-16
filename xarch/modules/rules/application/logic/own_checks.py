@@ -2,9 +2,10 @@
 rules: each target is resolved by its kind of the vocabulary (a place by the target grammar, against the parts of the
 profile and the part the check's scope names; a dotted name into its steps; any other value as written), and a part
 it names must be a part of the profile. A check that names a word the vocabulary does not hold, or one that does not
-apply, a place or a part the profile does not have, or a fact the language's reader does not supply, is refused with
-every problem of every check at once (ChecksRefused). A check that reads a fact the reader supplies only partly is
-listed as approximate.
+apply, a place or a part the profile does not have, or a fact the language's reader does not supply, is not made: its
+problems are listed, and the others are made all the same (made); to run, every check must be made, else they are
+refused with every problem of every check at once (ChecksRefused). A check that reads a fact the reader supplies only
+partly is listed as approximate.
 """
 from __future__ import annotations
 
@@ -16,7 +17,7 @@ from xarch.kernel.logic.targets import target
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.domain.errors import ChecksRefused, RuleRefused
 from xarch.modules.rules.domain.published import Weak
-from xarch.modules.rules.domain.rule import EXISTING, MUST_BE_REACHED, MUST_REACH, Match, OwnCheck, Rule
+from xarch.modules.rules.domain.rule import EXISTING, MUST_BE_REACHED, MUST_REACH, MadeChecks, Match, OwnCheck, Rule
 from xarch.modules.rules.domain.values import Profile
 from xarch.modules.rules.domain.vocabulary import NAMES, PARTS, PLACES, TARGETS
 from xarch.profile_values.capabilities import FACTS, Shortfall
@@ -32,7 +33,17 @@ def resolved(profile: Profile) -> Profile:
 
 
 def own(written: Mapping[str, WrittenCheck], profile: Profile) -> tuple[OwnCheck, ...]:
-    """Each check as a rule with its examples, in the profile's order."""
+    """Each check as a rule with its examples, in the profile's order; raises ChecksRefused with every problem when
+    one cannot be made."""
+    found = made(written, profile)
+    if found.problems:
+        raise ChecksRefused(found.problems)
+    return found.checks
+
+
+def made(written: Mapping[str, WrittenCheck], profile: Profile) -> MadeChecks:
+    """Each check that can be made as a rule with its examples, and every problem of each that cannot, both in the
+    profile's order."""
     found: list[OwnCheck] = []
     problems: list[str] = []
     for name, check in written.items():
@@ -45,11 +56,11 @@ def own(written: Mapping[str, WrittenCheck], profile: Profile) -> tuple[OwnCheck
         except RuleRefused as refused:
             problems += [f"checks.{name}.{problem}" for problem in refused.problems]
             continue
-        problems += supplied(name, rule, profile.language)
-        found.append(OwnCheck(rule, check.flagged, check.clean))
-    if problems:
-        raise ChecksRefused(tuple(problems))
-    return tuple(found)
+        lacking = supplied(name, rule, profile.language)
+        problems += lacking
+        if not lacking:
+            found.append(OwnCheck(rule, check.flagged, check.clean))
+    return MadeChecks(tuple(found), tuple(problems))
 
 
 def _rule_of(name: str, check: WrittenCheck, targets: tuple[Match, ...]) -> Rule:

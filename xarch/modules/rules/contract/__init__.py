@@ -463,4 +463,4 @@ class CheckExamples:
     app: str
 
 
-CheckExamplesResult = ChecksHeld | ChecksCannotRun | CheckRefused
+CheckExamplesResult = ChecksHeld | CheckRefused
