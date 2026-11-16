@@ -182,12 +182,13 @@ def _why(item: LeftOut) -> str:
 
 
 def _reading(item: Reading) -> str:
-    return f"  {item.file}   {item.part}   {item.probability:.2f} (line {item.line:.2f})   {item.chars:,} chars"
+    line = f"line {item.line:.2f}, set by the profile" if item.by_hand else f"line {item.line:.2f}"
+    return f"  {item.file}   {item.part}   {item.probability:.2f} ({line})   {item.chars:,} chars"
 
 
 def _file(item: Reading) -> dict[str, Any]:
     return {"file": item.file, "part": item.part, "probability": item.probability, "line": item.line,
-            "doubtful": item.doubtful, "chars": item.chars, "model": item.model,
+            "line_by_hand": item.by_hand, "doubtful": item.doubtful, "chars": item.chars, "model": item.model,
             "distribution": dict(item.distribution)}
 
 

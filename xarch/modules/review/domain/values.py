@@ -10,12 +10,14 @@ from xarch.modules.review.domain.published import LeftOut
 
 @dataclass(frozen=True)
 class PartText:
-    """A part as placement offers it: its name, its folder as the docs show it, its litmus test ("" for none) and its
-    role."""
+    """A part as placement offers it: its name, its folder as the docs show it, its litmus test ("" for none), its
+    role, the line below which a file reads as doubtful there, and whether the profile sets that line by hand."""
     name: str
     folder: str
     litmus: str
     role: str
+    line: float
+    by_hand: bool = False
 
 
 @dataclass(frozen=True)

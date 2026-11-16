@@ -12,7 +12,6 @@ from xarch.modules.review.domain.published import (
     BY_PATHS,
     EXCLUDED,
     FAILED,
-    LINE,
     MAX_FILES,
     MIN_CHARS,
     MISSING,
@@ -32,7 +31,7 @@ from xarch.modules.review.domain.published import (
     Unasked,
 )
 
-__all__ = ["A_TEST", "BY_ALL", "BY_LIST", "BY_PATHS", "EXCLUDED", "FAILED", "LINE", "MAX_FILES", "MIN_CHARS", "MISSING",
+__all__ = ["A_TEST", "BY_ALL", "BY_LIST", "BY_PATHS", "EXCLUDED", "FAILED", "MAX_FILES", "MIN_CHARS", "MISSING",
            "NEVER", "NOT_CACHED", "NOT_SOURCE", "OUTSIDE", "SMALL", "UNPARSABLE", "UNPLACED", "Choice", "LeftOut",
            "Option", "Reading", "Request", "Sender", "Unasked", "Review", "ReviewPlanned", "ReviewReading",
            "NothingChosen", "AllAndOthers", "TooManyFiles", "KeyMissing", "ReviewRefused", "ReviewResult"]

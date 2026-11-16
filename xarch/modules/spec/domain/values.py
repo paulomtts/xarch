@@ -366,6 +366,8 @@ class Architecture:
         words in them mean is the rules module's
     never: the path patterns below the app of the files review never sends (`review.never`), as written
     mask: the text patterns review hides before it sends (`review.mask`), as written
+    lines: the line of each part the profile writes one for (`evals.placement.lines`), by part: below it a file reads
+        as doubtful there in review
     """
     name: str
     layout: Layout
@@ -394,6 +396,7 @@ class Architecture:
     checks: dict[str, WrittenCheck] = field(default_factory=dict)
     never: tuple[str, ...] = ()
     mask: tuple[str, ...] = ()
+    lines: dict[str, float] = field(default_factory=dict)
 
     @property
     def entry(self) -> Part | None:

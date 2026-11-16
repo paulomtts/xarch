@@ -12,7 +12,7 @@ as review holds it, so there is nothing to reshape.
     Unasked  a file judged whose question has no answer, and why
 
 and the reasons a file is left out, the size of the smallest file judged, how many files one run judges, the ways files
-are chosen, the line below which a file reads as doubtful, and why a question has no answer.
+are chosen, and why a question has no answer.
 """
 from __future__ import annotations
 
@@ -32,9 +32,6 @@ MAX_FILES = 50
 
 BY_PATHS, BY_LIST, BY_ALL = "paths", "files-from", "all"
 """The ways files are chosen: named as paths, listed one per line, or every file of the app."""
-LINE = 0.3
-"""The probability on the part a file sits in below which it reads as doubtful there, the same for every part: in the
-trials it caught about nine in ten plainly misplaced files and doubted about one well-placed file in ten."""
 NOT_CACHED, FAILED = "not-cached", "failed"
 """Why a question has no answer: it is not in the cache and nothing was sent (offline); or the decision model failed
 on it or on a question before it, and nothing more was sent."""
@@ -83,7 +80,8 @@ class Sender:
 class Reading:
     """What the decision model read of one file: the file, as `check` shows it; the part it sits in; how many
     characters it holds; the probability on that part; the line below which it is doubtful there; whether it is; the
-    probability on each part, in the profile's order; and the model version that answered."""
+    probability on each part, in the profile's order; the model version that answered; and whether the profile sets
+    the part's line by hand."""
     file: str
     part: str
     chars: int
@@ -92,6 +90,7 @@ class Reading:
     doubtful: bool
     distribution: tuple[tuple[str, float], ...]
     model: str
+    by_hand: bool = False
 
 
 @dataclass(frozen=True)

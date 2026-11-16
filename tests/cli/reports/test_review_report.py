@@ -138,6 +138,13 @@ def test_a_reading_says_what_review_is_what_was_sent_and_each_doubtful_file_with
     assert "logic" not in "\n".join(lines)
 
 
+def test_a_line_the_profile_sets_by_hand_is_said_beside_the_number_in_text_and_in_json():
+    by_hand = replace(READ, readings=(replace(PLACED, line=0.2, by_hand=True),))
+    assert ("  app/modules/documents/domain/document.py   domain   0.71 (line 0.20, set by the profile)   1,200 chars"
+            in reading_lines(by_hand))
+    assert json.loads(reading_document("cli", by_hand))["placement"]["files"][0]["line_by_hand"] is True
+
+
 def test_a_reading_with_nothing_sent_says_no_more_than_where_it_read_from_and_one_with_no_doubt_says_so():
     lines = reading_lines(replace(READ, readings=(PLACED,), sent=0, left_out=(), role_only=("main",)))
     assert lines[1].endswith("Asked 0, from cache 1.") and lines[2] == ""
@@ -167,10 +174,10 @@ def test_the_json_of_a_reading_holds_each_file_with_the_probability_of_each_part
         "placement": {"calibration": {"state": "measured", "evidence": document["placement"]["calibration"]["evidence"]},
                       "role_only": [],
                       "files": [{"file": DOUBTFUL.file, "part": "adapters", "probability": 0.0812, "line": 0.3,
-                                 "doubtful": True, "chars": 2140, "model": "m-1.0.1",
+                                 "line_by_hand": False, "doubtful": True, "chars": 2140, "model": "m-1.0.1",
                                  "distribution": {"adapters": 0.0812, "logic": 0.9188}},
                                 {"file": PLACED.file, "part": "domain", "probability": 0.71, "line": 0.3,
-                                 "doubtful": False, "chars": 1200, "model": "m-1.0.1",
+                                 "line_by_hand": False, "doubtful": False, "chars": 1200, "model": "m-1.0.1",
                                  "distribution": {"domain": 0.71, "logic": 0.29}}]},
         "sends": {"name": "Model", "at": "https://model.example.test", "model": "m-1", "key": "MODEL_KEY", "keyed": True},
         "sent": {"calls": 1, "cached": 1, "input_tokens": 2400, "output_tokens": 3},

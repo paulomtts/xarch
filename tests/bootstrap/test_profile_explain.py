@@ -108,10 +108,20 @@ def test_what_review_may_send_is_read_by_review_alone_and_its_keys_are_listed_in
     assert [line.split()[:3] for line in overview if line.split()[:1] in (["review"], ["review.never"])] == [
         ["review", "optional", "review"]]
     found = runner.invoke(app, ["profile", "explain", "review"]).output.splitlines()
-    assert "  enforced: no: check never reads it; xarch review does, for what it sends" in found
+    assert "  enforced: no: check never reads it; only xarch review does" in found
     assert [line.split()[0] for line in found[found.index("  keys:") + 1:]] == ["review.never", "review.mask"]
     never = json.loads(runner.invoke(app, ["profile", "explain", "review.never", "--format", "json"]).output)
     assert (never["where"], never["enforced"], never["read_by"], never["rules"]) == ("review", False, "review", [])
+
+
+def test_how_review_reads_what_it_asks_is_read_by_review_alone_down_to_the_line_of_each_part():
+    overview = runner.invoke(app, ["profile", "explain"]).output.splitlines()
+    assert [line.split()[:3] for line in overview if line.split()[:1] in (["evals"], ["evals.placement"])] == [
+        ["evals", "optional", "review"]]
+    evals = runner.invoke(app, ["profile", "explain", "evals"]).output.splitlines()
+    assert [line.split()[0] for line in evals[evals.index("  keys:") + 1:]] == ["evals.placement"]
+    lines = json.loads(runner.invoke(app, ["profile", "explain", "evals.placement.lines", "--format", "json"]).output)
+    assert (lines["where"], lines["enforced"], lines["read_by"]) == ("evals.placement", False, "review")
 
 
 def test_a_profile_is_shown_as_its_folder_tree_and_its_import_table_for_a_human_to_approve():

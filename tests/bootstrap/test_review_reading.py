@@ -178,3 +178,17 @@ def test_an_unreachable_decision_model_leaves_the_files_unanswered_and_shows_no_
     assert result.exit_code == 3
     document = json.loads(result.output)
     assert document["failure"].startswith("TypeSafe could not be reached") and KEY not in result.output
+
+
+def test_a_line_the_profile_sets_for_a_part_is_the_one_its_files_are_read_against_and_is_said(served, tmp_path):
+    assert runner.invoke(app, ["profile", "new", "mine", "--from", "cli"]).exit_code == 0
+    profile = tmp_path / "architecture" / "mine" / "mine.yaml"
+    profile.write_text(profile.read_text() + "evals:\n  placement:\n    lines: {domain: 0.1}\n")
+    result = review(SERVICE, VALUES, "--profile", str(profile), url=served.url)
+    assert result.exit_code == 0, result.output
+    assert f"  {VALUES}   domain   0.12 (line 0.10, set by the profile)   {len(VALUES_BODY):,} chars" in (
+        result.output.splitlines())
+    assert "  no file judged reads as doubtful here" in result.output.splitlines()
+    looser = runner.invoke(app, ["profile", "check", str(profile)]).output
+    assert ("domain reads as doubtful only below 0.10, a lower line than the profile it is compared with gives it "
+            "(evals.placement.lines)") in looser

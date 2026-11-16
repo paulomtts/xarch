@@ -14,6 +14,8 @@ just as spec holds it, so there is nothing to reshape. Everything else spec hand
                  tests to be when there is none
     Entry        a folder or a file of a profile's layout, which the modules that check and build the layout read
     DocFile      a project doc and the text it starts with, which the module that scaffolds writes
+    LINE         the line of a part no `evals.placement.lines` writes one for, which the module that reviews reads a
+                 file's answer against
 """
 from __future__ import annotations
 
@@ -26,6 +28,10 @@ DEFAULT_TESTS = "tests"
 LITMUS = "litmus"
 """The key of a Loosened that says a part lost the litmus the bundled profile gives it: the one way of being looser
 that leaves the code with no question to place it by, which `check --strict` fails on."""
+LINE = 0.3
+"""The line of a part the profile writes none for under `evals.placement.lines`: below it, the probability review's
+decision model puts on the part a file sits in reads as doubtful there. In the trials it caught about nine in ten
+plainly misplaced files and doubted about one well-placed file in ten."""
 
 
 @dataclass(frozen=True)
@@ -48,6 +54,7 @@ class Loosened:
         translated      no-twins accepts each pair of classes a function of part translates
         review.never    the path pattern what, which the bundled profile never sends, may be sent again
         review.mask     the text pattern what, which the bundled profile hides, is no longer masked
+        evals.placement.lines  part reads as doubtful only below the line what, lower than the bundled profile's
 
     sentence says it, naming the key of the profile that does.
     """

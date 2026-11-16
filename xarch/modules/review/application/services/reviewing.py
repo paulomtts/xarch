@@ -32,6 +32,7 @@ class ReviewService:
         found = self._code.files(paths, cmd.cwd, cmd.app, cmd.profile, cmd.tests)
         words = self._profile.words(cmd.profile)
         question = placement(words.parts)
+        parts = {part.name: part for part in words.parts}
         files = held_back(found, words.never)
         asked = within_cap(judged(files), cmd.max_files)
         sends = self._model.sends()
@@ -65,7 +66,7 @@ class ReviewService:
             if answer is None:
                 unasked.append(Unasked(item.file, why_unasked(bool(failure))))
             else:
-                readings.append(reading(item, answer))
+                readings.append(reading(item, answer, parts[item.part]))
         return ReviewReading(by, total, ranked(tuple(readings)), left_out(files), tuple(unasked), sends, sent_now,
                              sum(answer is not None for answer in kept), spent_in, spent_out, failure,
                              role_only(words.parts))

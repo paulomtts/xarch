@@ -31,6 +31,8 @@ PAGE = "docs.page"
 NAMING = "docs.naming"
 FILE = "file"
 REVIEW = "review"
+EVALS = "evals"
+PLACEMENT = "evals.placement"
 
 SCOPES = {
     PROFILE: "the file",
@@ -53,6 +55,8 @@ SCOPES = {
     NAMING: "docs.naming[]",
     FILE: "files.<path>",
     REVIEW: "review",
+    EVALS: "evals",
+    PLACEMENT: "evals.placement",
 }
 """Each scope's address in the file."""
 
@@ -61,7 +65,8 @@ CHOICE_PRESETS = "presets"
 CHOICE_LANGUAGES = "languages"
 """What a key may name from a list xarch ships: the bundled profiles, the `testing` presets or the languages."""
 READ_BY_REVIEW = "review"
-"""The command other than `check` that reads a key: `xarch review`, which reads what it may send."""
+"""The command other than `check` that reads a key: `xarch review`, which reads what it may send and how it reads
+what it asks."""
 
 
 @dataclass(frozen=True)

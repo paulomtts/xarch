@@ -4,8 +4,8 @@ from __future__ import annotations
 from xarch.kernel.source import Import, Unparsable
 from xarch.modules.review.domain.values import CodeFile, PartText
 
-PARTS = (PartText("domain", "domain/", "Is it an invariant of one of this module's values?", "values"),
-         PartText("main", "__main__.py", "", "starts the app"))
+PARTS = (PartText("domain", "domain/", "Is it an invariant of one of this module's values?", "values", 0.3),
+         PartText("main", "__main__.py", "", "starts the app", 0.3))
 BODY = "class Document:\n" + "    title: str = ''\n" * 60
 """A text long enough to be judged."""
 OWN = Import(1, ("app", "kernel", "ids"), ("DocumentId",), written="app.kernel.ids")

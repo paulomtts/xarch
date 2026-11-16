@@ -228,7 +228,7 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
                  id='files of the wrong shape'),
     pytest.param('xarch: 2\nname: n\nparts: {a: {path: a, role: r}}\nxarch2: 1\nrules: {a: []}\n',
                  ['`rules`: not a key of format 2: write each part\'s targets as `may_import` on the part',
-                  "unknown key 'xarch2': use based_on, checks, docs, excluded, fakes, files, forbidden, guards, hints, "
+                  "unknown key 'xarch2': use based_on, checks, docs, evals, excluded, fakes, files, forbidden, guards, hints, "
                   "language, layers, name, parts, reserved, review, testing, tiers, xarch"],
                  id='a key of format 1 and a key that is nowhere'),
     pytest.param('xarch: 2\n  bad: indentation\n',

@@ -253,6 +253,16 @@ keys:
       review:
         never: [documents/drafts]
         mask: [Northwind]
+  evals:
+    meaning: "how `xarch review` reads what it asks: placement"
+    accepts: >-
+      a map of the evals review asks, by id; today only `placement`, the eval review always asks (which part a file
+      belongs in, by the parts' litmus tests), whose `lines` it tunes. `check` never reads it, so it changes no finding
+      and no exit code of `check`
+    example: |
+      evals:
+        placement:
+          lines: {documents: 0.2}
   parts.<part>.path:
     meaning: where the part lives below the app
     accepts: >-
@@ -1112,3 +1122,23 @@ keys:
     example: |
       review:
         mask: [Northwind, "DOC-*"]
+  evals.placement:
+    meaning: how review reads placement's answers
+    accepts: >-
+      a map {lines}: the line of each part, below which a file reads as doubtful where it sits
+    example: |
+      evals:
+        placement:
+          lines: {documents: 0.2}
+  evals.placement.lines:
+    meaning: the line of each part, below which a file reads as doubtful there
+    accepts: >-
+      a map from the name of a part to a number above 0 and below 1: a file judged reads as doubtful where it sits
+      when the probability on its part is below the part's line; a part not written has 0.3, the line the trials
+      measured (about one well-placed file in ten read as doubtful at it). Refused: a name
+      that is no part, a value that is no number above 0 and below 1. `profile check` lists a part whose line here is
+      below the one the profile it is compared with gives it as looser
+    example: |
+      evals:
+        placement:
+          lines: {documents: 0.2}

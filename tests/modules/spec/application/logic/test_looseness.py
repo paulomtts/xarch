@@ -148,6 +148,17 @@ def test_a_path_review_never_sends_or_a_text_it_hides_that_the_base_holds_and_th
     assert loosened(base, parsed(layered())) == ()
 
 
+def test_a_part_whose_line_is_below_the_one_the_base_gives_it_is_looser_and_a_higher_line_is_not():
+    def lines(**written: float) -> dict:
+        return layered(evals={"placement": {"lines": written}})
+    assert loosened(parsed(lines(store=0.2, api=0.4, service=0.1)), parsed(lines(service=0.05))) == (
+        Loosened("evals.placement.lines", "store", "0.20", "store reads as doubtful only below 0.20, a lower line "
+                 "than the profile it is compared with gives it (evals.placement.lines)"),)
+    assert loosened(parsed(layered()), parsed(lines(store=0.4))) == (
+        Loosened("evals.placement.lines", "store", "0.30", "store reads as doubtful only below 0.30, a lower line "
+                 "than the profile it is compared with gives it (evals.placement.lines)"),)
+
+
 def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
     """Each case of LOOSER is reached by one of these pairs (custom, base), and each key is said its own way."""
     store = {key: value for key, value in PARTS["store"].items() if key != "tier"}
@@ -168,6 +179,7 @@ def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
                         fakes={"folder": "fakes", "for": ["store"]})), parsed(covered())),
         (parsed(covered(guards={"no-twins": {"translated": ["api"]}})), parsed(covered())),
         (parsed(layered()), parsed(layered(review={"never": ["src/drafts"], "mask": ["Northwind"]}))),
+        (parsed(layered(evals={"placement": {"lines": {"store": 0.2}}})), parsed(layered())),
     ]
     found = [item for custom, base in pairs for item in loosened(custom, base)]
     assert sorted({item.key for item in found}) == sorted(LOOSER)

@@ -1,5 +1,6 @@
 """What review reads of a profile, from spec's contract: each part of the profile view, in order, with its folder,
-litmus and role, and what review may send; a profile spec refuses raises Refused with spec's reason."""
+litmus, role and line (the profile's, else spec's default), and what review may send; a profile spec refuses raises
+Refused with spec's reason."""
 import pytest
 
 from xarch.modules.review.adapters.spec_profile import SpecWords
@@ -9,7 +10,7 @@ from xarch.modules.spec.contract import PartView, ProfileRefused, ProfileResult,
 
 VIEW = ProfileView(parts=(PartView("core", ("core",), (), "the rules", "Is it a rule?", "core/"),
                           PartView("api", ("src", "*", "api"), (), "handlers", shown="api/ of src/<module>")),
-                   never=("src/*/drafts", "**/secrets"), mask=("Northwind",))
+                   never=("src/*/drafts", "**/secrets"), mask=("Northwind",), lines={"api": 0.2})
 
 
 class Spec:
@@ -22,9 +23,10 @@ class Spec:
         return self._result
 
 
-def test_each_part_is_read_with_its_folder_litmus_and_role_in_order_and_what_review_may_send_as_written():
+def test_each_part_is_read_with_its_folder_litmus_role_and_line_in_order_and_what_review_may_send_as_written():
     assert SpecWords(Spec(VIEW)).words("p") == Words(
-        (PartText("core", "core/", "Is it a rule?", "the rules"), PartText("api", "api/ of src/<module>", "", "handlers")),
+        (PartText("core", "core/", "Is it a rule?", "the rules", 0.3),
+         PartText("api", "api/ of src/<module>", "", "handlers", 0.2, by_hand=True)),
         ("src/*/drafts", "**/secrets"), ("Northwind",))
 
 

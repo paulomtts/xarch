@@ -11,6 +11,7 @@ from xarch.modules.spec.domain.profile_keys import (
     CHOICE_PRESETS,
     DEAD_CODE,
     DOCS,
+    EVALS,
     FAKES,
     FILE,
     FIXTURE,
@@ -22,6 +23,7 @@ from xarch.modules.spec.domain.profile_keys import (
     PAGE,
     PART,
     PASS_THROUGH,
+    PLACEMENT,
     PROFILE,
     READ_BY_REVIEW,
     REVIEW,
@@ -60,6 +62,7 @@ _KEYS: tuple[Key, ...] = (
     Key(PROFILE, "files", opens=FILE),
     Key(PROFILE, "docs", False, False, opens=DOCS),
     Key(PROFILE, "review", False, False, opens=REVIEW, read_by=READ_BY_REVIEW),
+    Key(PROFILE, "evals", False, False, opens=EVALS, read_by=READ_BY_REVIEW),
 
     Key(PART, "path", True, rules=("structure", "rules")),
     Key(PART, "role", True, False),
@@ -172,6 +175,9 @@ _KEYS: tuple[Key, ...] = (
 
     Key(REVIEW, "never", False, False, read_by=READ_BY_REVIEW),
     Key(REVIEW, "mask", False, False, read_by=READ_BY_REVIEW),
+
+    Key(EVALS, "placement", False, False, opens=PLACEMENT, read_by=READ_BY_REVIEW),
+    Key(PLACEMENT, "lines", False, False, read_by=READ_BY_REVIEW),
 )
 
 _IMPORTS = ("import", "import.relative")

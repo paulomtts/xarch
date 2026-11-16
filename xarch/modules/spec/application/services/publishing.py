@@ -66,7 +66,8 @@ class PublishingService:
             fakes=architecture.fakes, framework=architecture.framework, excluded=architecture.excluded,
             hints=dict(architecture.hints), language=architecture.language.checked,
             reserved=dict(architecture.reserved), approximate=architecture.approximate,
-            checks=dict(architecture.checks), never=architecture.never, mask=architecture.mask)
+            checks=dict(architecture.checks), never=architecture.never, mask=architecture.mask,
+            lines=dict(architecture.lines))
 
     def docs(self, profile: str) -> Docs:
         """Raises InvalidTemplate too, for a template that cannot be filled."""

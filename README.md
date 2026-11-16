@@ -121,6 +121,7 @@ files:    {<path>: <from> | {from*, pinned, fill}}      docs: {entry, pages, nam
 checks:   {<id>: {read*, in, keep, may_not | may_only | must_reach | must_be_reached*, except, mode, message*, fix*,
                   once_per, cases, examples*}}
 review:   {never, mask}                                 what `xarch review` may send; `check` never reads it
+evals:    {placement: {lines}}                          how `xarch review` reads what it asks; `check` never reads it
 ```
 
 `language` names the language of the app: `python`, which is the default and the only one xarch reads today. What is
@@ -540,8 +541,8 @@ be added, an existing one keeps its name and meaning. A field that does not appl
 `review` is a second, advisory command, apart from `check`: it never runs inside `check`, never changes what `check`
 finds or its exit code, and never exits 1. For each file chosen it asks a decision model which part of the profile the
 file belongs in, with every part's litmus test (its role, for a part with none) as the options, and prints the
-model's reading, ranked: a file whose probability on the part it sits in is below that part's line (0.3 for every part
-today) reads as **doubtful here**. That is a reason to read the file against its part's litmus, not a finding: in
+model's reading, ranked: a file whose probability on the part it sits in is below that part's line (0.3, unless the
+profile sets the part's own under `evals.placement.lines`) reads as **doubtful here**. That is a reason to read the file against its part's litmus, not a finding: in
 trials, about 7 to 10% of well-placed files read as doubtful, and about 1 in 2 to 1 in 3 doubtful files was really
 misplaced. The text output names no other part; the JSON gives the probability on every part.
 
@@ -610,6 +611,23 @@ review:
 `profile check` lists, as looser, an entry of either that the profile it is compared with holds and this one does not:
 it sends more. `xarch profile explain review.never` (or `review.mask`) says each in full.
 
+### A part's line: `evals.placement.lines`
+
+A part whose files read low across the board, even when well placed, can be given its own line by hand (lines are
+never computed from a run: a part that reads low usually means its litmus does not describe its files, which a computed
+line would hide). Read the part's litmus first.
+
+```yaml
+evals:
+  placement:
+    lines: {domain: 0.2}
+```
+
+Each value is a number above 0 and below 1; a part not written keeps 0.3, the line the trials measured. Every reading
+says a line set this way as "set by the profile", since the trials' numbers hold at 0.3 only. `check` never reads
+`evals`. `profile check` lists a part whose line is below the one the profile it is compared with gives it as looser:
+it flags less. `xarch profile explain evals.placement.lines` says it in full.
+
 ### JSON
 
 `--format json` prints one document. A dry run: `{"ok", "advisory", "profile", "dry_run": true, "sent": false,
@@ -619,9 +637,9 @@ it sends more. `xarch profile explain review.never` (or `review.mask`) says each
 decision model's service would receive it (JSON text, the key left out), `sends.key` the name of the variable the key
 is read from (never the key) and `keyed` whether it is set. A review: `{"ok", "advisory", "profile", "dry_run": false,
 "complete", "model", "selection", "placement": {"calibration": {"state", "evidence"}, "role_only", "files": [{"file",
-"part", "probability", "line", "doubtful", "chars", "model", "distribution"}]}, "sends", "sent": {"calls", "cached",
-"input_tokens", "output_tokens"}, "unanswered": [{"file", "why"}], "failure"}`, the files ranked from the lowest
-probability, `distribution` the probability on each part by name, `why` of an unanswered file `not-cached` or
+"part", "probability", "line", "line_by_hand", "doubtful", "chars", "model", "distribution"}]}, "sends", "sent":
+{"calls", "cached", "input_tokens", "output_tokens"}, "unanswered": [{"file", "why"}], "failure"}`, the files ranked
+from the lowest probability, `line_by_hand` whether the profile sets the part's line, `distribution` the probability on each part by name, `why` of an unanswered file `not-cached` or
 `failed`, `failure` the decision model's words when it failed (else null). In both, `why` of a file left out is one of
 `missing`, `not-source`, `test`, `outside`, `excluded`, `unplaced`, `never`, `unparsable`, `small`, `pattern` the
 `review.never` path that matched (null for any other `why`); a dry run's `mask` is the profile's `review.mask`. A

@@ -4,9 +4,10 @@ import pytest
 
 from xarch.modules.review.application.logic.doubt import ranked, reading
 from xarch.modules.review.domain.published import Reading, Request
-from xarch.modules.review.domain.values import Answer
+from xarch.modules.review.domain.values import Answer, PartText
 
 REQUEST = Request("app/a.py", "domain", 1200, "text")
+DOMAIN = PartText("domain", "domain/", "Is it a value?", "values", 0.3)
 
 
 @pytest.mark.parametrize("probabilities, then", [
@@ -15,14 +16,16 @@ REQUEST = Request("app/a.py", "domain", 1200, "text")
     pytest.param((("main", 1.0),), (0.0, True), id="an answer that gives the part nothing holds 0 on it"),
 ])
 def test_a_file_is_doubtful_where_it_sits_when_its_part_holds_less_than_the_line(probabilities, then):
-    found = reading(REQUEST, Answer("m-1.0.1", probabilities))
+    found = reading(REQUEST, Answer("m-1.0.1", probabilities), DOMAIN)
     assert (found.probability, found.doubtful) == then
     assert (found.file, found.part, found.chars, found.line, found.distribution, found.model) == (
         "app/a.py", "domain", 1200, 0.3, probabilities, "m-1.0.1")
 
 
-def test_a_line_given_is_the_one_read_against():
-    assert reading(REQUEST, Answer("m", (("domain", 0.4),)), line=0.5).doubtful is True
+def test_the_line_of_the_part_is_the_one_read_against_and_a_line_set_by_hand_is_said():
+    found = reading(REQUEST, Answer("m", (("domain", 0.4),)), PartText("domain", "domain/", "", "values", 0.5, True))
+    assert (found.line, found.doubtful, found.by_hand) == (0.5, True, True)
+    assert reading(REQUEST, Answer("m", (("domain", 0.25),)), PartText("domain", "", "", "", 0.2)).doubtful is False
 
 
 def test_the_readings_are_ranked_from_the_lowest_probability_by_file_on_a_tie():
