@@ -50,9 +50,9 @@ BUNDLED = PackageData("xarch", "architectures")
 
 READER = FsSourceTree
 """The reader of the checked source, the one language xarch reads today (its own docstring says which), built once
-when the app starts, before any command chooses a profile. A second language needs a reader of its own, and rules'
-services and spec's example reading would then take a reader per language, built here, and pick one by the language
-the profile names."""
+when the app starts, before any command chooses a profile. A second language needs a reader of its own, and the
+checks of rules and spec's example reading would then take a reader per language, built here, and pick one by the
+language the profile names."""
 RUNTIME = InterpreterRuntime
 """What that language says of itself (its standard library, reserved words and the names it binds before any code),
 as the interpreter running xarch says it; a second language needs its own beside its reader."""
