@@ -354,7 +354,7 @@ def test_everything_is_a_part_that_may_import_everything_and_the_rest_a_part_wit
     pytest.param("shared", ["shared"], "layered.yaml: parts.shared.may_import: 'shared' is implied: a part may always "
                                        "import itself; remove it", id="itself outside the instances"),
     pytest.param("store", ["everything"], "layered.yaml: parts.store.may_import: 'everything' stands alone: write "
-                                          "`may_import: everything`, not in a list", id="everything inside a list"),
+                                          "`everything` in place of the list", id="everything inside a list"),
 ])
 def test_a_bad_target_is_refused_saying_what_to_write(part, targets, expected):
     document = layered()

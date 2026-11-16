@@ -25,6 +25,9 @@ def may_import(value: Any, owner: Part | None, parts: dict[str, Part], declared:
     paths = _paths_of(parts)
     found: list[Target] = []
     for item in value:
+        if item == WORD:
+            problems.append(f"{where}: {item!r} stands alone: write `{WORD}` in place of the list")
+            continue
         written = target(item, None if owner is None else (owner.name, owner.path), paths, declared, where, problems,
                          patterns)
         if written is not None:

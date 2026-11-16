@@ -95,8 +95,8 @@ def test_a_bad_name_pattern_is_refused(value, expected):
 def test_must_import_takes_no_name_pattern():
     document = with_part(may_import=["store:*Id"], must_import=["store:*Id"])
     assert problems(document) == [
-        "layered.yaml: parts.service.must_import: 'store:*Id' has a name pattern: only a part's `may_import` narrows what may "
-        "be imported by name"]
+        "layered.yaml: parts.service.must_import: 'store:*Id' has a name pattern, which this key does not take: drop "
+        "':*Id'"]
 
 
 def test_a_tier_says_what_each_of_its_tests_must_reach():

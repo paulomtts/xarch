@@ -23,17 +23,13 @@ def target(value: Any, owner: tuple[str, tuple[str, ...]] | None, parts: Mapping
     """The target a profile writes as value, for the part owner (its name and path; None for a tier's folder or a
     scope of no part), each part by its path; None, with the problem said at where, when it is not one. A target that
     names a part declared but not placed is None, with no problem of its own."""
-    if value == WORD:
-        problems.append(f"{where}: {value!r} stands alone: write `may_import: {WORD}`, not in a list")
-        return None
     match = TARGET.fullmatch(value) if isinstance(value, str) else None
     if match is None or not match["part"]:
         problems.append(f"{where}: {value!r} is not a target: use <part>, <part>@any, optionally followed by /<path>")
         return None
     name, scope, sub, names = match["part"], match["scope"], match["sub"], match["names"]
     if names is not None and not patterns:
-        problems.append(f"{where}: {value!r} has a name pattern: only a part's `may_import` narrows what may be "
-                        "imported by name")
+        problems.append(f"{where}: {value!r} has a name pattern, which this key does not take: drop ':{names}'")
         return None
     if names is not None and not names:
         problems.append(f"{where}: {value!r} has an empty name pattern after `:`")

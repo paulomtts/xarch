@@ -31,8 +31,8 @@ def test_a_target_is_read_as_written(value, targets):
 
 def test_a_name_pattern_is_read_only_where_it_is_allowed():
     assert written(["shared:*Id"], patterns=True) == ((Target("shared", "none", (), "*Id"),), [])
-    assert written(["shared:*Id"])[1] == ["parts.api.may_import: 'shared:*Id' has a name pattern: only a part's "
-                                          "`may_import` narrows what may be imported by name"]
+    assert written(["shared:*Id"])[1] == ["parts.api.may_import: 'shared:*Id' has a name pattern, which this key does "
+                                          "not take: drop ':*Id'"]
 
 
 @pytest.mark.parametrize("value, problem", [
@@ -41,7 +41,7 @@ def test_a_name_pattern_is_read_only_where_it_is_allowed():
                  id="a scope on a part outside the repeating folder"),
     pytest.param(["api"], "'api' is implied: a part may always import itself, its own instance of the repeating "
                           "folder; remove it (api@any, another instance's too, stays allowed)", id="itself"),
-    pytest.param(["everything"], "'everything' stands alone: write `may_import: everything`, not in a list",
+    pytest.param(["everything"], "'everything' stands alone: write `everything` in place of the list",
                  id="everything in a list"),
 ])
 def test_a_target_that_cannot_be_read_is_refused_saying_why(value, problem):

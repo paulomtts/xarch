@@ -36,8 +36,10 @@ def test_a_target_is_written_as_it_is_read_and_reads_back_as_itself(written, own
     pytest.param("services", SERVICES, "at: 'services' is implied: a part may always import itself, its own instance "
                                        "of the repeating folder; remove it (services@any, another instance's too, stays "
                                        "allowed)", id="the part itself"),
-    pytest.param("kernel:*Id", SERVICES, "at: 'kernel:*Id' has a name pattern: only a part's `may_import` narrows what "
-                                         "may be imported by name", id="a name pattern where none is allowed"),
+    pytest.param("kernel:*Id", SERVICES, "at: 'kernel:*Id' has a name pattern, which this key does not take: drop "
+                                         "':*Id'", id="a name pattern where none is allowed"),
+    pytest.param("everything", SERVICES, "at: 'everything' names no part 'everything'",
+                 id="everything is no part: the key that takes it alone says so"),
 ])
 def test_a_target_that_is_not_one_is_none_with_its_problem(written, owner, problem):
     problems: list[str] = []
