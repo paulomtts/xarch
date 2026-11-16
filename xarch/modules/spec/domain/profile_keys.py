@@ -9,7 +9,7 @@ few words, what it accepts, and a short example: a fragment of a profile that lo
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 PROFILE = "profile"
 PART = "part"
@@ -33,6 +33,7 @@ FILE = "file"
 REVIEW = "review"
 EVALS = "evals"
 PLACEMENT = "evals.placement"
+EVAL = "evals.<id>"
 
 SCOPES = {
     PROFILE: "the file",
@@ -59,6 +60,9 @@ SCOPES = {
     PLACEMENT: "evals.placement",
 }
 """Each scope's address in the file."""
+HELD = {EVAL: EVALS}
+"""The scopes of an entry of a map the profile names by ids of its own, which no key opens (its address is the
+scope's own), each with the scope of the map that holds it: its slots are listed with the keys of that map."""
 
 CHOICE_BUNDLED = "bundled"
 CHOICE_PRESETS = "presets"
@@ -96,7 +100,7 @@ class Key:
 
     @property
     def where(self) -> str:
-        return SCOPES[self.scope]
+        return SCOPES.get(self.scope, self.scope)
 
     @property
     def address(self) -> str:
@@ -119,7 +123,13 @@ class KeyText:
 @dataclass(frozen=True)
 class Catalogue:
     """The texts of the format: each key's, by its address; the symbols a profile writes in paths and imports, each with
-    what it means; and the smallest valid profile (one part, no rule, no test), as text."""
+    what it means; the smallest valid profile (one part, no rule, no test), as text; and each slot's of an eval of
+    the profile's own, by its address."""
     texts: dict[str, KeyText]
     symbols: tuple[tuple[str, str], ...]
     smallest: str
+    slots: dict[str, KeyText] = field(default_factory=dict)
+
+    def text(self, address: str) -> KeyText:
+        """The text of the key, or of the slot, at the address."""
+        return self.texts[address] if address in self.texts else self.slots[address]

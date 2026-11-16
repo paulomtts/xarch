@@ -5,7 +5,8 @@
 # profile an example shares: a line that is exactly <<name>> stands for that fragment's text. A word written %word% is
 # said in the words of the language (%extension%, %interface%, ...), and %min_statements% and %min_fields% are the
 # defaults of no-duplicates and no-twins. Which keys exist, where they sit and what they enforce is xarch's own table;
-# this file holds a text for each of them, and no other.
+# this file holds a text for each of them, and no other. slots: the same, for each slot of an eval of the profile's
+# own, written under an id of its own.
 fragments:
   part: |
     parts:
@@ -82,6 +83,27 @@ fragments:
         statement.md:
           from: docs/statement.md
           note: the problem the documents solve
+  eval: |
+    evals:
+      title-rule:
+        ask: Does this file itself test the document's title to decide whether the document may change?
+        answer: yes-no
+        yes: the file tests the title itself to decide
+        no: the file asks the document, which decides
+        reads: file
+        in: {part: documents}
+        keep: [not package-file]
+        message: "{file} may decide a rule of the document itself ({value})"
+        fix: "read it against the litmus of documents/: if the rule is the document's own, move it onto the document"
+    <<eval-examples>>
+  eval-examples: |2
+        examples:
+          flagged:
+            documents/publish%extension%: "%comment% refuses to publish when the title is empty\n"
+            documents/rename%extension%: "%comment% refuses an empty title once the document is published\n"
+          clean:
+            documents/publish%extension%: "%comment% asks the document to publish itself\n"
+            documents/rename%extension%: "%comment% asks the document to take the new title\n"
 smallest: |
   xarch: 2
   name: documents-app
@@ -254,11 +276,16 @@ keys:
         never: [documents/drafts]
         mask: [Northwind]
   evals:
-    meaning: "how `xarch review` reads what it asks: placement"
+    meaning: "what `xarch review` asks: placement, and evals of your own"
     accepts: >-
-      a map of the evals review asks, by id; today only `placement`, the eval review always asks (which part a file
-      belongs in, by the parts' litmus tests), whose `lines` it tunes. `check` never reads it, so it changes no finding
-      and no exit code of `check`
+      a map of the evals review asks, by id: `placement`, the eval review always asks (which part a file belongs in,
+      by the parts' litmus tests), whose `lines` it tunes; and under any other id of your own (lowercase words joined
+      by `-`) an eval of the profile's own, a map of slots: `ask` the question, `answer` its form, `yes` and `no` what
+      each answer means (yes-no only), `reads` what one question is asked of, `in` the files it is asked in, `keep` the
+      filters a class or function must pass, `line` the value from which a reading is listed, `message` and `fix` what
+      is said of one, and `examples`. Write one rule per question, about what the text shows. An eval of your own runs
+      only once `xarch review calibrate` has held it to its examples with the model review asks, and only while it
+      stays as it was then. `check` never reads `evals`, so it changes no finding and no exit code of `check`
     example: |
       evals:
         placement:
@@ -1145,3 +1172,104 @@ keys:
       evals:
         placement:
           lines: {documents: 0.2}
+slots:
+  evals.<id>.ask:
+    meaning: the question the eval asks
+    accepts: >-
+      one line of text, at most 400 characters and one question mark: one short rule about what the text shows. In
+      trials a long compound question was the one that failed to tell its examples apart
+    example: |
+      <<part>>
+      <<eval>>
+  evals.<id>.answer:
+    meaning: the form of the answer
+    accepts: >-
+      `yes-no`, read as the probability of yes; `{score: [<level 0>, ..., <level 4>], flagged_from: <n>}`, five
+      levels each saying what it means, the worst last, read as the expected level over 4, `flagged_from` the level
+      (1 to 4) from which a reading counts as flagged, so the line is never below it; or `{choice: {<option>:
+      <description>, ...}, flagged: [<option>, ...]}`, three options or more, read as the probability of the flagged
+      ones, the mean of two orders of the options. Two options are refused: write yes-no
+    example: |
+      <<part>>
+      evals:
+        purity:
+          ask: How much of this file's work reads or writes something outside its arguments?
+          answer:
+            score: ["none: it computes from its arguments", "it reads a constant of its own", "it reads a constant of another file", "it reads a file, the clock or the environment", "it writes something"]
+            flagged_from: 3
+          reads: file
+          message: "{file} may reach outside its arguments ({value})"
+          fix: "read it against the litmus of documents/: if it reaches outside, pass what it reads as an argument"
+      <<eval-examples>>
+  evals.<id>.yes:
+    meaning: what a yes answer means
+    accepts: "a sentence, with `answer: yes-no` only; sent with the question"
+    example: |
+      <<part>>
+      <<eval>>
+  evals.<id>.no:
+    meaning: what a no answer means
+    accepts: "a sentence, with `answer: yes-no` only; sent with the question"
+    example: |
+      <<part>>
+      <<eval>>
+  evals.<id>.reads:
+    meaning: what one question is asked of
+    accepts: >-
+      `file`, each file whole; `class`, each class at the top level of a file; `function`, each function, a method
+      included, as the check vocabulary's kinds of fact of those names; refused when the language's reader does not
+      supply the fact
+    example: |
+      <<part>>
+      <<eval>>
+  evals.<id>.in:
+    meaning: the files the eval is asked in
+    accepts: >-
+      `{part, where}`, as a check's `in`: the part (any when left out) and the filters about the file it passes. Only
+      the app's files are read, never the tests, so `files` and `tier` are refused. Of the files a review chooses, it
+      asks only those in its scope, and never one placement leaves out
+    example: |
+      <<part>>
+      <<eval>>
+  evals.<id>.keep:
+    meaning: the filters a class or function must pass to be asked
+    accepts: >-
+      a list of filters of the check vocabulary (`xarch profile explain filters`), as a check's `keep`, such as
+      [public]; `profile check` refuses a filter that does not apply to the kind read
+    example: |
+      <<part>>
+      <<eval>>
+  evals.<id>.line:
+    meaning: the value from which a reading is listed
+    accepts: >-
+      a number above 0 and below 1. Left out, `xarch review calibrate` sets it: midway between the lowest flagged
+      example and the highest clean one, never below 0.5 (for a score, never below the level `flagged_from` names)
+    example: |
+      <<part>>
+      <<eval>>
+          line: 0.6
+  evals.<id>.message:
+    meaning: what is said of a reading
+    accepts: "a sentence, with {file}, {line}, {name} and {value} (two decimals) for what it names"
+    example: |
+      <<part>>
+      <<eval>>
+  evals.<id>.fix:
+    meaning: what to do about a reading
+    accepts: >-
+      a sentence, with {file}, {line}, {name} and {value}; start it from reading something (the litmus, the rule), not
+      from an edit: a reading is a reason to look, not a finding
+    example: |
+      <<part>>
+      <<eval>>
+  evals.<id>.examples:
+    meaning: the code the eval must read as flagged, and as clean
+    accepts: >-
+      {flagged: {<path>: <code>, ...}, clean: {<path>: <code>, ...}}, at least 2 files of each, each a path below the
+      app ending in %extension% and its code. `profile check` refuses a file in which nothing the eval reads (in its
+      scope, passing `keep`) is found. `xarch review calibrate` sends them and holds the eval to them: every flagged
+      file reads above every clean one, by at least 0.4 on the mean, and on the right side of the line. Add a clean
+      example of the case the question must not catch
+    example: |
+      <<part>>
+      <<eval>>

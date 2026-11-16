@@ -7,6 +7,8 @@ problem listed:
     symbols     {<symbol>: <meaning>}: what a profile writes in paths and imports
     keys        {<address>: {meaning, accepts, example}}: the text of each key of the table (see key_table), by its
                 address, and of no other
+    slots       {<address>: {meaning, accepts, example}}: the same, of each slot of an eval of the profile's own (see
+                key_table's SLOTS), and of no other
 
 A text may write `%min_statements%` and `%min_fields%`, the defaults of no-duplicates and no-twins, which are filled in
 here, and the words a language says (see explain.words), which are filled in when the text is said; no other `%word%`.
@@ -18,12 +20,12 @@ from collections.abc import Mapping
 from typing import Any
 
 from xarch.modules.spec.application.logic.explain import words, words_in
-from xarch.modules.spec.application.logic.key_table import KEYS
+from xarch.modules.spec.application.logic.key_table import KEYS, SLOTS
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.profile_keys import Catalogue, KeyText
+from xarch.modules.spec.domain.profile_keys import Catalogue, Key, KeyText
 from xarch.modules.spec.domain.values import FORMAT_KEYS, Language, NoDuplicates, NoTwins
 
-SECTIONS = ("fragments", "smallest", "symbols", "keys")
+SECTIONS = ("fragments", "smallest", "symbols", "keys", "slots")
 FIELDS = ("meaning", "accepts", "example")
 _INCLUDE = re.compile(r"<<(.*)>>")
 _DEFAULTS = {"min_statements": str(NoDuplicates.min_statements), "min_fields": str(NoTwins.min_fields)}
@@ -48,31 +50,34 @@ def catalogue_of(document: Any) -> Catalogue:
     smallest = _text(document["smallest"], "smallest", problems) if "smallest" in document else ""
     symbols = _texts(document.get("symbols", {}), "symbols", problems)
     texts = _keys(document["keys"], fragments, problems) if "keys" in document else {}
+    slots = _keys(document["slots"], fragments, problems, "slots", SLOTS) if "slots" in document else {}
     written = [("smallest", smallest), *((f"symbols.{s}", f"{s} {m}") for s, m in symbols.items()),
-               *((f"keys.{a}.{f}", getattr(t, f)) for a, t in texts.items() for f in FIELDS)]
+               *((f"keys.{a}.{f}", getattr(t, f)) for a, t in texts.items() for f in FIELDS),
+               *((f"slots.{a}.{f}", getattr(t, f)) for a, t in slots.items() for f in FIELDS)]
     problems += [f"{where}: unknown word %{word}%: use {', '.join(f'%{w}%' for w in _WORDS)}"
                  for where, text in written for word in words_in(text) if word not in _WORDS]
     if problems:
         raise InvalidArchitecture(FORMAT_KEYS, list(dict.fromkeys(problems)))
     return Catalogue({address: _filled(text) for address, text in texts.items()},
                      tuple((_defaulted(symbol), _defaulted(meaning)) for symbol, meaning in symbols.items()),
-                     _defaulted(smallest))
+                     _defaulted(smallest), {address: _filled(text) for address, text in slots.items()})
 
 
-def _keys(found: Any, fragments: Mapping[str, str], problems: list[str]) -> dict[str, KeyText]:
+def _keys(found: Any, fragments: Mapping[str, str], problems: list[str], section: str = "keys",
+          keys: tuple[Key, ...] = KEYS) -> dict[str, KeyText]:
     if not isinstance(found, Mapping):
-        problems.append(f"keys: must be a mapping of each key's address to {{{', '.join(FIELDS)}}}")
+        problems.append(f"{section}: must be a mapping of each key's address to {{{', '.join(FIELDS)}}}")
         return {}
-    table = [key.address for key in KEYS]
+    table = [key.address for key in keys]
     unknown = [str(address) for address in found if address not in table]
     if unknown:
-        problems.append(f"keys: the format has no key {_quoted(unknown)}")
+        problems.append(f"{section}: the format has no key {_quoted(unknown)}")
     missing = [address for address in table if address not in found]
     if missing:
-        problems.append(f"keys: missing the text of {_quoted(missing)}")
+        problems.append(f"{section}: missing the text of {_quoted(missing)}")
     texts: dict[str, KeyText] = {}
     for address in (address for address in table if address in found):
-        entry, where = found[address], f"keys.{address}"
+        entry, where = found[address], f"{section}.{address}"
         if not isinstance(entry, Mapping):
             problems.append(f"{where}: must be a mapping of {', '.join(FIELDS)}")
             continue

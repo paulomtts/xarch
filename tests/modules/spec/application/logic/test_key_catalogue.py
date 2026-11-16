@@ -4,7 +4,7 @@ import pytest
 
 from tests.modules.spec.format_files import KEYS_DOCUMENT
 from xarch.modules.spec.application.logic.key_catalogue import catalogue_of
-from xarch.modules.spec.application.logic.key_table import KEYS
+from xarch.modules.spec.application.logic.key_table import KEYS, SLOTS
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.profile_keys import KeyText
 
@@ -24,7 +24,8 @@ def keyed(texts: dict | None = None) -> dict:
 
 def document(**sections) -> dict:
     """A data file that loads, each section given in place of its own; one given as None is left out."""
-    found = {"fragments": FRAGMENTS, "smallest": "xarch: 2\n", "symbols": {"store": "a part"}, "keys": keyed()}
+    found = {"fragments": FRAGMENTS, "smallest": "xarch: 2\n", "symbols": {"store": "a part"}, "keys": keyed(),
+             "slots": {key.address: TEXT for key in SLOTS}}
     found.update(sections)
     return {name: value for name, value in found.items() if value is not None}
 
@@ -59,9 +60,9 @@ def test_a_fragment_may_hold_another_and_the_lines_around_it_stay():
 
 
 @pytest.mark.parametrize("given, found", [
-    pytest.param("keys", ["must be a mapping of fragments, smallest, symbols, keys"], id="a document that is no mapping"),
+    pytest.param("keys", ["must be a mapping of fragments, smallest, symbols, keys, slots"], id="a document that is no mapping"),
     pytest.param(document(format=1, symbols=None),
-                 ["unknown key 'format': use fragments, smallest, symbols, keys", "missing `symbols`"],
+                 ["unknown key 'format': use fragments, smallest, symbols, keys, slots", "missing `symbols`"],
                  id="a section the format has not, and one left out"),
     pytest.param(document(keys=keyed({ROLE: None, "parts.<part>.colour": TEXT})),
                  ["keys: the format has no key 'parts.<part>.colour'", "keys: missing the text of 'parts.<part>.role'"],

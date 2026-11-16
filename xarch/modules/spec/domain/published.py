@@ -16,10 +16,15 @@ just as spec holds it, so there is nothing to reshape. Everything else spec hand
     DocFile      a project doc and the text it starts with, which the module that scaffolds writes
     LINE         the line of a part no `evals.placement.lines` writes one for, which the module that reviews reads a
                  file's answer against
+    Eval         an eval of the profile's own, which the module that reviews asks and the checking module holds to its
+                 examples statically; YES_NO, SCORE and CHOICE its answer forms, READS what one question may be asked
+                 of
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+from xarch.profile_values.checks import Condition, Scope
 
 DEFAULT_APP = "app"
 """The app folder xarch assumes, in the working folder, when none is given or recorded."""
@@ -32,6 +37,46 @@ LINE = 0.3
 """The line of a part the profile writes none for under `evals.placement.lines`: below it, the probability review's
 decision model puts on the part a file sits in reads as doubtful there. In the trials it caught about nine in ten
 plainly misplaced files and doubted about one well-placed file in ten."""
+
+
+YES_NO, SCORE, CHOICE = "yes-no", "score", "choice"
+"""The answer forms of an eval of the profile's own: yes or no; a score of five levels, 0 to 4; a choice of one option
+out of three or more."""
+READS = ("file", "class", "function")
+"""What one question of an eval of the profile's own is asked of: a file whole, each class at its top level, or each
+function (a method is a function)."""
+
+
+@dataclass(frozen=True)
+class Eval:
+    """An eval of the profile's own, as it is written under `evals.<id>`, everything already checked statically.
+
+    ask: the question, one short rule about what the text shows
+    form: YES_NO, SCORE or CHOICE
+    options: what each answer means, in order, each a name and its description: for YES_NO `yes` and `no` (a
+        description "" when it is not written), for SCORE the levels `0` to `4`, for CHOICE the options as written
+    flagged: the names of the options whose probability reads as the fault: `yes`; the levels from `flagged_from`; or
+        the options `flagged` lists
+    reads: one of READS
+    within: the files it is asked in, as a check's `in` (the app's files only)
+    keep: the filters a fact must pass, as a check's `keep`, in the words of the check vocabulary
+    line: the value at or above which a reading is listed; None when calibration sets it
+    message, fix: what is said of a reading, with {file}, {line}, {name} and {value}
+    flagged_examples, clean_examples: the code it must read as flagged and as clean, each a file by its path below
+        the app and its text, in the order of the file
+    """
+    ask: str
+    form: str
+    options: tuple[tuple[str, str], ...]
+    flagged: tuple[str, ...]
+    reads: str
+    within: Scope = field(default_factory=Scope)
+    keep: tuple[Condition, ...] = ()
+    line: float | None = None
+    message: str = ""
+    fix: str = ""
+    flagged_examples: tuple[tuple[str, str], ...] = ()
+    clean_examples: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)

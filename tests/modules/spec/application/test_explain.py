@@ -109,7 +109,7 @@ SHAPE = (
     Shown('docs.examples', 1, 'folders next to the profile, each an example project', False, False),
     Shown('docs.example_notes', 1, 'a note for an example', False, False),
     Shown('review', 0, 'what `xarch review` may send: never, mask', False, False, 'review'),
-    Shown('evals', 0, 'how `xarch review` reads what it asks: placement', False, False, 'review'),
+    Shown('evals', 0, 'what `xarch review` asks: placement, and evals of your own', False, False, 'review'),
 )
 """The keys of the file, each followed by the keys it holds, as the table of keys lists them; the keys of what review
 may send and of how it reads what it asks are left to the explanation of `review` and of `evals`."""
@@ -130,6 +130,7 @@ may send and of how it reads what it asks are left to the explanation of `review
                                                    "extension and package_file"),
                  id="the format is refused with why when the data file of a language does not load"),
     pytest.param(UNTOLD, Explain("based_on"), ProfileRefused("presets/format/keys.yaml: missing `keys`\n"
+                                                             "presets/format/keys.yaml: missing `slots`\n"
                                                              "presets/format/keys.yaml: symbols: must be a mapping of names "
                                                              "to text"),
                  id="a key is refused with why when the data file of the format's texts does not load"),

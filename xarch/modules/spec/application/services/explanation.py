@@ -50,7 +50,7 @@ class ExplainService:
         key = key_at(address)
         if key is None:
             return UnknownKey(cleaned(address), nearest(cleaned(address)))
-        names, text = self.choices(key), catalogue.texts[key.address]
+        names, text = self.choices(key), catalogue.text(key.address)
         return KeyExplained(plain(key.address), key.where, said(text.meaning, language), said(text.accepts, language),
                             key.required, key.enforced, key.rules, said(example_of(key, text.example, names), language),
                             names, tuple(_shown(held, 0, catalogue, language) for held in held_by(key)),
@@ -74,5 +74,5 @@ class ExplainService:
 
 
 def _shown(key: Key, depth: int, catalogue: Catalogue, language: Language) -> Shown:
-    return Shown(plain(key.address), depth, said(catalogue.texts[key.address].meaning, language), key.required,
+    return Shown(plain(key.address), depth, said(catalogue.text(key.address).meaning, language), key.required,
                  key.enforced, key.read_by)

@@ -6,7 +6,7 @@ from typing import Protocol
 
 from xarch.modules.rules.domain.errors import NoProfile, ProfileUnusable, Unloaded
 from xarch.modules.rules.domain.published import KeyFacts, Loosened, Resemblance, Reviewed
-from xarch.modules.rules.domain.values import InitFile, Known, PartInfo, Profile, Standing
+from xarch.modules.rules.domain.values import Asked, InitFile, Known, PartInfo, Profile, Standing
 from xarch.modules.spec.contract import (
     DEFAULT_TESTS,
     CheckProfile,
@@ -85,7 +85,9 @@ class SpecProfiles:
                        info={p.name: PartInfo(p.role, p.litmus, p.shown, p.untested) for p in parts},
                        excluded=view.excluded, hints=dict(view.hints), language=view.language,
                        reserved=dict(view.reserved),
-                       approximate=view.approximate, written=dict(view.checks), default_tests=DEFAULT_TESTS)
+                       approximate=view.approximate, written=dict(view.checks), default_tests=DEFAULT_TESTS,
+                       asked={name: Asked(asked.reads, asked.within, asked.keep, asked.flagged_examples,
+                                          asked.clean_examples) for name, asked in view.evals.items()})
 
     def known(self, app: Path) -> Known:
         """None configured is no profile in force; one spec refuses raises ProfileUnusable with its reason."""

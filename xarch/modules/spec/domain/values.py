@@ -7,6 +7,7 @@ from typing import Any
 
 from xarch.kernel.logic.placement import place_of, repeat_of, with_itself
 from xarch.kernel.placement import EACH, Place
+from xarch.modules.spec.domain.published import Eval
 from xarch.profile_values.capabilities import Shortfall
 from xarch.profile_values.checks import WrittenCheck
 from xarch.profile_values.excluded import Excluded
@@ -368,6 +369,7 @@ class Architecture:
     mask: the text patterns review hides before it sends (`review.mask`), as written
     lines: the line of each part the profile writes one for (`evals.placement.lines`), by part: below it a file reads
         as doubtful there in review
+    evals: the evals of the profile's own, by id, in the order of the file, which review asks
     """
     name: str
     layout: Layout
@@ -397,6 +399,7 @@ class Architecture:
     never: tuple[str, ...] = ()
     mask: tuple[str, ...] = ()
     lines: dict[str, float] = field(default_factory=dict)
+    evals: dict[str, Eval] = field(default_factory=dict)
 
     @property
     def entry(self) -> Part | None:

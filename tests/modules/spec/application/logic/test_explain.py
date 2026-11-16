@@ -9,7 +9,7 @@ from xarch.modules.spec.application.logic.explain import (
     overview_keys,
 )
 from xarch.modules.spec.application.logic.key_lookup import plain
-from xarch.modules.spec.application.logic.key_table import KEYS
+from xarch.modules.spec.application.logic.key_table import KEYS, SLOTS
 
 
 def test_the_overview_lists_the_keys_of_the_file_with_the_keys_of_each_map_below_it_and_goes_no_deeper():
@@ -26,7 +26,7 @@ def test_every_key_of_the_table_is_reached_from_the_overview_through_the_keys_ea
         key = pending.pop()
         reached.add(plain(key.address))
         pending += held_by(key)
-    assert reached == {plain(key.address) for key in KEYS}
+    assert reached == {plain(key.address) for key in (*KEYS, *SLOTS)}
 
 
 def test_a_key_is_found_by_the_address_a_person_types_with_or_without_the_placeholders():

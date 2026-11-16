@@ -109,3 +109,37 @@ def test_a_profile_that_cannot_be_chosen_is_refused_with_exit_2(tmp_path):
 def test_a_path_that_holds_no_file_is_a_problem_of_the_profile():
     result = runner.invoke(app, ["profile", "check", "nowhere.yaml"])
     assert result.exit_code == 1 and "cannot read the file" in result.output
+
+
+SERVICE = "class Publishing:\n    def publish(self, doc):\n        if not doc.title:\n            raise ValueError(doc)\n"
+ASKING = "class Publishing:\n    def publish(self, doc):\n        doc.publish()\n"
+
+
+def rule(**changes) -> dict:
+    return {"ask": "Does this method test the document's fields to decide whether it may change?",
+            "answer": "yes-no", "yes": "it tests the fields itself", "no": "it asks the document", "reads": "function",
+            "keep": ["public"], "message": "{name} may decide a rule of the document ({value})",
+            "fix": "read it against the litmus of its part",
+            "examples": {"flagged": {"modules/documents/a.py": SERVICE, "modules/documents/b.py": SERVICE},
+                         "clean": {"modules/documents/a.py": ASKING, "modules/documents/b.py": ASKING}}} | changes
+
+
+def test_an_eval_of_the_profile_own_is_valid_and_one_written_wrong_fails_at_its_address(tmp_path):
+    edit(tmp_path, lambda d: d.update(evals={"rule-of-state": rule()}))
+    assert runner.invoke(app, ["profile", "check", COPY]).exit_code == 0
+    edit(tmp_path, lambda d: d.update(evals={"rule-of-state": rule(answer={"choice": {"a": "x", "b": "y"},
+                                                                           "flagged": ["a"]})}))
+    result = runner.invoke(app, ["profile", "check", COPY])
+    assert result.exit_code == 1
+    assert ("evals.rule-of-state.answer.choice: two options are a yes or no: write answer: yes-no, with yes: and no:"
+            in result.output)
+
+
+def test_an_example_in_which_an_eval_reads_nothing_fails_at_its_address(tmp_path):
+    examples = {"flagged": {"modules/documents/a.py": SERVICE, "modules/documents/b.py": "VALUE = 1\n"},
+                "clean": {"modules/documents/a.py": ASKING, "modules/documents/b.py": ASKING}}
+    edit(tmp_path, lambda d: d.update(evals={"rule-of-state": rule(examples=examples)}))
+    result = runner.invoke(app, ["profile", "check", COPY])
+    assert result.exit_code == 1
+    assert ("evals.rule-of-state.examples.flagged.modules/documents/b.py: holds no function the eval reads (in its "
+            "scope, passing keep): give it one") in result.output

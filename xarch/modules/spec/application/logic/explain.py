@@ -8,8 +8,8 @@ from difflib import get_close_matches
 
 from xarch.kernel.logic.capabilities import shortfalls
 from xarch.modules.spec.application.logic.key_lookup import keys_of, plain
-from xarch.modules.spec.application.logic.key_table import KEYS
-from xarch.modules.spec.domain.profile_keys import PART, PROFILE, TIER, Key
+from xarch.modules.spec.application.logic.key_table import KEYS, SLOTS
+from xarch.modules.spec.domain.profile_keys import HELD, PART, PROFILE, TIER, Key
 from xarch.modules.spec.domain.values import Language
 from xarch.profile_values.capabilities import Shortfall, Supply
 
@@ -91,11 +91,15 @@ def cleaned(address: str) -> str:
 
 def key_at(address: str) -> Key | None:
     typed = cleaned(address)
-    return next((key for key in KEYS if plain(key.address) == typed), None)
+    return next((key for key in (*KEYS, *SLOTS) if plain(key.address) == typed), None)
 
 
 def held_by(key: Key) -> tuple[Key, ...]:
-    return keys_of(key.opens) if key.opens else ()
+    """The keys of the scope a key opens, then the slots of each entry of a map of ids it holds (see HELD)."""
+    if not key.opens:
+        return ()
+    return keys_of(key.opens) + tuple(slot for scope, holder in HELD.items() if holder == key.opens
+                                      for slot in keys_of(scope))
 
 
 def example_of(key: Key, example: str, names: tuple[str, ...]) -> str:
@@ -106,14 +110,14 @@ def example_of(key: Key, example: str, names: tuple[str, ...]) -> str:
 def nearest(typed: str) -> tuple[str, ...]:
     """The addresses closest to one that does not exist: those that read like it, else the keys of the deepest
     existing key it starts with, else the keys of the file."""
-    known = [plain(key.address) for key in KEYS]
+    known = [plain(key.address) for key in (*KEYS, *SLOTS)]
     close = get_close_matches(typed, known, n=NEAREST, cutoff=0.6)
     if close:
         return tuple(close)
     steps = typed.split(".")
     for size in range(len(steps) - 1, 0, -1):
         parent = ".".join(steps[:size])
-        held = [plain(k.address) for k in KEYS if plain(k.address).rpartition(".")[0] == parent]
+        held = [plain(k.address) for k in (*KEYS, *SLOTS) if plain(k.address).rpartition(".")[0] == parent]
         if held:
             return tuple(held[:NEAREST + 2])
     return tuple(key.name for key in keys_of(PROFILE))[:NEAREST + 2]

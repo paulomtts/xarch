@@ -90,10 +90,10 @@ def _check(body: Any, where: str, declared: set[str], tiers: set[str], language:
     if len(quantified) != 1:
         problems.append(f"{where}: {'names no quantifier' if not quantified else 'names ' + ' and '.join(quantified)}: "
                         f"write one of {', '.join(QUANTIFIER_SLOTS)}")
-    within = _scope(body.get("in", {}), f"{where}.in", declared, tiers, problems)
+    within = scope(body.get("in", {}), f"{where}.in", declared, tiers, problems)
     read = _names(body.get("read"), f"{where}.read", problems)
-    keep = _filters(body.get("keep", []), f"{where}.keep", problems)
-    exempt = _filters(body.get("except", []), f"{where}.except", problems)
+    keep = filters(body.get("keep", []), f"{where}.keep", problems)
+    exempt = filters(body.get("except", []), f"{where}.except", problems)
     mode = _text(body.get("mode", "fail"), f"{where}.mode", problems)
     own = Saying(_sentence(body.get("message"), f"{where}.message", problems),
                  _sentence(body.get("fix"), f"{where}.fix", problems), (),
@@ -141,7 +141,7 @@ def _names(value: Any, where: str, problems: list[str], empty: bool = False) -> 
     return tuple(items)
 
 
-def _filters(value: Any, where: str, problems: list[str]) -> tuple[Condition, ...]:
+def filters(value: Any, where: str, problems: list[str]) -> tuple[Condition, ...]:
     """Each filter, written `[not ]<name>[ <value>]` or {<[not ]name>: <value>}."""
     items = value if isinstance(value, list) else [value]
     found: list[str] = []
@@ -159,7 +159,7 @@ def _filters(value: Any, where: str, problems: list[str]) -> tuple[Condition, ..
     return tuple(condition(text) for text in found)
 
 
-def _scope(value: Any, where: str, declared: set[str], tiers: set[str], problems: list[str]) -> Scope:
+def scope(value: Any, where: str, declared: set[str], tiers: set[str], problems: list[str]) -> Scope:
     if not isinstance(value, Mapping):
         problems.append(f"{where}: must be a map {{files, part, tier, where}}")
         return Scope()
@@ -183,7 +183,7 @@ def _scope(value: Any, where: str, declared: set[str], tiers: set[str], problems
         else:
             problems.append(f"{where}.tier: no tier named {tier!r}"
                             + (f": write one of {', '.join(sorted(tiers))}" if tiers else ": the profile has no tiers"))
-    return Scope(files, chosen, named, _filters(value.get("where", []), f"{where}.where", problems))
+    return Scope(files, chosen, named, filters(value.get("where", []), f"{where}.where", problems))
 
 
 def _targets(value: Any, where: str, problems: list[str]) -> tuple[WrittenTarget, ...]:
@@ -216,13 +216,13 @@ def _quantified(slot: str, value: Any, where: str, declared: set[str], tiers: se
     required = ("targets",) if slot == "must_reach" else ("from", "through")
     problems += [f"{where}: missing `{key}`" for key in required if key not in value]
     through = _names(value.get("through"), f"{where}.through", problems)
-    only = _filters(value.get("through_only", []), f"{where}.through_only", problems)
+    only = filters(value.get("through_only", []), f"{where}.through_only", problems)
     if slot == "must_reach":
         return Quantified(slot, _targets(value.get("targets", []), f"{where}.targets", problems), through, only)
     elsewhere = value.get("by_another_file", False)
     if not isinstance(elsewhere, bool):
         problems.append(f"{where}.by_another_file: must be true or false")
-    return Quantified(slot, (), through, only, _scope(value.get("from", {}), f"{where}.from", declared, tiers, problems),
+    return Quantified(slot, (), through, only, scope(value.get("from", {}), f"{where}.from", declared, tiers, problems),
                       _names(value.get("then_through"), f"{where}.then_through", problems), elsewhere is True)
 
 
@@ -240,7 +240,7 @@ def _cases(value: Any, where: str, problems: list[str]) -> tuple[Saying, ...]:
         problems += [f"{at}: missing `{key}`" for key in ("when", "message", "fix") if key not in case]
         found.append(Saying(_sentence(case.get("message"), f"{at}.message", problems),
                             _sentence(case.get("fix"), f"{at}.fix", problems),
-                            _filters(case.get("when", []), f"{at}.when", problems),
+                            filters(case.get("when", []), f"{at}.when", problems),
                             _names(case.get("once_per", []), f"{at}.once_per", problems, empty=True)))
     return tuple(found)
 

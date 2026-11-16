@@ -76,6 +76,14 @@ def read(rule: Rule, facts: Facts, profile: Profile) -> int:
     return count
 
 
+def kept(rule: Rule, facts: Facts, profile: Profile) -> list[tuple[Read, Fact]]:
+    """Each fact of the rule's kinds in the files of its scope that passes what it keeps, with its file, in the order
+    of the files and then of the facts."""
+    keep = _questions(rule.keep)
+    return [(file, fact) for file in facts.files if in_scope(rule.scope, file, facts, profile)
+            for kind in rule.facts for fact in file.facts.get(kind, ()) if _all(keep, Found(rule, file, fact), facts, profile)]
+
+
 def _questions(conditions) -> tuple[Question, ...]:
     return tuple(question(condition) for condition in conditions)
 

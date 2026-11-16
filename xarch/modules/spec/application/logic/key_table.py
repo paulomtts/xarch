@@ -11,6 +11,7 @@ from xarch.modules.spec.domain.profile_keys import (
     CHOICE_PRESETS,
     DEAD_CODE,
     DOCS,
+    EVAL,
     EVALS,
     FAKES,
     FILE,
@@ -228,3 +229,8 @@ NEEDS: dict[str, tuple[str, ...]] = {
 
 KEYS: tuple[Key, ...] = tuple(replace(key, needs=NEEDS.get(key.address, ())) for key in _KEYS)
 """Every key of every scope, in the order a file writes them."""
+
+SLOTS: tuple[Key, ...] = tuple(
+    Key(EVAL, slot, slot in ("ask", "answer", "reads", "message", "fix", "examples"), False, read_by=READ_BY_REVIEW)
+    for slot in ("ask", "answer", "yes", "no", "reads", "in", "keep", "line", "message", "fix", "examples"))
+"""The slots of an eval of the profile's own, under an id of its own (see HELD), in the order a file writes them."""

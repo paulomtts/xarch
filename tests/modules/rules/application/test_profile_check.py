@@ -24,7 +24,7 @@ from xarch.modules.rules.contract import (
     Reviewed,
 )
 from xarch.modules.rules.domain.errors import NoProfile, ProfileUnusable, Unloaded
-from xarch.modules.rules.domain.values import Class, SourceFile
+from xarch.modules.rules.domain.values import Asked, Class, SourceFile
 from xarch.profile_values.checks import APP, Condition, Quantified, Saying, Scope, WrittenCheck, WrittenTarget
 
 PARSED = {"manager": SourceFile("", (), (), classes=(Class(1, "Manager"),)), "nothing": SourceFile("", (), ())}
@@ -90,3 +90,28 @@ def test_check_profile(given, when, then):
     profiles = FakeProfiles({"mine": profile(written=checks)}, reviewed={when.target: reviewed})
     tree = FakeSourceTree(Path("/src/app"), {}, parsed=PARSED)
     assert controller(tree, profiles).check_profile(when) == then
+
+
+def asked(flagged: str, clean: str, keep: tuple[Condition, ...] = ()) -> dict[str, Asked]:
+    return {"rule": Asked("class", Scope(APP, "domain"), keep, ((DOMAIN, flagged), (SERVICES, flagged)),
+                          ((DOMAIN, clean),))}
+
+
+@pytest.mark.parametrize("evals, problems", [
+    pytest.param(asked("manager", "manager"), ("evals.rule.examples.flagged.modules/docs/application/x.py: holds no "
+                                               "class the eval reads (in its scope, passing keep): give it one",),
+                 id="an example file in which the eval reads nothing is refused at its address"),
+    pytest.param(asked("manager", "nothing"), (
+        "evals.rule.examples.flagged.modules/docs/application/x.py: holds no class the eval reads (in its scope, "
+        "passing keep): give it one",
+        "evals.rule.examples.clean.modules/docs/domain/x.py: holds no class the eval reads (in its scope, passing "
+        "keep): give it one"), id="a clean example must hold something the eval reads too"),
+    pytest.param(asked("manager", "manager", (Condition("publc"),)),
+                 ("evals.rule.keep: no filter is named 'publc': did you mean public or placed?",),
+                 id="an eval whose filter is no word of the vocabulary is refused at its address, as a check is"),
+])
+def test_the_evals_a_profile_writes_itself_are_held_to_their_examples_statically(evals, problems):
+    profiles = FakeProfiles({"mine": profile(asked=evals)}, reviewed={"mine": MINE})
+    tree = FakeSourceTree(Path("/src/app"), {}, parsed=PARSED)
+    assert controller(tree, profiles).check_profile(CheckProfile(APP_FOLDER, "mine")) == ProfileHeld(
+        MINE, ChecksHeld(problems, 0))

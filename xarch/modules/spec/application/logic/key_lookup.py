@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import re
 
-from xarch.modules.spec.application.logic.key_table import KEYS
+from xarch.modules.spec.application.logic.key_table import KEYS, SLOTS
 from xarch.modules.spec.domain.profile_keys import Key
 
 _PLACEHOLDER = re.compile(r"\.?<[^>]*>|\[\]")
@@ -16,7 +16,8 @@ def plain(address: str) -> str:
 
 
 def keys_of(scope: str) -> tuple[Key, ...]:
-    return tuple(key for key in KEYS if key.scope == scope)
+    """The keys of a scope, or the slots of an entry of a map of ids (see HELD)."""
+    return tuple(key for key in (*KEYS, *SLOTS) if key.scope == scope)
 
 
 def names_of(scope: str) -> set[str]:

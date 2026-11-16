@@ -3,6 +3,7 @@ from __future__ import annotations
 from xarch.kernel.errors import DomainError
 from xarch.kernel.source import Import, Unparsable
 from xarch.modules.rules.application.services.app_check import AppCheckService
+from xarch.modules.rules.application.services.asking import AskingService
 from xarch.modules.rules.application.services.examples import ExamplesService
 from xarch.modules.rules.application.services.explaining import ExplainingService
 from xarch.modules.rules.application.services.locate import LocateService
@@ -16,6 +17,8 @@ from xarch.modules.rules.contract import (
     ChecksCannotRun,
     ExplainRule,
     ExplainWords,
+    KeepFacts,
+    KeptResult,
     Locate,
     LocateResult,
     NoProfileChosen,
@@ -35,9 +38,9 @@ from xarch.modules.rules.domain.errors import ChecksRefused, NoProfile, OutsideP
 
 class RulesController:
     def __init__(self, locator: LocateService, app: AppCheckService, explaining: ExplainingService,
-                 examples: ExamplesService, sources: SourcesService):
+                 examples: ExamplesService, sources: SourcesService, asking: AskingService):
         self._locator, self._app, self._explaining, self._examples = locator, app, explaining, examples
-        self._sources = sources
+        self._sources, self._asking = sources, asking
 
     def check_profile(self, cmd: CheckProfile) -> ProfileCheckResult:
         """Validates a profile without an app: every problem at once, what spec's check of it finds and what its own
@@ -101,6 +104,17 @@ class RulesController:
             return self._sources.sources(cmd)
         except OutsideProject as e:
             return Outside(e.reason)
+        except ChecksRefused as e:
+            return ChecksCannotRun(e.problems)
+        except DomainError as e:
+            return CheckRefused(e.reason)
+
+
+    def kept(self, cmd: KeepFacts) -> KeptResult:
+        """What an eval of the profile's own reads in files given as text; an eval the profile does not write, or one
+        that cannot be made, is refused with every problem, and so is a profile that cannot be used."""
+        try:
+            return self._asking.kept(cmd)
         except ChecksRefused as e:
             return ChecksCannotRun(e.problems)
         except DomainError as e:

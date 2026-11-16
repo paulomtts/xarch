@@ -12,7 +12,7 @@ from tests.modules.spec.profiles_v2 import PRESETS, parsed, problems
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic.explain import said
 from xarch.modules.spec.application.logic.key_lookup import keys_of, plain
-from xarch.modules.spec.application.logic.key_table import KEYS
+from xarch.modules.spec.application.logic.key_table import KEYS, SLOTS
 from xarch.modules.spec.application.logic.profile_listing import referenced
 from xarch.modules.spec.domain.guards import ORDER
 from xarch.modules.spec.domain.profile_keys import (
@@ -121,6 +121,22 @@ def test_the_example_of_a_key_uses_the_key_and_loads_in_the_smallest_profile_it_
     document = document_of(key)
     assert any(key.name in holder for holder in holders(key, document)), CATALOGUE.texts[key.address].example
     load(document)
+
+
+@pytest.mark.parametrize("slot", SLOTS, ids=lambda slot: plain(slot.address))
+def test_the_example_of_a_slot_of_an_eval_uses_the_slot_and_loads_in_the_smallest_profile(slot):
+    document = merged(BASE, yaml.safe_load(filled(CATALOGUE.slots[slot.address].example)))
+    written = {"yes": True, "no": False}.get(slot.name, slot.name)
+    assert any(written in held for held in containers(document, slot.where.split("."))), slot.address
+    assert load(document).evals
+
+
+@pytest.mark.parametrize("slot", [slot for slot in SLOTS if slot.required], ids=lambda slot: plain(slot.address))
+def test_a_slot_an_eval_needs_is_missing_in_the_loader_when_left_out(slot):
+    document = merged(BASE, yaml.safe_load(filled(CATALOGUE.slots[slot.address].example)))
+    del next(containers(document, slot.where.split(".")))[slot.name]
+    assert any(f"missing `{slot.name}`" in problem for problem in problems(document, bundled=BUNDLED,
+                                                                          folders=every_folder(document)))
 
 
 @pytest.mark.parametrize("key", [key for key in KEYS if key.required], ids=lambda key: plain(key.address))

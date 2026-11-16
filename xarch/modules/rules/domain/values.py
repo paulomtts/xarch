@@ -11,7 +11,7 @@ from xarch.kernel.source import Import, Unparsable
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.domain.published import At, Drift, KnownName, Loosened, Piece, Translation, Weak
 from xarch.profile_values.capabilities import Shortfall
-from xarch.profile_values.checks import WrittenCheck
+from xarch.profile_values.checks import Condition, Scope, WrittenCheck
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.language import CheckedLanguage
 from xarch.profile_values.placement import Repeat, Target
@@ -30,6 +30,18 @@ class PartInfo:
     litmus: str = ""
     shown: str = ""
     untested: str = ""
+
+
+@dataclass(frozen=True)
+class Asked:
+    """An eval of the profile's own, as rules reads it: the kind of fact one question is asked of, the files it is
+    asked in, the filters a fact must pass, in the words of the vocabulary, and its examples, the files of a small
+    project it must read as flagged and of one it must read as clean, each by its path below the app with its code."""
+    reads: str
+    within: Scope
+    keep: tuple[Condition, ...] = ()
+    flagged: tuple[tuple[str, str], ...] = ()
+    clean: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -64,7 +76,8 @@ class Profile:
     profile writes itself, by id, as spec read them; checks are those checks made into rules, in the profile's order
     (none until they are made, see own_checks). default_tests is the folder the tests go in, from the folder holding
     the app, when no tests folder is given or there: not a value a profile sets, but the convention spec publishes, the
-    same for every profile; it is also the first step of the path of an example's test file.
+    same for every profile; it is also the first step of the path of an example's test file. asked are the evals the
+    profile writes itself, by id, as rules reads them (see Asked), which no check runs.
     """
     parts: dict[str, tuple[str, ...]]
     rules: dict[str, tuple[Target, ...]]
@@ -108,6 +121,7 @@ class Profile:
     written: dict[str, WrittenCheck] = field(default_factory=dict)
     checks: tuple[OwnCheck, ...] = ()
     default_tests: str = ""
+    asked: dict[str, Asked] = field(default_factory=dict)
 
     def words(self) -> dict[str, str]:
         """The word of the repeating folder each part lies in; a part outside every one has none."""

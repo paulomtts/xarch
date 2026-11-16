@@ -8,12 +8,17 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from xarch.modules.spec.domain.published import (
+    CHOICE,
     DEFAULT_APP,
     DEFAULT_TESTS,
     LINE,
     LITMUS,
+    READS,
+    SCORE,
+    YES_NO,
     DocFile,
     Entry,
+    Eval,
     Loosened,
     Origin,
     ProjectFile,
@@ -26,7 +31,8 @@ from xarch.profile_values.placement import Repeat, Target
 from xarch.profile_values.testing import Fakes, Framework, ScenarioCoverage, StandIns
 from xarch.profile_values.tiers import CheckedTier
 
-__all__ = ["DEFAULT_APP", "DEFAULT_TESTS", "LINE", "Entry", "Repeating", "Skeleton", "DocFile", "Docs", "ProjectFile", "ProjectFiles",
+__all__ = ["CHOICE", "READS", "SCORE", "YES_NO", "Eval",
+           "DEFAULT_APP", "DEFAULT_TESTS", "LINE", "Entry", "Repeating", "Skeleton", "DocFile", "Docs", "ProjectFile", "ProjectFiles",
            "FilesResult", "SkeletonResult", "ProfileResult", "DocsResult", "OriginResult", "PartView",
            "GuardsView", "ProfileView", "ChooseApp", "AppChosen", "ChooseAppResult",
            "SelectProfile", "ProfileSelected", "ProfileRefused",
@@ -144,7 +150,8 @@ class ProfileView:
     the vocabulary in them are the rules module's to read); and what review may send, which no check reads: the path
     patterns below the app of the files it never sends (`review.never`) and the text patterns it hides
     (`review.mask`), each as written; and the line of each part the profile writes one for under
-    `evals.placement.lines`, by part (any other part's is LINE)."""
+    `evals.placement.lines`, by part (any other part's is LINE); and the evals of its own, by id, which review asks
+    and rules holds to their examples."""
     parts: tuple[PartView, ...]
     folders: tuple[tuple[str, ...], ...] = ()
     tiers: tuple[CheckedTier, ...] = ()
@@ -162,6 +169,7 @@ class ProfileView:
     never: tuple[str, ...] = ()
     mask: tuple[str, ...] = ()
     lines: dict[str, float] = field(default_factory=dict)
+    evals: dict[str, Eval] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

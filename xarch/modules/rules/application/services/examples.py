@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import replace
 from pathlib import Path
 
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.application.logic.engine import run
-from xarch.modules.rules.application.logic.facts import facts_of
-from xarch.modules.rules.application.logic.own_checks import held_problems, made, placed
+from xarch.modules.rules.application.logic import asked as evals
+from xarch.modules.rules.application.logic.asked import project
+from xarch.modules.rules.application.logic.engine import kept, run
+from xarch.modules.rules.application.logic.own_checks import held_problems, made
 from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.application.ports.source_tree import SourceTree
 from xarch.modules.rules.contract import ChecksHeld, ProfileHeld
@@ -19,7 +19,8 @@ class ExamplesService:
     """A profile checked without an app: what spec's check of it finds, and the checks it writes itself held to their
     examples: each must find something in the code it is flagged by, and nothing in its clean code, each a small
     project of files read as the app's (or, below tests/, as the tests'), the app being the package the app folder
-    names. A check that cannot be made has its problems instead, and the others are held all the same."""
+    names. A check that cannot be made has its problems instead, and the others are held all the same. The evals it
+    writes itself are held to their examples statically: each must read something in every example file."""
 
     def __init__(self, tree: SourceTree, profiles: Profiles):
         self._tree, self._profiles = tree, profiles
@@ -43,13 +44,16 @@ class ExamplesService:
             for own in checks.checks:
                 found += held_problems(own.rule.id, self._found(own, own.flagged, profile, app),
                                        self._found(own, own.clean, profile, app))
+        for name, asked in profile.asked.items():
+            rule, problems = evals.made(name, asked)
+            found += problems
+            for side, files in (("flagged", asked.flagged), ("clean", asked.clean)) if rule is not None else ():
+                facts = project([(path, self._tree.parsed(code)) for path, code in files], profile, app, (rule,))
+                found += evals.unread(name, side, files, kept(rule, facts, profile), asked.reads)
         return ChecksHeld(tuple(found), len(profile.written))
 
     def _found(self, own: OwnCheck, files: tuple[tuple[str, str], ...], profile: Profile,
                app: str) -> list[Violation | Weak]:
-        tests = profile.default_tests
-        read = [(placed(path, app, tests), self._tree.parsed(code)) for path, code in files]
-        app_files = [replace(parsed, name="/".join(shown), path=steps) for (shown, steps, test), parsed in read if not test]
-        test_files = [replace(parsed, name="/".join(shown), path=steps) for (shown, steps, test), parsed in read if test]
         rules = (own.rule,)
-        return run(rules, facts_of(app_files, test_files, profile, app, tests, rules), profile)
+        facts = project([(path, self._tree.parsed(code)) for path, code in files], profile, app, rules)
+        return run(rules, facts, profile)

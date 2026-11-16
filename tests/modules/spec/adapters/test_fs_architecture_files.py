@@ -65,7 +65,7 @@ class BrokenPackage(PackageData):
 
 def test_the_data_files_of_the_format_come_from_the_package_data():
     document = files().format_keys()
-    assert list(document) == ["fragments", "smallest", "symbols", "keys"]
+    assert list(document) == ["fragments", "smallest", "symbols", "keys", "slots"]
     assert document["keys"]["xarch"] == {"meaning": "the format version", "accepts": "the number 2", "example": "xarch: 2"}
     assert files().file_types()[".sql"] == {"comment": "--"}
 

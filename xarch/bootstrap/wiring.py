@@ -24,6 +24,7 @@ from xarch.modules.rules.adapters.spec_check_format import SpecCheckFormat
 from xarch.modules.rules.adapters.spec_profile import SpecProfiles
 from xarch.modules.rules.application.controller import ReaderController, RulesController
 from xarch.modules.rules.application.services.app_check import AppCheckService
+from xarch.modules.rules.application.services.asking import AskingService
 from xarch.modules.rules.application.services.examples import ExamplesService
 from xarch.modules.rules.application.services.explaining import ExplainingService
 from xarch.modules.rules.application.services.locate import LocateService
@@ -115,7 +116,8 @@ def _build_rules(tree: FsSourceTree, spec: SpecController, layout: LayoutControl
     source = SourceCheckService(tree, profiles)
     explaining = ExplainingService(profiles, SpecCheckFormat(spec))
     return RulesController(LocateService(tree, profiles), AppCheckService(source, LayoutStructure(layout), tree),
-                           explaining, ExamplesService(tree, profiles), SourcesService(tree, profiles))
+                           explaining, ExamplesService(tree, profiles), SourcesService(tree, profiles),
+                           AskingService(tree, profiles))
 
 
 def _build_layout(fs: FileSystem, spec: SpecController) -> LayoutController:
