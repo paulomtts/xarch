@@ -106,11 +106,13 @@ def test_a_test_speaks_from_its_instance():
                  id="a test below the first repeating folder keeps its own"),
     pytest.param("plugins/seo/hooks/builders.py", "plugin", "seo", ("plugins", "seo"), ("hooks",),
                  id="a helper in the folder of a part of the second repeating folder"),
-    pytest.param("plugins/seo/other/builders.py", None, "seo", ("plugins", "seo"), (),
-                 id="a helper of an instance of the second repeating folder is its own folder's"),
 ])
 def test_a_test_below_any_repeating_folder_takes_its_instance_and_its_own_folder(path, tier, instance, own, parts):
     where = tier_of.tested(TWO, steps(path))
-    assert (where.tier.name if where.tier else None, where.instance, where.own, where.parts) == (
-        tier, instance, own, parts)
+    assert (where.tier.name, where.instance, where.own, where.parts) == (tier, instance, own, parts)
+
+
+def test_a_helper_of_an_instance_of_the_second_repeating_folder_is_its_own_folder_s():
+    where = tier_of.tested(TWO, steps("plugins/seo/other/builders.py"))
+    assert (where.tier, where.instance, where.own, where.parts) == (None, "seo", ("plugins", "seo"), ())
 

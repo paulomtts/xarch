@@ -22,14 +22,14 @@ def test_is_instance_name(name, instance):
     assert is_instance_name(name, PYTHON_NAMING) == instance
 
 
-@pytest.mark.parametrize("each_root, instances, required", [
-    pytest.param(None, ["docs"], [Requirement("app", ("kernel",), True, "kernel/"),
+@pytest.mark.parametrize("repeated, required", [
+    pytest.param([], [Requirement("app", ("kernel",), True, "kernel/"),
                                   Requirement("app", ("modules",), True, "modules/")],
                  id="without an each folder only the top level is required"),
-    pytest.param(("modules",), [], [Requirement("app", ("kernel",), True, "kernel/"),
+    pytest.param([Repeated(("modules",), PARTS, [])], [Requirement("app", ("kernel",), True, "kernel/"),
                                     Requirement("app", ("modules",), True, "modules/")],
                  id="with no instance only the top level is required"),
-    pytest.param(("modules",), ["users", "_cache", "docs"], [
+    pytest.param([Repeated(("modules",), PARTS, ["users", "_cache", "docs"])], [
         Requirement("app", ("kernel",), True, "kernel/"), Requirement("app", ("modules",), True, "modules/"),
         Requirement("app/modules/docs", ("modules", "docs", "domain"), True, "domain/"),
         Requirement("app/modules/docs", ("modules", "docs", "application", "controller.py"), False,
@@ -38,15 +38,14 @@ def test_is_instance_name(name, instance):
         Requirement("app/modules/users", ("modules", "users", "application", "controller.py"), False,
                     "application/controller.py")],
                  id="every part of every instance is required, instances by name, a private folder left out"),
-    pytest.param(("src", "features"), ["docs"], [
+    pytest.param([Repeated(("src", "features"), PARTS, ["docs"])], [
         Requirement("app", ("kernel",), True, "kernel/"), Requirement("app", ("modules",), True, "modules/"),
         Requirement("app/src/features/docs", ("src", "features", "docs", "domain"), True, "domain/"),
         Requirement("app/src/features/docs", ("src", "features", "docs", "application", "controller.py"), False,
                     "application/controller.py")],
                  id="an each folder below the top level is owned by its full path"),
 ])
-def test_requirements(each_root, instances, required):
-    repeated = [] if each_root is None else [Repeated(each_root, PARTS, instances)]
+def test_requirements(repeated, required):
     assert requirements("app", [("kernel",), ("modules",)], repeated, (), PYTHON_NAMING) == required
 
 

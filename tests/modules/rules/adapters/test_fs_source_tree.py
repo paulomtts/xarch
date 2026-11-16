@@ -195,13 +195,16 @@ def test_the_parameter_names_are_read_from_a_string_or_a_sequence_of_strings(tmp
     assert parsed(tmp_path, text).functions[0].tables[0].columns == columns
 
 
-@pytest.mark.parametrize("rows, found", [
-    ("CASES", 1), ("(pytest.param(1, id='a'),)", 1), ("load()", None), ("CASES + MORE", None), ("[*MORE]", None),
-    ("MISSING", None), ("[x for x in y]", None)])
-def test_rows_are_read_from_a_literal_or_the_name_of_a_module_level_one_else_they_are_unreadable(tmp_path, rows, found):
+@pytest.mark.parametrize("rows", ["CASES", "(pytest.param(1, id='a'),)"])
+def test_rows_are_read_from_a_literal_or_the_name_of_a_module_level_one(tmp_path, rows):
     text = f"import pytest\nCASES = [pytest.param(1, id='a')]\n\n@pytest.mark.parametrize('a', {rows})\ndef test_a(): ...\n"
-    table = parsed(tmp_path, text).functions[0].tables[0]
-    assert (None if table.rows is None else len(table.rows)) == found
+    assert len(parsed(tmp_path, text).functions[0].tables[0].rows) == 1
+
+
+@pytest.mark.parametrize("rows", ["load()", "CASES + MORE", "[*MORE]", "MISSING", "[x for x in y]"])
+def test_rows_that_are_no_literal_and_no_module_level_one_are_unreadable(tmp_path, rows):
+    text = f"import pytest\nCASES = [pytest.param(1, id='a')]\n\n@pytest.mark.parametrize('a', {rows})\ndef test_a(): ...\n"
+    assert parsed(tmp_path, text).functions[0].tables[0].rows is None
 
 
 def test_a_name_assigned_twice_is_not_a_list_literal(tmp_path):

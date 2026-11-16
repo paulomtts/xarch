@@ -62,21 +62,21 @@ def where(*steps, exists=False, closed=False, profile=PROFILE):
                     found("app", *steps, exists=exists), APP, TESTS)
 
 
-@pytest.mark.parametrize("given, existing, expected", [
-    pytest.param("app/kernel/x.py", set(), ("app", ("kernel", "x.py"), False), id="given from the project root"),
-    pytest.param("kernel/x.py", set(), ("app", ("kernel", "x.py"), False), id="given from the app folder"),
-    pytest.param("/p/app/kernel/x.py", {"/p/app/kernel/x.py"}, ("app", ("kernel", "x.py"), True),
+@pytest.mark.parametrize("given, cwd, existing, expected", [
+    pytest.param("app/kernel/x.py", ROOT, set(), ("app", ("kernel", "x.py"), False), id="given from the project root"),
+    pytest.param("kernel/x.py", ROOT, set(), ("app", ("kernel", "x.py"), False), id="given from the app folder"),
+    pytest.param("/p/app/kernel/x.py", ROOT, {"/p/app/kernel/x.py"}, ("app", ("kernel", "x.py"), True),
                  id="given in full, and there"),
-    pytest.param("tests/modules/docs/domain/test_a.py", set(), ("tests", ("modules", "docs", "domain", "test_a.py"), False),
-                 id="a test file to be"),
-    pytest.param("README.md", {"/p/README.md"}, ("project", ("README.md",), True),
+    pytest.param("tests/modules/docs/domain/test_a.py", ROOT, set(),
+                 ("tests", ("modules", "docs", "domain", "test_a.py"), False), id="a test file to be"),
+    pytest.param("README.md", ROOT, {"/p/README.md"}, ("project", ("README.md",), True),
                  id="a file of the project that is neither app nor tests wins when it is there"),
-    pytest.param("src/app/kernel/x.py", {"/p/src/app/kernel/x.py"}, ("project", ("src", "app", "kernel", "x.py"), True),
-                 id="what exists beats what is guessed"),
-    pytest.param("../app/kernel/x.py", set(), ("app", ("kernel", "x.py"), False), id="dots are resolved first"),
+    pytest.param("src/app/kernel/x.py", ROOT, {"/p/src/app/kernel/x.py"},
+                 ("project", ("src", "app", "kernel", "x.py"), True), id="what exists beats what is guessed"),
+    pytest.param("../app/kernel/x.py", ROOT / "sub", set(), ("app", ("kernel", "x.py"), False),
+                 id="dots are resolved first"),
 ])
-def test_a_path_is_taken_from_the_working_folder_the_project_root_or_the_app_folder(given, existing, expected):
-    cwd = ROOT / "sub" if given.startswith("..") else ROOT
+def test_a_path_is_taken_from_the_working_folder_the_project_root_or_the_app_folder(given, cwd, existing, expected):
     resolved = resolve(Path(given), cwd, APP, TESTS, {Path(p) for p in existing})
     assert resolved is not None
     assert (resolved.within, resolved.steps, resolved.exists) == expected

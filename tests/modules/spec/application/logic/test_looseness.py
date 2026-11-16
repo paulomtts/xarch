@@ -9,16 +9,16 @@ from tests.modules.spec.profiles_v2 import layered, parsed
 from xarch.modules.spec.application.logic.looseness import closest, looser, sentence
 
 
-@pytest.mark.parametrize("target, shown", [
-    pytest.param("service", "service", id="a part in the repeating folder is shown by its bare name, which means its own instance"),
-    pytest.param("store@any/sql", "store@any/sql", id="a scope and a sub path are both shown"),
-    pytest.param("shared/text", "shared/text", id="a part outside the repeating folder has no scope"),
+@pytest.mark.parametrize("written, shown", [
+    pytest.param(["service"], "service", id="a part in the repeating folder is shown by its bare name, which means its own instance"),
+    pytest.param(["store@any/sql"], "store@any/sql", id="a scope and a sub path are both shown"),
+    pytest.param(["shared/text"], "shared/text", id="a part outside the repeating folder has no scope"),
     pytest.param("everything", "everything", id="everything is shown as the word"),
-    pytest.param("api@any", "api@any", id="another instance of the part itself is looser than its own, which is implied"),
+    pytest.param(["api@any"], "api@any", id="another instance of the part itself is looser than its own, which is implied"),
 ])
-def test_a_target_added_to_a_rule_is_shown_as_written(target, shown):
+def test_a_target_added_to_a_rule_is_shown_as_written(written, shown):
     custom = layered()
-    custom["parts"]["api"]["may_import"] = target if target == "everything" else [target]
+    custom["parts"]["api"]["may_import"] = written
     stricter = layered()
     stricter["parts"]["api"]["may_import"] = []
     assert looser(parsed(custom), parsed(stricter)) == [("may_import", "api", shown)]

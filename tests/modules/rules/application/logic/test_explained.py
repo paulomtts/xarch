@@ -32,12 +32,18 @@ def test_every_category_holds_its_table_of_the_vocabulary_and_says_what_it_holds
     pytest.param("filters.public", ("filters", "public"), id="a filter"),
     pytest.param("kinds.class", ("kinds", "class"), id="a kind"),
     pytest.param(" variables.verb. ", ("variables", "verb"), id="blanks and stray dots are left out"),
-    pytest.param("filters.publik", None, id="no word by that name"),
-    pytest.param("public", None, id="a name without its category"),
 ])
 def test_a_word_is_found_by_its_category_and_name(address, found):
-    at = word_at(address)
-    assert ((at[0], at[1].name) if at else None) == found
+    category, word = word_at(address)
+    assert (category, word.name) == found
+
+
+@pytest.mark.parametrize("address", [
+    pytest.param("filters.publik", id="no word by that name"),
+    pytest.param("public", id="a name without its category"),
+])
+def test_an_address_of_no_word_finds_none(address):
+    assert word_at(address) is None
 
 
 def test_a_category_is_found_alone():

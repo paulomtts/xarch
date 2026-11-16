@@ -124,8 +124,7 @@ def test_the_example_of_a_key_uses_the_key_and_loads_in_the_smallest_profile_it_
 @pytest.mark.parametrize("key", [key for key in KEYS if key.required], ids=lambda key: plain(key.address))
 def test_a_required_key_is_missing_in_the_loader_when_left_out(key):
     document = document_of(key)
-    for holder in holders(key, document):
-        holder.pop(key.name, None)
+    del holders(key, document)[0][key.name]
     assert any(f"missing `{key.name}`" in problem for problem in problems(document, bundled=BUNDLED,
                                                                          folders=every_folder(document)))
 

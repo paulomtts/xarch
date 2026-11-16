@@ -16,12 +16,15 @@ from xarch.profile_values.placement import Target
     pytest.param("kernel", Place("kernel"), id="a part's own package"),
     pytest.param("modules/docs", Place(None), id="a folder of the layout no part claims is the structure"),
     pytest.param("modules/docs/application", Place(None), id="a deeper one too"),
-    pytest.param("", Place(None), id="the app's own package is the structure"),
     pytest.param("modules/docs/helpers", None, id="a file in no part and no folder of the layout is ungoverned"),
     pytest.param("scripts/seed", None, id="as is a folder the layout does not hold"),
 ])
 def test_place(path, expected):
-    assert place(PROFILE, steps(path) if path else ()) == expected
+    assert place(PROFILE, steps(path)) == expected
+
+
+def test_the_app_s_own_package_is_the_structure():
+    assert place(PROFILE, ()) == Place(None)
 
 
 @pytest.mark.parametrize("where, expected", [
