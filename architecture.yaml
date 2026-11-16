@@ -108,7 +108,8 @@ parts:
       Is it a client or reader for a technology xarch uses (the filesystem, the package data, TOML, YAML, JSON, the
       interpreter running xarch) that knows none of any module's types? If yes, it goes here, named for the
       technology. If it translates a module's types for a port, it belongs in that module's `adapters/`. Which folder
-      a relative path is read from is its caller's to say: a path not given in full is refused.
+      a relative path is read from is its caller's to say: a method that makes a path whole or walks the folders above
+      it refuses a path not given in full.
     may_import: [kernel, kernel-logic]
     libraries: [yaml]
     tier: unit

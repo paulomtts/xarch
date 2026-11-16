@@ -6,9 +6,9 @@ explain, no key: {"ok", "format", "shape", "symbols", "smallest", "deeper"}, eac
 "enforced", "rules", "example", "choices", "keys", "needs", "language"}, each need {"fact", "meaning", "grade",
 "note"}: a fact of the source the key's check reads, and how the language named supplies it. explain, a profile:
 {"ok", "profile", "name", "tree", "imports"}.
-check: {"ok", "profile", "problems", "files", "compared_with"}, each problem {"check", "message"} (check: load, examples,
-or checks, for a check of the profile's own) and
-compared_with {"profile", "looser"} (null for a bundled profile or one that resembles none), each looser entry
+check: {"ok", "profile", "problems", "files", "checks", "compared_with"}, checks the number of checks the profile
+writes itself, each problem {"check", "message"} (check: load, examples, or checks, for a check of the profile's own)
+and compared_with {"profile", "looser"} (null for a bundled profile or one that resembles none), each looser entry
 {"key", "part", "what", "sentence"}.
 """
 from __future__ import annotations

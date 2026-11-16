@@ -101,7 +101,7 @@ The rest of what a check knows of the language is one adapter, the reader that t
 its tokens.
 
 The data file also says what its reader supplies, under `supplies`: each fact of the source a check reads (`import`,
-`class.fields`, `callback`, ...; `xarch/kernel/logic/capabilities.py` lists them), graded
+`class.fields`, `callback`, ...; `xarch/profile_values/capabilities.py` lists them), graded
 `exact` or `{partial: <what it misses>}`. Every key that configures a check needs the facts that check reads, which
 `xarch profile explain <key>` shows under `needs:` (a check of your own needs those of its kinds of fact and of the
 fields its words read, as `xarch profile explain kinds.<kind>` shows). A profile that sets a key whose facts its language does not

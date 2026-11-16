@@ -1,6 +1,6 @@
 """The checks a profile writes itself, under `checks`, read as the format writes them: a map from an id of the
 profile's own to a check, each a map of slots. Here the format is read and every name the profile declares is checked
-(an id, a part, a tier, a place); what the words of the vocabulary mean, and whether each applies where it is written,
+(an id, a part, a tier); what the words of the vocabulary mean, and whether each applies where it is written,
 is the rules module's, which reads what this gives back.
 
     <id>:                         lowercase words joined by `-`, no id of a check xarch has

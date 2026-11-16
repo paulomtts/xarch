@@ -63,8 +63,8 @@ def refuse_with(output: Format, message: str, document: str) -> typer.Exit:
 
 
 def in_full(path: Path) -> Path:
-    """A path given on the command line, read from the working folder when it is relative: the one place xarch reads
-    the folder it was started in, which every module is handed as a path in full."""
+    """The path, read from the folder xarch was started in when it is relative: the one place xarch reads that
+    folder, which every command reads once as `in_full(Path())` and hands every module as a path in full."""
     return Path.cwd() / path
 
 
