@@ -174,7 +174,7 @@ def test_a_function_of_a_part_that_holds_classes_is_listed_as_weak_with_its_fix_
     assert isinstance(result, ImportsChecked)
     assert [(w.rule, w.line, w.fix) for w in result.enforcement.weak if w.rule == "holds"] == [
         ("holds", 1, "make clean a method of the class whose rule it is, or move it to a part that holds functions: "
-                     "logic/")]
+                     "logic/, kernel-logic/")]
     assert [v.rule for v in result.violations] == []
 
 

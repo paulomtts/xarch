@@ -9,7 +9,7 @@ parts:
   domain:
     path: modules/<module>/domain
     role: "entities, values, errors: invariants only"
-    may_import: [kernel]
+    may_import: [kernel, kernel-logic]
     forbidden: pure
     holds: classes
     no_callbacks: true
@@ -18,16 +18,15 @@ parts:
   logic:
     path: modules/<module>/application/logic
     role: pure functions over the module's domain objects
-    may_import: [domain, kernel]
+    may_import: [domain, kernel, kernel-logic]
     forbidden: pure
     holds: functions
-    no_callbacks: true
     tier: unit
 
   ports:
     path: modules/<module>/application/ports
     role: Protocols for what the module needs from the outside
-    may_import: [domain, kernel]
+    may_import: [domain, kernel, kernel-logic]
     forbidden: pure
     holds: classes
     tier: integration
@@ -35,7 +34,7 @@ parts:
   services:
     path: modules/<module>/application/services
     role: "use-case steps: load, check, act"
-    may_import: [logic, domain, ports, contract, kernel]
+    may_import: [logic, domain, ports, contract, kernel, kernel-logic]
     types_only: [contract]
     holds: classes
     names: "*Service"
@@ -46,7 +45,7 @@ parts:
   controller:
     path: modules/<module>/application/controller.py
     role: maps failures to a Result
-    may_import: [services, logic, domain, ports, contract, kernel]
+    may_import: [services, logic, domain, ports, contract, kernel, kernel-logic]
     holds: classes
     names: "*Controller"
     forbidden: ambient
@@ -56,9 +55,10 @@ parts:
   adapters:
     path: modules/<module>/adapters
     role: implement the ports on the filesystem or another module's contract
-    may_import: [ports, domain, kernel, platform, contract@any]
+    may_import: [ports, domain, kernel, kernel-logic, platform, contract@any]
     must_import: [platform, contract@any]
     libraries: [ast, tokenize]
+    forbidden: ambient
     holds: classes
     built_by: [bootstrap]
     tier: unit
@@ -66,14 +66,14 @@ parts:
   platform:
     path: platform
     role: the filesystem, the package data, the TOML and YAML readers and the YAML writer
-    may_import: [kernel]
+    may_import: [kernel, kernel-logic]
     libraries: [yaml]
     tier: unit
 
   cli:
     path: cli
     role: the only place for commands and terminal output
-    may_import: [reports, controller@any, contract@any, kernel]
+    may_import: [reports, controller@any, contract@any, kernel, kernel-logic]
     libraries: [typer]
     tier: wired
     folders: [commands]
@@ -81,7 +81,7 @@ parts:
   reports:
     path: cli/reports
     role: formatting of Results into text and JSON
-    may_import: [contract@any, kernel]
+    may_import: [contract@any, kernel, kernel-logic]
     forbidden: pure
     holds: functions
     tier: unit
@@ -105,17 +105,26 @@ parts:
   contract:
     path: modules/<module>/contract
     role: "the module's published language: commands, Results"
-    may_import: ["domain/values:*Id", kernel]
+    may_import: ["domain/values:*Id", kernel, kernel-logic]
     forbidden: pure
     tier: integration
     package_only: true
 
+  kernel-logic:
+    path: kernel/logic
+    role: pure functions that modules share, including a rule two modules need
+    may_import: [kernel]
+    shared: 2
+    forbidden: pure
+    holds: functions
+    tier: unit
+
   kernel:
     path: kernel
-    role: pure primitives and the rules two modules share
+    role: pure primitives that modules share
+    shared: 2
     forbidden: pure
     tier: unit
-    folders: [logic]
 
 forbidden:
   pure: [datetime.datetime.now, datetime.datetime.utcnow, datetime.datetime.today, datetime.date.today, time.time,
@@ -180,7 +189,7 @@ guards:
   closed-tree: {}
   stand-ins: {}
   no-duplicates: {min_statements: 4}
-  no-twins: {min_fields: 2}
+  no-twins: {min_fields: 2, min_renamed: 3, min_subset: 3}
   dead-code: {untested: true}
   pass-through: {parts: [services, controller, adapters]}
   private-imports: {}

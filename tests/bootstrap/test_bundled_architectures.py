@@ -32,9 +32,12 @@ def test_the_entry_point_is_the_part_marked_entry_and_is_the_profiles_folder(pro
     assert architecture.entry is not None and architecture.entry.path == (profile,)
 
 
-def test_a_part_is_named_for_its_folder(profile):
-    for part in load_architecture(profile).parts.values():
-        assert part.name == part.path[-1].removesuffix(".py")
+def test_a_part_is_named_for_its_folder_or_for_its_parent_and_its_folder_when_another_part_has_that_name(profile):
+    parts = load_architecture(profile).parts.values()
+    folders = [part.path[-1].removesuffix(".py") for part in parts]
+    for part, folder in zip(parts, folders):
+        assert part.name == (folder if folders.count(folder) == 1 or part.name == folder
+                             else f"{part.path[-2]}-{folder}")
 
 
 def test_every_part_has_a_role_and_a_litmus_test(profile):

@@ -62,10 +62,14 @@ def comparable(architecture: Architecture) -> Architecture:
     what format 1 never had: each part's `must_import`, `holds`, `types_only`, `no_callbacks`, `names` and `built_by`,
     a tier's `must_import`, a name pattern on a target, the names that read the working directory in a `forbidden`
     list (and a list of nothing else), the names `reserved` holds and the parts' libraries that list them, and the
-    guards no-duplicates, no-twins, dead-code, pass-through and private-imports."""
+    guards no-duplicates, no-twins, dead-code, pass-through and private-imports; and `kernel/logic/`, a folder of
+    `kernel/` in format 1 and a part of its own now, which every part that may import `kernel/` may import too, as
+    the part it was a folder of (see kernel_logic)."""
+    architecture = kernel_logic(architecture)
     tiers = tuple(replace(tier, subject=tuple(sorted(tier.subject, key=lambda s: s.part)), example=None, helpers=(),
                           must_import=()) for tier in architecture.tiers)
-    parts = {name: replace(part, must_import=(), holds="", types_only=(), no_callbacks=False, names=(), built_by=())
+    parts = {name: replace(part, must_import=(), holds="", types_only=(), no_callbacks=False, names=(), built_by=(),
+                           shared=None)
              for name, part in architecture.parts.items()}
     guards = tuple(g for g in architecture.guards
                    if not isinstance(g, (NoDuplicates, NoTwins, DeadCode, PassThrough, PrivateImports)))
@@ -77,6 +81,30 @@ def comparable(architecture: Architecture) -> Architecture:
         for name, packages in architecture.libraries.items()}
     return replace(architecture, tiers=tiers, examples={}, files=(), placement=(), based_on="", parts=parts,
                    guards=guards, rules=rules, forbidden=forbidden, reserved={}, libraries=libraries)
+
+
+LOGIC = "kernel-logic"
+
+
+def kernel_logic(architecture: Architecture) -> Architecture:
+    """The architecture with the part kernel-logic taken back into kernel: no such part, no target naming it, its
+    forbidden list, its libraries and its tier's subject gone, its folder a folder of kernel's again, and neither its
+    note as a folder nor kernel's role compared, which says kernel no longer holds the shared rules."""
+    if LOGIC not in architecture.parts:
+        notes = {path: note for path, note in architecture.notes.items() if path != ("kernel", "logic")}
+        parts = {name: replace(part, role="") if name == "kernel" else part for name, part in architecture.parts.items()}
+        return replace(architecture, notes=notes, parts=parts)
+    parts = {name: part for name, part in architecture.parts.items() if name != LOGIC}
+    rules = {name: tuple(t for t in targets if t.part != LOGIC) for name, targets in architecture.rules.items()
+             if name != LOGIC}
+    forbidden = {name: names for name, names in architecture.forbidden.items() if name != LOGIC}
+    tiers = tuple(replace(tier, subject=tuple(s for s in tier.subject if s.part != LOGIC)) for tier in architecture.tiers)
+    libraries = None if architecture.libraries is None else {
+        name: packages for name, packages in architecture.libraries.items() if name != LOGIC}
+    parts["kernel"] = replace(parts["kernel"], role="")
+    notes = {path: note for path, note in architecture.notes.items() if path != architecture.parts[LOGIC].path}
+    return replace(architecture, parts=parts, rules=rules, forbidden=forbidden, tiers=tiers, libraries=libraries,
+                   notes=notes)
 
 
 @pytest.mark.parametrize("name", ["web", "cli", "xarch"])
@@ -97,7 +125,8 @@ def test_every_example_keeps_its_name_its_part_its_note_and_its_text_though_its_
     assert set(old.examples) == set(new.examples)
     for path, example in old.examples.items():
         shipped = new.examples[path]
-        assert (example.part, example.path, example.note) == (shipped.part, shipped.path, shipped.note)
+        part = "kernel" if shipped.part == LOGIC else shipped.part
+        assert (example.part, example.path, example.note) == (part, shipped.path, shipped.note)
     for old_tier, new_tier in zip(old.tiers, new.tiers):
         assert [(x.path, x.note) for x in (old_tier.example, *old_tier.helpers) if x] == [
             (x.path, x.note) for x in (new_tier.example, *new_tier.helpers) if x]
@@ -121,7 +150,7 @@ def test_xarch_s_own_profile_differs_in_what_the_shipped_one_chose_to_change(tmp
     does."""
     old, new = both("xarch", tmp_path)
     assert (old.based_on, new.based_on) == ("", "cli")
-    assert sorted(old.parts) == sorted(new.parts) and old.placement != new.placement
+    assert sorted(old.parts) == sorted(kernel_logic(new).parts) and old.placement != new.placement
     assert sorted(old.examples) == sorted(f"tests/{relative}" for relative in OWN_EXAMPLES) and new.examples == {}
     assert old.tiers[3].may_import == new.tiers[3].may_import
     assert [tier.example is None for tier in old.tiers] == [False] * 4

@@ -42,7 +42,7 @@ def test_a_file_in_a_part_says_its_part_role_litmus_imports_libraries_forbidden_
     assert found["part"] == "domain/ in module 'docs'"
     assert found["role"] == "entities, values (incl. ids), errors: invariants only"
     assert found["litmus"].startswith("Is it an invariant of one of this module's entities or values")
-    assert found["may import"] == "its own module's `domain/`, `kernel/`"
+    assert found["may import"] == "its own module's `domain/`, `kernel/`, `kernel/logic/`"
     assert found["libraries"] == "none"
     assert found["may not use"].startswith("datetime.datetime.now, datetime.datetime.utcnow")
     assert found["tested by"] == "unit tier: tests/modules/docs/domain/test_invoice.py"
@@ -103,8 +103,9 @@ def test_json_gives_every_answer_as_a_field():
                              "litmus": found["part"]["litmus"]}
     assert found["may_import"] == [
         {"part": "domain", "scope": "own", "folder": "domain/", "path": "app/modules/docs/domain/"},
-        {"part": "kernel", "scope": "none", "folder": "kernel/", "path": "app/kernel/"}]
-    assert found["may_import_text"] == "its own module's `domain/`, `kernel/`"
+        {"part": "kernel", "scope": "none", "folder": "kernel/", "path": "app/kernel/"},
+        {"part": "kernel-logic", "scope": "none", "folder": "kernel/logic/", "path": "app/kernel/logic/"}]
+    assert found["may_import_text"] == "its own module's `domain/`, `kernel/`, `kernel/logic/`"
     assert found["libraries"] == [] and "builtins.open" in found["forbidden"]
     assert found["tier"]["name"] == "unit"
     assert found["test"] is None

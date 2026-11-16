@@ -28,7 +28,8 @@ def test_the_bundled_profiles_use_every_guard_of_their_own(name):
         no_comments=True,
         stand_ins=StandIns(tuple(("unittest", "mock", m) for m in mocks), (("unittest", "mock", "create_autospec"),),
                                ("spec", "spec_set"), (Fixture("mocker", mocks, ("create_autospec",)),)),
-        no_duplicates=4, no_twins=3, dead_code=True, untested=True, pass_through=("services", "controller", "adapters"),
+        no_duplicates=4, no_twins=3, no_twins_renamed=3, no_twins_subset=3, dead_code=True, untested=True,
+        pass_through=("services", "controller", "adapters"),
         private_imports=True)
     skips = ("pytest.mark.skip", "pytest.mark.skipif", "pytest.mark.xfail", "pytest.skip", "pytest.xfail",
              "pytest.importorskip", "unittest.skip", "unittest.skipIf", "unittest.skipUnless", "unittest.expectedFailure")
@@ -56,7 +57,8 @@ def test_the_bundled_profiles_forbid_the_clock_and_io_in_the_pure_parts_and_thei
     pure = tuple(tuple(n.split(".")) for n in PURE)
     ambient = tuple(tuple(n.split(".")) for n in AMBIENT)
     assert architecture.forbidden == {"domain": pure, "logic": pure, "ports": pure, "services": ambient,
-                                      "controller": ambient, "contract": pure, "kernel": pure}
+                                      "controller": ambient, "adapters": ambient, "contract": pure, "kernel": pure,
+                                      "kernel-logic": pure}
     assert [tier.name for tier in architecture.tiers if tier.forbidden] == ["unit"]
 
 
@@ -71,8 +73,9 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
         "`platform/`: sqlmodel; `web/`: fastapi; `bootstrap/`: sqlmodel, fastapi, uvicorn); the standard library "
         "is always allowed, and tests are not checked.",
         "- `forbidden`: a part neither imports nor uses by name what is listed for it (`domain/`, "
-        "`application/logic/`, `application/ports/`, `contract/` and `kernel/`: " + ", ".join(f"`{n}`" for n in PURE)
-        + "; `application/services/` and `application/controller.py`: " + ", ".join(f"`{n}`" for n in AMBIENT)
+        "`application/logic/`, `application/ports/`, `contract/`, `kernel/logic/` and `kernel/`: "
+        + ", ".join(f"`{n}`" for n in PURE) + "; `application/services/`, `application/controller.py` and `adapters/`: "
+        + ", ".join(f"`{n}`" for n in AMBIENT)
         + "), and neither do the unit tests of those parts. It catches what is written in the part's own files, "
         "through their imports and aliases, and a method written `.name()` called on anything but the object itself "
         "and what it holds; not a name reached through a variable or `getattr`, nor I/O done on the part's behalf "
@@ -92,9 +95,9 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
         "- `types-only`: `application/services/` uses `contract/` only as a type: it imports it to annotate and never "
         "calls it.",
         "- `holds`: a file of `domain/`, `application/services/` and `application/controller.py` defines classes, "
-        "never a public function at the top level; a file of `application/logic/` defines functions, never a class "
-        "(a private one too) but exceptions and the records its functions return; listed in the enforcement section, and fails "
-        "`check --strict` only.",
+        "never a public function at the top level; a file of `application/logic/` and `kernel/logic/` defines "
+        "functions, never a class (a private one too) but exceptions and the records its functions return; listed in "
+        "the enforcement section, and fails `check --strict` only.",
         "- `no-callbacks`: no function of `domain/` and `application/logic/` calls a parameter annotated as a "
         "callable: it is handed values, never a way to fetch them.",
         "- `names`: every class of `application/services/` is named `*Service`.",
@@ -116,7 +119,9 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
         "- `no-duplicates`: no two functions of the app have the same code, names and formatting aside, when each "
         "holds at least 4 statements; tests are not compared.",
         "- `no-twins`: no two public classes in parts of different names declare the same fields in the same order, "
-        "when each declares at least 3; types and defaults aside, tests not read.",
+        "when each declares at least 3; types and defaults aside, tests not read. Nor is one a copy of another that "
+        "renames some of its fields (from 3 fields: more than half of its names kept in place, and each renamed "
+        "field's type), or that keeps at least half of its fields in its order (from 3 fields).",
         "- `dead-code`: every `Protocol` in `application/ports/` is named by another file of the app, and every fake "
         "in `tests/fakes/` by a test; the wiring and re-exports do not count. A file of a part with a tier that no "
         "test of that tier reaches, directly or through files of parts of the same tier, is listed in the "

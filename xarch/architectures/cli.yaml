@@ -13,7 +13,7 @@ parts:
       with no database and no clock? If yes, it goes here, on that entity or value. If it is a pure rule that is not
       one entity's invariant, it belongs in `application/logic/`. If it must load or save anything, it is a service
       step. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
-    may_import: [kernel]
+    may_import: [kernel, kernel-logic]
     forbidden: pure
     holds: classes
     no_callbacks: true
@@ -27,7 +27,7 @@ parts:
       yes, it goes here, in a file named for the rule. If it holds one entity's invariant, it belongs in that entity
       in `domain/`. If another module needs it too, it belongs in `kernel/logic/`. If it must load or save anything,
       it is a service step. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
-    may_import: [domain, kernel]
+    may_import: [domain, kernel, kernel-logic]
     forbidden: pure
     holds: functions
     no_callbacks: true
@@ -42,7 +42,7 @@ parts:
       vendor terms? If yes, it goes here. If it is a generic primitive with no business meaning (such as `Clock`), it
       belongs in `kernel/`. If it has a body that talks to a real system, it belongs in `adapters/`. `xarch check`
       holds it to its `forbidden` list: no clock and no I/O by name.
-    may_import: [domain, kernel]
+    may_import: [domain, kernel, kernel-logic]
     forbidden: pure
     tier: integration
 
@@ -54,7 +54,7 @@ parts:
       and domain objects, without building the `Result` or the DTO? If yes, it goes here. If it decides what is valid,
       it belongs in `domain/`. If it is a pure rule with no port, it belongs in `application/logic/`. If it builds the
       `Result` or the DTO, it belongs in the controller. If it touches a database, it belongs in `adapters/`.
-    may_import: [logic, domain, ports, contract, kernel]
+    may_import: [logic, domain, ports, contract, kernel, kernel-logic]
     types_only: [contract]
     holds: classes
     names: "*Service"
@@ -69,7 +69,7 @@ parts:
       Does it turn what a service returns or raises into a `Result` for the caller (exceptions into variants, entities
       into DTOs), without deciding any business rule? If yes, it goes here. If it names argument parsing or terminal
       output, it belongs in `cli/`. If it handles a table row, it belongs in `adapters/`.
-    may_import: [services, logic, domain, ports, contract, kernel]
+    may_import: [services, logic, domain, ports, contract, kernel, kernel-logic]
     holds: classes
     names: "*Controller"
     forbidden: ambient
@@ -84,10 +84,11 @@ parts:
       that system's, and naming no other module except the `contract/` of one whose controller it wraps? If yes, it
       goes here. If it knows no module's types and is only a client or engine for a technology, it belongs in
       `platform/`. If it contains a business rule, it belongs in `domain/`.
-    may_import: [ports, domain, kernel, platform, contract@any]
+    may_import: [ports, domain, kernel, kernel-logic, platform, contract@any]
     must_import: [platform, contract@any]
     built_by: [bootstrap]
     libraries: [sqlmodel]
+    forbidden: ambient
     tier: unit
 
   platform:
@@ -100,7 +101,7 @@ parts:
       engine, table models) that knows none of the types of any one module? If yes, it goes here, named for the
       technology (a table model, for its table) and never for a module. If it translates a module's types for a port,
       it belongs in that module's `adapters/`.
-    may_import: [kernel]
+    may_import: [kernel, kernel-logic]
     libraries: [sqlmodel]
     untested: it wraps outside technology; adapters are tested against a stub of it
 
@@ -111,7 +112,7 @@ parts:
       Does it parse arguments or print to the terminal, whichever module's data it shows? If yes, it goes here. If it
       reports a failure as a `Result`, it belongs in the controller. If it holds a business rule, it belongs in
       `domain/`.
-    may_import: [controller@any, contract@any, kernel]
+    may_import: [controller@any, contract@any, kernel, kernel-logic]
     libraries: [typer]
     tier: rendering
     folders:
@@ -138,10 +139,24 @@ parts:
       back, or an id that names the module's things? If yes, it goes here, and an id is defined in `domain/values.py`
       and re-exported here. If it is a `domain/` entity, a service type or a port, it stays where it is, and a DTO
       goes here instead.
-    may_import: ["domain/values:*Id", kernel]
+    may_import: ["domain/values:*Id", kernel, kernel-logic]
     forbidden: pure
     tier: integration
     package_only: true
+
+  kernel-logic:
+    path: kernel/logic
+    role: pure functions that modules share, including a rule two modules need
+    litmus: >-
+      Is it a pure function with no port and no I/O, over `kernel/` primitives or plain values, that two or more
+      modules need? If yes, it goes here, in a file named for the rule. If only one module needs it, it belongs in that
+      module's `application/logic/`. If it is a value or a type rather than a function, it belongs in `kernel/`. If it
+      must load or save anything, it is a service step. `xarch check` holds it to its `forbidden` list: no clock and
+      no I/O by name.
+    may_import: [kernel]
+    forbidden: pure
+    holds: functions
+    tier: unit
 
   kernel:
     path: kernel
@@ -155,8 +170,6 @@ parts:
       clock and no I/O by name.
     forbidden: pure
     tier: unit
-    folders:
-      logic: pure functions that modules share, including a rule two modules need
 
 forbidden:
   pure: [datetime.datetime.now, datetime.datetime.utcnow, datetime.datetime.today, datetime.date.today, time.time,
@@ -253,7 +266,7 @@ guards:
   no-comments: {}
   stand-ins: {}
   no-duplicates: {min_statements: 4}
-  no-twins: {min_fields: 3}
+  no-twins: {min_fields: 3, min_renamed: 3, min_subset: 3}
   dead-code: {untested: true}
   pass-through: {parts: [services, controller, adapters]}
   private-imports: {}

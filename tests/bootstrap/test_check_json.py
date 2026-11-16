@@ -45,7 +45,7 @@ def test_each_violation_carries_its_rule_file_line_message_and_fix_sorted_by_fil
          "hint": None},
         {"rule": "rules", "file": "app/modules/docs/domain/clock.py", "line": 2,
          "message": "domain/ of modules/docs may not import platform/ (app.platform)",
-         "fix": "import only domain/, kernel/ in domain/ of modules/docs (parts.domain.may_import), or move this code to "
+         "fix": "import only domain/, kernel/, kernel-logic/ in domain/ of modules/docs (parts.domain.may_import), or move this code to "
                 "adapters/, which may import it", "hint": None},
     ]
 

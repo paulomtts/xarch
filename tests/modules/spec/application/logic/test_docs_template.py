@@ -239,9 +239,9 @@ def test_the_guards_name_every_repeating_folder():
 @pytest.mark.parametrize("guard, said", [
     pytest.param({"min_fields": 3}, "", id="the same fields only"),
     pytest.param({"min_fields": 3, "min_renamed": 4, "min_subset": 3},
-                 " Nor is one a copy of another that renames some of its fields, keeping more than half of its names in "
-                 "place and the renamed fields' types, from 4 fields or keeps at least half of its fields in its order, "
-                 "from 3 fields.", id="with the renamed and the partial copies"),
+                 " Nor is one a copy of another that renames some of its fields (from 4 fields: more than half of its "
+                 "names kept in place, and each renamed field's type), or that keeps at least half of its fields in its "
+                 "order (from 3 fields).", id="with the renamed and the partial copies"),
 ])
 def test_the_no_twins_line_says_the_cases_the_profile_switches_on(guard, said):
     lines = [line for line in filled("{{guards}}", guards={"no-twins": guard}).splitlines() if "`no-twins`" in line]

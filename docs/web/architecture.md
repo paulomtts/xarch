@@ -162,16 +162,17 @@ Dependencies point inward: a part imports only from the rings inside it (section
 
 | Part | May import |
 |---|---|
-| `domain/` | `kernel/` |
-| `application/logic/` | its own module's `domain/`, `kernel/` |
-| `application/ports/` | its own module's `domain/`, `kernel/` |
-| `application/services/` | its own module's `application/logic/`, `domain/`, `application/ports/` and `contract/`, `kernel/` |
-| `application/controller.py` | its own module's `application/services/`, `application/logic/`, `domain/`, `application/ports/` and `contract/`, `kernel/` |
-| `adapters/` | its own module's `application/ports/` and `domain/`, `kernel/`, `platform/`, any module's `contract/` |
-| `platform/` | `kernel/` |
-| `web/` | any module's `application/controller.py` and `contract/`, `kernel/` |
+| `domain/` | `kernel/`, `kernel/logic/` |
+| `application/logic/` | its own module's `domain/`, `kernel/`, `kernel/logic/` |
+| `application/ports/` | its own module's `domain/`, `kernel/`, `kernel/logic/` |
+| `application/services/` | its own module's `application/logic/`, `domain/`, `application/ports/` and `contract/`, `kernel/`, `kernel/logic/` |
+| `application/controller.py` | its own module's `application/services/`, `application/logic/`, `domain/`, `application/ports/` and `contract/`, `kernel/`, `kernel/logic/` |
+| `adapters/` | its own module's `application/ports/` and `domain/`, `kernel/`, `kernel/logic/`, `platform/`, any module's `contract/` |
+| `platform/` | `kernel/`, `kernel/logic/` |
+| `web/` | any module's `application/controller.py` and `contract/`, `kernel/`, `kernel/logic/` |
 | `bootstrap/` | everything |
-| `contract/` | its own module's `domain/values:*Id`, `kernel/` |
+| `contract/` | its own module's `domain/values:*Id`, `kernel/`, `kernel/logic/` |
+| `kernel/logic/` | `kernel/` |
 | `kernel/` | nothing |
 
 > [!IMPORTANT]
@@ -243,7 +244,7 @@ class ModerationContentReview:                                # satisfies Conten
 
 When a piece of code does not obviously fit, run the litmus tests in this order. The first one it passes is where it goes. The order governs code that belongs in the tree. Code that is deliberately outside the tree (section 1) has no home to find and is not checked.
 
-`domain` → `logic` → `ports` → `services` → `controller` → `adapters` → `platform` → `web` → `bootstrap` → `contract` → `kernel`
+`domain` → `logic` → `ports` → `services` → `controller` → `adapters` → `platform` → `web` → `bootstrap` → `contract` → `kernel-logic` → `kernel`
 
 The ports test excludes generic primitives, so `Clock` falls through to `kernel`. The logic test excludes a rule another module also needs, so it falls through to `kernel/logic/`. `kernel` comes last because its test is the broadest: anything that fails every earlier test and either carries no business meaning or is a pure function that modules share goes there.
 
@@ -540,7 +541,7 @@ An adapter's name starts with the system it talks to (a technology such as `Db` 
 
 ### 9.1 kernel/
 
-Primitives with no business meaning: typed-id helpers, the base error hierarchy, lifecycle fields (created, updated, deleted), tracing carriers and the `Clock` protocol. `kernel/logic/` holds the pure functions that modules share, including a business rule two modules need: modules never import each other, so a shared rule is promoted here. Like the rest of `kernel/`, it imports nothing outside `kernel/`.
+Primitives with no business meaning: typed-id helpers, the base error hierarchy, lifecycle fields (created, updated, deleted), tracing carriers and the `Clock` protocol. `kernel/logic/` is a part of its own: it holds the pure functions that modules share, including a business rule two modules need: modules never import each other, so a shared rule is promoted here. It holds functions, not the values they work on, and it imports only `kernel/`.
 
 ```python
 # kernel/identifiers.py
@@ -561,6 +562,9 @@ def normalized(title: str) -> str: return " ".join(title.split())
 
 > [!TIP]
 > **Litmus test.** Is it a primitive with no business meaning, one that could be lifted unchanged into an unrelated system (id helpers, base errors, lifecycle fields, tracing carriers, `Clock`)? If yes, it goes here. Is it a pure function with no port and no I/O that two or more modules need? If yes, it goes in `kernel/logic/`. If only one module needs it, or it names one module's thing, such as a concrete id like `DocumentId`, it belongs in the owning module. If it wraps a technology, it belongs in `platform/`. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
+
+> [!TIP]
+> **Litmus test.** Is it a pure function with no port and no I/O, over `kernel/` primitives or plain values, that two or more modules need? If yes, it goes here, in a file named for the rule. If only one module needs it, it belongs in that module's `application/logic/`. If it is a value or a type rather than a function, it belongs in `kernel/`. If it must load or save anything, it is a service step. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
 
 ### 9.2 platform/
 

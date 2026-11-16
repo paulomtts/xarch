@@ -502,10 +502,10 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
                     f"`{architecture.language.private}` from another file of them.")
         case NoTwins(least, renamed, subset):
             copies = [said for minimum, said in (
-                (renamed, f"renames some of its fields, keeping more than half of its names in place and the renamed "
-                          f"fields' types, from {renamed} fields"),
-                (subset, f"keeps at least half of its fields in its order, from {subset} fields")) if minimum]
-            also = f" Nor is one a copy of another that {' or '.join(copies)}." if copies else ""
+                (renamed, f"renames some of its fields (from {renamed} fields: more than half of its names kept in "
+                          "place, and each renamed field's type)"),
+                (subset, f"keeps at least half of its fields in its order (from {subset} fields)")) if minimum]
+            also = f" Nor is one a copy of another that {', or that '.join(copies)}." if copies else ""
             return (f"`no-twins`: no two public classes in parts of different names declare the same fields in the "
                     f"same order, when each declares at least {least}; types and defaults aside, tests not read."
                     f"{also}")

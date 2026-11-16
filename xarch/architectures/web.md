@@ -288,11 +288,13 @@ An adapter's name starts with the system it talks to (a technology such as `Db` 
 
 ### 9.1 kernel/
 
-Primitives with no business meaning: typed-id helpers, the base error hierarchy, lifecycle fields (created, updated, deleted), tracing carriers and the `Clock` protocol. `kernel/logic/` holds the pure functions that modules share, including a business rule two modules need: modules never import each other, so a shared rule is promoted here. Like the rest of `kernel/`, it imports nothing outside `kernel/`.
+Primitives with no business meaning: typed-id helpers, the base error hierarchy, lifecycle fields (created, updated, deleted), tracing carriers and the `Clock` protocol. `kernel/logic/` is a part of its own: it holds the pure functions that modules share, including a business rule two modules need: modules never import each other, so a shared rule is promoted here. It holds functions, not the values they work on, and it imports only `kernel/`.
 
 {{example:kernel/identifiers.py, kernel/errors.py, kernel/time.py, kernel/logic/text.py}}
 
 {{litmus:kernel}}
+
+{{litmus:kernel-logic}}
 
 ### 9.2 platform/
 

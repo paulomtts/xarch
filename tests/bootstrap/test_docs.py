@@ -74,7 +74,7 @@ def test_testing_gives_every_part_a_tier_and_names_the_profiles_driver(profile, 
 @pytest.mark.parametrize("profile", ["cli", "web"])
 def test_testing_unit_tests_pure_logic(profile):
     text = templates(profile)["testing.md"]
-    assert "| unit | `domain/`, `application/logic/`, `adapters/`, `kernel/` |" in text
+    assert "| unit | `domain/`, `application/logic/`, `adapters/`, `kernel/logic/`, `kernel/` |" in text
     assert "or by calling a pure function from `logic/`" in text.split("## 3. Placement")[1]
 
 
@@ -216,7 +216,7 @@ def test_the_table_model_lives_in_platform_and_the_repo_translates_it(profile):
 def test_ports_may_import_only_the_domain_and_the_kernel(profile):
     rows = templates(profile)["architecture.md"].split("## 5. ")[1].split("\n\n")
     ports = [line for line in "\n".join(rows).splitlines() if line.startswith("| `application/ports/`")]
-    assert ports == ["| `application/ports/` | its own module's `domain/`, `kernel/` |"]
+    assert ports == ["| `application/ports/` | its own module's `domain/`, `kernel/`, `kernel/logic/` |"]
 
 
 @pytest.mark.parametrize("profile", ["cli", "web"])
@@ -254,10 +254,11 @@ def test_architecture_gives_pure_logic_a_place_in_the_module_and_in_the_kernel(p
     assert "    └── logic/                  pure functions that modules share" in text
     assert "│       │   ├── logic/          pure functions over the module's domain objects" in text
     rules = text.split("## 5. ")[1].split("## 6.")[0]
-    assert "| `application/logic/` | its own module's `domain/`, `kernel/` |" in rules
+    assert "| `application/logic/` | its own module's `domain/`, `kernel/`, `kernel/logic/` |" in rules
     assert ("| `application/controller.py` | its own module's `application/services/`, `application/logic/`, `domain/`, "
-            "`application/ports/` and `contract/`, `kernel/` |") in rules
-    assert "| `domain/` | `kernel/` |" in rules
+            "`application/ports/` and `contract/`, `kernel/`, `kernel/logic/` |") in rules
+    assert "| `domain/` | `kernel/`, `kernel/logic/` |" in rules
+    assert "| `kernel/logic/` | `kernel/` |" in rules
     assert "`domain` → `logic` → `ports` → `services`" in text.split("## 7. ")[1].split("## 8.")[0]
     assert "  - [[#8.5 application/logic/]]" in text and "  - [[#8.6 application/ports/]]" in text
     logic = text.split("### 8.5 application/logic/")[1].split("### 8.6 ")[0]
