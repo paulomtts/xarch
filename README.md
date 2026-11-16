@@ -590,7 +590,8 @@ that it refuses, naming how many it chose.
 
 The text a file is judged by is its own, masked: the module each import of the app's own code names (an import named
 from the importing file's folder, or whose first step is the app's import name) is replaced by `<masked>` on the
-import's line, since it would say the part; every e-mail address becomes `person@example.test`; then each text the
+lines the import spans, however the source writes it (blanks around its dots, a line continued), since it would say
+the part; every e-mail address becomes `person@example.test`; then each text the
 profile's `review.mask` hides (below). Nothing else is masked: docstrings, comments and string literals are sent as
 written, so a file that must not leave the machine is one not to choose, or one for `review.never`.
 

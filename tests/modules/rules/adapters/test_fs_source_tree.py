@@ -759,6 +759,10 @@ def test_a_path_is_resolved_from_the_folder_given_with_its_links_followed(tmp_pa
          id="a relative import climbs one folder fewer than its dots"),
     pytest.param("from app.kernel import *\n", (Import(1, ("app", "kernel"), ("*",), written="app.kernel", every=True),),
          id="a star import imports every public name"),
+    pytest.param("from \\\n    app.kernel import (\n    ids,\n)\nimport app . platform\n",
+         (Import(1, ("app", "kernel"), ("ids",), written="app.kernel", last=4),
+          Import(5, ("app", "platform"), standard=False, written="app.platform")),
+         id="an import over several lines says its last line"),
 ])
 def test_the_imports_are_recorded_in_terms_no_language_owns(text, imports):
     assert FsSourceTree(FileSystem()).parsed(text).imports == imports

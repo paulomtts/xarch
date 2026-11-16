@@ -71,3 +71,21 @@ def test_a_line_separator_or_a_form_feed_above_an_import_moves_no_line_and_the_i
     text = "# a note\u2028still the note\x0c\nfrom app.kernel.ids import DocumentId\n"
     assert masked(text, (Import(2, ("app", "kernel", "ids"), ("DocumentId",), written="app.kernel.ids"),), "app") == (
         f"# a note\u2028still the note\x0c\nfrom {MASK} import DocumentId\n")
+
+
+@pytest.mark.parametrize("text, imported, then", [
+    pytest.param("from \\\n    app.kernel.ids import DocumentId\nx = 1\n",
+                 Import(1, ("app", "kernel", "ids"), ("DocumentId",), written="app.kernel.ids", last=2),
+                 f"from \\\n    {MASK} import DocumentId\nx = 1\n", id="an import continued onto the next line"),
+    pytest.param("from app . kernel . ids import DocumentId\n",
+                 Import(1, ("app", "kernel", "ids"), ("DocumentId",), written="app.kernel.ids"),
+                 f"from {MASK} import DocumentId\n", id="blanks around the dots"),
+    pytest.param("from app.kernel \\\n  .ids import DocumentId\nx = 1\n",
+                 Import(1, ("app", "kernel", "ids"), ("DocumentId",), written="app.kernel.ids", last=2),
+                 f"from {MASK}\\\n import DocumentId\nx = 1\n", id="a line continued between two steps keeps its break"),
+    pytest.param("import app.kernel.idsx, app.kernel.ids\n", Import(1, ("app", "kernel", "ids"), written="app.kernel.ids"),
+                 f"import app.kernel.idsx, {MASK}\n", id="a longer name that starts as the module's is not it"),
+])
+def test_the_module_of_an_import_is_masked_however_the_source_writes_it_on_the_lines_it_spans(text, imported, then):
+    result = masked(text, (imported,), "app")
+    assert result == then and len(result.splitlines()) == len(text.splitlines())

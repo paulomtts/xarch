@@ -12,7 +12,7 @@ class Import:
     the import climbs up folders above before it takes module's steps; else module is named from the top. standard:
     an absolute import whose first step names the standard library. written: the module as the source writes it.
     every: it imports every name the module makes public rather than names it lists (names then holds how the source
-    writes that)."""
+    writes that). last: the last line the import spans, when it is not its first (0: it spans one line)."""
     line: int
     module: tuple[str, ...]
     names: tuple[str, ...] | None = None
@@ -21,6 +21,7 @@ class Import:
     standard: bool = False
     written: str = ""
     every: bool = False
+    last: int = 0
 
 
 @dataclass(frozen=True)

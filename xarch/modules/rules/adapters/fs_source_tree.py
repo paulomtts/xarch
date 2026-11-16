@@ -234,13 +234,20 @@ def _imports(tree: ast.AST) -> list[Import]:
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             found += [Import(node.lineno, tuple(alias.name.split(".")), standard=_standard(alias.name.split(".")[0]),
-                             written=alias.name) for alias in node.names]
+                             written=alias.name, last=_last(node)) for alias in node.names]
         elif isinstance(node, ast.ImportFrom):
             module = tuple(node.module.split(".")) if node.module else ()
             found.append(Import(node.lineno, module, tuple(a.name for a in node.names), node.level > 0,
                                 max(node.level - 1, 0), not node.level and bool(module) and _standard(module[0]),
-                                "." * node.level + (node.module or ""), any(a.name == "*" for a in node.names)))
+                                "." * node.level + (node.module or ""), any(a.name == "*" for a in node.names),
+                                _last(node)))
     return found
+
+
+def _last(node: ast.Import | ast.ImportFrom) -> int:
+    """The last line an import spans when it is not its first, else 0."""
+    end = node.end_lineno or node.lineno
+    return end if end != node.lineno else 0
 
 
 def _comments(text: str) -> tuple[Comment, ...]:

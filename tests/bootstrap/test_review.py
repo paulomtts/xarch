@@ -156,6 +156,17 @@ def test_a_link_out_of_the_app_is_left_out_and_review_never_holds_back_a_link_to
     assert not any(secret in text for secret in ("OutsideSecret", "InnerSecret", "SecretKeys"))
 
 
+def test_an_import_over_several_lines_or_with_blanks_around_its_dots_is_masked_in_what_would_be_sent(tmp_path):
+    body = BODY.replace("from app.kernel.time import Clock", "from app . kernel . time import Clock").replace(
+        "from app.modules.documents.domain.values import DocumentId",
+        "from \\\n    app.modules.documents.domain.values import (\n    DocumentId,\n)")
+    (tmp_path / SERVICE).write_text(body)
+    document = json.loads(review(SERVICE, "--dry-run", "--format", "json").output)
+    (sent,) = document["requests"]
+    assert "from <masked> import Clock" in sent["text"] and "from \\\n    <masked> import (" in sent["text"]
+    assert "app.modules" not in sent["text"] and "kernel" not in sent["text"]
+
+
 def test_review_changes_nothing_check_finds():
     before = runner.invoke(app, ["check", "--format", "json"])
     review(SERVICE, "--dry-run")
