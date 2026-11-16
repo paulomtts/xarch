@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from xarch.cli.reports.report import enforcement_lines, json_document, ordered, text_lines
+from xarch.cli.reports.report import check_lines, enforcement_lines, json_document, ordered, text_lines
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.contract import AppChecked, ApproximateView, At, EnforcementView, ExcludedView, OwnCheckView, Weak
 from xarch.modules.spec.contract import Origin
@@ -37,6 +37,12 @@ WHOLE = Violation("app/a.py", 0, "missing x/", "structure", "create x/")
 ])
 def test_text_lines(found, hints, lines):
     assert text_lines(found, hints) == lines
+
+
+def test_the_text_of_a_check_is_its_violations_then_its_enforcement_section():
+    checked = AppChecked((A,), EnforcementView(), {"rules": "see the docs"}, False)
+    assert check_lines(Origin("web"), checked, False) == [
+        *text_lines((A,), {"rules": "see the docs"}), *enforcement_lines(Origin("web"), EnforcementView(), False)]
 
 
 def test_violations_are_ordered_by_file_then_line_then_rule():

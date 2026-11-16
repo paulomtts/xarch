@@ -1,13 +1,13 @@
 """What every command shares: the --app, --profile, --tests and --format options, choosing the app folder and the
 profile, and how a refusal reaches the terminal, as text or as JSON."""
-import json
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable
 from enum import Enum
 from pathlib import Path
 from typing import Annotated
 
 import typer
 
+from xarch.cli.reports.refusal_report import json_error, reason, text_error
 from xarch.modules.spec.application.controller import SpecController
 from xarch.modules.spec.contract import (
     AppChosen,
@@ -39,30 +39,14 @@ FormatOption = Annotated[Format, typer.Option(
                      "described in the README.")]
 
 
-def no_profile(known: Sequence[str]) -> str:
-    """Why nothing can run without a profile, and how to choose one."""
-    return ("no profile: pass --profile, or set `profile` under [tool.xarch] in pyproject.toml; "
-            f"the profiles found are {', '.join(known)}")
-
-
-def cannot_run(problems: Sequence[str]) -> str:
-    """Why a profile whose own checks cannot run is refused, and how to see every problem."""
-    return ("the checks the profile writes itself cannot run (`xarch profile check` says the same):\n"
-            + "\n".join(f"  {problem}" for problem in problems))
-
-
 def fail(message: str) -> typer.Exit:
-    typer.echo(f"error: {message}", err=True)
+    typer.echo(text_error(message), err=True)
     return typer.Exit(2)
 
 
-def json_refusal(reason: str) -> typer.Exit:
-    typer.echo(json_error(reason))
+def json_refusal(message: str) -> typer.Exit:
+    typer.echo(json_error(message))
     return typer.Exit(2)
-
-
-def json_error(reason: str) -> str:
-    return json.dumps({"ok": False, "error": reason}, indent=2, ensure_ascii=False)
 
 
 def refusal(output: Format) -> Callable[[str], typer.Exit]:
@@ -82,8 +66,8 @@ def app_for(spec: SpecController, app_path: Path | None, refuse: Callable[[str],
     match spec.choose_app(ChooseApp(in_full(Path()), app_path)):
         case AppChosen(app):
             return app
-        case ProfileRefused(reason):
-            raise refuse(reason)
+        case ProfileRefused(why):
+            raise refuse(why)
 
 
 def profile_for(spec: SpecController, app_path: Path, override: str | None) -> str:
@@ -97,7 +81,11 @@ def selection(spec: SpecController, app_path: Path, override: str | None,
     match spec.select(SelectProfile(in_full(app_path), override, tests)):
         case ProfileSelected(name, chosen):
             return name, chosen
-        case NoProfileChosen(known):
-            raise refuse(no_profile(known))
-        case ProfileRefused(reason):
-            raise refuse(reason)
+        case NoProfileChosen() | ProfileRefused() as refused:
+            raise refuse(reason(refused))
+
+
+def echo(lines: Iterable[str]) -> None:
+    """Each line on the terminal, in order."""
+    for line in lines:
+        typer.echo(line)

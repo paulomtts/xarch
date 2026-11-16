@@ -4,6 +4,7 @@ from typing import Annotated
 
 import typer
 
+from xarch.cli.reports.refusal_report import cannot_run
 from xarch.cli.reports.where_report import where_document, where_lines
 from xarch.cli.terminal import (
     AppPath,
@@ -12,7 +13,7 @@ from xarch.cli.terminal import (
     ProfileName,
     TestsPath,
     app_for,
-    cannot_run,
+    echo,
     in_full,
     refusal,
     selection,
@@ -44,8 +45,4 @@ def register(app: typer.Typer, rules: RulesController, spec: SpecController) -> 
             case ChecksCannotRun(problems):
                 raise refuse(cannot_run(problems))
             case Located(found):
-                if output is Format.json:
-                    typer.echo(where_document(chosen, found))
-                else:
-                    for line in where_lines(found):
-                        typer.echo(line)
+                echo([where_document(chosen, found)] if output is Format.json else where_lines(found))

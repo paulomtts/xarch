@@ -4,7 +4,8 @@ from typing import Annotated
 
 import typer
 
-from xarch.cli.reports.report import enforcement_lines, json_document, text_lines
+from xarch.cli.reports.refusal_report import cannot_run
+from xarch.cli.reports.report import check_lines, json_document
 from xarch.cli.terminal import (
     AppPath,
     Format,
@@ -12,7 +13,7 @@ from xarch.cli.terminal import (
     ProfileName,
     TestsPath,
     app_for,
-    cannot_run,
+    echo,
     in_full,
     refusal,
     selection,
@@ -47,12 +48,8 @@ def register(app: typer.Typer, rules: RulesController, spec: SpecController) -> 
                 raise refuse(reason)
             case AppChecked() as checked:
                 origin = _origin(spec, chosen, refuse)
-                if output is Format.json:
-                    typer.echo(json_document(chosen, origin, checked, strict))
-                else:
-                    for line in [*text_lines(checked.violations, checked.hints),
-                                 *enforcement_lines(origin, checked.enforcement, strict, checked.hints)]:
-                        typer.echo(line)
+                echo([json_document(chosen, origin, checked, strict)] if output is Format.json
+                     else check_lines(origin, checked, strict))
                 if not checked.ok:
                     raise typer.Exit(1)
 

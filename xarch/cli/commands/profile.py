@@ -7,7 +7,8 @@ import typer
 
 from xarch.cli.reports import profile_report as report
 from xarch.cli.reports import vocabulary_report as words
-from xarch.cli.terminal import AppPath, Format, FormatOption, app_for, fail, in_full, no_profile, refusal
+from xarch.cli.reports.refusal_report import reason
+from xarch.cli.terminal import AppPath, Format, FormatOption, app_for, echo, fail, in_full, refusal
 from xarch.modules.rules.application.controller import RulesController
 from xarch.modules.rules.contract import (
     CATEGORIES,
@@ -64,10 +65,9 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
         converted is listed with what to write by hand."""
         match spec.migrate(MigrateProfile(path, out, dry_run)):
             case Migrated() as done:
-                for line in report.migrated_lines(done):
-                    typer.echo(line)
-            case MigrationRefused(reason):
-                raise fail(reason)
+                echo(report.migrated_lines(done))
+            case MigrationRefused(why):
+                raise fail(why)
 
     @group.command()
     def explain(key: Annotated[str | None, typer.Argument(
@@ -118,10 +118,8 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
             match spec.view(ViewProfile(in_full(app_for(spec, app_path, refuse)), profile)):
                 case ProfileViewed() as seen:
                     _show(output, report.view_document(seen), report.view_lines(seen))
-                case NoProfileChosen(known):
-                    raise refuse(no_profile(known))
-                case ProfileRefused(reason):
-                    raise refuse(reason)
+                case NoProfileChosen() | ProfileRefused() as refused:
+                    raise refuse(reason(refused))
             return
         match spec.explain(Explain(key)):
             case FormatExplained() as whole:
@@ -149,10 +147,9 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
         root = app_for(spec, app_path).parent
         match spec.new_profile(NewProfile(name, source, root, in_full(Path()), out)):
             case ProfileCreated() as done:
-                for line in report.created_lines(done, source):
-                    typer.echo(line)
-            case ProfileRefused(reason):
-                raise fail(reason)
+                echo(report.created_lines(done, source))
+            case ProfileRefused(why):
+                raise fail(why)
 
     @group.command()
     def check(target: Annotated[str | None, typer.Argument(
@@ -176,15 +173,12 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
                 _show(output, report.check_document(checked), report.check_lines(checked, count))
                 if not checked.ok:
                     raise typer.Exit(1)
-            case NoProfileChosen(known):
-                raise refuse(no_profile(known))
-            case ProfileRefused(reason):
-                raise refuse(reason)
+            case NoProfileChosen() | ProfileRefused() as refused:
+                raise refuse(reason(refused))
 
 
 def _show(output: Format, document: str, lines: list[str]) -> None:
-    for line in [document] if output is Format.json else lines:
-        typer.echo(line)
+    echo([document] if output is Format.json else lines)
 
 
 def _configured(spec: SpecController, app: Path, refuse) -> str:
@@ -192,10 +186,8 @@ def _configured(spec: SpecController, app: Path, refuse) -> str:
     match spec.select(SelectProfile(in_full(app), None, None)):
         case ProfileSelected(name, _):
             return name
-        case NoProfileChosen(known):
-            raise refuse(no_profile(known))
-        case ProfileRefused(reason):
-            raise refuse(reason)
+        case NoProfileChosen() | ProfileRefused() as refused:
+            raise refuse(reason(refused))
 
 
 def _examples_from(spec: SpecController, app_path: Path | None) -> tuple[str, ...]:

@@ -5,7 +5,7 @@ from typing import Annotated
 import typer
 
 from xarch.cli.reports.scaffold_report import report_lines
-from xarch.cli.terminal import AppPath, ProfileName, app_for, fail, in_full, profile_for
+from xarch.cli.terminal import AppPath, ProfileName, app_for, echo, fail, in_full, profile_for
 from xarch.modules.scaffold.application.controller import ScaffoldController
 from xarch.modules.scaffold.contract import Init, New, Refused, Scaffolded
 from xarch.modules.spec.application.controller import SpecController
@@ -19,7 +19,7 @@ def register(app: typer.Typer, scaffold: ScaffoldController, spec: SpecControlle
         app_path = app_for(spec, app_path)
         match scaffold.init(Init(app_path, profile_for(spec, app_path, profile), in_full(Path()))):
             case Scaffolded(report):
-                _echo(report_lines(report))
+                echo(report_lines(report))
             case Refused(reason):
                 raise fail(reason)
 
@@ -31,11 +31,6 @@ def register(app: typer.Typer, scaffold: ScaffoldController, spec: SpecControlle
         app_path = app_for(spec, app_path)
         match scaffold.new(New(app_path, kind, name, profile_for(spec, app_path, profile))):
             case Scaffolded(report):
-                _echo(report_lines(report))
+                echo(report_lines(report))
             case Refused(reason):
                 raise fail(reason)
-
-
-def _echo(lines: list[str]) -> None:
-    for line in lines:
-        typer.echo(line)

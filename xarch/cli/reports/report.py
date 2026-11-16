@@ -47,6 +47,12 @@ def text_lines(found: Iterable[Violation], hints: Mapping[str, str] | None = Non
     return [*lines, f"{len(found)} violation(s) in {files} file(s)"]
 
 
+def check_lines(origin: Origin, checked: AppChecked, strict: bool) -> list[str]:
+    """What `xarch check` shows as text: the violations, then the enforcement section."""
+    return [*text_lines(checked.violations, checked.hints),
+            *enforcement_lines(origin, checked.enforcement, strict, checked.hints)]
+
+
 def enforcement_lines(origin: Origin, state: EnforcementView, strict: bool,
                       hints: Mapping[str, str] | None = None) -> list[str]:
     """The enforcement section: where the profile comes from and how loose it is, then the state of the check's
