@@ -18,6 +18,12 @@ def walk(tree: Layout, prefix: tuple[str, ...] = ()) -> Iterator[Entry]:
             yield from walk(sub, path)
 
 
+def folders(tree: Layout) -> tuple[tuple[str, ...], ...]:
+    """Every folder of a layout, as a path below the app folder: the app folder itself first, then each folder of the
+    layout in the order of the walk."""
+    return ((), *(entry.path for entry in walk(tree) if entry.is_dir))
+
+
 def lies_in(tree: Layout, path: tuple[str, ...]) -> bool:
     """Whether a path is in the tree, as a folder or a file."""
     return _at(tree, path)[0]

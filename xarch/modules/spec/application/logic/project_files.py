@@ -15,6 +15,7 @@ from __future__ import annotations
 from collections.abc import Iterator, Mapping, Sequence
 
 from xarch.kernel.placement import EACH
+from xarch.modules.spec.application.logic import layout_walk
 from xarch.modules.spec.application.logic.layout_walk import walk
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.published import ProjectFile
@@ -50,7 +51,7 @@ def project_files(architecture: Architecture, contents: Mapping[str, str | bytes
     found: list[ProjectFile] = []
     owners: dict[tuple[str, ...], str] = {}
     package = architecture.language.checked.package_file
-    files, folders_written = _skeleton_files(architecture.layout, package), _skeleton_folders(architecture.layout)
+    files, folders_written = _skeleton_files(architecture.layout, package), layout_walk.folders(architecture.layout)
     for entry in architecture.files:
         where = f"files.{'/'.join(entry.path)}{'/' if entry.folder else ''}"
         base = tuple(with_app(step, app) for step in entry.path)
@@ -90,12 +91,6 @@ def _skeleton_files(layout: Layout, package: str) -> tuple[tuple[str, ...], ...]
     """The files the skeleton writes, as patterns below the app folder, `EACH` matching any instance: the package file
     of each folder, the app folder's first, and each file of the layout."""
     return ((package,), *(entry.path + (package,) if entry.is_dir else entry.path for entry in walk(layout)))
-
-
-def _skeleton_folders(layout: Layout) -> tuple[tuple[str, ...], ...]:
-    """The folders the skeleton writes, as patterns below the app folder: the app folder itself, then each folder of
-    the layout."""
-    return ((), *(entry.path for entry in walk(layout) if entry.is_dir))
 
 
 def _problem(target: tuple[str, ...], app: str, package: str, files: Sequence[tuple[str, ...]],

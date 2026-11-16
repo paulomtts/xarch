@@ -4,6 +4,8 @@ from xarch.modules.spec.application.logic.profile_copy import (
     copied_document,
     copy_file,
     copy_folder,
+    copy_refusal,
+    name_refusal,
     recorded,
     valid_name,
 )
@@ -29,8 +31,7 @@ class ProfileCreationService:
     def create(self, cmd: NewProfile) -> ProfileCreated:
         """Raises NewProfileRefused, WouldOverwrite, UnknownProfile or InvalidArchitecture."""
         if not valid_name(cmd.name):
-            raise NewProfileRefused(f"'{cmd.name}' is not a profile name: use letters, digits, '-' and '_', starting "
-                                    "with a letter or a digit")
+            raise NewProfileRefused(name_refusal(cmd.name))
         if cmd.source not in self._files.bundled():
             raise UnknownProfile(cmd.source, self._files.bundled())
         source = source_of(cmd.source, self._files.bundled())
@@ -44,7 +45,7 @@ class ProfileCreationService:
             self._architectures.parse_copy(copied_document(self._files.read(source).document, cmd.name, cmd.source),
                                            profile, outputs)
         except InvalidArchitecture as e:
-            raise NewProfileRefused("the copy does not load:\n" + "\n".join(f"  {p}" for p in e.problems)) from e
+            raise NewProfileRefused(copy_refusal("the copy does not load:", e.problems)) from e
         root = project_root(cmd.app)
         folder = copy_folder(root, cmd.name, cmd.out)
         taken = self._output.taken(folder, outputs)

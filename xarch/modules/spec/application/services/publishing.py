@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from xarch.modules.spec.application.logic.checked_tier import checked_tier
 from xarch.modules.spec.application.logic.docs_files import DOCS_ROOT
-from xarch.modules.spec.application.logic.layout_walk import docs_name, walk
+from xarch.modules.spec.application.logic.layout_walk import docs_name, folders, walk
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.contract import (
     Docs,
-    Entry,
     GuardsView,
     PartView,
     ProfileView,
@@ -18,7 +17,6 @@ from xarch.modules.spec.domain.values import (
     ClosedTree,
     DeadCode,
     Guard,
-    Layout,
     NoComments,
     NoDuplicates,
     NoTwins,
@@ -39,9 +37,9 @@ class PublishingService:
     def skeleton(self, profile: str) -> Skeleton:
         architecture = self._architectures.load(profile)
         language = architecture.language
-        repeating = tuple(Repeating(repeat.word, repeat.root, _entries(architecture.instance_tree(repeat)))
+        repeating = tuple(Repeating(repeat.word, repeat.root, tuple(walk(architecture.instance_tree(repeat))))
                           for repeat in architecture.repeats)
-        return Skeleton(top_level=_entries(architecture.top_level_tree()), repeating=repeating,
+        return Skeleton(top_level=tuple(walk(architecture.top_level_tree())), repeating=repeating,
                         language=language.checked, reserved=language.reserved_names, names=language.names)
 
     def profile(self, location: str) -> ProfileView:
@@ -53,7 +51,7 @@ class PublishingService:
                                part.built_by, part.shared, part.immutable)
                       for name, part in architecture.parts.items())
         return ProfileView(
-            parts=parts, folders=((), *(entry.path for entry in walk(architecture.layout) if entry.is_dir)),
+            parts=parts, folders=folders(architecture.layout),
             tiers=tuple(checked_tier(architecture, tier) for tier in architecture.tiers),
             libraries=None if architecture.libraries is None else dict(architecture.libraries),
             repeats=architecture.repeats, guards=_guards_view(architecture.guards),
@@ -68,10 +66,6 @@ class PublishingService:
 
     def files(self, profile: str, app: str, presets: bool = True) -> ProjectFiles:
         return ProjectFiles(tuple(self._architectures.files(profile, app, presets)))
-
-
-def _entries(tree: Layout) -> tuple[Entry, ...]:
-    return tuple(walk(tree))
 
 
 def _guards_view(guards: tuple[Guard, ...]) -> GuardsView:

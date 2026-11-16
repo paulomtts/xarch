@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import re
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +17,19 @@ _VALID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*")
 def valid_name(name: str) -> bool:
     """Whether a profile can be called name: it names the copy's folder and file."""
     return _VALID.fullmatch(name) is not None
+
+
+def name_refusal(name: str) -> str:
+    """Why a profile cannot be called name."""
+    return f"'{name}' is not a profile name: use letters, digits, '-' and '_', starting with a letter or a digit"
+
+
+def copy_refusal(lead: str, problems: Iterable[str], by_hand: Iterable[str] = ()) -> str:
+    """Why a copy or a conversion of a profile is refused because it does not load: the lead, every problem, and what
+    was not converted, each on a line of its own."""
+    lines = [lead, *(f"  {problem}" for problem in problems)]
+    by_hand = list(by_hand)
+    return "\n".join([*lines, "not converted:", *(f"  {item}" for item in by_hand)] if by_hand else lines)
 
 
 def recorded(profile: Path, root: Path, cwd: Path) -> str:
