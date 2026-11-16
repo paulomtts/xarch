@@ -2,9 +2,19 @@
 import json
 from pathlib import Path
 
-from xarch.cli.reports.profile_report import created_lines, key_document, key_lines, unknown_document, unknown_message
+import pytest
+
+from xarch.cli.reports.profile_report import (
+    check_lines,
+    created_lines,
+    key_document,
+    key_lines,
+    origin_words,
+    unknown_document,
+    unknown_message,
+)
 from xarch.kernel.capabilities import EXACT, Supply
-from xarch.modules.spec.contract import KeyExplained, Need, ProfileCreated, UnknownKey
+from xarch.modules.spec.contract import KeyExplained, Need, Origin, ProfileChecked, ProfileCreated, UnknownKey
 
 
 def test_an_unknown_key_is_said_with_the_nearest_ones_in_text_and_in_json():
@@ -39,3 +49,19 @@ def test_a_key_says_the_facts_its_check_reads_and_how_the_language_supplies_them
         "    ones are not read), not call"]
     assert json.loads(key_document(explained(partly)))["needs"] == [
         {"fact": "class", "meaning": "the classes", "grade": "partial", "note": "nested ones are not read"}]
+
+
+@pytest.mark.parametrize("origin, words", [
+    pytest.param(Origin("web"), "bundled", id="a bundled profile"),
+    pytest.param(Origin("mine.yaml", False, "web"), "custom; closest bundled: web",
+                 id="a custom one names the bundled profile closest to it"),
+    pytest.param(Origin("mine.yaml", False), "custom; no bundled profile resembles it",
+                 id="a custom one that resembles none says so"),
+])
+def test_where_a_profile_comes_from_is_said_the_same_by_profile_check_and_by_check(origin, words):
+    assert (origin_words(origin), check_lines(ProfileChecked(origin.location, (), 1, origin))[0]) == (
+        words, f"checking {origin.location} ({words})")
+
+
+def test_a_profile_that_does_not_load_is_said_to_be_custom_and_nothing_more():
+    assert check_lines(ProfileChecked("mine.yaml", (), 0, None))[0] == "checking mine.yaml (custom)"

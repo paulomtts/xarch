@@ -27,6 +27,7 @@ from xarch.modules.spec.contract import (
     KeyExplained,
     Migrated,
     Need,
+    Origin,
     ProfileChecked,
     ProfileCreated,
     ProfileViewed,
@@ -171,15 +172,18 @@ def view_document(seen: ProfileViewed) -> str:
                   "imports": seen.imports})
 
 
+def origin_words(origin: Origin) -> str:
+    """Where a profile comes from, in words: bundled, or custom and the bundled profile closest to it, if any."""
+    if origin.bundled:
+        return "bundled"
+    if origin.closest is not None:
+        return f"custom; closest bundled: {origin.closest}"
+    return "custom; no bundled profile resembles it"
+
+
 def check_lines(checked: ProfileChecked, checks: int = 0) -> list[str]:
     origin = checked.origin
-    if origin is not None and origin.bundled:
-        where = "bundled"
-    elif origin is not None and origin.closest is not None:
-        where = f"custom; closest bundled: {origin.closest}"
-    else:
-        where = "custom"
-    lines = [f"checking {checked.location} ({where})"]
+    lines = [f"checking {checked.location} ({origin_words(origin) if origin is not None else 'custom'})"]
     loads = [p for p in checked.problems if p.check == LOAD]
     examples = [p for p in checked.problems if p.check == EXAMPLES]
     lines += _section("loads", loads, "ok")
@@ -205,9 +209,14 @@ def _section(name: str, problems: Sequence[Any], ok: str) -> list[str]:
             *(f"    {problem.text}" for problem in problems)]
 
 
+def _compared_with(origin: Origin | None) -> str | None:
+    """The bundled profile a checked one is compared with: the one closest to it, when it loads and is custom."""
+    return origin.closest if origin is not None and not origin.bundled else None
+
+
 def _compared(checked: ProfileChecked) -> list[str]:
     origin = checked.origin
-    if origin is None or origin.bundled or origin.closest is None:
+    if _compared_with(origin) is None:
         return []
     if not origin.looser:
         return [f"  compared: no looser than {origin.closest}"]
@@ -218,7 +227,7 @@ def _compared(checked: ProfileChecked) -> list[str]:
 def check_document(checked: ProfileChecked) -> str:
     origin = checked.origin
     compared = None
-    if origin is not None and not origin.bundled and origin.closest is not None:
+    if _compared_with(origin) is not None:
         compared = {"profile": origin.closest,
                     "looser": [{"key": i.key, "part": i.part, "what": i.what,
                                 "sentence": i.sentence} for i in origin.looser]}

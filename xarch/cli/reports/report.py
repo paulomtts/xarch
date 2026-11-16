@@ -15,6 +15,7 @@ import json
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
+from xarch.cli.reports.profile_report import origin_words
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.contract import AppChecked, At, EnforcementView, FindingView
 from xarch.modules.spec.contract import Origin
@@ -58,13 +59,7 @@ def enforcement_lines(origin: Origin, state: EnforcementView, strict: bool,
     """The enforcement section: where the profile comes from and how loose it is, then the state of the check's
     enforcement; with strict, the findings it fails on after it. A weak check that has a fix shows it under its line,
     then the profile's hint for its rule when there is one."""
-    if origin.bundled:
-        where = "bundled"
-    elif origin.closest is not None:
-        where = f"custom; closest bundled: {origin.closest}"
-    else:
-        where = "custom; no bundled profile resembles it"
-    lines = ["enforcement", _line("profile", f"{origin.location} ({where})", 2)]
+    lines = ["enforcement", _line("profile", f"{origin.location} ({origin_words(origin)})", 2)]
     if origin.guards_off:
         lines.append(_line("guards off", ", ".join(origin.guards_off), 4))
     lines += [_line(item.key, item.sentence, 4) for item in origin.looser]
