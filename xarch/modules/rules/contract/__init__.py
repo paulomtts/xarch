@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar
 
+from xarch.kernel.source import Import, Unparsable
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.domain.published import (
     APPROXIMATE,
@@ -42,7 +43,7 @@ __all__ = ["At", "Weak", "Piece", "KnownName", "Translation", "Slot", "KeyFacts"
            "WordLine", "CategoryShown", "ChecksShown", "WordsShown", "FieldShown", "WordShown", "UnknownWords",
            "WordsResult", "ExplainRule", "RuleShown", "KeyUnset", "NoRuleShown", "RuleResult", "ApproximateView",
            "Loosened", "Resemblance", "Reviewed", "CheckProfile", "ChecksHeld", "ProfileHeld", "ProfileUnloaded",
-           "NoProfileChosen", "ProfileCheckResult"]
+           "NoProfileChosen", "ProfileCheckResult", "ReadSources", "SourceRead", "SourcesRead", "SourcesResult"]
 
 
 @dataclass(frozen=True)
@@ -308,6 +309,46 @@ class Outside:
 
 
 LocateResult = Located | Outside | ChecksCannotRun | CheckRefused
+
+
+@dataclass(frozen=True)
+class ReadSources:
+    """Read the source files at paths, each given as `where` takes a path (from cwd, from the folder holding app, or
+    from app); a folder stands for every source file below it but those below a folder the profile excludes. tests is
+    the tests root (None: none), profile the architecture in force."""
+    paths: tuple[Path, ...]
+    cwd: Path
+    app: Path
+    profile: str
+    tests: Path | None = None
+
+
+@dataclass(frozen=True)
+class SourceRead:
+    """One file found: how it is shown (below the folder holding the app), the folder it lies in (app, tests or
+    project), whether it exists, whether it is a source file of the app's language, the part it lies in ("" for none)
+    and the instance of its repeating folder ("" for none), and whether it lies below a folder the profile excludes.
+    A source file of the app that exists and lies in a part, not excluded, is read: its text, its imports, and how it
+    fails to parse (None: it parses); any other holds no text."""
+    shown: str
+    within: str
+    exists: bool
+    source: bool
+    part: str
+    instance: str
+    excluded: bool
+    text: str = ""
+    imports: tuple[Import, ...] = ()
+    error: Unparsable | None = None
+
+
+@dataclass(frozen=True)
+class SourcesRead:
+    """The files found at the paths, in the order the paths were given, each once."""
+    files: tuple[SourceRead, ...]
+
+
+SourcesResult = SourcesRead | Outside | ChecksCannotRun | CheckRefused
 
 
 

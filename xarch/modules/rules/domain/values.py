@@ -465,6 +465,17 @@ class Resolved:
 
 
 @dataclass(frozen=True)
+class Sited:
+    """A file where the profile places it, read for a module that reads the app's code: the part ("" for none), the
+    instance of its repeating folder ("" for none), whether it lies below a folder the profile excludes, and whether
+    it is a source file of the app's language."""
+    part: str
+    instance: str
+    excluded: bool
+    source: bool
+
+
+@dataclass(frozen=True)
 class PartAt:
     """A part as a target names it (the part, its scope, a path below it), how the docs name it, and its folder below
     the project root (a placeholder for an instance that is not fixed, such as <module>): what a place may import, and

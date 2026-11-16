@@ -20,6 +20,7 @@ from xarch.modules.rules.application.services.explaining import ExplainingServic
 from xarch.modules.rules.application.services.locate import LocateService
 from xarch.modules.rules.application.services.source_check import SourceCheckService
 from xarch.modules.rules.application.services.source_reading import SourceReadService
+from xarch.modules.rules.application.services.sources import SourcesService
 from xarch.modules.scaffold.adapters.fs_files import FsFiles
 from xarch.modules.scaffold.adapters.spec_skeleton import SpecSkeleton as ScaffoldSkeleton
 from xarch.modules.scaffold.application.controller import ScaffoldController
@@ -100,7 +101,7 @@ def _build_rules(tree: FsSourceTree, spec: SpecController, layout: LayoutControl
     source = SourceCheckService(tree, profiles)
     explaining = ExplainingService(profiles, SpecCheckFormat(spec))
     return RulesController(LocateService(tree, profiles), AppCheckService(source, LayoutStructure(layout), tree),
-                           explaining, ExamplesService(tree, profiles))
+                           explaining, ExamplesService(tree, profiles), SourcesService(tree, profiles))
 
 
 def _build_layout(fs: FileSystem, spec: SpecController) -> LayoutController:

@@ -7,6 +7,7 @@ from xarch.modules.rules.application.services.examples import ExamplesService
 from xarch.modules.rules.application.services.explaining import ExplainingService
 from xarch.modules.rules.application.services.locate import LocateService
 from xarch.modules.rules.application.services.source_reading import SourceReadService
+from xarch.modules.rules.application.services.sources import SourcesService
 from xarch.modules.rules.contract import (
     CheckApp,
     CheckAppResult,
@@ -24,7 +25,9 @@ from xarch.modules.rules.contract import (
     Piece,
     ProfileCheckResult,
     ProfileUnloaded,
+    ReadSources,
     RuleResult,
+    SourcesResult,
     WordsResult,
 )
 from xarch.modules.rules.domain.errors import ChecksRefused, NoProfile, OutsideProject, RootMissing, Unloaded, Unreadable
@@ -32,8 +35,9 @@ from xarch.modules.rules.domain.errors import ChecksRefused, NoProfile, OutsideP
 
 class RulesController:
     def __init__(self, locator: LocateService, app: AppCheckService, explaining: ExplainingService,
-                 examples: ExamplesService):
+                 examples: ExamplesService, sources: SourcesService):
         self._locator, self._app, self._explaining, self._examples = locator, app, explaining, examples
+        self._sources = sources
 
     def check_profile(self, cmd: CheckProfile) -> ProfileCheckResult:
         """Validates a profile without an app: every problem at once, what spec's check of it finds and what its own
@@ -83,6 +87,18 @@ class RulesController:
         """A path outside the project is refused with why, and so is a profile that cannot be used."""
         try:
             return self._locator.locate(cmd)
+        except OutsideProject as e:
+            return Outside(e.reason)
+        except ChecksRefused as e:
+            return ChecksCannotRun(e.problems)
+        except DomainError as e:
+            return CheckRefused(e.reason)
+
+    def sources(self, cmd: ReadSources) -> SourcesResult:
+        """The app's source files at the paths given, each read with where the profile places it; a path outside the
+        project is refused with why, and so is a profile that cannot be used."""
+        try:
+            return self._sources.sources(cmd)
         except OutsideProject as e:
             return Outside(e.reason)
         except ChecksRefused as e:
