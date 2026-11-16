@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv python install 3.13
+      - run: uv sync --locked
+      - name: Lint
+        run: uv run ruff check
+      - name: Tests
+        run: uv run pytest -q
+      - name: Architecture check
+        run: uv run xarch check
+      - name: Architecture check, strict
+        run: uv run xarch check --strict
+      - name: Profile check
+        run: uv run xarch profile check architecture.yaml
+      - name: Install the built wheel and use it
+        run: |
+          set -euo pipefail
+          uv build
+          wheel="$PWD/$(ls dist/*.whl)"
+          work="$(mktemp -d)"
+          uv venv --python 3.13 "$work/venv"
+          uv pip install --python "$work/venv/bin/python" "$wheel"
+          mkdir "$work/project"
+          cd "$work/project"
+          "$work/venv/bin/xarch" --version
+          "$work/venv/bin/xarch" init --profile cli
+          "$work/venv/bin/xarch" new module documents
+          "$work/venv/bin/xarch" check
