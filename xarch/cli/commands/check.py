@@ -4,7 +4,7 @@ from typing import Annotated
 
 import typer
 
-from xarch.cli.reports.refusal_report import cannot_run
+from xarch.cli.reports.refusal_report import cannot_run, not_a_directory
 from xarch.cli.reports.report import check_lines, json_document
 from xarch.cli.terminal import (
     AppPath,
@@ -37,11 +37,12 @@ def register(app: typer.Typer, rules: RulesController, spec: SpecController) -> 
               output: FormatOption = Format.text, strict: StrictOption = False) -> None:
         """Report every violation of the architecture in the app and its tests."""
         refuse = refusal(output)
-        app_path = app_for(spec, app_path, refuse)
+        cwd = in_full(Path())
+        app_path = app_for(spec, cwd, app_path, refuse)
         chosen, tests_root = selection(spec, app_path, profile, tests, refuse)
-        match rules.check_app(CheckApp(app_path, chosen, in_full(Path()), tests_root, strict)):
+        match rules.check_app(CheckApp(app_path, chosen, cwd, tests_root, strict)):
             case NotADirectory(root):
-                raise refuse(f"{root} is not a directory")
+                raise refuse(not_a_directory(root))
             case ChecksCannotRun(problems):
                 raise refuse(cannot_run(problems))
             case CheckRefused(reason):

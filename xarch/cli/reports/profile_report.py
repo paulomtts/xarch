@@ -13,12 +13,12 @@ compared_with {"profile", "looser"} (null for a bundled profile or one that rese
 """
 from __future__ import annotations
 
-import json
 from collections.abc import Sequence
 from pathlib import Path
 from textwrap import fill
 from typing import Any
 
+from xarch.cli.reports.document import document
 from xarch.modules.spec.contract import (
     CHECKS,
     EXAMPLES,
@@ -129,13 +129,13 @@ def unknown_message(found: UnknownKey, words: Sequence[str] = ()) -> str:
 
 
 def overview_document(whole: FormatExplained) -> str:
-    return _dump({"ok": True, "format": whole.version, "shape": [_shown(shown) for shown in whole.shape],
+    return document({"ok": True, "format": whole.version, "shape": [_shown(shown) for shown in whole.shape],
                   "symbols": [{"symbol": s.symbol, "meaning": s.meaning} for s in whole.symbols],
                   "smallest": whole.smallest, "deeper": DEEPER})
 
 
 def key_document(found: KeyExplained) -> str:
-    return _dump({"ok": True, "key": found.key, "where": found.where, "meaning": found.meaning,
+    return document({"ok": True, "key": found.key, "where": found.where, "meaning": found.meaning,
                   "accepts": found.accepts, "required": found.required, "enforced": found.enforced,
                   "rules": list(found.rules), "example": found.example, "choices": list(found.choices),
                   "keys": [_shown(shown) for shown in found.keys],
@@ -153,7 +153,7 @@ def _grade(need: Need, graded: bool) -> str | None:
 
 
 def unknown_document(found: UnknownKey, words: Sequence[str] = ()) -> str:
-    return _dump({"ok": False, "error": unknown_message(found, words), "key": found.key,
+    return document({"ok": False, "error": unknown_message(found, words), "key": found.key,
                   "nearest": [*found.nearest, *words]})
 
 
@@ -169,7 +169,7 @@ def view_lines(seen: ProfileViewed) -> list[str]:
 
 
 def view_document(seen: ProfileViewed) -> str:
-    return _dump({"ok": True, "profile": seen.location, "name": seen.name, "tree": seen.tree,
+    return document({"ok": True, "profile": seen.location, "name": seen.name, "tree": seen.tree,
                   "imports": seen.imports})
 
 
@@ -233,7 +233,7 @@ def check_document(checked: ProfileChecked) -> str:
         compared = {"profile": origin.closest,
                     "looser": [{"key": i.key, "part": i.part, "what": i.what,
                                 "sentence": i.sentence} for i in origin.looser]}
-    return _dump({"ok": checked.ok, "profile": checked.location,
+    return document({"ok": checked.ok, "profile": checked.location,
                   "problems": [{"check": p.check, "message": p.text} for p in checked.problems],
                   "files": checked.files, "checks": checked.checks, "compared_with": compared})
 
@@ -284,8 +284,6 @@ def _summary(files: Sequence[str]) -> list[str]:
     return lines
 
 
-def _dump(document: dict[str, Any]) -> str:
-    return json.dumps(document, indent=2, ensure_ascii=False)
 
 
 COMMENTS = "YAML comments are not carried over: the converted file has none, so copy the ones you need by hand."

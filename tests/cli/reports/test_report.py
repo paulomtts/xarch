@@ -4,9 +4,10 @@ import json
 
 import pytest
 
-from xarch.cli.reports.report import check_lines, enforcement_lines, json_document, ordered, text_lines
+from xarch.cli.reports.report import LABELS, check_lines, enforcement_lines, json_document, ordered, text_lines
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.contract import (
+    SECTIONS,
     AppChecked,
     ApproximateView,
     At,
@@ -171,3 +172,7 @@ def test_a_part_without_the_litmus_its_base_gives_it_is_said_under_the_profile_a
     origin = Origin("mine.yaml", False, "cli", looser=(Loosened("litmus", "cli", "", said),))
     lines = enforcement_lines(origin, EnforcementView(strict=(FindingView("litmus", said),)), True)
     assert lines[2:] == [f"    litmus:      {said}", "strict:      1 finding fails the check", f"    litmus: {said}"]
+
+
+def test_every_section_of_the_enforcement_has_a_label():
+    assert set(LABELS) == set(SECTIONS)

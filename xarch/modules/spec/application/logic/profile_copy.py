@@ -29,11 +29,6 @@ def copied_document(document: Any, name: str, based_on: str) -> Any:
     return {**document, "name": name, "based_on": based_on}
 
 
-def project_root(app: Path) -> Path:
-    """The folder holding the app folder: the project's, where pyproject.toml records a profile and a copy goes."""
-    return app.parent
-
-
 def copy_file(name: str) -> str:
     """The name of the profile file of a copy called name."""
     return f"{name}{PROFILE_SUFFIX}"

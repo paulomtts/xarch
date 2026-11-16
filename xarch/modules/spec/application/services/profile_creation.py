@@ -4,11 +4,11 @@ from xarch.modules.spec.application.logic.profile_copy import (
     copied_document,
     copy_file,
     copy_folder,
-    project_root,
     recorded,
     valid_name,
 )
 from xarch.modules.spec.application.logic.profile_file import source_of
+from xarch.modules.spec.application.logic.project_folders import project_root
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
 from xarch.modules.spec.application.ports.profile_format import ProfileFormat
 from xarch.modules.spec.application.ports.profile_output import ProfileOutput

@@ -10,10 +10,10 @@ checks: {"ok", "reading", "slots", "categories", "example": {"key", "profile", "
 """
 from __future__ import annotations
 
-import json
 from textwrap import fill
 from typing import Any
 
+from xarch.cli.reports.document import document
 from xarch.modules.rules.contract import (
     CategoryShown,
     ChecksShown,
@@ -52,7 +52,7 @@ def _source(key: str, profile: str) -> str:
 
 
 def checks_document(shown: ChecksShown) -> str:
-    return _dump({"ok": True, "reading": shown.reading,
+    return document({"ok": True, "reading": shown.reading,
                   "slots": [{"name": s.name, "meaning": s.meaning, "accepts": s.accepts} for s in shown.slots],
                   "categories": [_category(c) for c in shown.categories],
                   "example": {"key": shown.example_key, "profile": shown.example_profile or None,
@@ -68,7 +68,7 @@ def category_lines(shown: WordsShown) -> list[str]:
 
 
 def category_document(shown: WordsShown) -> str:
-    return _dump({"ok": True, **{("category" if k == "name" else k): v for k, v in _category(shown.category).items()}})
+    return document({"ok": True, **{("category" if k == "name" else k): v for k, v in _category(shown.category).items()}})
 
 
 def word_lines(shown: WordShown) -> list[str]:
@@ -99,7 +99,7 @@ def word_lines(shown: WordShown) -> list[str]:
 
 
 def word_document(shown: WordShown) -> str:
-    return _dump({"ok": True, "address": shown.address, "category": shown.category, "name": shown.name,
+    return document({"ok": True, "address": shown.address, "category": shown.category, "name": shown.name,
                   "meaning": shown.meaning, "about": shown.about or None, "applies_to": list(shown.applies_to),
                   "side": shown.side or None, "value": shown.value or None,
                   "fields": [{"name": f.name, "meaning": f.meaning, "when": f.when or None} for f in shown.fields],
@@ -113,7 +113,7 @@ def unknown_message(found: UnknownWords) -> str:
 
 
 def unknown_document(found: UnknownWords) -> str:
-    return _dump({"ok": False, "error": unknown_message(found), "typed": found.typed, "nearest": list(found.nearest)})
+    return document({"ok": False, "error": unknown_message(found), "typed": found.typed, "nearest": list(found.nearest)})
 
 
 def rule_lines(shown: RuleShown) -> list[str]:
@@ -124,7 +124,7 @@ def rule_lines(shown: RuleShown) -> list[str]:
 
 
 def rule_document(shown: RuleShown) -> str:
-    return _dump({"ok": True, "key": shown.address, "profile": shown.profile, "rules": shown.count,
+    return document({"ok": True, "key": shown.address, "profile": shown.profile, "rules": shown.count,
                   "checks": shown.text, "needs": list(shown.needs)})
 
 
@@ -136,7 +136,7 @@ def unset_lines(unset: KeyUnset) -> list[str]:
 
 
 def unset_document(unset: KeyUnset) -> str:
-    return _dump({"ok": True, "key": unset.address, "profile": unset.profile, "rules": 0, "checks": "",
+    return document({"ok": True, "key": unset.address, "profile": unset.profile, "rules": 0, "checks": "",
                   "set": False, "example": unset.facts.example or None})
 
 
@@ -160,5 +160,3 @@ def _filled(text: str, indent: str, subsequent: str | None = None) -> list[str]:
                 subsequent_indent=subsequent if subsequent is not None else indent).splitlines()
 
 
-def _dump(document: dict[str, Any]) -> str:
-    return json.dumps(document, indent=2, ensure_ascii=False)

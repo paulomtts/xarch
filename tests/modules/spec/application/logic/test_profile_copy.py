@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from xarch.modules.spec.application.logic.profile_copy import project_root, recorded, valid_name
+from xarch.modules.spec.application.logic.profile_copy import recorded, valid_name
 
 
 @pytest.mark.parametrize("name, ok", [("mine", True), ("my-app_2", True), ("", False), ("a b", False),
@@ -16,6 +16,3 @@ def test_the_profile_is_recorded_relative_to_the_folder_holding_pyproject_as_pos
     assert recorded(Path("/p/architecture/mine/mine.yaml"), Path("/p"), Path("/cwd")) == "architecture/mine/mine.yaml"
     assert recorded(Path("/other/mine.yaml"), Path("/p"), Path("/cwd")) == "../other/mine.yaml"
 
-
-def test_the_project_is_the_folder_holding_the_app_folder():
-    assert project_root(Path("/p/app")) == Path("/p")

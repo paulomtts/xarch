@@ -5,7 +5,6 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from xarch.modules.spec.application.logic.defaults import first_language
 from xarch.modules.spec.application.logic.docs_files import doc_files
 from xarch.modules.spec.application.logic.example_imports import (
     Read,
@@ -13,7 +12,7 @@ from xarch.modules.spec.application.logic.example_imports import (
     example_problems,
     shipped_problems,
 )
-from xarch.modules.spec.application.logic.language_file import language_of
+from xarch.modules.spec.application.logic.language_file import first_language, language_of
 from xarch.modules.spec.application.logic.looseness import origin_of
 from xarch.modules.spec.application.logic.profile_file import parse_profile, source_of
 from xarch.modules.spec.application.logic.profile_files import pointed_files

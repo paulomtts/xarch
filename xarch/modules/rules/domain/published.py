@@ -8,7 +8,7 @@ contract's own.
     Drift an init file as it stands against what `init` would write, which the enforcement section lists
     KeyFacts what the format says of a key the profile sets nowhere, which the command line shows
 
-and CHECKS, the address of how a check is written.
+and CHECKS, the address of how a check is written, and the keys of the enforcement's sections (SECTIONS).
 """
 from __future__ import annotations
 
@@ -16,6 +16,13 @@ from dataclasses import dataclass
 
 CHECKS = "checks"
 """The address `profile explain` explains how a check is written at, and the first step of a slot's (checks.keep)."""
+GUARDS_OFF, UNGOVERNED, INIT_FILES, SKIPPED, DYNAMIC, WEAK, APPROXIMATE, VACUOUS, UNPLACED = (
+    "guards_off", "ungoverned", "init_files", "skipped", "dynamic", "weak", "approximate", "vacuous", "litmus")
+"""The keys of the sections of the enforcement a finding `--strict` fails on is under: a guard left off, an
+ungoverned file, an init file, a skip, a dynamic import, a weak finding, an approximate key, a check of the
+profile's own that reads nothing, and a part redefined without its litmus."""
+SECTIONS = (GUARDS_OFF, UNGOVERNED, INIT_FILES, SKIPPED, DYNAMIC, WEAK, APPROXIMATE, VACUOUS, UNPLACED)
+"""Every key of a section of the enforcement, in the order the sections are shown."""
 
 
 @dataclass(frozen=True)

@@ -6,8 +6,8 @@ import typer
 
 from xarch.cli.reports import profile_report as report
 from xarch.cli.reports import vocabulary_report as words
-from xarch.cli.reports.refusal_report import reason
-from xarch.cli.terminal import AppPath, Format, FormatOption, app_for, echo, fail, in_full, refusal
+from xarch.cli.reports.refusal_report import key_or_profile, reason, rule_needs_key
+from xarch.cli.terminal import AppPath, Format, FormatOption, app_for, echo, fail, in_full, refusal, refuse_with
 from xarch.modules.rules.application.controller import RulesController
 from xarch.modules.rules.contract import (
     ChecksShown,
@@ -95,9 +95,9 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
         refuse = refusal(output)
         if rule:
             if key is None or configured:
-                raise refuse("--rule shows the rules of a key: give a key, such as parts.names, and --profile or a "
-                             "configured profile")
-            location = profile if profile is not None else _configured(spec, app_for(spec, app_path, refuse), refuse)
+                raise refuse(rule_needs_key())
+            location = profile if profile is not None else _configured(spec, app_for(spec, in_full(Path()), app_path,
+                                                                                     refuse), refuse)
             match rules.explain_rule(ExplainRule(key, location)):
                 case RuleShown() as shown:
                     _show(output, words.rule_document(shown), words.rule_lines(shown))
@@ -116,8 +116,8 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
                     return
         if profile is not None or configured:
             if key is not None or (profile is not None and configured):
-                raise refuse("give either a key or a profile (--profile or --configured), not both")
-            match spec.view(ViewProfile(in_full(app_for(spec, app_path, refuse)), profile)):
+                raise refuse(key_or_profile())
+            match spec.view(ViewProfile(app_for(spec, in_full(Path()), app_path, refuse), profile)):
                 case ProfileViewed() as seen:
                     _show(output, report.view_document(seen), report.view_lines(seen))
                 case NoProfileChosen() | ProfileRefused() as refused:
@@ -129,10 +129,7 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
             case KeyExplained() as found:
                 _show(output, report.key_document(found), report.key_lines(found))
             case UnknownKey() as unknown:
-                if output is Format.json:
-                    typer.echo(report.unknown_document(unknown, close))
-                    raise typer.Exit(2)
-                raise fail(report.unknown_message(unknown, close))
+                raise refuse_with(output, report.unknown_message(unknown, close), report.unknown_document(unknown, close))
             case ProfileRefused(why):
                 raise refuse(why)
 
@@ -147,7 +144,8 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
         profile, and every file it points to (templates, docs pages, files, example folders), so the copy loads on its
         own and passes `xarch profile check` as it is. Nothing is overwritten: when any file exists nothing is written
         and the ones that exist are named. pyproject.toml is not edited: the line to put the copy in force is printed."""
-        match spec.new_profile(NewProfile(name, source, app_for(spec, app_path), in_full(Path()), out)):
+        cwd = in_full(Path())
+        match spec.new_profile(NewProfile(name, source, app_for(spec, cwd, app_path), cwd, out)):
             case ProfileCreated() as done:
                 echo(report.created_lines(done, source))
             case FilesTaken() as taken:
@@ -166,8 +164,8 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
         the bundled profile it is based on is shown as information. Exit 0 when the profile is valid, 1 when it has
         problems, 2 when no profile can be chosen."""
         refuse = refusal(output)
-        app = app_for(spec, app_path, refuse)
-        match spec.check_profile(CheckProfile(in_full(app), target)):
+        app = app_for(spec, in_full(Path()), app_path, refuse)
+        match spec.check_profile(CheckProfile(app, target)):
             case ProfileChecked() as checked:
                 _show(output, report.check_document(checked), report.check_lines(checked))
                 if not checked.ok:
@@ -182,7 +180,7 @@ def _show(output: Format, document: str, lines: list[str]) -> None:
 
 def _configured(spec: SpecController, app: Path, refuse) -> str:
     """The profile the project configures; refused when it configures none."""
-    match spec.select(SelectProfile(in_full(app), None, None)):
+    match spec.select(SelectProfile(app, None, None)):
         case ProfileSelected(name, _):
             return name
         case NoProfileChosen() | ProfileRefused() as refused:
@@ -190,7 +188,7 @@ def _configured(spec: SpecController, app: Path, refuse) -> str:
 
 
 def _words(rules: RulesController, spec: SpecController, key: str, app_path: Path | None, output: Format) -> None:
-    match rules.explain_words(ExplainWords(key, in_full(app_for(spec, app_path)))):
+    match rules.explain_words(ExplainWords(key, app_for(spec, in_full(Path()), app_path))):
         case ChecksShown() as shown:
             _show(output, words.checks_document(shown), words.checks_lines(shown))
         case WordsShown() as shown:
@@ -198,8 +196,5 @@ def _words(rules: RulesController, spec: SpecController, key: str, app_path: Pat
         case WordShown() as shown:
             _show(output, words.word_document(shown), words.word_lines(shown))
         case UnknownWords() as unknown:
-            if output is Format.json:
-                typer.echo(words.unknown_document(unknown))
-                raise typer.Exit(2)
-            raise fail(words.unknown_message(unknown))
+            raise refuse_with(output, words.unknown_message(unknown), words.unknown_document(unknown))
 

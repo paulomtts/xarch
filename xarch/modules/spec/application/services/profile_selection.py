@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from xarch.modules.spec.application.logic.defaults import default_app, default_tests
 from xarch.modules.spec.application.logic.profile_in_force import choose
+from xarch.modules.spec.application.logic.project_folders import default_app, default_tests
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
 from xarch.modules.spec.application.ports.folders import Folders
 from xarch.modules.spec.application.ports.settings import Settings
@@ -19,12 +19,12 @@ class ProfileSelectionService:
         self._settings, self._architectures, self._files, self._folders = settings, architectures, files, folders
 
     def app(self, start: Path, given: Path | None) -> AppChosen:
-        """The app folder: the one given, else the one the project around the folder start records, else the default
-        one; raises UnreadableSettings."""
+        """The app folder, in full: the one given, read from the folder start when it is relative, else the one the
+        project around start records, else the default one in start; raises UnreadableSettings."""
         if given is not None:
-            return AppChosen(given)
+            return AppChosen(start / given)
         configured = self._settings.configured_app(start)
-        return AppChosen(configured if configured is not None else default_app())
+        return AppChosen(configured if configured is not None else default_app(start))
 
     def location(self, app: Path, override: str | None) -> str:
         """The location of the profile in force: the override, else the one configured for the project holding app;

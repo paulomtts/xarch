@@ -16,10 +16,11 @@ def register(app: typer.Typer, scaffold: ScaffoldController, spec: SpecControlle
     def init(app_path: AppPath = None, profile: ProfileName = None) -> None:
         """Create the top-level skeleton, record the profile (and the app folder, when it is not app/) in pyproject.toml,
         write the docs and files; never overwrites."""
-        app_path = app_for(spec, app_path)
-        match scaffold.init(InitProject(app_path, profile_for(spec, app_path, profile), in_full(Path()))):
+        cwd = in_full(Path())
+        app_path = app_for(spec, cwd, app_path)
+        match scaffold.init(InitProject(app_path, profile_for(spec, app_path, profile), cwd)):
             case Scaffolded(report):
-                echo(report_lines(report))
+                echo(report_lines(report, cwd))
             case Refused(reason):
                 raise fail(reason)
 
@@ -28,11 +29,12 @@ def register(app: typer.Typer, scaffold: ScaffoldController, spec: SpecControlle
             name: Annotated[str, typer.Argument(help="The name of the new folder.")],
             app_path: AppPath = None, profile: ProfileName = None) -> None:
         """Create one instance of the profile's repeating folder, named by its word, with its full skeleton."""
-        app_path = app_for(spec, app_path)
+        cwd = in_full(Path())
+        app_path = app_for(spec, cwd, app_path)
         match scaffold.new(NewInstance(app_path, kind, name, profile_for(spec, app_path, profile))):
             case Scaffolded(report):
-                echo(report_lines(report))
+                echo(report_lines(report, cwd))
             case KindIsAFolder() | NotInitialized() as refused:
-                raise fail(refused_reason(refused))
+                raise fail(refused_reason(refused, cwd))
             case Refused(reason):
                 raise fail(reason)

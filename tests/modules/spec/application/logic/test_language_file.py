@@ -1,7 +1,7 @@
 """The data file of a language: what is true of the language as a whole, read from a preset and validated like a profile."""
 import pytest
 
-from xarch.modules.spec.application.logic.language_file import PARTIAL, language_of
+from xarch.modules.spec.application.logic.language_file import PARTIAL, first_language, language_of
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import Language
 from xarch.profile_values.capabilities import EXACT, Supply
@@ -116,3 +116,7 @@ def test_a_supply_that_is_not_what_the_key_takes_is_a_problem(supplies, problem)
     with pytest.raises(InvalidArchitecture) as caught:
         language_of("odd", DOCUMENT | {"supplies": supplies})
     assert caught.value.problems[0].removeprefix("presets/language/odd.yaml: ").startswith(problem)
+
+
+def test_the_language_of_an_app_is_the_first_by_name_and_none_when_xarch_reads_none():
+    assert (first_language({"python": 1, "pascal": 2}), first_language({})) == ("pascal", "")

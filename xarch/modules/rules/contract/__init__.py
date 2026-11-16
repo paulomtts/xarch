@@ -8,10 +8,27 @@ from pathlib import Path
 from typing import ClassVar
 
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.domain.published import At, Drift, KeyFacts, Slot, Weak
+from xarch.modules.rules.domain.published import (
+    APPROXIMATE,
+    DYNAMIC,
+    GUARDS_OFF,
+    INIT_FILES,
+    SECTIONS,
+    SKIPPED,
+    UNGOVERNED,
+    UNPLACED,
+    VACUOUS,
+    WEAK,
+    At,
+    Drift,
+    KeyFacts,
+    Slot,
+    Weak,
+)
 from xarch.profile_values.checks import ChecksHeld
 
-__all__ = ["At", "Weak", "Slot", "KeyFacts", "ChecksCannotRun", "CheckRefused", "OwnCheckView",
+__all__ = ["At", "Weak", "Slot", "KeyFacts", "SECTIONS", "GUARDS_OFF", "UNGOVERNED", "INIT_FILES", "SKIPPED", "DYNAMIC",
+           "WEAK", "APPROXIMATE", "VACUOUS", "UNPLACED", "ChecksCannotRun", "CheckRefused", "OwnCheckView",
            "Drift", "FindingView", "ExcludedView", "EnforcementView", "ReachView", "NearestView", "TierInfoView",
            "PartShown", "CoveringTest", "Untested", "InPart", "InStructure", "Ungoverned", "InTests", "Support", "Fake",
            "WhereAnswer", "CheckImports", "ImportsChecked", "NotADirectory", "CheckResult", "CheckApp", "AppChecked",
@@ -23,7 +40,8 @@ __all__ = ["At", "Weak", "Slot", "KeyFacts", "ChecksCannotRun", "CheckRefused", 
 
 @dataclass(frozen=True)
 class FindingView:
-    """A finding `--strict` fails on: the key of the enforcement section it is under, and what, in words."""
+    """A finding `--strict` fails on: the key of the enforcement section it is under (one of SECTIONS), and what, in
+    words."""
     key: str
     detail: str
 

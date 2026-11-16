@@ -11,13 +11,27 @@ check the profile writes itself, {"id", "read", "said"}), which a profile that w
 """
 from __future__ import annotations
 
-import json
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
+from xarch.cli.reports.document import document
 from xarch.cli.reports.profile_report import origin_words
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.contract import AppChecked, At, EnforcementView, FindingView
+from xarch.modules.rules.contract import (
+    APPROXIMATE,
+    DYNAMIC,
+    GUARDS_OFF,
+    INIT_FILES,
+    SKIPPED,
+    UNGOVERNED,
+    UNPLACED,
+    VACUOUS,
+    WEAK,
+    AppChecked,
+    At,
+    EnforcementView,
+    FindingView,
+)
 from xarch.modules.spec.contract import Origin
 
 LABEL = 13
@@ -26,9 +40,9 @@ INDENT = "    "
 """How far the fix and the hint of a finding are indented under its line."""
 SHOWN = 5
 """How many places a text line of skips or dynamic imports names before it counts the rest."""
-_KEYS = {"guards_off": "guards off", "ungoverned": "ungoverned", "init_files": "init files",
-         "skipped": "skipped", "dynamic": "dynamic", "weak": "weak", "approximate": "approximate",
-         "vacuous": "reads nothing", "litmus": "litmus"}
+LABELS = {GUARDS_OFF: "guards off", UNGOVERNED: "ungoverned", INIT_FILES: "init files", SKIPPED: "skipped",
+          DYNAMIC: "dynamic", WEAK: "weak", APPROXIMATE: "approximate", VACUOUS: "reads nothing", UNPLACED: "litmus"}
+"""How each section of the enforcement is labelled, by its key."""
 
 
 def text_lines(found: Iterable[Violation], hints: Mapping[str, str] | None = None) -> list[str]:
@@ -61,30 +75,30 @@ def enforcement_lines(origin: Origin, state: EnforcementView, strict: bool,
     then the profile's hint for its rule when there is one."""
     lines = ["enforcement", _line("profile", f"{origin.location} ({origin_words(origin)})", 2)]
     if origin.guards_off:
-        lines.append(_line("guards off", ", ".join(origin.guards_off), 4))
+        lines.append(_line(LABELS[GUARDS_OFF], ", ".join(origin.guards_off), 4))
     lines += [_line(item.key, item.sentence, 4) for item in origin.looser]
     if state.ungoverned:
         count = len(state.ungoverned)
-        lines.append(_line("ungoverned", f"{_count(count, f'{state.language or "source"} file')} outside every part "
+        lines.append(_line(LABELS[UNGOVERNED], f"{_count(count, f'{state.language or "source"} file')} outside every part "
                                          f"({', '.join(state.ungoverned_folders)})", 2))
     lines += [_line("excluded", f"{item.folder}/ ({item.reason})", 2) for item in state.excluded]
-    lines += [_line("init files", f"{'/'.join(item.path)} is {item.state}", 2) for item in state.init_files]
+    lines += [_line(LABELS[INIT_FILES], f"{'/'.join(item.path)} is {item.state}", 2) for item in state.init_files]
     if state.skipped:
-        lines.append(_line("skipped", f"{_count(len(state.skipped), 'skip')} ({_places(state.skipped)})", 2))
+        lines.append(_line(LABELS[SKIPPED], f"{_count(len(state.skipped), 'skip')} ({_places(state.skipped)})", 2))
     if state.dynamic:
-        lines.append(_line("dynamic", f"{_count(len(state.dynamic), 'dynamic import')} ({_places(state.dynamic)})", 2))
+        lines.append(_line(LABELS[DYNAMIC], f"{_count(len(state.dynamic), 'dynamic import')} ({_places(state.dynamic)})", 2))
     for weak in state.weak:
-        lines.append(_line("weak", f"{weak.file}{f':{weak.line}' if weak.line else ''}: {weak.message}", 2))
+        lines.append(_line(LABELS[WEAK], f"{weak.file}{f':{weak.line}' if weak.line else ''}: {weak.message}", 2))
         if weak.fix:
             lines.append(f"{INDENT}{' ' * 2}fix: {weak.fix}")
             if weak.rule in (hints or {}):
                 lines.append(f"{INDENT}{' ' * 2}hint: {(hints or {})[weak.rule]}")
-    lines += [_line("approximate", item.sentence, 2) for item in state.approximate]
-    lines += [_line("own check" if check.read else "reads nothing", check.said, 2) for check in state.checks]
+    lines += [_line(LABELS[APPROXIMATE], item.sentence, 2) for item in state.approximate]
+    lines += [_line("own check" if check.read else LABELS[VACUOUS], check.said, 2) for check in state.checks]
     if strict and state.strict:
         lines.append(_line("strict", f"{_count(len(state.strict), 'finding')} fail the check", 0)
                      if len(state.strict) > 1 else _line("strict", "1 finding fails the check", 0))
-        lines += [f"    {_KEYS.get(f.key, f.key)}: {f.detail}" for f in state.strict]
+        lines += [f"    {LABELS[f.key]}: {f.detail}" for f in state.strict]
     return lines
 
 
@@ -141,7 +155,6 @@ def _finding(finding: FindingView) -> dict[str, str]:
 
 
 def json_document(profile: str, origin: Origin, checked: AppChecked, strict: bool) -> str:
-    document = {"ok": checked.ok, "strict": strict, "profile": profile,
-                "violations": [violation_document(v, checked.hints) for v in ordered(checked.violations)],
-                "enforcement": enforcement_document(origin, checked.enforcement)}
-    return json.dumps(document, indent=2, ensure_ascii=False)
+    return document({"ok": checked.ok, "strict": strict, "profile": profile,
+                     "violations": [violation_document(v, checked.hints) for v in ordered(checked.violations)],
+                     "enforcement": enforcement_document(origin, checked.enforcement)})

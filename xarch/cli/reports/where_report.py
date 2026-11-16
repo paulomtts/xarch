@@ -1,9 +1,9 @@
 """xarch where, shown: short labelled lines for a person or an agent's context, and one JSON document."""
 from __future__ import annotations
 
-import json
 from typing import Any
 
+from xarch.cli.reports.document import document
 from xarch.kernel.placement import EVERYTHING
 from xarch.modules.rules.contract import (
     CoveringTest,
@@ -109,27 +109,27 @@ def _line(label: str, text: str) -> str:
 def where_document(profile: str, where: WhereAnswer) -> str:
     """The JSON of an answer: `ok`, `profile`, `path`, `exists`, `kind` and the fields the README lists, a field that
     does not apply null (or empty for a list)."""
-    document: dict[str, Any] = {
+    shown: dict[str, Any] = {
         "ok": True, "profile": profile, "path": where.path, "exists": where.exists, "kind": where.kind,
         "part": None, "may_import": [], "may_import_text": None, "libraries": None, "forbidden": [], "tier": None,
         "tested_in": None, "untested": None, "nearest": [], "closed_tree": None, "test": None, "note": None}
     match where:
         case InPart():
-            document |= {"part": _part_document(where.part), "may_import": [_reach(r) for r in where.may_import],
+            shown |= {"part": _part_document(where.part), "may_import": [_reach(r) for r in where.may_import],
                          "may_import_text": where.may_import_text or None, "libraries": _list(where.libraries),
                          "forbidden": list(where.forbidden)}
             match where.tested:
                 case CoveringTest(tier=tier, folder=folder, file=file):
-                    document |= {"tier": _tier(tier), "tested_in": {"folder": folder, "file": file}}
+                    shown |= {"tier": _tier(tier), "tested_in": {"folder": folder, "file": file}}
                 case Untested(reason):
-                    document["untested"] = reason
+                    shown["untested"] = reason
         case InStructure():
-            document["nearest"] = [_near(n) for n in where.nearest]
+            shown["nearest"] = [_near(n) for n in where.nearest]
         case Ungoverned():
-            document |= {"nearest": [_near(n) for n in where.nearest], "closed_tree": where.closed_tree,
+            shown |= {"nearest": [_near(n) for n in where.nearest], "closed_tree": where.closed_tree,
                          "note": where.note or None}
         case InTests():
-            document |= {"part": _part_document(where.mirrors) if where.mirrors is not None else None,
+            shown |= {"part": _part_document(where.mirrors) if where.mirrors is not None else None,
                          "may_import": [_reach(r) for r in where.may_import],
                          "may_import_text": where.may_import_text or None, "forbidden": list(where.forbidden),
                          "tier": _tier(where.tier) if where.tier is not None else None,
@@ -137,9 +137,9 @@ def where_document(profile: str, where: WhereAnswer) -> str:
                                   "types_only": list(where.types_only), "code_from": where.code_from or None},
                          "note": where.note or None}
         case Fake():
-            document |= {"test": {"may_use_fakes": False, "fakes_path": where.fakes_path or None, "types_only": [],
+            shown |= {"test": {"may_use_fakes": False, "fakes_path": where.fakes_path or None, "types_only": [],
                                   "code_from": where.code_from or None}, "note": where.note or None}
-    return json.dumps(document, indent=2, ensure_ascii=False)
+    return document(shown)
 
 
 def _part_document(part: PartShown) -> dict[str, str]:

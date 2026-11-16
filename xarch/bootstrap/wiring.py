@@ -49,11 +49,13 @@ BUNDLED = PackageData("xarch", "architectures")
 """Where the bundled profiles, their files and the testing presets ship."""
 
 READER = FsSourceTree
-"""The reader of the checked source, the one language xarch reads (its own docstring says which). It reads whatever the
-profile's language names; a second language needs a reader of its own, chosen here by the language the profile names."""
+"""The reader of the checked source, the one language xarch reads today (its own docstring says which), built once
+when the app starts, before any command chooses a profile. A second language needs a reader of its own, and rules'
+services and spec's example reading would then take a reader per language, built here, and pick one by the language
+the profile names."""
 RUNTIME = InterpreterRuntime
 """What that language says of itself (its standard library, reserved words and the names it binds before any code),
-as the interpreter running xarch says it; a second language needs its own, chosen here with its reader."""
+as the interpreter running xarch says it; a second language needs its own beside its reader."""
 
 
 @dataclass(frozen=True)

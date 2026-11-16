@@ -2,9 +2,9 @@
 "error"}; a profile that cannot be chosen, and one whose own checks cannot run, said in words."""
 from __future__ import annotations
 
-import json
 from collections.abc import Sequence
 
+from xarch.cli.reports.document import document
 from xarch.modules.spec.contract import NoProfileChosen, ProfileRefused
 
 
@@ -29,9 +29,24 @@ def cannot_run(problems: Sequence[str]) -> str:
             + "\n".join(f"  {problem}" for problem in problems))
 
 
+def not_a_directory(root: object) -> str:
+    """Why a folder to check is refused: it is no folder."""
+    return f"{root} is not a directory"
+
+
+def rule_needs_key() -> str:
+    """Why `profile explain --rule` is refused without a key, or with --configured."""
+    return "--rule shows the rules of a key: give a key, such as parts.names, and --profile or a configured profile"
+
+
+def key_or_profile() -> str:
+    """Why `profile explain` is refused a key and a profile at once, or both kinds of profile."""
+    return "give either a key or a profile (--profile or --configured), not both"
+
+
 def text_error(why: str) -> str:
     return f"error: {why}"
 
 
 def json_error(why: str) -> str:
-    return json.dumps({"ok": False, "error": why}, indent=2, ensure_ascii=False)
+    return document({"ok": False, "error": why})

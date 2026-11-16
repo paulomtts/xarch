@@ -14,13 +14,16 @@ PYPROJECT = Path("/src/pyproject.toml")
 
 
 @pytest.mark.parametrize("given, when, then", [
-    pytest.param(dict(app=Path("/src/shop")), ChooseApp(Path("/src"), Path("given")), AppChosen(Path("given")),
-                 id="the app folder given wins over the one configured"),
+    pytest.param(dict(app=Path("/src/shop")), ChooseApp(Path("/src"), Path("given")), AppChosen(Path("/src/given")),
+                 id="the app folder given wins over the one configured, read from the folder the command starts from"),
+    pytest.param(dict(), ChooseApp(Path("/src"), Path("/elsewhere/app")), AppChosen(Path("/elsewhere/app")),
+                 id="an app folder given in full is that folder"),
     pytest.param(dict(app=Path("/src/shop")), ChooseApp(Path("/src")), AppChosen(Path("/src/shop")),
                  id="the app folder configured for the project is used"),
-    pytest.param(dict(), ChooseApp(Path("/src")), AppChosen(Path("app")), id="with none configured it is app/"),
+    pytest.param(dict(), ChooseApp(Path("/src")), AppChosen(Path("/src/app")),
+                 id="with none configured it is app/ in the folder the command starts from"),
     pytest.param(dict(app=Path("/src/shop"), from_folder=Path("/src")), ChooseApp(Path("/elsewhere")),
-                 AppChosen(Path("app")), id="an app folder configured for another project is not this one's"),
+                 AppChosen(Path("/elsewhere/app")), id="an app folder configured for another project is not this one's"),
     pytest.param(dict(error=UnreadableSettings(PYPROJECT, "bad")), ChooseApp(Path("/src")),
                  ProfileRefused(f"cannot read {PYPROJECT}: bad"), id="unreadable settings are refused with why"),
 ])

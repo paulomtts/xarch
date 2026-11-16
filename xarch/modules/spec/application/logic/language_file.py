@@ -41,7 +41,7 @@ and the facts its reader supplies (see capabilities), each graded:
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from typing import Any
 
 from xarch.modules.spec.domain.errors import InvalidArchitecture
@@ -190,3 +190,9 @@ def _supplies(value: Any, problems: list[str]) -> tuple[Supply, ...]:
         else:
             problems.append(f"supplies.{fact}: must be {EXACT}, or {{{PARTIAL}: <what it misses>}} with a line of text")
     return tuple(found.values())
+
+
+def first_language(languages: Iterable[str]) -> str:
+    """The language of an app whose profile names none: the first of the languages xarch reads, by name; "" when it
+    reads none."""
+    return min(languages, default="")

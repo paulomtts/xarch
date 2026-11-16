@@ -25,7 +25,20 @@ from __future__ import annotations
 from collections.abc import Iterable, Sequence
 
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.domain.published import At, Drift, Weak
+from xarch.modules.rules.domain.published import (
+    APPROXIMATE,
+    DYNAMIC,
+    GUARDS_OFF,
+    INIT_FILES,
+    SKIPPED,
+    UNGOVERNED,
+    UNPLACED,
+    VACUOUS,
+    WEAK,
+    At,
+    Drift,
+    Weak,
+)
 from xarch.modules.rules.domain.values import Enforcement, Finding, InitFile, Profile, SourceFile
 from xarch.profile_values.capabilities import Shortfall
 from xarch.profile_values.excluded import Excluded
@@ -51,15 +64,15 @@ def drift(files: Sequence[InitFile], found: Sequence[str | None]) -> list[Drift]
 
 
 def strict_findings(enforcement: Enforcement) -> tuple[Finding, ...]:
-    found = [Finding("guards_off", g) for g in enforcement.guards_off if g not in enforcement.baseline_off]
-    found += [Finding("ungoverned", file) for file in enforcement.ungoverned]
-    found += [Finding("init_files", item) for item in enforcement.init_files]
-    found += [Finding("skipped", at) for at in enforcement.skipped]
-    found += [Finding("dynamic", at) for at in enforcement.dynamic]
-    found += [Finding("weak", weak) for weak in enforcement.weak]
-    found += [Finding("approximate", item) for item in enforcement.approximate]
-    found += [Finding("vacuous", vacuous(name)) for name, read in enforcement.checks if not read]
-    found += [Finding("litmus", sentence) for sentence in enforcement.unplaced]
+    found = [Finding(GUARDS_OFF, g) for g in enforcement.guards_off if g not in enforcement.baseline_off]
+    found += [Finding(UNGOVERNED, file) for file in enforcement.ungoverned]
+    found += [Finding(INIT_FILES, item) for item in enforcement.init_files]
+    found += [Finding(SKIPPED, at) for at in enforcement.skipped]
+    found += [Finding(DYNAMIC, at) for at in enforcement.dynamic]
+    found += [Finding(WEAK, weak) for weak in enforcement.weak]
+    found += [Finding(APPROXIMATE, item) for item in enforcement.approximate]
+    found += [Finding(VACUOUS, vacuous(name)) for name, read in enforcement.checks if not read]
+    found += [Finding(UNPLACED, sentence) for sentence in enforcement.unplaced]
     return tuple(found)
 
 

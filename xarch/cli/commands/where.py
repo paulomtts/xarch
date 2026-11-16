@@ -37,9 +37,10 @@ def register(app: typer.Typer, rules: RulesController, spec: SpecController) -> 
         use, the tier that tests it and where its test lives; for a test, its tier, the part it mirrors and what
         it may import. Exit 0 for any path in the project, 2 for one outside it or a profile that cannot be used."""
         refuse = refusal(output)
-        app_path = app_for(spec, app_path, refuse)
+        cwd = in_full(Path())
+        app_path = app_for(spec, cwd, app_path, refuse)
         chosen, tests_root = selection(spec, app_path, profile, tests, refuse)
-        match rules.locate(Locate(path, in_full(Path()).resolve(), app_path, chosen, tests_root)):
+        match rules.locate(Locate(path, cwd, app_path, chosen, tests_root)):
             case Outside(reason) | CheckRefused(reason):
                 raise refuse(reason)
             case ChecksCannotRun(problems):
