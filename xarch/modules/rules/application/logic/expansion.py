@@ -143,7 +143,9 @@ def _types_only(scope: Scope, who: str, key: str, parts: tuple[str, ...], fix: s
 def _tiers(profile: Profile) -> tuple[Rule, ...]:
     """A test file lies in a tier; a file of a tier imports, of the app, what the part its folder mirrors may (or its
     tier's subject, for one placed by its tier's folder); and of the test code, the fakes only when its tier tests a
-    part they stand in for, never another test file (once per line), and anything else only from its own folder."""
+    part they stand in for, never another test file (once per line), and anything else only from its own folder. The
+    rule of what a tier's file imports of the app is keyed by each tier's may_also_import too, for a tier that sets
+    it."""
     if not profile.tiers:
         return ()
     folder = "/".join(profile.fakes.folder) if profile.fakes is not None else ""
@@ -164,10 +166,11 @@ def _tiers(profile: Profile) -> tuple[Rule, ...]:
                   "and import it from there", _all("target-test"), ("line", "target"))
     elsewhere = Saying("a test may import test code only from its own folder {own_folder}/ ({target})",
                        "move what {target} holds into {own_folder}/, or drop the import")
+    also = "".join(f"; tiers.{tier.name}.may_also_import" for tier in profile.tiers if tier.may_also_import)
     return (Rule("tiers", Scope(TESTS, where=(_of("not tiered"), _of("test"), *not_fake)), ("file",), MAY_NOT,
                  EXISTING, (Saying(NO_TIER, NO_TIER_FIX),), key="tiers"),
             Rule("tiers", Scope(TESTS, where=_all("tiered")), ("import-into-app",), MAY_ONLY, (Match("permitted"),),
-                 (mirrored, by_folder), keep=_all("target-placed"), key="tiers"),
+                 (mirrored, by_folder), keep=_all("target-placed"), key=f"tiers{also}"),
             Rule("tiers", Scope(TESTS, where=_all("tiered")), ("import-into-tests",), MAY_ONLY, (Match("permitted"),),
                  (*fakes, test, elsewhere), key="tiers"))
 
@@ -345,7 +348,8 @@ def _pass_through(profile: Profile) -> tuple[Rule, ...]:
                  for part in profile.pass_through)
 
 
-KEYS = ("parts.may_import", "parts.libraries", "parts.forbidden", "tiers.apply_forbidden", "tiers", "tiers.types_only",
+KEYS = ("parts.may_import", "parts.libraries", "parts.forbidden", "tiers.apply_forbidden", "tiers", "tiers.may_also_import",
+        "tiers.types_only",
         "parts.package_only", "parts.types_only", "parts.no_callbacks", "parts.names", "parts.built_by",
         "guards.private-imports", "guards.no-comments", "guards.closed-tree", "parts.holds", "parts.immutable",
         "parts.must_import", "tiers.must_import", "guards.dead-code", "guards.dead-code.untested",

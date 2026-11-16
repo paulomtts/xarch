@@ -44,6 +44,7 @@ tiers:
     apply_forbidden: true
     types_only: [api]
     must_import: [core]
+    may_also_import: [api]
   guard:
     folder: architecture
     may_import: [core]
