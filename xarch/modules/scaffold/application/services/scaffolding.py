@@ -3,8 +3,9 @@ from __future__ import annotations
 from collections.abc import Iterable
 from pathlib import Path
 
+from xarch.modules.scaffold.application.logic.app_folder import app_name, holder
 from xarch.modules.scaffold.application.logic.names import valid_name
-from xarch.modules.scaffold.application.logic.plan import app_name, holder, plan
+from xarch.modules.scaffold.application.logic.plan import plan
 from xarch.modules.scaffold.application.logic.pyproject_record import (
     pyproject_target,
     recorded_app,
