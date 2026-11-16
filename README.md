@@ -568,9 +568,13 @@ quarter of those read, gets a note: that usually means its litmus does not descr
 model `jev-1.14.0`, pinned. Review sends whenever `TYPESAFE_API_KEY` is set in the environment: **the key alone allows
 it**, so a key set for another purpose (a shell profile, a CI secret) starts sending the first time `xarch review` runs
 without `--dry-run` or `--offline`. With no key set, a review that would send refuses (exit 2): "no key: set
-TYPESAFE_API_KEY, or run --dry-run to see what would be sent, or --offline to use cached answers only". What is sent
+TYPESAFE_API_KEY, or run --dry-run to see what would be sent, or --offline to use cached answers only". The key is
+read without the whitespace around it, and one of whitespace alone is no key; a key holding a character a request
+header cannot carry (a line break inside it, a control character, a letter outside ASCII) is refused by every review,
+`--dry-run` included, before anything is sent (exit 2), in a sentence that holds none of it. What is sent
 is, for each file judged whose answer is not cached, its masked text (below) and the question; the key travels as the
-`Authorization` header only, with `User-Agent: xarch`. The key is never printed, logged, cached or written. Nothing
+`Authorization` header only, with `User-Agent: xarch`; a redirect is never followed, so the key goes to that one
+place. The key is never printed, logged, cached or written. Nothing
 else of the project is sent: no path, no file name, no project name, no git data, no telemetry.
 
 It reads only the files it is given, and refuses (exit 2) when none is: name them as paths (a folder stands for the

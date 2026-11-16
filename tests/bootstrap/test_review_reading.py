@@ -178,6 +178,42 @@ def test_the_key_is_in_no_output_of_a_dry_run_or_a_refusal_when_it_is_set():
     assert "and the key is set now." in runs[0].output
 
 
+def test_a_key_is_read_without_the_whitespace_around_it_and_one_of_whitespace_alone_is_no_key(served):
+    assert review(SERVICE, key=f"  {KEY}\n", url=served.url).exit_code == 0
+    assert [headers["Authorization"] for _, headers, _ in served.received] == [f"Bearer {KEY}"]
+    unset = review(VALUES, key=" \n\t", url=served.url)
+    assert unset.exit_code == 2 and "no key: set TYPESAFE_API_KEY" in unset.output
+    assert len(served.received) == 1
+
+
+@pytest.mark.parametrize("key", [
+    pytest.param("sk-wired\nsecret-7f3a", id="a line break inside the key"),
+    pytest.param("sk-wired\x07secret-7f3a", id="a control character"),
+    pytest.param("sk-wired-sécret-7f3a", id="a letter outside ASCII"),
+])
+def test_a_key_a_header_cannot_carry_is_refused_with_exit_2_before_anything_is_sent_and_is_in_no_output(served, key):
+    runs = [review(SERVICE, key=key, url=served.url), review(SERVICE, "--format", "json", key=key, url=served.url),
+            review(SERVICE, "--dry-run", key=key, url=served.url),
+            review("calibrate", "--eval", "placement", key=key, url=served.url)]
+    assert [result.exit_code for result in runs] == [2, 2, 2, 2]
+    assert ("TYPESAFE_API_KEY cannot be used: it holds a character a request header cannot carry; set it to the key "
+            "alone") in runs[0].output
+    assert json.loads(runs[1].output)["ok"] is False
+    assert not any(part in result.output for result in runs for part in ("sk-wired", "7f3a"))
+    assert served.received == []
+
+
+def test_a_key_echoed_back_escaped_in_json_is_cut_from_what_the_decision_model_said():
+    key = 'sk"wired\\secret-7f3a'
+    server = ModelServer(401, f"bad key Bearer {key}")
+    try:
+        result = review(SERVICE, key=key, url=server.url)
+    finally:
+        server.stop()
+    assert result.exit_code == 3 and "TypeSafe answered 401" in result.output
+    assert "secret-7f3a" not in result.output
+
+
 def test_an_unreachable_decision_model_leaves_the_files_unanswered_and_shows_no_key():
     result = review(SERVICE, "--format", "json", url="http://127.0.0.1:9")
     assert result.exit_code == 3

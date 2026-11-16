@@ -5,8 +5,10 @@ Whatever is given as the state and in the questions leaves the machine: it is se
 the network. Nothing else is sent: no telemetry, and only the headers the API needs and the plain User-Agent `xarch`.
 
 The key is given to the client, never read from the environment or a file, and it appears in no error, no repr and no
-message: where TypeSafe echoes it back, it is cut out. A busy service (429, 529) is retried with a growing wait; any
-other failure is raised at once as a TypeSafeError. The limits the docs state are checked before any call.
+message: where TypeSafe echoes it back, it is cut out, before the reply is decoded and after. A key holding a character
+a header cannot carry is refused when the client is built. A busy service (429, 529) is retried with a growing wait; a
+redirect is never followed; any other failure is raised at once as a TypeSafeError. The limits the docs state are
+checked before any call.
 """
 from __future__ import annotations
 
@@ -335,14 +337,31 @@ class _Reply:
     problems: tuple[_FieldProblem, ...] = field(default=())
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Follows no redirect, so that the key never travels to another place: the redirect itself is the answer."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl) -> None:
+        return None
+
+
+_OPENER = urllib.request.build_opener(_NoRedirect)
+
+
+def _carried(key: str) -> bool:
+    """Whether a header can carry the key as it is: printable ASCII only."""
+    return key.isascii() and key.isprintable()
+
+
 class TypeSafe:
     """The client: one key, one service. Construct it with the key; it never looks for one itself."""
 
     def __init__(self, api_key: str, base_url: str = URL, model: str = "jev-latest",
                  timeout: float = 60.0, retries: int = 3, sleep: Callable[[float], None] = time.sleep):
         """timeout is in seconds, per try; retries is how many more tries a busy service gets, with sleep as the wait."""
-        if not isinstance(api_key, str) or not api_key:
+        if not isinstance(api_key, str) or not api_key.strip():
             raise _invalid("an API key is required")
+        if not _carried(api_key):
+            raise _invalid("the API key holds a character a header cannot carry")
         if retries < 0:
             raise _invalid("retries cannot be negative")
         if timeout <= 0:
@@ -382,10 +401,13 @@ class TypeSafe:
             raise _unexpected("the body is not JSON") from e
 
     def _once(self, method: str, path: str, payload: bytes | None) -> _Reply:
-        request = urllib.request.Request(self._base + path, data=payload, method=method, headers={
-            "Authorization": f"Bearer {self._key}", "Content-Type": mimetypes.types_map[".json"], "User-Agent": "xarch"})
+        """One try: the reply, whatever its status; any failure to get one is raised as a TypeSafeError holding no
+        key."""
         try:
-            with urllib.request.urlopen(request, timeout=self._timeout) as response:
+            request = urllib.request.Request(self._base + path, data=payload, method=method, headers={
+                "Authorization": f"Bearer {self._key}", "Content-Type": mimetypes.types_map[".json"],
+                "User-Agent": "xarch"})
+            with _OPENER.open(request, timeout=self._timeout) as response:
                 return _Reply(response.status, response.read().decode("utf-8", "replace"))
         except urllib.error.HTTPError as e:
             with e:
@@ -397,13 +419,22 @@ class TypeSafe:
             reason = "did not answer in time" if timed_out else f"could not be reached: {self._clean(str(e.reason))}"
             raise UnreachableError(f"TypeSafe {reason}", timed_out=timed_out) from e
         except (OSError, HTTPException) as e:
-            raise UnreachableError(f"TypeSafe could not be reached: {self._clean(type(e).__name__)}") from e
+            raise UnreachableError(f"TypeSafe could not be reached: {self._clean(type(e).__name__)}") from None
+        except ValueError:
+            raise _invalid("the request could not be sent: it holds a value a request cannot carry") from None
+        except Exception as e:
+            raise UnexpectedResponseError(f"the call to TypeSafe failed: {type(e).__name__}") from None
 
     def _clean(self, text: str) -> str:
-        return text.replace(self._key, "***")
+        """The text with the key cut out, as it is and as JSON writes it inside a string."""
+        for written in (self._key, json.dumps(self._key)[1:-1]):
+            text = text.replace(written, "***")
+        return text
 
     def _refusal(self, reply: _Reply) -> TypeSafeError:
-        said, problems = _said(self._clean(reply.text))
+        said, found = _said(self._clean(reply.text))
+        said = self._clean(said)
+        problems = tuple(_FieldProblem(self._clean(p.field), self._clean(p.message)) for p in found)
         message = f"TypeSafe answered {reply.status}: {said}"
         if reply.status in BUSY:
             return RateLimitedError(message, reply.status, retryable=True)

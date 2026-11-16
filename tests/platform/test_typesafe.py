@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from tests.platform.conftest import Reply
+from tests.platform.conftest import Reply, ScriptedServer
 from xarch.platform.typesafe import (
     AuthenticationError,
     ChoiceAnswer,
@@ -371,9 +371,28 @@ def test_the_key_is_not_in_the_client_repr(server):
     assert KEY not in repr(client(server))
 
 
-def test_every_error_is_a_typesafe_error():
-    for error in (AuthenticationError, InvalidRequestError, RateLimitedError, UnreachableError, UnexpectedResponseError):
-        assert issubclass(error, TypeSafeError)
+@pytest.mark.parametrize("make, replies, error", [
+    pytest.param(lambda server, unused: client(server), [Reply(401, {"detail": "no"})], AuthenticationError, id="401"),
+    pytest.param(lambda server, unused: client(server), [Reply(422, {"detail": []})], InvalidRequestError, id="422"),
+    pytest.param(lambda server, unused: client(server, retries=0), [Reply(429, {"detail": "busy"})], RateLimitedError,
+                 id="busy"),
+    pytest.param(lambda server, unused: client(server), [Reply(500, {"detail": "x"})], UnexpectedResponseError,
+                 id="500"),
+    pytest.param(lambda server, unused: client(server), [Reply(raw=b"not json")], UnexpectedResponseError,
+                 id="a body that is not JSON"),
+    pytest.param(lambda server, unused: client(server), [Reply(302, {}, {"Location": "http://127.0.0.1:9/"})],
+                 UnexpectedResponseError, id="a redirect"),
+    pytest.param(lambda server, unused: TypeSafe(KEY, base_url=unused), [], UnreachableError, id="unreachable"),
+    pytest.param(lambda server, unused: TypeSafe(KEY, base_url="no-scheme"), [], InvalidRequestError,
+                 id="a base url a request cannot be made of"),
+    pytest.param(lambda server, unused: client(server, timeout=0.05), [Reply(stall=True)], UnreachableError,
+                 id="no answer in time"),
+])
+def test_every_failure_of_a_call_is_raised_as_a_typesafe_error_of_its_kind(server, unused_url, make, replies, error):
+    server.script(*replies)
+    with pytest.raises(TypeSafeError) as caught:
+        make(server, unused_url).ask("s", {"q": asked()})
+    assert type(caught.value) is error
 
 
 def test_a_trailing_slash_on_the_base_url_does_not_double_the_path(server):
@@ -384,9 +403,56 @@ def test_a_trailing_slash_on_the_base_url_does_not_double_the_path(server):
 
 @pytest.mark.parametrize("make", [
     pytest.param(lambda: TypeSafe(""), id="an empty key"),
+    pytest.param(lambda: TypeSafe(" \n"), id="a key of whitespace alone"),
     pytest.param(lambda: TypeSafe(KEY, retries=-1), id="a negative retry limit"),
     pytest.param(lambda: TypeSafe(KEY, timeout=0), id="a timeout of nothing"),
 ])
 def test_a_client_built_wrongly_is_refused(make):
     with pytest.raises(InvalidRequestError):
         make()
+
+
+@pytest.mark.parametrize("key", [
+    pytest.param(f"{KEY}\n", id="a line break after the key"),
+    pytest.param("sk-secret\rkey-123", id="a carriage return inside"),
+    pytest.param("sk-secret\x00key-123", id="a null character"),
+    pytest.param("sk-sécret-key-123", id="a letter outside ASCII"),
+])
+def test_a_key_a_header_cannot_carry_is_refused_when_the_client_is_built_in_a_sentence_without_it(server, key):
+    with pytest.raises(InvalidRequestError) as caught:
+        TypeSafe(key, base_url=server.url)
+    assert str(caught.value) == "the API key holds a character a header cannot carry"
+    assert server.requests == []
+
+
+def test_a_redirect_is_never_followed_so_the_key_goes_nowhere_else(server):
+    elsewhere = ScriptedServer()
+    try:
+        server.script(Reply(302, {}, {"Location": elsewhere.url + "/v1/systemone"}))
+        with pytest.raises(UnexpectedResponseError) as caught:
+            client(server).ask("s", {"q": asked()})
+    finally:
+        elsewhere.stop()
+    assert caught.value.status == 302 and elsewhere.requests == []
+
+
+RECOGNISABLE = 'sk"recognisable\\key-5d1e'
+
+
+@pytest.mark.parametrize("reply", [
+    pytest.param(Reply(401, {"detail": f"bad key Bearer {RECOGNISABLE}"}), id="401 echo"),
+    pytest.param(Reply(400, {"detail": f"bad {RECOGNISABLE}"}), id="400 echo"),
+    pytest.param(Reply(422, {"detail": [{"loc": ["body", RECOGNISABLE], "msg": f"bad {RECOGNISABLE}"}]}), id="422 echo"),
+    pytest.param(Reply(429, {"detail": RECOGNISABLE}), id="busy echo"),
+    pytest.param(Reply(500, {"detail": {"key": RECOGNISABLE}}), id="500 echo of an object"),
+    pytest.param(Reply(503, raw=f"down {RECOGNISABLE}".encode()), id="a plain text echo"),
+    pytest.param(Reply(200, {"model": RECOGNISABLE}), id="a 200 of the wrong shape"),
+    pytest.param(Reply(302, {"detail": RECOGNISABLE}, {"Location": "http://127.0.0.1:9/"}), id="a redirect"),
+    pytest.param(Reply(stall=True), id="no answer in time"),
+])
+def test_the_key_is_in_no_message_of_any_failure_even_escaped_in_json(server, reply):
+    server.script(reply)
+    with pytest.raises(TypeSafeError) as caught:
+        TypeSafe(RECOGNISABLE, base_url=server.url, retries=0, timeout=0.2).ask("s", {"q": asked()})
+    shown = " ".join([str(caught.value), repr(caught.value), *(f"{p.field} {p.message}" for p in caught.value.problems)])
+    assert "recognisable" not in shown and "5d1e" not in shown

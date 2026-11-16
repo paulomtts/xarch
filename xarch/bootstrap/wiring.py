@@ -133,8 +133,9 @@ def _build_scaffold(fs: FileSystem, spec: SpecController) -> ScaffoldController:
 
 def _client(environment: Mapping[str, str], url: str) -> TypeSafe | None:
     """The decision model's client, with the key the environment holds when it is asked, or None when it holds none:
-    the key is read here alone, at the moment review would send, and handed to the client, nowhere else."""
-    key = environment.get(KEY, "")
+    the key is read here alone, at the moment review would send, and handed to the client, nowhere else; it is read
+    without the whitespace around it, and one of whitespace alone is none."""
+    key = environment.get(KEY, "").strip()
     return TypeSafe(key, base_url=url, model=MODEL) if key else None
 
 

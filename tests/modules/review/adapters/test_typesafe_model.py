@@ -6,7 +6,7 @@ import json
 import pytest
 
 from xarch.modules.review.adapters.typesafe_model import KEY, NAME, SERVICE, TypeSafeModel
-from xarch.modules.review.domain.errors import NoKey, Unanswered
+from xarch.modules.review.domain.errors import NoKey, Refused, Unanswered
 from xarch.modules.review.domain.published import SCORE, YES_NO, Choice, Option, Sender
 from xarch.modules.review.domain.values import Answer
 from xarch.platform.data_files import DataFileWriter
@@ -110,3 +110,14 @@ def test_the_body_of_a_yes_or_no_and_of_a_score_is_what_the_service_receives():
                     "criteria": {"true": "it tests the fields"}}
     assert score == {"type": "score", "instructions": "How far does it reach?",
                      "criteria": [f"level {n}" for n in range(5)]}
+
+
+def test_a_key_the_client_refuses_is_refused_in_a_sentence_without_it_whether_it_would_send_or_not():
+    def connect():
+        raise InvalidRequestError("the API key holds a character a header cannot carry")
+    model = TypeSafeModel(connect, "jev-1.14.0", AT, DataFileWriter())
+    for use in (model.sends, lambda: model.ask("text", QUESTION)):
+        with pytest.raises(Refused) as caught:
+            use()
+        assert caught.value.reason == (f"{KEY} cannot be used: it holds a character a request header cannot carry; "
+                                       "set it to the key alone")

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from xarch.modules.review.domain.errors import NoKey, Unanswered
+from xarch.modules.review.domain.errors import NoKey, Refused, Unanswered
 from xarch.modules.review.domain.published import SCORE, YES_NO, Choice, Option, Sender
 from xarch.modules.review.domain.values import Answer
 from xarch.platform.data_files import DataFileWriter
@@ -36,20 +36,21 @@ YES, NO = "yes", "no"
 
 class TypeSafeModel:
     """Satisfies review's DecisionModel by translating its question into TypeSafe's and the answer back. connect gives
-    the client with the key set, or None when it is not; the key never passes through here."""
+    the client with the key set, or None when it is not; the key never passes through here, and a key the client
+    refuses raises Refused with a sentence that holds none of it."""
 
     def __init__(self, connect: Callable[[], TypeSafe | None], model: str, at: str, writer: DataFileWriter):
         self._connect, self._model, self._at, self._writer = connect, model, at, writer
 
     def sends(self) -> Sender:
-        return Sender(SERVICE, self._at, self._model, KEY, self._connect() is not None)
+        return Sender(SERVICE, self._at, self._model, KEY, self._client() is not None)
 
     def body(self, text: str, question: Choice) -> str:
         return self._writer.json(build_request(self._model, text, {NAME: _question(question)}))
 
     def ask(self, text: str, question: Choice) -> Answer:
         """A failure of the client raises Unanswered with the client's message, which holds no key."""
-        client = self._connect()
+        client = self._client()
         if client is None:
             raise NoKey(KEY)
         try:
@@ -57,6 +58,14 @@ class TypeSafeModel:
         except TypeSafeError as e:
             raise Unanswered(str(e)) from None
         return _answer(response, question.options)
+
+
+    def _client(self) -> TypeSafe | None:
+        try:
+            return self._connect()
+        except TypeSafeError:
+            raise Refused(f"{KEY} cannot be used: it holds a character a request header cannot carry; set it to the "
+                          "key alone") from None
 
 
 def _question(question: Choice) -> Question:
