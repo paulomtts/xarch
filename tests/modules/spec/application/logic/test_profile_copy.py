@@ -1,25 +1,9 @@
-"""The text of a copied profile: named for the copy and based on what it was copied from; where it is recorded."""
+"""What a copied profile may be called, where it goes and where the project records it."""
 from pathlib import Path
 
 import pytest
 
-from xarch.modules.spec.application.logic.profile_copy import copied_text, project_root, recorded, valid_name
-
-ORIGINAL = "# a comment\nxarch: 2\nname: web\nlanguage: python\n\nparts:\n  name: not this one\n"
-
-
-def test_the_copy_is_named_and_based_on_the_original_and_keeps_everything_else_as_written():
-    assert copied_text(ORIGINAL, "mine", "web") == (
-        "# a comment\nxarch: 2\nname: mine\nbased_on: web\nlanguage: python\n\nparts:\n  name: not this one\n")
-
-
-def test_a_based_on_the_original_already_had_is_replaced_not_repeated():
-    text = copied_text("xarch: 2\nname: web\nbased_on: cli\n", "mine", "web")
-    assert text == "xarch: 2\nname: mine\nbased_on: web\n"
-
-
-def test_a_profile_with_no_name_line_cannot_be_copied():
-    assert copied_text("xarch: 2\nparts: {}\n", "mine", "web") is None
+from xarch.modules.spec.application.logic.profile_copy import project_root, recorded, valid_name
 
 
 @pytest.mark.parametrize("name, ok", [("mine", True), ("my-app_2", True), ("", False), ("a b", False),

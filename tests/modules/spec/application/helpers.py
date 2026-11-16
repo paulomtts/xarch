@@ -29,4 +29,4 @@ def controller(files: FakeArchitectureFiles, settings: FakeSettings | None = Non
     selection = ProfileSelectionService(settings, architectures, files, folders)
     return SpecController(architectures, selection, ProfileReviewService(selection, architectures, files),
                           ExplainService(files, architectures), MigrationService(files, architectures, output, FakeProfileFormat()),
-                          ProfileCreationService(files, architectures, output), PublishingService(architectures))
+                          ProfileCreationService(files, architectures, output, FakeProfileFormat()), PublishingService(architectures))

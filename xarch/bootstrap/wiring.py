@@ -75,11 +75,11 @@ def build_spec(fs: FileSystem | None = None, tree: FsSourceTree | None = None) -
     settings = PyprojectSettings(fs, TomlReader())
     output = FsProfileOutput(fs)
     folders = FsFolders(fs)
+    form = YamlProfileFormat(YamlWriter())
     selection = ProfileSelectionService(settings, architectures, files, folders)
     return SpecController(architectures, selection, ProfileReviewService(selection, architectures, files),
-                          ExplainService(files, architectures),
-                          MigrationService(files, architectures, output, YamlProfileFormat(YamlWriter())),
-                          ProfileCreationService(files, architectures, output), PublishingService(architectures))
+                          ExplainService(files, architectures), MigrationService(files, architectures, output, form),
+                          ProfileCreationService(files, architectures, output, form), PublishingService(architectures))
 
 
 def build_architectures(fs: FileSystem | None = None) -> ArchitectureService:

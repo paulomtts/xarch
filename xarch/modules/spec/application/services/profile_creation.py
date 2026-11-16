@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from xarch.modules.spec.application.logic.profile_copy import (
     copied_document,
-    copied_text,
     copy_file,
     copy_folder,
     project_root,
@@ -11,6 +10,7 @@ from xarch.modules.spec.application.logic.profile_copy import (
 )
 from xarch.modules.spec.application.logic.profile_file import source_of
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
+from xarch.modules.spec.application.ports.profile_format import ProfileFormat
 from xarch.modules.spec.application.ports.profile_output import ProfileOutput
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.contract import NewProfile, ProfileCreated
@@ -22,8 +22,9 @@ class ProfileCreationService:
     from, and every file it points to, so the copy loads on its own. It checks the copy loads before writing, and never
     writes over a file."""
 
-    def __init__(self, files: ArchitectureFiles, architectures: ArchitectureService, output: ProfileOutput):
-        self._files, self._architectures, self._output = files, architectures, output
+    def __init__(self, files: ArchitectureFiles, architectures: ArchitectureService, output: ProfileOutput,
+                 form: ProfileFormat):
+        self._files, self._architectures, self._output, self._form = files, architectures, output, form
 
     def create(self, cmd: NewProfile) -> ProfileCreated:
         """Raises NewProfileRefused, WouldOverwrite, UnknownProfile or InvalidArchitecture."""
@@ -34,7 +35,7 @@ class ProfileCreationService:
             raise UnknownProfile(cmd.source, self._files.bundled())
         source = source_of(cmd.source, self._files.bundled())
         pointed = self._architectures.pointed(cmd.source)
-        text = copied_text(self._files.profile_text(source), cmd.name, cmd.source)
+        text = self._form.renamed(self._files.profile_text(source), cmd.name, cmd.source)
         if text is None:
             raise NewProfileRefused(f"the bundled profile '{cmd.source}' has no `name` line to rename")
         profile = copy_file(cmd.name)
