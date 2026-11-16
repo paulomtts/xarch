@@ -9,14 +9,14 @@ import pytest
 from xarch.bootstrap.wiring import build_controllers
 from xarch.modules.layout.contract import CheckStructure
 from xarch.modules.rules.contract import CheckImports
-from xarch.modules.scaffold.contract import Init, New, Scaffolded
+from xarch.modules.scaffold.contract import InitProject, NewInstance, Scaffolded
 
 GUARD = Path("tests/architecture/test_rules.py")
 PROFILES = ["cli", "web"]
 
 
 def init(app: Path, profile: str) -> Scaffolded:
-    result = build_controllers().scaffold.init(Init(app, profile, Path.cwd()))
+    result = build_controllers().scaffold.init(InitProject(app, profile, Path.cwd()))
     assert isinstance(result, Scaffolded)
     return result
 
@@ -105,7 +105,7 @@ def ruff_in(project: Path) -> subprocess.CompletedProcess[str]:
 def test_init_writes_the_linter_config_unpinned_and_a_fresh_project_with_a_module_passes_it(tmp_path, profile):
     app = tmp_path / "app"
     init(app, profile)
-    assert isinstance(build_controllers().scaffold.new(New(app, "module", "documents", profile)), Scaffolded)
+    assert isinstance(build_controllers().scaffold.new(NewInstance(app, "module", "documents", profile)), Scaffolded)
     assert {file.path: file.pinned for file in build_controllers().spec.files(profile, "app").files}[("ruff.toml",)] is False
     result = ruff_in(tmp_path)
     assert result.returncode == 0, result.stdout + result.stderr

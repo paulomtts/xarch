@@ -6,21 +6,21 @@ import pytest
 from xarch.bootstrap.wiring import build_controllers
 from xarch.modules.layout.contract import CheckStructure
 from xarch.modules.rules.contract import CheckImports
-from xarch.modules.scaffold.contract import Init, New, NotInitialized, Refused, Report, Scaffolded
+from xarch.modules.scaffold.contract import InitProject, NewInstance, NotInitialized, Refused, ReportView, Scaffolded
 
 TOP = ["bootstrap/migrations", "kernel", "kernel/logic", "modules", "platform", "cli/commands"]
 MODULE = ["contract", "domain", "application", "application/services", "application/logic", "application/ports",
           "adapters"]
 
 
-def init(app: Path, profile: str = "cli") -> Report:
-    result = build_controllers().scaffold.init(Init(app, profile, Path.cwd()))
+def init(app: Path, profile: str = "cli") -> ReportView:
+    result = build_controllers().scaffold.init(InitProject(app, profile, Path.cwd()))
     assert isinstance(result, Scaffolded)
     return result.report
 
 
 def new_module(app: Path, name: str, profile: str = "cli") -> Scaffolded | Refused:
-    return build_controllers().scaffold.new(New(app, "module", name, profile))
+    return build_controllers().scaffold.new(NewInstance(app, "module", name, profile))
 
 
 def refusal(app: Path, name: str) -> str:

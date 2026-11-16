@@ -7,7 +7,7 @@ import pytest
 from xarch.bootstrap.wiring import build_controllers
 from xarch.modules.layout.contract import CheckStructure
 from xarch.modules.rules.contract import CheckImports, ImportsChecked
-from xarch.modules.scaffold.contract import Init, New, Scaffolded
+from xarch.modules.scaffold.contract import InitProject, NewInstance, Scaffolded
 
 PROFILE = """\
 xarch: 2
@@ -40,7 +40,7 @@ def profile_in(tmp_path: Path, palette: bytes = b"BRAND = '#036'\n", font: bytes
 
 
 def init(app: Path, profile: str | Path) -> Scaffolded:
-    result = build_controllers().scaffold.init(Init(app, str(profile), Path.cwd()))
+    result = build_controllers().scaffold.init(InitProject(app, str(profile), Path.cwd()))
     assert isinstance(result, Scaffolded)
     return result
 
@@ -100,7 +100,7 @@ def test_a_fresh_project_of_a_bundled_profile_has_every_shipped_file_and_passes_
     app = tmp_path / "app"
     init(app, profile)
     controllers = build_controllers()
-    assert isinstance(controllers.scaffold.new(New(app, "module", "documents", profile)), Scaffolded)
+    assert isinstance(controllers.scaffold.new(NewInstance(app, "module", "documents", profile)), Scaffolded)
     shipped = controllers.spec.files(profile, "app").files
     assert shipped and all((tmp_path.joinpath(*file.path)).is_file() for file in shipped)
     checked = controllers.rules.check(CheckImports(app, "app", profile, tmp_path / "tests"))

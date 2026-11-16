@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 @dataclass(frozen=True)
-class Init:
+class InitProject:
     """Build the top level of the architecture at a location (a bundled name or a path) below root; cwd is the working
     folder, in full, that a relative root or location is read from."""
     root: Path
@@ -15,7 +15,7 @@ class Init:
 
 
 @dataclass(frozen=True)
-class New:
+class NewInstance:
     """Build one instance, called name, of a kind: a folder of the layout that declares `each:`, by its path."""
     root: Path
     kind: str
@@ -24,7 +24,7 @@ class New:
 
 
 @dataclass
-class Report:
+class ReportView:
     """What was created, what existing file was updated, and what already existed and was left alone."""
     created: list[Path] = field(default_factory=list)
     skipped: list[Path] = field(default_factory=list)
@@ -33,7 +33,7 @@ class Report:
 
 @dataclass(frozen=True)
 class Scaffolded:
-    report: Report
+    report: ReportView
 
 
 @dataclass(frozen=True)

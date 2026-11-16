@@ -1,14 +1,14 @@
-"""How `xarch init` and `xarch new` show what they did, on a hand-made Report, and why `new` refuses."""
+"""How `xarch init` and `xarch new` show what they did, on a hand-made ReportView, and why `new` refuses."""
 from pathlib import Path
 
 import pytest
 
 from xarch.cli.reports.scaffold_report import refused_reason, report_lines
-from xarch.modules.scaffold.contract import KindIsAFolder, NotInitialized, Report
+from xarch.modules.scaffold.contract import KindIsAFolder, NotInitialized, ReportView
 
 
 def test_the_report_says_a_line_per_file_created_then_updated_then_skipped():
-    report = Report(created=[Path("app/a.py")], skipped=[Path("app/c.py")], updated=[Path("pyproject.toml")])
+    report = ReportView(created=[Path("app/a.py")], skipped=[Path("app/c.py")], updated=[Path("pyproject.toml")])
     assert report_lines(report) == ["created app/a.py", "updated pyproject.toml", "skipped app/c.py"]
 
 

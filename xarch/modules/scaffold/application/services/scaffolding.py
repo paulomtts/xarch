@@ -14,7 +14,7 @@ from xarch.modules.scaffold.application.logic.pyproject_record import (
 )
 from xarch.modules.scaffold.application.ports.files import Files
 from xarch.modules.scaffold.application.ports.skeleton import Skeleton
-from xarch.modules.scaffold.contract import Report
+from xarch.modules.scaffold.contract import ReportView
 from xarch.modules.scaffold.domain.errors import AlreadyExists, FolderMissing, InvalidName, UnknownKind
 from xarch.modules.scaffold.domain.values import CREATED, FOLDER, SKIPPED, UPDATED, Touched
 
@@ -23,7 +23,7 @@ class ScaffoldingService:
     def __init__(self, files: Files, skeleton: Skeleton):
         self._files, self._skeleton = files, skeleton
 
-    def init(self, root: Path, profile: str, cwd: Path) -> Report:
+    def init(self, root: Path, profile: str, cwd: Path) -> ReportView:
         """The app's top level, then the profile (and the app folder, when it is not the default) recorded in the
         project's pyproject.toml, then the project docs and the profile's other project files, in the order each
         file is reached; a relative root or location is read from cwd, the working folder."""
@@ -39,7 +39,7 @@ class ScaffoldingService:
             touched.append(self._write(base.joinpath(*rel), text))
         return _report(touched)
 
-    def new(self, root: Path, kind: str, name: str, profile: str) -> Report:
+    def new(self, root: Path, kind: str, name: str, profile: str) -> ReportView:
         """Refused unless the name is valid, the kind is declared, init ran and nothing would be overwritten."""
         language = self._skeleton.language(profile)
         if not valid_name(name, language):
@@ -81,8 +81,8 @@ class ScaffoldingService:
         return Touched(target, CREATED)
 
 
-def _report(touched: list[Touched]) -> Report:
+def _report(touched: list[Touched]) -> ReportView:
     """Each file under what was done to it, in the order the files were reached."""
-    return Report(created=[t.path for t in touched if t.done == CREATED],
+    return ReportView(created=[t.path for t in touched if t.done == CREATED],
                   skipped=[t.path for t in touched if t.done == SKIPPED],
                   updated=[t.path for t in touched if t.done == UPDATED])

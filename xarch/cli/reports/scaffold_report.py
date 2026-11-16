@@ -2,10 +2,10 @@
 refuses the folder of a kind, or an app with no skeleton, with the command to type."""
 from __future__ import annotations
 
-from xarch.modules.scaffold.contract import KindIsAFolder, NotInitialized, Report
+from xarch.modules.scaffold.contract import KindIsAFolder, NotInitialized, ReportView
 
 
-def report_lines(report: Report) -> list[str]:
+def report_lines(report: ReportView) -> list[str]:
     return ([f"created {path.as_posix()}" for path in report.created]
             + [f"updated {path.as_posix()}" for path in report.updated]
             + [f"skipped {path.as_posix()}" for path in report.skipped])

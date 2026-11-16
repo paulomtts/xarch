@@ -8,7 +8,7 @@ from tests.fakes.filesystem import FakeFiles
 from tests.fakes.scaffold_skeleton import FakeSkeleton
 from xarch.modules.scaffold.application.controller import ScaffoldController
 from xarch.modules.scaffold.application.services.scaffolding import ScaffoldingService
-from xarch.modules.scaffold.contract import Init, Refused, Report, Scaffolded
+from xarch.modules.scaffold.contract import InitProject, Refused, ReportView, Scaffolded
 
 ROOT = Path("/src/app")
 SKELETON = FakeSkeleton([(("kernel",), True)], refused={"gone": "gone: cannot read the file: no such file"})
@@ -16,13 +16,13 @@ BUILT = [ROOT / "__init__.py", ROOT / "kernel" / "__init__.py"]
 
 
 @pytest.mark.parametrize("given, when, then", [
-    pytest.param(FakeFiles(), Init(ROOT, "cli", Path("/src")),
-                 Scaffolded(Report(created=[*BUILT, Path("/src/pyproject.toml")])),
+    pytest.param(FakeFiles(), InitProject(ROOT, "cli", Path("/src")),
+                 Scaffolded(ReportView(created=[*BUILT, Path("/src/pyproject.toml")])),
                  id="the top level is built and the profile recorded in a new pyproject.toml"),
     pytest.param(FakeFiles(set(BUILT), {Path("/src/pyproject.toml"): '[tool.xarch]\nprofile = "cli"\n'}),
-                 Init(ROOT, "cli", Path("/src")), Scaffolded(Report(skipped=[*BUILT, Path("/src/pyproject.toml")])),
+                 InitProject(ROOT, "cli", Path("/src")), Scaffolded(ReportView(skipped=[*BUILT, Path("/src/pyproject.toml")])),
                  id="what is there already is left alone"),
-    pytest.param(FakeFiles(), Init(ROOT, "gone", Path("/src")), Refused("gone: cannot read the file: no such file"),
+    pytest.param(FakeFiles(), InitProject(ROOT, "gone", Path("/src")), Refused("gone: cannot read the file: no such file"),
                  id="a profile spec refuses is refused with spec's reason"),
 ])
 def test_init(given, when, then):
