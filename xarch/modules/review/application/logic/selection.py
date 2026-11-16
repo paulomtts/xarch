@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from xarch.modules.review.domain.errors import AllWithOthers, NoSelection, OverCap
+from xarch.modules.review.domain.errors import AllWithOthers, InPieces, NoSelection, OverCap
 from xarch.modules.review.domain.published import (
     BY_ALL,
     BY_LIST,
     BY_PATHS,
+    MAX_FILES,
+    MAX_PIECED,
     MIN_CHARS,
     SMALL,
     UNPARSABLE,
@@ -17,11 +19,15 @@ from xarch.modules.review.domain.published import (
 from xarch.modules.review.domain.values import CodeFile, Found
 
 
-def chosen(paths: tuple[Path, ...], listed: tuple[Path, ...], every: bool, app: Path) -> tuple[Path, ...]:
+def chosen(paths: tuple[Path, ...], listed: tuple[Path, ...], every: bool, app: Path,
+           pieces: bool = False) -> tuple[Path, ...]:
     """The paths to read: those given and those listed, in that order, or the app folder for every file of the app;
-    raises NoSelection when none is given, AllWithOthers when every file is asked for with others."""
+    raises NoSelection when none is given, AllWithOthers when every file is asked for with others, InPieces when
+    every file is asked for in pieces (about a third of the pieces of good files read low: a sweep is noise)."""
     if every and (paths or listed):
         raise AllWithOthers()
+    if every and pieces:
+        raise InPieces()
     if every:
         return (app,)
     if not paths and not listed:
@@ -51,8 +57,10 @@ def left_out(found: Found) -> tuple[LeftOut, ...]:
                                 if (why := _why_unjudged(file)))
 
 
-def within_cap(files: tuple[CodeFile, ...], cap: int) -> tuple[CodeFile, ...]:
-    """The files, when they are no more than one run judges; raises OverCap otherwise."""
+def within_cap(files: tuple[CodeFile, ...], given: int | None, pieces: bool) -> tuple[CodeFile, ...]:
+    """The files, when they are no more than one run judges (given, else MAX_PIECED for a run that ranks pieces, else
+    MAX_FILES); raises OverCap otherwise."""
+    cap = given if given is not None else MAX_PIECED if pieces else MAX_FILES
     if len(files) > cap:
         raise OverCap(len(files), cap)
     return files

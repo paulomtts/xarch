@@ -21,6 +21,7 @@ from xarch.modules.rules.contract import (
     CheckRefused,
     ChecksCannotRun,
     Outside,
+    Piece,
     ReadSources,
     SourceRead,
     SourcesRead,
@@ -38,12 +39,14 @@ PROFILE = Profile(
     info={"kernel": PartInfo("primitives", "Is it a primitive?", "kernel/"),
           "domain": PartInfo("invariants", "Is it an invariant?", "domain/")})
 IDS = Import(1, ("app", "kernel", "ids"), ("Id",))
-FILES = {"kernel/ids.py": [], "modules/docs/domain/values.py": [IDS], "stray/run.py": [], "examples/demo.py": [],
+ID_PIECE = Piece("class", "Id", 1, 1)
+FILES = {"kernel/ids.py": SourceFile("", (), (), pieces=(ID_PIECE,)), "modules/docs/domain/values.py": [IDS],
+         "stray/run.py": [], "examples/demo.py": [],
          "kernel/broken.py": SourceFile("", (), (), error=Unparsable(2, "invalid syntax"))}
 TEXTS = {APP / "kernel/ids.py": "class Id: ...\n", APP / "modules/docs/domain/values.py": "from app.kernel.ids import Id\n",
          APP / "kernel/broken.py": "def (\n", Path("/src/README.md"): "# readme\n"}
 VALUES = SourceRead("app/modules/docs/domain/values.py", IN_PART, "domain", "from app.kernel.ids import Id\n", (IDS,))
-IDS_READ = SourceRead("app/kernel/ids.py", IN_PART, "kernel", "class Id: ...\n")
+IDS_READ = SourceRead("app/kernel/ids.py", IN_PART, "kernel", "class Id: ...\n", pieces=(ID_PIECE,))
 BROKEN = SourceRead("app/kernel/broken.py", IN_PART, "kernel", "def (\n", error=Unparsable(2, "invalid syntax"))
 STRAY = SourceRead("app/stray/run.py", IN_NO_PART)
 

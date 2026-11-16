@@ -14,14 +14,19 @@ from xarch.modules.review.domain.published import (
     EXCLUDED,
     FAILED,
     FEWEST_SUMMED,
+    IMPORTS,
     MARKED_SMALL,
     MAX_FILES,
+    MAX_PIECED,
     MIN_CHARS,
     MISSING,
     NEVER,
+    NO_CONTEXT,
     NOT_CACHED,
     NOT_SOURCE,
     OUTSIDE,
+    PIECE_CHARS,
+    SHOWN,
     SMALL,
     UNPARSABLE,
     UNPLACED,
@@ -29,17 +34,20 @@ from xarch.modules.review.domain.published import (
     LeftOut,
     Option,
     PartRead,
+    PieceReading,
+    PiecesRead,
     Reading,
     Request,
     Sender,
     Unasked,
 )
 
-__all__ = ["A_TEST", "BAND", "BY_ALL", "BY_LIST", "BY_PATHS", "EXCLUDED", "FAILED", "FEWEST_SUMMED", "MARKED_SMALL",
-           "MAX_FILES", "MIN_CHARS", "MISSING", "NEVER", "NOT_CACHED", "NOT_SOURCE", "OUTSIDE", "SMALL", "UNPARSABLE",
-           "UNPLACED", "Choice", "LeftOut", "Option", "PartRead", "Reading", "Request", "Sender", "Unasked", "Review",
-           "ReviewPlanned", "ReviewReading", "NothingChosen", "AllAndOthers", "TooManyFiles", "KeyMissing",
-           "ReviewRefused", "ReviewResult"]
+__all__ = ["A_TEST", "BAND", "BY_ALL", "BY_LIST", "BY_PATHS", "EXCLUDED", "FAILED", "FEWEST_SUMMED", "IMPORTS",
+           "MARKED_SMALL", "MAX_FILES", "MAX_PIECED", "MIN_CHARS", "MISSING", "NEVER", "NO_CONTEXT", "NOT_CACHED",
+           "NOT_SOURCE", "OUTSIDE", "PIECE_CHARS", "SHOWN", "SMALL", "UNPARSABLE", "UNPLACED", "Choice", "LeftOut",
+           "Option", "PartRead", "PieceReading", "PiecesRead", "Reading", "Request", "Sender", "Unasked", "Review",
+           "ReviewPlanned", "ReviewReading", "NothingChosen", "AllAndOthers", "AllInPieces", "TooManyFiles",
+           "KeyMissing", "ReviewRefused", "ReviewResult"]
 
 
 @dataclass(frozen=True)
@@ -47,8 +55,10 @@ class Review:
     """Review the files at paths and at those listed (both given from cwd, from the folder holding app or from app, a
     folder standing for the files below it), or, with every, every file of the app. profile is the architecture in
     force, tests the tests root (None: none). With dry_run nothing is sent: the Result says what would be. With
-    offline nothing is sent either, and only the answers kept are read. One run judges at most max_files files. cache
-    is the folder the answers are kept in, given in full (None: the project's own)."""
+    offline nothing is sent either, and only the answers kept are read. One run judges at most max_files files (None:
+    MAX_FILES, or MAX_PIECED with pieces). cache is the folder the answers are kept in, given in full (None: the
+    project's own). With pieces, the pieces of each file judged are ranked inside it too, context saying what is sent
+    before each (NO_CONTEXT or IMPORTS)."""
     paths: tuple[Path, ...]
     listed: tuple[Path, ...]
     every: bool
@@ -57,9 +67,11 @@ class Review:
     profile: str
     tests: Path | None = None
     dry_run: bool = False
-    max_files: int = MAX_FILES
+    max_files: int | None = None
     offline: bool = False
     cache: Path | None = None
+    pieces: bool = False
+    context: str = NO_CONTEXT
 
 
 @dataclass(frozen=True)
@@ -68,7 +80,9 @@ class ReviewPlanned:
     were found, the request each file judged would send, the files left out and why, the question each request
     carries, the parts it describes by their role alone, the characters and about how many tokens the requests
     would send in all, the texts the profile says review hides, which no request holds, what a review that sends
-    would send to, and in how many other orders of the options a file whose answer is near its line is asked again."""
+    would send to, in how many other orders of the options a file whose answer is near its line is asked again, and
+    when the pieces of the files are asked of too (each request of a piece says which), what the question of a piece
+    asks ("" when they are not) and what is sent before each piece."""
     by: tuple[str, ...]
     found: int
     requests: tuple[Request, ...]
@@ -80,6 +94,8 @@ class ReviewPlanned:
     mask: tuple[str, ...]
     sends: Sender
     reorders: int = 0
+    piece_ask: str = ""
+    context: str = NO_CONTEXT
 
 
 @dataclass(frozen=True)
@@ -89,7 +105,8 @@ class ReviewReading:
     judged with no answer, and why; what was sent to; how many questions were sent this run and how many answers were
     read from the cache; the tokens the questions sent cost; how the decision model failed, when it did ("" when it
     did not), which stopped the sending; the parts the question describes by their role alone; and how the files of
-    each part read, in the profile's order."""
+    each part read, in the profile's order; and, when pieces were asked for, the pieces of each file judged, ranked
+    inside it."""
     by: tuple[str, ...]
     found: int
     readings: tuple[Reading, ...]
@@ -103,6 +120,7 @@ class ReviewReading:
     failure: str
     role_only: tuple[str, ...]
     parts: tuple[PartRead, ...] = ()
+    pieces: tuple[PiecesRead, ...] = ()
 
     @property
     def complete(self) -> bool:
@@ -118,6 +136,11 @@ class NothingChosen:
 @dataclass(frozen=True)
 class AllAndOthers:
     """Every file of the app was asked for with paths or a list as well, and nothing was read."""
+
+
+@dataclass(frozen=True)
+class AllInPieces:
+    """Every file of the app was asked for in pieces, which would be noise, and nothing was read."""
 
 
 @dataclass(frozen=True)
@@ -140,4 +163,5 @@ class ReviewRefused:
     reason: str
 
 
-ReviewResult = ReviewPlanned | ReviewReading | NothingChosen | AllAndOthers | TooManyFiles | KeyMissing | ReviewRefused
+ReviewResult = (ReviewPlanned | ReviewReading | NothingChosen | AllAndOthers | AllInPieces | TooManyFiles | KeyMissing
+                | ReviewRefused)

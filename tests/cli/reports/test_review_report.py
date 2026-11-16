@@ -5,6 +5,7 @@ from dataclasses import replace
 from xarch.cli.reports.review_report import (
     ADVISORY,
     all_and_others,
+    all_in_pieces,
     no_key,
     nothing_chosen,
     plan_document,
@@ -17,14 +18,18 @@ from xarch.modules.review.contract import (
     BY_LIST,
     BY_PATHS,
     FAILED,
+    IMPORTS,
     MISSING,
     NEVER,
+    NO_CONTEXT,
     NOT_CACHED,
     SMALL,
     Choice,
     LeftOut,
     Option,
     PartRead,
+    PieceReading,
+    PiecesRead,
     Reading,
     Request,
     ReviewPlanned,
@@ -87,7 +92,9 @@ def test_the_json_of_a_dry_run_holds_every_request_in_full_and_the_question_once
                      "options": [{"name": "domain", "description": "Is it an invariant?"},
                                  {"name": "main", "description": "starts the app"}]},
         "requests": [{"file": "app/a.py", "part": "domain", "chars": 1200, "cached": False,
-                      "text": "from <masked> import A\n\nx = 1\n", "body": '{"state": "..."}'}],
+                      "text": "from <masked> import A\n\nx = 1\n", "body": '{"state": "..."}', "piece": None,
+                      "kind": None, "first": None, "last": None}],
+        "pieces": False, "piece_question": None, "context": "none",
         "characters": 1250, "tokens": 313, "reorders": 0, "mask": [],
         "sends": {"name": "Model", "at": "https://model.example.test", "model": "m-1", "key": "MODEL_KEY", "keyed": False}}
 
@@ -222,6 +229,70 @@ def test_the_json_of_a_reading_holds_each_file_with_the_probability_of_each_part
                                  "line_by_hand": False, "doubtful": False, "chars": 1200, "small": False, "orders": 1, "model": "m-1.0.1",
                                  "distribution": {"domain": 0.71, "logic": 0.29}}],
                       "parts": []},
+        "pieces": [],
         "sends": {"name": "Model", "at": "https://model.example.test", "model": "m-1", "key": "MODEL_KEY", "keyed": True},
         "sent": {"calls": 1, "cached": 1, "input_tokens": 2400, "output_tokens": 3},
-        "unanswered": [{"file": "app/c.py", "why": "not-cached"}], "failure": None}
+        "unanswered": [{"file": "app/c.py", "why": "not-cached", "piece": None}], "failure": None}
+
+
+LOWEST = (PieceReading(1, "method", "DocumentService.export_pdf", (41, 88), 1530, 0.11, (("services", 0.11),
+                                                                                     ("logic", 0.89))),
+          PieceReading(2, "method", "DocumentService.publish", (14, 27), 1100, 0.64, (("services", 0.64),)))
+PIECES = PiecesRead("app/s.py", "services", 2, 3, NO_CONTEXT, LOWEST)
+
+
+def test_the_pieces_of_a_file_are_ranked_inside_it_only_with_lines_and_numbers_and_what_to_do_naming_no_other_part():
+    lines = reading_lines(replace(READ, pieces=(PIECES,), left_out=()))
+    at = lines.index("pieces of app/s.py (ranked inside this file only: the lowest 2 of 2 judged; 3 piece(s) under "
+                     "1,000 characters not judged)")
+    assert lines[at + 1:at + 4] == [
+        "  1. DocumentService.export_pdf   method   lines 41-88   0.11   1,530 chars",
+        "  2. DocumentService.publish   method   lines 14-27   0.64   1,100 chars",
+        "      what to do: read the first one against the litmus of services (`xarch where app/s.py`). A low number "
+        "here is a reason to look, not a finding: in good files about a third of pieces read this low."]
+    assert "logic" not in "\n".join(lines) and not any("doubtful" in line for line in lines[at:at + 4])
+
+
+def test_pieces_read_with_context_say_their_numbers_never_compare_with_those_read_without():
+    lines = reading_lines(replace(READ, pieces=(replace(PIECES, context=IMPORTS, too_small=0),)))
+    assert ("pieces of app/s.py (ranked inside this file only: the lowest 2 of 2 judged; each sent after the file's "
+            "opening lines, which raises every number: never compare these with numbers read without them)") in lines
+
+
+def test_pieces_with_nothing_to_rank_or_with_no_answer_say_so():
+    assert "pieces of app/s.py: nothing to rank (1 judged; 3 piece(s) under 1,000 characters not judged)" in (
+        reading_lines(replace(READ, pieces=(replace(PIECES, judged=1, lowest=()),))))
+    unanswered = replace(READ, pieces=(replace(PIECES, lowest=(), answered=False),),
+                         unasked=(Unasked("app/s.py", NOT_CACHED, "DocumentService.publish"),))
+    lines = reading_lines(unanswered)
+    assert "pieces of app/s.py: not ranked: some of its 2 pieces judged have no answer (see unanswered)" in lines
+    assert "  app/s.py (piece DocumentService.publish): not in the cache, and --offline sends nothing" in lines
+
+
+def test_the_json_of_pieces_holds_each_ranked_piece_with_its_lines_and_the_probability_of_each_part():
+    document = json.loads(reading_document("cli", replace(READ, pieces=(PIECES,))))
+    assert document["pieces"] == [{
+        "file": "app/s.py", "part": "services", "judged": 2, "too_small": 3, "context": "none", "answered": True,
+        "lowest": [{"rank": 1, "kind": "method", "name": "DocumentService.export_pdf", "first": 41, "last": 88,
+                    "chars": 1530, "probability": 0.11, "distribution": {"services": 0.11, "logic": 0.89}},
+                   {"rank": 2, "kind": "method", "name": "DocumentService.publish", "first": 14, "last": 27,
+                    "chars": 1100, "probability": 0.64, "distribution": {"services": 0.64}}]}]
+
+
+def test_a_dry_run_with_pieces_says_the_question_of_a_piece_what_is_sent_before_it_and_each_piece_request():
+    piece = Request("app/a.py", "domain", 1100, "def f():\n    pass\n", piece="f", kind="function", lines=(3, 40))
+    planned = replace(PLANNED, requests=PLANNED.requests + (piece,), piece_ask="Which part? One piece.")
+    lines = plan_lines(planned)
+    assert lines[3].startswith("3 file(s) found (paths, --files-from), 1 to be judged, 2 left out; 2 request(s)")
+    assert "  a request of a piece of a file asks instead: Which part? One piece." in lines
+    assert "  sent before each piece: nothing: the piece alone" in lines
+    assert "request 2 of 2: app/a.py piece f (function, lines 3-40, domain, 1,100 characters)" in lines
+    document = json.loads(plan_document("cli", planned))
+    assert (document["pieces"], document["piece_question"], document["context"]) == (True, "Which part? One piece.",
+                                                                                     "none")
+    assert {key: document["requests"][1][key] for key in ("piece", "kind", "first", "last")} == {
+        "piece": "f", "kind": "function", "first": 3, "last": 40}
+
+
+def test_every_file_in_pieces_is_refused_saying_why():
+    assert all_in_pieces().startswith("--pieces ranks the pieces of files already chosen, never of every file")

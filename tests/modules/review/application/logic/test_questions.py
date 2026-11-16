@@ -5,8 +5,11 @@ import pytest
 from tests.modules.review.builders import BODY, PARTS, found
 from xarch.modules.review.application.logic.masking import MASK
 from xarch.modules.review.application.logic.questions import (
+    OF_A_PIECE,
     PLACEMENT,
     characters,
+    of_piece,
+    piece_requests,
     placement,
     reordered,
     request,
@@ -14,6 +17,7 @@ from xarch.modules.review.application.logic.questions import (
     tokens,
 )
 from xarch.modules.review.domain.published import Choice, Option, Request
+from xarch.modules.review.domain.values import CodeFile, Span
 
 
 def test_each_part_is_an_option_in_the_profile_s_order_described_by_its_litmus_else_its_role():
@@ -56,3 +60,39 @@ def test_a_question_is_asked_again_in_its_options_rotated_by_a_third_and_two_thi
     again = reordered(_options(*names))
     assert ["".join(option.name for option in choice.options) for choice in again] == orders
     assert all(choice.ask == "Which?" for choice in again)
+
+
+def test_the_question_of_a_piece_is_placement_s_saying_the_text_is_one_piece_of_a_larger_file():
+    asked = of_piece(placement(PARTS))
+    assert asked.ask == f"{PLACEMENT} {OF_A_PIECE}" and asked.options == placement(PARTS).options
+    assert OF_A_PIECE == "This text is one piece of a larger file."
+
+
+HEAD_LINES = "from app.kernel.ids import DocumentId\nfrom dataclasses import dataclass\n\n"
+FIRST = "def first():\n" + "    a = 1\n" * 120
+SECOND = "def second():\n" + "    b = 2\n" * 120
+TINY = "def tiny():\n" + "    c = 3\n" * 5
+PIECED = CodeFile("app/modules/documents/domain/document.py", "domain", HEAD_LINES + FIRST + SECOND + TINY + FIRST, (
+    found().imports), spans=(Span("function", "first", "", (4, 124)), Span("function", "second", "", (125, 245)),
+                             Span("function", "tiny", "", (246, 251)), Span("function", "first", "", (252, 372))))
+
+
+def test_each_piece_judged_sends_its_masked_text_with_its_name_kind_and_lines_and_the_small_ones_are_counted():
+    requests, too_small = piece_requests(PIECED, "app", (), "none")
+    assert [(r.piece, r.kind, r.lines, r.text) for r in requests] == [
+        ("first", "function", (4, 124), FIRST), ("second", "function", (125, 245), SECOND),
+        ("tiny, first", "function", (246, 372), TINY + FIRST)]
+    assert too_small == 0 and all(r.chars == len(r.text) and r.file == PIECED.file for r in requests)
+
+
+def test_with_context_each_piece_sends_the_file_s_opening_lines_masked_before_it():
+    requests, _ = piece_requests(PIECED, "app", (), "imports")
+    assert requests[0].text == f"from {MASK} import DocumentId\nfrom dataclasses import dataclass\n\n" + FIRST
+    assert requests[0].chars == len(FIRST)
+
+
+def test_a_piece_under_1000_characters_is_not_judged_but_counted():
+    small = CodeFile("app/a.py", "domain", "def a():\n    x = 1\n" * 30 + "def b():\n" + "    y = 2\n" * 120,
+                     spans=(Span("function", "a", "", (1, 60)), Span("function", "b", "", (61, 181))))
+    requests, too_small = piece_requests(small, "app", (), "none")
+    assert ([r.piece for r in requests], too_small) == (["b"], 1)

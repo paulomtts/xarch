@@ -18,6 +18,13 @@ class AllWithOthers(DomainError):
         super().__init__("every file of the app was asked for with other files")
 
 
+class InPieces(DomainError):
+    """Every file of the app was asked for in pieces: a sweep over pieces is noise."""
+
+    def __init__(self) -> None:
+        super().__init__("every file of the app was asked for in pieces")
+
+
 class OverCap(DomainError):
     """More files would be judged than one run may judge."""
 

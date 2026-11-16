@@ -4,17 +4,19 @@ as review holds it, so there is nothing to reshape.
     Option   one option of a question with one answer out of several: its name and its description
     Choice   a question with one answer out of several options, as it is sent
     Request  what one question about one file sends: the file it is about, the part it lies in, its size and the text
-             sent, masked
+             sent, masked; for a piece of a file, which (its name and kind, and the lines it spans)
     LeftOut  a file found that is not judged, and why (one of the reasons below)
     Sender   what review sends to, as the decision model's adapter says it: the service, where it answers, the model
              asked, the variable its key is read from and whether the key is set
     Reading  what the decision model read of one file: the probability on the part it sits in, against that part's line
     Unasked  a file judged whose question has no answer, and why
     PartRead how the files of one part read in a run: how many were read and how many read as doubtful
+    PieceReading  what the decision model read of one piece of a file, ranked inside the file
+    PiecesRead    the pieces of one file, ranked inside it: the lowest few
 
 and the reasons a file is left out, the size of the smallest file judged, how many files one run judges, the ways files
 are chosen, how near its line a file is asked again, why a question has no answer, and how many files of a part a run
-must read, and read as doubtful, to say anything of the part.
+must read, and read as doubtful, to say anything of the part; and how pieces are cut, judged, shown and sent.
 """
 from __future__ import annotations
 
@@ -34,6 +36,21 @@ MARKED_SMALL = 2000
 trials a tenth of the smallest quarter of files read as doubtful, a fiftieth of the largest)."""
 MAX_FILES = 50
 """How many files one run judges at most, unless told otherwise."""
+MAX_PIECED = 20
+"""How many files one run judges at most when it ranks their pieces too, unless told otherwise."""
+PIECE_CHARS = 1000
+"""The fewest characters a piece judged holds: in the trials, half the well-placed pieces under 400 characters and over
+a third of those from 400 to 1,000 read as low as misplaced ones."""
+SPLIT_CHARS = 4000
+"""The most characters a class is judged whole with: a larger one is judged as its methods."""
+MERGE_CHARS = 200
+"""The fewest characters a piece holds alone: a smaller one is joined to the piece after it."""
+SHOWN = 3
+"""How many pieces of a file are shown: the lowest, ranked."""
+NO_CONTEXT, IMPORTS = "none", "imports"
+"""What is sent before each piece: nothing; or the file's opening lines, those before its first piece (for most files
+its docstring and imports). Numbers of the two never compare: in the trials, the context raised every one by about
+0.11."""
 
 BY_PATHS, BY_LIST, BY_ALL = "paths", "files-from", "all"
 """The ways files are chosen: named as paths, listed one per line, or every file of the app."""
@@ -67,15 +84,19 @@ class Choice:
 
 @dataclass(frozen=True)
 class Request:
-    """What one question about one file sends: the file, as `check` shows it; the part it lies in; how many
-    characters the file holds; the text sent, the file's text masked; whether its answer is in the cache already, so
-    that it is not sent; and the body the service receives, as JSON text, the key left out (it travels apart)."""
+    """What one question about one file, or one piece of it, sends: the file, as `check` shows it; the part it lies in;
+    how many characters the file (or the piece) holds; the text sent, masked; whether its answer is in the cache
+    already, so that it is not sent; the body the service receives, as JSON text, the key left out (it travels
+    apart); and, for a piece, its name, its kind and the lines it spans ("" and (0, 0) for a whole file)."""
     file: str
     part: str
     chars: int
     text: str
     cached: bool = False
     body: str = ""
+    piece: str = ""
+    kind: str = ""
+    lines: tuple[int, int] = (0, 0)
 
 
 @dataclass(frozen=True)
@@ -112,9 +133,11 @@ class Reading:
 
 @dataclass(frozen=True)
 class Unasked:
-    """A file judged whose question has no answer: the file, as `check` shows it, and why (NOT_CACHED or FAILED)."""
+    """A file judged whose question has no answer: the file, as `check` shows it, why (NOT_CACHED or FAILED), and the
+    piece of it whose question it is ("" for the whole file)."""
     file: str
     why: str
+    piece: str = ""
 
 
 @dataclass(frozen=True)
@@ -141,3 +164,33 @@ class PartRead:
     by_hand: bool
     summed: bool
     noted: bool
+
+
+@dataclass(frozen=True)
+class PieceReading:
+    """What the decision model read of one piece of a file: its rank inside the file (1 the lowest); its kind and its
+    name, as the language's reader names them (Class.method for a method; the names joined for small pieces merged);
+    the lines it spans; how many characters it holds; the probability on the part its file sits in; and the
+    probability on each part, in the profile's order."""
+    rank: int
+    kind: str
+    name: str
+    lines: tuple[int, int]
+    chars: int
+    probability: float
+    distribution: tuple[tuple[str, float], ...]
+
+
+@dataclass(frozen=True)
+class PiecesRead:
+    """The pieces of one file, ranked inside it only: the file, as `check` shows it; the part it sits in; how many of
+    its pieces were judged and how many were too small to be; what was sent before each (NO_CONTEXT or IMPORTS); the
+    lowest SHOWN of those judged, ranked, none when fewer than two were judged (nothing to rank); and whether every
+    piece judged has its answer (the ranking is given only then)."""
+    file: str
+    part: str
+    judged: int
+    too_small: int
+    context: str
+    lowest: tuple[PieceReading, ...]
+    answered: bool = True

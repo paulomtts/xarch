@@ -4,6 +4,7 @@ from xarch.kernel.errors import DomainError
 from xarch.modules.review.application.services.reviewing import ReviewService
 from xarch.modules.review.contract import (
     AllAndOthers,
+    AllInPieces,
     KeyMissing,
     NothingChosen,
     Review,
@@ -11,7 +12,7 @@ from xarch.modules.review.contract import (
     ReviewResult,
     TooManyFiles,
 )
-from xarch.modules.review.domain.errors import AllWithOthers, NoKey, NoSelection, OverCap
+from xarch.modules.review.domain.errors import AllWithOthers, InPieces, NoKey, NoSelection, OverCap
 
 
 class ReviewController:
@@ -19,7 +20,7 @@ class ReviewController:
         self._reviewing = reviewing
 
     def review(self, cmd: Review) -> ReviewResult:
-        """No file chosen, every file asked for with others, more files than one run judges and a review that would
+        """No file chosen, every file asked for with others or in pieces, more files than one run judges and a review that would
         send with no key set each come back as their own Result; files or a profile that cannot be read are refused
         with why. Nothing is sent before every refusal is known."""
         try:
@@ -28,6 +29,8 @@ class ReviewController:
             return NothingChosen()
         except AllWithOthers:
             return AllAndOthers()
+        except InPieces:
+            return AllInPieces()
         except OverCap as e:
             return TooManyFiles(e.chosen, e.cap)
         except NoKey as e:

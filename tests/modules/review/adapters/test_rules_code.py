@@ -1,5 +1,5 @@
-"""Review's Code read from rules' contract: the files rules reads at the paths, each as it was read, in order; a
-refusal of rules raises Refused with its reason."""
+"""Review's Code read from rules' contract: the files rules reads at the paths, each as it was read with its pieces, in
+order; a refusal of rules raises Refused with its reason."""
 from pathlib import Path
 
 import pytest
@@ -9,7 +9,7 @@ from xarch.modules.review.adapters.rules_code import RulesCode
 from xarch.modules.review.domain import published as review
 from xarch.modules.review.domain.errors import Refused
 from xarch.modules.review.domain.published import LeftOut
-from xarch.modules.review.domain.values import CodeFile, Found
+from xarch.modules.review.domain.values import CodeFile, Found, Span
 from xarch.modules.rules.contract import (
     EXCLUDED,
     IN_NO_PART,
@@ -21,6 +21,7 @@ from xarch.modules.rules.contract import (
     CheckRefused,
     ChecksCannotRun,
     Outside,
+    Piece,
     ReadSources,
     SourceRead,
     SourcesRead,
@@ -28,7 +29,9 @@ from xarch.modules.rules.contract import (
 )
 
 IDS = Import(1, ("app", "kernel", "ids"), ("Id",), written="app.kernel.ids")
-READ = SourcesRead((SourceRead("app/kernel/ids.py", IN_PART, "kernel", "class Id: ...\n", (IDS,), Unparsable(3, "bad")),
+PIECES = (Piece("class", "Id", 1, 4), Piece("method", "new", 2, 4, "Id"))
+READ = SourcesRead((SourceRead("app/kernel/ids.py", IN_PART, "kernel", "class Id: ...\n", (IDS,), Unparsable(3, "bad"),
+                               PIECES),
                     SourceRead("README.md", NOT_SOURCE), SourceRead("app/gone.py", NOT_THERE),
                     SourceRead("tests/test_a.py", IN_TESTS), SourceRead("scripts/run.py", IN_PROJECT),
                     SourceRead("app/examples/a.py", EXCLUDED), SourceRead("app/stray.py", IN_NO_PART)))
@@ -48,7 +51,8 @@ class Rules:
 def test_a_file_in_a_part_is_handed_on_as_it_was_read_and_any_other_left_out_with_why_in_review_s_words():
     rules = Rules(READ)
     files = RulesCode(rules).files((Path("app/kernel"),), Path("/src"), Path("/src/app"), "p", None)
-    assert files == Found((CodeFile("app/kernel/ids.py", "kernel", "class Id: ...\n", (IDS,), Unparsable(3, "bad")),),
+    assert files == Found((CodeFile("app/kernel/ids.py", "kernel", "class Id: ...\n", (IDS,), Unparsable(3, "bad"),
+                                    (Span("class", "Id", "", (1, 4)), Span("method", "new", "Id", (2, 4)))),),
                           (LeftOut("README.md", review.NOT_SOURCE), LeftOut("app/gone.py", review.MISSING),
                            LeftOut("tests/test_a.py", review.A_TEST), LeftOut("scripts/run.py", review.OUTSIDE),
                            LeftOut("app/examples/a.py", review.EXCLUDED), LeftOut("app/stray.py", review.UNPLACED)))

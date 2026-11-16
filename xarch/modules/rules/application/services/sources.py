@@ -46,4 +46,4 @@ class SourcesService:
         read = self._tree.read(app, [found.steps])[0]
         unreadable = read.error is not None and read.error.unreadable
         text = "" if unreadable else self._tree.text(found.path) or ""
-        return SourceRead(found.shown, place.lies, place.part, text, read.imports, read.error)
+        return SourceRead(found.shown, place.lies, place.part, text, read.imports, read.error, read.pieces)

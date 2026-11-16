@@ -48,9 +48,10 @@ xarch profile new NAME --from BUNDLED [--out FOLDER] [--app PATH]
                                                              # copy a bundled profile into the project, with its files
 xarch profile check [NAME|FILE] [--app PATH] [--format text|json]
                                                              # validate a profile without an app
-xarch review [PATH ...] [--files-from FILE|-] [--all] [--dry-run | --offline] [--cache DIR] [--max-files N] [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json]
+xarch review [PATH ...] [--files-from FILE|-] [--all] [--pieces] [--context none|imports] [--dry-run | --offline] [--cache DIR] [--max-files N] [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json]
                                                              # advisory: a decision model's reading of where each file
-                                                             # chosen belongs; sends the masked text when the key is set
+                                                             # chosen belongs, and with --pieces a ranking of its
+                                                             # pieces; sends the masked text when the key is set
 ```
 
 `WORD` is the word between `<` and `>` in the profile's paths: in both bundled profiles `<module>`, so
@@ -574,8 +575,8 @@ source files below it), pipe a list with `--files-from -` (one path per line, su
 (alone). A path is read as `xarch where` reads one; one outside the project is refused. Of the files found, a source
 file of the app in a part, that parses and holds at least 800 characters, is judged; every other is listed as left out,
 with why (not there, no source file, a test, outside the app folder, excluded, in no part, held back by
-`review.never`, does not parse, too small). A run judges at most `--max-files` files (50); past that it refuses,
-naming how many it chose.
+`review.never`, does not parse, too small). A run judges at most `--max-files` files (50, or 20 with `--pieces`); past
+that it refuses, naming how many it chose.
 
 The text a file is judged by is its own, masked: the module each import of the app's own code names (an import named
 from the importing file's folder, or whose first step is the app's import name) is replaced by `<masked>` on the
@@ -596,9 +597,24 @@ folder: agents and CI then share the answers without spending calls, and a model
 An identical question is never sent twice. `--cache DIR` keeps them elsewhere. `--offline` sends nothing, needs no
 key, and reads the cache only.
 
+**Pieces.** A whole-file reading does not move when one piece inside a good file is misplaced, so `--pieces` also
+ranks the pieces of each file chosen, inside that file only. A piece is a function or a class at the top level, as the
+language's reader cuts it; a class over 4,000 characters is cut into its methods instead, each sent with the class's
+text before its first method; a piece under 200 characters is joined to the next piece of its class (or of the top
+level), the last to the one before. Only pieces of 1,000 characters or more are judged (smaller ones read low for being
+small), each asked once with placement's question and one more sentence: "This text is one piece of a larger file."
+The text output shows the lowest 3 of a file's pieces, ranked, each with its lines and the probability on the part
+its file sits in, and what to do: read the first one against the part's litmus. A piece is never called doubtful, has
+no line, and is never compared with a piece of another file: in trials about a third of the pieces of good files read
+below 0.3. A file with fewer than 2 pieces judged has nothing to rank, and its pieces are not asked. `--all
+--pieces` is refused: a sweep over pieces is noise. By default nothing but the piece is sent; `--context imports`
+sends the file's opening lines first (those before its first piece: for most files its docstring and imports),
+masked. In trials that cut false alarms and missed more misplaced pieces, and it raises every number, so the two are
+never compared; the reading says which was used.
+
 Exit codes: 0 when the review ran to the end, whatever it read (doubtful files are not failures); 2 when it refused
-before sending anything (no selection, `--all` with paths, over `--max-files`, no key, a path outside the project, a
-profile that cannot be used); 3 when some file judged has no answer: not cached under `--offline`, or the decision
+before sending anything (no selection, `--all` with paths, `--all --pieces`, over `--max-files`, no key, a path
+outside the project, a profile that cannot be used); 3 when some file or piece judged has no answer: not cached under `--offline`, or the decision
 model failed (unreachable, rate-limited after retries, a request refused), after which nothing more is sent. What was
 answered is printed, the rest is listed as unanswered with why and the decision model's words, and the answers already
 kept stay kept.
@@ -646,17 +662,27 @@ it flags less. `xarch profile explain evals.placement.lines` says it in full.
 
 `--format json` prints one document. A dry run: `{"ok", "advisory", "profile", "dry_run": true, "sent": false,
 "selection": {"by", "found", "judged", "left_out": [{"file", "why", "chars", "pattern"}]}, "question": {"ask",
-"role_only", "options": [{"name", "description"}]}, "requests": [{"file", "part", "chars", "cached", "text", "body"}],
-"characters", "tokens", "reorders", "mask", "sends": {"name", "at", "model", "key", "keyed"}}`, `reorders` how many
-other orders a file near its line is asked again in, `body` the request as the
-decision model's service would receive it (JSON text, the key left out), `sends.key` the name of the variable the key
-is read from (never the key) and `keyed` whether it is set. A review: `{"ok", "advisory", "profile", "dry_run": false,
-"complete", "model", "selection", "placement": {"calibration": {"state", "evidence"}, "role_only", "files": [{"file",
-"part", "probability", "line", "line_by_hand", "doubtful", "chars", "orders", "model", "distribution"}]}, "sends", "sent":
-{"calls", "cached", "input_tokens", "output_tokens"}, "unanswered": [{"file", "why"}], "failure"}`, the files ranked
-from the lowest probability, `line_by_hand` whether the profile sets the part's line, `orders` how many orders of the
-options it was asked in (`probability` and `distribution` their mean), `distribution` the probability on each part by name, `why` of an unanswered file `not-cached` or
-`failed`, `failure` the decision model's words when it failed (else null). In both, `why` of a file left out is one of
+"role_only", "options": [{"name", "description"}]}, "requests": [{"file", "part", "chars", "cached", "text", "body",
+"piece", "kind", "first", "last"}], "pieces", "piece_question", "context", "characters", "tokens", "reorders", "mask",
+"sends": {"name", "at", "model", "key", "keyed"}}`: `body` the request as the decision model's service would receive it
+(JSON text, the key left out); `piece`, `kind`, `first` and `last` the piece a request is about and the lines it spans
+(null for a whole file); `pieces` whether pieces are asked, `piece_question` the question each piece carries (null
+without `--pieces`) and `context` `none` or `imports`; `reorders` how many other orders a file near its line is asked
+again in; `sends.key` the name of the variable the key is read from (never the key) and `keyed` whether it is set.
+
+A review: `{"ok", "advisory", "profile", "dry_run": false, "complete", "model", "selection", "placement":
+{"calibration": {"state", "evidence"}, "role_only", "files": [{"file", "part", "probability", "line", "line_by_hand",
+"doubtful", "chars", "small", "orders", "model", "distribution"}], "parts": [{"part", "read", "doubtful", "line",
+"line_by_hand", "summed", "litmus_note"}]}, "pieces": [{"file", "part", "judged", "too_small", "context", "answered",
+"lowest": [{"rank", "kind", "name", "first", "last", "chars", "probability", "distribution"}]}], "sends", "sent":
+{"calls", "cached", "input_tokens", "output_tokens"}, "unanswered": [{"file", "why", "piece"}], "failure"}`: the files
+ranked from the lowest probability; `line_by_hand` whether the profile sets the part's line; `small` whether the file
+is under 2,000 characters; `orders` how many orders of the options it was asked in (`probability` and `distribution`
+are their mean); `distribution` the probability on each part by name, the only place another part is named (also for
+a piece); `parts` each part read, `summed` whether 3 or more of its files were read and `litmus_note` whether the note
+on its litmus applies; `pieces` each file's lowest 3 pieces (empty when fewer than 2 were judged, or when `answered`
+is false); `why` of an unanswered file or piece `not-cached` or `failed`, `piece` its name (null for a whole file);
+`failure` the decision model's words when it failed (else null). In both, `why` of a file left out is one of
 `missing`, `not-source`, `test`, `outside`, `excluded`, `unplaced`, `never`, `unparsable`, `small`, `pattern` the
 `review.never` path that matched (null for any other `why`); a dry run's `mask` is the profile's `review.mask`. A
 refusal is `{"ok": false, "error"}`.

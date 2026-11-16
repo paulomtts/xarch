@@ -7,7 +7,7 @@ from typing import Protocol
 
 from xarch.modules.review.domain.errors import Refused
 from xarch.modules.review.domain.published import A_TEST, EXCLUDED, MISSING, NOT_SOURCE, OUTSIDE, UNPLACED, LeftOut
-from xarch.modules.review.domain.values import CodeFile, Found
+from xarch.modules.review.domain.values import CodeFile, Found, Span
 from xarch.modules.rules import contract as rules
 from xarch.modules.rules.contract import (
     CheckRefused,
@@ -50,4 +50,5 @@ class RulesCode:
 
 
 def _read(file: SourceRead) -> CodeFile:
-    return CodeFile(file.shown, file.part, file.text, file.imports, file.error)
+    return CodeFile(file.shown, file.part, file.text, file.imports, file.error,
+                    tuple(Span(piece.kind, piece.name, piece.owner, (piece.first, piece.last)) for piece in file.pieces))

@@ -1,14 +1,18 @@
 """The question placement asks of a file, built from the profile's own words, the same for every profile: each part is
-an option, described by its litmus test, or by its role when it has none."""
+an option, described by its litmus test, or by its role when it has none; the same question of a piece of a file; and
+what each question sends."""
 from __future__ import annotations
 
 from xarch.modules.review.application.logic.masking import masked
-from xarch.modules.review.domain.published import Choice, Option, Request
+from xarch.modules.review.application.logic.pieces import large, opening, sections, sent
+from xarch.modules.review.domain.published import IMPORTS, Choice, Option, Request
 from xarch.modules.review.domain.values import CodeFile, PartText
 
 PLACEMENT = ("Which part of this architecture does this code belong in? Each option is a part and the test that "
              "decides whether code belongs in it.")
 """What placement asks, the wording the trials measured."""
+OF_A_PIECE = "This text is one piece of a larger file."
+"""What placement adds when it asks of a piece of a file, the wording the trials measured."""
 
 
 def placement(parts: tuple[PartText, ...]) -> Choice:
@@ -23,6 +27,22 @@ def reordered(question: Choice) -> tuple[Choice, ...]:
     count = len(question.options)
     shifts = dict.fromkeys(shift % count for shift in ((count + 1) // 3, (2 * count + 1) // 3) if count and shift % count)
     return tuple(Choice(question.ask, question.options[shift:] + question.options[:shift]) for shift in shifts)
+
+
+def of_piece(question: Choice) -> Choice:
+    """The question placement asks of a piece of a file: its own, saying the text is one piece of a larger file."""
+    return Choice(f"{question.ask} {OF_A_PIECE}", question.options)
+
+
+def piece_requests(file: CodeFile, root: str, mask: tuple[str, ...], context: str) -> tuple[tuple[Request, ...], int]:
+    """What the question about each piece of a file judged sends, in order, the file's opening lines before each with
+    context IMPORTS; and how many pieces are too small to be judged."""
+    text = masked(file.text, file.imports, root, mask)
+    found = sections(text, file.spans)
+    judged = large(found)
+    before = opening(text, file.spans) if context == IMPORTS else ""
+    return (tuple(Request(file.file, file.part, len(section.text), sent(section, before), piece=section.name,
+                          kind=section.kind, lines=section.lines) for section in judged), len(found) - len(judged))
 
 
 def role_only(parts: tuple[PartText, ...]) -> tuple[str, ...]:

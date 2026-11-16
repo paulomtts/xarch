@@ -6,7 +6,7 @@ import pytest
 from tests.modules.review.builders import BROKEN, found
 from xarch.kernel.source import Unparsable
 from xarch.modules.review.application.logic.selection import chosen, judged, left_out, ways, within_cap
-from xarch.modules.review.domain.errors import AllWithOthers, NoSelection, OverCap
+from xarch.modules.review.domain.errors import AllWithOthers, InPieces, NoSelection, OverCap
 from xarch.modules.review.domain.published import BY_ALL, BY_LIST, BY_PATHS, MIN_CHARS, MISSING, SMALL, UNPARSABLE, LeftOut
 from xarch.modules.review.domain.values import Found
 
@@ -69,7 +69,25 @@ def test_the_files_not_read_come_first_then_those_read_not_judged_each_in_order(
 
 def test_no_more_files_than_one_run_judges():
     files = (found(), found("app/x.py"))
-    assert within_cap(files, 2) == files
+    assert within_cap(files, 2, False) == files
     with pytest.raises(OverCap) as refused:
-        within_cap(files, 1)
+        within_cap(files, 1, False)
     assert (refused.value.chosen, refused.value.cap) == (2, 1)
+
+
+@pytest.mark.parametrize("count, pieces, cap", [
+    pytest.param(51, False, 50, id="50 files when none is given"),
+    pytest.param(21, True, 20, id="20 files when the pieces are ranked too"),
+])
+def test_with_no_cap_given_one_run_judges_50_files_or_20_with_their_pieces(count, pieces, cap):
+    files = tuple(found(f"app/f{n}.py") for n in range(count))
+    assert within_cap(files[:-1], None, pieces) == files[:-1]
+    with pytest.raises(OverCap) as refused:
+        within_cap(files, None, pieces)
+    assert refused.value.cap == cap
+
+
+def test_every_file_of_the_app_in_pieces_is_refused_a_sweep_over_pieces_is_noise():
+    with pytest.raises(InPieces):
+        chosen((), (), True, APP, pieces=True)
+    assert chosen((A,), (), False, APP, pieces=True) == (A,)

@@ -335,13 +335,15 @@ class ReadSources:
 class SourceRead:
     """One file found: how it is shown (below the folder holding the app), where it lies (IN_PART, NOT_THERE,
     NOT_SOURCE, IN_TESTS, IN_PROJECT, EXCLUDED or IN_NO_PART) and the part it lies in ("" for none). A file in a part
-    is read: its text, its imports, and how it fails to parse (None: it parses); any other holds no text."""
+    is read: its text, its imports, how it fails to parse (None: it parses) and its pieces, as its language's reader
+    cuts them (see Piece); any other holds no text."""
     shown: str
     lies: str
     part: str = ""
     text: str = ""
     imports: tuple[Import, ...] = ()
     error: Unparsable | None = None
+    pieces: tuple[Piece, ...] = ()
 
 
 @dataclass(frozen=True)

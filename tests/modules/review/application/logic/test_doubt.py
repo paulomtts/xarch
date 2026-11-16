@@ -2,9 +2,16 @@
 ranked, the most doubtful first."""
 import pytest
 
-from xarch.modules.review.application.logic.doubt import asked_again, averaged, by_part, ranked, reading
-from xarch.modules.review.domain.published import PartRead, Reading, Request
-from xarch.modules.review.domain.values import Answer, PartText
+from xarch.modules.review.application.logic.doubt import (
+    asked_again,
+    averaged,
+    by_part,
+    pieces_read,
+    ranked,
+    reading,
+)
+from xarch.modules.review.domain.published import PartRead, PieceReading, PiecesRead, Reading, Request
+from xarch.modules.review.domain.values import Answer, CodeFile, PartText
 
 REQUEST = Request("app/a.py", "domain", 1200, "text")
 DOMAIN = PartText("domain", "domain/", "Is it a value?", "values", 0.3)
@@ -89,3 +96,33 @@ def test_the_parts_are_said_in_the_profile_s_order_only_when_a_file_of_theirs_wa
     parts = (PartText("main", "", "", "", 0.3), DOMAIN, PartText("logic", "", "", "", 0.2, True))
     assert by_part(_read("domain", True) + _read("logic", False), parts) == (
         PartRead("domain", 1, 1, 0.3, False, False, False), PartRead("logic", 1, 0, 0.2, True, False, False))
+
+
+FILE = CodeFile("app/a.py", "domain", "text")
+
+
+def _piece(name: str, first: int) -> Request:
+    return Request("app/a.py", "domain", 1200, f"text of {name}", piece=name, kind="function", lines=(first, first + 9))
+
+
+def _on(probability: float) -> Answer:
+    return Answer("m", (("domain", probability), ("main", 1 - probability)))
+
+
+def test_the_pieces_of_a_file_are_ranked_from_the_lowest_and_only_the_lowest_3_are_shown():
+    pieces = tuple(_piece(name, first) for name, first in (("a", 1), ("b", 11), ("c", 21), ("d", 31), ("e", 41)))
+    found = pieces_read(FILE, pieces, (_on(0.6), _on(0.1), _on(0.9), _on(0.1), _on(0.4)), 2, "none")
+    assert (found.file, found.part, found.judged, found.too_small, found.context, found.answered) == (
+        "app/a.py", "domain", 5, 2, "none", True)
+    assert [(p.rank, p.name, p.lines, p.probability) for p in found.lowest] == [
+        (1, "b", (11, 20), 0.1), (2, "d", (31, 40), 0.1), (3, "e", (41, 50), 0.4)]
+    assert found.lowest[0] == PieceReading(1, "function", "b", (11, 20), 1200, 0.1, _on(0.1).probabilities)
+
+
+def test_fewer_than_two_pieces_judged_is_nothing_to_rank():
+    assert pieces_read(FILE, (_piece("a", 1),), (), 4, "none") == PiecesRead("app/a.py", "domain", 1, 4, "none", ())
+
+
+def test_pieces_with_one_unanswered_are_not_ranked():
+    found = pieces_read(FILE, (_piece("a", 1), _piece("b", 11)), (_on(0.2), None), 0, "imports")
+    assert (found.lowest, found.answered, found.context) == ((), False, "imports")

@@ -1,8 +1,8 @@
 """What a file's answer says: the probability on the part it sits in, and whether that is below the part's line (the
 profile's, else the default), so that the file reads as doubtful there; whether a file is near enough its line to be
 asked again in other orders of the options, and the mean of its answers then; the order the readings are shown in,
-the most doubtful first; and how the files of each part read, so that a part low across the board points at its
-litmus."""
+the most doubtful first; how the files of each part read, so that a part low across the board points at its
+litmus; and the pieces of a file ranked inside it."""
 from __future__ import annotations
 
 from xarch.modules.review.domain.published import (
@@ -10,11 +10,14 @@ from xarch.modules.review.domain.published import (
     FEWEST_NOTED,
     FEWEST_SUMMED,
     MARKED_SMALL,
+    SHOWN,
     PartRead,
+    PieceReading,
+    PiecesRead,
     Reading,
     Request,
 )
-from xarch.modules.review.domain.values import Answer, PartText
+from xarch.modules.review.domain.values import Answer, CodeFile, PartText
 
 
 def reading(request: Request, answer: Answer, part: PartText, orders: int = 1) -> Reading:
@@ -56,3 +59,24 @@ def by_part(readings: tuple[Reading, ...], parts: tuple[PartText, ...]) -> tuple
             found.append(PartRead(part.name, len(read), doubtful, part.line, part.by_hand, len(read) >= FEWEST_SUMMED,
                                   doubtful >= FEWEST_NOTED and doubtful * 4 > len(read)))
     return tuple(found)
+
+
+def ranks(requests: tuple[Request, ...]) -> bool:
+    """Whether the pieces of a file judged can be ranked, and so are asked: at least two of them."""
+    return len(requests) >= 2
+
+
+def pieces_read(file: CodeFile, requests: tuple[Request, ...], answers: tuple[Answer | None, ...], too_small: int,
+                context: str) -> PiecesRead:
+    """The pieces of a file ranked by the probability on its part, the lowest SHOWN, ranked from 1 (by first line on
+    a tie); none when fewer than two were judged (none was asked, and answers is empty), or when one of them has no
+    answer."""
+    if not ranks(requests):
+        return PiecesRead(file.file, file.part, len(requests), too_small, context, ())
+    answered = all(answer is not None for answer in answers)
+    read = sorted(((dict(answer.probabilities).get(file.part, 0.0), item, answer)
+                   for item, answer in zip(requests, answers, strict=True) if answer is not None),
+                  key=lambda found: (found[0], found[1].lines))
+    lowest = tuple(PieceReading(rank, item.kind, item.piece, item.lines, item.chars, probability, answer.probabilities)
+                   for rank, (probability, item, answer) in enumerate(read[:SHOWN], 1))
+    return PiecesRead(file.file, file.part, len(requests), too_small, context, lowest if answered else (), answered)

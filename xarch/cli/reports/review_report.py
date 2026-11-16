@@ -15,18 +15,22 @@ from xarch.modules.review.contract import (
     EXCLUDED,
     FAILED,
     FEWEST_SUMMED,
+    IMPORTS,
     MARKED_SMALL,
     MIN_CHARS,
     MISSING,
     NEVER,
+    NO_CONTEXT,
     NOT_CACHED,
     NOT_SOURCE,
     OUTSIDE,
+    PIECE_CHARS,
     SMALL,
     UNPARSABLE,
     UNPLACED,
     LeftOut,
     PartRead,
+    PiecesRead,
     Reading,
     Request,
     ReviewPlanned,
@@ -51,6 +55,9 @@ WHY = {MISSING: "not there", NOT_SOURCE: "no source file of the app's language",
        "files only", OUTSIDE: "outside the app folder", EXCLUDED: "below a folder the profile excludes",
        UNPLACED: "in no part", NEVER: "held back by review.never", UNPARSABLE: "does not parse",
        SMALL: f"under {MIN_CHARS:,} characters"}
+CONTEXTS = {NO_CONTEXT: "nothing: the piece alone",
+            IMPORTS: "the file's opening lines (those before its first piece), masked: numbers read so never compare "
+                     "with numbers read without them"}
 MASKED = ("masked in each text: the dotted name each import of the app's own code imports from, and every e-mail "
           "address, always; and what review.mask hides")
 QUOTE = "    | "
@@ -67,21 +74,26 @@ def _what_leaves(sends: Sender) -> str:
 def plan_lines(planned: ReviewPlanned) -> list[str]:
     """The header, the question every request carries, each request with the exact text it would send, then the files
     left out and why."""
-    judged = len(planned.requests)
+    asked = len(planned.requests)
+    judged = sum(not item.piece for item in planned.requests)
     cached = sum(item.cached for item in planned.requests)
     lines = [f"review: advisory. {ADVISORY}", NOTHING_SENT, _what_leaves(planned.sends),
              f"{planned.found} file(s) found ({', '.join(WAYS[way] for way in planned.by)}), {judged} to be judged, "
-             f"{len(planned.left_out)} left out; {judged} request(s), {planned.characters:,} characters, about "
+             f"{len(planned.left_out)} left out; {asked} request(s), {planned.characters:,} characters, about "
              f"{planned.tokens:,} tokens; {cached} in the cache already.", *_reasked(planned.reorders), "",
              "the question each request carries:",
              f"  {planned.question.ask}",
              f"  options: {len(planned.question.options)} parts, each described by its litmus test"
              + (f" (by its role only: {', '.join(planned.role_only)})" if planned.role_only else "")]
     lines += [f"    {option.name}: {option.description}" for option in planned.question.options]
+    if planned.piece_ask:
+        lines += [f"  a request of a piece of a file asks instead: {planned.piece_ask}",
+                  f"  sent before each piece: {CONTEXTS[planned.context]}"]
     lines += ["", f"{MASKED}: {', '.join(planned.mask)}" if planned.mask else f"{MASKED}: nothing more"]
     for number, item in enumerate(planned.requests, 1):
         kept = ", in the cache: not sent" if item.cached else ""
-        lines += ["", f"request {number} of {judged}: {item.file} ({item.part}, {item.chars:,} characters{kept})",
+        what = (f"piece {item.piece} ({item.kind}, lines {item.lines[0]}-{item.lines[1]}, " if item.piece else "(")
+        lines += ["", f"request {number} of {asked}: {item.file} {what}{item.part}, {item.chars:,} characters{kept})",
                   *_quoted(item)]
     if planned.left_out:
         lines += ["", "left out:", *(f"  {item.file}: {_why(item)}" for item in planned.left_out)]
@@ -105,7 +117,10 @@ def plan_document(profile: str, planned: ReviewPlanned) -> str:
         "question": {"ask": planned.question.ask, "role_only": list(planned.role_only),
                      "options": [{"name": o.name, "description": o.description} for o in planned.question.options]},
         "requests": [{"file": r.file, "part": r.part, "chars": r.chars, "cached": r.cached, "text": r.text,
-                      "body": r.body} for r in planned.requests],
+                      "body": r.body, "piece": r.piece or None, "kind": r.kind or None,
+                      "first": r.lines[0] if r.piece else None, "last": r.lines[1] if r.piece else None}
+                     for r in planned.requests],
+        "pieces": bool(planned.piece_ask), "piece_question": planned.piece_ask or None, "context": planned.context,
         "characters": planned.characters, "tokens": planned.tokens, "reorders": planned.reorders,
         "mask": list(planned.mask),
         "sends": _sends(planned.sends)}
@@ -134,6 +149,8 @@ def reading_lines(read: ReviewReading) -> list[str]:
         lines.append("  no file judged reads as doubtful here")
     if placed:
         lines += ["", "placement: reads as placed (lowest first)", *(_reading(item) for item in placed)]
+    for pieces in read.pieces:
+        lines += ["", *_pieces(pieces)]
     if any(item.small for item in read.readings):
         lines += ["", f"small: under {MARKED_SMALL:,} characters; small files read lower for being small (in trials, a "
                       "tenth of the smallest quarter of files read as doubtful, a fiftieth of the largest)"]
@@ -145,7 +162,8 @@ def reading_lines(read: ReviewReading) -> list[str]:
         lines += ["", "left out:", *(f"  {item.file}: {_why(item)}" for item in read.left_out)]
     if read.unasked:
         lines += ["", f"unanswered ({len(read.unasked)}): the review is incomplete (exit 3)",
-                  *(f"  {item.file}: {UNASKED[item.why]}" for item in read.unasked)]
+                  *(f"  {item.file}{f' (piece {item.piece})' if item.piece else ''}: {UNASKED[item.why]}"
+                    for item in read.unasked)]
         lines += [f"  the decision model said: {read.failure}"] if read.failure else []
         lines.append("  what to do: run it again once the cache holds the answers, or without --offline with the key "
                      "set; what was answered is kept and not asked again")
@@ -163,6 +181,7 @@ def reading_document(profile: str, read: ReviewReading) -> str:
         "placement": {"calibration": {"state": "measured", "evidence": BASED_ON},
                       "role_only": list(read.role_only), "files": [_file(item) for item in read.readings],
                       "parts": [_part_read(part) for part in read.parts]},
+        "pieces": [_pieces_read(pieces) for pieces in read.pieces],
         "sends": _sends(read.sends),
         "sent": {"calls": read.sent, "cached": read.cached, "input_tokens": read.input_tokens,
                  "output_tokens": read.output_tokens},
@@ -175,6 +194,11 @@ def nothing_chosen() -> str:
     return ("review reads only the files it is given, and none was: name them as paths (files, or folders for the "
             "files below them), pipe a list with --files-from - (one path per line, such as the output of "
             "`git diff --name-only main`), or take every file of the app with --all")
+
+
+def all_in_pieces() -> str:
+    return ("--pieces ranks the pieces of files already chosen, never of every file: a sweep over pieces is noise (in "
+            "trials about a third of the pieces of good files read low); name the files, or drop --pieces")
 
 
 def all_and_others() -> str:
@@ -209,6 +233,27 @@ def _reading(item: Reading) -> str:
     return f"  {item.file}   {item.part}   {item.probability:.2f} ({line})   {item.chars:,} chars{small}{orders}"
 
 
+def _pieces(read: PiecesRead) -> list[str]:
+    """The pieces of a file, ranked inside it only, each with its lines and number, and what to do; or why they are
+    not ranked."""
+    small = (f"; {read.too_small} piece(s) under {PIECE_CHARS:,} characters not judged" if read.too_small else "")
+    if read.judged < 2:
+        return [f"pieces of {read.file}: nothing to rank ({read.judged} judged{small})"]
+    if not read.answered:
+        return [f"pieces of {read.file}: not ranked: some of its {read.judged} pieces judged have no answer (see "
+                "unanswered)"]
+    context = ("; each sent after the file's opening lines, which raises every number: never compare these with "
+               "numbers read without them" if read.context == IMPORTS else "")
+    lines = [f"pieces of {read.file} (ranked inside this file only: the lowest {len(read.lowest)} of {read.judged} "
+             f"judged{small}{context})"]
+    lines += [f"  {item.rank}. {item.name}   {item.kind}   lines {item.lines[0]}-{item.lines[1]}   "
+              f"{item.probability:.2f}   {item.chars:,} chars" for item in read.lowest]
+    lines.append(f"      what to do: read the first one against the litmus of {read.part} (`xarch where {read.file}`). "
+                 "A low number here is a reason to look, not a finding: in good files about a third of pieces read "
+                 "this low.")
+    return lines
+
+
 def _part(part: PartRead) -> list[str]:
     """How the files of a part read, and, when so many read as doubtful, what that usually means and what to do."""
     line = f"line {part.line:.2f}, set by the profile" if part.by_hand else f"line {part.line:.2f}"
@@ -231,6 +276,14 @@ def _file(item: Reading) -> dict[str, Any]:
             "distribution": dict(item.distribution)}
 
 
+def _pieces_read(read: PiecesRead) -> dict[str, Any]:
+    return {"file": read.file, "part": read.part, "judged": read.judged, "too_small": read.too_small,
+            "context": read.context, "answered": read.answered,
+            "lowest": [{"rank": item.rank, "kind": item.kind, "name": item.name, "first": item.lines[0],
+                        "last": item.lines[1], "chars": item.chars, "probability": item.probability,
+                        "distribution": dict(item.distribution)} for item in read.lowest]}
+
+
 def _part_read(part: PartRead) -> dict[str, Any]:
     return {"part": part.part, "read": part.read, "doubtful": part.doubtful, "line": part.line,
             "line_by_hand": part.by_hand, "summed": part.summed, "litmus_note": part.noted}
@@ -241,7 +294,7 @@ def _left_out(item: LeftOut) -> dict[str, Any]:
 
 
 def _unasked(item: Unasked) -> dict[str, Any]:
-    return {"file": item.file, "why": item.why}
+    return {"file": item.file, "why": item.why, "piece": item.piece or None}
 
 
 def _sends(sends: Sender) -> dict[str, Any]:

@@ -53,6 +53,8 @@ class ModelServer:
     def answer(body: dict) -> dict:
         own = "domain" if "Value0" in body["state"] else "services"
         probabilities = {own: 0.9, "logic": 0.1} if own == "services" else {own: 0.12, "logic": 0.88}
+        if "render_pdf" in body["state"] and "def publish" not in body["state"]:
+            probabilities = {"services": 0.08, "logic": 0.92}
         return {"model": "jev-1.14.0", "usage": {"input_tokens": 2500, "output_tokens": 4},
                 "answers": {name: {"type": "choice", "choice": max(probabilities, key=probabilities.get),
                                    "confidence": 0.8, "probabilities": probabilities} for name in body["questions"]}}
@@ -130,7 +132,7 @@ def test_offline_a_file_whose_answer_is_not_kept_is_unanswered_and_the_run_exits
     assert result.exit_code == 3, result.output
     assert f"  {SERVICE}: not in the cache, and --offline sends nothing" in result.output.splitlines()
     document = json.loads(review(SERVICE, "--offline", "--format", "json", key=None).output)
-    assert (document["complete"], document["unanswered"]) == (False, [{"file": SERVICE, "why": "not-cached"}])
+    assert (document["complete"], document["unanswered"]) == (False, [{"file": SERVICE, "why": "not-cached", "piece": None}])
 
 
 def test_a_cache_folder_given_is_the_one_written_and_read(served, tmp_path):
@@ -161,8 +163,8 @@ def test_a_failure_of_the_decision_model_leaves_the_rest_unanswered_exits_3_and_
         server.stop()
     assert (text.exit_code, document.exit_code) == (3, 3)
     assert f"  the decision model said: TypeSafe answered {status}" in text.output
-    assert json.loads(document.output)["unanswered"] == [{"file": SERVICE, "why": "failed"},
-                                                          {"file": VALUES, "why": "failed"}]
+    assert json.loads(document.output)["unanswered"] == [{"file": SERVICE, "why": "failed", "piece": None},
+                                                          {"file": VALUES, "why": "failed", "piece": None}]
     assert KEY not in text.output + document.output
     assert len(server.received) == 2
 
@@ -217,3 +219,55 @@ def test_a_part_whose_files_read_low_across_the_board_is_summed_up_and_points_at
     document = json.loads(review(SERVICE, VALUES, *more, "--offline", "--format", "json", key=None).output)
     assert document["placement"]["parts"][0] == {"part": "domain", "read": 3, "doubtful": 3, "line": 0.3,
                                                  "line_by_hand": False, "summed": True, "litmus_note": True}
+
+
+
+PIECED = "app/modules/documents/application/services/publishing.py"
+PIECED_BODY = ('"""Publishing documents."""\nfrom app.kernel.time import Clock\n\n\n'
+               + "def publish(clock: Clock) -> None:\n" + "    clock.now()\n" * 80 + "\n\n"
+               + "def export(clock: Clock) -> None:\n" + "    render_pdf(clock)\n" * 60 + "\n\n"
+               + "def archive(clock: Clock) -> None:\n" + "    clock.now()\n" * 70 + "\n\n"
+               + "def tiny() -> None:\n    pass\n")
+
+
+def test_with_pieces_the_pieces_of_a_file_are_ranked_inside_it_and_read_back_offline(served, tmp_path):
+    (tmp_path / PIECED).write_text(PIECED_BODY)
+    result = review(PIECED, "--pieces", url=served.url)
+    assert result.exit_code == 0, result.output
+    lines = result.output.splitlines()
+    at = lines.index(f"pieces of {PIECED} (ranked inside this file only: the lowest 3 of 3 judged)")
+    assert [line.split()[:3] for line in lines[at + 1:at + 4]] == [["1.", "export", "function"],
+                                                                     ["2.", "publish", "function"],
+                                                                     ["3.", "archive,", "tiny"]]
+    assert lines[at + 1].startswith("  1. export   function   lines 88-148   0.08   ")
+    asked = [body["questions"]["placement"]["instructions"] for _, _, body in served.received]
+    assert sum(ask.endswith("This text is one piece of a larger file.") for ask in asked) == 3
+    assert all(not body["state"].startswith('"""Publishing') for _, _, body in served.received[1:])
+    document = json.loads(review(PIECED, "--pieces", "--offline", "--format", "json", key=None).output)
+    (pieces,) = document["pieces"]
+    assert [(item["rank"], item["name"], item["kind"]) for item in pieces["lowest"]] == [
+        (1, "export", "function"), (2, "publish", "function"), (3, "archive, tiny", "function")]
+    assert (pieces["judged"], pieces["too_small"], pieces["context"], pieces["answered"]) == (3, 0, "none", True)
+    assert pieces["lowest"][0]["distribution"] == {"services": 0.08, "logic": 0.92} | {
+        part: 0.0 for part in pieces["lowest"][0]["distribution"] if part not in ("services", "logic")}
+    assert "logic" not in result.output
+
+
+def test_a_dry_run_with_pieces_shows_each_piece_request_it_would_send_and_context_sends_the_opening_lines(tmp_path):
+    (tmp_path / PIECED).write_text(PIECED_BODY)
+    result = review(PIECED, "--pieces", "--dry-run", key=None)
+    assert result.exit_code == 0, result.output
+    assert f"request 2 of 4: {PIECED} piece publish (function, lines 5-85, services, " in result.output
+    assert f"request 4 of 4: {PIECED} piece archive, tiny (function, lines 151-225, services, " in result.output
+    with_context = json.loads(review(PIECED, "--pieces", "--context", "imports", "--dry-run", "--format", "json",
+                                     key=None).output)
+    texts = [item["text"] for item in with_context["requests"] if item["piece"]]
+    assert len(texts) == 3 and all(text.startswith('"""Publishing documents."""\nfrom <masked> import Clock\n')
+                                   for text in texts)
+    assert with_context["context"] == "imports" and with_context["pieces"] is True
+
+
+def test_every_file_of_the_app_in_pieces_is_refused_with_exit_2():
+    result = review("--all", "--pieces", key=None)
+    assert result.exit_code == 2
+    assert "--pieces ranks the pieces of files already chosen, never of every file" in result.output

@@ -7,21 +7,25 @@ import pytest
 
 from tests.fakes.review import FakeAnswers, FakeCode, FakeDecisionModel, FakeProfile
 from tests.modules.review.application.helpers import controller
-from tests.modules.review.builders import BODY, PARTS, found
+from tests.modules.review.builders import BODY, OWN, PARTS, found
 from xarch.modules.review.contract import (
     BY_PATHS,
     FAILED,
+    IMPORTS,
     MISSING,
     NEVER,
+    NO_CONTEXT,
     NOT_CACHED,
     SMALL,
     AllAndOthers,
+    AllInPieces,
     Choice,
     KeyMissing,
     LeftOut,
     NothingChosen,
     Option,
     PartRead,
+    PiecesRead,
     Reading,
     Request,
     Review,
@@ -32,7 +36,7 @@ from xarch.modules.review.contract import (
     TooManyFiles,
     Unasked,
 )
-from xarch.modules.review.domain.values import Answer, Found, Words
+from xarch.modules.review.domain.values import Answer, CodeFile, Found, Span, Words
 
 CWD, APP = Path("/src"), Path("/src/app")
 FOLDER = Path("/src/.xarch/cache/review")
@@ -83,9 +87,10 @@ class World:
 
 
 def review(*paths: str, listed: tuple[str, ...] = (), every: bool = False, dry_run: bool = False,
-           profile: str = "p", max_files: int = 50, offline: bool = False, cache: Path | None = None) -> Review:
+           profile: str = "p", max_files: int | None = 50, offline: bool = False, cache: Path | None = None,
+           pieces: bool = False, context: str = NO_CONTEXT) -> Review:
     return Review(tuple(Path(p) for p in paths), tuple(Path(p) for p in listed), every, CWD, APP, profile, None,
-                  dry_run, max_files, offline, cache)
+                  dry_run, max_files, offline, cache, pieces, context)
 
 
 def run(world: World, when: Review):
@@ -273,3 +278,91 @@ def test_when_the_other_order_fails_the_file_is_unanswered_and_nothing_more_is_s
 def test_a_dry_run_says_in_how_many_other_orders_a_file_near_its_line_is_asked_again():
     found = _review(FakeDecisionModel({}), FakeAnswers(), review("app/x.py", dry_run=True))
     assert isinstance(found, ReviewPlanned) and found.reorders == 1
+
+
+FIRST = "def first():\n" + "    a = 1\n" * 120
+SECOND = "def second():\n" + "    b = 2\n" * 120
+THIRD = "def third():\n" + "    c = 3\n" * 120
+TINY = "class Tiny:\n    x: int\n"
+PIECED_TEXT = "from app.kernel.ids import DocumentId\n\n" + FIRST + SECOND + THIRD + TINY
+PIECED = CodeFile("app/modules/documents/domain/pieced.py", "domain", PIECED_TEXT, (OWN,), spans=(
+    Span("function", "first", "", (3, 123)), Span("function", "second", "", (124, 244)),
+    Span("function", "third", "", (245, 365)), Span("class", "Tiny", "", (366, 367))))
+WHOLE = PIECED_TEXT.replace("app.kernel.ids", "<masked>")
+OPENING = "from <masked> import DocumentId\n\n"
+
+
+def _on(probability: float) -> Answer:
+    return Answer("m-1.0.1", (("domain", probability), ("main", 1 - probability)), 10, 1)
+
+
+ON_PIECES = {WHOLE: _on(0.9), FIRST: _on(0.5), SECOND: _on(0.05), THIRD + TINY: _on(0.7)}
+
+
+def _pieces(model: FakeDecisionModel, answers: FakeAnswers, **given):
+    code = FakeCode({"app/p.py": Found((PIECED,)), "app/one.py": Found((found(),))})
+    return controller(code, FakeProfile(WORDS), model, answers).review(review("app/p.py", **given))
+
+
+def test_with_pieces_each_piece_judged_is_asked_with_the_piece_question_and_ranked_inside_its_file():
+    model = FakeDecisionModel(ON_PIECES)
+    found = _pieces(model, FakeAnswers(), pieces=True)
+    assert isinstance(found, ReviewReading)
+    assert [r.file for r in found.readings] == [PIECED.file]
+    (read,) = found.pieces
+    assert (read.file, read.part, read.judged, read.too_small, read.context, read.answered) == (
+        PIECED.file, "domain", 3, 0, NO_CONTEXT, True)
+    assert [(p.rank, p.name, p.kind, p.lines, p.probability) for p in read.lowest] == [
+        (1, "second", "function", (124, 244), 0.05), (2, "first", "function", (3, 123), 0.5),
+        (3, "third, Tiny", "function", (245, 367), 0.7)]
+    assert model.asked == [WHOLE, FIRST, SECOND, THIRD + TINY] and found.sent == 4
+
+
+def test_with_context_each_piece_is_sent_after_the_file_s_opening_lines():
+    model = FakeDecisionModel({WHOLE: _on(0.9)} | {OPENING + text: answer for text, answer in ON_PIECES.items()})
+    found = _pieces(model, FakeAnswers(), pieces=True, context=IMPORTS)
+    assert isinstance(found, ReviewReading) and found.pieces[0].context == IMPORTS
+    assert model.asked[1:] == [OPENING + FIRST, OPENING + SECOND, OPENING + THIRD + TINY]
+
+
+def test_a_file_with_fewer_than_two_pieces_judged_has_nothing_to_rank_and_its_pieces_are_not_asked():
+    model = FakeDecisionModel({SENT: HIGH})
+    code = FakeCode({"app/one.py": Found((found(),))})
+    result = controller(code, FakeProfile(WORDS), model, FakeAnswers()).review(review("app/one.py", pieces=True))
+    assert isinstance(result, ReviewReading)
+    assert result.pieces == (PiecesRead(DOCUMENT.file, "domain", 0, 0, NO_CONTEXT, ()),) and model.asked == [SENT]
+
+
+def test_offline_a_piece_not_kept_is_unanswered_and_its_file_is_not_ranked():
+    answers = FakeAnswers()
+    _pieces(FakeDecisionModel({WHOLE: _on(0.9), FIRST: _on(0.5)}), answers, pieces=True)
+    found = _pieces(FakeDecisionModel({}), answers, pieces=True, offline=True)
+    assert isinstance(found, ReviewReading)
+    assert found.unasked == (Unasked(PIECED.file, NOT_CACHED, "second"), Unasked(PIECED.file, NOT_CACHED, "third, Tiny"))
+    assert (found.pieces[0].lowest, found.pieces[0].answered, found.cached) == ((), False, 2)
+
+
+def test_a_dry_run_with_pieces_shows_each_piece_request_after_the_files_and_counts_their_characters():
+    planned = _pieces(FakeDecisionModel({}), FakeAnswers(), pieces=True, dry_run=True)
+    assert isinstance(planned, ReviewPlanned)
+    assert planned.piece_ask == f"{PLACEMENT} This text is one piece of a larger file."
+    assert [(r.piece, r.text) for r in planned.requests] == [("", WHOLE), ("first", FIRST), ("second", SECOND),
+                                                             ("third, Tiny", THIRD + TINY)]
+    assert planned.requests[1].body.startswith(f"{PLACEMENT} This text is one piece of a larger file. 2 ")
+    asked = ASKED + len(" This text is one piece of a larger file.")
+    assert planned.characters == len(WHOLE) + ASKED + len(FIRST + SECOND + THIRD + TINY) + 3 * asked
+
+
+def test_with_no_key_a_piece_not_kept_is_refused_before_anything_is_sent():
+    answers = FakeAnswers()
+    _pieces(FakeDecisionModel({WHOLE: _on(0.9)}), answers)
+    model = FakeDecisionModel({}, keyed=False)
+    assert isinstance(_pieces(model, answers), ReviewReading)
+    assert _pieces(model, answers, pieces=True) == KeyMissing("MODEL_KEY") and model.asked == []
+
+
+def test_every_file_of_the_app_in_pieces_is_refused_before_anything_is_read():
+    code = FakeCode({}, refused={"/src/app": "read"})
+    model = FakeDecisionModel({})
+    assert controller(code, FakeProfile(WORDS), model, FakeAnswers()).review(review(every=True, pieces=True)) == (
+        AllInPieces())

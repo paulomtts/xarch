@@ -1,5 +1,6 @@
 """The values review reads through its ports: the profile's words review reads (its parts as placement offers them,
-and what review may send), and the files found at the paths given, read or not."""
+and what review may send), and the files found at the paths given, read or not, with their pieces; and the pieces as
+review judges them."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -30,14 +31,38 @@ class Words:
 
 
 @dataclass(frozen=True)
+class Span:
+    """A piece of a file as its language's reader cuts it: its kind, as the reader names it (a function, a class, a
+    method); its name; the class it is a method of ("" for a piece at the top level); and the first and last lines it
+    spans, counted from 1."""
+    kind: str
+    name: str
+    owner: str
+    lines: tuple[int, int]
+
+
+@dataclass(frozen=True)
 class CodeFile:
-    """A source file of the app in a part, read: the file, as `check` shows it; the part; its text; its imports; and
-    how it fails to parse (None: it parses)."""
+    """A source file of the app in a part, read: the file, as `check` shows it; the part; its text; its imports; how
+    it fails to parse (None: it parses); and its pieces, in the order of their first line."""
     file: str
     part: str
     text: str
     imports: tuple[Import, ...] = ()
     error: Unparsable | None = None
+    spans: tuple[Span, ...] = ()
+
+
+@dataclass(frozen=True)
+class Section:
+    """A piece of a file as review judges it: its name as shown (Class.method for a method; the names joined, for
+    small pieces merged); its kind, the first piece's; the first and last lines it spans; its text, masked; and, for a
+    method, the text of its class before its first method, sent with it ("" for any other)."""
+    name: str
+    kind: str
+    lines: tuple[int, int]
+    text: str
+    head: str = ""
 
 
 @dataclass(frozen=True)
