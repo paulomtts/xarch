@@ -39,6 +39,12 @@ NOT_A_LINE = "is not a line: write a number above 0 and below 1, such as 0.2"
     pytest.param({"placement": {"examples": {"clean": {"store/a.txt": "x"}}}},
                  "evals.placement.examples.clean: 'store/a.txt' is not a path of a source file below the app, ending in "
                  ".py", id="an example of placement that is no source file"),
+    pytest.param({"placement": {"examples": {"flagged": {"stray/x.py": "x = 1\n"}}}},
+                 "evals.placement.examples.flagged.stray/x.py: lies in no part of this profile: write the path of a "
+                 "file in the part it is an example of", id="a flagged example of placement lying in no part"),
+    pytest.param({"placement": {"examples": {"clean": {"stray/x.py": "x = 1\n"}}}},
+                 "evals.placement.examples.clean.stray/x.py: lies in no part of this profile: write the path of a "
+                 "file in the part it is an example of", id="a clean example of placement lying in no part"),
     pytest.param({"placement": {"lines": [0.2]}}, "evals.placement.lines: must be a mapping of parts to their line, "
                                                   "such as {documents: 0.2}", id="lines not a mapping"),
     pytest.param({"placement": {"lines": {"domain": 0.2}}}, "evals.placement.lines: 'domain' is not a part of this "
@@ -160,7 +166,7 @@ def test_yes_and_no_written_bare_in_a_profile_file_are_read_as_the_yes_and_no_sl
 
 
 def test_placement_is_held_to_examples_of_its_own_besides_the_docs_flagged_or_clean_either_left_out():
-    placed = {"flagged": {"store/api.py": "def handle(request): ...\n"}}
+    placed = {"flagged": {"src/documents/store/api.py": "def handle(request): ...\n"}}
     assert parsed(layered(evals={"placement": {"examples": placed}})).placed == (
-        (("store/api.py", "def handle(request): ...\n"),), ())
+        (("src/documents/store/api.py", "def handle(request): ...\n"),), ())
     assert parsed(layered()).placed == ((), ())

@@ -22,6 +22,7 @@ import re
 from collections.abc import Collection, Mapping
 from typing import Any
 
+from xarch.kernel.logic.placement import place_of
 from xarch.kernel.violations import OWN_ID
 from xarch.modules.spec.application.logic import profile_checks as ck
 from xarch.modules.spec.application.logic.key_lookup import names_of
@@ -267,3 +268,11 @@ def _example(path: Any, code: Any, where: str, language: Language, problems: lis
         problems.append(f"{where}.{path}: must be the code of the file, as text")
         return "", ""
     return path, code
+
+
+def unplaced(placed: tuple[Examples, Examples], patterns: dict[str, tuple[str, ...]], language: Language) -> list[str]:
+    """Each of placement's own examples, flagged then clean, whose path lies in no part of the profile (patterns, each
+    part's path by name): placement could hold it to no part, so it is refused at its address."""
+    return [f"evals.{BUILT_IN}.examples.{side}.{path}: lies in no part of this profile: write the path of a file in "
+            "the part it is an example of" for side, files in zip(("flagged", "clean"), placed, strict=True)
+            for path, _ in files if place_of(patterns, tuple(path.split("/")), language.checked.marks).part is None]

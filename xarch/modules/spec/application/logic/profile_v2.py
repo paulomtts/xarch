@@ -74,7 +74,7 @@ from xarch.modules.spec.application.logic import profile_checks as ck
 from xarch.modules.spec.application.logic import profile_examples as ex
 from xarch.modules.spec.application.logic import profile_needs as needs
 from xarch.modules.spec.application.logic import written_checks as own_checks
-from xarch.modules.spec.application.logic.evals import evals
+from xarch.modules.spec.application.logic.evals import evals, unplaced
 from xarch.modules.spec.application.logic.key_lookup import keys_of, names_of, required_of
 from xarch.modules.spec.application.logic.language_file import first_language
 from xarch.modules.spec.application.logic.layout_walk import is_file
@@ -207,6 +207,7 @@ def parse_v2(document: Any, source: str, files: Collection[str] = (), presets: M
     never, mask = sending(document["review"], problems) if "review" in document else ((), ())
     placement, placed, own_evals = (evals(document["evals"], declared, language, problems) if "evals" in document
                                     else ({}, ((), ()), {}))
+    problems += unplaced(placed, {name: part.path for name, part in parts.items()}, language)
     if problems:
         raise InvalidArchitecture(source, problems)
     shown = ex.examples_of(examples, built.tree, parts, language)

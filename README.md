@@ -741,7 +741,7 @@ example has no answer, and nothing of that eval is recorded.
 
 Placement is held to its examples in the same run (and alone with `--eval placement`): every file of `docs.examples`
 lying in a part, read as clean, and the profile's own under `evals.placement.examples: {flagged, clean}` (a flagged
-file's path puts it in a part it does not belong in). Each is asked placement's question once. A part passes when its
+file's path puts it in a part it does not belong in; a path lying in no part is refused at its address). Each is asked placement's question once. A part passes when its
 clean examples read at or above its line, a flagged one lying in it below it, and every other part's example below its
 line on it (from the same answers); one with no example of its own is measured elsewhere only. A part whose examples
 disagree is said with the example that crossed, and review then reads its files but never marks them doubtful. The

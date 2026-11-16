@@ -1177,8 +1177,8 @@ keys:
     meaning: the examples placement is held to, besides the docs'
     accepts: >-
       {flagged: {<path>: <code>, ...}, clean: {<path>: <code>, ...}}, each a path below the app ending in %extension%,
-      the part it lies in being the part its path names: a clean file belongs in that part, a flagged one does not.
-      `xarch review calibrate --eval placement` asks placement of them and of every file of `docs.examples` lying in
+      the part it lies in being the part its path names: a clean file belongs in that part, a flagged one does not; a
+      path lying in no part is refused at its address. `xarch review calibrate --eval placement` asks placement of them and of every file of `docs.examples` lying in
       a part (those are clean), and holds each part to them: its clean files must read at or above its line, and
       every file claimed for it from elsewhere below it (a flagged file in it, and each other example's probability
       on it). A part whose examples disagree is read in review but never marked doubtful; one with no example of its
