@@ -12,11 +12,11 @@ from xarch.modules.rules.contract import (
     CheckApp,
     CheckAppResult,
     CheckExamples,
+    CheckExamplesResult,
     CheckImports,
     CheckRefused,
     CheckResult,
     ChecksCannotRun,
-    ExamplesChecked,
     ExplainRule,
     ExplainWords,
     Locate,
@@ -36,10 +36,15 @@ class RulesController:
         self._service, self._locator, self._app, self._explaining = service, locator, app, explaining
         self._examples = examples
 
-    def check_examples(self, cmd: CheckExamples) -> ExamplesChecked:
-        """The profile's own checks held to their examples, and to the vocabulary; every problem at once."""
-        problems, count = self._examples.problems(cmd.profile, cmd.app)
-        return ExamplesChecked(tuple(problems), count)
+    def check_examples(self, cmd: CheckExamples) -> CheckExamplesResult:
+        """The profile's own checks held to their examples, and to the vocabulary; every problem at once. A profile
+        whose checks cannot be made is refused with their problems, and one that cannot be used with why."""
+        try:
+            return self._examples.held(cmd.profile, cmd.app)
+        except ChecksRefused as e:
+            return ChecksCannotRun(e.problems)
+        except DomainError as e:
+            return CheckRefused(e.reason)
 
     def explain_words(self, cmd: ExplainWords) -> WordsResult:
         """How a check is written, a category of its words or one word, from the vocabulary the engine reads; an

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from xarch.kernel.errors import DomainError
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.application.services.explanation import ExplainService
@@ -34,7 +36,6 @@ from xarch.modules.spec.contract import (
     ViewResult,
 )
 from xarch.modules.spec.domain.errors import NoProfile, WouldOverwrite
-from xarch.modules.spec.domain.profile_keys import CHOICE_BUNDLED, KEYS
 
 
 class SpecController:
@@ -122,9 +123,13 @@ class SpecController:
         except DomainError as e:
             return ProfileRefused(e.reason)
 
-    def bundled(self) -> tuple[str, ...]:
-        """The names of the bundled profiles: what a key that names one may name."""
-        return self._explanation.choices(next(key for key in KEYS if key.choices == CHOICE_BUNDLED))
+    def known(self, app: Path) -> tuple[str, ...]:
+        """The profiles known to the project holding the app folder, given in full: the one in force, then the bundled
+        ones; when none is in force, or it cannot be read or loaded, the bundled ones alone."""
+        try:
+            return self._selection.known(app)
+        except DomainError:
+            return self._selection.known(None)
 
     def view(self, cmd: ViewProfile) -> ViewResult:
         """The folder tree and import table of a profile; one that cannot be chosen or loaded is refused with why."""

@@ -7,7 +7,7 @@ from tests.fakes.filesystem import FakeSourceTree
 from tests.fakes.profiles import FakeProfiles
 from tests.modules.rules.application.helpers import controller
 from tests.modules.rules.builders import profile
-from xarch.modules.rules.contract import CheckExamples, ExamplesChecked
+from xarch.modules.rules.contract import CheckExamples, ChecksCannotRun, ExamplesChecked
 from xarch.modules.rules.domain.values import Class, SourceFile
 from xarch.profile_values.checks import APP, Quantified, Saying, Scope, WrittenCheck, WrittenTarget
 
@@ -42,4 +42,4 @@ def test_an_example_outside_the_scope_of_its_check_finds_nothing():
 def test_a_profile_whose_checks_cannot_be_made_has_their_problems():
     profiles = FakeProfiles({}, refused={"broken": ("checks.x.read: names no kind of fact",)})
     found = controller(FakeSourceTree(Path("/src/app"), {}), profiles).check_examples(CheckExamples("broken", "app"))
-    assert found == ExamplesChecked(("checks.x.read: names no kind of fact",), 0)
+    assert found == ChecksCannotRun(("checks.x.read: names no kind of fact",))

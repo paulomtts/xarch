@@ -13,7 +13,10 @@ from xarch.modules.rules.application.controller import RulesController
 from xarch.modules.rules.contract import (
     CATEGORIES,
     CheckExamples,
+    CheckRefused,
+    ChecksCannotRun,
     ChecksShown,
+    ExamplesChecked,
     ExplainRule,
     ExplainWords,
     KeyUnset,
@@ -173,9 +176,14 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
             case ProfileChecked() as checked:
                 count = 0
                 if checked.origin is not None:
-                    held = rules.check_examples(CheckExamples(checked.location, app.name))
-                    checked, count = replace(checked, problems=(*checked.problems, *(
-                        Problem(CHECKS, text) for text in held.problems))), held.checks
+                    match rules.check_examples(CheckExamples(checked.location, app.name)):
+                        case ExamplesChecked(problems, count):
+                            pass
+                        case ChecksCannotRun(problems):
+                            pass
+                        case CheckRefused(why):
+                            problems = (why,)
+                    checked = replace(checked, problems=(*checked.problems, *(Problem(CHECKS, t) for t in problems)))
                 _show(output, report.check_document(checked), report.check_lines(checked, count))
                 if not checked.ok:
                     raise typer.Exit(1)
@@ -197,11 +205,8 @@ def _configured(spec: SpecController, app: Path, refuse) -> str:
 
 
 def _examples_from(spec: SpecController, app_path: Path | None) -> tuple[str, ...]:
-    """The profiles whose rules are examples of a word: the one the project configures, if any, then the bundled."""
-    match spec.select(SelectProfile(in_full(app_for(spec, app_path)), None, None)):
-        case ProfileSelected(name, _):
-            return (name, *spec.bundled())
-    return spec.bundled()
+    """The profiles whose rules are examples of a word: those the project knows."""
+    return spec.known(in_full(app_for(spec, app_path)))
 
 
 def _words(rules: RulesController, spec: SpecController, key: str, app_path: Path | None, output: Format) -> None:

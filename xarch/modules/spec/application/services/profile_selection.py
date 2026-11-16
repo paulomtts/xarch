@@ -39,6 +39,13 @@ class ProfileSelectionService:
         self._architectures.load(location)
         return ProfileSelected(location, self._tests(app, tests))
 
+    def known(self, app: Path | None) -> tuple[str, ...]:
+        """The profiles known to the project holding app: the one in force, once its architecture loads, then the
+        bundled ones; for no app, the bundled ones alone. Raises NoProfile, UnknownProfile, UnreadableSettings or
+        InvalidArchitecture when none is in force or it does not load."""
+        in_force = () if app is None else (self.select(app, None, None).name,)
+        return (*in_force, *self._files.bundled())
+
     def _tests(self, app: Path, given: Path | None) -> Path | None:
         """The tests root that goes with the app, given in full: the one given, else the configured one, else the
         default one when it is a folder, else None; raises UnreadableSettings."""

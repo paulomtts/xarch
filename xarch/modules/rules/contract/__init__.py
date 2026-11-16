@@ -14,7 +14,8 @@ __all__ = ["At", "Weak", "Slot", "ChecksCannotRun", "CheckRefused", "OwnCheckVie
            "WhereAnswer", "CheckImports", "ImportsChecked", "NotADirectory", "CheckResult", "CheckApp", "AppChecked",
            "CheckAppResult", "Locate", "Located", "Outside", "LocateResult", "CATEGORIES", "ExplainWords",
            "WordLine", "CategoryShown", "ChecksShown", "WordsShown", "FieldShown", "WordShown", "UnknownWords",
-           "WordsResult", "ExplainRule", "RuleShown", "KeyUnset", "NoRuleShown", "RuleResult", "CheckExamples", "ExamplesChecked"]
+           "WordsResult", "ExplainRule", "RuleShown", "KeyUnset", "NoRuleShown", "RuleResult", "CheckExamples", "ExamplesChecked",
+           "CheckExamplesResult", "ApproximateView"]
 
 
 @dataclass(frozen=True)
@@ -437,3 +438,6 @@ class ExamplesChecked:
     the profile writes itself."""
     problems: tuple[str, ...]
     checks: int
+
+
+CheckExamplesResult = ExamplesChecked | ChecksCannotRun | CheckRefused
