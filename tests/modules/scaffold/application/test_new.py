@@ -7,7 +7,7 @@ from tests.fakes.filesystem import FakeFiles
 from tests.fakes.scaffold_skeleton import FakeSkeleton
 from xarch.modules.scaffold.application.controller import ScaffoldController
 from xarch.modules.scaffold.application.services.scaffolding import ScaffoldingService
-from xarch.modules.scaffold.contract import Init, New, Refused, Report, Scaffolded
+from xarch.modules.scaffold.contract import Init, KindIsAFolder, New, NotInitialized, Refused, Report, Scaffolded
 
 ROOT = Path("/src/app")
 PYPROJECT = Path("/src/pyproject.toml")
@@ -50,7 +50,7 @@ def pyproject(files: FakeFiles) -> str | None:
     pytest.param(MODULES, New(ROOT, "module", "docs", "cli"), Scaffolded(Report(created=MODULE_FILES)),
                  id="a new module is created with its controller as a file"),
     pytest.param(set(), New(ROOT, "module", "docs", "cli"),
-                 Refused(f"{ROOT / 'modules'} does not exist: run 'xarch init' first"),
+                 NotInitialized(ROOT / "modules"),
                  id="a new module in an app that was not initialised is refused"),
     pytest.param(MODULES, New(ROOT, "module", "Docs", "cli"),
                  Refused("'Docs' is not a valid name: use a lowercase Python identifier, e.g. 'documents'"),
@@ -62,12 +62,10 @@ def pyproject(files: FakeFiles) -> str | None:
                  Refused("no kind 'features' in the profile: use module"),
                  id="a kind the profile does not declare is refused"),
     pytest.param(MODULES, New(ROOT, "modules", "docs", "cli"),
-                 Refused("no kind 'modules' in the profile: that is the folder of the kind module: write "
-                         "`xarch new module <name>`"),
+                 KindIsAFolder("modules", "module"),
                  id="the folder of a kind in place of its word is refused, saying what to type"),
     pytest.param(MODULES, New(ROOT, "modules/", "docs", "cli"),
-                 Refused("no kind 'modules/' in the profile: that is the folder of the kind module: write "
-                         "`xarch new module <name>`"),
+                 KindIsAFolder("modules/", "module"),
                  id="the folder written with a trailing slash is refused the same way"),
 ])
 def test_new(given, when, then):
@@ -257,14 +255,14 @@ def test_every_kind_of_a_profile_with_several_repeating_folders_is_made_in_its_o
                         ROOT / "plugins/seo/manifest.py"]))
 
 
-@pytest.mark.parametrize("kind, reason", [
-    pytest.param("feature", "no kind 'feature' in the profile: use module, plugin", id="an unknown kind lists every word"),
-    pytest.param("plugins", "no kind 'plugins' in the profile: that is the folder of the kind plugin: write "
-                            "`xarch new plugin <name>`", id="the folder of the second kind names its word"),
+@pytest.mark.parametrize("kind, refused", [
+    pytest.param("feature", Refused("no kind 'feature' in the profile: use module, plugin"),
+                 id="an unknown kind lists every word"),
+    pytest.param("plugins", KindIsAFolder("plugins", "plugin"), id="the folder of the second kind names its word"),
 ])
-def test_a_kind_the_profile_does_not_declare_is_refused_listing_every_word(kind, reason):
+def test_a_kind_the_profile_does_not_declare_is_refused_listing_every_word(kind, refused):
     two = controller(FakeFiles(dirs={ROOT / "modules"}), TWO_KINDS)
-    assert two.new(New(ROOT, kind, "docs", "cli")) == Refused(reason)
+    assert two.new(New(ROOT, kind, "docs", "cli")) == refused
 
 
 def test_the_language_of_the_profile_is_named_in_the_refusal_of_a_name_and_the_package_file_is_the_one_it_has():

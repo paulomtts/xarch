@@ -2,7 +2,17 @@ from __future__ import annotations
 
 from xarch.kernel.errors import DomainError
 from xarch.modules.scaffold.application.services.scaffolding import ScaffoldingService
-from xarch.modules.scaffold.contract import Init, InitResult, New, NewResult, Refused, Scaffolded
+from xarch.modules.scaffold.contract import (
+    Init,
+    InitResult,
+    KindIsAFolder,
+    New,
+    NewResult,
+    NotInitialized,
+    Refused,
+    Scaffolded,
+)
+from xarch.modules.scaffold.domain.errors import FolderMissing, UnknownKind
 
 
 class ScaffoldController:
@@ -17,9 +27,14 @@ class ScaffoldController:
             return Refused(e.reason)
 
     def new(self, cmd: New) -> NewResult:
-        """Every refusal of the service carries its reason."""
+        """The folder of a kind given for its word, and a skeleton not there, are refused as what they are; every
+        other refusal of the service carries its reason."""
         try:
             return Scaffolded(self._service.new(cmd.root, cmd.kind, cmd.name, cmd.profile))
+        except UnknownKind as e:
+            return KindIsAFolder(e.kind, e.word) if e.word else Refused(e.reason)
+        except FolderMissing as e:
+            return NotInitialized(e.folder)
         except DomainError as e:
             return Refused(e.reason)
 

@@ -13,21 +13,26 @@ class InvalidName(DomainError):
 
 
 class UnknownKind(DomainError):
-    """A kind is the word one instance of the repeating folder is called; the profile declares no kind named so."""
+    """A kind is the word one instance of the repeating folder is called; the profile declares no kind named so. word
+    is the kind whose folder was given in its place, when it was ("" otherwise)."""
 
     def __init__(self, kind: str, known: Iterable[str], folders: dict[str, str] | None = None):
         known = list(known)
-        folder = next((word for word, path in (folders or {}).items() if path == kind.strip("/")), None)
-        if folder is not None:
-            use = f"that is the folder of the kind {folder}: write `xarch new {folder} <name>`"
+        self.kind = kind
+        self.word = next((word for word, path in (folders or {}).items() if path == kind.strip("/")), "")
+        if self.word:
+            use = f"that is the folder of the kind {self.word}"
         else:
             use = f"use {', '.join(known)}" if known else "it declares no repeating folder"
         super().__init__(f"no kind '{kind}' in the profile: {use}")
 
 
 class FolderMissing(DomainError):
+    """The folder of a kind, which a new instance goes in, does not exist: the skeleton is not there."""
+
     def __init__(self, folder: Path):
-        super().__init__(f"{folder} does not exist: run 'xarch init' first")
+        self.folder = folder
+        super().__init__(f"{folder} does not exist")
 
 
 class AlreadyExists(DomainError):

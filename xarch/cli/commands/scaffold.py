@@ -4,10 +4,10 @@ from typing import Annotated
 
 import typer
 
-from xarch.cli.reports.scaffold_report import report_lines
+from xarch.cli.reports.scaffold_report import refused_reason, report_lines
 from xarch.cli.terminal import AppPath, ProfileName, app_for, echo, fail, in_full, profile_for
 from xarch.modules.scaffold.application.controller import ScaffoldController
-from xarch.modules.scaffold.contract import Init, New, Refused, Scaffolded
+from xarch.modules.scaffold.contract import Init, KindIsAFolder, New, NotInitialized, Refused, Scaffolded
 from xarch.modules.spec.application.controller import SpecController
 
 
@@ -32,5 +32,7 @@ def register(app: typer.Typer, scaffold: ScaffoldController, spec: SpecControlle
         match scaffold.new(New(app_path, kind, name, profile_for(spec, app_path, profile))):
             case Scaffolded(report):
                 echo(report_lines(report))
+            case KindIsAFolder() | NotInitialized() as refused:
+                raise fail(refused_reason(refused))
             case Refused(reason):
                 raise fail(reason)

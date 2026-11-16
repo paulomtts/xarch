@@ -6,7 +6,7 @@ import pytest
 from xarch.bootstrap.wiring import build_controllers
 from xarch.modules.layout.contract import CheckStructure
 from xarch.modules.rules.contract import CheckImports
-from xarch.modules.scaffold.contract import Init, New, Refused, Report, Scaffolded
+from xarch.modules.scaffold.contract import Init, New, NotInitialized, Refused, Report, Scaffolded
 
 TOP = ["bootstrap/migrations", "kernel", "kernel/logic", "modules", "platform", "cli/commands"]
 MODULE = ["contract", "domain", "application", "application/services", "application/logic", "application/ports",
@@ -96,7 +96,7 @@ def test_new_module_refuses_an_existing_module(tmp_path):
 
 
 def test_new_module_needs_modules_folder(tmp_path):
-    assert "xarch init" in refusal(tmp_path / "app", "documents")
+    assert new_module(tmp_path / "app", "documents") == NotInitialized(tmp_path / "app" / "modules")
 
 
 def test_a_scaffolded_module_has_every_part_the_layout_rules_require(tmp_path):

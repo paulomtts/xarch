@@ -42,5 +42,18 @@ class Refused:
     reason: str
 
 
-NewResult = Scaffolded | Refused
+@dataclass(frozen=True)
+class KindIsAFolder:
+    """The folder of a kind was given in place of its word: the kind as given, and the word that names it."""
+    kind: str
+    word: str
+
+
+@dataclass(frozen=True)
+class NotInitialized:
+    """The folder a new instance goes in does not exist: the skeleton that init builds is not there."""
+    folder: Path
+
+
+NewResult = Scaffolded | KindIsAFolder | NotInitialized | Refused
 InitResult = Scaffolded | Refused
