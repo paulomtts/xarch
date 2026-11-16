@@ -1,55 +1,57 @@
-"""A rule written in the syntax a profile writes its checks in: each slot as the format writes it, a default left out,
-a word quoted only where the format would read it otherwise, and the sayings but the last as cases."""
+"""A rule as the check a profile would write: its slots as the format holds them, its targets as written (places in
+the target grammar, dotted names joined), a rule of reach with how it reaches; each under an id of its own; and the
+tokens of the language filled into the examples."""
 import pytest
 
-from xarch.modules.rules.application.logic.written import check, filled, written
-from xarch.modules.rules.domain.rule import EXISTING, LIST, MAY_NOT, MAY_ONLY, MUST_BE_REACHED, MUST_REACH, Match, Rule
-from xarch.profile_values.checks import STRUCTURE, TESTS, Condition, Saying, Scope
+from xarch.modules.rules.application.logic.written import check_of, filled, ids, written, written_own
+from xarch.modules.rules.domain.rule import EXISTING, MAY_NOT, MUST_BE_REACHED, MUST_REACH, Match, OwnCheck, Rule
+from xarch.profile_values.checks import Condition, Quantified, Saying, Scope, WrittenCheck, WrittenTarget
 from xarch.profile_values.language import CheckedLanguage
 from xarch.profile_values.placement import Target
 
-
-def c(*texts: str) -> tuple[Condition, ...]:
-    return tuple(Condition.of(text) for text in texts)
+SAID = (Saying("m", "f"),)
 
 
-@pytest.mark.parametrize("rule, lines", [
-    pytest.param(Rule("names", Scope(part="store"), ("class",), MAY_ONLY, (Match("name", words=("*Store",)),),
-                      (Saying("{name} is not {targets}", "rename {name}"),), keep=c("public")),
-                 ["read: class", "in: {part: store}", "keep: [public]", 'may_only: {name: ["*Store"]}',
-                  'message: "{name} is not {targets}"', 'fix: "rename {name}"'], id="a check of a part"),
-    pytest.param(Rule("x", Scope(TESTS, where=c("not tiered", "below fakes")), ("file",), MAY_NOT, EXISTING,
-                      (Saying("m", "f"),), mode=LIST),
-                 ["read: file", "in: {files: tests, where: [not tiered, {below: fakes}]}", "may_not: exist",
-                  "mode: list", 'message: "m"', 'fix: "f"'], id="a scope of the tests, its filters and a mode"),
-    pytest.param(Rule("x", Scope(part=STRUCTURE), ("use", "method-call"), MAY_NOT,
-                      (Match("path", names=(("time", "time"), ("", "absolute()"))),),
-                      (Saying("{where} reads {hit}", "f", c("of-kind use"), ("line",)), Saying("m", "f"))),
-                 ["read: [use, method-call]", "in: {part: structure}", 'may_not: {path: [time.time, ".absolute()"]}',
-                  "cases:", "  - when: [{of-kind: use}]", '    message: "{where} reads {hit}"', '    fix: "f"',
-                  "    once_per: [line]", 'message: "m"', 'fix: "f"'], id="dotted names, a method, and a case"),
+@pytest.mark.parametrize("rule, check", [
     pytest.param(Rule("x", Scope(part="store"), ("import", "import-into-app"), MUST_REACH,
                       (Match("place", places=(Target("core"), Target("api", "any", ("v1",)))), Match("outside")),
-                      (Saying("m", "f"),), links=("import-into-app",), via=c("target-in-own-part")),
-                 ["read: [import, import-into-app]", "in: {part: store}", "must_reach:",
-                  "  targets: [{place: [core, api@any/v1]}, outside]", "  through: import-into-app",
-                  "  through_only: [target-in-own-part]", 'message: "m"', 'fix: "f"'], id="a reach to targets"),
-    pytest.param(Rule("x", Scope(part="ports"), ("class",), MUST_BE_REACHED, EXISTING, (Saying("{name}", "f"),),
-                      keep=c("interface"), links=("names-mentioned",), roots=Scope(where=c("not package-file")),
+                      SAID, links=("import-into-app",), via=(Condition("target-in-own-part"),)),
+                 WrittenCheck(("import", "import-into-app"), Scope(part="store"),
+                              Quantified(MUST_REACH, (WrittenTarget("place", ("core", "api@any/v1")),
+                                                      WrittenTarget("outside")),
+                                         ("import-into-app",), (Condition("target-in-own-part"),)), SAID),
+                 id="places in the target grammar, and how a rule reaches"),
+    pytest.param(Rule("x", Scope(), ("use",), MAY_NOT, (Match("path", names=(("time", "time"), ("", "absolute()"))),),
+                      SAID),
+                 WrittenCheck(("use",), Scope(), Quantified(MAY_NOT, (WrittenTarget("path", ("time.time", ".absolute()")),)),
+                              SAID), id="dotted names joined, a method with its dot"),
+    pytest.param(Rule("x", Scope(), ("comment",), MAY_NOT, EXISTING, SAID),
+                 WrittenCheck(("comment",), Scope(), Quantified(MAY_NOT, (WrittenTarget("exist"),)), SAID),
+                 id="what every fact matches"),
+    pytest.param(Rule("x", Scope(part="ports"), ("class",), MUST_BE_REACHED, EXISTING, SAID,
+                      links=("names-mentioned",), roots=Scope(where=(Condition("package-file", negated=True),)),
                       spread=("class",), elsewhere=True),
-                 ["read: class", "in: {part: ports}", "keep: [interface]", "must_be_reached:",
-                  "  from: {files: app, where: [not package-file]}", "  through: names-mentioned", "  then_through: class",
-                  "  by_another_file: true", 'message: "{name}"', 'fix: "f"'], id="a reach from roots"),
+                 WrittenCheck(("class",), Scope(part="ports"),
+                              Quantified(MUST_BE_REACHED, (), ("names-mentioned",), (),
+                                         Scope(where=(Condition("package-file", negated=True),)), ("class",), True), SAID),
+                 id="a reach from roots, which names no target"),
 ])
-def test_a_rule_is_written_slot_by_slot_as_a_profile_writes_a_check(rule, lines):
-    assert check(rule) == lines
+def test_a_rule_is_the_check_a_profile_would_write(rule, check):
+    assert check_of(rule) == check
 
 
-def test_rules_are_written_as_the_checks_of_a_profile_each_under_its_id():
-    rule = Rule("x", Scope(), ("comment",), MAY_NOT, EXISTING, (Saying('a "comment"', "f"),))
-    assert written((rule, rule), ("one", "two")) == (
-        'checks:\n  one:\n    read: comment\n    may_not: exist\n    message: "a \\"comment\\""\n    fix: "f"\n'
-        '  two:\n    read: comment\n    may_not: exist\n    message: "a \\"comment\\""\n    fix: "f"\n')
+def test_rules_written_as_checks_each_take_an_id_of_their_own():
+    rule = Rule("names", Scope(part="store"), ("class",), MAY_NOT, EXISTING, SAID)
+    other = Rule("names", Scope(), ("class",), MAY_NOT, EXISTING, SAID)
+    assert ids([rule, rule, other]) == ["names-store", "names-store-2", "names"]
+    assert list(written([rule, other])) == ["names-store", "names"]
+
+
+def test_a_check_of_one_s_own_is_written_under_its_id_with_its_examples_filled_in():
+    own = OwnCheck(Rule("no-todo", Scope(), ("comment",), MAY_NOT, EXISTING, SAID),
+                   (("notes%extension%", "%comment% TODO\n"),), (("notes%extension%", "%comment% done\n"),))
+    (shown,) = written_own((own,), CheckedLanguage(extension=".py", comment="#")).values()
+    assert (shown.flagged, shown.clean) == ((("notes.py", "# TODO\n"),), (("notes.py", "# done\n"),))
 
 
 @pytest.mark.parametrize("text, importing, written_out", [

@@ -1,6 +1,7 @@
 """The rules module's controller around fakes, with every service, as bootstrap/ builds it around the adapters."""
 from __future__ import annotations
 
+from tests.fakes.check_format import FakeCheckFormat
 from tests.fakes.filesystem import FakeSourceTree
 from tests.fakes.profiles import FakeProfiles
 from tests.fakes.structure import FakeStructure
@@ -16,4 +17,4 @@ def controller(tree: FakeSourceTree, profiles: FakeProfiles, structure: FakeStru
     source = SourceCheckService(tree, profiles)
     return RulesController(source, LocateService(tree, profiles),
                            AppCheckService(source, structure if structure is not None else FakeStructure(), tree),
-                           ExplainingService(profiles), ExamplesService(tree, profiles))
+                           ExplainingService(profiles, FakeCheckFormat()), ExamplesService(tree, profiles))

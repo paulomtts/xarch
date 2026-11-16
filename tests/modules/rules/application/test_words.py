@@ -34,14 +34,14 @@ def test_words(given, when, then):
 def test_a_word_s_example_is_the_first_rule_of_the_first_profile_written_with_it():
     found = explain({"none": profile(), "named": NAMED})(ExplainWords("filters.public", ("none", "named")))
     assert (found.example_key, found.example_profile) == ("parts.services.names", "named")
-    assert found.example.splitlines()[:3] == ["checks:", "  names:", "    read: class"]
+    assert found.example.splitlines() == ["names: reads class"]
 
 
 def test_a_word_no_rule_of_the_profiles_uses_has_a_check_written_for_the_explanation_as_its_example():
     found = explain({"none": profile()})(ExplainWords("targets.text", ("none",)))
     assert (found.example_key, found.example_profile, found.applies_to, found.value) == (
         "checks.no-todo", "", ("syntax-error", "comment"), "patterns")
-    assert '      flagged: {documents/notes.py: "# TODO: split this file\\n"}' in found.example.splitlines()
+    assert "no-todo.flagged: documents/notes.py: '# TODO: split this file\\n'" in found.example.splitlines()
 
 
 def test_a_kind_is_explained_with_its_fields_what_it_needs_of_the_language_and_its_verb():
@@ -55,7 +55,7 @@ def test_how_a_check_is_written_lists_every_slot_and_every_category_with_its_wor
     assert [slot.name for slot in found.slots][:3] == ["read", "in", "keep"]
     assert [c.name for c in found.categories] == ["kinds", "quantifiers", "targets", "filters", "variables"]
     assert (found.example_key, found.example_profile) == ("checks.no-todo", "")
-    assert found.example.splitlines()[:3] == ["checks:", "  no-todo:", "    read: comment"]
+    assert found.example.splitlines()[0] == "no-todo: reads comment"
 
 
 def test_a_slot_of_a_check_is_explained_with_what_it_accepts_and_a_check_written_with_it():

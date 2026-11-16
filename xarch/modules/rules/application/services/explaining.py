@@ -1,23 +1,81 @@
 from __future__ import annotations
 
 from xarch.kernel.errors import DomainError
-from xarch.modules.rules.application.logic import expansion
+from xarch.modules.rules.application.logic import expansion, explained
 from xarch.modules.rules.application.logic.expandable import expands
 from xarch.modules.rules.application.logic.explained import keyed, uses
 from xarch.modules.rules.application.logic.own_checks import resolved
-from xarch.modules.rules.application.logic.written import written
+from xarch.modules.rules.application.logic.written import check_of, written, written_own
+from xarch.modules.rules.application.ports.check_format import CheckFormat
 from xarch.modules.rules.application.ports.profile import Profiles
-from xarch.modules.rules.contract import KeyUnset, NoRuleShown, RuleShown
+from xarch.modules.rules.contract import (
+    CategoryShown,
+    ChecksShown,
+    FieldShown,
+    KeyUnset,
+    NoRuleShown,
+    RuleShown,
+    UnknownWords,
+    WordLine,
+    WordShown,
+    WordsResult,
+    WordsShown,
+)
 from xarch.modules.rules.domain.rule import Rule
+from xarch.modules.rules.domain.vocabulary import READING, SLOTS, Kind
+from xarch.modules.rules.domain.worked import WORKED
 from xarch.profile_values.language import CheckedLanguage
+
+CHECKS = "checks"
+"""The address of how a check is written."""
 
 
 class ExplainingService:
-    """The rules a profile's keys expand to, for what `profile explain` shows of the vocabulary: the first rule of the
-    profiles given that is written with a word, and the rules a key expands to."""
+    """What `profile explain` shows of how a check is written: the words of the vocabulary, each with an example (the
+    first rule of the profiles given that is written with it, else a check of a profile's own written for the
+    explanation), and the rules a key of a profile expands to, written as checks."""
 
-    def __init__(self, profiles: Profiles):
-        self._profiles = profiles
+    def __init__(self, profiles: Profiles, form: CheckFormat):
+        self._profiles, self._form = profiles, form
+
+    def words(self, address: str, examples_from: tuple[str, ...]) -> WordsResult:
+        """How a check is written, a category of its words or one word, from the vocabulary the engine reads; an
+        address of no word comes back with the nearest ones."""
+        typed = address.strip().strip(".")
+        language = self.language(examples_from)
+        if typed == CHECKS:
+            categories = tuple(_category(name) for name in explained.CATEGORIES)
+            return ChecksShown(READING, SLOTS, categories, WORKED[0].rule.key, "",
+                               self._form.written(written_own(WORKED[:1], language)))
+        if explained.category_at(typed):
+            return WordsShown(_category(typed))
+        slot = explained.slot_at(typed)
+        if slot is not None:
+            key, location, example = self._example("quantifiers", slot.name, examples_from, language)
+            if not example:
+                key, location, example = WORKED[0].rule.key, "", self._form.written(written_own(WORKED[:1], language))
+            return WordShown(typed, CHECKS, slot.name, f"{slot.meaning}: {slot.accepts}", value=slot.takes,
+                             example_key=key, example_profile=location, example=example)
+        at = explained.word_at(typed)
+        if at is None:
+            return UnknownWords(typed, explained.nearest(typed))
+        category, word = at
+        key, location, example = self._example(category, word.name, examples_from, language)
+        kind = word if isinstance(word, Kind) else None
+        return WordShown(typed, category, word.name, word.meaning, getattr(word, "about", ""), explained.applies(word),
+                         getattr(word, "side", ""), getattr(word, "value", "") or getattr(word, "values", ""),
+                         tuple(FieldShown(*f) for f in explained.fields(kind)) if kind else (),
+                         explained.needs(kind) if kind else (), kind.verb if kind else "", key, location, example)
+
+    def _example(self, category: str, name: str, locations: tuple[str, ...],
+                 language: CheckedLanguage) -> tuple[str, str, str]:
+        """The key, the profile ("" for a check written for the explanation) and the text of a word's example."""
+        found = self.example(category, name, locations)
+        if found is not None:
+            location, rule = found
+            return rule.key or rule.id, location, self._form.written({rule.id: check_of(rule)})
+        own = next((check for check in WORKED if explained.uses(check.rule, category, name)), None)
+        return (own.rule.key, "", self._form.written(written_own((own,), language))) if own is not None else ("", "", "")
 
     def example(self, category: str, name: str, locations: tuple[str, ...]) -> tuple[str, Rule] | None:
         """The first rule of the first profile that uses the word, with that profile; a profile that cannot be read
@@ -54,7 +112,7 @@ class ExplainingService:
         if not rules:
             return NoRuleShown(address, location, "it expands to no rule of the engine here: the profile does not set "
                                                   "it, or it is checked by a check of its own")
-        return RuleShown(address, location, written(rules, _ids(rules)), len(rules),
+        return RuleShown(address, location, self._form.written(written(rules)), len(rules),
                          tuple(dict.fromkeys(need for rule in rules for need in rule.needs)))
 
     def _rules(self, location: str) -> list[Rule]:
@@ -65,15 +123,7 @@ class ExplainingService:
         return [rule for rules in expansion.book(profile).values() for rule in rules]
 
 
-def _ids(rules: list[Rule]) -> list[str]:
-    """An id for each rule written as a check: its own, then the part its scope names, then a number when two would
-    be the same."""
-    ids: list[str] = []
-    for rule in rules:
-        base = f"{rule.id}-{rule.scope.named_part}" if rule.scope.named_part else rule.id
-        name, count = base, 1
-        while name in ids:
-            count += 1
-            name = f"{base}-{count}"
-        ids.append(name)
-    return ids
+
+def _category(name: str) -> CategoryShown:
+    return CategoryShown(name, explained.MEANINGS[name],
+                         tuple(WordLine(word.name, word.meaning) for word in explained.CATEGORIES[name]))

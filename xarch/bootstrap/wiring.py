@@ -11,6 +11,7 @@ from xarch.modules.layout.application.services.structure_check import StructureC
 from xarch.modules.rules.adapters.fs_source_tree import FsSourceTree
 from xarch.modules.rules.adapters.layout_structure import LayoutStructure
 from xarch.modules.rules.adapters.spec_profile import SpecProfiles
+from xarch.modules.rules.adapters.yaml_check_format import YamlCheckFormat
 from xarch.modules.rules.application.controller import ReaderController, RulesController
 from xarch.modules.rules.application.services.app_check import AppCheckService
 from xarch.modules.rules.application.services.examples import ExamplesService
@@ -95,9 +96,9 @@ def load_architecture(location: str | Path) -> Architecture:
 def build_rules(tree: FsSourceTree, spec: SpecController, layout: LayoutController) -> RulesController:
     profiles = SpecProfiles(spec)
     source = SourceCheckService(tree, profiles)
-    return RulesController(source, LocateService(tree, profiles),
-                           AppCheckService(source, LayoutStructure(layout), tree), ExplainingService(profiles),
-                           ExamplesService(tree, profiles))
+    explaining = ExplainingService(profiles, YamlCheckFormat(YamlWriter()))
+    return RulesController(source, LocateService(tree, profiles), AppCheckService(source, LayoutStructure(layout), tree),
+                           explaining, ExamplesService(tree, profiles))
 
 
 def build_layout(fs: FileSystem, spec: SpecController) -> LayoutController:

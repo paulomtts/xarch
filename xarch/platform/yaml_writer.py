@@ -1,6 +1,7 @@
 """Writing plain Python values as YAML that reads as written by hand: block style, scalars in the shortest form that reads
 back as the same value, a literal block for a text of several lines, a folded one for a long line, short lists in flow
-style. Knows no module."""
+style; and the words of a map or a list written on one line, plain when YAML reads them back as written, else quoted.
+Knows no module."""
 from __future__ import annotations
 
 import json
@@ -12,12 +13,23 @@ WIDTH = 118
 _PLAIN = re.compile(r"[A-Za-z_/<][A-Za-z0-9_ ./<>@*()'-]*")
 _RESERVED = {"true", "false", "null", "yes", "no", "on", "off", "y", "n", "~"}
 _BLOCKS = (dict, list)
+_WORD = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_./@()-]*(?: [A-Za-z0-9_./@()-]+)*")
+_WORD_RESERVED = ("true", "false", "null", "yes", "no")
 
 
 class YamlWriter:
     def dump(self, document: dict[str, Any], width: int = WIDTH) -> str:
         """The document as text; a blank line comes before each top-level key whose value is a block."""
         return _dump(document, width)
+
+    def word(self, text: str) -> str:
+        """The text as a word of a map or a list written on one line: as it is when YAML reads it back as that text
+        (letters, digits and `_./@()-`, single spaces between, no word YAML reads as a boolean or null), else quoted."""
+        return text if _WORD.fullmatch(text) and text not in _WORD_RESERVED else self.quoted(text)
+
+    def quoted(self, text: str) -> str:
+        """The text in double quotes, as YAML and JSON both read it back."""
+        return json.dumps(text, ensure_ascii=False)
 
 
 def _dump(document: dict[str, Any], width: int) -> str:

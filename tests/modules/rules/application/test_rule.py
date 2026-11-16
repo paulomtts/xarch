@@ -9,15 +9,7 @@ from tests.modules.rules.builders import profile
 from xarch.modules.rules.contract import ExplainRule, KeyUnset, NoRuleShown, RuleShown
 
 NAMED = profile(names={"services": ("*Service",), "controller": ("*Controller",)})
-TEXT = """checks:
-  names-services:
-    read: class
-    in: {part: services}
-    keep: [public]
-    may_only: {name: ["*Service"]}
-    message: "{name} does not match {targets}, as every class of {where} must ({key})"
-    fix: "rename {name} to match {targets}, or move it to the part whose kind of class it is"
-"""
+TEXT = "names-services: reads class\n"
 
 
 @pytest.mark.parametrize("given, when, then", [
@@ -40,4 +32,4 @@ def test_rule(given, when, then):
 def test_a_key_written_for_any_part_is_the_rules_of_every_part_that_sets_it_each_under_an_id_of_its_own():
     found = controller(FakeSourceTree(None, {}), FakeProfiles({"named": NAMED})).explain_rule(
         ExplainRule("parts.names", "named"))
-    assert found.count == 2 and "  names-services:" in found.text and "  names-controller:" in found.text
+    assert found.count == 2 and "names-services: reads class" in found.text and "names-controller: reads class" in found.text
