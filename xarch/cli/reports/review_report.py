@@ -8,6 +8,7 @@ from typing import Any
 from xarch.cli.reports.document import document
 from xarch.modules.review.contract import (
     A_TEST,
+    BAND,
     BY_ALL,
     BY_LIST,
     BY_PATHS,
@@ -68,7 +69,8 @@ def plan_lines(planned: ReviewPlanned) -> list[str]:
     lines = [f"review: advisory. {ADVISORY}", NOTHING_SENT, _what_leaves(planned.sends),
              f"{planned.found} file(s) found ({', '.join(WAYS[way] for way in planned.by)}), {judged} to be judged, "
              f"{len(planned.left_out)} left out; {judged} request(s), {planned.characters:,} characters, about "
-             f"{planned.tokens:,} tokens; {cached} in the cache already.", "", "the question each request carries:",
+             f"{planned.tokens:,} tokens; {cached} in the cache already.", *_reasked(planned.reorders), "",
+             "the question each request carries:",
              f"  {planned.question.ask}",
              f"  options: {len(planned.question.options)} parts, each described by its litmus test"
              + (f" (by its role only: {', '.join(planned.role_only)})" if planned.role_only else "")]
@@ -83,6 +85,14 @@ def plan_lines(planned: ReviewPlanned) -> list[str]:
     return lines
 
 
+def _reasked(reorders: int) -> list[str]:
+    """What a dry run cannot count: the questions asked again of a file whose answer is near its line."""
+    if not reorders:
+        return []
+    return [f"A file whose answer falls within {BAND:.2f} of its part's line is asked again in {reorders} other "
+            f"order(s) of the options and read on the mean: up to {reorders} more request(s) for each such file."]
+
+
 def plan_document(profile: str, planned: ReviewPlanned) -> str:
     """The JSON document of a dry run: every request in full, with the question once, since every request carries it."""
     content: dict[str, Any] = {
@@ -93,7 +103,8 @@ def plan_document(profile: str, planned: ReviewPlanned) -> str:
                      "options": [{"name": o.name, "description": o.description} for o in planned.question.options]},
         "requests": [{"file": r.file, "part": r.part, "chars": r.chars, "cached": r.cached, "text": r.text,
                       "body": r.body} for r in planned.requests],
-        "characters": planned.characters, "tokens": planned.tokens, "mask": list(planned.mask),
+        "characters": planned.characters, "tokens": planned.tokens, "reorders": planned.reorders,
+        "mask": list(planned.mask),
         "sends": _sends(planned.sends)}
     return document(content)
 
@@ -183,12 +194,13 @@ def _why(item: LeftOut) -> str:
 
 def _reading(item: Reading) -> str:
     line = f"line {item.line:.2f}, set by the profile" if item.by_hand else f"line {item.line:.2f}"
-    return f"  {item.file}   {item.part}   {item.probability:.2f} ({line})   {item.chars:,} chars"
+    orders = f"   the mean of {item.orders} orders of the options" if item.orders > 1 else ""
+    return f"  {item.file}   {item.part}   {item.probability:.2f} ({line})   {item.chars:,} chars{orders}"
 
 
 def _file(item: Reading) -> dict[str, Any]:
     return {"file": item.file, "part": item.part, "probability": item.probability, "line": item.line,
-            "line_by_hand": item.by_hand, "doubtful": item.doubtful, "chars": item.chars, "model": item.model,
+            "line_by_hand": item.by_hand, "doubtful": item.doubtful, "chars": item.chars, "orders": item.orders, "model": item.model,
             "distribution": dict(item.distribution)}
 
 

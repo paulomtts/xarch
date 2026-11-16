@@ -17,6 +17,14 @@ def placement(parts: tuple[PartText, ...]) -> Choice:
     return Choice(PLACEMENT, tuple(Option(part.name, part.litmus or part.role) for part in parts))
 
 
+def reordered(question: Choice) -> tuple[Choice, ...]:
+    """The question in the other orders a file near its line is asked again in: its options rotated by a third and by
+    two thirds of their number, each order once and never the first (one order for two options, none for one)."""
+    count = len(question.options)
+    shifts = dict.fromkeys(shift % count for shift in ((count + 1) // 3, (2 * count + 1) // 3) if count and shift % count)
+    return tuple(Choice(question.ask, question.options[shift:] + question.options[:shift]) for shift in shifts)
+
+
 def role_only(parts: tuple[PartText, ...]) -> tuple[str, ...]:
     """The parts that have no litmus test, which placement describes by their role alone."""
     return tuple(part.name for part in parts if not part.litmus)

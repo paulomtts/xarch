@@ -186,8 +186,12 @@ def test_a_line_the_profile_sets_for_a_part_is_the_one_its_files_are_read_agains
     profile.write_text(profile.read_text() + "evals:\n  placement:\n    lines: {domain: 0.1}\n")
     result = review(SERVICE, VALUES, "--profile", str(profile), url=served.url)
     assert result.exit_code == 0, result.output
-    assert f"  {VALUES}   domain   0.12 (line 0.10, set by the profile)   {len(VALUES_BODY):,} chars" in (
-        result.output.splitlines())
+    assert (f"  {VALUES}   domain   0.12 (line 0.10, set by the profile)   {len(VALUES_BODY):,} chars   the mean of 3 "
+            "orders of the options") in result.output.splitlines()
+    orders = [list(body["questions"]["placement"]["criteria"]) for _, _, body in served.received
+              if "Value0" in body["state"]]
+    assert len(orders) == 3 and len({tuple(order) for order in orders}) == 3
+    assert all(sorted(order) == sorted(orders[0]) for order in orders)
     assert "  no file judged reads as doubtful here" in result.output.splitlines()
     looser = runner.invoke(app, ["profile", "check", str(profile)]).output
     assert ("domain reads as doubtful only below 0.10, a lower line than the profile it is compared with gives it "

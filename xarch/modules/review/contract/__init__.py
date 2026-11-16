@@ -7,6 +7,7 @@ from pathlib import Path
 
 from xarch.modules.review.domain.published import (
     A_TEST,
+    BAND,
     BY_ALL,
     BY_LIST,
     BY_PATHS,
@@ -31,7 +32,7 @@ from xarch.modules.review.domain.published import (
     Unasked,
 )
 
-__all__ = ["A_TEST", "BY_ALL", "BY_LIST", "BY_PATHS", "EXCLUDED", "FAILED", "MAX_FILES", "MIN_CHARS", "MISSING",
+__all__ = ["A_TEST", "BAND", "BY_ALL", "BY_LIST", "BY_PATHS", "EXCLUDED", "FAILED", "MAX_FILES", "MIN_CHARS", "MISSING",
            "NEVER", "NOT_CACHED", "NOT_SOURCE", "OUTSIDE", "SMALL", "UNPARSABLE", "UNPLACED", "Choice", "LeftOut",
            "Option", "Reading", "Request", "Sender", "Unasked", "Review", "ReviewPlanned", "ReviewReading",
            "NothingChosen", "AllAndOthers", "TooManyFiles", "KeyMissing", "ReviewRefused", "ReviewResult"]
@@ -62,8 +63,8 @@ class ReviewPlanned:
     """What a review would send, and nothing sent: how the files were chosen (BY_PATHS, BY_LIST, BY_ALL), how many
     were found, the request each file judged would send, the files left out and why, the question each request
     carries, the parts it describes by their role alone, the characters and about how many tokens the requests
-    would send in all, the texts the profile says review hides, which no request holds, and what a review that sends
-    would send to."""
+    would send in all, the texts the profile says review hides, which no request holds, what a review that sends
+    would send to, and in how many other orders of the options a file whose answer is near its line is asked again."""
     by: tuple[str, ...]
     found: int
     requests: tuple[Request, ...]
@@ -74,6 +75,7 @@ class ReviewPlanned:
     tokens: int
     mask: tuple[str, ...]
     sends: Sender
+    reorders: int = 0
 
 
 @dataclass(frozen=True)

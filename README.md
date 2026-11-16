@@ -546,6 +546,12 @@ profile sets the part's own under `evals.placement.lines`) reads as **doubtful h
 trials, about 7 to 10% of well-placed files read as doubtful, and about 1 in 2 to 1 in 3 doubtful files was really
 misplaced. The text output names no other part; the JSON gives the probability on every part.
 
+The order of the options moves a probability only near the line, so a file whose first answer falls within 0.15 of its
+part's line is asked again in two other orders (the options rotated by a third and by two thirds; one other order for
+a profile of two parts) and read on the mean, which the reading says ("the mean of 3 orders of the options"). Each
+order is its own question, kept in the cache on its own; offline, a file whose other orders are not all kept is
+unanswered. Whether a file needs them is known from the answers kept before anything is sent.
+
 **What leaves the machine, and when.** The decision model is TypeSafe's (`https://api.typesafe.ai`), asked as the
 model `jev-1.14.0`, pinned. Review sends whenever `TYPESAFE_API_KEY` is set in the environment: **the key alone allows
 it**, so a key set for another purpose (a shell profile, a CI secret) starts sending the first time `xarch review` runs
@@ -573,7 +579,8 @@ written, so a file that must not leave the machine is one not to choose, or one 
 `--dry-run` sends nothing and needs no key. It opens with what leaves the machine, to whom, and whether the key is set
 now, then prints the question once (it is the same for every file), the masks in force, and each file judged with the
 exact text it would send, marked when its answer is in the cache already (it would not be sent). It ends with the
-characters in all and about how many tokens they make (one for every four characters).
+characters in all and about how many tokens they make (one for every four characters), and how many more requests a
+file near its line may cost (its other orders, which a dry run cannot know it will need).
 
 Answers are kept in `.xarch/cache/review/` in the project's root (the folder holding the app folder), one JSON file
 per question, named by a hash of the model asked, the masked text and the question; each holds the model version
@@ -633,13 +640,15 @@ it flags less. `xarch profile explain evals.placement.lines` says it in full.
 `--format json` prints one document. A dry run: `{"ok", "advisory", "profile", "dry_run": true, "sent": false,
 "selection": {"by", "found", "judged", "left_out": [{"file", "why", "chars", "pattern"}]}, "question": {"ask",
 "role_only", "options": [{"name", "description"}]}, "requests": [{"file", "part", "chars", "cached", "text", "body"}],
-"characters", "tokens", "mask", "sends": {"name", "at", "model", "key", "keyed"}}`, `body` the request as the
+"characters", "tokens", "reorders", "mask", "sends": {"name", "at", "model", "key", "keyed"}}`, `reorders` how many
+other orders a file near its line is asked again in, `body` the request as the
 decision model's service would receive it (JSON text, the key left out), `sends.key` the name of the variable the key
 is read from (never the key) and `keyed` whether it is set. A review: `{"ok", "advisory", "profile", "dry_run": false,
 "complete", "model", "selection", "placement": {"calibration": {"state", "evidence"}, "role_only", "files": [{"file",
-"part", "probability", "line", "line_by_hand", "doubtful", "chars", "model", "distribution"}]}, "sends", "sent":
+"part", "probability", "line", "line_by_hand", "doubtful", "chars", "orders", "model", "distribution"}]}, "sends", "sent":
 {"calls", "cached", "input_tokens", "output_tokens"}, "unanswered": [{"file", "why"}], "failure"}`, the files ranked
-from the lowest probability, `line_by_hand` whether the profile sets the part's line, `distribution` the probability on each part by name, `why` of an unanswered file `not-cached` or
+from the lowest probability, `line_by_hand` whether the profile sets the part's line, `orders` how many orders of the
+options it was asked in (`probability` and `distribution` their mean), `distribution` the probability on each part by name, `why` of an unanswered file `not-cached` or
 `failed`, `failure` the decision model's words when it failed (else null). In both, `why` of a file left out is one of
 `missing`, `not-source`, `test`, `outside`, `excluded`, `unplaced`, `never`, `unparsable`, `small`, `pattern` the
 `review.never` path that matched (null for any other `why`); a dry run's `mask` is the profile's `review.mask`. A

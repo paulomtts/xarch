@@ -94,23 +94,23 @@ def run(world: World, when: Review):
 @pytest.mark.parametrize("given, when, then", [
     pytest.param(World(), review("app/modules/documents/domain", dry_run=True),
                  ReviewPlanned((BY_PATHS,), 3, (REQUEST,), (GONE, LeftOut(SMALL_FILE.file, SMALL, 6)), QUESTION, ("main",),
-                               CHARACTERS, -(-CHARACTERS // 4), (), SENDS),
+                               CHARACTERS, -(-CHARACTERS // 4), (), SENDS, 1),
                  id="a dry run says what each file judged would send, masked, and why the others are left out"),
     pytest.param(World(earlier={SENT: LOW}, keyed=False), review("app/x.py", dry_run=True),
                  ReviewPlanned((BY_PATHS,), 1, (Request(DOCUMENT.file, "domain", len(DOCUMENT.text), SENT, True,
                                                         BODY_SENT),), (), QUESTION, ("main",), CHARACTERS,
-                               -(-CHARACTERS // 4), (), UNKEYED),
+                               -(-CHARACTERS // 4), (), UNKEYED, 1),
                  id="a dry run says which request is in the cache already, and needs no key"),
     pytest.param(World(), review("app/modules/documents/domain", dry_run=True, profile="kept"),
                  ReviewPlanned((BY_PATHS,), 3, (), (GONE, LeftOut(DOCUMENT.file, NEVER, len(DOCUMENT.text),
                                                                   "modules/*/domain/document.py"),
                                                    LeftOut(SMALL_FILE.file, SMALL, 6)), QUESTION, ("main",), 0, 0,
-                               ("Doc*", "title"), SENDS),
+                               ("Doc*", "title"), SENDS, 1),
                  id="a file a path review never sends matches is left out with that path and sends nothing"),
     pytest.param(World(found={"app/x.py": Found((DOCUMENT,))}), review("app/x.py", dry_run=True, profile="kept"),
                  ReviewPlanned((BY_PATHS,), 1, (), (LeftOut(DOCUMENT.file, NEVER, len(DOCUMENT.text),
                                                             "modules/*/domain/document.py"),), QUESTION, ("main",), 0, 0,
-                               ("Doc*", "title"), SENDS),
+                               ("Doc*", "title"), SENDS, 1),
                  id="a file held back is held back however it is chosen"),
     pytest.param(World(answers={SENT: LOW}), review("app/modules/documents/domain"),
                  ReviewReading((BY_PATHS,), 3, (DOUBTFUL,), (GONE, LeftOut(SMALL_FILE.file, SMALL, 6)), (), SENDS, 1, 0,
@@ -199,3 +199,69 @@ def test_the_texts_the_profile_says_review_hides_are_masked_in_what_each_request
     assert isinstance(planned, ReviewPlanned)
     assert [r.text for r in planned.requests] == [HIDDEN]
     assert planned.mask == ("Doc*", "title")
+
+
+NEAR = Answer("m-1.0.1", (("domain", 0.2), ("main", 0.8)), 100, 5)
+NEAR_AGAIN = Answer("m-1.0.1", (("main", 0.7), ("domain", 0.3)), 110, 6)
+
+
+def _review(model: FakeDecisionModel, answers: FakeAnswers, when: Review):
+    return controller(FakeCode(FOUND), FakeProfile(WORDS), model, answers).review(when)
+
+
+def _kept(again: Answer | None) -> FakeAnswers:
+    """The answers an earlier review of app/x.py kept: NEAR in the first order, and again in the other (None: that
+    question failed, and only the first is kept)."""
+    answers = FakeAnswers()
+    _review(FakeDecisionModel({SENT: NEAR}, by_order={(SENT, "main"): again}), answers, review("app/x.py"))
+    return answers
+
+
+def test_a_file_whose_first_answer_is_near_its_line_is_asked_again_in_the_other_order_and_read_on_the_mean():
+    model = FakeDecisionModel({SENT: NEAR}, by_order={(SENT, "main"): NEAR_AGAIN})
+    answers = FakeAnswers()
+    found = _review(model, answers, review("app/x.py"))
+    assert isinstance(found, ReviewReading)
+    (read,) = found.readings
+    assert (read.probability, read.doubtful, read.orders, read.model) == (0.25, True, 2, "m-1.0.1")
+    assert dict(read.distribution) == {"domain": 0.25, "main": 0.75}
+    assert (found.sent, found.cached, found.input_tokens, found.output_tokens) == (2, 0, 210, 11)
+    assert len(model.asked) == 2 and len(answers.kept) == 2
+
+
+def test_a_file_far_from_its_line_is_asked_once():
+    model = FakeDecisionModel({SENT: LOW})
+    found = _review(model, FakeAnswers(), review("app/x.py"))
+    assert isinstance(found, ReviewReading) and found.readings[0].orders == 1 and len(model.asked) == 1
+
+
+def test_both_orders_kept_are_read_offline_and_count_as_cached():
+    found = _review(FakeDecisionModel({}, keyed=False), _kept(NEAR_AGAIN),
+                    review("app/x.py", offline=True))
+    assert isinstance(found, ReviewReading)
+    assert (found.readings[0].orders, found.cached, found.sent, found.complete) == (2, 2, 0, True)
+
+
+def test_offline_a_file_near_its_line_whose_other_order_is_not_kept_is_unanswered():
+    found = _review(FakeDecisionModel({}), _kept(None), review("app/x.py", offline=True))
+    assert isinstance(found, ReviewReading)
+    assert (found.readings, found.unasked) == ((), (Unasked(DOCUMENT.file, NOT_CACHED),))
+
+
+def test_with_no_key_a_file_near_its_line_whose_other_order_is_not_kept_is_refused_before_anything_is_sent():
+    model = FakeDecisionModel({}, keyed=False)
+    assert _review(model, _kept(None), review("app/x.py")) == KeyMissing("MODEL_KEY")
+    assert model.asked == []
+
+
+def test_when_the_other_order_fails_the_file_is_unanswered_and_nothing_more_is_sent():
+    model = FakeDecisionModel({SENT: NEAR, SENT_OTHER: HIGH}, by_order={(SENT, "main"): None})
+    found = _review(model, FakeAnswers(), review("app/two"))
+    assert isinstance(found, ReviewReading)
+    assert found.unasked == (Unasked(DOCUMENT.file, FAILED), Unasked(OTHER.file, FAILED))
+    assert found.failure == "the decision model failed" and found.sent == 1
+
+
+def test_a_dry_run_says_in_how_many_other_orders_a_file_near_its_line_is_asked_again():
+    found = _review(FakeDecisionModel({}), FakeAnswers(), review("app/x.py", dry_run=True))
+    assert isinstance(found, ReviewPlanned) and found.reorders == 1

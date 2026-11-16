@@ -12,7 +12,7 @@ as review holds it, so there is nothing to reshape.
     Unasked  a file judged whose question has no answer, and why
 
 and the reasons a file is left out, the size of the smallest file judged, how many files one run judges, the ways files
-are chosen, and why a question has no answer.
+are chosen, how near its line a file is asked again, and why a question has no answer.
 """
 from __future__ import annotations
 
@@ -32,6 +32,10 @@ MAX_FILES = 50
 
 BY_PATHS, BY_LIST, BY_ALL = "paths", "files-from", "all"
 """The ways files are chosen: named as paths, listed one per line, or every file of the app."""
+BAND = 0.15
+"""How near its part's line the first answer must put a file for it to be asked again in other orders of the options:
+in the trials, reordering the options moved a file's probability by up to 0.09 in this band and almost never outside
+it."""
 NOT_CACHED, FAILED = "not-cached", "failed"
 """Why a question has no answer: it is not in the cache and nothing was sent (offline); or the decision model failed
 on it or on a question before it, and nothing more was sent."""
@@ -80,8 +84,9 @@ class Sender:
 class Reading:
     """What the decision model read of one file: the file, as `check` shows it; the part it sits in; how many
     characters it holds; the probability on that part; the line below which it is doubtful there; whether it is; the
-    probability on each part, in the profile's order; the model version that answered; and whether the profile sets
-    the part's line by hand."""
+    probability on each part, in the profile's order, the mean over the orders of the options it was asked in; the
+    model version that answered first; whether the profile sets the part's line by hand; and in how many orders of the
+    options it was asked."""
     file: str
     part: str
     chars: int
@@ -91,6 +96,7 @@ class Reading:
     distribution: tuple[tuple[str, float], ...]
     model: str
     by_hand: bool = False
+    orders: int = 1
 
 
 @dataclass(frozen=True)
