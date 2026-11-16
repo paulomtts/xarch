@@ -6,15 +6,16 @@ from pathlib import Path
 from typing import ClassVar
 
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.domain.published import At, Drift, Slot, Weak
+from xarch.modules.rules.domain.published import At, Drift, KeyFacts, Slot, Weak
+from xarch.profile_values.checks import ChecksHeld
 
-__all__ = ["At", "Weak", "Slot", "ChecksCannotRun", "CheckRefused", "OwnCheckView",
+__all__ = ["At", "Weak", "Slot", "KeyFacts", "ChecksCannotRun", "CheckRefused", "OwnCheckView",
            "Drift", "FindingView", "ExcludedView", "EnforcementView", "ReachView", "NearestView", "TierInfoView",
            "PartShown", "CoveringTest", "Untested", "InPart", "InStructure", "Ungoverned", "InTests", "Support", "Fake",
            "WhereAnswer", "CheckImports", "ImportsChecked", "NotADirectory", "CheckResult", "CheckApp", "AppChecked",
            "CheckAppResult", "Locate", "Located", "Outside", "LocateResult", "CATEGORIES", "ExplainWords",
            "WordLine", "CategoryShown", "ChecksShown", "WordsShown", "FieldShown", "WordShown", "UnknownWords",
-           "WordsResult", "ExplainRule", "RuleShown", "KeyUnset", "NoRuleShown", "RuleResult", "CheckExamples", "ExamplesChecked",
+           "WordsResult", "ExplainRule", "RuleShown", "KeyUnset", "NoRuleShown", "RuleResult", "CheckExamples", "ChecksHeld",
            "CheckExamplesResult", "ApproximateView"]
 
 
@@ -306,9 +307,10 @@ and each category of its words."""
 @dataclass(frozen=True)
 class ExplainWords:
     """Explain how a check is written (`checks`), a category of its words (`filters`), or one word (`filters.public`);
-    an example is a rule of the first of the profiles named (a bundled name or a path) that is written with the word."""
+    an example is a rule of the first of the profiles the project holding the app folder knows (app, given in full;
+    None: no example from a profile) that is written with the word."""
     address: str
-    examples_from: tuple[str, ...] = ()
+    app: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -406,9 +408,11 @@ class RuleShown:
 
 @dataclass(frozen=True)
 class KeyUnset:
-    """A key the engine expands to rules when a profile sets it, which that profile sets nowhere."""
+    """A key the engine expands to rules when a profile sets it, which that profile sets nowhere, and what the format
+    says of the key."""
     address: str
     profile: str
+    facts: KeyFacts = KeyFacts()
 
 
 @dataclass(frozen=True)
@@ -431,13 +435,4 @@ class CheckExamples:
     app: str
 
 
-@dataclass(frozen=True)
-class ExamplesChecked:
-    """What holding a profile's own checks to their examples found: every problem, each at its address in the
-    profile (none: each check finds something in its flagged code and nothing in its clean code), and how many checks
-    the profile writes itself."""
-    problems: tuple[str, ...]
-    checks: int
-
-
-CheckExamplesResult = ExamplesChecked | ChecksCannotRun | CheckRefused
+CheckExamplesResult = ChecksHeld | ChecksCannotRun | CheckRefused

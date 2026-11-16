@@ -20,6 +20,7 @@ from xarch.modules.spec.contract import (
     ExplainResult,
     FilesResult,
     FilesTaken,
+    KnownProfiles,
     MigrateProfile,
     MigrateResult,
     MigrationRefused,
@@ -123,8 +124,8 @@ class SpecController:
         except DomainError as e:
             return ProfileRefused(e.reason)
 
-    def known(self, app: Path) -> tuple[str, ...]:
-        """The profiles known to the project holding the app folder, given in full: the one in force, then the bundled
+    def known(self, app: Path) -> KnownProfiles:
+        """The profiles known to the project holding the app folder, given in full: the one in force and the bundled
         ones; when none is in force, or it cannot be read or loaded, the bundled ones alone."""
         try:
             return self._selection.known(app)

@@ -1,14 +1,20 @@
 """Profiles filled by the spec module: the only file in rules that names spec, and it names only spec's contract."""
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Protocol
 
 from xarch.modules.rules.domain.errors import ProfileUnusable
+from xarch.modules.rules.domain.published import KeyFacts
 from xarch.modules.rules.domain.values import InitFile, PartInfo, Profile, Standing
 from xarch.modules.spec.contract import (
     DEFAULT_TESTS,
     LITMUS,
+    Explain,
+    ExplainResult,
     FilesResult,
+    KeyExplained,
+    KnownProfiles,
     Origin,
     OriginResult,
     ProfileRefused,
@@ -26,6 +32,10 @@ class _Spec(Protocol):
     def origin(self, location: str) -> OriginResult: ...
 
     def files(self, profile: str, app: str, presets: bool = True) -> FilesResult: ...
+
+    def known(self, app: Path) -> KnownProfiles: ...
+
+    def explain(self, cmd: Explain) -> ExplainResult: ...
 
 
 class SpecProfiles:
@@ -68,6 +78,17 @@ class SpecProfiles:
                        excluded=view.excluded, hints=dict(view.hints), language=view.language,
                        reserved=dict(view.reserved),
                        approximate=view.approximate, written=dict(view.checks), tests_folder=DEFAULT_TESTS)
+
+    def known(self, app: Path) -> tuple[str, ...]:
+        """The profile in force first, then the bundled ones."""
+        known = self._spec.known(app)
+        return (*filter(None, (known.in_force,)), *known.bundled)
+
+    def key(self, address: str) -> KeyFacts:
+        match self._spec.explain(Explain(address)):
+            case KeyExplained() as explained:
+                return KeyFacts(explained.example, explained.name, explained.holder)
+        return KeyFacts()
 
     def standing(self, location: str, app: str) -> Standing:
         """No init files when the profile cannot write them for this app, which `init` reports when it refuses; a

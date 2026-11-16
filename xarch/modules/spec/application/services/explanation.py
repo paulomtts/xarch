@@ -3,11 +3,15 @@ from __future__ import annotations
 from xarch.modules.spec.application.logic.explain import (
     cleaned,
     example_of,
+    graded,
+    graded_for,
     held_by,
+    holder_of,
     key_at,
     nearest,
     overview_keys,
     said,
+    short,
     supplied,
 )
 from xarch.modules.spec.application.logic.key_lookup import plain
@@ -49,8 +53,8 @@ class ExplainService:
                             key.required, key.enforced, key.rules, said(example_of(key, names), language), names,
                             tuple(_shown(held, 0, language) for held in held_by(key)),
                             tuple(Need(fact, FACTS[fact], supplied(fact, language)) for fact in key.needs),
-                            language.checked.title if key.needs else "",
-                            bool(key.needs) and language.checked.supplies is not None)
+                            graded_for(key, language), graded(key, language), key.name, holder_of(key),
+                            short(key, language))
 
     def choices(self, key: Key) -> tuple[str, ...]:
         """The bundled profiles, the `testing` presets or the languages, for a key that names one of them; else none."""

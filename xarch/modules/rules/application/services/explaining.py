@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from xarch.kernel.errors import DomainError
 from xarch.modules.rules.application.logic import expansion, explained
 from xarch.modules.rules.application.logic.expandable import expands
@@ -38,10 +40,12 @@ class ExplainingService:
     def __init__(self, profiles: Profiles, form: CheckFormat):
         self._profiles, self._form = profiles, form
 
-    def words(self, address: str, examples_from: tuple[str, ...]) -> WordsResult:
-        """How a check is written, a category of its words or one word, from the vocabulary the engine reads; an
-        address of no word comes back with the nearest ones."""
+    def words(self, address: str, app: Path | None) -> WordsResult:
+        """How a check is written, a category of its words or one word, from the vocabulary the engine reads, each
+        example drawn from the profiles the project holding app knows (none for no app); an address of no word comes
+        back with the nearest ones."""
         typed = address.strip().strip(".")
+        examples_from = self._profiles.known(app) if app is not None else ()
         language = self.language(examples_from)
         if typed == CHECKS:
             categories = tuple(_category(name) for name in explained.CATEGORIES)
@@ -108,7 +112,7 @@ class ExplainingService:
         DomainError when the profile cannot be read."""
         rules = self.rules_of(address, location)
         if not rules and expands(address):
-            return KeyUnset(address, location)
+            return KeyUnset(address, location, self._profiles.key(address))
         if not rules:
             return NoRuleShown(address, location, "it expands to no rule of the engine here: the profile does not set "
                                                   "it, or it is checked by a check of its own")

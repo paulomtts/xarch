@@ -2,7 +2,6 @@
 import pytest
 
 from tests.modules.spec.application.builders import spec_controller
-from xarch.modules.spec.application.logic.language_file import PARTIAL
 from xarch.modules.spec.contract import (
     Explain,
     FormatExplained,
@@ -13,8 +12,7 @@ from xarch.modules.spec.contract import (
     Symbol,
     UnknownKey,
 )
-from xarch.modules.spec.domain.profile_keys import SMALLEST
-from xarch.profile_values.capabilities import EXACT, FACTS, Supply
+from xarch.profile_values.capabilities import EXACT, FACTS, Shortfall, Supply
 
 BUNDLED = {"bundled": {"base": {}, "other": {}}}
 BROKEN = {"bundled": {"base": {}}, "languages": {"python": "not a mapping"}}
@@ -28,6 +26,8 @@ SAID = (
     Symbol("a path ending in .py", "a last path step with a dot: the part is one file, not a folder"),
 )
 """The symbols as the format says them for the default language, its extension in place of %extension%."""
+SMALLEST = "xarch: 2\nname: documents-app\nparts:\n  documents:\n    path: documents\n    role: the documents\n"
+"""The smallest valid profile, as the format shows it."""
 
 
 def explained(key: str):
@@ -116,7 +116,7 @@ SHAPE = (
     pytest.param(BUNDLED, Explain("based_on"),
                  KeyExplained("based_on", "the file", "the bundled profile this was copied from",
                               "the name of a bundled profile: `profile check` reports how this one is looser than it",
-                              False, False, (), "based_on: base", ("base", "other"), ()),
+                              False, False, (), "based_on: base", ("base", "other"), (), name="based_on"),
                  id="a key that names a bundled profile offers the ones xarch ships"),
     pytest.param(BUNDLED, Explain("parts.may_imports"),
                  UnknownKey("parts.may_imports", ("parts.may_import", "parts.must_import", "tiers.may_import")),
@@ -165,5 +165,8 @@ def test_a_fact_the_default_language_does_not_grade_is_said_to_be_absent():
            "standard": "interpreter", "supplies": {"class": {"partial": "nested classes are not read"}}}
     spec, _ = spec_controller(**BUNDLED, languages={"toy": toy})
     found = spec.explain(Explain("parts.names"))
-    assert (found.needs, found.graded) == ((Need("class", FACTS["class"], Supply("class", PARTIAL, "nested classes are not read")),), True)
+    assert (found.needs, found.graded) == (
+        (Need("class", FACTS["class"], Supply("class", "partial", "nested classes are not read")),), True)
+    assert (found.short, found.holder, found.name) == (
+        (Shortfall("parts.names", "class", "nested classes are not read"),), "part", "names")
     assert spec.explain(Explain("parts.no_callbacks")).needs == (Need("callback", FACTS["callback"]),)

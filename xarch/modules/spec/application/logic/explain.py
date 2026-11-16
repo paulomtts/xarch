@@ -5,10 +5,11 @@ from __future__ import annotations
 import re
 from difflib import get_close_matches
 
+from xarch.kernel.logic.capabilities import shortfalls
 from xarch.modules.spec.application.logic.key_lookup import keys_of, plain
-from xarch.modules.spec.domain.profile_keys import KEYS, PROFILE, Key
+from xarch.modules.spec.domain.profile_keys import KEYS, PART, PROFILE, TIER, Key
 from xarch.modules.spec.domain.values import Language
-from xarch.profile_values.capabilities import Supply
+from xarch.profile_values.capabilities import Shortfall, Supply
 
 NEAREST = 3
 """How many keys an unknown one is answered with, at most."""
@@ -30,6 +31,28 @@ def said(text: str, language: Language) -> str:
              "namespace": language.namespace, "comment": checked.comment,
              "directives": ", ".join(f"`{checked.comment} {word}`" for word in checked.directives)}
     return _WORD.sub(lambda found: words.get(found[1], found[0]), text)
+
+
+def holder_of(key: Key) -> str:
+    """What holds the key when it is set on each of a kind of thing: a part or a tier; "" for anything else."""
+    return key.scope if key.scope in (PART, TIER) else ""
+
+
+def graded_for(key: Key, language: Language) -> str:
+    """The language whose reader the facts a key needs are graded for; "" for a key that needs none."""
+    return language.checked.title if key.needs else ""
+
+
+def graded(key: Key, language: Language) -> bool:
+    """Whether the language's data file grades the facts the key needs."""
+    return bool(key.needs) and language.checked.supplies is not None
+
+
+def short(key: Key, language: Language) -> tuple[Shortfall, ...]:
+    """The facts the key needs that the language supplies partly or not at all, when its data file grades them."""
+    if not graded(key, language):
+        return ()
+    return tuple(shortfalls(plain(key.address), key.needs, {s.fact: s for s in language.checked.supplies or ()}))
 
 
 def supplied(fact: str, language: Language) -> Supply | None:

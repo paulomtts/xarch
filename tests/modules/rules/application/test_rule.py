@@ -6,7 +6,7 @@ from tests.fakes.filesystem import FakeSourceTree
 from tests.fakes.profiles import FakeProfiles
 from tests.modules.rules.application.helpers import controller
 from tests.modules.rules.builders import profile
-from xarch.modules.rules.contract import ExplainRule, KeyUnset, NoRuleShown, RuleShown
+from xarch.modules.rules.contract import ExplainRule, KeyFacts, KeyUnset, NoRuleShown, RuleShown
 
 NAMED = profile(names={"services": ("*Service",), "controller": ("*Controller",)})
 TEXT = "names-services: reads class\n"
@@ -20,13 +20,16 @@ TEXT = "names-services: reads class\n"
                  NoRuleShown("parts.path", "named", "it expands to no rule of the engine here: the profile does not "
                                                     "set it, or it is checked by a check of its own"),
                  id="a key of no rule of the engine comes back with why"),
-    pytest.param({"named": NAMED}, ExplainRule("parts.types_only", "named"), KeyUnset("parts.types_only", "named"),
-                 id="a key the engine expands that the profile sets on no part comes back unset"),
+    pytest.param({"named": NAMED}, ExplainRule("parts.types_only", "named"),
+                 KeyUnset("parts.types_only", "named", KeyFacts("parts:\n  a: {types_only: [b]}\n", "types_only", "part")),
+                 id="a key the engine expands that the profile sets on no part comes back unset, as the format says it"),
     pytest.param({"named": NAMED}, ExplainRule("parts.services.holds", "named"),
                  KeyUnset("parts.services.holds", "named"), id="so does such a key of one part"),
 ])
 def test_rule(given, when, then):
-    assert controller(FakeSourceTree(None, {}), FakeProfiles(given)).explain_rule(when) == then
+    profiles = FakeProfiles(given, keys={"parts.types_only": KeyFacts("parts:\n  a: {types_only: [b]}\n", "types_only",
+                                                                      "part")})
+    assert controller(FakeSourceTree(None, {}), profiles).explain_rule(when) == then
 
 
 def test_a_key_written_for_any_part_is_the_rules_of_every_part_that_sets_it_each_under_an_id_of_its_own():

@@ -129,23 +129,22 @@ def rule_document(shown: RuleShown) -> str:
                   "checks": shown.text, "needs": list(shown.needs)})
 
 
-def unset_lines(unset: KeyUnset, example: str) -> list[str]:
+def unset_lines(unset: KeyUnset) -> list[str]:
     """A key the profile sets nowhere: where it would be set, and how a profile writes it."""
-    lines = [f"{unset.address} in {unset.profile}: {_nowhere(unset.address)}, so it expands to no rule"]
+    lines = [f"{unset.address} in {unset.profile}: {_nowhere(unset)}, so it expands to no rule"]
+    example = unset.facts.example
     return [*lines, "", "a profile writes it so:", *(f"  {line}" for line in example.splitlines())] if example else lines
 
 
-def unset_document(unset: KeyUnset, example: str) -> str:
+def unset_document(unset: KeyUnset) -> str:
     return _dump({"ok": True, "key": unset.address, "profile": unset.profile, "rules": 0, "checks": "",
-                  "set": False, "example": example or None})
+                  "set": False, "example": unset.facts.example or None})
 
 
-def _nowhere(address: str) -> str:
-    steps = address.strip().strip(".").split(".")
-    held = {"parts": "part", "tiers": "tier"}.get(steps[0])
-    if held is None:
+def _nowhere(unset: KeyUnset) -> str:
+    if not unset.facts.holder:
         return "the profile does not set it"
-    return f"the profile sets {steps[-1]} on no {held}"
+    return f"the profile sets {unset.facts.name} on no {unset.facts.holder}"
 
 
 def no_rule_message(none: NoRuleShown) -> str:

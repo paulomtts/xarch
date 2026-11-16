@@ -7,14 +7,14 @@ from tests.fakes.filesystem import FakeSourceTree
 from tests.fakes.profiles import FakeProfiles
 from tests.modules.rules.application.helpers import controller
 from tests.modules.rules.builders import profile
-from xarch.modules.rules.contract import CheckExamples, ChecksCannotRun, ExamplesChecked
+from xarch.modules.rules.contract import CheckExamples, ChecksCannotRun, ChecksHeld
 from xarch.modules.rules.domain.values import Class, SourceFile
 from xarch.profile_values.checks import APP, Quantified, Saying, Scope, WrittenCheck, WrittenTarget
 
 PARSED = {"manager": SourceFile("", (), (), classes=(Class(1, "Manager"),)), "nothing": SourceFile("", (), ())}
 
 
-def held(flagged: str, clean: str, path: str = "modules/docs/domain/x.py") -> ExamplesChecked:
+def held(flagged: str, clean: str, path: str = "modules/docs/domain/x.py") -> ChecksHeld:
     own = WrittenCheck(("class",), Scope(APP, "domain"), Quantified("may_not", (WrittenTarget("exist"),)),
                        (Saying("{name}", "rename it"),), flagged=((path, flagged),), clean=((path, clean),))
     profiles = FakeProfiles({"mine": profile(written={"no-managers": own})}, refused={"broken": ("checks.x.read: no kind",)})
@@ -23,11 +23,11 @@ def held(flagged: str, clean: str, path: str = "modules/docs/domain/x.py") -> Ex
 
 
 def test_a_check_that_finds_something_in_its_flagged_code_and_nothing_in_its_clean_code_has_no_problem():
-    assert held("manager", "nothing") == ExamplesChecked((), 1)
+    assert held("manager", "nothing") == ChecksHeld((), 1)
 
 
 def test_a_check_that_finds_nothing_in_its_flagged_code_or_something_in_its_clean_code_says_so_at_its_address():
-    assert held("nothing", "manager") == ExamplesChecked((
+    assert held("nothing", "manager") == ChecksHeld((
         "checks.no-managers.examples.flagged: the check finds nothing in it: make the code hold what the check is "
         "written to find, or correct the check",
         "checks.no-managers.examples.clean: the check finds 1 in it, the first app/modules/docs/domain/x.py:1: Manager: "

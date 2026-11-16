@@ -4,6 +4,7 @@ from __future__ import annotations
 from tests.fakes.architecture_files import FakeArchitectureFiles
 from tests.fakes.example_reader import FakeExampleReader
 from tests.fakes.folders import FakeFolders
+from tests.fakes.own_checks import FakeOwnChecks
 from tests.fakes.profile_format import FakeProfileFormat
 from tests.fakes.profile_output import FakeProfileOutput
 from tests.fakes.runtime import FakeRuntime
@@ -21,12 +22,14 @@ from xarch.modules.spec.application.services.publishing import PublishingService
 
 def controller(files: FakeArchitectureFiles, settings: FakeSettings | None = None,
                output: FakeProfileOutput | None = None, folders: FakeFolders | None = None,
-               runtime: FakeRuntime = RUNTIME, reader: FakeExampleReader | None = None) -> SpecController:
+               runtime: FakeRuntime = RUNTIME, reader: FakeExampleReader | None = None,
+               own: FakeOwnChecks | None = None) -> SpecController:
     settings = settings if settings is not None else FakeSettings()
     output = output if output is not None else FakeProfileOutput()
     architectures = ArchitectureService(files, runtime, reader if reader is not None else FakeExampleReader())
     folders = folders if folders is not None else FakeFolders()
     selection = ProfileSelectionService(settings, architectures, files, folders)
-    return SpecController(architectures, selection, ProfileReviewService(selection, architectures, files),
+    return SpecController(architectures, selection, ProfileReviewService(selection, architectures, files,
+                                                                          own if own is not None else FakeOwnChecks()),
                           ExplainService(files, architectures), MigrationService(files, architectures, output, FakeProfileFormat()),
                           ProfileCreationService(files, architectures, output, FakeProfileFormat()), PublishingService(architectures))

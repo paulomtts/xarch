@@ -23,9 +23,10 @@ from xarch.modules.spec.contract import (
     Origin,
     ProfileChecked,
     ProfileCreated,
+    Shortfall,
+    Supply,
     UnknownKey,
 )
-from xarch.profile_values.capabilities import EXACT, Supply
 
 
 def test_an_unknown_key_is_said_with_the_nearest_ones_in_text_and_in_json():
@@ -44,18 +45,19 @@ def test_a_new_profile_says_what_was_written_and_how_to_put_it_in_force():
     assert '  profile = "mine/mine.yaml"' in lines
 
 
-def explained(*needs: Need) -> KeyExplained:
+def explained(*needs: Need, short: tuple[Shortfall, ...] = ()) -> KeyExplained:
     return KeyExplained("parts.names", "parts.<part>", "how classes are named", "a pattern", False, True, ("names",),
-                        "", (), (), needs, "Toy", True)
+                        "", (), (), needs, "Toy", True, "names", "part", short)
 
 
 def test_a_key_says_the_facts_its_check_reads_and_how_the_language_supplies_them():
-    exact = Need("class", "the classes", Supply("class", EXACT))
+    exact = Need("class", "the classes", Supply("class", "exact"))
     assert key_lines(explained(exact))[6] == (
         "  needs: class: the facts of the source its check reads, which Toy supplies exactly")
     partly = Need("class", "the classes", Supply("class", "partial", "nested ones are not read"))
     absent = Need("call", "calls")
-    assert key_lines(explained(partly, absent))[6:8] == [
+    short = (Shortfall("parts.names", "class", "nested ones are not read"), Shortfall("parts.names", "call", None))
+    assert key_lines(explained(partly, absent, short=short))[6:8] == [
         "  needs: class, call: the facts of the source its check reads; Toy supplies class partly (nested",
         "    ones are not read), not call"]
     assert json.loads(key_document(explained(partly)))["needs"] == [

@@ -21,6 +21,7 @@ from xarch.modules.rules.contract import (
     CategoryShown,
     ChecksShown,
     FieldShown,
+    KeyFacts,
     KeyUnset,
     NoRuleShown,
     RuleShown,
@@ -85,14 +86,14 @@ def test_the_rules_of_a_key_are_said_as_checks_and_a_key_of_none_says_why():
 
 
 def test_a_key_set_nowhere_says_where_it_would_be_set_and_how_a_profile_writes_it():
-    unset = KeyUnset("parts.types_only", "web")
-    assert unset_lines(unset, "parts:\n  a: {}\n") == [
+    unset = KeyUnset("parts.types_only", "web", KeyFacts("parts:\n  a: {}\n", "types_only", "part"))
+    assert unset_lines(unset) == [
         "parts.types_only in web: the profile sets types_only on no part, so it expands to no rule", "",
         "a profile writes it so:", "  parts:", "    a: {}"]
-    assert unset_lines(KeyUnset("guards.closed-tree", "web"), "") == [
+    assert unset_lines(KeyUnset("guards.closed-tree", "web", KeyFacts("", "closed-tree"))) == [
         "guards.closed-tree in web: the profile does not set it, so it expands to no rule"]
-    assert json.loads(unset_document(unset, "x\n")) == {"ok": True, "key": "parts.types_only", "profile": "web",
-                                                        "rules": 0, "checks": "", "set": False, "example": "x\n"}
+    assert json.loads(unset_document(unset)) == {"ok": True, "key": "parts.types_only", "profile": "web", "rules": 0,
+                                                 "checks": "", "set": False, "example": "parts:\n  a: {}\n"}
 
 
 def test_a_word_that_does_not_exist_is_said_with_the_nearest_ones():

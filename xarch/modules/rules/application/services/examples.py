@@ -7,9 +7,9 @@ from xarch.modules.rules.application.logic.facts import facts_of
 from xarch.modules.rules.application.logic.own_checks import resolved
 from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.application.ports.source_tree import SourceTree
-from xarch.modules.rules.contract import ExamplesChecked
 from xarch.modules.rules.domain.rule import OwnCheck
 from xarch.modules.rules.domain.values import Profile, SourceFile
+from xarch.profile_values.checks import ChecksHeld
 
 TESTS = "tests"
 """The folder an example's path starts with when its file is a test, and the root package of the tests."""
@@ -23,7 +23,7 @@ class ExamplesService:
     def __init__(self, tree: SourceTree, profiles: Profiles):
         self._tree, self._profiles = tree, profiles
 
-    def held(self, location: str, app: str) -> ExamplesChecked:
+    def held(self, location: str, app: str) -> ChecksHeld:
         """What is wrong with the profile's own checks, each problem at its address, and how many checks it has;
         raises ChecksRefused when its checks cannot be made, and DomainError when the profile cannot be read."""
         profile = resolved(self._profiles.profile(location))
@@ -38,7 +38,7 @@ class ExamplesService:
                 first = clean[0]
                 found.append(f"{where}.clean: the check finds {len(clean)} in it, the first "
                              f"{first.file}:{first.line}: {first.message}: make the code clean, or correct the check")
-        return ExamplesChecked(tuple(found), len(profile.checks))
+        return ChecksHeld(tuple(found), len(profile.checks))
 
     def _found(self, own: OwnCheck, files: tuple[tuple[str, str], ...], profile: Profile, app: str) -> list:
         read = [(path.split("/"), self._tree.parsed(code)) for path, code in files]

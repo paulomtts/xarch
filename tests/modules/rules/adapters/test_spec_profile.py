@@ -1,13 +1,20 @@
 """Rules' Profiles read from spec's contract: the profile view becomes the profile as the checks see it (the checks it
 writes itself as spec read them), the origin keeps each looseness, and the init files are compared as text."""
+from pathlib import Path
+
 import pytest
 
 from xarch.modules.rules.adapters.spec_profile import SpecProfiles
 from xarch.modules.rules.domain.errors import ProfileUnusable
+from xarch.modules.rules.domain.published import KeyFacts
 from xarch.modules.rules.domain.values import InitFile, PartInfo, Profile, Standing
 from xarch.modules.spec.contract import (
+    Explain,
+    ExplainResult,
     FilesResult,
     GuardsView,
+    KeyExplained,
+    KnownProfiles,
     Loosened,
     Origin,
     OriginResult,
@@ -16,6 +23,7 @@ from xarch.modules.spec.contract import (
     ProfileView,
     ProjectFile,
     ProjectFiles,
+    UnknownKey,
 )
 from xarch.profile_values.checks import Quantified, Saying, Scope, WrittenCheck, WrittenTarget
 from xarch.profile_values.excluded import Excluded
@@ -64,6 +72,16 @@ class Spec:
     def files(self, profile: str, app: str, presets: bool = True) -> FilesResult:
         return ProfileRefused("cannot write them") if self._files is None else ProjectFiles(self._files)
 
+    def known(self, app: Path) -> KnownProfiles:
+        return KnownProfiles(None if app == Path("/p/none") else "mine.yaml", ("cli",))
+
+    def explain(self, cmd: Explain) -> ExplainResult:
+        return KEY if cmd.key == KEY.key else UnknownKey(cmd.key, ())
+
+
+KEY = KeyExplained("parts.types_only", "parts.<part>", "m", "a", False, True, ("types-only",), "parts:\n  a: {}\n", (),
+                   (), name="types_only", holder="part")
+
 
 def test_the_profile_view_becomes_the_profile_the_checks_see():
     assert SpecProfiles(Spec()).profile("mine.yaml") == Profile(
@@ -108,3 +126,13 @@ def test_the_init_files_are_compared_as_text_and_none_when_the_profile_cannot_wr
 def test_a_profile_whose_origin_spec_refuses_cannot_be_checked():
     with pytest.raises(ProfileUnusable, match="no such profile"):
         SpecProfiles(Spec(origin=ProfileRefused("no such profile"))).standing("mine.yaml", "app")
+
+
+def test_the_profiles_a_project_knows_are_spec_s():
+    assert SpecProfiles(Spec()).known(Path("/p/app")) == ("mine.yaml", "cli")
+    assert SpecProfiles(Spec()).known(Path("/p/none")) == ("cli",)
+
+
+def test_what_the_format_says_of_a_key_is_its_example_its_name_and_what_holds_it_and_nothing_for_no_key():
+    assert SpecProfiles(Spec()).key("parts.types_only") == KeyFacts("parts:\n  a: {}\n", "types_only", "part")
+    assert SpecProfiles(Spec()).key("parts.nothing") == KeyFacts()

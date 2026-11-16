@@ -8,7 +8,7 @@ from xarch.modules.spec.application.ports.architecture_files import Architecture
 from xarch.modules.spec.application.ports.folders import Folders
 from xarch.modules.spec.application.ports.settings import Settings
 from xarch.modules.spec.application.services.architecture import ArchitectureService
-from xarch.modules.spec.contract import AppChosen, ProfileSelected
+from xarch.modules.spec.contract import AppChosen, KnownProfiles, ProfileSelected
 
 
 class ProfileSelectionService:
@@ -39,12 +39,12 @@ class ProfileSelectionService:
         self._architectures.load(location)
         return ProfileSelected(location, self._tests(app, tests))
 
-    def known(self, app: Path | None) -> tuple[str, ...]:
-        """The profiles known to the project holding app: the one in force, once its architecture loads, then the
+    def known(self, app: Path | None) -> KnownProfiles:
+        """The profiles known to the project holding app: the one in force, once its architecture loads, and the
         bundled ones; for no app, the bundled ones alone. Raises NoProfile, UnknownProfile, UnreadableSettings or
         InvalidArchitecture when none is in force or it does not load."""
-        in_force = () if app is None else (self.select(app, None, None).name,)
-        return (*in_force, *self._files.bundled())
+        in_force = None if app is None else self.select(app, None, None).name
+        return KnownProfiles(in_force, self._files.bundled())
 
     def _tests(self, app: Path, given: Path | None) -> Path | None:
         """The tests root that goes with the app, given in full: the one given, else the configured one, else the

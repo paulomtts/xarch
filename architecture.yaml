@@ -173,11 +173,13 @@ parts:
 
   profile-values:
     path: profile_values
-    role: the values of a profile and of the language it names, which spec builds and rules checks the code with
+    role: the values of a profile, of the language it names and of what its own checks found, which spec and rules both
+      need as they are
     litmus: >-
       Is it a value with business meaning that spec and rules both need as it is: a value of the profile (a target,
-      a tier, a check the profile writes) or of the language a check reads (a fact a reader supplies, and how well),
-      which spec builds and rules reads in full, field by field, or which a rule of `kernel/logic/` takes or returns?
+      a tier, a check the profile writes, what holding that check to its examples found) or of the language a check
+      reads (a fact a reader supplies, and how well), which one of the two builds and the other reads in full, field by
+      field, or which a rule of `kernel/logic/` takes or returns?
       If yes, it goes here, as a record with no rule beyond its own invariants. If rules reads less than all of it,
       spec hands it out in its contract and rules holds a smaller value of its own. If only one module needs it, it
       belongs in that module's `domain/`. If it has no business meaning, one that could be lifted unchanged into an

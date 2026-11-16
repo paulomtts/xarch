@@ -32,9 +32,9 @@ __all__ = ["DEFAULT_APP", "DEFAULT_TESTS", "Entry", "Repeating", "Skeleton", "Do
            "NoProfileChosen", "SelectResult", "MigrateProfile", "Copy", "MigratedFile", "Origin", "Loosened", "LITMUS",
            "Migrated", "FilesTaken", "MigrationRefused",
            "MigrateResult", "Shown", "Symbol", "Explain", "FormatExplained", "KeyExplained", "UnknownKey",
-           "ExplainResult", "Need", "ViewProfile", "ProfileViewed", "ViewResult", "CheckProfile", "LOAD", "EXAMPLES",
+           "ExplainResult", "Need", "ViewProfile", "ProfileViewed", "ViewResult", "CheckProfile", "LOAD", "EXAMPLES", "CHECKS",
            "Problem", "ProfileChecked",
-           "CheckResult", "NewProfile", "ProfileCreated", "NewResult"]
+           "CheckResult", "KnownProfiles", "NewProfile", "ProfileCreated", "NewResult", "Supply", "Shortfall"]
 
 
 @dataclass(frozen=True)
@@ -294,7 +294,9 @@ class KeyExplained:
     """One key: its address as typed, the scope it sits in, what it means and accepts, whether the profile needs it,
     whether `check` enforces it and through which rule ids, an example, what it may be set to from a list xarch ships
     (choices), the keys it holds, the facts of the source its check reads and the language they were graded for, and
-    whether that language's data file grades the facts its reader supplies (graded)."""
+    whether that language's data file grades the facts its reader supplies (graded); its own name, what holds it when
+    it is set on each of a kind of thing (part or tier, "" for neither), and the facts it needs that the language
+    supplies partly or not at all (short)."""
     key: str
     where: str
     meaning: str
@@ -308,6 +310,9 @@ class KeyExplained:
     needs: tuple[Need, ...] = ()
     language: str = ""
     graded: bool = False
+    name: str = ""
+    holder: str = ""
+    short: tuple[Shortfall, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -350,13 +355,15 @@ class CheckProfile:
 
 
 LOAD, EXAMPLES, CHECKS = "load", "examples", "checks"
-"""The checks a Problem names: the loader, which finds every problem at once, and the examples' imports."""
+"""The checks a Problem names: the loader, which finds every problem at once, the examples' imports, and the checks
+the profile writes itself, held to their examples."""
 
 
 @dataclass(frozen=True)
 class Problem:
     """One thing wrong with a profile, by the check that found it: load (the loader, every problem at once, which
-    includes the files it points to) or examples (an example imports what its part may not)."""
+    includes the files it points to), examples (an example imports what its part may not) or checks (a check of the
+    profile's own cannot be made, or does not find what its examples say)."""
     check: str
     text: str
 
@@ -364,11 +371,13 @@ class Problem:
 @dataclass(frozen=True)
 class ProfileChecked:
     """What validating a profile found: its problems (none: valid), how many files it points to (when it loads), and,
-    when it loads, its origin: how it differs from the bundled profile it is based on, as information."""
+    when it loads, its origin: how it differs from the bundled profile it is based on, as information; and how many
+    checks it writes itself (when it loads)."""
     location: str
     problems: tuple[Problem, ...]
     files: int
     origin: Origin | None
+    checks: int = 0
 
     @property
     def ok(self) -> bool:
@@ -376,6 +385,14 @@ class ProfileChecked:
 
 
 CheckResult = ProfileChecked | NoProfileChosen | ProfileRefused
+
+
+@dataclass(frozen=True)
+class KnownProfiles:
+    """The profiles a project knows: the one in force for it (None: none is, or its settings cannot be read or it does
+    not load), and the bundled ones."""
+    in_force: str | None
+    bundled: tuple[str, ...]
 
 
 @dataclass(frozen=True)

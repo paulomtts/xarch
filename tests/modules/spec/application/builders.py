@@ -5,12 +5,14 @@ from typing import Any
 
 from tests.fakes.architecture_files import FakeArchitectureFiles
 from tests.fakes.example_reader import FakeExampleReader
+from tests.fakes.own_checks import FakeOwnChecks
 from tests.fakes.profile_output import FakeProfileOutput
 from tests.fakes.runtime import FakeRuntime
 from tests.fakes.settings import FakeSettings
 from tests.modules.spec.application.helpers import controller
 from tests.modules.spec.languages import RUNTIME
 from xarch.kernel.source import Import, Unparsable
+from xarch.profile_values.checks import ChecksHeld
 
 TESTING = {"files": ["test_*.py"], "functions": "test_*"}
 BASE = {"xarch": 2, "name": "base", "testing": TESTING,
@@ -25,8 +27,10 @@ def spec_controller(bundled: dict[str, Any] | None = None, files: dict[str, Any]
                     texts: dict[str, str | bytes] | None = None, existing: set | None = None,
                     settings: FakeSettings | None = None, presets: dict[str, Any] | None = None,
                     languages: dict[str, Any] | None = None, runtime: FakeRuntime = RUNTIME,
-                    reads: dict[str, tuple[Import, ...] | Unparsable] | None = None):
+                    reads: dict[str, tuple[Import, ...] | Unparsable] | None = None,
+                    own: dict[str, ChecksHeld] | None = None):
     port = FakeArchitectureFiles({"base": BASE} if bundled is None else bundled, files, TEXTS | (texts or {}),
                                  presets if presets is not None else {"pytest": TESTING}, languages)
     output = FakeProfileOutput(existing)
-    return controller(port, settings, output, runtime=runtime, reader=FakeExampleReader(reads)), output
+    return controller(port, settings, output, runtime=runtime, reader=FakeExampleReader(reads),
+                      own=FakeOwnChecks(own)), output

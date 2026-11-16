@@ -1,6 +1,7 @@
 """The checks a profile writes itself, as values: spec reads them from the profile's `checks` and checks every name the
 profile declares in them (an id, a part, a tier); rules makes each a rule, resolving the words of its vocabulary
-(a kind of target such as `place` or `part`, a filter, a variable) and refusing a check whose words do not apply.
+(a kind of target such as `place` or `part`, a filter, a variable) and refusing a check whose words do not apply; and
+what holding them to their examples found, which rules works out and spec reports.
 
 The records keep the shape the format writes: the files a check reads, the kinds of fact, the filters it keeps, one
 quantifier with its targets and, for a quantifier of reach, how it reaches; the filters that excuse a finding, the
@@ -110,3 +111,12 @@ class WrittenCheck:
     mode: str = "fail"
     flagged: tuple[tuple[str, str], ...] = ()
     clean: tuple[tuple[str, str], ...] = ()
+
+
+@dataclass(frozen=True)
+class ChecksHeld:
+    """What holding the checks a profile writes itself to their examples found, which rules works out and spec reports
+    in its check of the profile: every problem, each at its address in the profile (none: each check finds something
+    in its flagged code and nothing in its clean code), and how many checks the profile writes itself."""
+    problems: tuple[str, ...]
+    checks: int

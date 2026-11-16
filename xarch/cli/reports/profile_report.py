@@ -35,7 +35,6 @@ from xarch.modules.spec.contract import (
     Shown,
     UnknownKey,
 )
-from xarch.profile_values.capabilities import EXACT
 
 WIDTH = 100
 KEY = 28
@@ -113,8 +112,8 @@ def _needs(found: KeyExplained) -> str:
     facts = ", ".join(need.fact for need in found.needs)
     if not found.language or not found.graded:
         return f"{facts}: the facts of the source its check reads"
-    short = [f"{need.fact} partly ({need.supply.note})" if need.supply is not None else f"not {need.fact}"
-             for need in found.needs if need.supply is None or need.supply.grade != EXACT]
+    short = [f"{item.fact} partly ({item.note})" if item.note is not None else f"not {item.fact}"
+             for item in found.short]
     if not short:
         return f"{facts}: the facts of the source its check reads, which {found.language} supplies exactly"
     return f"{facts}: the facts of the source its check reads; {found.language} supplies {', '.join(short)}"
@@ -183,7 +182,7 @@ def origin_words(origin: Origin) -> str:
     return "custom; no bundled profile resembles it"
 
 
-def check_lines(checked: ProfileChecked, checks: int = 0) -> list[str]:
+def check_lines(checked: ProfileChecked) -> list[str]:
     origin = checked.origin
     lines = [f"checking {checked.location} ({origin_words(origin) if origin is not None else 'custom'})"]
     loads = [p for p in checked.problems if p.check == LOAD]
@@ -195,9 +194,9 @@ def check_lines(checked: ProfileChecked, checks: int = 0) -> list[str]:
         lines.append(f"  files: all {checked.files} it points to are present")
         lines += _section("examples", examples, "ok: they import only what their part may")
         own = [p for p in checked.problems if p.check == CHECKS]
-        if checks or own:
-            lines += _section("checks", own, "ok: its check finds what its examples say" if checks == 1 else
-                              f"ok: its {checks} checks find what their examples say")
+        if checked.checks or own:
+            lines += _section("checks", own, "ok: its check finds what its examples say" if checked.checks == 1 else
+                              f"ok: its {checked.checks} checks find what their examples say")
         lines += _compared(checked)
     lines.append("OK: the profile is valid" if checked.ok
                  else f"INVALID: {len(checked.problems)} problem{'' if len(checked.problems) == 1 else 's'}")
@@ -236,7 +235,7 @@ def check_document(checked: ProfileChecked) -> str:
                                 "sentence": i.sentence} for i in origin.looser]}
     return _dump({"ok": checked.ok, "profile": checked.location,
                   "problems": [{"check": p.check, "message": p.text} for p in checked.problems],
-                  "files": checked.files, "compared_with": compared})
+                  "files": checked.files, "checks": checked.checks, "compared_with": compared})
 
 
 TAKEN = 3

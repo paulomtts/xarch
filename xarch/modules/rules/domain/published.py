@@ -6,6 +6,7 @@ contract's own.
     Weak  a check met to the letter only, which the enforcement section lists and the command line shows
     Slot  a slot of a check as a profile writes it, which `profile explain checks` shows
     Drift an init file as it stands against what `init` would write, which the enforcement section lists
+    KeyFacts what the format says of a key the profile sets nowhere, which the command line shows
 """
 from __future__ import annotations
 
@@ -46,3 +47,12 @@ class Drift:
     path below the folder holding the app."""
     path: tuple[str, ...]
     state: str
+
+
+@dataclass(frozen=True)
+class KeyFacts:
+    """What the format says of a key: how a profile writes it ("" for no example), its own name, and what holds it
+    when it is set on each of a kind of thing (part or tier, "" for neither)."""
+    example: str = ""
+    name: str = ""
+    holder: str = ""

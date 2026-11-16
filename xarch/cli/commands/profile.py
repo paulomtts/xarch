@@ -1,5 +1,4 @@
 """xarch profile: the commands that work on a profile file itself (spec module)."""
-from dataclasses import replace
 from pathlib import Path
 from typing import Annotated
 
@@ -12,11 +11,7 @@ from xarch.cli.terminal import AppPath, Format, FormatOption, app_for, echo, fai
 from xarch.modules.rules.application.controller import RulesController
 from xarch.modules.rules.contract import (
     CATEGORIES,
-    CheckExamples,
-    CheckRefused,
-    ChecksCannotRun,
     ChecksShown,
-    ExamplesChecked,
     ExplainRule,
     ExplainWords,
     KeyUnset,
@@ -28,7 +23,6 @@ from xarch.modules.rules.contract import (
 )
 from xarch.modules.spec.application.controller import SpecController
 from xarch.modules.spec.contract import (
-    CHECKS,
     CheckProfile,
     Explain,
     FilesTaken,
@@ -39,7 +33,6 @@ from xarch.modules.spec.contract import (
     MigrationRefused,
     NewProfile,
     NoProfileChosen,
-    Problem,
     ProfileChecked,
     ProfileCreated,
     ProfileRefused,
@@ -109,9 +102,7 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
                 case RuleShown() as shown:
                     _show(output, words.rule_document(shown), words.rule_lines(shown))
                 case KeyUnset() as unset:
-                    explained = spec.explain(Explain(unset.address))
-                    example = explained.example if isinstance(explained, KeyExplained) else ""
-                    _show(output, words.unset_document(unset, example), words.unset_lines(unset, example))
+                    _show(output, words.unset_document(unset), words.unset_lines(unset))
                 case NoRuleShown() as none:
                     raise refuse(words.no_rule_message(none))
             return
@@ -174,17 +165,7 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
         app = app_for(spec, app_path, refuse)
         match spec.check_profile(CheckProfile(in_full(app), target)):
             case ProfileChecked() as checked:
-                count = 0
-                if checked.origin is not None:
-                    match rules.check_examples(CheckExamples(checked.location, app.name)):
-                        case ExamplesChecked(problems, count):
-                            pass
-                        case ChecksCannotRun(problems):
-                            pass
-                        case CheckRefused(why):
-                            problems = (why,)
-                    checked = replace(checked, problems=(*checked.problems, *(Problem(CHECKS, t) for t in problems)))
-                _show(output, report.check_document(checked), report.check_lines(checked, count))
+                _show(output, report.check_document(checked), report.check_lines(checked))
                 if not checked.ok:
                     raise typer.Exit(1)
             case NoProfileChosen() | ProfileRefused() as refused:
@@ -204,13 +185,8 @@ def _configured(spec: SpecController, app: Path, refuse) -> str:
             raise refuse(reason(refused))
 
 
-def _examples_from(spec: SpecController, app_path: Path | None) -> tuple[str, ...]:
-    """The profiles whose rules are examples of a word: those the project knows."""
-    return spec.known(in_full(app_for(spec, app_path)))
-
-
 def _words(rules: RulesController, spec: SpecController, key: str, app_path: Path | None, output: Format) -> None:
-    match rules.explain_words(ExplainWords(key, _examples_from(spec, app_path))):
+    match rules.explain_words(ExplainWords(key, in_full(app_for(spec, app_path)))):
         case ChecksShown() as shown:
             _show(output, words.checks_document(shown), words.checks_lines(shown))
         case WordsShown() as shown:
