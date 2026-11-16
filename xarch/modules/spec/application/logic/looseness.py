@@ -14,7 +14,8 @@ target of the bundled tier's covers; a tier no longer `apply_forbidden`; a name 
 entry no longer `pinned`; a name the bundled profile `reserved` holds that the custom one does not; a part the bundled
 profile gives a `litmus` that the custom one redefines without one; a public name `guards.dead-code.known` accepts as
 only the tests' that the bundled profile's does not; a part `guards.no-twins.translated` lists that the bundled
-profile's does not. Anything stricter, and what is compared in no way above (the
+profile's does not; a path `review.never` holds back, or a text `review.mask` hides, in the bundled profile that the
+custom one does not write (each compared as written: it sends more). Anything stricter, and what is compared in no way above (the
 layout, new parts, the guards' other parameters, `fakes`), is not listed.
 """
 from __future__ import annotations
@@ -30,7 +31,8 @@ from xarch.profile_values.placement import Target
 Looser = tuple[str, str, str]
 """(key, part, what): one way a profile is looser, before it is said."""
 LOOSER = ("may_import", "libraries", "forbidden", "must_import", "untested", LITMUS, "types_only", "may_also_import",
-          "apply_forbidden", "testing.skips", "files.pinned", "reserved", "known", "translated")
+          "apply_forbidden", "testing.skips", "files.pinned", "reserved", "known", "translated", "review.never",
+          "review.mask")
 """Every key a way a profile is looser is listed under, each said by a sentence of its own."""
 
 
@@ -94,6 +96,8 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
     found += [("known", "", entry) for entry in _known(custom) if entry not in accepted]
     translators = _translators(base)
     found += [("translated", part, "") for part in _translators(custom) if part not in translators]
+    found += [("review.never", "", path) for path in base.never if path not in custom.never]
+    found += [("review.mask", "", text) for text in base.mask if text not in custom.mask]
     return found
 
 
@@ -168,6 +172,10 @@ def _sentence(key: str, part: str, what: str = "") -> str:
             return f"no-twins accepts each pair of classes a function of {part} translates (guards.no-twins.translated)"
         case "reserved":
             return f"{what} is no longer reserved (reserved.{what})"
+        case "review.never":
+            return f"{what} may be sent again: the profile it is compared with holds it back (review.never)"
+        case "review.mask":
+            return f"{what} is no longer masked before review sends (review.mask)"
     raise ValueError(f"no sentence says how a profile is looser under {key!r}")
 
 

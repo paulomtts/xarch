@@ -44,6 +44,10 @@ class Loosened:
         testing.skips   what is no longer counted as a skip
         files.pinned    the init file what is no longer pinned
         reserved        the standard-library name what is no longer reserved
+        known           the tests-only check accepts the name what as one only the tests use
+        translated      no-twins accepts each pair of classes a function of part translates
+        review.never    the path pattern what, which the bundled profile never sends, may be sent again
+        review.mask     the text pattern what, which the bundled profile hides, is no longer masked
 
     sentence says it, naming the key of the profile that does.
     """

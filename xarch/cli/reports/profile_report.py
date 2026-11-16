@@ -2,8 +2,8 @@
 document, `{"ok": ...}` first, a refusal being `{"ok": false, "error": ...}`.
 
 explain, no key: {"ok", "format", "shape", "symbols", "smallest", "deeper"}, each shape entry {"key", "depth",
-"meaning", "required", "enforced"}. explain, one key: {"ok", "key", "where", "meaning", "accepts", "required",
-"enforced", "rules", "example", "choices", "keys", "needs", "language"}, each need {"fact", "meaning", "grade",
+"meaning", "required", "enforced", "read_by"}. explain, one key: {"ok", "key", "where", "meaning", "accepts", "required",
+"enforced", "read_by", "rules", "example", "choices", "keys", "needs", "language"}, each need {"fact", "meaning", "grade",
 "note"}: a fact of the source the key's check reads, and how the language named supplies it. explain, a key the
 format has not: {"ok": false, "error", "key", "nearest", "words"}, nearest the format's keys near it and words the
 words of a check near it. explain, a profile: {"ok", "profile", "name", "tree", "imports"}.
@@ -62,13 +62,13 @@ def _need(shown: Shown) -> str:
     return "required" if shown.required else "optional"
 
 
-def _enforcement(shown_enforced: bool) -> str:
-    return "enforced" if shown_enforced else "documentary"
+def _enforcement(shown: Shown) -> str:
+    return "enforced" if shown.enforced else shown.read_by or "documentary"
 
 
 def _row(shown: Shown) -> str:
     key = ("  " if shown.depth else "") + shown.key
-    return f"{key:<{KEY}} {_need(shown):<{NEED}} {_enforcement(shown.enforced):<12} {shown.meaning}"
+    return f"{key:<{KEY}} {_need(shown):<{NEED}} {_enforcement(shown):<12} {shown.meaning}"
 
 
 def overview_lines(whole: FormatExplained) -> list[str]:
@@ -103,6 +103,8 @@ def key_lines(found: KeyExplained) -> list[str]:
 
 
 def _enforced(found: KeyExplained) -> str:
+    if not found.enforced and found.read_by:
+        return f"no: check never reads it; xarch {found.read_by} does, for what it sends"
     if not found.enforced:
         return "no, it is documentary: it only fills the generated docs or a report"
     if not found.rules:
@@ -141,7 +143,7 @@ def overview_document(whole: FormatExplained) -> str:
 def key_document(found: KeyExplained) -> str:
     return document({"ok": True, "key": found.key, "where": found.where, "meaning": found.meaning,
                   "accepts": found.accepts, "required": found.required, "enforced": found.enforced,
-                  "rules": list(found.rules), "example": found.example, "choices": list(found.choices),
+                  "read_by": found.read_by or None, "rules": list(found.rules), "example": found.example, "choices": list(found.choices),
                   "keys": [_shown(shown) for shown in found.keys],
                   "needs": [{"fact": need.fact, "meaning": need.meaning, "grade": _grade(need, found.graded),
                              "note": need.supply.note or None if need.supply is not None else None}
@@ -163,7 +165,7 @@ def unknown_document(found: UnknownKey, words: Sequence[str] = ()) -> str:
 
 def _shown(shown: Shown) -> dict[str, Any]:
     return {"key": shown.key, "depth": shown.depth, "meaning": shown.meaning, "required": shown.required,
-            "enforced": shown.enforced}
+            "enforced": shown.enforced, "read_by": shown.read_by or None}
 
 
 def view_lines(seen: ProfileViewed) -> list[str]:

@@ -243,6 +243,16 @@ keys:
     example: |
       docs:
         entry: documents
+  review:
+    meaning: "what `xarch review` may send: never, mask"
+    accepts: >-
+      a map {never, mask}: the files review never sends, and the texts it hides in the others before it sends; `check`
+      never reads it, so it changes no finding and no exit code of `check`. Neither key can switch sending on: the key
+      of the decision model's service, set in the environment, alone does that
+    example: |
+      review:
+        never: [documents/drafts]
+        mask: [Northwind]
   parts.<part>.path:
     meaning: where the part lives below the app
     accepts: >-
@@ -1078,3 +1088,27 @@ keys:
         tests/rules%extension%:
           from: guard%extension%
           fill: false
+  review.never:
+    meaning: the files review never sends
+    accepts: >-
+      a list of paths below the app, each with its steps written with `/`: a step as written, `*` for any text inside
+      one step, and a step that is `**` for any number of folders, none included; a path matches a file, or a folder
+      and every file below it. A file chosen that one matches is not read into any request: every run, `--dry-run`
+      included, lists it as left out with the path that matched. Refused: a path that starts with `/` or has an empty,
+      `.` or `..` step, `**` inside a longer step, a path of nothing but `*` and `**` (it would hold back every file),
+      the same path twice. `profile check` lists a path the profile it is compared with holds that this one does not as
+      looser
+    example: |
+      review:
+        never: [documents/drafts, "**/secrets"]
+  review.mask:
+    meaning: the texts review hides before it sends
+    accepts: >-
+      a list of texts, each one line, as written (case counts), `*` standing for a run of one or more letters, digits,
+      `_`, `-` and `.`: each match in a file's text is sent as `<masked>`. It adds to what review always hides, the
+      module each import of the app's own code names and every e-mail address. Refused: a text of nothing but `*` and
+      spaces (it would hide every word), a text of two lines, the same text twice. `profile check` lists a text the
+      profile it is compared with hides that this one does not as looser
+    example: |
+      review:
+        mask: [Northwind, "DOC-*"]

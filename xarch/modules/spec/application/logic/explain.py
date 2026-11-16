@@ -75,11 +75,12 @@ def supplied(fact: str, language: Language) -> Supply | None:
 
 
 def overview_keys() -> list[tuple[Key, int]]:
-    """The keys of the file, each followed by the keys it holds, with how far below the file each sits."""
+    """The keys of the file, each followed by the keys it holds, with how far below the file each sits; the keys held
+    by one that another command than `check` reads are left to its own explanation, which lists them."""
     found: list[tuple[Key, int]] = []
     for key in keys_of(PROFILE):
         found.append((key, 0))
-        found += [(held, 1) for held in keys_of(key.opens)] if key.opens else []
+        found += [(held, 1) for held in keys_of(key.opens)] if key.opens and not key.read_by else []
     return found
 
 

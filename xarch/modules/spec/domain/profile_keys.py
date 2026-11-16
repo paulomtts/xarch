@@ -3,9 +3,9 @@
 
 A key sits in a scope, a kind of mapping, such as a part, written as its address in the file (`parts.<part>`). The table
 of keys says whether the profile needs one, whether it is enforced (changes what `xarch check` does, through the rule ids
-it lists) or documentary (only fills the generated docs or reports), and the scope a key that holds keys opens. Its text,
-read from a data file shipped with xarch, says its meaning in a few words, what it accepts, and a short example: a
-fragment of a profile that loads once merged into the smallest one.
+it lists) or documentary (only fills the generated docs or reports), or read by another command than `check` only,
+and the scope a key that holds keys opens. Its text, read from a data file shipped with xarch, says its meaning in a
+few words, what it accepts, and a short example: a fragment of a profile that loads once merged into the smallest one.
 """
 from __future__ import annotations
 
@@ -30,6 +30,7 @@ DOCS = "docs"
 PAGE = "docs.page"
 NAMING = "docs.naming"
 FILE = "file"
+REVIEW = "review"
 
 SCOPES = {
     PROFILE: "the file",
@@ -51,6 +52,7 @@ SCOPES = {
     PAGE: "docs.pages.<path>",
     NAMING: "docs.naming[]",
     FILE: "files.<path>",
+    REVIEW: "review",
 }
 """Each scope's address in the file."""
 
@@ -58,6 +60,8 @@ CHOICE_BUNDLED = "bundled"
 CHOICE_PRESETS = "presets"
 CHOICE_LANGUAGES = "languages"
 """What a key may name from a list xarch ships: the bundled profiles, the `testing` presets or the languages."""
+READ_BY_REVIEW = "review"
+"""The command other than `check` that reads a key: `xarch review`, which reads what it may send."""
 
 
 @dataclass(frozen=True)
@@ -73,6 +77,7 @@ class Key:
         `<bundled>`, `<preset>` and `<language>` in the example of its text stand for the first of that list
     needs: the facts of the source (see capabilities) the check it configures reads: a profile that sets it is
         refused when its language's reader does not supply one of them
+    read_by: READ_BY_REVIEW for a key that `check` never reads and another command does; "" for every other
     """
     scope: str
     name: str
@@ -82,6 +87,7 @@ class Key:
     opens: str = ""
     choices: str = ""
     needs: tuple[str, ...] = ()
+    read_by: str = ""
 
     @property
     def where(self) -> str:

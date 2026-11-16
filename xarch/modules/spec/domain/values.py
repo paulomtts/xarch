@@ -364,6 +364,8 @@ class Architecture:
     approximate: the keys whose check reads a fact the language supplies only partly, with the reader's note
     checks: the checks the profile writes itself, by id, each as the format writes it (see written_checks): what the
         words in them mean is the rules module's
+    never: the path patterns below the app of the files review never sends (`review.never`), as written
+    mask: the text patterns review hides before it sends (`review.mask`), as written
     """
     name: str
     layout: Layout
@@ -390,6 +392,8 @@ class Architecture:
     reserved: dict[str, str] = field(default_factory=dict)
     approximate: tuple[Shortfall, ...] = ()
     checks: dict[str, WrittenCheck] = field(default_factory=dict)
+    never: tuple[str, ...] = ()
+    mask: tuple[str, ...] = ()
 
     @property
     def entry(self) -> Part | None:

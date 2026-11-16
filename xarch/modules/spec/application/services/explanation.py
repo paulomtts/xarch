@@ -56,7 +56,7 @@ class ExplainService:
                             names, tuple(_shown(held, 0, catalogue, language) for held in held_by(key)),
                             tuple(Need(fact, FACTS[fact], supplied(fact, language)) for fact in key.needs),
                             graded_for(key, language), graded(key, language), key.name, holder_of(key),
-                            short(key, language))
+                            short(key, language), key.read_by)
 
     def choices(self, key: Key) -> tuple[str, ...]:
         """The bundled profiles, the `testing` presets or the languages, for a key that names one of them; else none."""
@@ -75,4 +75,4 @@ class ExplainService:
 
 def _shown(key: Key, depth: int, catalogue: Catalogue, language: Language) -> Shown:
     return Shown(plain(key.address), depth, said(catalogue.texts[key.address].meaning, language), key.required,
-                 key.enforced)
+                 key.enforced, key.read_by)

@@ -69,13 +69,16 @@ def test_json_gives_the_shape_the_symbols_and_the_smallest_profile_and_for_a_key
     whole = json.loads(runner.invoke(app, ["profile", "explain", "--format", "json"]).output)
     assert whole["ok"] is True and whole["format"] == 2
     assert {"key": "parts.may_import", "depth": 1, "meaning": "what the part may import besides itself",
-            "required": False, "enforced": True} in whole["shape"]
+            "required": False, "enforced": True, "read_by": None} in whole["shape"]
+    assert {"key": "review", "depth": 0, "meaning": "what `xarch review` may send: never, mask", "required": False,
+            "enforced": False, "read_by": "review"} in whole["shape"]
     assert whole["symbols"][0]["symbol"] == "<word>" and whole["smallest"].startswith("xarch: 2")
     assert "xarch profile explain parts.may_import" in whole["deeper"]
     key = json.loads(runner.invoke(app, ["profile", "explain", "parts.may_import", "--format", "json"]).output)
     assert key["ok"] is True and key["key"] == "parts.may_import" and key["rules"] == ["rules"]
-    assert set(key) == {"ok", "key", "where", "meaning", "accepts", "required", "enforced", "rules", "example",
-                        "choices", "keys", "needs", "language"}
+    assert set(key) == {"ok", "key", "where", "meaning", "accepts", "required", "enforced", "read_by", "rules",
+                        "example", "choices", "keys", "needs", "language"}
+    assert key["read_by"] is None
     refused = runner.invoke(app, ["profile", "explain", "parts.colour", "--format", "json"])
     assert refused.exit_code == 2
     assert json.loads(refused.output)["ok"] is False and json.loads(refused.output)["nearest"]
@@ -98,6 +101,17 @@ def test_every_key_the_overview_names_and_every_key_those_hold_can_be_asked_for_
         assert found["ok"] is True and found["key"] == key and found["example"], key
         pending += [held["key"] for held in found["keys"]]
     assert len(asked) == len(set(asked)) > 80
+
+
+def test_what_review_may_send_is_read_by_review_alone_and_its_keys_are_listed_in_its_own_explanation():
+    overview = runner.invoke(app, ["profile", "explain"]).output.splitlines()
+    assert [line.split()[:3] for line in overview if line.split()[:1] in (["review"], ["review.never"])] == [
+        ["review", "optional", "review"]]
+    found = runner.invoke(app, ["profile", "explain", "review"]).output.splitlines()
+    assert "  enforced: no: check never reads it; xarch review does, for what it sends" in found
+    assert [line.split()[0] for line in found[found.index("  keys:") + 1:]] == ["review.never", "review.mask"]
+    never = json.loads(runner.invoke(app, ["profile", "explain", "review.never", "--format", "json"]).output)
+    assert (never["where"], never["enforced"], never["read_by"], never["rules"]) == ("review", False, "review", [])
 
 
 def test_a_profile_is_shown_as_its_folder_tree_and_its_import_table_for_a_human_to_approve():

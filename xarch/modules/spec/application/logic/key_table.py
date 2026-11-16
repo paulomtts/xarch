@@ -23,6 +23,8 @@ from xarch.modules.spec.domain.profile_keys import (
     PART,
     PASS_THROUGH,
     PROFILE,
+    READ_BY_REVIEW,
+    REVIEW,
     SCENARIO_COVERAGE,
     TABLE,
     TESTING,
@@ -57,6 +59,7 @@ _KEYS: tuple[Key, ...] = (
     Key(PROFILE, "checks"),
     Key(PROFILE, "files", opens=FILE),
     Key(PROFILE, "docs", False, False, opens=DOCS),
+    Key(PROFILE, "review", False, False, opens=REVIEW, read_by=READ_BY_REVIEW),
 
     Key(PART, "path", True, rules=("structure", "rules")),
     Key(PART, "role", True, False),
@@ -166,6 +169,9 @@ _KEYS: tuple[Key, ...] = (
     Key(FILE, "from", True),
     Key(FILE, "pinned"),
     Key(FILE, "fill"),
+
+    Key(REVIEW, "never", False, False, read_by=READ_BY_REVIEW),
+    Key(REVIEW, "mask", False, False, read_by=READ_BY_REVIEW),
 )
 
 _IMPORTS = ("import", "import.relative")

@@ -108,8 +108,10 @@ SHAPE = (
     Shown('docs.naming', 1, 'the naming table of the docs', False, False),
     Shown('docs.examples', 1, 'folders next to the profile, each an example project', False, False),
     Shown('docs.example_notes', 1, 'a note for an example', False, False),
+    Shown('review', 0, 'what `xarch review` may send: never, mask', False, False, 'review'),
 )
-"""The keys of the file, each followed by the keys it holds, as the table of keys lists them."""
+"""The keys of the file, each followed by the keys it holds, as the table of keys lists them; the keys of what review
+may send are left to the explanation of `review`."""
 
 
 @pytest.mark.parametrize("given, when, then", [

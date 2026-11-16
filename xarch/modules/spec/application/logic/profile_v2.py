@@ -50,6 +50,8 @@ key_catalogue); the shape:
     docs: {entry, pages, naming, examples, example_notes}
                                everything that only fills the docs; `examples` lists folders next to the profile, each
                                an example project, whose every file is an example named by its path in the project
+    review: {never, mask}      what `xarch review` may send: path patterns below the app of the files it never sends,
+                               and text patterns it hides before it sends; `check` reads neither (see sending)
 
 Every problem found is collected, so one InvalidArchitecture lists them all, each naming the key by its address in the
 file and saying what to write instead; a problem that makes the rest meaningless stops early.
@@ -71,6 +73,7 @@ from xarch.modules.spec.application.logic import written_checks as own_checks
 from xarch.modules.spec.application.logic.key_lookup import keys_of, names_of, required_of
 from xarch.modules.spec.application.logic.language_file import first_language
 from xarch.modules.spec.application.logic.layout_walk import is_file
+from xarch.modules.spec.application.logic.sending import sending
 from xarch.modules.spec.application.logic.targets_written import WORD, may_import
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.guards import GUARD, KEY, ORDER
@@ -196,12 +199,13 @@ def parse_v2(document: Any, source: str, files: Collection[str] = (), presets: M
     own = (own_checks.checks(document["checks"], declared, tiers, language, problems) if "checks" in document
            else {})
     hints = ck.rule_hints(document["hints"], problems, own) if "hints" in document else {}
+    never, mask = sending(document["review"], problems) if "review" in document else ((), ())
     if problems:
         raise InvalidArchitecture(source, problems)
     shown = ex.examples_of(examples, built.tree, parts, language)
     return Architecture(name, built.tree, parts, rules, pages, shown, built.notes, layers, tuple(parts), naming, tiers,
                         libraries, guards, fakes, built.repeats, written, testing.framework if testing else None, forbidden,
-                        excluded, hints, based_on, language, reserved, needs.approximate(shortfalls), own)
+                        excluded, hints, based_on, language, reserved, needs.approximate(shortfalls), own, never, mask)
 
 
 def _keys(document: Mapping[Any, Any]) -> list[str]:

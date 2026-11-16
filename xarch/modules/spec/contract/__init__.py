@@ -139,8 +139,10 @@ class ProfileView:
     repeating folders; the guards switched on; the fakes and the test framework (None: none); the excluded folders;
     the project's own advice for a rule, by rule id; the language of the app; the standard-library modules a part
     imports only when its libraries list them, each with why; the keys whose check reads a fact the language
-    supplies only partly; and the checks the profile writes itself, by id, each as its slots are read (the words of
-    the vocabulary in them are the rules module's to read)."""
+    supplies only partly; the checks the profile writes itself, by id, each as its slots are read (the words of
+    the vocabulary in them are the rules module's to read); and what review may send, which no check reads: the path
+    patterns below the app of the files it never sends (`review.never`) and the text patterns it hides
+    (`review.mask`), each as written."""
     parts: tuple[PartView, ...]
     folders: tuple[tuple[str, ...], ...] = ()
     tiers: tuple[CheckedTier, ...] = ()
@@ -155,6 +157,8 @@ class ProfileView:
     reserved: dict[str, str] = field(default_factory=dict)
     approximate: tuple[Shortfall, ...] = ()
     checks: dict[str, WrittenCheck] = field(default_factory=dict)
+    never: tuple[str, ...] = ()
+    mask: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -259,12 +263,13 @@ MigrateResult = Migrated | FilesTaken | MigrationRefused
 @dataclass(frozen=True)
 class Shown:
     """One key of the format, as a line: key is its address as a person types it (parts.may_import), depth how far
-    below the keys of the file it sits."""
+    below the keys of the file it sits; read_by the command other than `check` that alone reads it ("" for none)."""
     key: str
     depth: int
     meaning: str
     required: bool
     enforced: bool
+    read_by: str = ""
 
 
 @dataclass(frozen=True)
@@ -304,7 +309,8 @@ class KeyExplained:
     (choices), the keys it holds, the facts of the source its check reads and the language they were graded for, and
     whether that language's data file grades the facts its reader supplies (graded); its own name, what holds it when
     it is set on each of a kind of thing (part or tier, "" for neither), and the facts it needs that the language
-    supplies partly or not at all (short)."""
+    supplies partly or not at all (short); and the command other than `check` that alone reads it (read_by, "" for
+    none)."""
     key: str
     where: str
     meaning: str
@@ -321,6 +327,7 @@ class KeyExplained:
     name: str = ""
     holder: str = ""
     short: tuple[Shortfall, ...] = ()
+    read_by: str = ""
 
 
 @dataclass(frozen=True)

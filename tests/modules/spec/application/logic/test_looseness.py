@@ -138,6 +138,16 @@ def test_a_part_whose_translations_no_twins_accepts_that_the_base_does_not_list_
     assert loosened(parsed(translated("api")), parsed(translated("api", "store"))) == ()
 
 
+def test_a_path_review_never_sends_or_a_text_it_hides_that_the_base_holds_and_the_custom_drops_is_looser():
+    base = parsed(layered(review={"never": ["src/drafts", "**/secrets"], "mask": ["Northwind", "DOC-*"]}))
+    custom = parsed(layered(review={"never": ["**/secrets", "src/legal"], "mask": ["DOC-*"]}))
+    assert loosened(custom, base) == (
+        Loosened("review.never", "", "src/drafts",
+                 "src/drafts may be sent again: the profile it is compared with holds it back (review.never)"),
+        Loosened("review.mask", "", "Northwind", "Northwind is no longer masked before review sends (review.mask)"))
+    assert loosened(base, parsed(layered())) == ()
+
+
 def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
     """Each case of LOOSER is reached by one of these pairs (custom, base), and each key is said its own way."""
     store = {key: value for key, value in PARTS["store"].items() if key != "tier"}
@@ -157,6 +167,7 @@ def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
         (parsed(covered(guards={"dead-code": {"tests_only": True, "known": ["shared/wiring.py:build"]}},
                         fakes={"folder": "fakes", "for": ["store"]})), parsed(covered())),
         (parsed(covered(guards={"no-twins": {"translated": ["api"]}})), parsed(covered())),
+        (parsed(layered()), parsed(layered(review={"never": ["src/drafts"], "mask": ["Northwind"]}))),
     ]
     found = [item for custom, base in pairs for item in loosened(custom, base)]
     assert sorted({item.key for item in found}) == sorted(LOOSER)

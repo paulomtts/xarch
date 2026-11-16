@@ -13,18 +13,22 @@ from xarch.cli.reports.profile_report import (
     migrate_taken,
     new_taken,
     origin_words,
+    overview_lines,
     unknown_document,
     unknown_message,
 )
 from xarch.modules.rules.contract import ChecksHeld, ProfileHeld, ProfileUnloaded, Resemblance, Reviewed
 from xarch.modules.spec.contract import (
     FilesTaken,
+    FormatExplained,
     KeyExplained,
     Need,
     Origin,
     ProfileCreated,
     Shortfall,
+    Shown,
     Supply,
+    Symbol,
     UnknownKey,
 )
 
@@ -70,6 +74,16 @@ def test_a_key_says_the_facts_its_check_reads_and_how_the_language_supplies_them
         "    ones are not read), not call"]
     assert json.loads(key_document(explained(partly)))["needs"] == [
         {"fact": "class", "meaning": "the classes", "grade": "partial", "note": "nested ones are not read"}]
+
+
+def test_a_key_another_command_reads_is_said_to_be_read_by_it_and_never_by_check():
+    held = KeyExplained("review.never", "review", "the files review never sends", "a list of paths", False, False,
+                        (), "review:\n  never: [a]", (), (), read_by="review")
+    assert key_lines(held)[5] == "  enforced: no: check never reads it; xarch review does, for what it sends"
+    assert json.loads(key_document(held))["read_by"] == "review"
+    shape = (Shown("docs", 0, "the docs", False, False), Shown("review", 0, "what review may send", False, False, "review"))
+    rows = overview_lines(FormatExplained(2, shape, (Symbol("<word>", "a repeating folder"),), "xarch: 2\n"))[4:6]
+    assert [row.split()[:3] for row in rows] == [["docs", "optional", "documentary"], ["review", "optional", "review"]]
 
 
 @pytest.mark.parametrize("origin, resemblance, words", [

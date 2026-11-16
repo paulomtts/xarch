@@ -35,7 +35,7 @@ def test_a_profile_says_what_it_does_not_have_by_leaving_it_out():
 def test_unknown_keys_are_refused_with_the_keys_that_exist_in_the_file():
     assert problems(layered(colour=1, extra=2)) == [
         "layered.yaml: unknown keys 'colour', 'extra': use based_on, checks, docs, excluded, fakes, files, forbidden, guards, "
-        "hints, language, layers, name, parts, reserved, testing, tiers, xarch"]
+        "hints, language, layers, name, parts, reserved, review, testing, tiers, xarch"]
 
 
 def test_every_unknown_key_message_reads_the_table_of_keys():
@@ -453,7 +453,7 @@ def test_every_problem_of_a_profile_is_reported_at_once():
         "layered.yaml: `layout`: not a key of format 2: delete it: the layout comes from each part's `path` and "
         "`folders`",
         "layered.yaml: unknown key 'colour': use based_on, checks, docs, excluded, fakes, files, forbidden, guards, hints, "
-        "language, layers, name, parts, reserved, testing, tiers, xarch",
+        "language, layers, name, parts, reserved, review, testing, tiers, xarch",
         "layered.yaml: language: 'ruby' is not a language xarch reads: use python",
         "layered.yaml: parts.store.may_import: 'repo' names no part 'repo'"]
 
