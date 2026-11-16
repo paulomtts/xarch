@@ -1,5 +1,6 @@
 """Every violation names the stable id of the check that found it and tells what to do, on a throwaway web project with
-one violation planted at a time; and no rule id can produce one without a fix."""
+one violation planted at a time; and no rule id can produce one without a fix. Where a check's unit tests own the
+wording of its fix, a test here says only that the finding carries one."""
 import shutil
 from pathlib import Path
 
@@ -144,9 +145,8 @@ def test_a_pass_through_is_listed_as_weak_with_its_fix_and_is_no_violation(tmp_p
     app = write(tmp_path / "app", {**APP, "modules/docs/application/services/doc.py": service})
     result = build_controllers().rules.check(CheckImports(app, "app", "web", write(tmp_path / "tests", TESTS)))
     assert isinstance(result, ImportsChecked)
-    assert [(w.rule, w.line, w.fix) for w in result.enforcement.weak if w.rule == "pass-through"] == [
-        ("pass-through", 5, "have the caller use self.repo.get, or keep it as a deliberate plain forward: it stays listed and fails "
-                            "only `check --strict`")]
+    assert [(w.rule, w.line, bool(w.fix)) for w in result.enforcement.weak if w.rule == "pass-through"] == [
+        ("pass-through", 5, True)]
     assert [f.detail for f in result.enforcement.strict if f.key == "weak" and "pass" in f.detail] == [
         "app/modules/docs/application/services/doc.py:5: DocService.get only passes its arguments on to self.repo.get"]
     assert [v.rule for v in result.violations] == []
@@ -157,19 +157,14 @@ def test_every_violation_of_a_check_names_a_rule(tmp_path):
             "def test_publish(given, when, then):\n    if given:\n        pass\n")
     violations = found(tmp_path, {}, {"modules/docs/application/test_publish.py": body})
     assert {v.rule for v in violations} == {"scenario-coverage"}
-    assert [v.fix for v in violations] == [
-        "arrange from given, act with when, assert == then, and give the odd case its own test",
-        'write pytest.param(..., id="<a sentence stating the outcome>")',
-        "add a row whose then is Missing, or a standalone test naming it"]
+    assert [(v.line, bool(v.fix)) for v in violations] == [(5, True), (3, True), (3, True)]
 
 
 def test_a_function_of_a_part_that_holds_classes_is_listed_as_weak_with_its_fix_and_is_no_violation(tmp_path):
     app = write(tmp_path / "app", {**APP, "modules/docs/domain/rule.py": "def clean():\n    return 1\n"})
     result = build_controllers().rules.check(CheckImports(app, "app", "web", write(tmp_path / "tests", TESTS)))
     assert isinstance(result, ImportsChecked)
-    assert [(w.rule, w.line, w.fix) for w in result.enforcement.weak if w.rule == "holds"] == [
-        ("holds", 1, "make clean a method of the class whose rule it is, or move it to a part that holds functions: "
-                     "logic/, kernel-logic/")]
+    assert [(w.rule, w.line, bool(w.fix)) for w in result.enforcement.weak if w.rule == "holds"] == [("holds", 1, True)]
     assert [v.rule for v in result.violations] == []
 
 
@@ -183,9 +178,8 @@ def test_a_test_that_reaches_nothing_its_tier_must_reach_names_its_rule_and_its_
                                                           str(tmp_path / "arch/reach.yaml"),
                                                           write(tmp_path / "tests", tests)))
     assert isinstance(result, ImportsChecked)
-    assert [(v.file, v.rule, v.fix) for v in result.violations] == [
-        ("tests/modules/docs/application/test_other.py", "must-import",
-         "drive what it proves through controller/, or move it to the tier of the part it calls directly")]
+    assert [(v.file, v.rule, bool(v.fix)) for v in result.violations] == [
+        ("tests/modules/docs/application/test_other.py", "must-import", True)]
 
 
 def test_a_file_no_test_of_its_tier_reaches_is_listed_as_weak_with_its_fix(tmp_path):
@@ -193,9 +187,8 @@ def test_a_file_no_test_of_its_tier_reaches_is_listed_as_weak_with_its_fix(tmp_p
                                                                         "        return 1\n"})
     result = build_controllers().rules.check(CheckImports(app, "app", "web", write(tmp_path / "tests", TESTS)))
     assert isinstance(result, ImportsChecked)
-    assert [(w.file, w.fix) for w in result.enforcement.weak if w.rule == "dead-code"] == [
-        ("app/modules/docs/domain/rule.py", "write its unit test in tests/modules/docs/domain/, or delete what nothing "
-                                            "uses")]
+    assert [(w.file, bool(w.fix)) for w in result.enforcement.weak if w.rule == "dead-code"] == [
+        ("app/modules/docs/domain/rule.py", True)]
 
 
 def test_a_shared_part_names_its_rule_and_its_fix(tmp_path):
@@ -226,6 +219,4 @@ def test_a_part_used_only_as_a_type_names_its_rule_and_its_fix(tmp_path):
     result = build_controllers().rules.check(CheckImports(app, "app", str(tmp_path / "arch/typed.yaml"),
                                                           write(tmp_path / "tests", TESTS)))
     assert isinstance(result, ImportsChecked)
-    assert [(v.rule, v.fix) for v in result.violations] == [
-        ("types-only", "use contract/ here only as a type, and leave the call to controller/, adapters/ or web/, which "
-                       "may make it")]
+    assert [(v.rule, v.line, bool(v.fix)) for v in result.violations] == [("types-only", 6, True)]
