@@ -10,13 +10,13 @@ from typing import Any
 
 from xarch.kernel.capabilities import Shortfall, Supply
 from xarch.kernel.placement import Repeat, Target
-from xarch.modules.spec.domain.published import DEFAULT_APP, Copy, DocFile, Entry, Loosened, Origin, ProjectFile
+from xarch.modules.spec.domain.published import DEFAULT_APP, DEFAULT_TESTS, Copy, DocFile, Entry, Loosened, Origin, ProjectFile
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.language import CheckedLanguage
 from xarch.profile_values.testing import Fakes, Framework, ScenarioCoverage, StandIns
 from xarch.profile_values.tiers import CheckedTier
 
-__all__ = ["DEFAULT_APP", "Entry", "Repeating", "Skeleton", "DocFile", "Docs", "ProjectFile", "ProjectFiles",
+__all__ = ["DEFAULT_APP", "DEFAULT_TESTS", "Entry", "Repeating", "Skeleton", "DocFile", "Docs", "ProjectFile", "ProjectFiles",
            "FilesResult", "SkeletonResult", "ProfileResult", "DocsResult", "OriginResult", "PartView",
            "GuardsView", "ProfileView", "ChooseApp", "AppChosen", "ChooseAppResult",
            "SelectProfile", "ProfileSelected", "ProfileRefused",

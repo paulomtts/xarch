@@ -40,8 +40,6 @@ from xarch.modules.rules.domain.values import (
 )
 from xarch.profile_values.tiers import CheckedTier
 
-TESTS_FOLDER = "tests"
-"""Where the tests are shown to be when no tests folder is known."""
 SAMPLE = "x"
 STAND_IN = "<name>"
 OUTSIDE_NOTE = "it lies outside the app folder and the tests folder"
@@ -84,10 +82,10 @@ def describe(profile: Profile, found: Resolved, app: Path, tests: Path | None) -
     """What a resolved path is, and what code there may do."""
     root = app.parent
     if found.within == "tests":
-        return _test(profile, found, _relative(tests, root) if tests is not None else TESTS_FOLDER, app.name)
+        return _test(profile, found, _relative(tests, root) if tests is not None else profile.tests_folder, app.name)
     if found.within == "project":
         return UngovernedPlace(found, (), None, OUTSIDE_NOTE)
-    return _app(profile, found, app.name, _relative(tests, root) if tests is not None else TESTS_FOLDER)
+    return _app(profile, found, app.name, _relative(tests, root) if tests is not None else profile.tests_folder)
 
 
 def _relative(path: Path, root: Path) -> str:

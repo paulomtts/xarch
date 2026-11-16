@@ -55,9 +55,9 @@ from collections.abc import Callable, Mapping
 
 from xarch.kernel.logic.imports import may_import, shown_target
 from xarch.kernel.placement import EACH, EVERYTHING, Repeat, Target
-from xarch.modules.spec.application.logic.defaults import TESTS
 from xarch.modules.spec.application.logic.layout_walk import docs_name, is_file
 from xarch.modules.spec.domain.errors import InvalidTemplate
+from xarch.modules.spec.domain.published import DEFAULT_TESTS
 from xarch.modules.spec.domain.values import (
     NAME,
     Architecture,
@@ -412,7 +412,7 @@ def _guards(architecture: Architecture, _: str, __: Quotes, ___: bool) -> str:
         if architecture.fakes is not None:
             parts = _and([f"`{docs_name(architecture, architecture.parts[p])}`" for p in architecture.fakes.stand_in_for])
             fakes = (f"; only a test whose tier tests {parts} imports the fakes in "
-                     f"`{'/'.join((TESTS, *architecture.fakes.folder))}/`")
+                     f"`{'/'.join((DEFAULT_TESTS, *architecture.fakes.folder))}/`")
         lines.append("`tiers`: a test lives in the folder that mirrors its subject in the app, and imports only that "
                      "part and what it may import (a test in a folder that mirrors no part, its tier's subject and "
                      f"what that may import){fakes}; it imports no other test file.")
@@ -423,7 +423,7 @@ def _guards(architecture: Architecture, _: str, __: Quotes, ___: bool) -> str:
                              "annotate with it, and never calls it.")
     roots = [repeat.root for repeat in architecture.repeats]
     if roots:
-        folders = _and([f"`{'/'.join((TESTS, *root))}/`" for root in roots])
+        folders = _and([f"`{'/'.join((DEFAULT_TESTS, *root))}/`" for root in roots])
         lines.append(f"`test tree`: every folder below {folders} mirrors a folder of the app.")
         instances = _or([f"`{'/'.join(root)}/<name>/`" for root in roots])
         lines.append(f"`cycles`: no {instances} imports from another that imports, directly or through "
@@ -490,7 +490,7 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
                        "only." if untested else "")
             interface = architecture.language.interface_name
             return (f"`dead-code`: every `{interface}` in {ports} is named by another file of the app, and every fake in "
-                    f"`{'/'.join((TESTS, *fakes.folder))}/` by a test; the wiring and re-exports do not "
+                    f"`{'/'.join((DEFAULT_TESTS, *fakes.folder))}/` by a test; the wiring and re-exports do not "
                     f"count.{reached}")
         case PrivateImports():
             return ("`private-imports`: no file of the app or its tests imports a name that starts with "
@@ -585,7 +585,7 @@ def _stand_ins_line(architecture: Architecture, mock: str, spec: str, built: str
     interface = architecture.language.interface_name
     return (f"`stand-ins`: every `{interface}` in {parts} is fire-only (every method returns "
             f"`{architecture.language.checked.nothing}`) or read (any method returns a value), each method annotated; every "
-            f"read port `<Port>` has a fake `{fakes.prefix}<Port>` in `{'/'.join((TESTS, *fakes.folder))}/`{mocks} "
+            f"read port `<Port>` has a fake `{fakes.prefix}<Port>` in `{'/'.join((DEFAULT_TESTS, *fakes.folder))}/`{mocks} "
             "(section 6).")
 
 

@@ -55,7 +55,8 @@ class Profile:
     holds the profile's own advice, by rule id. language is the language of the app. reserved holds the
     standard-library modules (by top-level name, each with why) a part imports only when its libraries list them.
     approximate holds the keys whose check reads a fact the language supplies only partly. checks are the checks the
-    profile writes itself, in its order.
+    profile writes itself, in its order. tests_folder is where the tests are, from the folder holding the app, when
+    no tests folder is given or there.
     """
     parts: dict[str, tuple[str, ...]]
     rules: dict[str, tuple[Target, ...]]
@@ -93,6 +94,7 @@ class Profile:
     reserved: dict[str, str] = field(default_factory=dict)
     approximate: tuple[Shortfall, ...] = ()
     checks: tuple[OwnCheck, ...] = ()
+    tests_folder: str = ""
 
     def words(self) -> dict[str, str]:
         """The word of the repeating folder each part lies in; a part outside every one has none."""

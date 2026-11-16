@@ -23,6 +23,7 @@ from xarch.modules.rules.domain.rule import (
 from xarch.modules.rules.domain.values import InitFile, PartInfo, Profile, Standing
 from xarch.modules.rules.domain.vocabulary import NAMES, PLACES, TARGETS
 from xarch.modules.spec.contract import (
+    DEFAULT_TESTS,
     FilesResult,
     Origin,
     OriginResult,
@@ -85,7 +86,8 @@ class SpecProfiles:
                        info={p.name: PartInfo(p.role, p.litmus, p.shown, p.untested) for p in parts},
                        excluded=view.excluded, hints=dict(view.hints), language=view.language,
                        reserved=dict(view.reserved),
-                       approximate=(*view.approximate, *written.approximate(checks, view.language)), checks=checks)
+                       approximate=(*view.approximate, *written.approximate(checks, view.language)), checks=checks,
+                       tests_folder=DEFAULT_TESTS)
 
     def standing(self, location: str, app: str) -> Standing:
         """No init files when the profile cannot write them for this app, which `init` reports when it refuses; a

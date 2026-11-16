@@ -83,7 +83,7 @@ def test_the_profile_view_becomes_the_profile_the_checks_see():
         no_twins_renamed=4, no_twins_subset=3,
         dead_code=True, pass_through=("api",), untested=True, holds={"core": "functions"},
         types_only={"api": ("core",)}, no_callbacks=("core",), names={"api": ("*Api",)}, built_by={"api": ("core",)},
-        shared={"core": 2}, private_imports=True, hints={"rules": "ask first"})
+        shared={"core": 2}, private_imports=True, hints={"rules": "ask first"}, tests_folder="tests")
 
 
 def test_the_standing_keeps_the_guards_left_off_and_those_the_baseline_leaves_off_too():

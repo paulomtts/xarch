@@ -10,6 +10,8 @@ just as spec holds it, so there is nothing to reshape. Everything else spec hand
                  module compares a pinned one with
     DEFAULT_APP  the app folder read when none is given or recorded, which the module that scaffolds leaves
                  unrecorded
+    DEFAULT_TESTS  the tests folder read when none is given or configured, where the checking module shows the
+                 tests to be when there is none
     Entry        a folder or a file of a profile's layout, which the modules that check and build the layout read
     DocFile      a project doc and the text it starts with, which the module that scaffolds writes
 """
@@ -19,6 +21,8 @@ from dataclasses import dataclass
 
 DEFAULT_APP = "app"
 """The app folder xarch assumes, in the working folder, when none is given or recorded."""
+DEFAULT_TESTS = "tests"
+"""The tests folder xarch assumes, beside the app folder, when none is given or configured."""
 
 
 @dataclass(frozen=True)

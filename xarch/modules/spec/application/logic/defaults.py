@@ -4,10 +4,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from pathlib import Path
 
-from xarch.modules.spec.domain.published import DEFAULT_APP
-
-TESTS = "tests"
-"""The folder of the tests, beside the app folder, when none is given or configured."""
+from xarch.modules.spec.domain.published import DEFAULT_APP, DEFAULT_TESTS
 
 
 def default_app() -> Path:
@@ -17,7 +14,7 @@ def default_app() -> Path:
 
 def default_tests(app: Path) -> Path:
     """The tests folder beside the app folder, which app names from the root down."""
-    return app.parent / TESTS
+    return app.parent / DEFAULT_TESTS
 
 
 def first_language(languages: Iterable[str]) -> str:

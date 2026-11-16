@@ -75,7 +75,7 @@ PROFILE = Profile(
     stand_ins=StandIns((MOCK, ("unittest", "mock", "MagicMock")), (AUTOSPEC,), ("spec", "spec_set"),
                        (Fixture("mocker", ("Mock", "MagicMock"), ("create_autospec",)),)),
     framework=Framework(("test_*.py", "*_test.py"), "test_*"),
-    forbidden={"domain": (NOW, ("builtins", "open"), ("socket",))}, language=PYTHON)
+    forbidden={"domain": (NOW, ("builtins", "open"), ("socket",))}, language=PYTHON, tests_folder="tests")
 
 
 PLUGINS = Repeat("plugin", ("plugins",))
