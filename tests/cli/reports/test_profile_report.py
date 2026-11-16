@@ -33,7 +33,14 @@ def test_an_unknown_key_is_said_with_the_nearest_ones_in_text_and_in_json():
     found = UnknownKey("tire", ("tier", "tiers"))
     assert unknown_message(found) == "no key `tire` in the format: the nearest are tier, tiers"
     assert json.loads(unknown_document(found)) == {
-        "ok": False, "error": unknown_message(found), "key": "tire", "nearest": ["tier", "tiers"]}
+        "ok": False, "error": unknown_message(found), "key": "tire", "nearest": ["tier", "tiers"], "words": []}
+
+
+def test_an_unknown_key_near_words_of_a_check_keeps_the_keys_and_the_words_apart_in_json():
+    found = UnknownKey("public", ("name",))
+    assert json.loads(unknown_document(found, ("filters.public",))) == {
+        "ok": False, "error": "no key `public` in the format: the nearest are name; of the words of a check, "
+                              "filters.public", "key": "public", "nearest": ["name"], "words": ["filters.public"]}
 
 
 def test_a_new_profile_says_what_was_written_and_how_to_put_it_in_force():

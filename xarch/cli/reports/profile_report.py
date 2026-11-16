@@ -4,8 +4,9 @@ document, `{"ok": ...}` first, a refusal being `{"ok": false, "error": ...}`.
 explain, no key: {"ok", "format", "shape", "symbols", "smallest", "deeper"}, each shape entry {"key", "depth",
 "meaning", "required", "enforced"}. explain, one key: {"ok", "key", "where", "meaning", "accepts", "required",
 "enforced", "rules", "example", "choices", "keys", "needs", "language"}, each need {"fact", "meaning", "grade",
-"note"}: a fact of the source the key's check reads, and how the language named supplies it. explain, a profile:
-{"ok", "profile", "name", "tree", "imports"}.
+"note"}: a fact of the source the key's check reads, and how the language named supplies it. explain, a key the
+format has not: {"ok": false, "error", "key", "nearest", "words"}, nearest the format's keys near it and words the
+words of a check near it. explain, a profile: {"ok", "profile", "name", "tree", "imports"}.
 check: {"ok", "profile", "problems", "files", "checks", "compared_with"}, checks the number of checks the profile
 writes itself, each problem {"check", "message"} (check: load, examples, or checks, for a check of the profile's own)
 and compared_with {"profile", "looser"} (null for a bundled profile or one that resembles none), each looser entry
@@ -154,7 +155,7 @@ def _grade(need: Need, graded: bool) -> str | None:
 
 def unknown_document(found: UnknownKey, words: Sequence[str] = ()) -> str:
     return document({"ok": False, "error": unknown_message(found, words), "key": found.key,
-                  "nearest": [*found.nearest, *words]})
+                  "nearest": list(found.nearest), "words": list(words)})
 
 
 def _shown(shown: Shown) -> dict[str, Any]:

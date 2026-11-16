@@ -105,12 +105,20 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
             return
         close: tuple[str, ...] = ()
         if key is not None and profile is None and not configured:
-            match rules.explain_words(ExplainWords(key)):
+            match rules.explain_words(ExplainWords(key, app_for(spec, in_full(Path()), app_path, refuse))):
                 case NoWords(_, close):
                     pass
-                case _:
-                    _words(rules, spec, key, app_path, output)
+                case ChecksShown() as shown:
+                    _show(output, words.checks_document(shown), words.checks_lines(shown))
                     return
+                case WordsShown() as shown:
+                    _show(output, words.category_document(shown), words.category_lines(shown))
+                    return
+                case WordShown() as shown:
+                    _show(output, words.word_document(shown), words.word_lines(shown))
+                    return
+                case UnknownWords() as unknown:
+                    raise refuse_with(output, words.unknown_message(unknown), words.unknown_document(unknown))
         if profile is not None or configured:
             if key is not None or (profile is not None and configured):
                 raise refuse(key_or_profile())
@@ -173,16 +181,4 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
 
 def _show(output: Format, document: str, lines: list[str]) -> None:
     echo([document] if output is Format.json else lines)
-
-
-def _words(rules: RulesController, spec: SpecController, key: str, app_path: Path | None, output: Format) -> None:
-    match rules.explain_words(ExplainWords(key, app_for(spec, in_full(Path()), app_path))):
-        case ChecksShown() as shown:
-            _show(output, words.checks_document(shown), words.checks_lines(shown))
-        case WordsShown() as shown:
-            _show(output, words.category_document(shown), words.category_lines(shown))
-        case WordShown() as shown:
-            _show(output, words.word_document(shown), words.word_lines(shown))
-        case UnknownWords() as unknown:
-            raise refuse_with(output, words.unknown_message(unknown), words.unknown_document(unknown))
 
