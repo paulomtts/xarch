@@ -62,6 +62,7 @@ from xarch.modules.spec.application.logic import profile_checks as ck
 from xarch.modules.spec.application.logic import profile_examples as ex
 from xarch.modules.spec.application.logic import profile_needs as needs
 from xarch.modules.spec.application.logic.key_lookup import keys_of, names_of, required_of
+from xarch.modules.spec.application.logic.targets_written import NAME_PATTERN, WORD, may_import
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.guards import GUARDS
 from xarch.modules.spec.domain.profile_keys import (
@@ -102,11 +103,7 @@ from xarch.modules.spec.domain.values import (
     TierExample,
 )
 
-WORD = "everything"
-"""How a file writes EVERYTHING: for what a part may import and for its libraries."""
 _REPEATING = re.compile(r"<([A-Za-z_][A-Za-z0-9_-]*)>")
-_TARGET = re.compile(r"(?P<part>[^@/:]*)(?:@(?P<scope>[^/:]*))?(?:/(?P<sub>[^:]*))?(?::(?P<names>.*))?")
-_NAME_PATTERN = re.compile(r"[A-Za-z0-9_*]+")
 _HOLDS = ("classes", "functions")
 _TIER_TEXTS = ("subject", "may_touch", "one_file_per", "cases_from", "data")
 """The keys under a tier's `docs` that hold one line of text each."""
@@ -158,7 +155,7 @@ def parse_v2(document: Any, source: str, files: Collection[str] = (), presets: M
     built = _layout(specs, problems)
     parts = built.parts
     examples = ex.example_files(document.get("docs", {}), files, problems, language)
-    rules = {part: _may_import(specs[part].get("may_import"), item, parts, declared, f"parts.{part}.may_import",
+    rules = {part: may_import(specs[part].get("may_import"), item, parts, declared, f"parts.{part}.may_import",
                                problems, patterns=True) for part, item in parts.items()}
     reserved = ck.reserved_modules(document["reserved"], problems, language) if "reserved" in document else {}
     libraries = {part: _libraries(specs[part], f"parts.{part}.libraries", problems, language, reserved)
@@ -414,88 +411,6 @@ def _add_folder(tree: Layout, path: tuple[str, ...]) -> bool:
     return True
 
 
-def _may_import(value: Any, owner: Part | None, parts: dict[str, Part], declared: set[str], where: str,
-                problems: list[str], patterns: bool = False) -> tuple[Target, ...]:
-    """What a part, or the tests in a tier's folder (no owner), may import, as targets; a name pattern only where
-    patterns allows one."""
-    if value is None:
-        return ()
-    if value == WORD:
-        return (Target(EVERYTHING),)
-    if not isinstance(value, list):
-        problems.append(f"{where}: must be a list of targets such as [<part>, shared/text, api@any], or {WORD}")
-        return ()
-    found: list[Target] = []
-    for item in value:
-        target = _target(item, owner, parts, declared, where, problems, patterns)
-        if target is not None:
-            found.append(target)
-    return tuple(found)
-
-
-def _target(value: Any, owner: Part | None, parts: dict[str, Part], declared: set[str], where: str,
-            problems: list[str], patterns: bool = False) -> Target | None:
-    if value == WORD:
-        problems.append(f"{where}: {value!r} stands alone: write `may_import: {WORD}`, not in a list")
-        return None
-    match = _TARGET.fullmatch(value) if isinstance(value, str) else None
-    if match is None or not match["part"]:
-        problems.append(f"{where}: {value!r} is not a target: use <part>, <part>@any, optionally followed by /<path>")
-        return None
-    name, scope, sub, names = match["part"], match["scope"], match["sub"], match["names"]
-    if names is not None and not patterns:
-        problems.append(f"{where}: {value!r} has a name pattern: only a part's `may_import` narrows what may be "
-                        "imported by name")
-        return None
-    if names is not None and not names:
-        problems.append(f"{where}: {value!r} has an empty name pattern after `:`")
-        return None
-    if names is not None and not _NAME_PATTERN.fullmatch(names):
-        problems.append(f"{where}: {value!r} has a name pattern that is not one: use letters, digits, '_' and `*`")
-        return None
-    part = parts.get(name)
-    if part is None:
-        if name not in declared:
-            problems.append(f"{where}: {value!r} names no part {name!r}")
-        return None
-    if scope is not None and scope not in ("own", "any"):
-        problems.append(f"{where}: {value!r} has an unknown scope '@{scope}': the only scope is @any, any instance of "
-                        "the repeating folder")
-        return None
-    inside = owner is not None and owner.in_instance and root_of(owner.path) == root_of(part.path)
-    if part.in_instance and scope == "own" and inside:
-        problems.append(f"{where}: {value!r} says what a bare name already says: write {name}")
-        return None
-    if part.in_instance and not inside and scope != "any":
-        if owner is not None and owner.in_instance:
-            problems.append(f"{where}: {value!r} lies in another repeating folder than part '{owner.name}', which has "
-                            f"no own instance of it: write {name}@any")
-            return None
-        importer = f"{owner.name} is" if owner is not None else "a tier's folder is"
-        problems.append(f"{where}: {value!r} lies in the repeating folder, which {importer} not in: say {name}@any")
-        return None
-    if not part.in_instance and scope is not None:
-        problems.append(f"{where}: {value!r} does not lie in the repeating folder: drop '@{scope}'")
-        return None
-    steps = tuple(sub.split("/")) if sub is not None else ()
-    if any(not step or step in (".", "..") or EACH in step for step in steps):
-        problems.append(f"{where}: {value!r} has an invalid path after the part")
-        return None
-    chosen = "any" if scope == "any" else ("own" if part.in_instance else "none")
-    if owner is not None and name == owner.name and chosen != "any":
-        problems.append(_implied(where, value, owner))
-        return None
-    return Target(name, chosen, steps, names or "")
-
-
-def _implied(where: str, value: str, part: Part) -> str:
-    """A part may always import itself, so a target that only says so is refused."""
-    if not part.in_instance:
-        return f"{where}: {value!r} is implied: a part may always import itself; remove it"
-    return (f"{where}: {value!r} is implied: a part may always import itself, its own instance of the repeating "
-            f"folder; remove it ({part.name}@any, another instance's too, stays allowed)")
-
-
 def _libraries(spec: Mapping[Any, Any], where: str, problems: list[str], language: Language,
                reserved: Mapping[str, str]) -> tuple[str, ...]:
     """The outside packages of a part, and the reserved modules it may import: none unless it lists them;
@@ -667,7 +582,7 @@ def _tier(name: str, spec: Any, subject: tuple[Subject, ...], parts: dict[str, P
     if "folder" not in spec and "may_import" in spec:
         problems.append(f"{where}.may_import: only a tier with a `folder` has an allowance of its own: without one, its "
                         "tests import what the part they mirror may")
-    allowance = (_may_import(spec.get("may_import"), None, parts, declared, f"{where}.may_import", problems)
+    allowance = (may_import(spec.get("may_import"), None, parts, declared, f"{where}.may_import", problems)
                  if "folder" in spec else None)
     docs = _tier_docs(spec["docs"], folder, examples, f"{where}.docs", problems, language) if "docs" in spec else {}
     reach = (ck.part_names(spec["must_import"], declared, f"{where}.must_import", problems)
@@ -872,7 +787,7 @@ def _class_patterns(value: Any, where: str, problems: list[str]) -> tuple[str, .
         problems.append(f"{where}: must be a class name pattern with `*` for any text, such as *Store, or a list of "
                         "them")
         return ()
-    bad = [item for item in items if not isinstance(item, str) or not _NAME_PATTERN.fullmatch(item)]
+    bad = [item for item in items if not isinstance(item, str) or not NAME_PATTERN.fullmatch(item)]
     problems += [f"{where}: {item!r} is not a class name pattern: use letters, digits, '_' and `*`" for item in bad]
     return () if bad else tuple(items)
 
@@ -923,7 +838,7 @@ def _pass_through(spec: Any, declared: set[str], parts: dict[str, Part], where: 
 
 
 def _must_import(spec: Any, owner: Part, parts: dict[str, Part], declared: set[str],
-                 may_import: tuple[Target, ...], problems: list[str]) -> tuple[Target, ...]:
+                 allowed: tuple[Target, ...], problems: list[str]) -> tuple[Target, ...]:
     """The targets a part's files must import one of: each one its `may_import` allows."""
     where = f"parts.{owner.name}.must_import"
     if not isinstance(spec, Mapping) or "must_import" not in spec:
@@ -933,11 +848,11 @@ def _must_import(spec: Any, owner: Part, parts: dict[str, Part], declared: set[s
         problems.append(f"{where}: must be a list of targets such as [<part>, <part>@any]")
         return ()
     count = len(problems)
-    found = _may_import(value, owner, parts, declared, where, problems)
+    found = may_import(value, owner, parts, declared, where, problems)
     if len(problems) != count:
         return ()
     for item, target in zip(value, found):
-        if not any(t.part == EVERYTHING or t == target for t in may_import):
+        if not any(t.part == EVERYTHING or t == target for t in allowed):
             problems.append(f"{where}: {item!r} is not in `may_import`, so no file could import it: add it there, or "
                             "name a part the part may import")
     return found if len(problems) == count else ()

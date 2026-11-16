@@ -66,7 +66,7 @@ def forbidden(profile: Profile) -> tuple[Rule, ...]:
     if not profile.forbidden:
         return ()
     facts = ("imported-name", "use", "method-call")
-    keep, exempt = _all("not relative", "not held"), _all("hit-by-its-import")
+    keep, exempt = _all("not relative", "not held"), _all("already-imported")
     fakes = (_of(f"not below {'/'.join(profile.fakes.folder)}"),) if profile.fakes is not None else ()
     found = [Rule("forbidden", Scope(APP, part), facts, MAY_NOT, (Match("path", names=names),),
                   (Saying("{part} may not {verb} {hit} ({key})", FORBIDDEN_FIX, once=("line", "hit")),),
@@ -89,7 +89,8 @@ def package_only(profile: Profile) -> tuple[Rule, ...]:
                  (Match("part", words=profile.package_only),),
                  (Saying("{target_part} is imported only as a package, never by its files ({target}) (package-only)",
                          "import from {target_package}"),),
-                 keep=_all("target-placed", "target-inside-part"), exempt=_all("target-in-own-part")),)
+                 keep=_all("target-placed", "target-inside-part"), exempt=_all("target-in-own-part"),
+                 key="parts.<part>.package_only"),)
 
 
 def private_imports(profile: Profile) -> tuple[Rule, ...]:
@@ -100,7 +101,7 @@ def private_imports(profile: Profile) -> tuple[Rule, ...]:
     return (Rule("private-imports", Scope(ALL), ("imported-name",), MAY_NOT, EXISTING,
                  (Saying("imports the private name {name} from {written} (private-imports)",
                          "make {name} public where it is defined (drop the `_`), or move it to a file both may import"),),
-                 keep=_all("takes-a-name", "own-code", "not public", "not special")),)
+                 keep=_all("takes-a-name", "own-code", "not public", "not special"), key="guards.private-imports"),)
 
 
 def built_by(profile: Profile) -> tuple[Rule, ...]:
@@ -112,7 +113,7 @@ def built_by(profile: Profile) -> tuple[Rule, ...]:
                  (Saying("{part} builds {name}, a class of {target_part}, which only {built_by} may build "
                          "(parts.{target_part_name}.built_by)",
                          "take {name} as a parameter of the constructor, and build it in {built_by}"),),
-                 exempt=_all("target-part-lists built_by")),)
+                 exempt=_all("target-part-lists built_by"), key="parts.<part>.built_by"),)
 
 
 def rules(profile: Profile) -> tuple[Rule, ...]:
@@ -177,11 +178,11 @@ def tiers(profile: Profile) -> tuple[Rule, ...]:
     elsewhere = Saying("a test may import test code only from its own folder {own_folder}/ ({target})",
                        "move what {target} holds into {own_folder}/, or drop the import")
     return (Rule("tiers", Scope(TESTS, where=(_of("not tiered"), _of("test"), *not_fake)), ("file",), MAY_NOT,
-                 EXISTING, (Saying(NO_TIER, NO_TIER_FIX),)),
+                 EXISTING, (Saying(NO_TIER, NO_TIER_FIX),), key="tiers"),
             Rule("tiers", Scope(TESTS, where=_all("tiered")), ("import-into-app",), MAY_ONLY, (Match("permitted"),),
-                 (mirrored, by_folder), keep=_all("target-placed")),
+                 (mirrored, by_folder), keep=_all("target-placed"), key="tiers"),
             Rule("tiers", Scope(TESTS, where=_all("tiered")), ("import-into-tests",), MAY_ONLY, (Match("permitted"),),
-                 (*fakes, test, elsewhere)))
+                 (*fakes, test, elsewhere), key="tiers"))
 
 
 def syntax(profile: Profile) -> tuple[Rule, ...]:
@@ -216,7 +217,7 @@ def no_comments(profile: Profile) -> tuple[Rule, ...]:
         return ()
     return (Rule("no-comments", Scope(ALL), ("comment",), MAY_NOT, EXISTING,
                  (Saying("a comment (no-comments)", "say it in a docstring or a name, and delete the comment"),),
-                 exempt=_all("directive")),)
+                 exempt=_all("directive"), key="guards.no-comments"),)
 
 
 def closed_tree(profile: Profile) -> tuple[Rule, ...]:
@@ -226,7 +227,7 @@ def closed_tree(profile: Profile) -> tuple[Rule, ...]:
     return (Rule("closed-tree", Scope(APP, where=_all("not placed")), ("file",), MAY_NOT, EXISTING,
                  (Saying("lies in no part and no folder of the layout (closed-tree)",
                          "move {file} into the part that fits it (run xarch where {file}), or add its folder to the "
-                         "layout"),)),)
+                         "layout"),), key="guards.closed-tree"),)
 
 
 def holds(profile: Profile) -> tuple[Rule, ...]:
@@ -291,13 +292,14 @@ def dead_code(profile: Profile) -> tuple[Rule, ...]:
                   (Saying("{name} is a port that nothing else in the app names (dead-code)",
                           "delete {name} and its fake, or add the code that uses it"),),
                   keep=_all("interface"), links=("mentions",),
-                  roots=Scope(APP, where=_all("not package-file", "not may-import-everything")), elsewhere=True)
+                  roots=Scope(APP, where=_all("not package-file", "not may-import-everything")), elsewhere=True,
+                  key="guards.dead-code")
              for part in profile.fakes.stand_in_for]
     fakes = Rule("dead-code", Scope(TESTS, where=_all(f"below {folder}")), ("class",), MUST_BE_REACHED, EXISTING,
                  (Saying("{name} is a fake that no test names (dead-code)",
                          "delete {name}, or write the test that uses it"),),
                  keep=_all(f"named {prefix}*"), exempt=_all(f"named {prefix}") if prefix else (), links=("mentions",),
-                 roots=Scope(TESTS, where=_all(f"not below {folder}")), spread=("class",))
+                 roots=Scope(TESTS, where=_all(f"not below {folder}")), spread=("class",), key="guards.dead-code")
     return (*ports, fakes)
 
 
@@ -312,7 +314,7 @@ def untested(profile: Profile) -> tuple[Rule, ...]:
                          "write its {tier} test in {tests_folder}/, or delete what nothing uses"),),
                  exempt=_all("package-file", "exceptions-only", "inert"), mode=LIST, links=("import-into-app",),
                  via=_all("target-in-own-tier"), roots=Scope(TESTS, where=_all("tiered")),
-                 spread=("import-into-app",)),)
+                 spread=("import-into-app",), key="guards.dead-code.untested"),)
 
 
 def pass_through(profile: Profile) -> tuple[Rule, ...]:

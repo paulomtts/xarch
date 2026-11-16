@@ -1,11 +1,28 @@
 """Profiles filled by the spec module: the only file in rules that names spec, and it names only spec's contract."""
 from __future__ import annotations
 
-from typing import Protocol
+from collections.abc import Mapping
+from typing import Any, Protocol
 
+from xarch.kernel.logic.capabilities import FACTS, Shortfall, shortfalls
+from xarch.kernel.logic.language import LanguageView
 from xarch.kernel.logic.origin import Origin
-from xarch.modules.rules.domain.errors import ProfileUnusable
+from xarch.modules.rules.domain.errors import ProfileUnusable, RuleRefused
+from xarch.modules.rules.domain.rule import (
+    EXISTING,
+    MAY_NOT,
+    MAY_ONLY,
+    MUST_BE_REACHED,
+    MUST_REACH,
+    Condition,
+    Match,
+    OwnCheck,
+    Rule,
+    Saying,
+    Scope,
+)
 from xarch.modules.rules.domain.values import InitFile, PartInfo, Profile, Standing
+from xarch.modules.rules.domain.vocabulary import NAMES, PLACES, TARGETS
 from xarch.modules.spec.contract import FilesResult, OriginResult, ProfileRefused, ProfileView, ProjectFiles
 
 
@@ -69,3 +86,69 @@ class SpecProfiles:
 def _text(content: str | bytes) -> str:
     """What `check` compares a pinned file with: a file copied as bytes is compared as the text it holds."""
     return content if isinstance(content, str) else content.decode("utf-8", errors="replace")
+
+
+class WrittenChecks:
+    """The checks a profile writes itself, as spec reads their syntax (see spec's written_checks), made into rules: a
+    check that names a word the vocabulary does not hold, or one that does not apply, or that needs a fact the
+    language's reader does not supply, is refused with every problem of every check at once (ProfileUnusable)."""
+
+    def own(self, checks: Mapping[str, Mapping[str, Any]], language: LanguageView) -> tuple[OwnCheck, ...]:
+        found: list[OwnCheck] = []
+        problems: list[str] = []
+        for name, body in checks.items():
+            try:
+                rule = self._rule(name, body)
+            except RuleRefused as refused:
+                problems += [f"checks.{name}.{problem}" for problem in refused.problems]
+                continue
+            problems += self._supplied(name, rule, language)
+            found.append(OwnCheck(rule, body["examples"]["flagged"], body["examples"]["clean"]))
+        if problems:
+            raise ProfileUnusable("; ".join(problems))
+        return tuple(found)
+
+    def approximate(self, checks: tuple[OwnCheck, ...], language: LanguageView) -> tuple[Shortfall, ...]:
+        """The checks that read a fact the language's reader supplies only partly, by the fact."""
+        supplies = {s.fact: s for s in language.supplies or ()}
+        return tuple(short for check in checks for short in shortfalls(check.rule.key, check.rule.needs, supplies)
+                     if short.note is not None)
+
+    def _supplied(self, name: str, rule: Rule, language: LanguageView) -> list[str]:
+        if language.supplies is None:
+            return []
+        supplies = {s.fact: s for s in language.supplies}
+        return [f"checks.{name}: needs {short.fact} ({FACTS[short.fact]}), which the reader of {language.title} does "
+                "not supply: read another kind of fact, or drop the check"
+                for short in shortfalls(rule.key, rule.needs, supplies) if short.note is None]
+
+    def _rule(self, name: str, body: Mapping[str, Any]) -> Rule:
+        quantifier = next(slot for slot in (MAY_NOT, MAY_ONLY, MUST_REACH, MUST_BE_REACHED) if slot in body)
+        reach = body[quantifier] if quantifier in (MUST_REACH, MUST_BE_REACHED) else {}
+        targets = (EXISTING if quantifier == MUST_BE_REACHED else
+                   tuple(self._match(t) for t in (reach["targets"] if quantifier == MUST_REACH else body[quantifier])))
+        sayings = (*(Saying(case["message"], case["fix"], self._conditions(case["when"]), case["once_per"])
+                     for case in body["cases"]),
+                   Saying(body["message"], body["fix"], (), body["once_per"]))
+        return Rule(name, self._scope(body["in"]), body["read"], quantifier, targets, sayings,
+                    keep=self._conditions(body["keep"]), exempt=self._conditions(body["except"]), mode=body["mode"],
+                    key=f"checks.{name}", links=reach.get("through", ()),
+                    via=self._conditions(reach.get("keep_links", ())),
+                    roots=self._scope(reach["from"]) if "from" in reach else None, spread=reach.get("onward", ()),
+                    elsewhere=reach.get("by_another_file", False))
+
+    def _scope(self, scope: Mapping[str, Any]) -> Scope:
+        return Scope(scope["files"], scope["part"], scope["tier"], self._conditions(scope["where"]))
+
+    def _conditions(self, texts: tuple[str, ...]) -> tuple[Condition, ...]:
+        return tuple(Condition.of(text) for text in texts)
+
+    def _match(self, target: Mapping[str, Any]) -> Match:
+        kind, values = target["kind"], target["values"]
+        written = next((k.values for k in TARGETS if k.name == kind), "")
+        if written == PLACES:
+            return Match(kind, places=values)
+        if written == NAMES:
+            return Match(kind, names=tuple(("", value[1:]) if value.startswith(".") else tuple(value.split("."))
+                                           for value in values))
+        return Match(kind, words=tuple(values))

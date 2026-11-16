@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from xarch.kernel.logic.capabilities import Supply
 from xarch.kernel.logic.placement import Marks
 
 
@@ -16,7 +17,7 @@ class LanguageView:
     value, the marker of a line comment, the comments its tools read (after the marker, a space standing for any
     spaces), how line 1 names the program that runs the file, how line 1 or 2 declares the encoding (a regular
     expression, after the marker), and the keywords of the statements that branch. An empty token: the language has
-    none."""
+    none. supplies are the facts its reader supplies, each graded (None: its data file does not say)."""
     title: str = ""
     extension: str = ""
     package_file: str = ""
@@ -31,6 +32,7 @@ class LanguageView:
     shebang: str = ""
     encoding: str = ""
     branching: tuple[str, ...] = ()
+    supplies: tuple[Supply, ...] | None = None
 
     @property
     def marks(self) -> Marks:

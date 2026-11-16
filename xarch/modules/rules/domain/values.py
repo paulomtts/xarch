@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from xarch.kernel.logic.capabilities import Shortfall
 from xarch.kernel.logic.language import LanguageView
@@ -11,6 +12,9 @@ from xarch.kernel.logic.placement import Excluded, Place, Repeat, Target, repeat
 from xarch.kernel.logic.source import Import, Unparsable
 from xarch.kernel.logic.testing import Fakes, Framework, ScenarioCoverage, StandIns, TierView
 from xarch.kernel.violations import At, Violation, Weak
+
+if TYPE_CHECKING:
+    from xarch.modules.rules.domain.rule import OwnCheck
 
 
 @dataclass(frozen=True)
@@ -45,7 +49,8 @@ class Profile:
     part, the parts that alone may build its classes; private_imports switches the private-imports guard on. hints
     holds the profile's own advice, by rule id. language is the language of the app. reserved holds the
     standard-library modules (by top-level name, each with why) a part imports only when its libraries list them.
-    approximate holds the keys whose check reads a fact the language supplies only partly.
+    approximate holds the keys whose check reads a fact the language supplies only partly. checks are the checks the
+    profile writes itself, in its order.
     """
     parts: dict[str, tuple[str, ...]]
     rules: dict[str, tuple[Target, ...]]
@@ -79,6 +84,7 @@ class Profile:
     language: LanguageView = LanguageView()
     reserved: dict[str, str] = field(default_factory=dict)
     approximate: tuple[Shortfall, ...] = ()
+    checks: tuple[OwnCheck, ...] = ()
 
     def words(self) -> dict[str, str]:
         """The word of the repeating folder each part lies in; a part outside every one has none."""

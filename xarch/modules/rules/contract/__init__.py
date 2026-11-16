@@ -11,7 +11,9 @@ from xarch.kernel.violations import At, Violation, Weak
 __all__ = ["DriftView", "FindingView", "ExcludedView", "EnforcementView", "ReachView", "NearestView", "TierInfoView",
            "PartShown", "CoveringTest", "Untested", "InPart", "InStructure", "Ungoverned", "InTests", "Support", "Fake",
            "WhereAnswer", "CheckImports", "ImportsChecked", "NotADirectory", "CheckResult", "CheckApp", "AppChecked",
-           "CheckAppResult", "Locate", "Located", "Outside", "LocateResult"]
+           "CheckAppResult", "Locate", "Located", "Outside", "LocateResult", "CATEGORIES", "ExplainWords", "SlotShown",
+           "WordLine", "CategoryShown", "ChecksShown", "WordsShown", "FieldShown", "WordShown", "UnknownWords",
+           "WordsResult", "ExplainRule", "RuleShown", "NoRuleShown", "RuleResult"]
 
 
 @dataclass(frozen=True)
@@ -276,3 +278,127 @@ class Outside:
 
 
 LocateResult = Located | Outside
+
+
+CATEGORIES = ("checks", "kinds", "quantifiers", "targets", "filters", "variables")
+"""The first steps of the addresses `explain` answers with the words a check is written in: how a check is written,
+and each category of its words."""
+
+
+@dataclass(frozen=True)
+class ExplainWords:
+    """Explain how a check is written (`checks`), a category of its words (`filters`), or one word (`filters.public`);
+    an example is a rule of the first of the profiles named (a bundled name or a path) that is written with the word."""
+    address: str
+    examples_from: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class SlotShown:
+    """A slot of a check: its name, what it is for, what it accepts."""
+    name: str
+    meaning: str
+    accepts: str
+
+
+@dataclass(frozen=True)
+class WordLine:
+    """A word in a line: its name and what it means."""
+    name: str
+    meaning: str
+
+
+@dataclass(frozen=True)
+class CategoryShown:
+    """A category of words: its address, what it holds, and its words."""
+    name: str
+    meaning: str
+    words: tuple[WordLine, ...]
+
+
+@dataclass(frozen=True)
+class ChecksShown:
+    """How a check is written and read: the sentence it reads as, its slots, the categories of its words, and one
+    whole check of a profile, as an example, with the key and the profile it comes from."""
+    reading: str
+    slots: tuple[SlotShown, ...]
+    categories: tuple[CategoryShown, ...]
+    example_key: str
+    example_profile: str
+    example: str
+
+
+@dataclass(frozen=True)
+class WordsShown:
+    """A category of words, each in a line."""
+    category: CategoryShown
+
+
+@dataclass(frozen=True)
+class FieldShown:
+    """A field a kind of fact carries: its name, what it is, and the filter that must hold for a fact to carry it
+    ("" when it always does)."""
+    name: str
+    meaning: str
+    when: str
+
+
+@dataclass(frozen=True)
+class WordShown:
+    """One word: its address, category, name and meaning; what it is about (a filter: the file, the fact or what the
+    fact reaches); the kinds of fact it applies to; the side of the files it applies to ("" both); what its value is
+    ("" none); for a kind, its fields, the facts of the source it needs and its verb; and an example, a whole check
+    written with the word, with the key and the profile it comes from ("" when none of them has one)."""
+    address: str
+    category: str
+    name: str
+    meaning: str
+    about: str = ""
+    applies_to: tuple[str, ...] = ()
+    side: str = ""
+    value: str = ""
+    fields: tuple[FieldShown, ...] = ()
+    needs: tuple[str, ...] = ()
+    verb: str = ""
+    example_key: str = ""
+    example_profile: str = ""
+    example: str = ""
+
+
+@dataclass(frozen=True)
+class UnknownWords:
+    """An address of no word: what was typed and the nearest addresses."""
+    typed: str
+    nearest: tuple[str, ...]
+
+
+WordsResult = ChecksShown | WordsShown | WordShown | UnknownWords
+
+
+@dataclass(frozen=True)
+class ExplainRule:
+    """The rules a key of the profile at location expands to (parts.names: of every part), as a profile would write
+    them as checks of its own."""
+    address: str
+    profile: str
+
+
+@dataclass(frozen=True)
+class RuleShown:
+    """The rules a key expands to in a profile, written as checks, and how many."""
+    address: str
+    profile: str
+    text: str
+    count: int
+
+
+@dataclass(frozen=True)
+class NoRuleShown:
+    """A key that expands to no rule in that profile, and why (the profile does not set it, it is checked by a check
+    of its own, or the profile cannot be read)."""
+    address: str
+    profile: str
+    reason: str
+
+
+RuleResult = RuleShown | NoRuleShown

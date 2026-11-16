@@ -5,7 +5,20 @@ from typing import Annotated
 import typer
 
 from xarch.cli.reports import profile_report as report
+from xarch.cli.reports import vocabulary_report as words
 from xarch.cli.terminal import AppPath, Format, FormatOption, app_for, fail, no_profile, refusal
+from xarch.modules.rules.application.controller import RulesController
+from xarch.modules.rules.contract import (
+    CATEGORIES,
+    ChecksShown,
+    ExplainRule,
+    ExplainWords,
+    NoRuleShown,
+    RuleShown,
+    UnknownWords,
+    WordShown,
+    WordsShown,
+)
 from xarch.modules.spec.application.controller import SpecController
 from xarch.modules.spec.contract import (
     CheckProfile,
@@ -20,13 +33,15 @@ from xarch.modules.spec.contract import (
     ProfileChecked,
     ProfileCreated,
     ProfileRefused,
+    ProfileSelected,
     ProfileViewed,
+    SelectProfile,
     UnknownKey,
     ViewProfile,
 )
 
 
-def register(app: typer.Typer, spec: SpecController) -> None:
+def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> None:
     group = typer.Typer(help="Work on a profile file: explain the format, copy a bundled profile, check one, convert one from "
                                 "format 1.", no_args_is_help=True)
     app.add_typer(group, name="profile")
@@ -51,20 +66,43 @@ def register(app: typer.Typer, spec: SpecController) -> None:
 
     @group.command()
     def explain(key: Annotated[str | None, typer.Argument(
-                    help="A key of the format, such as parts, parts.may_import, guards.no-duplicates or testing. "
-                         "Without one, the whole format on one screen.")] = None,
+                    help="A key of the format, such as parts, parts.may_import, guards.no-duplicates or testing; or "
+                         "checks, how a check is written, or a category of its words (kinds, quantifiers, targets, "
+                         "filters, variables) or one of them, such as filters.public. Without one, the whole format on "
+                         "one screen.")] = None,
                 profile: Annotated[str | None, typer.Option(
                     "--profile", help="Show this profile instead of the format: its folder tree and the table of what "
-                                      "each part may import. A bundled name or a path.")] = None,
+                                      "each part may import. A bundled name or a path. With --rule, the profile whose "
+                                      "rules are shown.")] = None,
                 configured: Annotated[bool, typer.Option(
                     "--configured", help="Show the profile the project configures under \\[tool.xarch] instead of "
                                          "the format.")] = False,
+                rule: Annotated[bool, typer.Option(
+                    "--rule", help="Show the rules the key expands to, written as checks a profile could write: in the "
+                                   "profile given by --profile, else the one the project configures.")] = False,
                 app_path: AppPath = None, output: FormatOption = Format.text) -> None:
         """Explain how to write a profile: with no key, the whole format as a tree of keys, the symbols and the
         smallest valid profile; with a key, what it means, accepts, whether `check` enforces it and through which rule,
-        an example that loads, and the keys it holds. A key that does not exist is refused with the nearest ones. With
-        --profile or --configured, the folder tree and the import table of that profile, for a human to approve."""
+        an example that loads, and the keys it holds. `checks` and the categories of words of a check (kinds,
+        quantifiers, targets, filters, variables) explain what a check is written in, a word in full with an example
+        from a profile's own rules. A key or a word that does not exist is refused with the nearest ones. With --rule,
+        the rules a key expands to, written as checks. With --profile or --configured, the folder tree and the import
+        table of that profile, for a human to approve."""
         refuse = refusal(output)
+        if rule:
+            if key is None or configured:
+                raise refuse("--rule shows the rules of a key: give a key, such as parts.names, and --profile or a "
+                             "configured profile")
+            location = profile if profile is not None else _configured(spec, app_for(spec, app_path, refuse), refuse)
+            match rules.explain_rule(ExplainRule(key, location)):
+                case RuleShown() as shown:
+                    _show(output, words.rule_document(shown), words.rule_lines(shown))
+                case NoRuleShown() as none:
+                    raise refuse(words.no_rule_message(none))
+            return
+        if key is not None and profile is None and not configured and key.strip(".").split(".")[0] in CATEGORIES:
+            _words(rules, spec, key, app_path, output)
+            return
         if profile is not None or configured:
             if key is not None or (profile is not None and configured):
                 raise refuse("give either a key or a profile (--profile or --configured), not both")
@@ -82,10 +120,11 @@ def register(app: typer.Typer, spec: SpecController) -> None:
             case KeyExplained() as found:
                 _show(output, report.key_document(found), report.key_lines(found))
             case UnknownKey() as unknown:
+                nearest = _nearest_words(rules, unknown.key)
                 if output is Format.json:
-                    typer.echo(report.unknown_document(unknown))
+                    typer.echo(report.unknown_document(unknown, nearest))
                     raise typer.Exit(2)
-                raise fail(report.unknown_message(unknown))
+                raise fail(report.unknown_message(unknown, nearest))
 
     @group.command()
     def new(name: Annotated[str, typer.Argument(help="What the new profile is called: letters, digits, - and _.")],
@@ -130,3 +169,45 @@ def register(app: typer.Typer, spec: SpecController) -> None:
 def _show(output: Format, document: str, lines: list[str]) -> None:
     for line in [document] if output is Format.json else lines:
         typer.echo(line)
+
+
+def _configured(spec: SpecController, app: Path, refuse) -> str:
+    """The profile the project configures; refused when it configures none."""
+    match spec.select(SelectProfile(app, None, None)):
+        case ProfileSelected(name, _):
+            return name
+        case NoProfileChosen(known):
+            raise refuse(no_profile(known))
+        case ProfileRefused(reason):
+            raise refuse(reason)
+
+
+def _examples_from(spec: SpecController, app_path: Path | None) -> tuple[str, ...]:
+    """The profiles whose rules are examples of a word: the one the project configures, if any, then the bundled."""
+    match spec.select(SelectProfile(app_for(spec, app_path), None, None)):
+        case ProfileSelected(name, _):
+            return (name, *spec.bundled())
+    return spec.bundled()
+
+
+def _words(rules: RulesController, spec: SpecController, key: str, app_path: Path | None, output: Format) -> None:
+    match rules.explain_words(ExplainWords(key, _examples_from(spec, app_path))):
+        case ChecksShown() as shown:
+            _show(output, words.checks_document(shown), words.checks_lines(shown))
+        case WordsShown() as shown:
+            _show(output, words.category_document(shown), words.category_lines(shown))
+        case WordShown() as shown:
+            _show(output, words.word_document(shown), words.word_lines(shown))
+        case UnknownWords() as unknown:
+            if output is Format.json:
+                typer.echo(words.unknown_document(unknown))
+                raise typer.Exit(2)
+            raise fail(words.unknown_message(unknown))
+
+
+def _nearest_words(rules: RulesController, typed: str) -> tuple[str, ...]:
+    """The words of a check whose names read like a key that does not exist."""
+    match rules.explain_words(ExplainWords(typed)):
+        case UnknownWords(_, nearest) if set(nearest) != set(CATEGORIES[1:]):
+            return nearest
+    return ()

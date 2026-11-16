@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from xarch.kernel.violations import Violation, Weak
+from xarch.kernel.violations import RULES, Violation, Weak
 from xarch.modules.rules.application.logic.facts import reach_scopes
 from xarch.modules.rules.application.logic.filters import Question, in_scope, question
 from xarch.modules.rules.application.logic.sentences import said, value
@@ -177,7 +177,9 @@ def _saying(rule: Rule, found: Found, facts: Facts, profile: Profile):
 def _said(rule: Rule, saying, found: Found, facts: Facts, profile: Profile) -> Violation | Weak:
     message, fix = said(saying.message, found, facts, profile), said(saying.fix, found, facts, profile)
     file, line = found.read.file.name, found.fact.line
-    return Violation(file, line, message, rule.id, fix) if rule.mode == FAIL else Weak(rule.id, file, line, message, fix)
+    if rule.mode != FAIL:
+        return Weak(rule.id, file, line, message, fix)
+    return Violation(file, line, message, rule.id, fix, rule.id not in RULES)
 
 
 def _file(rule: Rule, read: Read, facts: Facts, profile: Profile) -> list[Violation | Weak]:

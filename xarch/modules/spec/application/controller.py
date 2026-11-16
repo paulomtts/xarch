@@ -71,7 +71,7 @@ from xarch.modules.spec.contract import (
     ViewResult,
 )
 from xarch.modules.spec.domain.errors import NoProfile
-from xarch.modules.spec.domain.profile_keys import SMALLEST, SYMBOLS, Key
+from xarch.modules.spec.domain.profile_keys import CHOICE_BUNDLED, KEYS, SMALLEST, SYMBOLS, Key
 from xarch.modules.spec.domain.values import (
     VERSION,
     Architecture,
@@ -185,6 +185,10 @@ class SpecController:
                             tuple(Need(*graded(fact, language)) for fact in key.needs),
                             language.title if key.needs else "")
 
+    def bundled(self) -> tuple[str, ...]:
+        """The names of the bundled profiles: what a key that names one may name."""
+        return self._explanation.choices(next(key for key in KEYS if key.choices == CHOICE_BUNDLED))
+
     def view(self, cmd: ViewProfile) -> ViewResult:
         """The folder tree and import table of a profile; one that cannot be chosen or loaded is refused with why."""
         try:
@@ -250,7 +254,7 @@ def _language_view(language: Language) -> LanguageView:
     return LanguageView(language.title, language.extension, language.package_file, language.interface,
                         language.dynamic, language.private, language.special, language.call, language.nothing,
                         language.comment, language.directives, language.shebang, language.encoding,
-                        language.branching)
+                        language.branching, language.supplies)
 
 
 def _guards_view(guards: tuple[Guard, ...]) -> GuardsView:

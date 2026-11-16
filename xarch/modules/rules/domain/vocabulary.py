@@ -27,9 +27,9 @@ FOLDER, PATTERN, KIND, KEY = "folder", "pattern", "kind", "key"
 """What a filter's value is, for a filter that takes one: a folder below the root of the file (a/b), a name pattern
 with `*` for any text, the name of a kind of fact, or a key of a part."""
 
-NAMES, PATTERNS, PARTS, PLACES = "dotted names", "patterns", "parts", "places"
-"""What the values of a kind of target are: dotted names (or `.<method>()`), patterns with `*` for any text, names of
-parts, or places written as `may_import` writes them."""
+NAMES, PACKAGES, PATTERNS, PARTS, PLACES = "dotted names", "package names", "patterns", "parts", "places"
+"""What the values of a kind of target are: dotted names (or `.<method>()`), top-level names of packages, patterns with
+`*` for any text, names of parts, or places written as `may_import` writes them."""
 
 HIT, KEY_OF_RULE, SCOPE_PART, VALUES = "hit", "key", "scope part", "values"
 """What a variable needs of its rule besides fields: a target matched (may_not), the key the rule expands from, a part
@@ -126,9 +126,11 @@ class Variable:
 
 @dataclass(frozen=True)
 class Quantifier:
-    """What a check does with what it keeps: its name and what it means."""
+    """What a check does with what it keeps: its name, what it means, and whether it reaches through the facts that
+    link a file onwards (through, keep_links) rather than compare each fact alone."""
     name: str
     meaning: str
+    reaches: bool = False
 
 
 FIELDS: dict[str, str] = {
@@ -262,8 +264,8 @@ FILTERS: tuple[Filter, ...] = (
            FACT, ("inert",)),
     Filter("exceptions-only", "the file defines classes, every one an exception, and no top-level function", FACT,
            ("exceptions-only",)),
-    Filter("hit-by-its-import", "the use reads a name whose import already names the whole of the target it matched, "
-                                "so that the import is the finding", FACT, ("bound",), needs=HIT),
+    Filter("already-imported", "the use reads a name its import already names in full, the target it matched "
+                               "included, so that the import is the finding", FACT, ("bound",), needs=HIT),
     Filter("narrowed", "the file's part may import what the import reaches only for the names a pattern of its "
                        "`may_import` allows", FACT, ("place",), side=APP_SIDE),
     Filter("of-kind", "the fact is of that kind", FACT, value=KIND),
@@ -286,7 +288,7 @@ TARGETS: tuple[TargetKind, ...] = (
     TargetKind("exist", "every fact matches: under may_not, each kept fact is a finding by being there"),
     TargetKind("path", "the dotted name the fact names is one of the values or lies below it; a value written "
                        "`.<method>()` matches a method of that name called on anything", ("path", "method"), NAMES),
-    TargetKind("package", "the top-level package the fact names is one of the values", ("path",), NAMES),
+    TargetKind("package", "the top-level package the fact names is one of the values", ("path",), PACKAGES),
     TargetKind("name", "the name the fact carries matches one of the values", ("name",), PATTERNS),
     TargetKind("text", "what the fact says matches one of the values", ("text",), PATTERNS),
     TargetKind("part", "what the fact reaches lies in one of the parts the values name, in any instance", ("place",),
@@ -307,10 +309,10 @@ QUANTIFIERS: tuple[Quantifier, ...] = (
     Quantifier("may_not", "a kept fact that matches one of the targets is a finding; the target it matches is its hit"),
     Quantifier("may_only", "a kept fact that matches none of the targets is a finding"),
     Quantifier("must_reach", "a file of the scope is a finding unless one of its kept facts matches a target, or a "
-                             "fact of it that links onwards leads to a file that does, however far"),
+                             "fact of it that links onwards leads to a file that does, however far", True),
     Quantifier("must_be_reached", "a kept fact of the scope is a finding unless a root file links to it (by a name it "
                                   "mentions, for a declaration; by an import, for a file), or something reached already "
-                                  "links onwards to it, however far"),
+                                  "links onwards to it, however far", True),
 )
 """What a check does with what it keeps."""
 
@@ -375,3 +377,52 @@ VARIABLES: tuple[Variable, ...] = (
     Variable("function", "the function a parameter called is a parameter of", ("function",)),
 )
 """Every variable of a message or a fix."""
+
+
+@dataclass(frozen=True)
+class Slot:
+    """A slot of a check as a profile writes it: its name, what it is for, what it accepts, and the category of words
+    it is written with ("" for one written in words of its own)."""
+    name: str
+    meaning: str
+    accepts: str
+    takes: str = ""
+
+
+SLOTS: tuple[Slot, ...] = (
+    Slot("read", "the kinds of fact the check reads", "<kind> or [<kind>, ...]", "kinds"),
+    Slot("in", "the files the check reads",
+         "{files: app | tests | all, part: <part> | structure, tier: <tier>, where: [<filter about the file>, ...]}, "
+         "each left out for any; files are app's when left out; a test belongs to the part its folder mirrors",
+         "filters"),
+    Slot("keep", "the filters a fact must pass, all of them, to be read", "[<filter>, ...]", "filters"),
+    Slot("may_not", "a kept fact that matches one of the targets is a finding", "<target> or [<target>, ...]",
+         "targets"),
+    Slot("may_only", "a kept fact that matches none of the targets is a finding", "<target> or [<target>, ...]",
+         "targets"),
+    Slot("must_reach", "a file of the scope that reaches no target, by a kept fact of its own or through the facts "
+                       "that link it to other files, however far, is a finding",
+         "{targets: <target> or [<target>, ...], through: <kind> or [<kind>, ...], keep_links: [<filter>, ...]}",
+         "targets"),
+    Slot("must_be_reached", "a kept fact that nothing links to from the root files, or from what they reach "
+                            "however far, is a finding",
+         "{from: <files, as `in` writes them>, through: <kind> or [...], keep_links: [<filter>, ...], onward: <kind> "
+         "or [...], by_another_file: true}", "kinds"),
+    Slot("except", "the filters of which any one excuses a finding", "[<filter>, ...]", "filters"),
+    Slot("mode", "what a finding is", "fail (it fails the check), or list (it is listed as weak in the enforcement "
+                                      "section and fails only `check --strict`); fail when left out"),
+    Slot("message", "what was found, said of each finding", "a sentence with {<variable>}s", "variables"),
+    Slot("fix", "what to do about it", "an imperative sentence with {<variable>}s", "variables"),
+    Slot("once_per", "say one finding of a file for each value of these variables, the first", "[<variable>, ...]",
+         "variables"),
+    Slot("cases", "a message and a fix for the findings of which the filters hold, the first that holds said in place "
+                  "of the check's own", "[{when: [<filter>, ...], message, fix, once_per}, ...]",
+         "filters"),
+)
+"""Every slot of a check, in the order a check is written."""
+
+READING = ("each fact of the kinds it reads, in the files of its scope, that passes the filters it keeps, may not "
+           "match (may_not) or may only match (may_only) its targets; under must_reach a file must reach a target, "
+           "under must_be_reached a fact must be reached from the root files; a finding an exception excuses is "
+           "dropped, and each other is said by the first case whose filters hold, else by the check's message and fix")
+"""How a check reads, in one sentence."""

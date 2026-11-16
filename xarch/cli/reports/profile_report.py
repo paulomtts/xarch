@@ -37,6 +37,8 @@ NEED = 10
 """The width of the column that says whether a key is required."""
 NO_RULE = "yes (the loader, or the `enforcement` section of `check`, not a rule id)"
 DEEPER = ("xarch profile explain parts.may_import        one key in full: what it accepts, its rule, an example\n"
+          "xarch profile explain parts.names --rule      the rules a key expands to, written as checks\n"
+          "xarch profile explain checks                  how a check is written, and the words it is written in\n"
           "xarch profile explain --profile <name|path>   the folder tree and the imports of a profile")
 """How to go deeper than the overview of the format."""
 NEXT = ("edit {profile}", "xarch profile explain                 # the format, key by key",
@@ -112,8 +114,9 @@ def _wrapped(label: str, text: str) -> list[str]:
     return fill(f"{label}: {text}", width=WIDTH, initial_indent="  ", subsequent_indent="    ").splitlines()
 
 
-def unknown_message(found: UnknownKey) -> str:
-    return f"no key `{found.key}` in the format: the nearest are {', '.join(found.nearest)}"
+def unknown_message(found: UnknownKey, words: Sequence[str] = ()) -> str:
+    also = f"; of the words of a check, {', '.join(words)}" if words else ""
+    return f"no key `{found.key}` in the format: the nearest are {', '.join(found.nearest)}{also}"
 
 
 def overview_document(whole: FormatExplained) -> str:
@@ -132,8 +135,9 @@ def key_document(found: KeyExplained) -> str:
                   "language": found.language})
 
 
-def unknown_document(found: UnknownKey) -> str:
-    return _dump({"ok": False, "error": unknown_message(found), "key": found.key, "nearest": list(found.nearest)})
+def unknown_document(found: UnknownKey, words: Sequence[str] = ()) -> str:
+    return _dump({"ok": False, "error": unknown_message(found, words), "key": found.key,
+                  "nearest": [*found.nearest, *words]})
 
 
 def _shown(shown: Shown) -> dict[str, Any]:

@@ -69,7 +69,7 @@ _FILTERS = {word.name: word for word in FILTERS}
 _TARGETS = {kind.name: kind for kind in TARGETS}
 _VARIABLES = {variable.name: variable for variable in VARIABLES}
 _QUANTIFIERS = {quantifier.name for quantifier in QUANTIFIERS}
-_REACH = (MUST_REACH, MUST_BE_REACHED)
+_REACH = tuple(quantifier.name for quantifier in QUANTIFIERS if quantifier.reaches)
 
 
 @dataclass(frozen=True)
@@ -220,6 +220,16 @@ class Rule:
     def _variables(self) -> list[str]:
         return [name for s in self.sayings for text in (s.message, s.fix) for _, name, _, _ in Formatter().parse(text)
                 if name] + [name for s in self.sayings for name in s.once]
+
+
+@dataclass(frozen=True)
+class OwnCheck:
+    """A check the profile writes itself: its rule, and its examples: the files of a small project in which the rule
+    must find something (flagged), and of one in which it must find nothing (clean), each by its path below the app
+    (tests/<path> for a test) with what it says."""
+    rule: Rule
+    flagged: tuple[tuple[str, str], ...] = ()
+    clean: tuple[tuple[str, str], ...] = ()
 
 
 def _nearest(name: str, known: dict) -> str:

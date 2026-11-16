@@ -74,7 +74,7 @@ from xarch.modules.rules.domain.vocabulary import FILTERS
     pytest.param("inert", DOMAIN, "file", [], PROFILE, None, id="inert: a file with a real statement is not"),
     pytest.param("exceptions-only", ERRORS, "file", [0], PROFILE, None, id="exceptions-only"),
     pytest.param("exceptions-only", DOMAIN, "file", [], PROFILE, None, id="exceptions-only: classes of other kinds"),
-    pytest.param("hit-by-its-import", DOMAIN, "use", [17], PROFILE, ("datetime", "datetime"), id="hit-by-its-import"),
+    pytest.param("already-imported", DOMAIN, "use", [17], PROFILE, ("datetime", "datetime"), id="already-imported"),
     pytest.param("narrowed", SERVICE, "import-into-app", [1, 2], NARROWED, None, id="narrowed"),
     pytest.param("of-kind call", SERVICE, "call", [4, 5, 6], PROFILE, None, id="of-kind"),
     pytest.param("of-kind use", SERVICE, "call", [], PROFILE, None, id="of-kind: another kind"),

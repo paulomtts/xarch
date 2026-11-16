@@ -100,8 +100,8 @@ REACHED = {"quantifier": MUST_BE_REACHED, "targets": EXISTING, "facts": ("class"
                  ["read: under must_be_reached, a fact is reached by its name, which use does not carry: read file, or "
                   "a kind that carries a name"], id="(audit) a reach by a name the kind does not carry"),
     pytest.param({"facts": ("use",), "quantifier": MAY_ONLY, "targets": (Match("path", names=(("a",),)),),
-                  "exempt": c("hit-by-its-import"), "sayings": say()},
-                 ["except: hit-by-its-import reads the target a fact matched, which only a check under may_not has"],
+                  "exempt": c("already-imported"), "sayings": say()},
+                 ["except: already-imported reads the target a fact matched, which only a check under may_not has"],
                  id="(audit) a filter of the hit under may_only"),
     pytest.param({"sayings": say(once=("weather",))},
                  ["once_per: no variable is named 'weather': did you mean a_tier or tier or path?"],
@@ -186,7 +186,7 @@ REACHED = {"quantifier": MUST_BE_REACHED, "targets": EXISTING, "facts": ("class"
                   "may-import-everything, below, relative, standard, unreserved-standard, reserved, "
                   "listed-by-another-part, app-package, own-code, takes-a-name, held, public, special, named, top-level, "
                   "forwards, returns-an-attribute, exception, record, interface, receiver, annotated-callable, "
-                  "directive, inert, exceptions-only, hit-by-its-import, narrowed, of-kind, target-placed, "
+                  "directive, inert, exceptions-only, already-imported, narrowed, of-kind, target-placed, "
                   "target-inside-part, target-in-own-part, target-in-own-tier, target-test, target-below, "
                   "target-part-lists",
                   "mode: is 'fial': write fail (a finding fails the check) or list (it is listed as weak and fails only "

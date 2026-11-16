@@ -12,5 +12,5 @@ def build(rules: RulesController, scaffolding: ScaffoldController, spec: SpecCon
     check.register(app, rules, spec)
     scaffold.register(app, scaffolding, spec)
     where.register(app, rules, spec)
-    profile.register(app, spec)
+    profile.register(app, spec, rules)
     return app

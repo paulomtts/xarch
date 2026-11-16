@@ -160,7 +160,7 @@ def _directive(found: Found, facts: Facts, profile: Profile, value: str) -> bool
         re.match(rf"^[ \t\f]*{marker}.*?{language.encoding}", comment.text))
 
 
-def _hit_by_its_import(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
+def _already_imported(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
     return bool(found.hit) and found.fact.bound >= len(found.hit)
 
 
@@ -211,7 +211,7 @@ _FACT: dict[str, Asked] = {
     "takes-a-name": _takes_a_name, "held": _held, "public": _public, "special": _special, "named": _named,
     **{name: _trait(name) for name in ("top-level", "forwards", "exception", "record", "interface", "receiver",
                                        "annotated-callable", "inert", "exceptions-only")},
-    "returns-an-attribute": _returns_an_attribute, "directive": _directive, "hit-by-its-import": _hit_by_its_import,
+    "returns-an-attribute": _returns_an_attribute, "directive": _directive, "already-imported": _already_imported,
     "narrowed": _narrowed, "of-kind": _of_kind, "target-placed": _target_placed,
     "target-inside-part": _target_inside_part, "target-in-own-part": _target_in_own_part,
     "target-in-own-tier": _target_in_own_tier, "target-test": _target_test, "target-below": _target_below,
