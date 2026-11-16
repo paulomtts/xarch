@@ -1165,7 +1165,7 @@ keys:
     meaning: the line of each part, below which a file reads as doubtful there
     accepts: >-
       a map from the name of a part to a number above 0 and below 1: a file judged reads as doubtful where it sits
-      when the probability on its part is below the part's line; a part not written has 0.3, the line the trials
+      when the probability on its part is below the part's line; a part not written has %line%, the line the trials
       measured (about one well-placed file in ten read as doubtful at it). A file whose first answer falls within 0.15
       of its part's line is asked again in two other orders of the options and read on the mean. Every reading says a
       line set here as set by the profile. Set one when the per-part summary of `xarch review` notes a part low across
@@ -1197,7 +1197,7 @@ slots:
   evals.<id>.ask:
     meaning: the question the eval asks
     accepts: >-
-      one line of text, at most 400 characters and one question mark: one short rule about what the text shows. In
+      one line of text, at most %max_ask% characters and one question mark: one short rule about what the text shows. In
       trials a long compound question was the one that failed to tell its examples apart
     example: |
       <<part>>
@@ -1286,7 +1286,7 @@ slots:
   evals.<id>.examples:
     meaning: the code the eval must read as flagged, and as clean
     accepts: >-
-      {flagged: {<path>: <code>, ...}, clean: {<path>: <code>, ...}}, at least 2 files of each, each a path below the
+      {flagged: {<path>: <code>, ...}, clean: {<path>: <code>, ...}}, at least %fewest_examples% files of each, each a path below the
       app ending in %extension% and its code. `profile check` refuses a file in which nothing the eval reads (in its
       scope, passing `keep`) is found. `xarch review calibrate` sends them and holds the eval to them: every flagged
       file reads above every clean one, by at least 0.4 on the mean, and on the right side of the line. Add a clean

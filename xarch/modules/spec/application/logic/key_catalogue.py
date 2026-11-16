@@ -19,16 +19,19 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
+from xarch.modules.spec.application.logic.evals import FEWEST_EXAMPLES, MAX_ASK
 from xarch.modules.spec.application.logic.explain import words, words_in
 from xarch.modules.spec.application.logic.key_table import KEYS, SLOTS
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.profile_keys import Catalogue, Key, KeyText
+from xarch.modules.spec.domain.published import LINE
 from xarch.modules.spec.domain.values import FORMAT_KEYS, Language, NoDuplicates, NoTwins
 
 SECTIONS = ("fragments", "smallest", "symbols", "keys", "slots")
 FIELDS = ("meaning", "accepts", "example")
 _INCLUDE = re.compile(r"<<(.*)>>")
-_DEFAULTS = {"min_statements": str(NoDuplicates.min_statements), "min_fields": str(NoTwins.min_fields)}
+_DEFAULTS = {"min_statements": str(NoDuplicates.min_statements), "min_fields": str(NoTwins.min_fields),
+             "line": str(LINE), "max_ask": str(MAX_ASK), "fewest_examples": str(FEWEST_EXAMPLES)}
 _WORDS = (*words(Language()), *_DEFAULTS)
 """Every `%word%` a text may write."""
 

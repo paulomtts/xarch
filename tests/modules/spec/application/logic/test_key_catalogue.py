@@ -10,7 +10,7 @@ from xarch.modules.spec.domain.profile_keys import KeyText
 
 SOURCE = "presets/format/keys.yaml"
 WORDS = ("%language%, %extension%, %package_file%, %private%, %interface%, %interface_path%, %namespace%, %comment%, %directives%, "
-         "%min_statements%, %min_fields%")
+         "%min_statements%, %min_fields%, %line%, %max_ask%, %fewest_examples%")
 FRAGMENTS = {"part": "parts:\n  documents:\n    path: documents\n    role: the documents\n"}
 TEXT = {"meaning": "the documents", "accepts": "a name", "example": "documents: {}"}
 ROLE = "parts.<part>.role"
@@ -91,3 +91,10 @@ def test_a_fragment_may_hold_another_and_the_lines_around_it_stay():
 ])
 def test_a_broken_data_file_is_refused_naming_it_with_every_problem(given, found):
     assert problems(given) == found
+
+
+def test_the_numbers_review_s_keys_say_are_filled_in_from_the_values_spec_holds():
+    catalogue = catalogue_of(document(keys=keyed({"evals.placement.lines": TEXT | {
+        "accepts": "%line% when left out; at most %max_ask% characters; at least %fewest_examples% of each"}})))
+    assert catalogue.texts["evals.placement.lines"].accepts == (
+        "0.3 when left out; at most 400 characters; at least 2 of each")
