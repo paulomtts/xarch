@@ -4,6 +4,28 @@ Check and scaffold an architecture described in an architecture file (a profile)
 may import which, its test tiers and the guards it switches on. Two profiles are bundled, `cli` and `web`; a project
 may also bring its own file. xarch knows no part by name: every name comes from the profile.
 
+## Install
+
+xarch needs Python 3.13 or later. It is not on PyPI yet: install it from its repository.
+
+```
+uv tool install git+https://github.com/paulomtts/xarch               # the `xarch` command, on your PATH
+uvx --from git+https://github.com/paulomtts/xarch xarch --version    # or run it once, without installing it
+uv add --dev git+https://github.com/paulomtts/xarch                  # in a project: one of its dev dependencies
+```
+
+The guard test `init` writes runs `python -m xarch` with the interpreter that runs the project's tests, so xarch must
+also be installed in the project's own environment: add it to the project's dev dependencies, as the last line does.
+
+## Quickstart
+
+```
+xarch init --profile cli                              # the skeleton, docs and files; the profile goes in pyproject.toml
+xarch new module documents                            # one module, with every folder a module holds
+xarch where app/modules/documents/domain/values.py    # what code there may do, before it is written
+xarch check                                           # every violation, each with its fix
+```
+
 ## Commands
 
 ```
@@ -18,11 +40,14 @@ xarch check [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|jso
 xarch where PATH [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json]
                                                              # what a path is and what code there may do, before it is written
 xarch profile migrate FILE [--out FOLDER] [--dry-run]        # convert a profile of format 1 to format 2, in a new folder
-xarch profile explain [KEY] [--profile NAME|FILE | --configured] [--format text|json]
+xarch profile explain [KEY] [--profile NAME|FILE | --configured] [--rule] [--app PATH] [--format text|json]
                                                              # the format of a profile, whole or one key; or a profile's
-                                                             # folder tree and import table
-xarch profile new NAME --from BUNDLED [--out FOLDER]         # copy a bundled profile into the project, with its files
-xarch profile check [NAME|FILE] [--format text|json]         # validate a profile without an app
+                                                             # folder tree and import table; with --rule, the rules a
+                                                             # key expands to
+xarch profile new NAME --from BUNDLED [--out FOLDER] [--app PATH]
+                                                             # copy a bundled profile into the project, with its files
+xarch profile check [NAME|FILE] [--app PATH] [--format text|json]
+                                                             # validate a profile without an app
 ```
 
 `WORD` is the word between `<` and `>` in the profile's paths: in both bundled profiles `<module>`, so
@@ -57,10 +82,18 @@ address in the file. `init` records the profile it used in that `pyproject.toml`
 if there is none), and, when the app folder is not `app/` beside it, the app folder too, so a bare `xarch check` uses
 both. It never changes a value already recorded.
 
+`init` writes the project's other files (`AGENTS.md`, `ruff.toml`, `docs/project/`, `tests/`) beside the app folder,
+in the folder that holds it: for `--app src/shop`, in `src/`, wherever the `pyproject.toml` is. With no
+`pyproject.toml` above `src/`, it creates `src/pyproject.toml` recording `app = "shop"`, relative to that file, and a
+bare `xarch check` then works from `src/`; run from the folder above, it finds no profile. With a `pyproject.toml`
+above `src/`, it records `app = "src/shop"` there, and `AGENTS.md`, `ruff.toml`, `docs/project/` and `tests/` still
+land in `src/`.
+
 ```toml
 [tool.xarch]
 profile = "web"          # or a path, such as "architecture.yaml"
 app = "src/shop"         # optional; the app folder, relative to this file; recorded by `init --app src/shop`
+                         # when this file sits above src/
 tests = "tests"          # optional; the default is tests/ beside the app folder, when it exists
 ```
 
@@ -145,7 +178,8 @@ xarch profile check [NAME|FILE]            # validate a profile without an app
 ```
 
 `explain` takes `--format json` (`{"ok", "key", "where", "meaning", "accepts", "required", "enforced", "rules",
-"example", "choices", "keys", "needs"}` for a key; `{"ok", "key", "profile", "rules", "checks", "needs"}` for a key with
+"example", "choices", "keys", "needs", "language"}` for a key, `language` the language whose reader `needs` is graded
+by; `{"ok", "key", "profile", "rules", "checks", "needs"}` for a key with
 `--rule`, `needs` the facts its rules read; `{"ok", "format", "shape", "symbols", "smallest", "deeper"}` for the whole) and
 exits 2 for a key the format does not have, naming the nearest (in JSON, `nearest` the format's keys and `words` the
 words of a check). The key may be written with or without the placeholder
@@ -318,11 +352,12 @@ how many facts it read in the project.
 - `violations`: sorted by `file`, then `line` (a whole-file or folder violation, `line: null`, first), then `rule`.
   `file` is the path the text output prints; `message` the sentence it prints after the path; `fix` what to do about
   it, always a non-empty string (a violation cannot be made without one); `hint` the profile's own advice for the
-  rule, else `null`. `rule` is one of: `rules`, `libraries`, `forbidden`, `tiers`
-  (a test's imports, or a test in no tier), `types-only`, `test-tree`, `cycles`, `structure`, `package-only`,
-  `scenario-coverage`, `no-comments`, `stand-ins`, `closed-tree`, `must-import`, `no-duplicates`, `dead-code`,
-  `pass-through` (never a violation: a `weak` item), and `syntax` (a file that does not parse, or cannot be read as UTF-8 text), or the id of a check
-  the profile writes itself.
+  rule, else `null`. `rule` is one of: `rules`, `libraries`, `forbidden`, `tiers` (a test's imports, or a test in no
+  tier), `types-only`, `cycles`, `package-only`, `scenario-coverage`, `no-comments`, `stand-ins`, `closed-tree`,
+  `must-import`, `no-duplicates`, `no-twins`, `dead-code`, `pass-through`, `holds`, `immutable` (these three never a
+  violation, only a weak item), `no-callbacks`, `names`, `built-by`, `private-imports`, `shared`, `structure`,
+  `test-tree`, and `syntax` (a file that does not parse, or cannot be read as UTF-8 text), or the id of a check the
+  profile writes itself.
 - `enforcement`: every key always present, empty when there is nothing to report. `profile.looser` items are
   `{"key", "part", "what", "sentence"}` with `key` one of `may_import`, `libraries`, `forbidden`, `untested`,
   `types_only`, `may_also_import`, `apply_forbidden`, `testing.skips`, `files.pinned`, `reserved`, `must_import`, `litmus`, `known`,
@@ -581,7 +616,7 @@ files:
 Both bundled profiles list three files: the guard test, `AGENTS.md` and `ruff.toml`. The last two are not pinned: a
 project edits them.
 
-`AGENTS.md` (at the project root, about 45 lines) is written for a coding agent that has never seen xarch: what governs
+`AGENTS.md` (beside the app folder, about 45 lines) is written for a coding agent that has never seen xarch: what governs
 the project (the profile and `docs/project/`), to run `xarch where <path>` before creating or moving a file and to
 take the first litmus test a piece of code passes, to run `xarch check` and `ruff check` before finishing, how tests are
 written, and what not to do to get a green check: move code into a folder no part covers, switch a guard off or loosen
