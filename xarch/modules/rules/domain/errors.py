@@ -30,3 +30,12 @@ class Unreadable(DomainError):
 class ProfileUnusable(DomainError):
     """The profile in force cannot be read for what the check needs of it; reason says why, as the spec module put
     it."""
+
+
+class RuleRefused(DomainError):
+    """A rule that names a word that does not exist, or one that does not apply to what its slot reads: its id, and
+    every problem, each as `<slot>: <what>, <what to write>`."""
+
+    def __init__(self, rule: str, problems: tuple[str, ...]):
+        super().__init__(f"{rule}: {'; '.join(problems)}")
+        self.rule, self.problems = rule, problems

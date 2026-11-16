@@ -1,23 +1,18 @@
 """The pass-through check on hand-made source files: a method of a listed part whose whole body forwards to one call is
 listed as weak, never as a violation."""
-import pytest
-
 from tests.modules.rules.application.logic.checks import pass_through as weak
-from tests.modules.rules.builders import PYTHON, profile, source
+from tests.modules.rules.builders import profile, source
 from xarch.kernel.violations import Weak
-from xarch.modules.rules.application.logic.facts import forwards
-from xarch.modules.rules.domain.values import Function, Signature, SoleCall
+from xarch.modules.rules.domain.values import Function, SoleCall
 
 ON = profile(pass_through=("services",))
 SERVICES = "modules/docs/application/services/doc.py"
 
 
-TAKES_ID = Signature(("self", "id"))
-
-
 def forwarding(line: int, name: str, callee: tuple[str, ...], owner: str = "") -> Function:
-    """A function whose whole body passes its one parameter on to callee."""
-    return Function(line, name, owner=owner, signature=TAKES_ID, sole_call=SoleCall(callee, ("id",)))
+    """A function whose whole body passes its one parameter on to callee, as the reader records one that forwards."""
+    return Function(line, name, owner=owner, sole_call=SoleCall(callee, ("id",)),
+                    forwards=".".join(callee) if owner else "")
 
 
 def found(path: str = SERVICES, checked=ON, **fields):
@@ -56,55 +51,8 @@ def test_a_part_that_is_a_file_and_a_folder_part_are_read_alike():
         "app/modules/docs/application/controller.py", "app/modules/docs/adapters/fs_repo.py"]
 
 
-@pytest.mark.parametrize("call, callee", [
-    pytest.param(SoleCall(('self', 'repo', 'get'), ('id',)), "self.repo.get", id="a return of one call on a collaborator"),
-    pytest.param(SoleCall(('self', 'repo', 'save'), ('id',)), "self.repo.save", id="a bare call"),
-    pytest.param(SoleCall(('self', 'repo', 'get'), ('id',)), "self.repo.get", id="an awaited call"),
-    pytest.param(SoleCall(('self', 'repo', 'get'), (), (('id', 'id'),)), "self.repo.get", id="a keyword with the parameter's value"),
-    pytest.param(SoleCall(('self', 'repo', 'get'), (), (('other', 'id'),)), "self.repo.get", id="a keyword of another name"),
-    pytest.param(SoleCall(('self', 'a', 'b', 'get'), ('id',)), "self.a.b.get", id="a deeper chain"),
-    pytest.param(SoleCall(('self', 'repo', 'get'), ('id',)), "self.repo.get", id="a docstring is no statement"),
-    pytest.param(SoleCall(('self', 'repo', 'get'), ('id', '')), "", id="an extra argument"),
-    pytest.param(SoleCall(('self', 'repo', 'get'), ('',)), "", id="a changed argument"),
-    pytest.param(SoleCall(('self', 'repo', 'get'), ('',)), "", id="a transformed argument"),
-    pytest.param(SoleCall(('self', 'repo', 'get')), "", id="a parameter that is not passed"),
-    pytest.param(SoleCall(('self', 'repo', 'get'), ('id', 'id')), "", id="a parameter passed twice"),
-    pytest.param(None, "", id="a changed result"),
-    pytest.param(None, "", id="two statements"),
-    pytest.param(None, "", id="a condition"),
-    pytest.param(SoleCall(('self', 'helper'), ('id',)), "", id="a method of the object itself, no collaborator"),
-    pytest.param(SoleCall(('other', 'repo', 'get'), ('id',)), "", id="a chain that does not start at the first parameter"),
-    pytest.param(SoleCall(('self', 'repo', 'get'), ('id',), then=('name',)), "self.repo.get", id="a read of the result"),
-    pytest.param(SoleCall(('self', 'repo', 'get'), ('id', ''), then=('name',)), "",
-                 id="a read of the result of a call that does not forward"),
-    pytest.param(SoleCall(('self', 'repo', 'get'), ('', 'id')), "", id="a call inside the arguments"),
-])
-def test_a_method_forwards_when_its_one_call_passes_each_parameter_once_to_a_collaborator(call, callee):
-    assert forwards(Function(1, "get", owner="S", signature=TAKES_ID, sole_call=call), PYTHON) == callee
-
-
-@pytest.mark.parametrize("function, callee", [
-    pytest.param(Function(1, "a", signature=Signature(("self",), (), "args", "kwargs"),
-                          sole_call=SoleCall(("self", "r", "a"), ("*args",), (("**", "kwargs"),))), "self.r.a",
-                 id="starred parameters passed on starred"),
-    pytest.param(Function(1, "b", signature=Signature(("self",), (), "args"), sole_call=SoleCall(("self", "r", "b"),
-                                                                                              ("args",))), "",
-                 id="a starred parameter passed as one argument"),
-    pytest.param(Function(1, "c", decorated=True, signature=Signature(("self",)), sole_call=SoleCall(("self", "r", "c"))),
-                 "", id="a decorated method"),
-    pytest.param(Function(1, "__len__", signature=Signature(("self",)), sole_call=SoleCall(("self", "r", "size"))), "",
-                 id="a dunder method"),
-    pytest.param(Function(1, "d", signature=Signature(("self", "k"), ("only",)),
-                          sole_call=SoleCall(("self", "r", "d"), ("k",), (("only", "only"),))), "self.r.d",
-                 id="a keyword-only parameter passed by keyword"),
-    pytest.param(Function(1, "e", sole_call=SoleCall(("self", "r", "e"))), "", id="no first parameter to hold it"),
-])
-def test_a_decorator_a_dunder_or_a_starred_parameter_passed_whole_decides_too(function, callee):
-    assert forwards(function, PYTHON) == callee
-
-
 def test_a_method_that_returns_an_attribute_of_what_it_forwards_to_says_which():
-    method = Function(4, "language", owner="SpecSkeleton", signature=Signature(("self", "profile")),
+    method = Function(4, "language", owner="SpecSkeleton", forwards="self._spec.skeleton",
                       sole_call=SoleCall(("self", "_spec", "skeleton"), ("profile",), then=("view", "language")))
     assert weak([source(SERVICES, functions=(method,))], ON) == [Weak(
         "pass-through", f"app/{SERVICES}", 4,

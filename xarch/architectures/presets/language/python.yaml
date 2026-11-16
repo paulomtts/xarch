@@ -55,6 +55,7 @@ supplies:
   function.signature: exact
   function.sole_call: exact
   function.decorated: exact
+  function.forwards: exact
   function.returns: exact
   function.blocks: exact
   function.asserts: exact

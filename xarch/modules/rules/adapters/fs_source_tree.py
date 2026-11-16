@@ -43,7 +43,10 @@ A function records whether it is decorated, its parameters by kind, and, when it
 one `return` or bare statement of one call, perhaps awaited, that call: its callee as a chain of names, and each of its
 arguments as the bare name it passes (a starred one marked), or as nothing for any other expression. A body that is one
 `return` of a chain of attributes read on such a call (`return self.repo.get(id).name`) records the call and those
-attributes.
+attributes. A method forwards to that call's callee when it has no decorator, is no special method (a name between
+`__`), and its whole body is that call on a chain of at least two attributes of its first parameter
+(`self.repo.get(...)`), passing each of its other parameters straight through (a `*args` as `*args`, a `**kwargs` as
+`**kwargs`) and nothing else.
 
 A call whose callee is an attribute of an expression, `<expr>.<name>(...)`, and is no Ref is listed as a method call by
 the attribute's name, marked held when the expression is the first parameter of the method the call lies in (not a
@@ -198,8 +201,35 @@ def _function(node: ast.FunctionDef | ast.AsyncFunctionDef, scope: list[Scope], 
     asserts = any(isinstance(n, ast.Assert) for n in inside)
     statements, inert, shape = _shape(node)
     returns = _named(node.returns) if node.returns is not None else frozenset()
+    signature, sole_call = _signature(node), _sole_call(node)
+    forwards = _forwards(node.name, bool(node.decorator_list), signature, sole_call) if owner else ""
     return Function(node.lineno, node.name, tables, mentions, blocks, asserts, owner, statements, shape,
-                    bool(node.decorator_list), _signature(node), _sole_call(node), returns, inert)
+                    bool(node.decorator_list), signature, sole_call, returns, inert, forwards)
+
+
+def _forwards(name: str, decorated: bool, signature: Signature, call: SoleCall | None) -> str:
+    """The dotted callee a method only passes its arguments on to, or "" (see the module's docstring)."""
+    if decorated or (name.startswith("__") and name.endswith("__")) or call is None or not signature.positional:
+        return ""
+    own, others = signature.positional[0], [*signature.positional[1:], *signature.keyword_only]
+    if call.callee[:1] != (own,) or len(call.callee) < 3:
+        return ""
+    passed: list[str] = []
+    for arg in call.args:
+        if (signature.star and arg == f"*{signature.star}") or (arg and not arg.startswith("*") and arg in others):
+            passed.append(arg)
+        else:
+            return ""
+    for keyword, value in call.keywords:
+        if keyword == "**" and signature.double and value == signature.double:
+            passed.append(f"**{value}")
+        elif keyword != "**" and value in others:
+            passed.append(value)
+        else:
+            return ""
+    wanted = [*others, *([f"*{signature.star}"] if signature.star else []),
+              *([f"**{signature.double}"] if signature.double else [])]
+    return ".".join(call.callee) if sorted(passed) == sorted(wanted) else ""
 
 
 def _is_docstring(node: ast.stmt) -> bool:

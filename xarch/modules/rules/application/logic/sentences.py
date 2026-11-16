@@ -1,67 +1,24 @@
 """How a finding of rules as data is said: a saying's message and fix are sentences with `{variable}`s, each worked
-out from the finding by its name, a closed list:
-
-    key           the key of the profile the rule expands from
-    line          the line of the fact
-    rule_part     the part the rule names
-    part          where the file sits, as a violation names a place (see places.label)
-    who           the same, or "code in no part" for a file no part governs
-    tier          the tier of a test file
-    hit           the target a fact matched, as a dotted name
-    verb          what the file does with what it names: import, use or call
-    top           the first step of what an import names
-    reason        why the profile reserves it
-    owners        the other parts whose libraries list it, each as `<part>/`; first_owner the first of them
-    name          the name an import takes
-    written       the module an import names, as the source writes it
-    target        the file or package an import reaches, as a dotted name from the root package
-    target_name   the same, then the name it takes when that is no file
-    target_part   where it sits, as a violation names a place
-    package       the package of the part it sits in, as a dotted name from the root package
-    class         the class a build builds; built where it is defined; builders the parts that may build it, joined
-                  by "or"; built_part the part it is defined in
-    patterns      the name patterns that narrow the targets reaching an import's target, joined by "or"
-    taken         what an import takes that a pattern does not allow: "not <name>", or "not the file as a whole"
-    move          where the code that makes an import a part may not make could go
-    permitted     the parts the file's part may import, each as `<part>/`
-    callee        the callee of a call, as a dotted name
-    tests_target  a test's import into the tests' package, as a dotted name from the tests' root
-    own           the folder a test may import test code from, from the tests' root
-    faked         the parts the fakes stand in for
-    subject       the parts a test mirrors, each as `<part>/`, joined by "and"
-    mirrored_keys the keys of what they may import, joined by commas
-    caller_fix    what to do about a part's use of a part as more than a type: use it as a type, and leave the call
-                  to a part that may make it
-    tier_fix      the same, for a tier's test: drive the tier's subject, with what the tier's tests may touch
-    title         how a message names the language of the app ("source" when it has no name)
-    text          what a comment or a parse error says
-    wanted        the name patterns of the rule's targets, joined by "or"
-    function      the function a callback is in
-    file          the file, as shown
-    method        a method, as <class>.<name>
-    forwarded     the callee a method forwards to; then the attributes it returns of the call's result, dotted
-    reach_targets the parts of the places a rule of reach names, each once as `<part>/`, joined by "or"
-    wanted_parts  the parts its targets name, each as `<part>/`, joined by "or"
-    a_tier        a test's tier with its article: "a unit", "an integration"
-    tested_by     the tier whose tests cover a file of the app
-    tests_folder  the folder of the tests where a file of the app is tested, from the tests' root
-    function_parts, class_parts
-                  a part that holds functions, or classes, naming the first of those the profile has
+out from the finding by its name (see the vocabulary for what each prints). A rule is refused when it names a variable
+that does not exist or does not apply to what it says, so a variable here prints what it means for every finding it
+is asked of.
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from string import Formatter
 
 from xarch.kernel.logic.placement import EVERYTHING
-from xarch.modules.rules.application.logic.filters import narrowed
-from xarch.modules.rules.application.logic.places import label, targets_of
-from xarch.modules.rules.domain.rule import Facts, Found
+from xarch.modules.rules.application.logic.places import label, narrowed, targets_of
+from xarch.modules.rules.domain.rule import Facts, Found, Match
 from xarch.modules.rules.domain.values import Profile
+from xarch.modules.rules.domain.vocabulary import KINDS
 
 OWNERS = 3
 """How many parts that may import or call what a finding is about a fix names before it says "or another part"."""
 SHOWN = 3
 """How many parts that hold the other kind a fix of holds names."""
+VOWELS = "aeiou"
 
 
 def said(text: str, found: Found, facts: Facts, profile: Profile) -> str:
@@ -71,108 +28,116 @@ def said(text: str, found: Found, facts: Facts, profile: Profile) -> str:
 
 
 def value(name: str, found: Found, facts: Facts, profile: Profile) -> str:
-    rule, read, fact = found.rule, found.read, found.fact
-    match name:
-        case "key":
-            return rule.key
-        case "line":
-            return str(fact.line)
-        case "rule_part":
-            return rule.part
-        case "part":
-            return label(profile, read.place) if read.place is not None else ""
-        case "who":
-            return label(profile, read.place) if read.place is not None else "code in no part"
-        case "tier":
-            return read.tier
-        case "hit":
-            return ".".join(found.hit or ())
-        case "verb":
-            return {"imported": "import", "use": "use", "method": "call"}[fact.kind]
-        case "top":
-            return "".join(fact.path[:1])
-        case "reason":
-            return profile.reserved.get("".join(fact.path[:1]), "")
-        case "owners":
-            return ", ".join(f"{part}/" for part in _owners(found, profile))
-        case "first_owner":
-            return next(iter(_owners(found, profile)), "")
-        case "name":
-            return fact.name or ""
-        case "written":
-            return fact.text
-        case "target":
-            return ".".join((facts.root, *fact.target))
-        case "target_name":
-            return ".".join((facts.root, *fact.target, *([fact.name] if fact.name is not None else [])))
-        case "target_part":
-            return label(profile, fact.at) if fact.at is not None else ""
-        case "package":
-            sub = fact.at.sub if fact.at is not None else ()
-            return ".".join((facts.root, *fact.target[:len(fact.target) - len(sub)]))
-        case "class":
-            return fact.path[-1]
-        case "built":
-            return label(profile, fact.at) if fact.at is not None else ""
-        case "built_part":
-            return (fact.at.part if fact.at is not None else None) or ""
-        case "builders":
-            return " or ".join(f"{p}/" for p in profile.built_by.get(value("built_part", found, facts, profile), ()))
-        case "patterns":
-            return " or ".join(narrowed(found, profile))
-        case "taken":
-            return f"not {fact.name}" if fact.name is not None else "not the file as a whole"
-        case "move":
-            return _move(found, profile)
-        case "permitted":
-            return ", ".join(f"{part}/" for part in _permitted(found, profile))
-        case "callee":
-            return ".".join(fact.path)
-        case "subject":
-            return " and ".join(f"{p}/" for p in read.mirrors)
-        case "mirrored_keys":
-            return ", ".join(f"parts.{p}.may_import" for p in read.mirrors)
-        case "tests_target":
-            return ".".join((facts.tests_root, *fact.target))
-        case "own":
-            return "/".join((facts.tests_root, *read.own))
-        case "faked":
-            return ", ".join(profile.fakes.stand_in_for) if profile.fakes is not None else ""
-        case "tier_fix":
-            return _tier_fix(found, profile)
-        case "caller_fix":
-            return _caller_fix(found, profile)
-        case "title":
-            return profile.language.title or "source"
-        case "text":
-            return fact.text
-        case "wanted":
-            return " or ".join(rule.targets.words)
-        case "function":
-            return fact.path[0]
-        case "file":
-            return read.file.name
-        case "method":
-            return ".".join(fact.path)
-        case "forwarded":
-            return fact.text
-        case "then":
-            return ".".join(fact.target)
-        case "reach_targets":
-            return " or ".join(dict.fromkeys(f"{t.part}/" for t in rule.targets.places))
-        case "wanted_parts":
-            return " or ".join(f"{p}/" for p in rule.targets.words)
-        case "a_tier":
-            return f"a{'n' if read.tier[:1] in 'aeiou' else ''} {read.tier}"
-        case "tested_by":
-            return read.tested_by
-        case "tests_folder":
-            return "/".join((facts.tests_root, *read.file.path[:-1]))
-        case "function_parts":
-            return _holding(profile, "functions")
-        case "class_parts":
-            return _holding(profile, "classes")
-    raise ValueError(f"no variable of a saying is named {name!r}")
+    worked = _VALUES.get(name)
+    if worked is None:
+        raise ValueError(f"no variable of a saying is named {name!r}")
+    return worked(found, facts, profile)
+
+
+def _place_of(found: Found, profile: Profile) -> str:
+    return label(profile, found.read.place) if found.read.place is not None else "code in no part"
+
+
+def _target_part(found: Found, profile: Profile) -> str:
+    return label(profile, found.fact.at) if found.fact.at is not None else ""
+
+
+def _target_part_name(found: Found) -> str:
+    return (found.fact.at.part if found.fact.at is not None else None) or ""
+
+
+def _target(found: Found, facts: Facts) -> str:
+    root = facts.tests_root if found.fact.kind == "import-into-tests" else facts.root
+    return ".".join((root, *found.fact.target))
+
+
+def _top(found: Found) -> str:
+    return "".join(found.fact.path[:1])
+
+
+def _a_tier(tier: str) -> str:
+    return f"a{'n' if (tier or 'u')[0] in VOWELS else ''} {tier or 'untiered'}"
+
+
+def _targets(found: Found) -> str:
+    return " or ".join(shown for match in found.rule.targets for shown in _shown(match))
+
+
+def _shown(match: Match) -> list[str]:
+    if match.places:
+        return list(dict.fromkeys(f"{t.part}/" for t in match.places))
+    if match.kind == "part":
+        return [f"{p}/" for p in match.words]
+    return [*match.words, *(".".join(n) if n[0] else f".{n[1]}" for n in match.names)]
+
+
+def _not_name(found: Found) -> str:
+    return f"not {found.fact.name}" if found.fact.name is not None else "not the file as a whole"
+
+
+def _qualified(found: Found) -> str:
+    return ".".join(found.fact.path) if found.fact.kind == "function" else found.fact.name or ""
+
+
+_VALUES: dict[str, Callable[[Found, Facts, Profile], str]] = {
+    "key": lambda found, facts, profile: found.rule.key,
+    "scope_part": lambda found, facts, profile: found.rule.scope.named_part,
+    "targets": lambda found, facts, profile: _targets(found),
+    "hit": lambda found, facts, profile: ".".join(found.hit or ()),
+    "file": lambda found, facts, profile: found.read.file.name,
+    "line": lambda found, facts, profile: str(found.fact.line),
+    "part": lambda found, facts, profile: _place_of(found, profile),
+    "tier": lambda found, facts, profile: found.read.tier,
+    "a_tier": lambda found, facts, profile: _a_tier(found.read.tier),
+    "mirrored_parts": lambda found, facts, profile: " and ".join(f"{p}/" for p in found.read.mirrors),
+    "mirrored_may_import": lambda found, facts, profile: ", ".join(f"parts.{p}.may_import" for p in found.read.mirrors),
+    "own_folder": lambda found, facts, profile: "/".join((facts.tests_root, *found.read.own)),
+    "tests_folder": lambda found, facts, profile: "/".join((facts.tests_root, *found.read.file.path[:-1])),
+    "language": lambda found, facts, profile: profile.language.title or "source",
+    "importable_parts": lambda found, facts, profile: ", ".join(f"{part}/" for part in _permitted(found, profile)),
+    "faked_parts": lambda found, facts, profile: ", ".join(profile.fakes.stand_in_for) if profile.fakes else "",
+    "parts_holding_functions": lambda found, facts, profile: _holding(profile, "functions"),
+    "parts_holding_classes": lambda found, facts, profile: _holding(profile, "classes"),
+    "name": lambda found, facts, profile: found.fact.name or "",
+    "qualified_name": lambda found, facts, profile: _qualified(found),
+    "path": lambda found, facts, profile: ".".join(found.fact.path),
+    "package": lambda found, facts, profile: _top(found),
+    "reserved_reason": lambda found, facts, profile: profile.reserved.get(_top(found), ""),
+    "library_owners": lambda found, facts, profile: ", ".join(f"{part}/" for part in _owners(found, profile)),
+    "first_library_owner": lambda found, facts, profile: next(iter(_owners(found, profile)), ""),
+    "written": lambda found, facts, profile: found.fact.text,
+    "text": lambda found, facts, profile: found.fact.text,
+    "target": lambda found, facts, profile: _target(found, facts),
+    "target_name": lambda found, facts, profile: ".".join(
+        (facts.root, *found.fact.target, *([found.fact.name] if found.fact.name is not None else []))),
+    "target_part": lambda found, facts, profile: _target_part(found, profile),
+    "target_part_name": lambda found, facts, profile: _target_part_name(found),
+    "target_package": lambda found, facts, profile: _package(found, facts),
+    "built_by": lambda found, facts, profile: " or ".join(
+        f"{p}/" for p in profile.built_by.get(_target_part_name(found), ())),
+    "narrowing_patterns": lambda found, facts, profile: " or ".join(
+        narrowed(found.read.place, found.fact.at, profile)),
+    "not_name": lambda found, facts, profile: _not_name(found),
+    "move_fix": lambda found, facts, profile: _move(found, profile),
+    "type_only_fix": lambda found, facts, profile: _caller_fix(found, profile),
+    "tier_type_only_fix": lambda found, facts, profile: _tier_fix(found, profile),
+    "forwarded": lambda found, facts, profile: found.fact.text,
+    "returned": lambda found, facts, profile: ".".join(found.fact.target),
+    "verb": lambda found, facts, profile: _VERBS.get(found.fact.kind, ""),
+    "function": lambda found, facts, profile: found.fact.path[0] if found.fact.path else "",
+}
+"""What each variable prints of a finding, by its name."""
+
+NAMES = tuple(_VALUES)
+"""The name of every variable the engine says."""
+
+_VERBS = {kind.name: kind.verb for kind in KINDS if kind.verb}
+"""What a file does with what a fact of each kind names."""
+
+
+def _package(found: Found, facts: Facts) -> str:
+    sub = found.fact.at.sub if found.fact.at is not None else ()
+    return ".".join((facts.root, *found.fact.target[:len(found.fact.target) - len(sub)]))
 
 
 def _holding(profile: Profile, kind: str) -> str:
@@ -184,18 +149,18 @@ def _holding(profile: Profile, kind: str) -> str:
 def _tier_fix(found: Found, profile: Profile) -> str:
     """Use the part as a type only and drive the tier's subject, else leave what it does to a tier that may call it;
     with the tier's own words for what it may touch."""
-    tier = next(t for t in profile.tiers if t.name == found.read.tier)
+    tier = next((t for t in profile.tiers if t.name == found.read.tier), None)
     part = found.fact.at.part if found.fact.at is not None else None
-    driven = ", ".join(f"{s.part}/" for s in tier.subject)
+    driven = ", ".join(f"{s.part}/" for s in tier.subject) if tier is not None else ""
     fix = (f"use {part}/ here only as a type, and drive what you test through {driven}" if driven else
            f"use {part}/ here only as a type, and test what it does from a tier that may call it")
-    return f"{fix} ({tier.name} tests may touch: {tier.may_touch})" if tier.may_touch else fix
+    return f"{fix} ({tier.name} tests may touch: {tier.may_touch})" if tier is not None and tier.may_touch else fix
 
 
 def _caller_fix(found: Found, profile: Profile) -> str:
     """Use the part as a type only and leave the call to a part that may make it: one that may import it and does
     not list it as a type only, named from the profile."""
-    src, dst = found.rule.part, found.fact.at.part if found.fact.at is not None else None
+    src, dst = found.rule.scope.named_part, found.fact.at.part if found.fact.at is not None else None
     owners = [name for name, targets in profile.rules.items() if name not in (src, dst)
               and any(t.part == dst for t in targets) and dst not in profile.types_only.get(name, ())]
     shown = [f"{name}/" for name in owners[:OWNERS]]
@@ -207,8 +172,9 @@ def _caller_fix(found: Found, profile: Profile) -> str:
 
 
 def _owners(found: Found, profile: Profile) -> list[str]:
-    top = found.fact.path[0]
-    return [name for name, packages in (profile.libraries or {}).items() if top in packages and name != found.rule.part]
+    top = _top(found)
+    own = found.read.place.part if found.read.place is not None else None
+    return [name for name, packages in (profile.libraries or {}).items() if top in packages and name != own]
 
 
 def _permitted(found: Found, profile: Profile) -> list[str]:

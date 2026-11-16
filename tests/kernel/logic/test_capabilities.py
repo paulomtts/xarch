@@ -1,16 +1,10 @@
-"""What a check reads of the source: each check's facts are facts of the vocabulary, and a key falls short of a
-language by the facts it needs that the language grades partial or does not grade."""
+"""What a check reads of the source: a key falls short of a language by the facts it needs that the language grades
+partial or does not grade."""
 import pytest
 
-from xarch.kernel.logic.capabilities import EXACT, FACTS, NEEDS, PARTIAL, Shortfall, Supply, shortfalls
-from xarch.kernel.violations import RULES
+from xarch.kernel.logic.capabilities import EXACT, PARTIAL, Shortfall, Supply, shortfalls
 
 SUPPLIES = {"import": Supply("import", EXACT), "class": Supply("class", PARTIAL, "nested classes are not read")}
-
-
-def test_every_check_names_the_facts_it_reads_from_the_vocabulary():
-    assert set(NEEDS) == set(RULES)
-    assert {fact for needs in NEEDS.values() for fact in needs} <= set(FACTS)
 
 
 @pytest.mark.parametrize("needs, short", [

@@ -1,5 +1,6 @@
 """What a check reads of the source, as facts a language's reader supplies: the vocabulary of those facts, what each
-check needs of them, and how well a reader supplies one. A language's data file grades each fact it supplies: exact,
+check needs of them (each key's in spec's table of keys, a rule's from its vocabulary), and how well a reader supplies
+one. A language's data file grades each fact it supplies: exact,
 or partial with a note saying what it misses; a fact it does not grade it does not supply. spec refuses a key whose
 check needs a fact the language does not supply, and lists one that reads a partial fact as approximate; the rules
 module reads the facts.
@@ -36,6 +37,8 @@ FACTS: dict[str, str] = {
     "function.signature": "a function's parameters by kind",
     "function.sole_call": "the one call a function's whole body makes, with its arguments",
     "function.decorated": "whether a function has a decorator",
+    "function.forwards": "whether a method only passes its arguments on to one call on what its object holds, and "
+                         "that call's callee",
     "function.returns": "the names a function's return annotation mentions",
     "function.blocks": "each statement of a function's body that opens a block, by its keyword",
     "function.asserts": "whether a function's body asserts",
@@ -47,33 +50,6 @@ FACTS: dict[str, str] = {
 }
 """Each fact a check may read, and what it is."""
 
-NEEDS: dict[str, tuple[str, ...]] = {
-    "rules": ("import", "import.relative"),
-    "libraries": ("import", "import.relative", "import.standard"),
-    "forbidden": ("import", "import.relative", "use", "method_call"),
-    "tiers": ("import", "import.relative"),
-    "types-only": ("call", "use", "module_functions"),
-    "cycles": ("import", "import.relative"),
-    "package-only": ("import", "import.relative"),
-    "scenario-coverage": ("union", "function.tables", "function.blocks", "function.asserts", "function.mentions"),
-    "no-comments": ("comment",),
-    "stand-ins": ("class", "class.methods", "class.attributes", "call", "parameter_call"),
-    "closed-tree": ("file",),
-    "must-import": ("import", "import.relative", "import.standard", "function.statements"),
-    "no-duplicates": ("function", "function.statements", "function.shape"),
-    "no-twins": ("class", "class.fields"),
-    "dead-code": ("class", "named", "import", "import.relative", "function.statements", "class.exception"),
-    "pass-through": ("function", "function.sole_call", "function.signature", "function.decorated"),
-    "holds": ("class", "class.methods", "class.exception", "function", "function.returns"),
-    "no-callbacks": ("callback",),
-    "names": ("class",),
-    "built-by": ("class", "call"),
-    "private-imports": ("import", "import.relative"),
-    "structure": ("file",),
-    "test-tree": ("file",),
-    "syntax": ("syntax",),
-}
-"""The facts each check, by its rule id, reads."""
 
 
 @dataclass(frozen=True)

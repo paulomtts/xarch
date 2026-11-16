@@ -6,6 +6,8 @@ what the profile does not govern is not checked.
 """
 from __future__ import annotations
 
+from dataclasses import replace
+
 from xarch.kernel.logic.placement import EACH, Place, Target, matches, place_of, reaches, with_itself
 from xarch.modules.rules.domain.values import Profile
 
@@ -40,3 +42,11 @@ def targets_of(profile: Profile, part: str) -> tuple[Target, ...]:
 def allowed(profile: Profile, src: Place, dst: Place, name: str | None = None) -> bool:
     """Whether the part at src may import the name from dst, or (None) dst as a whole."""
     return src.part is not None and any(reaches(target, src, dst, name) for target in targets_of(profile, src.part))
+
+
+def narrowed(src: Place | None, at: Place | None, profile: Profile) -> tuple[str, ...]:
+    """The name patterns of the targets of the part at src that reach at but for their pattern, each once, in order."""
+    if src is None or src.part is None or at is None:
+        return ()
+    return tuple(dict.fromkeys(t.names for t in targets_of(profile, src.part)
+                               if t.names and reaches(replace(t, names=""), src, at)))

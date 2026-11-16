@@ -7,7 +7,7 @@ import pytest
 
 from tests.modules.spec.languages import PYTHON
 from tests.modules.spec.profiles_v2 import covered, layered, parsed, problems
-from xarch.kernel.logic.capabilities import EXACT, FACTS, NEEDS, PARTIAL, Shortfall, Supply
+from xarch.kernel.logic.capabilities import EXACT, FACTS, PARTIAL, Shortfall, Supply
 from xarch.modules.spec.application.logic.profile_needs import configured
 from xarch.modules.spec.domain.profile_keys import KEYS
 
@@ -65,6 +65,5 @@ def test_the_keys_a_profile_sets_are_found_in_every_scope_and_through_a_testing_
 
 
 @pytest.mark.parametrize("key", [key for key in KEYS if key.needs], ids=lambda key: key.address)
-def test_a_key_needs_only_facts_its_checks_read(key):
-    read = {fact for rule in key.rules for fact in NEEDS[rule]} if key.rules else set(FACTS)
-    assert set(key.needs) <= read
+def test_a_key_needs_only_facts_of_the_vocabulary_of_facts(key):
+    assert set(key.needs) <= set(FACTS)
