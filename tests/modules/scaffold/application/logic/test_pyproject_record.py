@@ -8,8 +8,6 @@ from xarch.modules.scaffold.application.logic.pyproject_record import (
     recorded_app,
     recorded_location,
     recorded_text,
-    with_profile,
-    with_setting,
 )
 
 CWD = Path("/work")
@@ -34,25 +32,17 @@ def test_recorded_app(app, folder, recorded):
     assert recorded_app(app, folder, CWD, "app") == recorded
 
 
-@pytest.mark.parametrize("text, written", [
-    pytest.param(None, '[tool.xarch]\nprofile = "web"\n', id="no file gets the table"),
-    pytest.param('[project]\nname = "x"\n', '[project]\nname = "x"\n\n[tool.xarch]\nprofile = "web"\n',
-                 id="a file with no table gets it at the end"),
-    pytest.param('[tool.xarch]\ntests = "t"\n\n[tool.other]\n', '[tool.xarch]\nprofile = "web"\ntests = "t"\n\n'
-                 '[tool.other]\n', id="an existing table gets the key at its top"),
-    pytest.param('[tool.xarch]\nprofile = "cli"\n', None, id="a recorded profile is never rewritten"),
-    pytest.param('tool.xarch.profile = "cli"\n', None, id="a table written another way is not extended"),
-])
-def test_with_profile(text, written):
-    assert with_profile(text, "web") == written
-
-
-def test_with_setting_writes_the_key_after_the_one_it_follows_and_quotes_the_value():
-    text = '[tool.xarch]\nprofile = "web"\ntests = "t"\n'
-    assert with_setting(text, "app", 'a"b', after="profile") == '[tool.xarch]\nprofile = "web"\napp = "a\\"b"\ntests = "t"\n'
-
-
 @pytest.mark.parametrize("text, app, written", [
+    pytest.param(None, None, '[tool.xarch]\nprofile = "web"\n', id="no file gets the table"),
+    pytest.param('[project]\nname = "x"\n', None, '[project]\nname = "x"\n\n[tool.xarch]\nprofile = "web"\n',
+                 id="a file with no table gets it at the end"),
+    pytest.param('[tool.xarch]\ntests = "t"\n\n[tool.other]\n', None, '[tool.xarch]\nprofile = "web"\ntests = "t"\n\n'
+                 '[tool.other]\n', id="an existing table gets the key at its top"),
+    pytest.param('[tool.xarch]\nprofile = "cli"\n', None, None, id="a recorded profile is never rewritten"),
+    pytest.param('tool.xarch.profile = "cli"\n', None, None, id="a table written another way is not extended"),
+    pytest.param('[tool.xarch]\nprofile = "web"\ntests = "t"\n', 'a"b',
+                 '[tool.xarch]\nprofile = "web"\napp = "a\\"b"\ntests = "t"\n',
+                 id="the app folder is written after the profile, its value quoted"),
     pytest.param(None, "shop", '[tool.xarch]\nprofile = "web"\napp = "shop"\n',
                  id="a new pyproject records an app folder that is not the default, after the profile"),
     pytest.param('[project]\nname = "x"\n', "shop", '[project]\nname = "x"\n\n[tool.xarch]\nprofile = "web"\n'

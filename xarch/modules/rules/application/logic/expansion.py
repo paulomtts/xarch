@@ -20,7 +20,7 @@ def _all(*texts: str) -> tuple[Condition, ...]:
     return tuple(_of(text) for text in texts)
 
 
-def libraries(profile: Profile) -> tuple[Rule, ...]:
+def _libraries(profile: Profile) -> tuple[Rule, ...]:
     """A part imports only the outside packages its `libraries` list; the standard library and the app's own package
     are always allowed, and a relative import is the app's own, but a module of the standard library the profile
     reserves is an outside package; one finding per package and line. No rule when no part lists libraries, and none
@@ -46,7 +46,7 @@ def libraries(profile: Profile) -> tuple[Rule, ...]:
                                       (_all("not relative", "reserved"), _all("app-package"))))
 
 
-def forbidden(profile: Profile) -> tuple[Rule, ...]:
+def _forbidden(profile: Profile) -> tuple[Rule, ...]:
     """A file of a part with a `forbidden` list neither imports what it names, nor uses a name it lists, nor calls a
     method it lists on anything but what its object holds; a test of a tier that applies the lists is held to the
     list of each part it mirrors. One finding per line and name."""
@@ -67,7 +67,7 @@ def forbidden(profile: Profile) -> tuple[Rule, ...]:
     return tuple(found)
 
 
-def package_only(profile: Profile) -> tuple[Rule, ...]:
+def _package_only(profile: Profile) -> tuple[Rule, ...]:
     """A part the guard names is imported as a package, never by one of its files, from anywhere outside its own
     folder (its own instance, for a part in a repeating folder), the tests included."""
     if not profile.package_only:
@@ -80,7 +80,7 @@ def package_only(profile: Profile) -> tuple[Rule, ...]:
                  key="parts.<part>.package_only"),)
 
 
-def private_imports(profile: Profile) -> tuple[Rule, ...]:
+def _private_imports(profile: Profile) -> tuple[Rule, ...]:
     """No file of the app or the tests imports a name private in the language from the app's or the tests' own
     package, or relatively; one finding per name."""
     if not profile.private_imports:
@@ -91,7 +91,7 @@ def private_imports(profile: Profile) -> tuple[Rule, ...]:
                  keep=_all("takes-a-name", "own-code", "not public", "not special"), key="guards.private-imports"),)
 
 
-def built_by(profile: Profile) -> tuple[Rule, ...]:
+def _built_by(profile: Profile) -> tuple[Rule, ...]:
     """Only the parts a part lists in `built_by` build a class it defines at the top level of a file; the tests are
     not read."""
     if not profile.built_by:
@@ -103,7 +103,7 @@ def built_by(profile: Profile) -> tuple[Rule, ...]:
                  exempt=_all("target-allows-under built_by"), key="parts.<part>.built_by"),)
 
 
-def rules(profile: Profile) -> tuple[Rule, ...]:
+def _rules(profile: Profile) -> tuple[Rule, ...]:
     """Every import between places the profile governs is allowed by the rules of the importing file's part: a part
     may import itself and its `may_import` row, where a target with a name pattern allows only the names it matches;
     the structure may import nothing the profile governs."""
@@ -118,7 +118,7 @@ def rules(profile: Profile) -> tuple[Rule, ...]:
                          (Saying(plain, "drop the import of {target_part}, or {move_fix}"),), keep=_all("target-placed")))
 
 
-def types_only_tiers(profile: Profile) -> tuple[Rule, ...]:
+def _types_only_tiers(profile: Profile) -> tuple[Rule, ...]:
     """A test of a tier that names parts in `types_only` never calls what it imports from them, and never references
     one of their functions; a call is not said again as a reference."""
     return tuple(_types_only(Scope(TESTS, tier=tier.name), f"a {tier.name} test", f"tiers.{tier.name}.types_only",
@@ -126,7 +126,7 @@ def types_only_tiers(profile: Profile) -> tuple[Rule, ...]:
                  for tier in profile.tiers if tier.types_only)
 
 
-def types_only_parts(profile: Profile) -> tuple[Rule, ...]:
+def _types_only_parts(profile: Profile) -> tuple[Rule, ...]:
     """A file of a part that names parts in its own `types_only` is held to the same rule."""
     return tuple(_types_only(Scope(APP, part), "{where}", f"parts.{part}.types_only", parts, "{type_only_fix}")
                  for part, parts in profile.types_only.items())
@@ -140,7 +140,7 @@ def _types_only(scope: Scope, who: str, key: str, parts: tuple[str, ...], fix: s
                 keep=_all("target-placed"), key=key)
 
 
-def tiers(profile: Profile) -> tuple[Rule, ...]:
+def _tiers(profile: Profile) -> tuple[Rule, ...]:
     """A test file lies in a tier; a file of a tier imports, of the app, what the part its folder mirrors may (or its
     tier's subject, for one placed by its tier's folder); and of the test code, the fakes only when its tier tests a
     part they stand in for, never another test file (once per line), and anything else only from its own folder."""
@@ -172,13 +172,13 @@ def tiers(profile: Profile) -> tuple[Rule, ...]:
                  (*fakes, test, elsewhere), key="tiers"))
 
 
-def syntax(profile: Profile) -> tuple[Rule, ...]:
+def _syntax(profile: Profile) -> tuple[Rule, ...]:
     """A file that does not parse is a violation, at the line its error is on, and no other rule reads it."""
     return (Rule("syntax", Scope(ALL), ("syntax-error",), MAY_NOT, EXISTING,
                  (Saying("not valid {language}: {text}", "correct the syntax so that the file can be read"),)),)
 
 
-def names(profile: Profile) -> tuple[Rule, ...]:
+def _names(profile: Profile) -> tuple[Rule, ...]:
     """Every public class of a part that lists `names` matches one of its patterns, `*` standing for any text."""
     return tuple(Rule("names", Scope(APP, part), ("class",), MAY_ONLY, (Match("name", words=patterns),),
                       (Saying("{name} does not match {targets}, as every class of {where} must ({key})",
@@ -187,7 +187,7 @@ def names(profile: Profile) -> tuple[Rule, ...]:
                  for part, patterns in profile.names.items())
 
 
-def no_callbacks(profile: Profile) -> tuple[Rule, ...]:
+def _no_callbacks(profile: Profile) -> tuple[Rule, ...]:
     """Code of a part that lists `no_callbacks` calls none of its own parameters annotated as callables; the first
     parameter of a method, the object it is called on, is no callback."""
     return tuple(Rule("no-callbacks", Scope(APP, part), ("callback",), MAY_NOT, EXISTING,
@@ -197,7 +197,7 @@ def no_callbacks(profile: Profile) -> tuple[Rule, ...]:
                  for part in profile.no_callbacks)
 
 
-def no_comments(profile: Profile) -> tuple[Rule, ...]:
+def _no_comments(profile: Profile) -> tuple[Rule, ...]:
     """No line comment, in the app or its tests, but those the language's tools read: its directives, a shebang on
     line 1, an encoding declaration on line 1 or 2."""
     if not profile.no_comments:
@@ -207,7 +207,7 @@ def no_comments(profile: Profile) -> tuple[Rule, ...]:
                  exempt=_all("directive"), key="guards.no-comments"),)
 
 
-def closed_tree(profile: Profile) -> tuple[Rule, ...]:
+def _closed_tree(profile: Profile) -> tuple[Rule, ...]:
     """Every source file of the app lies in a part, or is a package file of a folder of the layout."""
     if not profile.closed_tree:
         return ()
@@ -217,7 +217,7 @@ def closed_tree(profile: Profile) -> tuple[Rule, ...]:
                          "layout"),), key="guards.closed-tree"),)
 
 
-def holds(profile: Profile) -> tuple[Rule, ...]:
+def _holds(profile: Profile) -> tuple[Rule, ...]:
     """A file of a part that lists `holds` defines at the top level what the part holds, listed without failing:
     no public function in a part of classes; no class in a part of functions but an exception or a record. A package
     file only gathers what its package holds and is not read."""
@@ -239,7 +239,7 @@ def holds(profile: Profile) -> tuple[Rule, ...]:
     return tuple(found)
 
 
-def immutable(profile: Profile) -> tuple[Rule, ...]:
+def _immutable(profile: Profile) -> tuple[Rule, ...]:
     """Every class a file of a part that lists `immutable` defines at the top level is an immutable record, as the
     language's data file says one is made, but an exception; listed without failing. A package file only gathers what
     its package holds and is not read."""
@@ -251,7 +251,7 @@ def immutable(profile: Profile) -> tuple[Rule, ...]:
                  for part in profile.immutable)
 
 
-def must_import(profile: Profile) -> tuple[Rule, ...]:
+def _must_import(profile: Profile) -> tuple[Rule, ...]:
     """Each file of a part that lists `must_import` imports one of the targets or an outside package, itself or
     through the files of its own part and instance it imports, however far; a package file and a file with no real
     statement are not said."""
@@ -266,7 +266,7 @@ def must_import(profile: Profile) -> tuple[Rule, ...]:
                  for part, wanted in profile.must_import.items())
 
 
-def must_import_tiers(profile: Profile) -> tuple[Rule, ...]:
+def _must_import_tiers(profile: Profile) -> tuple[Rule, ...]:
     """Each test file of a tier that lists `must_import` reaches one of the parts, in any instance, by an import into
     the app or through test code it imports that is no test file, however far; one with no real statement is not
     said."""
@@ -281,7 +281,7 @@ def must_import_tiers(profile: Profile) -> tuple[Rule, ...]:
                  for tier in profile.tiers if tier.must_import)
 
 
-def dead_code(profile: Profile) -> tuple[Rule, ...]:
+def _dead_code(profile: Profile) -> tuple[Rule, ...]:
     """A port that no other file of the app names, by any name it reads, but a package file and a part that may
     import everything; and a fake that no test outside the fakes' folder names, nor a fake named so, however far."""
     if not profile.dead_code or profile.fakes is None:
@@ -302,7 +302,7 @@ def dead_code(profile: Profile) -> tuple[Rule, ...]:
     return (*ports, fakes)
 
 
-def untested(profile: Profile) -> tuple[Rule, ...]:
+def _untested(profile: Profile) -> tuple[Rule, ...]:
     """A file of a part a tier tests that no test code of that tier reaches, by an import, or through files of parts
     of that same tier, however far; listed. A package file, a file with no real statement and a file of exceptions
     only are not."""
@@ -316,7 +316,7 @@ def untested(profile: Profile) -> tuple[Rule, ...]:
                  spread=("import-into-app",), key="guards.dead-code.untested"),)
 
 
-def tests_only(profile: Profile) -> tuple[Rule, ...]:
+def _tests_only(profile: Profile) -> tuple[Rule, ...]:
     """A public class or top-level function a file of the app defines that no other file of the app names, by its last
     step, a package file aside, which only gathers what its package holds: only the tests, or nothing, use it;
     listed."""
@@ -332,7 +332,7 @@ def tests_only(profile: Profile) -> tuple[Rule, ...]:
                  for kind, kept in (("class", ("not exception",)), ("function", ("top-level",))))
 
 
-def pass_through(profile: Profile) -> tuple[Rule, ...]:
+def _pass_through(profile: Profile) -> tuple[Rule, ...]:
     """A method of a listed part that only forwards to one call, listed without failing."""
     keep = "it stays listed and fails only `check --strict`"
     return tuple(Rule("pass-through", Scope(APP, part), ("function",), MAY_NOT, EXISTING,
@@ -356,12 +356,12 @@ order of the book: a key the engine expands to rules when a profile sets it."""
 
 def book(profile: Profile) -> dict[str, tuple[Rule, ...]]:
     """Every check the engine runs, by the name of its group, each the rules its keys expand to."""
-    return {"syntax": syntax(profile), "rules": rules(profile), "libraries": libraries(profile),
-            "forbidden": forbidden(profile), "tiers": tiers(profile), "types-only tiers": types_only_tiers(profile),
-            "package-only": package_only(profile), "types-only parts": types_only_parts(profile),
-            "no-callbacks": no_callbacks(profile), "names": names(profile), "built-by": built_by(profile),
-            "private-imports": private_imports(profile), "no-comments": no_comments(profile),
-            "closed-tree": closed_tree(profile), "holds": holds(profile), "immutable": immutable(profile),
-            "must-import": must_import(profile),
-            "must-import tiers": must_import_tiers(profile), "dead-code": dead_code(profile),
-            "untested": untested(profile), "tests-only": tests_only(profile), "pass-through": pass_through(profile)}
+    return {"syntax": _syntax(profile), "rules": _rules(profile), "libraries": _libraries(profile),
+            "forbidden": _forbidden(profile), "tiers": _tiers(profile), "types-only tiers": _types_only_tiers(profile),
+            "package-only": _package_only(profile), "types-only parts": _types_only_parts(profile),
+            "no-callbacks": _no_callbacks(profile), "names": _names(profile), "built-by": _built_by(profile),
+            "private-imports": _private_imports(profile), "no-comments": _no_comments(profile),
+            "closed-tree": _closed_tree(profile), "holds": _holds(profile), "immutable": _immutable(profile),
+            "must-import": _must_import(profile),
+            "must-import tiers": _must_import_tiers(profile), "dead-code": _dead_code(profile),
+            "untested": _untested(profile), "tests-only": _tests_only(profile), "pass-through": _pass_through(profile)}

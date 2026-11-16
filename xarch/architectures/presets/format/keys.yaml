@@ -622,7 +622,7 @@ keys:
       <<table>>
   testing.mocks:
     meaning: how a mock is built
-    accepts: a map {calls, autospec, spec_keywords, fixtures}
+    accepts: a map {calls, autospec, spec_keywords, spec_position, fixtures}
     example: |
       <<testing>>
         mocks:
@@ -674,6 +674,15 @@ keys:
       <<testing>>
         mocks:
       <<mocks>>
+  testing.mocks.spec_position:
+    meaning: where a call that builds a mock takes its spec
+    accepts: "a whole number, the position of the argument that names the spec; left out: only a keyword of
+      `spec_keywords` names it"
+    example: |
+      <<testing>>
+        mocks:
+      <<mocks>>
+          spec_position: 0
   testing.mocks.fixtures:
     meaning: test parameters whose methods build mocks
     accepts: "a map {<parameter>: {calls, autospec}}"
@@ -790,19 +799,23 @@ keys:
       type (as written, a twin's name read as the name of the class it copies), unless it is the only renamed one and at
       least min_renamed others agree. With min_subset, also a partial copy: one class's field names (at least
       min_subset, and at least half of the other's) are some of the other's, in its order. Each such pair is reported
-      once, at the later of the two, naming the earlier; a case left out is off
+      once, at the later of the two, naming the earlier; a case left out is off. With `translated`, a pair one of whose
+      classes a file of a listed part builds while importing the other's file is not a twin
     example: |
       guards:
         no-twins: {min_fields: 3}
   guards.dead-code:
     meaning: no %interface% nothing names, no fake no test uses
     accepts: >-
-      {untested: true|false}: every port (a %interface% in a part `fakes.for` names) is named by another file of the
-      app, in code or an annotation, and every fake (a top-level class of the fakes folder whose name starts with
-      `prefix`) is named by a test outside that folder or by a fake that is itself used. The port's own file, package
-      files and the wiring (a part that may import `everything`) do not count; names are compared by their last step.
-      With `untested: true`, every file of a part that has a `tier` that no test of that tier reaches is also listed as
-      `weak`, failing `check --strict` only (see guards.dead-code.untested)
+      {untested: true|false, tests_only: true|false, known: [<file>:<name>, ...]}: every port (a %interface% in a part
+      `fakes.for` names) is named by another file of the app, in code or an annotation, and every fake (a top-level
+      class of the fakes folder whose name starts with `prefix`) is named by a test outside that folder or by a fake
+      that is itself used. The port's own file, package files and the wiring (a part that may import `everything`) do
+      not count; names are compared by their last step. With `untested: true`, every file of a part that has a `tier`
+      that no test of that tier reaches is also listed as `weak`, failing `check --strict` only (see
+      guards.dead-code.untested); with `tests_only: true`, every public name only the tests use, but those `known`
+      accepts, which the enforcement section names instead (see guards.dead-code.tests_only and
+      guards.dead-code.known)
     example: |
       <<two>>
       <<fakes>>
@@ -889,6 +902,22 @@ keys:
     example: |
       guards:
         no-twins: {min_fields: 3, min_subset: 3}
+  guards.no-twins.translated:
+    meaning: the parts whose files translate one module's values into another's
+    accepts: >-
+      a list of part names: a pair is no twin when a file of one of them builds one of the two classes and imports the
+      file that defines the other
+    example: |
+      parts:
+        documents:
+          path: documents
+          role: the documents
+        adapters:
+          path: adapters
+          role: the documents as the outside reads them
+          may_import: [documents]
+      guards:
+        no-twins: {min_fields: 2, translated: [adapters]}
   guards.dead-code.untested:
     meaning: also list the files no test of their tier reaches
     accepts: >-
@@ -914,6 +943,19 @@ keys:
       <<fakes>>
       guards:
         dead-code: {tests_only: true}
+  guards.dead-code.known:
+    meaning: the public names only the tests use that the profile accepts
+    accepts: >-
+      a list of `<file below the app>:<name>`, each a public class or top-level function that file defines which only
+      the tests use: `tests_only` lists it no more, and every `xarch check` names it in its enforcement section instead.
+      An entry whose file defines no such name, or whose name another file of the app names, is itself listed as `weak`
+      and fails `check --strict` only. Needs `tests_only: true`. `profile check` lists each entry the bundled profile
+      does not as looser
+    example: |
+      <<two>>
+      <<fakes>>
+      guards:
+        dead-code: {tests_only: true, known: [documents/wiring%extension%:build_documents]}
   guards.pass-through.parts:
     meaning: the parts whose forwarding methods are listed
     accepts: "[<part>, ...]"

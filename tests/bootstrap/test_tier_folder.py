@@ -2,8 +2,7 @@
 decides nothing `check` does, so no example, however it is written, can switch the "lies in no tier" report off."""
 import pytest
 
-from xarch.bootstrap.wiring import build_controllers
-from xarch.modules.rules.contract import CheckImports, ImportsChecked
+from tests.bootstrap.project import source_check
 
 NO_TIER = ("tests/scripts/test_x.py: lies in no tier: no part's folder and no tier's `folder` is mirrored here; "
            "fix: move it to the folder that mirrors its subject's path in the app, or into a tier's `folder`")
@@ -34,9 +33,7 @@ def check(tmp_path, tier: str, tests: tuple[str, ...]) -> list[str]:
         (tmp_path / "tests" / name).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / "tests" / name).write_text("x = 1\n")
     (tmp_path / "min.yaml").write_text(PROFILE.format(tier=tier))
-    result = build_controllers().rules.check(CheckImports(tmp_path / "app", "app", str(tmp_path / "min.yaml"),
-                                                          tmp_path / "tests"))
-    assert isinstance(result, ImportsChecked)
+    result = source_check(tmp_path / "app", str(tmp_path / "min.yaml"), tmp_path / "tests")
     return [f"{v}; fix: {v.fix}" for v in result.violations]
 
 

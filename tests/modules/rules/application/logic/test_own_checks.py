@@ -1,15 +1,15 @@
 """The checks a profile writes itself, made into rules: each target resolved by its kind (a place by the target grammar,
 a dotted name into its steps, a part checked against the profile), the check refused with every problem at once when
-a word does not apply, a place or a part is not the profile's, or the language lacks a fact it needs; and listed as
-approximate when the language supplies one of its facts only partly; and what is wrong with how one holds to its
-examples."""
+a word does not apply, a place or a part is not the profile's, or the language lacks a fact it needs, while each that
+can be made is made all the same when every problem of the others is listed; listed as approximate when the language
+supplies one of its facts only partly; and what is wrong with how one holds to its examples."""
 import pytest
 
 from tests.modules.rules.builders import profile
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.application.logic.own_checks import approximate, held_problems, own, resolved
+from xarch.modules.rules.application.logic.own_checks import held_problems, made, resolved
 from xarch.modules.rules.domain.errors import ChecksRefused
-from xarch.modules.rules.domain.rule import MAY_NOT, Match, Rule
+from xarch.modules.rules.domain.rule import MAY_NOT, MadeChecks, Match, OwnCheck, Rule
 from xarch.profile_values.capabilities import EXACT, Shortfall, Supply
 from xarch.profile_values.checks import APP, Condition, Quantified, Saying, Scope, WrittenCheck, WrittenTarget
 from xarch.profile_values.language import CheckedLanguage
@@ -26,20 +26,19 @@ CHECK = WrittenCheck(("call",), Scope(APP, "kernel"),
 
 
 def test_a_check_the_profile_writes_becomes_a_rule_with_its_examples_and_its_key():
-    (check,) = own({"no-api": CHECK}, PROFILE)
-    assert check.rule == Rule("no-api", Scope(APP, "kernel"), ("call",), MAY_NOT,
-                              (Match("path", names=(("app", "api"), ("", "run()"))), Match("part", words=("web",))),
-                              (Saying("c", "f", (Condition("of-kind", "call"),)),
-                               Saying("{where} calls {path}", "do not", once=("line",))),
-                              keep=(Condition("target-placed"),), key="checks.no-api")
-    assert (check.flagged, check.clean) == ((("kernel/a.py", "x()\n"),), (("kernel/b.py", "\n"),))
+    rule = Rule("no-api", Scope(APP, "kernel"), ("call",), MAY_NOT,
+                (Match("path", names=(("app", "api"), ("", "run()"))), Match("part", words=("web",))),
+                (Saying("c", "f", (Condition("of-kind", "call"),)), Saying("{where} calls {path}", "do not", once=("line",))),
+                keep=(Condition("target-placed"),), key="checks.no-api")
+    assert resolved(profile(language=SUPPLIES, written={"no-api": CHECK})).checks == (
+        OwnCheck(rule, (("kernel/a.py", "x()\n"),), (("kernel/b.py", "\n"),)),)
 
 
 def test_a_place_is_read_by_the_target_grammar_from_the_part_the_scope_names():
     placed = WrittenCheck(("import-into-app",), Scope(APP, "services"),
                           Quantified(MAY_NOT, (WrittenTarget("place", ("domain/values", "kernel")),)),
                           (Saying("m", "f"),))
-    (check,) = own({"placed": placed}, profile())
+    (check,) = resolved(profile(written={"placed": placed})).checks
     assert check.rule.targets == (Match("place", places=(Target("domain", "own", ("values",)), Target("kernel"))),)
 
 
@@ -51,7 +50,7 @@ def test_a_check_whose_words_do_not_apply_or_whose_places_and_parts_are_not_the_
                            (Saying("m", "f"),))
     lacking = WrittenCheck(("class",), Scope(), Quantified(MAY_NOT, (WrittenTarget("exist"),)), (Saying("{name}", "f"),))
     with pytest.raises(ChecksRefused) as refused:
-        own({"no-api": bad, "nowhere": nowhere, "named": lacking}, PROFILE)
+        resolved(profile(language=SUPPLIES, written={"no-api": bad, "nowhere": nowhere, "named": lacking}))
     assert refused.value.problems == (
         "checks.no-api.keep: no filter is named 'publc': did you mean public or placed?",
         "checks.no-api.mode: is 'fial': write fail (a finding fails the check) or list (it is listed as weak and fails "
@@ -62,11 +61,41 @@ def test_a_check_whose_words_do_not_apply_or_whose_places_and_parts_are_not_the_
         "of Toy does not supply: read another kind of fact, or drop the check")
 
 
-def test_a_check_that_reads_a_fact_the_language_supplies_partly_is_approximate():
+CALLS = WrittenCheck(("call",), Scope(), Quantified(MAY_NOT, (WrittenTarget("exist"),)), (Saying("m", "f"),),
+                     flagged=(("a.py", "x()\n"),))
+CALLS_RULE = Rule("calls", Scope(), ("call",), MAY_NOT, (Match("exist"),), (Saying("m", "f"),), key="checks.calls")
+MISSPELT = WrittenCheck(("call",), Scope(), Quantified(MAY_NOT, (WrittenTarget("exist"),)), (Saying("m", "f"),),
+                        keep=(Condition("publc"),))
+NAMED = WrittenCheck(("class",), Scope(), Quantified(MAY_NOT, (WrittenTarget("exist"),)), (Saying("{name}", "f"),))
+LACKING = ("checks.named: needs class (the classes a file defines at the top level: name, bases, line), which the "
+           "reader of Toy does not supply: read another kind of fact, or drop the check")
+
+
+@pytest.mark.parametrize("written, then", [
+    pytest.param({}, MadeChecks((), ()), id="a profile with no check of its own makes none"),
+    pytest.param({"calls": CALLS}, MadeChecks((OwnCheck(CALLS_RULE, (("a.py", "x()\n"),)),), ()),
+                 id="a check written in words that apply is made, with its examples"),
+    pytest.param({"misspelt": MISSPELT, "calls": CALLS},
+                 MadeChecks((OwnCheck(CALLS_RULE, (("a.py", "x()\n"),)),),
+                            ("checks.misspelt.keep: no filter is named 'publc': did you mean public or placed?",)),
+                 id="a check that cannot be made is listed with its problems, and the others are made all the same"),
+    pytest.param({"named": NAMED, "calls": CALLS}, MadeChecks((OwnCheck(CALLS_RULE, (("a.py", "x()\n"),)),), (LACKING,)),
+                 id="a check that needs a fact the reader does not supply is not made"),
+    pytest.param({"named": NAMED, "misspelt": MISSPELT},
+                 MadeChecks((), (LACKING, "checks.misspelt.keep: no filter is named 'publc': did you mean public or "
+                                          "placed?")),
+                 id="the problems of the checks that cannot be made are in the profile's order"),
+])
+def test_made_makes_each_check_it_can_and_lists_the_problems_of_the_others(written, then):
+    assert made(written, PROFILE) == then
+
+
+def test_a_check_that_reads_a_fact_the_language_supplies_partly_is_approximate_after_the_profile_s_own_keys():
     importing = WrittenCheck(("import",), Scope(), Quantified(MAY_NOT, (WrittenTarget("exist"),)),
                              (Saying("{package}", "f"),))
-    checks = own({"imports": importing}, PROFILE)
-    assert approximate(checks, SUPPLIES) == (Shortfall("checks.imports", "import", "no star imports"),)
+    keyed = Shortfall("parts.kernel.names", "class", "a class defined in a branch is not read")
+    done = resolved(profile(language=SUPPLIES, approximate=(keyed,), written={"imports": importing}))
+    assert done.approximate == (keyed, Shortfall("checks.imports", "import", "no star imports"))
 
 
 def test_a_profile_resolved_holds_its_checks_as_rules_and_their_approximate_keys():

@@ -3,7 +3,7 @@ the target grammar, dotted names joined), a rule of reach with how it reaches; e
 tokens of the language filled into the examples."""
 import pytest
 
-from xarch.modules.rules.application.logic.written import check_of, filled, ids, written, written_own
+from xarch.modules.rules.application.logic.written import check_of, written, written_own
 from xarch.modules.rules.domain.rule import EXISTING, MAY_NOT, MUST_BE_REACHED, MUST_REACH, Match, OwnCheck, Rule
 from xarch.profile_values.checks import Condition, Quantified, Saying, Scope, WrittenCheck, WrittenTarget
 from xarch.profile_values.language import CheckedLanguage
@@ -43,8 +43,9 @@ def test_a_rule_is_the_check_a_profile_would_write(rule, check):
 def test_rules_written_as_checks_each_take_an_id_of_their_own():
     rule = Rule("names", Scope(part="store"), ("class",), MAY_NOT, EXISTING, SAID)
     other = Rule("names", Scope(), ("class",), MAY_NOT, EXISTING, SAID)
-    assert ids([rule, rule, other]) == ["names-store", "names-store-2", "names"]
-    assert list(written([rule, other])) == ["names-store", "names"]
+    assert written([rule, rule, other]) == {"names-store": check_of(rule), "names-store-2": check_of(rule),
+                                            "names": check_of(other)}
+    assert written([rule, other]) == {"names-store": check_of(rule), "names": check_of(other)}
 
 
 def test_a_check_of_one_s_own_is_written_under_its_id_with_its_examples_filled_in():
@@ -62,4 +63,7 @@ def test_a_check_of_one_s_own_is_written_under_its_id_with_its_examples_filled_i
     pytest.param("%comment% a note in notes%extension%", "", "# a note in notes.py", id="the other tokens as before"),
 ])
 def test_the_tokens_of_the_language_are_filled_in(text, importing, written_out):
-    assert filled(text, CheckedLanguage(extension=".py", comment="#", importing=importing)) == written_out
+    rule = Rule("no-todo", Scope(), ("comment",), MAY_NOT, EXISTING, SAID)
+    language = CheckedLanguage(extension=".py", comment="#", importing=importing)
+    assert written_own((OwnCheck(rule, (("notes%extension%", text),), ()),), language) == {
+        "no-todo": check_of(rule, (("notes.py", written_out),), ())}

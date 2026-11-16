@@ -501,9 +501,10 @@ def _testing(value: Any, presets: Mapping[str, Any], problems: list[str], langua
 def _mocks(value: Any, problems: list[str], language: Language) -> StandIns | None:
     where = "testing.mocks"
     if not isinstance(value, Mapping):
-        problems.append(f"{where}: must be a mapping {{calls, spec_keywords}}, and optionally autospec and fixtures: "
-                        "the dotted names of the calls that build a mock, the keywords a mock is given its spec by, "
-                        "and the parameters of a test function whose methods build one")
+        problems.append(f"{where}: must be a mapping {{calls, spec_keywords}}, and optionally autospec, spec_position "
+                        "and fixtures: the dotted names of the calls that build a mock, the keywords a mock is given "
+                        "its spec by, the position of the argument that names it, and the parameters of a test "
+                        "function whose methods build one")
         return None
     count = len(problems)
     problems += ck.unknown_keys(value, names_of(MOCKS), where)
@@ -516,9 +517,13 @@ def _mocks(value: Any, problems: list[str], language: Language) -> StandIns | No
                                language) if "spec_keywords" in value else None)
     fixtures = (ck.fixtures(value["fixtures"], f"{where}.fixtures", problems, language, "calls")
                 if "fixtures" in value else ())
+    position = value.get("spec_position")
+    if position is not None and not _whole(position, 0):
+        problems.append(f"{where}.spec_position: must be a whole number, at least 0, such as 0: the position of the "
+                        "argument that names the spec; leave it out when only a keyword names it")
     if len(problems) != count or calls is None or autospec is None or keywords is None or fixtures is None:
         return None
-    return StandIns(calls, autospec, keywords, fixtures)
+    return StandIns(calls, autospec, keywords, fixtures, position)
 
 
 def _tiers(document: Mapping[Any, Any], specs: dict[str, Any], parts: dict[str, Part], declared: set[str],
@@ -698,7 +703,7 @@ def _guards(value: Any, specs: dict[str, Any], parts: dict[str, Part], declared:
         elif kind is NoDuplicates:
             guards.append(_no_duplicates(spec, where, problems))
         elif kind is NoTwins:
-            guards.append(_no_twins(spec, where, problems))
+            guards.append(_no_twins(spec, declared, parts, where, problems))
         elif kind is PassThrough:
             guard = _pass_through(spec, declared, parts, where, problems)
             if guard is not None:
@@ -762,7 +767,8 @@ def _dead_code(spec: Any, fakes: Fakes | None, where: str, problems: list[str],
     if spec is None:
         spec = {}
     if not isinstance(spec, Mapping):
-        problems.append(f"{where}: must be a mapping {{untested: true|false, tests_only: true|false}}, or {{}}")
+        problems.append(f"{where}: must be a mapping {{untested: true|false, tests_only: true|false, known: "
+                        "[<file>:<name>, ...]}, or {}")
         return None
     count = len(problems)
     problems += ck.unknown_keys(spec, names_of(DEAD_CODE), where)
@@ -772,13 +778,37 @@ def _dead_code(spec: Any, fakes: Fakes | None, where: str, problems: list[str],
     tests_only = spec.get("tests_only", False)
     if not isinstance(tests_only, bool):
         problems.append(f"{where}.tests_only: must be true or false")
+    known = _known(spec["known"], tests_only is True, f"{where}.known", problems, language) if "known" in spec else ()
     if len(problems) != count:
         return None
     if fakes is None:
         problems.append(f"{where}: needs `fakes`: it reads the {language.interface_name}s of the parts `fakes.for` "
                         "names and the classes in `fakes.folder`")
         return None
-    return DeadCode(untested, tests_only)
+    return DeadCode(untested, tests_only, known)
+
+
+def _known(value: Any, tests_only: bool, where: str, problems: list[str], language: Language) -> tuple[str, ...]:
+    """The public names tests_only accepts as only the tests', each `<file below the app>:<name>`, each once."""
+    example = f"documents/rules{language.checked.extension}:clean"
+    if not tests_only:
+        problems.append(f"{where}: needs `tests_only: true`: it names the public names that check accepts as only the "
+                        "tests'")
+        return ()
+    if not isinstance(value, list):
+        problems.append(f"{where}: must be a list of <file below the app>:<name>, such as [{example}]")
+        return ()
+    found: list[str] = []
+    for item in value:
+        file, _, name = item.rpartition(":") if isinstance(item, str) else ("", "", "")
+        if not file or file.startswith("/") or not file.endswith(language.checked.extension) \
+                or not ck.is_name(name, language):
+            problems.append(f"{where}: {item!r} is not <file below the app>:<name>, such as {example}")
+        elif item in found:
+            problems.append(f"{where}: {item!r} is listed twice")
+        else:
+            found.append(item)
+    return tuple(found)
 
 
 def _substance(spec: Any, part: Part, declared: set[str], may_import: tuple[Target, ...],
@@ -840,12 +870,12 @@ def _no_duplicates(spec: Any, where: str, problems: list[str]) -> NoDuplicates:
     return NoDuplicates(_minimum(spec, "min_statements", NoDuplicates.min_statements, "statements", where, problems))
 
 
-def _no_twins(spec: Any, where: str, problems: list[str]) -> NoTwins:
+def _no_twins(spec: Any, declared: set[str], parts: dict[str, Part], where: str, problems: list[str]) -> NoTwins:
     if spec in ({}, None):
         return NoTwins()
     if not isinstance(spec, Mapping):
         problems.append(f"{where}: must be a mapping {{min_fields: <number>, min_renamed: <number>, min_subset: "
-                        "<number>}, or {} for the default")
+                        "<number>, translated: [<part>, ...]}, or {} for the default")
         return NoTwins()
     problems += ck.unknown_keys(spec, names_of(NO_TWINS), where)
     least = _minimum(spec, "min_fields", NoTwins.min_fields, "fields", where, problems)
@@ -857,7 +887,8 @@ def _no_twins(spec: Any, where: str, problems: list[str]) -> NoTwins:
                             "to switch this case off")
             value = None
         found.append(value)
-    return NoTwins(least, *found)
+    names = ck.part_names(spec["translated"], declared, f"{where}.translated", problems) if "translated" in spec else []
+    return NoTwins(least, *found, tuple(n for n in names if n in parts))
 
 
 def _minimum(spec: Mapping[Any, Any], key: str, default: int, noun: str, where: str, problems: list[str]) -> int:

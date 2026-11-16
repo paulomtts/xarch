@@ -97,7 +97,7 @@ def facts_of(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Pr
     defined = Defined(root, {(root, *steps, c.name): _placed(profile, cache, steps) for f, steps in parsed
                              for c in f.classes},
                       {steps: frozenset(f.module_functions) for f, steps in parsed},
-                      frozenset(exceptions(parsed, root)))
+                      frozenset(_exceptions(parsed, root)))
     covered = {s.part: tier.name for tier in reversed(profile.tiers) for s in tier.subject}
     placed = [_covered(Read(file, steps, package, False, _placed(profile, cache, steps)), covered)
               for file, steps, package in app]
@@ -256,7 +256,7 @@ def _file(file: SourceFile, read: Read, defined: Defined) -> frozenset[str]:
     return frozenset(n for n, on in (("no-statements", not code), ("exceptions-only", raising)) if on)
 
 
-def exceptions(files: Iterable[tuple[SourceFile, tuple[str, ...]]], root: str) -> set[tuple[tuple[str, ...], str]]:
+def _exceptions(files: Iterable[tuple[SourceFile, tuple[str, ...]]], root: str) -> set[tuple[tuple[str, ...], str]]:
     """Every class of the files, each with its steps below the root, that is an exception, as (its file's steps, its
     name)."""
     classes = {(steps, c.name): c for f, steps in files for c in f.classes}

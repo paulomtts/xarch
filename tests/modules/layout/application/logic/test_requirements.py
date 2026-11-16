@@ -2,22 +2,33 @@
 import pytest
 
 from tests.modules.layout.builders import PYTHON_NAMING
-from xarch.modules.layout.application.logic.requirements import is_instance_name, missing, requirements
+from xarch.modules.layout.application.logic.requirements import missing, requirements
 from xarch.modules.layout.domain.structure import Repeated, Requirement
 
 PARTS = [(("domain",), True), (("application", "controller.py"), False)]
 
 
-@pytest.mark.parametrize("name, instance", [
-    pytest.param("docs", True, id="an identifier is an instance"),
-    pytest.param("doc_store2", True, id="an identifier with an underscore and a digit is an instance"),
-    pytest.param("_private", False, id="a name starting with an underscore is private"),
-    pytest.param("__pycache__", False, id="a cache folder is not an instance"),
-    pytest.param("not-a-module", False, id="a name that is no identifier is not an instance"),
-    pytest.param("2docs", False, id="a name starting with a digit is not an instance"),
+MODULES = Requirement("app", ("modules",), True, "modules/")
+
+
+def parts_of(name: str) -> list[Requirement]:
+    """What PARTS requires of the instance name of modules/."""
+    return [Requirement(f"app/modules/{name}", ("modules", name, "domain"), True, "domain/"),
+            Requirement(f"app/modules/{name}", ("modules", name, "application", "controller.py"), False,
+                        "application/controller.py")]
+
+
+@pytest.mark.parametrize("name, required", [
+    pytest.param("docs", [MODULES, *parts_of("docs")], id="an identifier is an instance"),
+    pytest.param("doc_store2", [MODULES, *parts_of("doc_store2")],
+                 id="an identifier with an underscore and a digit is an instance"),
+    pytest.param("_private", [MODULES], id="a name starting with an underscore is private"),
+    pytest.param("__pycache__", [MODULES], id="a cache folder is not an instance"),
+    pytest.param("not-a-module", [MODULES], id="a name that is no identifier is not an instance"),
+    pytest.param("2docs", [MODULES], id="a name starting with a digit is not an instance"),
 ])
-def test_is_instance_name(name, instance):
-    assert is_instance_name(name, PYTHON_NAMING) == instance
+def test_a_folder_of_a_repeating_folder_is_an_instance_when_its_name_is_a_public_name_of_the_language(name, required):
+    assert requirements("app", [("modules",)], [Repeated(("modules",), PARTS, [name])], (), PYTHON_NAMING) == required
 
 
 @pytest.mark.parametrize("repeated, required", [

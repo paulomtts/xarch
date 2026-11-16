@@ -47,7 +47,7 @@ Problem = tuple[int, str, str]
 """A problem of a test file: its line, what is wrong, and how to fix it."""
 
 
-def snake_name(name: str) -> str:
+def _snake_name(name: str) -> str:
     """CamelCase to snake_case: MarkRead is mark_read, HTTPCheck is http_check."""
     return re.sub(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])", "_", name).lower()
 
@@ -122,7 +122,7 @@ def _use_cases(file: SourceFile, guard: ScenarioCoverage) -> list[Union]:
 
 def _test_file(union: Union, guard: ScenarioCoverage) -> str:
     """The name of the test file the guard expects for the use case a union holds the results of."""
-    return guard.file.replace(NAME, snake_name(union.name.removesuffix(guard.suffix)))
+    return guard.file.replace(NAME, _snake_name(union.name.removesuffix(guard.suffix)))
 
 
 def _given_id(row: Row) -> str | None:

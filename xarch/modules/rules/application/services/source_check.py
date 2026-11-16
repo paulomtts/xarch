@@ -10,6 +10,7 @@ from xarch.modules.rules.application.logic import (
     enforcement,
     expansion,
     governed,
+    known,
     scenarios,
     shared,
     stand_ins,
@@ -25,7 +26,6 @@ from xarch.modules.rules.contract import (
     EnforcementView,
     ExcludedView,
     FindingView,
-    ImportsChecked,
     OwnCheckView,
 )
 from xarch.modules.rules.domain.errors import RootMissing
@@ -40,12 +40,6 @@ class SourceCheckService:
     def __init__(self, tree: SourceTree, profiles: Profiles):
         self._tree, self._profiles = tree, profiles
 
-    def imports(self, root: Path, package: str, profile: str, tests: Path | None = None) -> ImportsChecked:
-        """The violations below root and below tests, and the state of the check's enforcement, as the check of the
-        imports answers; raises as check does."""
-        checked = self.check(root, package, profile, tests)
-        return ImportsChecked(checked.violations, self.view(checked.enforcement))
-
     def view(self, state: Enforcement) -> EnforcementView:
         """The state of the check's enforcement as the enforcement section shows it."""
         return EnforcementView(
@@ -56,7 +50,8 @@ class SourceCheckService:
             state.language, tuple(ApproximateView(a.address, a.fact, a.note or "",
                                                   enforcement.approximation(a.address, a.fact, a.note or ""))
                                   for a in state.approximate),
-            tuple(OwnCheckView(name, read, enforcement.reading(name, read)) for name, read in state.checks))
+            tuple(OwnCheckView(name, read, enforcement.reading(name, read)) for name, read in state.checks),
+            state.known)
 
     def check(self, root: Path, package: str, profile: str, tests: Path | None = None) -> Checked:
         """The violations below root and below tests, each given in full with its links followed, and the state of the
@@ -106,20 +101,20 @@ class SourceCheckService:
         found += run(book["built-by"], facts, rules)
         found += run(book["private-imports"], facts, rules)
         found += duplicates.violations(app, rules)
-        found += twins.violations(app, rules)
+        found += twins.violations(app, rules, package)
         found += shared.violations(app, rules, package)
         found += run(book["dead-code"], facts, rules)
         found += run(book["no-comments"], facts, rules)
         found += run(book["closed-tree"], facts, rules)
         written = run(own, facts, rules)
         found += [item for item in written if isinstance(item, Violation)]
+        only = known.accepting(run(book["tests-only"], facts, rules), facts, rules)
         state = self._enforcement(root, package, profile, rules, app, test_files,
                                   governed.ungoverned(paths, rules, shown), tests_root,
                                   [*run(book["holds"], facts, rules), *run(book["immutable"], facts, rules)],
                                   run(book["untested"], facts, rules),
-                                  [*run(book["pass-through"], facts, rules), *run(book["tests-only"], facts, rules),
-                                   *written])
-        state = replace(state, checks=tuple((rule.id, read(rule, facts, rules)) for rule in own))
+                                  [*run(book["pass-through"], facts, rules), *only.listed, *written])
+        state = replace(state, checks=tuple((rule.id, read(rule, facts, rules)) for rule in own), known=only.known)
         return Checked(tuple(found), replace(state, strict=enforcement.strict_findings(state)), rules)
 
     def _enforcement(self, resolved: Path, package: str, location: str, rules: Profile, app: list[SourceFile],

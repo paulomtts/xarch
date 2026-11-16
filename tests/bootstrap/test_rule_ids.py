@@ -8,11 +8,10 @@ from pathlib import Path
 import pytest
 
 import xarch
-from tests.bootstrap.project import APP, TESTS, write
+from tests.bootstrap.project import APP, TESTS, source_check, write
 from xarch.bootstrap.wiring import build_controllers
 from xarch.kernel.violations import RULES, Violation
 from xarch.modules.layout.contract import CheckStructure
-from xarch.modules.rules.contract import CheckImports, ImportsChecked
 
 CONTROLLER = "app.modules.docs.application.controller"
 MODULES = {"modules/mod/__init__.py": "", "modules/mod/contract/__init__.py": "",
@@ -26,9 +25,7 @@ BUNDLED = Path(xarch.__file__).parent / "architectures"
 
 
 def found(tmp_path: Path, app: dict[str, str], tests: dict[str, str]) -> list[Violation]:
-    result = build_controllers().rules.check(CheckImports(write(tmp_path / "app", {**APP, **app}), "app", "web",
-                                                          write(tmp_path / "tests", {**TESTS, **tests})))
-    assert isinstance(result, ImportsChecked)
+    result = source_check(write(tmp_path / "app", {**APP, **app}), "web", write(tmp_path / "tests", {**TESTS, **tests}))
     return list(result.violations)
 
 
@@ -125,8 +122,7 @@ def test_a_closed_tree_names_its_rule_and_its_fix(tmp_path):
                                                        "  no-comments: {}\n  closed-tree: {}\n")
     (tmp_path / "arch/closed.yaml").write_text(text)
     write(tmp_path / "app", {"stray.py": ""})
-    result = build_controllers().rules.check(CheckImports(tmp_path / "app", "app", str(tmp_path / "arch/closed.yaml")))
-    assert isinstance(result, ImportsChecked)
+    result = source_check(tmp_path / "app", str(tmp_path / "arch/closed.yaml"))
     assert [(v.rule, v.fix) for v in result.violations] == [
         ("closed-tree", "move app/stray.py into the part that fits it (run xarch where app/stray.py), or add its "
                         "folder to the layout")]
@@ -141,8 +137,7 @@ def test_a_pass_through_is_listed_as_weak_with_its_fix_and_is_no_violation(tmp_p
     service = ("class DocService:\n    def __init__(self, repo):\n        self.repo = repo\n\n"
                "    def get(self, id):\n        return self.repo.get(id)\n")
     app = write(tmp_path / "app", {**APP, "modules/docs/application/services/doc.py": service})
-    result = build_controllers().rules.check(CheckImports(app, "app", "web", write(tmp_path / "tests", TESTS)))
-    assert isinstance(result, ImportsChecked)
+    result = source_check(app, "web", write(tmp_path / "tests", TESTS))
     assert [(w.rule, w.line, bool(w.fix)) for w in result.enforcement.weak if w.rule == "pass-through"] == [
         ("pass-through", 5, True)]
     assert [f.detail for f in result.enforcement.strict if f.key == "weak" and "pass" in f.detail] == [
@@ -155,13 +150,12 @@ def test_every_violation_of_a_check_names_a_rule(tmp_path):
             "def test_publish(given, when, then):\n    if given:\n        pass\n")
     violations = found(tmp_path, {}, {"modules/docs/application/test_publish.py": body})
     assert {v.rule for v in violations} == {"scenario-coverage"}
-    assert [(v.line, bool(v.fix)) for v in violations] == [(5, True), (3, True), (3, True)]
+    assert [(v.line, bool(v.fix)) for v in violations] == [(3, True), (3, True), (5, True)]
 
 
 def test_a_function_of_a_part_that_holds_classes_is_listed_as_weak_with_its_fix_and_is_no_violation(tmp_path):
     app = write(tmp_path / "app", {**APP, "modules/docs/domain/rule.py": "def clean():\n    return 1\n"})
-    result = build_controllers().rules.check(CheckImports(app, "app", "web", write(tmp_path / "tests", TESTS)))
-    assert isinstance(result, ImportsChecked)
+    result = source_check(app, "web", write(tmp_path / "tests", TESTS))
     assert [(w.rule, w.line, bool(w.fix)) for w in result.enforcement.weak if w.rule == "holds"] == [("holds", 1, True)]
     assert [v.rule for v in result.violations] == []
 
@@ -169,8 +163,7 @@ def test_a_function_of_a_part_that_holds_classes_is_listed_as_weak_with_its_fix_
 def test_a_class_that_is_no_immutable_record_in_a_part_of_records_is_listed_as_weak_under_its_own_id(tmp_path):
     logic = "class Rows:\n    items: list\n\n\ndef rows() -> Rows:\n    return Rows()\n"
     app = write(tmp_path / "app", {**APP, "modules/docs/application/logic/rows.py": logic})
-    result = build_controllers().rules.check(CheckImports(app, "app", "web", write(tmp_path / "tests", TESTS)))
-    assert isinstance(result, ImportsChecked)
+    result = source_check(app, "web", write(tmp_path / "tests", TESTS))
     assert [(w.rule, w.line, bool(w.fix)) for w in result.enforcement.weak if w.rule in ("holds", "immutable")] == [
         ("immutable", 1, True)]
     assert [v.rule for v in result.violations] == []
@@ -182,10 +175,7 @@ def test_a_test_that_reaches_nothing_its_tier_must_reach_names_its_rule_and_its_
         "  integration:\n", "  integration:\n    must_import: [controller]\n", 1)
     (tmp_path / "arch/reach.yaml").write_text(text)
     tests = {**TESTS, "modules/docs/application/test_other.py": "def test_other():\n    assert 1\n"}
-    result = build_controllers().rules.check(CheckImports(write(tmp_path / "app", APP), "app",
-                                                          str(tmp_path / "arch/reach.yaml"),
-                                                          write(tmp_path / "tests", tests)))
-    assert isinstance(result, ImportsChecked)
+    result = source_check(write(tmp_path / "app", APP), str(tmp_path / "arch/reach.yaml"), write(tmp_path / "tests", tests))
     assert [(v.file, v.rule, bool(v.fix)) for v in result.violations] == [
         ("tests/modules/docs/application/test_other.py", "must-import", True)]
 
@@ -193,8 +183,7 @@ def test_a_test_that_reaches_nothing_its_tier_must_reach_names_its_rule_and_its_
 def test_a_file_no_test_of_its_tier_reaches_is_listed_as_weak_with_its_fix(tmp_path):
     app = write(tmp_path / "app", {**APP, "modules/docs/domain/rule.py": "class Rule:\n    def ok(self):\n"
                                                                         "        return 1\n"})
-    result = build_controllers().rules.check(CheckImports(app, "app", "web", write(tmp_path / "tests", TESTS)))
-    assert isinstance(result, ImportsChecked)
+    result = source_check(app, "web", write(tmp_path / "tests", TESTS))
     assert [(w.file, bool(w.fix)) for w in result.enforcement.weak if w.rule == "dead-code"] == [
         ("app/modules/docs/domain/rule.py", True)]
 
@@ -206,8 +195,7 @@ def test_a_shared_part_names_its_rule_and_its_fix(tmp_path):
     (tmp_path / "arch/shared.yaml").write_text(text)
     write(tmp_path / "app", {"kernel/__init__.py": "", "kernel/ids.py": "PREFIX = 'doc'\n",
                              "modules/docs/domain/values.py": "from app.kernel.ids import PREFIX\n\nNAME = PREFIX\n"})
-    result = build_controllers().rules.check(CheckImports(tmp_path / "app", "app", str(tmp_path / "arch/shared.yaml")))
-    assert isinstance(result, ImportsChecked)
+    result = source_check(tmp_path / "app", str(tmp_path / "arch/shared.yaml"))
     assert [(v.rule, v.fix) for v in result.violations if v.rule == "shared"] == [
         ("shared", "move PREFIX to modules/docs, its one user, or to the published types of modules/docs if others "
                    "read it through them")]
@@ -224,7 +212,5 @@ def test_a_part_used_only_as_a_type_names_its_rule_and_its_fix(tmp_path):
     app = write(tmp_path / "app", {**APP, "modules/docs/application/services/doc.py":
                                    "from app.modules.docs.contract import Published\n\n\nclass DocService:\n"
                                    "    def run(self):\n        return Published()\n"})
-    result = build_controllers().rules.check(CheckImports(app, "app", str(tmp_path / "arch/typed.yaml"),
-                                                          write(tmp_path / "tests", TESTS)))
-    assert isinstance(result, ImportsChecked)
+    result = source_check(app, str(tmp_path / "arch/typed.yaml"), write(tmp_path / "tests", TESTS))
     assert [(v.rule, v.line, bool(v.fix)) for v in result.violations] == [("types-only", 6, True)]

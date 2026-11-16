@@ -6,8 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from xarch.bootstrap.wiring import build_controllers
-from xarch.modules.rules.contract import CheckImports
+from tests.bootstrap.project import source_check
 
 ENTRY = {"cli": ("cli/commands", "cli", "web/routes"), "web": ("web/routes", "web", "cli/commands")}
 PROFILES = pytest.mark.parametrize("profile", ["cli", "web"])
@@ -27,7 +26,7 @@ def problems(tmp_path: Path, profile: str, files: dict[str, str]) -> list[str]:
         path = app / filled(rel, profile)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(filled(body, profile))
-    return [str(v) for v in build_controllers().rules.check(CheckImports(app, "app", profile)).violations]
+    return [str(v) for v in source_check(app, profile).violations]
 
 
 @PROFILES

@@ -10,16 +10,16 @@ from xarch.modules.rules.application.logic.explained import (
     category_at,
     facets,
     fallback,
-    fields,
     keyed,
     nearest,
-    needs,
+    searched,
     uses,
     word_at,
 )
 from xarch.modules.rules.domain.published import CHECKS
 from xarch.modules.rules.domain.rule import EXISTING, MAY_NOT, Match, Rule
-from xarch.modules.rules.domain.vocabulary import FILTERS, KINDS, QUANTIFIERS, TARGETS, VARIABLES, WordFacets
+from xarch.modules.rules.domain.values import Known
+from xarch.modules.rules.domain.vocabulary import FIELDS, FILTERS, KINDS, QUANTIFIERS, TARGETS, VARIABLES, WordFacets
 from xarch.modules.rules.domain.worked import WORKED
 from xarch.profile_values.checks import Condition, Saying, Scope
 
@@ -65,12 +65,8 @@ def test_an_address_of_no_word_has_the_nearest_ones(typed, near):
     assert nearest(typed) == near
 
 
-def test_a_word_applies_to_the_kinds_that_carry_what_it_reads_and_a_kind_carries_its_fields():
+def test_a_word_applies_to_the_kinds_that_carry_what_it_reads():
     assert applies(next(t for t in TARGETS if t.name == "text")) == ("syntax-error", "comment")
-    imported = next(k for k in KINDS if k.name == "imported-name")
-    assert [(name, when) for name, _, when in fields(imported)] == [
-        ("line", ""), ("path", ""), ("written", ""), ("relative", ""), ("standard", ""), ("name", "takes-a-name")]
-    assert needs(imported) == ("import", "import.relative", "import.standard")
 
 
 @pytest.mark.parametrize("category, name, used", [
@@ -112,10 +108,12 @@ def test_a_word_says_what_its_category_has_besides_its_name_and_meaning(found, s
     assert facets(found) == said
 
 
-def test_a_kind_says_its_fields_needs_and_verb():
+def test_a_kind_says_its_fields_each_with_the_filter_it_carries_it_under_what_it_needs_and_its_verb():
     imported = word(KINDS, "imported-name")
-    assert facets(imported) == WordFacets(side=imported.side, fields=fields(imported), needs=needs(imported),
-                                          verb=imported.verb)
+    fields = tuple((name, FIELDS[name], when) for name, when in (
+        ("line", ""), ("path", ""), ("written", ""), ("relative", ""), ("standard", ""), ("name", "takes-a-name")))
+    assert facets(imported) == WordFacets(side=imported.side, fields=fields,
+                                          needs=("import", "import.relative", "import.standard"), verb=imported.verb)
 
 
 @pytest.mark.parametrize("category, name, found", [
@@ -126,3 +124,11 @@ def test_a_kind_says_its_fields_needs_and_verb():
 ])
 def test_a_word_no_profile_shows_falls_back_to_a_check_written_for_the_explanation(category, name, found):
     assert fallback(category, name) == found
+
+
+@pytest.mark.parametrize("known, found", [
+    pytest.param(Known("mine.yaml", ("cli", "web")), ("mine.yaml", "cli", "web"), id="the one in force first"),
+    pytest.param(Known(None, ("cli", "web")), ("cli", "web"), id="none in force: the bundled ones alone"),
+])
+def test_an_example_is_searched_for_in_the_profile_in_force_then_the_bundled_ones(known, found):
+    assert searched(known) == found

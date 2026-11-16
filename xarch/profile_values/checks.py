@@ -1,7 +1,7 @@
-"""The checks a profile writes itself, as values: spec reads them from the profile's `checks` and checks every name the
-profile declares in them (an id, a part, a tier); rules makes each a rule, resolving the words of its vocabulary
-(a kind of target such as `place` or `part`, a filter, a variable) and refusing a check whose words do not apply; and
-what holding them to their examples found, which rules works out and spec reports.
+"""The checks a profile writes itself, as values: spec reads them from the profile's `checks`, checks every name the
+profile declares in them (an id, a part, a tier) and writes them as the format does; rules makes each a rule,
+resolving the words of its vocabulary (a kind of target such as `place` or `part`, a filter, a variable) and refusing
+a check whose words do not apply.
 
 The records keep the shape the format writes: the files a check reads, the kinds of fact, the filters it keeps, one
 quantifier with its targets and, for a quantifier of reach, how it reaches; the filters that excuse a finding, the
@@ -23,23 +23,11 @@ STRUCTURE = ""
 APP, TESTS, ALL = "app", "tests", "all"
 """The files a scope reads: the app's, the tests', or both, the app's first."""
 
-SLOTS = ("read", "in", "keep", "may_not", "may_only", "must_reach", "must_be_reached", "except", "mode", "message",
-         "fix", "once_per", "cases", "examples")
-"""Every slot of a check, in the order a check is written: spec reads them, rules says what each means and writes a
-check with them."""
+FAIL, LIST = "fail", "list"
+"""What a finding is: a violation, or a weak finding listed in the enforcement section."""
+
 QUANTIFIER_SLOTS = ("may_not", "may_only", "must_reach", "must_be_reached")
 """The slots of which a check writes one, its quantifier."""
-SCOPE_SLOTS = ("files", "part", "tier", "where")
-"""The slots of a scope (`in`, and `from` of must_be_reached)."""
-REACH_SLOTS = {"must_reach": ("targets", "through", "through_only"),
-               "must_be_reached": ("from", "through", "through_only", "then_through", "by_another_file")}
-"""The slots of a quantifier of reach, in the order they are written."""
-CASE_SLOTS = ("when", "message", "fix", "once_per")
-"""The slots of a case."""
-EXAMPLE_SLOTS = ("flagged", "clean")
-"""The slots of a check's examples: the code it must find something in, then the code it must find nothing in."""
-STRUCTURE_WORD = "structure"
-"""How a scope's part names the structure (STRUCTURE): the folders of the layout no part claims."""
 
 
 @dataclass(frozen=True)
@@ -80,10 +68,10 @@ class Saying:
 
 @dataclass(frozen=True)
 class WrittenTarget:
-    """One target of a check as the profile writes it: a kind of target, and its values as written (none: a kind that
-    takes no values)."""
+    """One target of a check as the profile writes it: a kind of target, and its values as written: None when the kind
+    is written alone, an empty tuple when it is written with an empty list of values."""
     kind: str
-    values: tuple[str, ...] = ()
+    values: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -116,15 +104,6 @@ class WrittenCheck:
     sayings: tuple[Saying, ...]
     keep: tuple[Condition, ...] = ()
     exempt: tuple[Condition, ...] = ()
-    mode: str = "fail"
+    mode: str = FAIL
     flagged: tuple[tuple[str, str], ...] = ()
     clean: tuple[tuple[str, str], ...] = ()
-
-
-@dataclass(frozen=True)
-class ChecksHeld:
-    """What holding the checks a profile writes itself to their examples found, which rules works out and spec reports
-    in its check of the profile: every problem, each at its address in the profile (none: each check finds something
-    in its flagged code and nothing in its clean code), and how many checks the profile writes itself."""
-    problems: tuple[str, ...]
-    checks: int

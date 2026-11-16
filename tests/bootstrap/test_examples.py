@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from tests.bootstrap.project import bundled_profiles, example_problems
-from xarch.bootstrap.wiring import build_spec
+from xarch.bootstrap.wiring import build_controllers
 
 
 def test_the_bundled_examples_obey_their_architectures_rules():
@@ -44,5 +44,5 @@ def test_a_custom_architecture_can_be_checked(tmp_path, code, problems):
     write(tmp_path / "layered.md", "{{example:src/billing/api/handler.py}}\n")
     path = write(tmp_path / "layered.yaml", CUSTOM)
     assert example_problems(path) == problems
-    texts = {"/".join(f.path): f.template for f in build_spec().docs(str(path)).files}
+    texts = {"/".join(f.path): f.template for f in build_controllers().spec.docs(str(path)).files}
     assert texts["architecture.md"] == f"```python\n# src/billing/api/handler.py\n{code}```\n"

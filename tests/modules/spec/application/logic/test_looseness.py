@@ -1,12 +1,21 @@
-"""How a custom profile is looser than a bundled one, on hand-made architectures: a rule's target is shown as the file
-writes it."""
+"""How a custom profile is looser than a bundled one, on hand-made architectures, as the origin of the custom one says
+it: a rule's target is shown as the file writes it, and each way is said naming the key that says it. The sentence of
+each way a profile is looser is asserted here or in tests/modules/spec/application/test_origin.py (a package added to
+`libraries`, a part that may import any outside package, a `must_import` target added or the key dropped)."""
 from dataclasses import replace
 
 import pytest
 
 from tests.modules.spec.application.origins import BASE, PARTS, TESTING, TIER
 from tests.modules.spec.profiles_v2 import covered, layered, parsed
-from xarch.modules.spec.application.logic.looseness import closest, looser, sentence
+from xarch.modules.spec.application.logic.looseness import origin_of
+from xarch.modules.spec.domain.published import Loosened
+from xarch.modules.spec.domain.values import Architecture
+
+
+def loosened(custom: Architecture, base: Architecture) -> tuple[Loosened, ...]:
+    """Every way custom is looser than base, as the origin of custom, based on base, lists them."""
+    return origin_of("mine.yaml", replace(custom, based_on="base"), False, {"base": base}).looser
 
 
 @pytest.mark.parametrize("written, shown", [
@@ -21,7 +30,8 @@ def test_a_target_added_to_a_rule_is_shown_as_written(written, shown):
     custom["parts"]["api"]["may_import"] = written
     stricter = layered()
     stricter["parts"]["api"]["may_import"] = []
-    assert looser(parsed(custom), parsed(stricter)) == [("may_import", "api", shown)]
+    assert loosened(parsed(custom), parsed(stricter)) == (
+        Loosened("may_import", "api", shown, f"api may also import {shown} (parts.api.may_import)"),)
 
 
 @pytest.mark.parametrize("target", [
@@ -32,56 +42,20 @@ def test_a_target_added_to_a_rule_is_shown_as_written(written, shown):
 def test_a_target_below_one_the_bundled_profile_allows_is_not_looser(target):
     custom = layered()
     custom["parts"]["service"]["may_import"] = ["store", "shared", target]
-    assert looser(parsed(custom), parsed(layered())) == []
+    assert loosened(parsed(custom), parsed(layered())) == ()
 
 
 def test_the_bundled_profile_a_profile_says_it_is_based_on_wins_over_the_one_sharing_most_parts():
     full = parsed(layered())
     bundled = {"alpha": full, "beta": replace(full, parts={"api": full.parts["api"]})}
     mine = replace(full, parts={name: full.parts[name] for name in ("api", "store")})
-    assert closest(mine, bundled) == "alpha"
-    assert closest(replace(mine, based_on="beta"), bundled) == "beta"
+    assert origin_of("mine.yaml", mine, False, bundled).closest == "alpha"
+    assert origin_of("mine.yaml", replace(mine, based_on="beta"), False, bundled).closest == "beta"
 
 
-@pytest.mark.parametrize("looser, said", [
-    pytest.param(("may_import", "domain", "platform"),
-                 "domain may also import platform (parts.domain.may_import)", id="a rule target added"),
-    pytest.param(("libraries", "", ""), "outside packages are not checked", id="libraries switched off"),
-    pytest.param(("libraries", "web", "requests"), "web may also import requests (parts.web.libraries)",
-                 id="a package added"),
-    pytest.param(("libraries", "web", "*"), "web may import any outside package (parts.web.libraries)",
-                 id="a part left unchecked"),
-    pytest.param(("forbidden", "domain", "time.time"),
-                 "domain no longer forbids time.time (parts.domain.forbidden)", id="a forbidden name dropped"),
-    pytest.param(("must_import", "adapters", "contract@any"),
-                 "adapters may also meet must_import with contract@any (parts.adapters.must_import)",
-                 id="a must_import target added"),
-    pytest.param(("must_import", "adapters"), "adapters no longer has to import anything "
-                                                      "(parts.adapters.must_import)", id="must_import dropped"),
-    pytest.param(("untested", "platform"), "platform is newly marked untested (parts.platform.untested)",
-                 id="a part marked untested"),
-    pytest.param(("litmus", "cli"),
-                 "cli has no litmus, though the profile it is compared with gives it one (parts.cli.litmus)",
-                 id="a litmus dropped"),
-    pytest.param(("types_only", "rendering", "controller"),
-                 "the rendering tests may now call controller (tiers.rendering.types_only)",
-                 id="a types-only part dropped"),
-    pytest.param(("may_also_import", "integration", "domain/values"),
-                 "the integration tests may also import domain/values (tiers.integration.may_also_import)",
-                 id="a target its tests may also import added"),
-    pytest.param(("apply_forbidden", "unit"),
-                 "the unit tests are no longer held to their part's forbidden list (tiers.unit.apply_forbidden)",
-                 id="a tier's forbidden dropped"),
-    pytest.param(("testing.skips", "", "pytest.skip"),
-                 "pytest.skip is no longer counted as a skip (testing.skips)", id="a skip dropped"),
-    pytest.param(("files.pinned", "", "tests/test_rules.py"),
-                 "tests/test_rules.py is no longer pinned (files.tests/test_rules.py.pinned)",
-                 id="an init file unpinned"),
-    pytest.param(("reserved", "", "ast"), "ast is no longer reserved (reserved.ast)", id="a reserved name dropped"),
-    pytest.param(("other", "", "x"), "other x", id="a key it does not know is said by its words"),
-])
-def test_sentence(looser, said):
-    assert sentence(*looser) == said
+def test_a_profile_that_checks_no_outside_package_is_looser_than_one_that_does():
+    assert loosened(replace(parsed(layered()), libraries=None), parsed(layered())) == (
+        Loosened("libraries", "", "", "outside packages are not checked"),)
 
 
 def test_every_way_a_profile_is_looser_than_another_is_found_in_order():
@@ -93,32 +67,45 @@ def test_every_way_a_profile_is_looser_than_another_is_found_in_order():
                         | {"apply_forbidden": False, "may_also_import": ["edge"]}},
               "testing": {**TESTING, "skips": ["pytest.mark.skip"]}, "guards": {},
               "files": {"tests/test_rules.py": {"from": "guard.py"}}}
-    assert looser(parsed(custom), parsed(BASE)) == [
-        ("may_import", "core", "store"), ("libraries", "core", "yaml"), ("libraries", "store", "requests"),
-        ("forbidden", "core", "time.time"), ("untested", "store", ""), ("types_only", "unit", "store"),
-        ("may_also_import", "unit", "edge"), ("apply_forbidden", "unit", ""), ("testing.skips", "", "pytest.mark.xfail"),
-        ("files.pinned", "", "tests/test_rules.py")]
+    assert loosened(parsed(custom), parsed(BASE)) == (
+        Loosened("may_import", "core", "store", "core may also import store (parts.core.may_import)"),
+        Loosened("libraries", "core", "yaml", "core may also import yaml (parts.core.libraries)"),
+        Loosened("libraries", "store", "requests", "store may also import requests (parts.store.libraries)"),
+        Loosened("forbidden", "core", "time.time", "core no longer forbids time.time (parts.core.forbidden)"),
+        Loosened("untested", "store", "", "store is newly marked untested (parts.store.untested)"),
+        Loosened("types_only", "unit", "store", "the unit tests may now call store (tiers.unit.types_only)"),
+        Loosened("may_also_import", "unit", "edge", "the unit tests may also import edge (tiers.unit.may_also_import)"),
+        Loosened("apply_forbidden", "unit", "",
+                 "the unit tests are no longer held to their part's forbidden list (tiers.unit.apply_forbidden)"),
+        Loosened("testing.skips", "", "pytest.mark.xfail",
+                 "pytest.mark.xfail is no longer counted as a skip (testing.skips)"),
+        Loosened("files.pinned", "", "tests/test_rules.py",
+                 "tests/test_rules.py is no longer pinned (files.tests/test_rules.py.pinned)"))
 
 
 @pytest.mark.parametrize("bundled, custom, found", [
-    pytest.param([], ["shared/text", "store@any"], [("may_also_import", "unit", "shared/text"),
-                                                    ("may_also_import", "unit", "store@any")],
+    pytest.param([], ["shared/text", "store@any"], (
+        Loosened("may_also_import", "unit", "shared/text",
+                 "the unit tests may also import shared/text (tiers.unit.may_also_import)"),
+        Loosened("may_also_import", "unit", "store@any",
+                 "the unit tests may also import store@any (tiers.unit.may_also_import)")),
                  id="each target the bundled tier does not give is looser, shown as written"),
-    pytest.param(["shared", "store"], ["shared/text", "store"], [],
+    pytest.param(["shared", "store"], ["shared/text", "store"], (),
                  id="a target the bundled tier's covers is not looser"),
-    pytest.param(["shared"], [], [], id="a target dropped is stricter, and not listed"),
+    pytest.param(["shared"], [], (), id="a target dropped is stricter, and not listed"),
 ])
 def test_what_a_tiers_tests_may_also_import_beyond_the_bundled_tier_is_looser(bundled, custom, found):
     base, mine = covered(), covered()
     base["tiers"]["unit"]["may_also_import"] = bundled
     mine["tiers"]["unit"]["may_also_import"] = custom
-    assert looser(parsed(mine), parsed(base)) == found
+    assert loosened(parsed(mine), parsed(base)) == found
 
 
 def test_a_name_the_base_reserves_and_the_custom_profile_does_not_is_looser():
     base = parsed(layered(reserved={"ast": "the reader's", "json": "the store's"}))
-    assert looser(parsed(layered(reserved={"json": "mine"})), base) == [("reserved", "", "ast")]
-    assert looser(parsed(layered(reserved={"ast": "the reader's", "json": "the store's", "csv": "x"})), base) == []
+    assert loosened(parsed(layered(reserved={"json": "mine"})), base) == (
+        Loosened("reserved", "", "ast", "ast is no longer reserved (reserved.ast)"),)
+    assert loosened(parsed(layered(reserved={"ast": "the reader's", "json": "the store's", "csv": "x"})), base) == ()
 
 
 def test_a_part_redefined_without_the_litmus_the_base_gives_it_is_looser_and_one_the_base_gives_none_is_not():
@@ -126,5 +113,17 @@ def test_a_part_redefined_without_the_litmus_the_base_gives_it_is_looser_and_one
     base["parts"]["api"]["litmus"] = "Does it answer a request?"
     custom = layered()
     custom["parts"]["store"]["litmus"] = "Does it keep a record?"
-    assert looser(parsed(custom), parsed(base)) == [("litmus", "api", "")]
-    assert looser(parsed(base), parsed(base)) == []
+    assert loosened(parsed(custom), parsed(base)) == (
+        Loosened("litmus", "api", "",
+                 "api has no litmus, though the profile it is compared with gives it one (parts.api.litmus)"),)
+    assert loosened(parsed(base), parsed(base)) == ()
+
+
+def test_a_public_name_accepted_as_only_the_tests_that_the_base_does_not_accept_is_looser():
+    def dead(*known: str) -> dict:
+        return covered(guards={"dead-code": {"tests_only": True, "known": list(known)}},
+                       fakes={"folder": "fakes", "for": ["store"]})
+    assert loosened(parsed(dead("shared/text.py:clean", "shared/wiring.py:build")), parsed(dead("shared/text.py:clean"))) == (
+        Loosened("known", "", "shared/wiring.py:build",
+                 "the tests-only check accepts shared/wiring.py:build, which only the tests use (guards.dead-code.known)"),)
+    assert loosened(parsed(dead("shared/text.py:clean")), parsed(dead("shared/text.py:clean", "shared/wiring.py:build"))) == ()

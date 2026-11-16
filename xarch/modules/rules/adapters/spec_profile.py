@@ -4,19 +4,24 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol
 
-from xarch.modules.rules.domain.errors import ProfileUnusable
-from xarch.modules.rules.domain.published import KeyFacts
-from xarch.modules.rules.domain.values import InitFile, PartInfo, Profile, Standing
+from xarch.modules.rules.domain.errors import NoProfile, ProfileUnusable, Unloaded
+from xarch.modules.rules.domain.published import KeyFacts, Loosened, Resemblance, Reviewed
+from xarch.modules.rules.domain.values import InitFile, Known, PartInfo, Profile, Standing
 from xarch.modules.spec.contract import (
     DEFAULT_TESTS,
     LITMUS,
+    CheckProfile,
+    CheckResult,
     Explain,
     ExplainResult,
     FilesResult,
     KeyExplained,
     KnownProfiles,
+    KnownResult,
+    NoProfileChosen,
     Origin,
     OriginResult,
+    ProfileChecked,
     ProfileRefused,
     ProfileResult,
     ProfileView,
@@ -33,9 +38,11 @@ class _Spec(Protocol):
 
     def files(self, profile: str, app: str, presets: bool = True) -> FilesResult: ...
 
-    def known(self, app: Path) -> KnownProfiles: ...
+    def known(self, app: Path) -> KnownResult: ...
 
     def explain(self, cmd: Explain) -> ExplainResult: ...
+
+    def check_profile(self, cmd: CheckProfile) -> CheckResult: ...
 
 
 class SpecProfiles:
@@ -63,7 +70,9 @@ class SpecProfiles:
                        must_import={p.name: p.must_import for p in parts if p.must_import},
                        no_duplicates=guards.no_duplicates, no_twins=guards.no_twins,
                        no_twins_renamed=guards.no_twins_renamed, no_twins_subset=guards.no_twins_subset,
+                       no_twins_translated=guards.no_twins_translated,
                        dead_code=guards.dead_code, untested=guards.untested, tests_only=guards.tests_only,
+                       tests_only_known=guards.tests_only_known,
                        pass_through=guards.pass_through, holds={p.name: p.holds for p in parts if p.holds},
                        immutable=tuple(p.name for p in parts if p.immutable),
                        types_only={p.name: p.types_only for p in parts if p.types_only},
@@ -79,16 +88,39 @@ class SpecProfiles:
                        reserved=dict(view.reserved),
                        approximate=view.approximate, written=dict(view.checks), default_tests=DEFAULT_TESTS)
 
-    def known(self, app: Path) -> tuple[str, ...]:
-        """The profile in force first, then the bundled ones."""
-        known = self._spec.known(app)
-        return (*filter(None, (known.in_force,)), *known.bundled)
+    def known(self, app: Path) -> Known:
+        """None configured is no profile in force; one spec refuses raises ProfileUnusable with its reason."""
+        match self._spec.known(app):
+            case KnownProfiles(in_force, bundled):
+                return Known(in_force, bundled)
+            case NoProfileChosen(known):
+                return Known(None, known)
+            case ProfileRefused(reason):
+                raise ProfileUnusable(reason)
 
     def key(self, address: str) -> KeyFacts:
+        """An explanation spec refuses raises ProfileUnusable with its reason."""
         match self._spec.explain(Explain(address)):
             case KeyExplained() as explained:
                 return KeyFacts(explained.example, explained.name, explained.holder)
+            case ProfileRefused(reason):
+                raise ProfileUnusable(reason)
         return KeyFacts()
+
+    def reviewed(self, app: Path, target: str | None) -> Reviewed:
+        """What spec's check of the profile found, in rules' terms: a profile that does not load raises Unloaded with
+        the loader's problems, none chosen NoProfile with the profiles known, and one spec refuses ProfileUnusable."""
+        match self._spec.check_profile(CheckProfile(app, target)):
+            case ProfileChecked(location, problems, _, None):
+                raise Unloaded(location, tuple(problem.text for problem in problems))
+            case ProfileChecked(location, problems, files, Origin() as origin):
+                looser = tuple(Loosened(item.key, item.part, item.what, item.sentence) for item in origin.looser)
+                return Reviewed(location, tuple(problem.text for problem in problems), files,
+                                Resemblance(origin.bundled, origin.closest, looser))
+            case NoProfileChosen(known):
+                raise NoProfile(known)
+            case ProfileRefused(reason):
+                raise ProfileUnusable(reason)
 
     def standing(self, location: str, app: str) -> Standing:
         """No init files when the profile cannot write them for this app, which `init` reports when it refuses; a

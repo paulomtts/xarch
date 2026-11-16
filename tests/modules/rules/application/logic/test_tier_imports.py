@@ -8,7 +8,7 @@ import pytest
 from tests.modules.rules.application.logic.checks import tiers as violations
 from tests.modules.rules.builders import GUARD, INTEGRATION, PROFILE, UNIT, imp, in_tests, profile, source
 from xarch.modules.rules.application.logic import tier_of
-from xarch.modules.rules.application.logic.tier_of import allowance, may_import, may_use_fakes
+from xarch.modules.rules.application.logic.tier_of import allowance, may_use_fakes
 from xarch.profile_values.placement import Target
 from xarch.profile_values.tiers import CheckedTier as Tier
 
@@ -169,14 +169,19 @@ def test_a_tiers_tests_may_also_import_what_it_says_in_the_instance_they_mirror(
     assert problems(path, *imports, checked=ALSO) == expected
 
 
+def in_folder(tier: Tier) -> tier_of.Tested:
+    """Where a test in the tier's own folder stands, mirroring no part."""
+    return tier_of.Tested(tier, None, (), True, False)
+
+
 def test_a_tiers_allowance_is_its_subject_and_what_each_part_may_import():
-    assert may_import(PROFILE, Tier("pair", (Target("kernel"), Target("platform")))) == (
+    assert allowance(PROFILE, in_folder(Tier("pair", (Target("kernel"), Target("platform"))))) == (
         Target("kernel"), Target("kernel"), Target("platform"), Target("platform"), Target("kernel"))
 
 
 def test_a_tiers_own_allowance_replaces_what_its_subject_would_give():
     guard = Tier("guard", (Target("kernel"),), ("architecture",), may_import=(Target("platform"),))
-    assert may_import(PROFILE, guard) == (Target("platform"),)
+    assert allowance(PROFILE, in_folder(guard)) == (Target("platform"),)
 
 
 @pytest.mark.parametrize("tier, expected", [
@@ -186,7 +191,7 @@ def test_a_tiers_own_allowance_replaces_what_its_subject_would_give():
                  (Target("platform"), Target("web")), id="after the tier's own allowance"),
 ])
 def test_what_a_tiers_tests_may_also_import_is_added_to_its_allowance(tier, expected):
-    assert may_import(PROFILE, tier) == expected
+    assert allowance(PROFILE, in_folder(tier)) == expected
 
 
 def test_a_test_in_a_tiers_folder_imports_only_what_the_tier_allows():

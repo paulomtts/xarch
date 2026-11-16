@@ -48,3 +48,19 @@ class ChecksRefused(ProfileUnusable):
     def __init__(self, problems: tuple[str, ...]):
         super().__init__("; ".join(problems))
         self.problems = problems
+
+
+class Unloaded(DomainError):
+    """The profile at location does not load: every problem the loader found, each in words."""
+
+    def __init__(self, location: str, problems: tuple[str, ...]):
+        super().__init__("; ".join(problems))
+        self.location, self.problems = location, problems
+
+
+class NoProfile(DomainError):
+    """No profile is given, and none is configured for the project: the profiles it knows, to choose one from."""
+
+    def __init__(self, known: tuple[str, ...]):
+        super().__init__(f"no profile is chosen: the profiles found are {', '.join(known)}")
+        self.known = known

@@ -45,7 +45,7 @@ LABELS = {GUARDS_OFF: "guards off", UNGOVERNED: "ungoverned", INIT_FILES: "init 
 """How each section of the enforcement is labelled, by its key."""
 
 
-def text_lines(found: Iterable[Violation], hints: Mapping[str, str] | None = None) -> list[str]:
+def _text_lines(found: Iterable[Violation], hints: Mapping[str, str] | None = None) -> list[str]:
     """The violations as the terminal shows them, in the order the checks found them, then the summary line. A
     finding is its line, `<file>:<line>: <message>`, then an indented `fix:` line and, when the profile has a hint
     for its rule, an indented `hint:` line."""
@@ -64,11 +64,11 @@ def text_lines(found: Iterable[Violation], hints: Mapping[str, str] | None = Non
 
 def check_lines(origin: Origin, checked: AppChecked, strict: bool) -> list[str]:
     """What `xarch check` shows as text: the violations, then the enforcement section."""
-    return [*text_lines(checked.violations, checked.hints),
-            *enforcement_lines(origin, checked.enforcement, strict, checked.hints)]
+    return [*_text_lines(checked.violations, checked.hints),
+            *_enforcement_lines(origin, checked.enforcement, strict, checked.hints)]
 
 
-def enforcement_lines(origin: Origin, state: EnforcementView, strict: bool,
+def _enforcement_lines(origin: Origin, state: EnforcementView, strict: bool,
                       hints: Mapping[str, str] | None = None) -> list[str]:
     """The enforcement section: where the profile comes from and how loose it is, then the state of the check's
     enforcement; with strict, the findings it fails on after it. A weak check that has a fix shows it under its line,
@@ -82,6 +82,8 @@ def enforcement_lines(origin: Origin, state: EnforcementView, strict: bool,
         lines.append(_line(LABELS[UNGOVERNED], f"{_count(count, f'{state.language or "source"} file')} outside every part "
                                          f"({', '.join(state.ungoverned_folders)})", 2))
     lines += [_line("excluded", f"{item.folder}/ ({item.reason})", 2) for item in state.excluded]
+    lines += [_line("known", f"{item.file}:{item.line}: {item.name} is public and only the tests use it, which the "
+                             "profile accepts (guards.dead-code.known)", 2) for item in state.known]
     lines += [_line(LABELS[INIT_FILES], f"{'/'.join(item.path)} is {item.state}", 2) for item in state.init_files]
     if state.skipped:
         lines.append(_line(LABELS[SKIPPED], f"{_count(len(state.skipped), 'skip')} ({_places(state.skipped)})", 2))
@@ -115,12 +117,12 @@ def _places(places: Sequence[At]) -> str:
     return shown + (f" and {len(places) - SHOWN} more" if len(places) > SHOWN else "")
 
 
-def violation_document(violation: Violation, hints: Mapping[str, str] | None = None) -> dict[str, Any]:
+def _violation_document(violation: Violation, hints: Mapping[str, str] | None = None) -> dict[str, Any]:
     return {"rule": violation.rule, "file": violation.file, "line": violation.line or None,
             "message": violation.message, "fix": violation.fix, "hint": (hints or {}).get(violation.rule)}
 
 
-def enforcement_document(origin: Origin, state: EnforcementView) -> dict[str, Any]:
+def _enforcement_document(origin: Origin, state: EnforcementView) -> dict[str, Any]:
     return {
         "profile": {"location": origin.location, "bundled": origin.bundled, "closest": origin.closest,
                     "guards_off": list(origin.guards_off), "baseline_off": list(origin.baseline_off),
@@ -129,6 +131,7 @@ def enforcement_document(origin: Origin, state: EnforcementView) -> dict[str, An
         "ungoverned": {"count": len(state.ungoverned), "folders": list(state.ungoverned_folders),
                        "files": list(state.ungoverned)},
         "excluded": [{"folder": item.folder, "reason": item.reason} for item in state.excluded],
+        "known": [{"file": item.file, "line": item.line, "name": item.name} for item in state.known],
         "init_files": [{"file": "/".join(item.path), "state": item.state} for item in state.init_files],
         "skipped": {"count": len(state.skipped), "at": _at(state.skipped)},
         "dynamic": {"count": len(state.dynamic), "at": _at(state.dynamic)},
@@ -151,5 +154,5 @@ def _finding(finding: FindingView) -> dict[str, str]:
 
 def json_document(profile: str, origin: Origin, checked: AppChecked, strict: bool) -> str:
     return document({"ok": checked.ok, "strict": strict, "profile": profile,
-                     "violations": [violation_document(v, checked.hints) for v in checked.violations],
-                     "enforcement": enforcement_document(origin, checked.enforcement)})
+                     "violations": [_violation_document(v, checked.hints) for v in checked.violations],
+                     "enforcement": _enforcement_document(origin, checked.enforcement)})

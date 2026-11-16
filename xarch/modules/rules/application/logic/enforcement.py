@@ -71,17 +71,17 @@ def strict_findings(enforcement: Enforcement) -> tuple[Finding, ...]:
     found += [Finding(DYNAMIC, at) for at in enforcement.dynamic]
     found += [Finding(WEAK, weak) for weak in enforcement.weak]
     found += [Finding(APPROXIMATE, item) for item in enforcement.approximate]
-    found += [Finding(VACUOUS, vacuous(name)) for name, read in enforcement.checks if not read]
+    found += [Finding(VACUOUS, _vacuous(name)) for name, read in enforcement.checks if not read]
     found += [Finding(UNPLACED, sentence) for sentence in enforcement.unplaced]
     return tuple(found)
 
 
 def reading(name: str, read: int) -> str:
     """How much a check of the profile's own read, in words."""
-    return vacuous(name) if not read else f"checks.{name} read {read} fact{'' if read == 1 else 's'}"
+    return _vacuous(name) if not read else f"checks.{name} read {read} fact{'' if read == 1 else 's'}"
 
 
-def vacuous(name: str) -> str:
+def _vacuous(name: str) -> str:
     """A check of the profile's own that read nothing, in words."""
     return (f"checks.{name} reads nothing in the project, so it passes for want of anything to check: widen what it "
             "reads, or drop it")

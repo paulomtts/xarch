@@ -488,7 +488,7 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
         case NoDuplicates(least):
             return (f"`no-duplicates`: no two functions of the app have the same code, names and formatting aside, "
                     f"when each holds at least {least} statements; tests are not compared.")
-        case DeadCode(untested, tests_only):
+        case DeadCode(untested, tests_only, known):
             fakes = architecture.fakes
             assert fakes is not None
             ports = _and([f"`{docs_name(architecture, architecture.parts[p])}`" for p in fakes.stand_in_for])
@@ -498,6 +498,10 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
             reached += (" A public class or function of the app that no other file of the app names, so that only the "
                         "tests use it, or nothing does, is listed in the enforcement section, and fails `check "
                         "--strict` only." if tests_only else "")
+            if known:
+                reached += (f" {_and([f'`{entry}`' for entry in known])} {'is' if len(known) == 1 else 'are'} accepted "
+                            "as only the tests' (`guards.dead-code.known`) and named in the enforcement section instead; "
+                            "an entry that no longer holds is listed.")
             interface = architecture.language.interface_name
             return (f"`dead-code`: every `{interface}` in {ports} is named by another file of the app, and every fake in "
                     f"`{'/'.join((DEFAULT_TESTS, *fakes.folder))}/` by a test; the wiring and re-exports do not "

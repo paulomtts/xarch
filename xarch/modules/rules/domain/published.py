@@ -4,9 +4,15 @@ contract's own.
 
     At    a place in a file, as the enforcement section names a skip or a dynamic import; the command line shows it
     Weak  a check met to the letter only, which the enforcement section lists and the command line shows
+    KnownName a public name only the tests use that the profile accepts, which the enforcement section names and the
+          command line shows
     Slot  a slot of a check as a profile writes it, which `profile explain checks` shows
     Drift an init file as it stands against what `init` would write, which the enforcement section lists
     KeyFacts what the format says of a key the profile sets nowhere, which the command line shows
+    Loosened one way a profile is looser than the bundled one it resembles, which the command line shows
+    Resemblance whether a profile is bundled, the bundled one it resembles and how it is looser, which the command
+          line shows
+    Reviewed what checking a profile that loads found before its own checks are held, which the command line shows
 
 and CHECKS, the address of how a check is written, and the keys of the enforcement's sections (SECTIONS).
 """
@@ -45,6 +51,15 @@ class Weak:
 
 
 @dataclass(frozen=True)
+class KnownName:
+    """A public name only the tests use that the profile accepts as such (guards.dead-code.known): the file defining
+    it, as shown, its line, and the name."""
+    file: str
+    line: int
+    name: str
+
+
+@dataclass(frozen=True)
 class Slot:
     """A slot of a check as a profile writes it: its name, what it is for, what it accepts, and the category of words
     it is written with ("" for one written in words of its own)."""
@@ -69,3 +84,34 @@ class KeyFacts:
     example: str = ""
     name: str = ""
     holder: str = ""
+
+
+@dataclass(frozen=True)
+class Loosened:
+    """One way a profile is looser than the bundled profile it is compared with: the key of the profile's format
+    that loosened (may_import, libraries, litmus and the others the spec module names), the part or tier, what it
+    loosened to ("" for nothing more), and all of it in a sentence naming the key of the profile that does."""
+    key: str
+    part: str
+    what: str = ""
+    sentence: str = ""
+
+
+@dataclass(frozen=True)
+class Resemblance:
+    """How a profile stands to the bundled ones: whether it is one (bundled), else the bundled one closest to it (None
+    when it resembles none), and how it is looser than that one, in the order the spec module finds it."""
+    bundled: bool
+    closest: str | None = None
+    looser: tuple[Loosened, ...] = ()
+
+
+@dataclass(frozen=True)
+class Reviewed:
+    """A profile that loads, as checking it found it before its own checks are held: where it is, what its examples
+    import that their part may not (each in words), how many files it points to, and how it stands to the bundled
+    profiles."""
+    location: str
+    examples: tuple[str, ...]
+    files: int
+    resemblance: Resemblance

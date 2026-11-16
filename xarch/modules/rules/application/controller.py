@@ -6,51 +6,57 @@ from xarch.modules.rules.application.services.app_check import AppCheckService
 from xarch.modules.rules.application.services.examples import ExamplesService
 from xarch.modules.rules.application.services.explaining import ExplainingService
 from xarch.modules.rules.application.services.locate import LocateService
-from xarch.modules.rules.application.services.source_check import SourceCheckService
 from xarch.modules.rules.application.services.source_reading import SourceReadService
 from xarch.modules.rules.contract import (
     CheckApp,
     CheckAppResult,
-    CheckExamples,
-    CheckExamplesResult,
-    CheckImports,
+    CheckProfile,
     CheckRefused,
-    CheckResult,
     ChecksCannotRun,
     ExplainRule,
     ExplainWords,
     Locate,
     LocateResult,
+    NoProfileChosen,
     NoRuleShown,
     NotADirectory,
     Outside,
+    ProfileCheckResult,
+    ProfileUnloaded,
     RuleResult,
     WordsResult,
 )
-from xarch.modules.rules.domain.errors import ChecksRefused, OutsideProject, RootMissing, Unreadable
+from xarch.modules.rules.domain.errors import ChecksRefused, NoProfile, OutsideProject, RootMissing, Unloaded, Unreadable
 
 
 class RulesController:
-    def __init__(self, service: SourceCheckService, locator: LocateService, app: AppCheckService,
-                 explaining: ExplainingService, examples: ExamplesService):
-        self._service, self._locator, self._app, self._explaining = service, locator, app, explaining
-        self._examples = examples
+    def __init__(self, locator: LocateService, app: AppCheckService, explaining: ExplainingService,
+                 examples: ExamplesService):
+        self._locator, self._app, self._explaining, self._examples = locator, app, explaining, examples
 
-    def check_examples(self, cmd: CheckExamples) -> CheckExamplesResult:
-        """The profile's own checks held to their examples, and to the vocabulary; every problem at once. A profile
-        whose checks cannot be made is refused with their problems, and one that cannot be used with why."""
+    def check_profile(self, cmd: CheckProfile) -> ProfileCheckResult:
+        """Validates a profile without an app: every problem at once, what spec's check of it finds and what its own
+        checks find against their examples and the vocabulary, with how it differs from the bundled one it is based
+        on. One that does not load comes back with the loader's problems, none chosen with the profiles known, and
+        one that cannot be used is refused with why."""
         try:
-            return self._examples.held(cmd.profile, cmd.app)
-        except ChecksRefused as e:
-            return ChecksCannotRun(e.problems)
+            return self._examples.check(cmd.app, cmd.target)
+        except Unloaded as e:
+            return ProfileUnloaded(e.location, e.problems)
+        except NoProfile as e:
+            return NoProfileChosen(e.known)
         except DomainError as e:
             return CheckRefused(e.reason)
 
     def explain_words(self, cmd: ExplainWords) -> WordsResult:
         """How a check is written, a category of its words or one word, from the vocabulary the engine reads; an
         address of no word comes back with the nearest ones. A word's example is the first rule of the profiles the
-        project knows that is written with it, else a check of a profile's own written for the explanation."""
-        return self._explaining.words(cmd.address, cmd.app)
+        project knows that is written with it, else a check of a profile's own written for the explanation. A project
+        whose profile cannot be chosen or loaded is refused with why."""
+        try:
+            return self._explaining.words(cmd.address, cmd.app)
+        except DomainError as e:
+            return CheckRefused(e.reason)
 
     def explain_rule(self, cmd: ExplainRule) -> RuleResult:
         """The rules a key of a profile expands to, written as checks; a key the engine expands that the profile sets
@@ -65,17 +71,6 @@ class RulesController:
         own checks cannot run and one that cannot be used."""
         try:
             return self._app.check(cmd.root, cmd.profile, cmd.tests, cmd.cwd, cmd.strict)
-        except RootMissing as e:
-            return NotADirectory(e.root)
-        except ChecksRefused as e:
-            return ChecksCannotRun(e.problems)
-        except DomainError as e:
-            return CheckRefused(e.reason)
-
-    def check(self, cmd: CheckImports) -> CheckResult:
-        """The check of the imports below a root; refused as check_app refuses."""
-        try:
-            return self._service.imports(cmd.root, cmd.package, cmd.profile, cmd.tests)
         except RootMissing as e:
             return NotADirectory(e.root)
         except ChecksRefused as e:

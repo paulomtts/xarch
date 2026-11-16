@@ -15,7 +15,6 @@ from xarch.modules.spec.contract import (
     Repeating,
     Skeleton,
 )
-from xarch.profile_values.language import CheckedLanguage
 
 
 class SpecStandIn:
@@ -26,7 +25,7 @@ class SpecStandIn:
             top_level=(Entry(("kernel",), True, False), Entry(("kernel", "rules.py"), False, True)),
             repeating=(Repeating("module", ("modules",), (Entry(("domain",), True, True),)),
                        Repeating("plugin", ("app", "plugins"), (Entry(("manifest.py",), False, True),))),
-            language=CheckedLanguage("Python", ".py", "__init__.py"), reserved=frozenset({"class"}))
+            title="Python", package_file="__init__.py", private="_", reserved=frozenset({"class"}), names=r"\w+")
 
     def docs(self, profile: str) -> Docs:
         return Docs(("docs", "project"), (DocFile(("statement.md",), "# statement\n"),
@@ -65,5 +64,5 @@ def test_files_spec_refuses_are_refused_with_its_reason():
         skeleton().files("broken", "shop")
 
 
-def test_the_language_is_how_spec_names_it_the_file_it_has_stand_for_a_folder_and_its_reserved_words():
-    assert skeleton().language("cli") == Language("Python", "__init__.py", frozenset({"class"}))
+def test_the_language_is_how_spec_names_it_the_file_it_has_stand_for_a_folder_its_reserved_words_and_names():
+    assert skeleton().language("cli") == Language("Python", "__init__.py", frozenset({"class"}), r"\w+", "_")

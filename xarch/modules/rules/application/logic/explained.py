@@ -10,6 +10,7 @@ from difflib import get_close_matches
 
 from xarch.modules.rules.domain.published import CHECKS, Slot
 from xarch.modules.rules.domain.rule import OwnCheck, Rule
+from xarch.modules.rules.domain.values import Known
 from xarch.modules.rules.domain.vocabulary import (
     FACT,
     FIELDS,
@@ -61,7 +62,7 @@ def category_at(address: str) -> str:
     return typed if typed in CATEGORIES else ""
 
 
-def addresses() -> list[str]:
+def _addresses() -> list[str]:
     return [*CATEGORIES, *(f"{category}.{word.name}" for category, words in CATEGORIES.items() for word in words),
             *(f"{CHECKS}.{slot.name}" for slot in SLOTS)]
 
@@ -81,7 +82,7 @@ def names_words(address: str) -> bool:
 def close(typed: str) -> tuple[str, ...]:
     """The addresses of words that read like one that does not exist, by the whole address or by the name alone;
     none when none does."""
-    found = get_close_matches(typed.strip().strip("."), addresses(), n=NEAREST, cutoff=0.6)
+    found = get_close_matches(typed.strip().strip("."), _addresses(), n=NEAREST, cutoff=0.6)
     if found:
         return tuple(found)
     name = typed.strip().strip(".").rpartition(".")[2]
@@ -106,7 +107,7 @@ def facets(word: Word) -> WordFacets:
     """What the word says besides its name and meaning, as its category has it."""
     match word:
         case Kind():
-            return WordFacets(side=word.side, fields=fields(word), needs=needs(word), verb=word.verb)
+            return WordFacets(side=word.side, fields=_fields(word), needs=_needs(word), verb=word.verb)
         case Filter():
             return WordFacets(about=word.about, side=word.side, value=word.value)
         case TargetKind():
@@ -139,13 +140,13 @@ def applies(word: Word) -> tuple[str, ...]:
     return tuple(kind.name for kind in KINDS if word.applies_to(kind))
 
 
-def fields(kind: Kind) -> tuple[tuple[str, str, str], ...]:
+def _fields(kind: Kind) -> tuple[tuple[str, str, str], ...]:
     """The fields of a kind of fact: each name, what it is, and the filter that must hold for the fact to carry it
     ("" when it always does)."""
     return tuple((name, FIELDS[name], kind.sometimes.get(name, "")) for name in (*kind.fields, *kind.sometimes))
 
 
-def needs(kind: Kind) -> tuple[str, ...]:
+def _needs(kind: Kind) -> tuple[str, ...]:
     """The facts of the source a kind needs of the language, those of its fields included."""
     return tuple(dict.fromkeys((*kind.needs, *(need for listed in kind.field_needs.values() for need in listed))))
 
@@ -182,3 +183,8 @@ def general(key: str) -> str:
     """A key with the part or tier it names left out: parts.services.names as parts.names."""
     steps = key.split(".")
     return ".".join((steps[0], *steps[2:])) if steps[0] in ("parts", "tiers") and len(steps) > 2 else key
+
+
+def searched(known: Known) -> tuple[str, ...]:
+    """The profiles a word's example is looked for in, in order: the one in force first, then the bundled ones."""
+    return (*filter(None, (known.in_force,)), *known.bundled)

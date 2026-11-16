@@ -1,6 +1,6 @@
 """The stand-ins guard on hand-made source files: a port is read or fire-only by its return annotations, a read port
-has a fake, a mock in a test that may use the fakes names a spec that is not a read port, and a fake that does not
-define every method of its port is weak."""
+has a fake, a mock in a test that may use the fakes names a spec that is not a read port (by a keyword, or by the
+argument at the position the profile gives), and a fake that does not define every method of its port is weak."""
 from dataclasses import replace
 
 import pytest
@@ -133,6 +133,30 @@ AUTOSPEC_NO_SPEC = (f"tests/{INTEGRATION_TEST}:5: create_autospec() names nothin
 ])
 def test_mocks_in_a_test_that_may_use_the_fakes(call, expected):
     assert problems([PORTS], [FAKE, in_tests(INTEGRATION_TEST, calls=(call,))]) == expected
+
+
+def placed(position: int | None):
+    assert PROFILE.stand_ins is not None
+    return replace(PROFILE, stand_ins=replace(PROFILE.stand_ins, spec_position=position))
+
+
+@pytest.mark.parametrize("position, call, expected", [
+    pytest.param(None, Call(5, MOCK, (NOTIFIER,)), [NO_SPEC], id="no position: an argument names no spec"),
+    pytest.param(None, Call(5, MOCK, (REPO,)), [NO_SPEC], id="no position: a read port as an argument is no spec"),
+    pytest.param(None, Call(5, MOCK, keywords=(("spec", NOTIFIER),)), [], id="no position: a keyword still names it"),
+    pytest.param(None, Call(5, AUTOSPEC, (NOTIFIER,)), [AUTOSPEC_NO_SPEC],
+                 id="no position: an autospec's argument names no spec"),
+    pytest.param(1, Call(5, MOCK, (None, NOTIFIER)), [], id="the argument at the position names the spec"),
+    pytest.param(1, Call(5, MOCK, (NOTIFIER,)), [NO_SPEC], id="an argument before the position names none"),
+    pytest.param(1, Call(5, MOCK, (None, REPO)),
+                 [f"tests/{INTEGRATION_TEST}:5: Mock(..., Repo) stands in for Repo, a read port (stand-ins)"],
+                 id="a read port at the position is reported as written"),
+    pytest.param(1, Call(5, AUTOSPEC, (None, REPO)),
+                 [f"tests/{INTEGRATION_TEST}:5: create_autospec(..., Repo) stands in for Repo, a read port (stand-ins)"],
+                 id="an autospec takes its spec at the same position"),
+])
+def test_a_mock_names_its_spec_by_the_argument_at_the_position_the_profile_gives(position, call, expected):
+    assert problems([PORTS], [FAKE, in_tests(INTEGRATION_TEST, calls=(call,))], placed(position)) == expected
 
 
 NO_SPEC_FIXTURE = (f"tests/{INTEGRATION_TEST}:5: mocker.Mock() names nothing it stands in for (stand-ins)")

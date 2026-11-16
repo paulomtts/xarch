@@ -9,7 +9,7 @@ from xarch.kernel.logic.placement import repeat_of
 from xarch.kernel.placement import Place
 from xarch.kernel.source import Import, Unparsable
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.domain.published import At, Drift, Weak
+from xarch.modules.rules.domain.published import At, Drift, KnownName, Weak
 from xarch.profile_values.capabilities import Shortfall
 from xarch.profile_values.checks import WrittenCheck
 from xarch.profile_values.excluded import Excluded
@@ -47,10 +47,12 @@ class Profile:
     part, the targets each of its files must import one of (or an outside package); no_duplicates is the fewest
     statements a function needs to count as a duplicate (None: off); no_twins the fewest fields a class needs to count
     as a twin of another (None: off), no_twins_renamed the fewest a renamed copy needs, no_twins_subset the fewest a copy
-    of part of another's fields needs (None: that case is off; see twins); dead_code switches the unused ports and fakes
+    of part of another's fields needs (None: that case is off; see twins), no_twins_translated the parts whose files
+    translate one of a pair into the other, which is then no twin; dead_code switches the unused ports and fakes
     check on; pass_through lists the parts whose methods that only forward are listed (empty: off). untested lists,
     with dead_code, the files of a tiered part no test of its tier reaches; tests_only, with dead_code, the public names
-    of the app no other file of the app names. holds says, by part, what its files define
+    of the app no other file of the app names, but those tests_only_known accepts, each `<file below the app>:<name>`.
+    holds says, by part, what its files define
     ("classes" or "functions"); immutable the parts every class of which, but an exception, is an immutable record;
     types_only, by part, the parts it may use as types only; no_callbacks the parts whose
     code calls none of its own parameters; names, by part, the patterns its public classes match one of; built_by, by
@@ -85,10 +87,12 @@ class Profile:
     no_twins: int | None = None
     no_twins_renamed: int | None = None
     no_twins_subset: int | None = None
+    no_twins_translated: tuple[str, ...] = ()
     dead_code: bool = False
     pass_through: tuple[str, ...] = ()
     untested: bool = False
     tests_only: bool = False
+    tests_only_known: tuple[str, ...] = ()
     holds: dict[str, str] = field(default_factory=dict)
     immutable: tuple[str, ...] = ()
     types_only: dict[str, tuple[str, ...]] = field(default_factory=dict)
@@ -361,6 +365,13 @@ class InitFile:
 
 
 @dataclass(frozen=True)
+class Known:
+    """The profiles a project knows: the one in force for it (None: none is configured), and the bundled ones."""
+    in_force: str | None
+    bundled: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class Standing:
     """How the profile in force stands, besides its rules: the guards xarch has that it leaves off, in xarch's order,
     and those the bundled profile it is, or is compared with, leaves off too (baseline_off); the files `init` would
@@ -392,8 +403,10 @@ class Enforcement:
     the name of the app folder the shown paths start with; language, how the language of the app is named;
     approximate, the keys whose check reads a fact the language supplies only partly, so that it may miss what it
     looks for; and checks, the checks the profile writes itself, each by its id with how many facts it read in the
-    project (one that read none passes for want of anything to check, and fails `--strict`); and unplaced, each part
-    the profile redefines without the litmus the bundled profile it is compared with gives it, as said."""
+    project (one that read none passes for want of anything to check, and fails `--strict`); unplaced, each part
+    the profile redefines without the litmus the bundled profile it is compared with gives it, as said; and known, the
+    public names only the tests use that the profile accepts (guards.dead-code.known), which the tests-only check
+    then does not list."""
     guards_off: tuple[str, ...] = ()
     baseline_off: tuple[str, ...] = ()
     ungoverned: tuple[str, ...] = ()
@@ -408,6 +421,15 @@ class Enforcement:
     approximate: tuple[Shortfall, ...] = ()
     checks: tuple[tuple[str, int], ...] = ()
     unplaced: tuple[str, ...] = ()
+    known: tuple[KnownName, ...] = ()
+
+
+@dataclass(frozen=True)
+class Accepting:
+    """What the tests-only check lists once the public names the profile accepts as only the tests' are taken out:
+    the findings still listed, each entry that no longer holds among them, and the names accepted."""
+    listed: tuple[Violation | Weak, ...]
+    known: tuple[KnownName, ...]
 
 
 @dataclass(frozen=True)

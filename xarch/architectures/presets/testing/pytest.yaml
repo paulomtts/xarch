@@ -11,5 +11,6 @@ mocks:
           unittest.mock.NonCallableMagicMock]
   autospec: [unittest.mock.create_autospec]
   spec_keywords: [spec, spec_set]
+  spec_position: 0
   fixtures:
     mocker: {calls: [Mock, MagicMock, AsyncMock, NonCallableMock, NonCallableMagicMock], autospec: [create_autospec]}

@@ -72,7 +72,7 @@ def test_the_table_of_cases_and_the_mocks_are_checked_with_the_framework_whether
     assert problems(document) == [
         "layered.yaml: testing.table: missing `id`",
         "layered.yaml: testing.table.decorator: 'x' is not a dotted name such as pkg.sub.name",
-        "layered.yaml: testing.mocks: unknown key 'colour': use autospec, calls, fixtures, spec_keywords",
+        "layered.yaml: testing.mocks: unknown key 'colour': use autospec, calls, fixtures, spec_keywords, spec_position",
         "layered.yaml: testing.mocks.calls: must be a list of dotted names such as pkg.sub.Name",
         "layered.yaml: testing.mocks.spec_keywords: must be a list of keyword names such as [spec]",
         "layered.yaml: testing.mocks.fixtures: must be a mapping of parameter names to {calls}, and optionally "
@@ -352,7 +352,7 @@ def test_the_guards_in_use_are_those_named_with_the_framework_s_words_taken_from
                                    ("argnames", "argvalues")), "test_{name}.py"),
         StandIns((("unittest", "mock", "Mock"), ("unittest", "mock", "MagicMock")),
                  (("unittest", "mock", "create_autospec"),), ("spec", "spec_set"),
-                 (Fixture("mocker", ("Mock", "MagicMock"), ("create_autospec",)),)),
+                 (Fixture("mocker", ("Mock", "MagicMock"), ("create_autospec",)),), 0),
         NoComments(), ClosedTree())
 
 
@@ -391,6 +391,8 @@ def test_the_new_guards_take_their_parameters_and_dead_code_needs_fakes():
     assert parsed(covered(guards={"no-twins": {"min_fields": 5}})).guards == (NoTwins(5),)
     assert parsed(covered(guards={"no-twins": {}})).guards == (NoTwins(3),)
     assert parsed(covered(guards={"no-twins": {"min_renamed": 4, "min_subset": 3}})).guards == (NoTwins(3, 4, 3),)
+    assert parsed(covered(guards={"no-twins": {"translated": ["store", "api"]}})).guards == (
+        NoTwins(translated=("store", "api")),)
 
 
 @pytest.mark.parametrize("guards, expected", [
@@ -402,7 +404,8 @@ def test_the_new_guards_take_their_parameters_and_dead_code_needs_fakes():
                  ["layered.yaml: guards.no-duplicates.min_statements: must be a whole number of statements, at least "
                   "1, such as 4"], id="no-duplicates, zero"),
     pytest.param({"no-twins": [3]}, ["layered.yaml: guards.no-twins: must be a mapping {min_fields: <number>, "
-                                     "min_renamed: <number>, min_subset: <number>}, or {} for the default"],
+                                     "min_renamed: <number>, min_subset: <number>, translated: [<part>, ...]}, or {} "
+                                     "for the default"],
                  id="no-twins, no map"),
     pytest.param({"no-twins": {"min_renamed": 1, "min_subset": "3"}},
                  ["layered.yaml: guards.no-twins.min_renamed: must be a whole number of fields, at least 2, such as 3; "
@@ -410,14 +413,21 @@ def test_the_new_guards_take_their_parameters_and_dead_code_needs_fakes():
                   "layered.yaml: guards.no-twins.min_subset: must be a whole number of fields, at least 2, such as 3; "
                   "leave it out to switch this case off"], id="no-twins, a case's minimum below two or no number"),
     pytest.param({"no-twins": {"fields": 3}}, ["layered.yaml: guards.no-twins: unknown key 'fields': use min_fields, "
-                                               "min_renamed, min_subset"],
+                                               "min_renamed, min_subset, translated"],
                  id="no-twins, an unknown key"),
+    pytest.param({"no-twins": {"translated": ["adapters", "store", "store"]}},
+                 ["layered.yaml: guards.no-twins.translated: no part named 'adapters'",
+                  "layered.yaml: guards.no-twins.translated: 'store' is listed twice"],
+                 id="no-twins, translated names no part or one twice"),
+    pytest.param({"no-twins": {"translated": "store"}},
+                 ["layered.yaml: guards.no-twins.translated: must be a list of part names"],
+                 id="no-twins, translated no list"),
     pytest.param({"no-twins": {"min_fields": 0}}, ["layered.yaml: guards.no-twins.min_fields: must be a whole number "
                                                    "of fields, at least 1, such as 3"], id="no-twins, zero"),
     pytest.param({"no-duplicates": {"min_statements": True}},
                  ["layered.yaml: guards.no-duplicates.min_statements: must be a whole number of statements, at least "
                   "1, such as 4"], id="no-duplicates, a boolean"),
-    pytest.param({"dead-code": {"x": 1}}, ["layered.yaml: guards.dead-code: unknown key 'x': use tests_only, untested"],
+    pytest.param({"dead-code": {"x": 1}}, ["layered.yaml: guards.dead-code: unknown key 'x': use known, tests_only, untested"],
                  id="dead-code, a parameter"),
     pytest.param({"pass-through": {}}, ["layered.yaml: guards.pass-through: missing `parts`"],
                  id="pass-through, no parts"),

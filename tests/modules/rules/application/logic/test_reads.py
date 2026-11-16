@@ -5,7 +5,7 @@ language that does not supply that field, neither refused nor listed as approxim
 
 from tests.modules.rules.application.logic.world import BUILT, FACTS, LISTED, NARROWED, PROFILE, RESERVED
 from xarch.kernel.placement import Place
-from xarch.modules.rules.application.logic.filters import holds
+from xarch.modules.rules.application.logic.filters import question
 from xarch.modules.rules.application.logic.targets import matched
 from xarch.modules.rules.domain.rule import Fact, Found, Match, Rule
 from xarch.modules.rules.domain.vocabulary import FACT, FILTERS, TARGET, TARGETS, Kind
@@ -74,7 +74,7 @@ def filter_leaks() -> dict[str, list[str]]:
         if word.about not in (FACT, TARGET):
             continue
         condition = Condition(word.name, VALUES.get(word.name, ""))
-        leaked = leaks(word.reads, lambda f, profile, c=condition: holds(c, f, FACTS, profile))
+        leaked = leaks(word.reads, lambda f, profile, c=condition: question(c)(f, FACTS, profile))
         if leaked:
             found[word.name] = leaked
     return found

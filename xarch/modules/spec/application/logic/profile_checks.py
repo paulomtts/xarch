@@ -35,24 +35,24 @@ def is_name(text: str, language: Language) -> bool:
     return names.is_name(text, language.names)
 
 
-def is_dotted(text: str, language: Language, least: int = 1) -> bool:
+def _is_dotted(text: str, language: Language, least: int = 1) -> bool:
     """Whether text is names the language allows joined by dots, at least least of them."""
     steps = text.split(".")
     return len(steps) >= least and all(is_name(step, language) for step in steps)
 
 
-def method_name(item: str, language: Language) -> str | None:
+def _method_name(item: str, language: Language) -> str | None:
     """The name of the method an item of a `forbidden` list names, `.<name>()`; None when it names none."""
     name = item[1:-len(CALLED)] if item.startswith(".") and item.endswith(CALLED) else ""
     return name if is_name(name, language) else None
 
 
-def file_pattern(language: Language) -> re.Pattern[str]:
+def _file_pattern(language: Language) -> re.Pattern[str]:
     """What a file name pattern is: letters, digits, `_`, `.`, `-` and `*`, ending in the language's extension."""
     return re.compile(rf"[A-Za-z0-9_.*-]+{re.escape(language.checked.extension)}")
 
 
-def file_name(language: Language) -> re.Pattern[str]:
+def _file_name(language: Language) -> re.Pattern[str]:
     """What a file name is: letters, digits, `_`, `.` and `-`, ending in the language's extension."""
     return re.compile(rf"[A-Za-z0-9_.-]+{re.escape(language.checked.extension)}")
 
@@ -106,7 +106,7 @@ def naming_rows(value: Any, problems: list[str], at: str) -> tuple[Naming, ...]:
         problems += [f"{where}: missing `{key}`" for key in required_of(NAMING) if key not in spec]
         problems += [f"{where}.{key}: must be a string" for key in ("kind", "pattern")
                      if key in spec and not text(spec[key])]
-        lists = {key: strings(spec.get(key)) for key in ("where", "example")}
+        lists = {key: _strings(spec.get(key)) for key in ("where", "example")}
         problems += [f"{where}.{key}: must be a string or a list of strings" for key, found in lists.items()
                      if key in spec and found is None]
         if len(problems) == count:
@@ -114,7 +114,7 @@ def naming_rows(value: Any, problems: list[str], at: str) -> tuple[Naming, ...]:
     return tuple(rows)
 
 
-def strings(value: Any) -> tuple[str, ...] | None:
+def _strings(value: Any) -> tuple[str, ...] | None:
     if text(value):
         return (value,)
     if isinstance(value, list) and value and all(text(v) for v in value):
@@ -144,12 +144,12 @@ def doc_pages(value: Any, listed: Collection[str], problems: list[str], at: str)
         problems += unknown_keys(spec, names_of(PAGE), where)
         if "note" in spec and not line(spec["note"]):
             problems.append(f"{where}.note: must be one line of text")
-        source = doc_source(spec, where, folder, listed, problems)
+        source = _doc_source(spec, where, folder, listed, problems)
         if len(problems) == count:
             docs.append(Doc(steps, source, spec.get("note", "")))
             (folders if folder else files).add(steps)
     for doc in docs:
-        problems += doc_clashes(doc, files, folders, at)
+        problems += _doc_clashes(doc, files, folders, at)
     return tuple(docs)
 
 
@@ -177,8 +177,8 @@ def init_files(value: Any, docs: tuple[Doc, ...], files: Collection[str], proble
             continue
         count = len(problems)
         problems += unknown_keys(spec, names_of(FILE), where)
-        source = (folder_source(spec, where, files, problems) if folder
-                  else file_source(spec, where, files, problems))
+        source = (_folder_source(spec, where, files, problems) if folder
+                  else _file_source(spec, where, files, problems))
         pinned = spec.get("pinned", False)
         if not isinstance(pinned, bool):
             problems.append(f"{where}.pinned: must be true or false: whether `check` reports the file when it differs "
@@ -191,17 +191,17 @@ def init_files(value: Any, docs: tuple[Doc, ...], files: Collection[str], proble
         if len(problems) == count:
             found.append(FileEntry(steps, source or "", pinned, folder, fill))
     for file in found:
-        problems += file_clashes(file, found, docs, docs_at)
+        problems += _file_clashes(file, found, docs, docs_at)
     return tuple(found)
 
 
-def entry(file: FileEntry) -> str:
+def _entry(file: FileEntry) -> str:
     return "/".join(file.path) + ("/" if file.folder else "")
 
 
-def file_clashes(file: FileEntry, files: list[FileEntry], docs: tuple[Doc, ...],
+def _file_clashes(file: FileEntry, files: list[FileEntry], docs: tuple[Doc, ...],
                  docs_at: str) -> list[str]:
-    where = f"files.{entry(file)}"
+    where = f"files.{_entry(file)}"
     found = [f"{where}: '{'/'.join(file.path[:i])}' is a file, not a folder"
              for i in range(1, len(file.path)) if any(o.path == file.path[:i] and not o.folder for o in files)]
     for other in files:
@@ -210,7 +210,7 @@ def file_clashes(file: FileEntry, files: list[FileEntry], docs: tuple[Doc, ...],
         if file.path == other.path:
             found.append(f"{where}: is also a folder entry")
         elif file.path[:len(other.path)] == other.path:
-            found.append(f"{where}: lies inside the folder entry '{entry(other)}'")
+            found.append(f"{where}: lies inside the folder entry '{_entry(other)}'")
     for doc in docs:
         written = DOCS_ROOT + doc.path
         if doc.source is not None and (written[:len(file.path)] == file.path or file.path[:len(written)] == written):
@@ -218,14 +218,14 @@ def file_clashes(file: FileEntry, files: list[FileEntry], docs: tuple[Doc, ...],
     return found
 
 
-def file_source(spec: Mapping[Any, Any], where: str, files: Collection[str], problems: list[str]) -> str | None:
+def _file_source(spec: Mapping[Any, Any], where: str, files: Collection[str], problems: list[str]) -> str | None:
     if text(spec.get("from")) and spec["from"] not in files and listing_in(files, spec["from"]):
         problems.append(f"{where}.from: '{spec['from']}' is a folder, not a file: end the key with / to copy a folder")
         return None
-    return doc_source(spec, where, False, files, problems)
+    return _doc_source(spec, where, False, files, problems)
 
 
-def folder_source(spec: Mapping[Any, Any], where: str, files: Collection[str], problems: list[str]) -> str | None:
+def _folder_source(spec: Mapping[Any, Any], where: str, files: Collection[str], problems: list[str]) -> str | None:
     if "from" not in spec:
         problems.append(f"{where}: missing `from`, the folder")
     elif not text(spec["from"]):
@@ -242,7 +242,7 @@ def folder_source(spec: Mapping[Any, Any], where: str, files: Collection[str], p
     return None
 
 
-def doc_source(spec: Mapping[Any, Any], where: str, folder: bool, files: Collection[str],
+def _doc_source(spec: Mapping[Any, Any], where: str, folder: bool, files: Collection[str],
                problems: list[str]) -> str | None:
     if folder:
         if "from" in spec:
@@ -259,7 +259,7 @@ def doc_source(spec: Mapping[Any, Any], where: str, folder: bool, files: Collect
     return None
 
 
-def doc_clashes(doc: Doc, files: set[tuple[str, ...]], folders: set[tuple[str, ...]], at: str) -> list[str]:
+def _doc_clashes(doc: Doc, files: set[tuple[str, ...]], folders: set[tuple[str, ...]], at: str) -> list[str]:
     where = f"{at}.{'/'.join(doc.path)}{'/' if doc.is_folder else ''}"
     found = [f"{where}: '{'/'.join(doc.path[:i])}' is a file, not a folder"
              for i in range(1, len(doc.path)) if doc.path[:i] in files]
@@ -293,12 +293,12 @@ def folder_clashes(tiers: tuple[Tier, ...], fakes: Fakes | None) -> list[str]:
             continue
         shown = "/".join(tier.folder)
         problems += [f"tiers: the folder '{shown}' of tier '{tier.name}' overlaps {owner}: give each its own folder"
-                     for owner, other in taken if overlap(tier.folder, other)]
+                     for owner, other in taken if _overlap(tier.folder, other)]
         taken.append((f"the folder '{shown}' of tier '{tier.name}'", tier.folder))
     return problems
 
 
-def overlap(first: tuple[str, ...], second: tuple[str, ...]) -> bool:
+def _overlap(first: tuple[str, ...], second: tuple[str, ...]) -> bool:
     return first[:len(second)] == second or second[:len(first)] == first
 
 
@@ -367,8 +367,8 @@ def case_table(value: Any, where: str, problems: list[str], language: Language) 
     count = len(problems)
     problems += unknown_keys(value, names_of(TABLE), where)
     problems += [f"{where}: missing `{key}`" for key in required_of(TABLE) if key not in value]
-    decorator = dotted(value["decorator"], f"{where}.decorator", problems, language) if "decorator" in value else None
-    row = dotted(value["row"], f"{where}.row", problems, language) if "row" in value else None
+    decorator = _dotted(value["decorator"], f"{where}.decorator", problems, language) if "decorator" in value else None
+    row = _dotted(value["row"], f"{where}.row", problems, language) if "row" in value else None
     if "id" in value and not (isinstance(value["id"], str) and is_name(value["id"], language)):
         problems.append(f"{where}.id: must be a keyword name")
     keywords = value.get("keywords")
@@ -387,7 +387,7 @@ def use_case_file(value: Any, framework: Framework | None, where: str, problems:
         problems.append(f"{where}: must hold `{NAME}` once, such as a_{NAME}{language.checked.extension}")
         return None
     name = value.replace(NAME, "x")
-    if not file_name(language).fullmatch(name):
+    if not _file_name(language).fullmatch(name):
         problems.append(f"{where}: must be a file name below the test folders, such as a_{NAME}{language.checked.extension}")
         return None
     if framework is not None and not any(fnmatchcase(name, pattern) for pattern in framework.files):
@@ -396,9 +396,9 @@ def use_case_file(value: Any, framework: Framework | None, where: str, problems:
     return value
 
 
-def dotted(value: Any, where: str, problems: list[str], language: Language) -> tuple[str, ...] | None:
+def _dotted(value: Any, where: str, problems: list[str], language: Language) -> tuple[str, ...] | None:
     """A dotted name such as pkg.sub.name, the path an absolute import binds."""
-    if not isinstance(value, str) or not is_dotted(value, language, 2):
+    if not isinstance(value, str) or not _is_dotted(value, language, 2):
         problems.append(f"{where}: {value!r} is not a dotted name such as pkg.sub.name")
         return None
     return tuple(value.split("."))
@@ -410,7 +410,7 @@ def dotted_names(value: Any, where: str, problems: list[str], language: Language
         return None
     found: list[tuple[str, ...]] = []
     for item in value:
-        name = dotted(item, where, problems, language)
+        name = _dotted(item, where, problems, language)
         if name is not None and name in found:
             problems.append(f"{where}: {item!r} is listed twice")
         elif name is not None:
@@ -478,7 +478,7 @@ def framework_patterns(value: Any, problems: list[str], where: str, known: Colle
     count = len(problems)
     problems += unknown_keys(value, known, where)
     problems += [f"{where}: missing `{key}`" for key in ("files", "functions") if key not in value]
-    files = file_patterns(value["files"], problems, f"{where}.files", language) if "files" in value else None
+    files = _file_patterns(value["files"], problems, f"{where}.files", language) if "files" in value else None
     skips = dotted_names(value["skips"], f"{where}.skips", problems, language) if "skips" in value else ()
     functions = value.get("functions")
     if "functions" in value and not (isinstance(functions, str)
@@ -489,12 +489,12 @@ def framework_patterns(value: Any, problems: list[str], where: str, known: Colle
     return Framework(files, functions, skips)
 
 
-def file_patterns(value: Any, problems: list[str], where: str, language: Language) -> tuple[str, ...] | None:
+def _file_patterns(value: Any, problems: list[str], where: str, language: Language) -> tuple[str, ...] | None:
     if not isinstance(value, list) or not value:
         problems.append(f"{where}: must be a non-empty list of file name patterns, each a {language.checked.extension} name "
                         "with `*` for any text")
         return None
-    pattern = file_pattern(language)
+    pattern = _file_pattern(language)
     found: list[str] = []
     for item in value:
         if not isinstance(item, str) or not pattern.fullmatch(item):
@@ -599,13 +599,13 @@ def forbidden_names(value: Any, where: str, problems: list[str],
         return None
     found: list[tuple[str, ...]] = []
     for item in value:
-        method = method_name(item, language) if isinstance(item, str) else None
+        method = _method_name(item, language) if isinstance(item, str) else None
         if method is not None and language.checked.is_special(method):
             problems.append(f"{where}: {item!r} is a special method, which no code calls by name")
         elif method is None and isinstance(item, str) and item.startswith(".") and is_name(item[1:], language):
             problems.append(f"{where}: {item!r} is neither a dotted name nor a method: write {item}() for a method "
                             "called on anything")
-        elif method is None and (not isinstance(item, str) or not is_dotted(item, language)):
+        elif method is None and (not isinstance(item, str) or not _is_dotted(item, language)):
             problems.append(f"{where}: {item!r} is not a dotted name such as datetime.datetime.now, nor an import "
                             "name such as socket, nor a method such as .absolute()")
         elif "." not in item and item in language.builtin_names:

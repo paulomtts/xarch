@@ -8,7 +8,7 @@ from tests.fakes.folders import FakeFolders
 from tests.fakes.settings import FakeSettings
 from tests.modules.spec.application.helpers import controller as spec_controller
 from xarch.modules.spec.application.controller import SpecController
-from xarch.modules.spec.contract import KnownProfiles, NoProfileChosen, ProfileRefused, ProfileSelected, SelectProfile
+from xarch.modules.spec.contract import NoProfileChosen, ProfileRefused, ProfileSelected, SelectProfile
 from xarch.modules.spec.domain.errors import UnreadableSettings
 from xarch.modules.spec.domain.values import Configured
 
@@ -90,12 +90,3 @@ def test_the_tests_root_by_default(folders, tests):
     spec = spec_controller(port, FakeSettings(Configured("cli", PYPROJECT)), folders=FakeFolders(folders))
     result = spec.select(SelectProfile(APP, None))
     assert isinstance(result, ProfileSelected) and result.tests == tests
-
-
-def test_the_profiles_a_project_knows_are_the_one_in_force_then_the_bundled_ones():
-    assert controller(configured=Configured("web", PYPROJECT)).known(APP) == KnownProfiles("web", ("cli", "web"))
-
-
-def test_a_project_with_no_profile_in_force_or_unreadable_settings_knows_the_bundled_ones_alone():
-    assert controller().known(APP) == KnownProfiles(None, ("cli", "web"))
-    assert controller(error=UnreadableSettings(PYPROJECT, "bad")).known(APP) == KnownProfiles(None, ("cli", "web"))

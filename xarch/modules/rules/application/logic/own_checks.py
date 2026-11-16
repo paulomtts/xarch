@@ -2,9 +2,10 @@
 rules: each target is resolved by its kind of the vocabulary (a place by the target grammar, against the parts of the
 profile and the part the check's scope names; a dotted name into its steps; any other value as written), and a part
 it names must be a part of the profile. A check that names a word the vocabulary does not hold, or one that does not
-apply, a place or a part the profile does not have, or a fact the language's reader does not supply, is refused with
-every problem of every check at once (ChecksRefused). A check that reads a fact the reader supplies only partly is
-listed as approximate.
+apply, a place or a part the profile does not have, or a fact the language's reader does not supply, is not made: its
+problems are listed, and the others are made all the same (made); to run, every check must be made, else they are
+refused with every problem of every check at once (ChecksRefused). A check that reads a fact the reader supplies only
+partly is listed as approximate.
 """
 from __future__ import annotations
 
@@ -16,7 +17,7 @@ from xarch.kernel.logic.targets import target
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.domain.errors import ChecksRefused, RuleRefused
 from xarch.modules.rules.domain.published import Weak
-from xarch.modules.rules.domain.rule import EXISTING, MUST_BE_REACHED, MUST_REACH, Match, OwnCheck, Rule
+from xarch.modules.rules.domain.rule import EXISTING, MUST_BE_REACHED, MUST_REACH, MadeChecks, Match, OwnCheck, Rule
 from xarch.modules.rules.domain.values import Profile
 from xarch.modules.rules.domain.vocabulary import NAMES, PARTS, PLACES, TARGETS
 from xarch.profile_values.capabilities import FACTS, Shortfall
@@ -27,12 +28,22 @@ from xarch.profile_values.language import CheckedLanguage
 def resolved(profile: Profile) -> Profile:
     """The profile with the checks it writes itself made into rules, and those that read a fact the language supplies
     only partly added to its approximate keys; raises ChecksRefused with every problem when one cannot be made."""
-    checks = own(profile.written, profile)
-    return replace(profile, checks=checks, approximate=(*profile.approximate, *approximate(checks, profile.language)))
+    checks = _own(profile.written, profile)
+    return replace(profile, checks=checks, approximate=(*profile.approximate, *_approximate(checks, profile.language)))
 
 
-def own(written: Mapping[str, WrittenCheck], profile: Profile) -> tuple[OwnCheck, ...]:
-    """Each check as a rule with its examples, in the profile's order."""
+def _own(written: Mapping[str, WrittenCheck], profile: Profile) -> tuple[OwnCheck, ...]:
+    """Each check as a rule with its examples, in the profile's order; raises ChecksRefused with every problem when
+    one cannot be made."""
+    found = made(written, profile)
+    if found.problems:
+        raise ChecksRefused(found.problems)
+    return found.checks
+
+
+def made(written: Mapping[str, WrittenCheck], profile: Profile) -> MadeChecks:
+    """Each check that can be made as a rule with its examples, and every problem of each that cannot, both in the
+    profile's order."""
     found: list[OwnCheck] = []
     problems: list[str] = []
     for name, check in written.items():
@@ -45,11 +56,11 @@ def own(written: Mapping[str, WrittenCheck], profile: Profile) -> tuple[OwnCheck
         except RuleRefused as refused:
             problems += [f"checks.{name}.{problem}" for problem in refused.problems]
             continue
-        problems += supplied(name, rule, profile.language)
-        found.append(OwnCheck(rule, check.flagged, check.clean))
-    if problems:
-        raise ChecksRefused(tuple(problems))
-    return tuple(found)
+        lacking = _supplied(name, rule, profile.language)
+        problems += lacking
+        if not lacking:
+            found.append(OwnCheck(rule, check.flagged, check.clean))
+    return MadeChecks(tuple(found), tuple(problems))
 
 
 def _rule_of(name: str, check: WrittenCheck, targets: tuple[Match, ...]) -> Rule:
@@ -62,7 +73,7 @@ def _rule_of(name: str, check: WrittenCheck, targets: tuple[Match, ...]) -> Rule
                 elsewhere=quantified.by_another_file)
 
 
-def supplied(name: str, rule: Rule, language: CheckedLanguage) -> list[str]:
+def _supplied(name: str, rule: Rule, language: CheckedLanguage) -> list[str]:
     """A problem for each fact the rule needs that the language's reader does not supply."""
     if language.supplies is None:
         return []
@@ -72,7 +83,7 @@ def supplied(name: str, rule: Rule, language: CheckedLanguage) -> list[str]:
             for short in shortfalls(rule.key, rule.needs, supplies) if short.note is None]
 
 
-def approximate(checks: tuple[OwnCheck, ...], language: CheckedLanguage) -> tuple[Shortfall, ...]:
+def _approximate(checks: tuple[OwnCheck, ...], language: CheckedLanguage) -> tuple[Shortfall, ...]:
     """The checks that read a fact the language's reader supplies only partly, by the fact."""
     supplies = {s.fact: s for s in language.supplies or ()}
     return tuple(short for check in checks for short in shortfalls(check.rule.key, check.rule.needs, supplies)
@@ -90,7 +101,7 @@ def _targets(name: str, check: WrittenCheck, profile: Profile, problems: list[st
 
 def _match(written: WrittenTarget, owner: tuple[str, tuple[str, ...]] | None, profile: Profile, where: str,
            problems: list[str]) -> Match | None:
-    kind, values = written.kind, written.values
+    kind, values = written.kind, written.values or ()
     form = next((k.values for k in TARGETS if k.name == kind), "")
     if form == PLACES:
         count = len(problems)

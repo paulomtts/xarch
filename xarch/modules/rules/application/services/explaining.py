@@ -40,12 +40,13 @@ class ExplainingService:
 
     def words(self, address: str, app: Path | None) -> WordsResult:
         """How a check is written, a category of its words or one word, from the vocabulary the engine reads, each
-        example drawn from the profiles the project holding app knows (none for no app); an address of no word comes
-        back with the nearest ones."""
+        example drawn from the profiles the project holding app knows, the one in force first (none for no app); an
+        address of no word comes back with the nearest ones. Raises ProfileUnusable when the profile configured for
+        the project cannot be chosen or loaded."""
         typed = address.strip().strip(".")
         if not explained.names_words(typed):
             return NoWords(typed, explained.close(typed))
-        examples_from = self._profiles.known(app) if app is not None else ()
+        examples_from = explained.searched(self._profiles.known(app)) if app is not None else ()
         language = self.language(examples_from)
         if typed == CHECKS:
             categories = tuple(_category(name) for name in explained.CATEGORIES)

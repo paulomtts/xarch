@@ -6,16 +6,21 @@ import typer
 
 from xarch.cli.reports import profile_report as report
 from xarch.cli.reports import vocabulary_report as words
-from xarch.cli.reports.refusal_report import key_or_profile, reason, rule_needs_key
+from xarch.cli.reports.refusal_report import key_or_profile, no_profile, reason, rule_needs_key
 from xarch.cli.terminal import AppPath, Format, FormatOption, app_for, echo, fail, in_full, refusal, refuse_with, selection
 from xarch.modules.rules.application.controller import RulesController
 from xarch.modules.rules.contract import (
+    CheckProfile,
+    CheckRefused,
     ChecksShown,
     ExplainRule,
     ExplainWords,
     KeyUnset,
+    NoProfileChosen,
     NoRuleShown,
     NoWords,
+    ProfileHeld,
+    ProfileUnloaded,
     RuleShown,
     UnknownWords,
     WordShown,
@@ -23,7 +28,6 @@ from xarch.modules.rules.contract import (
 )
 from xarch.modules.spec.application.controller import SpecController
 from xarch.modules.spec.contract import (
-    CheckProfile,
     Explain,
     FilesTaken,
     FormatExplained,
@@ -32,8 +36,6 @@ from xarch.modules.spec.contract import (
     MigrateProfile,
     MigrationRefused,
     NewProfile,
-    NoProfileChosen,
-    ProfileChecked,
     ProfileCreated,
     ProfileRefused,
     ProfileViewed,
@@ -119,13 +121,15 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
                     return
                 case UnknownWords() as unknown:
                     raise refuse_with(output, words.unknown_message(unknown), words.unknown_document(unknown))
+                case CheckRefused(why):
+                    raise refuse(why)
         if profile is not None or configured:
             if key is not None or (profile is not None and configured):
                 raise refuse(key_or_profile())
             match spec.view(ViewProfile(app_for(spec, in_full(Path()), app_path, refuse), profile)):
                 case ProfileViewed() as seen:
                     _show(output, report.view_document(seen), report.view_lines(seen))
-                case NoProfileChosen() | ProfileRefused() as refused:
+                case refused:
                     raise refuse(reason(refused))
             return
         match spec.explain(Explain(key)):
@@ -170,13 +174,15 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
         problems, 2 when no profile can be chosen."""
         refuse = refusal(output)
         app = app_for(spec, in_full(Path()), app_path, refuse)
-        match spec.check_profile(CheckProfile(app, target)):
-            case ProfileChecked() as checked:
+        match rules.check_profile(CheckProfile(app, target)):
+            case ProfileHeld() | ProfileUnloaded() as checked:
                 _show(output, report.check_document(checked), report.check_lines(checked))
-                if not checked.ok:
+                if isinstance(checked, ProfileUnloaded) or not checked.ok:
                     raise typer.Exit(1)
-            case NoProfileChosen() | ProfileRefused() as refused:
-                raise refuse(reason(refused))
+            case NoProfileChosen(known):
+                raise refuse(no_profile(known))
+            case CheckRefused(why):
+                raise refuse(why)
 
 
 def _show(output: Format, document: str, lines: list[str]) -> None:

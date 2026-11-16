@@ -5,10 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from tests.bootstrap.project import bundled_profiles
-from xarch.bootstrap.wiring import build_controllers, load_architecture
-from xarch.modules.layout.contract import CheckStructure
-from xarch.modules.rules.contract import CheckImports
+from tests.bootstrap.project import app_check, bundled_profiles
+from xarch.bootstrap.wiring import load_architecture
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.profile_values.testing import ScenarioCoverage, StandIns
 
@@ -63,10 +61,7 @@ def check(tmp_path: Path, files: dict[str, str], text: str = PROFILE) -> list[st
     for rel, body in {**APP, **files}.items():
         (app / rel).parent.mkdir(parents=True, exist_ok=True)
         (app / rel).write_text(body)
-    profile = str(profile_in(tmp_path, text))
-    controllers = build_controllers()
-    found = controllers.rules.check(CheckImports(app, "app", profile)).violations
-    return [str(v) for v in [*found, *controllers.layout.check(CheckStructure(app, "app", profile)).violations]]
+    return [str(v) for v in app_check(app, str(profile_in(tmp_path, text))).violations]
 
 
 def test_a_conforming_app_passes_a_profile_in_format_2(tmp_path):

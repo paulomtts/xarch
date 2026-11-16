@@ -2,12 +2,12 @@
 import pytest
 
 from tests.bootstrap.project import bundled_profiles
-from xarch.bootstrap.wiring import build_spec
+from xarch.bootstrap.wiring import build_controllers
 from xarch.modules.spec.contract import Entry
 
 
 def skeleton(profile: str):
-    return build_spec().skeleton(profile)
+    return build_controllers().spec.skeleton(profile)
 
 
 def test_top_level_lists_every_folder_parents_before_children():

@@ -199,7 +199,8 @@ def test_the_names_of_the_framework_held_by_the_guards_move_to_the_testing_map()
         "table": {"decorator": "pytest.mark.parametrize", "row": "pytest.param", "id": "id",
                   "keywords": ["argnames", "argvalues"]},
         "mocks": {"calls": ["unittest.mock.Mock"], "autospec": ["unittest.mock.create_autospec"],
-                  "spec_keywords": ["spec"], "fixtures": {"mocker": {"calls": ["Mock"], "autospec": ["create_autospec"]}}}}
+                  "spec_keywords": ["spec"], "spec_position": 0,
+                  "fixtures": {"mocker": {"calls": ["Mock"], "autospec": ["create_autospec"]}}}}
     assert converted.document["guards"] == {
         "scenario-coverage": {"results": "api", "tier": "integration", "suffix": "Result",
                               "columns": ["given", "when", "then"], "file": "test_{name}.py"},

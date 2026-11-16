@@ -76,6 +76,15 @@ def test_a_looser_copy_is_still_valid_and_the_difference_is_information(tmp_path
     assert "looser than web" in result.output and "domain may also import" in result.output
 
 
+def test_each_public_name_a_copy_accepts_as_only_the_tests_is_a_way_it_is_looser(tmp_path):
+    edit(tmp_path, lambda d: d["guards"]["dead-code"].update(tests_only=True, known=["kernel/ids.py:make"]))
+    result = runner.invoke(app, ["profile", "check", COPY, "--format", "json"])
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output)["compared_with"] == {"profile": "web", "looser": [
+        {"key": "known", "part": "", "what": "kernel/ids.py:make",
+         "sentence": "the tests-only check accepts kernel/ids.py:make, which only the tests use (guards.dead-code.known)"}]}
+
+
 def test_json_gives_ok_the_problems_by_check_the_files_and_the_difference(tmp_path):
     good = json.loads(runner.invoke(app, ["profile", "check", COPY, "--format", "json"]).output)
     assert good["ok"] is True and good["profile"] == COPY and good["problems"] == [] and good["files"] > 10

@@ -7,7 +7,7 @@ from typer.testing import CliRunner
 
 from tests.bootstrap.project import bundled_profiles
 from xarch.bootstrap.app import app
-from xarch.bootstrap.wiring import build_spec
+from xarch.bootstrap.wiring import build_controllers
 
 runner = CliRunner()
 
@@ -122,5 +122,5 @@ def test_the_bundled_profiles_the_choices_name_are_the_ones_xarch_ships():
 
 @pytest.mark.parametrize("bundled", bundled_profiles())
 def test_the_agent_instructions_every_bundled_profile_ships_say_that_xarch_profile_explain_exists(bundled):
-    text = next(f.content for f in build_spec().files(bundled, "app").files if f.path == ("AGENTS.md",))
+    text = next(f.content for f in build_controllers().spec.files(bundled, "app").files if f.path == ("AGENTS.md",))
     assert "xarch profile explain" in text and "xarch profile check" in text

@@ -15,8 +15,9 @@ A port with no methods is neither, and no rule applies to it. A read port X has 
 <prefix>X in a file below the fakes' folder (by name only: one fake serves ports of the same name in two instances).
 
 In a test whose tier may import the fakes (see tier_imports), every call of one of the profile's mocks names its
-spec, as its first argument or by one of the profile's spec keywords, and every call of one of its autospec
-functions its first argument or the first spec keyword; one that names none is a violation. A spec that is a class
+spec, as its argument at the profile's spec_position (when the profile gives one) or by one of the profile's spec
+keywords, and every call of one of its autospec functions as that argument or by the first spec keyword; one that
+names none is a violation. A spec that is a class
 of the app, `from <module> import X` or `<module alias>.X`, whose module is a port's file and X a read port there,
 is a violation that points to its fake.
 
@@ -54,7 +55,7 @@ GUARD = f"({RULE})"
 
 
 @dataclass(frozen=True)
-class Port:
+class _Port:
     """A port, where it is, and its kind: "fire-only", "read" or None (unannotated, or no methods)."""
     file: str
     module: tuple[str, ...]
@@ -97,12 +98,12 @@ def weak(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profil
     return found
 
 
-def _ports(app: Iterable[SourceFile], profile: Profile) -> tuple[dict[tuple[tuple[str, ...], str], Port],
+def _ports(app: Iterable[SourceFile], profile: Profile) -> tuple[dict[tuple[tuple[str, ...], str], _Port],
                                                                  list[Violation]]:
     """The ports of the parts the fakes stand in for, by module and name, and the problems of their annotations."""
     assert profile.fakes is not None
     found: list[Violation] = []
-    ports: dict[tuple[tuple[str, ...], str], Port] = {}
+    ports: dict[tuple[tuple[str, ...], str], _Port] = {}
     for file in app:
         where = file_place(profile, file.path)
         if where is None or where.part not in profile.fakes.stand_in_for:
@@ -115,7 +116,7 @@ def _ports(app: Iterable[SourceFile], profile: Profile) -> tuple[dict[tuple[tupl
     return ports, found
 
 
-def _classified(file: SourceFile, cls: Class, profile: Profile) -> tuple[Port, list[Violation]]:
+def _classified(file: SourceFile, cls: Class, profile: Profile) -> tuple[_Port, list[Violation]]:
     language = profile.language
     methods = [m for m in cls.methods if not language.is_special(m.name) or m.name == language.call]
     bare = [m for m in methods if m.returns is None]
@@ -127,10 +128,10 @@ def _classified(file: SourceFile, cls: Class, profile: Profile) -> tuple[Port, l
     if not bare and methods:
         kind = "read" if any(m.returns != language.nothing for m in methods) else "fire-only"
     module = dotted(file.path, profile.language.marks)[0]
-    return Port(file.name, module, cls.line, cls.name, kind, tuple(m.name for m in methods)), problems
+    return _Port(file.name, module, cls.line, cls.name, kind, tuple(m.name for m in methods)), problems
 
 
-def _missing_fakes(ports: Iterable[Port], tests: list[SourceFile], profile: Profile,
+def _missing_fakes(ports: Iterable[_Port], tests: list[SourceFile], profile: Profile,
                    tests_root: str) -> list[Violation]:
     assert profile.fakes is not None
     folder = profile.fakes.folder
@@ -141,7 +142,7 @@ def _missing_fakes(ports: Iterable[Port], tests: list[SourceFile], profile: Prof
             for p in ports if p.kind == "read" and f"{profile.fakes.prefix}{p.name}" not in fakes]
 
 
-def _mocks(tests: list[SourceFile], ports: dict[tuple[tuple[str, ...], str], Port], profile: Profile,
+def _mocks(tests: list[SourceFile], ports: dict[tuple[tuple[str, ...], str], _Port], profile: Profile,
            root: str) -> list[Violation]:
     assert profile.fakes is not None and profile.stand_ins is not None
     found: list[Violation] = []
@@ -155,57 +156,58 @@ def _mocks(tests: list[SourceFile], ports: dict[tuple[tuple[str, ...], str], Por
 
 
 @dataclass(frozen=True)
-class Built:
+class _Built:
     """A call that builds a mock: the call as the source tree read it (of an imported name, or of a fixture's method),
-    how it is shown (`Mock`, or `mocker.Mock` for a fixture's), and whether it takes its spec as its first argument
-    only (an autospec)."""
+    how it is shown (`Mock`, or `mocker.Mock` for a fixture's), and whether it is an autospec, which takes its spec by
+    the argument at the profile's position or by the first spec keyword only."""
     made: Call | ParameterCall
     shown: str
     autospec: bool
 
 
-def _built(file: SourceFile, names: StandIns) -> list[Built]:
+def _built(file: SourceFile, names: StandIns) -> list[_Built]:
     """The calls of the file that build a mock, those of imported names first, then those of a fixture's methods."""
-    found = [Built(c, c.func[-1], c.func in names.autospec)
+    found = [_Built(c, c.func[-1], c.func in names.autospec)
              for c in file.calls if c.func in names.mocks or c.func in names.autospec]
     for call in file.parameter_calls:
         for fixture in names.fixtures:
             if call.parameter == fixture.name and call.method in (*fixture.mocks, *fixture.autospec):
-                found.append(Built(call, f"{call.parameter}.{call.method}", call.method in fixture.autospec))
+                found.append(_Built(call, f"{call.parameter}.{call.method}", call.method in fixture.autospec))
     return found
 
 
-def _mock(file: SourceFile, mock: Built, ports: dict[tuple[tuple[str, ...], str], Port], profile: Profile,
+def _mock(file: SourceFile, mock: _Built, ports: dict[tuple[tuple[str, ...], str], _Port], profile: Profile,
           root: str) -> list[Violation]:
     assert profile.fakes is not None and profile.stand_ins is not None
     names = profile.stand_ins
     prefix = mock.shown.rpartition(".")[0]
     constructor = f"{prefix}." if prefix else ""
     suggested = f"{constructor}{names.mocks[0][-1]}({names.spec[0]}=<port>)"
-    named, spec = _spec(mock, names.spec[:1] if mock.autospec else names.spec)
+    named, spec, placed = _spec(mock, names.spec[:1] if mock.autospec else names.spec, names.spec_position)
     if not named:
         return [Violation(file.name, mock.made.line, f"{mock.shown}() names nothing it stands in for {GUARD}", RULE,
                           f"give it a spec, such as {suggested}")]
     if spec is not None and spec[:1] == (root,):
         port = ports.get((spec[1:-1], spec[-1]))
         if port is not None and port.kind == "read":
-            written = f"{mock.shown}({names.spec[0]}={port.name})" if not mock.made.args else \
-                f"{mock.shown}({port.name})"
+            before = "..., " * (names.spec_position or 0)
+            written = f"{mock.shown}({before}{port.name})" if placed else \
+                f"{mock.shown}({names.spec[0]}={port.name})"
             return [Violation(file.name, mock.made.line, f"{written} stands in for {port.name}, a read port {GUARD}", RULE,
                               f"use its fake {profile.fakes.prefix}{port.name}")]
     return []
 
 
-def _spec(call: Built, names: tuple[str, ...]) -> tuple[bool, tuple[str, ...] | None]:
-    """Whether the call names a spec (or may, when it unpacks arguments), by its first argument or one of the keywords
-    names, and the spec when it is a name."""
+def _spec(call: _Built, names: tuple[str, ...], position: int | None) -> tuple[bool, tuple[str, ...] | None, bool]:
+    """Whether the call names a spec (or may, when it unpacks arguments), by its argument at position (None: by no
+    argument) or one of the keywords names; the spec when it is a name; and whether the argument at position names it."""
     made = call.made
     keywords = dict(made.keywords)
-    if made.args:
-        return True, made.args[0]
+    if position is not None and len(made.args) > position:
+        return True, made.args[position], True
     for name in names:
         if name in keywords:
-            return True, keywords[name]
-    return made.unpacked, None
+            return True, keywords[name], False
+    return made.unpacked, None, False
 
 

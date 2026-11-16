@@ -1,6 +1,6 @@
 """What the rules module promises: check an app, its imports, its tests and its structure against a profile; say what a
-path is and what code there may do; explain the words a check is written in and the rules a key expands to; and hold
-a profile's own checks to their examples."""
+path is and what code there may do; explain the words a check is written in and the rules a key expands to; and check
+a profile without an app, its own checks held to their examples."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -22,20 +22,24 @@ from xarch.modules.rules.domain.published import (
     At,
     Drift,
     KeyFacts,
+    KnownName,
+    Loosened,
+    Resemblance,
+    Reviewed,
     Slot,
     Weak,
 )
-from xarch.profile_values.checks import ChecksHeld
 
-__all__ = ["At", "Weak", "Slot", "KeyFacts", "SECTIONS", "GUARDS_OFF", "UNGOVERNED", "INIT_FILES", "SKIPPED", "DYNAMIC",
+__all__ = ["At", "Weak", "KnownName", "Slot", "KeyFacts", "SECTIONS", "GUARDS_OFF", "UNGOVERNED", "INIT_FILES", "SKIPPED", "DYNAMIC",
            "WEAK", "APPROXIMATE", "VACUOUS", "UNPLACED", "ChecksCannotRun", "CheckRefused", "OwnCheckView",
            "Drift", "FindingView", "ExcludedView", "EnforcementView", "ReachView", "NearestView", "TierInfoView",
            "PartShown", "CoveringTest", "Untested", "InPart", "InStructure", "Ungoverned", "InTests", "Support", "Fake",
-           "WhereAnswer", "CheckImports", "ImportsChecked", "NotADirectory", "CheckResult", "CheckApp", "AppChecked",
+           "WhereAnswer", "NotADirectory", "CheckApp", "AppChecked",
            "CheckAppResult", "Locate", "Located", "Outside", "LocateResult", "ExplainWords", "NoWords",
            "WordLine", "CategoryShown", "ChecksShown", "WordsShown", "FieldShown", "WordShown", "UnknownWords",
-           "WordsResult", "ExplainRule", "RuleShown", "KeyUnset", "NoRuleShown", "RuleResult", "CheckExamples", "ChecksHeld",
-           "CheckExamplesResult", "ApproximateView"]
+           "WordsResult", "ExplainRule", "RuleShown", "KeyUnset", "NoRuleShown", "RuleResult", "ApproximateView",
+           "Loosened", "Resemblance", "Reviewed", "CheckProfile", "ChecksHeld", "ProfileHeld", "ProfileUnloaded",
+           "NoProfileChosen", "ProfileCheckResult"]
 
 
 @dataclass(frozen=True)
@@ -78,8 +82,9 @@ class EnforcementView:
     files no part governs, and the top folders holding them (each once, in order); the init
     files missing or changed; the skipped tests and dynamic imports; the checks met to the letter only; the findings
     `--strict` fails on; the folders the profile excludes; how the language of the app is named; the keys whose
-    check reads a fact the language supplies only partly, each in words; and the checks the profile writes itself,
-    each with how many facts it read in the project."""
+    check reads a fact the language supplies only partly, each in words; the checks the profile writes itself,
+    each with how many facts it read in the project; and the public names only the tests use that the profile
+    accepts."""
     ungoverned: tuple[str, ...] = ()
     ungoverned_folders: tuple[str, ...] = ()
     init_files: tuple[Drift, ...] = ()
@@ -91,6 +96,7 @@ class EnforcementView:
     language: str = ""
     approximate: tuple[ApproximateView, ...] = ()
     checks: tuple[OwnCheckView, ...] = ()
+    known: tuple[KnownName, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -233,23 +239,6 @@ named by its kind (Support is an InTests)."""
 
 
 @dataclass(frozen=True)
-class CheckImports:
-    """Check the code below root, imported as package, and the tests below tests (None: no tests), against the
-    architecture at profile (a bundled name or a path); root and tests are given in full."""
-    root: Path
-    package: str
-    profile: str
-    tests: Path | None = None
-
-
-@dataclass(frozen=True)
-class ImportsChecked:
-    """The violations, in the order the checks found them, and the state of the check's own enforcement."""
-    violations: tuple[Violation, ...]
-    enforcement: EnforcementView = EnforcementView()
-
-
-@dataclass(frozen=True)
 class NotADirectory:
     root: Path
 
@@ -264,9 +253,6 @@ class ChecksCannotRun:
 class CheckRefused:
     """The check cannot run on the profile in force; reason is safe to show the user as-is."""
     reason: str
-
-
-CheckResult = ImportsChecked | NotADirectory | ChecksCannotRun | CheckRefused
 
 
 @dataclass(frozen=True)
@@ -412,7 +398,7 @@ class NoWords:
     close: tuple[str, ...]
 
 
-WordsResult = ChecksShown | WordsShown | WordShown | UnknownWords | NoWords
+WordsResult = ChecksShown | WordsShown | WordShown | UnknownWords | NoWords | CheckRefused
 
 
 @dataclass(frozen=True)
@@ -456,11 +442,46 @@ RuleResult = RuleShown | KeyUnset | NoRuleShown
 
 
 @dataclass(frozen=True)
-class CheckExamples:
-    """Hold the checks the profile at location writes itself to their examples, the app being the package app
-    names."""
-    profile: str
-    app: str
+class CheckProfile:
+    """Check a profile without an app: the one target names (a bundled name or a path), else the one configured for
+    the project holding the app folder, whose name its own checks' examples are read below."""
+    app: Path
+    target: str | None = None
 
 
-CheckExamplesResult = ChecksHeld | ChecksCannotRun | CheckRefused
+@dataclass(frozen=True)
+class ChecksHeld:
+    """What holding the checks a profile writes itself to their examples found: every problem, in the profile's
+    order, each at its address in the profile (why a check cannot be made, or how one made does not find what its
+    examples say; none: each finds something in its flagged code and nothing in its clean code), and how many checks
+    the profile writes itself, made or not."""
+    problems: tuple[str, ...]
+    checks: int
+
+
+@dataclass(frozen=True)
+class ProfileHeld:
+    """A profile that loads, checked: what checking it found before its own checks are held, and what holding them to
+    their examples found; ok when neither found a problem."""
+    reviewed: Reviewed
+    own: ChecksHeld
+
+    @property
+    def ok(self) -> bool:
+        return not self.reviewed.examples and not self.own.problems
+
+
+@dataclass(frozen=True)
+class ProfileUnloaded:
+    """A profile that does not load: where it is, and every problem the loader found, each in words."""
+    location: str
+    problems: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class NoProfileChosen:
+    """No profile is given and none is configured for the project: the profiles it knows, to choose one from."""
+    known: tuple[str, ...]
+
+
+ProfileCheckResult = ProfileHeld | ProfileUnloaded | NoProfileChosen | CheckRefused

@@ -118,12 +118,41 @@ def test_dead_code_may_also_list_the_files_no_test_of_their_tier_reaches():
     assert parsed(covered(guards={"dead-code": {}}, fakes=FAKES)).guards == (DeadCode(False),)
 
 
+def test_dead_code_may_accept_public_names_as_only_the_tests_each_as_its_file_below_the_app_and_its_name():
+    known = ["src/billing/store/db.py:Store", "shared/text.py:clean"]
+    assert parsed(covered(guards={"dead-code": {"tests_only": True, "known": known}}, fakes=FAKES)).guards == (
+        DeadCode(False, True, ("src/billing/store/db.py:Store", "shared/text.py:clean")),)
+
+
+NOT = "is not <file below the app>:<name>, such as documents/rules.py:clean"
+"""How the format refuses an entry of guards.dead-code.known that is not one, under Python."""
+
+
 @pytest.mark.parametrize("guards, expected", [
     pytest.param({"dead-code": {"untested": "yes"}}, "guards.dead-code.untested: must be true or false",
                  id="untested, no boolean"),
-    pytest.param({"dead-code": {"x": 1}}, "guards.dead-code: unknown key 'x': use tests_only, untested", id="an unknown key"),
-    pytest.param({"dead-code": 3}, "guards.dead-code: must be a mapping {untested: true|false, tests_only: true|false}, or {}",
-                 id="no mapping"),
+    pytest.param({"dead-code": {"x": 1}}, "guards.dead-code: unknown key 'x': use known, tests_only, untested",
+                 id="an unknown key"),
+    pytest.param({"dead-code": 3}, "guards.dead-code: must be a mapping {untested: true|false, tests_only: true|false, "
+                                   "known: [<file>:<name>, ...]}, or {}", id="no mapping"),
+    pytest.param({"dead-code": {"known": ["shared/text.py:clean"]}},
+                 "guards.dead-code.known: needs `tests_only: true`: it names the public names that check accepts as only "
+                 "the tests'", id="known without tests_only"),
+    pytest.param({"dead-code": {"tests_only": True, "known": "shared/text.py:clean"}},
+                 "guards.dead-code.known: must be a list of <file below the app>:<name>, such as [documents/rules.py:clean]",
+                 id="known, no list"),
+    pytest.param({"dead-code": {"tests_only": True, "known": ["shared/text.py"]}},
+                 "guards.dead-code.known: 'shared/text.py' " + NOT, id="known, an entry with no name"),
+    pytest.param({"dead-code": {"tests_only": True, "known": ["shared/text:clean"]}},
+                 "guards.dead-code.known: 'shared/text:clean' " + NOT, id="known, a file not of the language"),
+    pytest.param({"dead-code": {"tests_only": True, "known": ["/shared/text.py:clean"]}},
+                 "guards.dead-code.known: '/shared/text.py:clean' " + NOT, id="known, a file not below the app"),
+    pytest.param({"dead-code": {"tests_only": True, "known": ["shared/text.py:2x"]}},
+                 "guards.dead-code.known: 'shared/text.py:2x' " + NOT, id="known, a name the language does not allow"),
+    pytest.param({"dead-code": {"tests_only": True, "known": [3]}}, "guards.dead-code.known: 3 " + NOT,
+                 id="known, an entry that is no text"),
+    pytest.param({"dead-code": {"tests_only": True, "known": ["shared/text.py:clean", "shared/text.py:clean"]}},
+                 "guards.dead-code.known: 'shared/text.py:clean' is listed twice", id="known, an entry listed twice"),
     pytest.param({"private-imports": {"x": 1}}, "guards.private-imports: takes no parameters: write {}",
                  id="private-imports, a parameter"),
 ])

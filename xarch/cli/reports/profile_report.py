@@ -8,9 +8,9 @@ explain, no key: {"ok", "format", "shape", "symbols", "smallest", "deeper"}, eac
 format has not: {"ok": false, "error", "key", "nearest", "words"}, nearest the format's keys near it and words the
 words of a check near it. explain, a profile: {"ok", "profile", "name", "tree", "imports"}.
 check: {"ok", "profile", "problems", "files", "checks", "compared_with"}, checks the number of checks the profile
-writes itself, each problem {"check", "message"} (check: load, examples, or checks, for a check of the profile's own)
-and compared_with {"profile", "looser"} (null for a bundled profile or one that resembles none), each looser entry
-{"key", "part", "what", "sentence"}.
+writes itself (made or not), each problem {"check", "message"} (check: load, examples, or checks, for a check of the
+profile's own) and compared_with {"profile", "looser"} (null for a bundled profile or one that resembles none), each
+looser entry {"key", "part", "what", "sentence"}.
 """
 from __future__ import annotations
 
@@ -20,17 +20,14 @@ from textwrap import fill
 from typing import Any
 
 from xarch.cli.reports.document import document
+from xarch.modules.rules.contract import ProfileHeld, ProfileUnloaded, Resemblance
 from xarch.modules.spec.contract import (
-    CHECKS,
-    EXAMPLES,
-    LOAD,
     FilesTaken,
     FormatExplained,
     KeyExplained,
     Migrated,
     Need,
     Origin,
-    ProfileChecked,
     ProfileCreated,
     ProfileViewed,
     Shown,
@@ -50,6 +47,10 @@ DEEPER = ("xarch profile explain parts.may_import        one key in full: what i
 """How to go deeper than the overview of the format."""
 NEXT = ("edit {profile}", "xarch profile explain                 # the format, key by key",
         "xarch profile check {profile}")
+
+LOAD, EXAMPLES, CHECKS = "load", "examples", "checks"
+"""The check a problem of `profile check` is named by in the JSON document: the loader, the examples' imports, or the
+checks the profile writes itself."""
 
 ABSENT = "absent"
 """How the JSON document grades a fact the language's reader does not supply."""
@@ -174,7 +175,7 @@ def view_document(seen: ProfileViewed) -> str:
                   "imports": seen.imports})
 
 
-def origin_words(origin: Origin) -> str:
+def origin_words(origin: Origin | Resemblance) -> str:
     """Where a profile comes from, in words: bundled, or custom and the bundled profile closest to it, if any."""
     if origin.bundled:
         return "bundled"
@@ -183,70 +184,75 @@ def origin_words(origin: Origin) -> str:
     return "custom; no bundled profile resembles it"
 
 
-def check_lines(checked: ProfileChecked) -> list[str]:
-    origin = checked.origin
-    lines = [f"checking {checked.location} ({origin_words(origin) if origin is not None else 'custom'})"]
-    loads = [p for p in checked.problems if p.check == LOAD]
-    examples = [p for p in checked.problems if p.check == EXAMPLES]
-    lines += _section("loads", loads, "ok")
-    if origin is None:
-        lines.append("  examples: not checked: the profile does not load")
-    else:
-        lines.append(f"  files: all {checked.files} it points to are present")
-        lines += _section("examples", examples, "ok: they import only what their part may")
-        own = [p for p in checked.problems if p.check == CHECKS]
-        if checked.checks or own:
-            lines += _section("checks", own, "ok: its check finds what its examples say" if checked.checks == 1 else
-                              f"ok: its {checked.checks} checks find what their examples say")
-        lines += _compared(checked)
-    lines.append("OK: the profile is valid" if checked.ok
-                 else f"INVALID: {len(checked.problems)} problem{'' if len(checked.problems) == 1 else 's'}")
-    return lines
+def check_lines(checked: ProfileHeld | ProfileUnloaded) -> list[str]:
+    """What `profile check` found, as text: a section per check, then how the profile differs from the bundled one it
+    is based on, and the verdict."""
+    match checked:
+        case ProfileUnloaded(location, problems):
+            return [f"checking {location} (custom)", *_section("loads", problems, "ok"),
+                    "  examples: not checked: the profile does not load", _verdict(len(problems))]
+        case ProfileHeld(reviewed, own):
+            pass
+    lines = [f"checking {reviewed.location} ({origin_words(reviewed.resemblance)})", *_section("loads", (), "ok"),
+             f"  files: all {reviewed.files} it points to are present",
+             *_section("examples", reviewed.examples, "ok: they import only what their part may")]
+    if own.checks or own.problems:
+        lines += _section("checks", own.problems, "ok: its check finds what its examples say" if own.checks == 1 else
+                          f"ok: its {own.checks} checks find what their examples say")
+    return [*lines, *_compared(reviewed.resemblance), _verdict(len(reviewed.examples) + len(own.problems))]
 
 
-def _section(name: str, problems: Sequence[Any], ok: str) -> list[str]:
+def _section(name: str, problems: Sequence[str], ok: str) -> list[str]:
     if not problems:
         return [f"  {name}: {ok}"]
     return [f"  {name}: {len(problems)} problem{'' if len(problems) == 1 else 's'}",
-            *(f"    {problem.text}" for problem in problems)]
+            *(f"    {problem}" for problem in problems)]
 
 
-def _compared_with(origin: Origin | None) -> str | None:
-    """The bundled profile a checked one is compared with: the one closest to it, when it loads and is custom."""
-    return origin.closest if origin is not None and not origin.bundled else None
+def _verdict(problems: int) -> str:
+    return "OK: the profile is valid" if not problems else f"INVALID: {problems} problem{'' if problems == 1 else 's'}"
 
 
-def _compared(checked: ProfileChecked) -> list[str]:
-    origin = checked.origin
-    if _compared_with(origin) is None:
+def _compared(resemblance: Resemblance) -> list[str]:
+    if resemblance.bundled or resemblance.closest is None:
         return []
-    if not origin.looser:
-        return [f"  compared: no looser than {origin.closest}"]
-    return [f"  compared: looser than {origin.closest} (information; a part left without the litmus it gives "
+    if not resemblance.looser:
+        return [f"  compared: no looser than {resemblance.closest}"]
+    return [f"  compared: looser than {resemblance.closest} (information; a part left without the litmus it gives "
             "fails `check --strict`):",
-            *(f"    {item.sentence}" for item in origin.looser)]
+            *(f"    {item.sentence}" for item in resemblance.looser)]
 
 
-def check_document(checked: ProfileChecked) -> str:
-    origin = checked.origin
+def check_document(checked: ProfileHeld | ProfileUnloaded) -> str:
+    """What `profile check` found, as the JSON document."""
+    match checked:
+        case ProfileUnloaded(location, problems):
+            return _check_document(False, location, [(LOAD, text) for text in problems], 0, 0, None)
+        case ProfileHeld(reviewed, own):
+            pass
+    resemblance = reviewed.resemblance
     compared = None
-    if _compared_with(origin) is not None:
-        compared = {"profile": origin.closest,
+    if not resemblance.bundled and resemblance.closest is not None:
+        compared = {"profile": resemblance.closest,
                     "looser": [{"key": i.key, "part": i.part, "what": i.what,
-                                "sentence": i.sentence} for i in origin.looser]}
-    return document({"ok": checked.ok, "profile": checked.location,
-                  "problems": [{"check": p.check, "message": p.text} for p in checked.problems],
-                  "files": checked.files, "checks": checked.checks, "compared_with": compared})
+                                "sentence": i.sentence} for i in resemblance.looser]}
+    problems = [*((EXAMPLES, text) for text in reviewed.examples), *((CHECKS, text) for text in own.problems)]
+    return _check_document(checked.ok, reviewed.location, problems, reviewed.files, own.checks, compared)
+
+
+def _check_document(ok: bool, location: str, problems: Sequence[tuple[str, str]], files: int, checks: int,
+                    compared: dict[str, Any] | None) -> str:
+    return document({"ok": ok, "profile": location,
+                     "problems": [{"check": check, "message": text} for check, text in problems],
+                     "files": files, "checks": checks, "compared_with": compared})
 
 
 TAKEN = 3
 """How many files that exist a refusal to write over them names before it counts the rest."""
 
 
-def taken_phrase(taken: Sequence[Path]) -> str:
-    """The files, as a phrase ending in the verb ("a, b and 2 more already exist"), or "" when there are none."""
-    if not taken:
-        return ""
+def _taken_phrase(taken: Sequence[Path]) -> str:
+    """The files, at least one, as a phrase ending in the verb ("a, b and 2 more already exist")."""
     names = [path.as_posix() for path in taken]
     verb = "exists" if len(names) == 1 else "exist"
     shown = ", ".join(names[:TAKEN]) + (f" and {len(names) - TAKEN} more" if len(names) > TAKEN else "")
@@ -255,12 +261,12 @@ def taken_phrase(taken: Sequence[Path]) -> str:
 
 def migrate_taken(refused: FilesTaken) -> str:
     """Why migrate wrote nothing: the files it would write over, and how to write elsewhere."""
-    return f"{taken_phrase(refused.taken)}: migrate writes only new files; pass `--out <folder>` to write somewhere else"
+    return f"{_taken_phrase(refused.taken)}: migrate writes only new files; pass `--out <folder>` to write somewhere else"
 
 
 def new_taken(refused: FilesTaken) -> str:
     """Why new wrote nothing: the files it would write over, and how to write elsewhere."""
-    return (f"{taken_phrase(refused.taken)}: nothing was written; `new` writes only new files, so pass `--out <folder>` "
+    return (f"{_taken_phrase(refused.taken)}: nothing was written; `new` writes only new files, so pass `--out <folder>` "
             "to write somewhere else, or choose another name")
 
 

@@ -1,6 +1,7 @@
 """What the spec module publishes, each command with the Results it answers: which app folder and which profile are in
 force; a profile's skeleton as flat lists of entries, its docs, the files `init` writes, the profile as the checks read
-it and where it comes from; and what explaining, viewing, checking, migrating and copying a profile found."""
+it and where it comes from; checks written as a profile writes them; and what explaining, viewing, checking,
+migrating and copying a profile found."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -31,9 +32,10 @@ __all__ = ["DEFAULT_APP", "DEFAULT_TESTS", "Entry", "Repeating", "Skeleton", "Do
            "NoProfileChosen", "SelectResult", "MigrateProfile", "MigratedFile", "Origin", "Loosened", "LITMUS",
            "Migrated", "FilesTaken", "MigrationRefused",
            "MigrateResult", "Shown", "Symbol", "Explain", "FormatExplained", "KeyExplained", "UnknownKey",
-           "ExplainResult", "Need", "ViewProfile", "ProfileViewed", "ViewResult", "CheckProfile", "LOAD", "EXAMPLES", "CHECKS",
+           "ExplainResult", "Need", "ViewProfile", "ProfileViewed", "ViewResult", "CheckProfile", "LOAD", "EXAMPLES",
            "Problem", "ProfileChecked",
-           "CheckResult", "KnownProfiles", "NewProfile", "ProfileCreated", "NewResult", "Supply", "Shortfall"]
+           "CheckResult", "KnownProfiles", "KnownResult", "WriteChecks", "ChecksWritten", "NewProfile", "ProfileCreated",
+           "NewResult", "Supply", "Shortfall"]
 
 
 @dataclass(frozen=True)
@@ -48,13 +50,15 @@ class Repeating:
 @dataclass(frozen=True)
 class Skeleton:
     """The layout as entries: top_level below the app root, with every repeating folder empty; repeating, the
-    repeating folders in the order of the profile; language, the language of the app as the checks read it (among
-    what it says, the file it has stand for each folder, which a folder of the layout holds, and how a name private to
-    its folder starts), the language that the profile as the checks read it holds too; reserved, the words no name may
-    be; names, what a name may be in it (a regular expression; "": the language does not say)."""
+    repeating folders in the order of the profile; and what the layout and the scaffold read of the language of the
+    app: how a message names it (title), the file it has stand for each folder, which a folder of the layout holds
+    (package_file), how a name private to its folder starts (private), the words no name may be (reserved) and what a
+    name may be in it (names, a regular expression); "" for any of them: the language does not say."""
     top_level: tuple[Entry, ...]
     repeating: tuple[Repeating, ...]
-    language: CheckedLanguage = CheckedLanguage()
+    title: str = ""
+    package_file: str = ""
+    private: str = ""
     reserved: frozenset[str] = frozenset()
     names: str = ""
 
@@ -106,8 +110,10 @@ class PartView:
 class GuardsView:
     """The guards a profile switches on, None or False when off: the package-only parts, scenario coverage, no
     comments, stand-ins, the closed tree, the fewest statements of a duplicate, the fewest fields of a twin (and of a
-    renamed copy and of a partial one), dead code (and with it the files no test of their tier reaches), the parts whose
-    forwarding methods are listed, and private imports."""
+    renamed copy and of a partial one, and the parts whose files translate a pair, which is then no twin), dead code
+    (and with it the files no test of their tier reaches, the public names only the tests use, and those of them the
+    profile accepts, each `<file below the app>:<name>`), the parts whose forwarding methods are listed, and private
+    imports."""
     package_only: tuple[str, ...] = ()
     scenarios: ScenarioCoverage | None = None
     no_comments: bool = False
@@ -117,9 +123,11 @@ class GuardsView:
     no_twins: int | None = None
     no_twins_renamed: int | None = None
     no_twins_subset: int | None = None
+    no_twins_translated: tuple[str, ...] = ()
     dead_code: bool = False
     untested: bool = False
     tests_only: bool = False
+    tests_only_known: tuple[str, ...] = ()
     pass_through: tuple[str, ...] = ()
     private_imports: bool = False
 
@@ -354,30 +362,28 @@ class CheckProfile:
     target: str | None = None
 
 
-LOAD, EXAMPLES, CHECKS = "load", "examples", "checks"
-"""The checks a Problem names: the loader, which finds every problem at once, the examples' imports, and the checks
-the profile writes itself, held to their examples."""
+LOAD, EXAMPLES = "load", "examples"
+"""The checks a Problem names: the loader, which finds every problem at once, and the examples' imports."""
 
 
 @dataclass(frozen=True)
 class Problem:
     """One thing wrong with a profile, by the check that found it: load (the loader, every problem at once, which
-    includes the files it points to), examples (an example imports what its part may not) or checks (a check of the
-    profile's own cannot be made, or does not find what its examples say)."""
+    includes the files it points to) or examples (an example imports what its part may not). The checks the profile
+    writes itself are held to their examples by the module that knows what their words mean."""
     check: str
     text: str
 
 
 @dataclass(frozen=True)
 class ProfileChecked:
-    """What validating a profile found: its problems (none: valid), how many files it points to (when it loads), and,
-    when it loads, its origin: how it differs from the bundled profile it is based on, as information; and how many
-    checks it writes itself (when it loads)."""
+    """What validating a profile found, its own checks aside: its problems (none: valid), how many files it points to
+    (when it loads), and, when it loads, its origin: how it differs from the bundled profile it is based on, as
+    information."""
     location: str
     problems: tuple[Problem, ...]
     files: int
     origin: Origin | None
-    checks: int = 0
 
     @property
     def ok(self) -> bool:
@@ -389,10 +395,24 @@ CheckResult = ProfileChecked | NoProfileChosen | ProfileRefused
 
 @dataclass(frozen=True)
 class KnownProfiles:
-    """The profiles a project knows: the one in force for it (None: none is, or its settings cannot be read or it does
-    not load), and the bundled ones."""
-    in_force: str | None
+    """The profiles a project knows: the one in force for it, which loads, and the bundled ones."""
+    in_force: str
     bundled: tuple[str, ...]
+
+
+KnownResult = KnownProfiles | NoProfileChosen | ProfileRefused
+
+
+@dataclass(frozen=True)
+class WriteChecks:
+    """Write checks as the `checks` of a profile: each under its id, with its examples when it has any."""
+    checks: dict[str, WrittenCheck]
+
+
+@dataclass(frozen=True)
+class ChecksWritten:
+    """The checks as a profile writes its `checks`, in the format spec reads them."""
+    text: str
 
 
 @dataclass(frozen=True)

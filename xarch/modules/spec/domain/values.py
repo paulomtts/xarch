@@ -35,6 +35,22 @@ FORMAT_KEYS = f"{FORMAT}/keys.yaml"
 FILE_TYPES = f"{FORMAT}/file_types.yaml"
 """The data file of the kinds of file the docs quote besides the language of the app (see file_types)."""
 
+SLOTS = ("read", "in", "keep", "may_not", "may_only", "must_reach", "must_be_reached", "except", "mode", "message",
+         "fix", "once_per", "cases", "examples")
+"""Every slot of a check a profile writes under `checks`, in the order a check is written: spec reads them, and writes
+a check with them."""
+SCOPE_SLOTS = ("files", "part", "tier", "where")
+"""The slots of a scope (`in`, and `from` of must_be_reached)."""
+REACH_SLOTS = {"must_reach": ("targets", "through", "through_only"),
+               "must_be_reached": ("from", "through", "through_only", "then_through", "by_another_file")}
+"""The slots of a quantifier of reach, in the order they are written."""
+CASE_SLOTS = ("when", "message", "fix", "once_per")
+"""The slots of a case."""
+EXAMPLE_SLOTS = ("flagged", "clean")
+"""The slots of a check's examples: the code it must find something in, then the code it must find nothing in."""
+STRUCTURE_WORD = "structure"
+"""How a scope's part names the structure (profile_values' STRUCTURE): the folders of the layout no part claims."""
+
 Layout = dict[str, "Layout | None"]
 """A layout tree: a dict is a folder, None a file; the key "*" is a repeating folder, one per instance."""
 
@@ -250,19 +266,23 @@ class NoDuplicates:
 @dataclass(frozen=True)
 class NoTwins:
     """The guard no-twins: the fewest fields a class needs to count as a twin of another; the fewest a renamed copy
-    needs, and the fewest a copy of part of another's fields needs (None: that case is off)."""
+    needs, and the fewest a copy of part of another's fields needs (None: that case is off); and the parts whose files
+    translate one module's values into another's, so that a pair one of them builds from the other is no twin."""
     min_fields: int = 3
     min_renamed: int | None = None
     min_subset: int | None = None
+    translated: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
 class DeadCode:
     """The guard dead-code: the ports and fakes come from `fakes`; untested: also list each file of a part with a
     tier that no test of that tier reaches; tests_only: also list each public name of the app no other file of the app
-    names, so that only the tests, or nothing, use it."""
+    names, so that only the tests, or nothing, use it; known: the public names tests_only accepts as only the tests',
+    each `<file below the app>:<name>` as written."""
     untested: bool = False
     tests_only: bool = False
+    known: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

@@ -3,9 +3,9 @@ from pathlib import Path
 
 import pytest
 
+from tests.bootstrap.project import app_check
 from xarch.bootstrap.wiring import build_controllers
 from xarch.modules.layout.contract import CheckStructure
-from xarch.modules.rules.contract import CheckImports
 from xarch.modules.scaffold.contract import InitProject, NewInstance, NotInitialized, Refused, ReportView, Scaffolded
 
 TOP = ["bootstrap/migrations", "kernel", "kernel/logic", "modules", "platform", "cli/commands"]
@@ -121,10 +121,7 @@ def test_scaffold_then_check_has_no_violations(tmp_path, profile):
     app = tmp_path / "app"
     init(app, profile)
     new_module(app, "documents", profile)
-    controllers = build_controllers()
-    structure = controllers.layout.check(CheckStructure(app, "app", profile)).violations
-    imports = controllers.rules.check(CheckImports(app, "app", profile)).violations
-    assert structure + imports == ()
+    assert app_check(app, profile).violations == ()
 
 
 def test_init_and_new_module_leave_pre_existing_extras_alone(tmp_path):

@@ -2,7 +2,7 @@
 docs/project/, with templates."""
 import pytest
 
-from xarch.bootstrap.wiring import build_spec
+from xarch.bootstrap.wiring import build_controllers
 from xarch.modules.spec.contract import Docs
 
 QUESTIONS = {
@@ -27,7 +27,7 @@ TEMPLATES = [path for path in QUESTIONS if path not in CONTENT]
 
 
 def docs(profile: str = "cli") -> Docs:
-    return build_spec().docs(profile)
+    return build_controllers().spec.docs(profile)
 
 
 def templates(profile: str = "cli") -> dict[str, str]:

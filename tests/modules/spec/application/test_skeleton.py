@@ -13,8 +13,9 @@ SPEC = controller(FakeArchitectureFiles({"cli": LAYERED, "broken": {"xarch": 2, 
 
 
 @pytest.mark.parametrize("given, when, then", [
-    pytest.param(SPEC, "cli", Skeleton((Entry(("src",), True, True),), (), PYTHON.checked, frozenset(keyword.kwlist),
-                                       r"(?!\d)\w+"),
+    pytest.param(SPEC, "cli", Skeleton((Entry(("src",), True, True),), (), PYTHON.checked.title,
+                                       PYTHON.checked.package_file, PYTHON.checked.private,
+                                       frozenset(keyword.kwlist), r"(?!\d)\w+"),
                  id="a profile that loads gives its layout and how its language names things"),
     pytest.param(SPEC, "broken", ProfileRefused("broken: missing `parts`"),
                  id="a profile that does not load is refused with why"),
