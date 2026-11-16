@@ -16,13 +16,10 @@ from xarch.kernel.logic.targets import target
 from xarch.modules.rules.domain.errors import ChecksRefused, RuleRefused
 from xarch.modules.rules.domain.rule import EXISTING, MUST_BE_REACHED, MUST_REACH, Match, OwnCheck, Rule
 from xarch.modules.rules.domain.values import Profile
-from xarch.modules.rules.domain.vocabulary import NAMES, PLACES, TARGETS
+from xarch.modules.rules.domain.vocabulary import NAMES, PARTS, PLACES, TARGETS
 from xarch.profile_values.capabilities import FACTS, Shortfall
 from xarch.profile_values.checks import WrittenCheck, WrittenTarget
 from xarch.profile_values.language import CheckedLanguage
-
-PART = "part"
-"""The kind of target whose values are parts of the profile."""
 
 
 def resolved(profile: Profile) -> Profile:
@@ -98,7 +95,7 @@ def _match(written: WrittenTarget, owner: tuple[str, tuple[str, ...]] | None, pr
         places = tuple(t for v in values
                        if (t := target(v, owner, profile.parts, profile.parts, f"{where}.place", problems)) is not None)
         return Match(kind, places=places) if len(problems) == count else None
-    if kind == PART:
+    if form == PARTS:
         missing = [v for v in values if v not in profile.parts]
         if missing:
             problems.append(f"{where}.part: no part named {', '.join(map(repr, missing))}")
