@@ -54,18 +54,26 @@ def test_python_supplies_every_fact_a_bundled_check_reads():
     assert {supply.fact: supply.grade for supply in PYTHON.checked.supplies} == {fact: EXACT for fact in FACTS}
 
 
-def test_the_keys_a_profile_sets_are_found_in_every_scope_and_through_a_testing_preset():
-    document = covered(guards={"dead-code": {"untested": True}, "no-comments": {}, "no-twins": {"translated": ["api"]}},
+def test_the_keys_a_profile_sets_are_found_in_every_scope_and_through_a_testing_preset_each_once():
+    document = covered(guards={"dead-code": {"untested": True, "tests_only": True, "known": ["shared/wiring.py:build"]},
+                               "no-comments": {}, "no-twins": {"translated": ["api"]}},
                        reserved={"json": "only io"})
     document["parts"]["service"]["holds"] = "classes"
     document["tiers"]["unit"]["must_import"] = ["service"]
     partly = replace(PYTHON, checked=replace(PYTHON.checked, supplies=tuple(Supply(f, PARTIAL, "partly") for f in FACTS)))
     found = short(document | {"testing": "pytest"}, {"pytest": document["testing"]}, partly)
-    assert list(dict.fromkeys(item.address for item in found)) == [
-        "reserved", "tiers", "parts.api.may_import", "parts.service.may_import", "parts.service.holds",
-        "parts.store.may_import", "parts.store.libraries", "tiers.unit.must_import", "testing.skips", "testing.table",
-        "testing.mocks", "guards.no-comments", "guards.no-twins", "guards.no-twins.translated", "guards.dead-code",
-        "guards.dead-code.untested"]
+    configured = [("reserved", "reserved"), ("tiers", "tiers"), ("parts.api.may_import", "parts.<part>.may_import"),
+                  ("parts.service.may_import", "parts.<part>.may_import"), ("parts.service.holds", "parts.<part>.holds"),
+                  ("parts.store.may_import", "parts.<part>.may_import"),
+                  ("parts.store.libraries", "parts.<part>.libraries"), ("tiers.unit.must_import", "tiers.<tier>.must_import"),
+                  ("testing.skips", "testing.skips"), ("testing.table", "testing.table"), ("testing.mocks", "testing.mocks"),
+                  ("guards.no-comments", "guards.no-comments"), ("guards.no-twins", "guards.no-twins"),
+                  ("guards.no-twins.translated", "guards.no-twins.translated"), ("guards.dead-code", "guards.dead-code"),
+                  ("guards.dead-code.untested", "guards.dead-code.untested"),
+                  ("guards.dead-code.tests_only", "guards.dead-code.tests_only"),
+                  ("guards.dead-code.known", "guards.dead-code.known")]
+    needs = {key.address: key.needs for key in KEYS}
+    assert found == [Shortfall(address, fact, "partly") for address, key in configured for fact in needs[key]]
 
 
 @pytest.mark.parametrize("key", [key for key in KEYS if key.needs], ids=lambda key: key.address)

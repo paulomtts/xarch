@@ -10,18 +10,14 @@ from typing import Any
 
 from xarch.kernel.logic.capabilities import shortfalls
 from xarch.modules.spec.application.logic.key_lookup import keys_of
-from xarch.modules.spec.domain.guards import KEY
 from xarch.modules.spec.domain.profile_keys import GUARD, PART, PROFILE, TESTING, TIER, Key
-from xarch.modules.spec.domain.values import DeadCode, Language, NoTwins
+from xarch.modules.spec.domain.values import Language
 from xarch.profile_values.capabilities import FACTS, Shortfall
-
-_NESTED = {KEY[DeadCode]: ("untested",), KEY[NoTwins]: ("min_renamed", "translated")}
-"""The keys of a guard's own map that configure a check of their own, by guard."""
-
 
 def _configured(document: Mapping[Any, Any], presets: Mapping[str, Any]) -> Iterator[tuple[str, Key]]:
     """Each key the document sets that needs facts, with its address in the file, in the order of the file's scopes:
-    the file, its parts, its tiers, its testing (a preset by what the preset holds), its guards."""
+    the file, its parts, its tiers, its testing (a preset by what the preset holds), its guards, each with the keys of
+    its own map that need facts and are set."""
     yield from _set(document, keys_of(PROFILE), "")
     for scope, held in ((PART, "parts"), (TIER, "tiers")):
         entries = document.get(held)
@@ -37,10 +33,9 @@ def _configured(document: Mapping[Any, Any], presets: Mapping[str, Any]) -> Iter
         if key.name in guards:
             yield f"guards.{key.name}", key
             held = guards[key.name]
-            for name in _NESTED.get(key.name, ()):
-                nested = next((k for k in _guard_keys(key.name) if k.name == name), None)
-                if nested is not None and isinstance(held, Mapping) and held.get(name) not in (None, False):
-                    yield f"guards.{key.name}.{name}", nested
+            for nested in _guard_keys(key.name) if isinstance(held, Mapping) else ():
+                if nested.needs and held.get(nested.name) not in (None, False):
+                    yield f"guards.{key.name}.{nested.name}", nested
 
 
 def _guard_keys(name: str) -> tuple[Key, ...]:
