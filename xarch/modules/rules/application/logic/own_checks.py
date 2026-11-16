@@ -42,7 +42,7 @@ def own(written: Mapping[str, WrittenCheck], profile: Profile) -> tuple[OwnCheck
         if len(problems) != count:
             continue
         try:
-            rule = rule_of(name, check, targets)
+            rule = _rule_of(name, check, targets)
         except RuleRefused as refused:
             problems += [f"checks.{name}.{problem}" for problem in refused.problems]
             continue
@@ -53,7 +53,7 @@ def own(written: Mapping[str, WrittenCheck], profile: Profile) -> tuple[OwnCheck
     return tuple(found)
 
 
-def rule_of(name: str, check: WrittenCheck, targets: tuple[Match, ...]) -> Rule:
+def _rule_of(name: str, check: WrittenCheck, targets: tuple[Match, ...]) -> Rule:
     """The rule a check means, its targets resolved; raises RuleRefused when a word does not exist or apply."""
     quantified = check.quantified
     return Rule(name, check.within, check.read, quantified.slot,

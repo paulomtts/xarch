@@ -22,7 +22,7 @@ def may_import(value: Any, owner: Part | None, parts: dict[str, Part], declared:
     if not isinstance(value, list):
         problems.append(f"{where}: must be a list of targets such as [<part>, shared/text, api@any], or {WORD}")
         return ()
-    paths = paths_of(parts)
+    paths = _paths_of(parts)
     found: list[Target] = []
     for item in value:
         written = target(item, None if owner is None else (owner.name, owner.path), paths, declared, where, problems,
@@ -32,6 +32,6 @@ def may_import(value: Any, owner: Part | None, parts: dict[str, Part], declared:
     return tuple(found)
 
 
-def paths_of(parts: dict[str, Part]) -> dict[str, tuple[str, ...]]:
+def _paths_of(parts: dict[str, Part]) -> dict[str, tuple[str, ...]]:
     """Each part by its path, as the target grammar reads them."""
     return {name: part.path for name, part in parts.items()}
