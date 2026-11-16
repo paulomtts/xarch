@@ -3,7 +3,6 @@ cases is written, the scenario-coverage and stand-ins guards, and where the fake
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import ClassVar
 
 
 @dataclass(frozen=True)
@@ -34,8 +33,7 @@ class ScenarioCoverage:
     """The guard scenario-coverage: the part holding the result unions, the tier holding their tables, how a union's
     name ends, the names of the three parameters of a table (its state, its command and its result, in that order),
     how the table is written, and the name of a use case's test file, `{name}` standing for the use case in
-    snake_case. key is the name a profile switches it on by."""
-    key: ClassVar[str] = "scenario-coverage"
+    snake_case."""
     results: str
     tier: str
     suffix: str
@@ -58,8 +56,7 @@ class StandIns:
     """The guard stand-ins: the dotted names of the calls that build a mock, of those that build a mock from a spec
     given as an argument (autospec), and the keywords a mock is given its spec by; the first keyword is the one an
     autospec call takes; and the fixtures, whose methods build mocks the same way. The other parameters are those of
-    `fakes`. key is the name a profile switches it on by."""
-    key: ClassVar[str] = "stand-ins"
+    `fakes`."""
     mocks: tuple[tuple[str, ...], ...]
     autospec: tuple[tuple[str, ...], ...]
     spec: tuple[str, ...]

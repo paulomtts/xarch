@@ -2,7 +2,25 @@
 `package_only: true`) uses, each with the parameters it takes."""
 from __future__ import annotations
 
-from xarch.modules.spec.domain.values import NoDuplicates, NoTwins
+from xarch.modules.spec.domain.values import (
+    ClosedTree,
+    DeadCode,
+    NoComments,
+    NoDuplicates,
+    NoTwins,
+    PackageOnly,
+    PassThrough,
+    PrivateImports,
+)
+from xarch.profile_values.testing import ScenarioCoverage, StandIns
+
+KEY: dict[type, str] = {PackageOnly: "package-only", ScenarioCoverage: "scenario-coverage", NoComments: "no-comments",
+                        StandIns: "stand-ins", ClosedTree: "closed-tree", NoDuplicates: "no-duplicates",
+                        NoTwins: "no-twins", DeadCode: "dead-code", PrivateImports: "private-imports",
+                        PassThrough: "pass-through"}
+"""The name a profile switches each guard on by, by the kind of value it is read into."""
+GUARD = {key: kind for kind, key in KEY.items()}
+"""The kind of value each guard is read into, by the name a profile switches it on by."""
 
 GUARDS = {
     "package-only": "`package_only: true` on each part: parts that are imported only as a package, never by their "

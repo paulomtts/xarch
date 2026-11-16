@@ -10,11 +10,12 @@ from typing import Any
 
 from xarch.kernel.logic.capabilities import shortfalls
 from xarch.modules.spec.application.logic.key_lookup import keys_of
+from xarch.modules.spec.domain.guards import KEY
 from xarch.modules.spec.domain.profile_keys import GUARD, PART, PROFILE, TESTING, TIER, Key
-from xarch.modules.spec.domain.values import Language
+from xarch.modules.spec.domain.values import DeadCode, Language, NoTwins
 from xarch.profile_values.capabilities import FACTS, Shortfall
 
-_NESTED = {"dead-code": ("untested",), "no-twins": ("min_renamed",)}
+_NESTED = {KEY[DeadCode]: ("untested",), KEY[NoTwins]: ("min_renamed",)}
 """The keys of a guard's own map that configure a check of their own, by guard."""
 
 

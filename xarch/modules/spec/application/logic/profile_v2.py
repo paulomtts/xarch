@@ -71,7 +71,7 @@ from xarch.modules.spec.application.logic.language_file import first_language
 from xarch.modules.spec.application.logic.layout_walk import is_file
 from xarch.modules.spec.application.logic.targets_written import may_import
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.guards import GUARDS
+from xarch.modules.spec.domain.guards import GUARD, GUARDS, KEY
 from xarch.modules.spec.domain.profile_keys import (
     DEAD_CODE,
     DOCS,
@@ -91,18 +91,15 @@ from xarch.modules.spec.domain.profile_keys import (
 from xarch.modules.spec.domain.values import (
     VERSION,
     Architecture,
-    ClosedTree,
     DeadCode,
     Guard,
     Language,
     Layout,
-    NoComments,
     NoDuplicates,
     NoTwins,
     PackageOnly,
     Part,
     PassThrough,
-    PrivateImports,
     Subject,
     Tier,
     TierExample,
@@ -114,8 +111,8 @@ _REPEATING = re.compile(r"<([A-Za-z_][A-Za-z0-9_-]*)>")
 _HOLDS = ("classes", "functions")
 _TIER_TEXTS = ("subject", "may_touch", "one_file_per", "cases_from", "data")
 """The keys under a tier's `docs` that hold one line of text each."""
-_GUARDS = tuple(name for name in GUARDS if name != "package-only")
-_NEEDS_TESTING = ("scenario-coverage", "stand-ins")
+_GUARDS = tuple(name for name in GUARDS if name != KEY[PackageOnly])
+_NEEDS_TESTING = (KEY[ScenarioCoverage], KEY[StandIns])
 _PRESET_MAP = "{files, functions}"
 _TIER_INSTEAD = "`tier: <tier>`, or `untested: <reason>`"
 
@@ -671,34 +668,35 @@ def _guards(value: Any, specs: dict[str, Any], parts: dict[str, Part], declared:
         return tuple(guards)
     for name, spec in value.items():
         where = f"guards.{name}"
-        if name == "package-only":
+        kind = GUARD.get(name)
+        if kind is PackageOnly:
             problems.append(f"{where}: a fact about a part in format 2: write `package_only: true` on each part")
         elif name not in _GUARDS:
             problems.append(f"guards: unknown guard {name!r}: use {', '.join(sorted(_GUARDS))}")
-        elif name == "scenario-coverage":
+        elif kind is ScenarioCoverage:
             guard = _scenario_coverage(spec, parts, declared, tiers, testing, where, problems, language)
             if guard is not None:
                 guards.append(guard)
-        elif name == "stand-ins":
+        elif kind is StandIns:
             guard = _stand_ins(spec, fakes, testing, where, problems, language)
             if guard is not None:
                 guards.append(guard)
-        elif name == "no-duplicates":
+        elif kind is NoDuplicates:
             guards.append(_no_duplicates(spec, where, problems))
-        elif name == "no-twins":
+        elif kind is NoTwins:
             guards.append(_no_twins(spec, where, problems))
-        elif name == "pass-through":
+        elif kind is PassThrough:
             guard = _pass_through(spec, declared, parts, where, problems)
             if guard is not None:
                 guards.append(guard)
-        elif name == "dead-code":
+        elif kind is DeadCode:
             guard = _dead_code(spec, fakes, where, problems, language)
             if guard is not None:
                 guards.append(guard)
         elif spec not in ({}, None):
             problems.append(f"{where}: takes no parameters: write {{}}")
         else:
-            guards.append({"closed-tree": ClosedTree(), "private-imports": PrivateImports()}.get(name, NoComments()))
+            guards.append(kind())
     return tuple(guards)
 
 
