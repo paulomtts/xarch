@@ -30,12 +30,11 @@ of the file that name it, none of which holds an `assert` statement in its body.
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from fnmatch import fnmatchcase
 
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.application.logic.imports import dotted
-from xarch.modules.rules.application.logic.places import place
+from xarch.modules.rules.application.logic.places import file_place
 from xarch.modules.rules.application.logic.tier_of import tested
 from xarch.modules.rules.domain.published import Weak
 from xarch.modules.rules.domain.values import Function, Profile, Row, SourceFile, Table, Union
@@ -57,22 +56,14 @@ def violations(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: 
     guard = profile.scenarios
     if guard is None or profile.framework is None:
         return []
-    tests = list(tests)
     found: list[Violation] = []
-    for file in app:
-        where = place(profile, dotted(file.path, profile.language.marks)[0])
-        if where is None or where.part != guard.results or where.instance is None:
-            continue
-        for union in _use_cases(file, guard):
-            name = _test_file(union, guard)
-            files = [t for t in tests if t.path[-1] == name and _in(profile, t, guard.tier, where.instance)]
-            if not files:
-                found.append(Violation(file.name, union.line, f"{union.name} has no test file {name} among the "
-                                                              f"{guard.tier} tests of {where.instance} "
-                                                              f"({RULE})", RULE,
-                                       f"write {name} among the {guard.tier} tests of {where.instance}"))
-            for test in files:
-                found += _covered(test, union.name, union.members, guard, profile)
+    for file, union, instance, name, files in _cases(app, tests, profile, guard):
+        if not files:
+            found.append(Violation(file.name, union.line, f"{union.name} has no test file {name} among the "
+                                                          f"{guard.tier} tests of {instance} ({RULE})", RULE,
+                                   f"write {name} among the {guard.tier} tests of {instance}"))
+        for test in files:
+            found += _covered(test, union.name, union.members, guard, profile)
     return found
 
 
@@ -101,17 +92,26 @@ def weak(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profil
     guard = profile.scenarios
     if guard is None or profile.framework is None:
         return []
-    tests = list(tests)
     found: list[Weak] = []
+    for _, union, _, _, files in _cases(app, tests, profile, guard):
+        for test in files:
+            found += _credited(test, union.name, union.members, guard, profile.framework.functions)
+    return found
+
+
+def _cases(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile,
+           guard: ScenarioCoverage) -> Iterator[tuple[SourceFile, Union, str, str, list[SourceFile]]]:
+    """Each use case of the app: the file of its results, its union, the instance it is in, the name of the test file
+    the guard expects, and the test files of that name among the table tier's tests of the instance."""
+    tests = list(tests)
     for file in app:
-        where = place(profile, dotted(file.path, profile.language.marks)[0])
+        where = file_place(profile, file.path)
         if where is None or where.part != guard.results or where.instance is None:
             continue
         for union in _use_cases(file, guard):
             name = _test_file(union, guard)
-            for test in (t for t in tests if t.path[-1] == name and _in(profile, t, guard.tier, where.instance)):
-                found += _credited(test, union.name, union.members, guard, profile.framework.functions)
-    return found
+            yield file, union, where.instance, name, [t for t in tests if t.path[-1] == name
+                                                      and _in(profile, t, guard.tier, where.instance)]
 
 
 def _use_cases(file: SourceFile, guard: ScenarioCoverage) -> list[Union]:

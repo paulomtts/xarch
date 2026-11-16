@@ -41,8 +41,7 @@ from collections.abc import Iterable
 
 from xarch.kernel.placement import Place
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.application.logic.imports import dotted
-from xarch.modules.rules.application.logic.places import label, place
+from xarch.modules.rules.application.logic.places import file_place, label
 from xarch.modules.rules.domain.values import Class, Profile, SourceFile
 
 RULE = "no-twins"
@@ -95,7 +94,7 @@ def violations(app: Iterable[SourceFile], profile: Profile) -> list[Violation]:
 def _counted(app: Iterable[SourceFile], profile: Profile) -> list[Counted]:
     found: list[Counted] = []
     for file in sorted(app, key=lambda f: f.name):
-        where = place(profile, dotted(file.path, profile.language.marks)[0])
+        where = file_place(profile, file.path)
         if where is None or where.part is None:
             continue
         found += [(file, cls, where) for cls in sorted(file.classes, key=lambda c: c.line)

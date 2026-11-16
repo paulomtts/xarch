@@ -5,9 +5,18 @@ import pytest
 
 from tests.modules.rules.builders import PROFILE, TWO, profile, steps
 from xarch.kernel.placement import Marks, Place
-from xarch.modules.rules.application.logic.places import allowed, excluded_by, label, matches, place, targets_of
+from xarch.modules.rules.application.logic.places import (
+    allowed,
+    excluded_by,
+    instance_folder,
+    instance_root,
+    label,
+    matches,
+    place,
+    targets_of,
+)
 from xarch.profile_values.excluded import Excluded
-from xarch.profile_values.placement import Target
+from xarch.profile_values.placement import Repeat, Target
 
 
 @pytest.mark.parametrize("path, expected", [
@@ -156,3 +165,15 @@ EXAMPLES, VENDOR = Excluded(("examples",), "shipped as data"), Excluded(("vendor
 ])
 def test_the_folder_that_excludes_a_path_is_the_one_it_lies_below(path, expected):
     assert excluded_by(replace(PROFILE, excluded=(EXAMPLES, VENDOR)), path) == expected
+
+
+def test_the_folder_of_an_instance_is_the_repeating_folder_with_the_instance_named():
+    assert instance_folder(PROFILE, Place("domain", "docs", ("doc",))) == ("modules", "docs")
+    assert instance_folder(PROFILE, Place("kernel", "docs")) is None
+
+
+def test_a_path_lies_below_the_folder_of_the_instance_of_the_deepest_repeating_folder_holding_it():
+    repeats = (Repeat("module", ("modules",)), Repeat("plugin", ("modules", "docs", "plugins")))
+    assert instance_root(repeats, ("modules", "docs", "plugins", "seo", "x")) == ("modules", "docs", "plugins", "seo")
+    assert instance_root(repeats, ("modules", "docs", "domain")) == ("modules", "docs")
+    assert instance_root(repeats, ("kernel", "x")) is None

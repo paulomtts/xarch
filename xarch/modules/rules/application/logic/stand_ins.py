@@ -43,7 +43,7 @@ from dataclasses import dataclass
 
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.imports import dotted
-from xarch.modules.rules.application.logic.places import place
+from xarch.modules.rules.application.logic.places import file_place
 from xarch.modules.rules.application.logic.tier_of import may_use_fakes, tested
 from xarch.modules.rules.domain.published import Weak
 from xarch.modules.rules.domain.values import Call, Class, ParameterCall, Profile, SourceFile
@@ -104,7 +104,7 @@ def _ports(app: Iterable[SourceFile], profile: Profile) -> tuple[dict[tuple[tupl
     found: list[Violation] = []
     ports: dict[tuple[tuple[str, ...], str], Port] = {}
     for file in app:
-        where = place(profile, dotted(file.path, profile.language.marks)[0])
+        where = file_place(profile, file.path)
         if where is None or where.part not in profile.fakes.stand_in_for:
             continue
         for cls in file.classes:

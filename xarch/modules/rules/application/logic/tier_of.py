@@ -21,9 +21,9 @@ from fnmatch import fnmatchcase
 
 from xarch.kernel.logic.placement import place_of
 from xarch.kernel.placement import EACH, Place
-from xarch.modules.rules.application.logic.places import matches, targets_of
+from xarch.modules.rules.application.logic.places import instance_root, matches, targets_of
 from xarch.modules.rules.domain.values import Profile
-from xarch.profile_values.placement import Repeat, Target
+from xarch.profile_values.placement import Target
 from xarch.profile_values.tiers import CheckedTier
 
 NO_TIER = "lies in no tier: no part's folder and no tier's `folder` is mirrored here"
@@ -80,21 +80,17 @@ def _first(profile: Profile, wanted) -> CheckedTier | None:
     return next((t for t in profile.tiers if wanted(t)), None)
 
 
-def _repeat(profile: Profile, path: tuple[str, ...]) -> Repeat | None:
-    """The repeating folder a path lies below, an instance of it named."""
-    below = [r for r in profile.repeats if len(path) > len(r.root) + 1 and path[:len(r.root)] == r.root]
-    return max(below, key=lambda r: len(r.root), default=None)
-
-
 def _instance(profile: Profile, path: tuple[str, ...]) -> str | None:
-    repeat = _repeat(profile, path)
-    return path[len(repeat.root)] if repeat is not None else None
+    """The instance of a repeating folder the folder of a test file lies in."""
+    folder = instance_root(profile.repeats, path[:-1])
+    return folder[-1] if folder is not None else None
 
 
 def _own(profile: Profile, path: tuple[str, ...]) -> tuple[str, ...]:
-    repeat = _repeat(profile, path)
-    if repeat is not None:
-        return (*repeat.root, path[len(repeat.root)])
+    """The folder a test file's own code is in: its instance's folder, else its top folder."""
+    folder = instance_root(profile.repeats, path[:-1])
+    if folder is not None:
+        return folder
     return path[:1] if len(path) > 1 else ()
 
 

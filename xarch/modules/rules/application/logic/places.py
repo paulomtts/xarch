@@ -6,13 +6,14 @@ what the profile does not govern is not checked.
 """
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import replace
 
 from xarch.kernel.logic.placement import module_steps, place_of, reaches, with_itself
 from xarch.kernel.placement import EACH, Marks, Place
 from xarch.modules.rules.domain.values import Profile
 from xarch.profile_values.excluded import Excluded
-from xarch.profile_values.placement import Target
+from xarch.profile_values.placement import Repeat, Target
 
 
 def place(profile: Profile, path: tuple[str, ...]) -> Place | None:
@@ -23,6 +24,12 @@ def place(profile: Profile, path: tuple[str, ...]) -> Place | None:
     if not path or any(matches(folder, path, profile.language.marks) for folder in profile.folders):
         return found
     return None
+
+
+def file_place(profile: Profile, path: tuple[str, ...]) -> Place | None:
+    """Where a source file sits, by its path below the root package as written: its place as the language names it
+    (see place)."""
+    return place(profile, module_steps(path, profile.language.marks))
 
 
 def excluded_by(profile: Profile, path: tuple[str, ...]) -> Excluded | None:
@@ -42,11 +49,25 @@ def label(profile: Profile, where: Place) -> str:
     "domain/ of src/billing"; the structure, which no part claims, as "structure/"."""
     if where.part is None:
         return "structure/"
-    pattern = profile.parts.get(where.part, ())
+    folder = instance_folder(profile, where)
+    return f"{where.part}/" if folder is None else f"{where.part}/ of {'/'.join(folder)}"
+
+
+def instance_folder(profile: Profile, where: Place) -> tuple[str, ...] | None:
+    """The folder of the instance of a repeating folder a place lies in (src/billing); None for a place in no
+    instance, or of a part outside every repeating folder."""
+    pattern = profile.parts.get(where.part or "", ())
     if where.instance is None or EACH not in pattern:
-        return f"{where.part}/"
-    folder = pattern[:pattern.index(EACH)] + (where.instance,)
-    return f"{where.part}/ of {'/'.join(folder)}"
+        return None
+    return (*pattern[:pattern.index(EACH)], where.instance)
+
+
+def instance_root(repeats: Iterable[Repeat], path: tuple[str, ...]) -> tuple[str, ...] | None:
+    """The folder of the instance a path lies below (src/billing for src/billing/x): of the deepest repeating folder
+    whose folder the path lies below, an instance of it named; None below none."""
+    below = [r for r in repeats if len(path) > len(r.root) and path[:len(r.root)] == r.root]
+    deepest = max(below, key=lambda r: len(r.root), default=None)
+    return None if deepest is None else path[:len(deepest.root) + 1]
 
 
 def targets_of(profile: Profile, part: str) -> tuple[Target, ...]:

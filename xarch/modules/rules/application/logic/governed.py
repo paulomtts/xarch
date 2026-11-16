@@ -9,16 +9,14 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from xarch.modules.rules.application.logic.imports import dotted
-from xarch.modules.rules.application.logic.places import excluded_by, place
+from xarch.modules.rules.application.logic.places import excluded_by, file_place
 from xarch.modules.rules.domain.values import Profile
 
 
 def ungoverned(paths: Iterable[tuple[str, ...]], profile: Profile, shown: str) -> list[str]:
     """The files in no part and no folder of the layout, whether the guard is on or not, each shown as
     shown/<path>: no check reads them."""
-    return ["/".join((shown, *path)) for path in paths
-            if place(profile, dotted(path, profile.language.marks)[0]) is None]
+    return ["/".join((shown, *path)) for path in paths if not governed(profile, path)]
 
 
 def excluded(profile: Profile, path: tuple[str, ...]) -> bool:
@@ -28,4 +26,4 @@ def excluded(profile: Profile, path: tuple[str, ...]) -> bool:
 
 def governed(profile: Profile, path: tuple[str, ...]) -> bool:
     """Whether a part or a folder of the layout governs the file at path below the app, so that it is read."""
-    return place(profile, dotted(path, profile.language.marks)[0]) is not None
+    return file_place(profile, path) is not None

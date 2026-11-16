@@ -26,10 +26,10 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from xarch.kernel.placement import EACH, Place
+from xarch.kernel.placement import Place
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.imports import dotted, named_targets
-from xarch.modules.rules.application.logic.places import place
+from xarch.modules.rules.application.logic.places import instance_folder, place
 from xarch.modules.rules.domain.values import Profile, SourceFile
 
 RULE = "shared"
@@ -153,10 +153,8 @@ def _user(at: Place | None, profile: Profile) -> str | None:
     """The user a file at a place is: its instance's folder, or its part; None in no part."""
     if at is None or at.part is None:
         return None
-    pattern = profile.parts.get(at.part, ())
-    if at.instance is not None and EACH in pattern:
-        return "/".join((*pattern[:pattern.index(EACH)], at.instance))
-    return f"{at.part}/"
+    folder = instance_folder(profile, at)
+    return f"{at.part}/" if folder is None else "/".join(folder)
 
 
 def _users(shown: list[str], part: str) -> str:

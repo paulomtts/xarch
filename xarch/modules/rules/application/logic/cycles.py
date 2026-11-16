@@ -13,6 +13,7 @@ from collections.abc import Iterable
 
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.imports import dotted, targets
+from xarch.modules.rules.application.logic.places import instance_root
 from xarch.modules.rules.domain.values import Profile, SourceFile
 from xarch.profile_values.placement import Repeat
 
@@ -39,10 +40,8 @@ def violations(files: Iterable[SourceFile], profile: Profile, root: str) -> list
 
 def _instance(repeats: tuple[Repeat, ...], steps: tuple[str, ...]) -> str | None:
     """The instance a path lies in, as the folder holding it and its name, e.g. "modules/docs"."""
-    for repeat in repeats:
-        if len(steps) > len(repeat.root) and steps[:len(repeat.root)] == repeat.root:
-            return "/".join(steps[:len(repeat.root) + 1])
-    return None
+    folder = instance_root(repeats, steps)
+    return None if folder is None else "/".join(folder)
 
 
 def _cycles(edges: dict[str, dict[str, Edge]]) -> list[list[str]]:
