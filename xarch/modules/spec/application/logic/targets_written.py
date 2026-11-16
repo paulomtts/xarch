@@ -7,8 +7,8 @@ import re
 from typing import Any
 
 from xarch.kernel.logic.placement import root_of
-from xarch.kernel.placement import EVERYTHING
-from xarch.modules.spec.domain.values import EACH, Part, Target
+from xarch.kernel.placement import EACH, EVERYTHING, Target
+from xarch.modules.spec.domain.values import Part
 
 WORD = "everything"
 """How a file writes EVERYTHING: for what a part may import and for its libraries."""

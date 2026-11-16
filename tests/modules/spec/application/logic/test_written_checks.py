@@ -6,8 +6,8 @@ import pytest
 
 from tests.modules.spec.languages import PYTHON
 from tests.modules.spec.profiles_v2 import layered, parsed
+from xarch.kernel.placement import Target
 from xarch.modules.spec.application.logic.written_checks import checks
-from xarch.modules.spec.domain.values import Target
 
 ARCHITECTURE = parsed(layered())
 EXAMPLES = {"flagged": {"src/billing/api/x.py": "print(1)\n"}, "clean": {"src/billing/api/y.py": "pass\n"}}

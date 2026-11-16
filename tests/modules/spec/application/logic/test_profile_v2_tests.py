@@ -3,6 +3,7 @@ fakes, and the guards."""
 import pytest
 
 from tests.modules.spec.profiles_v2 import EX, PRESETS, covered, layered, parsed, problems
+from xarch.kernel.placement import Target
 from xarch.modules.spec.domain.values import (
     ClosedTree,
     DeadCode,
@@ -12,7 +13,6 @@ from xarch.modules.spec.domain.values import (
     PackageOnly,
     PassThrough,
     Subject,
-    Target,
     Tier,
     TierExample,
 )

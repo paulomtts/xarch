@@ -60,7 +60,7 @@ from dataclasses import dataclass, field, replace
 from typing import Any
 
 from xarch.kernel.logic.placement import root_of
-from xarch.kernel.placement import EVERYTHING, Repeat
+from xarch.kernel.placement import EACH, EVERYTHING, Repeat, Target
 from xarch.modules.spec.application.logic import profile_checks as ck
 from xarch.modules.spec.application.logic import profile_examples as ex
 from xarch.modules.spec.application.logic import profile_needs as needs
@@ -86,7 +86,6 @@ from xarch.modules.spec.domain.profile_keys import (
     TIER_DOCS,
 )
 from xarch.modules.spec.domain.values import (
-    EACH,
     VERSION,
     Architecture,
     ClosedTree,
@@ -102,7 +101,6 @@ from xarch.modules.spec.domain.values import (
     PassThrough,
     PrivateImports,
     Subject,
-    Target,
     Tier,
     TierExample,
 )

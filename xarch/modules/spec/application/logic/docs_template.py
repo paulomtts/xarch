@@ -54,11 +54,10 @@ import re
 from collections.abc import Callable, Mapping
 
 from xarch.kernel.logic.imports import may_import, shown_target
-from xarch.kernel.placement import EVERYTHING, Repeat
+from xarch.kernel.placement import EACH, EVERYTHING, Repeat, Target
 from xarch.modules.spec.application.logic.defaults import TESTS
 from xarch.modules.spec.domain.errors import InvalidTemplate
 from xarch.modules.spec.domain.values import (
-    EACH,
     NAME,
     Architecture,
     ClosedTree,
@@ -75,7 +74,6 @@ from xarch.modules.spec.domain.values import (
     PrivateImports,
     Quotes,
     Subject,
-    Target,
     Tier,
 )
 from xarch.profile_values.testing import ScenarioCoverage, StandIns

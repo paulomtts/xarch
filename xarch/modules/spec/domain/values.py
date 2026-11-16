@@ -8,7 +8,7 @@ from typing import Any
 
 from xarch.kernel.capabilities import Shortfall
 from xarch.kernel.logic.placement import place_of, repeat_of, with_itself
-from xarch.kernel.placement import EACH, EVERYTHING, Place, Repeat, Scope, Target
+from xarch.kernel.placement import EACH, Place, Repeat, Target
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.language import CheckedLanguage
 from xarch.profile_values.testing import Fakes, Framework, ScenarioCoverage, StandIns
@@ -28,9 +28,6 @@ PROFILE_SUFFIX = ".yaml"
 
 Layout = dict[str, "Layout | None"]
 """A layout tree: a dict is a folder, None a file; the key "*" is a repeating folder, one per instance."""
-
-
-__all__ = ["EACH", "EVERYTHING", "Place", "Repeat", "Scope", "Target"]
 
 
 @dataclass(frozen=True)

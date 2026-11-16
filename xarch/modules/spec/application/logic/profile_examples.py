@@ -8,9 +8,10 @@ from collections.abc import Collection, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
+from xarch.kernel.placement import EACH
 from xarch.modules.spec.application.logic import profile_checks as ck
 from xarch.modules.spec.application.logic.profile_listing import listing_in
-from xarch.modules.spec.domain.values import EACH, Architecture, Example, Language, Layout, Part, TierExample
+from xarch.modules.spec.domain.values import Architecture, Example, Language, Layout, Part, TierExample
 
 
 @dataclass
