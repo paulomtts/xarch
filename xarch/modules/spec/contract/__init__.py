@@ -151,8 +151,8 @@ class ProfileView:
 
 @dataclass(frozen=True)
 class ChooseApp:
-    """Choose the app folder to work on: given (from --app), else the one the project around the folder start
-    records, else the default one."""
+    """Choose the app folder to work on: the one the caller gives, read from the folder start when relative, else the
+    one the project around start records, else the default one in start."""
     start: Path
     given: Path | None = None
 
@@ -165,7 +165,7 @@ class AppChosen:
 @dataclass(frozen=True)
 class SelectProfile:
     """Choose the architecture for an app folder, given in full, whose project's pyproject.toml may configure it:
-    override is an explicit choice (from --profile), tests an explicit tests root (from --tests)."""
+    override is a choice the caller makes, tests a tests root the caller gives."""
     app: Path
     override: str | None = None
     tests: Path | None = None
@@ -410,7 +410,7 @@ class NewProfile:
 @dataclass(frozen=True)
 class ProfileCreated:
     """The copy: its folder, its profile file, every file written (the profile first, paths relative to the folder),
-    and the profile file as pyproject.toml records it, for `profile = "..."` under [tool.xarch] to put it in force."""
+    and the profile file as the project's settings record it, to put it in force."""
     folder: Path
     profile: Path
     files: tuple[str, ...]

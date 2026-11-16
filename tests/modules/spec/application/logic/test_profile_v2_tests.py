@@ -429,7 +429,7 @@ SCENARIOS = "layered.yaml: guards.scenario-coverage"
 @pytest.mark.parametrize("change, expected", [
     pytest.param({"results": "repo"}, [f"{SCENARIOS}.results: no part named 'repo'"]),
     pytest.param({"results": "shared"}, [
-        f"{SCENARIOS}.results: part 'shared' does not lie in the `each` folder: its unions are matched to the tests "
+        f"{SCENARIOS}.results: part 'shared' does not lie in the repeating folder: its unions are matched to the tests "
         "of the same folder",
         f"{SCENARIOS}.tier: tier 'integration' does not test part 'shared'"]),
     pytest.param({"tier": "nope"}, [f"{SCENARIOS}.tier: no tier named 'nope'"]),

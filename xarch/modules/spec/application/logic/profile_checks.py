@@ -382,7 +382,7 @@ def case_table(value: Any, where: str, problems: list[str], language: Language) 
 
 
 def use_case_file(value: Any, framework: Framework | None, where: str, problems: list[str], language: Language,
-                  files_key: str = "tests.files") -> str | None:
+                  files_key: str = "testing.files") -> str | None:
     if not isinstance(value, str) or value.count(NAME) != 1:
         problems.append(f"{where}: must hold `{NAME}` once, such as a_{NAME}{language.checked.extension}")
         return None
@@ -627,7 +627,7 @@ def scenario_places(results: Any, tier: Any, suffix: Any, parts: dict[str, Part]
         if not isinstance(results, str) or results not in declared:
             problems.append(f"{where}.results: no part named {results!r}")
     elif not part.in_instance:
-        problems.append(f"{where}.results: part '{results}' does not lie in the `each` folder: its unions are "
+        problems.append(f"{where}.results: part '{results}' does not lie in the repeating folder: its unions are "
                         "matched to the tests of the same folder")
     found = next((t for t in tiers if t.name == tier), None)
     if found is None:

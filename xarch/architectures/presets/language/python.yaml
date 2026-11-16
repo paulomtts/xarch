@@ -3,7 +3,7 @@
 # source file's name; package_file the file that stands for the folder holding it; interface the dotted names that mark
 # a class as an interface (a port); dynamic the callables that import by a name worked out when the code runs;
 # namespace the namespace of the names the language binds without an import; cache the folder its tools keep what they
-# compile in, which no check or example reads; standard where the names of the standard
+# compile in, whose files neither the checks nor the examples read; standard where the names of the standard
 # library are known from (interpreter: the one running xarch). The tokens of its code that the checks and the docs
 # need: name, what a name may be (a regular expression); private, how a name starts that is private to its file or
 # folder; special, what a name the language reserves for itself starts and ends with; call, the special method that

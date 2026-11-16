@@ -797,7 +797,7 @@ def _substance(spec: Any, part: Part, declared: set[str], may_import: tuple[Targ
             problems.append(f"{where}.types_only: {name!r} is not in `may_import`, so no file could import it to use as "
                             "a type: add it there, or drop it")
     shared = spec.get("shared")
-    if shared is not None and (isinstance(shared, bool) or not isinstance(shared, int) or shared < 2):
+    if shared is not None and not _whole(shared, 2):
         problems.append(f"{where}.shared: must be a whole number of users, at least 2, such as 2; leave it out for a "
                         "part that is not there to be shared")
         shared = None
@@ -838,7 +838,7 @@ def _no_twins(spec: Any, where: str, problems: list[str]) -> NoTwins:
     found = []
     for name in ("min_renamed", "min_subset"):
         value = spec.get(name)
-        if value is not None and (isinstance(value, bool) or not isinstance(value, int) or value < 2):
+        if value is not None and not _whole(value, 2):
             problems.append(f"{where}.{name}: must be a whole number of fields, at least 2, such as 3; leave it out "
                             "to switch this case off")
             value = None
@@ -849,10 +849,15 @@ def _no_twins(spec: Any, where: str, problems: list[str]) -> NoTwins:
 def _minimum(spec: Mapping[Any, Any], key: str, default: int, noun: str, where: str, problems: list[str]) -> int:
     """The fewest of something a guard counts, at key: a whole number, at least 1; default when left out or wrong."""
     least = spec.get(key, default)
-    if isinstance(least, bool) or not isinstance(least, int) or least < 1:
+    if not _whole(least, 1):
         problems.append(f"{where}.{key}: must be a whole number of {noun}, at least 1, such as {default}")
         return default
     return least
+
+
+def _whole(value: Any, least: int) -> bool:
+    """Whether a value is a whole number, at least least (true and false are no numbers here)."""
+    return isinstance(value, int) and not isinstance(value, bool) and value >= least
 
 
 def _pass_through(spec: Any, declared: set[str], parts: dict[str, Part], where: str,
