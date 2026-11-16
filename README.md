@@ -125,7 +125,8 @@ files:    {<path>: <from> | {from*, pinned, fill}}      docs: {entry, pages, nam
 checks:   {<id>: {read*, in, keep, may_not | may_only | must_reach | must_be_reached*, except, mode, message*, fix*,
                   once_per, cases, examples*}}
 review:   {never, mask}                                 what `xarch review` may send; `check` never reads it
-evals:    {placement: {lines}}                          how `xarch review` reads what it asks; `check` never reads it
+evals:    {placement: {lines, examples}, <id>: {ask*, answer*, yes, no, reads*, in, keep, line, message*, fix*,
+          examples*}}                                   what `xarch review` asks; `check` never reads it
 ```
 
 `language` names the language of the app: `python`, which is the default and the only one xarch reads today. What is
@@ -662,34 +663,120 @@ says a line set this way as "set by the profile", since the trials' numbers hold
 `evals`. `profile check` lists a part whose line is below the one the profile it is compared with gives it as looser:
 it flags less. `xarch profile explain evals.placement.lines` says it in full.
 
+### Evals of the profile's own
+
+A profile may write evals of its own under `evals`, each under an id of its own (lowercase words joined by `-`, never
+`placement`), as it writes checks: one short question, its answer form, what it is asked of and where, and examples.
+
+```yaml
+evals:
+  rule-outside-entity:
+    ask: Does this method itself decide whether a document may change state, by testing the document's fields?
+    answer: yes-no
+    yes: "the method tests a document's fields to decide whether the change is allowed"
+    no: "the method calls the Document's own method, which decides"
+    reads: function
+    in: {part: services}
+    keep: [public]
+    message: "{name} may decide a rule of a document's state itself ({value})"
+    fix: "read it against the litmus of domain/; if the condition is the document's invariant, move it onto the entity"
+    examples:
+      flagged: {modules/documents/application/services/publishing.py: ..., ...}
+      clean: {modules/documents/application/services/publishing.py: ..., ...}
+```
+
+- `ask`: one line, at most 400 characters and one question mark: one rule about what the text shows.
+- `answer`: `yes-no` (read as the probability of yes; `yes` and `no` say what each means, sent with the question);
+  `{score: [<level 0>, ..., <level 4>], flagged_from: <1 to 4>}` (five levels, the worst last, read as the expected
+  level over 4); or `{choice: {<option>: <description>, ...}, flagged: [<option>, ...]}` (three options or more, read
+  as the probability of those flagged, the mean of two orders of the options; two options are refused: write yes-no).
+- `reads`: `file`, `class` (each at the top level) or `function` (a method included), as the check vocabulary's kinds;
+  `in`: `{part, where}` as a check's (the app's files only); `keep`: filters of the vocabulary, such as `[public]`.
+- `line`: the value from which a reading is listed (above 0, below 1); left out, calibration sets it.
+- `message`, `fix`: sentences with `{file}`, `{line}`, `{name}` and `{value}`; start `fix` from reading something.
+- `examples`: at least 2 flagged and 2 clean files, each a path below the app with its code.
+
+`profile check` refuses every slot written wrong at its address (`evals.<id>.answer.choice: two options are a yes or
+no: ...`), a filter of `keep` the vocabulary does not have, and an example file in which the eval reads nothing.
+`xarch profile explain evals.ask` (and each other slot) says each in full. The bundled profiles write none.
+
+An eval runs only once it was held to its examples (calibrated), as it is written now, by the model review asks, and
+passed. Otherwise review does not run it and says why and what to run: `uncalibrated` (never held), `failed` (with what
+crossed) or `stale` (its question, answer, scope, line or examples changed, or another model is asked), each with
+`xarch review calibrate --eval <id>`. An eval that runs asks one question of each file, class or function it reads in
+the files review judges (never one placement leaves out), its masked text alone, and lists each reading at or above its
+line with its message and fix, the highest first. How often it reads well-written code as flagged is not known, and the
+reading says so.
+
+### Holding evals to their examples: `xarch review calibrate`
+
+`xarch review calibrate [--eval ID ...]` asks the decision model of each thing each eval reads in each of its example
+files (masked as a file of the app, and sent as review sends: whenever the key is set; `--dry-run` shows each request
+and sends nothing, `--offline` reads the cache only). The value of an example file is the highest of what the eval
+reads in it. An eval passes when every flagged example reads above every clean one, by 0.4 at least on the mean, and on
+the right side of its line: the one it writes, else midway between the lowest flagged and the highest clean value,
+never below 0.5 (for a score, never below the first level flagged). One that fails is named with what crossed, and
+what to do: make it one short rule about what the text shows; add a clean example of the case it must not catch.
+
+The verdicts go to `.xarch/calibration.json` in the project's root: for each eval, a hash of what it was held as, the
+model asked and the version that answered, the verdict, the line and the value of each example by path; no code and
+no question. Commit it, as the cache, so that agents and CI read the same verdicts. Exit codes: 0 when every eval
+passed, 1 when one failed (a defect of the profile), 2 when it refused (no key, an eval it does not write, a profile
+that cannot be used), 3 when an example has no answer, and nothing of that eval is recorded.
+
+Placement is held to its examples in the same run (and alone with `--eval placement`): every file of `docs.examples`
+lying in a part, read as clean, and the profile's own under `evals.placement.examples: {flagged, clean}` (a flagged
+file's path puts it in a part it does not belong in). Each is asked placement's question once. A part passes when its
+clean examples read at or above its line, a flagged one lying in it below it, and every other part's example below its
+line on it (from the same answers); one with no example of its own is measured elsewhere only. A part whose examples
+disagree is said with the example that crossed, and review then reads its files but never marks them doubtful. The
+examples are short, and short files read lower: this is a sanity check of the litmus texts, not a way to set lines,
+and a disagreement does not fail the calibration. Review says, under placement, whether it was held to its examples,
+and when it was not, what to run.
+
 ### JSON
 
 `--format json` prints one document. A dry run: `{"ok", "advisory", "profile", "dry_run": true, "sent": false,
 "selection": {"by", "found", "judged", "left_out": [{"file", "why", "chars", "pattern"}]}, "question": {"ask",
 "role_only", "options": [{"name", "description"}]}, "requests": [{"file", "part", "chars", "cached", "text", "body",
-"piece", "kind", "first", "last"}], "pieces", "piece_question", "context", "characters", "tokens", "reorders", "mask",
-"sends": {"name", "at", "model", "key", "keyed"}}`: `body` the request as the decision model's service would receive it
+"piece", "kind", "first", "last", "eval"}], "pieces", "piece_question", "context", "characters", "tokens", "reorders",
+"mask", "evals", "sends": {"name", "at", "model", "key", "keyed"}}`: `body` the request as the decision model's service would receive it
 (JSON text, the key left out); `piece`, `kind`, `first` and `last` the piece a request is about and the lines it spans
 (null for a whole file); `pieces` whether pieces are asked, `piece_question` the question each piece carries (null
 without `--pieces`) and `context` `none` or `imports`; `reorders` how many other orders a file near its line is asked
 again in; `sends.key` the name of the variable the key is read from (never the key) and `keyed` whether it is set.
 
 A review: `{"ok", "advisory", "profile", "dry_run": false, "complete", "model", "selection", "placement":
-{"calibration": {"state", "evidence"}, "role_only", "files": [{"file", "part", "probability", "line", "line_by_hand",
-"doubtful", "chars", "small", "orders", "model", "distribution"}], "parts": [{"part", "read", "doubtful", "line",
-"line_by_hand", "summed", "litmus_note"}]}, "pieces": [{"file", "part", "judged", "too_small", "context", "answered",
-"lowest": [{"rank", "kind", "name", "first", "last", "chars", "probability", "distribution"}]}], "sends", "sent":
-{"calls", "cached", "input_tokens", "output_tokens"}, "unanswered": [{"file", "why", "piece"}], "failure"}`: the files
+{"calibration": {"state", "evidence", "examples": {"state", "why", "parts": [{"part", "verdict", "crossed",
+"examples"}]}}, "role_only", "files": [{"file", "part", "probability", "line", "line_by_hand", "doubtful", "chars",
+"small", "orders", "model", "distribution"}], "parts": [{"part", "read", "doubtful", "line", "line_by_hand", "summed",
+"litmus_note", "examples"}]}, "pieces": [{"file", "part", "judged", "too_small", "context", "answered", "lowest":
+[{"rank", "kind", "name", "first", "last", "chars", "probability", "distribution"}]}], "evals": [{"id", "state", "why",
+"run", "line", "ask", "form", "examples": {"flagged", "clean"}, "model", "asked", "readings": [{"file", "line", "name",
+"value", "message", "fix"}]}], "sends", "sent": {"calls", "cached", "input_tokens", "output_tokens"}, "unanswered":
+[{"file", "why", "piece", "eval"}], "failure"}`: the files
 ranked from the lowest probability; `line_by_hand` whether the profile sets the part's line; `small` whether the file
 is under 2,000 characters; `orders` how many orders of the options it was asked in (`probability` and `distribution`
 are their mean); `distribution` the probability on each part by name, the only place another part is named (also for
 a piece); `parts` each part read, `summed` whether 3 or more of its files were read and `litmus_note` whether the note
 on its litmus applies; `pieces` each file's lowest 3 pieces (empty when fewer than 2 were judged, or when `answered`
 is false); `why` of an unanswered file or piece `not-cached` or `failed`, `piece` its name (null for a whole file);
-`failure` the decision model's words when it failed (else null). In both, `why` of a file left out is one of
+`failure` the decision model's words when it failed (else null); `examples` of placement's calibration `calibrated`,
+`uncalibrated` or `stale`, each part's `verdict` `passed`, `disagree` or `elsewhere` (also a part's `examples` in
+`parts`, null when placement is not calibrated); each eval's `state` `calibrated`, `uncalibrated`, `failed` or
+`stale`, `run` the command that holds it to its examples (null when it ran), `form` `yes-no`, `score` or `choice`,
+`asked` how many things it was asked of, `readings` those at or above its `line`; `eval` of a request or of an
+unanswered question the eval that asks it (null for placement). In both, `why` of a file left out is one of
 `missing`, `not-source`, `test`, `outside`, `excluded`, `unplaced`, `never`, `unparsable`, `small`, `pattern` the
 `review.never` path that matched (null for any other `why`); a dry run's `mask` is the profile's `review.mask`. A
 refusal is `{"ok": false, "error"}`.
+
+A calibration: `{"ok", "calibrated": [{"id", "complete", "passed", "line", "line_by_hand", "crossed", "examples":
+[{"path", "flagged", "value"}]}], "placement": {"model", "answered_by", "parts": [{"part", "verdict", "crossed",
+"examples"}]}, "passed", "complete", "record", "model", "sends", "sent", "unanswered": [{"id", "file", "why", "name"}],
+"failure"}` (`placement` null when it was not held); its dry run: `{"ok", "dry_run": true, "sent": false, "evals",
+"requests": [{"id", "example", "kind", "part", "name", "first", "last", "chars", "cached", "text", "body"}],
+"characters", "tokens", "mask", "sends"}`, `kind` `flagged` or `clean`.
 
 ## Project docs
 
