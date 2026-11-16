@@ -1,4 +1,6 @@
 """The typer app, built around the controllers that bootstrap/ hands in."""
+from collections.abc import Callable
+
 import typer
 
 from xarch.cli.commands import check, profile, scaffold, where
@@ -7,12 +9,15 @@ from xarch.modules.scaffold.application.controller import ScaffoldController
 from xarch.modules.spec.application.controller import SpecController
 
 
-def build(rules: RulesController, scaffolding: ScaffoldController, spec: SpecController, version: str) -> typer.Typer:
+def build(rules: RulesController, scaffolding: ScaffoldController, spec: SpecController,
+          version: Callable[[], str | None]) -> typer.Typer:
+    """The app, with version asked for xarch's version only when `--version` is given (None: it is not known)."""
     app = typer.Typer(help="Check and scaffold the architecture a profile describes.", no_args_is_help=True)
 
     def print_version(show: bool) -> None:
         if show:
-            typer.echo(f"xarch {version}")
+            found = version()
+            typer.echo(f"xarch {found}" if found is not None else "xarch (version unknown)")
             raise typer.Exit()
 
     @app.callback()

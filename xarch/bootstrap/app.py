@@ -6,4 +6,4 @@ from xarch.cli.app import build
 from xarch.platform.package_version import installed_version
 
 _controllers = build_controllers()
-app = build(_controllers.rules, _controllers.scaffold, _controllers.spec, installed_version("xarch"))
+app = build(_controllers.rules, _controllers.scaffold, _controllers.spec, lambda: installed_version("xarch"))

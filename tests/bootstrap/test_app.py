@@ -5,6 +5,8 @@ import pytest
 from typer.testing import CliRunner
 
 from xarch.bootstrap.app import app
+from xarch.bootstrap.wiring import build_controllers
+from xarch.cli.app import build
 
 runner = CliRunner()
 
@@ -308,6 +310,13 @@ def test_version_prints_the_installed_version_and_exits_0():
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0, result.output
     assert result.output == f"xarch {metadata.version('xarch')}\n"
+
+
+def test_version_says_it_is_unknown_when_no_metadata_of_the_package_is_found():
+    controllers = build_controllers()
+    unknown = build(controllers.rules, controllers.scaffold, controllers.spec, lambda: None)
+    result = runner.invoke(unknown, ["--version"])
+    assert (result.exit_code, result.output) == (0, "xarch (version unknown)\n")
 
 
 def test_version_wins_over_a_command_given_with_it():
