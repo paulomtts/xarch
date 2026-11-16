@@ -5,10 +5,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from xarch.kernel.logic.targets import WORD, target
+from xarch.kernel.logic.targets import target
 from xarch.kernel.placement import EVERYTHING
 from xarch.modules.spec.domain.values import Part
 from xarch.profile_values.placement import Target
+
+WORD = "everything"
+"""How a file writes EVERYTHING: for what a part may import and for its libraries."""
 
 
 def may_import(value: Any, owner: Part | None, parts: dict[str, Part], declared: set[str], where: str,

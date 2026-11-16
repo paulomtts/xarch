@@ -60,7 +60,7 @@ from dataclasses import dataclass, replace
 from typing import Any
 
 from xarch.kernel.logic.placement import root_of
-from xarch.kernel.logic.targets import NAME_PATTERN, WORD
+from xarch.kernel.logic.targets import NAME_PATTERN
 from xarch.kernel.placement import EACH, EVERYTHING
 from xarch.modules.spec.application.logic import profile_checks as ck
 from xarch.modules.spec.application.logic import profile_examples as ex
@@ -69,7 +69,7 @@ from xarch.modules.spec.application.logic import written_checks as own_checks
 from xarch.modules.spec.application.logic.key_lookup import keys_of, names_of, required_of
 from xarch.modules.spec.application.logic.language_file import first_language
 from xarch.modules.spec.application.logic.layout_walk import is_file
-from xarch.modules.spec.application.logic.targets_written import may_import
+from xarch.modules.spec.application.logic.targets_written import WORD, may_import
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.guards import GUARD, GUARDS, KEY
 from xarch.modules.spec.domain.profile_keys import (

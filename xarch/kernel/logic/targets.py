@@ -12,8 +12,6 @@ from xarch.kernel.logic.placement import root_of
 from xarch.kernel.placement import EACH
 from xarch.profile_values.placement import Target
 
-WORD = "everything"
-"""How a file writes EVERYTHING: for what a part may import and for its libraries."""
 TARGET = re.compile(r"(?P<part>[^@/:]*)(?:@(?P<scope>[^/:]*))?(?:/(?P<sub>[^:]*))?(?::(?P<names>.*))?")
 NAME_PATTERN = re.compile(r"[A-Za-z0-9_*]+")
 
