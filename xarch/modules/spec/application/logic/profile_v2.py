@@ -56,7 +56,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Collection, Mapping
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, replace
 from typing import Any
 
 from xarch.kernel.logic.placement import root_of
@@ -128,14 +128,14 @@ class _Testing:
     mocks: StandIns | None
 
 
-@dataclass
+@dataclass(frozen=True)
 class _Layout:
     """The layout and what comes with it, built from the paths of the parts: the parts, the tree, the notes of the
     folders, and the repeating folders in the order they first appear."""
-    parts: dict[str, Part]
+    parts: Mapping[str, Part]
     tree: Layout
-    notes: dict[tuple[str, ...], str]
-    repeats: list[Repeat] = field(default_factory=list)
+    notes: Mapping[tuple[str, ...], str]
+    repeats: tuple[Repeat, ...]
 
 
 def parse_v2(document: Any, source: str, files: Collection[str] = (), presets: Mapping[str, Any] | None = None,
@@ -190,7 +190,7 @@ def parse_v2(document: Any, source: str, files: Collection[str] = (), presets: M
         raise InvalidArchitecture(source, problems)
     shown = ex.examples_of(examples, built.tree, parts, language)
     return Architecture(name, built.tree, parts, rules, pages, shown, built.notes, layers, tuple(parts), naming, tiers,
-                        libraries, guards, fakes, tuple(built.repeats), written, testing.framework if testing else None, forbidden,
+                        libraries, guards, fakes, built.repeats, written, testing.framework if testing else None, forbidden,
                         excluded, hints, based_on, language, reserved, needs.approximate(shortfalls), own)
 
 
@@ -249,7 +249,10 @@ def _specs(value: Any, problems: list[str]) -> dict[str, Any]:
 
 def _layout(specs: dict[str, Any], problems: list[str]) -> _Layout:
     """The parts that place validly, in the order of the file, and the layout their paths and `folders` make."""
-    built = _Layout({}, {}, {})
+    parts: dict[str, Part] = {}
+    tree: Layout = {}
+    notes: dict[tuple[str, ...], str] = {}
+    repeats: list[Repeat] = []
     claimed: dict[tuple[str, ...], str] = {}
     owners: dict[tuple[str, ...], str] = {}
     for name, spec in specs.items():
@@ -270,19 +273,20 @@ def _layout(specs: dict[str, Any], problems: list[str]) -> _Layout:
         if placed is None:
             continue
         steps, word = placed
-        if not _repeats_alike(name, steps, word, built, owners, where, spec["path"], problems):
+        if not _repeats_alike(name, steps, word, repeats, owners, where, spec["path"], problems):
             continue
         if steps in claimed:
             problems.append(f"{where}.path: '{_shown(steps, word)}' is already claimed by part '{claimed[steps]}'")
             continue
-        if not _insert(built.tree, steps, name, owners, where, _shown(steps, word), problems):
+        if not _insert(tree, steps, name, owners, where, _shown(steps, word), problems):
             continue
         claimed[steps] = name
-        built.parts[name] = Part(name, steps, ck.string(spec.get("role")), ck.string(spec.get("litmus")), False,
+        parts[name] = Part(name, steps, ck.string(spec.get("role")), ck.string(spec.get("litmus")), False,
                                  spec["untested"] if ck.line(spec.get("untested")) else "")
-    for name, part in built.parts.items():
-        problems += _folders(specs[name].get("folders"), part, built, claimed, f"parts.{name}.folders", "folders" in specs[name])
-    return built
+    for name, part in parts.items():
+        problems += _folders(specs[name].get("folders"), part, tree, notes, claimed, f"parts.{name}.folders",
+                             "folders" in specs[name])
+    return _Layout(parts, tree, notes, tuple(repeats))
 
 
 def _path(value: Any, where: str, problems: list[str]) -> tuple[tuple[str, ...], str] | None:
@@ -316,14 +320,14 @@ def _shown(steps: tuple[str, ...], word: str) -> str:
     return "/".join(f"<{word}>" if step == EACH else step for step in steps)
 
 
-def _repeats_alike(name: str, steps: tuple[str, ...], word: str, built: _Layout,
+def _repeats_alike(name: str, steps: tuple[str, ...], word: str, repeats: list[Repeat],
                    owners: dict[tuple[str, ...], str], where: str, value: str, problems: list[str]) -> bool:
     """A word repeats in one folder, and a folder is repeated by one word."""
     root = root_of(steps)
     if root is None:
         return True
-    here = next((repeat for repeat in built.repeats if repeat.root == root), None)
-    named = next((repeat for repeat in built.repeats if repeat.word == word), None)
+    here = next((repeat for repeat in repeats if repeat.root == root), None)
+    named = next((repeat for repeat in repeats if repeat.word == word), None)
     if here is not None and here.word != word:
         problems.append(f"{where}.path: '{value}' calls the repeating folder <{word}>, but part "
                         f"'{owners[(*root, EACH)]}' called it <{here.word}> in the same folder '{'/'.join(root)}': two "
@@ -334,7 +338,7 @@ def _repeats_alike(name: str, steps: tuple[str, ...], word: str, built: _Layout,
                         "in one folder, so give this one a word of its own")
     else:
         if here is None:
-            built.repeats.append(Repeat(word, root))
+            repeats.append(Repeat(word, root))
             owners[(*root, EACH)] = name
         return True
     return False
@@ -364,8 +368,8 @@ def _insert(tree: Layout, steps: tuple[str, ...], name: str, owners: dict[tuple[
     return True
 
 
-def _folders(value: Any, part: Part, built: _Layout, claimed: dict[tuple[str, ...], str], where: str,
-             given: bool) -> list[str]:
+def _folders(value: Any, part: Part, tree: Layout, notes: dict[tuple[str, ...], str],
+             claimed: dict[tuple[str, ...], str], where: str, given: bool) -> list[str]:
     """The `folders` of a part: each goes in the layout below the part, and its note, if any, in the notes."""
     if not given:
         return []
@@ -376,7 +380,7 @@ def _folders(value: Any, part: Part, built: _Layout, claimed: dict[tuple[str, ..
         entries = [(item, "") for item in value]
     else:
         return [f"{where}: must be a mapping of folder paths to one line of text, or a list of folder paths"]
-    if is_file(built.tree, part.path):
+    if is_file(tree, part.path):
         return [f"{where}: a file has no folders: drop the key"]
     seen: list[str] = []
     for key, note in entries:
@@ -395,11 +399,11 @@ def _folders(value: Any, part: Part, built: _Layout, claimed: dict[tuple[str, ..
                 problems.append(f"{where}.{key}: '{key}' is part '{claimed[full]}', whose note is its role: drop it "
                                 "from `folders`")
                 continue
-            if not _add_folder(built.tree, full):
+            if not _add_folder(tree, full):
                 problems.append(f"{where}.{key}: '{key}' lies below a file")
                 continue
             if note:
-                built.notes[full] = note
+                notes[full] = note
     return problems
 
 

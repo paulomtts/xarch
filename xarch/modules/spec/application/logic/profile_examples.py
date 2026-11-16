@@ -14,31 +14,29 @@ from xarch.modules.spec.application.logic.profile_listing import listing_in
 from xarch.modules.spec.domain.values import Architecture, Example, Language, Layout, Part, TierExample
 
 
-@dataclass
+@dataclass(frozen=True)
 class Examples:
     """files: the file of each example, relative to the profile, by its path in its project; notes: by the same path."""
-    files: dict[str, str] = field(default_factory=dict)
-    notes: dict[str, str] = field(default_factory=dict)
+    files: Mapping[str, str] = field(default_factory=dict)
+    notes: Mapping[str, str] = field(default_factory=dict)
 
 
 def example_files(docs: Any, files: Collection[str], problems: list[str], language: Language) -> Examples:
     """The files below the folders `docs.examples` lists, and their notes; a docs that is no mapping is reported
     elsewhere."""
-    found = Examples()
     if not isinstance(docs, Mapping):
-        return found
-    if "examples" in docs:
-        _roots(docs["examples"], files, found, problems, language)
-    if "example_notes" in docs:
-        _notes(docs["example_notes"], found, problems)
-    return found
+        return Examples()
+    found = _roots(docs["examples"], files, problems, language) if "examples" in docs else {}
+    notes = _notes(docs["example_notes"], found, problems) if "example_notes" in docs else {}
+    return Examples(found, notes)
 
 
-def _roots(value: Any, files: Collection[str], found: Examples, problems: list[str], language: Language) -> None:
+def _roots(value: Any, files: Collection[str], problems: list[str], language: Language) -> dict[str, str]:
+    found: dict[str, str] = {}
     if not isinstance(value, list):
         problems.append("docs.examples: must be a list of folders next to the profile file, each an example project, "
                         "such as [examples/shared]")
-        return
+        return found
     owners: dict[str, str] = {}
     clashes: list[str] = []
     for i, root in enumerate(value):
@@ -58,22 +56,25 @@ def _roots(value: Any, files: Collection[str], found: Examples, problems: list[s
                                "is named by its path in its project")
                 continue
             owners[relative] = root
-            found.files[relative] = f"{root.strip('/')}/{relative}"
+            found[relative] = f"{root.strip('/')}/{relative}"
     problems += clashes
+    return found
 
 
-def _notes(value: Any, found: Examples, problems: list[str]) -> None:
+def _notes(value: Any, files: Mapping[str, str], problems: list[str]) -> dict[str, str]:
+    notes: dict[str, str] = {}
     if not isinstance(value, Mapping):
         problems.append("docs.example_notes: must be a mapping of paths in an example project to one line of text")
-        return
+        return notes
     for key, note in value.items():
         where = f"docs.example_notes.{key}"
-        if str(key) not in found.files:
+        if str(key) not in files:
             problems.append(f"{where}: no file '{key}' in any folder of docs.examples")
         elif not ck.line(note):
             problems.append(f"{where}: must be one line of text")
         else:
-            found.notes[str(key)] = note
+            notes[str(key)] = note
+    return notes
 
 
 def example_of(value: Any, found: Examples, where: str, problems: list[str], language: Language) -> TierExample | None:
