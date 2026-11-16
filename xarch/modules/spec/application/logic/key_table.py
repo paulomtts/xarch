@@ -216,6 +216,3 @@ NEEDS: dict[str, tuple[str, ...]] = {
 
 KEYS: tuple[Key, ...] = tuple(replace(key, needs=NEEDS.get(key.address, ())) for key in _KEYS)
 """Every key of every scope, in the order a file writes them."""
-
-KEYS: tuple[Key, ...] = tuple(replace(key, needs=NEEDS.get(key.address, ())) for key in _KEYS)
-"""Every key of every scope, in the order a file writes them."""
