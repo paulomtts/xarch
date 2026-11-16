@@ -43,11 +43,11 @@ folder is not `app/`.
 ## A second reading, advisory
 
 `xarch review` asks a decision model where each file you give it belongs, by the parts' litmus tests. It never
-replaces `xarch check`: run it once the check is clean, on what you changed, as
-`git diff --name-only <base> | xarch review --files-from - --format json`. It sends the masked text of those files to
-the model's service whenever the model's key is set in the environment, and nothing when it is not; `--dry-run` shows
-what would leave the machine. For a file it reads as doubtful, read its part's litmus (`xarch where <path>`), then
-leave it or move it, and say why in one line. Never edit code or docstrings to raise a number.
+replaces `xarch check`; never edit code or docstrings to raise its numbers. Run it once the check is clean, as
+`git diff --name-only <base> | xarch review --files-from - --pieces --format json`. It sends the masked text of
+those files to the model's service whenever its key is set, and nothing otherwise; `--dry-run` shows what would
+leave the machine. For a file it reads as doubtful, or the first piece it ranks in a file, read its part's litmus
+(`xarch where <path>`), then leave it or move it, and say why in one line.
 
 ## What not to do to get a green check
 
