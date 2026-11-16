@@ -9,7 +9,8 @@ outside package added to a part's `libraries`, or `libraries` dropped as a whole
 `must_import`, or the key dropped from a part that has it; a name the bundled `forbidden` list of a part holds that no
 entry of the custom list covers (`time` covers `time.time`); a part newly marked `untested`; a part dropped from a
 tier's `types_only`; a tier no longer `apply_forbidden`; a name dropped from `testing.skips`; a `files` entry no longer
-`pinned`; a name the bundled profile `reserved` holds that the custom one does not. Anything stricter, and what is
+`pinned`; a name the bundled profile `reserved` holds that the custom one does not; a part the bundled profile gives a
+`litmus` that the custom one redefines without one. Anything stricter, and what is
 compared in no way above (the layout, new parts, the guards' parameters, `fakes`), is not listed.
 """
 from __future__ import annotations
@@ -19,7 +20,7 @@ from dataclasses import replace
 
 from xarch.kernel.placement import EVERYTHING, Target
 from xarch.modules.spec.domain.guards import GUARDS
-from xarch.modules.spec.domain.published import Loosened, Origin
+from xarch.modules.spec.domain.published import LITMUS, Loosened, Origin
 from xarch.modules.spec.domain.values import Architecture
 
 Looser = tuple[str, str, str]
@@ -65,6 +66,7 @@ def looser(custom: Architecture, base: Architecture) -> list[Looser]:
         else:
             found += [("must_import", name, _shown(t)) for t in now if before and t not in before]
     found += [("untested", name, "") for name in shared if custom.parts[name].untested and not base.parts[name].untested]
+    found += [(LITMUS, name, "") for name in shared if base.parts[name].litmus and not custom.parts[name].litmus]
     tiers = {tier.name: tier for tier in custom.tiers}
     for tier in base.tiers:
         mine = tiers.get(tier.name)
@@ -117,6 +119,8 @@ def sentence(key: str, part: str, what: str = "") -> str:
             return f"{part} may also meet must_import with {what} (parts.{part}.must_import)"
         case "untested":
             return f"{part} is newly marked untested (parts.{part}.untested)"
+        case "litmus":
+            return f"{part} has no litmus, though the profile it is compared with gives it one (parts.{part}.litmus)"
         case "types_only":
             return f"the {part} tests may now call {what} (tiers.{part}.types_only)"
         case "apply_forbidden":

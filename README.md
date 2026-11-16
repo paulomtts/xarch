@@ -311,12 +311,13 @@ how many facts it read in the project.
   the profile writes itself.
 - `enforcement`: every key always present, empty when there is nothing to report. `profile.looser` items are
   `{"key", "part", "what", "sentence"}` with `key` one of `may_import`, `libraries`, `forbidden`, `untested`,
-  `types_only`, `apply_forbidden`, `testing.skips`, `files.pinned`, `must_import` (the `sentence` names the full address, such as
+  `types_only`, `apply_forbidden`, `testing.skips`, `files.pinned`, `must_import`, `litmus` (the `sentence` names the full address, such as
   `parts.kernel.may_import`); `excluded` items `{"folder", "reason"}`; `init_files` items `{"file", "state"}`, `state` `missing` or
   `changed`; `skipped.at` and `dynamic.at` items `{"file", "line"}`; `weak` items `{"rule", "file", "line",
   "message", "fix"}` (`fix` is `null` for a weak check that has none); `approximate` items `{"key", "fact", "note"}`;
   `strict_failures` items `{"key", "detail"}`, `key` one of `guards_off`, `ungoverned`, `init_files`,
-  `skipped`, `dynamic`, `weak`, `approximate`, `vacuous` (a check of the profile's own that read nothing). `strict_failures` is filled whether or not `--strict` was given: it
+  `skipped`, `dynamic`, `weak`, `approximate`, `vacuous` (a check of the profile's own that read nothing), `litmus` (a
+  part redefined without the litmus its compared profile gives it). `strict_failures` is filled whether or not `--strict` was given: it
   is what `--strict` fails on.
 - A refusal (exit 2: an unknown or invalid profile, a missing folder) prints `{"ok": false, "error": "<reason>"}` on
   stdout, so a caller always gets JSON. Only an error in the command line itself (an unknown option, a `--format`
@@ -349,10 +350,12 @@ enforcement
   name: a target added to a part's `may_import`, an outside package added to its `libraries` (or `everything`), a
   name of its `forbidden` list no entry covers any more, a part newly `untested`, a part dropped from a tier's
   `types_only`, a tier no longer `apply_forbidden`, a name dropped from `testing.skips`, a `files` entry no longer
-  `pinned`, a target added to a part's `must_import` or the key dropped. A profile that says `based_on: <bundled name>` is compared with that one, else with the one sharing the
+  `pinned`, a target added to a part's `must_import` or the key dropped, a part redefined without the `litmus` the
+  other gives it. A profile that says `based_on: <bundled name>` is compared with that one, else with the one sharing the
   most part names.
   Stricter differences, new parts, the layout and the guards' parameters are not compared. This comparison is
-  information: the profile defines the architecture, so how it differs from another is no finding for `--strict`.
+  information: the profile defines the architecture, so how it differs from another is no finding for `--strict`, but
+  for a litmus dropped, which leaves a part's code no question to be placed by.
 - `ungoverned`: the app's Python files in no part and no folder of the layout (what `closed-tree` would report),
   which no check reads, counted with their top folders.
 - `excluded`: each folder the profile's `excluded` key leaves out, with its reason; no check reads a file below it,
@@ -377,7 +380,7 @@ Without `--strict` the section never changes the exit code. `--strict` fails (ex
 `strict_failures`: what the profile in force leaves unenforced or unseen: each guard left off that the bundled profile
 in force, or the one a custom profile is compared with, does not also leave off (with no profile to compare with,
 every guard left off); each ungoverned file; each missing or changed init file; each skip; each dynamic import; each weak finding;
-each approximate key. The text
+each approximate key; each part redefined without its litmus. The text
 lists them after the section, under `strict:`. The guard test `init` writes runs `check` without `--strict`: a
 project opts in by running `xarch check --strict` in CI or a pre-commit hook.
 

@@ -10,7 +10,17 @@ from typing import Any
 
 from xarch.kernel.capabilities import Shortfall, Supply
 from xarch.kernel.placement import Repeat, Target
-from xarch.modules.spec.domain.published import DEFAULT_APP, DEFAULT_TESTS, Copy, DocFile, Entry, Loosened, Origin, ProjectFile
+from xarch.modules.spec.domain.published import (
+    DEFAULT_APP,
+    DEFAULT_TESTS,
+    LITMUS,
+    Copy,
+    DocFile,
+    Entry,
+    Loosened,
+    Origin,
+    ProjectFile,
+)
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.language import CheckedLanguage
 from xarch.profile_values.testing import Fakes, Framework, ScenarioCoverage, StandIns
@@ -20,7 +30,7 @@ __all__ = ["DEFAULT_APP", "DEFAULT_TESTS", "Entry", "Repeating", "Skeleton", "Do
            "FilesResult", "SkeletonResult", "ProfileResult", "DocsResult", "OriginResult", "PartView",
            "GuardsView", "ProfileView", "ChooseApp", "AppChosen", "ChooseAppResult",
            "SelectProfile", "ProfileSelected", "ProfileRefused",
-           "NoProfileChosen", "SelectResult", "MigrateProfile", "Copy", "MigratedFile", "Origin", "Loosened",
+           "NoProfileChosen", "SelectResult", "MigrateProfile", "Copy", "MigratedFile", "Origin", "Loosened", "LITMUS",
            "Migrated", "FilesTaken", "MigrationRefused",
            "MigrateResult", "Shown", "Symbol", "Explain", "FormatExplained", "KeyExplained", "UnknownKey",
            "ExplainResult", "Need", "ViewProfile", "ProfileViewed", "ViewResult", "CheckProfile", "LOAD", "EXAMPLES",

@@ -12,9 +12,10 @@ strict_findings lists what `--strict` fails on: what the profile in force leaves
 guard it leaves off but those that the bundled profile in force, or the one a custom profile is compared with, also
 leaves off (with no profile to compare with, every guard left off), the ungoverned files, the init files missing or
 changed, the skips, the dynamic imports, the weak checks, the keys whose check reads a fact the language supplies only
-partly (approximate) and the checks of the profile's own that read nothing (vacuous). How a custom profile differs
-from the closest bundled one (`origin.looser`) is information in the enforcement section and no finding: the profile
-defines the architecture.
+partly (approximate), the checks of the profile's own that read nothing (vacuous) and each part a custom profile
+redefines without the litmus the bundled profile it is compared with gives it (litmus), which leaves its code no
+question to be placed by. Every other way a custom profile differs from the closest bundled one (`origin.looser`) is
+information in the enforcement section and no finding: the profile defines the architecture.
 
 What the enforcement section shows of them is worked out here too: the folders holding the ungoverned files, a
 finding's detail, and an excluded folder as it is shown below the folder holding the app.
@@ -57,6 +58,7 @@ def strict_findings(enforcement: Enforcement) -> tuple[Finding, ...]:
     found += [Finding("weak", weak) for weak in enforcement.weak]
     found += [Finding("approximate", item) for item in enforcement.approximate]
     found += [Finding("vacuous", vacuous(name)) for name, read in enforcement.checks if not read]
+    found += [Finding("litmus", sentence) for sentence in enforcement.unplaced]
     return tuple(found)
 
 

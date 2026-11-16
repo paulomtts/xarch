@@ -132,4 +132,4 @@ class SourceCheckService:
                            skipped=tuple(enforcement.skipped(tests, rules)),
                            dynamic=tuple(enforcement.dynamic([*app, *tests], rules)), weak=tuple(weak),
                            excluded=rules.excluded, app=resolved.name, language=rules.language.title,
-                           approximate=rules.approximate)
+                           approximate=rules.approximate, unplaced=standing.unplaced)

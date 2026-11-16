@@ -275,7 +275,9 @@ _KEYS: tuple[Key, ...] = (
        True, rules=("structure", "rules")),
     _k(PART, "role", "what the part is for, in one line", "one line of text: the note of its folder in the docs tree",
        _in_part("role: saves and loads documents\n"), True, False),
-    _k(PART, "litmus", "the question that tells code belongs here", "text, ideally a yes-or-no question",
+    _k(PART, "litmus", "the question that tells code belongs here",
+       "text, ideally a yes-or-no question. A part the bundled profile this one is compared with gives a litmus, "
+       "redefined here without one, is listed as looser, and fails `check --strict`",
        _in_part("litmus: Does it save or load a document?\n"), False, False),
     _k(PART, "may_import", "what the part may import besides itself",
        "[<part>, <part>@any, <part>/<path>, <part>:<pattern>, ...] or everything: a bare name is that part in the "

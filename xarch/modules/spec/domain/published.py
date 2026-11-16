@@ -6,6 +6,8 @@ just as spec holds it, so there is nothing to reshape. Everything else spec hand
     Origin       where the profile in force comes from and how far it can be trusted, which the command line shows
                  and the checking module reads the guards of
     Loosened     one way a profile is looser than the bundled one it resembles, held by Origin and shown as it is
+    LITMUS       the key of the Loosened that says a part lost its litmus, which the checking module fails
+                 `check --strict` on
     ProjectFile  a file `init` writes beside the app folder, which the module that scaffolds writes and the checking
                  module compares a pinned one with
     DEFAULT_APP  the app folder read when none is given or recorded, which the module that scaffolds leaves
@@ -23,6 +25,9 @@ DEFAULT_APP = "app"
 """The app folder xarch assumes, in the working folder, when none is given or recorded."""
 DEFAULT_TESTS = "tests"
 """The tests folder xarch assumes, beside the app folder, when none is given or configured."""
+LITMUS = "litmus"
+"""The key of a Loosened that says a part lost the litmus the bundled profile gives it: the one way of being looser
+that leaves the code with no question to place it by, which `check --strict` fails on."""
 
 
 @dataclass(frozen=True)
@@ -43,6 +48,7 @@ class Loosened:
         must_import     part may also meet must_import with the target what; with no what, it has none now
         forbidden       part no longer forbids what
         untested        part is newly marked untested
+        litmus          part has no litmus, though the bundled profile gives it one (LITMUS)
         types_only      the tests of tier part may now call what
         apply_forbidden the tests of tier part are no longer held to their part's forbidden list
         testing.skips   what is no longer counted as a skip

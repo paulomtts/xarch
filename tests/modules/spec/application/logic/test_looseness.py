@@ -49,6 +49,9 @@ def test_the_bundled_profile_a_profile_says_it_is_based_on_wins_over_the_one_sha
                                                       "(parts.adapters.must_import)", id="must_import dropped"),
     pytest.param(("untested", "platform"), "platform is newly marked untested (parts.platform.untested)",
                  id="a part marked untested"),
+    pytest.param(("litmus", "cli"),
+                 "cli has no litmus, though the profile it is compared with gives it one (parts.cli.litmus)",
+                 id="a litmus dropped"),
     pytest.param(("types_only", "rendering", "controller"),
                  "the rendering tests may now call controller (tiers.rendering.types_only)",
                  id="a types-only part dropped"),
@@ -87,3 +90,12 @@ def test_a_name_the_base_reserves_and_the_custom_profile_does_not_is_looser():
     base = parsed(layered(reserved={"ast": "the reader's", "json": "the store's"}))
     assert looser(parsed(layered(reserved={"json": "mine"})), base) == [("reserved", "", "ast")]
     assert looser(parsed(layered(reserved={"ast": "the reader's", "json": "the store's", "csv": "x"})), base) == []
+
+
+def test_a_part_redefined_without_the_litmus_the_base_gives_it_is_looser_and_one_the_base_gives_none_is_not():
+    base = layered()
+    base["parts"]["api"]["litmus"] = "Does it answer a request?"
+    custom = layered()
+    custom["parts"]["store"]["litmus"] = "Does it keep a record?"
+    assert looser(parsed(custom), parsed(base)) == [("litmus", "api", "")]
+    assert looser(parsed(base), parsed(base)) == []

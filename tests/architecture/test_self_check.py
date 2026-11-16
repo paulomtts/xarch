@@ -18,7 +18,8 @@ SRC = Path(xarch.__file__).parent
 TESTS = SRC.parent / "tests"
 PENDING = ("parts.controller.may_import narrowed to services, contract, domain/errors, kernel, kernel-logic and "
            "profile-values", "the contract's forbidden list `published`, which names typing.Any",
-           "`.chdir()` in the ambient list, and the integration tier held to the forbidden list of the part it mirrors")
+           "`.chdir()` in the ambient list, and the integration tier held to the forbidden list of the part it mirrors",
+           "a part redefined without the litmus the bundled profile gives it fails `check --strict`")
 """The checks the round-4 audits asked for, on in architecture.yaml, which xarch's own code breaks."""
 REFACTOR_PENDING = pytest.mark.xfail(
     strict=True,

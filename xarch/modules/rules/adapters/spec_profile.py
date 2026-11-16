@@ -24,6 +24,7 @@ from xarch.modules.rules.domain.values import InitFile, PartInfo, Profile, Stand
 from xarch.modules.rules.domain.vocabulary import NAMES, PLACES, TARGETS
 from xarch.modules.spec.contract import (
     DEFAULT_TESTS,
+    LITMUS,
     FilesResult,
     Origin,
     OriginResult,
@@ -102,7 +103,8 @@ class SpecProfiles:
                 found = tuple(InitFile(file.path, _text(file.content), file.pinned) for file in files)
             case ProfileRefused():
                 found = ()
-        return Standing(origin.guards_off, origin.baseline_off, found)
+        return Standing(origin.guards_off, origin.baseline_off, found,
+                        tuple(item.sentence for item in origin.looser if item.key == LITMUS))
 
 
 def _text(content: str | bytes) -> str:

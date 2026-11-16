@@ -6,10 +6,10 @@ from xarch.modules.rules.domain.values import InitFile, Profile, Standing
 
 
 class FakeProfiles:
-    """Satisfies rules' Profiles: a fixed Profile per location, with the guards it leaves off and those its baseline
-    leaves off too (none unless given), and the init files it writes (none unless given), whatever the app's name; a
-    location whose own checks are refused raises ChecksRefused with their problems, and one spec refuses raises
-    ProfileUnusable with spec's reason."""
+    """Satisfies rules' Profiles: a fixed Profile per location, with the guards it leaves off, those its baseline
+    leaves off too and the parts it redefines without their litmus (none unless given), and the init files it writes
+    (none unless given), whatever the app's name; a location whose own checks are refused raises ChecksRefused with
+    their problems, and one spec refuses raises ProfileUnusable with spec's reason."""
 
     def __init__(self, profiles: dict[str, Profile], guards: dict[str, Standing] | None = None,
                  files: dict[str, tuple[InitFile, ...]] | None = None, refused: dict[str, tuple[str, ...]] | None = None,
@@ -26,4 +26,4 @@ class FakeProfiles:
 
     def standing(self, location: str, app: str) -> Standing:
         guards = self._guards.get(location, Standing((), (), ()))
-        return Standing(guards.guards_off, guards.baseline_off, self._files.get(location, ()))
+        return Standing(guards.guards_off, guards.baseline_off, self._files.get(location, ()), guards.unplaced)

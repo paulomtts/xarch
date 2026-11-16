@@ -28,7 +28,7 @@ SHOWN = 5
 """How many places a text line of skips or dynamic imports names before it counts the rest."""
 _KEYS = {"guards_off": "guards off", "ungoverned": "ungoverned", "init_files": "init files",
          "skipped": "skipped", "dynamic": "dynamic", "weak": "weak", "approximate": "approximate",
-         "vacuous": "reads nothing"}
+         "vacuous": "reads nothing", "litmus": "litmus"}
 
 
 def text_lines(found: Iterable[Violation], hints: Mapping[str, str] | None = None) -> list[str]:

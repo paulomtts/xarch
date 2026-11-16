@@ -6,8 +6,17 @@ import pytest
 
 from xarch.cli.reports.report import check_lines, enforcement_lines, json_document, ordered, text_lines
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.contract import AppChecked, ApproximateView, At, EnforcementView, ExcludedView, OwnCheckView, Weak
-from xarch.modules.spec.contract import Origin
+from xarch.modules.rules.contract import (
+    AppChecked,
+    ApproximateView,
+    At,
+    EnforcementView,
+    ExcludedView,
+    FindingView,
+    OwnCheckView,
+    Weak,
+)
+from xarch.modules.spec.contract import Loosened, Origin
 
 A = Violation("app/a.py", 3, "a problem", "rules", "do this")
 B = Violation("app/a.py", 7, "another", "rules", "do that")
@@ -155,3 +164,10 @@ def test_a_check_of_the_profile_s_own_is_listed_with_what_it_read_and_one_that_r
 def test_a_profile_that_writes_no_check_of_its_own_has_no_checks_in_its_json_document():
     document = json.loads(json_document("web", Origin("web"), AppChecked((), EnforcementView(), {}, True), False))
     assert "checks" not in document["enforcement"]
+
+
+def test_a_part_without_the_litmus_its_base_gives_it_is_said_under_the_profile_and_again_under_strict():
+    said = "cli has no litmus, though the profile it is compared with gives it one (parts.cli.litmus)"
+    origin = Origin("mine.yaml", False, "cli", looser=(Loosened("litmus", "cli", "", said),))
+    lines = enforcement_lines(origin, EnforcementView(strict=(FindingView("litmus", said),)), True)
+    assert lines[2:] == [f"    litmus:      {said}", "strict:      1 finding fails the check", f"    litmus: {said}"]

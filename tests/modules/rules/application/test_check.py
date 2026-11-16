@@ -123,6 +123,13 @@ def test_the_enforcement_holds_the_ungoverned_files_the_init_files_and_what_stri
                 FindingView("init_files", "AGENTS.md is missing")))
 
 
+def test_a_part_the_profile_redefines_without_its_litmus_is_what_strict_fails_on():
+    said = "cli has no litmus, though the profile it is compared with gives it one (parts.cli.litmus)"
+    profiles = FakeProfiles({"cli": profile("cli")}, {"cli": Standing((), (), (), (said,))})
+    result = controller_of(FakeSourceTree(ROOT, {"kernel/x.py": []}), profiles).check(CheckImports(ROOT, "app", "cli"))
+    assert result.enforcement.strict == (FindingView("litmus", said),)
+
+
 def test_the_enforcement_names_the_language_of_the_profile():
     profiles = FakeProfiles({"cli": replace(profile("cli"), language=PYTHON)})
     result = controller_of(FakeSourceTree(ROOT, {"kernel/x.py": []}), profiles).check(CheckImports(ROOT, "app", "cli"))

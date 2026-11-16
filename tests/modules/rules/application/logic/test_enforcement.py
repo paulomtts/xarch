@@ -157,3 +157,8 @@ def test_a_check_of_the_profile_s_own_that_read_nothing_fails_strict_and_one_tha
     assert reading("no-todo", 0) == vacuous("no-todo") == (
         "checks.no-todo reads nothing in the project, so it passes for want of anything to check: widen what it "
         "reads, or drop it")
+
+
+def test_a_part_redefined_without_the_litmus_its_base_gives_it_fails_strict_as_said():
+    said = "cli has no litmus, though the profile it is compared with gives it one (parts.cli.litmus)"
+    assert strict_findings(Enforcement(unplaced=(said,))) == (Finding("litmus", said),)
