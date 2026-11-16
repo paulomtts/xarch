@@ -15,14 +15,16 @@ from dataclasses import replace
 from xarch.kernel.placement import EVERYTHING, Repeat, Target
 from xarch.kernel.source import Import
 from xarch.modules.rules.domain.values import Profile, SourceFile
-from xarch.profile_values.language import CheckedLanguage
+from xarch.profile_values.language import CheckedLanguage, RecordMark
 from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns
 from xarch.profile_values.tiers import CheckedTier
 
 PYTHON = CheckedLanguage("Python", ".py", "__init__.py", (("typing", "Protocol"), ("typing_extensions", "Protocol")),
                       (("importlib", "import_module"), ("importlib", "__import__"), ("builtins", "__import__")),
                       "_", "__", "__call__", "None", "#", ("type: ignore", "noqa", "pragma:"), "#!",
-                      r"coding[:=][ \t]*[-\w.]+", ("if", "match", "try", "for", "while"))
+                      r"coding[:=][ \t]*[-\w.]+", ("if", "match", "try", "for", "while"),
+                      immutable=(RecordMark(("typing", "NamedTuple")),
+                                 RecordMark(("dataclasses", "dataclass"), (("frozen", "True"),))))
 """Python as its data file says it, for the checks that read the tokens of its code."""
 APP, TESTS = "app", "tests"
 MODULES = Repeat("module", ("modules",))

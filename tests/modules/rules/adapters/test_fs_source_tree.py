@@ -22,6 +22,7 @@ from xarch.modules.rules.domain.values import (
     Use,
 )
 from xarch.platform.filesystem import FileSystem
+from xarch.profile_values.language import RecordMark
 from xarch.profile_values.testing import CaseTable
 
 PYTEST = CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id", ("argnames", "argvalues"))
@@ -88,6 +89,34 @@ def test_a_class_lists_its_bases_as_paths_and_its_methods_with_their_return_anno
               (Method(5, "get", "str | None"), Method(6, "save", "None"), Method(7, "raw", None),
                Method(8, "later", "None")), ("size",), fields=("size",), types=("int",)),
         Class(10, "Typed", (("typing", "Protocol"), None), ()))
+
+
+MARKS = (RecordMark(("typing", "NamedTuple")), RecordMark(("dataclasses", "dataclass"), (("frozen", "True"),)))
+
+
+@pytest.mark.parametrize("text, immutable", [
+    pytest.param("from dataclasses import dataclass\n@dataclass(frozen=True, order=True)\nclass A:\n    x: int\n", True,
+                 id="a decorator a mark names, called with its keyword among others"),
+    pytest.param("import dataclasses\n@dataclasses.dataclass(frozen=True)\nclass A:\n    x: int\n", True,
+                 id="the decorator read through the import that binds it"),
+    pytest.param("from dataclasses import dataclass\n@dataclass\nclass A:\n    x: int\n", False,
+                 id="the decorator of a mark, called without its keyword"),
+    pytest.param("from dataclasses import dataclass\n@dataclass(frozen=False)\nclass A:\n    x: int\n", False,
+                 id="its keyword with another value"),
+    pytest.param("from typing import NamedTuple\nclass A(NamedTuple):\n    x: int\n", True, id="a base a mark names"),
+    pytest.param("from dataclasses import dataclass\nclass A(dataclass):\n    x: int\n", False,
+                 id="a base a mark names only with keywords"),
+    pytest.param("def dataclass(**k): ...\n@dataclass(frozen=True)\nclass A:\n    x: int\n", False,
+                 id="a decorator no import binds"),
+])
+def test_a_class_is_an_immutable_record_when_a_mark_names_one_of_its_bases_or_its_decorators(tmp_path, text, immutable):
+    (tmp_path / "a.py").write_text(text)
+    assert FsSourceTree(FileSystem()).read(tmp_path, [("a.py",)], immutable=MARKS)[0].classes[0].immutable is immutable
+
+
+def test_no_class_is_an_immutable_record_when_the_reader_is_given_no_mark(tmp_path):
+    text = "from typing import NamedTuple\nclass A(NamedTuple):\n    x: int\n"
+    assert parsed(tmp_path, text).classes[0].immutable is False
 
 
 def test_a_use_names_what_it_reaches_by_the_path_its_import_binds_and_how_many_steps_the_import_bound(tmp_path):

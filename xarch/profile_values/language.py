@@ -9,6 +9,14 @@ from xarch.kernel.placement import Marks
 
 
 @dataclass(frozen=True)
+class RecordMark:
+    """What makes a class an immutable record in the language: a dotted name among its bases or its decorators, and,
+    for a decorator, the keywords it is called with, each with its value as written (none: any call, or none)."""
+    path: tuple[str, ...]
+    keywords: tuple[tuple[str, str], ...] = ()
+
+
+@dataclass(frozen=True)
 class CheckedLanguage:
     """The language of the app as a check reads it: how a message names it, the ending of a source file's name, the
     file that stands for the folder holding it, the dotted names that mark a class as an interface, and those of what
@@ -16,10 +24,10 @@ class CheckedLanguage:
     a special name starts and ends with, the special method calling an instance runs, the return annotation of no
     value, the marker of a line comment, the comments its tools read (after the marker, a space standing for any
     spaces), how line 1 names the program that runs the file, how line 1 or 2 declares the encoding (a regular
-    expression, after the marker), and the keywords of the statements that branch. An empty token: the language has
-    none. supplies are the facts its reader supplies, each graded (None: its data file does not say); importing is how a
-    file imports a name from another file of the app, {dotted} standing for that file's dotted path and {name} for the
-    name (empty: its data file does not say)."""
+    expression, after the marker), and the keywords of the statements that branch; and what makes a class an
+    immutable record (immutable). An empty token: the language has none. supplies are the facts its reader supplies,
+    each graded (None: its data file does not say); importing is how a file imports a name from another file of the
+    app, {dotted} standing for that file's dotted path and {name} for the name (empty: its data file does not say)."""
     title: str = ""
     extension: str = ""
     package_file: str = ""
@@ -36,6 +44,7 @@ class CheckedLanguage:
     branching: tuple[str, ...] = ()
     supplies: tuple[Supply, ...] | None = None
     importing: str = ""
+    immutable: tuple[RecordMark, ...] = ()
 
     @property
     def marks(self) -> Marks:

@@ -83,8 +83,9 @@ class PartView:
     repeating folder; what it may import besides itself; its role, litmus test, how the docs name it (shown) and why no
     tier tests it; the names it may not use; what each of its files must import one of; what its files define
     (holds); the parts it may use as types only; whether it calls none of its own parameters; the patterns its public
-    classes match; the parts that alone may build its classes; and, for a part there to be shared, the fewest users
-    each of its public names must have."""
+    classes match; the parts that alone may build its classes; for a part there to be shared, the fewest users
+    each of its public names must have; and whether every class it defines, but an exception, is an immutable
+    record."""
     name: str
     pattern: tuple[str, ...]
     may_import: tuple[Target, ...]
@@ -100,6 +101,7 @@ class PartView:
     names: tuple[str, ...] = ()
     built_by: tuple[str, ...] = ()
     shared: int | None = None
+    immutable: bool = False
 
 
 @dataclass(frozen=True)

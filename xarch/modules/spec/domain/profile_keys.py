@@ -306,6 +306,13 @@ _KEYS: tuple[Key, ...] = (
        "same file names in its return annotation. A package file (`%package_file%`) is exempt. Each one is listed as "
        "`weak` in the enforcement section, and fails `check --strict` only", _in_part("holds: classes\n"),
        rules=("holds",)),
+    _k(PART, "immutable", "the classes of the part are immutable records",
+       "true: every class a file of the part defines at the top level, whatever its name, is an immutable record, as "
+       "the language's data file says one is made (its `immutable`: a base, or a decorator called with its keywords), "
+       "but for an exception class. A package file (`%package_file%`) is exempt. Each other one is listed as `weak` "
+       "in the enforcement section, and fails `check --strict` only. Written beside `holds: functions`, it keeps the "
+       "records a part of functions returns from being changed by the code they are handed to",
+       _in_part("holds: functions\nimmutable: true\n"), rules=("holds",)),
     _k(PART, "no_callbacks", "its code calls none of its own parameters",
        "true: no function, method or nested function of the part calls, by its bare name, a parameter of a function "
        "it lies in that is annotated as a callable type (alone, subscripted, in a union or as an optional), as in "
@@ -538,6 +545,7 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "parts.<part>.types_only": _TYPES_ONLY,
     "parts.<part>.holds": ("class", "class.methods", "class.exception", "function", "function.returns"),
     "parts.<part>.no_callbacks": ("callback",),
+    "parts.<part>.immutable": ("class", "class.exception", "class.immutable"),
     "parts.<part>.names": ("class",),
     "parts.<part>.built_by": ("class", "call"),
     "parts.<part>.shared": (*_IMPORTS, "import.mentioned", "use", "class", "class.named", "function", "function.named",

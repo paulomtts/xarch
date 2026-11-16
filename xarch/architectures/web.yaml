@@ -31,6 +31,7 @@ parts:
     may_import: [domain, kernel, kernel-logic]
     forbidden: pure
     holds: functions
+    immutable: true
     no_callbacks: true
     tier: unit
 
@@ -164,6 +165,7 @@ parts:
     may_import: [kernel]
     forbidden: pure
     holds: functions
+    immutable: true
     tier: unit
 
   kernel:

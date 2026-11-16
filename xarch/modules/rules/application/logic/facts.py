@@ -26,7 +26,7 @@ turns its language's imports and names into such paths, and a fact into the app 
                         root
     comment             each line comment, text as written
     class               each class defined at the top level, name its name, names those its bases and body mention;
-                        exception, record and interface when it is one (below)
+                        exception, record, interface and immutable when it is one (below)
     function            each function defined at the top level or in a class of the top level, name its name, path
                         its class and its name; top-level when it is in no class; forwards when it is a method the
                         reader says only forwards, text the callee it forwards to and target the attributes it
@@ -50,6 +50,7 @@ and the facts derived from them over the whole app:
                         named) that a top-level function of its file names in its return annotation
     interface           a class with one of the names the language's data file marks interfaces with among its bases,
                         the last of its name in its file
+    immutable           a class the reader says is an immutable record, by the marks of the language's data file
 """
 from __future__ import annotations
 
@@ -234,7 +235,7 @@ def _class(cls: Class, file: SourceFile, read: Read, profile: Profile, defined: 
     record = all(profile.language.is_special(m.name) for m in cls.methods) and any(
         cls.name in f.returns_named for f in file.functions if not f.owner)
     return frozenset(n for n, on in (("exception", exception), ("record", record),
-                                     ("interface", ports.get(cls.name) is cls)) if on)
+                                     ("interface", ports.get(cls.name) is cls), ("immutable", cls.immutable)) if on)
 
 
 def _function(function: Function) -> Fact:

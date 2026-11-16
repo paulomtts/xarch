@@ -1,5 +1,5 @@
-"""A profile file in format 2: the keys that say what code of a part holds and how it may be used (holds, types_only,
-no_callbacks, names, built_by), a name pattern on a target of may_import, what each test of a tier must reach, and the
+"""A profile file in format 2: the keys that say what code of a part holds and how it may be used (holds, immutable,
+types_only, no_callbacks, names, built_by), a name pattern on a target of may_import, what each test of a tier must reach, and the
 guards private-imports and dead-code's untested."""
 import pytest
 
@@ -33,6 +33,11 @@ def test_a_part_there_to_be_shared_says_by_how_many_users_and_is_not_shared_when
     assert parsed(layered()).parts["service"].shared is None
 
 
+def test_a_part_whose_classes_are_immutable_records_says_so_and_is_not_one_when_left_out():
+    assert parsed(with_part(holds="functions", immutable=True)).parts["service"].immutable is True
+    assert parsed(layered()).parts["service"].immutable is False
+
+
 def test_names_may_be_a_list_of_patterns():
     assert parsed(with_part(names=["*Service", "*Step"])).parts["service"].names == ("*Service", "*Step")
 
@@ -42,6 +47,8 @@ def test_names_may_be_a_list_of_patterns():
     pytest.param({"holds": True}, "parts.service.holds: must be classes or functions", id="holds, no word"),
     pytest.param({"no_callbacks": "yes"}, "parts.service.no_callbacks: must be true or false",
                  id="no_callbacks, no boolean"),
+    pytest.param({"immutable": "yes"}, "parts.service.immutable: must be true or false: whether every class the part "
+                                       "defines, but an exception, is an immutable record", id="immutable, no boolean"),
     pytest.param({"names": ""}, "parts.service.names: must be a class name pattern with `*` for any text, such as "
                                 "*Store, or a list of them", id="names, empty"),
     pytest.param({"names": "Bad Name"}, "parts.service.names: 'Bad Name' is not a class name pattern: use letters, "

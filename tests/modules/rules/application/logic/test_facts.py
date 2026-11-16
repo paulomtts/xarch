@@ -119,6 +119,12 @@ def test_a_class_carries_its_name_the_names_it_mentions_and_what_it_is():
         Fact("class", 9, ("Shown",), "Shown", frozenset({"record"})))
 
 
+def test_a_class_the_reader_says_is_an_immutable_record_carries_it():
+    classes = (Class(1, "Frozen", immutable=True), Class(2, "Loose"))
+    read = facts_of([source("modules/docs/domain/a.py", classes=classes)], [], PROFILE, "app").files[0]
+    assert [fact.traits for fact in read.facts["class"]] == [frozenset({"immutable"}), frozenset()]
+
+
 def test_a_function_says_whether_it_is_at_the_top_level_or_a_method_that_forwards():
     assert DOMAIN.facts["function"] == (
         Fact("function", 4, ("make",), "make", frozenset({"top-level"})),

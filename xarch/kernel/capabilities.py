@@ -33,6 +33,7 @@ FACTS: dict[str, str] = {
     "class.types": "the annotation of each field a class declares, as written",
     "class.exception": "whether a class derives from one of the language's builtin exceptions",
     "class.named": "every name a class's bases and body mention",
+    "class.immutable": "whether a class is an immutable record, by the marks of the language's data file",
     "function": "the functions a file defines, at the top level and in its classes: name, owner, line",
     "function.statements": "how many statements a function's body holds, and how many of them do nothing",
     "function.shape": "a fingerprint of a function's code, the same for two functions that do the same",

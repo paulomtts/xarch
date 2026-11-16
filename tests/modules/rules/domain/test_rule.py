@@ -190,7 +190,7 @@ REACHED = {"quantifier": MUST_BE_REACHED, "targets": EXISTING, "facts": ("class"
                  ["keep: no filter is named 'sunny': write one of test, tiered, placed, package-file, mirrors-a-part, "
                   "may-import-everything, below, relative, standard, reserved, "
                   "listed-by-another-part, app-package, own-code, takes-a-name, on-own-object, public, special, named, top-level, "
-                  "forwards, returns-an-attribute, exception, record, interface, receiver, annotated-callable, "
+                  "forwards, returns-an-attribute, exception, record, interface, immutable, receiver, annotated-callable, "
                   "directive, no-statements, exceptions-only, reported-at-import, names-restricted, of-kind, target-placed, "
                   "target-inside-part, target-in-own-part, target-in-own-tier, target-test, target-below, "
                   "target-allows-under",

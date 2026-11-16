@@ -24,6 +24,8 @@ and, all optional, the tokens of its code the checks and the docs need (empty: t
     shebang        how line 1 names the program that runs the file
     encoding       a regular expression: how line 1 or 2 declares the file's encoding, after the marker
     branching      the keywords of the statements that branch
+    immutable      what makes a class an immutable record: each a dotted name among its bases or its decorators, a
+                   decorator's written with the keywords it must be called with, `name(key=value, ...)`
     importing      how a file imports a name from another file of the app: {dotted} stands for that file's dotted
                    path, {name} for the name
 
@@ -43,13 +45,13 @@ from typing import Any
 from xarch.kernel.capabilities import EXACT, FACTS, Supply
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import Language
-from xarch.profile_values.language import CheckedLanguage
+from xarch.profile_values.language import CheckedLanguage, RecordMark
 
 FOLDER = "presets/language"
 """Where the data files of the languages are, below the bundled folder: one YAML file each, named for the language."""
 KEYS = ("title", "extension", "package_file", "interface", "dynamic", "namespace", "cache", "standard", "name", "private",
         "special", "call", "nothing", "comment", "directives", "shebang", "encoding", "branching", "importing",
-        "supplies")
+        "supplies", "immutable")
 REQUIRED = ("title", "extension", "package_file", "namespace", "standard")
 _EXTENSION = re.compile(r"\.[A-Za-z0-9]+")
 _DOTTED = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*")
@@ -58,6 +60,8 @@ PARTIAL = "partial"
 """How the data file grades a fact its reader supplies only partly, with what it misses."""
 _FOLDER = re.compile(r"[A-Za-z0-9_.-]+")
 _IMPORTING = re.compile(r"(?=[^\n]*\{dotted\})(?=[^\n]*\{name\})[^\n]+")
+_MARK = re.compile(r"(?P<path>[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)"
+                   r"(?:\((?P<keywords>[A-Za-z_][A-Za-z0-9_]*=[^,()=]+(?:,\s*[A-Za-z_][A-Za-z0-9_]*=[^,()=]+)*)\))?")
 
 
 def language_of(name: str, document: Any) -> Language:
@@ -89,11 +93,12 @@ def language_of(name: str, document: Any) -> Language:
     branching = _words(document, "branching", problems)
     importing = _text(document, "importing", "must be a line holding {dotted} and {name}", problems, _IMPORTING)
     supplies = _supplies(document["supplies"], problems) if "supplies" in document else None
+    immutable = _marks(document, "immutable", problems)
     if problems:
         raise InvalidArchitecture(source, problems)
     checked = CheckedLanguage(title, extension, package_file, interface, dynamic, tokens["private"], tokens["special"],
                               tokens["call"], tokens["nothing"], tokens["comment"], directives, tokens["shebang"],
-                              encoding, branching, supplies, importing)
+                              encoding, branching, supplies, importing, immutable)
     return Language(name, checked, namespace, standard, cache, names)
 
 
@@ -141,6 +146,28 @@ def _dotted(document: Mapping[Any, Any], key: str, problems: list[str]) -> tuple
             problems.append(f"{key}: {item!r} is not a dotted name such as pkg.name")
         else:
             found.append(tuple(item.split(".")))
+    return tuple(found)
+
+
+def _marks(document: Mapping[Any, Any], key: str, problems: list[str]) -> tuple[RecordMark, ...]:
+    if key not in document:
+        return ()
+    value = document[key]
+    if not isinstance(value, list):
+        problems.append(f"{key}: must be a list of dotted names, each perhaps called with keywords, such as "
+                        "[pkg.Record, \"pkg.record(frozen=yes)\"]")
+        return ()
+    found: list[RecordMark] = []
+    for item in value:
+        matched = _MARK.fullmatch(item) if isinstance(item, str) else None
+        if matched is None:
+            problems.append(f"{key}: {item!r} is not a dotted name such as pkg.Record, or one called with keywords "
+                            "such as pkg.record(frozen=yes)")
+            continue
+        written = matched["keywords"] or ""
+        keywords = tuple((name.strip(), text.strip()) for pair in written.split(",") if pair
+                         for name, _, text in [pair.partition("=")])
+        found.append(RecordMark(tuple(matched["path"].split(".")), keywords))
     return tuple(found)
 
 

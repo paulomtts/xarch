@@ -21,6 +21,7 @@ parts:
     may_import: [domain, kernel, kernel-logic, profile-values]
     forbidden: pure
     holds: functions
+    immutable: true
     tier: unit
 
   ports:
@@ -87,6 +88,7 @@ parts:
     may_import: [contract@any, kernel, kernel-logic]
     forbidden: pure
     holds: functions
+    immutable: true
     tier: unit
 
   main:
@@ -136,6 +138,7 @@ parts:
     shared: 2
     forbidden: pure
     holds: functions
+    immutable: true
     tier: unit
 
   kernel:

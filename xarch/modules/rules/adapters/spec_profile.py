@@ -76,6 +76,7 @@ class SpecProfiles:
                        no_twins_renamed=guards.no_twins_renamed, no_twins_subset=guards.no_twins_subset,
                        dead_code=guards.dead_code, untested=guards.untested,
                        pass_through=guards.pass_through, holds={p.name: p.holds for p in parts if p.holds},
+                       immutable=tuple(p.name for p in parts if p.immutable),
                        types_only={p.name: p.types_only for p in parts if p.types_only},
                        no_callbacks=tuple(p.name for p in parts if p.no_callbacks),
                        names={p.name: p.names for p in parts if p.names},

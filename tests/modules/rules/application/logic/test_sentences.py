@@ -58,7 +58,7 @@ SERVICES = replace(RULE, scope=Scope(part="services"))
                  ["a part that holds functions: logic/"], id="parts_holding_functions"),
     pytest.param("parts_holding_classes", DOMAIN, "file", RULE, PROFILE, ["a part that holds classes"],
                  id="parts_holding_classes"),
-    pytest.param("name", DOMAIN, "class", RULE, PROFILE, ["Doc", "DocError", "Shown"], id="name"),
+    pytest.param("name", DOMAIN, "class", RULE, PROFILE, ["Doc", "DocError", "Shown", "Frozen", "Loose", "Pair"], id="name"),
     pytest.param("qualified_name", DOMAIN, "function", RULE, PROFILE, ["make", "Doc.get", "Doc.put"],
                  id="qualified_name"),
     pytest.param("path", DOMAIN, "use", RULE, PROFILE, ["datetime.datetime.now", "yaml.load"], id="path"),

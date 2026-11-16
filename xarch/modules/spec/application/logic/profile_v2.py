@@ -756,8 +756,8 @@ def _dead_code(spec: Any, fakes: Fakes | None, where: str, problems: list[str],
 
 def _substance(spec: Any, part: Part, declared: set[str], may_import: tuple[Target, ...],
                problems: list[str]) -> Part:
-    """The keys of a part that say what its code holds and how it is used: holds, types_only, no_callbacks, names,
-    built_by and shared."""
+    """The keys of a part that say what its code holds and how it is used: holds, immutable, types_only, no_callbacks,
+    names, built_by and shared."""
     where = f"parts.{part.name}"
     if not isinstance(spec, Mapping):
         return part
@@ -769,6 +769,11 @@ def _substance(spec: Any, part: Part, declared: set[str], may_import: tuple[Targ
     if not isinstance(no_callbacks, bool):
         problems.append(f"{where}.no_callbacks: must be true or false")
         no_callbacks = False
+    immutable = spec.get("immutable", False)
+    if not isinstance(immutable, bool):
+        problems.append(f"{where}.immutable: must be true or false: whether every class the part defines, but an "
+                        "exception, is an immutable record")
+        immutable = False
     names = _class_patterns(spec["names"], f"{where}.names", problems) if "names" in spec else ()
     built_by = tuple(ck.part_names(spec["built_by"], declared, f"{where}.built_by", problems)) \
         if "built_by" in spec else ()
@@ -784,7 +789,7 @@ def _substance(spec: Any, part: Part, declared: set[str], may_import: tuple[Targ
                         "part that is not there to be shared")
         shared = None
     return replace(part, holds=holds, no_callbacks=no_callbacks, names=names, built_by=built_by, types_only=types_only,
-                   shared=shared)
+                   shared=shared, immutable=immutable)
 
 
 def _class_patterns(value: Any, where: str, problems: list[str]) -> tuple[str, ...]:

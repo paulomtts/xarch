@@ -55,6 +55,7 @@ SHAPE = (
     Shown('parts.must_import', 1, 'what each file of the part has to reach', False, True),
     Shown('parts.types_only', 1, 'the parts its files may use only as types', False, True),
     Shown('parts.holds', 1, 'what the files of the part define at the top level', False, True),
+    Shown('parts.immutable', 1, 'the classes of the part are immutable records', False, True),
     Shown('parts.no_callbacks', 1, 'its code calls none of its own parameters', False, True),
     Shown('parts.names', 1, 'how the classes of the part are named', False, True),
     Shown('parts.built_by', 1, 'the only parts that may build its classes', False, True),

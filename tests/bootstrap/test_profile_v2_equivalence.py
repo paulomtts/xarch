@@ -63,7 +63,7 @@ def both(name: str, tmp_path: Path) -> tuple[Architecture, Architecture]:
 def comparable(architecture: Architecture) -> Architecture:
     """Without what differs by design: where the example files sit (the shipped profiles keep two folders of examples, a
     migration one), the tiers' examples and subjects' order, the order of the parts, what the profile is based on, and
-    what format 1 never had: each part's `must_import`, `holds`, `types_only`, `no_callbacks`, `names` and `built_by`,
+    what format 1 never had: each part's `must_import`, `holds`, `immutable`, `types_only`, `no_callbacks`, `names` and `built_by`,
     a tier's `must_import`, a name pattern on a target, the names that read the working directory and the opaque
     types in a `forbidden` list (and a list of nothing else), the names `reserved` holds and the parts' libraries that list them, and the
     guards no-duplicates, no-twins, dead-code, pass-through and private-imports; whether the tiers HELD of xarch's own
@@ -78,7 +78,7 @@ def comparable(architecture: Architecture) -> Architecture:
                           must_import=(), forbidden=False if tier.name in held else tier.forbidden)
                   for tier in architecture.tiers)
     parts = {name: replace(part, must_import=(), holds="", types_only=(), no_callbacks=False, names=(), built_by=(),
-                           shared=None)
+                           shared=None, immutable=False)
              for name, part in architecture.parts.items()}
     guards = tuple(g for g in architecture.guards
                    if not isinstance(g, (NoDuplicates, NoTwins, DeadCode, PassThrough, PrivateImports)))

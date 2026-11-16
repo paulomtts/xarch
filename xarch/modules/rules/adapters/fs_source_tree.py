@@ -55,6 +55,10 @@ A call whose callee is an attribute of an expression, `<expr>.<name>(...)`, and 
 the attribute's name, marked held when the expression is the first parameter of the method the call lies in (not a
 staticmethod's; also inside a function nested in that method) or a chain of attributes on it.
 
+A class is an immutable record when a mark it is given (the language's data file's `immutable`) names one of its bases,
+or one of its decorators, by the dotted path its name reaches (read as a call's callee is), called with each keyword
+the mark is written with, its value as written (`ast.unparse`); a mark written with keywords names no base.
+
 A class lists its fields: the names a statement of its own body annotates (`x: int`, `y: str = ""`), in order, but one
 annotated `ClassVar` (alone or subscripted, by its bare name or as an attribute, or as a string annotation); and the
 type of each, its annotation as written (`ast.unparse`, a string annotation by its text).
@@ -102,6 +106,7 @@ from xarch.modules.rules.domain.values import (
     Use,
 )
 from xarch.platform.filesystem import FileSystem
+from xarch.profile_values.language import RecordMark
 from xarch.profile_values.testing import CaseTable
 
 
@@ -115,9 +120,10 @@ class FsSourceTree:
     def paths(self, root: Path, extension: str) -> list[tuple[str, ...]]:
         return [f.relative_to(root).parts for f in self._fs.files(root, f"*{extension}")]
 
-    def read(self, root: Path, paths: list[tuple[str, ...]], table: CaseTable | None = None) -> list[SourceFile]:
+    def read(self, root: Path, paths: list[tuple[str, ...]], table: CaseTable | None = None,
+             immutable: tuple[RecordMark, ...] = ()) -> list[SourceFile]:
         return [_parsed(root.joinpath(*path).relative_to(root.parent).as_posix(), path,
-                        self._fs.read_text(root.joinpath(*path)), table) for path in paths]
+                        self._fs.read_text(root.joinpath(*path)), table, immutable) for path in paths]
 
     def existing(self, paths: Iterable[Path]) -> frozenset[Path]:
         return frozenset(path for path in paths if self._fs.exists(path))
@@ -132,7 +138,8 @@ class FsSourceTree:
         return self._fs.real(folder / path)
 
 
-def _parsed(name: str, path: tuple[str, ...], text: str, form: CaseTable | None) -> SourceFile:
+def _parsed(name: str, path: tuple[str, ...], text: str, form: CaseTable | None,
+            marks: tuple[RecordMark, ...] = ()) -> SourceFile:
     try:
         tree = ast.parse(text)
         comments = _comments(text)
@@ -143,7 +150,7 @@ def _parsed(name: str, path: tuple[str, ...], text: str, form: CaseTable | None)
     calls = _Calls(_BUILTINS if not _star_import(tree) else frozenset())
     calls.visit(tree)
     return SourceFile(name, path, tuple(_imports(tree)), comments, _functions(tree, form),
-                      tuple(_unions(tree)), calls=tuple(calls.found), classes=tuple(_classes(tree)),
+                      tuple(_unions(tree)), calls=tuple(calls.found), classes=tuple(_classes(tree, marks)),
                       uses=tuple(calls.uses), parameter_calls=tuple(calls.parameter_calls),
                       module_functions=_module_functions(tree), named=_named(tree), callbacks=tuple(calls.callbacks),
                       method_calls=tuple(calls.method_calls), constants=tuple(_constants(tree)),
@@ -763,7 +770,7 @@ class _Calls(ast.NodeVisitor):
             self.uses.append(Use(node.lineno, name, bound))
 
 
-def _classes(tree: ast.Module) -> list[Class]:
+def _classes(tree: ast.Module, marks: tuple[RecordMark, ...] = ()) -> list[Class]:
     scope = [_scope(tree)]
     builtin = frozenset() if _star_import(tree) else _EXCEPTIONS - set(scope[0])
     exceptions: set[str] = set()
@@ -779,8 +786,20 @@ def _classes(tree: ast.Module) -> list[Class]:
             declared = _declared(node)
             found.append(Class(node.lineno, node.name, bases, methods, _attributes(node), _named(node) - {node.name},
                                exception, tuple(child.target.id for child in declared),
-                               tuple(_annotation(child.annotation) or "" for child in declared)))
+                               tuple(_annotation(child.annotation) or "" for child in declared),
+                               _immutable(node, bases, scope, marks)))
     return found
+
+
+def _immutable(node: ast.ClassDef, bases: tuple[Ref, ...], scope: list[Scope], marks: tuple[RecordMark, ...]) -> bool:
+    """Whether a mark names one of the class's bases, or one of its decorators called with each keyword of the mark."""
+    for decorator in node.decorator_list:
+        called = isinstance(decorator, ast.Call)
+        path = _ref(decorator.func if called else decorator, scope)
+        given = {(k.arg, ast.unparse(k.value)) for k in decorator.keywords if k.arg} if called else set()
+        if any(mark.path == path and set(mark.keywords) <= given for mark in marks):
+            return True
+    return any(mark.path in bases and not mark.keywords for mark in marks)
 
 
 def _declared(node: ast.ClassDef) -> list[ast.AnnAssign]:

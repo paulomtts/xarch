@@ -72,9 +72,11 @@ class SourceCheckService:
         rules = self._profiles.profile(profile)
         extension = rules.language.extension
         paths = [p for p in self._tree.paths(root, extension) if not governed.excluded(rules, p)]
-        app = self._tree.read(root, [p for p in paths if governed.governed(rules, p)])
+        marks = rules.language.immutable
+        app = self._tree.read(root, [p for p in paths if governed.governed(rules, p)], immutable=marks)
         table = rules.scenarios.table if rules.scenarios is not None else None
-        test_files = self._tree.read(tests, self._tree.paths(tests, extension), table) if tests is not None else []
+        test_files = self._tree.read(tests, self._tree.paths(tests, extension), table, marks) \
+            if tests is not None else []
         tests_root = tests.name if tests is not None else None
         shown = root.name
         unread = [SourceFile("/".join((shown, *p)), p, ()) for p in paths if not governed.governed(rules, p)]

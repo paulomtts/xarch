@@ -82,3 +82,33 @@ def test_a_package_file_and_another_part_are_not_read():
 
 def test_it_is_off_without_the_key():
     assert listed(source(DOMAIN, functions=(Function(3, "clean"),)), checked=profile()) == []
+
+
+IMMUTABLE = profile(holds={"logic": "functions"}, immutable=("logic",))
+
+
+def test_a_record_of_a_part_whose_classes_are_immutable_that_is_not_one_is_listed_with_what_to_do():
+    file = source(LOGIC, classes=(Class(3, "Found"),),
+                  functions=(Function(8, "find", returns_named=frozenset({"Found"})),))
+    assert weak([file], IMMUTABLE, "app") == [Weak(
+        "holds", f"app/{LOGIC}", 3, "Found is a class that is no immutable record, but every class of logic/ of "
+                                    "modules/docs is one (parts.logic.immutable)",
+        "make Found an immutable record (the Python data file's `immutable` says how), or move it to a part that "
+        "holds classes")]
+
+
+@pytest.mark.parametrize("cls", [
+    pytest.param(Class(3, "_Found", immutable=True), id="an immutable record"),
+    pytest.param(Class(3, "_Refused", exception=True), id="an exception"),
+])
+def test_an_immutable_record_or_an_exception_is_not_listed(cls):
+    file = source(LOGIC, classes=(cls,), functions=(Function(8, "_find", returns_named=frozenset({cls.name})),))
+    assert listed(file, checked=IMMUTABLE) == []
+
+
+def test_a_package_file_and_a_part_that_does_not_ask_for_immutable_classes_are_not_read():
+    loose = Class(3, "_Found")
+    returned = Function(8, "_find", returns_named=frozenset({"_Found"}))
+    package = source("modules/docs/application/logic/__init__.py", classes=(loose,), functions=(returned,))
+    assert listed(package, checked=IMMUTABLE) == []
+    assert listed(source(LOGIC, classes=(loose,), functions=(returned,)), checked=profile(holds={"logic": "functions"})) == []

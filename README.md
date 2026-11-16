@@ -73,7 +73,7 @@ everything else is optional, and a key left out means off):
 xarch: 2*  name*  based_on  language  hints  excluded  reserved
 testing:  <preset> | {files*, functions*, skips, table, mocks}
 parts*:   {<part>: {path*, role*, litmus, may_import, must_import, libraries, forbidden, tier | untested,
-                    package_only, folders, holds, types_only, no_callbacks, names, built_by, shared}}
+                    package_only, folders, holds, immutable, types_only, no_callbacks, names, built_by, shared}}
 forbidden: {<list>: [<dotted name> | .<method>(), ...]}       layers: {<chain>: [<part>, ...]}
 tiers:    {<tier>: {proves, litmus, apply_forbidden, types_only, folder, may_import, must_import, docs}}
 fakes:    {folder*, for*, prefix}
@@ -91,7 +91,9 @@ that stands for a folder, what marks an interface, the namespace of the builtins
 computed name, the folder of compiled files, and where the standard library's names are known from (`interpreter`);
 and the tokens of its code the checks and the docs need: what a name may be, how a private name starts, what a special
 name starts and ends with, the special method calling an instance runs, the annotation of no value, the comment marker
-and the comments its tools read, the shebang, the encoding declaration, and the keywords that branch.
+and the comments its tools read, the shebang, the encoding declaration, the keywords that branch, and what makes a class
+an immutable record (`immutable`: a base, or a decorator called with its keywords, such as
+`dataclasses.dataclass(frozen=True)`).
 The rest of what a check knows of the language is one adapter, the reader that turns source into facts
 (`modules/rules/adapters/fs_source_tree.py`), and the platform; spec reads the docs' examples through that reader too.
 `tests/architecture/test_language_seam.py` fails when any other file of xarch names the language or writes one of
@@ -235,7 +237,7 @@ that switches or configures each (`-` for none: the rule is always on):
 | `no-twins` | two public classes in parts of different names that declare the same fields in the same order: one type written twice; with `min_renamed`, also a copy that renamed a field, and with `min_subset`, one that kept at least half of the other's fields in its order | `guards.no-twins` |
 | `dead-code` | a port no other file names, a fake no test uses; with `untested`, a file no test of its tier reaches, listed as `weak` only | `guards.dead-code`, `fakes` |
 | `pass-through` | a method that only forwards its arguments to a collaborator, or returns an attribute of what that call answers; never a violation: listed as `weak`, and fails only `--strict` | `guards.pass-through` |
-| `holds` | a public function at the top level of a part that holds classes, or a class (whatever its name) in one that holds functions; listed as `weak`, and fails only `--strict` | `parts.holds` |
+| `holds` | a public function at the top level of a part that holds classes, or a class (whatever its name) in one that holds functions; with `immutable`, a class of the part that is no immutable record as the language's data file says one is made, an exception aside; listed as `weak`, and fails only `--strict` | `parts.holds`, `parts.immutable` |
 | `no-callbacks` | a function of a part that calls one of its own parameters annotated as a callable | `parts.no_callbacks` |
 | `names` | a public class of a part whose name matches none of the part's patterns | `parts.names` |
 | `built-by` | a call of the constructor of a part's class from a part it does not list | `parts.built_by` |

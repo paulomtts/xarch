@@ -65,6 +65,8 @@ from xarch.modules.rules.domain.vocabulary import FILTERS
     pytest.param("exception", DOMAIN, "class", [7], PROFILE, None, id="exception"),
     pytest.param("record", DOMAIN, "class", [8], PROFILE, None, id="record"),
     pytest.param("interface", PORTS, "class", [2], PROFILE, None, id="interface"),
+    pytest.param("immutable", DOMAIN, "class", [9, 9], PROFILE, None,
+                 id="immutable: a class the reader says is an immutable record"),
     pytest.param("receiver", DOMAIN, "callback", [16], PROFILE, None, id="receiver"),
     pytest.param("annotated-callable", DOMAIN, "callback", [15], PROFILE, None, id="annotated-callable"),
     pytest.param("directive", DOMAIN, "comment", [13], PROFILE, None, id="directive"),

@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Protocol
 
 from xarch.modules.rules.domain.values import SourceFile
+from xarch.profile_values.language import RecordMark
 from xarch.profile_values.testing import CaseTable
 
 
@@ -19,9 +20,11 @@ class SourceTree(Protocol):
         """The path below root of every source file, a file whose name ends in extension, sorted."""
         ...
 
-    def read(self, root: Path, paths: list[tuple[str, ...]], table: CaseTable | None = None) -> list[SourceFile]:
+    def read(self, root: Path, paths: list[tuple[str, ...]], table: CaseTable | None = None,
+             immutable: tuple[RecordMark, ...] = ()) -> list[SourceFile]:
         """The files at paths below root, parsed; one that does not parse holds its error. A function holds the
-        tables written in the form `table` names; with none, no table is recognised."""
+        tables written in the form `table` names; with none, no table is recognised. A class is an immutable record
+        when one of the marks `immutable` holds marks it so."""
         ...
 
     def existing(self, paths: Iterable[Path]) -> frozenset[Path]:

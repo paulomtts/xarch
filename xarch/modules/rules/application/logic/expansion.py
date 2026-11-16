@@ -253,6 +253,18 @@ def holds(profile: Profile) -> tuple[Rule, ...]:
     return tuple(found)
 
 
+def immutable(profile: Profile) -> tuple[Rule, ...]:
+    """Every class a file of a part that lists `immutable` defines at the top level is an immutable record, as the
+    language's data file says one is made, but an exception; listed without failing. A package file only gathers what
+    its package holds and is not read."""
+    return tuple(Rule("holds", Scope(APP, part, where=_all("not package-file")), ("class",), MAY_NOT, EXISTING,
+                      (Saying("{name} is a class that is no immutable record, but every class of {where} is one ({key})",
+                              "make {name} an immutable record (the {language} data file's `immutable` says how), or "
+                              "move it to {parts_holding_classes}"),),
+                      exempt=_all("exception", "immutable"), mode=LIST, key=f"parts.{part}.immutable")
+                 for part in profile.immutable)
+
+
 def must_import(profile: Profile) -> tuple[Rule, ...]:
     """Each file of a part that lists `must_import` imports one of the targets or an outside package, itself or
     through the files of its own part and instance it imports, however far; a package file and a file with no real
@@ -338,6 +350,7 @@ def book(profile: Profile) -> dict[str, tuple[Rule, ...]]:
             "package-only": package_only(profile), "types-only parts": types_only_parts(profile),
             "no-callbacks": no_callbacks(profile), "names": names(profile), "built-by": built_by(profile),
             "private-imports": private_imports(profile), "no-comments": no_comments(profile),
-            "closed-tree": closed_tree(profile), "holds": holds(profile), "must-import": must_import(profile),
+            "closed-tree": closed_tree(profile), "holds": (*holds(profile), *immutable(profile)),
+            "must-import": must_import(profile),
             "must-import tiers": must_import_tiers(profile), "dead-code": dead_code(profile),
             "untested": untested(profile), "pass-through": pass_through(profile)}

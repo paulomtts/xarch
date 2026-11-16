@@ -42,6 +42,8 @@ class Part:
     holds: what its files define at module level, "classes" or "functions"; empty: either
     types_only: the parts its files may import and use as types, but never call
     no_callbacks: no function of it calls one of its own parameters
+    immutable: every class it defines at the top level, but an exception, is an immutable record, as the language's
+        data file says one is made
     names: the patterns one of which every public class of it matches (`*` for any text); empty: any name
     built_by: the only parts whose code may call the constructor of a class of it; empty: any part
     shared: the fewest users each public name it defines must have, being there to be shared; None: not shared
@@ -59,6 +61,7 @@ class Part:
     names: tuple[str, ...] = ()
     built_by: tuple[str, ...] = ()
     shared: int | None = None
+    immutable: bool = False
 
     @property
     def in_instance(self) -> bool:

@@ -5,7 +5,7 @@ from xarch.kernel.capabilities import EXACT, Supply
 from xarch.modules.spec.application.logic.language_file import PARTIAL, language_of
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import Language
-from xarch.profile_values.language import CheckedLanguage
+from xarch.profile_values.language import CheckedLanguage, RecordMark
 
 DOCUMENT = {"title": "Pascal", "extension": ".pas", "package_file": "unit.pas", "interface": ["sys.Contract"],
             "dynamic": ["sys.load", "sys.Contract.load"], "namespace": "system", "cache": ".objs",
@@ -31,7 +31,7 @@ def test_every_problem_of_a_document_is_listed_naming_the_preset():
     assert caught.value.source == "presets/language/odd.yaml"
     assert [problem.removeprefix("presets/language/odd.yaml: ") for problem in caught.value.problems] == [
         "unknown key 'extra': use branching, cache, call, comment, directives, dynamic, encoding, extension, "
-        "importing, interface, name, namespace, nothing, package_file, private, shebang, special, standard, supplies, "
+        "immutable, importing, interface, name, namespace, nothing, package_file, private, shebang, special, standard, supplies, "
         "title",
         "missing `namespace`", "missing `standard`",
         "title: must be a non-empty string",
@@ -65,6 +65,10 @@ def test_the_tokens_of_the_code_are_read_when_the_document_gives_them():
     pytest.param({"directives": "noqa"}, "directives: must be a list of non-empty strings", id="directives not a list"),
     pytest.param({"branching": ["if", ""]}, "branching: must be a list of non-empty strings", id="an empty keyword"),
     pytest.param({"comment": ""}, "comment: must be a non-empty string", id="an empty comment marker"),
+    pytest.param({"immutable": "pkg.Record"}, "immutable: must be a list of dotted names",
+                 id="marks of an immutable record not a list"),
+    pytest.param({"immutable": ["pkg.record(frozen)"]}, "immutable: 'pkg.record(frozen)' is not a dotted name",
+                 id="a keyword with no value"),
     pytest.param({"importing": "import {dotted}"}, "importing: must be a line holding {dotted} and {name}",
                  id="an import that names no name"),
     pytest.param({"importing": "from {dotted}\nimport {name}"}, "importing: must be a line holding {dotted} and {name}",
@@ -76,6 +80,13 @@ def test_a_token_that_is_not_what_its_key_takes_is_a_problem(given, problem):
     assert [p.removeprefix("presets/language/odd.yaml: ").split(":")[0] for p in caught.value.problems] == [
         problem.split(":")[0]]
     assert caught.value.problems[0].removeprefix("presets/language/odd.yaml: ").startswith(problem)
+
+
+def test_what_makes_a_class_an_immutable_record_is_read_as_a_dotted_name_and_the_keywords_a_decorator_is_called_with():
+    marks = ["pkg.Record", "pkg.record(frozen=yes, slots=no)"]
+    assert language_of("pascal", DOCUMENT | {"immutable": marks}).checked.immutable == (
+        RecordMark(("pkg", "Record")), RecordMark(("pkg", "record"), (("frozen", "yes"), ("slots", "no"))))
+    assert language_of("pascal", DOCUMENT).checked.immutable == ()
 
 
 def test_how_a_file_imports_a_name_is_read_when_the_document_gives_it():

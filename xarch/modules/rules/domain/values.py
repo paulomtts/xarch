@@ -48,7 +48,8 @@ class Profile:
     of part of another's fields needs (None: that case is off; see twins); dead_code switches the unused ports and fakes
     check on; pass_through lists the parts whose methods that only forward are listed (empty: off). untested lists,
     with dead_code, the files of a tiered part no test of its tier reaches. holds says, by part, what its files define
-    ("classes" or "functions"); types_only, by part, the parts it may use as types only; no_callbacks the parts whose
+    ("classes" or "functions"); immutable the parts every class of which, but an exception, is an immutable record;
+    types_only, by part, the parts it may use as types only; no_callbacks the parts whose
     code calls none of its own parameters; names, by part, the patterns its public classes match one of; built_by, by
     part, the parts that alone may build its classes; shared, by part, the fewest users each public name of a part
     declared shared must have (see shared); private_imports switches the private-imports guard on. hints
@@ -83,6 +84,7 @@ class Profile:
     pass_through: tuple[str, ...] = ()
     untested: bool = False
     holds: dict[str, str] = field(default_factory=dict)
+    immutable: tuple[str, ...] = ()
     types_only: dict[str, tuple[str, ...]] = field(default_factory=dict)
     no_callbacks: tuple[str, ...] = ()
     names: dict[str, tuple[str, ...]] = field(default_factory=dict)
@@ -201,7 +203,8 @@ class Class:
     builtin exceptions, named by its bare name, directly or through a class defined before it in the same file;
     fields: the names a statement of its body itself declares with an annotation (`x: int`, with a default or not), in
     order, those annotated as a class variable left out; types: the annotation of each of its fields, in the same order,
-    as written (a string annotation by its text)."""
+    as written (a string annotation by its text); immutable: it is an immutable record, as the reader was told one is
+    marked (see RecordMark)."""
     line: int
     name: str
     bases: tuple[Ref, ...] = ()
@@ -211,6 +214,7 @@ class Class:
     exception: bool = False
     fields: tuple[str, ...] = ()
     types: tuple[str, ...] = ()
+    immutable: bool = False
 
 
 @dataclass(frozen=True)

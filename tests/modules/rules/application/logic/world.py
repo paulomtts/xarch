@@ -2,7 +2,8 @@
 and variable can name a fact by its file and line: PROFILE's app (package `app`) and its tests (package `tests`).
 
     app/modules/docs/domain/doc.py            domain: imports (yaml, the kernel, a relative one, json, a private
-                                              name), classes (Doc, DocError an exception, Shown a record), a
+                                              name), classes (Doc, DocError an exception, Shown a record, Frozen
+                                              and Pair immutable records, Loose a record that is not), a
                                               top-level function and a method that forwards, comments, callbacks,
                                               uses and method calls
     app/modules/docs/application/ports/repo.py ports: Repo, an interface
@@ -52,7 +53,9 @@ APP = [
     source("modules/docs/domain/doc.py", imp(1, "yaml"), imp(2, "app.kernel", "ids"), imp(3, "", "values", up=0),
            imp(4, "json", "loads"), imp(5, "app.kernel.ids", "_secret", "__all__"),
            classes=(Class(6, "Doc", named=frozenset({"Repo"})), Class(7, "DocError", exception=True),
-                    Class(8, "Shown", methods=(Method(8, "__repr__", "str"),))),
+                    Class(8, "Shown", methods=(Method(8, "__repr__", "str"),)),
+                    Class(9, "Frozen", immutable=True), Class(9, "Loose"),
+                    Class(9, "Pair", bases=(("typing", "NamedTuple"),), immutable=True)),
            functions=(Function(10, "make", returns_named=frozenset({"Shown"}), statements=1),
                       Function(11, "get", owner="Doc", forwards="self.repo.get",
                                sole_call=SoleCall(("self", "repo", "get"), then=("name",))),
