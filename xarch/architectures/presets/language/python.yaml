@@ -37,6 +37,7 @@ supplies:
   import: exact
   import.relative: exact
   import.standard: exact
+  import.mentioned: exact
   comment: exact
   use: exact
   call: exact
@@ -47,6 +48,7 @@ supplies:
   class.methods: exact
   class.attributes: exact
   class.fields: exact
+  class.types: exact
   class.exception: exact
   class.named: exact
   function: exact
@@ -60,7 +62,9 @@ supplies:
   function.blocks: exact
   function.asserts: exact
   function.mentions: exact
+  function.named: exact
   function.tables: exact
   union: exact
   module_functions: exact
+  constant: exact
   named: exact

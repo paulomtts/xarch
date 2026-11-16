@@ -53,7 +53,18 @@ the attribute's name, marked held when the expression is the first parameter of 
 staticmethod's; also inside a function nested in that method) or a chain of attributes on it.
 
 A class lists its fields: the names a statement of its own body annotates (`x: int`, `y: str = ""`), in order, but one
-annotated `ClassVar` (alone or subscripted, by its bare name or as an attribute, or as a string annotation).
+annotated `ClassVar` (alone or subscripted, by its bare name or as an attribute, or as a string annotation); and the
+type of each, its annotation as written (`ast.unparse`, a string annotation by its text).
+
+A file lists the names it binds at the top level by an assignment (`X = ...`, `X: T = ...`, each name of `X, Y = ...`,
+`type X = ...`), in a branch of the top level too, but not in a function or class; each with the names its statement
+mentions (as a function's names below). A function lists every name its definition mentions, by its last step: names
+and attributes in its decorators, its signature and its body, and the names inside a string that is an annotation;
+another string's text is no mention.
+
+A file also lists each name a `from` import takes whose bound name (its alias, when it has one) nothing else in the
+file mentions as a name, in code or in an annotation (a string annotation read): a name that is only re-exported, such
+as one `__all__` lists as text, or not used at all.
 """
 from __future__ import annotations
 
@@ -74,6 +85,7 @@ from xarch.modules.rules.domain.values import (
     Callback,
     Class,
     Comment,
+    Constant,
     Function,
     Method,
     MethodCall,
@@ -131,7 +143,8 @@ def _parsed(name: str, path: tuple[str, ...], text: str, form: CaseTable | None)
                       tuple(_unions(tree)), calls=tuple(calls.found), classes=tuple(_classes(tree)),
                       uses=tuple(calls.uses), parameter_calls=tuple(calls.parameter_calls),
                       module_functions=_module_functions(tree), named=_named(tree), callbacks=tuple(calls.callbacks),
-                      method_calls=tuple(calls.method_calls))
+                      method_calls=tuple(calls.method_calls), constants=tuple(_constants(tree)),
+                      unmentioned=_unmentioned(tree))
 
 
 def _module_functions(tree: ast.Module) -> tuple[str, ...]:
@@ -204,7 +217,66 @@ def _function(node: ast.FunctionDef | ast.AsyncFunctionDef, scope: list[Scope], 
     signature, sole_call = _signature(node), _sole_call(node)
     forwards = _forwards(node.name, bool(node.decorator_list), signature, sole_call) if owner else ""
     return Function(node.lineno, node.name, tables, mentions, blocks, asserts, owner, statements, shape,
-                    bool(node.decorator_list), signature, sole_call, returns, inert, forwards)
+                    bool(node.decorator_list), signature, sole_call, returns, inert, forwards, _mentioned(node))
+
+
+def _mentioned(node: ast.AST) -> frozenset[str]:
+    """Every name and attribute the node holds, and the names inside a string that is an annotation in it."""
+    found = {n.id if isinstance(n, ast.Name) else n.attr for n in ast.walk(node)
+             if isinstance(n, (ast.Name, ast.Attribute))}
+    for annotation in _annotations(node):
+        found.update(name for n in ast.walk(annotation) if isinstance(n, ast.Constant) and isinstance(n.value, str)
+                     for name in _in_string(n.value))
+    return frozenset(found)
+
+
+def _annotations(node: ast.AST) -> list[ast.expr]:
+    """Every annotation the node holds: of a parameter, of a return, of an annotated assignment."""
+    found: list[ast.expr] = []
+    for n in ast.walk(node):
+        if isinstance(n, ast.arg) and n.annotation is not None:
+            found.append(n.annotation)
+        elif isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.returns is not None:
+            found.append(n.returns)
+        elif isinstance(n, ast.AnnAssign):
+            found.append(n.annotation)
+    return found
+
+
+def _constants(tree: ast.Module) -> list[Constant]:
+    """The names the assignments of the top level bind, in order, each with what its statement mentions."""
+    found: list[Constant] = []
+    for node in _own(tree.body):
+        if isinstance(node, ast.Assign):
+            targets = node.targets
+        elif isinstance(node, ast.AnnAssign) and node.value is not None:
+            targets = [node.target]
+        elif isinstance(node, ast.TypeAlias):
+            targets = [node.name]
+        else:
+            continue
+        named = _mentioned(node)
+        found += [Constant(node.lineno, name, named) for target in targets for name in _bound_names(target)]
+    return found
+
+
+def _bound_names(target: ast.expr) -> list[str]:
+    if isinstance(target, ast.Name):
+        return [target.id]
+    if isinstance(target, (ast.Tuple, ast.List)):
+        return [name for item in target.elts for name in _bound_names(item)]
+    if isinstance(target, ast.Starred):
+        return _bound_names(target.value)
+    return []
+
+
+def _unmentioned(tree: ast.Module) -> frozenset[tuple[int, str]]:
+    """(line, name) for each name a `from` import takes whose bound name the rest of the file never mentions."""
+    mentioned = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
+    mentioned.update(name for annotation in _annotations(tree) for n in ast.walk(annotation)
+                     if isinstance(n, ast.Constant) and isinstance(n.value, str) for name in _in_string(n.value))
+    return frozenset((node.lineno, alias.name) for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)
+                     for alias in node.names if alias.name != "*" and (alias.asname or alias.name) not in mentioned)
 
 
 def _forwards(name: str, decorated: bool, signature: Signature, call: SoleCall | None) -> str:
@@ -698,15 +770,17 @@ def _classes(tree: ast.Module) -> list[Class]:
             exception = any(isinstance(b, ast.Name) and (b.id in builtin or b.id in exceptions) for b in node.bases)
             if exception:
                 exceptions.add(node.name)
+            declared = _declared(node)
             found.append(Class(node.lineno, node.name, bases, methods, _attributes(node), _named(node) - {node.name},
-                               exception, _fields(node)))
+                               exception, tuple(child.target.id for child in declared),
+                               tuple(_annotation(child.annotation) or "" for child in declared)))
     return found
 
 
-def _fields(node: ast.ClassDef) -> tuple[str, ...]:
-    """The names the class body's own statements annotate, in order, but a class variable."""
-    return tuple(child.target.id for child in node.body if isinstance(child, ast.AnnAssign)
-                 and isinstance(child.target, ast.Name) and not _class_variable(child.annotation))
+def _declared(node: ast.ClassDef) -> list[ast.AnnAssign]:
+    """The statements of the class body itself that annotate a name, in order, but those of a class variable."""
+    return [child for child in node.body if isinstance(child, ast.AnnAssign) and isinstance(child.target, ast.Name)
+            and not _class_variable(child.annotation)]
 
 
 def _class_variable(annotation: ast.expr) -> bool:

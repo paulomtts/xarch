@@ -18,6 +18,7 @@ FACTS: dict[str, str] = {
     "import": "each import: what it names, the names it takes from it, the line",
     "import.relative": "whether an import is named from the importing file's own folder, and how far it climbs",
     "import.standard": "whether an import names the standard library",
+    "import.mentioned": "whether a file mentions a name an import takes anywhere else, in code or an annotation",
     "comment": "each line comment, its text and line",
     "use": "each name read, as the dotted path the import binding its first name reaches, and how much it bound",
     "call": "each call whose callee an import binds, as that dotted path, with its arguments",
@@ -29,6 +30,7 @@ FACTS: dict[str, str] = {
     "class.methods": "the methods of a class, each with its return annotation",
     "class.attributes": "the names a class's body and methods assign on it",
     "class.fields": "the names a class's body declares with an annotation, in order",
+    "class.types": "the annotation of each field a class declares, as written",
     "class.exception": "whether a class derives from one of the language's builtin exceptions",
     "class.named": "every name a class's bases and body mention",
     "function": "the functions a file defines, at the top level and in its classes: name, owner, line",
@@ -43,9 +45,11 @@ FACTS: dict[str, str] = {
     "function.blocks": "each statement of a function's body that opens a block, by its keyword",
     "function.asserts": "whether a function's body asserts",
     "function.mentions": "every name a function's body uses",
+    "function.named": "every name a function's definition mentions, its decorators and signature included",
     "function.tables": "the tables of cases decorating a test function",
     "union": "a name bound at the top level of a file to names joined as alternatives",
     "module_functions": "the names a file binds at the top level to a function and nothing else",
+    "constant": "the names a file binds at the top level by an assignment, each with the names its statement mentions",
     "named": "every name a file mentions, annotations included",
 }
 """Each fact a check may read, and what it is."""

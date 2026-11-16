@@ -195,7 +195,8 @@ class Class:
     named: every name its bases and body mention, by its last step alone; exception: it derives from one of the language's
     builtin exceptions, named by its bare name, directly or through a class defined before it in the same file;
     fields: the names a statement of its body itself declares with an annotation (`x: int`, with a default or not), in
-    order, those annotated as a class variable left out."""
+    order, those annotated as a class variable left out; types: the annotation of each of its fields, in the same order,
+    as written (a string annotation by its text)."""
     line: int
     name: str
     bases: tuple[Ref, ...] = ()
@@ -204,6 +205,17 @@ class Class:
     named: frozenset[str] = frozenset()
     exception: bool = False
     fields: tuple[str, ...] = ()
+    types: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class Constant:
+    """A name a statement at the top level of a file binds by an assignment (one of several, in a branch too, or a type
+    alias), the line it is on, and every name that statement mentions, by its last step: its annotation (a string
+    annotation read as the expression it holds) and its value, but no text of its value."""
+    line: int
+    name: str
+    named: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -269,7 +281,9 @@ class Function:
     sole_call: the one call its whole body makes, None when it does not (see SoleCall). returns_named is every name
     its return annotation mentions, by its last step alone, a string annotation read as the expression it holds.
     forwards is the dotted callee of the one call a method only passes its arguments on to, as the reader of the
-    language tells a method that does (see the reader), "" for one that does not."""
+    language tells a method that does (see the reader), "" for one that does not. named is every name its definition
+    mentions, by its last step: its decorators, its parameters' annotations and defaults, its return annotation and its
+    body (a string annotation read as the expression it holds, no other text)."""
     line: int
     name: str
     tables: tuple[Table, ...] = ()
@@ -285,6 +299,7 @@ class Function:
     returns_named: frozenset[str] = frozenset()
     inert: int = 0
     forwards: str = ""
+    named: frozenset[str] = frozenset()
 
     @property
     def real_statements(self) -> int:
@@ -300,8 +315,11 @@ class SourceFile:
     defines at module level as functions, in order (module_functions: a name that one `def` binds and nothing else
     binds, so that what it names is a function). named is every name the file mentions anywhere, annotations
     included, by its last step alone; callbacks are the calls of a function's own parameter; method_calls the calls
-    of an attribute no import binds (see MethodCall). error is how it fails to parse, and then it holds nothing
-    else."""
+    of an attribute no import binds (see MethodCall). constants are the names it binds at the top level by an
+    assignment (see Constant). unmentioned holds, as (the line of the import, the name it takes), each name an import
+    takes from a module that nothing else in the file mentions, in code or an annotation: a name it only passes on
+    (listed as text for those who import it from here) or does not use. error is how it fails to parse, and then it
+    holds nothing else."""
     name: str
     path: tuple[str, ...]
     imports: tuple[Import, ...]
@@ -317,6 +335,8 @@ class SourceFile:
     named: frozenset[str] = frozenset()
     callbacks: tuple[Callback, ...] = ()
     method_calls: tuple[MethodCall, ...] = ()
+    constants: tuple[Constant, ...] = ()
+    unmentioned: frozenset[tuple[int, str]] = frozenset()
 
 
 @dataclass(frozen=True)

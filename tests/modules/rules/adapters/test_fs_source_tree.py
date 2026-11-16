@@ -11,6 +11,7 @@ from xarch.modules.rules.domain.values import (
     Call,
     Callback,
     Class,
+    Constant,
     Method,
     MethodCall,
     ParameterCall,
@@ -85,7 +86,7 @@ def test_a_class_lists_its_bases_as_paths_and_its_methods_with_their_return_anno
     assert tuple(replace(c, named=frozenset()) for c in parsed(tmp_path, text).classes) == (
         Class(4, "Repo", (("typing", "Protocol"),),
               (Method(5, "get", "str | None"), Method(6, "save", "None"), Method(7, "raw", None),
-               Method(8, "later", "None")), ("size",), fields=("size",)),
+               Method(8, "later", "None")), ("size",), fields=("size",), types=("int",)),
         Class(10, "Typed", (("typing", "Protocol"), None), ()))
 
 
@@ -619,6 +620,53 @@ def test_a_callback_says_whether_its_parameter_is_annotated_as_a_callable(tmp_pa
 ])
 def test_a_class_lists_its_fields_the_names_its_body_annotates_in_order(tmp_path, text, fields):
     assert parsed(tmp_path, text).classes[0].fields == fields
+
+
+@pytest.mark.parametrize("text, types", [
+    pytest.param("class A:\n    x: int\n    y: tuple[str, ...] = ()\n    z: 'Path | None'\n",
+                 ("int", "tuple[str, ...]", "Path | None"), id="each field's annotation as written, a string by its text"),
+    pytest.param("from typing import ClassVar\nclass A:\n    x: ClassVar[int] = 1\n    y: m.Thing\n", ("m.Thing",),
+                 id="a class variable has no field, so no type"),
+])
+def test_a_class_lists_the_type_of_each_field_as_its_annotation_is_written(tmp_path, text, types):
+    assert parsed(tmp_path, text).classes[0].types == types
+
+
+@pytest.mark.parametrize("text, constants", [
+    pytest.param("A = 1\nB: int = 2\nC, D = 3, 4\n", [Constant(1, "A"), Constant(2, "B"), Constant(3, "C"),
+                                                     Constant(3, "D")],
+                 id="a name an assignment at the top level binds, an annotated one or one of several"),
+    pytest.param("E: int\ndef f():\n    g = 1\nclass K:\n    h = 2\nx.y = 3\n", [],
+                 id="an annotation with no value, a function's or a class's own name and an attribute bind none"),
+    pytest.param("if flag:\n    A = 1\nelse:\n    A = 2\n", [Constant(2, "A"), Constant(4, "A")],
+                 id="a branch at the top level binds too"),
+    pytest.param("type Pair = tuple[int, int]\n", [Constant(1, "Pair")], id="a type alias"),
+])
+def test_a_file_lists_the_names_it_binds_at_the_top_level_by_an_assignment(tmp_path, text, constants):
+    assert [replace(c, named=frozenset()) for c in parsed(tmp_path, text).constants] == constants
+
+
+def test_a_constant_lists_the_names_its_statement_mentions_with_its_annotation_but_not_inside_a_string_value(tmp_path):
+    found = parsed(tmp_path, "A: 'Box[Thing]' = make(other.part, 'Word')\n").constants
+    assert list(found) == [Constant(1, "A", frozenset({"A", "Box", "Thing", "make", "other", "part"}))]
+
+
+def test_a_function_lists_every_name_its_definition_mentions_its_signature_and_decorators_included(tmp_path):
+    text = "@wrap(Mode)\ndef f(a: Kind, b: 'Box[Item]' = DEFAULT) -> Result:\n    return a.go(Helper, 'Word')\n"
+    assert parsed(tmp_path, text).functions[0].named == frozenset(
+        {"wrap", "Mode", "Kind", "Box", "Item", "DEFAULT", "Result", "a", "go", "Helper"})
+
+
+@pytest.mark.parametrize("text, unmentioned", [
+    pytest.param("from m import A, B\n__all__ = ['A']\nx: B\n", {(1, "A")},
+                 id="a name listed only as text is not mentioned; one in an annotation is"),
+    pytest.param("from m import A as C\nfrom n import D\nprint(C)\n", {(2, "D")},
+                 id="an alias is mentioned by the name it binds; a name not mentioned at all is listed"),
+    pytest.param("from m import A\ndef f(x: 'A'): pass\n", set(), id="a string annotation mentions its names"),
+    pytest.param("import m\nfrom . import n\n", {(2, "n")}, id="an import of a whole module is not read"),
+])
+def test_a_file_lists_the_names_its_imports_take_that_nothing_else_in_it_mentions(tmp_path, text, unmentioned):
+    assert parsed(tmp_path, text).unmentioned == frozenset(unmentioned)
 
 
 @pytest.mark.parametrize("text, found", [
