@@ -744,20 +744,23 @@ def _dead_code(spec: Any, fakes: Fakes | None, where: str, problems: list[str],
     if spec is None:
         spec = {}
     if not isinstance(spec, Mapping):
-        problems.append(f"{where}: must be a mapping {{untested: true|false}}, or {{}}")
+        problems.append(f"{where}: must be a mapping {{untested: true|false, tests_only: true|false}}, or {{}}")
         return None
     count = len(problems)
     problems += ck.unknown_keys(spec, names_of(DEAD_CODE), where)
     untested = spec.get("untested", False)
     if not isinstance(untested, bool):
         problems.append(f"{where}.untested: must be true or false")
+    tests_only = spec.get("tests_only", False)
+    if not isinstance(tests_only, bool):
+        problems.append(f"{where}.tests_only: must be true or false")
     if len(problems) != count:
         return None
     if fakes is None:
         problems.append(f"{where}: needs `fakes`: it reads the {language.interface_name}s of the parts `fakes.for` "
                         "names and the classes in `fakes.folder`")
         return None
-    return DeadCode(untested)
+    return DeadCode(untested, tests_only)
 
 
 def _substance(spec: Any, part: Part, declared: set[str], may_import: tuple[Target, ...],

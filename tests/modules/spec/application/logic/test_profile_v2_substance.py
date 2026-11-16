@@ -121,8 +121,8 @@ def test_dead_code_may_also_list_the_files_no_test_of_their_tier_reaches():
 @pytest.mark.parametrize("guards, expected", [
     pytest.param({"dead-code": {"untested": "yes"}}, "guards.dead-code.untested: must be true or false",
                  id="untested, no boolean"),
-    pytest.param({"dead-code": {"x": 1}}, "guards.dead-code: unknown key 'x': use untested", id="an unknown key"),
-    pytest.param({"dead-code": 3}, "guards.dead-code: must be a mapping {untested: true|false}, or {}",
+    pytest.param({"dead-code": {"x": 1}}, "guards.dead-code: unknown key 'x': use tests_only, untested", id="an unknown key"),
+    pytest.param({"dead-code": 3}, "guards.dead-code: must be a mapping {untested: true|false, tests_only: true|false}, or {}",
                  id="no mapping"),
     pytest.param({"private-imports": {"x": 1}}, "guards.private-imports: takes no parameters: write {}",
                  id="private-imports, a parameter"),

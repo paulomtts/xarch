@@ -240,9 +240,11 @@ class NoTwins:
 @dataclass(frozen=True)
 class DeadCode:
     """The guard dead-code: the ports and fakes come from `fakes`; untested: also list each file of a part with a
-    tier that no test of that tier reaches."""
+    tier that no test of that tier reaches; tests_only: also list each public name of the app no other file of the app
+    names, so that only the tests, or nothing, use it."""
     key: ClassVar[str] = "dead-code"
     untested: bool = False
+    tests_only: bool = False
 
 
 @dataclass(frozen=True)

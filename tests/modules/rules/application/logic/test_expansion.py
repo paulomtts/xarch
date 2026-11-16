@@ -11,7 +11,8 @@ from xarch.kernel.placement import Target
 from xarch.modules.rules.application.logic import expansion
 from xarch.modules.rules.domain.rule import Rule
 
-ON = replace(PROFILE, private_imports=True, closed_tree=True, dead_code=True, untested=True,
+ON = replace(PROFILE, private_imports=True, closed_tree=True, dead_code=True, untested=True, tests_only=True,
+             immutable=("logic",),
              built_by={"services": ("bootstrap",)}, names={"services": ("*Service",)}, no_callbacks=("domain",),
              holds={"domain": "classes", "logic": "functions"}, must_import={"adapters": (Target("platform"),)},
              pass_through=("services",), types_only={"services": ("contract",)},
@@ -51,6 +52,7 @@ def shape(rule: Rule) -> str:
     pytest.param("no-comments", ["no-comments: all/* read comment may_not exist"], id="no-comments"),
     pytest.param("closed-tree", ["closed-tree: app/* where not placed read file may_not exist"], id="closed-tree"),
     pytest.param("holds", ["holds: app/domain where not package-file read function may_not exist",
+                           "holds: app/logic where not package-file read class may_not exist",
                            "holds: app/logic where not package-file read class may_not exist"], id="holds"),
     pytest.param("must-import", ["must-import: app/adapters read import, import-into-app must_reach place, outside"],
                  id="must-import"),
@@ -59,6 +61,8 @@ def shape(rule: Rule) -> str:
     pytest.param("dead-code", ["dead-code: app/ports read class must_be_reached exist",
                                "dead-code: tests/* where below fakes read class must_be_reached exist"], id="dead-code"),
     pytest.param("untested", ["dead-code: app/* where tiered read file must_be_reached exist"], id="untested"),
+    pytest.param("tests-only", ["dead-code: app/* read class must_be_reached exist",
+                                "dead-code: app/* read function must_be_reached exist"], id="tests-only"),
     pytest.param("pass-through", ["pass-through: app/services read function may_not exist"], id="pass-through"),
 ])
 def test_each_group_of_the_book_expands_to_the_rules_its_keys_mean(group, shapes):

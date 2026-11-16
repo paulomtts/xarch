@@ -106,6 +106,10 @@ def dead_code(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: P
     return checked(expansion.dead_code(profile), profile, app, tests if has_tests else [])
 
 
+def only_by_tests(app: Iterable[SourceFile], profile: Profile) -> list[Violation | Weak]:
+    return checked(expansion.tests_only(profile), profile, app)
+
+
 def untested(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile, root: str,
              tests_root: str) -> list[Violation | Weak]:
     return checked(expansion.untested(profile), profile, app, tests, root, tests_root)

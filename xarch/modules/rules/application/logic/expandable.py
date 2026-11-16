@@ -19,7 +19,7 @@ _SET = Profile(
     package_only=("two",), types_only={"one": ("two",)}, no_callbacks=("one",), names={"one": ("*",)},
     built_by={"two": ("one",)}, private_imports=True, no_comments=True, closed_tree=True, holds={"one": "classes"},
     immutable=("two",),
-    must_import={"one": (Target("two"),)}, dead_code=True, untested=True, pass_through=("one",),
+    must_import={"one": (Target("two"),)}, dead_code=True, untested=True, tests_only=True, pass_through=("one",),
     fakes=Fakes(("fakes",), ("two",)), framework=Framework(("*",), "*"), info={"one": PartInfo(), "two": PartInfo()})
 """A profile of two parts and a tier that sets every key the engine expands."""
 

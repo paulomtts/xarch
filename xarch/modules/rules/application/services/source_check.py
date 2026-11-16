@@ -115,7 +115,8 @@ class SourceCheckService:
         state = self._enforcement(root, package, profile, rules, app, test_files,
                                   governed.ungoverned(paths, rules, shown), tests_root,
                                   run(book["holds"], facts, rules), run(book["untested"], facts, rules),
-                                  [*run(book["pass-through"], facts, rules), *written])
+                                  [*run(book["pass-through"], facts, rules), *run(book["tests-only"], facts, rules),
+                                   *written])
         state = replace(state, checks=tuple((rule.id, read(rule, facts, rules)) for rule in own))
         return Checked(tuple(found), replace(state, strict=enforcement.strict_findings(state)), rules)
 

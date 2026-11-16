@@ -330,6 +330,22 @@ def untested(profile: Profile) -> tuple[Rule, ...]:
                  spread=("import-into-app",), key="guards.dead-code.untested"),)
 
 
+def tests_only(profile: Profile) -> tuple[Rule, ...]:
+    """A public class or top-level function a file of the app defines that no other file of the app names, by its last
+    step, a package file aside, which only gathers what its package holds: only the tests, or nothing, use it;
+    listed."""
+    if not profile.dead_code or not profile.tests_only:
+        return ()
+    said = (Saying("{name} is public, but no other file of the app names it: only the tests, or nothing, use it "
+                   "(guards.dead-code.tests_only)",
+                   "delete {name} and what tests it alone, or make it private when its own file uses it, or use it "
+                   "where the app needs it"),)
+    return tuple(Rule("dead-code", Scope(APP), (kind,), MUST_BE_REACHED, EXISTING, said, keep=_all("public", *kept),
+                      mode=LIST, links=("names-mentioned",), roots=Scope(APP, where=_all("not package-file")),
+                      elsewhere=True, key="guards.dead-code.tests_only")
+                 for kind, kept in (("class", ("not exception",)), ("function", ("top-level",))))
+
+
 def pass_through(profile: Profile) -> tuple[Rule, ...]:
     """A method of a listed part that only forwards to one call, listed without failing."""
     keep = "it stays listed and fails only `check --strict`"
@@ -353,4 +369,4 @@ def book(profile: Profile) -> dict[str, tuple[Rule, ...]]:
             "closed-tree": closed_tree(profile), "holds": (*holds(profile), *immutable(profile)),
             "must-import": must_import(profile),
             "must-import tiers": must_import_tiers(profile), "dead-code": dead_code(profile),
-            "untested": untested(profile), "pass-through": pass_through(profile)}
+            "untested": untested(profile), "tests-only": tests_only(profile), "pass-through": pass_through(profile)}

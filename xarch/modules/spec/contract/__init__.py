@@ -121,6 +121,7 @@ class GuardsView:
     no_twins_subset: int | None = None
     dead_code: bool = False
     untested: bool = False
+    tests_only: bool = False
     pass_through: tuple[str, ...] = ()
     private_imports: bool = False
 

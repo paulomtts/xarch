@@ -2,7 +2,7 @@
 import pytest
 
 from tests.modules.rules.application.logic.checks import dead_code as violations
-from tests.modules.rules.application.logic.checks import untested
+from tests.modules.rules.application.logic.checks import only_by_tests, untested
 from tests.modules.rules.builders import imp, in_tests, profile, source
 from xarch.modules.rules.domain.published import Weak
 from xarch.modules.rules.domain.values import Class, Function, Method
@@ -163,3 +163,37 @@ def test_what_has_no_code_or_no_tier_is_not_listed(file):
 def test_it_is_off_unless_asked():
     rule = source("modules/docs/domain/rule.py", functions=CODE)
     assert untested_files([rule], [], checked=profile(dead_code=True)) == []
+
+
+ONLY = profile(dead_code=True, tests_only=True)
+LOGIC = "modules/docs/application/logic/rule.py"
+DEFINED = source(LOGIC, classes=(Class(3, "Rule"), Class(5, "_Hidden"), Class(7, "Refused", exception=True)),
+                 functions=(Function(9, "decide"), Function(11, "_helper"), Function(13, "run", owner="Rule")),
+                 named=frozenset({"Rule", "decide", "_helper", "run"}))
+
+
+def listed_only(*files, checked=ONLY) -> list[str]:
+    return [f"{w.file}:{w.line}: {w.message.split(' ')[0]}" for w in only_by_tests(list(files), checked)
+            if isinstance(w, Weak)]
+
+
+def test_a_public_class_or_top_level_function_no_other_file_of_the_app_names_is_listed_with_what_to_do():
+    assert only_by_tests([DEFINED], ONLY) == [
+        Weak("dead-code", f"app/{LOGIC}", 3, "Rule is public, but no other file of the app names it: only the tests, "
+                                             "or nothing, use it (guards.dead-code.tests_only)",
+             "delete Rule and what tests it alone, or make it private when its own file uses it, or use it where the "
+             "app needs it"),
+        Weak("dead-code", f"app/{LOGIC}", 9, "decide is public, but no other file of the app names it: only the "
+                                             "tests, or nothing, use it (guards.dead-code.tests_only)",
+             "delete decide and what tests it alone, or make it private when its own file uses it, or use it where the "
+             "app needs it")]
+
+
+def test_a_name_another_file_names_is_not_listed_but_a_package_file_s_re_export_is_no_use():
+    assert listed_only(DEFINED, uses(SERVICE, "Rule", "decide")) == []
+    assert listed_only(DEFINED, uses("modules/docs/application/logic/__init__.py", "Rule", "decide")) == [
+        f"app/{LOGIC}:3: Rule", f"app/{LOGIC}:9: decide"]
+
+
+def test_nothing_is_listed_unless_the_guard_asks_for_it():
+    assert listed_only(DEFINED, checked=profile(dead_code=True)) == []

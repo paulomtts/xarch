@@ -236,7 +236,7 @@ that switches or configures each (`-` for none: the rule is always on):
 | `closed-tree` | a Python file of the app that lies in no part | `guards.closed-tree` |
 | `no-duplicates` | two functions or methods of the app with the same code | `guards.no-duplicates` |
 | `no-twins` | two public classes in parts of different names that declare the same fields in the same order: one type written twice; with `min_renamed`, also a copy that renamed a field, and with `min_subset`, one that kept at least half of the other's fields in its order | `guards.no-twins` |
-| `dead-code` | a port no other file names, a fake no test uses; with `untested`, a file no test of its tier reaches, listed as `weak` only | `guards.dead-code`, `fakes` |
+| `dead-code` | a port no other file names, a fake no test uses; with `untested`, a file no test of its tier reaches, and with `tests_only`, a public class or top-level function no other file of the app names (only the tests, or nothing, use it), each listed as `weak` only | `guards.dead-code`, `fakes` |
 | `pass-through` | a method that only forwards its arguments to a collaborator, or returns an attribute of what that call answers; never a violation: listed as `weak`, and fails only `--strict` | `guards.pass-through` |
 | `holds` | a public function at the top level of a part that holds classes, or a class (whatever its name) in one that holds functions; with `immutable`, a class of the part that is no immutable record as the language's data file says one is made, an exception aside; listed as `weak`, and fails only `--strict` | `parts.holds`, `parts.immutable` |
 | `no-callbacks` | a function of a part that calls one of its own parameters annotated as a callable | `parts.no_callbacks` |

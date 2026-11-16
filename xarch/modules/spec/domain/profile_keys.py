@@ -503,6 +503,13 @@ _KEYS: tuple[Key, ...] = (
        "stubs). Read only with a tests folder", _TWO + _FAKES + _guarded("dead-code: {untested: true}\n"),
        rules=("dead-code",)),
 
+    _k(DEAD_CODE, "tests_only", "also list the public names only the tests use",
+       "true or false: every public class and top-level function a file of the app defines (a package file aside) "
+       "that no other file of the app names, in code or an annotation, by its last step, is listed as `weak` in the "
+       "enforcement section and fails `check --strict` only: only the tests use it, or nothing does. A name its own "
+       "file alone uses is listed too: make it private", _TWO + _FAKES + _guarded("dead-code: {tests_only: true}\n"),
+       rules=("dead-code",)),
+
     _k(PASS_THROUGH, "parts", "the parts whose forwarding methods are listed", "[<part>, ...]",
        _TWO + _guarded("pass-through:\n  parts: [documents]\n"), True, rules=("pass-through",)),
 
@@ -581,6 +588,7 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "guards.no-twins.min_renamed": ("class", "class.fields", "class.types"),
     "guards.dead-code": ("class", "named"),
     "guards.dead-code.untested": (*_IMPORTS, "function.statements", "class.exception"),
+    "guards.dead-code.tests_only": ("class", "class.exception", "function", "named"),
     "guards.pass-through": ("function", "function.forwards"),
     "guards.private-imports": _IMPORTS,
 }

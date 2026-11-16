@@ -47,7 +47,8 @@ class Profile:
     as a twin of another (None: off), no_twins_renamed the fewest a renamed copy needs, no_twins_subset the fewest a copy
     of part of another's fields needs (None: that case is off; see twins); dead_code switches the unused ports and fakes
     check on; pass_through lists the parts whose methods that only forward are listed (empty: off). untested lists,
-    with dead_code, the files of a tiered part no test of its tier reaches. holds says, by part, what its files define
+    with dead_code, the files of a tiered part no test of its tier reaches; tests_only, with dead_code, the public names
+    of the app no other file of the app names. holds says, by part, what its files define
     ("classes" or "functions"); immutable the parts every class of which, but an exception, is an immutable record;
     types_only, by part, the parts it may use as types only; no_callbacks the parts whose
     code calls none of its own parameters; names, by part, the patterns its public classes match one of; built_by, by
@@ -83,6 +84,7 @@ class Profile:
     dead_code: bool = False
     pass_through: tuple[str, ...] = ()
     untested: bool = False
+    tests_only: bool = False
     holds: dict[str, str] = field(default_factory=dict)
     immutable: tuple[str, ...] = ()
     types_only: dict[str, tuple[str, ...]] = field(default_factory=dict)
