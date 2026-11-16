@@ -14,6 +14,10 @@ FOLDER = "folder"
 PYPROJECT = "pyproject.toml"
 """The file of the project that records the settings xarch reads, in its [tool.xarch] table."""
 
+LOWERCASE, NOT_A_NAME, PRIVATE, RESERVED = "lowercase", "not a name", "private", "reserved"
+"""The rules a name of a new instance may break: lowercase plain letters, a name the language allows, a name that is
+not private, and none of the language's reserved words."""
+
 
 @dataclass(frozen=True)
 class Touched:

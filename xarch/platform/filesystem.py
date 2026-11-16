@@ -18,10 +18,11 @@ class FileSystem:
         return path.is_file()
 
     def subdirectories(self, path: Path) -> list[str]:
-        """Names of the folders directly inside path, or [] if path is not a folder."""
+        """Names of the folders directly inside path that the filesystem shows, none it hides such as `.cache`; [] if
+        path is not a folder."""
         if not path.is_dir():
             return []
-        return [p.name for p in path.iterdir() if p.is_dir()]
+        return [p.name for p in path.iterdir() if p.is_dir() and not p.name.startswith(HIDDEN)]
 
     def folders(self, path: Path) -> list[tuple[str, ...]]:
         """Every folder below path, at any depth, that the filesystem shows, as its path below it, sorted: none it

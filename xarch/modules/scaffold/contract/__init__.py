@@ -16,7 +16,8 @@ class InitProject:
 
 @dataclass(frozen=True)
 class NewInstance:
-    """Build one instance, called name, of a kind: a folder of the layout that declares `each:`, by its path."""
+    """Build one instance, called name, of a kind: a folder of the layout that declares `each:`, by the word one
+    instance of it is called."""
     root: Path
     kind: str
     name: str

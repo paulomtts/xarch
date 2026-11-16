@@ -5,6 +5,7 @@ import pytest
 
 from tests.fakes.filesystem import FakeFiles
 from tests.fakes.scaffold_skeleton import FakeSkeleton
+from tests.modules.scaffold.builders import PYTHON_NAMES, PYTHON_PRIVATE
 from xarch.modules.scaffold.application.controller import ScaffoldController
 from xarch.modules.scaffold.application.services.scaffolding import ScaffoldingService
 from xarch.modules.scaffold.contract import (
@@ -36,7 +37,8 @@ SKELETON = FakeSkeleton(
                                 (("adapters",), True)])},
     [(("docs", "project", *p.split("/")), f"# {p}\n") for p in DOC_PATHS],
     files={"app": [(("tests", "architecture", "test_rules.py"), "check app\n"), (("Makefile",), "all: app\n")],
-           "shop": [(("tests", "architecture", "test_rules.py"), "check shop\n")]})
+           "shop": [(("tests", "architecture", "test_rules.py"), "check shop\n")]},
+    names=PYTHON_NAMES, private=PYTHON_PRIVATE)
 GUARD = Path("/src/tests/architecture/test_rules.py")
 MAKEFILE = Path("/src/Makefile")
 
@@ -64,8 +66,14 @@ def pyproject(files: FakeFiles) -> str | None:
                  NotInitialized(ROOT / "modules"),
                  id="a new module in an app that was not initialised is refused"),
     pytest.param(MODULES, NewInstance(ROOT, "module", "Docs", "cli"),
-                 Refused("'Docs' is not a valid name: use a lowercase Python identifier, e.g. 'documents'"),
-                 id="a name that is not a lowercase identifier is refused"),
+                 Refused("'Docs' is not a valid name: use lowercase plain letters, as in 'documents'"),
+                 id="a name that is not lowercase is refused"),
+    pytest.param(MODULES, NewInstance(ROOT, "module", "_docs", "cli"),
+                 Refused("'_docs' is not a valid name: it is private, as a name starting with '_' is: drop the '_'"),
+                 id="a private name is refused as private"),
+    pytest.param(MODULES, NewInstance(ROOT, "module", "class", "cli"),
+                 Refused("'class' is not a valid name: it is a word Python reserves: choose another, such as 'documents'"),
+                 id="a reserved word is refused as reserved"),
     pytest.param(MODULES | {ROOT / "modules" / "docs" / "__init__.py"}, NewInstance(ROOT, "module", "docs", "cli"),
                  InstanceExists("docs", ROOT / "modules" / "docs"),
                  id="a module that already exists is refused"),
@@ -278,8 +286,9 @@ def test_a_kind_the_profile_does_not_declare_is_refused_listing_every_word(kind,
 
 
 def test_the_language_of_the_profile_is_named_in_the_refusal_of_a_name_and_the_package_file_is_the_one_it_has():
-    pascal = FakeSkeleton([(("kernel",), True)], SKELETON.kinds("cli"), package_file="unit.pas", language="Pascal")
+    pascal = FakeSkeleton([(("kernel",), True)], SKELETON.kinds("cli"), package_file="unit.pas", language="Pascal",
+                          names=PYTHON_NAMES)
     files = FakeFiles({ROOT / "modules" / "unit.pas"})
-    assert controller(files, pascal).new(NewInstance(ROOT, "module", "Docs", "cli")) == Refused(
-        "'Docs' is not a valid name: use a lowercase Pascal identifier, e.g. 'documents'")
+    assert controller(files, pascal).new(NewInstance(ROOT, "module", "my-docs", "cli")) == Refused(
+        "'my-docs' is not a valid name: it is no Pascal identifier: write one, such as 'documents'")
     assert controller(files, pascal).init(InitProject(ROOT, "cli", CWD)).report.created[0] == ROOT / "unit.pas"

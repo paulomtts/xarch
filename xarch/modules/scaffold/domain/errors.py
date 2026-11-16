@@ -4,12 +4,20 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from xarch.kernel.errors import DomainError
+from xarch.modules.scaffold.domain.values import LOWERCASE, NOT_A_NAME, PRIVATE, RESERVED
 
 
 class InvalidName(DomainError):
-    def __init__(self, name: str, language: str = ""):
+    """A name of a new instance that breaks a rule of such names (one of scaffold's LOWERCASE, NOT_A_NAME, PRIVATE and
+    RESERVED), said with which and what to write."""
+
+    def __init__(self, name: str, rule: str, language: str = "", private: str = ""):
         identifier = f"{language} identifier".lstrip()
-        super().__init__(f"'{name}' is not a valid name: use a lowercase {identifier}, e.g. 'documents'")
+        why = {LOWERCASE: "use lowercase plain letters, as in 'documents'",
+               NOT_A_NAME: f"it is no {identifier}: write one, such as 'documents'",
+               PRIVATE: f"it is private, as a name starting with '{private}' is: drop the '{private}'",
+               RESERVED: f"it is a word {language or 'the language'} reserves: choose another, such as 'documents'"}
+        super().__init__(f"'{name}' is not a valid name: {why[rule]}")
 
 
 class UnknownKind(DomainError):

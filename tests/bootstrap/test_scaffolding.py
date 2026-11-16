@@ -93,7 +93,7 @@ def test_init_and_new_module_create_the_logic_folders(tmp_path, profile):
 def test_new_module_refuses_an_invalid_name(tmp_path):
     app = tmp_path / "app"
     init(app)
-    assert "lowercase" in refusal(app, "my-module")
+    assert "it is no Python identifier" in refusal(app, "my-module")
     assert list((app / "modules").iterdir()) == [app / "modules" / "__init__.py"]
 
 

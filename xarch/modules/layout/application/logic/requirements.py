@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from collections.abc import Collection, Iterable
 
-from xarch.kernel.logic.names import is_public_name
+from xarch.kernel.logic.names import is_name, is_private_name
 from xarch.kernel.violations import Violation
 from xarch.modules.layout.domain.structure import Naming, Repeated, Requirement
 
@@ -15,7 +15,7 @@ from xarch.modules.layout.domain.structure import Naming, Repeated, Requirement
 def _is_instance_name(name: str, naming: Naming) -> bool:
     """Whether a folder found in a repeating folder's parent is an instance of it, not a cache or private folder: its
     name is a name of the language, and no private one."""
-    return is_public_name(name, naming.names, naming.private)
+    return is_name(name, naming.names) and not is_private_name(name, naming.private)
 
 
 def requirements(root: str, top_level: Iterable[tuple[str, ...]], repeated: Iterable[Repeated],

@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from xarch.modules.scaffold.application.logic.app_folder import app_name, holder
-from xarch.modules.scaffold.application.logic.names import valid_name
+from xarch.modules.scaffold.application.logic.names import broken_rule
 from xarch.modules.scaffold.application.logic.plan import plan
 from xarch.modules.scaffold.application.logic.pyproject_record import (
     pyproject_target,
@@ -42,8 +42,9 @@ class ScaffoldingService:
     def new(self, root: Path, kind: str, name: str, profile: str) -> ReportView:
         """Refused unless the name is valid, the kind is declared, init ran and nothing would be overwritten."""
         language = self._skeleton.language(profile)
-        if not valid_name(name, language):
-            raise InvalidName(name, language.title)
+        broken = broken_rule(name, language)
+        if broken is not None:
+            raise InvalidName(name, broken, language.title, language.private)
         kinds = self._skeleton.kinds(profile)
         if kind not in kinds:
             raise UnknownKind(kind, kinds, {word: "/".join(path) for word, (path, _) in kinds.items()})

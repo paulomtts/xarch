@@ -69,11 +69,14 @@ def test_new_module_says_what_it_created():
     assert "created app/modules/demo/application/controller.py" in result.output
 
 
-@pytest.mark.parametrize("name", ["Demo", "my-mod"])
-def test_new_module_refuses_a_bad_name_with_exit_2(name):
+@pytest.mark.parametrize("name, said", [
+    pytest.param("Demo", "use lowercase plain letters", id="a name that is not lowercase"),
+    pytest.param("my-mod", "it is no Python identifier", id="a name the language does not allow"),
+])
+def test_new_module_refuses_a_bad_name_with_exit_2_saying_which_rule_it_breaks(name, said):
     runner.invoke(app, ["init", "--profile", "cli"])
     result = runner.invoke(app, ["new", "module", name])
-    assert result.exit_code == 2 and "lowercase" in result.output
+    assert result.exit_code == 2 and said in result.output
 
 
 def test_new_module_refuses_an_existing_module_with_exit_2():

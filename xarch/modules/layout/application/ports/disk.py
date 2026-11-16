@@ -15,7 +15,8 @@ class Disk(Protocol):
         ...
 
     def instances(self, root: Path, each: tuple[str, ...]) -> list[str]:
-        """The names of the folders inside the repeating folder each of root; [] if there is none."""
+        """The names of the folders inside the repeating folder each of root that the disk shows (none it hides); []
+        if there is none."""
         ...
 
     def below(self, root: Path, each: tuple[str, ...]) -> list[tuple[str, ...]]:

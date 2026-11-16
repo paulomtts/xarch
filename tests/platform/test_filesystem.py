@@ -33,10 +33,11 @@ def test_the_folders_and_files_below_a_folder_are_listed_sorted_and_none_below_w
         [], [], [])
 
 
-def test_a_folder_the_filesystem_hides_is_not_listed_nor_any_inside_it(tmp_path):
+def test_a_folder_the_filesystem_hides_is_not_listed_nor_any_inside_it_by_either_listing(tmp_path):
     (tree(tmp_path) / ".cache" / "c").mkdir(parents=True)
     (tmp_path / "a" / ".git").mkdir()
     assert FileSystem().folders(tmp_path) == [("a",), ("a", "b")]
+    assert FileSystem().subdirectories(tmp_path) == ["a"]
 
 
 def test_the_nearest_file_of_a_name_is_found_in_the_folder_or_above_it(tmp_path):
