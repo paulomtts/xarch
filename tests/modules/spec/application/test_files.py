@@ -4,8 +4,7 @@ import pytest
 from tests.fakes.architecture_files import FakeArchitectureFiles
 from tests.modules.spec.application.helpers import controller as spec_controller
 from xarch.modules.spec.application.controller import SpecController
-from xarch.modules.spec.contract import ProfileRefused, ProjectFiles
-from xarch.modules.spec.domain.published import ProjectFile
+from xarch.modules.spec.contract import ProfileRefused, ProjectFile, ProjectFiles
 
 LAYERED = {"xarch": 2, "name": "layered", "parts": {"src": {"path": "src", "role": "code"}}}
 GUARD = {"tests/architecture/test_rules.py": {"from": "guard.py"}}
