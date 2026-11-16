@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from collections.abc import Collection, Iterable
 
+from xarch.kernel.logic.names import is_private_name
 from xarch.kernel.violations import Violation
 from xarch.modules.layout.domain.structure import Naming
 
@@ -10,7 +11,7 @@ from xarch.modules.layout.domain.structure import Naming
 def hidden(path: tuple[str, ...], naming: Naming) -> bool:
     """A folder whose name, or the name of a folder above it, is private in the language (such as one of compiled
     files), which mirrors nothing and is never checked."""
-    return bool(naming.private) and any(step.startswith(naming.private) for step in path)
+    return any(is_private_name(step, naming.private) for step in path)
 
 
 def unmirrored(tests: str, root: str, each_root: tuple[str, ...], folders: Iterable[tuple[str, ...]],

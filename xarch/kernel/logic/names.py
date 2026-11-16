@@ -10,6 +10,11 @@ def is_name(text: str, pattern: str) -> bool:
     return re.fullmatch(pattern or ".+", text) is not None
 
 
+def is_private_name(text: str, private: str) -> bool:
+    """Whether text starts as a private name does; no text does when the language marks none ("")."""
+    return bool(private) and text.startswith(private)
+
+
 def is_public_name(text: str, pattern: str, private: str) -> bool:
     """Whether text is a name the pattern allows that does not start as a private name does."""
-    return is_name(text, pattern) and not (private and text.startswith(private))
+    return is_name(text, pattern) and not is_private_name(text, private)
