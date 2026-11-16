@@ -3,12 +3,13 @@ from pathlib import Path
 
 import pytest
 
-from tests.fakes.review import FakeCode, FakeParts
+from tests.fakes.review import FakeCode, FakeProfile
 from tests.modules.review.application.helpers import controller
 from tests.modules.review.builders import BODY, PARTS, found
 from xarch.modules.review.contract import (
     BY_PATHS,
     MISSING,
+    NEVER,
     SMALL,
     AllAndOthers,
     Choice,
@@ -22,7 +23,7 @@ from xarch.modules.review.contract import (
     ReviewRefused,
     TooManyFiles,
 )
-from xarch.modules.review.domain.values import Found
+from xarch.modules.review.domain.values import Found, Words
 
 CWD, APP = Path("/src"), Path("/src/app")
 DOCUMENT = found()
@@ -37,6 +38,9 @@ SENT = "from <masked> import DocumentId\nfrom dataclasses import dataclass\n" + 
 ASKED = len(PLACEMENT) + sum(len(o.name) + len(o.description) for o in QUESTION.options)
 REQUEST = Request(DOCUMENT.file, "domain", len(DOCUMENT.text), SENT)
 CHARACTERS = len(SENT) + ASKED
+WORDS = {"p": Words(PARTS), "kept": Words(PARTS, ("modules/*/domain/document.py",), ("Doc*", "title"))}
+HIDDEN = "from <masked> import <masked>\nfrom dataclasses import dataclass\n" + BODY.replace("Document", "<masked>").replace(
+    "title", "<masked>")
 
 
 def review(*paths: str, listed: tuple[str, ...] = (), every: bool = False, dry_run: bool = True,
@@ -50,6 +54,17 @@ def review(*paths: str, listed: tuple[str, ...] = (), every: bool = False, dry_r
                  ReviewPlanned((BY_PATHS,), 3, (REQUEST,), (GONE, LeftOut(SMALL_FILE.file, SMALL, 6)), QUESTION, ("main",),
                                CHARACTERS, -(-CHARACTERS // 4)),
                  id="a dry run says what each file judged would send, masked, and why the others are left out"),
+    pytest.param(FOUND, review("app/modules/documents/domain", profile="kept"),
+                 ReviewPlanned((BY_PATHS,), 3, (), (GONE, LeftOut(DOCUMENT.file, NEVER, len(DOCUMENT.text),
+                                                                  "modules/*/domain/document.py"),
+                                                   LeftOut(SMALL_FILE.file, SMALL, 6)), QUESTION, ("main",), 0, 0,
+                               ("Doc*", "title")),
+                 id="a file a path review never sends matches is left out with that path and sends nothing"),
+    pytest.param({"app/x.py": Found((DOCUMENT,))}, review("app/x.py", profile="kept"),
+                 ReviewPlanned((BY_PATHS,), 1, (), (LeftOut(DOCUMENT.file, NEVER, len(DOCUMENT.text),
+                                                            "modules/*/domain/document.py"),), QUESTION, ("main",), 0, 0,
+                               ("Doc*", "title")),
+                 id="a file held back is held back however it is chosen"),
     pytest.param(FOUND, review(), NothingChosen(), id="no file chosen is refused"),
     pytest.param(FOUND, review("app/x.py", every=True), AllAndOthers(), id="every file with paths is refused"),
     pytest.param(FOUND, review("app/modules/documents/domain", "app/x.py", max_files=1), TooManyFiles(2, 1),
@@ -63,20 +78,29 @@ def review(*paths: str, listed: tuple[str, ...] = (), every: bool = False, dry_r
 ])
 def test_review(given, when, then):
     code = FakeCode(given, refused={"/elsewhere": "/elsewhere lies outside the project"})
-    parts = FakeParts({"p": PARTS}, refused={"gone": "gone: no such file"})
-    assert controller(code, parts).review(when) == then
+    profile = FakeProfile(WORDS, refused={"gone": "gone: no such file"})
+    assert controller(code, profile).review(when) == then
 
 
 def test_every_file_of_the_app_is_the_app_folder_read():
     code = FakeCode({"/src/app": Found((DOCUMENT,))})
-    planned = controller(code, FakeParts({"p": PARTS})).review(review(every=True))
+    planned = controller(code, FakeProfile(WORDS)).review(review(every=True))
     assert isinstance(planned, ReviewPlanned)
     assert (planned.by, planned.found) == (("all",), 1)
 
 
 def test_listed_paths_are_read_after_those_named():
     code = FakeCode({"app/x.py": Found((DOCUMENT,)), "app/y.py": Found((SMALL_FILE,))})
-    planned = controller(code, FakeParts({"p": PARTS})).review(review("app/x.py", listed=("app/y.py",)))
+    planned = controller(code, FakeProfile(WORDS)).review(review("app/x.py", listed=("app/y.py",)))
     assert isinstance(planned, ReviewPlanned)
     assert (planned.by, [r.file for r in planned.requests], [i.file for i in planned.left_out]) == (
         ("paths", "files-from"), [DOCUMENT.file], [SMALL_FILE.file])
+
+
+def test_the_texts_the_profile_says_review_hides_are_masked_in_what_each_request_would_send():
+    other = found("app/modules/documents/domain/other.py")
+    code = FakeCode({"app/x.py": Found((other,))})
+    planned = controller(code, FakeProfile(WORDS)).review(review("app/x.py", profile="kept"))
+    assert isinstance(planned, ReviewPlanned)
+    assert [r.text for r in planned.requests] == [HIDDEN]
+    assert planned.mask == ("Doc*", "title")

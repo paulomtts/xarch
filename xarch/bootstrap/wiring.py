@@ -10,7 +10,7 @@ from xarch.modules.layout.adapters.spec_skeleton import SpecSkeleton as LayoutSk
 from xarch.modules.layout.application.controller import LayoutController
 from xarch.modules.layout.application.services.structure_check import StructureCheckService
 from xarch.modules.review.adapters.rules_code import RulesCode
-from xarch.modules.review.adapters.spec_profile import SpecParts
+from xarch.modules.review.adapters.spec_profile import SpecWords
 from xarch.modules.review.application.controller import ReviewController
 from xarch.modules.review.application.services.reviewing import ReviewService
 from xarch.modules.rules.adapters.fs_source_tree import FsSourceTree
@@ -118,8 +118,8 @@ def _build_scaffold(fs: FileSystem, spec: SpecController) -> ScaffoldController:
 
 
 def _build_review(rules: RulesController, spec: SpecController) -> ReviewController:
-    """Review, which reads the app's files through rules and the profile's parts through spec."""
-    return ReviewController(ReviewService(RulesCode(rules), SpecParts(spec)))
+    """Review, which reads the app's files through rules and the profile's words through spec."""
+    return ReviewController(ReviewService(RulesCode(rules), SpecWords(spec)))
 
 
 def build_controllers() -> _Controllers:

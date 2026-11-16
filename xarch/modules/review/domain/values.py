@@ -1,5 +1,5 @@
-"""The values review reads through its ports: the parts of the profile as placement offers them, and the files found
-at the paths given, read or not."""
+"""The values review reads through its ports: the profile's words review reads (its parts as placement offers them,
+and what review may send), and the files found at the paths given, read or not."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -16,6 +16,15 @@ class PartText:
     folder: str
     litmus: str
     role: str
+
+
+@dataclass(frozen=True)
+class Words:
+    """What review reads of a profile: its parts, in its order; the paths below the app of the files review never
+    sends; and the texts it hides before it sends, each as the profile writes it."""
+    parts: tuple[PartText, ...]
+    never: tuple[str, ...] = ()
+    mask: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from xarch.modules.review.domain.values import PartText
+from xarch.modules.review.domain.values import Words
 
 
-class Parts(Protocol):
-    """The parts of a profile, as placement offers them."""
+class Profile(Protocol):
+    """What review reads of a profile: its parts, as placement offers them, and what review may send."""
 
-    def parts(self, profile: str) -> tuple[PartText, ...]:
-        """The parts of the profile at location profile, in its order; raises Refused for one that cannot be used."""
+    def words(self, profile: str) -> Words:
+        """The words of the profile at location profile; raises Refused for one that cannot be used."""
         ...

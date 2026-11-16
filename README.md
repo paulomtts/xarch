@@ -120,6 +120,7 @@ guards:   {scenario-coverage, no-comments, stand-ins, closed-tree, no-duplicates
 files:    {<path>: <from> | {from*, pinned, fill}}      docs: {entry, pages, naming, examples, example_notes}
 checks:   {<id>: {read*, in, keep, may_not | may_only | must_reach | must_be_reached*, except, mode, message*, fix*,
                   once_per, cases, examples*}}
+review:   {never, mask}                                 what `xarch review` may send; `check` never reads it
 ```
 
 `language` names the language of the app: `python`, which is the default and the only one xarch reads today. What is
@@ -180,8 +181,9 @@ xarch profile new mine --from web          # copy a bundled profile into archite
 xarch profile check [NAME|FILE]            # validate a profile without an app
 ```
 
-`explain` takes `--format json` (`{"ok", "key", "where", "meaning", "accepts", "required", "enforced", "rules",
-"example", "choices", "keys", "needs", "language"}` for a key, `language` the language whose reader `needs` is graded
+`explain` takes `--format json` (`{"ok", "key", "where", "meaning", "accepts", "required", "enforced", "read_by",
+"rules", "example", "choices", "keys", "needs", "language"}` for a key, `read_by` the command other than `check` that
+alone reads it (`review` for `review` and its keys, else null; each `shape` entry has it too), `language` the language whose reader `needs` is graded
 by; `{"ok", "key", "profile", "rules", "checks", "needs"}` for a key with
 `--rule`, `needs` the facts its rules read; `{"ok", "format", "shape", "symbols", "smallest", "deeper"}` for the whole) and
 exits 2 for a key the format does not have, naming the nearest (in JSON, `nearest` the format's keys and `words` the
@@ -553,15 +555,40 @@ A run judges at most `--max-files` files (50); past that it refuses, naming how 
 file judged with the text it would send. That text is the file's own, masked: the module each import of the app's own
 code names (an import named from the importing file's folder, or whose first step is the app's import name) is
 replaced by `<masked>` on the import's line, since it would say the part; every e-mail address becomes
-`person@example.test`. Nothing else is masked: docstrings, comments and string literals are sent as written, so a file
-that must not leave the machine is one not to choose. The path of a file, the project's name and anything else of the
+`person@example.test`; then each text the profile's `review.mask` hides (below). Nothing else is masked: docstrings,
+comments and string literals are sent as written, so a file that must not leave the machine is one not to choose, or
+one for `review.never`. The path of a file, the project's name and anything else of the
 project are never part of what is sent. It ends with the characters in all and about how many tokens they make (one
 for every four characters).
 
+### What review may send: `review.never` and `review.mask`
+
+The profile may narrow what review sends, under a top-level `review` key that `check` never reads (it changes no
+finding and no exit code of `check`). Neither key can switch sending on.
+
+```yaml
+review:
+  never: [modules/documents/adapters/legal_archive.py, "**/secrets"]
+  mask: [Northwind, "DOC-*"]
+```
+
+- `never`: paths below the app of the files review never sends, each with its steps written with `/`: a step as
+  written, `*` for any text inside one step, and a step that is `**` for any number of folders (none included). A path
+  matches a file, or a folder and every file below it. A file chosen that one matches is left out of every run,
+  `--dry-run` included, as "held back by review.never (<path>)"; its text goes into no request.
+- `mask`: texts hidden in each file's text before it is sent, after the built-in masks: each as written (case counts),
+  `*` standing for a run of one or more letters, digits, `_`, `-` and `.`; each match is sent as `<masked>`.
+  `--dry-run` shows the texts masked and lists the patterns in force.
+
+`profile check` lists, as looser, an entry of either that the profile it is compared with holds and this one does not:
+it sends more. `xarch profile explain review.never` (or `review.mask`) says each in full.
+
 `--format json` prints one document: `{"ok", "advisory", "profile", "dry_run", "sent", "selection": {"by", "found",
-"judged", "left_out": [{"file", "why", "chars"}]}, "question": {"ask", "role_only", "options": [{"name",
-"description"}]}, "requests": [{"file", "part", "chars", "text"}], "characters", "tokens"}`, `why` one of `missing`,
-`not-source`, `test`, `outside`, `excluded`, `unplaced`, `unparsable`, `small`; a refusal is `{"ok": false, "error"}`.
+"judged", "left_out": [{"file", "why", "chars", "pattern"}]}, "question": {"ask", "role_only", "options": [{"name",
+"description"}]}, "requests": [{"file", "part", "chars", "text"}], "characters", "tokens", "mask"}`, `why` one of
+`missing`, `not-source`, `test`, `outside`, `excluded`, `unplaced`, `never`, `unparsable`, `small`, `pattern` the
+`review.never` path that matched (null for any other `why`), `mask` the profile's `review.mask`; a refusal is
+`{"ok": false, "error"}`.
 
 ## Project docs
 

@@ -95,6 +95,24 @@ def test_more_files_than_one_run_judges_is_refused_before_anything_is_shown(tmp_
                                                               "choose fewer, or raise --max-files; nothing was sent"}
 
 
+def test_a_file_review_never_sends_is_left_out_with_the_path_and_a_text_review_mask_hides_is_masked(tmp_path):
+    assert runner.invoke(app, ["profile", "new", "mine", "--from", "cli"]).exit_code == 0
+    profile = tmp_path / "architecture" / "mine" / "mine.yaml"
+    profile.write_text(profile.read_text() + "review:\n  never: [modules/*/adapters]\n  mask: [DocumentService, 'step_*']\n")
+    adapter = "app/modules/documents/adapters/legal_archive.py"
+    (tmp_path / adapter).write_text(BODY)
+    result = review(SERVICE, adapter, "--dry-run", "--profile", str(profile))
+    assert result.exit_code == 0, result.output
+    assert f"  {adapter}: held back by review.never (modules/*/adapters)" in result.output.splitlines()
+    assert "class <masked>:" in result.output and "    |     def <masked>(self, id: DocumentId) -> None:" in result.output
+    assert "DocumentService" not in result.output.replace("review.mask hides: DocumentService, step_*", "")
+    document = json.loads(review(SERVICE, adapter, "--dry-run", "--profile", str(profile), "--format", "json").output)
+    assert [sent["file"] for sent in document["requests"]] == [SERVICE]
+    assert {"file": adapter, "why": "never", "chars": len(BODY), "pattern": "modules/*/adapters"} in (
+        document["selection"]["left_out"])
+    assert document["mask"] == ["DocumentService", "step_*"]
+
+
 def test_review_changes_nothing_check_finds():
     before = runner.invoke(app, ["check", "--format", "json"])
     review(SERVICE, "--dry-run")

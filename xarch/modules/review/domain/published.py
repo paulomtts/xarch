@@ -13,11 +13,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-MISSING, NOT_SOURCE, A_TEST, OUTSIDE, EXCLUDED, UNPLACED, UNPARSABLE, SMALL = (
-    "missing", "not-source", "test", "outside", "excluded", "unplaced", "unparsable", "small")
+MISSING, NOT_SOURCE, A_TEST, OUTSIDE, EXCLUDED, UNPLACED, NEVER, UNPARSABLE, SMALL = (
+    "missing", "not-source", "test", "outside", "excluded", "unplaced", "never", "unparsable", "small")
 """Why a file found is not judged: it is not there; it is no source file of the app's language; it is a test; it lies
-outside the app folder; it lies below a folder the profile excludes; it lies in no part; it does not parse; it is
-under the smallest size judged."""
+outside the app folder; it lies below a folder the profile excludes; it lies in no part; a path the profile says review
+never sends matches it; it does not parse; it is under the smallest size judged."""
 
 MIN_CHARS = 800
 """The fewest characters a file judged holds: under it, a file is too small to be judged (the smallest file the trials
@@ -55,8 +55,10 @@ class Request:
 
 @dataclass(frozen=True)
 class LeftOut:
-    """A file found that is not judged: the file, as `check` shows it, why (one of the reasons above), and how many
-    characters it holds (0 when it was not read)."""
+    """A file found that is not judged: the file, as `check` shows it, why (one of the reasons above), how many
+    characters it holds (0 when it was not read), and, for one review never sends, the path of the profile that
+    matched it ("" for any other)."""
     file: str
     why: str
     chars: int = 0
+    pattern: str = ""

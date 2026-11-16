@@ -13,6 +13,7 @@ from xarch.modules.review.contract import (
     EXCLUDED,
     MIN_CHARS,
     MISSING,
+    NEVER,
     NOT_SOURCE,
     OUTSIDE,
     SMALL,
@@ -33,7 +34,10 @@ WHAT_LEAVES = ("What leaves the machine in a review that sends: the masked text 
 WAYS = {BY_PATHS: "paths", BY_LIST: "--files-from", BY_ALL: "--all"}
 WHY = {MISSING: "not there", NOT_SOURCE: "no source file of the app's language", A_TEST: "a test: review reads the app's "
        "files only", OUTSIDE: "outside the app folder", EXCLUDED: "below a folder the profile excludes",
-       UNPLACED: "in no part", UNPARSABLE: "does not parse", SMALL: f"under {MIN_CHARS:,} characters"}
+       UNPLACED: "in no part", NEVER: "held back by review.never", UNPARSABLE: "does not parse",
+       SMALL: f"under {MIN_CHARS:,} characters"}
+MASKED = ("masked in each text: the dotted name each import of the app's own code imports from, and every e-mail "
+          "address, always; and what review.mask hides")
 QUOTE = "    | "
 
 
@@ -48,6 +52,7 @@ def plan_lines(planned: ReviewPlanned) -> list[str]:
              f"  options: {len(planned.question.options)} parts, each described by its litmus test"
              + (f" (by its role only: {', '.join(planned.role_only)})" if planned.role_only else "")]
     lines += [f"    {option.name}: {option.description}" for option in planned.question.options]
+    lines += ["", f"{MASKED}: {', '.join(planned.mask)}" if planned.mask else f"{MASKED}: nothing more"]
     for number, item in enumerate(planned.requests, 1):
         lines += ["", f"request {number} of {judged}: {item.file} ({item.part}, {item.chars:,} characters)",
                   *_quoted(item)]
@@ -61,11 +66,12 @@ def plan_document(profile: str, planned: ReviewPlanned) -> str:
     content: dict[str, Any] = {
         "ok": True, "advisory": ADVISORY, "profile": profile, "dry_run": True, "sent": False,
         "selection": {"by": list(planned.by), "found": planned.found, "judged": len(planned.requests),
-                      "left_out": [{"file": i.file, "why": i.why, "chars": i.chars} for i in planned.left_out]},
+                      "left_out": [{"file": i.file, "why": i.why, "chars": i.chars, "pattern": i.pattern or None}
+                                   for i in planned.left_out]},
         "question": {"ask": planned.question.ask, "role_only": list(planned.role_only),
                      "options": [{"name": o.name, "description": o.description} for o in planned.question.options]},
         "requests": [{"file": r.file, "part": r.part, "chars": r.chars, "text": r.text} for r in planned.requests],
-        "characters": planned.characters, "tokens": planned.tokens}
+        "characters": planned.characters, "tokens": planned.tokens, "mask": list(planned.mask)}
     return document(content)
 
 
@@ -94,4 +100,6 @@ def _quoted(item: Request) -> list[str]:
 
 
 def _why(item: LeftOut) -> str:
-    return f"{WHY[item.why]} ({item.chars:,})" if item.why == SMALL else WHY[item.why]
+    if item.why == SMALL:
+        return f"{WHY[item.why]} ({item.chars:,})"
+    return f"{WHY[item.why]} ({item.pattern})" if item.pattern else WHY[item.why]

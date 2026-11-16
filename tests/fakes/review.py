@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from xarch.modules.review.domain.errors import Refused
-from xarch.modules.review.domain.values import Found, PartText
+from xarch.modules.review.domain.values import Found, Words
 
 
 class FakeCode:
@@ -22,14 +22,14 @@ class FakeCode:
         return Found(tuple(file for f in each for file in f.read), tuple(item for f in each for item in f.unread))
 
 
-class FakeParts:
-    """Satisfies review's Parts: a fixed list of parts per profile; a profile listed as refused raises Refused with its
+class FakeProfile:
+    """Satisfies review's Profile: fixed words per profile; a profile listed as refused raises Refused with its
     reason."""
 
-    def __init__(self, parts: dict[str, tuple[PartText, ...]], refused: dict[str, str] | None = None):
-        self._parts, self._refused = parts, dict(refused or {})
+    def __init__(self, words: dict[str, Words], refused: dict[str, str] | None = None):
+        self._words, self._refused = words, dict(refused or {})
 
-    def parts(self, profile: str) -> tuple[PartText, ...]:
+    def words(self, profile: str) -> Words:
         if profile in self._refused:
             raise Refused(self._refused[profile])
-        return self._parts[profile]
+        return self._words[profile]

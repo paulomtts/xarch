@@ -14,6 +14,7 @@ from xarch.modules.review.domain.published import (
     MAX_FILES,
     MIN_CHARS,
     MISSING,
+    NEVER,
     NOT_SOURCE,
     OUTSIDE,
     SMALL,
@@ -25,9 +26,10 @@ from xarch.modules.review.domain.published import (
     Request,
 )
 
-__all__ = ["A_TEST", "BY_ALL", "BY_LIST", "BY_PATHS", "EXCLUDED", "MAX_FILES", "MIN_CHARS", "MISSING", "NOT_SOURCE", "OUTSIDE", "SMALL",
-           "UNPARSABLE", "UNPLACED", "Choice", "LeftOut", "Option", "Request", "Review", "ReviewPlanned",
-           "NothingChosen", "AllAndOthers", "TooManyFiles", "NotSendable", "ReviewRefused", "ReviewResult"]
+__all__ = ["A_TEST", "BY_ALL", "BY_LIST", "BY_PATHS", "EXCLUDED", "MAX_FILES", "MIN_CHARS", "MISSING", "NEVER",
+           "NOT_SOURCE", "OUTSIDE", "SMALL", "UNPARSABLE", "UNPLACED", "Choice", "LeftOut", "Option", "Request",
+           "Review", "ReviewPlanned", "NothingChosen", "AllAndOthers", "TooManyFiles", "NotSendable",
+           "ReviewRefused", "ReviewResult"]
 
 
 @dataclass(frozen=True)
@@ -51,8 +53,8 @@ class Review:
 class ReviewPlanned:
     """What a review would send, and nothing sent: how the files were chosen (BY_PATHS, BY_LIST, BY_ALL), how many
     were found, the request each file judged would send, the files left out and why, the question each request
-    carries, the parts it describes by their role alone, and the characters and about how many tokens the requests
-    would send in all."""
+    carries, the parts it describes by their role alone, the characters and about how many tokens the requests
+    would send in all, and the texts the profile says review hides, which no request holds."""
     by: tuple[str, ...]
     found: int
     requests: tuple[Request, ...]
@@ -61,6 +63,7 @@ class ReviewPlanned:
     role_only: tuple[str, ...]
     characters: int
     tokens: int
+    mask: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
