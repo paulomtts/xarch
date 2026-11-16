@@ -143,7 +143,8 @@ xarch profile check [NAME|FILE]            # validate a profile without an app
 ```
 
 `explain` takes `--format json` (`{"ok", "key", "where", "meaning", "accepts", "required", "enforced", "rules",
-"example", "choices", "keys"}` for a key; `{"ok", "format", "shape", "symbols", "smallest", "deeper"}` for the whole) and
+"example", "choices", "keys", "needs"}` for a key; `{"ok", "key", "profile", "rules", "checks", "needs"}` for a key with
+`--rule`, `needs` the facts its rules read; `{"ok", "format", "shape", "symbols", "smallest", "deeper"}` for the whole) and
 exits 2 for a key the format does not have, naming the nearest. The key may be written with or without the placeholder
 steps (`parts.may_import` or `parts.<part>.may_import`). `--profile NAME|FILE` (or `--configured`, the project's profile)
 prints the folder tree with each folder's role and the table of what each part may import, as the generated docs show

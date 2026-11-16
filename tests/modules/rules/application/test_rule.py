@@ -22,7 +22,8 @@ TEXT = """checks:
 
 @pytest.mark.parametrize("given, when, then", [
     pytest.param({"named": NAMED}, ExplainRule("parts.services.names", "named"),
-                 RuleShown("parts.services.names", "named", TEXT, 1), id="a key of one part is its rule, as a check"),
+                 RuleShown("parts.services.names", "named", TEXT, 1, ("class",)),
+                 id="a key of one part is its rule, as a check, with the facts it reads"),
     pytest.param({"named": NAMED}, ExplainRule("parts.path", "named"),
                  NoRuleShown("parts.path", "named", "it expands to no rule of the engine here: the profile does not "
                                                     "set it, or it is checked by a check of its own"),

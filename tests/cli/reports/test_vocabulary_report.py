@@ -77,10 +77,10 @@ def test_a_kind_shows_its_fields_and_when_one_is_carried_only_sometimes():
 
 
 def test_the_rules_of_a_key_are_said_as_checks_and_a_key_of_none_says_why():
-    shown = RuleShown("parts.names", "web", CHECK, 1)
+    shown = RuleShown("parts.names", "web", CHECK, 1, ("class",))
     assert rule_lines(shown)[0] == "parts.names expands to 1 rule in web, written as checks:"
     assert json.loads(rule_document(shown)) == {"ok": True, "key": "parts.names", "profile": "web", "rules": 1,
-                                                "checks": CHECK}
+                                                "checks": CHECK, "needs": ["class"]}
     assert no_rule_message(NoRuleShown("parts.path", "web", "no rule")) == "parts.path in web: no rule"
 
 

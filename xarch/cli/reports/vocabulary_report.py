@@ -126,7 +126,7 @@ def rule_lines(shown: RuleShown) -> list[str]:
 
 def rule_document(shown: RuleShown) -> str:
     return _dump({"ok": True, "key": shown.address, "profile": shown.profile, "rules": shown.count,
-                  "checks": shown.text})
+                  "checks": shown.text, "needs": list(shown.needs)})
 
 
 def unset_lines(unset: KeyUnset, example: str) -> list[str]:

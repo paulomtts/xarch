@@ -53,7 +53,8 @@ class ExplainingService:
         if not rules:
             return NoRuleShown(address, location, "it expands to no rule of the engine here: the profile does not set "
                                                   "it, or it is checked by a check of its own")
-        return RuleShown(address, location, written(rules, _ids(rules)), len(rules))
+        return RuleShown(address, location, written(rules, _ids(rules)), len(rules),
+                         tuple(dict.fromkeys(need for rule in rules for need in rule.needs)))
 
     def _rules(self, location: str) -> list[Rule]:
         try:

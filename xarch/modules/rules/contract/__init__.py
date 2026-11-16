@@ -394,11 +394,13 @@ class ExplainRule:
 
 @dataclass(frozen=True)
 class RuleShown:
-    """The rules a key expands to in a profile, written as checks, and how many."""
+    """The rules a key expands to in a profile, written as checks, and how many; and the facts of the source they read
+    (FACTS of capabilities), in order."""
     address: str
     profile: str
     text: str
     count: int
+    needs: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
