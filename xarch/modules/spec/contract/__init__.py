@@ -384,11 +384,11 @@ CheckResult = ProfileChecked | NoProfileChosen | ProfileRefused
 @dataclass(frozen=True)
 class NewProfile:
     """Write a custom profile named name as a copy of the bundled profile source, with every file it points to, in
-    folder out (default: architecture/<name>/ in root, the folder holding the app folder); nothing is overwritten. cwd
-    is the working folder, in full, that a relative root or out is read from."""
+    folder out (default: architecture/<name>/ beside app, the app folder); nothing is overwritten. cwd is the working
+    folder, in full, that a relative app or out is read from."""
     name: str
     source: str
-    root: Path
+    app: Path
     cwd: Path
     out: Path | None = None
 

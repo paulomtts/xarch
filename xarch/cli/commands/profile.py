@@ -144,8 +144,7 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
         profile, and every file it points to (templates, docs pages, files, example folders), so the copy loads on its
         own and passes `xarch profile check` as it is. Nothing is overwritten: when any file exists nothing is written
         and the ones that exist are named. pyproject.toml is not edited: the line to put the copy in force is printed."""
-        root = app_for(spec, app_path).parent
-        match spec.new_profile(NewProfile(name, source, root, in_full(Path()), out)):
+        match spec.new_profile(NewProfile(name, source, app_for(spec, app_path), in_full(Path()), out)):
             case ProfileCreated() as done:
                 echo(report.created_lines(done, source))
             case ProfileRefused(why):

@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from xarch.modules.spec.application.logic.profile_copy import copied_text, recorded, valid_name
+from xarch.modules.spec.application.logic.profile_copy import copied_text, project_root, recorded, valid_name
 
 ORIGINAL = "# a comment\nxarch: 2\nname: web\nlanguage: python\n\nparts:\n  name: not this one\n"
 
@@ -31,3 +31,7 @@ def test_a_name_is_letters_digits_dash_and_underscore_and_starts_with_a_letter_o
 def test_the_profile_is_recorded_relative_to_the_folder_holding_pyproject_as_posix():
     assert recorded(Path("/p/architecture/mine/mine.yaml"), Path("/p"), Path("/cwd")) == "architecture/mine/mine.yaml"
     assert recorded(Path("/other/mine.yaml"), Path("/p"), Path("/cwd")) == "../other/mine.yaml"
+
+
+def test_the_project_is_the_folder_holding_the_app_folder():
+    assert project_root(Path("/p/app")) == Path("/p")

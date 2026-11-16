@@ -5,6 +5,7 @@ from xarch.modules.spec.application.logic.profile_copy import (
     copied_text,
     copy_file,
     copy_folder,
+    project_root,
     recorded,
     valid_name,
 )
@@ -44,10 +45,11 @@ class ProfileCreationService:
                                            profile, outputs)
         except InvalidArchitecture as e:
             raise NewProfileRefused("the copy does not load:\n" + "\n".join(f"  {p}" for p in e.problems)) from e
-        folder = copy_folder(cmd.root, cmd.name, cmd.out)
+        root = project_root(cmd.app)
+        folder = copy_folder(root, cmd.name, cmd.out)
         taken = taken_phrase(self._output.taken(folder, outputs))
         if taken:
             raise NewProfileRefused(f"{taken}: nothing was written; `new` writes only new files, so pass "
                                     "`--out <folder>` to write somewhere else, or choose another name")
         self._output.write(folder, outputs)
-        return ProfileCreated(folder, folder / profile, (profile, *pointed), recorded(folder / profile, cmd.root, cmd.cwd))
+        return ProfileCreated(folder, folder / profile, (profile, *pointed), recorded(folder / profile, root, cmd.cwd))
