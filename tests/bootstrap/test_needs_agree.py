@@ -90,14 +90,6 @@ def test_the_profile_sets_every_key_the_engine_expands(every_key):
     assert [address for address, shown in expanded(every_key).items() if not shown["rules"]] == []
 
 
-@pytest.mark.xfail(strict=True, reason="audit 4, engine #1a: spec's profile_keys.NEEDS and the needs of the rules a "
-                                       "key expands to disagree: parts.must_import (import.standard in the table, file "
-                                       "in the rules), guards.private-imports (import.relative), "
-                                       "guards.dead-code.untested (class, file and function in the rules), tiers and "
-                                       "tiers.must_import (file in the rules), and the pass-through rules carry "
-                                       "guards.pass-through.parts where the table says guards.pass-through; remove "
-                                       "this mark once the expansion is the one source of a key's needs, or the two "
-                                       "tables agree")
 def test_what_a_key_needs_of_the_language_is_what_the_rules_it_expands_to_read(every_key):
     differ = {}
     for address, shown in expanded(every_key).items():

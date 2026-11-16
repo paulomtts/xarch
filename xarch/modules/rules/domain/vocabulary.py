@@ -240,7 +240,7 @@ FILTERS: tuple[Filter, ...] = (
     Filter("app-package", "the import names the app's own package by its root (an absolute import of the app)", FACT,
            ("path",)),
     Filter("own-code", "the import is of the project's own code: relative, or naming the app's or the tests' package",
-           FACT, ("path",)),
+           FACT, ("path", "relative")),
     Filter("takes-a-name", "the import takes a name from what it imports, rather than the whole of it", FACT,
            ("name",)),
     Filter("on-own-object", "the method is called on the object itself or on something it holds; `not on-own-object` is "
@@ -309,7 +309,7 @@ TARGETS: tuple[TargetKind, ...] = (
                             "own folder that is no test, or the fakes when its tier tests a part they stand in for",
                ("place", "reaches")),
     TargetKind("outside", "the import names a package outside the project: it is not relative, names neither the "
-                          "app's own package nor the standard library", ("path",)),
+                          "app's own package nor the standard library", ("path", "relative", "standard")),
 )
 """Every kind of target."""
 

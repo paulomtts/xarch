@@ -2,7 +2,6 @@
 every fact of the small project, changing any other field leaves its answer as it was. What a check needs of the
 language is worked out from the fields its words read, so a word that reads a field it does not declare runs on a
 language that does not supply that field, neither refused nor listed as approximate."""
-import pytest
 
 from tests.modules.rules.application.logic.world import BUILT, FACTS, LISTED, NARROWED, PROFILE, RESERVED
 from xarch.kernel.placement import Place
@@ -91,15 +90,10 @@ def target_leaks() -> dict[str, list[str]]:
     return found
 
 
-@pytest.mark.xfail(strict=True, reason="audit 4, engine #1b: the filter own-code declares it reads path, and reads the "
-                                       "trait relative too; remove this mark once every filter declares what it reads")
 def test_every_filter_about_a_fact_reads_only_the_fields_it_declares():
     assert filter_leaks() == {}
 
 
-@pytest.mark.xfail(strict=True, reason="audit 4, engine #1b: the target outside declares it reads path, and reads the "
-                                       "traits relative and standard too; remove this mark once every kind of target "
-                                       "declares what it reads")
 def test_every_kind_of_target_reads_only_the_fields_it_declares():
     assert target_leaks() == {}
 

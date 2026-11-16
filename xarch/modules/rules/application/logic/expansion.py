@@ -340,8 +340,17 @@ def pass_through(profile: Profile) -> tuple[Rule, ...]:
                               f"forward: {keep}", _all("returns-an-attribute")),
                        Saying("{qualified_name} only passes its arguments on to {forwarded}",
                               f"have the caller use {{forwarded}}, or keep it as a deliberate plain forward: {keep}")),
-                      keep=_all("forwards"), mode=LIST, key="guards.pass-through.parts")
+                      keep=_all("forwards"), mode=LIST, key="guards.pass-through")
                  for part in profile.pass_through)
+
+
+KEYS = ("parts.may_import", "parts.libraries", "parts.forbidden", "tiers.apply_forbidden", "tiers", "tiers.types_only",
+        "parts.package_only", "parts.types_only", "parts.no_callbacks", "parts.names", "parts.built_by",
+        "guards.private-imports", "guards.no-comments", "guards.closed-tree", "parts.holds", "parts.immutable",
+        "parts.must_import", "tiers.must_import", "guards.dead-code", "guards.dead-code.untested",
+        "guards.dead-code.tests_only", "guards.pass-through")
+"""The keys the rules of the book are keyed by, each with any part or tier left out (see explained.general), in the
+order of the book: a key the engine expands to rules when a profile sets it."""
 
 
 def book(profile: Profile) -> dict[str, tuple[Rule, ...]]:

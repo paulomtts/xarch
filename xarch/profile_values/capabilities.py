@@ -1,7 +1,9 @@
 """What a check reads of the source, as facts a language's reader supplies: the vocabulary of those facts, and how well
 a reader supplies one. These are values of the language a profile names, which spec reads from its data file and
-rules checks the code with. What each check needs of them is said where the check is: for a key, in spec's table of
-keys; for a rule, by the vocabulary of rules (a kind of fact and the fields its words read). A language's data file
+rules checks the code with. What each check needs of them is said twice: for a key, in spec's table of keys, which
+spec reads when it loads a profile, since it cannot ask rules; and for a rule, by the vocabulary of rules (a kind of
+fact and the fields its words read). For a key the engine expands, the two are the same facts, and the wired tests
+hold them so. A language's data file
 grades each fact it supplies: exact, or partial with a note saying what it misses; a fact it does not grade it does not
 supply. A key or a rule that needs a fact the language does not supply is refused, and one that reads a partial fact
 is listed as approximate.
