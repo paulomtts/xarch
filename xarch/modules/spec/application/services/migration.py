@@ -3,7 +3,7 @@ from __future__ import annotations
 from xarch.modules.spec.application.logic.migrate_examples import referenced_v1, rewritten_template
 from xarch.modules.spec.application.logic.migrate_output import converted_folder, converted_name, not_format_1
 from xarch.modules.spec.application.logic.migrate_profile import Converted, convert
-from xarch.modules.spec.application.logic.profile_copy import copy_refusal
+from xarch.modules.spec.application.logic.profile_copy import conversion_refusal
 from xarch.modules.spec.application.logic.profile_listing import listing
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
 from xarch.modules.spec.application.ports.profile_format import ProfileFormat
@@ -42,7 +42,7 @@ class MigrationService:
         try:
             self._architectures.parse_copy(converted.document, location, outputs)
         except InvalidArchitecture as e:
-            raise UnmigratableProfile(copy_refusal("the converted profile does not load:", e.problems, by_hand)) from e
+            raise UnmigratableProfile(conversion_refusal(e.problems, by_hand)) from e
         folder = converted_folder(cmd.path, cmd.out)
         taken = self._output.taken(folder, outputs)
         if taken:

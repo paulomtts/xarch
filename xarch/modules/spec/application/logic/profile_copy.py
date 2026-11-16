@@ -24,9 +24,24 @@ def name_refusal(name: str) -> str:
     return f"'{name}' is not a profile name: use letters, digits, '-' and '_', starting with a letter or a digit"
 
 
-def copy_refusal(lead: str, problems: Iterable[str], by_hand: Iterable[str] = ()) -> str:
-    """Why a copy or a conversion of a profile is refused because it does not load: the lead, every problem, and what
-    was not converted, each on a line of its own."""
+def unnamed_refusal(source: str) -> str:
+    """Why the bundled profile source cannot be copied: its file has no `name` line to rename."""
+    return f"the bundled profile '{source}' has no `name` line to rename"
+
+
+def copy_refusal(problems: Iterable[str]) -> str:
+    """Why a copy of a bundled profile is refused because it does not load: every problem, each on a line of its
+    own."""
+    return _refusal("the copy does not load:", problems, ())
+
+
+def conversion_refusal(problems: Iterable[str], by_hand: Iterable[str]) -> str:
+    """Why a conversion of a profile of format 1 is refused because it does not load: every problem, then what was not
+    converted, each on a line of its own."""
+    return _refusal("the converted profile does not load:", problems, by_hand)
+
+
+def _refusal(lead: str, problems: Iterable[str], by_hand: Iterable[str]) -> str:
     lines = [lead, *(f"  {problem}" for problem in problems)]
     by_hand = list(by_hand)
     return "\n".join([*lines, "not converted:", *(f"  {item}" for item in by_hand)] if by_hand else lines)

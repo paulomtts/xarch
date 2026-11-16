@@ -7,6 +7,7 @@ from xarch.modules.spec.application.logic.profile_copy import (
     copy_refusal,
     name_refusal,
     recorded,
+    unnamed_refusal,
     valid_name,
 )
 from xarch.modules.spec.application.logic.profile_file import source_of
@@ -38,14 +39,14 @@ class ProfileCreationService:
         pointed = self._architectures.pointed(cmd.source)
         text = self._form.renamed(self._files.profile_text(source), cmd.name, cmd.source)
         if text is None:
-            raise NewProfileRefused(f"the bundled profile '{cmd.source}' has no `name` line to rename")
+            raise NewProfileRefused(unnamed_refusal(cmd.source))
         profile = copy_file(cmd.name)
         outputs = {profile: text.encode("utf-8"), **{name: self._files.read_bytes(source, name) for name in pointed}}
         try:
             self._architectures.parse_copy(copied_document(self._files.read(source).document, cmd.name, cmd.source),
                                            profile, outputs)
         except InvalidArchitecture as e:
-            raise NewProfileRefused(copy_refusal("the copy does not load:", e.problems)) from e
+            raise NewProfileRefused(copy_refusal(e.problems)) from e
         root = project_root(cmd.app)
         folder = copy_folder(root, cmd.name, cmd.out)
         taken = self._output.taken(folder, outputs)

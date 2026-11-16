@@ -3,7 +3,14 @@ from pathlib import Path
 
 import pytest
 
-from xarch.modules.spec.application.logic.profile_copy import copy_refusal, name_refusal, recorded, valid_name
+from xarch.modules.spec.application.logic.profile_copy import (
+    conversion_refusal,
+    copy_refusal,
+    name_refusal,
+    recorded,
+    unnamed_refusal,
+    valid_name,
+)
 
 
 @pytest.mark.parametrize("name, ok", [("mine", True), ("my-app_2", True), ("", False), ("a b", False),
@@ -24,5 +31,10 @@ def test_a_name_that_is_no_profile_name_is_refused_with_what_a_name_may_be():
 
 
 def test_a_copy_that_does_not_load_is_refused_with_every_problem_then_what_was_not_converted():
-    assert copy_refusal("the copy does not load:", ["a", "b"]) == "the copy does not load:\n  a\n  b"
-    assert copy_refusal("lead:", ["a"], ["c"]) == "lead:\n  a\nnot converted:\n  c"
+    assert copy_refusal(["a", "b"]) == "the copy does not load:\n  a\n  b"
+    assert conversion_refusal(["a"], ["c"]) == "the converted profile does not load:\n  a\nnot converted:\n  c"
+    assert conversion_refusal(["a"], []) == "the converted profile does not load:\n  a"
+
+
+def test_a_bundled_profile_with_no_name_line_is_refused_saying_so():
+    assert unnamed_refusal("cli") == "the bundled profile 'cli' has no `name` line to rename"
