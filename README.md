@@ -164,8 +164,9 @@ example-import check (the examples' imports obey the profile's own rules), holds
 to its examples, and shows how it differs from the bundled profile it is based on, as information (but for a part
 left without the litmus the bundled profile gives it, which fails `check --strict`). With no argument it checks the
 project's configured profile. Exit 0 when valid, 1 when it has problems, 2 when no profile can be chosen; `--format
-json` gives `{"ok", "profile", "problems": [{"check", "message"}], "files", "checks", "compared_with"}`, `checks`
-being how many checks the profile writes itself, made or not.
+json` gives `{"ok", "profile", "problems": [{"check", "message"}], "files", "checks", "compared_with"}`, `files`
+being how many files the profile points to and `checks` how many checks it writes itself, made or not; both are
+`null` for a profile that does not load.
 
 ### Checks of your own
 
@@ -364,7 +365,8 @@ enforcement
 
 - `profile`: the bundled name, or the custom file's path and the bundled profile it is based on or, failing that,
   most resembles (the first by name on a tie); one sharing no part resembles none, and nothing is compared. `guards off` lists every guard xarch has that the profile does not switch on, for a bundled profile
-  too. For a custom file, each way it is looser than the one it resembles, compared only where both use the same
+  too; one of them, `package-only`, is switched on by a part's `package_only: true` rather than under `guards`, and the
+  line names that key. For a custom file, each way it is looser than the one it resembles, compared only where both use the same
   name: a target added to a part's `may_import`, an outside package added to its `libraries` (or `everything`), a
   name of its `forbidden` list no entry covers any more, a part newly `untested`, a part dropped from a tier's
   `types_only`, a target added to a tier's `may_also_import`, a tier no longer `apply_forbidden`, a name dropped from `testing.skips`, a `files` entry no longer

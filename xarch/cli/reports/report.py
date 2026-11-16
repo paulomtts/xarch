@@ -12,10 +12,12 @@ check the profile writes itself, {"id", "read", "said"}), which a profile that w
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
+from pathlib import Path
 from typing import Any
 
 from xarch.cli.reports.document import document
 from xarch.cli.reports.profile_report import origin_words
+from xarch.cli.reports.shown import shown
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.contract import (
     APPROXIMATE,
@@ -46,7 +48,7 @@ LABELS = {GUARDS_OFF: "guards off", UNGOVERNED: "ungoverned", INIT_FILES: "init 
 
 
 def _text_lines(found: Iterable[Violation], hints: Mapping[str, str] | None = None) -> list[str]:
-    """The violations as the terminal shows them, in the order the checks found them, then the summary line. A
+    """The violations as the terminal shows them, in the order rules gives them, then the summary line. A
     finding is its line, `<file>:<line>: <message>`, then an indented `fix:` line and, when the profile has a hint
     for its rule, an indented `hint:` line."""
     found = list(found)
@@ -62,20 +64,21 @@ def _text_lines(found: Iterable[Violation], hints: Mapping[str, str] | None = No
     return [*lines, f"{len(found)} violation(s) in {files} file(s)"]
 
 
-def check_lines(origin: Origin, checked: AppChecked, strict: bool) -> list[str]:
-    """What `xarch check` shows as text: the violations, then the enforcement section."""
+def check_lines(origin: Origin, checked: AppChecked, strict: bool, cwd: Path) -> list[str]:
+    """What `xarch check` shows as text: the violations, then the enforcement section, a profile file named from the
+    working folder cwd when it lies below it."""
     return [*_text_lines(checked.violations, checked.hints),
-            *_enforcement_lines(origin, checked.enforcement, strict, checked.hints)]
+            *_enforcement_lines(origin, checked.enforcement, strict, cwd, checked.hints)]
 
 
-def _enforcement_lines(origin: Origin, state: EnforcementView, strict: bool,
+def _enforcement_lines(origin: Origin, state: EnforcementView, strict: bool, cwd: Path,
                       hints: Mapping[str, str] | None = None) -> list[str]:
     """The enforcement section: where the profile comes from and how loose it is, then the state of the check's
     enforcement; with strict, the findings it fails on after it. A weak check that has a fix shows it under its line,
     then the profile's hint for its rule when there is one."""
-    lines = ["enforcement", _line("profile", f"{origin.location} ({origin_words(origin)})", 2)]
+    lines = ["enforcement", _line("profile", f"{shown(Path(origin.location), cwd)} ({origin_words(origin)})", 2)]
     if origin.guards_off:
-        lines.append(_line(LABELS[GUARDS_OFF], ", ".join(origin.guards_off), 4))
+        lines.append(_line(LABELS[GUARDS_OFF], ", ".join(_guard(name) for name in origin.guards_off), 4))
     lines += [_line(item.key, item.sentence, 4) for item in origin.looser]
     if state.ungoverned:
         count = len(state.ungoverned)
@@ -103,8 +106,17 @@ def _enforcement_lines(origin: Origin, state: EnforcementView, strict: bool,
     if strict and state.strict:
         lines.append(_line("strict", f"{_count(len(state.strict), 'finding')} fail the check", 0)
                      if len(state.strict) > 1 else _line("strict", "1 finding fails the check", 0))
-        lines += [f"    {LABELS[f.key]}: {f.detail}" for f in state.strict]
+        lines += [f"    {LABELS[f.key]}: {_guard(f.detail) if f.key == GUARDS_OFF else f.detail}" for f in state.strict]
     return lines
+
+
+SET_ON_A_PART = {"package-only": "parts.<part>.package_only"}
+"""The guards a profile switches on by a key of a part, not of `guards`, each with that key."""
+
+
+def _guard(name: str) -> str:
+    """A guard by its name, and the key that switches it on when that is no key of `guards`."""
+    return f"{name} ({SET_ON_A_PART[name]})" if name in SET_ON_A_PART else name
 
 
 def _line(label: str, text: str, indent: int) -> str:

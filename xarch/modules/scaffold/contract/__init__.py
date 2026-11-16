@@ -55,5 +55,12 @@ class NotInitialized:
     folder: Path
 
 
-NewResult = Scaffolded | KindIsAFolder | NotInitialized | Refused
+@dataclass(frozen=True)
+class InstanceExists:
+    """The instance to create is there already: its name, and its folder in full."""
+    name: str
+    folder: Path
+
+
+NewResult = Scaffolded | KindIsAFolder | NotInitialized | InstanceExists | Refused
 InitResult = Scaffolded | Refused

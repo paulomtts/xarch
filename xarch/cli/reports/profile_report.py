@@ -7,8 +7,9 @@ explain, no key: {"ok", "format", "shape", "symbols", "smallest", "deeper"}, eac
 "note"}: a fact of the source the key's check reads, and how the language named supplies it. explain, a key the
 format has not: {"ok": false, "error", "key", "nearest", "words"}, nearest the format's keys near it and words the
 words of a check near it. explain, a profile: {"ok", "profile", "name", "tree", "imports"}.
-check: {"ok", "profile", "problems", "files", "checks", "compared_with"}, checks the number of checks the profile
-writes itself (made or not), each problem {"check", "message"} (check: load, examples, or checks, for a check of the
+check: {"ok", "profile", "problems", "files", "checks", "compared_with"}, files the number of files the profile
+points to and checks the number of checks it writes itself (made or not), both null for a profile that does not load,
+each problem {"check", "message"} (check: load, examples, or checks, for a check of the
 profile's own) and compared_with {"profile", "looser"} (null for a bundled profile or one that resembles none), each
 looser entry {"key", "part", "what", "sentence"}.
 """
@@ -20,6 +21,7 @@ from textwrap import fill
 from typing import Any
 
 from xarch.cli.reports.document import document
+from xarch.cli.reports.shown import shown
 from xarch.modules.rules.contract import ProfileHeld, ProfileUnloaded, Resemblance
 from xarch.modules.spec.contract import (
     FilesTaken,
@@ -194,12 +196,22 @@ def check_lines(checked: ProfileHeld | ProfileUnloaded) -> list[str]:
         case ProfileHeld(reviewed, own):
             pass
     lines = [f"checking {reviewed.location} ({origin_words(reviewed.resemblance)})", *_section("loads", (), "ok"),
-             f"  files: all {reviewed.files} it points to are present",
+             f"  files: {_files(reviewed.files)}",
              *_section("examples", reviewed.examples, "ok: they import only what their part may")]
     if own.checks or own.problems:
         lines += _section("checks", own.problems, "ok: its check finds what its examples say" if own.checks == 1 else
                           f"ok: its {own.checks} checks find what their examples say")
     return [*lines, *_compared(reviewed.resemblance), _verdict(len(reviewed.examples) + len(own.problems))]
+
+
+def _files(count: int) -> str:
+    """Whether the files the profile points to are present, as many as they are."""
+    match count:
+        case 0:
+            return "it points to none"
+        case 1:
+            return "the one it points to is present"
+    return f"all {count} it points to are present"
 
 
 def _section(name: str, problems: Sequence[str], ok: str) -> list[str]:
@@ -227,7 +239,7 @@ def check_document(checked: ProfileHeld | ProfileUnloaded) -> str:
     """What `profile check` found, as the JSON document."""
     match checked:
         case ProfileUnloaded(location, problems):
-            return _check_document(False, location, [(LOAD, text) for text in problems], 0, 0, None)
+            return _check_document(False, location, [(LOAD, text) for text in problems], None, None, None)
         case ProfileHeld(reviewed, own):
             pass
     resemblance = reviewed.resemblance
@@ -240,8 +252,8 @@ def check_document(checked: ProfileHeld | ProfileUnloaded) -> str:
     return _check_document(checked.ok, reviewed.location, problems, reviewed.files, own.checks, compared)
 
 
-def _check_document(ok: bool, location: str, problems: Sequence[tuple[str, str]], files: int, checks: int,
-                    compared: dict[str, Any] | None) -> str:
+def _check_document(ok: bool, location: str, problems: Sequence[tuple[str, str]], files: int | None,
+                    checks: int | None, compared: dict[str, Any] | None) -> str:
     return document({"ok": ok, "profile": location,
                      "problems": [{"check": check, "message": text} for check, text in problems],
                      "files": files, "checks": checks, "compared_with": compared})
@@ -270,9 +282,11 @@ def new_taken(refused: FilesTaken) -> str:
             "to write somewhere else, or choose another name")
 
 
-def created_lines(done: ProfileCreated, source: str) -> list[str]:
-    profile = done.profile.as_posix()
-    lines = [f"wrote {done.folder.as_posix()}/, a copy of {source} named {done.profile.stem}, based_on: {source}"]
+def created_lines(done: ProfileCreated, source: str, cwd: Path) -> list[str]:
+    """What `profile new` wrote, and how to put the copy in force, each path shown from the working folder cwd when it
+    lies below it."""
+    profile = shown(done.profile, cwd)
+    lines = [f"wrote {shown(done.folder, cwd)}/, a copy of {source} named {done.profile.stem}, based_on: {source}"]
     lines += [f"  {line}" for line in _summary(done.files)]
     lines += ["to put it in force, add this under [tool.xarch] in pyproject.toml (`new` never edits it):",
               f'  profile = "{done.location}"', "next:", *(f"  {step.format(profile=profile)}" for step in NEXT)]

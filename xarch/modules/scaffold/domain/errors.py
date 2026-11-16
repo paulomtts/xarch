@@ -36,7 +36,10 @@ class FolderMissing(DomainError):
 
 
 class AlreadyExists(DomainError):
+    """The instance to create is there already: its name, and its folder."""
+
     def __init__(self, name: str, base: Path):
+        self.name, self.base = name, base
         super().__init__(f"'{name}' already exists at {base}")
 
 

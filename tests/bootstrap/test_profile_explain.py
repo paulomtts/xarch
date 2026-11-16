@@ -57,6 +57,14 @@ def test_a_key_the_format_does_not_have_is_refused_with_the_nearest_keys():
     assert "error: no key `parts.may_imports` in the format: the nearest are parts.may_import" in result.output
 
 
+def test_a_key_of_the_format_is_explained_in_a_project_whose_pyproject_cannot_be_read(tmp_path):
+    (tmp_path / "pyproject.toml").write_text("[tool.xarch\n")
+    explained = runner.invoke(app, ["profile", "explain", "parts"])
+    assert (explained.exit_code, explained.output.splitlines()[0]) == (0, "parts")
+    unknown = runner.invoke(app, ["profile", "explain", "parts.may_imports"])
+    assert unknown.exit_code == 2 and "cannot read" in unknown.output and "pyproject.toml" in unknown.output
+
+
 def test_json_gives_the_shape_the_symbols_and_the_smallest_profile_and_for_a_key_the_fields_of_its_explanation():
     whole = json.loads(runner.invoke(app, ["profile", "explain", "--format", "json"]).output)
     assert whole["ok"] is True and whole["format"] == 2

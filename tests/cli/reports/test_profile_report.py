@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from xarch.cli.reports.profile_report import (
+    check_document,
     check_lines,
     created_lines,
     key_document,
@@ -42,13 +43,14 @@ def test_an_unknown_key_near_words_of_a_check_keeps_the_keys_and_the_words_apart
                               "filters.public", "key": "public", "nearest": ["name"], "words": ["filters.public"]}
 
 
-def test_a_new_profile_says_what_was_written_and_how_to_put_it_in_force():
-    done = ProfileCreated(Path("mine"), Path("mine/mine.yaml"), ("mine.yaml", "templates/a.md", "templates/b.md"),
-                          "mine/mine.yaml")
-    lines = created_lines(done, "cli")
-    assert lines[:3] == ["wrote mine/, a copy of cli named mine, based_on: cli", "  mine.yaml",
-                         "  templates/ (2 files)"]
-    assert '  profile = "mine/mine.yaml"' in lines
+def test_a_new_profile_says_what_was_written_and_how_to_put_it_in_force_each_path_from_the_working_folder():
+    done = ProfileCreated(Path("/work/mine"), Path("/work/mine/mine.yaml"),
+                          ("mine.yaml", "templates/a.md", "templates/b.md"), "mine/mine.yaml")
+    assert created_lines(done, "cli", Path("/work")) == [
+        "wrote mine/, a copy of cli named mine, based_on: cli", "  mine.yaml", "  templates/ (2 files)",
+        "to put it in force, add this under [tool.xarch] in pyproject.toml (`new` never edits it):",
+        '  profile = "mine/mine.yaml"', "next:", "  edit mine/mine.yaml",
+        "  xarch profile explain                 # the format, key by key", "  xarch profile check mine/mine.yaml"]
 
 
 def explained(*needs: Need, short: tuple[Shortfall, ...] = ()) -> KeyExplained:
@@ -85,6 +87,23 @@ def test_where_a_profile_comes_from_is_said_the_same_by_profile_check_and_by_che
 def test_a_profile_that_does_not_load_is_said_to_be_custom_and_nothing_more():
     assert check_lines(ProfileUnloaded("mine.yaml", ("mine.yaml: unknown key 'colour'",)))[0] == (
         "checking mine.yaml (custom)")
+
+
+def test_the_json_of_a_profile_that_does_not_load_counts_neither_its_files_nor_its_checks():
+    document = json.loads(check_document(ProfileUnloaded("mine.yaml", ("mine.yaml: unknown key 'colour'",))))
+    assert document == {"ok": False, "profile": "mine.yaml",
+                        "problems": [{"check": "load", "message": "mine.yaml: unknown key 'colour'"}],
+                        "files": None, "checks": None, "compared_with": None}
+
+
+@pytest.mark.parametrize("files, said", [
+    pytest.param(0, "  files: it points to none", id="none"),
+    pytest.param(1, "  files: the one it points to is present", id="one"),
+    pytest.param(3, "  files: all 3 it points to are present", id="several"),
+])
+def test_the_files_a_profile_points_to_are_said_as_many_as_they_are(files, said):
+    held = ProfileHeld(Reviewed("web", (), files, Resemblance(True)), ChecksHeld((), 0))
+    assert check_lines(held)[2] == said
 
 
 MIGRATE = ": migrate writes only new files; pass `--out <folder>` to write somewhere else"

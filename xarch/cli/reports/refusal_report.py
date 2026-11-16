@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from pathlib import Path
 
 from xarch.cli.reports.document import document
+from xarch.cli.reports.shown import shown
 from xarch.modules.spec.contract import NoProfileChosen, ProfileRefused
 
 
@@ -12,15 +14,20 @@ def reason(refused: NoProfileChosen | ProfileRefused) -> str:
     """Why spec chose no profile: none is given or configured, said with how to choose one, or its own reason."""
     match refused:
         case NoProfileChosen(known):
-            return no_profile(known)
+            return _no_profile(known)
         case ProfileRefused(why):
             return why
 
 
-def no_profile(known: Sequence[str]) -> str:
-    """Why nothing can run without a profile, and how to choose one."""
-    return ("no profile: pass --profile, or set `profile` under [tool.xarch] in pyproject.toml; "
+def _no_profile(known: Sequence[str], how: str = "pass --profile") -> str:
+    """Why nothing can run without a profile, and how to choose one: how the command is given one, or the setting."""
+    return (f"no profile: {how}, or set `profile` under [tool.xarch] in pyproject.toml; "
             f"the profiles found are {', '.join(known)}")
+
+
+def no_profile_to_check(known: Sequence[str]) -> str:
+    """Why `profile check` has no profile to check, and how to give it one: by name or path, as its argument."""
+    return _no_profile(known, "name one as its argument, a bundled name or a path to a profile file")
 
 
 def cannot_run(problems: Sequence[str]) -> str:
@@ -29,9 +36,9 @@ def cannot_run(problems: Sequence[str]) -> str:
             + "\n".join(f"  {problem}" for problem in problems))
 
 
-def not_a_directory(root: object) -> str:
-    """Why a folder to check is refused: it is no folder."""
-    return f"{root} is not a directory"
+def not_a_directory(root: Path, cwd: Path) -> str:
+    """Why a folder to check is refused: it is no folder, shown from the working folder when it lies below it."""
+    return f"{shown(root, cwd)} is not a directory"
 
 
 def rule_needs_key() -> str:

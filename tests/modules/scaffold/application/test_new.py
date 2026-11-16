@@ -7,7 +7,16 @@ from tests.fakes.filesystem import FakeFiles
 from tests.fakes.scaffold_skeleton import FakeSkeleton
 from xarch.modules.scaffold.application.controller import ScaffoldController
 from xarch.modules.scaffold.application.services.scaffolding import ScaffoldingService
-from xarch.modules.scaffold.contract import InitProject, KindIsAFolder, NewInstance, NotInitialized, Refused, ReportView, Scaffolded
+from xarch.modules.scaffold.contract import (
+    InitProject,
+    InstanceExists,
+    KindIsAFolder,
+    NewInstance,
+    NotInitialized,
+    Refused,
+    ReportView,
+    Scaffolded,
+)
 
 ROOT = Path("/src/app")
 CWD = Path("/work")
@@ -58,7 +67,7 @@ def pyproject(files: FakeFiles) -> str | None:
                  Refused("'Docs' is not a valid name: use a lowercase Python identifier, e.g. 'documents'"),
                  id="a name that is not a lowercase identifier is refused"),
     pytest.param(MODULES | {ROOT / "modules" / "docs" / "__init__.py"}, NewInstance(ROOT, "module", "docs", "cli"),
-                 Refused(f"'docs' already exists at {ROOT / 'modules' / 'docs'}"),
+                 InstanceExists("docs", ROOT / "modules" / "docs"),
                  id="a module that already exists is refused"),
     pytest.param(MODULES, NewInstance(ROOT, "features", "docs", "cli"),
                  Refused("no kind 'features' in the profile: use module"),

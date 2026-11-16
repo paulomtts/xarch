@@ -3,7 +3,7 @@ import json
 
 import pytest
 
-from xarch.cli.reports.refusal_report import cannot_run, json_error, no_profile, reason, text_error
+from xarch.cli.reports.refusal_report import cannot_run, json_error, no_profile_to_check, reason, text_error
 from xarch.modules.spec.contract import NoProfileChosen, ProfileRefused
 
 
@@ -26,4 +26,10 @@ def test_a_refusal_is_one_error_line_as_text_and_a_document_that_is_not_ok_as_js
 
 
 def test_no_profile_names_the_profiles_found():
-    assert no_profile(["cli"]).endswith("the profiles found are cli")
+    assert reason(NoProfileChosen(("cli",))).endswith("the profiles found are cli")
+
+
+def test_profile_check_with_no_profile_says_to_name_one_as_its_argument():
+    assert no_profile_to_check(["cli", "web"]) == (
+        "no profile: name one as its argument, a bundled name or a path to a profile file, or set `profile` under "
+        "[tool.xarch] in pyproject.toml; the profiles found are cli, web")

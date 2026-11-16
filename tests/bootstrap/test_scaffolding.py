@@ -6,7 +6,16 @@ import pytest
 from tests.bootstrap.project import app_check
 from xarch.bootstrap.wiring import build_controllers
 from xarch.modules.layout.contract import CheckStructure
-from xarch.modules.scaffold.contract import InitProject, NewInstance, NotInitialized, Refused, ReportView, Scaffolded
+from xarch.modules.scaffold.contract import (
+    InitProject,
+    InstanceExists,
+    NewInstance,
+    NewResult,
+    NotInitialized,
+    Refused,
+    ReportView,
+    Scaffolded,
+)
 
 TOP = ["bootstrap/migrations", "kernel", "kernel/logic", "modules", "platform", "cli/commands"]
 MODULE = ["contract", "domain", "application", "application/services", "application/logic", "application/ports",
@@ -19,7 +28,7 @@ def init(app: Path, profile: str = "cli") -> ReportView:
     return result.report
 
 
-def new_module(app: Path, name: str, profile: str = "cli") -> Scaffolded | Refused:
+def new_module(app: Path, name: str, profile: str = "cli") -> NewResult:
     return build_controllers().scaffold.new(NewInstance(app, "module", name, profile))
 
 
@@ -92,7 +101,7 @@ def test_new_module_refuses_an_existing_module(tmp_path):
     app = tmp_path / "app"
     init(app)
     new_module(app, "documents")
-    assert "already exists" in refusal(app, "documents")
+    assert new_module(app, "documents") == InstanceExists("documents", app / "modules" / "documents")
 
 
 def test_new_module_needs_modules_folder(tmp_path):
@@ -134,7 +143,7 @@ def test_init_and_new_module_leave_pre_existing_extras_alone(tmp_path):
         path.write_text(body)
     init(app)
     (app / "modules" / "documents").mkdir()
-    assert "already exists" in refusal(app, "documents")
+    assert new_module(app, "documents") == InstanceExists("documents", app / "modules" / "documents")
     new_module(app, "other")
     assert {p: p.read_text() for p in extras} == extras
     violations = build_controllers().layout.check(CheckStructure(app, "app", "cli")).violations

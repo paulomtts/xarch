@@ -1,4 +1,5 @@
-"""Binds every port to its adapter, builds the services and controllers, and wraps spec's controller for its consumers."""
+"""Binds every port to its adapter, builds the services and controllers, and hands spec's controller to the adapters of
+the modules that wrap it."""
 from __future__ import annotations
 
 from dataclasses import dataclass

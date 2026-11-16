@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from xarch.cli.reports.scaffold_report import refused_reason, report_lines
-from xarch.modules.scaffold.contract import KindIsAFolder, NotInitialized, ReportView
+from xarch.modules.scaffold.contract import InstanceExists, KindIsAFolder, NotInitialized, ReportView
 
 CWD = Path("/work")
 
@@ -19,6 +19,8 @@ def test_the_report_says_a_line_per_file_created_then_updated_then_skipped_from_
                  "module: write `xarch new module <name>`", id="the folder of a kind says the command with its word"),
     pytest.param(NotInitialized(CWD / "app/modules"), "app/modules does not exist: run 'xarch init' first",
                  id="an app with no skeleton says to build it first"),
+    pytest.param(InstanceExists("docs", CWD / "app/modules/docs"), "'docs' already exists at app/modules/docs",
+                 id="an instance there already is named from the working folder"),
 ])
 def test_why_new_refuses_says_what_to_type(refused, reason):
     assert refused_reason(refused, CWD) == reason

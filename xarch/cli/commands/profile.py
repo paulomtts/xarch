@@ -6,7 +6,7 @@ import typer
 
 from xarch.cli.reports import profile_report as report
 from xarch.cli.reports import vocabulary_report as words
-from xarch.cli.reports.refusal_report import key_or_profile, no_profile, reason, rule_needs_key
+from xarch.cli.reports.refusal_report import key_or_profile, no_profile_to_check, reason, rule_needs_key
 from xarch.cli.terminal import (
     AppPath,
     Format,
@@ -40,6 +40,8 @@ from xarch.modules.rules.contract import (
 )
 from xarch.modules.spec.application.controller import SpecController
 from xarch.modules.spec.contract import (
+    AppChosen,
+    ChooseApp,
     Explain,
     FilesTaken,
     FormatExplained,
@@ -125,8 +127,9 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
                     raise refuse(words.no_rule_message(none))
             return
         close: tuple[str, ...] = ()
-        if key is not None and profile is None and not configured:
-            match rules.explain_words(ExplainWords(key, app_for(spec, in_full(Path()), app_path, refuse))):
+        chosen = spec.choose_app(ChooseApp(in_full(Path()), app_path))
+        if key is not None and profile is None and not configured and isinstance(chosen, AppChosen):
+            match rules.explain_words(ExplainWords(key, chosen.app)):
                 case NoWords(_, close):
                     pass
                 case ChecksShown() as shown:
@@ -156,6 +159,8 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
                 _show(output, report.overview_document(whole), report.overview_lines(whole))
             case KeyExplained() as found:
                 _show(output, report.key_document(found), report.key_lines(found))
+            case UnknownKey() if isinstance(chosen, ProfileRefused):
+                raise refuse(chosen.reason)
             case UnknownKey() as unknown:
                 raise refuse_with(output, report.unknown_message(unknown, close), report.unknown_document(unknown, close))
             case ProfileRefused(why):
@@ -178,7 +183,7 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
         cwd = in_full(Path())
         match spec.new_profile(NewProfile(name, source, app_for(spec, cwd, app_path), cwd, out)):
             case ProfileCreated() as done:
-                echo(report.created_lines(done, source))
+                echo(report.created_lines(done, source, cwd))
             case FilesTaken() as taken:
                 raise fail(report.new_taken(taken))
             case ProfileRefused(why):
@@ -205,7 +210,7 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
                 if isinstance(checked, ProfileUnloaded) or not checked.ok:
                     raise typer.Exit(1)
             case NoProfileChosen(known):
-                raise refuse(no_profile(known))
+                raise refuse(no_profile_to_check(known))
             case CheckRefused(why):
                 raise refuse(why)
 

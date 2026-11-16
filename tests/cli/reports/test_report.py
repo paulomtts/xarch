@@ -1,6 +1,7 @@
 """How `xarch check` shows what it found, on hand-made violations and enforcement states: the text lines, the
 enforcement section and the JSON document."""
 import json
+from pathlib import Path
 
 import pytest
 
@@ -34,7 +35,7 @@ OK = ["OK: no violations", *WEB]
 def lines(found=(), hints=None, state: EnforcementView = EnforcementView(), origin: Origin = Origin("web"),
           strict: bool = False) -> list[str]:
     """What `xarch check` shows as text of a check that found found, with hints, and state as its enforcement."""
-    return check_lines(origin, AppChecked(tuple(found), state, hints or {}, False), strict)
+    return check_lines(origin, AppChecked(tuple(found), state, hints or {}, False), strict, Path("/src"))
 
 
 @pytest.mark.parametrize("found, hints, shown", [
@@ -201,3 +202,19 @@ def test_a_public_name_the_profile_accepts_as_only_the_tests_has_a_line_of_its_o
     document = json.loads(json_document("web", Origin("web"), AppChecked((), state, {}, True), False))
     assert document["enforcement"]["known"] == [{"file": "app/wiring.py", "line": 12, "name": "build"},
                                                 {"file": "app/rules.py", "line": 3, "name": "Rule"}]
+
+
+def test_a_guard_switched_on_by_a_key_of_a_part_is_named_with_that_key_where_it_is_left_off():
+    origin = Origin("mine.yaml", False, None, ("package-only", "no-comments"), ())
+    state = EnforcementView(strict=(FindingView("guards_off", "package-only"), FindingView("guards_off", "no-comments")))
+    assert lines(state=state, origin=origin, strict=True) == [
+        "OK: no violations", "enforcement", "  profile:     mine.yaml (custom; no bundled profile resembles it)",
+        "    guards off:  package-only (parts.<part>.package_only), no-comments", "strict:      2 findings fail the check",
+        "    guards off: package-only (parts.<part>.package_only)", "    guards off: no-comments"]
+
+
+def test_a_profile_file_below_the_working_folder_is_named_from_it():
+    assert lines(origin=Origin("/src/arch/mine.yaml", False, "web"))[:3] == [
+        "OK: no violations", "enforcement", "  profile:     arch/mine.yaml (custom; closest bundled: web)"]
+    assert lines(origin=Origin("/elsewhere/mine.yaml", False, "web"))[2] == (
+        "  profile:     /elsewhere/mine.yaml (custom; closest bundled: web)")

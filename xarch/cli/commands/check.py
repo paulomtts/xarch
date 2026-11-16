@@ -46,7 +46,7 @@ def register(app: typer.Typer, rules: RulesController, spec: SpecController) -> 
         chosen, tests_root = selection(spec, app_path, profile, tests, refuse)
         match rules.check_app(CheckApp(app_path, chosen, cwd, tests_root, strict)):
             case NotADirectory(root):
-                raise refuse(not_a_directory(root))
+                raise refuse(not_a_directory(root, cwd))
             case ChecksCannotRun(problems):
                 raise refuse(cannot_run(problems))
             case CheckRefused(reason):
@@ -54,7 +54,7 @@ def register(app: typer.Typer, rules: RulesController, spec: SpecController) -> 
             case AppChecked() as checked:
                 origin = _origin(spec, chosen, refuse)
                 echo([json_document(chosen, origin, checked, strict)] if output is Format.json
-                     else check_lines(origin, checked, strict))
+                     else check_lines(origin, checked, strict, cwd))
                 if not checked.ok:
                     raise typer.Exit(1)
 

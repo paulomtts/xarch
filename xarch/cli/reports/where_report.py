@@ -56,7 +56,7 @@ def _none_lines(kind: str, nearest: tuple[NearestView, ...]) -> list[str]:
 
 
 def _part_lines(where: InPart) -> list[str]:
-    lines = [_line("part", _part(where.part)), _line("role", where.part.role), _line("litmus", where.part.litmus),
+    lines = [_line("part", _part(where.part)), _line("role", where.part.role), _line("litmus", where.part.litmus or "none"),
              _line("may import", where.may_import_text), _line("libraries", _libraries(where.libraries))]
     if where.forbidden:
         lines.append(_line("may not use", ", ".join(where.forbidden)))

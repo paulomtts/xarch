@@ -5,6 +5,7 @@ from xarch.modules.scaffold.application.services.scaffolding import ScaffoldingS
 from xarch.modules.scaffold.contract import (
     InitProject,
     InitResult,
+    InstanceExists,
     KindIsAFolder,
     NewInstance,
     NewResult,
@@ -12,7 +13,7 @@ from xarch.modules.scaffold.contract import (
     Refused,
     Scaffolded,
 )
-from xarch.modules.scaffold.domain.errors import FolderMissing, UnknownKind
+from xarch.modules.scaffold.domain.errors import AlreadyExists, FolderMissing, UnknownKind
 
 
 class ScaffoldController:
@@ -27,14 +28,16 @@ class ScaffoldController:
             return Refused(e.reason)
 
     def new(self, cmd: NewInstance) -> NewResult:
-        """The folder of a kind given for its word, and a skeleton not there, are refused as what they are; every
-        other refusal of the service carries its reason."""
+        """The folder of a kind given for its word, a skeleton not there, and an instance there already are refused as
+        what they are; every other refusal of the service carries its reason."""
         try:
             return Scaffolded(self._service.new(cmd.root, cmd.kind, cmd.name, cmd.profile))
         except UnknownKind as e:
             return KindIsAFolder(e.kind, e.word) if e.word else Refused(e.reason)
         except FolderMissing as e:
             return NotInitialized(e.folder)
+        except AlreadyExists as e:
+            return InstanceExists(e.name, e.base)
         except DomainError as e:
             return Refused(e.reason)
 
