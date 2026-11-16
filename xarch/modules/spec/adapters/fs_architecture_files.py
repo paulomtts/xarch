@@ -45,10 +45,7 @@ class FsArchitectureFiles:
 
     def read(self, source: ArchitectureSource) -> ArchitectureDocument:
         name = _name(source)
-        try:
-            text = self._package.read_text(name) if source.bundled else self._fs.read_text(Path(source.location))
-        except (OSError, UnicodeDecodeError) as e:
-            raise InvalidArchitecture(name, [f"cannot read the file: {getattr(e, 'strerror', None) or e}"]) from e
+        text = _text(self._folder(source), self._file(source), name, "the file")
         try:
             document = self._reader.parse(text, json_syntax=name.endswith(".json"))
         except DataFileError as e:
@@ -56,42 +53,61 @@ class FsArchitectureFiles:
         return ArchitectureDocument(name, document)
 
     def profile_text(self, source: ArchitectureSource) -> str:
-        if source.bundled:
-            return self.read_text(source, _name(source))
-        try:
-            return self._fs.read_text(Path(source.location))
-        except UnicodeDecodeError as e:
-            raise InvalidArchitecture(source.location, ["cannot read the file: it is not valid UTF-8 text"]) from e
-        except OSError as e:
-            raise InvalidArchitecture(source.location, [f"cannot read the file: {e.strerror or e}"]) from e
+        return _text(self._folder(source), self._file(source), _name(source), "the file")
 
     def has_file(self, source: ArchitectureSource, relative: str) -> bool:
-        if source.bundled:
-            return self._package.is_file(relative)
-        return self._fs.is_file(Path(source.location).parent / relative)
+        return self._folder(source).is_file(relative)
 
     def files_under(self, source: ArchitectureSource, relative: str) -> tuple[str, ...]:
-        if source.bundled:
-            return tuple(self._package.files_below(relative))
-        return tuple(self._fs.files_below(Path(source.location).parent / relative))
+        return tuple(self._folder(source).files_below(relative))
 
     def read_bytes(self, source: ArchitectureSource, relative: str) -> bytes:
         try:
-            if source.bundled:
-                return self._package.read_bytes(relative)
-            return self._fs.read_bytes(Path(source.location).parent / relative)
+            return self._folder(source).read_bytes(relative)
         except OSError as e:
             raise InvalidArchitecture(_name(source), [f"cannot read '{relative}': {e.strerror or e}"]) from e
 
     def read_text(self, source: ArchitectureSource, relative: str) -> str:
-        try:
-            if source.bundled:
-                return self._package.read_text(relative)
-            return self._fs.read_text(Path(source.location).parent / relative)
-        except UnicodeDecodeError as e:
-            raise InvalidArchitecture(_name(source), [f"cannot read '{relative}': it is not valid UTF-8 text"]) from e
-        except OSError as e:
-            raise InvalidArchitecture(_name(source), [f"cannot read '{relative}': {e.strerror or e}"]) from e
+        return _text(self._folder(source), relative, _name(source), f"'{relative}'")
+
+    def _folder(self, source: ArchitectureSource) -> PackageData | _Folder:
+        """The folder an architecture's files are named from: the package data for a bundled one, else the folder
+        holding its file."""
+        return self._package if source.bundled else _Folder(self._fs, Path(source.location).parent)
+
+    def _file(self, source: ArchitectureSource) -> str:
+        """The architecture's own file, named from its folder."""
+        return _name(source) if source.bundled else Path(source.location).name
+
+
+class _Folder:
+    """A folder on disk, read by paths relative to it, as the package data is read."""
+
+    def __init__(self, fs: FileSystem, folder: Path):
+        self._fs, self._path = fs, folder
+
+    def is_file(self, relative: str) -> bool:
+        return self._fs.is_file(self._path / relative)
+
+    def files_below(self, relative: str) -> list[str]:
+        return self._fs.files_below(self._path / relative)
+
+    def read_bytes(self, relative: str) -> bytes:
+        return self._fs.read_bytes(self._path / relative)
+
+    def read_text(self, relative: str) -> str:
+        return self._fs.read_text(self._path / relative)
+
+
+def _text(folder: PackageData | _Folder, relative: str, name: str, what: str) -> str:
+    """The text of the file at relative in folder; raises InvalidArchitecture, for the file called name, saying what
+    cannot be read and why."""
+    try:
+        return folder.read_text(relative)
+    except UnicodeDecodeError as e:
+        raise InvalidArchitecture(name, [f"cannot read {what}: it is not valid UTF-8 text"]) from e
+    except OSError as e:
+        raise InvalidArchitecture(name, [f"cannot read {what}: {e.strerror or e}"]) from e
 
 
 def _name(source: ArchitectureSource) -> str:
