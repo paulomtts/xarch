@@ -3,6 +3,7 @@ the way a part is shown, and every problem reported with the file's name, never 
 import pytest
 
 from tests.modules.spec.profiles_v2 import layered, parsed, problems
+from xarch.modules.spec.application.logic.layout_walk import docs_name
 from xarch.modules.spec.domain.values import Doc, FileEntry
 
 
@@ -203,5 +204,5 @@ def test_a_part_is_shown_as_the_docs_show_it_below_its_instance_and_ending_in_a_
         "core": {"path": "src/<feature>/core", "role": "r"}, "main": {"path": "src/<feature>/main.py", "role": "r"},
         "src": {"path": "src", "role": "r"}, "entry": {"path": "__main__.py", "role": "r"}}
     architecture = parsed(document)
-    assert {name: architecture.shown(part) for name, part in architecture.parts.items()} == {
+    assert {name: docs_name(architecture, part) for name, part in architecture.parts.items()} == {
         "core": "core/", "main": "main.py", "src": "src/", "entry": "__main__.py"}

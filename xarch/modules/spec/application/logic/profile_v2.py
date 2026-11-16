@@ -66,6 +66,7 @@ from xarch.modules.spec.application.logic import profile_examples as ex
 from xarch.modules.spec.application.logic import profile_needs as needs
 from xarch.modules.spec.application.logic import written_checks as own_checks
 from xarch.modules.spec.application.logic.key_lookup import keys_of, names_of, required_of
+from xarch.modules.spec.application.logic.layout_walk import is_file
 from xarch.modules.spec.application.logic.targets_written import NAME_PATTERN, WORD, may_import
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.guards import GUARDS
@@ -371,7 +372,7 @@ def _folders(value: Any, part: Part, built: _Layout, claimed: dict[tuple[str, ..
         entries = [(item, "") for item in value]
     else:
         return [f"{where}: must be a mapping of folder paths to one line of text, or a list of folder paths"]
-    if _is_file(built.tree, part.path):
+    if is_file(built.tree, part.path):
         return [f"{where}: a file has no folders: drop the key"]
     seen: list[str] = []
     for key, note in entries:
@@ -396,15 +397,6 @@ def _folders(value: Any, part: Part, built: _Layout, claimed: dict[tuple[str, ..
             if note:
                 built.notes[full] = note
     return problems
-
-
-def _is_file(tree: Layout, path: tuple[str, ...]) -> bool:
-    here: Layout | None = tree
-    for step in path:
-        if here is None or step not in here:
-            return False
-        here = here[step]
-    return here is None
 
 
 def _add_folder(tree: Layout, path: tuple[str, ...]) -> bool:

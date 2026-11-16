@@ -341,21 +341,6 @@ class Architecture:
         """The entry point: the part marked `entry: true`, if any."""
         return next((part for part in self.parts.values() if part.entry), None)
 
-    def shown(self, part: Part) -> str:
-        """A part as the docs name it: its path below its instance for an instance's part, ending in / for a folder."""
-        repeat = repeat_of(self.repeats, part.path)
-        path = part.path[len(repeat.root) + 1:] if repeat is not None else part.path
-        return "/".join(path) + ("" if self.is_file(part.path) else "/")
-
-    def is_file(self, path: tuple[str, ...]) -> bool:
-        """Whether a path of the layout, such as a part's, is a file rather than a folder."""
-        here: Layout | None = self.layout
-        for step in path:
-            if here is None or step not in here:
-                return False
-            here = here[step]
-        return here is None
-
     def targets_of(self, part: str) -> tuple[Target, ...]:
         """What a part may import: itself (its own instance, for a part in a repeating folder), then its row."""
         return with_itself(part, self.parts[part].path, self.rules.get(part, ())) if part in self.parts else ()

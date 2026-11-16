@@ -56,6 +56,7 @@ from collections.abc import Callable, Mapping
 from xarch.kernel.logic.imports import may_import, shown_target
 from xarch.kernel.placement import EACH, EVERYTHING, Repeat, Target
 from xarch.modules.spec.application.logic.defaults import TESTS
+from xarch.modules.spec.application.logic.layout_walk import docs_name, is_file
 from xarch.modules.spec.domain.errors import InvalidTemplate
 from xarch.modules.spec.domain.values import (
     NAME,
@@ -180,7 +181,7 @@ def _doc_lines(docs: tuple[Doc, ...], folder: tuple[str, ...], indent: str) -> l
 
 
 def _rules_table(architecture: Architecture, _: str, __: Quotes, ___: bool) -> str:
-    rows = [f"| `{_shown(architecture, part)}` | {_may_import(architecture, part)} |"
+    rows = [f"| `{docs_name(architecture, part)}` | {_may_import(architecture, part)} |"
             for part in architecture.parts.values()]
     return "\n".join(["| Part | May import |", "|---|---|", *rows])
 
@@ -191,7 +192,7 @@ def _may_import(architecture: Architecture, part: Part) -> str:
 
 
 def _folders(architecture: Architecture) -> dict[str, str]:
-    return {name: _shown(architecture, part) for name, part in architecture.parts.items()}
+    return {name: docs_name(architecture, part) for name, part in architecture.parts.items()}
 
 
 def _target(architecture: Architecture, target: Target) -> str:
@@ -202,7 +203,7 @@ def _layers(architecture: Architecture, name: str, _: Quotes, ___: bool) -> str:
     if name not in architecture.layers:
         known = ", ".join(architecture.layers) or "none"
         raise _Missing(f"the architecture has no layer '{name}' (its layers: {known})")
-    return ARROW.join(f"`{_shown(architecture, architecture.parts[part])}`" for part in architecture.layers[name])
+    return ARROW.join(f"`{docs_name(architecture, architecture.parts[part])}`" for part in architecture.layers[name])
 
 
 def _placement(architecture: Architecture, _: str, __: Quotes, ___: bool) -> str:
@@ -281,16 +282,16 @@ def _subject(architecture: Architecture, tier: Tier) -> str:
 
 def _subject_path(architecture: Architecture, subject: Subject) -> str:
     part = architecture.parts[subject.part]
-    shown = _shown(architecture, part)
+    shown = docs_name(architecture, part)
     if not subject.sub:
         return shown
     below = shown.removesuffix("/") + "/" + "/".join(subject.sub)
-    return below if architecture.is_file(part.path + subject.sub) else below + "/"
+    return below if is_file(architecture.layout, part.path + subject.sub) else below + "/"
 
 
 def _untested(architecture: Architecture, _: str, __: Quotes, ___: bool) -> str:
     _tiers_of(architecture)
-    return "\n\n".join(f"`{_shown(architecture, part)}` gets no tier of its own: {part.untested.rstrip('.')}."
+    return "\n\n".join(f"`{docs_name(architecture, part)}` gets no tier of its own: {part.untested.rstrip('.')}."
                      for part in architecture.parts.values() if part.untested)
 
 
@@ -373,10 +374,6 @@ def _part(architecture: Architecture, name: str) -> Part:
     return architecture.parts[name]
 
 
-def _shown(architecture: Architecture, part: Part) -> str:
-    return architecture.shown(part)
-
-
 def _ticked(names: tuple[str, ...]) -> str:
     return ", ".join(f"`{name}`" for name in names)
 
@@ -402,7 +399,7 @@ def _guards(architecture: Architecture, _: str, __: Quotes, ___: bool) -> str:
              "`rules`: every import between parts is one that the `may_import` of the importing part allows "
              "(architecture.md, section 5)."]
     if architecture.libraries is not None:
-        listed = "; ".join(f"`{_shown(architecture, architecture.parts[name])}`: {_packages(packages)}"
+        listed = "; ".join(f"`{docs_name(architecture, architecture.parts[name])}`: {_packages(packages)}"
                            for name, packages in architecture.libraries.items() if packages)
         reserved = "; ".join(f"`{name}`: {reason}" for name, reason in architecture.reserved.items())
         but = f" but what `reserved` names ({reserved})" if reserved else ""
@@ -413,7 +410,7 @@ def _guards(architecture: Architecture, _: str, __: Quotes, ___: bool) -> str:
     if architecture.tiers:
         fakes = ""
         if architecture.fakes is not None:
-            parts = _and([f"`{_shown(architecture, architecture.parts[p])}`" for p in architecture.fakes.stand_in_for])
+            parts = _and([f"`{docs_name(architecture, architecture.parts[p])}`" for p in architecture.fakes.stand_in_for])
             fakes = (f"; only a test whose tier tests {parts} imports the fakes in "
                      f"`{'/'.join((TESTS, *architecture.fakes.folder))}/`")
         lines.append("`tiers`: a test lives in the folder that mirrors its subject in the app, and imports only that "
@@ -421,7 +418,7 @@ def _guards(architecture: Architecture, _: str, __: Quotes, ___: bool) -> str:
                      f"what that may import){fakes}; it imports no other test file.")
         for tier in architecture.tiers:
             if tier.types_only:
-                shown = _and([f"`{_shown(architecture, architecture.parts[p])}`" for p in tier.types_only])
+                shown = _and([f"`{docs_name(architecture, architecture.parts[p])}`" for p in tier.types_only])
                 lines.append(f"`types-only`: a {tier.name} test uses {shown} only as a type: it may import it and "
                              "annotate with it, and never calls it.")
     roots = [repeat.root for repeat in architecture.repeats]
@@ -446,7 +443,7 @@ def _forbidden_line(architecture: Architecture) -> str:
     """The parts that share a list are named together, in the order the file lists them."""
     groups: dict[tuple[tuple[str, ...], ...], list[str]] = {}
     for name, names in architecture.forbidden.items():
-        groups.setdefault(names, []).append(f"`{_shown(architecture, architecture.parts[name])}`")
+        groups.setdefault(names, []).append(f"`{docs_name(architecture, architecture.parts[name])}`")
     listed = "; ".join(f"{_and(parts)}: {_ticked(tuple('.'.join(n) for n in names))}" for names, parts in groups.items())
     tiers = [tier.name for tier in architecture.tiers if tier.forbidden]
     tests = f", and neither do the {_and(tiers)} tests of those parts" if tiers else ""
@@ -467,13 +464,13 @@ def _structure_line(architecture: Architecture) -> str:
 def _guard_line(architecture: Architecture, guard: Guard) -> str:
     match guard:
         case PackageOnly(parts):
-            shown = _and([f"`{_shown(architecture, architecture.parts[p])}`" for p in parts])
+            shown = _and([f"`{docs_name(architecture, architecture.parts[p])}`" for p in parts])
             return (f"`package-only`: {shown} {'is' if len(parts) == 1 else 'are'} imported as a package, never by "
                     "its files, from outside it.")
         case ScenarioCoverage(results, tier, suffix, columns, table, file):
             shown = ", ".join(f"`{c}`" for c in columns)
             return (f"`scenario-coverage`: every variant of a union named `<Name>{suffix}` in "
-                    f"`{_shown(architecture, architecture.parts[results])}` is the `{columns[-1]}` of a row of the "
+                    f"`{docs_name(architecture, architecture.parts[results])}` is the `{columns[-1]}` of a row of the "
                     f"table (columns {shown}) in `{file.replace(NAME, '<name>')}` among the {tier} tests (section 5.2), "
                     f"or is named by a standalone test of that file; every row is a `{'.'.join(table.row)}` with "
                     f"an `{table.id}`, and a table test has no "
@@ -487,7 +484,7 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
         case DeadCode(untested):
             fakes = architecture.fakes
             assert fakes is not None
-            ports = _and([f"`{_shown(architecture, architecture.parts[p])}`" for p in fakes.stand_in_for])
+            ports = _and([f"`{docs_name(architecture, architecture.parts[p])}`" for p in fakes.stand_in_for])
             reached = (" A file of a part with a tier that no test of that tier reaches, directly or through files of "
                        "parts of the same tier, is listed in the enforcement section, and fails `check --strict` "
                        "only." if untested else "")
@@ -508,7 +505,7 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
                     f"same order, when each declares at least {least}; types and defaults aside, tests not read."
                     f"{also}")
         case PassThrough(parts):
-            shown = _and([f"`{_shown(architecture, architecture.parts[p])}`" for p in parts])
+            shown = _and([f"`{docs_name(architecture, architecture.parts[p])}`" for p in parts])
             return (f"`pass-through`: a method of {shown} whose whole body forwards to one call on a collaborator, or "
                     "returns an attribute of what that call answers, is listed in the enforcement section, and fails "
                     "`check --strict` only.")
@@ -524,7 +521,7 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
 
 
 def _tier_must_import_line(architecture: Architecture, tier: Tier) -> str:
-    wanted = _or([f"`{_shown(architecture, architecture.parts[p])}`" for p in tier.must_import])
+    wanted = _or([f"`{docs_name(architecture, architecture.parts[p])}`" for p in tier.must_import])
     return (f"`must-import`: every {tier.name} test imports from {wanted}, directly or through test code that is no "
             "test file.")
 
@@ -532,7 +529,7 @@ def _tier_must_import_line(architecture: Architecture, tier: Tier) -> str:
 def _part_lines(architecture: Architecture) -> list[str]:
     """One line per check a part's own keys switch on, the parts that share a value named together."""
     def shown(names: list[str]) -> str:
-        return _and([f"`{_shown(architecture, architecture.parts[n])}`" for n in names])
+        return _and([f"`{docs_name(architecture, architecture.parts[n])}`" for n in names])
 
     parts = list(architecture.parts.values())
     lines: list[str] = []
@@ -572,7 +569,7 @@ def _part_lines(architecture: Architecture) -> list[str]:
 
 def _must_import_line(architecture: Architecture, part: Part) -> str:
     wanted = may_import(part.must_import, _folders(architecture), architecture.words()).replace(" and ", " or ")
-    return (f"`must-import`: every file of `{_shown(architecture, part)}` imports from {wanted}, or an outside "
+    return (f"`must-import`: every file of `{docs_name(architecture, part)}` imports from {wanted}, or an outside "
             "package, or reaches one through a file of its own part, so that it touches technology; a package file "
             "and a file with no code of its own are exempt.")
 
@@ -580,7 +577,7 @@ def _must_import_line(architecture: Architecture, part: Part) -> str:
 def _stand_ins_line(architecture: Architecture, mock: str, spec: str, built: str = "") -> str:
     fakes = architecture.fakes
     assert fakes is not None
-    parts = _and([f"`{_shown(architecture, architecture.parts[p])}`" for p in fakes.stand_in_for])
+    parts = _and([f"`{docs_name(architecture, architecture.parts[p])}`" for p in fakes.stand_in_for])
     tiers = _and([t.name for t in architecture.tiers if any(s.part in fakes.stand_in_for for s in t.subject)])
     fixture = f" (or, from a fixture, `{built}({spec}=<Port>)`)" if built else ""
     mocks = (f"; and every mock in the {tiers} tests names what it stands in for, `{mock}({spec}=<Port>)`{fixture}, "

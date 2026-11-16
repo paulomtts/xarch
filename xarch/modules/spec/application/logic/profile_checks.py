@@ -14,6 +14,7 @@ from xarch.kernel.placement import EACH, Target
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic.docs_files import DOCS_ROOT
 from xarch.modules.spec.application.logic.key_lookup import names_of, required_of
+from xarch.modules.spec.application.logic.layout_walk import lies_in
 from xarch.modules.spec.application.logic.profile_listing import listing_in
 from xarch.modules.spec.application.logic.project_files import APP_PLACEHOLDER
 from xarch.modules.spec.domain.profile_keys import FILE, NAMING, PAGE, TABLE
@@ -49,15 +50,6 @@ def file_pattern(language: Language) -> re.Pattern[str]:
 def file_name(language: Language) -> re.Pattern[str]:
     """What a file name is: letters, digits, `_`, `.` and `-`, ending in the language's extension."""
     return re.compile(rf"[A-Za-z0-9_.-]+{re.escape(language.checked.extension)}")
-
-
-def resolves(path: tuple[str, ...], layout: Layout) -> bool:
-    here: Layout | None = layout
-    for step in path:
-        if here is None or step not in here:
-            return False
-        here = here[step]
-    return True
 
 
 def layer_chains(value: Any, parts: dict[str, Part], declared: set[str], rules: dict[str, tuple[Target, ...]],
@@ -318,7 +310,7 @@ def excluded_folders(value: Any, layout: Layout, problems: list[str]) -> tuple[E
             problems.append(f"excluded: {key!r} is not a folder below the app, such as vendor/generated")
         elif not line(reason):
             problems.append(f"excluded.{key}: must give the reason, one line of text")
-        elif resolves(steps, layout):
+        elif lies_in(layout, steps):
             problems.append(f"excluded.{key}: '{key}' is a folder of the layout: it is source, not excluded")
         else:
             clash = next((e for e in found if e.path[:len(steps)] == steps[:len(e.path)]), None)

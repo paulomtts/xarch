@@ -5,6 +5,7 @@ import pytest
 from tests.modules.spec.profiles_v2 import layered, parsed, problems, two_folders
 from xarch.kernel.placement import Repeat, Target
 from xarch.modules.spec.application.logic.key_lookup import names_of
+from xarch.modules.spec.application.logic.layout_walk import docs_name, is_file
 from xarch.modules.spec.domain.profile_keys import KEYS, SCOPES
 from xarch.modules.spec.domain.values import Part
 
@@ -102,7 +103,7 @@ def test_a_last_step_with_a_dot_is_a_file_and_a_part_may_sit_inside_another_ones
     architecture = parsed(document)
     assert architecture.layout["src"]["*"]["entry.py"] is None
     assert architecture.layout["src"]["*"]["store"] == {"sql": {}}
-    assert architecture.is_file(("src", "*", "entry.py")) and not architecture.is_file(("src", "*", "store"))
+    assert is_file(architecture.layout, ("src", "*", "entry.py")) and not is_file(architecture.layout, ("src", "*", "store"))
 
 
 def test_a_top_level_file_is_a_file():
@@ -230,7 +231,7 @@ def test_a_profile_may_hold_several_repeating_folders_each_with_its_word_and_par
 
 def test_a_part_is_shown_below_its_own_repeating_folder():
     architecture = parsed(two_folders())
-    assert [architecture.shown(architecture.parts[name]) for name in ("api", "hooks", "manifest", "shared")] == [
+    assert [docs_name(architecture, architecture.parts[name]) for name in ("api", "hooks", "manifest", "shared")] == [
         "api/", "hooks/", "manifest.py", "shared/"]
 
 

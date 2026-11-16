@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from xarch.modules.spec.application.logic.checked_tier import checked_tier
 from xarch.modules.spec.application.logic.docs_files import DOCS_ROOT
-from xarch.modules.spec.application.logic.layout_walk import walk
+from xarch.modules.spec.application.logic.layout_walk import docs_name, walk
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.contract import (
     DocFile,
@@ -52,7 +52,7 @@ class PublishingService:
         architecture = self._architectures.load(location)
         patterns = architecture.patterns()
         parts = tuple(PartView(name, patterns[name], architecture.rules.get(name, ()), part.role, part.litmus,
-                               architecture.shown(part), part.untested, architecture.forbidden.get(name, ()),
+                               docs_name(architecture, part), part.untested, architecture.forbidden.get(name, ()),
                                part.must_import, part.holds, part.types_only, part.no_callbacks, part.names,
                                part.built_by, part.shared)
                       for name, part in architecture.parts.items())
