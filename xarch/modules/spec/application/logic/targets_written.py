@@ -36,7 +36,7 @@ def may_import(value: Any, owner: Part | None, parts: dict[str, Part], declared:
                             else f"{where}: {item!r} stands alone: write `{WORD}` in place of the list")
             continue
         written = target(item, None if owner is None else (owner.name, owner.path), paths, declared, where, problems,
-                         patterns, mirrored)
+                         patterns, mirrored, alone="a tier's folder")
         if written is not None:
             found.append(written)
     return tuple(found)

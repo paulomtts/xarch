@@ -13,14 +13,16 @@ from xarch.kernel.placement import EACH
 from xarch.profile_values.placement import Target
 
 TARGET = re.compile(r"(?P<part>[^@/:]*)(?:@(?P<scope>[^/:]*))?(?:/(?P<sub>[^:]*))?(?::(?P<names>.*))?")
-NAME_PATTERN = re.compile(r"[A-Za-z0-9_*]+")
+NAME_PATTERN = re.compile(r"[^\s@/:]+")
+"""A name pattern: any text but whitespace and the separators of a target, `*` standing for any text."""
 
 
 def target(value: Any, owner: tuple[str, tuple[str, ...]] | None, parts: Mapping[str, tuple[str, ...]],
            declared: Collection[str], where: str, problems: list[str], patterns: bool = False,
-           mirrored: bool = False) -> Target | None:
-    """The target a profile writes as value, for the part owner (its name and path; None for a tier's folder or a
-    scope of no part), each part by its path; None, with the problem said at where, when it is not one. A target that
+           mirrored: bool = False, *, alone: str) -> Target | None:
+    """The target a profile writes as value, for the part owner (its name and path; None for what names no part, which
+    the caller words as alone, such as "a tier's folder"), each part by its path; None, with the problem said at where,
+    when it is not one. A target that
     names a part declared but not placed is None, with no problem of its own. When mirrored, the reader is a test, whose
     own instance of the repeating folder is the one it mirrors: a bare name there is that instance."""
     match = TARGET.fullmatch(value) if isinstance(value, str) else None
@@ -35,7 +37,8 @@ def target(value: Any, owner: tuple[str, tuple[str, ...]] | None, parts: Mapping
         problems.append(f"{where}: {value!r} has an empty name pattern after `:`")
         return None
     if names is not None and not NAME_PATTERN.fullmatch(names):
-        problems.append(f"{where}: {value!r} has a name pattern that is not one: use letters, digits, '_' and `*`")
+        problems.append(f"{where}: {value!r} has a name pattern that is not one: write it with no space, `@`, `/` or "
+                        "`:`, `*` standing for any text")
         return None
     path = parts.get(name)
     if path is None:
@@ -57,7 +60,7 @@ def target(value: Any, owner: tuple[str, tuple[str, ...]] | None, parts: Mapping
             problems.append(f"{where}: {value!r} lies in another repeating folder than part '{owner[0]}', which has "
                             f"no own instance of it: write {name}@any")
             return None
-        importer = f"{owner[0]} is" if owner is not None else "a tier's folder is"
+        importer = f"{owner[0]} is" if owner is not None else f"{alone} is"
         problems.append(f"{where}: {value!r} lies in the repeating folder, which {importer} not in: say {name}@any")
         return None
     if not in_instance and scope is not None:

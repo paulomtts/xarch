@@ -856,7 +856,8 @@ def _class_patterns(value: Any, where: str, problems: list[str]) -> tuple[str, .
                         "them")
         return ()
     bad = [item for item in items if not isinstance(item, str) or not NAME_PATTERN.fullmatch(item)]
-    problems += [f"{where}: {item!r} is not a class name pattern: use letters, digits, '_' and `*`" for item in bad]
+    problems += [f"{where}: {item!r} is not a class name pattern: write it with no space, `@`, `/` or `:`, `*` "
+                 "standing for any text" for item in bad]
     return () if bad else tuple(items)
 
 

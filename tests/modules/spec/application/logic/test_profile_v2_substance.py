@@ -51,10 +51,10 @@ def test_names_may_be_a_list_of_patterns():
                                        "defines, but an exception, is an immutable record", id="immutable, no boolean"),
     pytest.param({"names": ""}, "parts.service.names: must be a class name pattern with `*` for any text, such as "
                                 "*Store, or a list of them", id="names, empty"),
-    pytest.param({"names": "Bad Name"}, "parts.service.names: 'Bad Name' is not a class name pattern: use letters, "
-                                        "digits, '_' and `*`", id="names, a space"),
-    pytest.param({"names": [3]}, "parts.service.names: 3 is not a class name pattern: use letters, digits, '_' and "
-                                 "`*`", id="names, a number"),
+    pytest.param({"names": "Bad Name"}, "parts.service.names: 'Bad Name' is not a class name pattern: write it with no "
+                                        "space, `@`, `/` or `:`, `*` standing for any text", id="names, a space"),
+    pytest.param({"names": [3]}, "parts.service.names: 3 is not a class name pattern: write it with no space, `@`, `/` "
+                                 "or `:`, `*` standing for any text", id="names, a number"),
     pytest.param({"built_by": ["ghost"]}, "parts.service.built_by: no part named 'ghost'", id="built_by, no such part"),
     pytest.param({"built_by": []}, "parts.service.built_by: must be a list of part names", id="built_by, empty"),
     pytest.param({"types_only": ["ghost"]}, "parts.service.types_only: no part named 'ghost'",
@@ -85,8 +85,8 @@ def test_a_target_of_may_import_may_narrow_what_is_imported_by_a_name_pattern():
 
 @pytest.mark.parametrize("value, expected", [
     pytest.param("store:", "'store:' has an empty name pattern after `:`", id="an empty pattern"),
-    pytest.param("store:a b", "'store:a b' has a name pattern that is not one: use letters, digits, '_' and `*`",
-                 id="a pattern with a space"),
+    pytest.param("store:a b", "'store:a b' has a name pattern that is not one: write it with no space, `@`, `/` or "
+                              "`:`, `*` standing for any text", id="a pattern with a space"),
 ])
 def test_a_bad_name_pattern_is_refused(value, expected):
     assert problems(with_part(may_import=[value])) == [f"layered.yaml: parts.service.may_import: {expected}"]

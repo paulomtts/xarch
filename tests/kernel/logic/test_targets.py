@@ -20,12 +20,14 @@ READ = [
 @pytest.mark.parametrize("written, owner, found", READ)
 def test_a_target_is_read_from_its_written_form(written, owner, found):
     problems: list[str] = []
-    assert (target(written, owner, PARTS, PARTS, "at", problems, patterns=True), problems) == (found, [])
+    assert (target(written, owner, PARTS, PARTS, "at", problems, patterns=True, alone="a tier's folder"), problems) == (
+        found, [])
 
 
 @pytest.mark.parametrize("written, owner, found", READ)
 def test_a_target_is_written_as_it_is_read_and_reads_back_as_itself(written, owner, found):
-    assert (target_written(found), target(target_written(found), owner, PARTS, PARTS, "at", [], patterns=True)) == (
+    assert (target_written(found), target(target_written(found), owner, PARTS, PARTS, "at", [], patterns=True,
+                                                   alone="a tier's folder")) == (
         written, found)
 
 
@@ -43,7 +45,7 @@ def test_a_target_is_written_as_it_is_read_and_reads_back_as_itself(written, own
 ])
 def test_a_target_that_is_not_one_is_none_with_its_problem(written, owner, problem):
     problems: list[str] = []
-    assert (target(written, owner, PARTS, PARTS, "at", problems), problems) == (None, [problem])
+    assert (target(written, owner, PARTS, PARTS, "at", problems, alone="a tier's folder"), problems) == (None, [problem])
 
 
 @pytest.mark.parametrize("written, found, problem", [
@@ -56,4 +58,31 @@ def test_a_target_that_is_not_one_is_none_with_its_problem(written, owner, probl
 ])
 def test_a_target_a_test_reads_is_read_from_the_instance_it_mirrors(written, found, problem):
     problems: list[str] = []
-    assert (target(written, None, PARTS, PARTS, "at", problems, mirrored=True), problems) == (found, problem)
+    assert (target(written, None, PARTS, PARTS, "at", problems, mirrored=True, alone="a tier's folder"),
+            problems) == (found, problem)
+
+
+@pytest.mark.parametrize("pattern", [
+    pytest.param("*Id", id="letters and a star"),
+    pytest.param("$*", id="a mark another language starts its names with"),
+    pytest.param("%Doc*", id="another such mark"),
+    pytest.param("Détail*", id="a letter that is not ascii"),
+])
+def test_a_name_pattern_is_any_text_but_whitespace_and_the_separators_of_a_target(pattern):
+    assert target(f"kernel:{pattern}", SERVICES, PARTS, PARTS, "at", [], patterns=True, alone="a tier's folder") == (
+        Target("kernel", "none", (), pattern))
+
+
+@pytest.mark.parametrize("written", ["kernel:a b", "kernel:a@b", "kernel:a:b"])
+def test_a_name_pattern_with_whitespace_or_a_separator_is_refused(written):
+    problems: list[str] = []
+    assert (target(written, SERVICES, PARTS, PARTS, "at", problems, patterns=True, alone="a tier's folder"),
+            problems) == (None, [f"at: {written!r} has a name pattern that is not one: write it with no space, `@`, "
+                                 "`/` or `:`, `*` standing for any text"])
+
+
+def test_what_names_no_part_is_named_in_the_callers_words():
+    problems: list[str] = []
+    target("domain", None, PARTS, PARTS, "at", problems, alone="a check that names no part")
+    assert problems == ["at: 'domain' lies in the repeating folder, which a check that names no part is not in: say "
+                        "domain@any"]
