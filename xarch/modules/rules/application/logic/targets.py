@@ -8,7 +8,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from xarch.kernel.logic.placement import name_matches, reaches
-from xarch.modules.rules.application.logic.places import targets_of
+from xarch.modules.rules.application.logic.places import allowed
 from xarch.modules.rules.application.logic.tier_of import Tested, allowance, as_place, may_use_fakes
 from xarch.modules.rules.domain.rule import MAY_NOT, MAY_ONLY, Facts, Found, Match
 from xarch.modules.rules.domain.values import Profile
@@ -85,13 +85,12 @@ def _permitted(match: Match, found: Found, facts: Facts, profile: Profile) -> tu
         return None
     if not read.in_tests:
         src = read.place
-        return fact.target if src is not None and src.part is not None and any(
-            reaches(t, src, fact.at, fact.name) for t in targets_of(profile, src.part)) else None
+        return fact.target if src is not None and allowed(profile, src, fact.at, fact.name) else None
     tier = next((t for t in profile.tiers if t.name == read.tier), None)
     if tier is None:
         return None
-    allowed = allowance(profile, Tested(tier, read.instance, read.own, read.is_test, read.is_fake, read.mirrors))
-    return fact.target if any(reaches(t, as_place(read.instance), fact.at) for t in allowed) else None
+    given = allowance(profile, Tested(tier, read.instance, read.own, read.is_test, read.is_fake, read.mirrors))
+    return fact.target if any(reaches(t, as_place(read.instance), fact.at) for t in given) else None
 
 
 def _test_code(found: Found, facts: Facts, profile: Profile) -> tuple[str, ...] | None:

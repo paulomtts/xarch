@@ -75,6 +75,12 @@ def targets_of(profile: Profile, part: str) -> tuple[Target, ...]:
     return with_itself(part, profile.parts[part], profile.rules.get(part, ())) if part in profile.parts else ()
 
 
+def allowed(profile: Profile, src: Place, dst: Place, name: str | None = None) -> bool:
+    """Whether the part at src may import what sits at dst: the name taken from it, or (None) dst as a whole; a target
+    of what the part may import (targets_of) reaches it."""
+    return src.part is not None and any(reaches(target, src, dst, name) for target in targets_of(profile, src.part))
+
+
 def narrowed(src: Place | None, at: Place | None, profile: Profile) -> tuple[str, ...]:
     """The name patterns of the targets of the part at src that reach at but for their pattern, each once, in order."""
     if src is None or src.part is None or at is None:
