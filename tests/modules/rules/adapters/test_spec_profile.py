@@ -36,7 +36,8 @@ VIEW = ProfileView(
                                                                      "test_{name}.py"),
                       no_comments=True,
                       stand_ins=StandIns((("m", "Mock"),), (), ("spec",), (Fixture("mocker", ("Mock",)),)),
-                      closed_tree=True, no_duplicates=4, no_twins=3, dead_code=True, untested=True, pass_through=("api",),
+                      closed_tree=True, no_duplicates=4, no_twins=3, no_twins_renamed=4, no_twins_subset=3, dead_code=True,
+                      untested=True, pass_through=("api",),
                       private_imports=True),
     fakes=Fakes(("fakes",), ("api",), "Fake"), framework=Framework(("test_*.py",), "test_*", (("skip",),)),
     excluded=(Excluded(("vendor",), "not ours"),), hints={"rules": "ask first"})
@@ -76,6 +77,7 @@ def test_the_profile_view_becomes_the_profile_the_checks_see():
         info={"core": PartInfo("the rules", "Is it a rule?", "core/"),
               "api": PartInfo("handlers", "", "api/ of src/<module>", "it only wires")},
         excluded=(Excluded(("vendor",), "not ours"),), must_import={"api": (Target("core"),)}, no_duplicates=4, no_twins=3,
+        no_twins_renamed=4, no_twins_subset=3,
         dead_code=True, pass_through=("api",), untested=True, holds={"core": "functions"},
         types_only={"api": ("core",)}, no_callbacks=("core",), names={"api": ("*Api",)}, built_by={"api": ("core",)},
         private_imports=True, hints={"rules": "ask first"})

@@ -112,9 +112,9 @@ class PartView:
 @dataclass(frozen=True)
 class GuardsView:
     """The guards a profile switches on, None or False when off: the package-only parts, scenario coverage, no
-    comments, stand-ins, the closed tree, the fewest statements of a duplicate, the fewest fields of a twin, dead code
-    (and with it the files no test of their tier reaches), the parts whose forwarding methods are listed, and private
-    imports."""
+    comments, stand-ins, the closed tree, the fewest statements of a duplicate, the fewest fields of a twin (and of a
+    renamed copy and of a partial one), dead code (and with it the files no test of their tier reaches), the parts whose
+    forwarding methods are listed, and private imports."""
     package_only: tuple[str, ...] = ()
     scenarios: ScenarioCoverage | None = None
     no_comments: bool = False
@@ -122,6 +122,8 @@ class GuardsView:
     closed_tree: bool = False
     no_duplicates: int | None = None
     no_twins: int | None = None
+    no_twins_renamed: int | None = None
+    no_twins_subset: int | None = None
     dead_code: bool = False
     untested: bool = False
     pass_through: tuple[str, ...] = ()

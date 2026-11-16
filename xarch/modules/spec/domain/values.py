@@ -231,8 +231,11 @@ class NoDuplicates:
 
 @dataclass(frozen=True)
 class NoTwins:
-    """The guard no-twins: the fewest fields a class needs to count as a twin of another."""
+    """The guard no-twins: the fewest fields a class needs to count as a twin of another; the fewest a renamed copy
+    needs, and the fewest a copy of part of another's fields needs (None: that case is off)."""
     min_fields: int = 3
+    min_renamed: int | None = None
+    min_subset: int | None = None
 
 
 @dataclass(frozen=True)

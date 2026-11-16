@@ -365,6 +365,7 @@ def test_the_new_guards_take_their_parameters_and_dead_code_needs_fakes():
     assert parsed(covered(guards={"no-duplicates": {}})).guards == (NoDuplicates(4),)
     assert parsed(covered(guards={"no-twins": {"min_fields": 5}})).guards == (NoTwins(5),)
     assert parsed(covered(guards={"no-twins": {}})).guards == (NoTwins(3),)
+    assert parsed(covered(guards={"no-twins": {"min_renamed": 4, "min_subset": 3}})).guards == (NoTwins(3, 4, 3),)
 
 
 @pytest.mark.parametrize("guards, expected", [
@@ -375,9 +376,16 @@ def test_the_new_guards_take_their_parameters_and_dead_code_needs_fakes():
     pytest.param({"no-duplicates": {"min_statements": 0}},
                  ["layered.yaml: guards.no-duplicates.min_statements: must be a whole number of statements, at least "
                   "1, such as 4"], id="no-duplicates, zero"),
-    pytest.param({"no-twins": [3]}, ["layered.yaml: guards.no-twins: must be a mapping {min_fields: <number>}, or {} "
-                                     "for the default"], id="no-twins, no map"),
-    pytest.param({"no-twins": {"fields": 3}}, ["layered.yaml: guards.no-twins: unknown key 'fields': use min_fields"],
+    pytest.param({"no-twins": [3]}, ["layered.yaml: guards.no-twins: must be a mapping {min_fields: <number>, "
+                                     "min_renamed: <number>, min_subset: <number>}, or {} for the default"],
+                 id="no-twins, no map"),
+    pytest.param({"no-twins": {"min_renamed": 1, "min_subset": "3"}},
+                 ["layered.yaml: guards.no-twins.min_renamed: must be a whole number of fields, at least 2, such as 3; "
+                  "leave it out to switch this case off",
+                  "layered.yaml: guards.no-twins.min_subset: must be a whole number of fields, at least 2, such as 3; "
+                  "leave it out to switch this case off"], id="no-twins, a case's minimum below two or no number"),
+    pytest.param({"no-twins": {"fields": 3}}, ["layered.yaml: guards.no-twins: unknown key 'fields': use min_fields, "
+                                               "min_renamed, min_subset"],
                  id="no-twins, an unknown key"),
     pytest.param({"no-twins": {"min_fields": 0}}, ["layered.yaml: guards.no-twins.min_fields: must be a whole number "
                                                    "of fields, at least 1, such as 3"], id="no-twins, zero"),

@@ -33,7 +33,15 @@ GUARDS = {
                 "declares at least min_fields of them (3 when left out) and is no %interface%; two classes of the "
                 "same part, in one instance of a repeating folder or two, are not compared. Of the classes with "
                 "the same fields, in the order of the parts, then of file and line, each one with an earlier "
-                "twin in a part of another name is reported naming that twin, one of its own instance first",
+                "twin in a part of another name is reported naming that twin, one of its own instance first. With "
+                "min_renamed, also a renamed copy: of two such classes, the shorter (at least min_renamed fields, "
+                "and at least half as many as the other) against the other's first fields, position by position, "
+                "differs in one name or more, the names that agree are more than half of the longer class's, and "
+                "every renamed field keeps its type (as written, a twin's name read as the name of the class it "
+                "copies), unless it is the only renamed one and at least min_renamed others agree. With min_subset, "
+                "also a partial copy: one class's field names (at least min_subset, and at least half of the "
+                "other's) are some of the other's, in its order. Each such pair is reported once, at the later of "
+                "the two, naming the earlier; a case left out is off",
     "dead-code": "{untested: true|false}: every port (a %interface% in a part `fakes.for` names) is named by another file "
                  "of the app, in code or an annotation, and every fake (a top-level class of the fakes folder whose "
                  "name starts with `prefix`) is named by a test outside that folder or by a fake that is itself used. "

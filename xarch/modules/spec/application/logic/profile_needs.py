@@ -13,7 +13,7 @@ from xarch.modules.spec.application.logic.key_lookup import keys_of
 from xarch.modules.spec.domain.profile_keys import GUARD, PART, PROFILE, TESTING, TIER, Key
 from xarch.modules.spec.domain.values import Language
 
-_NESTED = {"dead-code": ("untested",)}
+_NESTED = {"dead-code": ("untested",), "no-twins": ("min_renamed",)}
 """The keys of a guard's own map that configure a check of their own, by guard."""
 
 

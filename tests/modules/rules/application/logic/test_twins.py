@@ -95,3 +95,141 @@ def test_the_minimum_is_the_profile_s():
     files = [source(DOMAIN, classes=(Class(5, "A", fields=FIELDS[:2]),)),
              source(CONTRACT, classes=(Class(9, "B", fields=FIELDS[:2]),))]
     assert len(problems(*files, checked=profile(no_twins=2))) == 1
+
+
+RENAMED = profile(no_twins=3, no_twins_renamed=3)
+SUBSET = profile(no_twins=3, no_twins_subset=3)
+LOADED = Class(5, "Loaded", fields=("location", "example_problems", "files", "origin"),
+               types=("str", "tuple[str, ...]", "int", "Origin"))
+CHECKED = Class(9, "Checked", fields=("location", "problems", "files", "origin"),
+                types=("str", "tuple[Problem, ...]", "int", "Origin | None"))
+
+
+def test_a_copy_that_renamed_a_field_is_reported_naming_the_names_and_what_to_do():
+    found = violations([source(CONTRACT, classes=(CHECKED,)), source(DOMAIN, classes=(LOADED,))], RENAMED)
+    assert [(str(v), v.fix) for v in found] == [(
+        "app/modules/docs/contract/__init__.py:9: Checked declares the fields of Loaded at "
+        "app/modules/docs/domain/values.py:5 in the same order, but for problems in place of example_problems "
+        "(location, problems, files, origin): contract/ of modules/docs and domain/ of modules/docs hold one type "
+        "written twice (no-twins)",
+        "keep one of the two, with one name for each field, and import it from a part both may import, or give Checked "
+        "the fields its reader needs instead of a renamed copy of Loaded's")]
+
+
+def fields(*named: str) -> tuple[str, ...]:
+    return tuple(name.split(":")[0] for name in named)
+
+
+def types(*named: str) -> tuple[str, ...]:
+    return tuple(name.split(":")[1] for name in named)
+
+
+def cls(line: int, name: str, *named: str) -> Class:
+    """A class whose fields are written `<name>:<type>`."""
+    return Class(line, name, fields=fields(*named), types=types(*named))
+
+
+@pytest.mark.parametrize("first, second, reported", [
+    pytest.param(cls(5, "Copy", "destination:str", "source:str", "rewritten:bool"),
+                 cls(9, "Moved", "path:str", "source:str | None", "rewritten:int"), True,
+                 id="three fields, the renamed one of the same type"),
+    pytest.param(cls(5, "Doc", "path:str", "source:str", "note:str"),
+                 cls(9, "Moved", "path:str", "source:str", "rewritten:int"), False,
+                 id="three fields, the renamed one of another type"),
+    pytest.param(cls(5, "Supply", "fact:str", "grade:str", "note:str"),
+                 cls(9, "Near", "part:str", "folder:str", "path:str"), False,
+                 id="the same types, every name different"),
+    pytest.param(cls(5, "Slot", "name:str", "meaning:str", "accepts:str", "takes:str"),
+                 cls(9, "Field", "name:str", "meaning:str", "when:str"), False,
+                 id="the names that agree are not more than half of the larger class's"),
+    pytest.param(cls(5, "Conversion", "folder:Path", "profile:str", "copies:tuple[Copied, ...]", "changes:list",
+                     "by_hand:list"),
+                 cls(9, "Migrated", "folder:Path", "profile:Path", "files:tuple[Moved, ...]", "changes:list",
+                     "by_hand:list", "dry_run:bool"), True,
+                 id="one field renamed and retyped of five, and one more"),
+    pytest.param(cls(5, "A", "a:int", "b:int"), cls(9, "B", "a:int", "c:int"), False,
+                 id="fewer fields than the minimum"),
+])
+def test_a_renamed_copy_keeps_more_than_half_the_names_and_each_renamed_field_its_type_unless_it_is_the_only_one(
+        first, second, reported):
+    assert bool(problems(source(DOMAIN, classes=(first,)), source(CONTRACT, classes=(second,)),
+                         checked=RENAMED)) == reported
+
+
+def test_a_renamed_copy_with_more_fields_says_how_many_more():
+    found = problems(source(DOMAIN, classes=(cls(5, "Conversion", "folder:Path", "profile:str", "copies:tuple",
+                                                 "changes:list", "by_hand:list"),)),
+                     source(CONTRACT, classes=(cls(9, "Migrated", "folder:Path", "profile:Path", "files:list",
+                                                   "changes:list", "by_hand:list", "dry_run:bool"),)),
+                     checked=RENAMED)
+    assert found == [
+        "app/modules/docs/contract/__init__.py:9: Migrated declares the fields of Conversion at "
+        "app/modules/docs/domain/values.py:5 in the same order, but for files in place of copies, and 1 more "
+        "(dry_run) (folder, profile, files, changes and 2 more): contract/ of modules/docs and domain/ of "
+        "modules/docs hold one type written twice (no-twins)"]
+
+
+def test_a_type_that_is_itself_a_twin_counts_as_the_type_it_copies():
+    holder = cls(5, "Batch", "path:str", "items:tuple[Copy, ...]", "count:int")
+    copy = cls(9, "Run", "path:str", "entries:tuple[CopyView, ...]", "count:int")
+    twins = (Class(3, "Copy", fields=FIELDS), Class(3, "CopyView", fields=FIELDS))
+    assert problems(source(DOMAIN, classes=(holder,)), source(CONTRACT, classes=(copy,)), checked=RENAMED) == []
+    found = problems(source(DOMAIN, classes=(twins[0], holder)), source(CONTRACT, classes=(twins[1], copy)),
+                     checked=RENAMED)
+    assert [line.split(" in the same order")[0] for line in found] == [
+        "app/modules/docs/contract/__init__.py:3: CopyView declares the fields of Copy at "
+        "app/modules/docs/domain/values.py:3",
+        "app/modules/docs/contract/__init__.py:9: Run declares the fields of Batch at "
+        "app/modules/docs/domain/values.py:5"]
+
+
+def test_a_copy_that_kept_part_of_the_fields_in_order_is_reported_at_the_later_part():
+    language = Class(5, "Language", fields=("title", "name", "extension", "package_file", "cache"))
+    view = Class(9, "LanguageView", fields=("title", "extension", "package_file"))
+    found = violations([source(DOMAIN, classes=(language,)), source("kernel/language.py", classes=(view,))], SUBSET)
+    assert [(str(v), v.fix) for v in found] == [(
+        "app/modules/docs/domain/values.py:5: Language declares the fields of LanguageView at app/kernel/language.py:9 "
+        "in the same order, and 2 more (name, cache) (title, name, extension, package_file and 1 more): domain/ of "
+        "modules/docs and kernel/ hold one type written twice (no-twins)",
+        "keep one of the two and import it from a part both may import, or give Language the fields its reader needs "
+        "instead of a copy of LanguageView's")]
+
+
+def test_the_copy_that_kept_part_is_said_so_when_it_is_the_one_reported():
+    found = problems(source("kernel/language.py", classes=(Class(5, "Language", fields=("title", "name", "cache")),)),
+                     source(DOMAIN, classes=(Class(9, "View", fields=("title", "cache")),)),
+                     checked=profile(no_twins=3, no_twins_subset=2))
+    assert found == [
+        "app/modules/docs/domain/values.py:9: View declares 2 of the 3 fields of Language at app/kernel/language.py:5, "
+        "in the same order (title, cache): domain/ of modules/docs and kernel/ hold one type written twice (no-twins)"]
+
+
+@pytest.mark.parametrize("kept, reported", [
+    pytest.param(("title", "extension", "package_file"), True, id="three of five"),
+    pytest.param(("title", "extension"), False, id="fewer than the minimum"),
+    pytest.param(("title", "package_file", "extension"), False, id="out of order"),
+    pytest.param(("title", "extension", "other"), False, id="a field the other does not have"),
+])
+def test_a_part_is_kept_when_its_fields_are_the_other_s_in_order_at_least_the_minimum(kept, reported):
+    language = Class(5, "Language", fields=("title", "name", "extension", "package_file", "cache"))
+    assert bool(problems(source(DOMAIN, classes=(language,)), source(CONTRACT, classes=(Class(9, "V", fields=kept),)),
+                         checked=SUBSET)) == reported
+
+
+def test_a_part_of_fewer_than_half_the_fields_is_a_smaller_value_of_its_own_not_a_copy():
+    tier = Class(5, "Tier", fields=("name", "proves", "a", "may_touch", "b", "litmus", "c", "d", "e"))
+    assert problems(source(DOMAIN, classes=(tier,)),
+                    source(CONTRACT, classes=(Class(9, "TierInfo", fields=("name", "proves", "may_touch", "litmus")),)),
+                    checked=SUBSET) == []
+
+
+def test_the_renamed_and_the_partial_copies_are_off_unless_the_profile_gives_their_minimum():
+    files = [source(DOMAIN, classes=(LOADED, Class(7, "L", fields=("title", "name", "extension")))),
+             source(CONTRACT, classes=(CHECKED, Class(11, "V", fields=("title", "extension"))))]
+    assert problems(*files, checked=profile(no_twins=2)) == []
+    assert len(problems(*files, checked=profile(no_twins=2, no_twins_renamed=3, no_twins_subset=2))) == 2
+
+
+def test_two_classes_of_one_part_are_never_compared_as_renamed_or_partial_copies():
+    assert problems(source(DOMAIN, classes=(LOADED,)), source("modules/billing/domain/x.py", classes=(CHECKED,)),
+                    checked=RENAMED) == []

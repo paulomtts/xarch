@@ -817,15 +817,24 @@ def _no_twins(spec: Any, where: str, problems: list[str]) -> NoTwins:
     if spec in ({}, None):
         return NoTwins()
     if not isinstance(spec, Mapping):
-        problems.append(f"{where}: must be a mapping {{min_fields: <number>}}, or {{}} for the default")
+        problems.append(f"{where}: must be a mapping {{min_fields: <number>, min_renamed: <number>, min_subset: "
+                        "<number>}, or {} for the default")
         return NoTwins()
     problems += ck.unknown_keys(spec, names_of(NO_TWINS), where)
     least = spec.get("min_fields", NoTwins.min_fields)
     if isinstance(least, bool) or not isinstance(least, int) or least < 1:
         problems.append(f"{where}.min_fields: must be a whole number of fields, at least 1, such as "
                         f"{NoTwins.min_fields}")
-        return NoTwins()
-    return NoTwins(least)
+        least = NoTwins.min_fields
+    found = []
+    for name in ("min_renamed", "min_subset"):
+        value = spec.get(name)
+        if value is not None and (isinstance(value, bool) or not isinstance(value, int) or value < 2):
+            problems.append(f"{where}.{name}: must be a whole number of fields, at least 2, such as 3; leave it out "
+                            "to switch this case off")
+            value = None
+        found.append(value)
+    return NoTwins(least, *found)
 
 
 def _pass_through(spec: Any, declared: set[str], parts: dict[str, Part], where: str,

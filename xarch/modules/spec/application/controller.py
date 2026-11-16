@@ -266,6 +266,8 @@ def _guards_view(guards: tuple[Guard, ...]) -> GuardsView:
         closed_tree=any(isinstance(g, ClosedTree) for g in guards),
         no_duplicates=next((g.min_statements for g in guards if isinstance(g, NoDuplicates)), None),
         no_twins=next((g.min_fields for g in guards if isinstance(g, NoTwins)), None),
+        no_twins_renamed=next((g.min_renamed for g in guards if isinstance(g, NoTwins)), None),
+        no_twins_subset=next((g.min_subset for g in guards if isinstance(g, NoTwins)), None),
         dead_code=any(isinstance(g, DeadCode) for g in guards),
         untested=any(isinstance(g, DeadCode) and g.untested for g in guards),
         pass_through=next((g.parts for g in guards if isinstance(g, PassThrough)), ()),

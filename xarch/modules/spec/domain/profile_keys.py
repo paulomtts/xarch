@@ -453,6 +453,18 @@ _KEYS: tuple[Key, ...] = (
 
     _k(NO_TWINS, "min_fields", "the fewest fields that count", "a whole number, 3 when left out",
        _guarded("no-twins: {min_fields: 3}\n"), rules=("no-twins",)),
+    _k(NO_TWINS, "min_renamed", "also report a copy that renamed fields, from this many fields",
+       "a whole number, at least 2; left out, the case is off. Two classes of parts with different names, the shorter "
+       "with at least this many fields and at least half as many as the other, compared position by position with the "
+       "other's first fields: one name or more differs, the names that agree are more than half of the longer "
+       "class's fields, and every renamed field keeps its type, read as written but for a twin's name, which reads "
+       "as the class it copies; a field renamed and retyped is allowed only when it is the only renamed one and at "
+       "least this many others agree", _guarded("no-twins: {min_fields: 3, min_renamed: 3}\n"), rules=("no-twins",)),
+    _k(NO_TWINS, "min_subset", "also report a copy of part of a class's fields, from this many fields",
+       "a whole number, at least 2; left out, the case is off. A class whose field names, at least this many and at "
+       "least half of the other's, are some of another's in its order (other fields between or around them), in a "
+       "part of another name; types are not compared", _guarded("no-twins: {min_fields: 3, min_subset: 3}\n"),
+       rules=("no-twins",)),
 
     _k(DEAD_CODE, "untested", "also list the files no test of their tier reaches",
        "true or false: every file of a part that has a `tier`, which no test code of that tier (a file below the "
@@ -533,6 +545,7 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "guards.closed-tree": ("file",),
     "guards.no-duplicates": ("function", "function.statements", "function.shape"),
     "guards.no-twins": ("class", "class.fields"),
+    "guards.no-twins.min_renamed": ("class", "class.fields", "class.types"),
     "guards.dead-code": ("class", "named"),
     "guards.dead-code.untested": (*_IMPORTS, "function.statements", "class.exception"),
     "guards.pass-through": ("function", "function.forwards"),
