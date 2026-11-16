@@ -17,7 +17,9 @@ assignment, class or `global`), so that the name is a function and not a class o
 
 A use is every name read in the file's code, called or not, and every chain of attributes on one (`a.b.c` once, as
 the whole chain), read the same way; a name no scope binds that is one of Python's builtins is the use
-("builtins", <name>), unless the file holds a star import, which might bind it. Annotations are not read for uses.
+("builtins", <name>), unless the file holds a star import, which might bind it. An annotation is read for uses too, a
+parameter's, a return's and an annotated assignment's, in the scope around what it annotates; the text of a string
+annotation is not.
 
 A call of a parameter itself by its bare name, `<parameter>(...)`, is listed as a callback under the same condition,
 with the name of the function whose parameter it is; the first parameter of a function defined in a class body is
@@ -641,7 +643,10 @@ class _Calls(ast.NodeVisitor):
 
     def visit_FunctionDef(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
         a = node.args
-        for child in [*node.decorator_list, *a.defaults, *(d for d in a.kw_defaults if d)]:
+        annotations = [x.annotation for x in [*a.posonlyargs, *a.args, *a.kwonlyargs, *(v for v in (a.vararg, a.kwarg) if v)]
+                       if x.annotation is not None]
+        for child in [*node.decorator_list, *a.defaults, *(d for d in a.kw_defaults if d), *annotations,
+                      *([node.returns] if node.returns is not None else [])]:
             self.visit(child)
         positional = [*a.posonlyargs, *a.args]
         static = any(isinstance(d, ast.Name) and d.id == "staticmethod" for d in node.decorator_list)

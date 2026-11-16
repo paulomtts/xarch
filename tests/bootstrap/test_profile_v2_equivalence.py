@@ -27,6 +27,8 @@ CWD = {("pathlib", "Path", "cwd"), ("pathlib", "Path", "absolute"), ("os", "getc
        ("", "absolute()"), ("", "resolve()"), ("", "expanduser()")}
 """The names that read the working directory or resolve a path on disk, added to the `pure` lists and in the
 `ambient` list after format 1."""
+OPAQUE = {("typing", "Any")}
+"""The opaque types xarch's own contract parts came to forbid after format 1, in a list of their own."""
 OWN = Path(xarch.__file__).parent.parent / "architecture.yaml"
 OWN_EXAMPLES = ("kernel/logic/test_placement.py", "modules/rules/application/test_check.py", "bootstrap/test_app.py",
                 "architecture/test_self_check.py")
@@ -60,8 +62,8 @@ def comparable(architecture: Architecture) -> Architecture:
     """Without what differs by design: where the example files sit (the shipped profiles keep two folders of examples, a
     migration one), the tiers' examples and subjects' order, the order of the parts, what the profile is based on, and
     what format 1 never had: each part's `must_import`, `holds`, `types_only`, `no_callbacks`, `names` and `built_by`,
-    a tier's `must_import`, a name pattern on a target, the names that read the working directory in a `forbidden`
-    list (and a list of nothing else), the names `reserved` holds and the parts' libraries that list them, and the
+    a tier's `must_import`, a name pattern on a target, the names that read the working directory and the opaque
+    types in a `forbidden` list (and a list of nothing else), the names `reserved` holds and the parts' libraries that list them, and the
     guards no-duplicates, no-twins, dead-code, pass-through and private-imports; and `kernel/logic/`, a folder of
     `kernel/` in format 1 and a part of its own now, which every part that may import `kernel/` may import too, as
     the part it was a folder of (see kernel_logic); and what changed when services came to assemble what a use case
@@ -76,7 +78,7 @@ def comparable(architecture: Architecture) -> Architecture:
     guards = tuple(g for g in architecture.guards
                    if not isinstance(g, (NoDuplicates, NoTwins, DeadCode, PassThrough, PrivateImports)))
     rules = {name: tuple(replace(t, names="") for t in targets) for name, targets in architecture.rules.items()}
-    kept = {name: tuple(n for n in names if n not in CWD) for name, names in architecture.forbidden.items()}
+    kept = {name: tuple(n for n in names if n not in CWD | OPAQUE) for name, names in architecture.forbidden.items()}
     forbidden = {name: names for name, names in kept.items() if names}
     libraries = None if architecture.libraries is None else {
         name: tuple(p for p in packages if p not in architecture.reserved)

@@ -98,6 +98,14 @@ def test_a_use_names_what_it_reaches_by_the_path_its_import_binds_and_how_many_s
         Use(6, ("urllib", "request", "urlopen"), 1), Use(8, ("datetime", "datetime"), 2))
 
 
+def test_an_annotation_is_a_use_of_what_it_names_a_signature_s_and_a_field_s_alike_but_not_a_string_s(tmp_path):
+    text = ("import typing\nclass A:\n    x: typing.Any\ndef f(a: typing.Any, *b: typing.Any) -> typing.Any:\n"
+            "    return a\ny: 'typing.Any' = 1\n")
+    assert parsed(tmp_path, text).uses == (
+        Use(3, ("typing", "Any"), 1), Use(4, ("typing", "Any"), 1), Use(4, ("typing", "Any"), 1),
+        Use(4, ("typing", "Any"), 1))
+
+
 def test_a_builtin_is_used_by_its_bare_name_unless_its_scope_binds_the_name(tmp_path):
     text = ("open('x')\nprint\nundefined()\ndef f(open):\n    return open()\n"
             "def g():\n    print = log\n    print()\nclass C:\n    input = 1\n    def m(self):\n        input()\n"
