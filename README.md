@@ -48,6 +48,9 @@ xarch profile new NAME --from BUNDLED [--out FOLDER] [--app PATH]
                                                              # copy a bundled profile into the project, with its files
 xarch profile check [NAME|FILE] [--app PATH] [--format text|json]
                                                              # validate a profile without an app
+xarch review [PATH ...] [--files-from FILE|-] [--all] --dry-run [--max-files N] [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json]
+                                                             # advisory: what review would ask a decision model of the
+                                                             # files chosen, masked; sends nothing
 ```
 
 `WORD` is the word between `<` and `>` in the profile's paths: in both bundled profiles `<module>`, so
@@ -529,6 +532,36 @@ be added, an existing one keeps its name and meaning. A field that does not appl
 - `test`: for `test`, `fake` and `support`: `{"may_use_fakes", "fakes_path", "types_only", "code_from"}`, whether it
   may import the fakes, where they live, the parts it may use as types and never call, and the folder it may import test
   code from. `note`: one line where the kind alone does not say it.
+
+## xarch review: an advisory reading (dry run only)
+
+`review` is a second, advisory command, apart from `check`: it never runs inside `check`, never changes what `check`
+finds or its exit code, and never exits 1. It will ask a decision model, for each file chosen, which part of the
+profile the file belongs in, with every part's litmus test (its role, for a part with none) as the options. This
+version builds that question and shows it, and **sends nothing**: it runs only with `--dry-run`, and refuses (exit 2)
+without it.
+
+It reads only the files it is given, and refuses (exit 2) when none is: name them as paths (a folder stands for the
+source files below it), pipe a list with `--files-from -` (one path per line, such as
+`git diff --name-only main | xarch review --files-from - --dry-run`), or take every file of the app with `--all`
+(alone). A path is read as `xarch where` reads one; one outside the project is refused. Of the files found, a source
+file of the app in a part, that parses and holds at least 800 characters, is judged; every other is listed as left out,
+with why (not there, no source file, a test, outside the app folder, excluded, in no part, does not parse, too small).
+A run judges at most `--max-files` files (50); past that it refuses, naming how many it chose.
+
+`--dry-run` prints what a review would send, exactly: the question once (it is the same for every file), then each
+file judged with the text it would send. That text is the file's own, masked: the module each import of the app's own
+code names (an import named from the importing file's folder, or whose first step is the app's import name) is
+replaced by `<masked>` on the import's line, since it would say the part; every e-mail address becomes
+`person@example.test`. Nothing else is masked: docstrings, comments and string literals are sent as written, so a file
+that must not leave the machine is one not to choose. The path of a file, the project's name and anything else of the
+project are never part of what is sent. It ends with the characters in all and about how many tokens they make (one
+for every four characters).
+
+`--format json` prints one document: `{"ok", "advisory", "profile", "dry_run", "sent", "selection": {"by", "found",
+"judged", "left_out": [{"file", "why", "chars"}]}, "question": {"ask", "role_only", "options": [{"name",
+"description"}]}, "requests": [{"file", "part", "chars", "text"}], "characters", "tokens"}`, `why` one of `missing`,
+`not-source`, `test`, `outside`, `excluded`, `unplaced`, `unparsable`, `small`; a refusal is `{"ok": false, "error"}`.
 
 ## Project docs
 

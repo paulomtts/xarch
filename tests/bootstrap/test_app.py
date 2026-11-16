@@ -317,7 +317,7 @@ def test_version_prints_the_installed_version_and_exits_0():
 
 def test_version_says_it_is_unknown_when_no_metadata_of_the_package_is_found():
     controllers = build_controllers()
-    unknown = build(controllers.rules, controllers.scaffold, controllers.spec, lambda: None)
+    unknown = build(controllers.rules, controllers.scaffold, controllers.spec, controllers.review, lambda: None)
     result = runner.invoke(unknown, ["--version"])
     assert (result.exit_code, result.output) == (0, "xarch (version unknown)\n")
 

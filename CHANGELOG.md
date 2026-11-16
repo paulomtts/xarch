@@ -25,10 +25,13 @@ The first release.
 - Profile format 2: one YAML file that states each fact once, on the thing it is about.
 - A profile's own checks, written under `checks`, each held to its words, its facts and its examples.
 - Python, read through the interpreter's own syntax tree, with pytest as the testing preset.
+- `xarch review --dry-run`: what an advisory review would ask a decision model of the files chosen (as paths, with
+  `--files-from -`, or `--all`), each file's text masked, the files left out and why, and what it would cost. It
+  sends nothing, and never changes what `check` finds.
 
 ### Not in this release
 
-- An advisory review command.
+- An advisory review that sends: `review` runs only with `--dry-run`.
 - Languages other than Python.
 - A stable check vocabulary: the words a profile's checks are written in may change.
 

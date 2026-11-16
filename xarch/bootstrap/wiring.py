@@ -9,6 +9,10 @@ from xarch.modules.layout.adapters.fs_disk import FsDisk
 from xarch.modules.layout.adapters.spec_skeleton import SpecSkeleton as LayoutSkeleton
 from xarch.modules.layout.application.controller import LayoutController
 from xarch.modules.layout.application.services.structure_check import StructureCheckService
+from xarch.modules.review.adapters.rules_code import RulesCode
+from xarch.modules.review.adapters.spec_profile import SpecParts
+from xarch.modules.review.application.controller import ReviewController
+from xarch.modules.review.application.services.reviewing import ReviewService
 from xarch.modules.rules.adapters.fs_source_tree import FsSourceTree
 from xarch.modules.rules.adapters.layout_structure import LayoutStructure
 from xarch.modules.rules.adapters.spec_check_format import SpecCheckFormat
@@ -65,6 +69,7 @@ class _Controllers:
     layout: LayoutController
     scaffold: ScaffoldController
     spec: SpecController
+    review: ReviewController
 
 
 def _build_reader(tree: FsSourceTree) -> ReaderController:
@@ -112,12 +117,19 @@ def _build_scaffold(fs: FileSystem, spec: SpecController) -> ScaffoldController:
     return ScaffoldController(ScaffoldingService(FsFiles(fs), ScaffoldSkeleton(spec)))
 
 
+def _build_review(rules: RulesController, spec: SpecController) -> ReviewController:
+    """Review, which reads the app's files through rules and the profile's parts through spec."""
+    return ReviewController(ReviewService(RulesCode(rules), SpecParts(spec)))
+
+
 def build_controllers() -> _Controllers:
     """Built in the order each needs the one before: the reader, which needs no profile; spec, which reads its
     examples with it; layout and scaffold, which read the skeleton spec gives; rules, which reads with the same reader
-    the profile spec gives and the structure layout checks. One reader and one spec feed them all: they cannot drift."""
+    the profile spec gives and the structure layout checks; review, which reads the app's files through rules and the
+    parts through spec. One reader and one spec feed them all: they cannot drift."""
     fs = FileSystem()
     tree = READER(fs)
     spec = _build_spec(fs, tree)
     layout = _build_layout(fs, spec)
-    return _Controllers(_build_rules(tree, spec, layout), layout, _build_scaffold(fs, spec), spec)
+    rules = _build_rules(tree, spec, layout)
+    return _Controllers(rules, layout, _build_scaffold(fs, spec), spec, _build_review(rules, spec))
