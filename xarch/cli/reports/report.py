@@ -45,7 +45,7 @@ LABELS = {GUARDS_OFF: "guards off", UNGOVERNED: "ungoverned", INIT_FILES: "init 
 """How each section of the enforcement is labelled, by its key."""
 
 
-def text_lines(found: Iterable[Violation], hints: Mapping[str, str] | None = None) -> list[str]:
+def _text_lines(found: Iterable[Violation], hints: Mapping[str, str] | None = None) -> list[str]:
     """The violations as the terminal shows them, in the order the checks found them, then the summary line. A
     finding is its line, `<file>:<line>: <message>`, then an indented `fix:` line and, when the profile has a hint
     for its rule, an indented `hint:` line."""
@@ -64,11 +64,11 @@ def text_lines(found: Iterable[Violation], hints: Mapping[str, str] | None = Non
 
 def check_lines(origin: Origin, checked: AppChecked, strict: bool) -> list[str]:
     """What `xarch check` shows as text: the violations, then the enforcement section."""
-    return [*text_lines(checked.violations, checked.hints),
-            *enforcement_lines(origin, checked.enforcement, strict, checked.hints)]
+    return [*_text_lines(checked.violations, checked.hints),
+            *_enforcement_lines(origin, checked.enforcement, strict, checked.hints)]
 
 
-def enforcement_lines(origin: Origin, state: EnforcementView, strict: bool,
+def _enforcement_lines(origin: Origin, state: EnforcementView, strict: bool,
                       hints: Mapping[str, str] | None = None) -> list[str]:
     """The enforcement section: where the profile comes from and how loose it is, then the state of the check's
     enforcement; with strict, the findings it fails on after it. A weak check that has a fix shows it under its line,
@@ -115,12 +115,12 @@ def _places(places: Sequence[At]) -> str:
     return shown + (f" and {len(places) - SHOWN} more" if len(places) > SHOWN else "")
 
 
-def violation_document(violation: Violation, hints: Mapping[str, str] | None = None) -> dict[str, Any]:
+def _violation_document(violation: Violation, hints: Mapping[str, str] | None = None) -> dict[str, Any]:
     return {"rule": violation.rule, "file": violation.file, "line": violation.line or None,
             "message": violation.message, "fix": violation.fix, "hint": (hints or {}).get(violation.rule)}
 
 
-def enforcement_document(origin: Origin, state: EnforcementView) -> dict[str, Any]:
+def _enforcement_document(origin: Origin, state: EnforcementView) -> dict[str, Any]:
     return {
         "profile": {"location": origin.location, "bundled": origin.bundled, "closest": origin.closest,
                     "guards_off": list(origin.guards_off), "baseline_off": list(origin.baseline_off),
@@ -151,5 +151,5 @@ def _finding(finding: FindingView) -> dict[str, str]:
 
 def json_document(profile: str, origin: Origin, checked: AppChecked, strict: bool) -> str:
     return document({"ok": checked.ok, "strict": strict, "profile": profile,
-                     "violations": [violation_document(v, checked.hints) for v in checked.violations],
-                     "enforcement": enforcement_document(origin, checked.enforcement)})
+                     "violations": [_violation_document(v, checked.hints) for v in checked.violations],
+                     "enforcement": _enforcement_document(origin, checked.enforcement)})

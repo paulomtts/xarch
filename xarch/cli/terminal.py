@@ -44,14 +44,14 @@ def fail(message: str) -> typer.Exit:
     return typer.Exit(2)
 
 
-def json_refusal(message: str) -> typer.Exit:
+def _json_refusal(message: str) -> typer.Exit:
     typer.echo(json_error(message))
     return typer.Exit(2)
 
 
 def refusal(output: Format) -> Callable[[str], typer.Exit]:
     """How a refusal reaches the terminal in the format asked for."""
-    return json_refusal if output is Format.json else fail
+    return _json_refusal if output is Format.json else fail
 
 
 def refuse_with(output: Format, message: str, document: str) -> typer.Exit:

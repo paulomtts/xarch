@@ -12,7 +12,6 @@ from xarch.cli.reports.profile_report import (
     migrate_taken,
     new_taken,
     origin_words,
-    taken_phrase,
     unknown_document,
     unknown_message,
 )
@@ -88,14 +87,17 @@ def test_a_profile_that_does_not_load_is_said_to_be_custom_and_nothing_more():
         "checking mine.yaml (custom)")
 
 
-@pytest.mark.parametrize("taken, phrase", [
-    pytest.param([], "", id="nothing taken says nothing"),
-    pytest.param([Path("out/a.yaml")], "out/a.yaml already exists", id="one file exists"),
-    pytest.param([Path("a"), Path("b")], "a, b already exist", id="two files exist"),
-    pytest.param([Path(n) for n in "abcde"], "a, b, c and 2 more already exist", id="past three the rest are counted"),
+MIGRATE = ": migrate writes only new files; pass `--out <folder>` to write somewhere else"
+
+
+@pytest.mark.parametrize("taken, said", [
+    pytest.param([Path("out/a.yaml")], "out/a.yaml already exists" + MIGRATE, id="one file exists"),
+    pytest.param([Path("a"), Path("b")], "a, b already exist" + MIGRATE, id="two files exist"),
+    pytest.param([Path(n) for n in "abcde"], "a, b, c and 2 more already exist" + MIGRATE,
+                 id="past three the rest are counted"),
 ])
-def test_taken_phrase(taken, phrase):
-    assert taken_phrase(taken) == phrase
+def test_a_refusal_to_write_over_files_names_up_to_three_then_counts_the_rest(taken, said):
+    assert migrate_taken(FilesTaken(tuple(taken))) == said
 
 
 def test_a_profile_that_would_be_written_over_files_names_them_and_says_how_to_write_elsewhere():

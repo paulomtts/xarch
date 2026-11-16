@@ -251,10 +251,8 @@ TAKEN = 3
 """How many files that exist a refusal to write over them names before it counts the rest."""
 
 
-def taken_phrase(taken: Sequence[Path]) -> str:
-    """The files, as a phrase ending in the verb ("a, b and 2 more already exist"), or "" when there are none."""
-    if not taken:
-        return ""
+def _taken_phrase(taken: Sequence[Path]) -> str:
+    """The files, at least one, as a phrase ending in the verb ("a, b and 2 more already exist")."""
     names = [path.as_posix() for path in taken]
     verb = "exists" if len(names) == 1 else "exist"
     shown = ", ".join(names[:TAKEN]) + (f" and {len(names) - TAKEN} more" if len(names) > TAKEN else "")
@@ -263,12 +261,12 @@ def taken_phrase(taken: Sequence[Path]) -> str:
 
 def migrate_taken(refused: FilesTaken) -> str:
     """Why migrate wrote nothing: the files it would write over, and how to write elsewhere."""
-    return f"{taken_phrase(refused.taken)}: migrate writes only new files; pass `--out <folder>` to write somewhere else"
+    return f"{_taken_phrase(refused.taken)}: migrate writes only new files; pass `--out <folder>` to write somewhere else"
 
 
 def new_taken(refused: FilesTaken) -> str:
     """Why new wrote nothing: the files it would write over, and how to write elsewhere."""
-    return (f"{taken_phrase(refused.taken)}: nothing was written; `new` writes only new files, so pass `--out <folder>` "
+    return (f"{_taken_phrase(refused.taken)}: nothing was written; `new` writes only new files, so pass `--out <folder>` "
             "to write somewhere else, or choose another name")
 
 
