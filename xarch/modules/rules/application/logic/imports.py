@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
 
+from xarch.kernel.logic.placement import module_steps, stands_for_folder
 from xarch.kernel.logic.source import relative_target
 from xarch.kernel.placement import Marks
 from xarch.kernel.source import Import
@@ -12,10 +13,7 @@ from xarch.kernel.source import Import
 
 def dotted(path: tuple[str, ...], marks: Marks) -> tuple[tuple[str, ...], bool]:
     """A file's dotted path below the root, and whether it is the file that stands for its folder."""
-    steps = path[:-1] + (path[-1].removesuffix(marks.extension),) if path else path
-    stem = marks.package_file.removesuffix(marks.extension)
-    is_package = bool(steps) and bool(stem) and steps[-1] == stem
-    return (steps[:-1] if is_package else steps), is_package
+    return module_steps(path, marks), stands_for_folder(path, marks)
 
 
 def targets(imports: Iterable[Import], package: tuple[str, ...], known: set[tuple[str, ...]],

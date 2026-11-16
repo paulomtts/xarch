@@ -34,10 +34,14 @@ def repeat_of(repeats: Iterable[Repeat], pattern: tuple[str, ...]) -> Repeat | N
 
 def module_steps(path: tuple[str, ...], marks: Marks) -> tuple[str, ...]:
     """A path as the language names it: no ending on its file, and the file that stands for its folder is the folder."""
-    if path and path[-1].endswith(marks.extension):
-        path = path[:-1] + (path[-1].removesuffix(marks.extension),)
+    steps = path[:-1] + (path[-1].removesuffix(marks.extension),) if path else path
+    return steps[:-1] if stands_for_folder(path, marks) else steps
+
+
+def stands_for_folder(path: tuple[str, ...], marks: Marks) -> bool:
+    """Whether a path is the file that stands for its folder, written with its ending or without it."""
     stem = marks.package_file.removesuffix(marks.extension)
-    return path[:-1] if path and stem and path[-1] == stem else path
+    return bool(path) and bool(stem) and path[-1].removesuffix(marks.extension) == stem
 
 
 def place_of(patterns: Mapping[str, tuple[str, ...]], path: tuple[str, ...], marks: Marks) -> Place:

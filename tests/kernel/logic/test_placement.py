@@ -1,7 +1,7 @@
 """Where a path sits among path patterns, and which places a rule's target reaches."""
 import pytest
 
-from xarch.kernel.logic.placement import place_of, reaches, repeat_of, root_of, with_itself
+from xarch.kernel.logic.placement import module_steps, place_of, reaches, repeat_of, root_of, stands_for_folder, with_itself
 from xarch.kernel.placement import EVERYTHING, Marks, Place, Repeat, Target
 
 MARKS = Marks(".src", "pkg.src")
@@ -95,3 +95,17 @@ def test_a_path_is_read_with_the_marks_it_is_given_and_with_none_as_written():
     assert place_of(patterns, ("domain", "index.mod"), Marks(".mod", "index.mod")) == Place("domain")
     assert place_of(patterns, ("domain", "x.src"), Marks()) == Place("domain", None, ("x.src",))
     assert place_of(patterns, ("main.src",), Marks()) == Place("main")
+
+
+SRC = Marks(".src", "pkg.src")
+
+
+@pytest.mark.parametrize("path, steps, folder", [
+    pytest.param(("docs", "rule.src"), ("docs", "rule"), False, id="a file is named without its ending"),
+    pytest.param(("docs", "pkg.src"), ("docs",), True, id="the file that stands for its folder is the folder"),
+    pytest.param(("docs", "pkg"), ("docs",), True, id="written without its ending too"),
+    pytest.param(("docs",), ("docs",), False, id="a folder is its own steps"),
+    pytest.param((), (), False, id="the root is no file"),
+])
+def test_a_path_as_the_language_names_it_and_whether_it_stands_for_its_folder(path, steps, folder):
+    assert (module_steps(path, SRC), stands_for_folder(path, SRC)) == (steps, folder)
