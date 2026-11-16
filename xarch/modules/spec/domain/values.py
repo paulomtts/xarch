@@ -1,7 +1,6 @@
 """Values of the spec module."""
 from __future__ import annotations
 
-from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -416,11 +415,4 @@ class ArchitectureDocument:
     source: str
     document: Any
 
-
-@dataclass(frozen=True)
-class Quotes:
-    """The texts a profile's docs quote from its files: each example's file, by the example's name, and each tier's
-    example test and helper, by the tier's name or the helper's file."""
-    examples: Mapping[str, str]
-    tier_examples: Mapping[str, str]
 
