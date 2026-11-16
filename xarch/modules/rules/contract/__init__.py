@@ -24,6 +24,7 @@ from xarch.modules.rules.domain.published import (
     KeyFacts,
     KnownName,
     Loosened,
+    Piece,
     Resemblance,
     Reviewed,
     Slot,
@@ -31,7 +32,7 @@ from xarch.modules.rules.domain.published import (
     Weak,
 )
 
-__all__ = ["At", "Weak", "KnownName", "Translation", "Slot", "KeyFacts", "SECTIONS", "GUARDS_OFF", "UNGOVERNED",
+__all__ = ["At", "Weak", "Piece", "KnownName", "Translation", "Slot", "KeyFacts", "SECTIONS", "GUARDS_OFF", "UNGOVERNED",
            "INIT_FILES", "SKIPPED", "DYNAMIC",
            "WEAK", "APPROXIMATE", "VACUOUS", "UNPLACED", "ChecksCannotRun", "CheckRefused", "OwnCheckView",
            "Drift", "FindingView", "ExcludedView", "EnforcementView", "ReachView", "NearestView", "TierInfoView",

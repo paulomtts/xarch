@@ -9,7 +9,7 @@ from xarch.kernel.logic.placement import repeat_of
 from xarch.kernel.placement import Place
 from xarch.kernel.source import Import, Unparsable
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.domain.published import At, Drift, KnownName, Loosened, Translation, Weak
+from xarch.modules.rules.domain.published import At, Drift, KnownName, Loosened, Piece, Translation, Weak
 from xarch.profile_values.capabilities import Shortfall
 from xarch.profile_values.checks import WrittenCheck
 from xarch.profile_values.excluded import Excluded
@@ -334,8 +334,9 @@ class SourceFile:
     of an attribute no import binds (see MethodCall). constants are the names it binds at the top level by an
     assignment (see Constant). unmentioned holds, as (the line of the import, the name it takes), each name an import
     takes from a module that nothing else in the file mentions, in code or an annotation: a name it only passes on
-    (listed as text for those who import it from here) or does not use. error is how it fails to parse, and then it
-    holds nothing else."""
+    (listed as text for those who import it from here) or does not use. pieces are its functions and classes at the
+    top level and the methods of those classes, in the order of their first line (see Piece). error is how it fails to
+    parse, and then it holds nothing else."""
     name: str
     path: tuple[str, ...]
     imports: tuple[Import, ...]
@@ -353,6 +354,7 @@ class SourceFile:
     method_calls: tuple[MethodCall, ...] = ()
     constants: tuple[Constant, ...] = ()
     unmentioned: frozenset[tuple[int, str]] = frozenset()
+    pieces: tuple[Piece, ...] = ()
 
 
 @dataclass(frozen=True)

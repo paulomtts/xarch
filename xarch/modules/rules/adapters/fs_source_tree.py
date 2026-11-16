@@ -89,6 +89,7 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from xarch.kernel.source import Import, Unparsable
+from xarch.modules.rules.domain.published import CLASS, FUNCTION, METHOD, Piece
 from xarch.modules.rules.domain.values import (
     Call,
     Callback,
@@ -173,7 +174,40 @@ def _parsed(name: str, path: tuple[str, ...], text: str, form: CaseTable | None,
                       uses=tuple(calls.uses), parameter_calls=tuple(calls.parameter_calls),
                       module_functions=_module_functions(tree), named=_named(tree), callbacks=tuple(calls.callbacks),
                       method_calls=tuple(calls.method_calls), constants=tuple(_constants(tree)),
-                      unmentioned=_unmentioned(tree))
+                      unmentioned=_unmentioned(tree), pieces=_pieces(tree))
+
+
+def _pieces(tree: ast.Module) -> tuple[Piece, ...]:
+    """Each function and class at the top level, in a branch of the top level too, and each method of such a class,
+    spanning its decorators, in the order of their first line."""
+    found: list[Piece] = []
+    for node in _top_level(tree.body):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            found.append(_piece(node, FUNCTION))
+        elif isinstance(node, ast.ClassDef):
+            found.append(_piece(node, CLASS))
+            found += [_piece(n, METHOD, node.name) for n in _top_level(node.body)
+                      if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
+    return tuple(sorted(found, key=lambda piece: (piece.first, piece.kind != CLASS)))
+
+
+def _top_level(body: list[ast.stmt]) -> list[ast.stmt]:
+    """The statements of a body and of the branches of its `if` and `try` statements, not those of a nested scope."""
+    found: list[ast.stmt] = []
+    for node in body:
+        if isinstance(node, ast.If):
+            found += _top_level(node.body) + _top_level(node.orelse)
+        elif isinstance(node, (ast.Try, ast.TryStar)):
+            found += _top_level(node.body) + [n for h in node.handlers for n in _top_level(h.body)]
+            found += _top_level(node.orelse) + _top_level(node.finalbody)
+        else:
+            found.append(node)
+    return found
+
+
+def _piece(node: ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef, kind: str, owner: str = "") -> Piece:
+    first = min([node.lineno, *(d.lineno for d in node.decorator_list)])
+    return Piece(kind, node.name, first, node.end_lineno or node.lineno, owner)
 
 
 def _module_functions(tree: ast.Module) -> tuple[str, ...]:

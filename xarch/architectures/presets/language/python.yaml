@@ -77,3 +77,4 @@ supplies:
   module_functions: exact
   constant: exact
   named: exact
+  piece: exact

@@ -6,6 +6,7 @@ import pytest
 
 from xarch.kernel.source import Import, Unparsable
 from xarch.modules.rules.adapters.fs_source_tree import FsSourceTree
+from xarch.modules.rules.contract import Piece
 from xarch.modules.rules.domain.values import (
     Call,
     Callback,
@@ -769,3 +770,57 @@ def test_the_imports_are_recorded_in_terms_no_language_owns(text, imports):
 ])
 def test_a_text_in_no_file_is_parsed_as_a_file_is(text, error):
     assert FsSourceTree(FileSystem()).parsed(text).error == error
+
+
+PIECES = (
+    "import os\n"
+    "\n"
+    "LIMIT = 3\n"
+    "\n"
+    "@cache\n"
+    "@other(1)\n"
+    "def first(x):\n"
+    "    return x\n"
+    "\n"
+    "class Shelf:\n"
+    "    size = 2\n"
+    "\n"
+    "    def __init__(self):\n"
+    "        self.items = []\n"
+    "\n"
+    "    @property\n"
+    "    async def count(self):\n"
+    "        def inner():\n"
+    "            return 1\n"
+    "        return inner()\n"
+    "\n"
+    "    class Nested:\n"
+    "        def deep(self):\n"
+    "            pass\n"
+    "\n"
+    "if os.name:\n"
+    "    async def branch():\n"
+    "        pass\n"
+    "else:\n"
+    "    class Other:\n"
+    "        pass\n"
+)
+
+
+@pytest.mark.parametrize("text, pieces", [
+    pytest.param(PIECES, (Piece("function", "first", 5, 8), Piece("class", "Shelf", 10, 24),
+                          Piece("method", "__init__", 13, 14, "Shelf"), Piece("method", "count", 16, 20, "Shelf"),
+                          Piece("function", "branch", 27, 28), Piece("class", "Other", 30, 31)),
+                 id="top-level functions and classes and their methods, each spanning its decorators, nested ones not "
+                    "pieces of their own"),
+    pytest.param("X = 1\nimport os\n", (), id="a file with no function and no class has no piece"),
+    pytest.param("try:\n    def a():\n        pass\nexcept ValueError:\n    def b():\n        pass\n",
+                 (Piece("function", "a", 2, 3), Piece("function", "b", 5, 6)),
+                 id="a function in a branch of a try at the top level is a piece"),
+])
+def test_the_pieces_of_a_file_are_its_top_level_functions_and_classes_and_their_methods(tmp_path, text, pieces):
+    assert parsed(tmp_path, text).pieces == pieces
+
+
+def test_a_text_in_no_file_has_its_pieces_too():
+    assert FsSourceTree(FileSystem()).parsed("def f():\n    pass\n").pieces == (Piece("function", "f", 1, 2),)

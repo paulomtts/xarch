@@ -21,6 +21,7 @@ from xarch.modules.rules.contract import (
     NoRuleShown,
     NotADirectory,
     Outside,
+    Piece,
     ProfileCheckResult,
     ProfileUnloaded,
     RuleResult,
@@ -105,3 +106,11 @@ class ReaderController:
         except Unreadable as e:
             return e.found
 
+
+    def pieces(self, text: str) -> tuple[Piece, ...] | Unparsable:
+        """The pieces of a text that is in no file (its functions and classes, and their methods), in the order of
+        their first line; one that does not parse comes back as where and why."""
+        try:
+            return self._reading.pieces(text)
+        except Unreadable as e:
+            return e.found

@@ -15,6 +15,7 @@ contract's own.
     Resemblance whether a profile is bundled, the bundled one it resembles and how it is looser, which the command
           line shows
     Reviewed what checking a profile that loads found before its own checks are held, which the command line shows
+    Piece one piece of a source file as the reader cuts it, which ReaderController hands out
 
 and CHECKS, the address of how a check is written, and the keys of the enforcement's sections (SECTIONS).
 """
@@ -129,3 +130,24 @@ class Reviewed:
     examples: tuple[str, ...]
     files: int
     resemblance: Resemblance
+
+
+FUNCTION = "function"
+"""The kind of a piece that is a function at the top level of its file."""
+CLASS = "class"
+"""The kind of a piece that is a class at the top level of its file."""
+METHOD = "method"
+"""The kind of a piece that is a function defined in the body of a class at the top level of its file."""
+
+
+@dataclass(frozen=True)
+class Piece:
+    """One piece of a source file as its language's reader cuts it, which ReaderController hands out: a function or a
+    class at the top level of the file, or a method of such a class, which owner then names; its kind is one of
+    FUNCTION, CLASS and METHOD. first and last are the lines it spans, counted from 1, its decorators included, so that
+    its text is those lines."""
+    kind: str
+    name: str
+    first: int
+    last: int
+    owner: str = ""
