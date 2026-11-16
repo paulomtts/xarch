@@ -40,17 +40,15 @@ class Repeating:
 @dataclass(frozen=True)
 class Skeleton:
     """The layout as entries: top_level below the app root, with every repeating folder empty; repeating, the
-    repeating folders in the order of the profile; package_file, the file the language of the app has stand for each
-    folder, which a folder of the layout holds; language, how the language of the app is named; reserved, the words no
-    name may be; names, what a name may be in it (a regular expression); private, how a name private to its folder
-    starts ("" for each: the language does not say)."""
+    repeating folders in the order of the profile; language, the language of the app as the checks read it (among
+    what it says, the file it has stand for each folder, which a folder of the layout holds, and how a name private to
+    its folder starts), the language that the profile as the checks read it holds too; reserved, the words no name may
+    be; names, what a name may be in it (a regular expression; "": the language does not say)."""
     top_level: tuple[Entry, ...]
     repeating: tuple[Repeating, ...]
-    package_file: str = ""
-    language: str = ""
+    language: CheckedLanguage = CheckedLanguage()
     reserved: frozenset[str] = frozenset()
     names: str = ""
-    private: str = ""
 
 
 @dataclass(frozen=True)

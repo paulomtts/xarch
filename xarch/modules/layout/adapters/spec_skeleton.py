@@ -31,7 +31,7 @@ class SpecSkeleton:
 
     def naming(self, profile: str) -> Naming:
         skeleton = self._skeleton(profile)
-        return Naming(skeleton.names, skeleton.private)
+        return Naming(skeleton.names, skeleton.language.private)
 
     def each_parts(self, profile: str, root: tuple[str, ...]) -> list[tuple[tuple[str, ...], bool]]:
         repeating = next(r for r in self._skeleton(profile).repeating if r.root == root)

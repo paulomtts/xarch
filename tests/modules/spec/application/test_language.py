@@ -33,7 +33,7 @@ def test_a_profile_without_a_language_has_the_first_language_by_name_as_the_chec
 def test_a_profile_names_its_language_and_the_skeleton_says_the_file_that_stands_for_a_folder():
     spec, _ = spec_controller({"base": BASE | {"language": "python"}}, languages={"python": PYTHON, "pascal": PASCAL}, runtime=RUNTIME)
     assert spec.profile("base").language == CheckedLanguage("Python", ".py", "__init__.py", (("typing", "Protocol"),), ())
-    assert spec.skeleton("base").package_file == "__init__.py"
+    assert spec.skeleton("base").language.package_file == "__init__.py"
 
 
 def test_the_standard_library_and_the_builtins_a_profile_is_checked_against_come_from_the_runtime():
@@ -57,7 +57,8 @@ def test_xarch_with_no_language_to_choose_from_or_one_reads_the_profile_all_the_
 def test_the_skeleton_names_the_language_and_the_words_the_runtime_reserves():
     spec, _ = spec_controller({"base": BASE}, languages={"pascal": PASCAL}, runtime=RUNTIME)
     skeleton = spec.skeleton("base")
-    assert (skeleton.language, skeleton.package_file, skeleton.reserved) == ("Pascal", "unit.pas", frozenset({"begin"}))
+    assert (skeleton.language.title, skeleton.language.package_file, skeleton.reserved) == ("Pascal", "unit.pas",
+                                                                                            frozenset({"begin"}))
 
 
 TOY = PASCAL | {"supplies": {"file": "exact", "import": "exact", "import.relative": "exact",

@@ -42,8 +42,7 @@ class PublishingService:
         repeating = tuple(Repeating(repeat.word, repeat.root, _entries(architecture.instance_tree(repeat)))
                           for repeat in architecture.repeats)
         return Skeleton(top_level=_entries(architecture.top_level_tree()), repeating=repeating,
-                        package_file=language.checked.package_file, language=language.checked.title,
-                        reserved=language.reserved_names, names=language.names, private=language.checked.private)
+                        language=language.checked, reserved=language.reserved_names, names=language.names)
 
     def profile(self, location: str) -> ProfileView:
         architecture = self._architectures.load(location)

@@ -15,6 +15,7 @@ from xarch.modules.spec.contract import (
     Repeating,
     Skeleton,
 )
+from xarch.profile_values.language import CheckedLanguage
 
 
 class SpecStandIn:
@@ -25,8 +26,7 @@ class SpecStandIn:
             top_level=(Entry(("kernel",), True, False), Entry(("kernel", "rules.py"), False, True)),
             repeating=(Repeating("module", ("modules",), (Entry(("domain",), True, True),)),
                        Repeating("plugin", ("app", "plugins"), (Entry(("manifest.py",), False, True),))),
-            package_file="__init__.py", language="Python",
-            reserved=frozenset({"class"}))
+            language=CheckedLanguage("Python", ".py", "__init__.py"), reserved=frozenset({"class"}))
 
     def docs(self, profile: str) -> Docs:
         return Docs(("docs", "project"), (DocFile(("statement.md",), "# statement\n"),
