@@ -7,7 +7,7 @@ import typer
 from xarch.cli.reports import profile_report as report
 from xarch.cli.reports import vocabulary_report as words
 from xarch.cli.reports.refusal_report import key_or_profile, reason, rule_needs_key
-from xarch.cli.terminal import AppPath, Format, FormatOption, app_for, echo, fail, in_full, refusal, refuse_with
+from xarch.cli.terminal import AppPath, Format, FormatOption, app_for, echo, fail, in_full, refusal, refuse_with, selection
 from xarch.modules.rules.application.controller import RulesController
 from xarch.modules.rules.contract import (
     ChecksShown,
@@ -36,9 +36,7 @@ from xarch.modules.spec.contract import (
     ProfileChecked,
     ProfileCreated,
     ProfileRefused,
-    ProfileSelected,
     ProfileViewed,
-    SelectProfile,
     UnknownKey,
     ViewProfile,
 )
@@ -96,8 +94,7 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
         if rule:
             if key is None or configured:
                 raise refuse(rule_needs_key())
-            location = profile if profile is not None else _configured(spec, app_for(spec, in_full(Path()), app_path,
-                                                                                     refuse), refuse)
+            location = selection(spec, app_for(spec, in_full(Path()), app_path, refuse), profile, None, refuse)[0]
             match rules.explain_rule(ExplainRule(key, location)):
                 case RuleShown() as shown:
                     _show(output, words.rule_document(shown), words.rule_lines(shown))
@@ -176,15 +173,6 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
 
 def _show(output: Format, document: str, lines: list[str]) -> None:
     echo([document] if output is Format.json else lines)
-
-
-def _configured(spec: SpecController, app: Path, refuse) -> str:
-    """The profile the project configures; refused when it configures none."""
-    match spec.select(SelectProfile(app, None, None)):
-        case ProfileSelected(name, _):
-            return name
-        case NoProfileChosen() | ProfileRefused() as refused:
-            raise refuse(reason(refused))
 
 
 def _words(rules: RulesController, spec: SpecController, key: str, app_path: Path | None, output: Format) -> None:
