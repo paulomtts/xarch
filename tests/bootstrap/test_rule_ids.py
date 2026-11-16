@@ -66,8 +66,7 @@ CASES = [
     pytest.param({"modules/docs/application/services/doc.py": "class Publisher: ...\n"}, {}, "names",
                  "rename Publisher to match *Service, or move it to the part whose kind of class it is", id="names"),
     pytest.param({"kernel/x.py": "from app.kernel.y import _z\n"}, {}, "private-imports",
-                 "make _z public where it is defined (a name that does not start as a private one does), or move it to "
-                 "a file both may import",
+                 "make _z public where it is defined, or move it to a file both may import",
                  id="private-imports"),
 ]
 """The rules whose fix the wired tier pins word for word: no unit test asserts it as it is said here."""

@@ -20,8 +20,7 @@ def test_a_private_name_imported_from_the_app_is_reported_with_what_to_do():
     assert [(str(v), v.rule, v.fix) for v in found] == [
         ("app/kernel/x.py:2: imports the private name _json_refusal from app.cli.commands.check (private-imports)",
          "private-imports",
-         "make _json_refusal public where it is defined (a name that does not start as a private one does), or move it "
-         "to a file both may import")]
+         "make _json_refusal public where it is defined, or move it to a file both may import")]
 
 
 @pytest.mark.parametrize("imports, tests, expected", [

@@ -87,8 +87,7 @@ def private_imports(profile: Profile) -> tuple[Rule, ...]:
         return ()
     return (Rule("private-imports", Scope(ALL), ("imported-name",), MAY_NOT, EXISTING,
                  (Saying("imports the private name {name} from {written} (private-imports)",
-                         "make {name} public where it is defined (a name that does not start as a private one does), "
-                         "or move it to a file both may import"),),
+                         "make {name} public where it is defined, or move it to a file both may import"),),
                  keep=_all("takes-a-name", "own-code", "not public", "not special"), key="guards.private-imports"),)
 
 
