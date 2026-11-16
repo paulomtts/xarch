@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-Scope = Literal["own", "any", "none"]
+InstanceScope = Literal["own", "any", "none"]
 
 
 @dataclass(frozen=True)
@@ -22,6 +22,6 @@ class Target:
     """What a part may import: a part, or EVERYTHING; the instance it is in; optionally only a path below it; and
     optionally (names, a pattern) only the names that match it."""
     part: str
-    scope: Scope = "none"
+    scope: InstanceScope = "none"
     sub: tuple[str, ...] = ()
     names: str = ""
