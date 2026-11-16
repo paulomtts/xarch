@@ -30,18 +30,21 @@ from typing import Any
 
 from xarch.kernel.logic.conditions import condition
 from xarch.kernel.violations import OWN_ID, RULES
-from xarch.modules.spec.domain.values import Language, Tier
-from xarch.profile_values.checks import (
-    ANY,
-    APP,
+from xarch.modules.spec.domain.values import (
     CASE_SLOTS,
     EXAMPLE_SLOTS,
-    QUANTIFIER_SLOTS,
     REACH_SLOTS,
     SCOPE_SLOTS,
     SLOTS,
-    STRUCTURE,
     STRUCTURE_WORD,
+    Language,
+    Tier,
+)
+from xarch.profile_values.checks import (
+    ANY,
+    APP,
+    QUANTIFIER_SLOTS,
+    STRUCTURE,
     Condition,
     Quantified,
     Saying,

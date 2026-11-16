@@ -1,8 +1,9 @@
 """Checks a profile writes itself, through the real app: `profile check` holds each to its words and its examples,
 `check` runs it and lists it under `enforcement` with how much it read (one that read nothing fails `--strict`), a
 check whose words do not exist or do not apply is refused by `check` with every problem and listed by `profile check`
-while the others are still held and counted, a hint may name it, and the same rule
-written by a key and by hand finds the same."""
+while the others are still held and counted, a hint may name it, the same rule
+written by a key and by hand finds the same, and `profile explain` says what each slot the format reads means, in its
+order."""
 import json
 
 import pytest
@@ -85,6 +86,14 @@ def test_a_check_badly_written_does_not_stop_profile_check_counting_every_check_
         {"check": "checks", "message": "checks.store-names.examples.flagged: the check finds nothing in it: make the "
                                        "code hold what the check is written to find, or correct the check"}])
 
+
+def test_the_slots_profile_explain_says_the_meaning_of_are_the_slots_the_format_reads_in_its_order(tmp_path):
+    explained = runner.invoke(app, ["profile", "explain", "checks", "--format", "json"])
+    project(tmp_path, {"store-names": 5}, {})
+    checked = runner.invoke(app, ["profile", "check", "--format", "json"])
+    (problem,) = json.loads(checked.output)["problems"]
+    read = problem["message"].split("checks.store-names: must be a map of slots: ")[1].split(", ")
+    assert [slot["name"] for slot in json.loads(explained.output)["slots"]] == read
 
 def test_a_check_whose_words_do_not_exist_stops_check_with_every_problem(tmp_path):
     project(tmp_path, {"store-names": {**CHECK, "keep": ["publc"], "mode": "fial"}}, {"store/a.py": "x = 1\n"})

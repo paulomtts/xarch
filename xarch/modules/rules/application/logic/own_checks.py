@@ -101,7 +101,7 @@ def _targets(name: str, check: WrittenCheck, profile: Profile, problems: list[st
 
 def _match(written: WrittenTarget, owner: tuple[str, tuple[str, ...]] | None, profile: Profile, where: str,
            problems: list[str]) -> Match | None:
-    kind, values = written.kind, written.values
+    kind, values = written.kind, written.values or ()
     form = next((k.values for k in TARGETS if k.name == kind), "")
     if form == PLACES:
         count = len(problems)

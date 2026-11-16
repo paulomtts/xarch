@@ -1,6 +1,7 @@
 """What the spec module publishes, each command with the Results it answers: which app folder and which profile are in
 force; a profile's skeleton as flat lists of entries, its docs, the files `init` writes, the profile as the checks read
-it and where it comes from; and what explaining, viewing, checking, migrating and copying a profile found."""
+it and where it comes from; checks written as a profile writes them; and what explaining, viewing, checking,
+migrating and copying a profile found."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -33,7 +34,8 @@ __all__ = ["DEFAULT_APP", "DEFAULT_TESTS", "Entry", "Repeating", "Skeleton", "Do
            "MigrateResult", "Shown", "Symbol", "Explain", "FormatExplained", "KeyExplained", "UnknownKey",
            "ExplainResult", "Need", "ViewProfile", "ProfileViewed", "ViewResult", "CheckProfile", "LOAD", "EXAMPLES",
            "Problem", "ProfileChecked",
-           "CheckResult", "KnownProfiles", "KnownResult", "NewProfile", "ProfileCreated", "NewResult", "Supply", "Shortfall"]
+           "CheckResult", "KnownProfiles", "KnownResult", "WriteChecks", "ChecksWritten", "NewProfile", "ProfileCreated",
+           "NewResult", "Supply", "Shortfall"]
 
 
 @dataclass(frozen=True)
@@ -397,6 +399,18 @@ class KnownProfiles:
 
 
 KnownResult = KnownProfiles | NoProfileChosen | ProfileRefused
+
+
+@dataclass(frozen=True)
+class WriteChecks:
+    """Write checks as the `checks` of a profile: each under its id, with its examples when it has any."""
+    checks: dict[str, WrittenCheck]
+
+
+@dataclass(frozen=True)
+class ChecksWritten:
+    """The checks as a profile writes its `checks`, in the format spec reads them."""
+    text: str
 
 
 @dataclass(frozen=True)

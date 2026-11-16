@@ -13,6 +13,7 @@ from xarch.modules.spec.application.services.publishing import PublishingService
 from xarch.modules.spec.contract import (
     CheckProfile,
     CheckResult,
+    ChecksWritten,
     ChooseApp,
     ChooseAppResult,
     DocsResult,
@@ -35,6 +36,7 @@ from xarch.modules.spec.contract import (
     SkeletonResult,
     ViewProfile,
     ViewResult,
+    WriteChecks,
 )
 from xarch.modules.spec.domain.errors import NoProfile, WouldOverwrite
 
@@ -164,3 +166,6 @@ class SpecController:
         except DomainError as e:
             return ProfileRefused(e.reason)
 
+    def write_checks(self, cmd: WriteChecks) -> ChecksWritten:
+        """The checks as the `checks` of a profile, in the format spec reads them."""
+        return self._publishing.checks(cmd.checks)

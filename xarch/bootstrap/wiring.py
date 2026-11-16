@@ -10,8 +10,8 @@ from xarch.modules.layout.application.controller import LayoutController
 from xarch.modules.layout.application.services.structure_check import StructureCheckService
 from xarch.modules.rules.adapters.fs_source_tree import FsSourceTree
 from xarch.modules.rules.adapters.layout_structure import LayoutStructure
+from xarch.modules.rules.adapters.spec_check_format import SpecCheckFormat
 from xarch.modules.rules.adapters.spec_profile import SpecProfiles
-from xarch.modules.rules.adapters.yaml_check_format import YamlCheckFormat
 from xarch.modules.rules.application.controller import ReaderController, RulesController
 from xarch.modules.rules.application.services.app_check import AppCheckService
 from xarch.modules.rules.application.services.examples import ExamplesService
@@ -83,7 +83,7 @@ def build_spec(fs: FileSystem | None = None, tree: FsSourceTree | None = None) -
     selection = ProfileSelectionService(settings, architectures, files, folders)
     return SpecController(architectures, selection, ProfileReviewService(selection, architectures, files),
                           ExplainService(files, architectures), MigrationService(files, architectures, output, form),
-                          ProfileCreationService(files, architectures, output, form), PublishingService(architectures))
+                          ProfileCreationService(files, architectures, output, form), PublishingService(architectures, form))
 
 
 def build_architectures(fs: FileSystem | None = None) -> ArchitectureService:
@@ -99,7 +99,7 @@ def load_architecture(location: str | Path) -> Architecture:
 def build_rules(tree: FsSourceTree, spec: SpecController, layout: LayoutController) -> RulesController:
     profiles = SpecProfiles(spec)
     source = SourceCheckService(tree, profiles)
-    explaining = ExplainingService(profiles, YamlCheckFormat(YamlWriter()))
+    explaining = ExplainingService(profiles, SpecCheckFormat(spec))
     return RulesController(source, LocateService(tree, profiles), AppCheckService(source, LayoutStructure(layout), tree),
                            explaining, ExamplesService(tree, profiles))
 

@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from xarch.modules.spec.application.logic.checked_tier import checked_tier
 from xarch.modules.spec.application.logic.docs_files import DOCS_ROOT
 from xarch.modules.spec.application.logic.layout_walk import docs_name, folders, walk
+from xarch.modules.spec.application.ports.profile_format import ProfileFormat
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.contract import (
+    ChecksWritten,
     Docs,
     GuardsView,
     PartView,
@@ -24,15 +28,17 @@ from xarch.modules.spec.domain.values import (
     PassThrough,
     PrivateImports,
 )
+from xarch.profile_values.checks import WrittenCheck
 from xarch.profile_values.testing import ScenarioCoverage, StandIns
 
 
 class PublishingService:
     """Assembles what spec hands out of a profile: its skeleton, the profile as the checks read it, its project docs
-    and the files `init` writes. Each raises InvalidArchitecture for a profile that does not load."""
+    and the files `init` writes, each raising InvalidArchitecture for a profile that does not load; and checks written
+    as a profile writes its `checks`."""
 
-    def __init__(self, architectures: ArchitectureService):
-        self._architectures = architectures
+    def __init__(self, architectures: ArchitectureService, form: ProfileFormat):
+        self._architectures, self._form = architectures, form
 
     def skeleton(self, profile: str) -> Skeleton:
         architecture = self._architectures.load(profile)
@@ -68,6 +74,9 @@ class PublishingService:
 
     def files(self, profile: str, app: str, presets: bool = True) -> ProjectFiles:
         return ProjectFiles(tuple(self._architectures.files(profile, app, presets)))
+
+    def checks(self, checks: Mapping[str, WrittenCheck]) -> ChecksWritten:
+        return ChecksWritten(self._form.checks(checks))
 
 
 def _guards_view(guards: tuple[Guard, ...]) -> GuardsView:

@@ -9,13 +9,16 @@ import re
 from collections.abc import Iterable
 
 from xarch.kernel.logic.targets import target_written
-from xarch.modules.rules.domain.rule import EXISTING, MUST_BE_REACHED, Match, OwnCheck, Rule
+from xarch.modules.rules.domain.rule import MUST_BE_REACHED, Match, OwnCheck, Rule
+from xarch.modules.rules.domain.vocabulary import TARGETS
 from xarch.profile_values.checks import Quantified, WrittenCheck, WrittenTarget
 from xarch.profile_values.language import CheckedLanguage
 
 _IMPORT = re.compile(r"%import (?P<dotted>[^ %]+) (?P<name>[^ %]+)%")
 """The token of a line that imports a name from a file of the app, in the code of a check written for the
 explanation."""
+_VALUED = frozenset(kind.name for kind in TARGETS if kind.values)
+"""The kinds of target that take values: a check writes one with its values, even none, and any other alone."""
 
 
 def written(rules: Iterable[Rule]) -> dict[str, WrittenCheck]:
@@ -68,7 +71,7 @@ def _filled(files: tuple[tuple[str, str], ...], language: CheckedLanguage) -> tu
 
 
 def _target(match: Match) -> WrittenTarget:
-    if (match,) == EXISTING:
+    if match.kind not in _VALUED:
         return WrittenTarget(match.kind)
     return WrittenTarget(match.kind, (*map(target_written, match.places), *(_dotted(n) for n in match.names),
                                       *match.words))
