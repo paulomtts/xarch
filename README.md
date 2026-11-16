@@ -91,7 +91,8 @@ that stands for a folder, what marks an interface, the namespace of the builtins
 computed name, the folder of compiled files, and where the standard library's names are known from (`interpreter`);
 and the tokens of its code the checks and the docs need: what a name may be, how a private name starts, what a special
 name starts and ends with, the special method calling an instance runs, the annotation of no value, the comment marker
-and the comments its tools read, the shebang, the encoding declaration, the keywords that branch, and what makes a class
+and the comments its tools read, the shebang, the encoding declaration, the keywords of the statements that branch and
+of the expressions that choose between values (`branching_expressions`), and what makes a class
 an immutable record (`immutable`: a base, or a decorator called with its keywords, such as
 `dataclasses.dataclass(frozen=True)`).
 The rest of what a check knows of the language is one adapter, the reader that turns source into facts

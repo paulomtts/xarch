@@ -30,7 +30,7 @@ def test_every_problem_of_a_document_is_listed_naming_the_preset():
         language_of("odd", broken)
     assert caught.value.source == "presets/language/odd.yaml"
     assert [problem.removeprefix("presets/language/odd.yaml: ") for problem in caught.value.problems] == [
-        "unknown key 'extra': use branching, cache, call, comment, directives, dynamic, encoding, extension, "
+        "unknown key 'extra': use branching, branching_expressions, cache, call, comment, directives, dynamic, encoding, extension, "
         "immutable, importing, interface, name, namespace, nothing, package_file, private, shebang, special, standard, supplies, "
         "title",
         "missing `namespace`", "missing `standard`",
@@ -52,12 +52,12 @@ def test_a_document_that_is_no_mapping_is_refused():
 def test_the_tokens_of_the_code_are_read_when_the_document_gives_them():
     tokens = {"name": "[a-z]+", "private": "_", "special": "__", "call": "__call__", "nothing": "None",
               "comment": "//", "directives": ["lint: off"], "shebang": "#!", "encoding": "utf-8",
-              "branching": ["if", "case"]}
+              "branching": ["if", "case"], "branching_expressions": ["?"]}
     language = language_of("pascal", DOCUMENT | tokens)
     checked = language.checked
     assert (language.names, checked.private, checked.special, checked.call, checked.nothing, checked.comment,
-            checked.directives, checked.shebang, checked.encoding, checked.branching) == (
-        "[a-z]+", "_", "__", "__call__", "None", "//", ("lint: off",), "#!", "utf-8", ("if", "case"))
+            checked.directives, checked.shebang, checked.encoding, checked.branching, checked.branching_expressions) == (
+        "[a-z]+", "_", "__", "__call__", "None", "//", ("lint: off",), "#!", "utf-8", ("if", "case"), ("?",))
 
 
 @pytest.mark.parametrize("given, problem", [

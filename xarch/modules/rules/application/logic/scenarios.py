@@ -17,8 +17,8 @@ is one whose name matches the profile's pattern:
     the head of each row's result value (the callee of `Rejected("why")`, or a bare name) is a variant of the
     union; every variant heads the result of at least one row, or is named in the body of a standalone test
     function (one with no table) of the same file, for a case that does not fit a row.
-    the body of a table test holds no statement that branches (one of the language's `branching` keywords): the odd
-    case is its own test.
+    the body of a table test holds no statement that branches (one of the language's `branching` keywords), and no
+    expression that chooses between values (one of its `branching_expressions`): the odd case is its own test.
 
 weak lists, without failing, a variant met to the letter only: one no row covers, credited only to standalone tests
 of the file that name it, none of which holds an `assert` statement in its body.
@@ -152,8 +152,12 @@ def _covered(test: SourceFile, union: str, variants: tuple[str, ...], guard: Sce
 
 def _branches(function: Function, profile: Profile) -> list[Problem]:
     fix = "arrange from given, act with when, assert == then, and give the odd case its own test"
-    return [(line, f"{function.name} has {'an' if keyword[:1] in 'aeiou' else 'a'} `{keyword}` in its body", fix)
-            for line, keyword in function.blocks if keyword in profile.language.branching]
+    language = profile.language
+    found = [(line, keyword, "") for line, keyword in function.blocks if keyword in language.branching]
+    found += [(line, keyword, " expression") for line, keyword in function.expressions
+              if keyword in language.branching_expressions]
+    return [(line, f"{function.name} has {'an' if keyword[:1] in 'aeiou' else 'a'} `{keyword}`{what} in its body", fix)
+            for line, keyword, what in sorted(found)]
 
 
 def _rows(table: Table, union: str, variants: tuple[str, ...], guard: ScenarioCoverage,

@@ -11,6 +11,7 @@
 # line comment; directives, the comments its tools read as instructions, each after the marker (a space in one stands
 # for any spaces); shebang, how line 1 names the program that runs the file; encoding, how line 1 or 2 declares the
 # file's encoding (a regular expression, after the marker); branching, the keywords of the statements that branch;
+# branching_expressions, the keywords of the expressions that choose between values, as its reader records them;
 # immutable, what makes a class an immutable record: a dotted name among its bases or its decorators, a decorator
 # called with each keyword written after it, as written; importing, how a file imports a name from another file of the app, {dotted} standing for that file's dotted path
 # and {name} for the name.
@@ -34,6 +35,7 @@ directives: ["type: ignore", noqa, "pragma:"]
 shebang: "#!"
 encoding: 'coding[:=][ \t]*[-\w.]+'
 branching: [if, match, try, for, while]
+branching_expressions: [if]
 immutable: [typing.NamedTuple, "dataclasses.dataclass(frozen=True)"]
 importing: "from {dotted} import {name}"
 supplies:
@@ -66,6 +68,7 @@ supplies:
   function.forwards: exact
   function.returns: exact
   function.blocks: exact
+  function.expressions: exact
   function.asserts: exact
   function.mentions: exact
   function.named: exact

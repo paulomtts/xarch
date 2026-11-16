@@ -24,6 +24,8 @@ and, all optional, the tokens of its code the checks and the docs need (empty: t
     shebang        how line 1 names the program that runs the file
     encoding       a regular expression: how line 1 or 2 declares the file's encoding, after the marker
     branching      the keywords of the statements that branch
+    branching_expressions
+                   the keywords of the expressions that choose between values, as its reader records them
     immutable      what makes a class an immutable record: each a dotted name among its bases or its decorators, a
                    decorator's written with the keywords it must be called with, `name(key=value, ...)`
     importing      how a file imports a name from another file of the app: {dotted} stands for that file's dotted
@@ -51,7 +53,7 @@ FOLDER = "presets/language"
 """Where the data files of the languages are, below the bundled folder: one YAML file each, named for the language."""
 KEYS = ("title", "extension", "package_file", "interface", "dynamic", "namespace", "cache", "standard", "name", "private",
         "special", "call", "nothing", "comment", "directives", "shebang", "encoding", "branching", "importing",
-        "supplies", "immutable")
+        "supplies", "immutable", "branching_expressions")
 REQUIRED = ("title", "extension", "package_file", "namespace", "standard")
 _EXTENSION = re.compile(r"\.[A-Za-z0-9]+")
 _DOTTED = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*")
@@ -91,6 +93,7 @@ def language_of(name: str, document: Any) -> Language:
     encoding = _pattern(document, "encoding", problems)
     directives = _words(document, "directives", problems)
     branching = _words(document, "branching", problems)
+    expressions = _words(document, "branching_expressions", problems)
     importing = _text(document, "importing", "must be a line holding {dotted} and {name}", problems, _IMPORTING)
     supplies = _supplies(document["supplies"], problems) if "supplies" in document else None
     immutable = _marks(document, "immutable", problems)
@@ -98,7 +101,7 @@ def language_of(name: str, document: Any) -> Language:
         raise InvalidArchitecture(source, problems)
     checked = CheckedLanguage(title, extension, package_file, interface, dynamic, tokens["private"], tokens["special"],
                               tokens["call"], tokens["nothing"], tokens["comment"], directives, tokens["shebang"],
-                              encoding, branching, supplies, importing, immutable)
+                              encoding, branching, supplies, importing, immutable, expressions)
     return Language(name, checked, namespace, standard, cache, names)
 
 

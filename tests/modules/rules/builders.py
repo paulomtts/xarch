@@ -24,7 +24,8 @@ PYTHON = CheckedLanguage("Python", ".py", "__init__.py", (("typing", "Protocol")
                       "_", "__", "__call__", "None", "#", ("type: ignore", "noqa", "pragma:"), "#!",
                       r"coding[:=][ \t]*[-\w.]+", ("if", "match", "try", "for", "while"),
                       immutable=(RecordMark(("typing", "NamedTuple")),
-                                 RecordMark(("dataclasses", "dataclass"), (("frozen", "True"),))))
+                                 RecordMark(("dataclasses", "dataclass"), (("frozen", "True"),))),
+                      branching_expressions=("if",))
 """Python as its data file says it, for the checks that read the tokens of its code."""
 APP, TESTS = "app", "tests"
 MODULES = Repeat("module", ("modules",))

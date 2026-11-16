@@ -96,6 +96,13 @@ FILE = "tests/modules/docs/application/test_publish.py"
                  [f"{FILE}:14: test_publish has an `if` in its body (scenario-coverage)",
                   f"{FILE}:15: test_publish has a `for` in its body (scenario-coverage)"],
                  id="a branch in the body of a table test is reported where it is"),
+    pytest.param([Function(8, "test_publish", (TABLE,), blocks=((15, "for"),), expressions=((14, "if"), (16, "if")))],
+                 [f"{FILE}:14: test_publish has an `if` expression in its body (scenario-coverage)",
+                  f"{FILE}:15: test_publish has a `for` in its body (scenario-coverage)",
+                  f"{FILE}:16: test_publish has an `if` expression in its body (scenario-coverage)"],
+                 id="an expression that chooses between values is a branch too, reported in line order"),
+    pytest.param([Function(8, "test_publish", (TABLE,), expressions=((14, "case"),))], [],
+                 id="an expression whose keyword the language does not list is none"),
 ])
 def test_scenario_coverage(functions, expected):
     assert problems(publish_tests(*functions)) == expected

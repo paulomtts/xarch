@@ -44,6 +44,7 @@ FACTS: dict[str, str] = {
                          "that call's callee",
     "function.returns": "the names a function's return annotation mentions",
     "function.blocks": "each statement of a function's body that opens a block, by its keyword",
+    "function.expressions": "each expression of a function's body that chooses between values, by its keyword",
     "function.asserts": "whether a function's body asserts",
     "function.mentions": "every name a function's body uses",
     "function.named": "every name a function's definition mentions, its decorators and signature included",

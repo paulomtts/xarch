@@ -33,6 +33,9 @@ A class is an exception when one of its bases is the bare name of a builtin exce
 A file also lists every name it mentions (`named`), by its last step alone, in code and in annotations, a string
 annotation read as the expression it holds, and every imported name; a class lists the same for its bases and body.
 
+A function lists each statement of its body that opens a block, by its keyword, and each conditional expression
+(`a if c else b`), by `if`, nested ones included.
+
 A function lists how many statements its body holds, nested ones included, and how many of them are inert: they do
 nothing (a docstring, `pass`, a bare `...`). Its shape is the fingerprint the no-duplicates guard compares, a
 definition of this reader, per language, since only the reader of a language can say when two bodies are the same
@@ -198,6 +201,8 @@ def _comments(text: str) -> tuple[Comment, ...]:
 _BLOCKS = {ast.If: "if", ast.Match: "match", ast.Try: "try", ast.TryStar: "try", ast.For: "for",
            ast.AsyncFor: "for", ast.While: "while", ast.With: "with", ast.AsyncWith: "with"}
 """Each statement that holds a block of statements of its own, by the keyword that opens it."""
+_CHOICES = {ast.IfExp: "if"}
+"""Each expression that chooses between values, by the keyword that writes the choice (`a if c else b`)."""
 
 
 def _functions(tree: ast.Module, form: CaseTable | None) -> tuple[Function, ...]:
@@ -219,6 +224,7 @@ def _function(node: ast.FunctionDef | ast.AsyncFunctionDef, scope: list[Scope], 
     mentions = frozenset(n.id if isinstance(n, ast.Name) else n.attr for n in inside
                          if isinstance(n, (ast.Name, ast.Attribute)))
     blocks = tuple(sorted((n.lineno, _BLOCKS[type(n)]) for n in inside if type(n) in _BLOCKS))
+    choices = tuple(sorted((n.lineno, _CHOICES[type(n)]) for n in inside if type(n) in _CHOICES))
     tables = tuple(table for d in node.decorator_list if form is not None
                    and (table := _table(d, scope, lists, form)) is not None)
     asserts = any(isinstance(n, ast.Assert) for n in inside)
@@ -227,7 +233,8 @@ def _function(node: ast.FunctionDef | ast.AsyncFunctionDef, scope: list[Scope], 
     signature, sole_call = _signature(node), _sole_call(node)
     forwards = _forwards(node.name, bool(node.decorator_list), signature, sole_call) if owner else ""
     return Function(node.lineno, node.name, tables, mentions, blocks, asserts, owner, statements, shape,
-                    bool(node.decorator_list), signature, sole_call, returns, inert, forwards, _mentioned(node))
+                    bool(node.decorator_list), signature, sole_call, returns, inert, forwards, _mentioned(node),
+                    choices)
 
 
 def _mentioned(node: ast.AST) -> frozenset[str]:

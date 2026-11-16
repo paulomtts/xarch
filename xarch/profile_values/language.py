@@ -24,7 +24,8 @@ class CheckedLanguage:
     a special name starts and ends with, the special method calling an instance runs, the return annotation of no
     value, the marker of a line comment, the comments its tools read (after the marker, a space standing for any
     spaces), how line 1 names the program that runs the file, how line 1 or 2 declares the encoding (a regular
-    expression, after the marker), and the keywords of the statements that branch; and what makes a class an
+    expression, after the marker), and the keywords of the statements that branch and of the expressions that choose
+    between values (branching_expressions); and what makes a class an
     immutable record (immutable). An empty token: the language has none. supplies are the facts its reader supplies,
     each graded (None: its data file does not say); importing is how a file imports a name from another file of the
     app, {dotted} standing for that file's dotted path and {name} for the name (empty: its data file does not say)."""
@@ -45,6 +46,7 @@ class CheckedLanguage:
     supplies: tuple[Supply, ...] | None = None
     importing: str = ""
     immutable: tuple[RecordMark, ...] = ()
+    branching_expressions: tuple[str, ...] = ()
 
     @property
     def marks(self) -> Marks:

@@ -20,7 +20,8 @@ PENDING = ("parts.controller.may_import narrowed to services, contract, domain/e
            "profile-values", "the contract's forbidden list `published`, which names typing.Any",
            "`.chdir()` in the ambient list, and the integration tier held to the forbidden list of the part it mirrors",
            "a part redefined without the litmus the bundled profile gives it fails `check --strict`",
-           "parts.<part>.immutable on logic, kernel-logic and reports")
+           "parts.<part>.immutable on logic, kernel-logic and reports",
+           "scenario-coverage's no-branch rule reads the conditional expressions too")
 """The checks the round-4 audits asked for, on in architecture.yaml, which xarch's own code breaks."""
 REFACTOR_PENDING = pytest.mark.xfail(
     strict=True,

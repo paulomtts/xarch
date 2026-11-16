@@ -326,6 +326,16 @@ def test_a_loop_or_branch_of_any_kind_in_a_function_body_is_listed(tmp_path, bod
     assert parsed(tmp_path, text).functions[0].blocks == blocks
 
 
+@pytest.mark.parametrize("body, expressions", [
+    pytest.param("    assert (x if y else z) == w\n", ((2, "if"),), id="a conditional expression is listed by if"),
+    pytest.param("    a = [b if c else (d if e else f) for g in h]\n", ((2, "if"), (2, "if")),
+                 id="nested ones too, one each"),
+    pytest.param("    if x:\n        pass\n    a = [y for y in z if y]\n", (), id="a statement or a comprehension is none"),
+])
+def test_an_expression_that_chooses_between_values_in_a_function_body_is_listed(tmp_path, body, expressions):
+    assert parsed(tmp_path, f"def test_a():\n{body}").functions[0].expressions == expressions
+
+
 def test_an_async_with_is_a_block_opened_by_with(tmp_path):
     assert parsed(tmp_path, "async def test_a():\n    async with x:\n        pass\n").functions[0].blocks == (
         (2, "with"),)
