@@ -44,7 +44,7 @@ parts:
   controller:
     path: modules/<module>/application/controller.py
     role: maps failures to Result variants
-    may_import: [services, logic, domain, ports, contract, kernel, kernel-logic, profile-values]
+    may_import: [services, contract, domain/errors, kernel, kernel-logic, profile-values]
     holds: classes
     names: "*Controller"
     forbidden: ambient

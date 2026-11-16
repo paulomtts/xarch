@@ -95,17 +95,24 @@ ROLE_RESTATED = ("platform",)
 """The parts whose role came to name everything they hold, after format 1."""
 PUBLISHED = ("published",)
 VALUES = "profile-values"
+OWN_NAME = "xarch"
+NARROWED = ("controller",)
+"""The parts of xarch's own profile whose `may_import` was narrowed after format 1: a controller only maps failures
+to the Results of what services hand out, so it may import no logic and of domain only the errors."""
 
 
 def assembled(architecture: Architecture) -> Architecture:
     """The architecture without the role and litmus of the parts REWORDED, the litmus of LITMUS_ADDED and the role of
     ROLE_RESTATED, without the target the contract gained for the values a module hands out as they are
-    (domain/published), and without the part VALUES and every target naming it, which format 1 never had."""
+    (domain/published), without the part VALUES and every target naming it, which format 1 never had, and without
+    the `may_import` of the parts NARROWED."""
     parts = {name: replace(part, role="", litmus="") if name in REWORDED else
              replace(part, litmus="") if name in LITMUS_ADDED else
              replace(part, role="") if name in ROLE_RESTATED else part
              for name, part in architecture.parts.items() if name != VALUES}
-    rules = {name: tuple(t for t in targets if not (t.part == "domain" and t.sub == PUBLISHED) and t.part != VALUES)
+    narrowed = NARROWED if architecture.name == OWN_NAME else ()
+    rules = {name: () if name in narrowed else
+             tuple(t for t in targets if not (t.part == "domain" and t.sub == PUBLISHED) and t.part != VALUES)
              for name, targets in architecture.rules.items() if name != VALUES}
     forbidden = {name: names for name, names in architecture.forbidden.items() if name != VALUES}
     tiers = tuple(replace(tier, subject=tuple(s for s in tier.subject if s.part != VALUES)) for tier in architecture.tiers)
