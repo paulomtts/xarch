@@ -1,13 +1,18 @@
 """xarch review on a project `init` and `new` made: what --dry-run would send for the files chosen, masked, as text and
-as JSON, with nothing sent; the files left out and why; and every refusal, which exits 2."""
+as JSON, with nothing sent; the files left out and why; and every refusal, which exits 2. The app is built with no key
+in its environment, so that nothing can be sent."""
 import json
 
 import pytest
 from typer.testing import CliRunner
 
 from xarch.bootstrap.app import app
+from xarch.bootstrap.wiring import build_controllers
+from xarch.cli.app import build
 
 runner = CliRunner()
+CONTROLLERS = build_controllers({})
+KEYLESS = build(CONTROLLERS.rules, CONTROLLERS.scaffold, CONTROLLERS.spec, CONTROLLERS.review, lambda: None)
 SERVICE = "app/modules/documents/application/services/document_service.py"
 BODY = ('"""Publishing documents; questions to docs@example.com."""\n'
         "from app.kernel.time import Clock\n"
@@ -31,7 +36,7 @@ def project(tmp_path, monkeypatch):
 
 
 def review(*args: str, stdin: str | None = None):
-    return runner.invoke(app, ["review", *args], input=stdin)
+    return runner.invoke(KEYLESS, ["review", *args], input=stdin)
 
 
 def test_a_dry_run_shows_the_masked_text_it_would_send_and_sends_nothing():
@@ -40,6 +45,10 @@ def test_a_dry_run_shows_the_masked_text_it_would_send_and_sends_nothing():
     lines = result.output.splitlines()
     assert lines[0].startswith("review: advisory.")
     assert lines[1] == "Nothing was sent (--dry-run)."
+    assert lines[2] == ("Without --dry-run, review sends to TypeSafe (https://api.typesafe.ai), as the model "
+                        "jev-1.14.0, the masked text of each file below that is not in the cache and the question after "
+                        "it: nothing else of the project. It sends whenever TYPESAFE_API_KEY is set: the key alone "
+                        "allows it, and the key is not set now.")
     assert lines[3].startswith("1 file(s) found (paths), 1 to be judged, 0 left out; 1 request(s)")
     quoted = [line.removeprefix("    | ") for line in lines if line.startswith("    |")]
     assert quoted[:4] == ['"""Publishing documents; questions to person@example.test."""',
@@ -54,6 +63,9 @@ def test_the_question_offers_every_part_of_the_profile_by_its_litmus():
     assert all(option["description"] for option in document["question"]["options"])
     (sent,) = document["requests"]
     assert (sent["file"], sent["part"], sent["chars"], document["sent"]) == (SERVICE, "services", len(BODY), False)
+    assert json.loads(sent["body"])["state"] == sent["text"] and "Authorization" not in sent["body"]
+    assert document["sends"] == {"name": "TypeSafe", "at": "https://api.typesafe.ai", "model": "jev-1.14.0",
+                                 "key": "TYPESAFE_API_KEY", "keyed": False}
 
 
 def test_a_list_is_read_from_stdin_and_what_is_not_judged_is_said_with_why():
@@ -79,7 +91,8 @@ def test_every_file_of_the_app_leaves_out_those_too_small_to_judge_and_the_packa
     pytest.param(["--all", SERVICE, "--dry-run"], "--all takes every file of the app", id="every file with paths"),
     pytest.param(["--all", "--dry-run", "--max-files", "1", "app"], "--all takes every file", id="every file with a folder"),
     pytest.param(["/elsewhere/x.py", "--dry-run"], "lies outside the project", id="a path outside the project"),
-    pytest.param([SERVICE], "sends nothing yet", id="a review that would send"),
+    pytest.param([SERVICE], "no key: set TYPESAFE_API_KEY, or run --dry-run to see what would be sent, or --offline to "
+                            "use cached answers only", id="a review that would send with no key set"),
 ])
 def test_a_refusal_exits_2_and_says_why(args, said):
     result = review(*args)

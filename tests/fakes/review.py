@@ -3,8 +3,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from xarch.modules.review.domain.errors import Refused
-from xarch.modules.review.domain.values import Found, Words
+from xarch.modules.review.domain.errors import NoKey, Refused, Unanswered
+from xarch.modules.review.domain.published import Choice, Sender
+from xarch.modules.review.domain.values import Answer, Found, Words
 
 
 class FakeCode:
@@ -33,3 +34,39 @@ class FakeProfile:
         if profile in self._refused:
             raise Refused(self._refused[profile])
         return self._words[profile]
+
+
+class FakeDecisionModel:
+    """Satisfies review's DecisionModel: the answer to each text by the text, every question asked recorded; a text
+    with no answer raises Unanswered with reason; asking with keyed False raises NoKey."""
+
+    def __init__(self, answers: dict[str, Answer], keyed: bool = True, reason: str = "the decision model failed"):
+        self._answers, self._keyed, self._reason = answers, keyed, reason
+        self.asked: list[str] = []
+
+    def sends(self) -> Sender:
+        return Sender("Model", "https://model.example.test", "m-1", "MODEL_KEY", self._keyed)
+
+    def body(self, text: str, question: Choice) -> str:
+        return f"{question.ask} {len(question.options)} {text}"
+
+    def ask(self, text: str, question: Choice) -> Answer:
+        if not self._keyed:
+            raise NoKey("MODEL_KEY")
+        self.asked.append(text)
+        if text not in self._answers:
+            raise Unanswered(self._reason)
+        return self._answers[text]
+
+
+class FakeAnswers:
+    """Satisfies review's Answers: the answers kept, by folder and key; every answer kept here recorded."""
+
+    def __init__(self, kept: dict[tuple[Path, str], Answer] | None = None):
+        self.kept = dict(kept or {})
+
+    def get(self, folder: Path, key: str) -> Answer | None:
+        return self.kept.get((folder, key))
+
+    def put(self, folder: Path, key: str, answer: Answer) -> None:
+        self.kept[(folder, key)] = answer

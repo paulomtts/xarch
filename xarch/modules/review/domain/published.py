@@ -6,8 +6,13 @@ as review holds it, so there is nothing to reshape.
     Request  what one question about one file sends: the file it is about, the part it lies in, its size and the text
              sent, masked
     LeftOut  a file found that is not judged, and why (one of the reasons below)
+    Sender   what review sends to, as the decision model's adapter says it: the service, where it answers, the model
+             asked, the variable its key is read from and whether the key is set
+    Reading  what the decision model read of one file: the probability on the part it sits in, against that part's line
+    Unasked  a file judged whose question has no answer, and why
 
-and the reasons a file is left out, the size of the smallest file judged, how many files one run judges, and the ways files are chosen.
+and the reasons a file is left out, the size of the smallest file judged, how many files one run judges, the ways files
+are chosen, the line below which a file reads as doubtful, and why a question has no answer.
 """
 from __future__ import annotations
 
@@ -27,6 +32,12 @@ MAX_FILES = 50
 
 BY_PATHS, BY_LIST, BY_ALL = "paths", "files-from", "all"
 """The ways files are chosen: named as paths, listed one per line, or every file of the app."""
+LINE = 0.3
+"""The probability on the part a file sits in below which it reads as doubtful there, the same for every part: in the
+trials it caught about nine in ten plainly misplaced files and doubted about one well-placed file in ten."""
+NOT_CACHED, FAILED = "not-cached", "failed"
+"""Why a question has no answer: it is not in the cache and nothing was sent (offline); or the decision model failed
+on it or on a question before it, and nothing more was sent."""
 
 
 @dataclass(frozen=True)
@@ -46,11 +57,48 @@ class Choice:
 @dataclass(frozen=True)
 class Request:
     """What one question about one file sends: the file, as `check` shows it; the part it lies in; how many
-    characters the file holds; and the text sent, the file's text masked."""
+    characters the file holds; the text sent, the file's text masked; whether its answer is in the cache already, so
+    that it is not sent; and the body the service receives, as JSON text, the key left out (it travels apart)."""
     file: str
     part: str
     chars: int
     text: str
+    cached: bool = False
+    body: str = ""
+
+
+@dataclass(frozen=True)
+class Sender:
+    """What review sends to, as the decision model's adapter says it: the service by name, where it answers, the
+    model asked, the variable of the environment its key is read from, and whether that key is set now. Review's own
+    code names no service."""
+    service: str
+    at: str
+    model: str
+    key: str
+    keyed: bool
+
+
+@dataclass(frozen=True)
+class Reading:
+    """What the decision model read of one file: the file, as `check` shows it; the part it sits in; how many
+    characters it holds; the probability on that part; the line below which it is doubtful there; whether it is; the
+    probability on each part, in the profile's order; and the model version that answered."""
+    file: str
+    part: str
+    chars: int
+    probability: float
+    line: float
+    doubtful: bool
+    distribution: tuple[tuple[str, float], ...]
+    model: str
+
+
+@dataclass(frozen=True)
+class Unasked:
+    """A file judged whose question has no answer: the file, as `check` shows it, and why (NOT_CACHED or FAILED)."""
+    file: str
+    why: str
 
 
 @dataclass(frozen=True)

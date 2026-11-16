@@ -26,11 +26,17 @@ class OverCap(DomainError):
         self.chosen, self.cap = chosen, cap
 
 
-class Unsendable(DomainError):
-    """A question would be sent, and review has nothing to send it with."""
+class NoKey(DomainError):
+    """A question would be sent, and the key of the decision model's service is not set; variable is where it is read
+    from."""
 
-    def __init__(self) -> None:
-        super().__init__("review has no decision model to send its questions to")
+    def __init__(self, variable: str):
+        super().__init__(f"no key: {variable} is not set")
+        self.variable = variable
+
+
+class Unanswered(DomainError):
+    """The decision model failed on a question; reason says how, the key in no word of it."""
 
 
 class Refused(DomainError):

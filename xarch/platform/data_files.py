@@ -1,4 +1,4 @@
-"""Reading YAML and JSON data files into plain Python values. Knows no module.
+"""Reading YAML and JSON data files into plain Python values, and writing a value as JSON. Knows no module.
 
 Both parsers refuse a mapping that repeats a key, which they would otherwise resolve silently by keeping the last.
 """
@@ -89,3 +89,10 @@ def _parse_json(text: str) -> Any:
 
 def _one_line(error: Exception) -> str:
     return " ".join(str(error).split())
+
+
+class DataFileWriter:
+    def json(self, value: Any) -> str:
+        """The value as a JSON document, two spaces to a level, its keys in the order given, ending in a new line;
+        raises ValueError for a value JSON cannot hold."""
+        return json.dumps(value, indent=2, ensure_ascii=False, allow_nan=False) + "\n"

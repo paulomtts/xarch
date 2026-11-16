@@ -1,8 +1,8 @@
 """Reading YAML and JSON data files: plain values back, and a repeated key, or text that does not parse, refused with
-every reason, each safe to show."""
+every reason, each safe to show; and writing a value as JSON."""
 import pytest
 
-from xarch.platform.data_files import DataFileError, DataFileReader
+from xarch.platform.data_files import DataFileError, DataFileReader, DataFileWriter
 
 
 def test_yaml_and_json_read_into_plain_values():
@@ -31,3 +31,12 @@ def test_a_bad_data_file_is_refused_with_every_reason(text, json_syntax, problem
     with pytest.raises(DataFileError) as caught:
         DataFileReader().parse(text, json_syntax=json_syntax)
     assert caught.value.problems == problems
+
+
+def test_a_value_is_written_as_json_two_spaces_to_a_level_its_keys_in_order_ending_in_a_new_line():
+    assert DataFileWriter().json({"b": [1, "é"], "a": None}) == '{\n  "b": [\n    1,\n    "é"\n  ],\n  "a": null\n}\n'
+
+
+def test_a_value_json_cannot_hold_is_refused():
+    with pytest.raises(ValueError, match="not JSON compliant"):
+        DataFileWriter().json({"a": float("nan")})

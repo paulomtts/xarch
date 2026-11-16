@@ -11,10 +11,13 @@ from xarch.modules.review.domain.published import (
     BY_LIST,
     BY_PATHS,
     EXCLUDED,
+    FAILED,
+    LINE,
     MAX_FILES,
     MIN_CHARS,
     MISSING,
     NEVER,
+    NOT_CACHED,
     NOT_SOURCE,
     OUTSIDE,
     SMALL,
@@ -23,21 +26,25 @@ from xarch.modules.review.domain.published import (
     Choice,
     LeftOut,
     Option,
+    Reading,
     Request,
+    Sender,
+    Unasked,
 )
 
-__all__ = ["A_TEST", "BY_ALL", "BY_LIST", "BY_PATHS", "EXCLUDED", "MAX_FILES", "MIN_CHARS", "MISSING", "NEVER",
-           "NOT_SOURCE", "OUTSIDE", "SMALL", "UNPARSABLE", "UNPLACED", "Choice", "LeftOut", "Option", "Request",
-           "Review", "ReviewPlanned", "NothingChosen", "AllAndOthers", "TooManyFiles", "NotSendable",
-           "ReviewRefused", "ReviewResult"]
+__all__ = ["A_TEST", "BY_ALL", "BY_LIST", "BY_PATHS", "EXCLUDED", "FAILED", "LINE", "MAX_FILES", "MIN_CHARS", "MISSING",
+           "NEVER", "NOT_CACHED", "NOT_SOURCE", "OUTSIDE", "SMALL", "UNPARSABLE", "UNPLACED", "Choice", "LeftOut",
+           "Option", "Reading", "Request", "Sender", "Unasked", "Review", "ReviewPlanned", "ReviewReading",
+           "NothingChosen", "AllAndOthers", "TooManyFiles", "KeyMissing", "ReviewRefused", "ReviewResult"]
 
 
 @dataclass(frozen=True)
 class Review:
     """Review the files at paths and at those listed (both given from cwd, from the folder holding app or from app, a
     folder standing for the files below it), or, with every, every file of the app. profile is the architecture in
-    force, tests the tests root (None: none). With dry_run nothing is sent: the Result says what would be. One run
-    judges at most max_files files."""
+    force, tests the tests root (None: none). With dry_run nothing is sent: the Result says what would be. With
+    offline nothing is sent either, and only the answers kept are read. One run judges at most max_files files. cache
+    is the folder the answers are kept in, given in full (None: the project's own)."""
     paths: tuple[Path, ...]
     listed: tuple[Path, ...]
     every: bool
@@ -47,6 +54,8 @@ class Review:
     tests: Path | None = None
     dry_run: bool = False
     max_files: int = MAX_FILES
+    offline: bool = False
+    cache: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -54,7 +63,8 @@ class ReviewPlanned:
     """What a review would send, and nothing sent: how the files were chosen (BY_PATHS, BY_LIST, BY_ALL), how many
     were found, the request each file judged would send, the files left out and why, the question each request
     carries, the parts it describes by their role alone, the characters and about how many tokens the requests
-    would send in all, and the texts the profile says review hides, which no request holds."""
+    would send in all, the texts the profile says review hides, which no request holds, and what a review that sends
+    would send to."""
     by: tuple[str, ...]
     found: int
     requests: tuple[Request, ...]
@@ -63,7 +73,34 @@ class ReviewPlanned:
     role_only: tuple[str, ...]
     characters: int
     tokens: int
-    mask: tuple[str, ...] = ()
+    mask: tuple[str, ...]
+    sends: Sender
+
+
+@dataclass(frozen=True)
+class ReviewReading:
+    """What the decision model read of the files judged: how they were chosen (BY_PATHS, BY_LIST, BY_ALL) and how
+    many were found; a reading of each file answered, the most doubtful first; the files left out and why; the files
+    judged with no answer, and why; what was sent to; how many questions were sent this run and how many answers were
+    read from the cache; the tokens the questions sent cost; how the decision model failed, when it did ("" when it
+    did not), which stopped the sending; and the parts the question describes by their role alone."""
+    by: tuple[str, ...]
+    found: int
+    readings: tuple[Reading, ...]
+    left_out: tuple[LeftOut, ...]
+    unasked: tuple[Unasked, ...]
+    sends: Sender
+    sent: int
+    cached: int
+    input_tokens: int
+    output_tokens: int
+    failure: str
+    role_only: tuple[str, ...]
+
+    @property
+    def complete(self) -> bool:
+        """Whether every file judged has its answer."""
+        return not self.unasked
 
 
 @dataclass(frozen=True)
@@ -84,8 +121,10 @@ class TooManyFiles:
 
 
 @dataclass(frozen=True)
-class NotSendable:
-    """A review that would send was asked for, and there is nothing to send it with: nothing was sent."""
+class KeyMissing:
+    """A question would be sent and the key of the decision model's service is not set in variable: nothing was
+    sent."""
+    variable: str
 
 
 @dataclass(frozen=True)
@@ -94,4 +133,4 @@ class ReviewRefused:
     reason: str
 
 
-ReviewResult = ReviewPlanned | NothingChosen | AllAndOthers | TooManyFiles | NotSendable | ReviewRefused
+ReviewResult = ReviewPlanned | ReviewReading | NothingChosen | AllAndOthers | TooManyFiles | KeyMissing | ReviewRefused

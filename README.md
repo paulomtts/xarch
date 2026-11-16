@@ -48,9 +48,9 @@ xarch profile new NAME --from BUNDLED [--out FOLDER] [--app PATH]
                                                              # copy a bundled profile into the project, with its files
 xarch profile check [NAME|FILE] [--app PATH] [--format text|json]
                                                              # validate a profile without an app
-xarch review [PATH ...] [--files-from FILE|-] [--all] --dry-run [--max-files N] [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json]
-                                                             # advisory: what review would ask a decision model of the
-                                                             # files chosen, masked; sends nothing
+xarch review [PATH ...] [--files-from FILE|-] [--all] [--dry-run | --offline] [--cache DIR] [--max-files N] [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json]
+                                                             # advisory: a decision model's reading of where each file
+                                                             # chosen belongs; sends the masked text when the key is set
 ```
 
 `WORD` is the word between `<` and `>` in the profile's paths: in both bundled profiles `<module>`, so

@@ -44,3 +44,14 @@ class Found:
     with why, both in the order they were found."""
     read: tuple[CodeFile, ...]
     unread: tuple[LeftOut, ...] = ()
+
+
+@dataclass(frozen=True)
+class Answer:
+    """What the decision model answered to a question of one answer out of several: the model version that answered,
+    the probability of each option by its name, in the order of the question, and the tokens the question and the
+    answer cost."""
+    model: str
+    probabilities: tuple[tuple[str, float], ...]
+    input_tokens: int = 0
+    output_tokens: int = 0

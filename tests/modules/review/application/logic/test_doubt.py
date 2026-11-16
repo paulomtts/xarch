@@ -1,0 +1,32 @@
+"""What a file's answer says: the probability on the part it sits in, doubtful below the line; and the readings
+ranked, the most doubtful first."""
+import pytest
+
+from xarch.modules.review.application.logic.doubt import ranked, reading
+from xarch.modules.review.domain.published import Reading, Request
+from xarch.modules.review.domain.values import Answer
+
+REQUEST = Request("app/a.py", "domain", 1200, "text")
+
+
+@pytest.mark.parametrize("probabilities, then", [
+    pytest.param((("domain", 0.29), ("main", 0.71)), (0.29, True), id="below the line is doubtful"),
+    pytest.param((("domain", 0.3), ("main", 0.7)), (0.3, False), id="at the line is not"),
+    pytest.param((("main", 1.0),), (0.0, True), id="an answer that gives the part nothing holds 0 on it"),
+])
+def test_a_file_is_doubtful_where_it_sits_when_its_part_holds_less_than_the_line(probabilities, then):
+    found = reading(REQUEST, Answer("m-1.0.1", probabilities))
+    assert (found.probability, found.doubtful) == then
+    assert (found.file, found.part, found.chars, found.line, found.distribution, found.model) == (
+        "app/a.py", "domain", 1200, 0.3, probabilities, "m-1.0.1")
+
+
+def test_a_line_given_is_the_one_read_against():
+    assert reading(REQUEST, Answer("m", (("domain", 0.4),)), line=0.5).doubtful is True
+
+
+def test_the_readings_are_ranked_from_the_lowest_probability_by_file_on_a_tie():
+    def at(file: str, probability: float) -> Reading:
+        return Reading(file, "domain", 900, probability, 0.3, probability < 0.3, (), "m")
+    readings = (at("app/c.py", 0.9), at("app/b.py", 0.1), at("app/a.py", 0.1), at("app/d.py", 0.5))
+    assert [found.file for found in ranked(readings)] == ["app/a.py", "app/b.py", "app/d.py", "app/c.py"]
