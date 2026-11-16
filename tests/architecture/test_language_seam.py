@@ -6,7 +6,8 @@ Reading source: no file of xarch's own code (outside xarch/architectures/, whose
 example project, content that xarch ships and never runs) imports a module that reads source (ast, tokenize, symtable,
 inspect, or importlib, which loads it) but the files listed in READERS, each with the modules it may import and why.
 importlib.resources is not reading source: it reads the package data the bundled profiles ship (yaml, templates,
-examples) and is allowed everywhere. An import is read as written, `import m`, `import m.sub` and `from m import x`
+examples) and is allowed everywhere. Nor is importlib.metadata, which reads what the installed package says of itself
+(its version), and is allowed everywhere too. An import is read as written, `import m`, `import m.sub` and `from m import x`
 (as m.x), in any scope of the file; a relative import is xarch's own.
 
 Naming the language: no file of xarch's own code, but the reader and the platform (technology: the interpreter, the
@@ -49,7 +50,7 @@ import xarch
 
 SRC = Path(xarch.__file__).parent
 READING_SOURCE = {"ast", "tokenize", "symtable", "inspect", "importlib"}
-DATA = ("importlib", "resources")
+DATA = (("importlib", "resources"), ("importlib", "metadata"))
 
 READERS: dict[str, tuple[set[str], str]] = {
     "modules/rules/adapters/fs_source_tree.py": (
@@ -65,7 +66,7 @@ def reading(path: Path) -> set[str]:
                  else [f"{node.module}.{alias.name}" for alias in node.names]
                  if isinstance(node, ast.ImportFrom) and node.module and not node.level else [])
         found |= {name.split(".")[0] for name in names
-                  if name.split(".")[0] in READING_SOURCE and tuple(name.split("."))[:2] != DATA}
+                  if name.split(".")[0] in READING_SOURCE and tuple(name.split("."))[:2] not in DATA}
     return found
 
 
@@ -84,6 +85,8 @@ def test_only_the_listed_readers_import_a_module_that_reads_python_source():
     pytest.param("from importlib import import_module\n", {"importlib"}, id="importlib's loader is found"),
     pytest.param("from importlib import resources\nfrom importlib.resources.abc import Traversable\n", set(),
                  id="importlib.resources reads package data and is not reading source"),
+    pytest.param("from importlib import metadata\nimport importlib.metadata\n", set(),
+                 id="importlib.metadata reads what the installed package says and is not reading source"),
     pytest.param("import astroid\nfrom . import ast\n", set(), id="a longer name or a relative import is not one"),
 ])
 def test_reading(tmp_path, text, modules):

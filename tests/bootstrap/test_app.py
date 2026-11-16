@@ -1,4 +1,6 @@
 """Tests for the CLI: exit codes and output, plus the scaffold-then-check drift guard."""
+from importlib import metadata
+
 import pytest
 from typer.testing import CliRunner
 
@@ -300,3 +302,15 @@ def test_init_refuses_a_profile_whose_file_replaces_what_the_skeleton_writes(tmp
     assert ("layered.yaml: files.app/__init__.py: 'app/__init__.py' is the package file the skeleton writes"
             in result.output)
     assert not (tmp_path / "app").exists() and not (tmp_path / "pyproject.toml").exists()
+
+
+def test_version_prints_the_installed_version_and_exits_0():
+    result = runner.invoke(app, ["--version"])
+    assert result.exit_code == 0, result.output
+    assert result.output == f"xarch {metadata.version('xarch')}\n"
+
+
+def test_version_wins_over_a_command_given_with_it():
+    result = runner.invoke(app, ["--version", "check"])
+    assert result.exit_code == 0, result.output
+    assert result.output == f"xarch {metadata.version('xarch')}\n"

@@ -7,6 +7,7 @@ may also bring its own file. xarch knows no part by name: every name comes from 
 ## Commands
 
 ```
+xarch --version                                              # print the installed version and exit
 xarch init [--app PATH] [--profile NAME|FILE]                 # create the top-level skeleton, record the profile (and the
                                                              # app folder, if not app/) in pyproject.toml, write the
                                                              # project docs and files; never overwrites
