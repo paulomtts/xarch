@@ -67,7 +67,7 @@ def project_files(architecture: Architecture, contents: Mapping[str, str | bytes
             owners[target] = where
             content = _content(contents[name], entry, app, name, where, problems)
             if content is not None:
-                found.append(ProjectFile(target, content, entry.pinned, entry.folder))
+                found.append(ProjectFile(target, content, entry.pinned))
     if problems:
         raise InvalidArchitecture(source, problems)
     yield from found

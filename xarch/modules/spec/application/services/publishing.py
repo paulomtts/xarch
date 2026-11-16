@@ -39,12 +39,10 @@ class PublishingService:
 
     def skeleton(self, profile: str) -> Skeleton:
         architecture = self._architectures.load(profile)
-        entry = architecture.entry
         language = architecture.language
         repeating = tuple(Repeating(repeat.word, repeat.root, _entries(architecture.instance_tree(repeat)))
                           for repeat in architecture.repeats)
         return Skeleton(top_level=_entries(architecture.top_level_tree()), repeating=repeating,
-                        entry_point=entry.path[0] if entry is not None else "",
                         package_file=language.checked.package_file, language=language.checked.title,
                         reserved=language.reserved_names, names=language.names, private=language.checked.private)
 

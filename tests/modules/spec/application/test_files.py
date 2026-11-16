@@ -28,8 +28,8 @@ def controller(files: dict | None) -> SpecController:
                  ProjectFiles((ProjectFile(("tests", "rules.py"), "check('shop')\n", pinned=True),)),
                  id="a pinned file says so"),
     pytest.param(INTO_APP, "shop",
-                 ProjectFiles((ProjectFile(("shop", "src", "design", "fonts", "f.woff"), b"\xff\x00", preset=True),
-                               ProjectFile(("shop", "src", "design", "tokens.css"), b"a {{app}}\n", preset=True))),
+                 ProjectFiles((ProjectFile(("shop", "src", "design", "fonts", "f.woff"), b"\xff\x00"),
+                               ProjectFile(("shop", "src", "design", "tokens.css"), b"a {{app}}\n"))),
                  id="a folder entry is copied unchanged below a target inside the app, file by file"),
     pytest.param({"d/": {"from": "preset", "fill": True}}, "shop", ProfileRefused(
         "cli: files.d/: 'preset/fonts/f.woff' is not valid UTF-8 text: set `fill: false` to copy it unchanged"),

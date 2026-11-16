@@ -25,7 +25,7 @@ class SpecStandIn:
             top_level=(Entry(("kernel",), True, False), Entry(("kernel", "rules.py"), False, True)),
             repeating=(Repeating("module", ("modules",), (Entry(("domain",), True, True),)),
                        Repeating("plugin", ("app", "plugins"), (Entry(("manifest.py",), False, True),))),
-            entry_point="", package_file="__init__.py", language="Python",
+            package_file="__init__.py", language="Python",
             reserved=frozenset({"class"}))
 
     def docs(self, profile: str) -> Docs:

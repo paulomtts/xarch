@@ -73,9 +73,7 @@ class ProjectFile:
         folder starts with the app folder's name
     content: the file's text, the app folder's name filled in, or, for a file that is not filled, its bytes as they are
     pinned: the project keeps it as written; `check` reports it when it differs
-    preset: it comes from a folder entry of the profile
     """
     path: tuple[str, ...]
     content: str | bytes
     pinned: bool = False
-    preset: bool = False

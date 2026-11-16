@@ -73,14 +73,14 @@ def test_a_folder_entry_is_copied_with_its_relative_paths_below_a_target_in_the_
     declared = architecture({"{{app}}/src/design/": {"from": "preset"}})
     contents = {"preset/tokens.css": b"a {{app}}", "preset/fonts/f.woff": b"\xff\x00"}
     assert written(declared, contents, folders={"preset": ("tokens.css", "fonts/f.woff")}) == [
-        ProjectFile(("shop", "src", "design", "tokens.css"), b"a {{app}}", preset=True),
-        ProjectFile(("shop", "src", "design", "fonts", "f.woff"), b"\xff\x00", preset=True)]
+        ProjectFile(("shop", "src", "design", "tokens.css"), b"a {{app}}"),
+        ProjectFile(("shop", "src", "design", "fonts", "f.woff"), b"\xff\x00")]
 
 
 def test_a_folder_entry_that_says_fill_has_its_text_filled():
     declared = architecture({"d/": {"from": "preset", "fill": True}})
     assert written(declared, {"preset/a.txt": b"for {{app}}"}, folders={"preset": ("a.txt",)}) == [
-        ProjectFile(("d", "a.txt"), "for shop", preset=True)]
+        ProjectFile(("d", "a.txt"), "for shop")]
 
 
 def test_a_file_that_is_not_text_cannot_be_filled():

@@ -17,15 +17,10 @@ def test_top_level_lists_every_folder_parents_before_children():
     assert all(e.is_dir for e in skeleton("cli").top_level)
 
 
-def test_the_cli_profile_enters_through_cli():
-    assert skeleton("cli").entry_point == "cli"
-
-
 def test_the_web_profile_has_web_with_routes_i18n_and_ui_instead_of_cli():
     paths = [e.path for e in skeleton("web").top_level]
     assert paths == [("modules",), ("platform",), ("web",), ("web", "routes"), ("web", "i18n"), ("web", "ui"),
                      ("bootstrap",), ("bootstrap", "migrations"), ("kernel",), ("kernel", "logic")]
-    assert skeleton("web").entry_point == "web"
 
 
 @pytest.mark.parametrize("profile", ["cli", "web"])

@@ -6,8 +6,7 @@ from xarch.modules.spec.contract import Entry, Repeating, Skeleton
 SKELETON = Skeleton(
     top_level=(Entry(("kernel",), True, True), Entry(("modules",), True, True), Entry(("__main__.py",), False, True)),
     repeating=(Repeating("module", ("modules",), (Entry(("domain",), True, True), Entry(("application",), True, False),
-                                                  Entry(("application", "controller.py"), False, True))),),
-    entry_point="")
+                                                  Entry(("application", "controller.py"), False, True))),))
 
 
 class Spec:
