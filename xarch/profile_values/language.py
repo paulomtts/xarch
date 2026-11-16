@@ -28,7 +28,8 @@ class CheckedLanguage:
     between values (branching_expressions); and what makes a class an
     immutable record (immutable). An empty token: the language has none. supplies are the facts its reader supplies,
     each graded (None: its data file does not say); importing is how a file imports a name from another file of the
-    app, {dotted} standing for that file's dotted path and {name} for the name (empty: its data file does not say)."""
+    app, {dotted} standing for that file's dotted path and {name} for the name (empty: its data file does not say); names
+is the pattern of a name the language allows, a regular expression (empty: its data file gives none)."""
     title: str = ""
     extension: str = ""
     package_file: str = ""
@@ -47,6 +48,7 @@ class CheckedLanguage:
     importing: str = ""
     immutable: tuple[RecordMark, ...] = ()
     branching_expressions: tuple[str, ...] = ()
+    names: str = ""
 
     @property
     def marks(self) -> Marks:

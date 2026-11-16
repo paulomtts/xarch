@@ -99,7 +99,7 @@ def language_of(name: str, document: Any) -> Language:
         raise InvalidArchitecture(source, problems)
     checked = CheckedLanguage(title, extension, package_file, interface, dynamic, tokens["private"], tokens["special"],
                               tokens["call"], tokens["nothing"], tokens["comment"], directives, tokens["shebang"],
-                              encoding, branching, supplies, importing, immutable, expressions)
+                              encoding, branching, supplies, importing, immutable, expressions, names)
     return Language(name, checked, namespace, standard, cache, names)
 
 

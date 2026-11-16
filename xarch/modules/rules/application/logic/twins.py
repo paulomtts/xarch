@@ -51,7 +51,6 @@ FIX = ("keep one of the two and import it from a part both may import, or give {
        "instead of a copy of {twin}'s")
 RENAMED_FIX = ("keep one of the two, with one name for each field, and import it from a part both may import, or give "
                "{cls} the fields its reader needs instead of a renamed copy of {twin}'s")
-_NAME = re.compile(r"[^\W\d]\w*")
 
 Counted = tuple[SourceFile, Class, Place]
 
@@ -73,14 +72,14 @@ def violations(app: Iterable[SourceFile], profile: Profile) -> list[Violation]:
         while grown:
             names = _unique(counted, copied)
             renamed = [(later, earlier) for later, earlier in _pairs(counted, pairs)
-                       if _renamed(earlier[1], later[1], least, names) is not None]
+                       if _renamed(earlier[1], later[1], least, names, profile.language.names) is not None]
             before = len(copied)
             for later, earlier in renamed:
                 copied.setdefault(later[1].name, earlier[1].name)
             grown = len(copied) > before
         names = _unique(counted, copied)
         for later, earlier in renamed:
-            found.append(_renamed_violation(later, earlier, _renamed(earlier[1], later[1], least, names), profile))
+            found.append(_renamed_violation(later, earlier, _renamed(earlier[1], later[1], least, names, profile.language.names), profile))
         pairs += renamed
     if profile.no_twins_subset is not None:
         least = max(profile.no_twins_subset, 1)
@@ -155,11 +154,16 @@ def _unique(counted: list[Counted], copied: dict[str, str]) -> dict[str, str]:
     return found
 
 
-def _typed(annotation: str, names: dict[str, str]) -> str:
-    return _NAME.sub(lambda m: names.get(m.group(0), m.group(0)), annotation)
+def _typed(annotation: str, names: dict[str, str], pattern: str) -> str:
+    """The annotation with each name the language allows (by its pattern) that is a copy's read as its original's; as
+    written when the language gives no pattern."""
+    if not pattern:
+        return annotation
+    return re.sub(pattern, lambda m: names.get(m.group(0), m.group(0)), annotation)
 
 
-def _renamed(first: Class, second: Class, least: int, names: dict[str, str]) -> list[tuple[str, str]] | None:
+def _renamed(first: Class, second: Class, least: int, names: dict[str, str],
+             pattern: str) -> list[tuple[str, str]] | None:
     """The renamed fields, as (the name of the later class, the name of the earlier), when the later is a renamed copy
     of the earlier (or the earlier of the later); None when it is not."""
     short, long = (first, second) if len(first.fields) <= len(second.fields) else (second, first)
@@ -170,7 +174,7 @@ def _renamed(first: Class, second: Class, least: int, names: dict[str, str]) -> 
     agree = m - len(differ)
     if not differ or 2 * agree <= n:
         return None
-    retyped = [index for index in differ if _typed(_type(short, index), names) != _typed(_type(long, index), names)]
+    retyped = [index for index in differ if _typed(_type(short, index), names, pattern) != _typed(_type(long, index), names, pattern)]
     if retyped and not (len(differ) == 1 and agree >= least):
         return None
     return [(second.fields[index], first.fields[index]) for index in differ]

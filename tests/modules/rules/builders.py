@@ -11,6 +11,9 @@ from __future__ import annotations
 
 import sys
 from dataclasses import replace
+from importlib import resources
+
+import yaml
 
 from xarch.kernel.placement import EVERYTHING
 from xarch.kernel.source import Import
@@ -26,8 +29,11 @@ PYTHON = CheckedLanguage("Python", ".py", "__init__.py", (("typing", "Protocol")
                       r"coding[:=][ \t]*[-\w.]+", ("if", "match", "try", "for", "while"),
                       immutable=(RecordMark(("typing", "NamedTuple")),
                                  RecordMark(("dataclasses", "dataclass"), (("frozen", "True"),))),
-                      branching_expressions=("if",))
-"""Python as its data file says it, for the checks that read the tokens of its code."""
+                      branching_expressions=("if",),
+                      names=yaml.safe_load(resources.files("xarch").joinpath("architectures", "presets", "language",
+                                                                              "python.yaml").read_text(encoding="utf-8"))["name"])
+"""Python as its data file says it, for the checks that read the tokens of its code; the pattern of a name read from
+it."""
 APP, TESTS = "app", "tests"
 MODULES = Repeat("module", ("modules",))
 EACH_PARTS = {"domain": ("domain",), "contract": ("contract",), "controller": ("application", "controller.py"),
