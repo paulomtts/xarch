@@ -111,7 +111,8 @@ class GuardsView:
     """The guards a profile switches on, None or False when off: the package-only parts, scenario coverage, no
     comments, stand-ins, the closed tree, the fewest statements of a duplicate, the fewest fields of a twin (and of a
     renamed copy and of a partial one, and the parts whose files translate a pair, which is then no twin), dead code
-    (and with it the files no test of their tier reaches), the parts whose forwarding methods are listed, and private
+    (and with it the files no test of their tier reaches, the public names only the tests use, and those of them the
+    profile accepts, each `<file below the app>:<name>`), the parts whose forwarding methods are listed, and private
     imports."""
     package_only: tuple[str, ...] = ()
     scenarios: ScenarioCoverage | None = None
@@ -126,6 +127,7 @@ class GuardsView:
     dead_code: bool = False
     untested: bool = False
     tests_only: bool = False
+    tests_only_known: tuple[str, ...] = ()
     pass_through: tuple[str, ...] = ()
     private_imports: bool = False
 

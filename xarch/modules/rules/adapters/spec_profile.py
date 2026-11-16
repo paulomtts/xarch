@@ -72,6 +72,7 @@ class SpecProfiles:
                        no_twins_renamed=guards.no_twins_renamed, no_twins_subset=guards.no_twins_subset,
                        no_twins_translated=guards.no_twins_translated,
                        dead_code=guards.dead_code, untested=guards.untested, tests_only=guards.tests_only,
+                       tests_only_known=guards.tests_only_known,
                        pass_through=guards.pass_through, holds={p.name: p.holds for p in parts if p.holds},
                        immutable=tuple(p.name for p in parts if p.immutable),
                        types_only={p.name: p.types_only for p in parts if p.types_only},

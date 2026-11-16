@@ -242,7 +242,7 @@ that switches or configures each (`-` for none: the rule is always on):
 | `closed-tree` | a Python file of the app that lies in no part | `guards.closed-tree` |
 | `no-duplicates` | two functions or methods of the app with the same code | `guards.no-duplicates` |
 | `no-twins` | two public classes in parts of different names that declare the same fields in the same order: one type written twice; with `min_renamed`, also a copy that renamed a field, and with `min_subset`, one that kept at least half of the other's fields in its order; with `translated`, a pair one of whose classes a file of a listed part builds while importing the other's file is no twin | `guards.no-twins` |
-| `dead-code` | a port no other file names, a fake no test uses; with `untested`, a file no test of its tier reaches, and with `tests_only`, a public class or top-level function no other file of the app names (only the tests, or nothing, use it), each listed as `weak` only | `guards.dead-code`, `fakes` |
+| `dead-code` | a port no other file names, a fake no test uses; with `untested`, a file no test of its tier reaches, and with `tests_only`, a public class or top-level function no other file of the app names (only the tests, or nothing, use it), but those `known` accepts, which the enforcement section names instead, each listed as `weak` only; an entry of `known` whose file defines no such name, or whose name another file of the app names, is listed as `weak` too | `guards.dead-code`, `fakes` |
 | `pass-through` | a method that only forwards its arguments to a collaborator, or returns an attribute of what that call answers; never a violation: listed as `weak`, and fails only `--strict` | `guards.pass-through` |
 | `holds` | a public function at the top level of a part that holds classes, or a class (whatever its name) in one that holds functions; listed as `weak`, and fails only `--strict` | `parts.holds` |
 | `immutable` | a class of a part that lists `immutable` that is no immutable record as the language's data file says one is made, an exception aside; listed as `weak`, and fails only `--strict` | `parts.immutable` |
@@ -296,6 +296,7 @@ and rule ids may be added, but an existing one keeps its name and meaning.
                 "baseline_off": ["closed-tree"], "looser": []},
     "ungoverned": {"count": 0, "folders": [], "files": []},
     "excluded": [],
+    "known": [],
     "init_files": [],
     "skipped": {"count": 0, "at": []},
     "dynamic": {"count": 0, "at": []},
@@ -321,8 +322,9 @@ how many facts it read in the project.
   the profile writes itself.
 - `enforcement`: every key always present, empty when there is nothing to report. `profile.looser` items are
   `{"key", "part", "what", "sentence"}` with `key` one of `may_import`, `libraries`, `forbidden`, `untested`,
-  `types_only`, `may_also_import`, `apply_forbidden`, `testing.skips`, `files.pinned`, `must_import`, `litmus` (the `sentence` names the full address, such as
-  `parts.kernel.may_import`); `excluded` items `{"folder", "reason"}`; `init_files` items `{"file", "state"}`, `state` `missing` or
+  `types_only`, `may_also_import`, `apply_forbidden`, `testing.skips`, `files.pinned`, `must_import`, `litmus`, `known` (the `sentence` names the full address, such as
+  `parts.kernel.may_import`); `excluded` items `{"folder", "reason"}`; `known` items `{"file", "line", "name"}`, each
+  public name `guards.dead-code.known` accepts as only the tests'; `init_files` items `{"file", "state"}`, `state` `missing` or
   `changed`; `skipped.at` and `dynamic.at` items `{"file", "line"}`; `weak` items `{"rule", "file", "line",
   "message", "fix"}` (`fix` is `null` for a weak check that has none); `approximate` items `{"key", "fact", "note"}`;
   `strict_failures` items `{"key", "detail"}`, `key` one of `guards_off`, `ungoverned`, `init_files`,
@@ -346,6 +348,7 @@ enforcement
     may_import:  kernel may also import platform (parts.kernel.may_import)
   ungoverned:  1 Python file outside every part (app/scripts/)
   excluded:    app/examples/ (example sources the docs show)
+  known:       app/bootstrap/wiring.py:12: build_app is public and only the tests use it, which the profile accepts (guards.dead-code.known)
   init files:  tests/architecture/test_rules.py is changed
   skipped:     1 skip (tests/modules/docs/domain/test_x.py:4)
   dynamic:     1 dynamic import (app/kernel/dyn.py:3)
@@ -361,15 +364,18 @@ enforcement
   name of its `forbidden` list no entry covers any more, a part newly `untested`, a part dropped from a tier's
   `types_only`, a target added to a tier's `may_also_import`, a tier no longer `apply_forbidden`, a name dropped from `testing.skips`, a `files` entry no longer
   `pinned`, a target added to a part's `must_import` or the key dropped, a part redefined without the `litmus` the
-  other gives it. A profile that says `based_on: <bundled name>` is compared with that one, else with the one sharing the
+  other gives it, a public name `guards.dead-code.known` accepts that the other's does not. A profile that says `based_on: <bundled name>` is compared with that one, else with the one sharing the
   most part names.
-  Stricter differences, new parts, the layout and the guards' parameters are not compared. This comparison is
+  Stricter differences, new parts, the layout and the guards' other parameters are not compared. This comparison is
   information: the profile defines the architecture, so how it differs from another is no finding for `--strict`, but
   for a litmus dropped, which leaves a part's code no question to be placed by.
 - `ungoverned`: the app's Python files in no part and no folder of the layout (what `closed-tree` would report),
   which no check reads, counted with their top folders.
 - `excluded`: each folder the profile's `excluded` key leaves out, with its reason; no check reads a file below it,
   so the exclusion stays visible here.
+- `known`: each public name `guards.dead-code.known` accepts as only the tests', where it is defined: the
+  `tests_only` check lists it no more, so the acceptance stays visible here. An entry that no longer holds (its file
+  defines no such name, or another file of the app names it) is listed as `weak` instead.
 - `init files`: each single file of the profile's `files` that is missing beside the app folder, or, when the entry
   says `pinned: true`, that differs from what `init` would write now. The files of a folder entry (a preset) are
   copied once and not watched.

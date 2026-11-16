@@ -22,9 +22,11 @@ from xarch.modules.rules.contract import (
     EnforcementView,
     ExcludedView,
     FindingView,
+    KnownName,
     NotADirectory,
+    Weak,
 )
-from xarch.modules.rules.domain.values import InitFile, Profile, Standing
+from xarch.modules.rules.domain.values import Class, Function, InitFile, Profile, SourceFile, Standing
 from xarch.profile_values.capabilities import Shortfall
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.placement import Repeat, Target
@@ -186,3 +188,22 @@ def test_a_key_whose_check_reads_a_fact_partly_is_listed_as_approximate_and_fail
     assert result.enforcement.approximate == (
         ApproximateView("parts.services.names", "class", "a class defined in a branch is not read", said),)
     assert result.enforcement.strict == (FindingView("approximate", said),)
+
+
+def test_a_public_name_the_profile_accepts_as_only_the_tests_is_named_in_the_enforcement_and_an_entry_that_no_longer_holds_is_weak():
+    rules = SourceFile("pkg/kernel/rules.py", ("kernel", "rules.py"), (), classes=(Class(3, "Rule"),),
+                       functions=(Function(9, "decide"),))
+    accepting = replace(entered("cli"), dead_code=True, tests_only=True,
+                        tests_only_known=("kernel/rules.py:Rule", "kernel/rules.py:gone"))
+    result = checked({}, FakeProfiles({"cli": accepting}), tree=FakeSourceTree(ROOT, {"kernel/rules.py": rules}))
+    decide = Weak("dead-code", "pkg/kernel/rules.py", 9, "decide is public, but no other file of the app names it: only "
+                                                       "the tests, or nothing, use it (guards.dead-code.tests_only)",
+                  "delete decide and what tests it alone, or make it private when its own file uses it, or use it where "
+                  "the app needs it")
+    gone = Weak("dead-code", "pkg/kernel/rules.py", 0, "kernel/rules.py defines no public class or top-level function "
+                                                     "gone, which guards.dead-code.known lists (guards.dead-code.known)",
+                "drop kernel/rules.py:gone from guards.dead-code.known, or name the file and the name as they are now")
+    assert result.enforcement == EnforcementView(
+        weak=(decide, gone), strict=(FindingView("weak", f"pkg/kernel/rules.py:9: {decide.message}"),
+                                     FindingView("weak", f"pkg/kernel/rules.py: {gone.message}")),
+        known=(KnownName("pkg/kernel/rules.py", 3, "Rule"),))

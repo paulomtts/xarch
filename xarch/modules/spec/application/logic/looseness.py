@@ -12,8 +12,9 @@ whole; a target added to a part's `must_import`, or the key dropped from a part 
 marked `untested`; a part dropped from a tier's `types_only`; a target added to a tier's `may_also_import` that no
 target of the bundled tier's covers; a tier no longer `apply_forbidden`; a name dropped from `testing.skips`; a `files`
 entry no longer `pinned`; a name the bundled profile `reserved` holds that the custom one does not; a part the bundled
-profile gives a `litmus` that the custom one redefines without one. Anything stricter, and what is
-compared in no way above (the layout, new parts, the guards' parameters, `fakes`), is not listed.
+profile gives a `litmus` that the custom one redefines without one; a public name `guards.dead-code.known` accepts as
+only the tests' that the bundled profile's does not. Anything stricter, and what is compared in no way above (the
+layout, new parts, the guards' other parameters, `fakes`), is not listed.
 """
 from __future__ import annotations
 
@@ -22,7 +23,7 @@ from collections.abc import Mapping
 from xarch.kernel.placement import EVERYTHING
 from xarch.modules.spec.domain.guards import KEY, ORDER
 from xarch.modules.spec.domain.published import LITMUS, Loosened, Origin
-from xarch.modules.spec.domain.values import Architecture
+from xarch.modules.spec.domain.values import Architecture, DeadCode
 from xarch.profile_values.placement import Target
 
 Looser = tuple[str, str, str]
@@ -85,7 +86,14 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
     found += [("files.pinned", "", "/".join(file.path)) for file in base.files
               if file.pinned and file.path in files and not files[file.path].pinned]
     found += [("reserved", "", name) for name in base.reserved if name not in custom.reserved]
+    accepted = _known(base)
+    found += [("known", "", entry) for entry in _known(custom) if entry not in accepted]
     return found
+
+
+def _known(architecture: Architecture) -> tuple[str, ...]:
+    """The public names the architecture accepts as only the tests' (guards.dead-code.known)."""
+    return next((guard.known for guard in architecture.guards if isinstance(guard, DeadCode)), ())
 
 
 def _covers(wider: Target, target: Target) -> bool:
@@ -143,6 +151,8 @@ def _sentence(key: str, part: str, what: str = "") -> str:
             return f"{what} is no longer counted as a skip (testing.skips)"
         case "files.pinned":
             return f"{what} is no longer pinned (files.{what}.pinned)"
+        case "known":
+            return f"the tests-only check accepts {what}, which only the tests use (guards.dead-code.known)"
     return f"{what} is no longer reserved (reserved.{what})"
 
 

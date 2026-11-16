@@ -117,3 +117,13 @@ def test_a_part_redefined_without_the_litmus_the_base_gives_it_is_looser_and_one
         Loosened("litmus", "api", "",
                  "api has no litmus, though the profile it is compared with gives it one (parts.api.litmus)"),)
     assert loosened(parsed(base), parsed(base)) == ()
+
+
+def test_a_public_name_accepted_as_only_the_tests_that_the_base_does_not_accept_is_looser():
+    def dead(*known: str) -> dict:
+        return covered(guards={"dead-code": {"tests_only": True, "known": list(known)}},
+                       fakes={"folder": "fakes", "for": ["store"]})
+    assert loosened(parsed(dead("shared/text.py:clean", "shared/wiring.py:build")), parsed(dead("shared/text.py:clean"))) == (
+        Loosened("known", "", "shared/wiring.py:build",
+                 "the tests-only check accepts shared/wiring.py:build, which only the tests use (guards.dead-code.known)"),)
+    assert loosened(parsed(dead("shared/text.py:clean")), parsed(dead("shared/text.py:clean", "shared/wiring.py:build"))) == ()

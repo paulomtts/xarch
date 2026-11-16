@@ -767,7 +767,8 @@ def _dead_code(spec: Any, fakes: Fakes | None, where: str, problems: list[str],
     if spec is None:
         spec = {}
     if not isinstance(spec, Mapping):
-        problems.append(f"{where}: must be a mapping {{untested: true|false, tests_only: true|false}}, or {{}}")
+        problems.append(f"{where}: must be a mapping {{untested: true|false, tests_only: true|false, known: "
+                        "[<file>:<name>, ...]}, or {}")
         return None
     count = len(problems)
     problems += ck.unknown_keys(spec, names_of(DEAD_CODE), where)
@@ -777,13 +778,37 @@ def _dead_code(spec: Any, fakes: Fakes | None, where: str, problems: list[str],
     tests_only = spec.get("tests_only", False)
     if not isinstance(tests_only, bool):
         problems.append(f"{where}.tests_only: must be true or false")
+    known = _known(spec["known"], tests_only is True, f"{where}.known", problems, language) if "known" in spec else ()
     if len(problems) != count:
         return None
     if fakes is None:
         problems.append(f"{where}: needs `fakes`: it reads the {language.interface_name}s of the parts `fakes.for` "
                         "names and the classes in `fakes.folder`")
         return None
-    return DeadCode(untested, tests_only)
+    return DeadCode(untested, tests_only, known)
+
+
+def _known(value: Any, tests_only: bool, where: str, problems: list[str], language: Language) -> tuple[str, ...]:
+    """The public names tests_only accepts as only the tests', each `<file below the app>:<name>`, each once."""
+    example = f"documents/rules{language.checked.extension}:clean"
+    if not tests_only:
+        problems.append(f"{where}: needs `tests_only: true`: it names the public names that check accepts as only the "
+                        "tests'")
+        return ()
+    if not isinstance(value, list):
+        problems.append(f"{where}: must be a list of <file below the app>:<name>, such as [{example}]")
+        return ()
+    found: list[str] = []
+    for item in value:
+        file, _, name = item.rpartition(":") if isinstance(item, str) else ("", "", "")
+        if not file or file.startswith("/") or not file.endswith(language.checked.extension) \
+                or not ck.is_name(name, language):
+            problems.append(f"{where}: {item!r} is not <file below the app>:<name>, such as {example}")
+        elif item in found:
+            problems.append(f"{where}: {item!r} is listed twice")
+        else:
+            found.append(item)
+    return tuple(found)
 
 
 def _substance(spec: Any, part: Part, declared: set[str], may_import: tuple[Target, ...],

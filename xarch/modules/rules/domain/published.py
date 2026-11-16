@@ -4,6 +4,8 @@ contract's own.
 
     At    a place in a file, as the enforcement section names a skip or a dynamic import; the command line shows it
     Weak  a check met to the letter only, which the enforcement section lists and the command line shows
+    KnownName a public name only the tests use that the profile accepts, which the enforcement section names and the
+          command line shows
     Slot  a slot of a check as a profile writes it, which `profile explain checks` shows
     Drift an init file as it stands against what `init` would write, which the enforcement section lists
     KeyFacts what the format says of a key the profile sets nowhere, which the command line shows
@@ -46,6 +48,15 @@ class Weak:
     line: int
     message: str
     fix: str = ""
+
+
+@dataclass(frozen=True)
+class KnownName:
+    """A public name only the tests use that the profile accepts as such (guards.dead-code.known): the file defining
+    it, as shown, its line, and the name."""
+    file: str
+    line: int
+    name: str
 
 
 @dataclass(frozen=True)

@@ -427,7 +427,7 @@ def test_the_new_guards_take_their_parameters_and_dead_code_needs_fakes():
     pytest.param({"no-duplicates": {"min_statements": True}},
                  ["layered.yaml: guards.no-duplicates.min_statements: must be a whole number of statements, at least "
                   "1, such as 4"], id="no-duplicates, a boolean"),
-    pytest.param({"dead-code": {"x": 1}}, ["layered.yaml: guards.dead-code: unknown key 'x': use tests_only, untested"],
+    pytest.param({"dead-code": {"x": 1}}, ["layered.yaml: guards.dead-code: unknown key 'x': use known, tests_only, untested"],
                  id="dead-code, a parameter"),
     pytest.param({"pass-through": {}}, ["layered.yaml: guards.pass-through: missing `parts`"],
                  id="pass-through, no parts"),

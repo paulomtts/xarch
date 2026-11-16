@@ -301,3 +301,13 @@ def test_dead_code_s_names_used_only_by_the_tests_are_said_when_they_are_listed(
     assert line.endswith("A public class or function of the app that no other file of the app names, so that only "
                          "the tests use it, or nothing does, is listed in the enforcement section, and fails `check "
                          "--strict` only.")
+
+
+def test_dead_code_s_names_accepted_as_only_the_tests_are_said_by_their_entries():
+    document = covered(guards={"dead-code": {"tests_only": True, "known": ["shared/text.py:clean", "shared/wiring.py:build"]}},
+                       fakes=FAKES)
+    lines = fill("{{guards}}", parsed(document), "layered.md", file_types=FILE_TYPES).splitlines()
+    line = next(line for line in lines if "dead-code" in line)
+    assert line.endswith("is listed in the enforcement section, and fails `check --strict` only. `shared/text.py:clean` "
+                         "and `shared/wiring.py:build` are accepted as only the tests' (`guards.dead-code.known`) and "
+                         "named in the enforcement section instead; an entry that no longer holds is listed.")

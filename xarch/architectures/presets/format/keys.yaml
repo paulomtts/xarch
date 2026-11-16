@@ -807,12 +807,15 @@ keys:
   guards.dead-code:
     meaning: no %interface% nothing names, no fake no test uses
     accepts: >-
-      {untested: true|false}: every port (a %interface% in a part `fakes.for` names) is named by another file of the
-      app, in code or an annotation, and every fake (a top-level class of the fakes folder whose name starts with
-      `prefix`) is named by a test outside that folder or by a fake that is itself used. The port's own file, package
-      files and the wiring (a part that may import `everything`) do not count; names are compared by their last step.
-      With `untested: true`, every file of a part that has a `tier` that no test of that tier reaches is also listed as
-      `weak`, failing `check --strict` only (see guards.dead-code.untested)
+      {untested: true|false, tests_only: true|false, known: [<file>:<name>, ...]}: every port (a %interface% in a part
+      `fakes.for` names) is named by another file of the app, in code or an annotation, and every fake (a top-level
+      class of the fakes folder whose name starts with `prefix`) is named by a test outside that folder or by a fake
+      that is itself used. The port's own file, package files and the wiring (a part that may import `everything`) do
+      not count; names are compared by their last step. With `untested: true`, every file of a part that has a `tier`
+      that no test of that tier reaches is also listed as `weak`, failing `check --strict` only (see
+      guards.dead-code.untested); with `tests_only: true`, every public name only the tests use, but those `known`
+      accepts, which the enforcement section names instead (see guards.dead-code.tests_only and
+      guards.dead-code.known)
     example: |
       <<two>>
       <<fakes>>
@@ -940,6 +943,19 @@ keys:
       <<fakes>>
       guards:
         dead-code: {tests_only: true}
+  guards.dead-code.known:
+    meaning: the public names only the tests use that the profile accepts
+    accepts: >-
+      a list of `<file below the app>:<name>`, each a public class or top-level function that file defines which only
+      the tests use: `tests_only` lists it no more, and every `xarch check` names it in its enforcement section instead.
+      An entry whose file defines no such name, or whose name another file of the app names, is itself listed as `weak`
+      and fails `check --strict` only. Needs `tests_only: true`. `profile check` lists each entry the bundled profile
+      does not as looser
+    example: |
+      <<two>>
+      <<fakes>>
+      guards:
+        dead-code: {tests_only: true, known: [documents/wiring%extension%:build_documents]}
   guards.pass-through.parts:
     meaning: the parts whose forwarding methods are listed
     accepts: "[<part>, ...]"

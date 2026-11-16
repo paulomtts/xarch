@@ -145,6 +145,7 @@ _KEYS: tuple[Key, ...] = (
 
     Key(DEAD_CODE, "untested", rules=("dead-code",)),
     Key(DEAD_CODE, "tests_only", rules=("dead-code",)),
+    Key(DEAD_CODE, "known", rules=("dead-code",)),
 
     Key(PASS_THROUGH, "parts", True, rules=("pass-through",)),
 
@@ -207,6 +208,7 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "guards.dead-code": ("class", "named"),
     "guards.dead-code.untested": (*_IMPORTS, "function.statements", "class", "class.exception", "function", "file"),
     "guards.dead-code.tests_only": ("class", "class.exception", "function", "named"),
+    "guards.dead-code.known": ("class", "class.exception", "function", "named"),
     "guards.pass-through": ("function", "function.forwards"),
     "guards.private-imports": _IMPORTS,
 }

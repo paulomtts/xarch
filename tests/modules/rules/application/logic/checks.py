@@ -6,12 +6,12 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.application.logic import expansion
+from xarch.modules.rules.application.logic import expansion, known
 from xarch.modules.rules.application.logic.engine import run
 from xarch.modules.rules.application.logic.facts import facts_of
 from xarch.modules.rules.domain.published import Weak
 from xarch.modules.rules.domain.rule import Rule
-from xarch.modules.rules.domain.values import Comment, Profile, SourceFile
+from xarch.modules.rules.domain.values import Accepting, Comment, Profile, SourceFile
 from xarch.profile_values.language import CheckedLanguage
 
 
@@ -108,6 +108,14 @@ def dead_code(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: P
 
 def only_by_tests(app: Iterable[SourceFile], profile: Profile) -> list[Violation | Weak]:
     return checked(expansion.book(profile)["tests-only"], profile, app)
+
+
+def accepting(app: Iterable[SourceFile], profile: Profile, root: str) -> Accepting:
+    """What the tests-only check lists of the app, the names the profile accepts as only the tests' taken out and the
+    entries that no longer hold added, as the check of an app holds them, on the same facts."""
+    rules = expansion.book(profile)["tests-only"]
+    facts = facts_of(app, (), profile, root, "", rules, ())
+    return known.accepting(run(rules, facts, profile), facts, profile)
 
 
 def untested(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile, root: str,

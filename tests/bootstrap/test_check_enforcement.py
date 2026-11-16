@@ -40,6 +40,7 @@ def test_the_json_enforcement_always_holds_every_key():
                     "baseline_off": ["closed-tree"], "looser": []},
         "ungoverned": {"count": 0, "folders": [], "files": []},
         "excluded": [],
+        "known": [],
         "init_files": [],
         "skipped": {"count": 0, "at": []},
         "dynamic": {"count": 0, "at": []},
@@ -141,3 +142,35 @@ def test_an_excluded_folder_is_never_read_is_listed_and_does_not_fail_strict(tmp
     document = json.loads(check("--profile", "arch/mine.yaml", "--format", "json").stdout)
     assert document["enforcement"]["excluded"] == [{"folder": "app/scripts", "reason": "example scripts the docs show"}]
     assert document["enforcement"]["ungoverned"]["count"] == 0
+
+
+def test_a_public_name_the_profile_accepts_as_only_the_tests_is_named_and_an_entry_that_no_longer_holds_fails_strict(tmp_path):
+    shutil.copytree(BUNDLED, tmp_path / "arch")
+    text = (BUNDLED / "web.yaml").read_text().replace(
+        "  dead-code: {untested: true}\n",
+        "  dead-code: {untested: true, tests_only: true, known: [kernel/ids.py:make, kernel/ids.py:gone]}\n")
+    (tmp_path / "arch/mine.yaml").write_text(text)
+    (tmp_path / "app/kernel/ids.py").write_text("def make():\n    return 1\n")
+    (tmp_path / "tests/kernel").mkdir(exist_ok=True)
+    (tmp_path / "tests/kernel/test_ids.py").write_text("from app.kernel.ids import make\n\n\ndef test_make():\n"
+                                                       "    assert make() == 1\n")
+    gone = ("app/kernel/ids.py: kernel/ids.py defines no public class or top-level function gone, which "
+            "guards.dead-code.known lists (guards.dead-code.known)")
+    result = check("--profile", "arch/mine.yaml", "--strict")
+    assert result.exit_code == 1
+    assert result.stdout.splitlines() == [
+        "OK: no violations", "enforcement",
+        "  profile:     arch/mine.yaml (custom; closest bundled: web)",
+        "    guards off:  closed-tree",
+        "    known:       the tests-only check accepts kernel/ids.py:make, which only the tests use "
+        "(guards.dead-code.known)",
+        "    known:       the tests-only check accepts kernel/ids.py:gone, which only the tests use "
+        "(guards.dead-code.known)",
+        "  known:       app/kernel/ids.py:1: make is public and only the tests use it, which the profile accepts "
+        "(guards.dead-code.known)",
+        f"  weak:        {gone}",
+        "      fix: drop kernel/ids.py:gone from guards.dead-code.known, or name the file and the name as they are now",
+        "strict:      1 finding fails the check",
+        f"    weak: {gone}"]
+    document = json.loads(check("--profile", "arch/mine.yaml", "--format", "json").stdout)
+    assert document["enforcement"]["known"] == [{"file": "app/kernel/ids.py", "line": 1, "name": "make"}]

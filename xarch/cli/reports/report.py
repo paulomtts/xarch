@@ -82,6 +82,8 @@ def _enforcement_lines(origin: Origin, state: EnforcementView, strict: bool,
         lines.append(_line(LABELS[UNGOVERNED], f"{_count(count, f'{state.language or "source"} file')} outside every part "
                                          f"({', '.join(state.ungoverned_folders)})", 2))
     lines += [_line("excluded", f"{item.folder}/ ({item.reason})", 2) for item in state.excluded]
+    lines += [_line("known", f"{item.file}:{item.line}: {item.name} is public and only the tests use it, which the "
+                             "profile accepts (guards.dead-code.known)", 2) for item in state.known]
     lines += [_line(LABELS[INIT_FILES], f"{'/'.join(item.path)} is {item.state}", 2) for item in state.init_files]
     if state.skipped:
         lines.append(_line(LABELS[SKIPPED], f"{_count(len(state.skipped), 'skip')} ({_places(state.skipped)})", 2))
@@ -129,6 +131,7 @@ def _enforcement_document(origin: Origin, state: EnforcementView) -> dict[str, A
         "ungoverned": {"count": len(state.ungoverned), "folders": list(state.ungoverned_folders),
                        "files": list(state.ungoverned)},
         "excluded": [{"folder": item.folder, "reason": item.reason} for item in state.excluded],
+        "known": [{"file": item.file, "line": item.line, "name": item.name} for item in state.known],
         "init_files": [{"file": "/".join(item.path), "state": item.state} for item in state.init_files],
         "skipped": {"count": len(state.skipped), "at": _at(state.skipped)},
         "dynamic": {"count": len(state.dynamic), "at": _at(state.dynamic)},

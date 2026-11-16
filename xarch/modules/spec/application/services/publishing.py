@@ -94,5 +94,6 @@ def _guards_view(guards: tuple[Guard, ...]) -> GuardsView:
         dead_code=any(isinstance(g, DeadCode) for g in guards),
         untested=any(isinstance(g, DeadCode) and g.untested for g in guards),
         tests_only=any(isinstance(g, DeadCode) and g.tests_only for g in guards),
+        tests_only_known=next((g.known for g in guards if isinstance(g, DeadCode)), ()),
         pass_through=next((g.parts for g in guards if isinstance(g, PassThrough)), ()),
         private_imports=any(isinstance(g, PrivateImports) for g in guards))
