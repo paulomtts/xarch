@@ -75,12 +75,12 @@ class SourceCheckService:
         app = self._tree.read(root, [p for p in paths if governed.governed(rules, p)])
         table = rules.scenarios.table if rules.scenarios is not None else None
         test_files = self._tree.read(tests, self._tree.paths(tests, extension), table) if tests is not None else []
-        tests_root = tests.name if tests is not None else ""
+        tests_root = tests.name if tests is not None else None
         shown = root.name
         unread = [SourceFile("/".join((shown, *p)), p, ()) for p in paths if not governed.governed(rules, p)]
         book = expansion.book(rules)
         own = tuple(check.rule for check in rules.checks)
-        facts = facts_of(app, test_files, rules, package, tests_root,
+        facts = facts_of(app, test_files, rules, package, tests_root or "",
                          [*(r for group in book.values() for r in group), *own], unread)
         app = [f for f in app if f.error is None]
         test_files = [f for f in test_files if f.error is None]
@@ -92,7 +92,7 @@ class SourceCheckService:
         found += run(book["types-only tiers"], facts, rules)
         found += run(book["package-only"], facts, rules)
         found += scenarios.violations(app, test_files, rules)
-        found += stand_ins.violations(app, test_files, rules, package, tests_root if tests is not None else None)
+        found += stand_ins.violations(app, test_files, rules, package, tests_root)
         found += run(book["must-import"], facts, rules)
         found += run(book["must-import tiers"], facts, rules)
         found += run(book["types-only parts"], facts, rules)
@@ -109,7 +109,7 @@ class SourceCheckService:
         written = run(own, facts, rules)
         found += [item for item in written if isinstance(item, Violation)]
         state = self._enforcement(root, package, profile, rules, app, test_files,
-                                  governed.ungoverned(paths, rules, shown), tests_root if tests is not None else None,
+                                  governed.ungoverned(paths, rules, shown), tests_root,
                                   run(book["holds"], facts, rules), run(book["untested"], facts, rules),
                                   [*run(book["pass-through"], facts, rules), *written])
         state = replace(state, checks=tuple((rule.id, read(rule, facts, rules)) for rule in own))
