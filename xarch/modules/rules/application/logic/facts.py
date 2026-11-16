@@ -103,8 +103,8 @@ def facts_of(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Pr
                ((f, *dotted(f.path, marks)) for f in unread)]
     placed += [_tested(file, steps, package, profile) for file, steps, package in tests]
     bare = Facts((), root, tests_root, known, known_tests,
-                 frozenset(r.steps for r in placed if r.test and r.is_test and r.file.error is None),
-                 {r.steps: r.tier for r in placed if not r.test and r.tier and r.file.error is None})
+                 frozenset(r.steps for r in placed if r.in_tests and r.is_test and r.file.error is None),
+                 {r.steps: r.tier for r in placed if not r.in_tests and r.tier and r.file.error is None})
     rules = tuple(rules) if rules is not None else None
     read = tuple(replace(r, facts={kind: _facts(kind, r, profile, cache, defined, bare)
                                    for kind in (KINDS if rules is None else _read(r, rules, bare, profile))})
@@ -191,7 +191,7 @@ def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: 
                          for c in file.calls if c.func in defined.classes)
         case "function-reference":
             return tuple(_references(file, profile, cache, defined))
-        case "import-into-app" if read.test:
+        case "import-into-app" if read.in_tests:
             return tuple(Fact("import-into-app", line, target=target, at=_placed(profile, cache, target))
                          for line, target in targets((i for i in file.imports if not i.relative), (), facts.known,
                                                      root))
@@ -200,7 +200,7 @@ def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: 
                          for line, target, name in named_targets(file.imports, package, facts.known, root))
         case "import-into-tests":
             return tuple(Fact("import-into-tests", line, target=target) for line, target in
-                         targets(file.imports, package, facts.known_tests, facts.tests_root)) if read.test else ()
+                         targets(file.imports, package, facts.known_tests, facts.tests_root)) if read.in_tests else ()
     raise ValueError(f"no kind of fact is named {kind!r}")
 
 
@@ -230,7 +230,7 @@ def _placed(profile: Profile, cache: Placements, path: tuple[str, ...]) -> Place
 
 def _class(cls: Class, file: SourceFile, read: Read, profile: Profile, defined: Defined,
            ports: dict[str, Class]) -> frozenset[str]:
-    exception = (read.steps, cls.name) in defined.exceptions and not read.test
+    exception = (read.steps, cls.name) in defined.exceptions and not read.in_tests
     record = all(profile.language.is_special(m.name) for m in cls.methods) and any(
         cls.name in f.returns_named for f in file.functions if not f.owner)
     return frozenset(n for n, on in (("exception", exception), ("record", record),
@@ -249,7 +249,7 @@ def _function(function: Function) -> Fact:
 
 def _file(file: SourceFile, read: Read, defined: Defined) -> frozenset[str]:
     code = any(f.real_statements for f in file.functions)
-    raising = bool(file.classes) and not read.test and all(
+    raising = bool(file.classes) and not read.in_tests and all(
         (read.steps, c.name) in defined.exceptions for c in file.classes) and not any(not f.owner for f in file.functions)
     return frozenset(n for n, on in (("no-statements", not code), ("exceptions-only", raising)) if on)
 

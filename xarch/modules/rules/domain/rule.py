@@ -508,15 +508,15 @@ class Fact(NamedTuple):
 @dataclass(frozen=True)
 class Read:
     """A file as the rules read it: the file as parsed; its steps below its root as the language names it, and
-    whether it is the file that stands for its folder; whether it lies below the tests root or the app's; where it
-    sits (place: in the app, None when it is a test or ungoverned); its tier (a test's own, or for a file of the app
-    the tier whose tests cover its part, "" for none); for a test, its instance, own folder and the parts it mirrors,
-    whether its name is a test's and whether it is a fake; and its facts by kind, each in the order the file says
-    them."""
+    whether it is the file that stands for its folder; in_tests, whether it lies below the tests root rather than the
+    app's; where it sits (place: in the app, None when it is below the tests root or ungoverned); its tier (a test's
+    own, or for a file of the app the tier whose tests cover its part, "" for none); for a file below the tests root,
+    its instance, own folder and the parts it mirrors, is_test, whether its name is a test file's, and whether it is a
+    fake; and its facts by kind, each in the order the file says them."""
     file: SourceFile
     steps: tuple[str, ...]
     package: bool
-    test: bool
+    in_tests: bool
     place: Place | None = None
     tier: str = ""
     instance: str | None = None

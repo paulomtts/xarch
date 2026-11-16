@@ -83,7 +83,7 @@ def _permitted(match: Match, found: Found, facts: Facts, profile: Profile) -> tu
         return _test_code(found, facts, profile)
     if fact.at is None:
         return None
-    if not read.test:
+    if not read.in_tests:
         src = read.place
         return fact.target if src is not None and src.part is not None and any(
             reaches(t, src, fact.at, fact.name) for t in targets_of(profile, src.part)) else None

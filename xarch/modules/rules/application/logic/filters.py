@@ -21,11 +21,11 @@ Asked = Callable[[Found, Facts, Profile, str], bool]
 
 
 def in_scope(scope: Scope, read: Read, facts: Facts, profile: Profile) -> bool:
-    if scope.files != {False: APP, True: TESTS}[read.test] and scope.files != ALL:
+    if scope.files != {False: APP, True: TESTS}[read.in_tests] and scope.files != ALL:
         return False
-    if scope.part == STRUCTURE and (read.test or read.place is None or read.place.part is not None):
+    if scope.part == STRUCTURE and (read.in_tests or read.place is None or read.place.part is not None):
         return False
-    if scope.part not in (ANY, STRUCTURE) and not (scope.part in read.mirrors if read.test else
+    if scope.part not in (ANY, STRUCTURE) and not (scope.part in read.mirrors if read.in_tests else
                                                    read.place is not None and read.place.part == scope.part):
         return False
     if scope.tier and read.tier != scope.tier:
