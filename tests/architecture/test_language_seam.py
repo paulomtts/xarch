@@ -255,3 +255,38 @@ def test_the_reader_and_the_platform_are_where_the_language_may_be_named(tmp_pat
     (tmp_path / "other.py").write_text('A = "Python"\n')
     pattern, names = language_words()
     assert [file for file, _, _ in leaks(tmp_path, pattern, names)] == ["other.py"]
+
+
+ENGINE = ("modules/rules/domain/rule.py", "modules/rules/domain/vocabulary.py",
+          *(f"modules/rules/application/logic/{name}.py" for name in
+            ("facts", "filters", "targets", "sentences", "engine", "expansion")))
+"""The engine of rules as data: the vocabulary, the rule, and the files that read, filter, match, say and expand."""
+SYNTAX = {"signature", "positional", "keyword_only", "star", "double", "decorated", "args", "keywords", "callee"}
+"""The fields of the reader's records that say how the language writes a function and a call: its parameters by kind,
+its decorators, the arguments of its one call. What they mean (a method that only forwards) is the reader's to say."""
+SAID = {"marks", "interface", "is_special", "is_public", "is_private", "comment", "directives", "shebang", "encoding",
+        "title", "dynamic"}
+"""What the engine may read of the language: what its data file says (see LanguageView)."""
+
+
+def read_attributes(path: Path) -> set[str]:
+    return {node.attr for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))) if isinstance(node, ast.Attribute)}
+
+
+def language_reads(path: Path) -> set[str]:
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    return {node.attr for node in ast.walk(tree) if isinstance(node, ast.Attribute)
+            and isinstance(node.value, ast.Attribute) and node.value.attr == "language"}
+
+
+@pytest.mark.parametrize("file", ENGINE)
+def test_the_engine_holds_no_fact_of_the_language_but_what_its_data_file_says(file):
+    assert read_attributes(SRC / file) & SYNTAX == set()
+    assert language_reads(SRC / file) <= SAID
+
+
+def test_the_guard_would_catch_the_engine_reading_how_a_function_is_written(tmp_path):
+    (tmp_path / "facts.py").write_text("def f(function, profile):\n    return function.signature.star or "
+                                       "profile.language.call\n")
+    assert (read_attributes(tmp_path / "facts.py") & SYNTAX, language_reads(tmp_path / "facts.py") - SAID) == (
+        {"signature", "star"}, {"call"})

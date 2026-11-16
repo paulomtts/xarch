@@ -1,0 +1,37 @@
+"""The vocabulary holds together: every name once, every field a word reads one some kind carries and the table of
+fields says, every fact a kind needs one the language's data file can supply, every filter that guards a field one
+that exists, and every word applies to some kind of fact."""
+import pytest
+
+from xarch.kernel.logic.capabilities import FACTS
+from xarch.modules.rules.domain.vocabulary import FIELDS, FILTERS, KINDS, QUANTIFIERS, TARGETS, VARIABLES
+
+WORDS = {"kind": KINDS, "filter": FILTERS, "target": TARGETS, "variable": VARIABLES, "quantifier": QUANTIFIERS}
+
+
+@pytest.mark.parametrize("table", WORDS.values(), ids=WORDS.keys())
+def test_every_name_is_in_its_table_once(table):
+    names = [word.name for word in table]
+    assert len(names) == len(set(names))
+
+
+def test_every_field_a_kind_carries_or_a_word_reads_is_one_the_table_of_fields_says():
+    carried = {name for kind in KINDS for name in (*kind.fields, *kind.sometimes)}
+    read = {name for table in (FILTERS, TARGETS, VARIABLES) for word in table for name in word.reads}
+    assert carried | read <= set(FIELDS)
+    assert read <= carried
+
+
+def test_every_fact_a_kind_needs_is_one_a_language_can_supply():
+    assert {need for kind in KINDS for need in (*kind.needs, *(n for ns in kind.field_needs.values() for n in ns))} <= set(
+        FACTS)
+    assert all(set(kind.field_needs) <= {*kind.fields, *kind.sometimes} for kind in KINDS)
+
+
+def test_a_field_carried_only_sometimes_is_guarded_by_a_filter_that_exists():
+    assert {guard for kind in KINDS for guard in kind.sometimes.values()} <= {word.name for word in FILTERS}
+
+
+@pytest.mark.parametrize("word", [*FILTERS, *TARGETS, *VARIABLES], ids=lambda word: word.name)
+def test_every_word_applies_to_some_kind_of_fact(word):
+    assert any(word.applies_to(kind) for kind in KINDS)

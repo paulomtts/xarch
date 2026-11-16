@@ -448,8 +448,9 @@ def _variable(slot: str, variable, rule: Rule, kinds: list[Kind], side: str, gua
     problems += _sided(slot, f"{{{name}}}", variable.side, side, strict=True)
     missing = [kind.name for kind in kinds if not variable.applies_to(kind)]
     if missing:
-        problems.append(f"{slot}: {{{name}}} prints nothing for {_and(missing)}: it reads {_or(variable.reads)}; it "
-                        f"applies to {_and(k.name for k in KINDS if variable.applies_to(k))}")
+        reads = f"it reads {_or(variable.reads)}; " if variable.reads else ""
+        problems.append(f"{slot}: {{{name}}} prints nothing for {_and(missing)}: {reads}it applies to "
+                        f"{_and(k.name for k in KINDS if variable.applies_to(k))}")
     for kind in kinds:
         guard = variable.needs_field(kind) if variable.applies_to(kind) else ""
         if guard and guard not in guards:
