@@ -24,6 +24,17 @@ def test_a_target_added_to_a_rule_is_shown_as_written(target, shown):
     assert looser(parsed(custom), parsed(stricter)) == [("may_import", "api", shown)]
 
 
+@pytest.mark.parametrize("target", [
+    pytest.param("shared/text", id="a folder below a part the bundled profile allows narrows it"),
+    pytest.param("shared:*Text", id="a name pattern on a part the bundled profile allows narrows it"),
+    pytest.param("store/sql:Sql*", id="a folder and a name pattern below an allowed part narrow it both"),
+])
+def test_a_target_below_one_the_bundled_profile_allows_is_not_looser(target):
+    custom = layered()
+    custom["parts"]["service"]["may_import"] = ["store", "shared", target]
+    assert looser(parsed(custom), parsed(layered())) == []
+
+
 def test_the_bundled_profile_a_profile_says_it_is_based_on_wins_over_the_one_sharing_most_parts():
     full = parsed(layered())
     bundled = {"alpha": full, "beta": replace(full, parts={"api": full.parts["api"]})}

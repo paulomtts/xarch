@@ -1,5 +1,7 @@
-"""Findings at a place in a file tree. No business meaning: what was found is in the message, what to do in the fix. A
-violation fails the check."""
+"""Findings at a place in a file tree, and the catalogue of the check ids they name. A violation carries no business
+meaning of its own: what was found is in the message, what to do in the fix, and it fails the check. RULES and OWN_ID
+are xarch's: its catalogue of check ids, and how a profile writes the id of a check of its own. They sit here, beside
+the Violation that validates them, because both spec and rules need them and spec cannot import rules."""
 from __future__ import annotations
 
 import re

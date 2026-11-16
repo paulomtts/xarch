@@ -4,7 +4,9 @@ looser than the one it resembles.
 The closest bundled profile is the one a profile says it is based on, else the one sharing the most part names, the
 first by name on a tie; one sharing none resembles no bundled profile. Looser is compared only where both have the
 same name (a part, a tier, a file), and only in these ways, each one entry: a target added to a part's `may_import`
-(a name pattern added to a target narrows it, and is not looser); an
+that no target of the bundled one covers (a target covers what lies below it: the same part and scope, its path a
+start of the added one's, and no name pattern or the same one; so a name pattern added to a target, or a folder below
+it, narrows it, and is not looser); an
 outside package added to a part's `libraries`, or `libraries` dropped as a whole; a target added to a part's
 `must_import`, or the key dropped from a part that has it; a name the bundled `forbidden` list of a part holds that no
 entry of the custom list covers (`time` covers `time.time`); a part newly marked `untested`; a part dropped from a
@@ -16,7 +18,6 @@ compared in no way above (the layout, new parts, the guards' parameters, `fakes`
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import replace
 
 from xarch.kernel.placement import EVERYTHING
 from xarch.modules.spec.domain.guards import GUARDS
@@ -49,7 +50,7 @@ def looser(custom: Architecture, base: Architecture) -> list[Looser]:
     for name in shared:
         before = base.rules.get(name, ())
         found += [("may_import", name, _shown(t)) for t in custom.rules.get(name, ())
-                  if t not in before and replace(t, names="") not in before]
+                  if not any(_covers(b, t) for b in before)]
     if base.libraries is not None:
         if custom.libraries is None:
             found.append(("libraries", "", ""))
@@ -83,6 +84,14 @@ def looser(custom: Architecture, base: Architecture) -> list[Looser]:
               if file.pinned and file.path in files and not files[file.path].pinned]
     found += [("reserved", "", name) for name in base.reserved if name not in custom.reserved]
     return found
+
+
+def _covers(wider: Target, target: Target) -> bool:
+    """Whether a target of the bundled profile allows everything the added one does."""
+    if wider.part == EVERYTHING:
+        return True
+    return (wider.part == target.part and wider.scope == target.scope
+            and target.sub[:len(wider.sub)] == wider.sub and wider.names in ("", target.names))
 
 
 def origin_of(location: str, architecture: Architecture, bundled: bool,

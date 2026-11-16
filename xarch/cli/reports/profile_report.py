@@ -222,7 +222,8 @@ def _compared(checked: ProfileChecked) -> list[str]:
         return []
     if not origin.looser:
         return [f"  compared: no looser than {origin.closest}"]
-    return [f"  compared: looser than {origin.closest} (information, never a failure):",
+    return [f"  compared: looser than {origin.closest} (information; a part left without the litmus it gives "
+            "fails `check --strict`):",
             *(f"    {item.sentence}" for item in origin.looser)]
 
 
