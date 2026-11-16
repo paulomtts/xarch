@@ -545,29 +545,48 @@ def test_a_function_records_its_parameters_by_kind_and_whether_it_is_decorated(t
     assert (found["c"].signature, found["c"].decorated) == (Signature(("self", "k"), ("only",)), True)
 
 
-GET = ("self", "repo", "get")
-
-
-@pytest.mark.parametrize("body, call", [
-    pytest.param("return self.repo.get(id)", SoleCall(GET, ("id",)), id="a return of one call"),
-    pytest.param("self.repo.save(id)", SoleCall(("self", "repo", "save"), ("id",)), id="a bare call"),
-    pytest.param("return await self.repo.get(id)", SoleCall(GET, ("id",)), id="an awaited call"),
-    pytest.param("return self.repo.get(id=id)", SoleCall(GET, (), (("id", "id"),)), id="a keyword with a bare name"),
-    pytest.param("return self.a.b.get(id)", SoleCall(("self", "a", "b", "get"), ("id",)), id="a deeper chain"),
-    pytest.param('"""Get it."""\n        return self.repo.get(id)', SoleCall(GET, ("id",)), id="a docstring is no statement"),
-    pytest.param("return self.repo.get(id, 1)", SoleCall(GET, ("id", "")), id="an argument that is no bare name"),
-    pytest.param("return self.repo.get(str(id))", SoleCall(GET, ("",)), id="a transformed argument"),
-    pytest.param("return self.repo.get(self.repo.size(), id)", SoleCall(GET, ("", "id")),
-                 id="a call inside the arguments is no bare name"),
-    pytest.param("return self.repo.get(id).name", SoleCall(GET, ("id",), then=("name",)),
-                 id="a read of the result is recorded after the call"),
-    pytest.param("return self.repo.get(id) or None", None, id="a changed result is no one call"),
-    pytest.param("x = self.repo.get(id)\n        return x", None, id="two statements"),
-    pytest.param("if id:\n            return self.repo.get(id)", None, id="a condition"),
+@pytest.mark.parametrize("body, callee", [
+    pytest.param("return self.repo.get(id)", "self.repo.get", id="a return of one call on a collaborator"),
+    pytest.param("self.repo.save(id)", "self.repo.save", id="a bare call"),
+    pytest.param("return await self.repo.get(id)", "self.repo.get", id="an awaited call"),
+    pytest.param("return self.repo.get(id=id)", "self.repo.get", id="a keyword with the parameter's value"),
+    pytest.param("return self.repo.get(other=id)", "self.repo.get", id="a keyword of another name"),
+    pytest.param("return self.a.b.get(id)", "self.a.b.get", id="a deeper chain"),
+    pytest.param('"""Get it."""\n        return self.repo.get(id)', "self.repo.get", id="a docstring is no statement"),
+    pytest.param("return self.repo.get(id, 1)", "", id="an extra argument"),
+    pytest.param("return self.repo.get(id + 1)", "", id="a changed argument"),
+    pytest.param("return self.repo.get(str(id))", "", id="a transformed argument"),
+    pytest.param("return self.repo.get()", "", id="a parameter that is not passed"),
+    pytest.param("return self.repo.get(id, id)", "", id="a parameter passed twice"),
+    pytest.param("return self.repo.get(id) or None", "", id="a changed result"),
+    pytest.param("x = self.repo.get(id)\n        return x", "", id="two statements"),
+    pytest.param("if id:\n            return self.repo.get(id)", "", id="a condition"),
+    pytest.param("return self.helper(id)", "", id="a method of the object itself, no collaborator"),
+    pytest.param("return other.repo.get(id)", "", id="a chain that does not start at the first parameter"),
+    pytest.param("return self.repo.get(id).name", "self.repo.get", id="a read of the result"),
+    pytest.param("return self.repo.get(id, 1).name", "", id="a read of the result of a call that does not forward"),
+    pytest.param("return self.repo.get(self.repo.size(), id)", "", id="a call inside the arguments"),
 ])
-def test_the_one_call_a_method_s_whole_body_makes_is_recorded_as_names(tmp_path, body, call):
-    found = functions_of(tmp_path, f"class S:\n    async def get(self, id):\n        {body}\n")["get"]
-    assert found.sole_call == call
+def test_a_method_forwards_when_its_one_call_passes_each_parameter_once_to_a_collaborator(tmp_path, body, callee):
+    assert functions_of(tmp_path, f"class S:\n    async def get(self, id):\n        {body}\n")["get"].forwards == callee
+
+
+@pytest.mark.parametrize("text, callee", [
+    pytest.param("class S:\n    def a(self, *args, **kwargs):\n        return self.r.a(*args, **kwargs)\n", "self.r.a",
+                 id="starred parameters passed on starred"),
+    pytest.param("class S:\n    def a(self, *args):\n        return self.r.a(args)\n", "",
+                 id="a starred parameter passed as one argument"),
+    pytest.param("class S:\n    @property\n    def a(self):\n        return self.r.a()\n", "", id="a decorated method"),
+    pytest.param("class S:\n    def __a__(self):\n        return self.r.size()\n", "", id="a special method"),
+    pytest.param("class S:\n    def a(self, k, *, only):\n        return self.r.a(k, only=only)\n", "self.r.a",
+                 id="a keyword-only parameter passed by keyword"),
+    pytest.param("class S:\n    @staticmethod\n    def a():\n        return self.r.a()\n", "",
+                 id="no first parameter to hold it"),
+    pytest.param("def a(self):\n    return self.r.a()\n", "", id="a function of no class forwards nothing"),
+])
+def test_a_decorator_a_special_name_or_a_starred_parameter_passed_whole_decides_too(tmp_path, text, callee):
+    (function,) = functions_of(tmp_path, text).values()
+    assert function.forwards == callee
 
 
 def test_a_file_names_every_name_it_mentions_annotations_and_string_annotations_included(tmp_path):
