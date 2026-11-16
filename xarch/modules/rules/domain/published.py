@@ -6,6 +6,8 @@ contract's own.
     Weak  a check met to the letter only, which the enforcement section lists and the command line shows
     KnownName a public name only the tests use that the profile accepts, which the enforcement section names and the
           command line shows
+    Translation a pair of classes no-twins accepts as a translation, which the enforcement section names and the
+          command line shows
     Slot  a slot of a check as a profile writes it, which `profile explain checks` shows
     Drift an init file as it stands against what `init` would write, which the enforcement section lists
     KeyFacts what the format says of a key the profile sets nowhere, which the command line shows
@@ -57,6 +59,18 @@ class KnownName:
     file: str
     line: int
     name: str
+
+
+@dataclass(frozen=True)
+class Translation:
+    """A pair of classes no-twins does not report because a function of a part guards.no-twins.translated lists
+    translates one into the other: the file of the function, as shown, its line and its name (`<class>.<name>` for a
+    method), the class its file builds and the other class, each by its name."""
+    file: str
+    line: int
+    function: str
+    built: str
+    other: str
 
 
 @dataclass(frozen=True)

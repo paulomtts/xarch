@@ -204,11 +204,11 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "guards.no-duplicates": ("function", "function.statements", "function.shape"),
     "guards.no-twins": ("class", "class.fields"),
     "guards.no-twins.min_renamed": ("class", "class.fields", "class.types"),
-    "guards.no-twins.translated": ("class", "class.fields", "call", *_IMPORTS),
+    "guards.no-twins.translated": ("class", "class.fields", "call", "function", "function.named", *_IMPORTS),
     "guards.dead-code": ("class", "named"),
     "guards.dead-code.untested": (*_IMPORTS, "function.statements", "class", "class.exception", "function", "file"),
     "guards.dead-code.tests_only": ("class", "class.exception", "function", "named"),
-    "guards.dead-code.known": ("class", "class.exception", "function", "named"),
+    "guards.dead-code.known": ("class", "class.exception", "function", "function.named", "constant", "named", *_IMPORTS),
     "guards.pass-through": ("function", "function.forwards"),
     "guards.private-imports": _IMPORTS,
 }

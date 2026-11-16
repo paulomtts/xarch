@@ -41,6 +41,7 @@ def test_the_json_enforcement_always_holds_every_key():
         "ungoverned": {"count": 0, "folders": [], "files": []},
         "excluded": [],
         "known": [],
+        "translated": [],
         "init_files": [],
         "skipped": {"count": 0, "at": []},
         "dynamic": {"count": 0, "at": []},

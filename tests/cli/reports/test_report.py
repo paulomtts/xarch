@@ -16,6 +16,7 @@ from xarch.modules.rules.contract import (
     FindingView,
     KnownName,
     OwnCheckView,
+    Translation,
     Weak,
 )
 from xarch.modules.spec.contract import Loosened, Origin
@@ -179,6 +180,16 @@ def test_a_part_without_the_litmus_its_base_gives_it_is_said_under_the_profile_a
 
 def test_every_section_of_the_enforcement_has_a_label():
     assert set(LABELS) == set(SECTIONS)
+
+
+def test_a_pair_no_twins_accepts_as_a_translation_has_a_line_of_its_own_and_is_an_item_of_the_json_document():
+    state = EnforcementView(translated=(Translation("app/adapters/spec.py", 7, "SpecProfiles.known", "Known", "KnownProfiles"),))
+    assert lines(state=state) == [*OK, "  translated:  app/adapters/spec.py:7: SpecProfiles.known names Known, which its "
+                                       "file builds, and KnownProfiles: no-twins accepts the pair as a translation "
+                                       "(guards.no-twins.translated)"]
+    document = json.loads(json_document("web", Origin("web"), AppChecked((), state, {}, True), False))
+    assert document["enforcement"]["translated"] == [{"file": "app/adapters/spec.py", "line": 7, "function": "SpecProfiles.known",
+                                                      "built": "Known", "other": "KnownProfiles"}]
 
 
 def test_a_public_name_the_profile_accepts_as_only_the_tests_has_a_line_of_its_own_and_is_an_item_of_the_json_document():

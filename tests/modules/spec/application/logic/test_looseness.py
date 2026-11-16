@@ -127,3 +127,12 @@ def test_a_public_name_accepted_as_only_the_tests_that_the_base_does_not_accept_
         Loosened("known", "", "shared/wiring.py:build",
                  "the tests-only check accepts shared/wiring.py:build as a name only the tests use (guards.dead-code.known)"),)
     assert loosened(parsed(dead("shared/text.py:clean")), parsed(dead("shared/text.py:clean", "shared/wiring.py:build"))) == ()
+
+
+def test_a_part_whose_translations_no_twins_accepts_that_the_base_does_not_list_is_looser():
+    def translated(*parts: str) -> dict:
+        return covered(guards={"no-twins": {"translated": list(parts)}})
+    assert loosened(parsed(translated("api", "store")), parsed(translated("api"))) == (
+        Loosened("translated", "store", "",
+                 "no-twins accepts each pair of classes a function of store translates (guards.no-twins.translated)"),)
+    assert loosened(parsed(translated("api")), parsed(translated("api", "store"))) == ()

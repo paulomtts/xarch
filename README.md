@@ -242,7 +242,7 @@ that switches or configures each (`-` for none: the rule is always on):
 | `stand-ins` | a read port without a fake, or a mock without a spec or with a read port's | `guards.stand-ins`, `fakes` |
 | `closed-tree` | a Python file of the app that lies in no part | `guards.closed-tree` |
 | `no-duplicates` | two functions or methods of the app with the same code | `guards.no-duplicates` |
-| `no-twins` | two public classes in parts of different names that declare the same fields in the same order: one type written twice; with `min_renamed`, also a copy that renamed a field, and with `min_subset`, one that kept at least half of the other's fields in its order; with `translated`, a pair one of whose classes a file of a listed part builds while importing the other's file is no twin | `guards.no-twins` |
+| `no-twins` | two public classes in parts of different names that declare the same fields in the same order: one type written twice; with `min_renamed`, also a copy that renamed a field, and with `min_subset`, one that kept at least half of the other's fields in its order; with `translated`, a pair is no twin when a file of a listed part builds one of the two through an import, imports the other (from the file defining it, or from one that takes it from there), and holds one function that names both; a class a file builds where it defines it is built through no import, and translates nothing; each pair so accepted is named in the enforcement section | `guards.no-twins` |
 | `dead-code` | a port no other file names, a fake no test uses; with `untested`, a file no test of its tier reaches, and with `tests_only`, a public class or top-level function no other file of the app names (only the tests, or nothing, use it), but those `known` accepts, which the enforcement section names instead, each listed as `weak` only; an entry of `known` whose file defines no such name, whose name another file of the app names, or that no test names in its code (a string of a test does not count), is listed as `weak` too | `guards.dead-code`, `fakes` |
 | `pass-through` | a method that only forwards its arguments to a collaborator, or returns an attribute of what that call answers; never a violation: listed as `weak`, and fails only `--strict` | `guards.pass-through` |
 | `holds` | a public function at the top level of a part that holds classes, or a class (whatever its name) in one that holds functions; listed as `weak`, and fails only `--strict` | `parts.holds` |
@@ -298,6 +298,7 @@ and rule ids may be added, but an existing one keeps its name and meaning.
     "ungoverned": {"count": 0, "folders": [], "files": []},
     "excluded": [],
     "known": [],
+    "translated": [],
     "init_files": [],
     "skipped": {"count": 0, "at": []},
     "dynamic": {"count": 0, "at": []},
@@ -323,9 +324,12 @@ how many facts it read in the project.
   the profile writes itself.
 - `enforcement`: every key always present, empty when there is nothing to report. `profile.looser` items are
   `{"key", "part", "what", "sentence"}` with `key` one of `may_import`, `libraries`, `forbidden`, `untested`,
-  `types_only`, `may_also_import`, `apply_forbidden`, `testing.skips`, `files.pinned`, `must_import`, `litmus`, `known` (the `sentence` names the full address, such as
-  `parts.kernel.may_import`); `excluded` items `{"folder", "reason"}`; `known` items `{"file", "line", "name"}`, each
-  public name `guards.dead-code.known` accepts as only the tests'; `init_files` items `{"file", "state"}`, `state` `missing` or
+  `types_only`, `may_also_import`, `apply_forbidden`, `testing.skips`, `files.pinned`, `reserved`, `must_import`, `litmus`, `known`,
+  `translated` (the `sentence` names the full address, such as `parts.kernel.may_import`); `excluded` items
+  `{"folder", "reason"}`; `known` items `{"file", "line", "name"}`, each public name `guards.dead-code.known` accepts
+  as only the tests'; `translated` items `{"file", "line", "function", "built", "other"}`, each pair of classes
+  `no-twins` accepts as a translation (`guards.no-twins.translated`): the function that names both, where it is, the
+  class its file builds and the other; `init_files` items `{"file", "state"}`, `state` `missing` or
   `changed`; `skipped.at` and `dynamic.at` items `{"file", "line"}`; `weak` items `{"rule", "file", "line",
   "message", "fix"}` (`fix` is `null` for a weak check that has none); `approximate` items `{"key", "fact", "note"}`;
   `strict_failures` items `{"key", "detail"}`, `key` one of `guards_off`, `ungoverned`, `init_files`,
@@ -365,7 +369,8 @@ enforcement
   name of its `forbidden` list no entry covers any more, a part newly `untested`, a part dropped from a tier's
   `types_only`, a target added to a tier's `may_also_import`, a tier no longer `apply_forbidden`, a name dropped from `testing.skips`, a `files` entry no longer
   `pinned`, a target added to a part's `must_import` or the key dropped, a part redefined without the `litmus` the
-  other gives it, a public name `guards.dead-code.known` accepts that the other's does not. A profile that says `based_on: <bundled name>` is compared with that one, else with the one sharing the
+  other gives it, a public name `guards.dead-code.known` accepts that the other's does not, a part
+  `guards.no-twins.translated` lists that the other's does not. A profile that says `based_on: <bundled name>` is compared with that one, else with the one sharing the
   most part names.
   Stricter differences, new parts, the layout and the guards' other parameters are not compared. This comparison is
   information: the profile defines the architecture, so how it differs from another is no finding for `--strict`, but
@@ -374,6 +379,8 @@ enforcement
   which no check reads, counted with their top folders.
 - `excluded`: each folder the profile's `excluded` key leaves out, with its reason; no check reads a file below it,
   so the exclusion stays visible here.
+- `translated`: each pair of classes `no-twins` accepts as a translation (`guards.no-twins.translated`), naming the
+  function that translates and where it is: the check does not report the pair, so the acceptance stays visible here.
 - `known`: each public name `guards.dead-code.known` accepts as only the tests', where it is defined: a test names
   it and no other file of the app does, the `tests_only` check lists it no more, so the acceptance stays visible
   here. An entry that no longer holds (its file defines no such name, another file of the app names it, or no test

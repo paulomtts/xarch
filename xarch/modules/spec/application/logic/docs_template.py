@@ -509,15 +509,19 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
         case PrivateImports():
             return ("`private-imports`: no file of the app or its tests imports a name that starts with "
                     f"`{architecture.language.checked.private}` from another file of them.")
-        case NoTwins(least, renamed, subset):
+        case NoTwins(least, renamed, subset, translated):
             copies = [said for minimum, said in (
                 (renamed, f"renames some of its fields (from {renamed} fields: more than half of its names kept in "
                           "place, and each renamed field's type)"),
                 (subset, f"keeps at least half of its fields in its order (from {subset} fields)")) if minimum]
             also = f" Nor is one a copy of another that {', or that '.join(copies)}." if copies else ""
+            excused = (" A pair is no twin when a file of "
+                       f"{_or([f'`{docs_name(architecture, architecture.parts[p])}`' for p in translated])} "
+                       "builds one of the two through an import, imports the other, and holds one function that names "
+                       "both: a translation, which every check names in its enforcement section." if translated else "")
             return (f"`no-twins`: no two public classes in parts of different names declare the same fields in the "
                     f"same order, when each declares at least {least}; types and defaults aside, tests not read."
-                    f"{also}")
+                    f"{also}{excused}")
         case PassThrough(parts):
             shown = _and([f"`{docs_name(architecture, architecture.parts[p])}`" for p in parts])
             return (f"`pass-through`: a method of {shown} whose whole body forwards to one call on a collaborator, or "

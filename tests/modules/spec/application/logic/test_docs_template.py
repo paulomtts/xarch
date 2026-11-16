@@ -266,6 +266,10 @@ def test_the_guards_name_every_repeating_folder():
                  " Nor is one a copy of another that renames some of its fields (from 4 fields: more than half of its "
                  "names kept in place, and each renamed field's type), or that keeps at least half of its fields in its "
                  "order (from 3 fields).", id="with the renamed and the partial copies"),
+    pytest.param({"min_fields": 3, "translated": ["api", "store"]},
+                 " A pair is no twin when a file of `api.py` or `store/` builds one of the two "
+                 "through an import, imports the other, and holds one function that names both: a translation, which "
+                 "every check names in its enforcement section.", id="with the parts whose translations it accepts"),
 ])
 def test_the_no_twins_line_says_the_cases_the_profile_switches_on(guard, said):
     lines = [line for line in filled("{{guards}}", guards={"no-twins": guard}).splitlines() if "`no-twins`" in line]

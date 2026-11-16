@@ -267,7 +267,7 @@ class NoDuplicates:
 class NoTwins:
     """The guard no-twins: the fewest fields a class needs to count as a twin of another; the fewest a renamed copy
     needs, and the fewest a copy of part of another's fields needs (None: that case is off); and the parts whose files
-    translate one module's values into another's, so that a pair one of them builds from the other is no twin."""
+    translate a value of one part into a value of another, so that a pair one of them translates is no twin."""
     min_fields: int = 3
     min_renamed: int | None = None
     min_subset: int | None = None

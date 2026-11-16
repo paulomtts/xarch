@@ -787,7 +787,8 @@ keys:
   guards.no-twins:
     meaning: no two classes in different parts with the same fields
     accepts: >-
-      {min_fields: <number>}: no two public classes of the app (never its tests), defined at the top level of files of
+      {min_fields: <number>, min_renamed: <number>, min_subset: <number>, translated: [<part>, ...]}: no two public
+      classes of the app (never its tests), defined at the top level of files of
       parts with different names, declare the same fields in the same order: the names their bodies annotate, types and
       defaults aside, class variables left out. A class counts when it declares at least min_fields of them
       (%min_fields% when left out) and is no %interface%; two classes of the same part, in one instance of a repeating
@@ -799,8 +800,9 @@ keys:
       type (as written, a twin's name read as the name of the class it copies), unless it is the only renamed one and at
       least min_renamed others agree. With min_subset, also a partial copy: one class's field names (at least
       min_subset, and at least half of the other's) are some of the other's, in its order. Each such pair is reported
-      once, at the later of the two, naming the earlier; a case left out is off. With `translated`, a pair one of whose
-      classes a file of a listed part builds while importing the other's file is not a twin
+      once, at the later of the two, naming the earlier; a case left out is off. With `translated`, a pair is no twin
+      when a file of a listed part builds one of the two through an import, imports the other, and holds one function
+      that names both; each such pair is named in the enforcement section of every `xarch check`
     example: |
       guards:
         no-twins: {min_fields: 3}
@@ -903,10 +905,14 @@ keys:
       guards:
         no-twins: {min_fields: 3, min_subset: 3}
   guards.no-twins.translated:
-    meaning: the parts whose files translate one module's values into another's
+    meaning: the parts whose files translate a value of one part into a value of another
     accepts: >-
-      a list of part names: a pair is no twin when a file of one of them builds one of the two classes and imports the
-      file that defines the other
+      a list of part names: a pair is no twin when a file of one of them builds one of the two classes through an
+      import, imports the other (from the file that defines it, or from one that takes it from there), and holds one
+      function that names both, in a parameter's annotation, its return annotation or its body. A file that imports the
+      other's file for another class, whose functions name the two apart, or that builds a class it defines itself (a
+      call through no import) translates nothing. Every `xarch check` names each pair so accepted, and the function, in
+      its enforcement section; `profile check` lists each part the bundled profile does not as looser
     example: |
       parts:
         documents:

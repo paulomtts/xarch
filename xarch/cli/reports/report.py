@@ -84,6 +84,9 @@ def _enforcement_lines(origin: Origin, state: EnforcementView, strict: bool,
     lines += [_line("excluded", f"{item.folder}/ ({item.reason})", 2) for item in state.excluded]
     lines += [_line("known", f"{item.file}:{item.line}: {item.name} is public, a test names it and no other file "
                              "of the app does, which the profile accepts (guards.dead-code.known)", 2) for item in state.known]
+    lines += [_line("translated", f"{item.file}:{item.line}: {item.function} names {item.built}, which its file "
+                                  f"builds, and {item.other}: no-twins accepts the pair as a translation "
+                                  "(guards.no-twins.translated)", 2) for item in state.translated]
     lines += [_line(LABELS[INIT_FILES], f"{'/'.join(item.path)} is {item.state}", 2) for item in state.init_files]
     if state.skipped:
         lines.append(_line(LABELS[SKIPPED], f"{_count(len(state.skipped), 'skip')} ({_places(state.skipped)})", 2))
@@ -132,6 +135,8 @@ def _enforcement_document(origin: Origin, state: EnforcementView) -> dict[str, A
                        "files": list(state.ungoverned)},
         "excluded": [{"folder": item.folder, "reason": item.reason} for item in state.excluded],
         "known": [{"file": item.file, "line": item.line, "name": item.name} for item in state.known],
+        "translated": [{"file": item.file, "line": item.line, "function": item.function, "built": item.built,
+                        "other": item.other} for item in state.translated],
         "init_files": [{"file": "/".join(item.path), "state": item.state} for item in state.init_files],
         "skipped": {"count": len(state.skipped), "at": _at(state.skipped)},
         "dynamic": {"count": len(state.dynamic), "at": _at(state.dynamic)},

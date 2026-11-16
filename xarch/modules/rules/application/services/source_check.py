@@ -51,7 +51,7 @@ class SourceCheckService:
                                                   enforcement.approximation(a.address, a.fact, a.note or ""))
                                   for a in state.approximate),
             tuple(OwnCheckView(name, read, enforcement.reading(name, read)) for name, read in state.checks),
-            state.known)
+            state.known, state.translated)
 
     def check(self, root: Path, package: str, profile: str, tests: Path | None = None) -> Checked:
         """The violations below root and below tests, each given in full with its links followed, and the state of the
@@ -101,7 +101,8 @@ class SourceCheckService:
         found += run(book["built-by"], facts, rules)
         found += run(book["private-imports"], facts, rules)
         found += duplicates.violations(app, rules)
-        found += twins.violations(app, rules, package)
+        twinned = twins.checked(app, rules, package)
+        found += twinned.violations
         found += shared.violations(app, rules, package)
         found += run(book["dead-code"], facts, rules)
         found += run(book["no-comments"], facts, rules)
@@ -114,7 +115,8 @@ class SourceCheckService:
                                   [*run(book["holds"], facts, rules), *run(book["immutable"], facts, rules)],
                                   run(book["untested"], facts, rules),
                                   [*run(book["pass-through"], facts, rules), *only.listed, *written])
-        state = replace(state, checks=tuple((rule.id, read(rule, facts, rules)) for rule in own), known=only.known)
+        state = replace(state, checks=tuple((rule.id, read(rule, facts, rules)) for rule in own), known=only.known,
+                        translated=twinned.translated)
         return Checked(tuple(found), replace(state, strict=enforcement.strict_findings(state)), rules)
 
     def _enforcement(self, resolved: Path, package: str, location: str, rules: Profile, app: list[SourceFile],

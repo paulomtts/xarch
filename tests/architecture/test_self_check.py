@@ -43,6 +43,8 @@ def test_xarch_passes_its_own_check_in_strict_mode_leaving_nothing_unenforced():
     assert [item["folder"] for item in document["enforcement"]["excluded"]] == ["xarch/architectures/examples"]
     assert document["enforcement"]["profile"]["guards_off"] == []
     assert [item["name"] for item in document["enforcement"]["known"]] == ["load_architecture"]
+    assert [(item["function"], item["built"], item["other"]) for item in document["enforcement"]["translated"]] == [
+        ("SpecProfiles.known", "Known", "KnownProfiles")]
 
 
 def test_xarch_accepts_as_only_the_tests_exactly_the_loader_its_tests_load_profiles_with():

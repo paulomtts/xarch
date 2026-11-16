@@ -27,10 +27,12 @@ from xarch.modules.rules.domain.published import (
     Resemblance,
     Reviewed,
     Slot,
+    Translation,
     Weak,
 )
 
-__all__ = ["At", "Weak", "KnownName", "Slot", "KeyFacts", "SECTIONS", "GUARDS_OFF", "UNGOVERNED", "INIT_FILES", "SKIPPED", "DYNAMIC",
+__all__ = ["At", "Weak", "KnownName", "Translation", "Slot", "KeyFacts", "SECTIONS", "GUARDS_OFF", "UNGOVERNED",
+           "INIT_FILES", "SKIPPED", "DYNAMIC",
            "WEAK", "APPROXIMATE", "VACUOUS", "UNPLACED", "ChecksCannotRun", "CheckRefused", "OwnCheckView",
            "Drift", "FindingView", "ExcludedView", "EnforcementView", "ReachView", "NearestView", "TierInfoView",
            "PartShown", "CoveringTest", "Untested", "InPart", "InStructure", "Ungoverned", "InTests", "Support", "Fake",
@@ -83,8 +85,8 @@ class EnforcementView:
     files missing or changed; the skipped tests and dynamic imports; the checks met to the letter only; the findings
     `--strict` fails on; the folders the profile excludes; how the language of the app is named; the keys whose
     check reads a fact the language supplies only partly, each in words; the checks the profile writes itself,
-    each with how many facts it read in the project; and the public names only the tests use that the profile
-    accepts."""
+    each with how many facts it read in the project; the public names only the tests use that the profile
+    accepts; and the pairs of classes no-twins accepts as translations."""
     ungoverned: tuple[str, ...] = ()
     ungoverned_folders: tuple[str, ...] = ()
     init_files: tuple[Drift, ...] = ()
@@ -97,6 +99,7 @@ class EnforcementView:
     approximate: tuple[ApproximateView, ...] = ()
     checks: tuple[OwnCheckView, ...] = ()
     known: tuple[KnownName, ...] = ()
+    translated: tuple[Translation, ...] = ()
 
 
 @dataclass(frozen=True)

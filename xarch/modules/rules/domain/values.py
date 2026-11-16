@@ -9,7 +9,7 @@ from xarch.kernel.logic.placement import repeat_of
 from xarch.kernel.placement import Place
 from xarch.kernel.source import Import, Unparsable
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.domain.published import At, Drift, KnownName, Weak
+from xarch.modules.rules.domain.published import At, Drift, KnownName, Translation, Weak
 from xarch.profile_values.capabilities import Shortfall
 from xarch.profile_values.checks import WrittenCheck
 from xarch.profile_values.excluded import Excluded
@@ -406,7 +406,8 @@ class Enforcement:
     project (one that read none passes for want of anything to check, and fails `--strict`); unplaced, each part
     the profile redefines without the litmus the bundled profile it is compared with gives it, as said; and known, the
     public names only the tests use that the profile accepts (guards.dead-code.known), which the tests-only check
-    then does not list."""
+    then does not list; and translated, the pairs of classes no-twins accepts as translations
+    (guards.no-twins.translated), which it then does not report."""
     guards_off: tuple[str, ...] = ()
     baseline_off: tuple[str, ...] = ()
     ungoverned: tuple[str, ...] = ()
@@ -422,6 +423,15 @@ class Enforcement:
     checks: tuple[tuple[str, int], ...] = ()
     unplaced: tuple[str, ...] = ()
     known: tuple[KnownName, ...] = ()
+    translated: tuple[Translation, ...] = ()
+
+
+@dataclass(frozen=True)
+class Twins:
+    """What the no-twins check found: the violations, and the pairs it accepts as translations, which it does not
+    report."""
+    violations: tuple[Violation, ...]
+    translated: tuple[Translation, ...]
 
 
 @dataclass(frozen=True)
