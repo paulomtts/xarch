@@ -1,10 +1,12 @@
 """Where a file found at a path given to be read sits, and the files a folder stands for."""
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
 from tests.modules.rules.builders import PYTHON
 from xarch.modules.rules.application.logic.sources import below, sited, walked
+from xarch.modules.rules.domain.published import EXCLUDED, IN_NO_PART, IN_PART, IN_PROJECT, IN_TESTS, NOT_SOURCE, NOT_THERE
 from xarch.modules.rules.domain.values import Profile, Resolved, Sited
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.placement import Repeat
@@ -19,18 +21,19 @@ def found(within: str, path: str) -> Resolved:
 
 
 @pytest.mark.parametrize("where, then", [
-    pytest.param(found("app", "modules/docs/domain/values.py"), Sited("domain", "docs", False, True),
-                 id="a file of the app in a part, with its instance"),
-    pytest.param(found("app", "kernel/ids.py"), Sited("kernel", "", False, True),
-                 id="a file of a part outside every repeating folder has no instance"),
-    pytest.param(found("app", "stray/run.py"), Sited("", "", False, True), id="a file of the app in no part"),
-    pytest.param(found("app", "examples/demo.py"), Sited("", "", True, True),
-                 id="a file below an excluded folder lies in no part"),
-    pytest.param(found("app", "kernel/notes.txt"), Sited("kernel", "", False, False),
-                 id="a file of another ending is no source file"),
-    pytest.param(found("tests", "kernel/ids.py"), Sited("", "", False, True), id="a test lies in no part of the app"),
+    pytest.param(found("app", "modules/docs/domain/values.py"), Sited(IN_PART, "domain"), id="a file of the app in a part"),
+    pytest.param(replace(found("app", "kernel/ids.py"), exists=False), Sited(NOT_THERE, ""),
+                 id="a file that is not there, first"),
+    pytest.param(found("app", "kernel/notes.txt"), Sited(NOT_SOURCE, ""), id="a file of another ending is no source file"),
+    pytest.param(found("tests", "kernel/ids.py"), Sited(IN_TESTS, ""), id="a file below the tests root"),
+    pytest.param(found("project", "scripts/run.py"), Sited(IN_PROJECT, ""),
+                 id="a file of the project outside the app and the tests"),
+    pytest.param(found("app", "examples/demo.py"), Sited(EXCLUDED, ""), id="a file below an excluded folder"),
+    pytest.param(found("app", "stray/run.py"), Sited(IN_NO_PART, ""), id="a file of the app in no part"),
+    pytest.param(found("app", "modules/docs/__init__.py"), Sited(IN_NO_PART, ""),
+                 id="a package file of the structure lies in no part"),
 ])
-def test_where_a_file_sits(where, then):
+def test_where_a_file_lies(where, then):
     assert sited(PROFILE, where) == then
 
 

@@ -1,8 +1,9 @@
-"""Where each file found at a path given to be read sits: the files a folder stands for, and the part, the instance and
-the exclusion of each, by the same places `where` and the checks use."""
+"""Where each file found at a path given to be read lies: the files a folder stands for, and where each lies and its
+part, by the same places `where` and the checks use."""
 from __future__ import annotations
 
 from xarch.modules.rules.application.logic.places import excluded_by, file_place
+from xarch.modules.rules.domain.published import EXCLUDED, IN_NO_PART, IN_PART, IN_PROJECT, IN_TESTS, NOT_SOURCE, NOT_THERE
 from xarch.modules.rules.domain.values import Profile, Resolved, Sited
 
 
@@ -13,15 +14,18 @@ def below(folder: Resolved, steps: tuple[str, ...]) -> Resolved:
 
 
 def sited(profile: Profile, found: Resolved) -> Sited:
-    """Where a file sits: only a file of the app lies in a part or below an excluded folder."""
-    source = found.path.name.endswith(profile.language.extension)
+    """Where a file lies, the first of these that holds: not there, no source file of the app's language, below the
+    tests root, in the project outside the app, below a folder the profile excludes, in no part, else in its part."""
+    if not found.exists:
+        return Sited(NOT_THERE, "")
+    if not found.path.name.endswith(profile.language.extension):
+        return Sited(NOT_SOURCE, "")
     if found.within != "app":
-        return Sited("", "", False, source)
+        return Sited(IN_TESTS if found.within == "tests" else IN_PROJECT, "")
     if excluded_by(profile, found.steps) is not None:
-        return Sited("", "", True, source)
+        return Sited(EXCLUDED, "")
     where = file_place(profile, found.steps)
-    return Sited(where.part or "" if where is not None else "", where.instance or "" if where is not None else "",
-                 False, source)
+    return Sited(IN_PART, where.part) if where is not None and where.part is not None else Sited(IN_NO_PART, "")
 
 
 def walked(profile: Profile, folder: Resolved, paths: list[tuple[str, ...]]) -> list[Resolved]:

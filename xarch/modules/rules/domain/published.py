@@ -17,7 +17,8 @@ contract's own.
     Reviewed what checking a profile that loads found before its own checks are held, which the command line shows
     Piece one piece of a source file as the reader cuts it, which ReaderController hands out
 
-and CHECKS, the address of how a check is written, and the keys of the enforcement's sections (SECTIONS).
+and CHECKS, the address of how a check is written, the keys of the enforcement's sections (SECTIONS), where a file
+found to be read lies, and the kinds of a piece.
 """
 from __future__ import annotations
 
@@ -131,6 +132,12 @@ class Reviewed:
     files: int
     resemblance: Resemblance
 
+
+IN_PART, NOT_THERE, NOT_SOURCE, IN_TESTS, IN_PROJECT, EXCLUDED, IN_NO_PART = (
+    "part", "missing", "other", "tests", "project", "excluded", "ungoverned")
+"""Where a file found at a path given to be read lies (SourceRead.lies): in a part of the app; nowhere, it is not
+there; it is no source file of the app's language; below the tests root; in the project, outside the app and the
+tests; below a folder the profile excludes; in the app, in no part."""
 
 FUNCTION = "function"
 """The kind of a piece that is a function at the top level of its file."""

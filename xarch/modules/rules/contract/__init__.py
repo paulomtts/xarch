@@ -12,8 +12,15 @@ from xarch.kernel.violations import Violation
 from xarch.modules.rules.domain.published import (
     APPROXIMATE,
     DYNAMIC,
+    EXCLUDED,
     GUARDS_OFF,
+    IN_NO_PART,
+    IN_PART,
+    IN_PROJECT,
+    IN_TESTS,
     INIT_FILES,
+    NOT_SOURCE,
+    NOT_THERE,
     SECTIONS,
     SKIPPED,
     UNGOVERNED,
@@ -43,7 +50,8 @@ __all__ = ["At", "Weak", "Piece", "KnownName", "Translation", "Slot", "KeyFacts"
            "WordLine", "CategoryShown", "ChecksShown", "WordsShown", "FieldShown", "WordShown", "UnknownWords",
            "WordsResult", "ExplainRule", "RuleShown", "KeyUnset", "NoRuleShown", "RuleResult", "ApproximateView",
            "Loosened", "Resemblance", "Reviewed", "CheckProfile", "ChecksHeld", "ProfileHeld", "ProfileUnloaded",
-           "NoProfileChosen", "ProfileCheckResult", "ReadSources", "SourceRead", "SourcesRead", "SourcesResult"]
+           "NoProfileChosen", "ProfileCheckResult", "ReadSources", "SourceRead", "SourcesRead", "SourcesResult",
+           "IN_PART", "NOT_THERE", "NOT_SOURCE", "IN_TESTS", "IN_PROJECT", "EXCLUDED", "IN_NO_PART"]
 
 
 @dataclass(frozen=True)
@@ -325,18 +333,12 @@ class ReadSources:
 
 @dataclass(frozen=True)
 class SourceRead:
-    """One file found: how it is shown (below the folder holding the app), the folder it lies in (app, tests or
-    project), whether it exists, whether it is a source file of the app's language, the part it lies in ("" for none)
-    and the instance of its repeating folder ("" for none), and whether it lies below a folder the profile excludes.
-    A source file of the app that exists and lies in a part, not excluded, is read: its text, its imports, and how it
-    fails to parse (None: it parses); any other holds no text."""
+    """One file found: how it is shown (below the folder holding the app), where it lies (IN_PART, NOT_THERE,
+    NOT_SOURCE, IN_TESTS, IN_PROJECT, EXCLUDED or IN_NO_PART) and the part it lies in ("" for none). A file in a part
+    is read: its text, its imports, and how it fails to parse (None: it parses); any other holds no text."""
     shown: str
-    within: str
-    exists: bool
-    source: bool
-    part: str
-    instance: str
-    excluded: bool
+    lies: str
+    part: str = ""
     text: str = ""
     imports: tuple[Import, ...] = ()
     error: Unparsable | None = None

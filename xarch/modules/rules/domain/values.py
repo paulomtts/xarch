@@ -466,13 +466,10 @@ class Resolved:
 
 @dataclass(frozen=True)
 class Sited:
-    """A file where the profile places it, read for a module that reads the app's code: the part ("" for none), the
-    instance of its repeating folder ("" for none), whether it lies below a folder the profile excludes, and whether
-    it is a source file of the app's language."""
+    """A file where the profile places it, read for a module that reads the app's code: where it lies (one of the
+    places of published, IN_PART to NO_PART) and the part it lies in ("" for none)."""
+    lies: str
     part: str
-    instance: str
-    excluded: bool
-    source: bool
 
 
 @dataclass(frozen=True)

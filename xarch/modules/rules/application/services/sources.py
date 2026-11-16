@@ -7,7 +7,7 @@ from xarch.modules.rules.application.logic.sources import sited, walked
 from xarch.modules.rules.application.logic.where import candidates, resolve
 from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.application.ports.source_tree import SourceTree
-from xarch.modules.rules.contract import ReadSources, SourceRead, SourcesRead
+from xarch.modules.rules.contract import IN_PART, ReadSources, SourceRead, SourcesRead
 from xarch.modules.rules.domain.errors import OutsideProject
 from xarch.modules.rules.domain.values import Profile, Resolved
 
@@ -41,11 +41,9 @@ class SourcesService:
 
     def _read(self, profile: Profile, found: Resolved, app: Path) -> SourceRead:
         place = sited(profile, found)
-        if not (found.exists and place.source and place.part and not place.excluded):
-            return SourceRead(found.shown, found.within, found.exists, place.source, place.part, place.instance,
-                              place.excluded)
+        if place.lies != IN_PART:
+            return SourceRead(found.shown, place.lies, place.part)
         read = self._tree.read(app, [found.steps])[0]
         unreadable = read.error is not None and read.error.unreadable
         text = "" if unreadable else self._tree.text(found.path) or ""
-        return SourceRead(found.shown, found.within, True, True, place.part, place.instance, False, text, read.imports,
-                          read.error)
+        return SourceRead(found.shown, place.lies, place.part, text, read.imports, read.error)

@@ -10,7 +10,21 @@ from tests.fakes.profiles import FakeProfiles
 from tests.modules.rules.application.helpers import controller
 from tests.modules.rules.builders import PYTHON
 from xarch.kernel.source import Import, Unparsable
-from xarch.modules.rules.contract import CheckRefused, ChecksCannotRun, Outside, ReadSources, SourceRead, SourcesRead
+from xarch.modules.rules.contract import (
+    EXCLUDED,
+    IN_NO_PART,
+    IN_PART,
+    IN_PROJECT,
+    IN_TESTS,
+    NOT_SOURCE,
+    NOT_THERE,
+    CheckRefused,
+    ChecksCannotRun,
+    Outside,
+    ReadSources,
+    SourceRead,
+    SourcesRead,
+)
 from xarch.modules.rules.domain.values import PartInfo, Profile, SourceFile
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.placement import Repeat, Target
@@ -28,12 +42,10 @@ FILES = {"kernel/ids.py": [], "modules/docs/domain/values.py": [IDS], "stray/run
          "kernel/broken.py": SourceFile("", (), (), error=Unparsable(2, "invalid syntax"))}
 TEXTS = {APP / "kernel/ids.py": "class Id: ...\n", APP / "modules/docs/domain/values.py": "from app.kernel.ids import Id\n",
          APP / "kernel/broken.py": "def (\n", Path("/src/README.md"): "# readme\n"}
-VALUES = SourceRead("app/modules/docs/domain/values.py", "app", True, True, "domain", "docs", False,
-                    "from app.kernel.ids import Id\n", (IDS,))
-IDS_READ = SourceRead("app/kernel/ids.py", "app", True, True, "kernel", "", False, "class Id: ...\n")
-BROKEN = SourceRead("app/kernel/broken.py", "app", True, True, "kernel", "", False, "def (\n",
-                    error=Unparsable(2, "invalid syntax"))
-STRAY = SourceRead("app/stray/run.py", "app", True, True, "", "", False)
+VALUES = SourceRead("app/modules/docs/domain/values.py", IN_PART, "domain", "from app.kernel.ids import Id\n", (IDS,))
+IDS_READ = SourceRead("app/kernel/ids.py", IN_PART, "kernel", "class Id: ...\n")
+BROKEN = SourceRead("app/kernel/broken.py", IN_PART, "kernel", "def (\n", error=Unparsable(2, "invalid syntax"))
+STRAY = SourceRead("app/stray/run.py", IN_NO_PART)
 
 
 def sources(command):
@@ -66,13 +78,13 @@ def test_sources(given, when, then):
     pytest.param(("app/kernel/broken.py",), (BROKEN,), id="a file that does not parse holds why"),
     pytest.param(("app/stray/run.py",), (STRAY,), id="a file in no part is not read"),
     pytest.param(("app/examples/demo.py",),
-                 (SourceRead("app/examples/demo.py", "app", True, True, "", "", True),),
+                 (SourceRead("app/examples/demo.py", EXCLUDED),),
                  id="a file below an excluded folder, named, is not read and says so"),
-    pytest.param(("tests/test_ids.py",), (SourceRead("tests/test_ids.py", "tests", True, True, "", "", False),),
+    pytest.param(("tests/test_ids.py",), (SourceRead("tests/test_ids.py", IN_TESTS),),
                  id="a test is not read"),
-    pytest.param(("README.md",), (SourceRead("README.md", "project", True, False, "", "", False),),
-                 id="a file of the project outside the app is no source file of the app"),
-    pytest.param(("app/kernel/gone.py",), (SourceRead("app/kernel/gone.py", "app", False, True, "kernel", "", False),),
+    pytest.param(("README.md",), (SourceRead("README.md", NOT_SOURCE),),
+                 id="a file of another ending is no source file, wherever it lies"),
+    pytest.param(("app/kernel/gone.py",), (SourceRead("app/kernel/gone.py", NOT_THERE),),
                  id="a path that is not there is not read"),
     pytest.param(("app",), (BROKEN, IDS_READ, VALUES, STRAY),
                  id="a folder stands for its source files but those below an excluded folder"),
@@ -83,6 +95,12 @@ def test_each_file_found_is_placed_and_only_a_file_in_a_part_is_read(paths, file
     assert sources(read(*paths)) == SourcesRead(files)
 
 
+def test_a_source_file_of_the_project_outside_the_app_and_its_tests_lies_in_the_project():
+    tree = FakeSourceTree(APP, {}, texts={Path("/src/scripts/run.py"): "x = 1\n"})
+    assert controller(tree, FakeProfiles({"p": PROFILE})).sources(read("scripts/run.py")) == SourcesRead(
+        (SourceRead("scripts/run.py", IN_PROJECT),))
+
+
 def test_a_file_given_from_the_app_folder_is_found_as_from_the_project_root():
     assert sources(read("kernel/ids.py")) == SourcesRead((IDS_READ,))
 
@@ -91,4 +109,4 @@ def test_a_file_below_a_folder_the_profile_excludes_is_left_out_of_a_folder_only
     including = replace(PROFILE, excluded=())
     tree = FakeSourceTree(APP, {"examples/demo.py": []}, texts={})
     assert controller(tree, FakeProfiles({"p": including})).sources(read("app")) == SourcesRead(
-        (SourceRead("app/examples/demo.py", "app", True, True, "", "", False),))
+        (SourceRead("app/examples/demo.py", IN_NO_PART),))
