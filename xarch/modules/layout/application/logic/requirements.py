@@ -12,7 +12,7 @@ from xarch.kernel.violations import Violation
 from xarch.modules.layout.domain.structure import Naming, Repeated, Requirement
 
 
-def is_instance_name(name: str, naming: Naming) -> bool:
+def _is_instance_name(name: str, naming: Naming) -> bool:
     """Whether a folder found in a repeating folder's parent is an instance of it, not a cache or private folder: its
     name is a name of the language, and no private one."""
     return is_public_name(name, naming.names, naming.private)
@@ -26,7 +26,7 @@ def requirements(root: str, top_level: Iterable[tuple[str, ...]], repeated: Iter
     required += [Requirement(root, path, False, "/".join(path)) for path in top_files]
     for each in repeated:
         parts = list(each.parts)
-        for name in sorted(n for n in each.instances if is_instance_name(n, naming)):
+        for name in sorted(n for n in each.instances if _is_instance_name(n, naming)):
             owner = "/".join((root, *each.root, name))
             for path, is_dir in parts:
                 shown = "/".join(path) + ("/" if is_dir else "")

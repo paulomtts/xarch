@@ -8,7 +8,7 @@ from xarch.kernel.violations import Violation
 from xarch.modules.layout.domain.structure import Naming
 
 
-def hidden(path: tuple[str, ...], naming: Naming) -> bool:
+def _hidden(path: tuple[str, ...], naming: Naming) -> bool:
     """A folder whose name, or the name of a folder above it, is private in the language (such as one of compiled
     files), which mirrors nothing and is never checked."""
     return any(is_private_name(step, naming.private) for step in path)
@@ -22,7 +22,7 @@ def unmirrored(tests: str, root: str, each_root: tuple[str, ...], folders: Itera
     roots in violations."""
     found: list[Violation] = []
     for folder in sorted(folders):
-        if hidden(folder, naming) or folder in app:
+        if _hidden(folder, naming) or folder in app:
             continue
         mirrored = "/".join((root, *each_root, *folder))
         found.append(Violation("/".join((tests, *each_root, *folder)), 0,

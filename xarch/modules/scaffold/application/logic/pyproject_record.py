@@ -42,20 +42,20 @@ def pyproject_target(found: Path | None, base: Path, absolute: Path) -> Path:
 def recorded_text(text: str | None, location: str, app: str | None) -> str | None:
     """The text with the profile at location recorded, then the app folder after it when app is not None: each only if
     the table does not already hold it, so that no value is ever rewritten; None when there is nothing to record."""
-    edited = with_profile(text, location)
+    edited = _with_profile(text, location)
     if app is None:
         return edited
-    changed = with_setting(edited if edited is not None else text, "app", app, after="profile")
+    changed = _with_setting(edited if edited is not None else text, "app", app, after="profile")
     return changed if changed is not None else edited
 
 
-def with_profile(text: str | None, location: str) -> str | None:
+def _with_profile(text: str | None, location: str) -> str | None:
     """The text with `profile = "<location>"` in its [tool.xarch] table, or None if the table already sets one or
     the file defines the table in a way this cannot extend safely."""
-    return with_setting(text, "profile", location)
+    return _with_setting(text, "profile", location)
 
 
-def with_setting(text: str | None, key: str, value: str, after: str | None = None) -> str | None:
+def _with_setting(text: str | None, key: str, value: str, after: str | None = None) -> str | None:
     """The text with `<key> = "<value>"` in its [tool.xarch] table, the table added when there is none: right after the
     line of the key `after` when the table holds it, else at the top; None if the table already sets the key or the
     file defines the table in a way this cannot extend safely."""

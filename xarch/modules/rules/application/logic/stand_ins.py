@@ -55,7 +55,7 @@ GUARD = f"({RULE})"
 
 
 @dataclass(frozen=True)
-class Port:
+class _Port:
     """A port, where it is, and its kind: "fire-only", "read" or None (unannotated, or no methods)."""
     file: str
     module: tuple[str, ...]
@@ -98,12 +98,12 @@ def weak(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profil
     return found
 
 
-def _ports(app: Iterable[SourceFile], profile: Profile) -> tuple[dict[tuple[tuple[str, ...], str], Port],
+def _ports(app: Iterable[SourceFile], profile: Profile) -> tuple[dict[tuple[tuple[str, ...], str], _Port],
                                                                  list[Violation]]:
     """The ports of the parts the fakes stand in for, by module and name, and the problems of their annotations."""
     assert profile.fakes is not None
     found: list[Violation] = []
-    ports: dict[tuple[tuple[str, ...], str], Port] = {}
+    ports: dict[tuple[tuple[str, ...], str], _Port] = {}
     for file in app:
         where = file_place(profile, file.path)
         if where is None or where.part not in profile.fakes.stand_in_for:
@@ -116,7 +116,7 @@ def _ports(app: Iterable[SourceFile], profile: Profile) -> tuple[dict[tuple[tupl
     return ports, found
 
 
-def _classified(file: SourceFile, cls: Class, profile: Profile) -> tuple[Port, list[Violation]]:
+def _classified(file: SourceFile, cls: Class, profile: Profile) -> tuple[_Port, list[Violation]]:
     language = profile.language
     methods = [m for m in cls.methods if not language.is_special(m.name) or m.name == language.call]
     bare = [m for m in methods if m.returns is None]
@@ -128,10 +128,10 @@ def _classified(file: SourceFile, cls: Class, profile: Profile) -> tuple[Port, l
     if not bare and methods:
         kind = "read" if any(m.returns != language.nothing for m in methods) else "fire-only"
     module = dotted(file.path, profile.language.marks)[0]
-    return Port(file.name, module, cls.line, cls.name, kind, tuple(m.name for m in methods)), problems
+    return _Port(file.name, module, cls.line, cls.name, kind, tuple(m.name for m in methods)), problems
 
 
-def _missing_fakes(ports: Iterable[Port], tests: list[SourceFile], profile: Profile,
+def _missing_fakes(ports: Iterable[_Port], tests: list[SourceFile], profile: Profile,
                    tests_root: str) -> list[Violation]:
     assert profile.fakes is not None
     folder = profile.fakes.folder
@@ -142,7 +142,7 @@ def _missing_fakes(ports: Iterable[Port], tests: list[SourceFile], profile: Prof
             for p in ports if p.kind == "read" and f"{profile.fakes.prefix}{p.name}" not in fakes]
 
 
-def _mocks(tests: list[SourceFile], ports: dict[tuple[tuple[str, ...], str], Port], profile: Profile,
+def _mocks(tests: list[SourceFile], ports: dict[tuple[tuple[str, ...], str], _Port], profile: Profile,
            root: str) -> list[Violation]:
     assert profile.fakes is not None and profile.stand_ins is not None
     found: list[Violation] = []
@@ -176,7 +176,7 @@ def _built(file: SourceFile, names: StandIns) -> list[Built]:
     return found
 
 
-def _mock(file: SourceFile, mock: Built, ports: dict[tuple[tuple[str, ...], str], Port], profile: Profile,
+def _mock(file: SourceFile, mock: Built, ports: dict[tuple[tuple[str, ...], str], _Port], profile: Profile,
           root: str) -> list[Violation]:
     assert profile.fakes is not None and profile.stand_ins is not None
     names = profile.stand_ins

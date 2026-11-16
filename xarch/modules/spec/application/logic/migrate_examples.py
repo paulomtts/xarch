@@ -74,7 +74,7 @@ def rewritten_template(destination: str, text: str, names: dict[str, str]) -> tu
     return rewritten, len(PLACEHOLDER.findall(rewritten)) - len(unknown), by_hand
 
 
-def plain_note(note: str, label: str, changes: list[str]) -> str:
+def _plain_note(note: str, label: str, changes: list[str]) -> str:
     """A note of format 1 that was shown right after a path as written: its text without the outer parentheses."""
     text = note.strip()
     if text.startswith("(") and text.endswith(")"):
@@ -186,7 +186,7 @@ def _items(old: Any, tiers: list[Any], files: Collection[str], changes: list[str
 
 def _tier_item(spec: dict[str, Any], label: str, changes: list[str]) -> _Item:
     raw = str(spec.get("note", ""))
-    note = plain_note(raw, label, changes) if raw.strip() else ""
+    note = _plain_note(raw, label, changes) if raw.strip() else ""
     return _Item(label, str(spec.get("path", "")).strip("/"), str(spec.get("file", "")), note, False)
 
 

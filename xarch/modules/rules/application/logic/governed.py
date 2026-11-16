@@ -2,8 +2,8 @@
 of the rest, one that lies in a part, or is the package file of a folder of the layout (the file the language has
 stand for the root, for `modules`, for `modules/<name>` and the like), is governed and read; anything else, such as a
 file `modules/<name>/helpers`, an extra top-level folder or a script at the root, is ungoverned: never read, listed in
-the enforcement section, and what the closed-tree guard (see expansion.closed_tree) reports. Only source files, the
-ones the reader lists, are looked at.
+the enforcement section, and what the closed-tree guard (the "closed-tree" rules of expansion.book) reports. Only
+source files, the ones the reader lists, are looked at.
 """
 from __future__ import annotations
 

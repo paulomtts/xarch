@@ -62,7 +62,7 @@ def category_at(address: str) -> str:
     return typed if typed in CATEGORIES else ""
 
 
-def addresses() -> list[str]:
+def _addresses() -> list[str]:
     return [*CATEGORIES, *(f"{category}.{word.name}" for category, words in CATEGORIES.items() for word in words),
             *(f"{CHECKS}.{slot.name}" for slot in SLOTS)]
 
@@ -82,7 +82,7 @@ def names_words(address: str) -> bool:
 def close(typed: str) -> tuple[str, ...]:
     """The addresses of words that read like one that does not exist, by the whole address or by the name alone;
     none when none does."""
-    found = get_close_matches(typed.strip().strip("."), addresses(), n=NEAREST, cutoff=0.6)
+    found = get_close_matches(typed.strip().strip("."), _addresses(), n=NEAREST, cutoff=0.6)
     if found:
         return tuple(found)
     name = typed.strip().strip(".").rpartition(".")[2]

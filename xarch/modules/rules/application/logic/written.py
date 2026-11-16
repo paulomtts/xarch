@@ -29,7 +29,7 @@ def written(rules: Iterable[Rule]) -> dict[str, WrittenCheck]:
 
 def written_own(checks: Iterable[OwnCheck], language: CheckedLanguage) -> dict[str, WrittenCheck]:
     """Checks of a profile's own as its `checks` are written, each under its id with its examples, the tokens of the
-    language (see filled) in their paths and code filled in."""
+    language (see _tokens_filled) in their paths and code filled in."""
     return {own.rule.id: check_of(own.rule, _filled(own.flagged, language), _filled(own.clean, language))
             for own in checks}
 
@@ -56,7 +56,7 @@ def check_of(rule: Rule, flagged: tuple[tuple[str, str], ...] = (), clean: tuple
                         clean)
 
 
-def filled(text: str, language: CheckedLanguage) -> str:
+def _tokens_filled(text: str, language: CheckedLanguage) -> str:
     """The text with the tokens of the language filled in: `%extension%`, `%comment%`, and `%import <dotted> <name>%`,
     a line that imports name from the file of the app that dotted names, as the language's importing says
     (left as written when it does not say)."""
@@ -67,7 +67,7 @@ def filled(text: str, language: CheckedLanguage) -> str:
 
 
 def _filled(files: tuple[tuple[str, str], ...], language: CheckedLanguage) -> tuple[tuple[str, str], ...]:
-    return tuple((filled(path, language), filled(code, language)) for path, code in files)
+    return tuple((_tokens_filled(path, language), _tokens_filled(code, language)) for path, code in files)
 
 
 def _target(match: Match) -> WrittenTarget:

@@ -69,7 +69,7 @@ def target(value: Any, owner: tuple[str, tuple[str, ...]] | None, parts: Mapping
         return None
     chosen = "any" if scope == "any" else ("own" if in_instance else "none")
     if owner is not None and name == owner[0] and chosen != "any":
-        problems.append(implied(where, value, owner))
+        problems.append(_implied(where, value, owner))
         return None
     return Target(name, chosen, steps, names or "")
 
@@ -81,7 +81,7 @@ def target_written(made: Target) -> str:
             + (f":{made.names}" if made.names else ""))
 
 
-def implied(where: str, value: str, part: tuple[str, tuple[str, ...]]) -> str:
+def _implied(where: str, value: str, part: tuple[str, tuple[str, ...]]) -> str:
     """A part may always import itself, so a target that only says so is refused: the part by its name and path."""
     if EACH not in part[1]:
         return f"{where}: {value!r} is implied: a part may always import itself; remove it"

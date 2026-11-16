@@ -5,7 +5,7 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.rules.builders import PROFILE, in_tests, profile, source
-from xarch.modules.rules.application.logic.scenarios import plain, snake_name, violations, weak
+from xarch.modules.rules.application.logic.scenarios import plain, violations, weak
 from xarch.modules.rules.domain.published import Weak
 from xarch.modules.rules.domain.values import Function, Row, Table, Union
 
@@ -32,9 +32,16 @@ def problems(*tests, app=(RESULTS,), checked=PROFILE) -> list[str]:
     return [str(v) for v in violations(list(app), list(tests), checked)]
 
 
-def test_snake_name():
-    assert [snake_name(n) for n in ["Publish", "PublishDocument", "HTTPCheck", "MarkRead2"]] == [
-        "publish", "publish_document", "http_check", "mark_read2"]
+@pytest.mark.parametrize("use_case, file", [
+    pytest.param("Publish", "test_publish.py", id="one word"),
+    pytest.param("PublishDocument", "test_publish_document.py", id="two words"),
+    pytest.param("HTTPCheck", "test_http_check.py", id="a run of capitals is one word"),
+    pytest.param("MarkRead2", "test_mark_read2.py", id="a digit stays with its word"),
+])
+def test_the_test_file_of_a_use_case_is_its_name_in_snake_case(use_case, file):
+    results = source("modules/docs/contract/results.py", unions=(Union(4, f"{use_case}Result", ("Done", "Failed")),))
+    assert problems(app=(results,)) == [f"app/modules/docs/contract/results.py:4: {use_case}Result has no test file "
+                                        f"{file} among the integration tests of docs (scenario-coverage)"]
 
 
 FILE = "tests/modules/docs/application/test_publish.py"
