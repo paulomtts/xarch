@@ -20,6 +20,7 @@ from xarch.cli.terminal import (
 from xarch.modules.rules.application.controller import RulesController
 from xarch.modules.rules.contract import AppChecked, CheckApp, ChecksCannotRun, NotADirectory
 from xarch.modules.spec.application.controller import SpecController
+from xarch.modules.spec.contract import Origin, ProfileRefused
 
 StrictOption = Annotated[bool, typer.Option(
     "--strict", help="Also fail (exit 1) on what the profile in force leaves unenforced, in the findings of the "
@@ -43,11 +44,21 @@ def register(app: typer.Typer, rules: RulesController, spec: SpecController) -> 
             case ChecksCannotRun(problems):
                 raise refuse(cannot_run(problems))
             case AppChecked() as checked:
+                origin = _origin(spec, chosen, refuse)
                 if output is Format.json:
-                    typer.echo(json_document(chosen, checked, strict))
+                    typer.echo(json_document(chosen, origin, checked, strict))
                 else:
                     for line in [*text_lines(checked.violations, checked.hints),
-                                 *enforcement_lines(checked.enforcement, strict, checked.hints)]:
+                                 *enforcement_lines(origin, checked.enforcement, strict, checked.hints)]:
                         typer.echo(line)
                 if not checked.ok:
                     raise typer.Exit(1)
+
+
+def _origin(spec: SpecController, chosen: str, refuse) -> Origin:
+    """Where the profile in force comes from, which spec works out and the enforcement section shows first."""
+    match spec.origin(chosen):
+        case Origin() as origin:
+            return origin
+        case ProfileRefused(reason):
+            raise refuse(reason)

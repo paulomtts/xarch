@@ -5,7 +5,7 @@ from typing import Protocol
 
 from xarch.modules.scaffold.domain.errors import ProfileUnusable
 from xarch.modules.scaffold.domain.values import Language
-from xarch.modules.spec.contract import Docs, Entry, FilesResult, ProfileRefused, ProjectFiles, Skeleton
+from xarch.modules.spec.contract import DEFAULT_APP, Docs, Entry, FilesResult, ProfileRefused, ProjectFiles, Skeleton
 
 
 class _Spec(Protocol):
@@ -30,6 +30,9 @@ class SpecSkeleton:
     def language(self, profile: str) -> Language:
         skeleton = self._spec.skeleton(profile)
         return Language(skeleton.language, skeleton.package_file, skeleton.reserved, skeleton.names, skeleton.private)
+
+    def default_app(self) -> str:
+        return DEFAULT_APP
 
     def kinds(self, profile: str) -> dict[str, tuple[tuple[str, ...], list[tuple[tuple[str, ...], bool]]]]:
         return {repeating.word: (repeating.root, _entries(repeating.entries))

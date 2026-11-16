@@ -3,11 +3,12 @@ from __future__ import annotations
 from pathlib import Path
 
 from xarch.modules.spec.application.logic.profile_file import source_of
+from xarch.modules.spec.application.logic.profile_view import view
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.application.services.profile_selection import ProfileSelectionService
+from xarch.modules.spec.contract import EXAMPLES, LOAD, Problem, ProfileChecked, ProfileViewed
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.values import Loadable, LoadedProfile, Review, Unloadable
 
 
 class ProfileReviewService:
@@ -18,19 +19,22 @@ class ProfileReviewService:
                  files: ArchitectureFiles):
         self._selection, self._architectures, self._files = selection, architectures, files
 
-    def check(self, app: Path, target: str | None) -> Review:
-        """Raises NoProfile or UnknownProfile; a profile that does not load is reviewed with what the loader found."""
+    def check(self, app: Path, target: str | None) -> ProfileChecked:
+        """What validating the profile found: every problem the loader found when it does not load, else what its
+        examples import that their part may not, with how many files it points to and where it comes from; raises
+        NoProfile or UnknownProfile."""
         location = self._selection.location(app, target)
         try:
             self._architectures.load(location)
         except InvalidArchitecture as e:
-            return Unloadable(location, e.problems)
+            return ProfileChecked(location, tuple(Problem(LOAD, text) for text in e.problems), 0, None)
         files = self._architectures.pointed(location)
-        return Loadable(location, tuple(self._architectures.check_examples(location)), len(files),
-                        self._architectures.origin(location))
+        return ProfileChecked(location, tuple(Problem(EXAMPLES, text) for text in self._architectures.check_examples(location)),
+                              len(files), self._architectures.origin(location))
 
-    def view(self, app: Path, target: str | None) -> LoadedProfile:
-        """Raises NoProfile, UnknownProfile or InvalidArchitecture."""
+    def view(self, app: Path, target: str | None) -> ProfileViewed:
+        """The profile's folder tree and import table; raises NoProfile, UnknownProfile or InvalidArchitecture."""
         location = self._selection.location(app, target)
-        return LoadedProfile(location, self._architectures.load(location),
-                             source_of(location, self._files.bundled()).bundled)
+        architecture = self._architectures.load(location)
+        tree, imports = view(architecture)
+        return ProfileViewed(location, architecture.name, tree, imports, source_of(location, self._files.bundled()).bundled)

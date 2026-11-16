@@ -11,6 +11,6 @@ class Profiles(Protocol):
     def profile(self, location: str) -> Profile: ...
 
     def standing(self, location: str, app: str) -> Standing:
-        """Where the profile comes from and how it is looser than the bundled profile it resembles, and the files
-        `init` would write now beside an app folder named app, in the profile's order."""
+        """The guards the profile leaves off, and those the bundled profile it is, or is compared with, leaves off too,
+        and the files `init` would write now beside an app folder named app, in the profile's order."""
         ...

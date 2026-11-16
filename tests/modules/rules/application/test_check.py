@@ -9,7 +9,6 @@ from tests.fakes.profiles import FakeProfiles
 from tests.modules.rules.application.helpers import controller
 from tests.modules.rules.builders import PYTHON
 from xarch.kernel.capabilities import Shortfall
-from xarch.kernel.logic.origin import Origin
 from xarch.kernel.logic.placement import Excluded
 from xarch.kernel.placement import Repeat, Target
 from xarch.kernel.source import Import
@@ -25,7 +24,7 @@ from xarch.modules.rules.contract import (
     ImportsChecked,
     NotADirectory,
 )
-from xarch.modules.rules.domain.values import InitFile, Profile
+from xarch.modules.rules.domain.values import InitFile, Profile, Standing
 
 ROOT = Path("/src/pkg")
 
@@ -107,14 +106,14 @@ def test_a_closed_tree_reports_a_file_in_no_part_and_no_folder_of_the_layout():
         "pkg/stray.py: lies in no part and no folder of the layout (closed-tree)"]
 
 
-def test_the_enforcement_holds_the_origin_the_ungoverned_files_the_init_files_and_what_strict_fails_on():
-    origin = Origin("cli", True, None, ("closed-tree",), ("closed-tree",))
+def test_the_enforcement_holds_the_ungoverned_files_the_init_files_and_what_strict_fails_on():
+    guards = Standing(("closed-tree",), ("closed-tree",), ())
     files = (InitFile(("tests", "test_rules.py"), "check()\n", True), InitFile(("AGENTS.md",), "be good\n"))
-    profiles = FakeProfiles({"cli": profile("cli")}, {"cli": origin}, {"cli": files})
+    profiles = FakeProfiles({"cli": profile("cli")}, {"cli": guards}, {"cli": files})
     tree = FakeSourceTree(ROOT, {"stray.py": [], "kernel/x.py": []}, texts={Path("/src/tests/test_rules.py"): "x\n"})
     result = controller_of(tree, profiles).check(CheckImports(ROOT, "app", "cli"))
     assert result.enforcement == EnforcementView(
-        Origin("cli", True, None, ("closed-tree",), ("closed-tree",)), ("pkg/stray.py",), ("pkg/stray.py",),
+        ("pkg/stray.py",), ("pkg/stray.py",),
         (DriftView("tests/test_rules.py", "changed"), DriftView("AGENTS.md", "missing")),
         strict=(FindingView("ungoverned", "pkg/stray.py"), FindingView("init_files", "tests/test_rules.py is changed"),
                 FindingView("init_files", "AGENTS.md is missing")))

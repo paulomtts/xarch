@@ -17,10 +17,10 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import replace
 
-from xarch.kernel.logic.origin import Loosened, Origin
 from xarch.kernel.placement import EVERYTHING, Target
 from xarch.modules.spec.application.logic.guard_names import guard_name
 from xarch.modules.spec.domain.guards import GUARDS
+from xarch.modules.spec.domain.published import Loosened, Origin
 from xarch.modules.spec.domain.values import Architecture
 
 Looser = tuple[str, str, str]

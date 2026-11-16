@@ -8,16 +8,17 @@ from typing import Any
 
 from xarch.kernel.capabilities import Shortfall
 from xarch.kernel.logic.language import LanguageView
-from xarch.kernel.logic.origin import Origin
 from xarch.kernel.logic.placement import Excluded
-from xarch.kernel.logic.project_file import ProjectFile
 from xarch.kernel.logic.testing import Fakes, Framework, ScenarioCoverage, StandIns, TierView
 from xarch.kernel.placement import Repeat, Target
+from xarch.modules.spec.domain.published import DEFAULT_APP, Copy, Loosened, Origin, ProjectFile
 
-__all__ = ["Entry", "Repeating", "Skeleton", "DocFile", "Docs", "ProjectFiles", "FilesResult", "OriginResult", "PartView",
+__all__ = ["DEFAULT_APP", "Entry", "Repeating", "Skeleton", "DocFile", "Docs", "ProjectFile", "ProjectFiles",
+           "FilesResult", "OriginResult", "PartView",
            "GuardsView", "ProfileView", "ChooseApp", "AppChosen", "ChooseAppResult",
            "SelectProfile", "ProfileSelected", "ProfileRefused",
-           "NoProfileChosen", "SelectResult", "MigrateProfile", "MigratedFile", "Migrated", "MigrationRefused",
+           "NoProfileChosen", "SelectResult", "MigrateProfile", "Copy", "MigratedFile", "Origin", "Loosened",
+           "Migrated", "MigrationRefused",
            "MigrateResult", "Shown", "Symbol", "Explain", "FormatExplained", "KeyExplained", "UnknownKey",
            "ExplainResult", "ViewProfile", "ProfileViewed", "ViewResult", "CheckProfile", "LOAD", "EXAMPLES", "Problem", "ProfileChecked",
            "CheckResult", "NewProfile", "ProfileCreated", "NewResult"]
@@ -218,18 +219,17 @@ class MigrateProfile:
 
 @dataclass(frozen=True)
 class MigratedFile:
-    """A file of the converted folder, by its path in it. source: the file next to the old profile it is read from, None
-    for the converted profile; rewritten: how many `{{example:...}}` placeholders of a template were rewritten."""
-    path: str
-    source: str | None
-    rewritten: int
+    """A file the conversion copied beside the converted profile: the copy, and how many `{{example:...}}` placeholders
+    of a template it rewrote (placeholders)."""
+    copy: Copy
+    placeholders: int
 
 
 @dataclass(frozen=True)
 class Migrated:
-    """The conversion: the folder, the converted profile, every file of the folder in the order written, what now means
-    something else (changes), what has no form in format 2 and is to be written by hand (by_hand), and whether nothing
-    was written because it was a dry run."""
+    """The conversion: the folder, the converted profile in it, the files copied beside it in the order written, what
+    now means something else (changes), what has no form in format 2 and is to be written by hand (by_hand), and
+    whether nothing was written because it was a dry run."""
     folder: Path
     profile: Path
     files: tuple[MigratedFile, ...]

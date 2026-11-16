@@ -17,7 +17,6 @@ from xarch.modules.spec.application.logic.explain import (
 )
 from xarch.modules.spec.application.logic.key_lookup import plain
 from xarch.modules.spec.application.logic.layout_walk import walk
-from xarch.modules.spec.application.logic.profile_view import view
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.application.services.explanation import ExplainService
 from xarch.modules.spec.application.services.migration import MigrationService
@@ -25,8 +24,6 @@ from xarch.modules.spec.application.services.profile_creation import ProfileCrea
 from xarch.modules.spec.application.services.profile_review import ProfileReviewService
 from xarch.modules.spec.application.services.profile_selection import ProfileSelectionService
 from xarch.modules.spec.contract import (
-    EXAMPLES,
-    LOAD,
     AppChosen,
     CheckProfile,
     CheckResult,
@@ -41,8 +38,6 @@ from xarch.modules.spec.contract import (
     FormatExplained,
     GuardsView,
     KeyExplained,
-    Migrated,
-    MigratedFile,
     MigrateProfile,
     MigrateResult,
     MigrationRefused,
@@ -52,13 +47,9 @@ from xarch.modules.spec.contract import (
     NoProfileChosen,
     OriginResult,
     PartView,
-    Problem,
-    ProfileChecked,
-    ProfileCreated,
     ProfileRefused,
     ProfileSelected,
     ProfileView,
-    ProfileViewed,
     ProjectFiles,
     Repeating,
     SelectProfile,
@@ -80,7 +71,6 @@ from xarch.modules.spec.domain.values import (
     Guard,
     Language,
     Layout,
-    Loadable,
     NoComments,
     NoDuplicates,
     NoTwins,
@@ -88,7 +78,6 @@ from xarch.modules.spec.domain.values import (
     PassThrough,
     PrivateImports,
     Tier,
-    Unloadable,
 )
 
 
@@ -161,12 +150,9 @@ class SpecController:
     def migrate(self, cmd: MigrateProfile) -> MigrateResult:
         """Converts a profile of format 1 to format 2; a profile it cannot convert, or cannot write, is refused with why."""
         try:
-            done = self._migration.migrate(cmd)
+            return self._migration.migrate(cmd)
         except DomainError as e:
             return MigrationRefused(e.reason)
-        files = (MigratedFile(done.profile, None, 0),
-                 *(MigratedFile(c.copy.destination, c.copy.source, c.rewritten) for c in done.copies))
-        return Migrated(done.folder, done.folder / done.profile, files, done.changes, done.by_hand, cmd.dry_run)
 
     def explain(self, cmd: Explain) -> ExplainResult:
         """The format of a profile, whole or one key; a key the format does not have comes back with the nearest ones."""
@@ -192,36 +178,28 @@ class SpecController:
     def view(self, cmd: ViewProfile) -> ViewResult:
         """The folder tree and import table of a profile; one that cannot be chosen or loaded is refused with why."""
         try:
-            loaded = self._review.view(cmd.app, cmd.target)
+            return self._review.view(cmd.app, cmd.target)
         except NoProfile as e:
             return NoProfileChosen(e.known)
         except DomainError as e:
             return ProfileRefused(e.reason)
-        tree, imports = view(loaded.architecture)
-        return ProfileViewed(loaded.location, loaded.architecture.name, tree, imports, loaded.bundled)
 
     def check_profile(self, cmd: CheckProfile) -> CheckResult:
         """Validates a profile: its problems, all at once, with how it differs from the bundled one it is based on; one
         that cannot be chosen is refused with why."""
         try:
-            review = self._review.check(cmd.app, cmd.target)
+            return self._review.check(cmd.app, cmd.target)
         except NoProfile as e:
             return NoProfileChosen(e.known)
         except DomainError as e:
             return ProfileRefused(e.reason)
-        match review:
-            case Unloadable(location, problems):
-                return ProfileChecked(location, tuple(Problem(LOAD, text) for text in problems), 0, None)
-            case Loadable(location, problems, files, origin):
-                return ProfileChecked(location, tuple(Problem(EXAMPLES, text) for text in problems), files, origin)
 
     def new_profile(self, cmd: NewProfile) -> NewResult:
         """Copies a bundled profile into the project, with its files; a copy that cannot be written is refused with why."""
         try:
-            copy = self._creation.create(cmd)
+            return self._creation.create(cmd)
         except DomainError as e:
             return ProfileRefused(e.reason)
-        return ProfileCreated(copy.folder, copy.folder / copy.profile, (copy.profile, *copy.pointed), copy.location)
 
 
 def _entries(tree: Layout) -> tuple[Entry, ...]:

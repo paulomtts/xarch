@@ -15,6 +15,10 @@ class Skeleton(Protocol):
         an instance may be."""
         ...
 
+    def default_app(self) -> str:
+        """The app folder that is read when none is given or recorded, which needs no record."""
+        ...
+
     def kinds(self, profile: str) -> dict[str, tuple[tuple[str, ...], list[tuple[tuple[str, ...], bool]]]]:
         """Every folder of the layout that declares `each:`, by its path written with '/': the folder below the
         root, and what each instance of it holds."""

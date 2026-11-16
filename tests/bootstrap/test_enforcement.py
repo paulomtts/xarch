@@ -4,9 +4,9 @@ from pathlib import Path
 
 from tests.bootstrap.project import APP, TABLE, TESTS, write
 from xarch.bootstrap.wiring import build_controllers
-from xarch.kernel.logic.origin import Origin
 from xarch.kernel.violations import At, Weak
 from xarch.modules.rules.contract import CheckImports, DriftView, EnforcementView, ImportsChecked
+from xarch.modules.spec.contract import Origin
 
 PORTS = "modules/docs/application/ports/"
 REPO = ("from typing import Protocol\n\nclass Repo(Protocol):\n    def get(self, id: int) -> str: ...\n"
@@ -28,8 +28,8 @@ def enforcement(tmp_path: Path, app: dict[str, str] | None = None, tests: dict[s
 
 
 def test_a_clean_project_on_a_bundled_profile_reports_only_the_guards_it_ships_off(tmp_path):
-    assert enforcement(tmp_path) == EnforcementView(
-        Origin("web", True, None, ("closed-tree",), ("closed-tree",), ()), language="Python")
+    assert enforcement(tmp_path) == EnforcementView(language="Python")
+    assert build_controllers().spec.origin("web") == Origin("web", True, None, ("closed-tree",), ("closed-tree",), ())
 
 
 def test_a_python_file_no_part_governs_is_listed(tmp_path):

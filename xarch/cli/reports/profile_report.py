@@ -244,14 +244,13 @@ COMMENTS = "YAML comments are not carried over: the converted file has none, so 
 
 def migrated_lines(done: Migrated) -> list[str]:
     where = done.folder.as_posix()
-    lines = [f"{'dry run, nothing written: would write' if done.dry_run else 'wrote'} to {where}/"]
+    lines = [f"{'dry run, nothing written: would write' if done.dry_run else 'wrote'} to {where}/",
+             f"  {done.profile.relative_to(done.folder).as_posix()}"]
     for file in done.files:
-        notes = []
-        if file.source is not None:
-            notes.append(f"from {file.source}")
-        if file.rewritten:
-            notes.append(f"{file.rewritten} example placeholder{'s' if file.rewritten > 1 else ''} rewritten")
-        lines.append(f"  {file.path}" + (f"  ({', '.join(notes)})" if notes else ""))
+        notes = [f"from {file.copy.source}"]
+        if file.placeholders:
+            notes.append(f"{file.placeholders} example placeholder{'s' if file.placeholders > 1 else ''} rewritten")
+        lines.append(f"  {file.copy.destination}  ({', '.join(notes)})")
     if done.changes:
         lines += ["changed:", *(f"  {item}" for item in done.changes)]
     if done.by_hand:

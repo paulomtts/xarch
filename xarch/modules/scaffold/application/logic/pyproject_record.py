@@ -11,8 +11,6 @@ import os
 import re
 from pathlib import Path
 
-from xarch.kernel.defaults import DEFAULT_APP
-
 PYPROJECT = "pyproject.toml"
 TABLE = "[tool.xarch]"
 _HEADER = re.compile(r"\s*\[")
@@ -27,11 +25,11 @@ def recorded_location(location: str, folder: Path, cwd: Path) -> str:
     return Path(os.path.relpath(cwd / path, cwd / folder)).as_posix()
 
 
-def recorded_app(app: Path, folder: Path, cwd: Path) -> str | None:
+def recorded_app(app: Path, folder: Path, cwd: Path, default: str) -> str | None:
     """The app folder as the pyproject.toml in folder records it: relative to it, as posix; None for the default
     folder, which needs no record. A relative app or folder is read from cwd."""
     shown = Path(os.path.relpath(cwd / app, cwd / folder)).as_posix()
-    return None if shown == DEFAULT_APP else shown
+    return None if shown == default else shown
 
 
 def pyproject_target(found: Path | None, base: Path, absolute: Path) -> Path:

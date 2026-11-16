@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from xarch.kernel.defaults import DEFAULT_APP
+from xarch.modules.spec.domain.published import DEFAULT_APP
 
 TESTS = "tests"
 """The folder of the tests, beside the app folder, when none is given or configured."""

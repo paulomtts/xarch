@@ -7,7 +7,6 @@ from typing import Any, Protocol
 from xarch.kernel.capabilities import FACTS, Shortfall
 from xarch.kernel.logic.capabilities import shortfalls
 from xarch.kernel.logic.language import LanguageView
-from xarch.kernel.logic.origin import Origin
 from xarch.modules.rules.domain.errors import ChecksRefused, ProfileUnusable, RuleRefused
 from xarch.modules.rules.domain.rule import (
     EXISTING,
@@ -24,7 +23,7 @@ from xarch.modules.rules.domain.rule import (
 )
 from xarch.modules.rules.domain.values import InitFile, PartInfo, Profile, Standing
 from xarch.modules.rules.domain.vocabulary import NAMES, PLACES, TARGETS
-from xarch.modules.spec.contract import FilesResult, OriginResult, ProfileRefused, ProfileView, ProjectFiles
+from xarch.modules.spec.contract import FilesResult, Origin, OriginResult, ProfileRefused, ProfileView, ProjectFiles
 
 
 class _Spec(Protocol):
@@ -88,7 +87,7 @@ class SpecProfiles:
                 found = tuple(InitFile(file.path, _text(file.content), file.pinned) for file in files)
             case ProfileRefused():
                 found = ()
-        return Standing(origin, found)
+        return Standing(origin.guards_off, origin.baseline_off, found)
 
 
 def _text(content: str | bytes) -> str:

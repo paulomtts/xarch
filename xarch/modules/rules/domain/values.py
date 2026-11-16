@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 
 from xarch.kernel.capabilities import Shortfall
 from xarch.kernel.logic.language import LanguageView
-from xarch.kernel.logic.origin import Origin
 from xarch.kernel.logic.placement import Excluded, repeat_of
 from xarch.kernel.logic.testing import Fakes, Framework, ScenarioCoverage, StandIns, TierView
 from xarch.kernel.placement import Place, Repeat, Target
@@ -356,9 +355,11 @@ class InitFile:
 
 @dataclass(frozen=True)
 class Standing:
-    """How the profile in force stands, besides its rules: where it comes from and how it is looser than the bundled
-    profile it resembles, and the files `init` would write now beside the app folder, in the profile's order."""
-    origin: Origin
+    """How the profile in force stands, besides its rules: the guards xarch has that it leaves off, in xarch's order,
+    and those the bundled profile it is, or is compared with, leaves off too (baseline_off); and the files `init` would
+    write now beside the app folder, in the profile's order."""
+    guards_off: tuple[str, ...]
+    baseline_off: tuple[str, ...]
     init_files: tuple[InitFile, ...]
 
 
@@ -382,16 +383,17 @@ class Finding:
 
 @dataclass(frozen=True)
 class Enforcement:
-    """The state of the check's own enforcement, beside its violations: where the profile comes from and how loose
-    it is; the app's source files no part and no folder of the layout governs (never read, so never checked), as
-    shown; the init files missing or changed; the tests skipped or expected to fail, and the dynamic imports, where
-    they are; the checks satisfied to the letter only; and strict, the findings `--strict` fails on; the folders
-    the profile excludes, which no check reads; app, the name of the app folder the shown paths start with;
-    language, how the language of the app is named; approximate, the keys whose check reads a fact the language
-    supplies only partly, so that it may miss what it looks for; and checks, the checks the profile writes itself,
-    each by its id with how many facts it read in the project (one that read none passes for want of anything to
-    check, and fails `--strict`)."""
-    origin: Origin = Origin()
+    """The state of the check's own enforcement, beside its violations: the guards the profile leaves off, and those the
+    bundled profile it is, or is compared with, leaves off too (baseline_off); the app's source files no part and no
+    folder of the layout governs (never read, so never checked), as shown; the init files missing or changed; the
+    tests skipped or expected to fail, and the dynamic imports, where they are; the checks satisfied to the letter
+    only; and strict, the findings `--strict` fails on; the folders the profile excludes, which no check reads; app,
+    the name of the app folder the shown paths start with; language, how the language of the app is named;
+    approximate, the keys whose check reads a fact the language supplies only partly, so that it may miss what it
+    looks for; and checks, the checks the profile writes itself, each by its id with how many facts it read in the
+    project (one that read none passes for want of anything to check, and fails `--strict`)."""
+    guards_off: tuple[str, ...] = ()
+    baseline_off: tuple[str, ...] = ()
     ungoverned: tuple[str, ...] = ()
     init_files: tuple[Drift, ...] = ()
     skipped: tuple[At, ...] = ()

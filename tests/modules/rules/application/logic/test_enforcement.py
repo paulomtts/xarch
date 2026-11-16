@@ -7,7 +7,6 @@ import pytest
 from tests.modules.rules.builders import PYTHON
 from xarch.kernel.capabilities import Shortfall
 from xarch.kernel.logic.language import LanguageView
-from xarch.kernel.logic.origin import Loosened, Origin
 from xarch.kernel.logic.placement import Excluded
 from xarch.kernel.logic.testing import Framework
 from xarch.kernel.violations import At, Weak
@@ -67,8 +66,7 @@ def test_a_file_that_is_not_pinned_is_reported_only_when_missing():
 
 def test_strict_fails_on_every_finding_but_the_guards_its_baseline_also_leaves_off_and_how_the_profile_differs():
     enforcement = Enforcement(
-        Origin("mine.yaml", False, "web", ("no-comments", "closed-tree"), ("closed-tree",),
-               (Loosened("rules", "domain", "platform"),)),
+        ("no-comments", "closed-tree"), ("closed-tree",),
         ungoverned=("app/scripts/x.py",), init_files=(CHANGED,), skipped=(SKIP,), dynamic=(DYNAMIC,), weak=(WEAK,))
     assert strict_findings(enforcement) == (
         Finding("guards_off", "no-comments"), Finding("ungoverned", "app/scripts/x.py"), Finding("init_files", CHANGED),
@@ -95,7 +93,7 @@ def test_the_detail_of_a_finding(item, said):
 
 
 def test_a_bundled_profile_with_nothing_found_passes_strict():
-    assert strict_findings(Enforcement(Origin("web", True, None, ("closed-tree",), ("closed-tree",)))) == ()
+    assert strict_findings(Enforcement(("closed-tree",), ("closed-tree",))) == ()
 
 
 def test_a_framework_that_lists_no_skips_counts_none():
@@ -122,14 +120,13 @@ def test_a_pinned_file_as_init_writes_it_and_a_changed_one_are_told_apart_in_ord
 
 
 def test_with_no_bundled_profile_to_compare_with_every_guard_left_off_fails_strict():
-    enforcement = Enforcement(Origin("mine.yaml", False, None, ("no-comments", "closed-tree"), ()))
+    enforcement = Enforcement(("no-comments", "closed-tree"), ())
     assert strict_findings(enforcement) == (Finding("guards_off", "no-comments"), Finding("guards_off", "closed-tree"))
 
 
 def test_how_a_custom_profile_differs_from_the_closest_bundled_one_is_never_a_strict_finding():
-    differing = Origin("mine.yaml", False, "web", (), (), (Loosened("rules", "domain", "platform"),
-                                                           Loosened("libraries", "", ""), Loosened("pinned", "", "x")))
-    assert strict_findings(Enforcement(differing)) == ()
+    """The enforcement holds only the guards a profile leaves off: how it is looser is spec's, and shown beside it."""
+    assert strict_findings(Enforcement((), ())) == ()
 
 
 def test_the_excluded_folders_are_shown_below_the_app_folder():
@@ -148,12 +145,12 @@ def test_folders(files, tops):
 
 def test_a_key_whose_check_reads_a_fact_partly_is_a_strict_finding_said_with_the_readers_note():
     partly = Shortfall("parts.services.names", "class", "a class defined in a branch is not read")
-    assert strict_findings(Enforcement(Origin("web", True), approximate=(partly,))) == (Finding("approximate", partly),)
+    assert strict_findings(Enforcement(approximate=(partly,))) == (Finding("approximate", partly),)
     assert detail(partly) == "parts.services.names reads class only partly: a class defined in a branch is not read"
 
 
 def test_a_check_of_the_profile_s_own_that_read_nothing_fails_strict_and_one_that_read_something_does_not():
-    state = Enforcement(Origin("mine.yaml"), checks=(("no-todo", 0), ("store-names", 3)))
+    state = Enforcement(checks=(("no-todo", 0), ("store-names", 3)))
     assert strict_findings(state) == (Finding("vacuous", vacuous("no-todo")),)
     assert reading("store-names", 3) == "checks.store-names read 3 facts"
     assert reading("one", 1) == "checks.one read 1 fact"

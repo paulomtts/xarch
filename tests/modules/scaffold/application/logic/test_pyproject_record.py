@@ -31,7 +31,7 @@ def test_recorded_location(location, folder, recorded):
     pytest.param(Path("shop"), Path("/work"), "shop", id="a relative app folder is read from the current folder"),
 ])
 def test_recorded_app(app, folder, recorded):
-    assert recorded_app(app, folder, CWD) == recorded
+    assert recorded_app(app, folder, CWD, "app") == recorded
 
 
 @pytest.mark.parametrize("text, written", [

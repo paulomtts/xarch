@@ -14,10 +14,10 @@ from __future__ import annotations
 
 from collections.abc import Iterator, Mapping, Sequence
 
-from xarch.kernel.logic.project_file import ProjectFile
 from xarch.kernel.placement import EACH
 from xarch.modules.spec.application.logic.layout_walk import walk
 from xarch.modules.spec.domain.errors import InvalidArchitecture
+from xarch.modules.spec.domain.published import ProjectFile
 from xarch.modules.spec.domain.values import Architecture, FileEntry, Layout
 
 APP_PLACEHOLDER = "{{app}}"

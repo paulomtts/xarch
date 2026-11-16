@@ -49,8 +49,7 @@ def drift(files: Sequence[InitFile], found: Sequence[str | None]) -> list[Drift]
 
 
 def strict_findings(enforcement: Enforcement) -> tuple[Finding, ...]:
-    origin = enforcement.origin
-    found = [Finding("guards_off", g) for g in origin.guards_off if g not in origin.baseline_off]
+    found = [Finding("guards_off", g) for g in enforcement.guards_off if g not in enforcement.baseline_off]
     found += [Finding("ungoverned", file) for file in enforcement.ungoverned]
     found += [Finding("init_files", item) for item in enforcement.init_files]
     found += [Finding("skipped", at) for at in enforcement.skipped]

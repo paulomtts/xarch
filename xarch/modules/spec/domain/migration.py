@@ -1,10 +1,9 @@
-"""The values of converting a profile from format 1: what the old file says, and the files the converted folder
-copies."""
+"""The values of converting a profile from format 1: what the old file says (the files the converted folder copies are
+handed out as they are, in published)."""
 from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
 Tree = dict[str, "Tree | None"]
@@ -34,32 +33,3 @@ class OldProfile:
 
     def get(self, key: str, default: Any = None) -> Any:
         return self.raw.get(key, default)
-
-
-@dataclass(frozen=True)
-class Copy:
-    """A file of the converted folder: where it goes, the file next to the old profile it is read from, and whether its
-    example placeholders are rewritten."""
-    destination: str
-    source: str
-    rewritten: bool = False
-
-
-@dataclass(frozen=True)
-class Copied:
-    """A file the conversion copies, as done: the copy, and how many example placeholders were rewritten in it."""
-    copy: Copy
-    rewritten: int
-
-
-@dataclass(frozen=True)
-class Conversion:
-    """A conversion, written or, on a dry run, only planned: the folder, the name of the converted profile in it, the
-    files copied beside it in the order written, what now means something else, and what has no form in format 2 and
-    is to be written by hand."""
-    folder: Path
-    profile: str
-    copies: tuple[Copied, ...]
-    changes: tuple[str, ...]
-    by_hand: tuple[str, ...]
-

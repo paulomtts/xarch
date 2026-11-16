@@ -7,23 +7,27 @@ from xarch.modules.scaffold.domain.values import Language
 class FakeSkeleton:
     """Satisfies scaffold's Skeleton: the same entries, kinds and docs under every profile, and the project files
     written for each app folder's name (none for a name it does not hold), already filled in as the spec module
-    fills them; and the file that stands for a folder, Python's unless given."""
+    fills them; the file that stands for a folder, Python's unless given; and the default app folder, app unless
+    given."""
 
     def __init__(self, top_level: list[tuple[tuple[str, ...], bool]],
                  kinds: dict[str, tuple[tuple[str, ...], list[tuple[tuple[str, ...], bool]]]] | None = None,
                  docs: list[tuple[tuple[str, ...], str]] | None = None,
                  files: dict[str, list[tuple[tuple[str, ...], str | bytes]]] | None = None,
                  package_file: str = "__init__.py", language: str = "Python",
-                 reserved: frozenset[str] = frozenset({"class"})):
+                 reserved: frozenset[str] = frozenset({"class"}), default_app: str = "app"):
         self._top, self._kinds, self._docs = list(top_level), dict(kinds or {}), list(docs or [])
         self._files, self._package, self._language = dict(files or {}), package_file, language
-        self._reserved = reserved
+        self._reserved, self._default_app = reserved, default_app
 
     def top_level(self, profile: str) -> list[tuple[tuple[str, ...], bool]]:
         return list(self._top)
 
     def language(self, profile: str) -> Language:
         return Language(self._language, self._package, self._reserved, r"(?!\d)\w+", "_")
+
+    def default_app(self) -> str:
+        return self._default_app
 
     def kinds(self, profile: str) -> dict[str, tuple[tuple[str, ...], list[tuple[tuple[str, ...], bool]]]]:
         return dict(self._kinds)

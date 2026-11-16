@@ -61,7 +61,8 @@ class ScaffoldingService:
         found = self._files.pyproject(absolute)
         target = pyproject_target(found[0] if found is not None else None, base, absolute)
         changed = recorded_text(found[1] if found is not None else None,
-                                recorded_location(profile, target.parent, cwd), recorded_app(root, target.parent, cwd))
+                                recorded_location(profile, target.parent, cwd),
+                                recorded_app(root, target.parent, cwd, self._skeleton.default_app()))
         if changed is None:
             return Touched(target, SKIPPED)
         self._files.lay_down(target, changed)

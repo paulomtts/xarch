@@ -5,9 +5,9 @@ from pathlib import Path
 from tests.fakes.architecture_files import FakeArchitectureFiles
 from tests.modules.spec.application.helpers import controller as spec_controller
 from tests.modules.spec.application.origins import BASE, OTHER
-from xarch.kernel.logic.origin import Loosened
 from xarch.modules.spec.application.controller import SpecController
 from xarch.modules.spec.contract import CheckProfile, Problem, ProfileChecked
+from xarch.modules.spec.domain.published import Loosened
 
 APP = Path("/p/app")
 PRESET = {"files": ["test_*.py"], "functions": "test_*"}

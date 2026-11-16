@@ -17,6 +17,7 @@ from typing import Any
 
 from xarch.kernel.violations import At, Violation
 from xarch.modules.rules.contract import AppChecked, EnforcementView, FindingView
+from xarch.modules.spec.contract import Origin
 
 LABEL = 13
 """The width of a label of the enforcement section, its colon and the spaces after it."""
@@ -46,10 +47,11 @@ def text_lines(found: Iterable[Violation], hints: Mapping[str, str] | None = Non
     return [*lines, f"{len(found)} violation(s) in {files} file(s)"]
 
 
-def enforcement_lines(state: EnforcementView, strict: bool, hints: Mapping[str, str] | None = None) -> list[str]:
-    """The enforcement section; with strict, the findings it fails on after it. A weak check that has a fix shows it
-    under its line, then the profile's hint for its rule when there is one."""
-    origin = state.origin
+def enforcement_lines(origin: Origin, state: EnforcementView, strict: bool,
+                      hints: Mapping[str, str] | None = None) -> list[str]:
+    """The enforcement section: where the profile comes from and how loose it is, then the state of the check's
+    enforcement; with strict, the findings it fails on after it. A weak check that has a fix shows it under its line,
+    then the profile's hint for its rule when there is one."""
     if origin.bundled:
         where = "bundled"
     elif origin.closest is not None:
@@ -108,8 +110,7 @@ def violation_document(violation: Violation, hints: Mapping[str, str] | None = N
             "message": violation.message, "fix": violation.fix, "hint": (hints or {}).get(violation.rule)}
 
 
-def enforcement_document(state: EnforcementView) -> dict[str, Any]:
-    origin = state.origin
+def enforcement_document(origin: Origin, state: EnforcementView) -> dict[str, Any]:
     return {
         "profile": {"location": origin.location, "bundled": origin.bundled, "closest": origin.closest,
                     "guards_off": list(origin.guards_off), "baseline_off": list(origin.baseline_off),
@@ -138,8 +139,8 @@ def _finding(finding: FindingView) -> dict[str, str]:
     return {"key": finding.key, "detail": finding.detail}
 
 
-def json_document(profile: str, checked: AppChecked, strict: bool) -> str:
+def json_document(profile: str, origin: Origin, checked: AppChecked, strict: bool) -> str:
     document = {"ok": checked.ok, "strict": strict, "profile": profile,
                 "violations": [violation_document(v, checked.hints) for v in ordered(checked.violations)],
-                "enforcement": enforcement_document(checked.enforcement)}
+                "enforcement": enforcement_document(origin, checked.enforcement)}
     return json.dumps(document, indent=2, ensure_ascii=False)

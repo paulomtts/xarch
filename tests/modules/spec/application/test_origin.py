@@ -4,9 +4,9 @@ import pytest
 from tests.fakes.architecture_files import FakeArchitectureFiles
 from tests.modules.spec.application.helpers import controller as spec_controller
 from tests.modules.spec.application.origins import BASE, OFF, OTHER, PARTS, TESTING, TIER, part
-from xarch.kernel.logic.origin import Loosened, Origin
 from xarch.modules.spec.application.controller import SpecController
 from xarch.modules.spec.contract import ProfileRefused
+from xarch.modules.spec.domain.published import Loosened, Origin
 
 
 def controller(custom: dict) -> SpecController:

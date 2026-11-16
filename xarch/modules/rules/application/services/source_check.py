@@ -100,7 +100,8 @@ class SourceCheckService:
         weak += [item for item in listed if isinstance(item, Weak)]
         if tests_root is not None:
             weak += [item for item in untested if isinstance(item, Weak)]
-        return Enforcement(standing.origin, tuple(ungoverned), tuple(enforcement.drift(standing.init_files, texts)),
+        return Enforcement(standing.guards_off, standing.baseline_off, tuple(ungoverned),
+                           tuple(enforcement.drift(standing.init_files, texts)),
                            skipped=tuple(enforcement.skipped(tests, rules)),
                            dynamic=tuple(enforcement.dynamic([*app, *tests], rules)), weak=tuple(weak),
                            excluded=rules.excluded, app=resolved.name, language=rules.language.title,

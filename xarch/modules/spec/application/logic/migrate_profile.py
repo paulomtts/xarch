@@ -17,7 +17,8 @@ from xarch.kernel.logic.placement import with_itself
 from xarch.kernel.placement import EVERYTHING, Target
 from xarch.modules.spec.application.logic.migrate_examples import Gathered, gather, rewrite_examples
 from xarch.modules.spec.application.logic.profile_v1 import EACH, read_v1
-from xarch.modules.spec.domain.migration import Copy, OldPart, OldProfile, Tree
+from xarch.modules.spec.domain.migration import OldPart, OldProfile, Tree
+from xarch.modules.spec.domain.published import Copy
 
 __all__ = ["Converted", "Copy", "convert", "rewrite_examples"]
 

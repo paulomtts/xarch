@@ -4,9 +4,7 @@ import pytest
 
 from xarch.kernel.capabilities import EXACT, Shortfall, Supply
 from xarch.kernel.logic.language import LanguageView
-from xarch.kernel.logic.origin import Loosened, Origin
 from xarch.kernel.logic.placement import Excluded
-from xarch.kernel.logic.project_file import ProjectFile
 from xarch.kernel.logic.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns, TierView
 from xarch.kernel.placement import Repeat, Target
 from xarch.modules.rules.adapters.spec_profile import SpecProfiles, WrittenChecks
@@ -16,10 +14,13 @@ from xarch.modules.rules.domain.values import InitFile, PartInfo, Profile, Stand
 from xarch.modules.spec.contract import (
     FilesResult,
     GuardsView,
+    Loosened,
+    Origin,
     OriginResult,
     PartView,
     ProfileRefused,
     ProfileView,
+    ProjectFile,
     ProjectFiles,
 )
 
@@ -84,14 +85,14 @@ def test_the_profile_view_becomes_the_profile_the_checks_see():
         shared={"core": 2}, private_imports=True, hints={"rules": "ask first"})
 
 
-def test_the_origin_keeps_every_looseness():
-    assert SpecProfiles(Spec()).standing("mine.yaml", "app").origin == Origin(
-        "mine.yaml", False, "cli", ("closed-tree",), (), (Loosened("untested", "api"),))
+def test_the_standing_keeps_the_guards_left_off_and_those_the_baseline_leaves_off_too():
+    standing = SpecProfiles(Spec()).standing("mine.yaml", "app")
+    assert (standing.guards_off, standing.baseline_off) == (("closed-tree",), ())
 
 
 def test_the_init_files_are_compared_as_text_and_none_when_the_profile_cannot_write_them():
     files = (ProjectFile(("AGENTS.md",), "agents\n", True), ProjectFile(("logo.bin",), b"\xffok"))
-    assert SpecProfiles(Spec(files)).standing("mine.yaml", "app") == Standing(ORIGIN, (
+    assert SpecProfiles(Spec(files)).standing("mine.yaml", "app") == Standing(("closed-tree",), (), (
         InitFile(("AGENTS.md",), "agents\n", True), InitFile(("logo.bin",), "�ok", False)))
     assert SpecProfiles(Spec()).standing("mine.yaml", "app").init_files == ()
 

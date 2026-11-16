@@ -1,7 +1,6 @@
 """SpecSkeleton: spec's skeleton, docs and project files as the plain tuples scaffold's Skeleton port speaks."""
 import pytest
 
-from xarch.kernel.logic.project_file import ProjectFile
 from xarch.modules.scaffold.adapters.spec_skeleton import SpecSkeleton
 from xarch.modules.scaffold.domain.errors import ProfileUnusable
 from xarch.modules.scaffold.domain.values import Language
@@ -11,6 +10,7 @@ from xarch.modules.spec.contract import (
     Entry,
     FilesResult,
     ProfileRefused,
+    ProjectFile,
     ProjectFiles,
     Repeating,
     Skeleton,

@@ -9,9 +9,8 @@ from xarch.modules.spec.application.ports.architecture_files import Architecture
 from xarch.modules.spec.application.ports.profile_format import ProfileFormat
 from xarch.modules.spec.application.ports.profile_output import ProfileOutput
 from xarch.modules.spec.application.services.architecture import ArchitectureService
-from xarch.modules.spec.contract import MigrateProfile
+from xarch.modules.spec.contract import Migrated, MigratedFile, MigrateProfile
 from xarch.modules.spec.domain.errors import InvalidArchitecture, UnmigratableProfile
-from xarch.modules.spec.domain.migration import Conversion, Copied
 from xarch.modules.spec.domain.values import ArchitectureSource
 
 
@@ -23,7 +22,7 @@ class MigrationService:
                  form: ProfileFormat):
         self._files, self._architectures, self._output, self._form = files, architectures, output, form
 
-    def migrate(self, cmd: MigrateProfile) -> Conversion:
+    def migrate(self, cmd: MigrateProfile) -> Migrated:
         """Raises UnmigratableProfile, or InvalidArchitecture when the file cannot be read."""
         location = str(cmd.path)
         source = ArchitectureSource(location, bundled=False)
@@ -54,8 +53,8 @@ class MigrationService:
                                       "else")
         if not cmd.dry_run:
             self._output.write(folder, outputs)
-        copies = tuple(Copied(c, rewritten.get(c.destination, 0)) for c in converted.copies)
-        return Conversion(folder, name, copies, converted.changes, by_hand)
+        files = tuple(MigratedFile(copy, rewritten.get(copy.destination, 0)) for copy in converted.copies)
+        return Migrated(folder, folder / name, files, converted.changes, by_hand, cmd.dry_run)
 
     def _contents(self, source: ArchitectureSource, converted: Converted) -> tuple[dict[str, bytes], dict[str, int],
                                                                                       list[str]]:

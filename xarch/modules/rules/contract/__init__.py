@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar
 
-from xarch.kernel.logic.origin import Origin
 from xarch.kernel.violations import At, Violation, Weak
 
 __all__ = ["ChecksCannotRun", "OwnCheckView",
@@ -61,12 +60,11 @@ class OwnCheckView:
 @dataclass(frozen=True)
 class EnforcementView:
     """The state of the check's own enforcement, beside its violations, as the enforcement section shows it: the
-    origin of the profile; the files no part governs, and the top folders holding them (each once, in order); the init
+    files no part governs, and the top folders holding them (each once, in order); the init
     files missing or changed; the skipped tests and dynamic imports; the checks met to the letter only; the findings
     `--strict` fails on; the folders the profile excludes; how the language of the app is named; the keys whose
     check reads a fact the language supplies only partly, each in words; and the checks the profile writes itself,
     each with how many facts it read in the project."""
-    origin: Origin = Origin()
     ungoverned: tuple[str, ...] = ()
     ungoverned_folders: tuple[str, ...] = ()
     init_files: tuple[DriftView, ...] = ()

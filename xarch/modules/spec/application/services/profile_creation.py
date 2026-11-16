@@ -13,9 +13,8 @@ from xarch.modules.spec.application.logic.taken_paths import taken_phrase
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
 from xarch.modules.spec.application.ports.profile_output import ProfileOutput
 from xarch.modules.spec.application.services.architecture import ArchitectureService
-from xarch.modules.spec.contract import NewProfile
+from xarch.modules.spec.contract import NewProfile, ProfileCreated
 from xarch.modules.spec.domain.errors import InvalidArchitecture, NewProfileRefused, UnknownProfile
-from xarch.modules.spec.domain.values import ProfileCopy
 
 
 class ProfileCreationService:
@@ -26,7 +25,7 @@ class ProfileCreationService:
     def __init__(self, files: ArchitectureFiles, architectures: ArchitectureService, output: ProfileOutput):
         self._files, self._architectures, self._output = files, architectures, output
 
-    def create(self, cmd: NewProfile) -> ProfileCopy:
+    def create(self, cmd: NewProfile) -> ProfileCreated:
         """Raises NewProfileRefused, UnknownProfile or InvalidArchitecture."""
         if not valid_name(cmd.name):
             raise NewProfileRefused(f"'{cmd.name}' is not a profile name: use letters, digits, '-' and '_', starting "
@@ -51,4 +50,4 @@ class ProfileCreationService:
             raise NewProfileRefused(f"{taken}: nothing was written; `new` writes only new files, so pass "
                                     "`--out <folder>` to write somewhere else, or choose another name")
         self._output.write(folder, outputs)
-        return ProfileCopy(folder, profile, tuple(pointed), recorded(folder / profile, cmd.root, cmd.cwd))
+        return ProfileCreated(folder, folder / profile, (profile, *pointed), recorded(folder / profile, cmd.root, cmd.cwd))

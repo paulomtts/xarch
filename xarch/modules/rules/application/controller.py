@@ -219,7 +219,7 @@ def _category(name: str) -> CategoryShown:
 
 def _enforcement(state: Enforcement) -> EnforcementView:
     return EnforcementView(
-        state.origin, state.ungoverned, tuple(enforcement.folders(state.ungoverned)),
+        state.ungoverned, tuple(enforcement.folders(state.ungoverned)),
         tuple(DriftView("/".join(d.path), d.state) for d in state.init_files), state.skipped, state.dynamic,
         state.weak, tuple(FindingView(f.key, enforcement.detail(f.item)) for f in state.strict),
         tuple(ExcludedView(enforcement.excluded_folder(state.app, e), e.reason) for e in state.excluded),

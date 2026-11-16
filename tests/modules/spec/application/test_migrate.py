@@ -7,7 +7,7 @@ import pytest
 from tests.fakes.architecture_files import FakeArchitectureFiles
 from tests.fakes.profile_output import FakeProfileOutput
 from tests.modules.spec.application.helpers import controller as spec_controller
-from xarch.modules.spec.contract import Migrated, MigratedFile, MigrateProfile, MigrationRefused
+from xarch.modules.spec.contract import Copy, Migrated, MigratedFile, MigrateProfile, MigrationRefused
 
 OLD = {"xarch": 1, "name": "small", "layout": {"core": {}, "cli": {}},
        "parts": {"core": {"path": "core", "role": "the rules"}, "cli": {"path": "cli", "role": "the commands"}},
@@ -26,13 +26,13 @@ def controller(documents: dict, texts: dict | None = None, existing: set[Path] |
 
 @pytest.mark.parametrize("given, when, then", [
     pytest.param({"old.yaml": OLD}, MigrateProfile(Path("old.yaml")),
-                 Migrated(Path("old-v2"), Path("old-v2/old.yaml"), (MigratedFile("old.yaml", None, 0),), (), (), False),
+                 Migrated(Path("old-v2"), Path("old-v2/old.yaml"), (), (), (), False),
                  id="a profile with no files is converted into a new folder beside it, named for it"),
     pytest.param({"dir/old.yaml": OLD}, MigrateProfile(Path("dir/old.yaml"), Path("elsewhere")),
-                 Migrated(Path("elsewhere"), Path("elsewhere/old.yaml"), (MigratedFile("old.yaml", None, 0),), (), (), False),
+                 Migrated(Path("elsewhere"), Path("elsewhere/old.yaml"), (), (), (), False),
                  id="a profile is converted into the folder asked for"),
     pytest.param({"old.yaml": OLD}, MigrateProfile(Path("old.yaml"), dry_run=True),
-                 Migrated(Path("old-v2"), Path("old-v2/old.yaml"), (MigratedFile("old.yaml", None, 0),), (), (), True),
+                 Migrated(Path("old-v2"), Path("old-v2/old.yaml"), (), (), (), True),
                  id="a dry run reports the same and says it wrote nothing"),
     pytest.param({"old.yaml": OLD | {"xarch": 2}}, MigrateProfile(Path("old.yaml")),
                  MigrationRefused("old.yaml: already in format 2: nothing to migrate"),
@@ -66,9 +66,9 @@ def test_the_example_files_go_to_their_paths_and_the_templates_name_them_by_path
     result = spec.migrate(MigrateProfile(Path("old.yaml")))
     assert output.written[Path("old-v2/examples/core/rule.py")] == b"X = 1\n"
     assert output.written[Path("old-v2/architecture.md")] == b"see {{example:core/rule.py}} and {{example:nope}}\n"
-    assert result.files == (MigratedFile("old.yaml", None, 0),
-                            MigratedFile("architecture.md", "architecture.md", 1),
-                            MigratedFile("examples/core/rule.py", "ex/rule.py", 0))
+    assert (result.profile, result.files) == (Path("old-v2/old.yaml"), (
+        MigratedFile(Copy("architecture.md", "architecture.md", True), 1),
+        MigratedFile(Copy("examples/core/rule.py", "ex/rule.py"), 0)))
 
 
 def test_a_name_a_template_quotes_that_no_example_has_is_reported_and_left_as_written():

@@ -5,8 +5,6 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from xarch.kernel.logic.origin import Origin
-from xarch.kernel.logic.project_file import ProjectFile
 from xarch.modules.spec.application.logic.docs_files import doc_files
 from xarch.modules.spec.application.logic.example_imports import (
     Read,
@@ -24,6 +22,7 @@ from xarch.modules.spec.application.ports.architecture_files import Architecture
 from xarch.modules.spec.application.ports.example_reader import ExampleReader
 from xarch.modules.spec.application.ports.runtime import Runtime
 from xarch.modules.spec.domain.errors import InvalidArchitecture
+from xarch.modules.spec.domain.published import Origin, ProjectFile
 from xarch.modules.spec.domain.values import Architecture, ArchitectureSource, Language
 
 
