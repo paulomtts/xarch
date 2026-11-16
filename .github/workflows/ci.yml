@@ -11,8 +11,8 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.3
       - run: uv python install 3.13
       - run: uv sync --locked
       - name: Lint
@@ -39,3 +39,9 @@ jobs:
           "$work/venv/bin/xarch" init --profile cli
           "$work/venv/bin/xarch" new module documents
           "$work/venv/bin/xarch" check
+          "$work/venv/bin/python" -m xarch check --strict
+          mkdir "$work/web"
+          cd "$work/web"
+          "$work/venv/bin/xarch" init --profile web
+          "$work/venv/bin/xarch" new module documents
+          "$work/venv/bin/python" -m xarch check --strict

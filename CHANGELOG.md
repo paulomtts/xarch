@@ -31,3 +31,5 @@ The first release.
 - An advisory review command.
 - Languages other than Python.
 - A stable check vocabulary: the words a profile's checks are written in may change.
+
+[0.1.0]: https://github.com/paulomtts/xarch/releases/tag/v0.1.0
