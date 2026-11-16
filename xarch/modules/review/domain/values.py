@@ -65,13 +65,15 @@ class Span:
 @dataclass(frozen=True)
 class CodeFile:
     """A source file of the app in a part, read: the file, as `check` shows it; the part; its text; its imports; how
-    it fails to parse (None: it parses); and its pieces, in the order of their first line."""
+    it fails to parse (None: it parses); its pieces, in the order of their first line; and, when a link makes it
+    another file of the app, that file, shown as the file is ("" when it is itself)."""
     file: str
     part: str
     text: str
     imports: tuple[Import, ...] = ()
     error: Unparsable | None = None
     spans: tuple[Span, ...] = ()
+    target: str = ""
 
 
 @dataclass(frozen=True)

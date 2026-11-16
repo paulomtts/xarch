@@ -16,6 +16,7 @@ from xarch.modules.rules.contract import (
     IN_PART,
     IN_PROJECT,
     IN_TESTS,
+    LINKED_OUT,
     NOT_SOURCE,
     NOT_THERE,
     CheckRefused,
@@ -113,3 +114,29 @@ def test_a_file_below_a_folder_the_profile_excludes_is_left_out_of_a_folder_only
     tree = FakeSourceTree(APP, {"examples/demo.py": []}, texts={})
     assert controller(tree, FakeProfiles({"p": including})).sources(read("app")) == SourcesRead(
         (SourceRead("app/examples/demo.py", IN_NO_PART),))
+
+
+LINKED = {"kernel/ids.py": SourceFile("", (), (), pieces=(ID_PIECE,)), "kernel/out.py": [], "kernel/alias.py": [],
+          "kernel/notes.py": [], "kernel/inner/x.py": []}
+LINKED_TEXTS = {APP / "kernel/ids.py": "class Id: ...\n", APP / "kernel/alias.py": "class Id: ...\n"}
+LINKS = {APP / "kernel/out.py": Path("/elsewhere/secret.py"), APP / "kernel/alias.py": APP / "kernel/ids.py",
+         APP / "kernel/notes.py": APP / "kernel/notes.txt", APP / "kernel/inner": Path("/elsewhere/folder")}
+
+
+@pytest.mark.parametrize("path, file", [
+    pytest.param("app/kernel/out.py", SourceRead("app/kernel/out.py", LINKED_OUT),
+                 id="a link to a file outside the app is left out and its text is not read"),
+    pytest.param("app/kernel/inner/x.py", SourceRead("app/kernel/inner/x.py", LINKED_OUT),
+                 id="a file below a link to a folder outside the app is left out"),
+    pytest.param("app/kernel/notes.py", SourceRead("app/kernel/notes.py", LINKED_OUT),
+                 id="a link to a file of the app that is no source file is left out"),
+    pytest.param("app/kernel/alias.py", SourceRead("app/kernel/alias.py", IN_PART, "kernel", "class Id: ...\n",
+                                                   target="app/kernel/ids.py"),
+                 id="a link to another source file of the app is read and names the file it is"),
+    pytest.param("app/kernel/ids.py", SourceRead("app/kernel/ids.py", IN_PART, "kernel", "class Id: ...\n",
+                                                 pieces=(ID_PIECE,)),
+                 id="a file that is no link names no other file"),
+])
+def test_a_file_reached_through_a_link_is_read_only_when_it_is_a_source_file_of_the_app(path, file):
+    tree = FakeSourceTree(APP, LINKED, texts=LINKED_TEXTS, links=LINKS)
+    assert controller(tree, FakeProfiles({"p": PROFILE})).sources(read(path)) == SourcesRead((file,))

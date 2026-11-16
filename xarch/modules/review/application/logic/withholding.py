@@ -1,5 +1,6 @@
 """Which files review never sends: those a path the profile writes under `review.never` matches. A path is matched
-step by step against a file's path below the app: a step as written, `*` for any text inside one step, and a step
+step by step against a file's path below the app, and against the path below the app of the file it links to when it
+is a link: a step as written, `*` for any text inside one step, and a step
 that is `**` for any number of folders, none included; a path that matches a folder holds back every file below it."""
 from __future__ import annotations
 
@@ -31,9 +32,9 @@ def _below_app(file: str) -> tuple[str, ...]:
 
 
 def _held_by(file: CodeFile, never: tuple[str, ...]) -> str:
-    """The first path of never that matches the file, "" for none."""
-    path = _below_app(file.file)
-    return next((pattern for pattern in never if _starts(tuple(pattern.split("/")), path)), "")
+    """The first path of never that matches the file, or the file it links to, "" for none."""
+    paths = [_below_app(shown) for shown in (file.file, file.target) if shown]
+    return next((pattern for pattern in never if any(_starts(tuple(pattern.split("/")), path) for path in paths)), "")
 
 
 def held_back(found: Found, never: tuple[str, ...]) -> Found:

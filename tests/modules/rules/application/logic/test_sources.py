@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from tests.modules.rules.builders import PYTHON
-from xarch.modules.rules.application.logic.sources import below, sited, walked
+from xarch.modules.rules.application.logic.sources import below, linked, sited, walked
 from xarch.modules.rules.domain.published import EXCLUDED, IN_NO_PART, IN_PART, IN_PROJECT, IN_TESTS, NOT_SOURCE, NOT_THERE
 from xarch.modules.rules.domain.values import Profile, Resolved, Sited
 from xarch.profile_values.excluded import Excluded
@@ -49,3 +49,15 @@ def test_a_file_below_the_app_folder_itself_is_shown_below_it():
 def test_a_folder_stands_for_its_files_but_those_below_an_excluded_folder():
     app = Resolved("app", (), Path("/src/app"), True, "app")
     assert walked(PROFILE, app, [("examples", "demo.py"), ("kernel", "ids.py")]) == [found("app", "kernel/ids.py")]
+
+
+@pytest.mark.parametrize("real, then", [
+    pytest.param(Path("/src/app/kernel/ids.py"), "", id="the file itself names no other"),
+    pytest.param(Path("/src/app/modules/docs/domain/values.py"), "app/modules/docs/domain/values.py",
+                 id="a link to another source file of the app names it"),
+    pytest.param(Path("/elsewhere/ids.py"), None, id="a link to a file outside the app"),
+    pytest.param(Path("/src/application/ids.py"), None, id="a folder beside the app whose name starts as its does"),
+    pytest.param(Path("/src/app/kernel/ids.txt"), None, id="a link to no source file of the app"),
+])
+def test_the_file_of_the_app_a_file_is_once_its_links_are_followed(real, then):
+    assert linked(PROFILE, found("app", "kernel/ids.py"), real, Path("/src/app")) == then

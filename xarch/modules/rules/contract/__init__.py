@@ -19,6 +19,7 @@ from xarch.modules.rules.domain.published import (
     IN_PROJECT,
     IN_TESTS,
     INIT_FILES,
+    LINKED_OUT,
     NOT_SOURCE,
     NOT_THERE,
     SECTIONS,
@@ -52,7 +53,8 @@ __all__ = ["At", "Weak", "Piece", "KnownName", "Translation", "Slot", "KeyFacts"
            "Loosened", "Resemblance", "Reviewed", "CheckProfile", "ChecksHeld", "ProfileHeld", "ProfileUnloaded",
            "NoProfileChosen", "ProfileCheckResult", "ReadSources", "SourceRead", "SourcesRead", "SourcesResult",
            "KeepFacts", "FactKept", "FileKept", "FactsKept", "KeptResult",
-           "IN_PART", "NOT_THERE", "NOT_SOURCE", "IN_TESTS", "IN_PROJECT", "EXCLUDED", "IN_NO_PART"]
+           "IN_PART", "NOT_THERE", "NOT_SOURCE", "IN_TESTS", "IN_PROJECT", "EXCLUDED", "IN_NO_PART",
+           "LINKED_OUT"]
 
 
 @dataclass(frozen=True)
@@ -335,9 +337,10 @@ class ReadSources:
 @dataclass(frozen=True)
 class SourceRead:
     """One file found: how it is shown (below the folder holding the app), where it lies (IN_PART, NOT_THERE,
-    NOT_SOURCE, IN_TESTS, IN_PROJECT, EXCLUDED or IN_NO_PART) and the part it lies in ("" for none). A file in a part
-    is read: its text, its imports, how it fails to parse (None: it parses) and its pieces, as its language's reader
-    cuts them (see Piece); any other holds no text."""
+    NOT_SOURCE, IN_TESTS, IN_PROJECT, EXCLUDED, IN_NO_PART or LINKED_OUT) and the part it lies in ("" for none). A
+    file in a part is read: its text, its imports, how it fails to parse (None: it parses), its pieces, as its
+    language's reader cuts them (see Piece), and, when a link makes it another file of the app, that file, shown as
+    it is ("" when it is itself); any other holds no text."""
     shown: str
     lies: str
     part: str = ""
@@ -345,6 +348,7 @@ class SourceRead:
     imports: tuple[Import, ...] = ()
     error: Unparsable | None = None
     pieces: tuple[Piece, ...] = ()
+    target: str = ""
 
 
 @dataclass(frozen=True)

@@ -133,11 +133,12 @@ class Reviewed:
     resemblance: Resemblance
 
 
-IN_PART, NOT_THERE, NOT_SOURCE, IN_TESTS, IN_PROJECT, EXCLUDED, IN_NO_PART = (
-    "part", "missing", "other", "tests", "project", "excluded", "ungoverned")
+IN_PART, NOT_THERE, NOT_SOURCE, IN_TESTS, IN_PROJECT, EXCLUDED, IN_NO_PART, LINKED_OUT = (
+    "part", "missing", "other", "tests", "project", "excluded", "ungoverned", "linked")
 """Where a file found at a path given to be read lies (SourceRead.lies): in a part of the app; nowhere, it is not
 there; it is no source file of the app's language; below the tests root; in the project, outside the app and the
-tests; below a folder the profile excludes; in the app, in no part."""
+tests; below a folder the profile excludes; in the app, in no part; in a part, but reached through a link to a file
+outside the app, or to no source file of the app's language."""
 
 FUNCTION = "function"
 """The kind of a piece that is a function at the top level of its file."""

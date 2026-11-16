@@ -16,6 +16,7 @@ from xarch.modules.rules.contract import (
     IN_PART,
     IN_PROJECT,
     IN_TESTS,
+    LINKED_OUT,
     NOT_SOURCE,
     NOT_THERE,
     CheckRefused,
@@ -39,7 +40,9 @@ READ = SourcesRead((SourceRead("app/kernel/ids.py", IN_PART, "kernel", "class Id
                                PIECES),
                     SourceRead("README.md", NOT_SOURCE), SourceRead("app/gone.py", NOT_THERE),
                     SourceRead("tests/test_a.py", IN_TESTS), SourceRead("scripts/run.py", IN_PROJECT),
-                    SourceRead("app/examples/a.py", EXCLUDED), SourceRead("app/stray.py", IN_NO_PART)))
+                    SourceRead("app/examples/a.py", EXCLUDED), SourceRead("app/stray.py", IN_NO_PART),
+                    SourceRead("app/kernel/out.py", LINKED_OUT),
+                    SourceRead("app/kernel/alias.py", IN_PART, "kernel", "x = 1\n", target="app/kernel/ids.py")))
 
 
 class Rules:
@@ -61,10 +64,12 @@ def test_a_file_in_a_part_is_handed_on_as_it_was_read_and_any_other_left_out_wit
     rules = Rules(READ)
     files = RulesCode(rules).files((Path("app/kernel"),), Path("/src"), Path("/src/app"), "p", None)
     assert files == Found((CodeFile("app/kernel/ids.py", "kernel", "class Id: ...\n", (IDS,), Unparsable(3, "bad"),
-                                    (Span("class", "Id", "", (1, 4)), Span("method", "new", "Id", (2, 4)))),),
+                                    (Span("class", "Id", "", (1, 4)), Span("method", "new", "Id", (2, 4)))),
+                           CodeFile("app/kernel/alias.py", "kernel", "x = 1\n", target="app/kernel/ids.py")),
                           (LeftOut("README.md", review.NOT_SOURCE), LeftOut("app/gone.py", review.MISSING),
                            LeftOut("tests/test_a.py", review.A_TEST), LeftOut("scripts/run.py", review.OUTSIDE),
-                           LeftOut("app/examples/a.py", review.EXCLUDED), LeftOut("app/stray.py", review.UNPLACED)))
+                           LeftOut("app/examples/a.py", review.EXCLUDED), LeftOut("app/stray.py", review.UNPLACED),
+                           LeftOut("app/kernel/out.py", review.LINK)))
     assert rules.asked == [ReadSources((Path("app/kernel"),), Path("/src"), Path("/src/app"), "p", None)]
 
 

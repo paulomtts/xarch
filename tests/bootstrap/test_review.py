@@ -126,6 +126,36 @@ def test_a_file_review_never_sends_is_left_out_with_the_path_and_a_text_review_m
     assert document["mask"] == ["DocumentService", "step_*"]
 
 
+def test_a_link_out_of_the_app_is_left_out_and_review_never_holds_back_a_link_to_a_file_it_matches(tmp_path,
+                                                                                                     tmp_path_factory):
+    outside = tmp_path_factory.mktemp("elsewhere")
+    (outside / "outside_secret.py").write_text(BODY.replace("DocumentService", "OutsideSecret"))
+    (outside / "inner.py").write_text(BODY.replace("DocumentService", "InnerSecret"))
+    assert runner.invoke(app, ["profile", "new", "mine", "--from", "cli"]).exit_code == 0
+    profile = tmp_path / "architecture" / "mine" / "mine.yaml"
+    profile.write_text(profile.read_text() + "review:\n  never: ['**/secret_*.py']\n")
+    adapters = tmp_path / "app/modules/documents/adapters"
+    (adapters / "secret_keys.py").write_text(BODY.replace("DocumentService", "SecretKeys"))
+    (adapters / "link_out.py").symlink_to(outside / "outside_secret.py")
+    (adapters / "alias.py").symlink_to(adapters / "secret_keys.py")
+    (adapters / "linkdir").symlink_to(outside, target_is_directory=True)
+    linked = ["app/modules/documents/adapters/link_out.py", "app/modules/documents/adapters/alias.py",
+              "app/modules/documents/adapters/linkdir/inner.py"]
+    document = json.loads(review("app/modules/documents/adapters", *linked, "--dry-run", "--profile", str(profile),
+                                 "--format", "json").output)
+    assert document["requests"] == []
+    assert {(item["file"], item["why"], item["pattern"]) for item in document["selection"]["left_out"]} == {
+        ("app/modules/documents/adapters/secret_keys.py", "never", "**/secret_*.py"),
+        ("app/modules/documents/adapters/alias.py", "never", "**/secret_*.py"),
+        ("app/modules/documents/adapters/link_out.py", "link", None),
+        ("app/modules/documents/adapters/linkdir/inner.py", "link", None),
+        ("app/modules/documents/adapters/__init__.py", "small", None)}
+    text = review(*linked, "--dry-run", "--profile", str(profile)).output
+    assert "  app/modules/documents/adapters/link_out.py: a link to a file outside the app, or to no source file" in (
+        text.splitlines())
+    assert not any(secret in text for secret in ("OutsideSecret", "InnerSecret", "SecretKeys"))
+
+
 def test_review_changes_nothing_check_finds():
     before = runner.invoke(app, ["check", "--format", "json"])
     review(SERVICE, "--dry-run")

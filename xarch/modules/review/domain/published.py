@@ -27,11 +27,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-MISSING, NOT_SOURCE, A_TEST, OUTSIDE, EXCLUDED, UNPLACED, NEVER, UNPARSABLE, SMALL = (
-    "missing", "not-source", "test", "outside", "excluded", "unplaced", "never", "unparsable", "small")
+MISSING, NOT_SOURCE, A_TEST, OUTSIDE, EXCLUDED, UNPLACED, NEVER, UNPARSABLE, SMALL, LINK = (
+    "missing", "not-source", "test", "outside", "excluded", "unplaced", "never", "unparsable", "small", "link")
 """Why a file found is not judged: it is not there; it is no source file of the app's language; it is a test; it lies
 outside the app folder; it lies below a folder the profile excludes; it lies in no part; a path the profile says review
-never sends matches it; it does not parse; it is under the smallest size judged."""
+never sends matches it, or the file it links to; it does not parse; it is under the smallest size judged; it is
+reached through a link to a file outside the app, or to no source file of the app's language."""
 
 MIN_CHARS = 800
 """The fewest characters a file judged holds: under it, a file is too small to be judged (the smallest file the trials

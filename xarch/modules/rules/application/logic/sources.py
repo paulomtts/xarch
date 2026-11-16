@@ -2,6 +2,8 @@
 part, by the same places `where` and the checks use."""
 from __future__ import annotations
 
+from pathlib import Path
+
 from xarch.modules.rules.application.logic.places import excluded_by, file_place
 from xarch.modules.rules.domain.published import EXCLUDED, IN_NO_PART, IN_PART, IN_PROJECT, IN_TESTS, NOT_SOURCE, NOT_THERE
 from xarch.modules.rules.domain.values import Profile, Resolved, Sited
@@ -33,3 +35,13 @@ def walked(profile: Profile, folder: Resolved, paths: list[tuple[str, ...]]) -> 
     looks at."""
     return [found for found in (below(folder, steps) for steps in paths)
             if found.within != "app" or excluded_by(profile, found.steps) is None]
+
+
+def linked(profile: Profile, found: Resolved, real: Path, app: Path) -> str | None:
+    """The file of the app that a file in a part is once every link is followed, real being its path so and app the
+    app folder so: shown below the folder holding the app, "" when it is the file itself; None when it is a link to
+    a file outside the app, or to no source file of the app's language."""
+    if not real.is_relative_to(app) or not real.name.endswith(profile.language.extension):
+        return None
+    steps = real.relative_to(app).parts
+    return "" if steps == found.steps else "/".join((app.name, *steps))

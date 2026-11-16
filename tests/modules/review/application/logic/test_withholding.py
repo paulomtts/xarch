@@ -1,5 +1,7 @@
 """Which files review never sends: those a path of `review.never` matches, step by step, below the app; each is left
 out with the path that matched, and the others are kept in order."""
+from dataclasses import replace
+
 import pytest
 
 from tests.modules.review.builders import found
@@ -45,3 +47,13 @@ def test_the_first_path_that_matches_is_the_one_said_and_files_already_left_out_
     assert held_back(Found((held, other), (gone,)), ("**/domain/gone.py", "**/adapters", "modules/*/adapters")) == Found(
         (other,), (gone, LeftOut(FILE, NEVER, len(held.text), "**/adapters")))
     assert held_back(Found((held, other)), ()) == Found((held, other))
+
+
+def test_a_link_is_held_back_when_a_path_matches_the_file_it_links_to_or_its_own():
+    alias = replace(found("app/modules/documents/adapters/alias.py"), target=FILE)
+    plain = found("app/modules/documents/adapters/alias.py")
+    assert held_back(Found((alias,)), ("**/legal_archive.py",)) == Found(
+        (), (LeftOut(alias.file, NEVER, len(alias.text), "**/legal_archive.py"),))
+    assert held_back(Found((alias,)), ("**/alias.py",)) == Found(
+        (), (LeftOut(alias.file, NEVER, len(alias.text), "**/alias.py"),))
+    assert held_back(Found((plain,)), ("**/legal_archive.py",)) == Found((plain,))

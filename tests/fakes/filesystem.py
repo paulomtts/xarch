@@ -17,13 +17,15 @@ from xarch.profile_values.testing import CaseTable
 class FakeSourceTree:
     """Satisfies rules' SourceTree: root folders holding already-parsed source files, each given as its imports or
     as a whole SourceFile (whose name and path are filled in), by its path below the root; the text of any other
-    file, by its path; and what a text that is in no file parses to, by the text."""
+    file, by its path; what a text that is in no file parses to, by the text; and the links, each path that is one with
+    the path it points to, given in full."""
 
     def __init__(self, root: Path, files: dict[str, list[Import] | SourceFile],
                  more: dict[Path, dict[str, list[Import] | SourceFile]] | None = None,
-                 texts: dict[Path, str] | None = None, parsed: dict[str, list[Import] | SourceFile] | None = None):
+                 texts: dict[Path, str] | None = None, parsed: dict[str, list[Import] | SourceFile] | None = None,
+                 links: dict[Path, Path] | None = None):
         self._trees = {root: files, **(more or {})}
-        self._texts, self._parsed = dict(texts or {}), dict(parsed or {})
+        self._texts, self._parsed, self._links = dict(texts or {}), dict(parsed or {}), dict(links or {})
 
     def absent(self, roots: Iterable[Path]) -> list[Path]:
         return [root for root in roots if root not in self._trees]
@@ -44,7 +46,11 @@ class FakeSourceTree:
         return frozenset(path for path in paths if any(path == file or path in file.parents for file in held))
 
     def resolved(self, folder: Path, path: Path) -> Path:
-        return folder / path
+        whole = folder / path
+        for link, target in self._links.items():
+            if whole == link or link in whole.parents:
+                return target / whole.relative_to(link)
+        return whole
 
     def parsed(self, text: str) -> SourceFile:
         return _source("", (), self._parsed[text])

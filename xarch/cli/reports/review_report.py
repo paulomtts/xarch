@@ -25,6 +25,7 @@ from xarch.modules.review.contract import (
     EXCLUDED,
     FEWEST_SUMMED,
     IMPORTS,
+    LINK,
     MARKED_SMALL,
     MIN_CHARS,
     MISSING,
@@ -60,7 +61,7 @@ WAYS = {BY_PATHS: "paths", BY_LIST: "--files-from", BY_ALL: "--all"}
 WHY = {MISSING: "not there", NOT_SOURCE: "no source file of the app's language", A_TEST: "a test: review reads the app's "
        "files only", OUTSIDE: "outside the app folder", EXCLUDED: "below a folder the profile excludes",
        UNPLACED: "in no part", NEVER: "held back by review.never", UNPARSABLE: "does not parse",
-       SMALL: f"under {MIN_CHARS:,} characters"}
+       SMALL: f"under {MIN_CHARS:,} characters", LINK: "a link to a file outside the app, or to no source file"}
 CONTEXTS = {NO_CONTEXT: "nothing: the piece alone",
             IMPORTS: "the file's opening lines (those before its first piece), masked: numbers read so never compare "
                      "with numbers read without them"}

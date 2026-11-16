@@ -36,8 +36,10 @@ The first release.
   `--all --pieces` is refused. It sends each file's masked text to the decision model whenever its key is set in
   the environment, and refuses without one; `--dry-run` shows exactly what would be sent and sends nothing;
   answers are kept in the project's `.xarch/cache/review/` (or `--cache`), holding no code, and `--offline` reads them
-  only. Exit 0 when it ran, 2 when it refused, 3 when a file has no answer. It never changes what `check` finds.
-- A profile's `review` key: `review.never`, the paths below the app of files review never sends, and `review.mask`,
+  only. Exit 0 when it ran, 2 when it refused, 3 when a file has no answer. It never changes what `check` finds. A
+  file reached through a link to a file outside the app, or to no source file, is left out and never read.
+- A profile's `review` key: `review.never`, the paths below the app of files review never sends (matched against a
+  link and the file it links to), and `review.mask`,
   texts it hides before it sends. `check` never reads either; `profile explain` says them, and `profile check` lists
   an entry the base profile has and the profile drops as looser.
 - A profile's `evals.placement.lines`: the line of a part, set by hand. `check` never reads it; `profile explain`

@@ -3,11 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from xarch.modules.rules.application.logic.own_checks import resolved
-from xarch.modules.rules.application.logic.sources import sited, walked
+from xarch.modules.rules.application.logic.sources import linked, sited, walked
 from xarch.modules.rules.application.logic.where import candidates, resolve
 from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.application.ports.source_tree import SourceTree
-from xarch.modules.rules.contract import IN_PART, ReadSources, SourceRead, SourcesRead
+from xarch.modules.rules.contract import IN_PART, LINKED_OUT, ReadSources, SourceRead, SourcesRead
 from xarch.modules.rules.domain.errors import OutsideProject
 from xarch.modules.rules.domain.values import Profile, Resolved
 
@@ -43,7 +43,11 @@ class SourcesService:
         place = sited(profile, found)
         if place.lies != IN_PART:
             return SourceRead(found.shown, place.lies, place.part)
+        target = linked(profile, found, self._tree.resolved(app, found.path), app)
+        if target is None:
+            return SourceRead(found.shown, LINKED_OUT)
         read = self._tree.read(app, [found.steps])[0]
         unreadable = read.error is not None and read.error.unreadable
         text = "" if unreadable else self._tree.text(found.path) or ""
-        return SourceRead(found.shown, place.lies, place.part, text, read.imports, read.error, read.pieces)
+        return SourceRead(found.shown, place.lies, place.part, text, read.imports, read.error, read.pieces,
+                          target)

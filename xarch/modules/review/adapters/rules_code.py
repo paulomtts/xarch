@@ -6,7 +6,16 @@ from pathlib import Path
 from typing import Protocol
 
 from xarch.modules.review.domain.errors import Refused
-from xarch.modules.review.domain.published import A_TEST, EXCLUDED, MISSING, NOT_SOURCE, OUTSIDE, UNPLACED, LeftOut
+from xarch.modules.review.domain.published import (
+    A_TEST,
+    EXCLUDED,
+    LINK,
+    MISSING,
+    NOT_SOURCE,
+    OUTSIDE,
+    UNPLACED,
+    LeftOut,
+)
 from xarch.modules.review.domain.values import CodeFile, Found, Read, Reads, Span
 from xarch.modules.rules import contract as rules
 from xarch.modules.rules.contract import (
@@ -23,7 +32,7 @@ from xarch.modules.rules.contract import (
 )
 
 _WHY = {rules.NOT_THERE: MISSING, rules.NOT_SOURCE: NOT_SOURCE, rules.IN_TESTS: A_TEST, rules.IN_PROJECT: OUTSIDE,
-        rules.EXCLUDED: EXCLUDED, rules.IN_NO_PART: UNPLACED}
+        rules.EXCLUDED: EXCLUDED, rules.IN_NO_PART: UNPLACED, rules.LINKED_OUT: LINK}
 """Where rules says a file lies, for each place but a part, in review's words for why it is not read."""
 
 
@@ -68,4 +77,5 @@ class RulesCode:
 
 def _read(file: SourceRead) -> CodeFile:
     return CodeFile(file.shown, file.part, file.text, file.imports, file.error,
-                    tuple(Span(piece.kind, piece.name, piece.owner, (piece.first, piece.last)) for piece in file.pieces))
+                    tuple(Span(piece.kind, piece.name, piece.owner, (piece.first, piece.last)) for piece in file.pieces),
+                    file.target)
