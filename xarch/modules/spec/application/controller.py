@@ -1,17 +1,18 @@
 from __future__ import annotations
 
+from xarch.kernel.capabilities import FACTS
 from xarch.kernel.errors import DomainError
 from xarch.kernel.placement import Target
 from xarch.modules.spec.application.logic.docs_files import DOCS_ROOT
 from xarch.modules.spec.application.logic.explain import (
     cleaned,
     example_of,
-    graded,
     held_by,
     key_at,
     nearest,
     overview_keys,
     said,
+    supplied,
 )
 from xarch.modules.spec.application.logic.key_lookup import plain
 from xarch.modules.spec.application.logic.layout_walk import walk
@@ -168,8 +169,9 @@ class SpecController:
         return KeyExplained(plain(key.address), key.where, said(key.meaning, language), said(key.accepts, language),
                             key.required, key.enforced, key.rules, said(example_of(key, names), language), names,
                             tuple(_shown(held, 0, language) for held in held_by(key)),
-                            tuple(Need(*graded(fact, language)) for fact in key.needs),
-                            language.checked.title if key.needs else "")
+                            tuple(Need(fact, FACTS[fact], supplied(fact, language)) for fact in key.needs),
+                            language.checked.title if key.needs else "",
+                            bool(key.needs) and language.checked.supplies is not None)
 
     def bundled(self) -> tuple[str, ...]:
         """The names of the bundled profiles: what a key that names one may name."""

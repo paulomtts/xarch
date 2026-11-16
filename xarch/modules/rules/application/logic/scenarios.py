@@ -29,10 +29,11 @@ import re
 from collections.abc import Iterable
 from fnmatch import fnmatchcase
 
-from xarch.kernel.violations import Violation, Weak
+from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.imports import dotted
 from xarch.modules.rules.application.logic.places import place
 from xarch.modules.rules.application.logic.tier_of import tested
+from xarch.modules.rules.domain.published import Weak
 from xarch.modules.rules.domain.values import Function, Profile, Row, SourceFile, Table
 from xarch.profile_values.testing import ScenarioCoverage
 

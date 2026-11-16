@@ -9,7 +9,8 @@ from xarch.kernel.capabilities import Shortfall
 from xarch.kernel.logic.placement import repeat_of
 from xarch.kernel.placement import Place, Repeat, Target
 from xarch.kernel.source import Import, Unparsable
-from xarch.kernel.violations import At, Violation, Weak
+from xarch.kernel.violations import Violation
+from xarch.modules.rules.domain.published import At, Weak
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.language import CheckedLanguage
 from xarch.profile_values.testing import Fakes, Framework, ScenarioCoverage, StandIns

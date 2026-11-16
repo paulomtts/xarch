@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 
 from xarch.cli.reports.profile_report import created_lines, key_document, key_lines, unknown_document, unknown_message
+from xarch.kernel.capabilities import EXACT, Supply
 from xarch.modules.spec.contract import KeyExplained, Need, ProfileCreated, UnknownKey
 
 
@@ -24,14 +25,15 @@ def test_a_new_profile_says_what_was_written_and_how_to_put_it_in_force():
 
 def explained(*needs: Need) -> KeyExplained:
     return KeyExplained("parts.names", "parts.<part>", "how classes are named", "a pattern", False, True, ("names",),
-                        "", (), (), needs, "Toy")
+                        "", (), (), needs, "Toy", True)
 
 
 def test_a_key_says_the_facts_its_check_reads_and_how_the_language_supplies_them():
-    exact = Need("class", "the classes", "exact")
+    exact = Need("class", "the classes", Supply("class", EXACT))
     assert key_lines(explained(exact))[6] == (
         "  needs: class: the facts of the source its check reads, which Toy supplies exactly")
-    partly, absent = Need("class", "the classes", "partial", "nested ones are not read"), Need("call", "calls", "absent")
+    partly = Need("class", "the classes", Supply("class", "partial", "nested ones are not read"))
+    absent = Need("call", "calls")
     assert key_lines(explained(partly, absent))[6:8] == [
         "  needs: class, call: the facts of the source its check reads; Toy supplies class partly (nested",
         "    ones are not read), not call"]

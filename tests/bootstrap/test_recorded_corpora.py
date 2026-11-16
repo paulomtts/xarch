@@ -93,13 +93,6 @@ def test_an_earlier_commit_checked_against_a_tightened_profile_gives_the_finding
     assert first_difference(findings(project, str(CORPORA / "stress.yaml")), recorded) == ""
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="branch refactor/profile-consistency, third round: unlike the other corpora, the examples are checked against "
-           "the bundled profiles as they are now, not frozen ones, and those now make kernel/logic/ a part of its own, "
-           "kernel-logic; so the one weak finding recorded for app/kernel/logic/text.py names `kernel/` where it now "
-           "names `kernel-logic/`, the only difference. The recordings are left as recorded until the change of wording "
-           "is reviewed and applied as this file says.")
 @pytest.mark.parametrize("entry", ["cli", "web"])
 def test_the_bundled_examples_put_together_give_the_findings_recorded_from_the_old_checks(entry, tmp_path):
     examples = archived("examples", tmp_path / "examples")

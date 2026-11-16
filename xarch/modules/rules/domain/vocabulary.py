@@ -18,6 +18,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from xarch.modules.rules.domain.published import Slot
+
 APP_SIDE, TESTS_SIDE = "app", "tests"
 """The side a word applies to, when it applies to one only: the files of the app, or those of the tests."""
 
@@ -381,16 +383,6 @@ VARIABLES: tuple[Variable, ...] = (
     Variable("function", "the function a parameter called is a parameter of", ("function",)),
 )
 """Every variable of a message or a fix."""
-
-
-@dataclass(frozen=True)
-class Slot:
-    """A slot of a check as a profile writes it: its name, what it is for, what it accepts, and the category of words
-    it is written with ("" for one written in words of its own)."""
-    name: str
-    meaning: str
-    accepts: str
-    takes: str = ""
 
 
 SLOTS: tuple[Slot, ...] = (

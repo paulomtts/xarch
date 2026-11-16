@@ -23,11 +23,12 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from xarch.kernel.violations import RULES, Violation, Weak
+from xarch.kernel.violations import RULES, Violation
 from xarch.modules.rules.application.logic.facts import reach_scopes
 from xarch.modules.rules.application.logic.filters import Question, in_scope, question
 from xarch.modules.rules.application.logic.sentences import said, value
 from xarch.modules.rules.application.logic.targets import finding, matched
+from xarch.modules.rules.domain.published import Weak
 from xarch.modules.rules.domain.rule import (
     FAIL,
     MAY_NOT,

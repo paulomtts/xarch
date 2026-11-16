@@ -51,7 +51,6 @@ from xarch.modules.rules.contract import (
     ReachView,
     RuleResult,
     RuleShown,
-    SlotShown,
     Support,
     TierInfoView,
     Ungoverned,
@@ -101,7 +100,7 @@ class RulesController:
         language = self._explaining.language(cmd.examples_from)
         if typed == CHECKS:
             categories = tuple(_category(name) for name in explained.CATEGORIES)
-            return ChecksShown(READING, tuple(SlotShown(s.name, s.meaning, s.accepts) for s in SLOTS), categories,
+            return ChecksShown(READING, SLOTS, categories,
                                WORKED[0].rule.key, "", written_own(WORKED[:1], language))
         if explained.category_at(typed):
             return WordsShown(_category(typed))

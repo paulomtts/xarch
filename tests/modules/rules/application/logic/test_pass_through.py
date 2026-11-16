@@ -2,7 +2,7 @@
 listed as weak, never as a violation."""
 from tests.modules.rules.application.logic.checks import pass_through as weak
 from tests.modules.rules.builders import profile, source
-from xarch.kernel.violations import Weak
+from xarch.modules.rules.domain.published import Weak
 from xarch.modules.rules.domain.values import Function, SoleCall
 
 ON = profile(pass_through=("services",))

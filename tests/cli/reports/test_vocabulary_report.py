@@ -24,7 +24,7 @@ from xarch.modules.rules.contract import (
     KeyUnset,
     NoRuleShown,
     RuleShown,
-    SlotShown,
+    Slot,
     UnknownWords,
     WordLine,
     WordShown,
@@ -38,7 +38,7 @@ WORD = WordShown("filters.public", "filters", "public", "the name is public", "f
 
 
 def test_how_a_check_reads_shows_its_slots_its_categories_and_an_example():
-    shown = ChecksShown("each fact is read", (SlotShown("read", "the kinds", "<kind>"),), (FILTERS,), "parts.names",
+    shown = ChecksShown("each fact is read", (Slot("read", "the kinds", "<kind>"),), (FILTERS,), "parts.names",
                         "web", CHECK)
     lines = checks_lines(shown)
     assert lines[:2] == ["how a check reads", "  each fact is read"]

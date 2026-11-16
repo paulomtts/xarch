@@ -3,8 +3,9 @@ import pytest
 
 from tests.modules.spec.application.builders import spec_controller
 from tests.modules.spec.languages import PYTHON
-from xarch.kernel.capabilities import FACTS
+from xarch.kernel.capabilities import EXACT, FACTS, Supply
 from xarch.modules.spec.application.logic.explain import said
+from xarch.modules.spec.application.logic.language_file import PARTIAL
 from xarch.modules.spec.contract import Explain, FormatExplained, KeyExplained, Need, Shown, Symbol, UnknownKey
 from xarch.modules.spec.domain.profile_keys import SMALLEST, SYMBOLS
 
@@ -133,7 +134,7 @@ def test_the_choices_are_the_bundled_profiles_the_testing_presets_and_the_langua
 def test_a_key_that_configures_a_check_names_the_facts_it_reads_as_the_default_language_supplies_them():
     found = explained("parts.no_callbacks")
     assert (found.needs, found.language) == (
-        (Need("callback", FACTS["callback"], "exact"),), "Python")
+        (Need("callback", FACTS["callback"], Supply("callback", EXACT)),), "Python")
     assert (BASED_ON.needs, BASED_ON.language) == ((), "")
 
 
@@ -142,5 +143,5 @@ def test_a_fact_the_default_language_does_not_grade_is_said_to_be_absent():
            "standard": "interpreter", "supplies": {"class": {"partial": "nested classes are not read"}}}
     spec, _ = spec_controller(BUNDLED, languages={"toy": toy})
     found = spec.explain(Explain("parts.names"))
-    assert found.needs == (Need("class", FACTS["class"], "partial", "nested classes are not read"),)
-    assert spec.explain(Explain("parts.no_callbacks")).needs == (Need("callback", FACTS["callback"], "absent"),)
+    assert (found.needs, found.graded) == ((Need("class", FACTS["class"], Supply("class", PARTIAL, "nested classes are not read")),), True)
+    assert spec.explain(Explain("parts.no_callbacks")).needs == (Need("callback", FACTS["callback"]),)

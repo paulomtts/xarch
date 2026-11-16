@@ -493,7 +493,7 @@
 "dead-code",
 "app/kernel/logic/text.py",
 0,
-"a file of kernel/ that no unit test reaches (guards.dead-code.untested)",
+"a file of kernel-logic/ that no unit test reaches (guards.dead-code.untested)",
 "write its unit test in tests/kernel/logic/, or delete what nothing uses"
 ],
 [

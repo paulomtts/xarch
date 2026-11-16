@@ -9,6 +9,7 @@ from collections.abc import Iterable
 from difflib import get_close_matches
 from string import Formatter
 
+from xarch.modules.rules.domain.published import Slot
 from xarch.modules.rules.domain.rule import Rule
 from xarch.modules.rules.domain.vocabulary import (
     FIELDS,
@@ -21,7 +22,6 @@ from xarch.modules.rules.domain.vocabulary import (
     Filter,
     Kind,
     Quantifier,
-    Slot,
     TargetKind,
     Variable,
 )

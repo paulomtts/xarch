@@ -18,6 +18,7 @@ from collections.abc import Sequence
 from textwrap import fill
 from typing import Any
 
+from xarch.kernel.capabilities import EXACT
 from xarch.modules.spec.contract import (
     CHECKS,
     EXAMPLES,
@@ -25,6 +26,7 @@ from xarch.modules.spec.contract import (
     FormatExplained,
     KeyExplained,
     Migrated,
+    Need,
     ProfileChecked,
     ProfileCreated,
     ProfileViewed,
@@ -45,6 +47,9 @@ DEEPER = ("xarch profile explain parts.may_import        one key in full: what i
 """How to go deeper than the overview of the format."""
 NEXT = ("edit {profile}", "xarch profile explain                 # the format, key by key",
         "xarch profile check {profile}")
+
+ABSENT = "absent"
+"""How the JSON document grades a fact the language's reader does not supply."""
 
 
 def _need(shown: Shown) -> str:
@@ -103,10 +108,10 @@ def _enforced(found: KeyExplained) -> str:
 def _needs(found: KeyExplained) -> str:
     """The facts a key's check reads, then how the default language's reader supplies them."""
     facts = ", ".join(need.fact for need in found.needs)
-    if not found.language or any(not need.grade for need in found.needs):
+    if not found.language or not found.graded:
         return f"{facts}: the facts of the source its check reads"
-    short = [f"{need.fact} partly ({need.note})" if need.note else f"not {need.fact}" for need in found.needs
-             if need.grade != "exact"]
+    short = [f"{need.fact} partly ({need.supply.note})" if need.supply is not None else f"not {need.fact}"
+             for need in found.needs if need.supply is None or need.supply.grade != EXACT]
     if not short:
         return f"{facts}: the facts of the source its check reads, which {found.language} supplies exactly"
     return f"{facts}: the facts of the source its check reads; {found.language} supplies {', '.join(short)}"
@@ -132,9 +137,17 @@ def key_document(found: KeyExplained) -> str:
                   "accepts": found.accepts, "required": found.required, "enforced": found.enforced,
                   "rules": list(found.rules), "example": found.example, "choices": list(found.choices),
                   "keys": [_shown(shown) for shown in found.keys],
-                  "needs": [{"fact": need.fact, "meaning": need.meaning, "grade": need.grade or None,
-                             "note": need.note or None} for need in found.needs],
+                  "needs": [{"fact": need.fact, "meaning": need.meaning, "grade": _grade(need, found.graded),
+                             "note": need.supply.note or None if need.supply is not None else None}
+                            for need in found.needs],
                   "language": found.language})
+
+
+def _grade(need: Need, graded: bool) -> str | None:
+    """How a fact is supplied, as the JSON names it: its grade, absent when it is not supplied, null when ungraded."""
+    if need.supply is not None:
+        return need.supply.grade
+    return ABSENT if graded else None
 
 
 def unknown_document(found: UnknownKey, words: Sequence[str] = ()) -> str:

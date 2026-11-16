@@ -5,10 +5,11 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from xarch.kernel.violations import Violation, Weak
+from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic import expansion
 from xarch.modules.rules.application.logic.engine import run
 from xarch.modules.rules.application.logic.facts import facts_of
+from xarch.modules.rules.domain.published import Weak
 from xarch.modules.rules.domain.rule import Rule
 from xarch.modules.rules.domain.values import Comment, Profile, SourceFile
 from xarch.profile_values.language import CheckedLanguage

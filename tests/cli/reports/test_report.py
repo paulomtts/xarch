@@ -5,8 +5,8 @@ import json
 import pytest
 
 from xarch.cli.reports.report import enforcement_lines, json_document, ordered, text_lines
-from xarch.kernel.violations import At, Violation, Weak
-from xarch.modules.rules.contract import AppChecked, ApproximateView, EnforcementView, ExcludedView, OwnCheckView
+from xarch.kernel.violations import Violation
+from xarch.modules.rules.contract import AppChecked, ApproximateView, At, EnforcementView, ExcludedView, OwnCheckView, Weak
 from xarch.modules.spec.contract import Origin
 
 A = Violation("app/a.py", 3, "a problem", "rules", "do this")

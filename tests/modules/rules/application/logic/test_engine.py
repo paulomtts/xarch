@@ -6,9 +6,10 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.rules.builders import PROFILE, imp, in_tests, source
-from xarch.kernel.violations import Violation, Weak
+from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.engine import read, run
 from xarch.modules.rules.application.logic.facts import facts_of
+from xarch.modules.rules.domain.published import Weak
 from xarch.modules.rules.domain.rule import (
     ALL,
     ANY,

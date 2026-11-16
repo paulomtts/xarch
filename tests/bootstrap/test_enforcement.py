@@ -4,8 +4,7 @@ from pathlib import Path
 
 from tests.bootstrap.project import APP, TABLE, TESTS, write
 from xarch.bootstrap.wiring import build_controllers
-from xarch.kernel.violations import At, Weak
-from xarch.modules.rules.contract import CheckImports, DriftView, EnforcementView, ImportsChecked
+from xarch.modules.rules.contract import At, CheckImports, DriftView, EnforcementView, ImportsChecked, Weak
 from xarch.modules.spec.contract import Origin
 
 PORTS = "modules/docs/application/ports/"

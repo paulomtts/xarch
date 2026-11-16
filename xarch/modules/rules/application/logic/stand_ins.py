@@ -41,11 +41,12 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-from xarch.kernel.violations import Violation, Weak
+from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.imports import dotted
 from xarch.modules.rules.application.logic.places import place
 from xarch.modules.rules.application.logic.tier_of import may_use_fakes, tested
-from xarch.modules.rules.domain.values import Class, Profile, Ref, SourceFile
+from xarch.modules.rules.domain.published import Weak
+from xarch.modules.rules.domain.values import Call, Class, ParameterCall, Profile, SourceFile
 from xarch.profile_values.testing import StandIns
 
 RULE = "stand-ins"
@@ -160,25 +161,22 @@ def _mocks(tests: list[SourceFile], ports: dict[tuple[tuple[str, ...], str], Por
 
 @dataclass(frozen=True)
 class Built:
-    """A call that builds a mock: its line, how it is shown (`Mock`, or `mocker.Mock` for a fixture's), its arguments
-    as a Call holds them, and whether it takes its spec as its first argument only (an autospec)."""
-    line: int
+    """A call that builds a mock: the call as the source tree read it (of an imported name, or of a fixture's method),
+    how it is shown (`Mock`, or `mocker.Mock` for a fixture's), and whether it takes its spec as its first argument
+    only (an autospec)."""
+    made: Call | ParameterCall
     shown: str
-    args: tuple[Ref, ...]
-    keywords: tuple[tuple[str, Ref], ...]
-    unpacked: bool
     autospec: bool
 
 
 def _built(file: SourceFile, names: StandIns) -> list[Built]:
     """The calls of the file that build a mock, those of imported names first, then those of a fixture's methods."""
-    found = [Built(c.line, c.func[-1], c.args, c.keywords, c.unpacked, c.func in names.autospec)
+    found = [Built(c, c.func[-1], c.func in names.autospec)
              for c in file.calls if c.func in names.mocks or c.func in names.autospec]
     for call in file.parameter_calls:
         for fixture in names.fixtures:
             if call.parameter == fixture.name and call.method in (*fixture.mocks, *fixture.autospec):
-                found.append(Built(call.line, f"{call.parameter}.{call.method}", call.args, call.keywords,
-                                   call.unpacked, call.method in fixture.autospec))
+                found.append(Built(call, f"{call.parameter}.{call.method}", call.method in fixture.autospec))
     return found
 
 
@@ -191,14 +189,14 @@ def _mock(file: SourceFile, mock: Built, ports: dict[tuple[tuple[str, ...], str]
     suggested = f"{constructor}{names.mocks[0][-1]}({names.spec[0]}=<port>)"
     named, spec = _spec(mock, names.spec[:1] if mock.autospec else names.spec)
     if not named:
-        return [Violation(file.name, mock.line, f"{mock.shown}() names nothing it stands in for {GUARD}", RULE,
+        return [Violation(file.name, mock.made.line, f"{mock.shown}() names nothing it stands in for {GUARD}", RULE,
                           f"give it a spec, such as {suggested}")]
     if spec is not None and spec[:1] == (root,):
         port = ports.get((spec[1:-1], spec[-1]))
         if port is not None and port.kind == "read":
-            written = f"{mock.shown}({names.spec[0]}={port.name})" if not mock.args else \
+            written = f"{mock.shown}({names.spec[0]}={port.name})" if not mock.made.args else \
                 f"{mock.shown}({port.name})"
-            return [Violation(file.name, mock.line, f"{written} stands in for {port.name}, a read port {GUARD}", RULE,
+            return [Violation(file.name, mock.made.line, f"{written} stands in for {port.name}, a read port {GUARD}", RULE,
                               f"use its fake {profile.fakes.prefix}{port.name}")]
     return []
 
@@ -206,12 +204,13 @@ def _mock(file: SourceFile, mock: Built, ports: dict[tuple[tuple[str, ...], str]
 def _spec(call: Built, names: tuple[str, ...]) -> tuple[bool, tuple[str, ...] | None]:
     """Whether the call names a spec (or may, when it unpacks arguments), by its first argument or one of the keywords
     names, and the spec when it is a name."""
-    keywords = dict(call.keywords)
-    if call.args:
-        return True, call.args[0]
+    made = call.made
+    keywords = dict(made.keywords)
+    if made.args:
+        return True, made.args[0]
     for name in names:
         if name in keywords:
             return True, keywords[name]
-    return call.unpacked, None
+    return made.unpacked, None
 
 

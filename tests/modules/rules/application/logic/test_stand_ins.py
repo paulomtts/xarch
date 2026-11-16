@@ -6,8 +6,8 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.rules.builders import AUTOSPEC, MOCK, PROFILE, in_tests, profile, source
-from xarch.kernel.violations import Weak
 from xarch.modules.rules.application.logic.stand_ins import violations, weak
+from xarch.modules.rules.domain.published import Weak
 from xarch.modules.rules.domain.values import Call, Class, Method, ParameterCall
 
 PROTOCOL = ("typing", "Protocol")

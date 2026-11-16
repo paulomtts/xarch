@@ -5,8 +5,8 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.rules.builders import PROFILE, in_tests, profile, source
-from xarch.kernel.violations import Weak
 from xarch.modules.rules.application.logic.scenarios import snake_name, violations, weak
+from xarch.modules.rules.domain.published import Weak
 from xarch.modules.rules.domain.values import Function, Row, Table, Union
 
 COLUMNS = ("given", "when", "then")

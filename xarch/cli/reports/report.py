@@ -15,8 +15,8 @@ import json
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
-from xarch.kernel.violations import At, Violation
-from xarch.modules.rules.contract import AppChecked, EnforcementView, FindingView
+from xarch.kernel.violations import Violation
+from xarch.modules.rules.contract import AppChecked, At, EnforcementView, FindingView
 from xarch.modules.spec.contract import Origin
 
 LABEL = 13

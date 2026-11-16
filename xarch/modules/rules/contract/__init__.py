@@ -5,13 +5,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar
 
-from xarch.kernel.violations import At, Violation, Weak
+from xarch.kernel.violations import Violation
+from xarch.modules.rules.domain.published import At, Slot, Weak
 
-__all__ = ["ChecksCannotRun", "OwnCheckView",
+__all__ = ["At", "Weak", "Slot", "ChecksCannotRun", "OwnCheckView",
            "DriftView", "FindingView", "ExcludedView", "EnforcementView", "ReachView", "NearestView", "TierInfoView",
            "PartShown", "CoveringTest", "Untested", "InPart", "InStructure", "Ungoverned", "InTests", "Support", "Fake",
            "WhereAnswer", "CheckImports", "ImportsChecked", "NotADirectory", "CheckResult", "CheckApp", "AppChecked",
-           "CheckAppResult", "Locate", "Located", "Outside", "LocateResult", "CATEGORIES", "ExplainWords", "SlotShown",
+           "CheckAppResult", "Locate", "Located", "Outside", "LocateResult", "CATEGORIES", "ExplainWords",
            "WordLine", "CategoryShown", "ChecksShown", "WordsShown", "FieldShown", "WordShown", "UnknownWords",
            "WordsResult", "ExplainRule", "RuleShown", "KeyUnset", "NoRuleShown", "RuleResult", "CheckExamples", "ExamplesChecked"]
 
@@ -312,14 +313,6 @@ class ExplainWords:
 
 
 @dataclass(frozen=True)
-class SlotShown:
-    """A slot of a check: its name, what it is for, what it accepts."""
-    name: str
-    meaning: str
-    accepts: str
-
-
-@dataclass(frozen=True)
 class WordLine:
     """A word in a line: its name and what it means."""
     name: str
@@ -339,7 +332,7 @@ class ChecksShown:
     """How a check is written and read: the sentence it reads as, its slots, the categories of its words, and one
     whole check of a profile, as an example, with the key and the profile it comes from."""
     reading: str
-    slots: tuple[SlotShown, ...]
+    slots: tuple[Slot, ...]
     categories: tuple[CategoryShown, ...]
     example_key: str
     example_profile: str

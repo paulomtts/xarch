@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from pathlib import Path
 
-from xarch.kernel.violations import Violation, Weak
+from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic import (
     closed_tree,
     cycles,
@@ -20,6 +20,7 @@ from xarch.modules.rules.application.logic.facts import facts_of
 from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.application.ports.source_tree import SourceTree
 from xarch.modules.rules.domain.errors import RootMissing
+from xarch.modules.rules.domain.published import Weak
 from xarch.modules.rules.domain.values import Checked, Enforcement, Profile, SourceFile
 
 

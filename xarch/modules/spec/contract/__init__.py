@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from xarch.kernel.capabilities import Shortfall
+from xarch.kernel.capabilities import Shortfall, Supply
 from xarch.kernel.placement import Repeat, Target
 from xarch.modules.spec.domain.published import DEFAULT_APP, Copy, Loosened, Origin, ProjectFile
 from xarch.profile_values.excluded import Excluded
@@ -283,18 +283,18 @@ class FormatExplained:
 @dataclass(frozen=True)
 class Need:
     """A fact of the source a key's check reads: its name, what it is, and how the default language's reader supplies
-    it: "exact", "partial" (with what it misses), "absent", or "" when that language does not say."""
+    it (None: it does not supply it, or, when the key is not graded, its data file does not say)."""
     fact: str
     meaning: str
-    grade: str
-    note: str = ""
+    supply: Supply | None = None
 
 
 @dataclass(frozen=True)
 class KeyExplained:
     """One key: its address as typed, the scope it sits in, what it means and accepts, whether the profile needs it,
     whether `check` enforces it and through which rule ids, an example, what it may be set to from a list xarch ships
-    (choices), the keys it holds, the facts of the source its check reads and the language they were graded for."""
+    (choices), the keys it holds, the facts of the source its check reads and the language they were graded for, and
+    whether that language's data file grades the facts its reader supplies (graded)."""
     key: str
     where: str
     meaning: str
@@ -307,6 +307,7 @@ class KeyExplained:
     keys: tuple[Shown, ...]
     needs: tuple[Need, ...] = ()
     language: str = ""
+    graded: bool = False
 
 
 @dataclass(frozen=True)

@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from difflib import get_close_matches
 
-from xarch.kernel.capabilities import FACTS
+from xarch.kernel.capabilities import Supply
 from xarch.modules.spec.application.logic.key_lookup import keys_of, plain
 from xarch.modules.spec.domain.profile_keys import KEYS, PROFILE, Key
 from xarch.modules.spec.domain.values import Language
@@ -32,14 +32,9 @@ def said(text: str, language: Language) -> str:
     return _WORD.sub(lambda found: words.get(found[1], found[0]), text)
 
 
-def graded(fact: str, language: Language) -> tuple[str, str, str, str]:
-    """A fact a key needs, what it is, and how the language's reader supplies it: its grade and note, "absent" when
-    the language does not supply it, "" when its data file does not say."""
-    supplies = {supply.fact: supply for supply in language.checked.supplies} if language.checked.supplies is not None else None
-    if supplies is None:
-        return fact, FACTS[fact], "", ""
-    supply = supplies.get(fact)
-    return (fact, FACTS[fact], supply.grade, supply.note) if supply is not None else (fact, FACTS[fact], "absent", "")
+def supplied(fact: str, language: Language) -> Supply | None:
+    """How the language's reader supplies a fact a key needs; None when it does not, or its data file does not say."""
+    return next((supply for supply in language.checked.supplies or () if supply.fact == fact), None)
 
 
 def overview_keys() -> list[tuple[Key, int]]:
