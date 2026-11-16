@@ -58,15 +58,18 @@ class ReviewService:
         pieces), with a dry run; else the reading of each, from the answers kept and those asked, a file whose first
         answer is near its part's line asked again in other orders of the options and read on their mean, the pieces of
         each ranked inside it, and the readings of each eval of the profile's own at or above its line; raises
-        NoSelection, AllWithOthers, InPieces, OverCap, Refused, and NoKey for a question to send with no key set,
-        before anything is sent."""
+        NoSelection, AllWithOthers, InPieces, OverCap, Refused (the files, the profile, its examples or the record
+        cannot be read), and NoKey for a question to send with no key set, before anything is sent."""
         paths = chosen(cmd.paths, cmd.listed, cmd.every, cmd.app, cmd.pieces)
         found = self._code.files(paths, cmd.cwd, cmd.app, cmd.profile, cmd.tests)
         words = self._profile.words(cmd.profile)
+        examples = self._profile.examples(cmd.profile)
         question, parts = placement(words.parts), {part.name: part for part in words.parts}
         files = held_back(found, words.never)
         judging = within_cap(judged(files), cmd.max_files, cmd.pieces)
         sends = self._model.sends()
+        calibration = placed(self._calibrations.placement(record_file(cmd.app)),
+                             held_as(question, words.parts, examples), sends.model)
         going, answering = Run(cache_folder(cmd.app, cmd.cache), cmd.offline), self._answering
         requests = tuple(request(file, cmd.app.name, words.mask) for file in judging)
         kept = tuple(answering.kept(going, item.text, question) for item in requests)
@@ -125,15 +128,12 @@ class ReviewService:
                 answered.append(found_answers)
             unasked += unasked_of(asked, items, tuple(answered), bool(going.failure))
             ran.append(went(asked, stood, items, tuple(answered)))
-        examples = self._profile.examples(cmd.profile)
-        stood = placed(self._calibrations.placement(record_file(cmd.app)), held_as(question, words.parts, examples),
-                       sends.model)
-        judged_files = undoubted(tuple(readings), stood)
+        judged_files = undoubted(tuple(readings), calibration)
         return ReviewReading(by, total, ranked(judged_files), left_out(files), tuple(unasked), sends,
                              len(going.asked), len(going.reused), sum(a.input_tokens for a in going.asked),
                              sum(a.output_tokens for a in going.asked), going.failure, role_only(words.parts),
-                             marked(by_part(judged_files, words.parts), stood), tuple(ranked_pieces),
-                             in_order(idle + tuple(ran), words.evals), stood, versions(*going.asked, *going.reused))
+                             marked(by_part(judged_files, words.parts), calibration), tuple(ranked_pieces),
+                             in_order(idle + tuple(ran), words.evals), calibration, versions(*going.asked, *going.reused))
 
     def _evals(self, cmd: Review, words: Words, judging: tuple[CodeFile, ...],
                model: str) -> tuple[tuple[Asking, ...], tuple[EvalRead, ...]]:

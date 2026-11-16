@@ -386,3 +386,14 @@ def test_a_cache_folder_that_cannot_keep_answers_is_refused_before_anything_is_s
     assert _review(model, answers, review("app/x.py")) == ReviewRefused(
         f"cannot keep answers in {FOLDER}: it is a file, not a folder")
     assert model.asked == []
+
+
+@pytest.mark.parametrize("when", [
+    pytest.param(review("app/x.py"), id="a review that would send"),
+    pytest.param(review("app/x.py", dry_run=True), id="a dry run"),
+])
+def test_examples_that_cannot_be_read_are_refused_before_anything_is_sent(when):
+    model = FakeDecisionModel({SENT: LOW})
+    profile = FakeProfile(WORDS, unreadable={"p": "examples/text.py: not valid UTF-8"})
+    result = controller(FakeCode(FOUND), profile, model, FakeAnswers()).review(when)
+    assert (result, model.asked) == (ReviewRefused("examples/text.py: not valid UTF-8"), [])

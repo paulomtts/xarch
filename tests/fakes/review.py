@@ -33,11 +33,13 @@ class FakeCode:
 
 class FakeProfile:
     """Satisfies review's Profile: fixed words per profile; a profile listed as refused raises Refused with its
-    reason."""
+    reason, and one listed as unreadable raises it only when its examples are read."""
 
     def __init__(self, words: dict[str, Words], refused: dict[str, str] | None = None,
-                 examples: dict[str, tuple[tuple[CodeFile, ...], tuple[CodeFile, ...]]] | None = None):
+                 examples: dict[str, tuple[tuple[CodeFile, ...], tuple[CodeFile, ...]]] | None = None,
+                 unreadable: dict[str, str] | None = None):
         self._words, self._refused, self._examples = words, dict(refused or {}), dict(examples or {})
+        self._unreadable = dict(unreadable or {})
 
     def words(self, profile: str) -> Words:
         if profile in self._refused:
@@ -48,6 +50,8 @@ class FakeProfile:
         """The files placement is held to, the clean ones and the flagged ones; none when none are set."""
         if profile in self._refused:
             raise Refused(self._refused[profile])
+        if profile in self._unreadable:
+            raise Refused(self._unreadable[profile])
         return self._examples.get(profile, ((), ()))
 
 
