@@ -1,5 +1,5 @@
 """The shared check: a part the profile declares shared (`parts.<part>.shared: <least>`) holds only what at least that
-many users use. Every public name a file of the part defines at the top level (a class, a function a `def` alone
+many users use. Every public name a file of the part defines at the top level (a class, a function a definition alone
 binds, a name an assignment binds) is used by at least least users, or it is reported at its definition.
 
 A user is where a file of the app that uses the name lies: the instance of a repeating folder it is in, for a file of
@@ -9,11 +9,11 @@ mention the name instead (below); the tests are never read, and the place the na
 user (for a part outside every repeating folder, another file of the part itself; for one inside, a file of its own
 instance).
 
-A file uses a name when it imports it from the file that defines it (`from <file> import <name>`) and mentions it
-anywhere else, in code or an annotation; or reads it through an import of its file or package (a use of
-`<file>.<name>`, as the reader resolves it). An import of a name the file never mentions again is a re-export, not a
-use: the file passes it on, and a file that imports it from there uses the name it passes on, however many files it
-passes through. A name is also used by the users of every other name of the part (public or private, of any file of
+A file uses a name when it imports it from the file that defines it (an import that takes the name from that file)
+and mentions it anywhere else, in code or an annotation; or reads it through an import of its file or package (the
+name read as an attribute of the file, as the reader resolves it). An import of a name the file never mentions again
+is a re-export, not a use: the file passes it on, and a file that imports it from there uses the name it passes on,
+however many files it passes through. A name is also used by the users of every other name of the part (public or private, of any file of
 the part) whose definition mentions it: by its last step, a name its own file defines or one the file imports from a
 file of a shared part, as a class's bases and body, a function's decorators, signature and body, or an assignment's
 annotation and value mention it, however far that goes, since a name its own part needs to say another name's shape

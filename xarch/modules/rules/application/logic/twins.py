@@ -4,10 +4,11 @@ case.
 
 A class's fields are the names its body declares with an annotation, in order (see Class.fields), and each field's
 type is its annotation as written (Class.types). A class counts when it is defined at the top level of a file of a
-part (a package file included), its name does not start with `_`, and none of its bases is one the language marks as
-an interface (an interface's fields are a requirement, not a type). Two classes are compared only when their parts
-have different names: two parts of one instance of a repeating folder, of two instances, or outside any. Two classes
-of the same part, in one instance or in two, are not this check's business, and the tests are never read.
+part (a package file included), its name is public in the language (it does not start with the private prefix its
+data file gives), and none of its bases is one the language marks as an interface (an interface's fields are a
+requirement, not a type). Two classes are compared only when their parts have different names: two parts of one
+instance of a repeating folder, of two instances, or outside any. Two classes of the same part, in one instance or in
+two, are not this check's business, and the tests are never read.
 
 Three cases, each with its own fewest fields:
 

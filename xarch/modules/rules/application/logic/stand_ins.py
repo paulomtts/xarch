@@ -3,12 +3,13 @@ test that may use the fakes names a fire-only port.
 
 A port is a module-level class, in a file of a part the fakes stand in for, with one of the language's interface
 names (its data file's `interface`, generic forms too) among its bases; any other class there is not a port. Its
-methods are the functions of its own body (inherited ones are not followed), dunder methods left out but for
-__call__, the method a callable port is; a property, a classmethod or a staticmethod counts as the method it is. By its methods' return
-annotations a port is:
+methods are the functions of its own body (inherited ones are not followed), the language's special methods left
+out but for the one calling an instance runs (its data file's `call`), the method a callable port is; a method the
+language marks as a property or as bound to the class counts as the method it is. By its methods' return annotations a
+port is:
 
-    read         any method returns something else than None: the port is written and read back, so it has a fake
-    fire-only    every method returns None (`-> None`, or the string "None")
+    read         any method returns something else than no value: the port is written and read back, so it has a fake
+    fire-only    every method returns no value, as the data file's `nothing` says it, written as code or as a string
     unannotated  a method has no return annotation: a violation, since the kind follows from it
 
 A port with no methods is neither, and no rule applies to it. A read port X has a fake: a module-level class named
@@ -18,24 +19,25 @@ In a test whose tier may import the fakes (see tier_imports), every call of one 
 spec, as its argument at the profile's spec_position (when the profile gives one) or by one of the profile's spec
 keywords, and every call of one of its autospec functions as that argument or by the first spec keyword; one that
 names none is a violation. A spec that is a class
-of the app, `from <module> import X` or `<module alias>.X`, whose module is a port's file and X a read port there,
-is a violation that points to its fake.
+of the app, a name X taken from a module or read as an attribute of a module imported whole, whose module is a port's
+file and X a read port there, is a violation that points to its fake.
 
 A mock may also come from a fixture: a parameter of a function, named in the profile's `fixtures`, whose methods build
 mocks. A call of `<parameter>.<method>` for a method the fixture lists under `mocks` follows exactly the rules of the
-profile's mocks, and one listed under `autospec` those of its autospec functions; it is shown as written, such as
-`mocker.Mock()`.
+profile's mocks, and one listed under `autospec` those of its autospec functions; it is shown as written: the
+parameter and the method, joined by a dot.
 
-The check stays silent on what it cannot read: a call that unpacks *args or **kwargs, a spec that is not a name an
+The check stays silent on what it cannot read: a call that unpacks its arguments, a spec that is not a name an
 absolute import binds (a variable, an expression, a string), a spec imported from a package that re-exports the port,
-a mock built by `patch`, and a fixture the function rebinds (the source tree reports only a parameter its function's
-signature alone binds), reaches through a longer chain (`mocker.patch.object`) or calls itself.
+a mock built by a function the profile does not list among its mocks or autospec functions, and a fixture the function
+rebinds (the source tree reports only a parameter its function's signature alone binds), reaches through a longer
+chain of attributes, or calls itself.
 
 weak lists, without failing, a fake that meets the rule to the letter only: a class <prefix>X below the fakes' folder
-that does not define, in its own body, every method port X declares (its methods as above), where a name its body or
-its methods assign (`size = 0`, `self.size = ...`) counts as defined. Fakes are matched by name, so a fake is weak
-only when it falls short of every port of its name, and is shown against the one it comes closest to. Inherited methods
-are not followed, so a fake that subclasses its port, whose bodies are `...`, is weak.
+that does not define, in its own body, every method port X declares (its methods as above), where a name its body
+assigns, or its methods assign on the object they are called on, counts as defined. Fakes are matched by name, so a
+fake is weak only when it falls short of every port of its name, and is shown against the one it comes closest to.
+Inherited methods are not followed, so a fake that subclasses its port, whose bodies do nothing, is weak.
 """
 from __future__ import annotations
 
@@ -158,7 +160,8 @@ def _mocks(tests: list[SourceFile], ports: dict[tuple[tuple[str, ...], str], _Po
 @dataclass(frozen=True)
 class _Built:
     """A call that builds a mock: the call as the source tree read it (of an imported name, or of a fixture's method),
-    how it is shown (`Mock`, or `mocker.Mock` for a fixture's), and whether it is an autospec, which takes its spec by
+    how it is shown (the name called, or for a fixture's the parameter and the method joined by a dot), and whether it
+    is an autospec, which takes its spec by
     the argument at the profile's position or by the first spec keyword only."""
     made: Call | ParameterCall
     shown: str

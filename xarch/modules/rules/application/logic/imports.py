@@ -20,7 +20,7 @@ def targets(imports: Iterable[Import], package: tuple[str, ...], known: set[tupl
             root: str) -> Iterator[tuple[int, tuple[str, ...]]]:
     """Yield (line, absolute path below the root package) for every import that points into it.
 
-    `from m import n` names the module m.n when it is a known file, else the module m.
+    An import that takes the name n from the module m names the module m.n when it is a known file, else the module m.
     """
     for line, target, _ in named_targets(imports, package, known, root):
         yield line, target
@@ -28,8 +28,8 @@ def targets(imports: Iterable[Import], package: tuple[str, ...], known: set[tupl
 
 def named_targets(imports: Iterable[Import], package: tuple[str, ...], known: set[tuple[str, ...]],
                   root: str) -> Iterator[tuple[int, tuple[str, ...], str | None]]:
-    """What targets yields, with the name imported from the target: n for `from m import n` when m.n is no known file,
-    else None, the target imported as a whole."""
+    """What targets yields, with the name imported from the target: n for an import that takes n from the module m
+    when m.n is no known file, else None, the target imported as a whole."""
     for imp in imports:
         for base, name in imported_names(imp, package, root):
             if name is None or base + (name,) in known:

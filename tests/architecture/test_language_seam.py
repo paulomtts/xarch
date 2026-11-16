@@ -36,6 +36,10 @@ The data file also gives the tokens of the language's code, which are looked for
     a directive word              the comment texts its tools read, as whole words in literals and docstrings
     a branching keyword           quoted as code (`if`) in literals and docstrings: plain prose may say "if"
 
+And in the docstrings of the engine (ENGINE), a span quoted as code that writes the language's code: a token of it, its
+annotation of no value or a special name, an import as the language writes one (its data file's `importing`), or a
+name the testing preset builds a mock with or a fixture of its mocks.
+
 EXEMPT names every file or word that stays, with why; a stale entry fails the test. Nothing is exempt by pattern but
 the reader and the platform.
 """
@@ -111,6 +115,9 @@ SEAM = ("modules/rules/adapters/fs_source_tree.py", "platform/")
 """The reader adapter and the platform: where the language and its interpreter are allowed to be named."""
 
 EXEMPT: dict[tuple[str, str], str] = {
+    ("modules/rules/domain/values.py", "from"): "the records the reader fills say how it reads an import by an import "
+                                                "of the language it reads: the engine's Python-shaped bundles, left on "
+                                                "purpose (engine R3-2)",
     ("__main__.py", "python"): "`python -m xarch` is how the interpreter that runs xarch starts it, not the language "
                                "xarch checks",
     ("modules/rules/application/logic/scenarios.py", "_"): "the separator of snake_case, which the profile format "
@@ -162,6 +169,37 @@ def token_leaks(root: Path, language: Path = LANGUAGE) -> list[tuple[str, int, s
             if isinstance(node, ast.Constant) and isinstance(node.value, str):
                 found += [(relative, node.lineno, node.value)] if node.value in tokens else []
                 found += [(relative, node.lineno, match[0]) for match in words.finditer(node.value)]
+    return found
+
+
+TESTING = SRC / "architectures" / "presets" / "testing" / "pytest.yaml"
+"""The testing preset whose mocks the engine's docstrings may name only through the profile's words."""
+
+
+def ticked_pattern(language: Path = LANGUAGE, testing: Path = TESTING) -> re.Pattern[str]:
+    """What a span quoted as code may not hold: a token of the language, a special name, its annotation of no value,
+    the start of an import as it writes one, and a name of the preset's mocks and fixtures."""
+    data = yaml.safe_load(language.read_text(encoding="utf-8"))
+    mocks = yaml.safe_load(testing.read_text(encoding="utf-8"))["mocks"]
+    names = {*mocks["fixtures"], *(name.split(".")[-1] for name in (*mocks["calls"], *mocks["autospec"])),
+             *(name for fixture in mocks["fixtures"].values() for key in ("calls", "autospec")
+               for name in fixture.get(key, ()))}
+    tokens = "|".join(re.escape(data[key]) for key in TOKEN_KEYS)
+    special, importing = re.escape(data["special"]), re.escape(data["importing"].split("{")[0].strip())
+    words = "|".join(re.escape(name) for name in sorted({data["nothing"], *names}, key=len, reverse=True))
+    return re.compile(rf"^(?:{tokens})$|(?<!\w)(?:{words})(?!\w)|{special}\w+{special}|^{re.escape(data['private'])}\w"
+                      rf"|^{re.escape(data['comment'])}|^{importing}(?= )")
+
+
+def ticked_leaks(root: Path, files: tuple[str, ...], pattern: re.Pattern[str]) -> list[tuple[str, int, str]]:
+    """(file below root, line, what) of every span quoted as code in a docstring of files that writes what pattern
+    finds."""
+    found: list[tuple[str, int, str]] = []
+    for file in files:
+        for node in ast.walk(ast.parse((root / file).read_text(encoding="utf-8"))):
+            if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+                found += [(file, node.lineno, match[0]) for span in re.findall(r"`([^`]+)`", node.value.value)
+                          for match in pattern.finditer(span)]
     return found
 
 
@@ -231,7 +269,7 @@ def test_no_file_outside_the_reader_and_the_platform_writes_a_token_of_the_langu
 
 
 def test_every_exemption_is_one_some_language_still_needs():
-    found = set().union(*(named(language) | written(language) for language in LANGUAGES))
+    found = set().union(*(named(language) | written(language) | ticked(language) for language in LANGUAGES))
     assert LANGUAGES and sorted(set(EXEMPT) - found) == []
 
 
@@ -351,3 +389,27 @@ def test_the_guard_would_catch_the_engine_reading_what_the_language_does_not_say
     (tmp_path / "facts.py").write_text(code)
     assert (read_attributes(tmp_path / "facts.py") & SYNTAX, language_reads(tmp_path / "facts.py") - SAID) == (
         syntax, unsaid)
+
+
+def ticked(language: Path) -> set[tuple[str, str]]:
+    return {(file, what.strip()) for file, _, what in ticked_leaks(SRC, ENGINE, ticked_pattern(language))}
+
+
+@pytest.mark.parametrize("language", LANGUAGES, ids=lambda path: path.stem)
+def test_no_docstring_of_the_engine_writes_the_code_of_the_language_of_the_data_file(language):
+    assert sorted(ticked(language) - set(EXEMPT)) == []
+
+
+@pytest.mark.parametrize("text, found", [
+    pytest.param('"""A port\'s method returns `-> None`, or the string "None"."""\n', ["None"],
+                 id="the annotation of no value quoted as code"),
+    pytest.param('"""Its methods, dunder ones aside but `__call__`; a name not starting with `_`."""\n', ["__call__", "_"],
+                 id="a special name, and the private prefix alone"),
+    pytest.param('"""A spec, `from <module> import X`, or `mocker.Mock()`."""\n', ["from", "mocker", "Mock"],
+                 id="an import as the language writes it and the names of the preset's mocks"),
+    pytest.param('"""The key `parts.<part>.shared`, a `{target_part}`, `may_import`, and None in prose."""\n', [],
+                 id="a key, a variable and prose are no code of the language"),
+])
+def test_the_guard_finds_the_code_of_the_language_quoted_in_a_docstring(tmp_path, text, found):
+    (tmp_path / "engine.py").write_text(text)
+    assert sorted(what for _, _, what in ticked_leaks(tmp_path, ("engine.py",), ticked_pattern())) == sorted(found)
