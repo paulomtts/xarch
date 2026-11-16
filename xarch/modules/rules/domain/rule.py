@@ -39,15 +39,14 @@ from xarch.modules.rules.domain.vocabulary import (
     VARIABLES,
     Kind,
 )
-from xarch.profile_values.checks import ALL, APP, TESTS, Condition, Saying, Scope
+from xarch.profile_values.checks import ALL, APP, QUANTIFIER_SLOTS, TESTS, Condition, Saying, Scope
 from xarch.profile_values.placement import Target
 
-MAY_NOT, MAY_ONLY = "may_not", "may_only"
-"""What a kept fact does with the targets: matches none of them, or matches one of them."""
-MUST_REACH, MUST_BE_REACHED = "must_reach", "must_be_reached"
-"""What a file or a declaration does through links: a file of the scope reaches a target, by one of its own facts or
-through the files its links lead to, however far; a declaration of the scope is reached from a root, by the link of a
-root, or of a declaration reached already when the rule spreads through it."""
+MAY_NOT, MAY_ONLY, MUST_REACH, MUST_BE_REACHED = QUANTIFIER_SLOTS
+"""What a kept fact does with the targets: matches none of them, or matches one of them; and what a file or a
+declaration does through links: a file of the scope reaches a target, by one of its own facts or through the files its
+links lead to, however far; a declaration of the scope is reached from a root, by the link of a root, or of a
+declaration reached already when the rule spreads through it. Each is the slot of the format that writes it."""
 
 FAIL, LIST = "fail", "list"
 """What a finding is: a violation, or a weak finding listed in the enforcement section."""

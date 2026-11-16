@@ -5,14 +5,29 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 
-from xarch.modules.rules.domain.rule import FAIL, MUST_BE_REACHED, MUST_REACH
+from xarch.modules.rules.domain.rule import FAIL
 from xarch.modules.rules.domain.vocabulary import TARGETS
 from xarch.platform.yaml_writer import YamlWriter
-from xarch.profile_values.checks import ANY, APP, STRUCTURE, Condition, Saying, Scope, WrittenCheck, WrittenTarget
+from xarch.profile_values.checks import (
+    ANY,
+    APP,
+    CASE_SLOTS,
+    EXAMPLE_SLOTS,
+    NEGATION,
+    REACH_SLOTS,
+    SCOPE_SLOTS,
+    SLOTS,
+    STRUCTURE,
+    STRUCTURE_WORD,
+    Condition,
+    Quantified,
+    Saying,
+    Scope,
+    WrittenCheck,
+    WrittenTarget,
+)
 
 INDENT = "  "
-STRUCTURE_WORD = "structure"
-"""How a scope names the structure."""
 _VALUED = {kind.name for kind in TARGETS if kind.values}
 """The kinds of target that take values, which the format writes as a map even when they have none."""
 
@@ -27,66 +42,68 @@ class YamlCheckFormat:
         lines = ["checks:"]
         for name, check in checks.items():
             lines += [f"{INDENT}{name}:", *(INDENT * 2 + line for line in self._check(check))]
-            if check.flagged or check.clean:
-                lines += [f"{INDENT * 2}examples:",
-                          *(f"{INDENT * 3}{side}: {self._files(files)}"
-                            for side, files in (("flagged", check.flagged), ("clean", check.clean)))]
         return "\n".join(lines) + "\n"
 
     def _check(self, check: WrittenCheck) -> list[str]:
-        lines = [f"read: {self._one_or_list(check.read)}"]
-        scope = self._scope(check.within)
-        lines += [f"in: {scope}"] if scope else []
-        lines += [f"keep: {self._list(map(self._filter, check.keep))}"] if check.keep else []
-        lines += self._quantified(check)
-        lines += [f"except: {self._list(map(self._filter, check.exempt))}"] if check.exempt else []
-        lines += [f"mode: {check.mode}"] if check.mode != FAIL else []
+        """The slots the check says, in the order of the format's SLOTS."""
         *cases, last = check.sayings
-        if cases:
-            lines.append("cases:")
-            for case in cases:
-                said = self._saying(case)
-                lines += [f"{INDENT}- {said[0]}", *(f"{INDENT}  {line}" for line in said[1:])]
-        return [*lines, *self._saying(last)[1:]]
+        own = self._saying(last)
+        scope = self._scope(check.within)
+        said = {"read": [f"read: {self._one_or_list(check.read)}"],
+                "in": [f"in: {scope}"] if scope else [],
+                "keep": [f"keep: {self._list(map(self._filter, check.keep))}"] if check.keep else [],
+                check.quantified.slot: self._quantified(check.quantified),
+                "except": [f"except: {self._list(map(self._filter, check.exempt))}"] if check.exempt else [],
+                "mode": [f"mode: {check.mode}"] if check.mode != FAIL else [],
+                **{slot: own[slot] for slot in CASE_SLOTS if slot in own and slot != "when"},
+                "cases": ["cases:", *(line for case in cases for line in self._case(case))] if cases else [],
+                "examples": self._examples(check)}
+        return _ordered(said, SLOTS)
+
+    def _case(self, case: Saying) -> list[str]:
+        lines = _ordered(self._saying(case), CASE_SLOTS)
+        return [f"{INDENT}- {lines[0]}", *(f"{INDENT}  {line}" for line in lines[1:])]
+
+    def _examples(self, check: WrittenCheck) -> list[str]:
+        files = {"flagged": check.flagged, "clean": check.clean}
+        if not any(files.values()):
+            return []
+        return ["examples:", *(f"{INDENT}{side}: {self._files(files[side])}" for side in EXAMPLE_SLOTS)]
 
     def _files(self, files: tuple[tuple[str, str], ...]) -> str:
         shown = [f"{self._writer.word(path)}: {self._writer.quoted(code)}" for path, code in files]
         return f"{{{', '.join(shown)}}}"
 
-    def _saying(self, saying: Saying) -> list[str]:
-        lines = [f"when: {self._list(map(self._filter, saying.when))}", f"message: {self._writer.quoted(saying.message)}",
-                 f"fix: {self._writer.quoted(saying.fix)}"]
-        return lines + ([f"once_per: {self._list(saying.once)}"] if saying.once else [])
+    def _saying(self, saying: Saying) -> dict[str, list[str]]:
+        return {"when": [f"when: {self._list(map(self._filter, saying.when))}"],
+                "message": [f"message: {self._writer.quoted(saying.message)}"],
+                "fix": [f"fix: {self._writer.quoted(saying.fix)}"],
+                "once_per": [f"once_per: {self._list(saying.once)}"] if saying.once else []}
 
-    def _quantified(self, check: WrittenCheck) -> list[str]:
-        quantified = check.quantified
-        if quantified.slot == MUST_REACH:
-            lines = [f"{INDENT}targets: {self._targets(quantified.targets)}",
-                     f"{INDENT}through: {self._one_or_list(quantified.through)}"]
-            lines += [f"{INDENT}through_only: {self._list(map(self._filter, quantified.through_only))}"] \
-                if quantified.through_only else []
-            return [f"{quantified.slot}:", *lines]
-        if quantified.slot == MUST_BE_REACHED:
-            lines = [f"{INDENT}from: {self._scope(quantified.start or Scope(), always=True)}",
-                     f"{INDENT}through: {self._one_or_list(quantified.through)}"]
-            lines += [f"{INDENT}through_only: {self._list(map(self._filter, quantified.through_only))}"] \
-                if quantified.through_only else []
-            lines += [f"{INDENT}then_through: {self._one_or_list(quantified.then_through)}"] \
-                if quantified.then_through else []
-            lines += [f"{INDENT}by_another_file: true"] if quantified.by_another_file else []
-            return [f"{quantified.slot}:", *lines]
-        return [f"{quantified.slot}: {self._targets(quantified.targets)}"]
+    def _quantified(self, quantified: Quantified) -> list[str]:
+        if quantified.slot not in REACH_SLOTS:
+            return [f"{quantified.slot}: {self._targets(quantified.targets)}"]
+        said = {"targets": [f"targets: {self._targets(quantified.targets)}"],
+                "from": [f"from: {self._scope(quantified.start or Scope(), always=True)}"],
+                "through": [f"through: {self._one_or_list(quantified.through)}"],
+                "through_only": [f"through_only: {self._list(map(self._filter, quantified.through_only))}"]
+                if quantified.through_only else [],
+                "then_through": [f"then_through: {self._one_or_list(quantified.then_through)}"]
+                if quantified.then_through else [],
+                "by_another_file": ["by_another_file: true"] if quantified.by_another_file else []}
+        return [f"{quantified.slot}:", *(f"{INDENT}{line}" for line in _ordered(said, REACH_SLOTS[quantified.slot]))]
 
     def _scope(self, scope: Scope, always: bool = False) -> str:
-        entries = [f"files: {scope.files}"] if scope.files != APP or always else []
-        entries += [f"part: {STRUCTURE_WORD if scope.part == STRUCTURE else self._writer.word(scope.part)}"] \
-            if scope.part != ANY else []
-        entries += [f"tier: {self._writer.word(scope.tier)}"] if scope.tier else []
-        entries += [f"where: {self._list(map(self._filter, scope.where))}"] if scope.where else []
+        said = {"files": [f"files: {scope.files}"] if scope.files != APP or always else [],
+                "part": [f"part: {STRUCTURE_WORD if scope.part == STRUCTURE else self._writer.word(scope.part)}"]
+                if scope.part != ANY else [],
+                "tier": [f"tier: {self._writer.word(scope.tier)}"] if scope.tier else [],
+                "where": [f"where: {self._list(map(self._filter, scope.where))}"] if scope.where else []}
+        entries = _ordered(said, SCOPE_SLOTS)
         return f"{{{', '.join(entries)}}}" if entries else ""
 
     def _filter(self, condition: Condition) -> str:
-        name = f"not {condition.name}" if condition.negated else condition.name
+        name = f"{NEGATION}{condition.name}" if condition.negated else condition.name
         return f"{{{name}: {self._writer.word(condition.value)}}}" if condition.value else name
 
     def _targets(self, targets: tuple[WrittenTarget, ...]) -> str:
@@ -102,3 +119,8 @@ class YamlCheckFormat:
 
     def _list(self, items: Iterable[str]) -> str:
         return f"[{', '.join(item if item.startswith('{') else self._writer.word(item) for item in items)}]"
+
+
+def _ordered(said: Mapping[str, list[str]], slots: Iterable[str]) -> list[str]:
+    """The lines said for each of slots, in their order; what is said for no slot of them is not written."""
+    return [line for slot in slots for line in said.get(slot, [])]

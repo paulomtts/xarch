@@ -23,6 +23,24 @@ STRUCTURE = ""
 APP, TESTS, ALL = "app", "tests", "all"
 """The files a scope reads: the app's, the tests', or both, the app's first."""
 
+SLOTS = ("read", "in", "keep", "may_not", "may_only", "must_reach", "must_be_reached", "except", "mode", "message",
+         "fix", "once_per", "cases", "examples")
+"""Every slot of a check, in the order a check is written: spec reads them, rules says what each means and writes a
+check with them."""
+QUANTIFIER_SLOTS = ("may_not", "may_only", "must_reach", "must_be_reached")
+"""The slots of which a check writes one, its quantifier."""
+SCOPE_SLOTS = ("files", "part", "tier", "where")
+"""The slots of a scope (`in`, and `from` of must_be_reached)."""
+REACH_SLOTS = {"must_reach": ("targets", "through", "through_only"),
+               "must_be_reached": ("from", "through", "through_only", "then_through", "by_another_file")}
+"""The slots of a quantifier of reach, in the order they are written."""
+CASE_SLOTS = ("when", "message", "fix", "once_per")
+"""The slots of a case."""
+EXAMPLE_SLOTS = ("flagged", "clean")
+"""The slots of a check's examples: the code it must find something in, then the code it must find nothing in."""
+STRUCTURE_WORD = "structure"
+"""How a scope's part names the structure (STRUCTURE): the folders of the layout no part claims."""
+
 
 @dataclass(frozen=True)
 class Condition:

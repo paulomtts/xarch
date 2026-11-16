@@ -423,15 +423,15 @@ SLOTS: tuple[Slot, ...] = (
     Slot("fix", "what to do about it", "an imperative sentence with {<variable>}s", "variables"),
     Slot("once_per", "say one finding of a file for each value of these variables, the first", "[<variable>, ...]",
          "variables"),
+    Slot("cases", "a message and a fix for the findings of which the filters hold, the first that holds said in place "
+                  "of the check's own", "[{when: [<filter>, ...], message, fix, once_per}, ...]",
+         "filters"),
     Slot("examples", "code the check must find something in (flagged), and code it must find nothing in (clean), each "
                      "a small project; `xarch profile check` runs them, and fails when either does not behave so",
          "{flagged: {<path>: <code>, ...}, clean: {<path>: <code>, ...}}, a path below the app, or tests/<path> for a "
          "test; required for a check of your own"),
-    Slot("cases", "a message and a fix for the findings of which the filters hold, the first that holds said in place "
-                  "of the check's own", "[{when: [<filter>, ...], message, fix, once_per}, ...]",
-         "filters"),
 )
-"""Every slot of a check, in the order a check is written."""
+"""Every slot of a check, in the order a check is written (the format's SLOTS), with what it means."""
 
 READING = ("each fact of the kinds it reads, in the files of its scope, that passes the filters it keeps, may not "
            "match (may_not) or may only match (may_only) its targets; under must_reach a file must reach a target, "

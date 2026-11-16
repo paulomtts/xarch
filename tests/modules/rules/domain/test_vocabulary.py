@@ -1,9 +1,11 @@
 """The vocabulary holds together: every name once, every field a word reads one some kind carries and the table of
 fields says, every fact a kind needs one the language's data file can supply, every filter that guards a field one
-that exists, and every word applies to some kind of fact."""
+that exists, every word applies to some kind of fact, and a slot means something for each slot the format has, in its
+order."""
 import pytest
 
-from xarch.modules.rules.domain.vocabulary import FIELDS, FILTERS, KINDS, QUANTIFIERS, TARGETS, VARIABLES
+from xarch.modules.rules.domain.vocabulary import FIELDS, FILTERS, KINDS, QUANTIFIERS, SLOTS, TARGETS, VARIABLES
+from xarch.profile_values import checks
 from xarch.profile_values.capabilities import FACTS
 
 WORDS = {"kind": KINDS, "filter": FILTERS, "target": TARGETS, "variable": VARIABLES, "quantifier": QUANTIFIERS}
@@ -35,3 +37,7 @@ def test_a_field_carried_only_sometimes_is_guarded_by_a_filter_that_exists():
 @pytest.mark.parametrize("word", [*FILTERS, *TARGETS, *VARIABLES], ids=lambda word: word.name)
 def test_every_word_applies_to_some_kind_of_fact(word):
     assert any(word.applies_to(kind) for kind in KINDS)
+
+
+def test_the_slots_the_vocabulary_explains_are_the_slots_of_the_format_in_its_order():
+    assert tuple(slot.name for slot in SLOTS) == checks.SLOTS

@@ -34,7 +34,14 @@ from xarch.modules.spec.domain.values import Language, Tier
 from xarch.profile_values.checks import (
     ANY,
     APP,
+    CASE_SLOTS,
+    EXAMPLE_SLOTS,
+    QUANTIFIER_SLOTS,
+    REACH_SLOTS,
+    SCOPE_SLOTS,
+    SLOTS,
     STRUCTURE,
+    STRUCTURE_WORD,
     Condition,
     Quantified,
     Saying,
@@ -42,18 +49,6 @@ from xarch.profile_values.checks import (
     WrittenCheck,
     WrittenTarget,
 )
-
-SLOTS = ("read", "in", "keep", "may_not", "may_only", "must_reach", "must_be_reached", "except", "mode", "message",
-         "fix", "once_per", "cases", "examples")
-"""Every slot of a check, in the order a check is written."""
-QUANTIFIERS = ("may_not", "may_only", "must_reach", "must_be_reached")
-SCOPE = ("files", "part", "tier", "where")
-REACH = {"must_reach": ("targets", "through", "through_only"),
-         "must_be_reached": ("from", "through", "through_only", "then_through", "by_another_file")}
-CASE = ("when", "message", "fix", "once_per")
-EXAMPLES = ("flagged", "clean")
-STRUCTURE_WORD = "structure"
-"""How `in.part` names the structure: the folders of the layout no part claims."""
 
 
 def checks(value: Any, declared: set[str], tiers: tuple[Tier, ...], language: Language,
@@ -88,10 +83,10 @@ def _check(body: Any, where: str, declared: set[str], tiers: set[str], language:
         return None
     problems += _unknown(body, SLOTS, where)
     problems += [f"{where}: missing `{slot}`" for slot in ("read", "message", "fix", "examples") if slot not in body]
-    quantified = [slot for slot in QUANTIFIERS if slot in body]
+    quantified = [slot for slot in QUANTIFIER_SLOTS if slot in body]
     if len(quantified) != 1:
         problems.append(f"{where}: {'names no quantifier' if not quantified else 'names ' + ' and '.join(quantified)}: "
-                        f"write one of {', '.join(QUANTIFIERS)}")
+                        f"write one of {', '.join(QUANTIFIER_SLOTS)}")
     within = _scope(body.get("in", {}), f"{where}.in", declared, tiers, problems)
     read = _names(body.get("read"), f"{where}.read", problems)
     keep = _filters(body.get("keep", []), f"{where}.keep", problems)
@@ -165,7 +160,7 @@ def _scope(value: Any, where: str, declared: set[str], tiers: set[str], problems
     if not isinstance(value, Mapping):
         problems.append(f"{where}: must be a map {{files, part, tier, where}}")
         return Scope()
-    problems += _unknown(value, SCOPE, where)
+    problems += _unknown(value, SCOPE_SLOTS, where)
     files = _text(value["files"], f"{where}.files", problems) if "files" in value else APP
     part = value.get("part")
     chosen = ANY
@@ -209,12 +204,12 @@ def _targets(value: Any, where: str, problems: list[str]) -> tuple[WrittenTarget
 
 def _quantified(slot: str, value: Any, where: str, declared: set[str], tiers: set[str],
                 problems: list[str]) -> Quantified:
-    if slot not in REACH:
+    if slot not in REACH_SLOTS:
         return Quantified(slot, _targets(value, where, problems))
     if not isinstance(value, Mapping):
-        problems.append(f"{where}: must be a map {{{', '.join(REACH[slot])}}}")
+        problems.append(f"{where}: must be a map {{{', '.join(REACH_SLOTS[slot])}}}")
         return Quantified(slot)
-    problems += _unknown(value, REACH[slot], where)
+    problems += _unknown(value, REACH_SLOTS[slot], where)
     required = ("targets",) if slot == "must_reach" else ("from", "through")
     problems += [f"{where}: missing `{key}`" for key in required if key not in value]
     through = _names(value.get("through"), f"{where}.through", problems)
@@ -238,7 +233,7 @@ def _cases(value: Any, where: str, problems: list[str]) -> tuple[Saying, ...]:
         if not isinstance(case, Mapping):
             problems.append(f"{at}: must be a map {{when, message, fix, once_per}}")
             continue
-        problems += _unknown(case, CASE, at)
+        problems += _unknown(case, CASE_SLOTS, at)
         problems += [f"{at}: missing `{key}`" for key in ("when", "message", "fix") if key not in case]
         found.append(Saying(_sentence(case.get("message"), f"{at}.message", problems),
                             _sentence(case.get("fix"), f"{at}.fix", problems),
@@ -257,8 +252,8 @@ def _examples(value: Any, where: str, language: Language,
     if not isinstance(value, Mapping):
         problems.append(f"{where}: must be a map {{flagged: {{<path>: <code>}}, clean: {{<path>: <code>}}}}")
         return (), ()
-    problems += _unknown(value, EXAMPLES, where)
-    for side in EXAMPLES:
+    problems += _unknown(value, EXAMPLE_SLOTS, where)
+    for side in EXAMPLE_SLOTS:
         files = value.get(side)
         if not isinstance(files, Mapping) or not files:
             problems.append(f"{where}.{side}: must be a map of at least one file, {{<path>: <code>}}: the code the check "
