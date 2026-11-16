@@ -1,10 +1,11 @@
 """The name of a new instance: a lowercase identifier that is no reserved word and is not private."""
 import pytest
 
+from tests.modules.scaffold.builders import PYTHON_NAMES, PYTHON_PRIVATE
 from xarch.modules.scaffold.application.logic.names import valid_name
 from xarch.modules.scaffold.domain.values import Language
 
-PYTHON = Language("Python", "__init__.py", frozenset({"class"}), r"(?!\d)\w+", "_")
+PYTHON = Language("Python", "__init__.py", frozenset({"class"}), PYTHON_NAMES, PYTHON_PRIVATE)
 """Python as its data file says it, with one reserved word."""
 
 

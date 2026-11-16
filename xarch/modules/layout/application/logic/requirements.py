@@ -5,9 +5,9 @@ Only what is required is looked for: extra folders and files are none of the lay
 """
 from __future__ import annotations
 
-import re
 from collections.abc import Collection, Iterable
 
+from xarch.kernel.logic.names import is_public_name
 from xarch.kernel.violations import Violation
 from xarch.modules.layout.domain.structure import Naming, Repeated, Requirement
 
@@ -15,7 +15,7 @@ from xarch.modules.layout.domain.structure import Naming, Repeated, Requirement
 def is_instance_name(name: str, naming: Naming) -> bool:
     """Whether a folder found in a repeating folder's parent is an instance of it, not a cache or private folder: its
     name is a name of the language, and no private one."""
-    return bool(re.fullmatch(naming.names or ".+", name)) and not (naming.private and name.startswith(naming.private))
+    return is_public_name(name, naming.names, naming.private)
 
 
 def requirements(root: str, top_level: Iterable[tuple[str, ...]], repeated: Iterable[Repeated],

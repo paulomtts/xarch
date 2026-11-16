@@ -9,6 +9,7 @@ from collections.abc import Collection, Mapping
 from fnmatch import fnmatchcase
 from typing import Any
 
+from xarch.kernel.logic import names
 from xarch.kernel.logic.placement import place_of
 from xarch.kernel.placement import EACH
 from xarch.kernel.violations import RULES
@@ -31,7 +32,7 @@ CALLED = "()"
 
 def is_name(text: str, language: Language) -> bool:
     """Whether text is a name the language allows, as its data file says (any text but nothing when it does not say)."""
-    return re.fullmatch(language.names or ".+", text) is not None
+    return names.is_name(text, language.names)
 
 
 def is_dotted(text: str, language: Language, least: int = 1) -> bool:

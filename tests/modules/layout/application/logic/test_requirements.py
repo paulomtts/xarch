@@ -1,11 +1,9 @@
 """The structure rule on plain values: what must exist below the root, and what is missing."""
 import pytest
 
+from tests.modules.layout.builders import PYTHON_NAMING
 from xarch.modules.layout.application.logic.requirements import is_instance_name, missing, requirements
-from xarch.modules.layout.domain.structure import Naming, Repeated, Requirement
-
-PYTHON_NAMING = Naming(r"(?!\d)\w+", "_")
-"""How Python names a folder, as its data file says."""
+from xarch.modules.layout.domain.structure import Repeated, Requirement
 
 PARTS = [(("domain",), True), (("application", "controller.py"), False)]
 

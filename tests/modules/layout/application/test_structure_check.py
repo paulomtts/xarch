@@ -6,6 +6,7 @@ import pytest
 
 from tests.fakes.filesystem import FakeDisk
 from tests.fakes.layout_skeleton import FakeSkeleton
+from tests.modules.layout.builders import PYTHON_NAMING
 from xarch.modules.layout.application.controller import LayoutController
 from xarch.modules.layout.application.services.structure_check import StructureCheckService
 from xarch.modules.layout.contract import CheckStructure
@@ -20,7 +21,7 @@ SKELETON = FakeSkeleton([("bootstrap",), ("kernel",), ("kernel", "logic"), ("mod
                         {("modules",): [(("contract",), True), (("domain",), True),
                                         (("application", "controller.py"), False), (("application", "services"), True),
                                         (("application", "logic"), True), (("application", "ports"), True),
-                                        (("adapters",), True)]})
+                                        (("adapters",), True)]}, naming=PYTHON_NAMING)
 
 
 def run(disk: FakeDisk, package="app") -> list[str]:

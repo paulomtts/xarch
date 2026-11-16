@@ -4,18 +4,15 @@ from __future__ import annotations
 from xarch.modules.layout.domain.errors import ProfileUnusable
 from xarch.modules.layout.domain.structure import Naming
 
-PYTHON_NAMING = Naming(r"(?!\d)\w+", "_")
-"""How Python names a folder, as its data file says."""
-
 
 class FakeSkeleton:
     """Satisfies layout's Skeleton: the same top-level folders and repeating folders under every profile; repeats
     holds, by the folder of each repeating folder, the parts every instance of it holds; and how the language names
-    a folder, Python's unless given; a profile refused raises ProfileUnusable with its reason."""
+    a folder (the language says nothing unless given); a profile refused raises ProfileUnusable with its reason."""
 
     def __init__(self, top_level: list[tuple[str, ...]],
                  repeats: dict[tuple[str, ...], list[tuple[tuple[str, ...], bool]]] | None = None,
-                 top_files: list[tuple[str, ...]] | None = None, naming: Naming = PYTHON_NAMING,
+                 top_files: list[tuple[str, ...]] | None = None, naming: Naming = Naming(),
                  refused: dict[str, str] | None = None):
         self._top, self._repeats = list(top_level), dict(repeats or {})
         self._files, self._naming, self._refused = list(top_files or []), naming, dict(refused or {})

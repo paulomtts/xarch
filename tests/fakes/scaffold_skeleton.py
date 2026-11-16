@@ -17,16 +17,17 @@ class FakeSkeleton:
                  files: dict[str, list[tuple[tuple[str, ...], str | bytes]]] | None = None,
                  package_file: str = "__init__.py", language: str = "Python",
                  reserved: frozenset[str] = frozenset({"class"}), default_app: str = "app",
-                 refused: dict[str, str] | None = None):
+                 refused: dict[str, str] | None = None, names: str = "", private: str = ""):
         self._top, self._kinds, self._docs = list(top_level), dict(kinds or {}), list(docs or [])
         self._files, self._package, self._language = dict(files or {}), package_file, language
         self._reserved, self._default_app, self._refused = reserved, default_app, dict(refused or {})
+        self._names, self._private = names, private
 
     def top_level(self, profile: str) -> list[tuple[tuple[str, ...], bool]]:
         return list(self._top)
 
     def language(self, profile: str) -> Language:
-        return Language(self._language, self._package, self._reserved, r"(?!\d)\w+", "_")
+        return Language(self._language, self._package, self._reserved, self._names, self._private)
 
     def default_app(self) -> str:
         return self._default_app

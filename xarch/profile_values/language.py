@@ -59,7 +59,3 @@ class CheckedLanguage:
     def is_public(self, name: str) -> bool:
         """Whether a name is for other files to use: it does not start as a private name does, which a special one may."""
         return not (self.private and name.startswith(self.private))
-
-    def is_private(self, name: str) -> bool:
-        """Whether a name is private to its file or folder: it is not public, and it is no special name."""
-        return not self.is_public(name) and not self.is_special(name)
