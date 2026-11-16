@@ -81,7 +81,7 @@ class SourceCheckService:
             if tests is not None else []
         tests_root = tests.name if tests is not None else None
         shown = root.name
-        unread = [SourceFile("/".join((shown, *p)), p, ()) for p in paths if not governed.governed(rules, p)]
+        unread = governed.unread(paths, rules, shown)
         book = expansion.book(rules)
         own = tuple(check.rule for check in rules.checks)
         facts = facts_of(app, test_files, rules, package, tests_root or "",
@@ -128,11 +128,8 @@ class SourceCheckService:
         project = resolved.parent
         standing = self._profiles.standing(location, package)
         texts = [self._tree.text(project.joinpath(*file.path)) for file in standing.init_files]
-        weak = stand_ins.weak(app, tests, rules) + scenarios.weak(app, tests, rules) + [
-            item for item in forwarding if isinstance(item, Weak)]
-        weak += [item for item in listed if isinstance(item, Weak)]
-        if tests_root is not None:
-            weak += [item for item in untested if isinstance(item, Weak)]
+        weak = enforcement.weak_of([*stand_ins.weak(app, tests, rules), *scenarios.weak(app, tests, rules), *forwarding,
+                                    *listed], untested, tests_root is not None)
         return Enforcement(standing.guards_off, standing.baseline_off, tuple(ungoverned),
                            tuple(enforcement.drift(standing.init_files, texts)),
                            skipped=tuple(enforcement.skipped(tests, rules)),

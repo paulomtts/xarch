@@ -1,7 +1,7 @@
 """Where an import points, on hand-made imports: below the root the importing file's folder lies in."""
 import pytest
 
-from xarch.kernel.logic.source import imported_module, relative_target
+from xarch.kernel.logic.source import imported_module, imported_names, relative_target
 from xarch.kernel.source import Import
 
 FOLDER = ("modules", "docs", "domain")
@@ -29,3 +29,9 @@ def test_a_relative_import_climbs_from_its_folder_then_takes_its_module(up, modu
 ])
 def test_an_import_names_a_module_below_the_root_or_none(imp, module):
     assert imported_module(imp, FOLDER, "app") == module
+
+
+def test_an_import_takes_its_module_whole_or_each_name_it_names_from_it_and_nothing_outside_the_root():
+    assert imported_names(Import(1, ("app", "docs")), (), "app") == [(("docs",), None)]
+    assert imported_names(Import(1, ("app", "docs"), ("a", "b")), (), "app") == [(("docs",), "a"), (("docs",), "b")]
+    assert imported_names(Import(1, ("yaml",), ("load",)), (), "app") == []

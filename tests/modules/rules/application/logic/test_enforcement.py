@@ -5,6 +5,7 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.rules.builders import PYTHON
+from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.enforcement import (
     detail,
     drift,
@@ -15,6 +16,7 @@ from xarch.modules.rules.application.logic.enforcement import (
     skipped,
     strict_findings,
     vacuous,
+    weak_of,
 )
 from xarch.modules.rules.domain.published import At, Drift, Weak
 from xarch.modules.rules.domain.values import Enforcement, Finding, InitFile, Profile, SourceFile, Use
@@ -162,3 +164,10 @@ def test_a_check_of_the_profile_s_own_that_read_nothing_fails_strict_and_one_tha
 def test_a_part_redefined_without_the_litmus_its_base_gives_it_fails_strict_as_said():
     said = "cli has no litmus, though the profile it is compared with gives it one (parts.cli.litmus)"
     assert strict_findings(Enforcement(unplaced=(said,))) == (Finding("litmus", said),)
+
+
+def test_the_weak_findings_listed_are_those_found_then_the_untested_ones_when_there_are_tests():
+    found, untested = Weak("holds", "a.py", 1, "m", "f"), Weak("dead-code", "b.py", 2, "m", "f")
+    violation = Violation("c.py", 3, "m", "rules", "f")
+    assert weak_of([found, violation], [untested], True) == [found, untested]
+    assert weak_of([found], [untested], False) == [found]

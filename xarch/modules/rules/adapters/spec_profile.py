@@ -77,7 +77,7 @@ class SpecProfiles:
                        info={p.name: PartInfo(p.role, p.litmus, p.shown, p.untested) for p in parts},
                        excluded=view.excluded, hints=dict(view.hints), language=view.language,
                        reserved=dict(view.reserved),
-                       approximate=view.approximate, written=dict(view.checks), tests_folder=DEFAULT_TESTS)
+                       approximate=view.approximate, written=dict(view.checks), default_tests=DEFAULT_TESTS)
 
     def known(self, app: Path) -> tuple[str, ...]:
         """The profile in force first, then the bundled ones."""

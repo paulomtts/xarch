@@ -43,7 +43,7 @@ PROFILE = Profile(
            Tier("integration", (Target("controller", "own"), Target("ports", "own")), None, (), False,
                 "a use case", "real controllers; fakes", "Does it drive a controller?", "use case"),
            Tier("guard", (), ("architecture",), (), False, "a rule holds", "the source tree")),
-    libraries={"kernel": (), "domain": (), "platform": ("yaml",), "entry": ("typer",)}, tests_folder="tests",
+    libraries={"kernel": (), "domain": (), "platform": ("yaml",), "entry": ("typer",)}, default_tests="tests",
     fakes=Fakes(("fakes",), ("ports",), "Fake"), repeats=(Repeat("module", ("modules",)),),
     framework=Framework(("test_*.py",), "test_*"),
     forbidden={"domain": (NOW, ("builtins", "open"))},
@@ -238,11 +238,11 @@ def test_a_test_of_a_tier_not_held_to_forbidden_names_none_and_a_tier_s_types_on
     assert (here.tier.name, here.forbidden, here.tier.types_only) == ("rendering", (), ("controller",))
 
 
-def test_without_a_known_tests_folder_the_tests_are_shown_where_the_profile_says_they_are_when_none_is_given():
+def test_without_a_known_tests_folder_the_tests_are_shown_in_the_default_one_when_none_is_given():
     assert (where("modules", "docs", "domain", "invoice.py").test_folder,
             describe(PROFILE, found("tests", "fakes", "x.py"), APP, None).fakes_path) == (
         "tests/modules/docs/domain/", "tests/fakes/")
-    elsewhere = Profile(**{**vars(PROFILE), "tests_folder": "specs"})
+    elsewhere = Profile(**{**vars(PROFILE), "default_tests": "specs"})
     assert describe(elsewhere, found("tests", "fakes", "x.py"), APP, None).fakes_path == "specs/fakes/"
 
 

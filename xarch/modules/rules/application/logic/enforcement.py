@@ -24,6 +24,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 
+from xarch.kernel.violations import Violation
 from xarch.modules.rules.domain.published import At, Drift, Weak
 from xarch.modules.rules.domain.values import Enforcement, Finding, InitFile, Profile, SourceFile
 from xarch.profile_values.capabilities import Shortfall
@@ -105,3 +106,9 @@ def folders(files: Sequence[str]) -> list[str]:
 def excluded_folder(app: str, excluded: Excluded) -> str:
     """An excluded folder as shown below the folder holding the app folder named app, such as "app/examples"."""
     return "/".join((app, *excluded.path))
+
+
+def weak_of(found: Iterable[Violation | Weak], untested: Iterable[Violation | Weak], tests: bool) -> list[Weak]:
+    """The findings the enforcement section lists as weak, in order: those found, then those of the untested check,
+    which count only when there are tests to have tested the code."""
+    return [item for item in (*found, *(untested if tests else ())) if isinstance(item, Weak)]

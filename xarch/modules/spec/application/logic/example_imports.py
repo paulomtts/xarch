@@ -19,8 +19,9 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Iterator, Mapping
 
+from xarch.kernel.logic.examples import is_test_example
 from xarch.kernel.logic.placement import reaches
-from xarch.kernel.logic.source import imported_module
+from xarch.kernel.logic.source import imported_names
 from xarch.kernel.source import Import, Unparsable
 from xarch.modules.spec.application.logic.project_files import EXAMPLE_APP
 from xarch.modules.spec.domain.published import DEFAULT_TESTS
@@ -41,7 +42,8 @@ def example_problems(architecture: Architecture, reads: Mapping[str, Read]) -> l
     reads holds each checked example as read, by its name."""
     problems: list[str] = []
     for example in checked_examples(architecture):
-        problems += _problems(architecture, example.path, reads[example.name], example.path[0] != DEFAULT_TESTS)
+        problems += _problems(architecture, example.path, reads[example.name],
+                              not is_test_example(example.path, DEFAULT_TESTS))
     return problems
 
 
@@ -79,14 +81,11 @@ def _targets(imports: Iterable[Import], folder: tuple[str, ...],
     checked as part of the path, else None: what is imported is the whole of the path.
     """
     for imp in imports:
-        base = imported_module(imp, folder, EXAMPLE_APP)
-        if base is None:
-            continue
-        if imp.names is None:
-            yield base, base, None
-            continue
-        place = architecture.place_of(base)
-        for name in imp.names:
+        for base, name in imported_names(imp, folder, EXAMPLE_APP):
+            if name is None:
+                yield base, base, None
+                continue
+            place = architecture.place_of(base)
             steps = base if imp.every or place.sub else base + (name,)
             yield (base if place.part is not None else steps), steps, name if steps == base else None
 

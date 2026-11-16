@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+from xarch.kernel.logic.examples import is_test_example
 from xarch.modules.rules.application.logic.engine import run
 from xarch.modules.rules.application.logic.facts import facts_of
 from xarch.modules.rules.application.logic.own_checks import resolved
@@ -10,9 +11,6 @@ from xarch.modules.rules.application.ports.source_tree import SourceTree
 from xarch.modules.rules.domain.rule import OwnCheck
 from xarch.modules.rules.domain.values import Profile, SourceFile
 from xarch.profile_values.checks import ChecksHeld
-
-TESTS = "tests"
-"""The folder an example's path starts with when its file is a test, and the root package of the tests."""
 
 
 class ExamplesService:
@@ -41,11 +39,13 @@ class ExamplesService:
         return ChecksHeld(tuple(found), len(profile.checks))
 
     def _found(self, own: OwnCheck, files: tuple[tuple[str, str], ...], profile: Profile, app: str) -> list:
-        read = [(path.split("/"), self._tree.parsed(code)) for path, code in files]
-        app_files = [self._placed(parsed, (app, *steps), tuple(steps)) for steps, parsed in read if steps[0] != TESTS]
-        test_files = [self._placed(parsed, tuple(steps), tuple(steps[1:])) for steps, parsed in read if steps[0] == TESTS]
+        tests = profile.default_tests
+        read = [(tuple(path.split("/")), self._tree.parsed(code)) for path, code in files]
+        app_files = [self._placed(parsed, (app, *steps), steps) for steps, parsed in read
+                     if not is_test_example(steps, tests)]
+        test_files = [self._placed(parsed, steps, steps[1:]) for steps, parsed in read if is_test_example(steps, tests)]
         rules = (own.rule,)
-        return run(rules, facts_of(app_files, test_files, profile, app, TESTS, rules), profile)
+        return run(rules, facts_of(app_files, test_files, profile, app, tests, rules), profile)
 
     def _placed(self, parsed: SourceFile, shown: tuple[str, ...], path: tuple[str, ...]) -> SourceFile:
         return replace(parsed, name="/".join(shown), path=path)

@@ -83,10 +83,10 @@ def describe(profile: Profile, found: Resolved, app: Path, tests: Path | None) -
     """What a resolved path is, and what code there may do."""
     root = app.parent
     if found.within == "tests":
-        return _test(profile, found, _relative(tests, root) if tests is not None else profile.tests_folder, app.name)
+        return _test(profile, found, _relative(tests, root) if tests is not None else profile.default_tests, app.name)
     if found.within == "project":
         return UngovernedPlace(found, (), None, OUTSIDE_NOTE)
-    return _app(profile, found, app.name, _relative(tests, root) if tests is not None else profile.tests_folder)
+    return _app(profile, found, app.name, _relative(tests, root) if tests is not None else profile.default_tests)
 
 
 def _relative(path: Path, root: Path) -> str:

@@ -60,8 +60,9 @@ class Profile:
     standard-library modules (by top-level name, each with why) a part imports only when its libraries list them.
     approximate holds the keys whose check reads a fact the language supplies only partly. written are the checks the
     profile writes itself, by id, as spec read them; checks are those checks made into rules, in the profile's order
-    (none until they are made, see own_checks). tests_folder is where the tests are, from the folder holding the app, when
-    no tests folder is given or there.
+    (none until they are made, see own_checks). default_tests is the folder the tests go in, from the folder holding
+    the app, when no tests folder is given or there: not a value a profile sets, but the convention spec publishes, the
+    same for every profile; it is also the first step of the path of an example's test file.
     """
     parts: dict[str, tuple[str, ...]]
     rules: dict[str, tuple[Target, ...]]
@@ -102,7 +103,7 @@ class Profile:
     approximate: tuple[Shortfall, ...] = ()
     written: dict[str, WrittenCheck] = field(default_factory=dict)
     checks: tuple[OwnCheck, ...] = ()
-    tests_folder: str = ""
+    default_tests: str = ""
 
     def words(self) -> dict[str, str]:
         """The word of the repeating folder each part lies in; a part outside every one has none."""

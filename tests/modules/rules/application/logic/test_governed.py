@@ -3,8 +3,8 @@ folder of the layout governs; the others are listed as ungoverned."""
 import pytest
 
 from tests.modules.rules.builders import PYTHON
-from xarch.modules.rules.application.logic.governed import excluded, governed, ungoverned
-from xarch.modules.rules.domain.values import Profile
+from xarch.modules.rules.application.logic.governed import excluded, governed, ungoverned, unread
+from xarch.modules.rules.domain.values import Profile, SourceFile
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.placement import Target
 
@@ -39,3 +39,8 @@ def test_excluded(path, is_excluded):
 ])
 def test_governed(path, is_governed):
     assert governed(PROFILE, tuple(path.split("/"))) is is_governed
+
+
+def test_the_files_no_check_reads_are_files_with_no_content_shown_below_the_app():
+    paths = [("modules", "docs", "domain", "doc.py"), ("modules", "docs", "helpers.py")]
+    assert unread(paths, PROFILE, "app") == [SourceFile("app/modules/docs/helpers.py", ("modules", "docs", "helpers.py"), ())]

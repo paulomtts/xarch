@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from xarch.modules.rules.application.logic.places import excluded_by, file_place
-from xarch.modules.rules.domain.values import Profile
+from xarch.modules.rules.domain.values import Profile, SourceFile
 
 
 def ungoverned(paths: Iterable[tuple[str, ...]], profile: Profile, shown: str) -> list[str]:
@@ -27,3 +27,9 @@ def excluded(profile: Profile, path: tuple[str, ...]) -> bool:
 def governed(profile: Profile, path: tuple[str, ...]) -> bool:
     """Whether a part or a folder of the layout governs the file at path below the app, so that it is read."""
     return file_place(profile, path) is not None
+
+
+def unread(paths: Iterable[tuple[str, ...]], profile: Profile, shown: str) -> list[SourceFile]:
+    """The files no check reads, each a file with no content, shown as shown/<path>: what the checks that list them
+    know of them."""
+    return [SourceFile("/".join((shown, *path)), path, ()) for path in paths if not governed(profile, path)]
