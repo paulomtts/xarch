@@ -74,6 +74,7 @@ SHAPE = (
     Shown('guards.private-imports', 1, 'no name starting with `_` is imported from another file', False, True),
     Shown('excluded', 0, 'folders below the app that are not its source', False, True),
     Shown('hints', 0, 'your own advice for a rule', False, False),
+    Shown('checks', 0, 'checks of your own, beside the keys', False, True),
     Shown('files', 0, 'the files `init` writes besides the docs', False, True),
     Shown('files.from', 1, 'the template file, or the folder of a path ending in /', True, True),
     Shown('files.pinned', 1, '`check` reports the file when it differs', False, True),

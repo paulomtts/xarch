@@ -11,9 +11,10 @@ pass over, read from the same parsed files.
 strict_findings lists what `--strict` fails on: what the profile in force leaves unenforced or unseen. That is every
 guard it leaves off but those that the bundled profile in force, or the one a custom profile is compared with, also
 leaves off (with no profile to compare with, every guard left off), the ungoverned files, the init files missing or
-changed, the skips, the dynamic imports, the weak checks and the keys whose check reads a fact the language
-supplies only partly (approximate). How a custom profile differs from the closest bundled
-one (`origin.looser`) is information in the enforcement section and no finding: the profile defines the architecture.
+changed, the skips, the dynamic imports, the weak checks, the keys whose check reads a fact the language supplies only
+partly (approximate) and the checks of the profile's own that read nothing (vacuous). How a custom profile differs
+from the closest bundled one (`origin.looser`) is information in the enforcement section and no finding: the profile
+defines the architecture.
 
 What the enforcement section shows of them is worked out here too: the folders holding the ungoverned files, a
 finding's detail, and an excluded folder as it is shown below the folder holding the app.
@@ -56,7 +57,19 @@ def strict_findings(enforcement: Enforcement) -> tuple[Finding, ...]:
     found += [Finding("dynamic", at) for at in enforcement.dynamic]
     found += [Finding("weak", weak) for weak in enforcement.weak]
     found += [Finding("approximate", item) for item in enforcement.approximate]
+    found += [Finding("vacuous", vacuous(name)) for name, read in enforcement.checks if not read]
     return tuple(found)
+
+
+def reading(name: str, read: int) -> str:
+    """How much a check of the profile's own read, in words."""
+    return vacuous(name) if not read else f"checks.{name} read {read} fact{'' if read == 1 else 's'}"
+
+
+def vacuous(name: str) -> str:
+    """A check of the profile's own that read nothing, in words."""
+    return (f"checks.{name} reads nothing in the project, so it passes for want of anything to check: widen what it "
+            "reads, or drop it")
 
 
 def detail(item: str | Drift | At | Weak | Shortfall) -> str:

@@ -348,7 +348,8 @@ class Drift:
 class Finding:
     """An enforcement finding that `--strict` fails on: the key of the enforcement section it is under, and the item
     there that fails: a guard left off or an ungoverned file (by name), an init file that drifted, a skip or a dynamic
-    import (where it is), a weak check, or a key whose check reads a fact the language supplies only partly."""
+    import (where it is), a weak check, a key whose check reads a fact the language supplies only partly, or a check
+    of the profile's own that read nothing (its id)."""
     key: str
     item: str | Drift | At | Weak | Shortfall
 
@@ -360,8 +361,10 @@ class Enforcement:
     shown; the init files missing or changed; the tests skipped or expected to fail, and the dynamic imports, where
     they are; the checks satisfied to the letter only; and strict, the findings `--strict` fails on; the folders
     the profile excludes, which no check reads; app, the name of the app folder the shown paths start with;
-    language, how the language of the app is named; and approximate, the keys whose check reads a fact the language
-    supplies only partly, so that it may miss what it looks for."""
+    language, how the language of the app is named; approximate, the keys whose check reads a fact the language
+    supplies only partly, so that it may miss what it looks for; and checks, the checks the profile writes itself,
+    each by its id with how many facts it read in the project (one that read none passes for want of anything to
+    check, and fails `--strict`)."""
     origin: Origin = Origin()
     ungoverned: tuple[str, ...] = ()
     init_files: tuple[Drift, ...] = ()
@@ -373,6 +376,7 @@ class Enforcement:
     app: str = ""
     language: str = ""
     approximate: tuple[Shortfall, ...] = ()
+    checks: tuple[tuple[str, int], ...] = ()
 
 
 @dataclass(frozen=True)

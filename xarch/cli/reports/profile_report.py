@@ -6,7 +6,8 @@ explain, no key: {"ok", "format", "shape", "symbols", "smallest", "deeper"}, eac
 "enforced", "rules", "example", "choices", "keys", "needs", "language"}, each need {"fact", "meaning", "grade",
 "note"}: a fact of the source the key's check reads, and how the language named supplies it. explain, a profile:
 {"ok", "profile", "name", "tree", "imports"}.
-check: {"ok", "profile", "problems", "files", "compared_with"}, each problem {"check", "message"} and
+check: {"ok", "profile", "problems", "files", "compared_with"}, each problem {"check", "message"} (check: load, examples,
+or checks, for a check of the profile's own) and
 compared_with {"profile", "looser"} (null for a bundled profile or one that resembles none), each looser entry
 {"key", "part", "what", "sentence"}.
 """
@@ -18,6 +19,7 @@ from textwrap import fill
 from typing import Any
 
 from xarch.modules.spec.contract import (
+    CHECKS,
     EXAMPLES,
     LOAD,
     FormatExplained,
@@ -156,7 +158,7 @@ def view_document(seen: ProfileViewed) -> str:
                   "imports": seen.imports})
 
 
-def check_lines(checked: ProfileChecked) -> list[str]:
+def check_lines(checked: ProfileChecked, checks: int = 0) -> list[str]:
     origin = checked.origin
     if origin is not None and origin.bundled:
         where = "bundled"
@@ -173,6 +175,10 @@ def check_lines(checked: ProfileChecked) -> list[str]:
     else:
         lines.append(f"  files: all {checked.files} it points to are present")
         lines += _section("examples", examples, "ok: they import only what their part may")
+        own = [p for p in checked.problems if p.check == CHECKS]
+        if checks or own:
+            lines += _section("checks", own, "ok: its check finds what its examples say" if checks == 1 else
+                              f"ok: its {checks} checks find what their examples say")
         lines += _compared(checked)
     lines.append("OK: the profile is valid" if checked.ok
                  else f"INVALID: {len(checked.problems)} problem{'' if len(checked.problems) == 1 else 's'}")

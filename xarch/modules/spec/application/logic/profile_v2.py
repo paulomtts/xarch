@@ -41,6 +41,9 @@ each means and whether it is enforced are in profile_keys, which the messages be
     guards: {<guard>: {...}}                   the pre-built checks in use; left out means off
     excluded: {<folder>: <reason>}             folders below the app that are not its source
     hints: {<rule id>: <text>}                 your own advice for a rule, shown after its built-in fix
+    checks: {<id>: {read, in, keep, may_not, ..., message, fix, examples}}
+                               checks of the profile's own, written in the words of the rules module's vocabulary
+                               (see written_checks for the format, `xarch profile explain checks` for the words)
     files: {<path>: <from> | {from, pinned, fill}}  what `init` writes besides the docs
     docs: {entry, pages, naming, examples, example_notes}
                                everything that only fills the docs; `examples` lists folders next to the profile, each
@@ -61,6 +64,7 @@ from xarch.kernel.logic.testing import CaseTable, Fakes, Framework, ScenarioCove
 from xarch.modules.spec.application.logic import profile_checks as ck
 from xarch.modules.spec.application.logic import profile_examples as ex
 from xarch.modules.spec.application.logic import profile_needs as needs
+from xarch.modules.spec.application.logic import written_checks as own_checks
 from xarch.modules.spec.application.logic.key_lookup import keys_of, names_of, required_of
 from xarch.modules.spec.application.logic.targets_written import NAME_PATTERN, WORD, may_import
 from xarch.modules.spec.domain.errors import InvalidArchitecture
@@ -175,13 +179,15 @@ def parse_v2(document: Any, source: str, files: Collection[str] = (), presets: M
     parts = {part: replace(item, entry=True) if part == entry else item for part, item in parts.items()}
     written = ck.init_files(_bare_from(document.get("files", {})), pages, files, problems, "docs.pages", language)
     excluded = ck.excluded_folders(document["excluded"], built.tree, problems) if "excluded" in document else ()
-    hints = ck.rule_hints(document["hints"], problems) if "hints" in document else {}
+    own = (own_checks.checks(document["checks"], parts, declared, tiers, language, problems) if "checks" in document
+           else {})
+    hints = ck.rule_hints(document["hints"], problems, own) if "hints" in document else {}
     if problems:
         raise InvalidArchitecture(source, problems)
     shown = ex.examples_of(examples, built.tree, parts, language)
     return Architecture(name, built.tree, parts, rules, pages, shown, built.notes, layers, tuple(parts), naming, tiers,
                         libraries, guards, fakes, tuple(built.repeats), written, testing.framework if testing else None, forbidden,
-                        excluded, hints, based_on, language, reserved, needs.approximate(shortfalls))
+                        excluded, hints, based_on, language, reserved, needs.approximate(shortfalls), own)
 
 
 def _keys(document: Mapping[Any, Any]) -> list[str]:

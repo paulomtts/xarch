@@ -9,6 +9,7 @@ import json
 import re
 from collections.abc import Iterable
 
+from xarch.kernel.logic.language import LanguageView
 from xarch.kernel.logic.placement import Target
 from xarch.modules.rules.domain.rule import (
     ANY,
@@ -20,6 +21,7 @@ from xarch.modules.rules.domain.rule import (
     STRUCTURE,
     Condition,
     Match,
+    OwnCheck,
     Rule,
     Saying,
     Scope,
@@ -36,6 +38,28 @@ def written(rules: Iterable[Rule], ids: Iterable[str]) -> str:
     for rule, name in zip(rules, ids):
         lines += [f"{INDENT}{name}:", *(INDENT * 2 + line for line in check(rule))]
     return "\n".join(lines) + "\n"
+
+
+def written_own(checks: Iterable[OwnCheck], language: LanguageView) -> str:
+    """Checks of a profile's own as its `checks` are written, each under its id with its examples, the tokens of
+    the language (`%extension%`, `%comment%`) in their code filled in."""
+    lines = ["checks:"]
+    for own in checks:
+        lines += [f"{INDENT}{own.rule.id}:", *(INDENT * 2 + line for line in check(own.rule)),
+                  f"{INDENT * 2}examples:",
+                  *(f"{INDENT * 3}{side}: {_files(files, language)}"
+                    for side, files in (("flagged", own.flagged), ("clean", own.clean)))]
+    return "\n".join(lines) + "\n"
+
+
+def _files(files: tuple[tuple[str, str], ...], language: LanguageView) -> str:
+    shown = [f"{_word(filled(path, language))}: {_quoted(filled(code, language))}" for path, code in files]
+    return f"{{{', '.join(shown)}}}"
+
+
+def filled(text: str, language: LanguageView) -> str:
+    """The text with the tokens of the language filled in: `%extension%`, `%comment%`."""
+    return text.replace("%extension%", language.extension).replace("%comment%", language.comment)
 
 
 def check(rule: Rule) -> list[str]:

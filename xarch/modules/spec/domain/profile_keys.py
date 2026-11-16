@@ -129,6 +129,12 @@ _COVERAGE_GUARD = _COVERAGE + (
     "guards:\n  scenario-coverage:\n    results: results\n    tier: integration\n    suffix: Result\n"
     "    columns: [given, when, then]\n    file: check_{name}%extension%\n")
 _STAND_INS = (_TESTING + "  mocks:\n" + _MOCKS + _TWO + _FAKES)
+_CHECK = ("checks:\n  no-todo:\n    read: comment\n    in: {where: [placed]}\n    may_not: {text: [\"*TODO*\"]}\n"
+          "    message: \"{file} leaves a note for later at line {line}: {text}\"\n"
+          "    fix: \"do it now, or write it where the team tracks its work\"\n    examples:\n"
+          "      flagged: {documents/notes%extension%: \"%comment% TODO: split this file\\n\"}\n"
+          "      clean: {documents/notes%extension%: \"%comment% split by kind\\n\"}\n")
+"""A check of a profile's own, for the example of `checks`."""
 _PAGES = _docs("pages:\n  statement.md:\n    from: docs/statement.md\n    note: the problem the documents solve\n")
 
 
@@ -245,6 +251,15 @@ _KEYS: tuple[Key, ...] = (
        "a map {<rule id>: <text>}: shown after the built-in fix of a violation of that rule, as a `hint:` line in the "
        "text output and `hint` in the JSON; an id that is no rule of `check` is refused when the profile loads",
        "hints:\n  rules: Ask the maintainer before adding an import.\n", False, False),
+    _k(PROFILE, "checks", "checks of your own, beside the keys",
+       "a map {<id>: <check>}: an id of your own (lowercase words joined by `-`, none of a check xarch has), and a "
+       "check written in the words of the engine: what it reads (`read`), where (`in`), what it keeps, what must or "
+       "may not hold of it, what excuses it, and its `message` and `fix`; with `examples`, code it must find "
+       "something in and code it must find nothing in, which `profile check` runs. `xarch profile explain checks` "
+       "says how a check is written and every word it is written in; `xarch profile explain <key> --rule` shows the "
+       "rules a key expands to, written as checks. A check that reads nothing in the project is listed under "
+       "`enforcement`, and fails `check --strict`",
+       _PART + _CHECK, rules=()),
     _k(PROFILE, "files", "the files `init` writes besides the docs",
        "a map {<path>: <from> or {from, pinned, fill}}: `from` is a file or folder next to the profile",
        "files:\n  AGENTS.md: agents.md\n", opens=FILE),

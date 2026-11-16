@@ -1,4 +1,5 @@
 """xarch profile: the commands that work on a profile file itself (spec module)."""
+from dataclasses import replace
 from pathlib import Path
 from typing import Annotated
 
@@ -10,6 +11,7 @@ from xarch.cli.terminal import AppPath, Format, FormatOption, app_for, fail, no_
 from xarch.modules.rules.application.controller import RulesController
 from xarch.modules.rules.contract import (
     CATEGORIES,
+    CheckExamples,
     ChecksShown,
     ExplainRule,
     ExplainWords,
@@ -21,6 +23,7 @@ from xarch.modules.rules.contract import (
 )
 from xarch.modules.spec.application.controller import SpecController
 from xarch.modules.spec.contract import (
+    CHECKS,
     CheckProfile,
     Explain,
     FormatExplained,
@@ -30,6 +33,7 @@ from xarch.modules.spec.contract import (
     MigrationRefused,
     NewProfile,
     NoProfileChosen,
+    Problem,
     ProfileChecked,
     ProfileCreated,
     ProfileRefused,
@@ -151,13 +155,20 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
                        "\\[tool.xarch] in pyproject.toml.")] = None,
               app_path: AppPath = None, output: FormatOption = Format.text) -> None:
         """Validate a profile without an app: it loads (every problem at once, which includes every file it points to
-        existing), its examples import only what their part may, and how it differs from the bundled profile it is
-        based on is shown as information. Exit 0 when the profile is valid, 1 when it has problems, 2 when no profile
-        can be chosen."""
+        existing), its examples import only what their part may, each check of its own is written in words that apply
+        and finds something in the code its examples flag and nothing in their clean code, and how it differs from
+        the bundled profile it is based on is shown as information. Exit 0 when the profile is valid, 1 when it has
+        problems, 2 when no profile can be chosen."""
         refuse = refusal(output)
-        match spec.check_profile(CheckProfile(app_for(spec, app_path, refuse), target)):
+        app = app_for(spec, app_path, refuse)
+        match spec.check_profile(CheckProfile(app, target)):
             case ProfileChecked() as checked:
-                _show(output, report.check_document(checked), report.check_lines(checked))
+                count = 0
+                if checked.origin is not None:
+                    held = rules.check_examples(CheckExamples(checked.location, app.name))
+                    checked, count = replace(checked, problems=(*checked.problems, *(
+                        Problem(CHECKS, text) for text in held.problems))), held.checks
+                _show(output, report.check_document(checked), report.check_lines(checked, count))
                 if not checked.ok:
                     raise typer.Exit(1)
             case NoProfileChosen(known):

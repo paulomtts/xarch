@@ -10,6 +10,7 @@ from tests.modules.rules.application.helpers import controller
 from xarch.kernel.logic.placement import Excluded, Repeat, Target
 from xarch.kernel.logic.testing import TierView as Tier
 from xarch.modules.rules.contract import (
+    ChecksCannotRun,
     CoveringTest,
     InPart,
     Locate,
@@ -43,7 +44,7 @@ README = Ungoverned("README.md", True, (), None, "it lies outside the app folder
 
 def locate(files, command, profile=PROFILE):
     tree = FakeSourceTree(APP, files, {TESTS: {}}, texts={Path("/src/README.md"): "x"})
-    profiles = FakeProfiles({"p": profile})
+    profiles = FakeProfiles({"p": profile}, refused={"broken": ("checks.mine.read: names no kind of fact",)})
     return controller(tree, profiles).locate(command)
 
 
@@ -57,6 +58,9 @@ def locate(files, command, profile=PROFILE):
     pytest.param({}, Locate(Path("/elsewhere/x.py"), Path("/src"), APP, "p", TESTS),
                  Outside("/elsewhere/x.py lies outside the project: it is not below /src"),
                  id="a path outside the project is refused"),
+    pytest.param({}, Locate(Path("app/kernel/ids.py"), Path("/src"), APP, "broken", TESTS),
+                 ChecksCannotRun(("checks.mine.read: names no kind of fact",)),
+                 id="a profile whose own checks cannot run is refused with every problem"),
 ])
 def test_locate(given, when, then):
     assert locate(given, when) == then

@@ -8,12 +8,13 @@ from typing import ClassVar
 from xarch.kernel.logic.origin import Origin
 from xarch.kernel.violations import At, Violation, Weak
 
-__all__ = ["DriftView", "FindingView", "ExcludedView", "EnforcementView", "ReachView", "NearestView", "TierInfoView",
+__all__ = ["ChecksCannotRun", "OwnCheckView",
+           "DriftView", "FindingView", "ExcludedView", "EnforcementView", "ReachView", "NearestView", "TierInfoView",
            "PartShown", "CoveringTest", "Untested", "InPart", "InStructure", "Ungoverned", "InTests", "Support", "Fake",
            "WhereAnswer", "CheckImports", "ImportsChecked", "NotADirectory", "CheckResult", "CheckApp", "AppChecked",
            "CheckAppResult", "Locate", "Located", "Outside", "LocateResult", "CATEGORIES", "ExplainWords", "SlotShown",
            "WordLine", "CategoryShown", "ChecksShown", "WordsShown", "FieldShown", "WordShown", "UnknownWords",
-           "WordsResult", "ExplainRule", "RuleShown", "NoRuleShown", "RuleResult"]
+           "WordsResult", "ExplainRule", "RuleShown", "NoRuleShown", "RuleResult", "CheckExamples", "ExamplesChecked"]
 
 
 @dataclass(frozen=True)
@@ -49,12 +50,22 @@ class ApproximateView:
 
 
 @dataclass(frozen=True)
+class OwnCheckView:
+    """A check the profile writes itself: its id, how many facts it read in the project (none: it passes for want of
+    anything to check), and that in words."""
+    id: str
+    read: int
+    said: str
+
+
+@dataclass(frozen=True)
 class EnforcementView:
     """The state of the check's own enforcement, beside its violations, as the enforcement section shows it: the
     origin of the profile; the files no part governs, and the top folders holding them (each once, in order); the init
     files missing or changed; the skipped tests and dynamic imports; the checks met to the letter only; the findings
-    `--strict` fails on; the folders the profile excludes; how the language of the app is named; and the keys whose
-    check reads a fact the language supplies only partly, each in words."""
+    `--strict` fails on; the folders the profile excludes; how the language of the app is named; the keys whose
+    check reads a fact the language supplies only partly, each in words; and the checks the profile writes itself,
+    each with how many facts it read in the project."""
     origin: Origin = Origin()
     ungoverned: tuple[str, ...] = ()
     ungoverned_folders: tuple[str, ...] = ()
@@ -66,6 +77,7 @@ class EnforcementView:
     excluded: tuple[ExcludedView, ...] = ()
     language: str = ""
     approximate: tuple[ApproximateView, ...] = ()
+    checks: tuple[OwnCheckView, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -229,7 +241,13 @@ class NotADirectory:
     root: Path
 
 
-CheckResult = ImportsChecked | NotADirectory
+@dataclass(frozen=True)
+class ChecksCannotRun:
+    """The checks the profile writes itself cannot run: every problem, each at its address in the profile."""
+    problems: tuple[str, ...]
+
+
+CheckResult = ImportsChecked | NotADirectory | ChecksCannotRun
 
 
 @dataclass(frozen=True)
@@ -252,7 +270,7 @@ class AppChecked:
     ok: bool
 
 
-CheckAppResult = AppChecked | NotADirectory
+CheckAppResult = AppChecked | NotADirectory | ChecksCannotRun
 
 
 @dataclass(frozen=True)
@@ -277,7 +295,7 @@ class Outside:
     reason: str
 
 
-LocateResult = Located | Outside
+LocateResult = Located | Outside | ChecksCannotRun
 
 
 CATEGORIES = ("checks", "kinds", "quantifiers", "targets", "filters", "variables")
@@ -402,3 +420,20 @@ class NoRuleShown:
 
 
 RuleResult = RuleShown | NoRuleShown
+
+
+@dataclass(frozen=True)
+class CheckExamples:
+    """Hold the checks the profile at location writes itself to their examples, the app being the package app
+    names."""
+    profile: str
+    app: str
+
+
+@dataclass(frozen=True)
+class ExamplesChecked:
+    """What holding a profile's own checks to their examples found: every problem, each at its address in the
+    profile (none: each check finds something in its flagged code and nothing in its clean code), and how many checks
+    the profile writes itself."""
+    problems: tuple[str, ...]
+    checks: int

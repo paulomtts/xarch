@@ -80,6 +80,8 @@ fakes:    {folder*, for*, prefix}
 guards:   {scenario-coverage, no-comments, stand-ins, closed-tree, no-duplicates, no-twins, dead-code,
            pass-through, private-imports}
 files:    {<path>: <from> | {from*, pinned, fill}}      docs: {entry, pages, naming, examples, example_notes}
+checks:   {<id>: {read*, in, keep, may_not | may_only | must_reach | must_be_reached*, except, mode, message*, fix*,
+                  once_per, cases, examples*}}
 ```
 
 `language` names the language of the app: `python`, which is the default and the only one xarch reads today. What is
@@ -96,9 +98,10 @@ The rest of what a check knows of the language is one adapter, the reader that t
 its tokens.
 
 The data file also says what its reader supplies, under `supplies`: each fact of the source a check reads (`import`,
-`class.fields`, `callback`, ...; `xarch/kernel/logic/capabilities.py` lists them and what each check reads), graded
+`class.fields`, `callback`, ...; `xarch/kernel/logic/capabilities.py` lists them), graded
 `exact` or `{partial: <what it misses>}`. Every key that configures a check needs the facts that check reads, which
-`xarch profile explain <key>` shows under `needs:`. A profile that sets a key whose facts its language does not
+`xarch profile explain <key>` shows under `needs:` (a check of your own needs those of its kinds of fact and of the
+fields its words read, as `xarch profile explain kinds.<kind>` shows). A profile that sets a key whose facts its language does not
 supply is refused when it loads, naming the key, the fact and what to do; a key whose facts are supplied only partly
 runs, and is listed under `approximate` in the enforcement section, which `--strict` fails on. Python's reader
 supplies every fact exactly.
@@ -154,6 +157,42 @@ example-import check (the examples' imports obey the profile's own rules), and s
 profile it is based on, as information. With no argument it checks the project's configured profile. Exit 0 when valid,
 1 when it has problems, 2 when no profile can be chosen; `--format json` gives `{"ok", "profile", "problems":
 [{"check", "message"}], "files", "compared_with"}`.
+
+### Checks of your own
+
+Every check xarch runs from a key (all but `cycles`, `structure`, `test-tree`, `stand-ins`, `scenario-coverage`,
+`no-duplicates` and `no-twins`) is a rule written in a small vocabulary, and a profile may write rules of its own in the
+same words under `checks`: each reads the facts of a kind (`read`) in some files (`in`), keeps those its filters pass
+(`keep`), and says that a kept fact may not match its targets (`may_not`), may only match them (`may_only`), or that a
+file must reach a target (`must_reach`) or a fact be reached from some files (`must_be_reached`); an exception
+(`except`) excuses a finding, and `message` and `fix` say it, with `{variable}`s. A check carries `examples`: code it
+must find something in and code it must find nothing in, which `xarch profile check` runs.
+
+```yaml
+checks:
+  no-todo:
+    read: comment
+    in: {where: [placed]}
+    may_not: {text: ["*TODO*"]}
+    message: "{file} leaves a note for later at line {line}: {text}"
+    fix: "do it now, or write it where the team tracks its work"
+    examples:
+      flagged: {documents/notes.py: "# TODO: split this file\n"}
+      clean: {documents/notes.py: "# split by kind\n"}
+```
+
+Its findings carry its id as their `rule`; `hints` may name it. The enforcement section lists each check of your own
+with how many facts it read, and one that read nothing (`reads nothing`), which passes for want of anything to check,
+fails `--strict`. A check whose words do not exist or do not apply where they are written, or that needs a fact the
+language's reader does not supply, is refused with every problem at once, each at its address (`checks.<id>.keep`).
+The whole vocabulary, from the same table the engine reads, is the command:
+
+```
+xarch profile explain checks               # how a check is written and read, with a whole one as an example
+xarch profile explain filters              # a category of words: kinds, quantifiers, targets, filters, variables
+xarch profile explain filters.public       # one word: what it means, what it applies to, an example
+xarch profile explain parts.names --rule   # the rules a key of your profile expands to, written as checks
+```
 
 ### Migrating a profile of format 1
 
@@ -256,6 +295,9 @@ and rule ids may be added, but an existing one keeps its name and meaning.
 }
 ```
 
+A profile that writes checks of its own also has `"checks"` in `enforcement`: each `{"id", "read", "said"}`, `read`
+how many facts it read in the project.
+
 - `ok`: no violation, and with `--strict` no enforcement finding either; it agrees with the exit code. `strict`:
   whether `--strict` was given. `profile`: the profile in force, a bundled name or a path, as selected.
 - `violations`: sorted by `file`, then `line` (a whole-file or folder violation, `line: null`, first), then `rule`.
@@ -264,7 +306,8 @@ and rule ids may be added, but an existing one keeps its name and meaning.
   rule, else `null`. `rule` is one of: `rules`, `libraries`, `forbidden`, `tiers`
   (a test's imports, or a test in no tier), `types-only`, `test-tree`, `cycles`, `structure`, `package-only`,
   `scenario-coverage`, `no-comments`, `stand-ins`, `closed-tree`, `must-import`, `no-duplicates`, `dead-code`,
-  `pass-through` (never a violation: a `weak` item), and `syntax` (a file that does not parse).
+  `pass-through` (never a violation: a `weak` item), and `syntax` (a file that does not parse), or the id of a check
+  the profile writes itself.
 - `enforcement`: every key always present, empty when there is nothing to report. `profile.looser` items are
   `{"key", "part", "what", "sentence"}` with `key` one of `may_import`, `libraries`, `forbidden`, `untested`,
   `types_only`, `apply_forbidden`, `testing.skips`, `files.pinned`, `must_import` (the `sentence` names the full address, such as
@@ -272,7 +315,7 @@ and rule ids may be added, but an existing one keeps its name and meaning.
   `changed`; `skipped.at` and `dynamic.at` items `{"file", "line"}`; `weak` items `{"rule", "file", "line",
   "message", "fix"}` (`fix` is `null` for a weak check that has none); `approximate` items `{"key", "fact", "note"}`;
   `strict_failures` items `{"key", "detail"}`, `key` one of `guards_off`, `ungoverned`, `init_files`,
-  `skipped`, `dynamic`, `weak`, `approximate`. `strict_failures` is filled whether or not `--strict` was given: it
+  `skipped`, `dynamic`, `weak`, `approximate`, `vacuous` (a check of the profile's own that read nothing). `strict_failures` is filled whether or not `--strict` was given: it
   is what `--strict` fails on.
 - A refusal (exit 2: an unknown or invalid profile, a missing folder) prints `{"ok": false, "error": "<reason>"}` on
   stdout, so a caller always gets JSON. Only an error in the command line itself (an unknown option, a `--format`

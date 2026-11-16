@@ -39,3 +39,12 @@ class RuleRefused(DomainError):
     def __init__(self, rule: str, problems: tuple[str, ...]):
         super().__init__(f"{rule}: {'; '.join(problems)}")
         self.rule, self.problems = rule, problems
+
+
+class ChecksRefused(ProfileUnusable):
+    """The checks a profile writes itself cannot be run: every problem of every check, each named by its address in
+    the profile."""
+
+    def __init__(self, problems: tuple[str, ...]):
+        super().__init__("; ".join(problems))
+        self.problems = problems

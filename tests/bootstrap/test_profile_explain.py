@@ -83,8 +83,11 @@ def test_every_key_the_overview_names_and_every_key_those_hold_can_be_asked_for_
     while pending:
         key = pending.pop()
         found = ask(key)
-        assert found["ok"] is True and found["key"] == key and found["example"], key
         asked.append(key)
+        if key == "checks":
+            assert found["ok"] is True and found["slots"] and found["example"]["check"].startswith("checks:")
+            continue
+        assert found["ok"] is True and found["key"] == key and found["example"], key
         pending += [held["key"] for held in found["keys"]]
     assert len(asked) == len(set(asked)) > 80
 

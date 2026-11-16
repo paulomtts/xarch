@@ -47,7 +47,6 @@ from xarch.modules.rules.domain.vocabulary import FILTERS
     pytest.param("below fakes", FAKE, "file", [0], PROFILE, None, id="below: a file below the folder"),
     pytest.param("below fakes", TEST, "file", [], PROFILE, None, id="below: a file elsewhere"),
     pytest.param("relative", DOMAIN, "import", [3], PROFILE, None, id="relative"),
-    pytest.param("standard", DOMAIN, "import", [4], PROFILE, None, id="standard"),
     pytest.param("unreserved-standard", DOMAIN, "import", [4], PROFILE, None, id="unreserved-standard"),
     pytest.param("unreserved-standard", DOMAIN, "import", [], RESERVED, None,
                  id="unreserved-standard: not a module the profile reserves"),

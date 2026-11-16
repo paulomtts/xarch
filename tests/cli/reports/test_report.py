@@ -7,7 +7,7 @@ import pytest
 from xarch.cli.reports.report import enforcement_lines, json_document, ordered, text_lines
 from xarch.kernel.logic.origin import Origin
 from xarch.kernel.violations import At, Violation, Weak
-from xarch.modules.rules.contract import AppChecked, ApproximateView, EnforcementView, ExcludedView
+from xarch.modules.rules.contract import AppChecked, ApproximateView, EnforcementView, ExcludedView, OwnCheckView
 
 A = Violation("app/a.py", 3, "a problem", "rules", "do this")
 B = Violation("app/a.py", 7, "another", "rules", "do that")
@@ -132,3 +132,20 @@ def test_a_key_read_approximately_has_a_line_of_its_own_and_is_an_item_of_the_js
     document = json.loads(json_document("web", AppChecked((), state, {}, True), False))
     assert document["enforcement"]["approximate"] == [
         {"key": "parts.services.names", "fact": "class", "note": "a class defined in a branch is not read"}]
+
+
+def test_a_check_of_the_profile_s_own_is_listed_with_what_it_read_and_one_that_read_nothing_says_so():
+    state = EnforcementView(origin=Origin("mine.yaml"), checks=(
+        OwnCheckView("store-names", 2, "checks.store-names read 2 facts"),
+        OwnCheckView("no-todo", 0, "checks.no-todo reads nothing")))
+    assert enforcement_lines(state, False)[-2:] == ["  own check:   checks.store-names read 2 facts",
+                                                    "  reads nothing: checks.no-todo reads nothing"]
+    document = json.loads(json_document("mine.yaml", AppChecked((), state, {}, True), False))
+    assert document["enforcement"]["checks"] == [
+        {"id": "store-names", "read": 2, "said": "checks.store-names read 2 facts"},
+        {"id": "no-todo", "read": 0, "said": "checks.no-todo reads nothing"}]
+
+
+def test_a_profile_that_writes_no_check_of_its_own_has_no_checks_in_its_json_document():
+    document = json.loads(json_document("web", AppChecked((), EnforcementView(origin=Origin("web")), {}, True), False))
+    assert "checks" not in document["enforcement"]

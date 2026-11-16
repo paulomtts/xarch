@@ -16,6 +16,7 @@ from xarch.kernel.violations import Violation
 from xarch.modules.rules.contract import (
     ApproximateView,
     CheckImports,
+    ChecksCannotRun,
     DriftView,
     EnforcementView,
     ExcludedView,
@@ -41,7 +42,8 @@ def profile(entry: str) -> Profile:
     return Profile(parts, rules, folders, libraries={name: () for name in parts}, repeats=(Repeat("module", ("modules",)),))
 
 
-PROFILES = FakeProfiles({"cli": profile("cli"), "web": profile("web")})
+PROFILES = FakeProfiles({"cli": profile("cli"), "web": profile("web")},
+                        refused={"broken": ("checks.mine.keep: no filter is named 'publc': did you mean public?",)})
 
 
 def controller_of(tree, profiles):
@@ -63,6 +65,9 @@ def run(files, package="app", root=ROOT, profile="cli"):
                  ImportsChecked(()), id="an allowed import is no violation"),
     pytest.param({}, CheckImports(Path("/nowhere"), "app", "cli"), NotADirectory(Path("/nowhere")),
                  id="a missing root is reported as such"),
+    pytest.param({}, CheckImports(ROOT, "app", "broken"),
+                 ChecksCannotRun(("checks.mine.keep: no filter is named 'publc': did you mean public?",)),
+                 id="a profile whose own checks cannot run is refused with every problem"),
 ])
 def test_check(given, when, then):
     assert controller_of(FakeSourceTree(ROOT, given), PROFILES).check(when) == then

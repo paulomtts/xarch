@@ -18,7 +18,7 @@ def explain(given: dict):
 
 @pytest.mark.parametrize("given, when, then", [
     pytest.param({"named": NAMED}, ExplainWords("checks", ("named",)), ChecksShown,
-                 id="checks is how a check is written and read, with one of the profile's rules"),
+                 id="checks is how a check is written and read, with a whole check of one's own"),
     pytest.param({}, ExplainWords("filters"), WordsShown, id="a category is its words, each in a line"),
     pytest.param({"named": NAMED}, ExplainWords("filters.public", ("named",)), WordShown,
                  id="a word is explained in full, with a rule of the profile that uses it"),
@@ -37,9 +37,11 @@ def test_a_word_s_example_is_the_first_rule_of_the_first_profile_written_with_it
     assert found.example.splitlines()[:3] == ["checks:", "  names:", "    read: class"]
 
 
-def test_a_word_no_rule_of_the_profiles_uses_has_no_example_and_says_what_it_applies_to():
+def test_a_word_no_rule_of_the_profiles_uses_has_a_check_written_for_the_explanation_as_its_example():
     found = explain({"none": profile()})(ExplainWords("targets.text", ("none",)))
-    assert (found.example, found.applies_to, found.value) == ("", ("syntax-error", "comment"), "patterns")
+    assert (found.example_key, found.example_profile, found.applies_to, found.value) == (
+        "checks.no-todo", "", ("syntax-error", "comment"), "patterns")
+    assert '      flagged: {documents/notes.py: "# TODO: split this file\\n"}' in found.example.splitlines()
 
 
 def test_a_kind_is_explained_with_its_fields_what_it_needs_of_the_language_and_its_verb():
@@ -52,4 +54,5 @@ def test_how_a_check_is_written_lists_every_slot_and_every_category_with_its_wor
     found = explain({"named": NAMED})(ExplainWords("checks", ("named",)))
     assert [slot.name for slot in found.slots][:3] == ["read", "in", "keep"]
     assert [c.name for c in found.categories] == ["kinds", "quantifiers", "targets", "filters", "variables"]
-    assert (found.example_key, found.example_profile) == ("parts.services.names", "named")
+    assert (found.example_key, found.example_profile) == ("checks.no-todo", "")
+    assert found.example.splitlines()[:3] == ["checks:", "  no-todo:", "    read: comment"]

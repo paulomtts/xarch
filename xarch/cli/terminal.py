@@ -45,6 +45,12 @@ def no_profile(known: Sequence[str]) -> str:
             f"the profiles found are {', '.join(known)}")
 
 
+def cannot_run(problems: Sequence[str]) -> str:
+    """Why a profile whose own checks cannot run is refused, and how to see every problem."""
+    return ("the checks the profile writes itself cannot run (`xarch profile check` says the same):\n"
+            + "\n".join(f"  {problem}" for problem in problems))
+
+
 def fail(message: str) -> typer.Exit:
     typer.echo(f"error: {message}", err=True)
     return typer.Exit(2)

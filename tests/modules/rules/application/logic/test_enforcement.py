@@ -17,8 +17,10 @@ from xarch.modules.rules.application.logic.enforcement import (
     dynamic,
     excluded_folder,
     folders,
+    reading,
     skipped,
     strict_findings,
+    vacuous,
 )
 from xarch.modules.rules.domain.values import Drift, Enforcement, Finding, InitFile, Profile, SourceFile, Use
 
@@ -148,3 +150,13 @@ def test_a_key_whose_check_reads_a_fact_partly_is_a_strict_finding_said_with_the
     partly = Shortfall("parts.services.names", "class", "a class defined in a branch is not read")
     assert strict_findings(Enforcement(Origin("web", True), approximate=(partly,))) == (Finding("approximate", partly),)
     assert detail(partly) == "parts.services.names reads class only partly: a class defined in a branch is not read"
+
+
+def test_a_check_of_the_profile_s_own_that_read_nothing_fails_strict_and_one_that_read_something_does_not():
+    state = Enforcement(Origin("mine.yaml"), checks=(("no-todo", 0), ("store-names", 3)))
+    assert strict_findings(state) == (Finding("vacuous", vacuous("no-todo")),)
+    assert reading("store-names", 3) == "checks.store-names read 3 facts"
+    assert reading("one", 1) == "checks.one read 1 fact"
+    assert reading("no-todo", 0) == vacuous("no-todo") == (
+        "checks.no-todo reads nothing in the project, so it passes for want of anything to check: widen what it "
+        "reads, or drop it")

@@ -183,7 +183,7 @@ REACHED = {"quantifier": MUST_BE_REACHED, "targets": EXISTING, "facts": ("class"
                   "import and imported-name"], id="an exception of a reach to targets excuses a file"),
     pytest.param({"keep": c("sunny"), "mode": "fial", "sayings": say("{weather}")},
                  ["keep: no filter is named 'sunny': write one of test, tiered, placed, package-file, mirrors-a-part, "
-                  "may-import-everything, below, relative, standard, unreserved-standard, reserved, "
+                  "may-import-everything, below, relative, unreserved-standard, reserved, "
                   "listed-by-another-part, app-package, own-code, takes-a-name, held, public, special, named, top-level, "
                   "forwards, returns-an-attribute, exception, record, interface, receiver, annotated-callable, "
                   "directive, inert, exceptions-only, already-imported, narrowed, of-kind, target-placed, "

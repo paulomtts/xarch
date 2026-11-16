@@ -328,15 +328,15 @@ def excluded_folders(value: Any, layout: Layout, problems: list[str]) -> tuple[E
     return tuple(found)
 
 
-def rule_hints(value: Any, problems: list[str]) -> dict[str, str]:
-    """The project's own advice for a rule id, by rule id."""
+def rule_hints(value: Any, problems: list[str], own: Collection[str] = ()) -> dict[str, str]:
+    """The project's own advice for a rule id, by rule id: a check xarch has, or one of the profile's own (own)."""
     if not isinstance(value, Mapping):
         problems.append("hints: must be a mapping of rule ids to one line of text, such as {rules: see the docs}")
         return {}
     found: dict[str, str] = {}
     for rule, text in value.items():
-        if rule not in RULES:
-            problems.append(f"hints.{rule}: unknown rule id {rule!r}: use {', '.join(sorted(RULES))}")
+        if rule not in RULES and rule not in own:
+            problems.append(f"hints.{rule}: unknown rule id {rule!r}: use {', '.join(sorted((*RULES, *own)))}")
         elif not line(text):
             problems.append(f"hints.{rule}: must be one line of text")
         else:

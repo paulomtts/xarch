@@ -226,7 +226,6 @@ FILTERS: tuple[Filter, ...] = (
     Filter("below", "the file lies below the folder, a path from the root its side starts at (the app folder, or the "
                     "tests folder for a test)", FILE, value=FOLDER),
     Filter("relative", "the import is named from the importing file's own folder", FACT, ("relative",)),
-    Filter("standard", "the import names the standard library", FACT, ("standard",)),
     Filter("unreserved-standard", "the import names the standard library, and `reserved` does not list its top-level name",
            FACT, ("standard",)),
     Filter("reserved", "the top-level package the import names is one `reserved` lists", FACT, ("path",)),
@@ -415,6 +414,10 @@ SLOTS: tuple[Slot, ...] = (
     Slot("fix", "what to do about it", "an imperative sentence with {<variable>}s", "variables"),
     Slot("once_per", "say one finding of a file for each value of these variables, the first", "[<variable>, ...]",
          "variables"),
+    Slot("examples", "code the check must find something in (flagged), and code it must find nothing in (clean), each "
+                     "a small project; `xarch profile check` runs them, and fails when either does not behave so",
+         "{flagged: {<path>: <code>, ...}, clean: {<path>: <code>, ...}}, a path below the app, or tests/<path> for a "
+         "test; required for a check of your own"),
     Slot("cases", "a message and a fix for the findings of which the filters hold, the first that holds said in place "
                   "of the check's own", "[{when: [<filter>, ...], message, fix, once_per}, ...]",
          "filters"),

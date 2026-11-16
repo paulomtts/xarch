@@ -1,8 +1,10 @@
 """What the spec module publishes: the skeleton of a profile as flat lists of entries, and which profile is in force."""
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from xarch.kernel.logic.capabilities import Shortfall
 from xarch.kernel.logic.language import LanguageView
@@ -132,8 +134,9 @@ class ProfileView:
     the layout as a pattern; its tiers in order; the outside packages each part may import (None: unchecked); its
     repeating folders; the guards switched on; the fakes and the test framework (None: none); the excluded folders;
     the project's own advice for a rule, by rule id; the language of the app; the standard-library modules a part
-    imports only when its libraries list them, each with why; and the keys whose check reads a fact the language
-    supplies only partly."""
+    imports only when its libraries list them, each with why; the keys whose check reads a fact the language
+    supplies only partly; and the checks the profile writes itself, by id, each as its slots are read (the words of
+    the vocabulary in them are the rules module's to read)."""
     parts: tuple[PartView, ...]
     folders: tuple[tuple[str, ...], ...] = ()
     tiers: tuple[TierView, ...] = ()
@@ -147,6 +150,7 @@ class ProfileView:
     language: LanguageView = LanguageView()
     reserved: dict[str, str] = field(default_factory=dict)
     approximate: tuple[Shortfall, ...] = ()
+    checks: dict[str, Mapping[str, Any]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -338,7 +342,7 @@ class CheckProfile:
     target: str | None = None
 
 
-LOAD, EXAMPLES = "load", "examples"
+LOAD, EXAMPLES, CHECKS = "load", "examples", "checks"
 """The checks a Problem names: the loader, which finds every problem at once, and the examples' imports."""
 
 

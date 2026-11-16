@@ -14,7 +14,7 @@ from xarch.modules.rules.application.logic import (
     stand_ins,
     twins,
 )
-from xarch.modules.rules.application.logic.engine import run
+from xarch.modules.rules.application.logic.engine import read, run
 from xarch.modules.rules.application.logic.facts import facts_of
 from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.application.ports.source_tree import SourceTree
@@ -52,8 +52,9 @@ class SourceCheckService:
         shown = resolved.name
         unread = [SourceFile("/".join((shown, *p)), p, ()) for p in paths if not closed_tree.governed(rules, p)]
         book = expansion.book(rules)
-        facts = facts_of(app, test_files, rules, package, tests_root, [r for group in book.values() for r in group],
-                         unread)
+        own = tuple(check.rule for check in rules.checks)
+        facts = facts_of(app, test_files, rules, package, tests_root,
+                         [*(r for group in book.values() for r in group), *own], unread)
         app = [f for f in app if f.error is None]
         test_files = [f for f in test_files if f.error is None]
         found = run(book["syntax"], facts, rules) + run(book["rules"], facts, rules) + run(book["libraries"], facts,
@@ -77,10 +78,13 @@ class SourceCheckService:
         found += run(book["dead-code"], facts, rules)
         found += run(book["no-comments"], facts, rules)
         found += run(book["closed-tree"], facts, rules)
+        written = run(own, facts, rules)
+        found += [item for item in written if isinstance(item, Violation)]
         state = self._enforcement(resolved, package, profile, rules, app, test_files,
                                   closed_tree.ungoverned(paths, rules, shown), tests_root if tests is not None else None,
                                   run(book["holds"], facts, rules), run(book["untested"], facts, rules),
-                                  run(book["pass-through"], facts, rules))
+                                  [*run(book["pass-through"], facts, rules), *written])
+        state = replace(state, checks=tuple((rule.id, read(rule, facts, rules)) for rule in own))
         return Checked(tuple(found), replace(state, strict=enforcement.strict_findings(state)), rules)
 
     def _enforcement(self, resolved: Path, package: str, location: str, rules: Profile, app: list[SourceFile],

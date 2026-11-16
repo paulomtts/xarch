@@ -4,7 +4,8 @@ as one JSON document, `{"ok": ...}` first.
 checks: {"ok", "reading", "slots", "categories", "example": {"key", "profile", "check"}}, each slot {"name", "meaning",
 "accepts"}, each category {"name", "meaning", "words"}, each word {"name", "meaning"}. A category: {"ok", "category",
 "meaning", "words"}. A word: {"ok", "address", "category", "name", "meaning", "about", "applies_to", "side", "value",
-"fields", "needs", "verb", "example"}, each field {"name", "meaning", "when"}, example null when no profile has one.
+"fields", "needs", "verb", "example"}, each field {"name", "meaning", "when"}; an example {"key", "profile",
+"check"}, its profile null for a check written as one's own.
 --rule: {"ok", "key", "profile", "rules", "checks"}. A refusal: {"ok": false, "error", ...}.
 """
 from __future__ import annotations
@@ -39,17 +40,22 @@ def checks_lines(shown: ChecksShown) -> list[str]:
     lines += ["", "words"]
     lines += [f"  {category.name:<12} {len(category.words):>2}  {category.meaning}" for category in shown.categories]
     if shown.example:
-        lines += ["", f"example: the rule {shown.example_key} of {shown.example_profile} expands to",
+        lines += ["", f"example: {_source(shown.example_key, shown.example_profile)}",
                   *(f"  {line}" for line in shown.example.splitlines())]
     return [*lines, "", "go deeper", *(f"  {line}" for line in DEEPER)]
+
+
+def _source(key: str, profile: str) -> str:
+    """Where an example comes from, in words: a rule of a profile, or a check written as one's own."""
+    return f"the rule {key} of {profile} expands to" if profile else f"a check of your own, {key}"
 
 
 def checks_document(shown: ChecksShown) -> str:
     return _dump({"ok": True, "reading": shown.reading,
                   "slots": [{"name": s.name, "meaning": s.meaning, "accepts": s.accepts} for s in shown.slots],
                   "categories": [_category(c) for c in shown.categories],
-                  "example": {"key": shown.example_key, "profile": shown.example_profile, "check": shown.example}
-                  if shown.example else None})
+                  "example": {"key": shown.example_key, "profile": shown.example_profile or None,
+                              "check": shown.example} if shown.example else None})
 
 
 def category_lines(shown: WordsShown) -> list[str]:
@@ -85,7 +91,7 @@ def word_lines(shown: WordShown) -> list[str]:
     if shown.verb:
         lines += [f"  verb: {shown.verb}"]
     if shown.example:
-        lines += [f"  example: the rule {shown.example_key} of {shown.example_profile} expands to",
+        lines += [f"  example: {_source(shown.example_key, shown.example_profile)}",
                   *(f"    {line}" for line in shown.example.splitlines())]
     else:
         lines += ["  example: none of the profiles' own rules uses it"]
@@ -98,8 +104,8 @@ def word_document(shown: WordShown) -> str:
                   "side": shown.side or None, "value": shown.value or None,
                   "fields": [{"name": f.name, "meaning": f.meaning, "when": f.when or None} for f in shown.fields],
                   "needs": list(shown.needs), "verb": shown.verb or None,
-                  "example": {"key": shown.example_key, "profile": shown.example_profile, "check": shown.example}
-                  if shown.example else None})
+                  "example": {"key": shown.example_key, "profile": shown.example_profile or None,
+                              "check": shown.example} if shown.example else None})
 
 
 def unknown_message(found: UnknownWords) -> str:

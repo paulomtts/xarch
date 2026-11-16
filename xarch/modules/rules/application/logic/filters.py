@@ -95,10 +95,6 @@ def _relative(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
     return "relative" in found.fact.traits
 
 
-def _standard(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
-    return "standard" in found.fact.traits
-
-
 def _unreserved_standard(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
     return "standard" in found.fact.traits and _top(found) not in profile.reserved
 
@@ -206,7 +202,7 @@ def _target_part_lists(found: Found, facts: Facts, profile: Profile, value: str)
 
 
 _FACT: dict[str, Asked] = {
-    "relative": _relative, "standard": _standard, "unreserved-standard": _unreserved_standard, "reserved": _reserved,
+    "relative": _relative, "unreserved-standard": _unreserved_standard, "reserved": _reserved,
     "listed-by-another-part": _listed_by_another_part, "app-package": _app_package, "own-code": _own_code,
     "takes-a-name": _takes_a_name, "held": _held, "public": _public, "special": _special, "named": _named,
     **{name: _trait(name) for name in ("top-level", "forwards", "exception", "record", "interface", "receiver",

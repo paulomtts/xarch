@@ -26,6 +26,11 @@ folder is not `app/`.
 - Ask the maintainer first: the profile (`[tool.xarch]` names its file) is theirs to approve. To draft a change, run
   `xarch profile explain` for the whole format on one screen, then `xarch profile explain <key>` (for example
   `parts.may_import`) for one key, and `xarch profile check` to validate the edited profile before you show it.
+- A rule no key says can be written as a check of the profile's own, under `checks`. Every word it is written in is
+  explained by the command: `xarch profile explain checks` for how a check reads, `xarch profile explain filters`
+  (or `kinds`, `quantifiers`, `targets`, `variables`) for a category, `xarch profile explain filters.public` for one
+  word, and `xarch profile explain <key> --rule` for the rules a key already expands to, written as checks to copy.
+  Give it `examples` that must and must not produce a finding; `xarch profile check` runs them.
 
 ## How tests are written
 

@@ -26,7 +26,7 @@ def test_checks_is_how_a_check_reads_on_one_screen_with_its_slots_its_words_and_
     lines = result.output.splitlines()
     assert lines[0] == "how a check reads" and "slots" in lines and "words" in lines
     assert any(line.startswith("  filters ") for line in lines)
-    assert "example: the rule parts.services.names of cli expands to" in result.output
+    assert "example: a check of your own, checks.no-todo" in result.output and "      examples:" in lines
     assert len(lines) < 80
 
 
@@ -60,7 +60,7 @@ def test_a_word_that_does_not_exist_is_refused_with_the_nearest_and_so_is_a_key_
 
 def test_json_gives_each_of_them_as_one_document():
     checks = json.loads(explain("checks", "--format", "json").output)
-    assert checks["ok"] is True and checks["slots"][0]["name"] == "read" and checks["example"]["profile"] == "cli"
+    assert checks["ok"] is True and checks["slots"][0]["name"] == "read" and checks["example"]["profile"] is None
     word = json.loads(explain("kinds.call", "--format", "json").output)
     assert (word["name"], word["verb"], word["needs"]) == ("call", "call", ["call"])
     assert {"name": "place", "meaning": "where what it leads to sits: a part, or a folder of the layout",

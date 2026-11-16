@@ -7,7 +7,7 @@ from typing import Any, Protocol
 from xarch.kernel.logic.capabilities import FACTS, Shortfall, shortfalls
 from xarch.kernel.logic.language import LanguageView
 from xarch.kernel.logic.origin import Origin
-from xarch.modules.rules.domain.errors import ProfileUnusable, RuleRefused
+from xarch.modules.rules.domain.errors import ChecksRefused, ProfileUnusable, RuleRefused
 from xarch.modules.rules.domain.rule import (
     EXISTING,
     MAY_NOT,
@@ -43,8 +43,11 @@ class SpecProfiles:
         self._spec = spec
 
     def profile(self, location: str) -> Profile:
+        """The profile, its own checks made into rules; one whose checks cannot be raises ProfileUnusable."""
         view = self._spec.profile(location)
         parts, guards = view.parts, view.guards
+        written = WrittenChecks()
+        checks = written.own(view.checks, view.language)
         return Profile(parts={p.name: p.pattern for p in parts}, rules={p.name: p.may_import for p in parts},
                        folders=view.folders,
                        tiers=view.tiers,
@@ -65,7 +68,8 @@ class SpecProfiles:
                        forbidden={p.name: p.forbidden for p in parts if p.forbidden},
                        info={p.name: PartInfo(p.role, p.litmus, p.shown, p.untested) for p in parts},
                        excluded=view.excluded, hints=dict(view.hints), language=view.language,
-                       reserved=dict(view.reserved), approximate=view.approximate)
+                       reserved=dict(view.reserved),
+                       approximate=(*view.approximate, *written.approximate(checks, view.language)), checks=checks)
 
     def standing(self, location: str, app: str) -> Standing:
         """No init files when the profile cannot write them for this app, which `init` reports when it refuses; a
@@ -91,7 +95,7 @@ def _text(content: str | bytes) -> str:
 class WrittenChecks:
     """The checks a profile writes itself, as spec reads their syntax (see spec's written_checks), made into rules: a
     check that names a word the vocabulary does not hold, or one that does not apply, or that needs a fact the
-    language's reader does not supply, is refused with every problem of every check at once (ProfileUnusable)."""
+    language's reader does not supply, is refused with every problem of every check at once (ChecksRefused)."""
 
     def own(self, checks: Mapping[str, Mapping[str, Any]], language: LanguageView) -> tuple[OwnCheck, ...]:
         found: list[OwnCheck] = []
@@ -105,7 +109,7 @@ class WrittenChecks:
             problems += self._supplied(name, rule, language)
             found.append(OwnCheck(rule, body["examples"]["flagged"], body["examples"]["clean"]))
         if problems:
-            raise ProfileUnusable("; ".join(problems))
+            raise ChecksRefused(tuple(problems))
         return tuple(found)
 
     def approximate(self, checks: tuple[OwnCheck, ...], language: LanguageView) -> tuple[Shortfall, ...]:

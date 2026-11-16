@@ -4,9 +4,9 @@ from typing import Annotated
 import typer
 
 from xarch.cli.reports.report import enforcement_lines, json_document, text_lines
-from xarch.cli.terminal import AppPath, Format, FormatOption, ProfileName, TestsPath, app_for, refusal, selection
+from xarch.cli.terminal import AppPath, Format, FormatOption, ProfileName, TestsPath, app_for, cannot_run, refusal, selection
 from xarch.modules.rules.application.controller import RulesController
-from xarch.modules.rules.contract import AppChecked, CheckApp, NotADirectory
+from xarch.modules.rules.contract import AppChecked, CheckApp, ChecksCannotRun, NotADirectory
 from xarch.modules.spec.application.controller import SpecController
 
 StrictOption = Annotated[bool, typer.Option(
@@ -28,6 +28,8 @@ def register(app: typer.Typer, rules: RulesController, spec: SpecController) -> 
         match rules.check_app(CheckApp(app_path, chosen, tests_root, strict)):
             case NotADirectory(root):
                 raise refuse(f"{root} is not a directory")
+            case ChecksCannotRun(problems):
+                raise refuse(cannot_run(problems))
             case AppChecked() as checked:
                 if output is Format.json:
                     typer.echo(json_document(chosen, checked, strict))

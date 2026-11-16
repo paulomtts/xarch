@@ -11,7 +11,14 @@ from tests.modules.rules.application.helpers import controller
 from xarch.kernel.logic.placement import Target
 from xarch.kernel.logic.source import Import
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.contract import AppChecked, CheckApp, EnforcementView, FindingView, NotADirectory
+from xarch.modules.rules.contract import (
+    AppChecked,
+    CheckApp,
+    ChecksCannotRun,
+    EnforcementView,
+    FindingView,
+    NotADirectory,
+)
 from xarch.modules.rules.domain.values import Profile
 
 ROOT = Path("/src/pkg")
@@ -26,8 +33,12 @@ IMPORT = Violation("pkg/kernel/x.py", 1, "kernel/ may not import platform/ (pkg.
 MISSING = Violation("pkg", 0, "missing kernel/logic/", "structure", "create pkg/kernel/logic/")
 
 
+REFUSED = ("checks.mine.mode: is 'fial': write fail or list",)
+
+
 def check(files: dict, when: CheckApp, structure: list[Violation] | None = None, profile: Profile = PROFILE):
-    return controller(FakeSourceTree(ROOT, files), FakeProfiles({"cli": profile}), FakeStructure(structure)).check_app(when)
+    profiles = FakeProfiles({"cli": profile}, refused={"broken": REFUSED})
+    return controller(FakeSourceTree(ROOT, files), profiles, FakeStructure(structure)).check_app(when)
 
 
 @pytest.mark.parametrize("given, when, then", [
@@ -44,6 +55,8 @@ def check(files: dict, when: CheckApp, structure: list[Violation] | None = None,
                  id="under strict a finding of the enforcement fails the check too"),
     pytest.param(dict(files=GOOD), CheckApp(Path("/elsewhere"), "cli"), NotADirectory(Path("/elsewhere")),
                  id="an app folder that is no folder is refused"),
+    pytest.param(dict(files=GOOD), CheckApp(ROOT, "broken"), ChecksCannotRun(REFUSED),
+                 id="a profile whose own checks cannot run is refused with every problem"),
 ])
 def test_check_app(given, when, then):
     assert check(given.get("files", {}), when, given.get("structure"), given.get("profile", PROFILE)) == then

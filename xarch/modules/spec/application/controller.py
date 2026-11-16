@@ -247,7 +247,7 @@ def _profile_view(architecture: Architecture) -> ProfileView:
         fakes=architecture.fakes, framework=architecture.framework, excluded=architecture.excluded,
         hints=dict(architecture.hints),
         language=_language_view(architecture.language),
-        reserved=dict(architecture.reserved), approximate=architecture.approximate)
+        reserved=dict(architecture.reserved), approximate=architecture.approximate, checks=dict(architecture.checks))
 
 
 def _language_view(language: Language) -> LanguageView:

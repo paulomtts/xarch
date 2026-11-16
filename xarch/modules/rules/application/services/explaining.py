@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from xarch.kernel.errors import DomainError
+from xarch.kernel.logic.language import LanguageView
 from xarch.modules.rules.application.logic import expansion
 from xarch.modules.rules.application.logic.explained import keyed, uses
 from xarch.modules.rules.application.ports.profile import Profiles
@@ -23,13 +24,14 @@ class ExplainingService:
                     return location, rule
         return None
 
-    def first_of(self, address: str, locations: tuple[str, ...]) -> tuple[str, Rule] | None:
-        """The first rule a key expands to in the first of the profiles that sets it, with that profile."""
+    def language(self, locations: tuple[str, ...]) -> LanguageView:
+        """The language of the first of the profiles that can be read; none when none can."""
         for location in locations:
-            found = keyed(self._rules(location), address)
-            if found:
-                return location, found[0]
-        return None
+            try:
+                return self._profiles.profile(location).language
+            except DomainError:
+                continue
+        return LanguageView()
 
     def rules_of(self, address: str, location: str) -> list[Rule]:
         """The rules of the profile at location that the key at address expands to; raises DomainError when the
