@@ -8,6 +8,7 @@ from xarch.modules.review.domain.errors import Refused
 from xarch.modules.review.domain.published import Choice, Option
 from xarch.modules.review.domain.values import CodeFile, EvalText, PartText, Words
 from xarch.modules.spec.contract import (
+    EXAMPLE_APP,
     LINE,
     Eval,
     ExampleFile,
@@ -35,13 +36,13 @@ class SpecWords:
         self._spec = spec
 
     def words(self, profile: str) -> Words:
-        """Each part's line is the one the profile writes, else spec's default. A profile spec refuses raises Refused
-        with spec's reason."""
+        """Each part's line is the one the profile writes, else spec's default; placement's examples are written for
+        spec's example app. A profile spec refuses raises Refused with spec's reason."""
         match self._spec.profile(profile):
             case ProfileView(parts=parts, never=never, mask=mask, lines=lines, evals=evals):
                 return Words(tuple(PartText(part.name, part.shown, part.litmus, part.role, lines.get(part.name, LINE),
                                             part.name in lines) for part in parts), never, mask,
-                             tuple(_eval(name, asked) for name, asked in evals.items()))
+                             tuple(_eval(name, asked) for name, asked in evals.items()), EXAMPLE_APP)
             case ProfileRefused(reason):
                 raise Refused(reason)
 

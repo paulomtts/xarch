@@ -19,12 +19,12 @@ from xarch.modules.spec.application.logic.looseness import origin_of
 from xarch.modules.spec.application.logic.profile_file import parse_profile, source_of
 from xarch.modules.spec.application.logic.profile_files import pointed_files
 from xarch.modules.spec.application.logic.profile_listing import listing, referenced
-from xarch.modules.spec.application.logic.project_files import EXAMPLE_APP, entries, project_files, with_app
+from xarch.modules.spec.application.logic.project_files import entries, project_files, with_app
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
 from xarch.modules.spec.application.ports.example_reader import ExampleReader
 from xarch.modules.spec.application.ports.runtime import Runtime
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.published import DocFile, Origin, ProjectFile
+from xarch.modules.spec.domain.published import EXAMPLE_APP, DocFile, Origin, ProjectFile
 from xarch.modules.spec.domain.values import Architecture, ArchitectureSource, FileType, Language
 
 

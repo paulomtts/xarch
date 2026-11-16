@@ -9,6 +9,7 @@ import pytest
 from tests.fakes.review import FakeAnswers, FakeCalibrations, FakeCode, FakeDecisionModel, FakeProfile
 from tests.modules.review.application.helpers import controller
 from tests.modules.review.builders import PARTS
+from xarch.kernel.source import Import
 from xarch.modules.review.contract import (
     CHOOSE,
     CLEAN,
@@ -168,7 +169,7 @@ def placed(*examples: tuple[CodeFile, dict[str, float]]) -> dict:
 
 
 def holding(answers: dict, clean: tuple[CodeFile, ...], flagged: tuple[CodeFile, ...] = (), cmd=None):
-    profile = FakeProfile({"cli": Words(PARTS)}, examples={"cli": (clean, flagged)})
+    profile = FakeProfile({"cli": Words(PARTS, examples_root="app")}, examples={"cli": (clean, flagged)})
     held = FakeCalibrations()
     result = controller(FakeCode({}), profile, FakeDecisionModel(answers), FakeAnswers(), held).calibrate(
         cmd or Calibrate(CWD, APP, "cli"))
@@ -210,3 +211,13 @@ def test_placement_alone_is_held_when_it_alone_is_asked_for_and_an_eval_alone_ho
     controller(FakeCode({}), profile, FakeDecisionModel(dict(PASSING)), FakeAnswers(), calibrations).calibrate(
         Calibrate(CWD, APP, "cli", ("rule",)))
     assert calibrations.placed == {} and "rule" in calibrations.kept[RECORD]
+
+
+def test_placement_s_examples_are_masked_as_written_for_their_own_app_whatever_the_project_s_app_is_named():
+    imported = Import(1, ("app", "modules", "documents", "domain", "value"), ("Value",),
+                      written="app.modules.documents.domain.value")
+    example = CodeFile("modules/documents/domain/use.py", "domain",
+                       "from app.modules.documents.domain.value import Value\n", (imported,))
+    result, _ = holding({}, (example,), (), Calibrate(CWD, Path("/src/shop"), "cli", dry_run=True))
+    assert isinstance(result, CalibrationPlanned)
+    assert [item.text for item in result.requests] == ["from <masked> import Value\n"]

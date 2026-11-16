@@ -57,7 +57,7 @@ class CalibrationService:
         evals = tuple(asked for asked in words.evals if not cmd.evals or asked.asked in cmd.evals)
         clean, flagged = self._profile.examples(cmd.profile) if not cmd.evals or PLACEMENT in cmd.evals else ((), ())
         question = placement(words.parts)
-        placed = tuple((example, side, request(example, cmd.app.name, words.mask))
+        placed = tuple((example, side, request(example, cmd.app.name, words.mask, (words.examples_root,)))
                        for side, examples in ((CLEAN, clean), (FLAGGED, flagged)) for example in examples if example.part)
         sends = self._model.sends()
         going, answering = Run(cache_folder(cmd.app, cmd.cache), cmd.offline), self._answering

@@ -50,10 +50,10 @@ def role_only(parts: tuple[PartText, ...]) -> tuple[str, ...]:
     return tuple(part.name for part in parts if not part.litmus)
 
 
-def request(file: CodeFile, root: str, mask: tuple[str, ...] = ()) -> Request:
-    """What the question about a file sends: its text masked, root being the app's import name and mask the texts the
-    profile says review hides."""
-    return Request(file.file, file.part, len(file.text), masked(file.text, file.imports, root, mask))
+def request(file: CodeFile, root: str, mask: tuple[str, ...] = (), also: tuple[str, ...] = ()) -> Request:
+    """What the question about a file sends: its text masked, root being the app's import name (and also those of
+    other apps it may be written for) and mask the texts the profile says review hides."""
+    return Request(file.file, file.part, len(file.text), masked(file.text, file.imports, root, mask, also))
 
 
 def characters(requests: tuple[Request, ...], question: Choice) -> int:

@@ -23,8 +23,6 @@ from xarch.modules.spec.domain.values import Architecture, FileEntry, Layout
 
 APP_PLACEHOLDER = "{{app}}"
 """The one placeholder of a project file's template: the name of the app folder."""
-EXAMPLE_APP = "app"
-"""The app folder's name in the docs' example project, which shows an example file with its placeholder filled."""
 
 
 def with_app(text: str, app: str) -> str:

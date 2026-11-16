@@ -23,10 +23,10 @@ RUN = r"[\w.-]+"
 `.`."""
 
 
-def own(imported: Import, root: str) -> bool:
+def own(imported: Import, root: str, also: tuple[str, ...] = ()) -> bool:
     """Whether an import names the app's own code: it is named from the importing file's folder, or its first step is
-    root, the app's import name."""
-    return imported.relative or imported.module[:1] == (root,)
+    root, the app's import name, or one of also, the import names of other apps the text may be written for."""
+    return imported.relative or imported.module[:1] in ((root,), *((name,) for name in also))
 
 
 def _hidden(pattern: str) -> re.Pattern[str]:
@@ -46,13 +46,14 @@ def _hidden_name(found: re.Match[str]) -> str:
     return MASK + "".join(re.findall(r"\\(?:\r\n|\r|\n)", found.group()))
 
 
-def masked(text: str, imports: tuple[Import, ...], root: str, mask: tuple[str, ...] = ()) -> str:
-    """The text with the module each import of the app's own code names replaced by MASK on the lines the import
-    spans, every e-mail address by PERSON, then each match of a text of mask by MASK, in mask's order."""
+def masked(text: str, imports: tuple[Import, ...], root: str, mask: tuple[str, ...] = (), also: tuple[str, ...] = ()) -> str:
+    """The text with the module each import of the app's own code names (root, or one of also, being its import name)
+    replaced by MASK on the lines the import spans, every e-mail address by PERSON, then each match of a text of mask
+    by MASK, in mask's order."""
     lines = list(cut(text))
     for imported in imports:
         last = max(imported.last, imported.line)
-        if own(imported, root) and imported.written and 0 < imported.line and last <= len(lines):
+        if own(imported, root, also) and imported.written and 0 < imported.line and last <= len(lines):
             span = "".join(lines[imported.line - 1:last])
             lines[imported.line - 1:last] = [_dotted(imported.written).sub(_hidden_name, span, count=1)] + [
                 "" for _ in range(last - imported.line)]

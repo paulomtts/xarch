@@ -177,6 +177,16 @@ def test_a_record_that_cannot_be_read_is_refused_with_exit_2_naming_it_and_is_ne
     assert record.read_text().startswith("<<<<<<< HEAD")
 
 
+def test_placement_s_examples_are_masked_in_a_project_whose_app_has_another_name(tmp_path, monkeypatch):
+    (tmp_path / "shop_project").mkdir()
+    monkeypatch.chdir(tmp_path / "shop_project")
+    assert runner.invoke(app, ["init", "--profile", "cli", "--app", "shop"]).exit_code == 0
+    result = review("calibrate", "--dry-run", "--format", "json")
+    assert result.exit_code == 0, result.output
+    texts = [item["text"] for item in json.loads(result.output)["requests"]]
+    assert texts and not any("from app." in text or "import app." in text for text in texts)
+
+
 def test_review_changes_nothing_check_finds():
     before = runner.invoke(app, ["check", "--format", "json"])
     review(SERVICE, "--dry-run")

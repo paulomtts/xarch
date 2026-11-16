@@ -44,11 +44,13 @@ class EvalText:
 @dataclass(frozen=True)
 class Words:
     """What review reads of a profile: its parts, in its order; the paths below the app of the files review never
-    sends; the texts it hides before it sends, each as the profile writes it; and the evals of its own, in its order."""
+    sends; the texts it hides before it sends, each as the profile writes it; the evals of its own, in its order; and
+    the import name of the app the code of placement's examples is written for ("" for the project's own)."""
     parts: tuple[PartText, ...]
     never: tuple[str, ...] = ()
     mask: tuple[str, ...] = ()
     evals: tuple[EvalText, ...] = ()
+    examples_root: str = ""
 
 
 @dataclass(frozen=True)

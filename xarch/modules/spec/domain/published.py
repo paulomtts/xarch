@@ -33,6 +33,9 @@ DEFAULT_TESTS = "tests"
 LITMUS = "litmus"
 """The key of a Loosened that says a part lost the litmus the bundled profile gives it: the one way of being looser
 that leaves the code with no question to place it by, which `check --strict` fails on."""
+EXAMPLE_APP = "app"
+"""The app folder's name in the docs' example project, which shows an example file with its placeholder filled: the
+import name the code of the docs' examples, and of placement's own examples, is written for."""
 LINE = 0.3
 """The line of a part the profile writes none for under `evals.placement.lines`: below it, the probability review's
 decision model puts on the part a file sits in reads as doubtful there. In the trials it caught about nine in ten

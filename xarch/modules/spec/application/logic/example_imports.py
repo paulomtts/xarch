@@ -23,8 +23,7 @@ from xarch.kernel.logic.examples import is_test_example
 from xarch.kernel.logic.placement import reaches
 from xarch.kernel.logic.source import imported_names
 from xarch.kernel.source import Import, Unparsable
-from xarch.modules.spec.application.logic.project_files import EXAMPLE_APP
-from xarch.modules.spec.domain.published import DEFAULT_TESTS
+from xarch.modules.spec.domain.published import DEFAULT_TESTS, EXAMPLE_APP
 from xarch.modules.spec.domain.values import Architecture, Example
 
 Read = tuple[Import, ...] | Unparsable

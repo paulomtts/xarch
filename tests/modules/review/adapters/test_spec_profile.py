@@ -42,7 +42,7 @@ def test_each_part_is_read_with_its_folder_litmus_role_and_line_in_order_and_wha
     assert SpecWords(Spec(VIEW)).words("p") == Words(
         (PartText("core", "core/", "Is it a rule?", "the rules", 0.3),
          PartText("api", "api/ of src/<module>", "", "handlers", 0.2, by_hand=True)),
-        ("src/*/drafts", "**/secrets"), ("Northwind",))
+        ("src/*/drafts", "**/secrets"), ("Northwind",), examples_root="app")
 
 
 def test_a_profile_spec_refuses_is_refused_with_spec_s_reason():

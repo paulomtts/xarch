@@ -12,6 +12,7 @@ from xarch.modules.spec.domain.published import (
     CHOICE,
     DEFAULT_APP,
     DEFAULT_TESTS,
+    EXAMPLE_APP,
     LINE,
     LITMUS,
     READS,
@@ -33,7 +34,8 @@ from xarch.profile_values.testing import Fakes, Framework, ScenarioCoverage, Sta
 from xarch.profile_values.tiers import CheckedTier
 
 __all__ = ["CHOICE", "READS", "SCORE", "YES_NO", "Eval", "ExampleFile", "ExamplesRead", "ExamplesResult",
-           "DEFAULT_APP", "DEFAULT_TESTS", "LINE", "Entry", "Repeating", "Skeleton", "DocFile", "Docs", "ProjectFile", "ProjectFiles",
+           "DEFAULT_APP", "DEFAULT_TESTS", "EXAMPLE_APP", "LINE", "Entry", "Repeating", "Skeleton", "DocFile", "Docs",
+           "ProjectFile", "ProjectFiles",
            "FilesResult", "SkeletonResult", "ProfileResult", "DocsResult", "OriginResult", "PartView",
            "GuardsView", "ProfileView", "ChooseApp", "AppChosen", "ChooseAppResult",
            "SelectProfile", "ProfileSelected", "ProfileRefused",
