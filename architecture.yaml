@@ -80,6 +80,9 @@ parts:
   reports:
     path: cli/reports
     role: formatting of Results into text and JSON
+    litmus: >-
+      Does it only put into text or JSON what a Result already says, choosing the words, the counts and the layout,
+      and deciding nothing the Result does not hold?
     may_import: [contract@any, kernel, kernel-logic]
     forbidden: pure
     holds: functions
