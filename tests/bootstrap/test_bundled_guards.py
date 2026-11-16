@@ -34,7 +34,7 @@ def test_the_bundled_profiles_use_every_guard_of_their_own(name):
     skips = ("pytest.mark.skip", "pytest.mark.skipif", "pytest.mark.xfail", "pytest.skip", "pytest.xfail",
              "pytest.importorskip", "unittest.skip", "unittest.skipIf", "unittest.skipUnless", "unittest.expectedFailure")
     assert profile.framework == Framework(("test_*.py", "*_test.py"), "test_*",
-                                              tuple(tuple(s.split(".")) for s in skips))
+                                              tuple(tuple(s.split(".")) for s in skips), table)
     assert [(file.path, file.pinned) for file in load_architecture(name).files] == [
         (("tests", "architecture", "test_rules.py"), True), (("AGENTS.md",), False), (("ruff.toml",), False)]
     assert profile.fakes == Fakes(("fakes",), ("ports",), "Fake")

@@ -2,7 +2,7 @@
 fakes, and the guards."""
 import pytest
 
-from tests.modules.spec.profiles_v2 import EX, PRESETS, covered, layered, parsed, problems
+from tests.modules.spec.profiles_v2 import EX, PRESETS, TESTING, covered, layered, parsed, problems
 from xarch.kernel.placement import Target
 from xarch.modules.spec.domain.values import (
     ClosedTree,
@@ -26,7 +26,8 @@ def test_the_framework_is_a_preset_by_name_or_the_map_written_out():
     named = parsed(covered(testing="pytest"))
     written = parsed(covered())
     assert named.framework == written.framework == Framework(
-        ("test_*.py", "*_test.py"), "test_*", (("pytest", "mark", "skip"), ("pytest", "skip")))
+        ("test_*.py", "*_test.py"), "test_*", (("pytest", "mark", "skip"), ("pytest", "skip")),
+        CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id", ("argnames", "argvalues")))
 
 
 def test_a_preset_is_the_same_map_validated_like_one_written_in_the_file():
@@ -162,7 +163,10 @@ def test_a_tier_name_is_one_line_of_text_and_a_tier_is_a_mapping():
 
 @pytest.mark.parametrize("tier, expected", [
     pytest.param({"colour": 1}, "layered.yaml: tiers.unit: unknown key 'colour': use apply_forbidden, docs, folder, "
-                                "litmus, may_import, must_import, proves, types_only", id="an unknown key"),
+                                "litmus, may_import, must_import, plain_tables, proves, types_only", id="an unknown key"),
+    pytest.param({"plain_tables": "yes"}, "layered.yaml: tiers.unit.plain_tables: must be true or false: whether "
+                                          "every table test of the tier holds no branch in its body",
+                 id="plain_tables that is no boolean"),
     pytest.param({"proves": "a\nb"}, "layered.yaml: tiers.unit.proves: must be one line of text", id="proves of two lines"),
     pytest.param({"litmus": 3}, "layered.yaml: tiers.unit.litmus: must be text: the question that tells a test "
                                 "belongs to the tier", id="a litmus that is no text"),
@@ -470,3 +474,12 @@ def test_a_guard_that_reads_tests_needs_the_framework_even_without_tiers():
         "layered.yaml: missing `testing`: `guards.stand-ins` must recognise a test file by its name: write testing: "
         "<preset>, or testing: {files: [<pattern>, ...], functions: <pattern>}"]
 
+
+
+def test_a_tier_whose_table_tests_are_plain_says_so_and_needs_the_form_of_a_table():
+    document = covered()
+    document["tiers"]["unit"]["plain_tables"] = True
+    assert [tier.plain_tables for tier in parsed(document).tiers] == [True, False]
+    document["testing"] = {key: value for key, value in TESTING.items() if key != "table"}
+    assert problems(document) == ["layered.yaml: tiers.unit.plain_tables: needs `testing.table`, how a table of cases "
+                                  "is written, to know a table test"]

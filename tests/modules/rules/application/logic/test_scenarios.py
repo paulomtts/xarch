@@ -5,7 +5,7 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.rules.builders import PROFILE, in_tests, profile, source
-from xarch.modules.rules.application.logic.scenarios import snake_name, violations, weak
+from xarch.modules.rules.application.logic.scenarios import plain, snake_name, violations, weak
 from xarch.modules.rules.domain.published import Weak
 from xarch.modules.rules.domain.values import Function, Row, Table, Union
 
@@ -212,3 +212,27 @@ def test_a_violation_of_a_test_file_says_what_to_do(functions, fixes):
 def test_a_union_with_no_test_file_says_where_to_write_it():
     assert [v.fix for v in violations([RESULTS], [], PROFILE)] == [
         "write test_publish.py among the integration tests of docs"]
+
+
+UNIT_TEST = "modules/docs/domain/test_doc.py"
+PLAIN = replace(PROFILE, tiers=tuple(replace(t, plain_tables=t.name in ("unit", "integration")) for t in PROFILE.tiers))
+BRANCHED = Function(8, "test_doc", (table(row("x"), columns=("a", "b")),), blocks=((12, "for"),),
+                    expressions=((11, "if"),))
+
+
+def test_a_table_test_of_a_tier_whose_tables_are_plain_holds_no_branch_and_one_of_another_tier_may():
+    tests = [in_tests(UNIT_TEST, functions=(BRANCHED, Function(20, "test_other", blocks=((21, "if"),)))),
+             in_tests("modules/web/test_page.py", functions=(BRANCHED,))]
+    assert [str(v) for v in plain(tests, PLAIN)] == [
+        "tests/modules/docs/domain/test_doc.py:11: test_doc has an `if` expression in its body, and a table test of "
+        "the unit tier holds no branch (tiers.unit.plain_tables; scenario-coverage)",
+        "tests/modules/docs/domain/test_doc.py:12: test_doc has a `for` in its body, and a table test of the unit tier "
+        "holds no branch (tiers.unit.plain_tables; scenario-coverage)"]
+    assert plain(tests, PROFILE) == []
+
+
+def test_a_branch_of_a_use_case_s_table_already_said_is_not_said_again():
+    tests = [publish_tests(Function(8, "test_publish", (TABLE,), blocks=((14, "if"),)))]
+    said = violations([RESULTS], tests, PLAIN)
+    assert [str(v) for v in said] == [f"{FILE}:14: test_publish has an `if` in its body (scenario-coverage)"]
+    assert plain(tests, PLAIN, said) == []

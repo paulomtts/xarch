@@ -20,6 +20,10 @@ is one whose name matches the profile's pattern:
     the body of a table test holds no statement that branches (one of the language's `branching` keywords), and no
     expression that chooses between values (one of its `branching_expressions`): the odd case is its own test.
 
+plain holds every table test of a tier that says `plain_tables` to the same rule as a use case's: no statement that
+branches and no expression that chooses between values in its body, said once where scenario-coverage already says
+it of a use case's table.
+
 weak lists, without failing, a variant met to the letter only: one no row covers, credited only to standalone tests
 of the file that name it, none of which holds an `assert` statement in its body.
 """
@@ -69,6 +73,27 @@ def violations(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: 
                                        f"write {name} among the {guard.tier} tests of {where.instance}"))
             for test in files:
                 found += _covered(test, union.name, union.members, guard, profile)
+    return found
+
+
+def plain(tests: Iterable[SourceFile], profile: Profile, said: Iterable[Violation] = ()) -> list[Violation]:
+    """The branches in the body of each table test of a tier whose tables are plain, but where said already holds a
+    violation of the rule at that file and line."""
+    plain_tiers = {tier.name for tier in profile.tiers if tier.plain_tables}
+    if not plain_tiers or profile.framework is None:
+        return []
+    known = {(v.file, v.line) for v in said if v.rule == RULE}
+    found: list[Violation] = []
+    for test in tests:
+        where = tested(profile, test.path)
+        if where.tier is None or where.tier.name not in plain_tiers:
+            continue
+        key = f"tiers.{where.tier.name}.plain_tables"
+        for function in test.functions:
+            if function.tables and fnmatchcase(function.name, profile.framework.functions):
+                found += [Violation(test.name, line, f"{problem}, and a table test of the {where.tier.name} tier holds "
+                                                     f"no branch ({key}; {RULE})", RULE, fix)
+                          for line, problem, fix in _branches(function, profile) if (test.name, line) not in known]
     return found
 
 

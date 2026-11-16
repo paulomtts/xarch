@@ -11,4 +11,4 @@ def checked_tier(architecture: Architecture, tier: Tier) -> CheckedTier:
     subject = tuple(Target(s.part, "own" if architecture.parts[s.part].in_instance else "none", s.sub)
                     for s in tier.subject)
     return CheckedTier(tier.name, subject, tier.folder, tier.types_only, tier.forbidden, tier.proves, tier.may_touch,
-                       tier.litmus, tier.one_file_per, tier.may_import, tier.must_import)
+                       tier.litmus, tier.one_file_per, tier.may_import, tier.must_import, tier.plain_tables)

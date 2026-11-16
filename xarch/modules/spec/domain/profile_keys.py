@@ -364,6 +364,14 @@ _KEYS: tuple[Key, ...] = (
        _tiered("litmus: Does it call one rule directly and check its answer?\n"), False, False),
     _k(TIER, "apply_forbidden", "its tests keep to the forbidden list of the part they mirror",
        "true or false", _tiered("apply_forbidden: true\n"), rules=("forbidden",)),
+    _k(TIER, "plain_tables", "its table tests hold no branch",
+       "true: no test function of the tier that holds a table of cases (as `testing.table` writes one) holds, in its "
+       "body, a statement that branches (the language's `branching`) or an expression that chooses between values "
+       "(its `branching_expressions`), as scenario-coverage holds the tables of a use case: the odd case is a test "
+       "of its own; needs `testing.table`",
+       _TESTING + _TABLE_BLOCK + "tiers:\n  unit:\n    plain_tables: true\n"
+       "parts:\n  documents:\n    path: documents\n    role: the documents\n    tier: unit\n",
+       rules=("scenario-coverage",)),
     _k(TIER, "types_only", "the parts its tests may import only as types",
        "[<part>, ...]: a test may import them to annotate, never to call: `def build(c: Controller)` is fine, "
        "`Controller(...)` is not; a plain function of such a part may not be referenced at all, while "
@@ -558,6 +566,7 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "tiers.<tier>.apply_forbidden": _FORBIDDEN,
     "tiers.<tier>.types_only": _TYPES_ONLY,
     "tiers.<tier>.must_import": (*_IMPORTS, "function.statements"),
+    "tiers.<tier>.plain_tables": ("function.tables", "function.blocks", "function.expressions"),
     "tiers.<tier>.may_import": _IMPORTS,
     "testing.skips": ("use",),
     "testing.table": ("function.tables",),

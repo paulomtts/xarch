@@ -176,6 +176,7 @@ class Tier:
         whose tests import what the part their folder mirrors may
     must_import: the parts one of which each of its test files reaches, directly or through test code that is no
         test; empty: no such rule
+    plain_tables: every table test of it holds no branch in its body
     """
     name: str
     subject: tuple[Subject, ...]
@@ -193,6 +194,7 @@ class Tier:
     folder: tuple[str, ...] | None = None
     may_import: tuple[Target, ...] | None = None
     must_import: tuple[str, ...] = ()
+    plain_tables: bool = False
 
 
 @dataclass(frozen=True)

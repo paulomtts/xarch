@@ -74,7 +74,8 @@ class SourceCheckService:
         paths = [p for p in self._tree.paths(root, extension) if not governed.excluded(rules, p)]
         marks = rules.language.immutable
         app = self._tree.read(root, [p for p in paths if governed.governed(rules, p)], immutable=marks)
-        table = rules.scenarios.table if rules.scenarios is not None else None
+        table = rules.scenarios.table if rules.scenarios is not None else \
+            rules.framework.table if rules.framework is not None else None
         test_files = self._tree.read(tests, self._tree.paths(tests, extension), table, marks) \
             if tests is not None else []
         tests_root = tests.name if tests is not None else None
@@ -93,7 +94,8 @@ class SourceCheckService:
         found += run(book["tiers"], facts, rules)
         found += run(book["types-only tiers"], facts, rules)
         found += run(book["package-only"], facts, rules)
-        found += scenarios.violations(app, test_files, rules)
+        covered = scenarios.violations(app, test_files, rules)
+        found += covered + scenarios.plain(test_files, rules, covered)
         found += stand_ins.violations(app, test_files, rules, package, tests_root)
         found += run(book["must-import"], facts, rules)
         found += run(book["must-import tiers"], facts, rules)

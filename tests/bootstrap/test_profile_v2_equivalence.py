@@ -66,7 +66,8 @@ def comparable(architecture: Architecture) -> Architecture:
     what format 1 never had: each part's `must_import`, `holds`, `immutable`, `types_only`, `no_callbacks`, `names` and `built_by`,
     a tier's `must_import`, a name pattern on a target, the names that read the working directory and the opaque
     types in a `forbidden` list (and a list of nothing else), the names `reserved` holds and the parts' libraries that list them, and the
-    guards no-duplicates, no-twins, dead-code, pass-through and private-imports; whether the tiers HELD of xarch's own
+    guards no-duplicates, no-twins, dead-code, pass-through and private-imports; a tier's `plain_tables`; whether the
+    tiers HELD of xarch's own
     profile apply the forbidden lists; and `kernel/logic/`, a folder of
     `kernel/` in format 1 and a part of its own now, which every part that may import `kernel/` may import too, as
     the part it was a folder of (see kernel_logic); and what changed when services came to assemble what a use case
@@ -75,7 +76,7 @@ def comparable(architecture: Architecture) -> Architecture:
     architecture = assembled(kernel_logic(architecture))
     held = HELD if architecture.name == OWN_NAME else ()
     tiers = tuple(replace(tier, subject=tuple(sorted(tier.subject, key=lambda s: s.part)), example=None, helpers=(),
-                          must_import=(), forbidden=False if tier.name in held else tier.forbidden)
+                          must_import=(), forbidden=False if tier.name in held else tier.forbidden, plain_tables=False)
                   for tier in architecture.tiers)
     parts = {name: replace(part, must_import=(), holds="", types_only=(), no_callbacks=False, names=(), built_by=(),
                            shared=None, immutable=False)

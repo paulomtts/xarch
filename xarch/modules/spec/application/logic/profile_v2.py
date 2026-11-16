@@ -172,6 +172,8 @@ def parse_v2(document: Any, source: str, files: Collection[str] = (), presets: M
     layers = ck.layer_chains(document["layers"], parts, declared, rules, problems) if "layers" in document else {}
     testing = _testing(document["testing"], presets or {}, problems, language) if "testing" in document else None
     tiers = _tiers(document, specs, parts, declared, examples, problems, language)
+    problems += [f"tiers.{tier.name}.plain_tables: needs `testing.table`, how a table of cases is written, to know a "
+                 "table test" for tier in tiers if tier.plain_tables and (testing is None or testing.table is None)]
     fakes = _fakes(document["fakes"], parts, declared, problems, language) if "fakes" in document else None
     problems += ck.folder_clashes(tiers, fakes)
     guards = _guards(document.get("guards", {}), specs, parts, declared, tiers, fakes, testing, problems, language)
@@ -478,7 +480,7 @@ def _testing(value: Any, presets: Mapping[str, Any], problems: list[str], langua
     mocks = _mocks(value["mocks"], problems, language) if "mocks" in value else None
     if len(problems) != count or framework is None:
         return None
-    return _Testing(framework, table, mocks)
+    return _Testing(replace(framework, table=table), table, mocks)
 
 
 def _mocks(value: Any, problems: list[str], language: Language) -> StandIns | None:
@@ -574,6 +576,10 @@ def _tier(name: str, spec: Any, subject: tuple[Subject, ...], parts: dict[str, P
     if not isinstance(held, bool):
         problems.append(f"{where}.apply_forbidden: must be true or false: whether its tests are held to the "
                         "`forbidden` list of the part they mirror")
+    plain = spec.get("plain_tables", False)
+    if not isinstance(plain, bool):
+        problems.append(f"{where}.plain_tables: must be true or false: whether every table test of the tier holds no "
+                        "branch in its body")
     types_only = (ck.part_names(spec["types_only"], declared, f"{where}.types_only", problems)
                   if "types_only" in spec else [])
     folder = ck.tier_folder(spec["folder"], parts, f"{where}.folder", problems, language) if "folder" in spec else None
@@ -590,7 +596,7 @@ def _tier(name: str, spec: Any, subject: tuple[Subject, ...], parts: dict[str, P
     return Tier(name, subject, spec.get("proves", ""), docs.get("may_touch", ""), spec.get("litmus", "").strip("\n"),
                 docs.get("subject", ""), docs.get("one_file_per", ""), docs.get("cases_from", ""), docs.get("data", ""),
                 docs.get("example"), docs.get("helpers", ()), tuple(p for p in types_only if p in parts), held, folder,
-                allowance, tuple(p for p in reach if p in parts))
+                allowance, tuple(p for p in reach if p in parts), plain)
 
 
 def _tier_docs(value: Any, folder: tuple[str, ...] | None, examples: ex.Examples, where: str,

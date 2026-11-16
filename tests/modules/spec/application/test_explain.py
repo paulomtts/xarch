@@ -73,6 +73,7 @@ SHAPE = (
     Shown('tiers.proves', 1, 'what its tests prove, in one line', False, False),
     Shown('tiers.litmus', 1, 'the question that tells a test belongs to the tier', False, False),
     Shown('tiers.apply_forbidden', 1, 'its tests keep to the forbidden list of the part they mirror', False, True),
+    Shown('tiers.plain_tables', 1, 'its table tests hold no branch', False, True),
     Shown('tiers.types_only', 1, 'the parts its tests may import only as types', False, True),
     Shown('tiers.must_import', 1, 'what each of its test files has to reach', False, True),
     Shown('tiers.folder', 1, 'a folder of tests that mirror no part', False, True),

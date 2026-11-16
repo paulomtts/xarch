@@ -10,10 +10,12 @@ from typing import ClassVar
 class Framework:
     """How the project's test framework names things: the patterns of a test file's name (matched against the file
     name alone, `*` for any text) and of a test function's, and the dotted names of what skips a test or expects it
-    to fail (a marker or a call; empty: none is counted)."""
+    to fail (a marker or a call; empty: none is counted); and how a test function holds a table of cases (None: the
+    profile does not say)."""
     files: tuple[str, ...]
     functions: str
     skips: tuple[tuple[str, ...], ...] = ()
+    table: CaseTable | None = None
 
 
 @dataclass(frozen=True)
