@@ -196,8 +196,9 @@ KINDS: tuple[Kind, ...] = (
     Kind("function-reference", "each name read that is a function the app defines at the top level of a file, other "
                                "than as the callee of a call (passed on, stored)",
          ("line", "path", "reaches", "place"), needs=("use", "call", "module_functions"), verb="reference"),
-    Kind("import-into-app", "each import of a file or package of the app, as the file or package it reaches (from "
-                            "x import name reaches x.name when that is a file, else x taking name)",
+    Kind("import-into-app", "each import of a file or package of the app, as the file or package it reaches (an "
+                            "import that takes a name from a file or package reaches the name's own file when it is "
+                            "one, else the file or package it takes the name from)",
          ("line", "reaches"), {"name": "takes-a-name", "place": "target-placed"}, needs=("import", "import.relative"),
          verb="import"),
     Kind("import-into-tests", "each import of a test file of a file of the tests, as the file or package it reaches",

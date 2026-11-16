@@ -710,7 +710,7 @@
 "xarch/cli/commands/profile.py",
 8,
 "imports the private name _json_refusal from xarch.cli.commands.check (private-imports)",
-"make _json_refusal public where it is defined (drop the `_`), or move it to a file both may import"
+"make _json_refusal public where it is defined (a name that does not start as a private one does), or move it to a file both may import"
 ],
 [
 "V",
@@ -718,7 +718,7 @@
 "xarch/cli/commands/where.py",
 7,
 "imports the private name _json_refusal from xarch.cli.commands.check (private-imports)",
-"make _json_refusal public where it is defined (drop the `_`), or move it to a file both may import"
+"make _json_refusal public where it is defined (a name that does not start as a private one does), or move it to a file both may import"
 ],
 [
 "W",
