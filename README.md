@@ -75,7 +75,8 @@ testing:  <preset> | {files*, functions*, skips, table, mocks}
 parts*:   {<part>: {path*, role*, litmus, may_import, must_import, libraries, forbidden, tier | untested,
                     package_only, folders, holds, immutable, types_only, no_callbacks, names, built_by, shared}}
 forbidden: {<list>: [<dotted name> | .<method>(), ...]}       layers: {<chain>: [<part>, ...]}
-tiers:    {<tier>: {proves, litmus, apply_forbidden, plain_tables, types_only, folder, may_import, must_import, docs}}
+tiers:    {<tier>: {proves, litmus, apply_forbidden, plain_tables, types_only, folder, may_import, may_also_import,
+                    must_import, docs}}
 fakes:    {folder*, for*, prefix}
 guards:   {scenario-coverage, no-comments, stand-ins, closed-tree, no-duplicates, no-twins, dead-code,
            pass-through, private-imports}
@@ -229,7 +230,7 @@ that switches or configures each (`-` for none: the rule is always on):
 | `rules` | an import between parts that the importing part's `may_import` does not allow, or a name its pattern does not match | `parts.may_import` |
 | `libraries` | an outside package a part does not list, or a standard-library name `reserved` holds that it does not list; the rest of the standard library is always allowed, tests are not checked | `parts.libraries`, `reserved` |
 | `forbidden` | a name or module a part (or, with `apply_forbidden`, its tests) may not use, or a method written `.name()` it may not call on anything but its own object and what that holds | `forbidden`, `parts.forbidden`, `tiers.apply_forbidden` |
-| `tiers` | a test importing what its tier does not allow, or another test file, or a test in no tier | `tiers`, `tiers.folder`, `tiers.may_import`, `parts.tier` |
+| `tiers` | a test importing what its tier does not allow, or another test file, or a test in no tier | `tiers`, `tiers.folder`, `tiers.may_import`, `tiers.may_also_import`, `parts.tier` |
 | `test-tree` | a folder below `tests/<repeating folder>/` that mirrors no folder of the app | `tiers`, `testing` |
 | `types-only` | a test, or code of a part, calling what it may import only as a type | `tiers.types_only`, `parts.types_only` |
 | `cycles` | instances of the repeating folders that import each other, directly or through others (across repeating folders too); each elementary cycle is reported once, at its first import | - (needs a repeating folder) |
@@ -320,7 +321,7 @@ how many facts it read in the project.
   the profile writes itself.
 - `enforcement`: every key always present, empty when there is nothing to report. `profile.looser` items are
   `{"key", "part", "what", "sentence"}` with `key` one of `may_import`, `libraries`, `forbidden`, `untested`,
-  `types_only`, `apply_forbidden`, `testing.skips`, `files.pinned`, `must_import`, `litmus` (the `sentence` names the full address, such as
+  `types_only`, `may_also_import`, `apply_forbidden`, `testing.skips`, `files.pinned`, `must_import`, `litmus` (the `sentence` names the full address, such as
   `parts.kernel.may_import`); `excluded` items `{"folder", "reason"}`; `init_files` items `{"file", "state"}`, `state` `missing` or
   `changed`; `skipped.at` and `dynamic.at` items `{"file", "line"}`; `weak` items `{"rule", "file", "line",
   "message", "fix"}` (`fix` is `null` for a weak check that has none); `approximate` items `{"key", "fact", "note"}`;
@@ -358,7 +359,7 @@ enforcement
   too. For a custom file, each way it is looser than the one it resembles, compared only where both use the same
   name: a target added to a part's `may_import`, an outside package added to its `libraries` (or `everything`), a
   name of its `forbidden` list no entry covers any more, a part newly `untested`, a part dropped from a tier's
-  `types_only`, a tier no longer `apply_forbidden`, a name dropped from `testing.skips`, a `files` entry no longer
+  `types_only`, a target added to a tier's `may_also_import`, a tier no longer `apply_forbidden`, a name dropped from `testing.skips`, a `files` entry no longer
   `pinned`, a target added to a part's `must_import` or the key dropped, a part redefined without the `litmus` the
   other gives it. A profile that says `based_on: <bundled name>` is compared with that one, else with the one sharing the
   most part names.

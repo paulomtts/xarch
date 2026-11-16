@@ -355,8 +355,9 @@ VARIABLES: tuple[Variable, ...] = (
     Variable("tier", "the file's tier: a test's own, or for a file of the app the tier whose tests cover its part"),
     Variable("mirrored_parts", "the parts a test's folder mirrors, each as `<part>/`, joined by `and`",
              side=TESTS_SIDE),
-    Variable("mirrored_may_import", "the keys of what the parts a test mirrors may import: parts.store.may_import",
-             side=TESTS_SIDE),
+    Variable("mirrored_may_import", "the keys of what the parts a test mirrors may import, then, after `; `, the key "
+                                    "of what its tier's tests may also import when the tier sets it: "
+                                    "parts.store.may_import; tiers.unit.may_also_import", side=TESTS_SIDE),
     Variable("own_folder", "the folder a test may import test code from, from the tests folder: tests/units/docs",
              side=TESTS_SIDE),
     Variable("tests_folder", "the folder of the tests where a file of the app is tested: tests/units/docs/store",

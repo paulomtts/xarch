@@ -44,3 +44,16 @@ def test_a_target_is_written_as_it_is_read_and_reads_back_as_itself(written, own
 def test_a_target_that_is_not_one_is_none_with_its_problem(written, owner, problem):
     problems: list[str] = []
     assert (target(written, owner, PARTS, PARTS, "at", problems), problems) == (None, [problem])
+
+
+@pytest.mark.parametrize("written, found, problem", [
+    pytest.param("domain/values", Target("domain", "own", ("values",)), [],
+                 id="a bare name in the repeating folder is the instance the test mirrors"),
+    pytest.param("domain@any", Target("domain", "any"), [], id="any instance stays any"),
+    pytest.param("kernel", Target("kernel"), [], id="a part outside the repeating folder is in no instance"),
+    pytest.param("domain@own", None, ["at: 'domain@own' says what a bare name already says: write domain"],
+                 id="the mirrored instance written out is refused"),
+])
+def test_a_target_a_test_reads_is_read_from_the_instance_it_mirrors(written, found, problem):
+    problems: list[str] = []
+    assert (target(written, None, PARTS, PARTS, "at", problems, mirrored=True), problems) == (found, problem)

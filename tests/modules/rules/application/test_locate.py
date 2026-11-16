@@ -12,6 +12,7 @@ from xarch.modules.rules.contract import (
     ChecksCannotRun,
     CoveringTest,
     InPart,
+    InTests,
     Locate,
     Located,
     NearestView,
@@ -86,3 +87,13 @@ def test_a_path_in_an_excluded_folder_is_ungoverned_and_says_why(path, then):
     excluding = replace(PROFILE, closed_tree=True, excluded=(Excluded(("examples",), "shipped as data"),))
     found = locate({}, Locate(Path(path), Path("/src"), APP, "p", TESTS), excluding)
     assert found == Located(then)
+
+
+def test_a_test_may_import_what_its_tier_s_tests_may_also_import_and_says_so():
+    tier = replace(PROFILE.tiers[0], may_also_import=(Target("kernel"),))
+    also = replace(PROFILE, rules={"kernel": (), "domain": ()}, tiers=(tier,))
+    found = locate({}, Locate(Path("tests/modules/documents/domain/test_doc.py"), Path("/src"), APP, "p", TESTS), also)
+    assert isinstance(found, Located) and isinstance(found.where, InTests)
+    assert (found.where.may_import, found.where.may_import_text) == (
+        (ReachView("domain", "own", "domain/", "app/modules/documents/domain/"),
+         ReachView("kernel", "none", "kernel/", "app/kernel/")), "its own module's `domain/`, `kernel/`")

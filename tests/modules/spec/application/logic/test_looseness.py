@@ -5,7 +5,7 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.spec.application.origins import BASE, PARTS, TESTING, TIER
-from tests.modules.spec.profiles_v2 import layered, parsed
+from tests.modules.spec.profiles_v2 import covered, layered, parsed
 from xarch.modules.spec.application.logic.looseness import closest, looser, sentence
 
 
@@ -66,6 +66,9 @@ def test_the_bundled_profile_a_profile_says_it_is_based_on_wins_over_the_one_sha
     pytest.param(("types_only", "rendering", "controller"),
                  "the rendering tests may now call controller (tiers.rendering.types_only)",
                  id="a types-only part dropped"),
+    pytest.param(("may_also_import", "integration", "domain/values"),
+                 "the integration tests may also import domain/values (tiers.integration.may_also_import)",
+                 id="a target its tests may also import added"),
     pytest.param(("apply_forbidden", "unit"),
                  "the unit tests are no longer held to their part's forbidden list (tiers.unit.apply_forbidden)",
                  id="a tier's forbidden dropped"),
@@ -87,14 +90,29 @@ def test_every_way_a_profile_is_looser_than_another_is_found_in_order():
                        "libraries": ["sqlmodel", "requests"], "untested": "trust me"}}
     custom = {**BASE, "parts": parts, "forbidden": {"pure": ["socket"]},
               "tiers": {"unit": {key: value for key, value in TIER.items() if key != "types_only"}
-                        | {"apply_forbidden": False}},
+                        | {"apply_forbidden": False, "may_also_import": ["edge"]}},
               "testing": {**TESTING, "skips": ["pytest.mark.skip"]}, "guards": {},
               "files": {"tests/test_rules.py": {"from": "guard.py"}}}
     assert looser(parsed(custom), parsed(BASE)) == [
         ("may_import", "core", "store"), ("libraries", "core", "yaml"), ("libraries", "store", "requests"),
         ("forbidden", "core", "time.time"), ("untested", "store", ""), ("types_only", "unit", "store"),
-        ("apply_forbidden", "unit", ""), ("testing.skips", "", "pytest.mark.xfail"),
+        ("may_also_import", "unit", "edge"), ("apply_forbidden", "unit", ""), ("testing.skips", "", "pytest.mark.xfail"),
         ("files.pinned", "", "tests/test_rules.py")]
+
+
+@pytest.mark.parametrize("bundled, custom, found", [
+    pytest.param([], ["shared/text", "store@any"], [("may_also_import", "unit", "shared/text"),
+                                                    ("may_also_import", "unit", "store@any")],
+                 id="each target the bundled tier does not give is looser, shown as written"),
+    pytest.param(["shared", "store"], ["shared/text", "store"], [],
+                 id="a target the bundled tier's covers is not looser"),
+    pytest.param(["shared"], [], [], id="a target dropped is stricter, and not listed"),
+])
+def test_what_a_tiers_tests_may_also_import_beyond_the_bundled_tier_is_looser(bundled, custom, found):
+    base, mine = covered(), covered()
+    base["tiers"]["unit"]["may_also_import"] = bundled
+    mine["tiers"]["unit"]["may_also_import"] = custom
+    assert looser(parsed(mine), parsed(base)) == found
 
 
 def test_a_name_the_base_reserves_and_the_custom_profile_does_not_is_looser():

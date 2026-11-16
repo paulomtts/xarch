@@ -33,10 +33,11 @@ key_catalogue); the shape:
     reserved: {<module>: <reason>}             standard-library modules only the parts whose `libraries` list them
                                may import
     layers: {<name>: [<part>, ...]}            chains of parts from the inside out: none imports one after it
-    tiers: {<tier>: {proves, litmus, apply_forbidden, types_only, folder, may_import, docs}}
+    tiers: {<tier>: {proves, litmus, apply_forbidden, types_only, folder, may_import, may_also_import, docs}}
                                the kinds of test, in the order their litmus tests run. A tier with a `folder` below
-                               the tests folder says in `may_import` what the tests there may import; `docs` holds what
-                               only fills the generated docs
+                               the tests folder says in `may_import` what the tests there may import; `may_also_import`
+                               what each of its tests may import beyond that or what the part it mirrors may; `docs`
+                               holds what only fills the generated docs
     fakes: {folder, for, prefix}               the folder of the test fakes below the tests folder, the parts they
                                stand in for, and how a fake's name starts
     guards: {<guard>: {...}}                   the pre-built checks in use; left out means off
@@ -602,6 +603,8 @@ def _tier(name: str, spec: Any, subject: tuple[Subject, ...], parts: dict[str, P
                         "tests import what the part they mirror may")
     allowance = (may_import(spec.get("may_import"), None, parts, declared, f"{where}.may_import", problems)
                  if "folder" in spec else None)
+    also = may_import(spec.get("may_also_import"), None, parts, declared, f"{where}.may_also_import", problems,
+                      mirrored=True)
     docs = _tier_docs(spec["docs"], folder, examples, f"{where}.docs", problems, language) if "docs" in spec else {}
     reach = (ck.part_names(spec["must_import"], declared, f"{where}.must_import", problems)
              if "must_import" in spec else [])
@@ -610,7 +613,7 @@ def _tier(name: str, spec: Any, subject: tuple[Subject, ...], parts: dict[str, P
     return Tier(name, subject, spec.get("proves", ""), docs.get("may_touch", ""), spec.get("litmus", "").strip("\n"),
                 docs.get("subject", ""), docs.get("one_file_per", ""), docs.get("cases_from", ""), docs.get("data", ""),
                 docs.get("example"), docs.get("helpers", ()), tuple(p for p in types_only if p in parts), held, folder,
-                allowance, tuple(p for p in reach if p in parts), plain)
+                allowance, tuple(p for p in reach if p in parts), plain, also)
 
 
 def _tier_docs(value: Any, folder: tuple[str, ...] | None, examples: ex.Examples, where: str,

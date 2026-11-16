@@ -140,6 +140,13 @@ def test_a_tier_with_a_folder_of_its_own_says_what_its_tests_may_import_there():
     assert (tier.folder, tier.subject, tier.may_import) == (("architecture",), (), (Target("shared"), Target("api", "any")))
 
 
+def test_what_the_tests_of_a_tier_may_also_import_are_targets_a_bare_name_in_the_repeating_folder_the_mirrored_one():
+    document = covered()
+    document["tiers"]["integration"]["may_also_import"] = ["service", "shared", "api@any"]
+    tiers = parsed(document).tiers
+    assert [t.may_also_import for t in tiers] == [(), (Target("service", "own"), Target("shared"), Target("api", "any"))]
+
+
 def test_a_tier_with_a_folder_and_no_may_import_may_import_nothing_and_everything_is_allowed_too():
     document = covered()
     document["tiers"]["guard"] = {"folder": "architecture"}
@@ -163,7 +170,8 @@ def test_a_tier_name_is_one_line_of_text_and_a_tier_is_a_mapping():
 
 @pytest.mark.parametrize("tier, expected", [
     pytest.param({"colour": 1}, "layered.yaml: tiers.unit: unknown key 'colour': use apply_forbidden, docs, folder, "
-                                "litmus, may_import, must_import, plain_tables, proves, types_only", id="an unknown key"),
+                                "litmus, may_also_import, may_import, must_import, plain_tables, proves, "
+                                "types_only", id="an unknown key"),
     pytest.param({"plain_tables": "yes"}, "layered.yaml: tiers.unit.plain_tables: must be true or false: whether "
                                           "every table test of the tier holds no branch in its body",
                  id="plain_tables that is no boolean"),
@@ -177,6 +185,19 @@ def test_a_tier_name_is_one_line_of_text_and_a_tier_is_a_mapping():
     pytest.param({"may_import": ["shared"]}, "layered.yaml: tiers.unit.may_import: only a tier with a `folder` has an "
                                              "allowance of its own: without one, its tests import what the part "
                                              "they mirror may", id="may_import without a folder"),
+    pytest.param({"may_also_import": "everything"}, "layered.yaml: tiers.unit.may_also_import: must be a list of "
+                                                    "targets such as [<part>, shared/text, api@any]: `everything` is "
+                                                    "not taken, name each target the tests may also import",
+                 id="may_also_import of everything"),
+    pytest.param({"may_also_import": ["shared", "everything"]}, "layered.yaml: tiers.unit.may_also_import: "
+                                                                "`everything` is not taken, name each target the "
+                                                                "tests may also import",
+                 id="everything in a list of may_also_import"),
+    pytest.param({"may_also_import": ["repo"]}, "layered.yaml: tiers.unit.may_also_import: 'repo' names no part "
+                                                "'repo'", id="may_also_import of no part"),
+    pytest.param({"may_also_import": ["service@own"]}, "layered.yaml: tiers.unit.may_also_import: 'service@own' says "
+                                                       "what a bare name already says: write service",
+                 id="may_also_import of the mirrored instance written out"),
 ])
 def test_a_bad_tier_is_refused(tier, expected):
     document = covered()

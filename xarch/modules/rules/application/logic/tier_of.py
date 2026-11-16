@@ -96,20 +96,21 @@ def _own(profile: Profile, path: tuple[str, ...]) -> tuple[str, ...]:
 
 def may_import(profile: Profile, tier: CheckedTier) -> tuple[Target, ...]:
     """What the tests in the tier's own folder may import: what the tier says, else its subject parts and what each of
-    them may import."""
+    them may import; then what the tier's tests may also import."""
     if tier.may_import is not None:
-        return tier.may_import
-    return tuple(replace(t, names="") for s in tier.subject for t in (s, *targets_of(profile, s.part)))
+        return (*tier.may_import, *tier.may_also_import)
+    return (*(replace(t, names="") for s in tier.subject for t in (s, *targets_of(profile, s.part))),
+            *tier.may_also_import)
 
 
 def allowance(profile: Profile, where: Tested) -> tuple[Target, ...]:
-    """What a test may import of the app: its subject parts and what each may import, else its tier's; a name pattern
-    of a part's target does not narrow what its test imports."""
+    """What a test may import of the app: its subject parts and what each may import, else its tier's, then what its
+    tier's tests may also import; a name pattern of a part's target does not narrow what its test imports."""
+    assert where.tier is not None
     if not where.parts:
-        assert where.tier is not None
         return may_import(profile, where.tier)
     own = tuple(Target(p, "own" if EACH in profile.parts[p] else "none") for p in where.parts)
-    return tuple(replace(t, names="") for s in own for t in (s, *targets_of(profile, s.part)))
+    return (*(replace(t, names="") for s in own for t in (s, *targets_of(profile, s.part))), *where.tier.may_also_import)
 
 
 def may_use_fakes(profile: Profile, tier: CheckedTier) -> bool:

@@ -1,6 +1,8 @@
 """The tier-imports check on hand-made source files: a test imports, of the app, only the part its folder mirrors and
 what that part may import; of the test code, the fakes only when its tier tests a part they stand in for, and other
 files only from its own folder."""
+from dataclasses import replace
+
 import pytest
 
 from tests.modules.rules.application.logic.checks import tiers as violations
@@ -142,6 +144,31 @@ def test_allowance(path, expected):
     assert allowance(PROFILE, tier_of.tested(PROFILE, tuple(path.split("/")))) == expected
 
 
+ALSO = profile(tiers=(UNIT, replace(INTEGRATION, may_also_import=(Target("adapters", "own"),)), GUARD))
+"""PROFILE, whose integration tests may also import adapters/ of the instance they mirror."""
+
+
+def test_what_a_tiers_tests_may_also_import_follows_what_the_part_they_mirror_may():
+    assert allowance(ALSO, tier_of.tested(ALSO, ("modules", "docs", "application", "test_publish.py"))) == (
+        Target("controller", "own"), Target("controller", "own"), *PROFILE.rules["controller"], Target("adapters", "own"))
+
+
+@pytest.mark.parametrize("path, imports, expected", [
+    pytest.param("modules/docs/application/test_publish.py", [imp(1, "app.modules.docs.adapters", "db")], [],
+                 id="a test of the tier may import what its tier's tests may also import"),
+    pytest.param("modules/docs/application/test_publish.py", [imp(1, "app.platform", "sql")],
+                 ["1: a test of controller/ (integration tier) may not import platform/ (app.platform.sql): it imports "
+                  "only what controller/ may (parts.controller.may_import; tiers.integration.may_also_import)"],
+                 id="what it still may not import is said with the key of the tier too"),
+    pytest.param(DOMAIN_TEST, [imp(1, "app.modules.docs.adapters", "db")],
+                 ["1: a test of domain/ (unit tier) may not import adapters/ of modules/docs "
+                  "(app.modules.docs.adapters.db): it imports only what domain/ may (parts.domain.may_import)"],
+                 id="a test of another tier may not"),
+])
+def test_a_tiers_tests_may_also_import_what_it_says_in_the_instance_they_mirror(path, imports, expected):
+    assert problems(path, *imports, checked=ALSO) == expected
+
+
 def test_a_tiers_allowance_is_its_subject_and_what_each_part_may_import():
     assert may_import(PROFILE, Tier("pair", (Target("kernel"), Target("platform")))) == (
         Target("kernel"), Target("kernel"), Target("platform"), Target("platform"), Target("kernel"))
@@ -150,6 +177,16 @@ def test_a_tiers_allowance_is_its_subject_and_what_each_part_may_import():
 def test_a_tiers_own_allowance_replaces_what_its_subject_would_give():
     guard = Tier("guard", (Target("kernel"),), ("architecture",), may_import=(Target("platform"),))
     assert may_import(PROFILE, guard) == (Target("platform"),)
+
+
+@pytest.mark.parametrize("tier, expected", [
+    pytest.param(Tier("pair", (Target("kernel"),), may_also_import=(Target("web"),)),
+                 (Target("kernel"), Target("kernel"), Target("web")), id="after its subject and what it may import"),
+    pytest.param(Tier("guard", (), ("architecture",), may_import=(Target("platform"),), may_also_import=(Target("web"),)),
+                 (Target("platform"), Target("web")), id="after the tier's own allowance"),
+])
+def test_what_a_tiers_tests_may_also_import_is_added_to_its_allowance(tier, expected):
+    assert may_import(PROFILE, tier) == expected
 
 
 def test_a_test_in_a_tiers_folder_imports_only_what_the_tier_allows():

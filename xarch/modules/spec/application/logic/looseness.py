@@ -6,13 +6,13 @@ first by name on a tie; one sharing none resembles no bundled profile. Looser is
 same name (a part, a tier, a file), and only in these ways, each one entry: a target added to a part's `may_import`
 that no target of the bundled one covers (a target covers what lies below it: the same part and scope, its path a
 start of the added one's, and no name pattern or the same one; so a name pattern added to a target, or a folder below
-it, narrows it, and is not looser); an
-outside package added to a part's `libraries`, or `libraries` dropped as a whole; a target added to a part's
-`must_import`, or the key dropped from a part that has it; a name the bundled `forbidden` list of a part holds that no
-entry of the custom list covers (`time` covers `time.time`); a part newly marked `untested`; a part dropped from a
-tier's `types_only`; a tier no longer `apply_forbidden`; a name dropped from `testing.skips`; a `files` entry no longer
-`pinned`; a name the bundled profile `reserved` holds that the custom one does not; a part the bundled profile gives a
-`litmus` that the custom one redefines without one. Anything stricter, and what is
+it, narrows it, and is not looser); an outside package added to a part's `libraries`, or `libraries` dropped as a
+whole; a target added to a part's `must_import`, or the key dropped from a part that has it; a name the bundled
+`forbidden` list of a part holds that no entry of the custom list covers (`time` covers `time.time`); a part newly
+marked `untested`; a part dropped from a tier's `types_only`; a target added to a tier's `may_also_import` that no
+target of the bundled tier's covers; a tier no longer `apply_forbidden`; a name dropped from `testing.skips`; a `files`
+entry no longer `pinned`; a name the bundled profile `reserved` holds that the custom one does not; a part the bundled
+profile gives a `litmus` that the custom one redefines without one. Anything stricter, and what is
 compared in no way above (the layout, new parts, the guards' parameters, `fakes`), is not listed.
 """
 from __future__ import annotations
@@ -74,6 +74,8 @@ def looser(custom: Architecture, base: Architecture) -> list[Looser]:
         mine = tiers.get(tier.name)
         if mine is not None:
             found += [("types_only", tier.name, part) for part in tier.types_only if part not in mine.types_only]
+            found += [("may_also_import", tier.name, _shown(t)) for t in mine.may_also_import
+                      if not any(_covers(b, t) for b in tier.may_also_import)]
     found += [("apply_forbidden", tier.name, "") for tier in base.tiers
               if tier.forbidden and tier.name in tiers and not tiers[tier.name].forbidden]
     skips = custom.framework.skips if custom.framework is not None else ()
@@ -133,6 +135,8 @@ def sentence(key: str, part: str, what: str = "") -> str:
             return f"{part} has no litmus, though the profile it is compared with gives it one (parts.{part}.litmus)"
         case "types_only":
             return f"the {part} tests may now call {what} (tiers.{part}.types_only)"
+        case "may_also_import":
+            return f"the {part} tests may also import {what} (tiers.{part}.may_also_import)"
         case "apply_forbidden":
             return f"the {part} tests are no longer held to their part's forbidden list (tiers.{part}.apply_forbidden)"
         case "testing.skips":

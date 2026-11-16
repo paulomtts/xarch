@@ -35,7 +35,7 @@ def test_every_way_a_custom_profile_is_looser_than_the_bundled_one_it_resembles_
                        "libraries": ["sqlmodel", "requests"], "untested": "trust me"}}
     custom = {**BASE, "parts": parts, "forbidden": {"pure": ["socket"]},
               "tiers": {"unit": {key: value for key, value in TIER.items() if key != "types_only"}
-                        | {"apply_forbidden": False}},
+                        | {"apply_forbidden": False, "may_also_import": ["edge"]}},
               "testing": {**TESTING, "skips": ["pytest.mark.skip"]},
               "guards": {},
               "files": {"tests/test_rules.py": {"from": "guard.py"}}}
@@ -50,6 +50,7 @@ def test_every_way_a_custom_profile_is_looser_than_the_bundled_one_it_resembles_
         Loosened("forbidden", "core", "time.time", "core no longer forbids time.time (parts.core.forbidden)"),
         Loosened("untested", "store", "", "store is newly marked untested (parts.store.untested)"),
         Loosened("types_only", "unit", "store", "the unit tests may now call store (tiers.unit.types_only)"),
+        Loosened("may_also_import", "unit", "edge", "the unit tests may also import edge (tiers.unit.may_also_import)"),
         Loosened("apply_forbidden", "unit", "",
                  "the unit tests are no longer held to their part's forbidden list (tiers.unit.apply_forbidden)"),
         Loosened("testing.skips", "", "pytest.mark.xfail", "pytest.mark.xfail is no longer counted as a skip (testing.skips)"),

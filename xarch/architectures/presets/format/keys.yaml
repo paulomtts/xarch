@@ -179,8 +179,8 @@ keys:
       a map {<tier>: {...}}; with tiers, every part names its `tier` or says why it is `untested`; needs `testing`.
       Tests mirror the app: tests/<path> for the app's <path>, and a test file has the tier of the part its folder
       mirrors (a folder that mirrors no part belongs to the tier whose `folder` holds it). A test imports only the part
-      its folder mirrors and what that may import, a bare name meaning the instance it mirrors, and other test code only
-      from its own folder; a test in no tier is a violation. Every folder below tests/<a repeating folder>/ mirrors a
+      its folder mirrors and what that may import, a bare name meaning the instance it mirrors, then what its tier's
+      `may_also_import` adds, and other test code only from its own folder; a test in no tier is a violation. Every folder below tests/<a repeating folder>/ mirrors a
       folder of the app
     example: |
       <<testing>>
@@ -494,6 +494,26 @@ keys:
           folder: architecture
           may_import: everything
       <<tiered-part>>
+  tiers.<tier>.may_also_import:
+    meaning: what its tests may also import of the app
+    accepts: >-
+      targets, as a part's `may_import`, read from the instance a test mirrors, and added to what each test of the
+      tier may import of the app, such as the values a test builds its fakes' answers with; not `everything`. A target
+      the bundled profile's tier does not give is listed by `profile check` as looser
+    example: |
+      <<testing>>
+      tiers:
+        unit:
+          may_also_import: [core]
+      parts:
+        core:
+          path: core
+          role: the rules of the documents
+          tier: unit
+        documents:
+          path: documents
+          role: the documents
+          tier: unit
   tiers.<tier>.docs:
     meaning: what only fills the generated docs
     accepts: a map {subject, may_touch, one_file_per, cases_from, data, example, helpers}

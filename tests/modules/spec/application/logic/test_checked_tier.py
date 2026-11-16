@@ -17,3 +17,11 @@ def test_a_part_outside_every_repeating_folder_is_tested_outside_the_instances()
     document["parts"]["shared"] = {"path": "shared", "role": "shared code", "tier": "unit"}
     architecture = parsed(document)
     assert checked_tier(architecture, architecture.tiers[0]).subject == (Target("service", "own"), Target("shared"))
+
+
+def test_what_its_tests_may_also_import_is_handed_on_as_written():
+    document = covered()
+    document["tiers"]["unit"]["may_also_import"] = ["service", "shared"]
+    architecture = parsed(document)
+    assert checked_tier(architecture, architecture.tiers[0]).may_also_import == (Target("service", "own"),
+                                                                                 Target("shared"))

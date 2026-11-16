@@ -85,6 +85,7 @@ _KEYS: tuple[Key, ...] = (
     Key(TIER, "must_import", rules=("must-import",)),
     Key(TIER, "folder", rules=("tiers", "test-tree")),
     Key(TIER, "may_import", rules=("tiers",)),
+    Key(TIER, "may_also_import", rules=("tiers",)),
     Key(TIER, "docs", False, False, opens=TIER_DOCS),
 
     Key(TIER_DOCS, "subject", False, False),
@@ -188,6 +189,7 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "tiers.<tier>.must_import": (*_IMPORTS, "function.statements", "file"),
     "tiers.<tier>.plain_tables": ("function.tables", "function.blocks", "function.expressions"),
     "tiers.<tier>.may_import": _IMPORTS,
+    "tiers.<tier>.may_also_import": _IMPORTS,
     "testing.skips": ("use",),
     "testing.table": ("function.tables",),
     "testing.mocks": ("call", "parameter_call"),

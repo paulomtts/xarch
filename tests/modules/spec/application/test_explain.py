@@ -79,6 +79,7 @@ SHAPE = (
     Shown('tiers.must_import', 1, 'what each of its test files has to reach', False, True),
     Shown('tiers.folder', 1, 'a folder of tests that mirror no part', False, True),
     Shown('tiers.may_import', 1, 'what the tests in its folder may import of the app', False, True),
+    Shown('tiers.may_also_import', 1, 'what its tests may also import of the app', False, True),
     Shown('tiers.docs', 1, 'what only fills the generated docs', False, False),
     Shown('fakes', 0, 'the folder of the test fakes, and what they stand in for', False, True),
     Shown('fakes.folder', 1, 'the folder of the fakes', True, True),

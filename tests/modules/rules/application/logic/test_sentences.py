@@ -33,6 +33,7 @@ TARGETED = replace(RULE, facts=("import", "import-into-app"), targets=(Match("pl
                                   Match("outside")))
 NAMED = replace(RULE, facts=("class",), targets=(Match("name", words=("*Repo", "*Store")),))
 SERVICES = replace(RULE, scope=Scope(part="services"))
+ALSO = replace(PROFILE, tiers=tuple(replace(tier, may_also_import=(Target("web"),)) for tier in PROFILE.tiers))
 
 
 @pytest.mark.parametrize("name, file, kind, rule, profile, hit, printed", [
@@ -51,6 +52,9 @@ SERVICES = replace(RULE, scope=Scope(part="services"))
     pytest.param("mirrored_parts", TEST, "file", RULE, PROFILE, None, ["domain/"], id="mirrored_parts"),
     pytest.param("mirrored_may_import", TEST, "file", RULE, PROFILE, None, ["parts.domain.may_import"],
                  id="mirrored_may_import"),
+    pytest.param("mirrored_may_import", TEST, "file", RULE, ALSO, None,
+                 ["parts.domain.may_import; tiers.unit.may_also_import"],
+                 id="mirrored_may_import: with what its tier's tests may also import"),
     pytest.param("own_folder", TEST, "file", RULE, PROFILE, None, ["tests/modules/docs"], id="own_folder"),
     pytest.param("tests_folder", DOMAIN, "file", RULE, PROFILE, None, ["tests/modules/docs/domain"], id="tests_folder"),
     pytest.param("language", DOMAIN, "file", RULE, PROFILE, None, ["Python"], id="language"),

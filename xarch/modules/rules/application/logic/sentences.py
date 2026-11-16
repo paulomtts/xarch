@@ -84,7 +84,7 @@ _VALUES: dict[str, Callable[[Found, Facts, Profile], str]] = {
     "where": lambda found, facts, profile: _place_of(found, profile),
     "tier": lambda found, facts, profile: found.read.tier,
     "mirrored_parts": lambda found, facts, profile: " and ".join(f"{p}/" for p in found.read.mirrors),
-    "mirrored_may_import": lambda found, facts, profile: ", ".join(f"parts.{p}.may_import" for p in found.read.mirrors),
+    "mirrored_may_import": lambda found, facts, profile: _mirrored_may_import(found, profile),
     "own_folder": lambda found, facts, profile: "/".join((facts.tests_root, *found.read.own)),
     "tests_folder": lambda found, facts, profile: "/".join((facts.tests_root, *found.read.file.path[:-1])),
     "language": lambda found, facts, profile: profile.language.title or "source",
@@ -138,6 +138,13 @@ def _holding(profile: Profile, kind: str) -> str:
     """A part that holds the kind, naming the first SHOWN of those the profile has."""
     parts = [f"{name}/" for name, holds in profile.holds.items() if holds == kind][:SHOWN]
     return f"a part that holds {kind}: {', '.join(parts)}" if parts else f"a part that holds {kind}"
+
+
+def _mirrored_may_import(found: Found, profile: Profile) -> str:
+    """The keys of what the parts a test mirrors may import, then of what its tier's tests may also import, if set."""
+    tier = next((t for t in profile.tiers if t.name == found.read.tier), None)
+    parts = ", ".join(f"parts.{p}.may_import" for p in found.read.mirrors)
+    return f"{parts}; tiers.{tier.name}.may_also_import" if tier is not None and tier.may_also_import else parts
 
 
 def _tier_fix(found: Found, profile: Profile) -> str:

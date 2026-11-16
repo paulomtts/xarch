@@ -17,10 +17,12 @@ NAME_PATTERN = re.compile(r"[A-Za-z0-9_*]+")
 
 
 def target(value: Any, owner: tuple[str, tuple[str, ...]] | None, parts: Mapping[str, tuple[str, ...]],
-           declared: Collection[str], where: str, problems: list[str], patterns: bool = False) -> Target | None:
+           declared: Collection[str], where: str, problems: list[str], patterns: bool = False,
+           mirrored: bool = False) -> Target | None:
     """The target a profile writes as value, for the part owner (its name and path; None for a tier's folder or a
     scope of no part), each part by its path; None, with the problem said at where, when it is not one. A target that
-    names a part declared but not placed is None, with no problem of its own."""
+    names a part declared but not placed is None, with no problem of its own. When mirrored, the reader is a test, whose
+    own instance of the repeating folder is the one it mirrors: a bare name there is that instance."""
     match = TARGET.fullmatch(value) if isinstance(value, str) else None
     if match is None or not match["part"]:
         problems.append(f"{where}: {value!r} is not a target: use <part>, <part>@any, optionally followed by /<path>")
@@ -46,7 +48,7 @@ def target(value: Any, owner: tuple[str, tuple[str, ...]] | None, parts: Mapping
         problems.append(f"{where}: {value!r} has an unknown scope '@{scope}': the only scope is @any, any instance of "
                         "the repeating folder")
         return None
-    inside = owner is not None and owned and root_of(owner[1]) == root_of(path)
+    inside = mirrored or (owner is not None and owned and root_of(owner[1]) == root_of(path))
     if in_instance and scope == "own" and inside:
         problems.append(f"{where}: {value!r} says what a bare name already says: write {name}")
         return None
