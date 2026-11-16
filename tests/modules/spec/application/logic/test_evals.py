@@ -31,9 +31,14 @@ NOT_A_LINE = "is not a line: write a number above 0 and below 1, such as 0.2"
     pytest.param({"placement": {}, "Purity": {}}, "evals: 'Purity' is no id of an eval of your own, lowercase words "
                                                   "joined by - such as rule-outside-entity, nor a key of evals: use "
                                                   "placement", id="an id that is not one"),
-    pytest.param({"placement": "on"}, "evals.placement: must be a mapping {lines}: the line of each part, below which "
-                                      "a file reads as doubtful there", id="placement not a mapping"),
-    pytest.param({"placement": {"line": 0.2}}, "evals.placement: unknown key 'line': use lines", id="an unknown slot"),
+    pytest.param({"placement": "on"}, "evals.placement: must be a mapping {lines, examples}: the line of each part, "
+                                      "below which a file reads as doubtful there, and the examples it is held to "
+                                      "besides the docs'", id="placement not a mapping"),
+    pytest.param({"placement": {"line": 0.2}}, "evals.placement: unknown key 'line': use examples, lines",
+                 id="an unknown slot"),
+    pytest.param({"placement": {"examples": {"clean": {"store/a.txt": "x"}}}},
+                 "evals.placement.examples.clean: 'store/a.txt' is not a path of a source file below the app, ending in "
+                 ".py", id="an example of placement that is no source file"),
     pytest.param({"placement": {"lines": [0.2]}}, "evals.placement.lines: must be a mapping of parts to their line, "
                                                   "such as {documents: 0.2}", id="lines not a mapping"),
     pytest.param({"placement": {"lines": {"domain": 0.2}}}, "evals.placement.lines: 'domain' is not a part of this "
@@ -152,3 +157,10 @@ def test_yes_and_no_written_bare_in_a_profile_file_are_read_as_the_yes_and_no_sl
     written["rule"] |= {True: "it tests the fields", False: "it asks the document"}
     assert parsed(layered(evals=written)).evals["rule"].options == (("yes", "it tests the fields"),
                                                                     ("no", "it asks the document"))
+
+
+def test_placement_is_held_to_examples_of_its_own_besides_the_docs_flagged_or_clean_either_left_out():
+    placed = {"flagged": {"store/api.py": "def handle(request): ...\n"}}
+    assert parsed(layered(evals={"placement": {"examples": placed}})).placed == (
+        (("store/api.py", "def handle(request): ...\n"),), ())
+    assert parsed(layered()).placed == ((), ())

@@ -5,6 +5,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+from xarch.kernel.source import Import
 from xarch.modules.spec.application.logic.docs_files import doc_files
 from xarch.modules.spec.application.logic.example_imports import (
     Read,
@@ -44,6 +45,26 @@ class ArchitectureService:
         InvalidArchitecture if the file cannot be loaded or an example read."""
         source, architecture = self._load(location)
         return tuple(example_problems(architecture, self._reads(architecture, self._example_texts(source, architecture))))
+
+    def placed(self, location: str | Path) -> tuple[list[tuple[str, str, str]], list[tuple[str, str, str]]]:
+        """The files placement is held to, each its path below the app, the part it lies in and its code: the clean
+        ones (the docs' examples lying in a part, then `evals.placement.examples.clean`) and the flagged ones; raises
+        InvalidArchitecture if the file cannot be loaded or an example read."""
+        source, architecture = self._load(location)
+        texts = self._example_texts(source, architecture)
+        docs = [(name, example.part, texts[name]) for name, example in architecture.examples.items() if example.part]
+        flagged, clean = architecture.placed
+        return (docs + [(path, self._part(architecture, path), code) for path, code in clean],
+                [(path, self._part(architecture, path), code) for path, code in flagged])
+
+    def imports(self, text: str) -> tuple[Import, ...]:
+        """The imports of a text, as the reader of the app's language reads them; none when it does not parse."""
+        found = self._reader.imports(text)
+        return found if isinstance(found, tuple) else ()
+
+    @staticmethod
+    def _part(architecture: Architecture, path: str) -> str:
+        return architecture.place_of(tuple(path.split("/"))).part or ""
 
     def pointed(self, location: str | Path) -> tuple[str, ...]:
         """Every file next to the profile that it points to, as pointed_files lists them; raises InvalidArchitecture."""

@@ -15,6 +15,8 @@ from xarch.modules.review.application.logic.doubt import (
 from xarch.modules.review.application.logic.evaluation import orders
 from xarch.modules.review.application.logic.judging import asked_of, below_app, in_order, standing, unasked_of, went
 from xarch.modules.review.application.logic.masking import masked
+from xarch.modules.review.application.logic.placing import held_as, marked, undoubted
+from xarch.modules.review.application.logic.placing import standing as placed
 from xarch.modules.review.application.logic.questions import (
     characters,
     of_piece,
@@ -123,11 +125,15 @@ class ReviewService:
                 answered.append(found_answers)
             unasked += unasked_of(asked, items, tuple(answered), bool(going.failure))
             ran.append(went(asked, stood, items, tuple(answered)))
-        return ReviewReading(by, total, ranked(tuple(readings)), left_out(files), tuple(unasked), sends,
+        examples = self._profile.examples(cmd.profile)
+        stood = placed(self._calibrations.placement(record_file(cmd.app)), held_as(question, words.parts, examples),
+                       sends.model)
+        judged_files = undoubted(tuple(readings), stood)
+        return ReviewReading(by, total, ranked(judged_files), left_out(files), tuple(unasked), sends,
                              len(going.asked), len(going.reused), sum(a.input_tokens for a in going.asked),
                              sum(a.output_tokens for a in going.asked), going.failure, role_only(words.parts),
-                             by_part(tuple(readings), words.parts), tuple(ranked_pieces),
-                             in_order(idle + tuple(ran), words.evals))
+                             marked(by_part(judged_files, words.parts), stood), tuple(ranked_pieces),
+                             in_order(idle + tuple(ran), words.evals), stood)
 
     def _evals(self, cmd: Review, words: Words, judging: tuple[CodeFile, ...],
                model: str) -> tuple[tuple[Asking, ...], tuple[EvalRead, ...]]:

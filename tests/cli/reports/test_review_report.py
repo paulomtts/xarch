@@ -133,15 +133,17 @@ def test_a_reading_says_what_review_is_what_was_sent_and_each_doubtful_file_with
     assert lines[:3] == [f"review: advisory. {ADVISORY}",
                          "Model m-1. 4 file(s) found (paths), 2 judged, 1 left out. Asked 1, from cache 1.",
                          "Sent 1 request(s) to Model (https://model.example.test): 2,400 input tokens, 3 output tokens."]
-    assert lines[4:8] == [
+    assert lines[4:9] == [
         "placement: doubtful here (probability on the part the file sits in, below that part's line)",
         "  based on: measured on two codebases with one reader's labels and one model version: about 7 to 10% of "
         "well-placed files read as doubtful, and about 1 in 2 to 1 in 3 doubtful files is really misplaced",
         "  app/modules/documents/adapters/export.py   adapters   0.08 (line 0.30)   2,140 chars",
         "      what to do: read it against the litmus of adapters (`xarch where "
         "app/modules/documents/adapters/export.py`). If the litmus says it belongs, leave it. In trials, about 1 in "
-        "2 to 1 in 3 files read this way was really misplaced."]
-    assert lines[8:] == ["", "placement: reads as placed (lowest first)",
+        "2 to 1 in 3 files read this way was really misplaced.",
+        "  held to its examples: no: uncalibrated: it was never held to its examples; run `xarch review calibrate "
+        "--eval placement`"]
+    assert lines[9:] == ["", "placement: reads as placed (lowest first)",
                          "  app/modules/documents/domain/document.py   domain   0.71 (line 0.30)   1,200 chars",
                          "", "left out:", "  app/b.py: under 800 characters (612)"]
     assert "logic" not in "\n".join(lines)
@@ -192,7 +194,7 @@ def test_each_part_read_says_how_its_files_read_and_a_part_low_across_the_board_
         "  ports   1 file(s) read: too few to say anything of the part (fewer than 3)"]
     assert json.loads(reading_document("cli", replace(READ, parts=PARTS)))["placement"]["parts"][1] == {
         "part": "domain", "read": 4, "doubtful": 3, "line": 0.2, "line_by_hand": True, "summed": True,
-        "litmus_note": True}
+        "litmus_note": True, "examples": None}
 
 
 def test_a_reading_with_nothing_sent_says_no_more_than_where_it_read_from_and_one_with_no_doubt_says_so():
@@ -221,7 +223,9 @@ def test_the_json_of_a_reading_holds_each_file_with_the_probability_of_each_part
         "ok": True, "advisory": ADVISORY, "profile": "cli", "dry_run": False, "complete": False, "model": "m-1",
         "selection": {"by": ["paths"], "found": 4, "judged": 3,
                       "left_out": [{"file": "app/b.py", "why": "small", "chars": 612, "pattern": None}]},
-        "placement": {"calibration": {"state": "measured", "evidence": document["placement"]["calibration"]["evidence"]},
+        "placement": {"calibration": {"state": "measured", "evidence": document["placement"]["calibration"]["evidence"],
+                                      "examples": {"state": "uncalibrated", "why": "it was never held to its examples",
+                                                   "parts": []}},
                       "role_only": [],
                       "files": [{"file": DOUBTFUL.file, "part": "adapters", "probability": 0.0812, "line": 0.3,
                                  "line_by_hand": False, "doubtful": True, "chars": 2140, "small": False, "orders": 1, "model": "m-1.0.1",

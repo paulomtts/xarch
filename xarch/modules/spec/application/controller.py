@@ -17,6 +17,7 @@ from xarch.modules.spec.contract import (
     ChooseApp,
     ChooseAppResult,
     DocsResult,
+    ExamplesResult,
     Explain,
     ExplainResult,
     FilesResult,
@@ -64,6 +65,15 @@ class SpecController:
         that does not load is refused with why."""
         try:
             return self._publishing.profile(location)
+        except DomainError as e:
+            return ProfileRefused(e.reason)
+
+    def examples(self, location: str) -> ExamplesResult:
+        """The files placement is held to, of the profile at a location callers got from select(): the docs' examples
+        lying in a part and those `evals.placement.examples` writes, each with its part and imports; one that does not
+        load, or an example that cannot be read, is refused with why."""
+        try:
+            return self._publishing.examples(location)
         except DomainError as e:
             return ProfileRefused(e.reason)
 

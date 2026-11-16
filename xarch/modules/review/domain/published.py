@@ -81,6 +81,13 @@ it runs; never held to them; held to them and failed; held to them as it was wri
 Only a calibrated eval runs."""
 FLAGGED, CLEAN = "flagged", "clean"
 """The kinds of example of an eval of the profile's own: code it must read as the fault, and code it must not."""
+PASSED, DISAGREE, ELSEWHERE = "passed", "disagree", "elsewhere"
+"""How a part of placement stands, held to its examples: they agree with its litmus; they disagree (its files are read
+but never marked doubtful); it has no example of its own, and is measured elsewhere only."""
+PLACEMENT = "placement"
+"""The id of placement, the eval review always asks, among the evals calibrate holds to their examples."""
+UNHELD = "it was never held to its examples"
+"""Why an eval, or placement, is uncalibrated."""
 GAP = 0.4
 """How far above the mean of an eval's clean examples the mean of its flagged ones must read for it to pass: the
 weakest checks that passed the trials read +0.42 and +0.46, the one that failed +0.21."""
@@ -184,8 +191,9 @@ class LeftOut:
 class PartRead:
     """How the files of one part read in a run: the part; how many of its files were read and how many read as
     doubtful; its line, and whether the profile sets it by hand; whether enough were read to say anything of the
-    part (FEWEST_SUMMED); and whether so many read as doubtful (at least FEWEST_NOTED, and more than a quarter of
-    those read) that its litmus may not describe them."""
+    part (FEWEST_SUMMED); whether so many read as doubtful (at least FEWEST_NOTED, and more than a quarter of
+    those read) that its litmus may not describe them; and how the part stood when placement was held to its
+    examples (PASSED, DISAGREE or ELSEWHERE; "" when placement is not calibrated)."""
     part: str
     read: int
     doubtful: int
@@ -193,6 +201,7 @@ class PartRead:
     by_hand: bool
     summed: bool
     noted: bool
+    held: str = ""
 
 
 @dataclass(frozen=True)
@@ -279,3 +288,33 @@ class EvalHeld:
     crossed: str = ""
     complete: bool = True
     by_hand: bool = False
+
+
+@dataclass(frozen=True)
+class PartHeld:
+    """A part of placement held to its examples: the part; PASSED, DISAGREE or ELSEWHERE; what crossed when its
+    examples disagree ("" else); and how many examples of its own it was held to."""
+    part: str
+    verdict: str
+    crossed: str = ""
+    examples: int = 0
+
+
+@dataclass(frozen=True)
+class PlacementHeld:
+    """Placement held to its examples, as recorded and as a run reads it: the hash of what it was held as (the
+    question, the lines and the examples); the model asked; the model version that answered; and each part, in the
+    profile's order."""
+    held: str
+    model: str
+    answered: str
+    parts: tuple[PartHeld, ...]
+
+
+@dataclass(frozen=True)
+class PlacementStanding:
+    """How placement stands in a run, held to its examples: CALIBRATED, UNCALIBRATED or STALE, why when it is not
+    calibrated, and each part as it was held (none unless calibrated)."""
+    state: str
+    why: str = ""
+    parts: tuple[PartHeld, ...] = ()

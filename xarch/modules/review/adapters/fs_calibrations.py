@@ -6,6 +6,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from xarch.modules.review.domain.published import PartHeld, PlacementHeld
 from xarch.modules.review.domain.values import Calibration
 from xarch.platform.data_files import DataFileError, DataFileReader, DataFileWriter
 from xarch.platform.filesystem import FileSystem
@@ -22,20 +23,36 @@ class FsCalibrations:
 
     def get(self, record: Path) -> dict[str, Calibration]:
         """A file that cannot be read is no record; an entry not of the shape written is left out."""
+        evals = self._document(record).get("evals")
+        if not isinstance(evals, dict):
+            return {}
+        return {str(name): found for name, entry in evals.items() if (found := _held(entry)) is not None}
+
+    def put(self, record: Path, held: dict[str, Calibration]) -> None:
+        document = self._document(record)
+        document["evals"] = {name: _entry(entry) for name, entry in sorted(held.items())}
+        self._fs.write_text(record, self._writer.json(dict(sorted(document.items()))))
+
+    def placement(self, record: Path) -> PlacementHeld | None:
+        """A record of placement not of the shape written is none."""
+        return _placed(self._document(record).get("placement"))
+
+    def put_placement(self, record: Path, held: PlacementHeld) -> None:
+        document = self._document(record)
+        document["placement"] = {"hash": held.held, "model": held.model, "answered_by": held.answered,
+                                 "parts": {part.part: {"verdict": part.verdict, "crossed": part.crossed,
+                                                       "examples": part.examples} for part in held.parts}}
+        self._fs.write_text(record, self._writer.json(dict(sorted(document.items()))))
+
+    def _document(self, record: Path) -> dict[str, Any]:
+        """The record as written; empty when there is none, or none that can be read."""
         if not self._fs.is_file(record):
             return {}
         try:
             kept = self._reader.parse(self._fs.read_text(record), json_syntax=True)
         except (DataFileError, OSError, UnicodeDecodeError):
             return {}
-        evals = kept.get("evals") if isinstance(kept, dict) else None
-        if not isinstance(evals, dict):
-            return {}
-        return {str(name): found for name, entry in evals.items() if (found := _held(entry)) is not None}
-
-    def put(self, record: Path, held: dict[str, Calibration]) -> None:
-        self._fs.write_text(record, self._writer.json({"evals": {name: _entry(entry)
-                                                                for name, entry in sorted(held.items())}}))
+        return kept if isinstance(kept, dict) else {}
 
 
 def _entry(entry: Calibration) -> dict[str, Any]:
@@ -60,3 +77,17 @@ def _held(entry: Any) -> Calibration | None:
 
 def _number(value: Any) -> bool:
     return isinstance(value, int | float) and not isinstance(value, bool) and 0 <= value <= 1
+
+
+def _placed(entry: Any) -> PlacementHeld | None:
+    if not isinstance(entry, dict) or not isinstance(entry.get("parts"), dict):
+        return None
+    texts = [entry.get(key) for key in ("hash", "model", "answered_by")]
+    parts = [(name, held) for name, held in entry["parts"].items() if isinstance(held, dict)]
+    if not all(isinstance(text, str) for text in texts) or len(parts) != len(entry["parts"]):
+        return None
+    if not all(isinstance(held.get("verdict"), str) and isinstance(held.get("crossed"), str)
+               and isinstance(held.get("examples"), int) for _, held in parts):
+        return None
+    return PlacementHeld(texts[0], texts[1], texts[2], tuple(PartHeld(str(name), held["verdict"], held["crossed"],
+                                                                      held["examples"]) for name, held in parts))

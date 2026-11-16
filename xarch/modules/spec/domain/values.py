@@ -370,6 +370,8 @@ class Architecture:
     lines: the line of each part the profile writes one for (`evals.placement.lines`), by part: below it a file reads
         as doubtful there in review
     evals: the evals of the profile's own, by id, in the order of the file, which review asks
+    placed: the examples placement is held to besides the docs' (`evals.placement.examples`): the flagged ones (each
+        lying in a part it does not belong in) and the clean ones, each by its path below the app with its code
     """
     name: str
     layout: Layout
@@ -400,6 +402,7 @@ class Architecture:
     mask: tuple[str, ...] = ()
     lines: dict[str, float] = field(default_factory=dict)
     evals: dict[str, Eval] = field(default_factory=dict)
+    placed: tuple[tuple[tuple[str, str], ...], tuple[tuple[str, str], ...]] = ((), ())
 
     @property
     def entry(self) -> Part | None:

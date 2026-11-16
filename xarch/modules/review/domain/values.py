@@ -148,3 +148,4 @@ class Run:
     asked: tuple[Answer, ...] = ()
     reused: tuple[Answer, ...] = ()
     failure: str = ""
+

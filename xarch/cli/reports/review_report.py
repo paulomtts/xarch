@@ -6,7 +6,16 @@ from __future__ import annotations
 from typing import Any
 
 from xarch.cli.reports.document import document
-from xarch.cli.reports.eval_report import UNASKED, eval_documents, eval_lines, eval_plan_lines, sends_of
+from xarch.cli.reports.eval_report import (
+    UNASKED,
+    VERDICTS,
+    eval_documents,
+    eval_lines,
+    eval_plan_lines,
+    sends_of,
+    standing_document,
+    standing_lines,
+)
 from xarch.modules.review.contract import (
     A_TEST,
     BAND,
@@ -150,6 +159,7 @@ def reading_lines(read: ReviewReading) -> list[str]:
                   f"      what to do: read it against the litmus of {item.part} (`xarch where {item.file}`). {TO_DO}"]
     if not doubtful:
         lines.append("  no file judged reads as doubtful here")
+    lines += standing_lines(read.calibration)
     if placed:
         lines += ["", "placement: reads as placed (lowest first)", *(_reading(item) for item in placed)]
     for pieces in read.pieces:
@@ -182,7 +192,8 @@ def reading_document(profile: str, read: ReviewReading) -> str:
         "selection": {"by": list(read.by), "found": read.found,
                       "judged": len(read.readings) + sum(not item.piece and not item.asked for item in read.unasked),
                       "left_out": [_left_out(item) for item in read.left_out]},
-        "placement": {"calibration": {"state": "measured", "evidence": BASED_ON},
+        "placement": {"calibration": {"state": "measured", "evidence": BASED_ON,
+                                      "examples": standing_document(read.calibration)},
                       "role_only": list(read.role_only), "files": [_file(item) for item in read.readings],
                       "parts": [_part_read(part) for part in read.parts]},
         "pieces": [_pieces_read(pieces) for pieces in read.pieces],
@@ -262,9 +273,11 @@ def _pieces(read: PiecesRead) -> list[str]:
 def _part(part: PartRead) -> list[str]:
     """How the files of a part read, and, when so many read as doubtful, what that usually means and what to do."""
     line = f"line {part.line:.2f}, set by the profile" if part.by_hand else f"line {part.line:.2f}"
+    held = f"; placement {VERDICTS[part.held]}" if part.held in VERDICTS else ""
+    line += held
     if not part.summed:
         return [f"  {part.part}   {part.read} file(s) read: too few to say anything of the part (fewer than "
-                f"{FEWEST_SUMMED})"]
+                f"{FEWEST_SUMMED}){held}"]
     said = [f"  {part.part}   {part.read} files read   {part.doubtful} doubtful   {line}"]
     if part.noted:
         said.append(f"      {part.doubtful} of its {part.read} files read as doubtful, more than a quarter, which "
@@ -291,7 +304,8 @@ def _pieces_read(read: PiecesRead) -> dict[str, Any]:
 
 def _part_read(part: PartRead) -> dict[str, Any]:
     return {"part": part.part, "read": part.read, "doubtful": part.doubtful, "line": part.line,
-            "line_by_hand": part.by_hand, "summed": part.summed, "litmus_note": part.noted}
+            "line_by_hand": part.by_hand, "summed": part.summed, "litmus_note": part.noted,
+            "examples": part.held or None}
 
 
 def _left_out(item: LeftOut) -> dict[str, Any]:

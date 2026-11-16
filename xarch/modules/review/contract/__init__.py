@@ -14,6 +14,8 @@ from xarch.modules.review.domain.published import (
     CALIBRATED,
     CHOOSE,
     CLEAN,
+    DISAGREE,
+    ELSEWHERE,
     EXCLUDED,
     FAILED,
     FAILED_EXAMPLES,
@@ -31,12 +33,15 @@ from xarch.modules.review.domain.published import (
     NOT_CACHED,
     NOT_SOURCE,
     OUTSIDE,
+    PASSED,
     PIECE_CHARS,
+    PLACEMENT,
     SCORE,
     SHOWN,
     SMALL,
     STALE,
     UNCALIBRATED,
+    UNHELD,
     UNPARSABLE,
     UNPLACED,
     YES_NO,
@@ -47,9 +52,12 @@ from xarch.modules.review.domain.published import (
     ExampleRead,
     LeftOut,
     Option,
+    PartHeld,
     PartRead,
     PieceReading,
     PiecesRead,
+    PlacementHeld,
+    PlacementStanding,
     Reading,
     Request,
     Sender,
@@ -63,7 +71,8 @@ __all__ = ["A_TEST", "BAND", "BY_ALL", "BY_LIST", "BY_PATHS", "EXCLUDED", "FAILE
            "ReviewPlanned", "ReviewReading", "NothingChosen", "AllAndOthers", "AllInPieces", "TooManyFiles",
            "KeyMissing", "ReviewRefused", "ReviewResult", "CALIBRATED", "CHOOSE", "FAILED_EXAMPLES", "GAP", "SCORE",
            "STALE", "UNCALIBRATED", "YES_NO", "EvalHeld", "EvalRead", "EvalReading", "ExampleRead", "Calibrate",
-           "CalibrationPlanned", "Calibrated", "UnknownEvals", "CalibrateResult", "FLAGGED", "CLEAN"]
+           "CalibrationPlanned", "Calibrated", "UnknownEvals", "CalibrateResult", "FLAGGED", "CLEAN", "PASSED", "DISAGREE",
+           "ELSEWHERE", "PLACEMENT", "PartHeld", "PlacementHeld", "PlacementStanding", "UNHELD"]
 
 
 @dataclass(frozen=True)
@@ -124,8 +133,8 @@ class ReviewReading:
     read from the cache; the tokens the questions sent cost; how the decision model failed, when it did ("" when it
     did not), which stopped the sending; the parts the question describes by their role alone; and how the files of
     each part read, in the profile's order; and, when pieces were asked for, the pieces of each file judged, ranked
-    inside it; and how each eval of the profile's own went, in the profile's order: those that do not run with why,
-    those that ran with their readings."""
+    inside it; how each eval of the profile's own went, in the profile's order: those that do not run with why,
+    those that ran with their readings; and how placement stands held to its examples."""
     by: tuple[str, ...]
     found: int
     readings: tuple[Reading, ...]
@@ -141,6 +150,7 @@ class ReviewReading:
     parts: tuple[PartRead, ...] = ()
     pieces: tuple[PiecesRead, ...] = ()
     evals: tuple[EvalRead, ...] = ()
+    calibration: PlacementStanding = PlacementStanding(UNCALIBRATED, UNHELD)
 
     @property
     def complete(self) -> bool:
@@ -220,8 +230,10 @@ class CalibrationPlanned:
 class Calibrated:
     """The evals held to their examples: each, in the profile's order; the record written (None when no eval had every
     answer, and nothing was written); the questions with no answer, and why; what was sent to; how many questions were
-    sent and how many answers were read from the cache; the tokens the questions sent cost; and how the decision model
-    failed, when it did ("" when it did not)."""
+    sent and how many answers were read from the cache; the tokens the questions sent cost; how the decision model
+    failed, when it did ("" when it did not); and placement held to its examples, each part's verdict (None when it was
+    not asked for, has no example, or some example has no answer). A part whose examples disagree does not fail the
+    calibration: it is said, and review then never marks its files doubtful."""
     held: tuple[EvalHeld, ...]
     record: Path | None
     unasked: tuple[Unasked, ...]
@@ -231,11 +243,12 @@ class Calibrated:
     input_tokens: int
     output_tokens: int
     failure: str
+    placement: PlacementHeld | None = None
 
     @property
     def complete(self) -> bool:
-        """Whether every eval has every answer."""
-        return all(item.complete for item in self.held)
+        """Whether every eval, and placement, has every answer."""
+        return not self.unasked
 
     @property
     def passed(self) -> bool:

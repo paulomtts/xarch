@@ -12,8 +12,10 @@ from tests.modules.review.builders import PARTS
 from xarch.modules.review.contract import (
     CHOOSE,
     CLEAN,
+    DISAGREE,
     FLAGGED,
     NOT_CACHED,
+    PASSED,
     YES_NO,
     Calibrate,
     Calibrated,
@@ -23,13 +25,14 @@ from xarch.modules.review.contract import (
     ExampleRead,
     KeyMissing,
     Option,
+    PartHeld,
     Request,
     ReviewRefused,
     Sender,
     Unasked,
     UnknownEvals,
 )
-from xarch.modules.review.domain.values import Answer, Calibration, EvalText, Read, Words
+from xarch.modules.review.domain.values import Answer, Calibration, CodeFile, EvalText, Read, Words
 
 CWD, APP = Path("/src"), Path("/src/app")
 RECORD = Path("/src/.xarch/calibration.json")
@@ -106,7 +109,7 @@ def calibrate(given: Given, cmd: Calibrate):
                      Unasked(path, NOT_CACHED, "", "rule") for path in ("domain/a.py", "domain/b.py", "domain/a.py",
                                                                         "domain/b.py")), SENDS, 0, 0, 0, 0, ""),
                  id="offline, an eval with an example not in the cache is not held, and nothing is recorded"),
-    pytest.param(Given(), Calibrate(CWD, APP, "cli", ("other",)), UnknownEvals(("other",), ("rule",)),
+    pytest.param(Given(), Calibrate(CWD, APP, "cli", ("other",)), UnknownEvals(("other",), ("placement", "rule")),
                  id="an eval the profile does not write is refused, with the ones it does"),
     pytest.param(Given(keyed=False), Calibrate(CWD, APP, "cli"), KeyMissing("MODEL_KEY"),
                  id="a calibration that would send with no key is refused before anything is sent"),
@@ -152,3 +155,58 @@ def test_what_an_eval_reads_in_an_example_is_asked_alone():
     model = FakeDecisionModel({"    if doc.x: raise E\n": yes(0.9), WORSE: yes(0.8), GOOD: yes(0.1), FINE: yes(0.2)})
     found = controller(code, profile, model, FakeAnswers()).calibrate(Calibrate(CWD, APP, "cli"))
     assert isinstance(found, Calibrated) and found.passed and "    if doc.x: raise E\n" in model.asked
+
+
+VALUE = CodeFile("modules/documents/domain/value.py", "domain", "class Value: ...\n")
+START = CodeFile("__main__.py", "main", "run()\n")
+STRAY = CodeFile("stray/x.py", "", "x = 1\n")
+WRONG = CodeFile("modules/documents/domain/start.py", "domain", "run(now)\n")
+
+
+def placed(*examples: tuple[CodeFile, dict[str, float]]) -> dict:
+    return {example.text: Answer("m-1.2", tuple(probabilities.items())) for example, probabilities in examples}
+
+
+def holding(answers: dict, clean: tuple[CodeFile, ...], flagged: tuple[CodeFile, ...] = (), cmd=None):
+    profile = FakeProfile({"cli": Words(PARTS)}, examples={"cli": (clean, flagged)})
+    held = FakeCalibrations()
+    result = controller(FakeCode({}), profile, FakeDecisionModel(answers), FakeAnswers(), held).calibrate(
+        cmd or Calibrate(CWD, APP, "cli"))
+    return result, held
+
+
+def test_placement_is_held_to_the_docs_examples_and_its_own_each_part_with_its_verdict_and_recorded():
+    answers = placed((VALUE, {"domain": 0.9, "main": 0.1}), (START, {"domain": 0.4, "main": 0.6}),
+                     (WRONG, {"domain": 0.1, "main": 0.9}))
+    result, held = holding(answers, (VALUE, START, STRAY), (WRONG,))
+    assert isinstance(result, Calibrated) and result.complete and result.passed and result.record == RECORD
+    assert result.placement is not None and result.placement.parts == (
+        PartHeld("domain", DISAGREE, "example __main__.py of main reads 0.40 on it, not below its line 0.30", 2),
+        PartHeld("main", PASSED, "", 1))
+    assert held.placed[RECORD] == result.placement and held.kept == {}
+
+
+def test_a_dry_run_shows_each_example_placement_is_asked_of_and_an_example_in_no_part_is_not():
+    result, _ = holding({}, (VALUE, STRAY), (WRONG,), Calibrate(CWD, APP, "cli", dry_run=True))
+    assert isinstance(result, CalibrationPlanned) and result.evals == ("placement",)
+    assert [(item.file, item.asked, item.example) for item in result.requests] == [
+        ("modules/documents/domain/value.py", "placement", CLEAN), ("modules/documents/domain/start.py", "placement",
+                                                                    FLAGGED)]
+
+
+def test_offline_placement_with_an_example_not_in_the_cache_is_not_held_and_names_it():
+    result, held = holding(placed((VALUE, {"domain": 0.9})), (VALUE, START), (),
+                           Calibrate(CWD, APP, "cli", ("placement",), offline=True))
+    assert isinstance(result, Calibrated) and result.placement is None and not result.complete
+    assert result.unasked == (Unasked("modules/documents/domain/value.py", NOT_CACHED, "", "placement"),
+                              Unasked("__main__.py", NOT_CACHED, "", "placement")) and held.placed == {}
+
+
+def test_placement_alone_is_held_when_it_alone_is_asked_for_and_an_eval_alone_holds_placement_not():
+    result, held = holding(placed((VALUE, {"domain": 0.9})), (VALUE,), (), Calibrate(CWD, APP, "cli", ("placement",)))
+    assert isinstance(result, Calibrated) and result.placement is not None and RECORD in held.placed
+    profile = FakeProfile({"cli": Words(PARTS, evals=(RULE,))}, examples={"cli": ((VALUE,), ())})
+    calibrations = FakeCalibrations()
+    controller(FakeCode({}), profile, FakeDecisionModel(dict(PASSING)), FakeAnswers(), calibrations).calibrate(
+        Calibrate(CWD, APP, "cli", ("rule",)))
+    assert calibrations.placed == {} and "rule" in calibrations.kept[RECORD]

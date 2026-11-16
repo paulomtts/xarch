@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol
 
+from xarch.modules.review.domain.published import PlacementHeld
 from xarch.modules.review.domain.values import Calibration
 
 
@@ -15,5 +16,15 @@ class Calibrations(Protocol):
         ...
 
     def put(self, record: Path, held: dict[str, Calibration]) -> None:
-        """Record the evals in the file, by id, in place of what it held, creating its folder."""
+        """Record the evals in the file, by id, in place of the evals it held, creating its folder; placement's record
+        stays as it was."""
+        ...
+
+    def placement(self, record: Path) -> PlacementHeld | None:
+        """Placement held to its examples as recorded in the file; None when it is not, or cannot be read."""
+        ...
+
+    def put_placement(self, record: Path, held: PlacementHeld) -> None:
+        """Record placement held to its examples in the file, in place of what it held of placement, creating its
+        folder; the evals' records stay as they were."""
         ...

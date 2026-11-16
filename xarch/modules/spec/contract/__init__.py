@@ -7,6 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from xarch.kernel.source import Import
 from xarch.modules.spec.domain.published import (
     CHOICE,
     DEFAULT_APP,
@@ -31,7 +32,7 @@ from xarch.profile_values.placement import Repeat, Target
 from xarch.profile_values.testing import Fakes, Framework, ScenarioCoverage, StandIns
 from xarch.profile_values.tiers import CheckedTier
 
-__all__ = ["CHOICE", "READS", "SCORE", "YES_NO", "Eval",
+__all__ = ["CHOICE", "READS", "SCORE", "YES_NO", "Eval", "ExampleFile", "ExamplesRead", "ExamplesResult",
            "DEFAULT_APP", "DEFAULT_TESTS", "LINE", "Entry", "Repeating", "Skeleton", "DocFile", "Docs", "ProjectFile", "ProjectFiles",
            "FilesResult", "SkeletonResult", "ProfileResult", "DocsResult", "OriginResult", "PartView",
            "GuardsView", "ProfileView", "ChooseApp", "AppChosen", "ChooseAppResult",
@@ -218,6 +219,28 @@ class NoProfileChosen:
 FilesResult = ProjectFiles | ProfileRefused
 SkeletonResult = Skeleton | ProfileRefused
 ProfileResult = ProfileView | ProfileRefused
+
+
+@dataclass(frozen=True)
+class ExampleFile:
+    """A file placement is held to: its path below the app; the part it lies in, by its path ("" for none); its code;
+    and its imports, as the reader of the profile's language reads them (none when it does not parse)."""
+    path: str
+    part: str
+    text: str
+    imports: tuple[Import, ...] = ()
+
+
+@dataclass(frozen=True)
+class ExamplesRead:
+    """The files placement is held to: the clean ones, every file of the docs' example projects lying in a part and
+    then those `evals.placement.examples.clean` writes; and the flagged ones, those it writes under `flagged`, each
+    lying in a part it does not belong in; each in the order of the profile."""
+    clean: tuple[ExampleFile, ...]
+    flagged: tuple[ExampleFile, ...]
+
+
+ExamplesResult = ExamplesRead | ProfileRefused
 DocsResult = Docs | ProfileRefused
 OriginResult = Origin | ProfileRefused
 SelectResult = ProfileSelected | NoProfileChosen | ProfileRefused

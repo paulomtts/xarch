@@ -52,9 +52,10 @@ key_catalogue); the shape:
                                an example project, whose every file is an example named by its path in the project
     review: {never, mask}      what `xarch review` may send: path patterns below the app of the files it never sends,
                                and text patterns it hides before it sends; `check` reads neither (see sending)
-    evals: {placement: {lines}, <id>: {ask, answer, reads, ...}}
+    evals: {placement: {lines, examples}, <id>: {ask, answer, reads, ...}}
                                how review reads what it asks: the line of each part below which a file reads as doubtful
-                               there, and the evals of the profile's own; `check` never reads it (see evals)
+                               there, the examples placement is held to besides the docs', and the evals of the
+                               profile's own; `check` never reads it (see evals)
 
 Every problem found is collected, so one InvalidArchitecture lists them all, each naming the key by its address in the
 file and saying what to write instead; a problem that makes the rest meaningless stops early.
@@ -204,14 +205,15 @@ def parse_v2(document: Any, source: str, files: Collection[str] = (), presets: M
            else {})
     hints = ck.rule_hints(document["hints"], problems, own) if "hints" in document else {}
     never, mask = sending(document["review"], problems) if "review" in document else ((), ())
-    placement, own_evals = evals(document["evals"], declared, language, problems) if "evals" in document else ({}, {})
+    placement, placed, own_evals = (evals(document["evals"], declared, language, problems) if "evals" in document
+                                    else ({}, ((), ()), {}))
     if problems:
         raise InvalidArchitecture(source, problems)
     shown = ex.examples_of(examples, built.tree, parts, language)
     return Architecture(name, built.tree, parts, rules, pages, shown, built.notes, layers, tuple(parts), naming, tiers,
                         libraries, guards, fakes, built.repeats, written, testing.framework if testing else None, forbidden,
                         excluded, hints, based_on, language, reserved, needs.approximate(shortfalls), own, never, mask,
-                        placement, own_evals)
+                        placement, own_evals, placed)
 
 
 def _keys(document: Mapping[Any, Any]) -> list[str]:

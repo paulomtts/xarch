@@ -3,11 +3,21 @@ litmus, role and line (the profile's, else spec's default), and what review may 
 Refused with spec's reason."""
 import pytest
 
+from xarch.kernel.source import Import
 from xarch.modules.review.adapters.spec_profile import SpecWords
 from xarch.modules.review.domain.errors import Refused
 from xarch.modules.review.domain.published import SCORE, Choice, Option
-from xarch.modules.review.domain.values import EvalText, PartText, Words
-from xarch.modules.spec.contract import Eval, PartView, ProfileRefused, ProfileResult, ProfileView
+from xarch.modules.review.domain.values import CodeFile, EvalText, PartText, Words
+from xarch.modules.spec.contract import (
+    Eval,
+    ExampleFile,
+    ExamplesRead,
+    ExamplesResult,
+    PartView,
+    ProfileRefused,
+    ProfileResult,
+    ProfileView,
+)
 from xarch.profile_values.checks import APP, Condition, Scope
 
 VIEW = ProfileView(parts=(PartView("core", ("core",), (), "the rules", "Is it a rule?", "core/"),
@@ -18,11 +28,14 @@ VIEW = ProfileView(parts=(PartView("core", ("core",), (), "the rules", "Is it a 
 class Spec:
     """Spec's controller as review's adapter uses it, answering from a fixed result."""
 
-    def __init__(self, result: ProfileResult):
-        self._result = result
+    def __init__(self, result: ProfileResult, examples: ExamplesResult = ExamplesRead((), ())):
+        self._result, self._examples = result, examples
 
     def profile(self, location: str) -> ProfileResult:
         return self._result
+
+    def examples(self, location: str) -> ExamplesResult:
+        return self._examples
 
 
 def test_each_part_is_read_with_its_folder_litmus_role_and_line_in_order_and_what_review_may_send_as_written():
@@ -48,3 +61,12 @@ def test_each_eval_of_the_profile_own_is_read_with_its_question_its_form_and_wha
         "purity", Choice("How far does it reach?", tuple(Option(str(n), f"level {n}") for n in range(5)), SCORE),
         ("3", "4"), 0.7, "{name} ({value})", "read it", (("core/a.py", "x\n"),), (("core/b.py", "y\n"),),
         "function | core | where | placed | keep | public | not named run*"),)
+
+
+def test_the_files_placement_is_held_to_are_read_with_their_part_code_and_imports_and_a_refusal_is_refused():
+    clock = Import(1, ("app", "kernel", "time"), ("Clock",))
+    read = ExamplesRead((ExampleFile("core/a.py", "core", "x\n", (clock,)),), (ExampleFile("api/b.py", "api", "y\n"),))
+    assert SpecWords(Spec(VIEW, read)).examples("p") == ((CodeFile("core/a.py", "core", "x\n", (clock,)),),
+                                                          (CodeFile("api/b.py", "api", "y\n"),))
+    with pytest.raises(Refused, match="gone: no such file"):
+        SpecWords(Spec(VIEW, ProfileRefused("gone: no such file"))).examples("gone")

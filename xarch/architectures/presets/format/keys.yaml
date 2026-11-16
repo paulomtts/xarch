@@ -1152,7 +1152,8 @@ keys:
   evals.placement:
     meaning: how review reads placement's answers
     accepts: >-
-      a map {lines}: the line of each part, below which a file reads as doubtful where it sits
+      a map {lines, examples}: the line of each part, below which a file reads as doubtful where it sits, and the
+      examples `xarch review calibrate` holds placement to besides the docs' examples
     example: |
       evals:
         placement:
@@ -1172,6 +1173,23 @@ keys:
       evals:
         placement:
           lines: {documents: 0.2}
+  evals.placement.examples:
+    meaning: the examples placement is held to, besides the docs'
+    accepts: >-
+      {flagged: {<path>: <code>, ...}, clean: {<path>: <code>, ...}}, each a path below the app ending in %extension%,
+      the part it lies in being the part its path names: a clean file belongs in that part, a flagged one does not.
+      `xarch review calibrate --eval placement` asks placement of them and of every file of `docs.examples` lying in
+      a part (those are clean), and holds each part to them: its clean files must read at or above its line, and
+      every file claimed for it from elsewhere below it (a flagged file in it, and each other example's probability
+      on it). A part whose examples disagree is read in review but never marked doubtful; one with no example of its
+      own is measured elsewhere only. The examples are short, and short files read lower: a sanity check of the
+      litmus texts, not a way to set lines
+    example: |
+      <<part>>
+      evals:
+        placement:
+          examples:
+            clean: {documents/titles%extension%: "%comment% the titles of the documents\n"}
 slots:
   evals.<id>.ask:
     meaning: the question the eval asks

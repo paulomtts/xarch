@@ -13,13 +13,19 @@ from xarch.cli.reports.eval_report import (
     eval_lines,
     eval_plan_lines,
     shown_from,
+    standing_document,
+    standing_lines,
     unknown_evals,
 )
 from xarch.modules.review.contract import (
     CALIBRATED,
+    DISAGREE,
+    ELSEWHERE,
     FLAGGED,
     NOT_CACHED,
+    PASSED,
     STALE,
+    UNCALIBRATED,
     YES_NO,
     Calibrated,
     CalibrationPlanned,
@@ -27,6 +33,9 @@ from xarch.modules.review.contract import (
     EvalRead,
     EvalReading,
     ExampleRead,
+    PartHeld,
+    PlacementHeld,
+    PlacementStanding,
     Request,
     Sender,
     Unasked,
@@ -109,7 +118,8 @@ def test_a_calibration_with_examples_unanswered_says_it_is_incomplete_and_record
 
 def test_a_profile_with_no_eval_of_its_own_has_nothing_to_calibrate():
     done = Calibrated((), None, (), SENDS, 0, 0, 0, 0, "")
-    assert calibration_lines(done, "")[-1] == "nothing to calibrate: the profile writes no eval of its own"
+    assert calibration_lines(done, "")[-1] == ("nothing to calibrate: the profile writes no eval of its own and has no "
+                                               "example")
 
 
 def test_a_dry_run_of_a_calibration_says_what_leaves_the_machine_and_each_request_with_its_text():
@@ -120,7 +130,7 @@ def test_a_dry_run_of_a_calibration_says_what_leaves_the_machine_and_each_reques
     assert "request 1 of 1: rule, flagged example services/a.py a (lines 1-1), 8 characters" in lines
     assert "    | def a():" in lines
     document = json.loads(calibration_plan_document(planned))
-    assert document["requests"] == [{"id": "rule", "example": "services/a.py", "kind": "flagged", "name": "a",
+    assert document["requests"] == [{"id": "rule", "example": "services/a.py", "kind": "flagged", "part": None, "name": "a",
                                      "first": 1, "last": 1, "chars": 8, "cached": False, "text": "def a():\n",
                                      "body": "{}"}]
 
@@ -129,3 +139,32 @@ def test_evals_asked_for_that_the_profile_does_not_write_are_refused_with_those_
     assert unknown_evals(("x",), ("rule", "wording")) == "no eval of the profile's own named x: use rule, wording"
     assert unknown_evals(("x",), ()) == "no eval of the profile's own named x: the profile writes none under evals"
     assert shown_from(Path("/p/.xarch/calibration.json"), Path("/p")) == ".xarch/calibration.json"
+
+
+PLACED = PlacementHeld("h", "m-1", "m-1.2", (PartHeld("domain", DISAGREE, "clean example a.py reads 0.12, below its line "
+                                                                       "0.30", 2),
+                                             PartHeld("services", PASSED, "", 3), PartHeld("kernel", ELSEWHERE)))
+
+
+def test_a_calibration_says_each_part_of_placement_held_to_its_examples_and_that_they_are_a_sanity_check():
+    lines = calibration_lines(Calibrated((), Path("/p/.xarch/calibration.json"), (), SENDS, 3, 0, 0, 0, "", PLACED),
+                              ".xarch/calibration.json")
+    assert lines[4:8] == [
+        "placement   held to the docs' examples and the profile's own, by m-1.2; the examples are short, and short "
+        "files read lower for being short: a sanity check of the litmus texts, not a way to set lines",
+        "  domain   examples disagree: clean example a.py reads 0.12, below its line 0.30; read its litmus against the "
+        "example, and the example against the litmus",
+        "  services   passed (3 example(s) of its own)",
+        "  kernel   measured elsewhere only: no example of its own"]
+
+
+def test_a_review_says_whether_placement_was_held_to_its_examples_and_each_part_whose_examples_disagree():
+    assert standing_lines(PlacementStanding(UNCALIBRATED, "it was never held to its examples")) == [
+        "  held to its examples: no: uncalibrated: it was never held to its examples; run `xarch review calibrate "
+        "--eval placement`"]
+    held = standing_lines(PlacementStanding(CALIBRATED, "", PLACED.parts))
+    assert held[1] == ("  placement of domain: examples disagree (clean example a.py reads 0.12, below its line 0.30): "
+                       "its files are read, never marked doubtful") and len(held) == 2
+    assert standing_document(PlacementStanding(CALIBRATED, "", PLACED.parts[1:2])) == {
+        "state": "calibrated", "why": None, "parts": [{"part": "services", "verdict": "passed", "crossed": None,
+                                                       "examples": 3}]}

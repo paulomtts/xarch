@@ -10,6 +10,8 @@ from xarch.modules.spec.application.services.architecture import ArchitectureSer
 from xarch.modules.spec.contract import (
     ChecksWritten,
     Docs,
+    ExampleFile,
+    ExamplesRead,
     GuardsView,
     PartView,
     ProfileView,
@@ -68,6 +70,12 @@ class PublishingService:
             reserved=dict(architecture.reserved), approximate=architecture.approximate,
             checks=dict(architecture.checks), never=architecture.never, mask=architecture.mask,
             lines=dict(architecture.lines), evals=dict(architecture.evals))
+
+    def examples(self, profile: str) -> ExamplesRead:
+        """The files placement is held to, each with its part and imports."""
+        clean, flagged = self._architectures.placed(profile)
+        return ExamplesRead(*(tuple(ExampleFile(path, part, text, self._architectures.imports(text))
+                                    for path, part, text in files) for files in (clean, flagged)))
 
     def docs(self, profile: str) -> Docs:
         """Raises InvalidTemplate too, for a template that cannot be filled."""

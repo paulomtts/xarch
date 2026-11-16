@@ -4,8 +4,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from xarch.modules.review.domain.errors import NoKey, Refused, Unanswered
-from xarch.modules.review.domain.published import Choice, Sender
-from xarch.modules.review.domain.values import Answer, Calibration, Found, Read, Reads, Words
+from xarch.modules.review.domain.published import Choice, PlacementHeld, Sender
+from xarch.modules.review.domain.values import Answer, Calibration, CodeFile, Found, Read, Reads, Words
 
 
 class FakeCode:
@@ -35,13 +35,20 @@ class FakeProfile:
     """Satisfies review's Profile: fixed words per profile; a profile listed as refused raises Refused with its
     reason."""
 
-    def __init__(self, words: dict[str, Words], refused: dict[str, str] | None = None):
-        self._words, self._refused = words, dict(refused or {})
+    def __init__(self, words: dict[str, Words], refused: dict[str, str] | None = None,
+                 examples: dict[str, tuple[tuple[CodeFile, ...], tuple[CodeFile, ...]]] | None = None):
+        self._words, self._refused, self._examples = words, dict(refused or {}), dict(examples or {})
 
     def words(self, profile: str) -> Words:
         if profile in self._refused:
             raise Refused(self._refused[profile])
         return self._words[profile]
+
+    def examples(self, profile: str) -> tuple[tuple[CodeFile, ...], tuple[CodeFile, ...]]:
+        """The files placement is held to, the clean ones and the flagged ones; none when none are set."""
+        if profile in self._refused:
+            raise Refused(self._refused[profile])
+        return self._examples.get(profile, ((), ()))
 
 
 class FakeDecisionModel:
@@ -84,10 +91,19 @@ class FakeAnswers:
 
 
 class FakeCalibrations:
-    """Satisfies review's Calibrations: the evals recorded, by the record's path; every record put kept here."""
+    """Satisfies review's Calibrations: the evals recorded, and placement, by the record's path; every record put kept
+    here."""
 
-    def __init__(self, kept: dict[Path, dict[str, Calibration]] | None = None):
+    def __init__(self, kept: dict[Path, dict[str, Calibration]] | None = None,
+                 placed: dict[Path, PlacementHeld] | None = None):
         self.kept = {path: dict(held) for path, held in (kept or {}).items()}
+        self.placed = dict(placed or {})
+
+    def placement(self, record: Path) -> PlacementHeld | None:
+        return self.placed.get(record)
+
+    def put_placement(self, record: Path, held: PlacementHeld) -> None:
+        self.placed[record] = held
 
     def get(self, record: Path) -> dict[str, Calibration]:
         return dict(self.kept.get(record, {}))

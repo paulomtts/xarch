@@ -6,8 +6,17 @@ from typing import Protocol
 
 from xarch.modules.review.domain.errors import Refused
 from xarch.modules.review.domain.published import Choice, Option
-from xarch.modules.review.domain.values import EvalText, PartText, Words
-from xarch.modules.spec.contract import LINE, Eval, ProfileRefused, ProfileResult, ProfileView
+from xarch.modules.review.domain.values import CodeFile, EvalText, PartText, Words
+from xarch.modules.spec.contract import (
+    LINE,
+    Eval,
+    ExampleFile,
+    ExamplesRead,
+    ExamplesResult,
+    ProfileRefused,
+    ProfileResult,
+    ProfileView,
+)
 from xarch.profile_values.checks import Condition
 
 
@@ -15,6 +24,8 @@ class _Spec(Protocol):
     """The little review uses of spec's controller."""
 
     def profile(self, location: str) -> ProfileResult: ...
+
+    def examples(self, location: str) -> ExamplesResult: ...
 
 
 class SpecWords:
@@ -33,6 +44,18 @@ class SpecWords:
                              tuple(_eval(name, asked) for name, asked in evals.items()))
             case ProfileRefused(reason):
                 raise Refused(reason)
+
+    def examples(self, profile: str) -> tuple[tuple[CodeFile, ...], tuple[CodeFile, ...]]:
+        """A profile spec refuses, or whose examples cannot be read, raises Refused with spec's reason."""
+        match self._spec.examples(profile):
+            case ExamplesRead(clean, flagged):
+                return tuple(map(_example, clean)), tuple(map(_example, flagged))
+            case ProfileRefused(reason):
+                raise Refused(reason)
+
+
+def _example(file: ExampleFile) -> CodeFile:
+    return CodeFile(file.path, file.part, file.text, file.imports)
 
 
 def _eval(name: str, asked: Eval) -> EvalText:

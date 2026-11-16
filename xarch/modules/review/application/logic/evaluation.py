@@ -19,6 +19,7 @@ from xarch.modules.review.domain.published import (
     SCORE,
     STALE,
     UNCALIBRATED,
+    UNHELD,
     Choice,
 )
 from xarch.modules.review.domain.values import Answer, Calibration, EvalText
@@ -63,7 +64,7 @@ def state(asked: EvalText, record: Calibration | None, model: str) -> tuple[str,
     """Whether an eval runs, and why not: CALIBRATED ("") when its record passed, as it is written now and by the model
     asked; else UNCALIBRATED, STALE or FAILED_EXAMPLES, with why."""
     if record is None:
-        return UNCALIBRATED, "it was never held to its examples"
+        return UNCALIBRATED, UNHELD
     if record.held != held_as(asked):
         return STALE, "its question, answer, scope, line or examples changed since it was held to its examples"
     if record.model != model:

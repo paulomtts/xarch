@@ -1,6 +1,7 @@
 """What `evals` says of the questions review asks, each refused at its address when it is written wrong; `check` never
 reads it. Under `placement`, the built-in eval, the line of each part below which a file reads as doubtful there
-(`evals.placement.lines`); under any other id, an eval of the profile's own:
+(`evals.placement.lines`) and the examples placement is held to besides the docs' (`evals.placement.examples`);
+under any other id, an eval of the profile's own:
 
     <id>:                 lowercase words joined by `-`, never `placement`
       ask: <question>     one line, at most MAX_ASK characters and one question mark
@@ -49,14 +50,18 @@ _SIDES = {True: "yes", False: "no"}
 """The slot a key read as true or false was written as: a profile file reads `yes:` and `no:` as true and false."""
 
 
+Examples = tuple[tuple[str, str], ...]
+"""Example files, each by its path below the app with its code."""
+
+
 def evals(value: Any, declared: Collection[str], language: Language,
-          problems: list[str]) -> tuple[dict[str, float], dict[str, Eval]]:
-    """The line of each part the profile writes one for, by part, and every eval of the profile's own, by id, each in
-    the order of the file; an eval with a problem is left out."""
+          problems: list[str]) -> tuple[dict[str, float], tuple[Examples, Examples], dict[str, Eval]]:
+    """The line of each part the profile writes one for, by part; placement's own flagged and clean examples; and
+    every eval of the profile's own, by id; each in the order of the file, an eval with a problem left out."""
     if not isinstance(value, Mapping):
         problems.append("evals: must be a mapping of the evals review asks, by id, such as "
                         "{placement: {lines: {documents: 0.2}}}")
-        return {}, {}
+        return {}, ((), ()), {}
     own: dict[str, Eval] = {}
     for name, body in value.items():
         if name == BUILT_IN:
@@ -69,18 +74,23 @@ def evals(value: Any, declared: Collection[str], language: Language,
         found = _own(body, f"evals.{name}", declared, language, problems)
         if found is not None and len(problems) == count:
             own[name] = found
-    return _placement(value.get(BUILT_IN), declared, problems), own
+    lines, examples = _placement(value.get(BUILT_IN), declared, language, problems)
+    return lines, examples, own
 
 
-def _placement(placement: Any, declared: Collection[str], problems: list[str]) -> dict[str, float]:
+def _placement(placement: Any, declared: Collection[str], language: Language,
+               problems: list[str]) -> tuple[dict[str, float], tuple[Examples, Examples]]:
     if placement is None:
-        return {}
+        return {}, ((), ())
     if not isinstance(placement, Mapping):
-        problems.append("evals.placement: must be a mapping {lines}: the line of each part, below which a file reads "
-                        "as doubtful there")
-        return {}
+        problems.append("evals.placement: must be a mapping {lines, examples}: the line of each part, below which a "
+                        "file reads as doubtful there, and the examples it is held to besides the docs'")
+        return {}, ((), ())
     problems += ck.unknown_keys(placement, names_of(PLACEMENT), "evals.placement")
-    return _lines(placement["lines"], declared, problems) if "lines" in placement else {}
+    lines = _lines(placement["lines"], declared, problems) if "lines" in placement else {}
+    if "examples" not in placement:
+        return lines, ((), ())
+    return lines, _examples(placement["examples"], "evals.placement.examples", language, problems, needed=0)
 
 
 def _lines(value: Any, declared: Collection[str], problems: list[str]) -> dict[str, float]:
@@ -226,20 +236,21 @@ def _sentence(value: Any, where: str, problems: list[str], variables: bool = Fal
     return value.strip()
 
 
-def _examples(value: Any, where: str, language: Language,
-              problems: list[str]) -> tuple[tuple[tuple[str, str], ...], tuple[tuple[str, str], ...]]:
-    """The code an eval must read as flagged and as clean, each file by its path below the app, at least
-    FEWEST_EXAMPLES of each."""
+def _examples(value: Any, where: str, language: Language, problems: list[str],
+              needed: int = FEWEST_EXAMPLES) -> tuple[Examples, Examples]:
+    """The code an eval must read as flagged and as clean, each file by its path below the app, at least needed of
+    each (none for placement, which has the docs' examples besides)."""
     if not isinstance(value, Mapping):
         problems.append(f"{where}: must be a map {{flagged: {{<path>: <code>}}, clean: {{<path>: <code>}}}}")
         return (), ()
     problems += ck.unknown_keys(value, ("flagged", "clean"), where)
-    found: dict[str, tuple[tuple[str, str], ...]] = {}
+    found: dict[str, Examples] = {}
     for side in ("flagged", "clean"):
-        files = value.get(side)
-        if not isinstance(files, Mapping) or len(files) < FEWEST_EXAMPLES:
-            problems.append(f"{where}.{side}: must be a map of at least {FEWEST_EXAMPLES} files, {{<path>: <code>}}: "
-                            f"the code the eval must read as {side}")
+        files = value.get(side, {} if not needed else None)
+        if not isinstance(files, Mapping) or len(files) < needed:
+            least = f"at least {needed} files" if needed else "files"
+            problems.append(f"{where}.{side}: must be a map of {least}, {{<path>: <code>}}: the code the eval must "
+                            f"read as {side}")
             found[side] = ()
             continue
         found[side] = tuple(_example(path, code, f"{where}.{side}", language, problems) for path, code in files.items())

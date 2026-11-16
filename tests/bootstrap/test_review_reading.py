@@ -218,7 +218,8 @@ def test_a_part_whose_files_read_low_across_the_board_is_summed_up_and_points_at
         "  services   1 file(s) read: too few to say anything of the part (fewer than 3)"]
     document = json.loads(review(SERVICE, VALUES, *more, "--offline", "--format", "json", key=None).output)
     assert document["placement"]["parts"][0] == {"part": "domain", "read": 3, "doubtful": 3, "line": 0.3,
-                                                 "line_by_hand": False, "summed": True, "litmus_note": True}
+                                                 "line_by_hand": False, "summed": True, "litmus_note": True,
+                                                 "examples": None}
 
 
 

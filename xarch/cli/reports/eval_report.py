@@ -9,6 +9,8 @@ from typing import Any
 from xarch.cli.reports.document import document
 from xarch.modules.review.contract import (
     CALIBRATED,
+    DISAGREE,
+    ELSEWHERE,
     FAILED,
     GAP,
     NOT_CACHED,
@@ -18,6 +20,8 @@ from xarch.modules.review.contract import (
     CalibrationPlanned,
     EvalHeld,
     EvalRead,
+    PlacementHeld,
+    PlacementStanding,
     Sender,
     Unasked,
 )
@@ -32,6 +36,9 @@ FORMS = {YES_NO: "yes or no, read as the probability of yes", SCORE: "a score of
          "over 4"}
 CHOICE_READ = "a choice, read as the probability of the options flagged, the mean of two orders of the options"
 QUOTE = "    | "
+SANITY = ("the examples are short, and short files read lower for being short: a sanity check of the litmus texts, not "
+          "a way to set lines")
+VERDICTS = {DISAGREE: "examples disagree", ELSEWHERE: "measured elsewhere only: no example of its own"}
 UNASKED = {NOT_CACHED: "not in the cache, and --offline sends nothing",
            FAILED: "not answered: the decision model failed, and nothing more was sent"}
 
@@ -97,8 +104,10 @@ def calibration_lines(done: Calibrated, record: str) -> list[str]:
     if done.sent:
         lines.append(f"Sent {done.sent} request(s) to {done.sends.service} ({done.sends.at}): "
                      f"{done.input_tokens:,} input tokens, {done.output_tokens:,} output tokens.")
-    if not done.held:
-        return [*lines, "", "nothing to calibrate: the profile writes no eval of its own"]
+    if not done.held and done.placement is None and not done.unasked:
+        return [*lines, "", "nothing to calibrate: the profile writes no eval of its own and has no example"]
+    if done.placement is not None:
+        lines += ["", *_placement_lines(done.placement)]
     for item in done.held:
         lines += ["", *_held(item)]
     if done.record is not None:
@@ -108,6 +117,33 @@ def calibration_lines(done: Calibrated, record: str) -> list[str]:
                       "example unanswered is not recorded", *(_unasked(item) for item in done.unasked)]
         lines += [f"  the decision model said: {done.failure}"] if done.failure else []
     return lines
+
+
+def _placement_lines(held: PlacementHeld) -> list[str]:
+    """Placement held to its examples: each part's verdict, and what crossed where its examples disagree."""
+    lines = [f"placement   held to the docs' examples and the profile's own, by {held.answered or held.model}; {SANITY}"]
+    for part in held.parts:
+        said = VERDICTS.get(part.verdict, f"passed ({part.examples} example(s) of its own)")
+        lines.append(f"  {part.part}   {said}" + (f": {part.crossed}; read its litmus against the example, and the "
+                                                    "example against the litmus" if part.crossed else ""))
+    return lines
+
+
+def standing_lines(stood: PlacementStanding) -> list[str]:
+    """How placement stands, held to its examples, as a review says it under placement."""
+    if stood.state != CALIBRATED:
+        return [f"  held to its examples: no: {stood.state}: {stood.why}; run `{_to_run('placement')}`"]
+    lines = [f"  held to its examples: yes; {SANITY}"]
+    lines += [f"  placement of {part.part}: examples disagree ({part.crossed}): its files are read, never marked "
+              "doubtful" for part in stood.parts if part.verdict == DISAGREE]
+    return lines
+
+
+def standing_document(stood: PlacementStanding) -> dict[str, Any]:
+    """How placement stands, held to its examples, as the JSON of a review gives it."""
+    return {"state": stood.state, "why": stood.why or None,
+            "parts": [{"part": part.part, "verdict": part.verdict, "crossed": part.crossed or None,
+                       "examples": part.examples} for part in stood.parts]}
 
 
 def _held(item: EvalHeld) -> list[str]:
@@ -135,6 +171,10 @@ def calibration_document(done: Calibrated, record: str) -> str:
                                     "examples": [{"path": example.path, "flagged": example.flagged,
                                                   "value": example.value} for example in item.examples]}
                                    for item in done.held],
+        "placement": None if done.placement is None else {
+            "model": done.placement.model, "answered_by": done.placement.answered,
+            "parts": [{"part": part.part, "verdict": part.verdict, "crossed": part.crossed or None,
+                       "examples": part.examples} for part in done.placement.parts]},
         "passed": done.passed, "complete": done.complete, "record": record if done.record is not None else None,
         "model": done.sends.model, "sends": sends_of(done.sends),
         "sent": {"calls": done.sent, "cached": done.cached, "input_tokens": done.input_tokens,
@@ -168,7 +208,8 @@ def calibration_plan_document(planned: CalibrationPlanned) -> str:
     """The JSON document of a calibration's dry run: every request in full."""
     return document({
         "ok": True, "dry_run": True, "sent": False, "evals": list(planned.evals),
-        "requests": [{"id": r.asked, "example": r.file, "kind": r.example, "name": r.piece or None, "first": r.lines[0] or None,
+        "requests": [{"id": r.asked, "example": r.file, "kind": r.example, "part": r.part or None,
+                      "name": r.piece or None, "first": r.lines[0] or None,
                       "last": r.lines[1] or None, "chars": r.chars, "cached": r.cached, "text": r.text, "body": r.body}
                      for r in planned.requests],
         "characters": planned.characters, "tokens": planned.tokens, "mask": list(planned.mask),
