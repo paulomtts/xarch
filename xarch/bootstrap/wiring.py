@@ -84,14 +84,14 @@ def _build_spec(fs: FileSystem, tree: FsSourceTree) -> SpecController:
                           ProfileCreationService(files, architectures, output, form), PublishingService(architectures, form))
 
 
-def build_architectures(fs: FileSystem | None = None) -> ArchitectureService:
+def _build_architectures(fs: FileSystem | None = None) -> ArchitectureService:
     fs = fs or FileSystem()
     return ArchitectureService(FsArchitectureFiles(fs, DataFileReader(), BUNDLED), RUNTIME(), _build_reader(READER(fs)))
 
 
 def load_architecture(location: str | Path) -> Architecture:
     """The architecture bundled under a name (e.g. "web") or in a .yaml or .json file; raises InvalidArchitecture."""
-    return build_architectures().load(location)
+    return _build_architectures().load(location)
 
 
 def _build_rules(tree: FsSourceTree, spec: SpecController, layout: LayoutController) -> RulesController:

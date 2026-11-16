@@ -304,7 +304,7 @@ guards:
   dead-code:
     untested: true
     tests_only: true
-    known: [bootstrap/wiring.py:build_architectures, bootstrap/wiring.py:load_architecture]
+    known: [bootstrap/wiring.py:load_architecture]
   pass-through: {parts: [services, controller, adapters]}
   private-imports: {}
 

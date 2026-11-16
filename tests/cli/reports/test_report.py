@@ -184,7 +184,7 @@ def test_every_section_of_the_enforcement_has_a_label():
 def test_a_public_name_the_profile_accepts_as_only_the_tests_has_a_line_of_its_own_and_is_an_item_of_the_json_document():
     state = EnforcementView(excluded=(ExcludedView("app/examples", "shipped as data"),),
                             known=(KnownName("app/wiring.py", 12, "build"), KnownName("app/rules.py", 3, "Rule")))
-    said = "is public and only the tests use it, which the profile accepts (guards.dead-code.known)"
+    said = "is public, a test names it and no other file of the app does, which the profile accepts (guards.dead-code.known)"
     assert lines(state=state) == [*OK, "  excluded:    app/examples/ (shipped as data)",
                                   f"  known:       app/wiring.py:12: build {said}", f"  known:       app/rules.py:3: Rule {said}"]
     document = json.loads(json_document("web", Origin("web"), AppChecked((), state, {}, True), False))

@@ -948,8 +948,8 @@ keys:
     accepts: >-
       a list of `<file below the app>:<name>`, each a public class or top-level function that file defines which only
       the tests use: `tests_only` lists it no more, and every `xarch check` names it in its enforcement section instead.
-      An entry whose file defines no such name, or whose name another file of the app names, is itself listed as `weak`
-      and fails `check --strict` only. Needs `tests_only: true`. `profile check` lists each entry the bundled profile
+      An entry whose file defines no such name, whose name another file of the app names, or that no test names in its
+      code (a string of a test does not count), is itself listed as `weak` and fails `check --strict` only. Needs `tests_only: true`. `profile check` lists each entry the bundled profile
       does not as looser
     example: |
       <<two>>

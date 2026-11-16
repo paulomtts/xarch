@@ -4,9 +4,10 @@ listed itself."""
 import pytest
 
 from tests.modules.rules.application.logic.checks import accepting
-from tests.modules.rules.builders import profile, source
+from tests.modules.rules.builders import in_tests, profile, source
+from xarch.kernel.source import Import
 from xarch.modules.rules.domain.published import KnownName, Weak
-from xarch.modules.rules.domain.values import Accepting, Class, Function
+from xarch.modules.rules.domain.values import Accepting, Class, Constant, Function
 
 LOGIC = "modules/docs/application/logic/rule.py"
 DEFINED = source(LOGIC, classes=(Class(3, "Rule"), Class(5, "_Hidden"), Class(7, "Refused", exception=True)),
@@ -14,6 +15,9 @@ DEFINED = source(LOGIC, classes=(Class(3, "Rule"), Class(5, "_Hidden"), Class(7,
                  named=frozenset({"Rule", "decide", "_helper", "run"}))
 USER = source("modules/docs/application/services/doc.py", named=frozenset({"decide"}))
 KEY = "guards.dead-code.known"
+TEST = "modules/docs/application/logic/test_rule.py"
+TESTED = in_tests(TEST, functions=(Function(3, "test_rule", named=frozenset({"Rule", "decide"})),))
+"""A test that names Rule and decide in its code."""
 
 
 def listed(name: str, line: int) -> Weak:
@@ -22,6 +26,13 @@ def listed(name: str, line: int) -> Weak:
                                                    "tests, or nothing, use it (guards.dead-code.tests_only)",
                 f"delete {name} and what tests it alone, or make it private when its own file uses it, or use it where "
                 "the app needs it")
+
+
+def untested(name: str, line: int) -> Weak:
+    """An entry the tests-only check lists that no test names."""
+    return Weak("dead-code", f"app/{LOGIC}", line, f"{name} is listed by {KEY} as only the tests', but no test names it "
+                                                   f"either ({KEY})",
+                f"make it private when its own file uses it, or delete it, and drop {LOGIC}:{name} from {KEY}")
 
 
 def absent(path: str, name: str) -> Weak:
@@ -55,7 +66,27 @@ def absent(path: str, name: str) -> Weak:
                  id="an entry whose name another file of the app names is listed at the name"),
 ])
 def test_the_names_a_profile_accepts_as_only_the_tests_are_taken_out_and_those_that_no_longer_are_listed(app, known, then):
-    assert accepting(app, profile(dead_code=True, tests_only=True, tests_only_known=known), "app") == then
+    assert accepting(app, profile(dead_code=True, tests_only=True, tests_only_known=known), "app", [TESTED]) == then
+
+
+@pytest.mark.parametrize("tests, then", [
+    pytest.param([], Accepting((listed("decide", 9), untested("Rule", 3)), ()), id="an entry no test names is listed"),
+    pytest.param([in_tests(TEST, functions=(Function(3, "test_rule", named=frozenset({"decide"})),))],
+                 Accepting((listed("decide", 9), untested("Rule", 3)), ()),
+                 id="an entry a test names no part of is listed though the test names another name of the file"),
+    pytest.param([in_tests(TEST, named=frozenset({"Rule"}), constants=(Constant(1, "KNOWN"),))],
+                 Accepting((listed("decide", 9), untested("Rule", 3)), ()),
+                 id="a name only a string of a test holds is named by no test"),
+    pytest.param([in_tests(TEST, Import(1, ("app", "modules", "docs", "application", "logic", "rule"), ("Rule",)))],
+                 Accepting((listed("decide", 9),), (KnownName(f"app/{LOGIC}", 3, "Rule"),)),
+                 id="a test that imports it names it"),
+    pytest.param([in_tests(TEST, constants=(Constant(1, "RULE", frozenset({"Rule"})),))],
+                 Accepting((listed("decide", 9),), (KnownName(f"app/{LOGIC}", 3, "Rule"),)),
+                 id="so does a top-level assignment of a test that mentions it"),
+])
+def test_an_entry_holds_only_when_a_test_names_it_in_its_code(tests, then):
+    assert accepting([DEFINED], profile(dead_code=True, tests_only=True, tests_only_known=(f"{LOGIC}:Rule",)), "app",
+                     tests) == then
 
 
 def test_with_the_tests_only_check_off_nothing_is_listed_or_accepted():

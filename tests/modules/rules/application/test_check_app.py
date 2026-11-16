@@ -195,7 +195,12 @@ def test_a_public_name_the_profile_accepts_as_only_the_tests_is_named_in_the_enf
                        functions=(Function(9, "decide"),))
     accepting = replace(entered("cli"), dead_code=True, tests_only=True,
                         tests_only_known=("kernel/rules.py:Rule", "kernel/rules.py:gone"))
-    result = checked({}, FakeProfiles({"cli": accepting}), tree=FakeSourceTree(ROOT, {"kernel/rules.py": rules}))
+    test = SourceFile("tests/kernel/test_rules.py", ("kernel", "test_rules.py"), (),
+                      functions=(Function(3, "test_rule", named=frozenset({"Rule"})),))
+    tests = Path("/src/tests")
+    tree = FakeSourceTree(ROOT, {"kernel/rules.py": rules}, more={tests: {"kernel/test_rules.py": test}})
+    result = controller(tree, FakeProfiles({"cli": accepting})).check_app(CheckApp(ROOT, "cli", ROOT.parent, tests))
+    assert isinstance(result, AppChecked)
     decide = Weak("dead-code", "pkg/kernel/rules.py", 9, "decide is public, but no other file of the app names it: only "
                                                        "the tests, or nothing, use it (guards.dead-code.tests_only)",
                   "delete decide and what tests it alone, or make it private when its own file uses it, or use it where "

@@ -110,11 +110,12 @@ def only_by_tests(app: Iterable[SourceFile], profile: Profile) -> list[Violation
     return checked(expansion.book(profile)["tests-only"], profile, app)
 
 
-def accepting(app: Iterable[SourceFile], profile: Profile, root: str) -> Accepting:
+def accepting(app: Iterable[SourceFile], profile: Profile, root: str,
+              tests: Iterable[SourceFile] = ()) -> Accepting:
     """What the tests-only check lists of the app, the names the profile accepts as only the tests' taken out and the
-    entries that no longer hold added, as the check of an app holds them, on the same facts."""
+    entries that no longer hold added, as the check of an app and its tests holds them, on the same facts."""
     rules = expansion.book(profile)["tests-only"]
-    facts = facts_of(app, (), profile, root, "", rules, ())
+    facts = facts_of(app, tests, profile, root, "tests", rules, ())
     return known.accepting(run(rules, facts, profile), facts, profile)
 
 

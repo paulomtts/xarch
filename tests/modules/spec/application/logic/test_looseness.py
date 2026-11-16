@@ -125,5 +125,5 @@ def test_a_public_name_accepted_as_only_the_tests_that_the_base_does_not_accept_
                        fakes={"folder": "fakes", "for": ["store"]})
     assert loosened(parsed(dead("shared/text.py:clean", "shared/wiring.py:build")), parsed(dead("shared/text.py:clean"))) == (
         Loosened("known", "", "shared/wiring.py:build",
-                 "the tests-only check accepts shared/wiring.py:build, which only the tests use (guards.dead-code.known)"),)
+                 "the tests-only check accepts shared/wiring.py:build as a name only the tests use (guards.dead-code.known)"),)
     assert loosened(parsed(dead("shared/text.py:clean")), parsed(dead("shared/text.py:clean", "shared/wiring.py:build"))) == ()

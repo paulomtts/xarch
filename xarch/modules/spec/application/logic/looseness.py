@@ -152,7 +152,7 @@ def _sentence(key: str, part: str, what: str = "") -> str:
         case "files.pinned":
             return f"{what} is no longer pinned (files.{what}.pinned)"
         case "known":
-            return f"the tests-only check accepts {what}, which only the tests use (guards.dead-code.known)"
+            return f"the tests-only check accepts {what} as a name only the tests use (guards.dead-code.known)"
     return f"{what} is no longer reserved (reserved.{what})"
 
 

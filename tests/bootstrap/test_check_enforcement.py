@@ -162,12 +162,12 @@ def test_a_public_name_the_profile_accepts_as_only_the_tests_is_named_and_an_ent
         "OK: no violations", "enforcement",
         "  profile:     arch/mine.yaml (custom; closest bundled: web)",
         "    guards off:  closed-tree",
-        "    known:       the tests-only check accepts kernel/ids.py:make, which only the tests use "
+        "    known:       the tests-only check accepts kernel/ids.py:make as a name only the tests use "
         "(guards.dead-code.known)",
-        "    known:       the tests-only check accepts kernel/ids.py:gone, which only the tests use "
+        "    known:       the tests-only check accepts kernel/ids.py:gone as a name only the tests use "
         "(guards.dead-code.known)",
-        "  known:       app/kernel/ids.py:1: make is public and only the tests use it, which the profile accepts "
-        "(guards.dead-code.known)",
+        "  known:       app/kernel/ids.py:1: make is public, a test names it and no other file of the app does, "
+        "which the profile accepts (guards.dead-code.known)",
         f"  weak:        {gone}",
         "      fix: drop kernel/ids.py:gone from guards.dead-code.known, or name the file and the name as they are now",
         "strict:      1 finding fails the check",

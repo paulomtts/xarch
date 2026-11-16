@@ -82,8 +82,8 @@ def _enforcement_lines(origin: Origin, state: EnforcementView, strict: bool,
         lines.append(_line(LABELS[UNGOVERNED], f"{_count(count, f'{state.language or "source"} file')} outside every part "
                                          f"({', '.join(state.ungoverned_folders)})", 2))
     lines += [_line("excluded", f"{item.folder}/ ({item.reason})", 2) for item in state.excluded]
-    lines += [_line("known", f"{item.file}:{item.line}: {item.name} is public and only the tests use it, which the "
-                             "profile accepts (guards.dead-code.known)", 2) for item in state.known]
+    lines += [_line("known", f"{item.file}:{item.line}: {item.name} is public, a test names it and no other file "
+                             "of the app does, which the profile accepts (guards.dead-code.known)", 2) for item in state.known]
     lines += [_line(LABELS[INIT_FILES], f"{'/'.join(item.path)} is {item.state}", 2) for item in state.init_files]
     if state.skipped:
         lines.append(_line(LABELS[SKIPPED], f"{_count(len(state.skipped), 'skip')} ({_places(state.skipped)})", 2))

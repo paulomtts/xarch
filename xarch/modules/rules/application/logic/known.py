@@ -1,10 +1,12 @@
 """The public names a profile accepts as only the tests' (guards.dead-code.known), held against what the tests-only
 check lists (guards.dead-code.tests_only). An entry is `<file below the app>:<name>`. A name the check lists that an
-entry names is accepted: the enforcement section names it, and it is no longer listed. An entry is itself listed,
-weak, when its file defines no public class (an exception aside) or top-level function of its name, and when the check
-does not list that name because another file of the app names it, so that the list cannot outlive what it accepts.
-Like the check, which compares names by their spelling, an entry whose name another file spells is no longer the
-tests' alone.
+entry names is accepted when a test names it too: the enforcement section names it, and it is no longer listed. An
+entry is itself listed, weak, when its file defines no public class (an exception aside) or top-level function of its
+name, when the check does not list that name because another file of the app names it, and when no test names it
+either (in place of what the check lists of the name), so that the list cannot outlive what it accepts. A test names
+a name in its code: what it imports, and what its functions and top-level assignments mention (an annotation written
+as a string included); a name only a string of a test holds is not named. Like the check, which compares names by
+their spelling, an entry whose name another file spells is no longer the tests' alone.
 """
 from __future__ import annotations
 
@@ -13,19 +15,20 @@ from collections.abc import Iterable
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.domain.published import KnownName, Weak
 from xarch.modules.rules.domain.rule import Facts, Read
-from xarch.modules.rules.domain.values import Accepting, Profile
+from xarch.modules.rules.domain.values import Accepting, Profile, SourceFile
 
 RULE = "dead-code"
 KEY = "guards.dead-code.known"
 
 
 def accepting(listed: Iterable[Violation | Weak], facts: Facts, profile: Profile) -> Accepting:
-    """What the tests-only check listed, the names the profile accepts taken out and its entries that no longer hold
-    added after; with the check off, all of it as listed and nothing accepted."""
+    """What the tests-only check listed, the names the profile accepts that a test names taken out and its entries
+    that no longer hold added after; with the check off, all of it as listed and nothing accepted."""
     listed = tuple(listed)
     if not profile.dead_code or not profile.tests_only:
         return Accepting(listed, ())
     places = {(item.file, item.line) for item in listed if isinstance(item, Weak)}
+    tested = frozenset(name for read in facts.files if read.in_tests for name in _named(read.file))
     known: list[KnownName] = []
     stale: list[Weak] = []
     for entry in profile.tests_only_known:
@@ -36,13 +39,17 @@ def accepting(listed: Iterable[Violation | Weak], facts: Facts, profile: Profile
             stale.append(Weak(RULE, read.file.name if read is not None else f"{facts.root}/{path}", 0,
                               f"{path} defines no public class or top-level function {name}, which {KEY} lists "
                               f"({KEY})", f"drop {entry} from {KEY}, or name the file and the name as they are now"))
-        elif (read.file.name, line) in places:
+        elif (read.file.name, line) in places and name in tested:
             known.append(KnownName(read.file.name, line, name))
+        elif (read.file.name, line) in places:
+            stale.append(Weak(RULE, read.file.name, line, f"{name} is listed by {KEY} as only the tests', but no test "
+                                                          f"names it either ({KEY})",
+                              f"make it private when its own file uses it, or delete it, and drop {entry} from {KEY}"))
         else:
             stale.append(Weak(RULE, read.file.name, line, f"{name} is listed by {KEY} as only the tests', but another "
                                                           f"file of the app names it ({KEY})",
                               f"drop {entry} from {KEY}: the app uses it"))
-    accepted = {(item.file, item.line) for item in known}
+    accepted = {(item.file, item.line) for item in (*known, *stale)}
     return Accepting((*(item for item in listed if not (isinstance(item, Weak) and (item.file, item.line) in accepted)),
                       *stale), tuple(known))
 
@@ -54,3 +61,11 @@ def _declared(read: Read, name: str, profile: Profile) -> int | None:
         return None
     function = next((f.line for f in read.facts.get("function", ()) if f.name == name and "top-level" in f.traits), None)
     return next((f.line for f in read.facts.get("class", ()) if f.name == name and "exception" not in f.traits), function)
+
+
+def _named(file: SourceFile) -> frozenset[str]:
+    """The names a file names in its code: those it imports, and those its functions and its top-level assignments
+    mention; not those only a string of it holds."""
+    return frozenset({*(name for imp in file.imports for name in imp.names or ()),
+                      *(name for function in file.functions for name in function.named),
+                      *(name for constant in file.constants for name in constant.named)})

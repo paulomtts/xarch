@@ -42,13 +42,12 @@ def test_xarch_passes_its_own_check_in_strict_mode_leaving_nothing_unenforced():
     assert (result.exit_code, document["ok"], document["strict"]) == (0, True, True)
     assert [item["folder"] for item in document["enforcement"]["excluded"]] == ["xarch/architectures/examples"]
     assert document["enforcement"]["profile"]["guards_off"] == []
-    assert [item["name"] for item in document["enforcement"]["known"]] == ["build_architectures", "load_architecture"]
+    assert [item["name"] for item in document["enforcement"]["known"]] == ["load_architecture"]
 
 
-def test_xarch_accepts_as_only_the_tests_exactly_the_two_loaders_its_tests_build_profiles_with():
+def test_xarch_accepts_as_only_the_tests_exactly_the_loader_its_tests_load_profiles_with():
     (dead,) = [guard for guard in load_architecture(own_architecture()).guards if isinstance(guard, DeadCode)]
-    assert (dead.untested, dead.tests_only, dead.known) == (
-        True, True, ("bootstrap/wiring.py:build_architectures", "bootstrap/wiring.py:load_architecture"))
+    assert (dead.untested, dead.tests_only, dead.known) == (True, True, ("bootstrap/wiring.py:load_architecture",))
 
 
 def test_xarch_is_split_into_its_four_modules():
