@@ -14,6 +14,7 @@ from xarch.modules.review.contract import (
     FAILED,
     GAP,
     NOT_CACHED,
+    PLACEMENT,
     SCORE,
     YES_NO,
     Calibrated,
@@ -32,6 +33,10 @@ REWORD = "make it one short rule about what the text shows; add a clean example 
 """What to do about an eval whose examples failed."""
 CALIBRATION = ("review calibrate: holds the evals of the profile's own to their examples, with the model review asks: "
                "an eval runs in a review only once it passed, as it is written now")
+PLACEMENT_ONLY = ("review calibrate: holds placement to its examples, part by part, with the model review asks: a sanity "
+                  "check of the litmus texts, which never fails the calibration")
+PLACEMENT_RULE = ("placement held part by part: a part's clean examples at or above its line, every example claimed for "
+                  "it from elsewhere below it; a part whose examples disagree is said, and fails nothing")
 FORMS = {YES_NO: "yes or no, read as the probability of yes", SCORE: "a score of 0 to 4, read as its expected level "
          "over 4"}
 CHOICE_READ = "a choice, read as the probability of the options flagged, the mean of two orders of the options"
@@ -107,7 +112,9 @@ def model_said(asked: str, answered_by: tuple[str, ...]) -> str:
 def calibration_lines(done: Calibrated, record: str) -> list[str]:
     """Each eval held to its examples: its verdict and line, the value of each example, and what to do when it failed;
     then where the record is, and what had no answer."""
-    lines = [CALIBRATION, f"{model_said(done.sends.model, done.answered_by)}. Asked {done.sent}, from cache "
+    placed = done.placement is not None or any(item.asked == PLACEMENT for item in done.unasked)
+    lines = [CALIBRATION if done.held or not placed else PLACEMENT_ONLY,
+             f"{model_said(done.sends.model, done.answered_by)}. Asked {done.sent}, from cache "
                           f"{done.cached}."]
     if done.sent:
         lines.append(f"Sent {done.sent} request(s) to {done.sends.service} ({done.sends.at}): "
@@ -167,7 +174,8 @@ def _held(item: EvalHeld) -> list[str]:
 
 
 def _unasked(item: Unasked) -> str:
-    return f"  {item.asked}: {item.file}{f' ({item.piece})' if item.piece else ''}: {UNASKED[item.why]}"
+    kind = f"{item.example} example " if item.example else ""
+    return f"  {item.asked}: {kind}{item.file}{f' ({item.piece})' if item.piece else ''}: {UNASKED[item.why]}"
 
 
 def calibration_document(done: Calibrated, record: str) -> str:
@@ -187,7 +195,8 @@ def calibration_document(done: Calibrated, record: str) -> str:
         "model": done.sends.model, "answered_by": list(done.answered_by), "sends": sends_of(done.sends),
         "sent": {"calls": done.sent, "cached": done.cached, "input_tokens": done.input_tokens,
                  "output_tokens": done.output_tokens},
-        "unanswered": [{"id": item.asked, "file": item.file, "why": item.why, "name": item.piece or None}
+        "unanswered": [{"id": item.asked, "file": item.file, "kind": item.example or None, "why": item.why,
+                        "name": item.piece or None}
                        for item in done.unasked],
         "failure": done.failure or None})
 
@@ -196,14 +205,18 @@ def calibration_plan_lines(planned: CalibrationPlanned) -> list[str]:
     """What a calibration would send: to whom, then each request with the exact text it would send."""
     now = "set" if planned.sends.keyed else "not set"
     cached = sum(item.cached for item in planned.requests)
-    lines = [CALIBRATION, "Nothing was sent (--dry-run), and nothing was recorded.",
+    own = [name for name in planned.evals if name != PLACEMENT]
+    rules = ([f"held to pass by every flagged example above every clean one, by {GAP} on the mean"] if own else []) + (
+        [PLACEMENT_RULE] if PLACEMENT in planned.evals else [])
+    lines = [CALIBRATION if own or not planned.evals else PLACEMENT_ONLY,
+             "Nothing was sent (--dry-run), and nothing was recorded.",
              f"Without --dry-run, calibrate sends to {planned.sends.service} ({planned.sends.at}), as the model "
              f"{planned.sends.model}, the masked text of each thing each eval reads in its examples that is not in the "
              f"cache, and its question: nothing else of the project. It sends whenever {planned.sends.key} is set: the "
              f"key alone allows it, and the key is {now} now.",
              f"evals: {', '.join(planned.evals) or 'none'}; {len(planned.requests)} request(s), "
-             f"{planned.characters:,} characters, about {planned.tokens:,} tokens; {cached} in the cache already; "
-             f"held to pass by every flagged example above every clean one, by {GAP} on the mean"]
+             f"{planned.characters:,} characters, about {planned.tokens:,} tokens; {cached} in the cache already"
+             + "".join(f"; {rule}" for rule in rules)]
     for number, item in enumerate(planned.requests, 1):
         kept = ", in the cache: not sent" if item.cached else ""
         what = f" {item.piece} (lines {item.lines[0]}-{item.lines[1]})" if item.piece else ""

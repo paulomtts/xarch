@@ -790,7 +790,7 @@ refusal is `{"ok": false, "error"}`.
 A calibration: `{"ok", "calibrated": [{"id", "complete", "passed", "line", "line_by_hand", "crossed", "examples":
 [{"path", "flagged", "value"}]}], "placement": {"model", "answered_by", "parts": [{"part", "verdict", "crossed",
 "examples"}]}, "passed", "complete", "record", "model", "answered_by", "sends", "sent", "unanswered": [{"id", "file",
-"why", "name"}],
+"kind", "why", "name"}],
 "failure"}` (`placement` null when it was not held); its dry run: `{"ok", "dry_run": true, "sent": false, "evals",
 "requests": [{"id", "example", "kind", "part", "name", "first", "last", "chars", "cached", "text", "body"}],
 "characters", "tokens", "mask", "sends"}`, `kind` `flagged` or `clean`.

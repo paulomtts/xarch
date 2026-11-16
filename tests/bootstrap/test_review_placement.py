@@ -103,5 +103,5 @@ def test_an_example_whose_answer_the_recording_does_not_hold_is_named_and_nothin
     result = xarch("review", "calibrate", "--eval", "placement", "--offline", "--profile",
                    "architecture/mine/mine.yaml", key=None)
     assert result.exit_code == 3
-    assert ("  placement: modules/documents/domain/values.py: not in the cache, and --offline sends nothing"
+    assert ("  placement: clean example modules/documents/domain/values.py: not in the cache, and --offline sends nothing"
             in result.output.splitlines())

@@ -107,8 +107,9 @@ def calibrate(given: Given, cmd: Calibrate):
                  id="a choice is asked in both orders and read on their mean, against the line the profile writes"),
     pytest.param(Given(answers={BAD: yes(0.9), WORSE: yes(0.8), GOOD: yes(0.1)}), Calibrate(CWD, APP, "cli", offline=True),
                  Calibrated((EvalHeld("rule", (), False, 0.0, "", False),), None, tuple(
-                     Unasked(path, NOT_CACHED, "", "rule") for path in ("domain/a.py", "domain/b.py", "domain/a.py",
-                                                                        "domain/b.py")), SENDS, 0, 0, 0, 0, ""),
+                     Unasked(path, NOT_CACHED, "", "rule", kind) for path, kind in (
+                         ("domain/a.py", FLAGGED), ("domain/b.py", FLAGGED), ("domain/a.py", CLEAN),
+                         ("domain/b.py", CLEAN))), SENDS, 0, 0, 0, 0, ""),
                  id="offline, an eval with an example not in the cache is not held, and nothing is recorded"),
     pytest.param(Given(), Calibrate(CWD, APP, "cli", ("other",)), UnknownEvals(("other",), ("placement", "rule")),
                  id="an eval the profile does not write is refused, with the ones it does"),
@@ -199,8 +200,8 @@ def test_offline_placement_with_an_example_not_in_the_cache_is_not_held_and_name
     result, held = holding(placed((VALUE, {"domain": 0.9})), (VALUE, START), (),
                            Calibrate(CWD, APP, "cli", ("placement",), offline=True))
     assert isinstance(result, Calibrated) and result.placement is None and not result.complete
-    assert result.unasked == (Unasked("modules/documents/domain/value.py", NOT_CACHED, "", "placement"),
-                              Unasked("__main__.py", NOT_CACHED, "", "placement")) and held.placed == {}
+    assert result.unasked == (Unasked("modules/documents/domain/value.py", NOT_CACHED, "", "placement", CLEAN),
+                              Unasked("__main__.py", NOT_CACHED, "", "placement", CLEAN)) and held.placed == {}
 
 
 def test_placement_alone_is_held_when_it_alone_is_asked_for_and_an_eval_alone_holds_placement_not():

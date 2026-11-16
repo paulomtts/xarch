@@ -169,12 +169,14 @@ class Reading:
 @dataclass(frozen=True)
 class Unasked:
     """A file judged whose question has no answer: the file, as `check` shows it, why (NOT_CACHED or FAILED), the
-    piece of it whose question it is ("" for the whole file), and the eval of the profile's own that asks it ("" for
-    placement)."""
+    piece of it whose question it is ("" for the whole file), the eval of the profile's own that asks it ("" for
+    placement), and, for an example a calibration asks of, FLAGGED or CLEAN, the kind of example ("" for a file of the
+    app)."""
     file: str
     why: str
     piece: str = ""
     asked: str = ""
+    example: str = ""
 
 
 @dataclass(frozen=True)

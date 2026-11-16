@@ -109,7 +109,7 @@ class CalibrationService:
         for example, side, item in placed:
             answer, going = answering.answer(going, item.text, question)
             if answer is None:
-                unasked.append(Unasked(example.file, why_unasked(bool(going.failure)), "", PLACEMENT))
+                unasked.append(Unasked(example.file, why_unasked(bool(going.failure)), "", PLACEMENT, side))
             else:
                 reads[side].append((example, dict(answer.probabilities)))
                 answered_by = answered_by or answer.model

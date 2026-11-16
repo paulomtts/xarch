@@ -63,7 +63,7 @@ def went(asked: EvalText, stood: EvalRead, requests: tuple[Request, ...],
 def unasked_of(asked: EvalText, requests: tuple[Request, ...], answers: tuple[tuple[Answer, ...] | None, ...],
                failed: bool) -> list[Unasked]:
     """Each thing an eval was to read whose question has no answer, with why."""
-    return [Unasked(item.file, why_unasked(failed), item.piece, asked.asked)
+    return [Unasked(item.file, why_unasked(failed), item.piece, asked.asked, item.example)
             for item, answered in zip(requests, answers, strict=True) if answered is None]
 
 
