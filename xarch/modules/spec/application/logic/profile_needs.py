@@ -14,6 +14,7 @@ from xarch.modules.spec.domain.profile_keys import GUARD, PART, PROFILE, TESTING
 from xarch.modules.spec.domain.values import Language
 from xarch.profile_values.capabilities import FACTS, Shortfall
 
+
 def _configured(document: Mapping[Any, Any], presets: Mapping[str, Any]) -> Iterator[tuple[str, Key]]:
     """Each key the document sets that needs facts, with its address in the file, in the order of the file's scopes:
     the file, its parts, its tiers, its testing (a preset by what the preset holds), its guards, each with the keys of
