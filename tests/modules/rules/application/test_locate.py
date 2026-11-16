@@ -9,6 +9,7 @@ from tests.fakes.profiles import FakeProfiles
 from tests.modules.rules.application.helpers import controller
 from xarch.kernel.placement import Repeat, Target
 from xarch.modules.rules.contract import (
+    CheckRefused,
     ChecksCannotRun,
     CoveringTest,
     InPart,
@@ -45,7 +46,8 @@ README = Ungoverned("README.md", True, (), None, "it lies outside the app folder
 
 def locate(files, command, profile=PROFILE):
     tree = FakeSourceTree(APP, files, {TESTS: {}}, texts={Path("/src/README.md"): "x"})
-    profiles = FakeProfiles({"p": profile}, refused={"broken": ("checks.mine.read: names no kind of fact",)})
+    profiles = FakeProfiles({"p": profile}, refused={"broken": ("checks.mine.read: names no kind of fact",)},
+                            unusable={"gone": "gone: cannot read the file: no such file"})
     return controller(tree, profiles).locate(command)
 
 
@@ -62,6 +64,9 @@ def locate(files, command, profile=PROFILE):
     pytest.param({}, Locate(Path("app/kernel/ids.py"), Path("/src"), APP, "broken", TESTS),
                  ChecksCannotRun(("checks.mine.read: names no kind of fact",)),
                  id="a profile whose own checks cannot run is refused with every problem"),
+    pytest.param({}, Locate(Path("app/kernel/ids.py"), Path("/src"), APP, "gone", TESTS),
+                 CheckRefused("gone: cannot read the file: no such file"),
+                 id="a profile spec refuses is refused with spec's reason"),
 ])
 def test_locate(given, when, then):
     assert locate(given, when) == then

@@ -1,0 +1,19 @@
+"""A tier as the checks read it: each part it tests a target in the tested file's own instance when the part lies in a
+repeating folder, outside every instance when it does not."""
+from tests.modules.spec.profiles_v2 import covered, parsed
+from xarch.kernel.placement import Target
+from xarch.modules.spec.application.logic.checked_tier import checked_tier
+from xarch.profile_values.tiers import CheckedTier
+
+
+def test_a_part_of_a_repeating_folder_is_tested_in_its_own_instance():
+    architecture = parsed(covered())
+    assert checked_tier(architecture, architecture.tiers[0]) == CheckedTier(
+        "unit", (Target("service", "own"),), proves="a rule", litmus="Does it decide?\nIf yes, it is a unit test.")
+
+
+def test_a_part_outside_every_repeating_folder_is_tested_outside_the_instances():
+    document = covered()
+    document["parts"]["shared"] = {"path": "shared", "role": "shared code", "tier": "unit"}
+    architecture = parsed(document)
+    assert checked_tier(architecture, architecture.tiers[0]).subject == (Target("service", "own"), Target("shared"))

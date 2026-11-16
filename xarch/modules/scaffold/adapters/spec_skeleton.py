@@ -5,15 +5,25 @@ from typing import Protocol
 
 from xarch.modules.scaffold.domain.errors import ProfileUnusable
 from xarch.modules.scaffold.domain.values import Language
-from xarch.modules.spec.contract import DEFAULT_APP, Docs, Entry, FilesResult, ProfileRefused, ProjectFiles, Skeleton
+from xarch.modules.spec.contract import (
+    DEFAULT_APP,
+    Docs,
+    DocsResult,
+    Entry,
+    FilesResult,
+    ProfileRefused,
+    ProjectFiles,
+    Skeleton,
+    SkeletonResult,
+)
 
 
 class _Spec(Protocol):
     """The little scaffold uses of spec's controller."""
 
-    def skeleton(self, profile: str) -> Skeleton: ...
+    def skeleton(self, profile: str) -> SkeletonResult: ...
 
-    def docs(self, profile: str) -> Docs: ...
+    def docs(self, profile: str) -> DocsResult: ...
 
     def files(self, profile: str, app: str, presets: bool = True) -> FilesResult: ...
 
@@ -25,10 +35,10 @@ class SpecSkeleton:
         self._spec = spec
 
     def top_level(self, profile: str) -> list[tuple[tuple[str, ...], bool]]:
-        return _entries(self._spec.skeleton(profile).top_level)
+        return _entries(self._skeleton(profile).top_level)
 
     def language(self, profile: str) -> Language:
-        skeleton = self._spec.skeleton(profile)
+        skeleton = self._skeleton(profile)
         return Language(skeleton.language, skeleton.package_file, skeleton.reserved, skeleton.names, skeleton.private)
 
     def default_app(self) -> str:
@@ -36,10 +46,10 @@ class SpecSkeleton:
 
     def kinds(self, profile: str) -> dict[str, tuple[tuple[str, ...], list[tuple[tuple[str, ...], bool]]]]:
         return {repeating.word: (repeating.root, _entries(repeating.entries))
-                for repeating in self._spec.skeleton(profile).repeating}
+                for repeating in self._skeleton(profile).repeating}
 
     def docs(self, profile: str) -> list[tuple[tuple[str, ...], str]]:
-        docs = self._spec.docs(profile)
+        docs = self._docs(profile)
         return [(docs.root + f.path, f.template) for f in docs.files]
 
     def files(self, profile: str, app: str) -> list[tuple[tuple[str, ...], str | bytes]]:
@@ -49,6 +59,22 @@ class SpecSkeleton:
                 return [(f.path, f.content) for f in files]
             case ProfileRefused(reason):
                 raise ProfileUnusable(reason)
+
+    def _skeleton(self, profile: str) -> Skeleton:
+        """Raises ProfileUnusable, with spec's reason, for a profile spec refuses."""
+        match self._spec.skeleton(profile):
+            case ProfileRefused(reason):
+                raise ProfileUnusable(reason)
+            case Skeleton() as skeleton:
+                return skeleton
+
+    def _docs(self, profile: str) -> Docs:
+        """Raises ProfileUnusable, with spec's reason, for a profile spec refuses."""
+        match self._spec.docs(profile):
+            case ProfileRefused(reason):
+                raise ProfileUnusable(reason)
+            case Docs() as docs:
+                return docs
 
 
 def _entries(entries: tuple[Entry, ...]) -> list[tuple[tuple[str, ...], bool]]:

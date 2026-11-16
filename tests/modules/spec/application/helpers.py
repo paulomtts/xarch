@@ -16,6 +16,7 @@ from xarch.modules.spec.application.services.migration import MigrationService
 from xarch.modules.spec.application.services.profile_creation import ProfileCreationService
 from xarch.modules.spec.application.services.profile_review import ProfileReviewService
 from xarch.modules.spec.application.services.profile_selection import ProfileSelectionService
+from xarch.modules.spec.application.services.publishing import PublishingService
 
 
 def controller(files: FakeArchitectureFiles, settings: FakeSettings | None = None,
@@ -28,4 +29,4 @@ def controller(files: FakeArchitectureFiles, settings: FakeSettings | None = Non
     selection = ProfileSelectionService(settings, architectures, files, folders)
     return SpecController(architectures, selection, ProfileReviewService(selection, architectures, files),
                           ExplainService(files), MigrationService(files, architectures, output, FakeProfileFormat()),
-                          ProfileCreationService(files, architectures, output))
+                          ProfileCreationService(files, architectures, output), PublishingService(architectures))

@@ -19,6 +19,15 @@ from xarch.modules.rules.application.logic.engine import read, run
 from xarch.modules.rules.application.logic.facts import facts_of
 from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.application.ports.source_tree import SourceTree
+from xarch.modules.rules.contract import (
+    ApproximateView,
+    DriftView,
+    EnforcementView,
+    ExcludedView,
+    FindingView,
+    ImportsChecked,
+    OwnCheckView,
+)
 from xarch.modules.rules.domain.errors import RootMissing
 from xarch.modules.rules.domain.published import Weak
 from xarch.modules.rules.domain.values import Checked, Enforcement, Profile, SourceFile
@@ -30,6 +39,24 @@ class SourceCheckService:
 
     def __init__(self, tree: SourceTree, profiles: Profiles):
         self._tree, self._profiles = tree, profiles
+
+    def imports(self, root: Path, package: str, profile: str, tests: Path | None = None) -> ImportsChecked:
+        """The violations below root and below tests, and the state of the check's enforcement, as the check of the
+        imports answers; raises as check does."""
+        checked = self.check(root, package, profile, tests)
+        return ImportsChecked(checked.violations, self.view(checked.enforcement))
+
+    def view(self, state: Enforcement) -> EnforcementView:
+        """The state of the check's enforcement as the enforcement section shows it."""
+        return EnforcementView(
+            state.ungoverned, tuple(enforcement.folders(state.ungoverned)),
+            tuple(DriftView("/".join(d.path), d.state) for d in state.init_files), state.skipped, state.dynamic,
+            state.weak, tuple(FindingView(f.key, enforcement.detail(f.item)) for f in state.strict),
+            tuple(ExcludedView(enforcement.excluded_folder(state.app, e), e.reason) for e in state.excluded),
+            state.language, tuple(ApproximateView(a.address, a.fact, a.note or "",
+                                                  enforcement.approximation(a.address, a.fact, a.note or ""))
+                                  for a in state.approximate),
+            tuple(OwnCheckView(name, read, enforcement.reading(name, read)) for name, read in state.checks))
 
     def check(self, root: Path, package: str, profile: str, tests: Path | None = None) -> Checked:
         """The violations below root and below tests, each given in full with its links followed, and the state of the

@@ -22,3 +22,12 @@ class CheckStructure:
 @dataclass(frozen=True)
 class StructureChecked:
     violations: tuple[Violation, ...]
+
+
+@dataclass(frozen=True)
+class StructureRefused:
+    """The structure cannot be checked against the profile; reason is safe to show the user as-is."""
+    reason: str
+
+
+StructureResult = StructureChecked | StructureRefused

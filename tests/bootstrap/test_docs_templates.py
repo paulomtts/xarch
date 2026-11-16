@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from xarch.bootstrap.wiring import build_spec, load_architecture
-from xarch.modules.spec.domain.errors import InvalidTemplate
+from xarch.modules.spec.contract import ProfileRefused
 
 DOCS = Path(__file__).resolve().parents[2] / "docs"
 
@@ -90,10 +90,11 @@ def test_a_custom_architecture_brings_its_own_template(tmp_path):
 
 def test_a_template_with_a_bad_placeholder_fails_naming_the_template(tmp_path):
     write(tmp_path / "layered.md", "{{litmus:repo}} {{tables}}\n")
-    with pytest.raises(InvalidTemplate) as caught:
-        build_spec().docs(str(write(tmp_path / "layered.yaml", ARCHITECTURE)))
-    assert caught.value.problems[0] == "layered.md: {{litmus:repo}}: the architecture defines no part 'repo'"
-    assert caught.value.problems[1].startswith("layered.md: unknown placeholder {{tables}}: use {{tree}}")
+    refused = build_spec().docs(str(write(tmp_path / "layered.yaml", ARCHITECTURE)))
+    assert isinstance(refused, ProfileRefused)
+    problems = refused.reason.split("\n")
+    assert problems[0] == "layered.md: {{litmus:repo}}: the architecture defines no part 'repo'"
+    assert problems[1].startswith("layered.md: unknown placeholder {{tables}}: use {{tree}}")
 
 
 def test_an_architecture_that_declares_no_docs_gets_none(tmp_path):

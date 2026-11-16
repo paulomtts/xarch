@@ -15,7 +15,7 @@ from xarch.profile_values.testing import Fakes, Framework, ScenarioCoverage, Sta
 from xarch.profile_values.tiers import CheckedTier
 
 __all__ = ["DEFAULT_APP", "Entry", "Repeating", "Skeleton", "DocFile", "Docs", "ProjectFile", "ProjectFiles",
-           "FilesResult", "OriginResult", "PartView",
+           "FilesResult", "SkeletonResult", "ProfileResult", "DocsResult", "OriginResult", "PartView",
            "GuardsView", "ProfileView", "ChooseApp", "AppChosen", "ChooseAppResult",
            "SelectProfile", "ProfileSelected", "ProfileRefused",
            "NoProfileChosen", "SelectResult", "MigrateProfile", "Copy", "MigratedFile", "Origin", "Loosened",
@@ -204,6 +204,9 @@ class NoProfileChosen:
 
 
 FilesResult = ProjectFiles | ProfileRefused
+SkeletonResult = Skeleton | ProfileRefused
+ProfileResult = ProfileView | ProfileRefused
+DocsResult = Docs | ProfileRefused
 OriginResult = Origin | ProfileRefused
 SelectResult = ProfileSelected | NoProfileChosen | ProfileRefused
 ChooseAppResult = AppChosen | ProfileRefused

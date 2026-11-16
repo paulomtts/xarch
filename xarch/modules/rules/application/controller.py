@@ -1,11 +1,8 @@
 from __future__ import annotations
 
 from xarch.kernel.errors import DomainError
-from xarch.kernel.placement import Place
 from xarch.kernel.source import Import, Unparsable
-from xarch.modules.rules.application.logic import enforcement, explained
-from xarch.modules.rules.application.logic.expandable import expands
-from xarch.modules.rules.application.logic.verdict import passed
+from xarch.modules.rules.application.logic import explained
 from xarch.modules.rules.application.logic.written import written, written_own
 from xarch.modules.rules.application.services.app_check import AppCheckService
 from xarch.modules.rules.application.services.examples import ExamplesService
@@ -14,71 +11,35 @@ from xarch.modules.rules.application.services.locate import LocateService
 from xarch.modules.rules.application.services.source_check import SourceCheckService
 from xarch.modules.rules.application.services.source_reading import SourceReadService
 from xarch.modules.rules.contract import (
-    AppChecked,
-    ApproximateView,
     CategoryShown,
     CheckApp,
     CheckAppResult,
     CheckExamples,
     CheckImports,
+    CheckRefused,
     CheckResult,
     ChecksCannotRun,
     ChecksShown,
-    CoveringTest,
-    DriftView,
-    EnforcementView,
     ExamplesChecked,
-    ExcludedView,
     ExplainRule,
     ExplainWords,
-    Fake,
     FieldShown,
-    FindingView,
-    ImportsChecked,
-    InPart,
-    InStructure,
-    InTests,
-    KeyUnset,
     Locate,
-    Located,
     LocateResult,
-    NearestView,
     NoRuleShown,
     NotADirectory,
     Outside,
-    OwnCheckView,
-    PartShown,
-    ReachView,
     RuleResult,
-    RuleShown,
-    Support,
-    TierInfoView,
-    Ungoverned,
     UnknownWords,
-    Untested,
-    WhereAnswer,
     WordLine,
     WordShown,
     WordsResult,
     WordsShown,
 )
 from xarch.modules.rules.domain.errors import ChecksRefused, OutsideProject, RootMissing, Unreadable
-from xarch.modules.rules.domain.rule import Rule
-from xarch.modules.rules.domain.values import (
-    Enforcement,
-    FakePlace,
-    PartAt,
-    PartInfo,
-    PartPlace,
-    Placed,
-    StructurePlace,
-    SuitePlace,
-    UngovernedPlace,
-)
 from xarch.modules.rules.domain.vocabulary import READING, SLOTS, Kind
 from xarch.modules.rules.domain.worked import WORKED
 from xarch.profile_values.language import CheckedLanguage
-from xarch.profile_values.tiers import CheckedTier
 
 
 class RulesController:
@@ -136,45 +97,43 @@ class RulesController:
         """The rules a key of a profile expands to, written as checks; a key the engine expands that the profile sets
         nowhere comes back as unset, and any other key that expands to none with why."""
         try:
-            rules = self._explaining.rules_of(cmd.address, cmd.profile)
+            return self._explaining.rule(cmd.address, cmd.profile)
         except DomainError as e:
             return NoRuleShown(cmd.address, cmd.profile, e.reason)
-        if not rules and expands(cmd.address):
-            return KeyUnset(cmd.address, cmd.profile)
-        if not rules:
-            return NoRuleShown(cmd.address, cmd.profile, "it expands to no rule of the engine here: the profile does not "
-                                                         "set it, or it is checked by a check of its own")
-        return RuleShown(cmd.address, cmd.profile, written(rules, _ids(rules)), len(rules))
 
     def check_app(self, cmd: CheckApp) -> CheckAppResult:
-        """The whole check of an app; a root or tests folder that is no folder is refused, and so is a profile whose
-        own checks cannot run."""
+        """The whole check of an app; a root or tests folder that is no folder is refused, and so are a profile whose
+        own checks cannot run and one that cannot be used."""
         try:
-            checked = self._app.check(cmd.root, cmd.profile, cmd.tests, cmd.cwd)
+            return self._app.check(cmd.root, cmd.profile, cmd.tests, cmd.cwd, cmd.strict)
         except RootMissing as e:
             return NotADirectory(e.root)
         except ChecksRefused as e:
             return ChecksCannotRun(e.problems)
-        return AppChecked(checked.violations, _enforcement(checked.enforcement), dict(checked.profile.hints),
-                          passed(checked.violations, checked.enforcement.strict, cmd.strict))
+        except DomainError as e:
+            return CheckRefused(e.reason)
 
     def check(self, cmd: CheckImports) -> CheckResult:
+        """The check of the imports below a root; refused as check_app refuses."""
         try:
-            checked = self._service.check(cmd.root, cmd.package, cmd.profile, cmd.tests)
+            return self._service.imports(cmd.root, cmd.package, cmd.profile, cmd.tests)
         except RootMissing as e:
             return NotADirectory(e.root)
         except ChecksRefused as e:
             return ChecksCannotRun(e.problems)
-        return ImportsChecked(checked.violations, _enforcement(checked.enforcement))
+        except DomainError as e:
+            return CheckRefused(e.reason)
 
     def locate(self, cmd: Locate) -> LocateResult:
-        """A path outside the project is refused with why."""
+        """A path outside the project is refused with why, and so is a profile that cannot be used."""
         try:
-            return Located(_where(self._locator.locate(cmd)))
+            return self._locator.locate(cmd)
         except OutsideProject as e:
             return Outside(e.reason)
         except ChecksRefused as e:
             return ChecksCannotRun(e.problems)
+        except DomainError as e:
+            return CheckRefused(e.reason)
 
 
 class ReaderController:
@@ -197,78 +156,6 @@ CHECKS = "checks"
 """The address of how a check is written."""
 
 
-def _ids(rules: list[Rule]) -> list[str]:
-    """An id for each rule written as a check: its own, then the part its scope names, then a number when two would
-    be the same."""
-    ids: list[str] = []
-    for rule in rules:
-        base = f"{rule.id}-{rule.scope.named_part}" if rule.scope.named_part else rule.id
-        name, count = base, 1
-        while name in ids:
-            count += 1
-            name = f"{base}-{count}"
-        ids.append(name)
-    return ids
-
-
 def _category(name: str) -> CategoryShown:
     return CategoryShown(name, explained.MEANINGS[name],
                          tuple(WordLine(word.name, word.meaning) for word in explained.CATEGORIES[name]))
-
-
-def _enforcement(state: Enforcement) -> EnforcementView:
-    return EnforcementView(
-        state.ungoverned, tuple(enforcement.folders(state.ungoverned)),
-        tuple(DriftView("/".join(d.path), d.state) for d in state.init_files), state.skipped, state.dynamic,
-        state.weak, tuple(FindingView(f.key, enforcement.detail(f.item)) for f in state.strict),
-        tuple(ExcludedView(enforcement.excluded_folder(state.app, e), e.reason) for e in state.excluded),
-        state.language, tuple(ApproximateView(a.address, a.fact, a.note or "",
-                                              enforcement.approximation(a.address, a.fact, a.note or ""))
-                              for a in state.approximate),
-        tuple(OwnCheckView(name, read, enforcement.reading(name, read)) for name, read in state.checks))
-
-
-def _where(found: Placed) -> WhereAnswer:
-    match found:
-        case PartPlace():
-            return InPart(found.found.shown, found.found.exists, _part(found.place, found.info, found.singular),
-                          _reaches(found.reaches), found.may_import_text, found.libraries, found.forbidden,
-                          _tested(found))
-        case StructurePlace():
-            return InStructure(found.found.shown, found.found.exists, _nearest(found.nearest))
-        case UngovernedPlace():
-            return Ungoverned(found.found.shown, found.found.exists, _nearest(found.nearest), found.closed_tree,
-                              found.note)
-        case SuitePlace():
-            kind = InTests if found.test else Support
-            tier = found.tier
-            mirrors = (_part(found.place, found.info, found.singular)
-                       if found.place is not None and found.info is not None else None)
-            return kind(found.found.shown, found.found.exists, mirrors, _reaches(found.reaches),
-                        found.may_import_text, tier.types_only if tier is not None else (), found.forbidden,
-                        _tier(tier) if tier is not None else None, found.may_use_fakes, found.fakes_path,
-                        found.test_code_from, found.note)
-        case FakePlace():
-            return Fake(found.found.shown, found.found.exists, found.fakes_path, found.test_code_from, found.note)
-
-
-def _part(place: Place, info: PartInfo, singular: str) -> PartShown:
-    return PartShown(place.part or "", info.shown, place.instance or "", singular, info.role, info.litmus)
-
-
-def _reaches(reaches: tuple[PartAt, ...]) -> tuple[ReachView, ...]:
-    return tuple(ReachView(r.target.part, r.target.scope, r.folder, r.path) for r in reaches)
-
-
-def _nearest(nearest: tuple[PartAt, ...]) -> tuple[NearestView, ...]:
-    return tuple(NearestView(n.target.part, n.folder, n.path) for n in nearest)
-
-
-def _tier(tier: CheckedTier) -> TierInfoView:
-    return TierInfoView(tier.name, tier.proves, tier.may_touch, tier.litmus)
-
-
-def _tested(found: PartPlace) -> CoveringTest | Untested | None:
-    if found.tier is not None:
-        return CoveringTest(_tier(found.tier), found.test_folder, found.test_file, found.test_folder + found.test_file)
-    return Untested(found.untested) if found.untested else None

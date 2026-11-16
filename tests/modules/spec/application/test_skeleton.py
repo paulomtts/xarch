@@ -1,0 +1,22 @@
+"""Use case: the skeleton of a profile, which the layout and scaffold modules build and check against."""
+import keyword
+
+import pytest
+
+from tests.fakes.architecture_files import FakeArchitectureFiles
+from tests.modules.spec.application.helpers import controller
+from xarch.modules.spec.contract import Entry, ProfileRefused, Skeleton
+
+LAYERED = {"xarch": 2, "name": "layered", "parts": {"src": {"path": "src", "role": "code"}}}
+SPEC = controller(FakeArchitectureFiles({"cli": LAYERED, "broken": {"xarch": 2, "name": "broken"}}))
+
+
+@pytest.mark.parametrize("given, when, then", [
+    pytest.param(SPEC, "cli", Skeleton((Entry(("src",), True, True),), (), "", "__init__.py", "Python",
+                                       frozenset(keyword.kwlist), r"(?!\d)\w+", "_"),
+                 id="a profile that loads gives its layout and how its language names things"),
+    pytest.param(SPEC, "broken", ProfileRefused("broken: missing `parts`"),
+                 id="a profile that does not load is refused with why"),
+])
+def test_skeleton(given, when, then):
+    assert given.skeleton(when) == then

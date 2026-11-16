@@ -35,6 +35,7 @@ from xarch.modules.spec.application.services.migration import MigrationService
 from xarch.modules.spec.application.services.profile_creation import ProfileCreationService
 from xarch.modules.spec.application.services.profile_review import ProfileReviewService
 from xarch.modules.spec.application.services.profile_selection import ProfileSelectionService
+from xarch.modules.spec.application.services.publishing import PublishingService
 from xarch.modules.spec.domain.values import Architecture
 from xarch.platform.data_files import DataFileReader
 from xarch.platform.filesystem import FileSystem
@@ -69,7 +70,7 @@ def build_spec(fs: FileSystem | None = None) -> SpecController:
     selection = ProfileSelectionService(settings, architectures, files, folders)
     return SpecController(architectures, selection, ProfileReviewService(selection, architectures, files),
                           ExplainService(files), MigrationService(files, architectures, output, YamlProfileFormat(YamlWriter())),
-                          ProfileCreationService(files, architectures, output))
+                          ProfileCreationService(files, architectures, output), PublishingService(architectures))
 
 
 def build_architectures(fs: FileSystem | None = None) -> ArchitectureService:

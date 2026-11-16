@@ -18,7 +18,7 @@ from xarch.cli.terminal import (
     selection,
 )
 from xarch.modules.rules.application.controller import RulesController
-from xarch.modules.rules.contract import AppChecked, CheckApp, ChecksCannotRun, NotADirectory
+from xarch.modules.rules.contract import AppChecked, CheckApp, CheckRefused, ChecksCannotRun, NotADirectory
 from xarch.modules.spec.application.controller import SpecController
 from xarch.modules.spec.contract import Origin, ProfileRefused
 
@@ -43,6 +43,8 @@ def register(app: typer.Typer, rules: RulesController, spec: SpecController) -> 
                 raise refuse(f"{root} is not a directory")
             case ChecksCannotRun(problems):
                 raise refuse(cannot_run(problems))
+            case CheckRefused(reason):
+                raise refuse(reason)
             case AppChecked() as checked:
                 origin = _origin(spec, chosen, refuse)
                 if output is Format.json:

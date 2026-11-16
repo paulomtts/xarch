@@ -5,7 +5,7 @@ import pytest
 
 from tests.bootstrap.project import example_problems
 from xarch.bootstrap.wiring import build_spec, load_architecture
-from xarch.modules.spec.domain.errors import InvalidTemplate
+from xarch.modules.spec.contract import ProfileRefused
 
 
 @pytest.mark.parametrize("profile", ["cli", "web"])
@@ -103,9 +103,10 @@ def test_a_custom_testing_template_with_a_bad_placeholder_fails_naming_it(tmp_pa
     write(tmp_path / "layered-testing.md", "{{tier_files}}\n{{tier}}\n")
     write(tmp_path / "examples" / "tests/store/test_store.py", "")
     write(tmp_path / "examples" / "tests/api/test_api.py", "")
-    with pytest.raises(InvalidTemplate) as caught:
-        build_spec().docs(str(write(tmp_path / "layered.yaml", CUSTOM)))
-    assert caught.value.problems[0] == (
+    refused = build_spec().docs(str(write(tmp_path / "layered.yaml", CUSTOM)))
+    assert isinstance(refused, ProfileRefused)
+    problems = refused.reason.split("\n")
+    assert problems[0] == (
         "layered-testing.md: {{tier_files}}: tier 'unit' has no `one_file_per`, tier 'unit' has no `cases_from`, "
         "tier 'driver' has no `one_file_per`, tier 'driver' has no `cases_from`")
-    assert caught.value.problems[1].startswith("layered-testing.md: unknown placeholder {{tier}}: use {{tree}}")
+    assert problems[1].startswith("layered-testing.md: unknown placeholder {{tier}}: use {{tree}}")

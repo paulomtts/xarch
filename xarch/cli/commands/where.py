@@ -18,7 +18,7 @@ from xarch.cli.terminal import (
     selection,
 )
 from xarch.modules.rules.application.controller import RulesController
-from xarch.modules.rules.contract import ChecksCannotRun, Locate, Located, Outside
+from xarch.modules.rules.contract import CheckRefused, ChecksCannotRun, Locate, Located, Outside
 from xarch.modules.spec.application.controller import SpecController
 
 PathArgument = Annotated[Path, typer.Argument(
@@ -39,7 +39,7 @@ def register(app: typer.Typer, rules: RulesController, spec: SpecController) -> 
         app_path = app_for(spec, app_path, refuse)
         chosen, tests_root = selection(spec, app_path, profile, tests, refuse)
         match rules.locate(Locate(path, in_full(Path()).resolve(), app_path, chosen, tests_root)):
-            case Outside(reason):
+            case Outside(reason) | CheckRefused(reason):
                 raise refuse(reason)
             case ChecksCannotRun(problems):
                 raise refuse(cannot_run(problems))

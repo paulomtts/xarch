@@ -22,14 +22,22 @@ from xarch.modules.rules.domain.rule import (
 )
 from xarch.modules.rules.domain.values import InitFile, PartInfo, Profile, Standing
 from xarch.modules.rules.domain.vocabulary import NAMES, PLACES, TARGETS
-from xarch.modules.spec.contract import FilesResult, Origin, OriginResult, ProfileRefused, ProfileView, ProjectFiles
+from xarch.modules.spec.contract import (
+    FilesResult,
+    Origin,
+    OriginResult,
+    ProfileRefused,
+    ProfileResult,
+    ProfileView,
+    ProjectFiles,
+)
 from xarch.profile_values.language import CheckedLanguage
 
 
 class _Spec(Protocol):
     """The little rules uses of spec's controller."""
 
-    def profile(self, location: str) -> ProfileView: ...
+    def profile(self, location: str) -> ProfileResult: ...
 
     def origin(self, location: str) -> OriginResult: ...
 
@@ -43,8 +51,13 @@ class SpecProfiles:
         self._spec = spec
 
     def profile(self, location: str) -> Profile:
-        """The profile, its own checks made into rules; one whose checks cannot be raises ProfileUnusable."""
-        view = self._spec.profile(location)
+        """The profile, its own checks made into rules; one spec refuses raises ProfileUnusable, and one whose checks
+        cannot be made ChecksRefused."""
+        match self._spec.profile(location):
+            case ProfileRefused(reason):
+                raise ProfileUnusable(reason)
+            case ProfileView() as view:
+                pass
         parts, guards = view.parts, view.guards
         written = WrittenChecks()
         checks = written.own(view.checks, view.language)

@@ -6,13 +6,14 @@ from pathlib import Path
 from typing import Protocol
 
 from xarch.kernel.violations import Violation
-from xarch.modules.layout.contract import CheckStructure, StructureChecked
+from xarch.modules.layout.contract import CheckStructure, StructureChecked, StructureRefused, StructureResult
+from xarch.modules.rules.domain.errors import ProfileUnusable
 
 
 class _Layout(Protocol):
     """The little rules uses of layout's controller."""
 
-    def check(self, cmd: CheckStructure) -> StructureChecked: ...
+    def check(self, cmd: CheckStructure) -> StructureResult: ...
 
 
 class LayoutStructure:
@@ -22,4 +23,9 @@ class LayoutStructure:
         self._layout = layout
 
     def violations(self, root: Path, package: str, profile: str, tests: Path | None) -> list[Violation]:
-        return list(self._layout.check(CheckStructure(root, package, profile, tests)).violations)
+        """Raises ProfileUnusable, with layout's reason, when layout cannot check the structure."""
+        match self._layout.check(CheckStructure(root, package, profile, tests)):
+            case StructureChecked(violations):
+                return list(violations)
+            case StructureRefused(reason):
+                raise ProfileUnusable(reason)

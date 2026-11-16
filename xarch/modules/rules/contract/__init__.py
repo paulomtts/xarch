@@ -8,7 +8,7 @@ from typing import ClassVar
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.domain.published import At, Slot, Weak
 
-__all__ = ["At", "Weak", "Slot", "ChecksCannotRun", "OwnCheckView",
+__all__ = ["At", "Weak", "Slot", "ChecksCannotRun", "CheckRefused", "OwnCheckView",
            "DriftView", "FindingView", "ExcludedView", "EnforcementView", "ReachView", "NearestView", "TierInfoView",
            "PartShown", "CoveringTest", "Untested", "InPart", "InStructure", "Ungoverned", "InTests", "Support", "Fake",
            "WhereAnswer", "CheckImports", "ImportsChecked", "NotADirectory", "CheckResult", "CheckApp", "AppChecked",
@@ -246,7 +246,13 @@ class ChecksCannotRun:
     problems: tuple[str, ...]
 
 
-CheckResult = ImportsChecked | NotADirectory | ChecksCannotRun
+@dataclass(frozen=True)
+class CheckRefused:
+    """The check cannot run on the profile in force; reason is safe to show the user as-is."""
+    reason: str
+
+
+CheckResult = ImportsChecked | NotADirectory | ChecksCannotRun | CheckRefused
 
 
 @dataclass(frozen=True)
@@ -271,7 +277,7 @@ class AppChecked:
     ok: bool
 
 
-CheckAppResult = AppChecked | NotADirectory | ChecksCannotRun
+CheckAppResult = AppChecked | NotADirectory | ChecksCannotRun | CheckRefused
 
 
 @dataclass(frozen=True)
@@ -296,7 +302,7 @@ class Outside:
     reason: str
 
 
-LocateResult = Located | Outside | ChecksCannotRun
+LocateResult = Located | Outside | ChecksCannotRun | CheckRefused
 
 
 CATEGORIES = ("checks", "kinds", "quantifiers", "targets", "filters", "variables")

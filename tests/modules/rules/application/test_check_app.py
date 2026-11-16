@@ -14,6 +14,7 @@ from xarch.kernel.violations import Violation
 from xarch.modules.rules.contract import (
     AppChecked,
     CheckApp,
+    CheckRefused,
     ChecksCannotRun,
     EnforcementView,
     FindingView,
@@ -34,10 +35,11 @@ MISSING = Violation("pkg", 0, "missing kernel/logic/", "structure", "create pkg/
 
 
 REFUSED = ("checks.mine.mode: is 'fial': write fail or list",)
+UNUSABLE = "gone: cannot read the file: no such file"
 
 
 def check(files: dict, when: CheckApp, structure: list[Violation] | None = None, profile: Profile = PROFILE):
-    profiles = FakeProfiles({"cli": profile}, refused={"broken": REFUSED})
+    profiles = FakeProfiles({"cli": profile}, refused={"broken": REFUSED}, unusable={"gone": UNUSABLE})
     return controller(FakeSourceTree(ROOT, files), profiles, FakeStructure(structure)).check_app(when)
 
 
@@ -57,6 +59,8 @@ def check(files: dict, when: CheckApp, structure: list[Violation] | None = None,
                  id="an app folder that is no folder is refused"),
     pytest.param(dict(files=GOOD), CheckApp(ROOT, "broken", ROOT.parent), ChecksCannotRun(REFUSED),
                  id="a profile whose own checks cannot run is refused with every problem"),
+    pytest.param(dict(files=GOOD), CheckApp(ROOT, "gone", ROOT.parent), CheckRefused(UNUSABLE),
+                 id="a profile spec refuses is refused with spec's reason"),
 ])
 def test_check_app(given, when, then):
     assert check(given.get("files", {}), when, given.get("structure"), given.get("profile", PROFILE)) == then

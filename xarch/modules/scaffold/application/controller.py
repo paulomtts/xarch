@@ -2,28 +2,24 @@ from __future__ import annotations
 
 from xarch.kernel.errors import DomainError
 from xarch.modules.scaffold.application.services.scaffolding import ScaffoldingService
-from xarch.modules.scaffold.contract import Init, New, NewResult, Refused, Report, Scaffolded
-from xarch.modules.scaffold.domain.values import CREATED, SKIPPED, UPDATED, Touched
+from xarch.modules.scaffold.contract import Init, InitResult, New, NewResult, Refused, Scaffolded
 
 
 class ScaffoldController:
     def __init__(self, service: ScaffoldingService):
         self._service = service
 
-    def init(self, cmd: Init) -> Scaffolded:
-        return Scaffolded(_report(self._service.init(cmd.root, cmd.profile, cmd.cwd)))
+    def init(self, cmd: Init) -> InitResult:
+        """A profile that cannot give the skeleton, or a file that cannot be written, is refused with why."""
+        try:
+            return Scaffolded(self._service.init(cmd.root, cmd.profile, cmd.cwd))
+        except DomainError as e:
+            return Refused(e.reason)
 
     def new(self, cmd: New) -> NewResult:
         """Every refusal of the service carries its reason."""
         try:
-            touched = self._service.new(cmd.root, cmd.kind, cmd.name, cmd.profile)
+            return Scaffolded(self._service.new(cmd.root, cmd.kind, cmd.name, cmd.profile))
         except DomainError as e:
             return Refused(e.reason)
-        return Scaffolded(_report(touched))
 
-
-def _report(touched: list[Touched]) -> Report:
-    """Each file under what was done to it, in the order the files were reached."""
-    return Report(created=[t.path for t in touched if t.done == CREATED],
-                  skipped=[t.path for t in touched if t.done == SKIPPED],
-                  updated=[t.path for t in touched if t.done == UPDATED])

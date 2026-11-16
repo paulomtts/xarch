@@ -43,3 +43,4 @@ class Refused:
 
 
 NewResult = Scaffolded | Refused
+InitResult = Scaffolded | Refused

@@ -1,0 +1,21 @@
+"""Use case: a profile as the checks read it, which the rules module checks code against."""
+import pytest
+
+from tests.fakes.architecture_files import FakeArchitectureFiles
+from tests.modules.spec.application.helpers import controller
+from tests.modules.spec.languages import PYTHON
+from xarch.modules.spec.contract import PartView, ProfileRefused, ProfileView
+
+LAYERED = {"xarch": 2, "name": "layered", "parts": {"src": {"path": "src", "role": "code"}}}
+SPEC = controller(FakeArchitectureFiles({"cli": LAYERED, "broken": {"xarch": 2, "name": "broken"}}))
+
+
+@pytest.mark.parametrize("given, when, then", [
+    pytest.param(SPEC, "cli", ProfileView((PartView("src", ("src",), (), "code", shown="src/"),), ((), ("src",)),
+                                          libraries={"src": ()}, language=PYTHON.checked),
+                 id="a profile that loads is given as the checks read it"),
+    pytest.param(SPEC, "broken", ProfileRefused("broken: missing `parts`"),
+                 id="a profile that does not load is refused with why"),
+])
+def test_profile(given, when, then):
+    assert given.profile(when) == then
