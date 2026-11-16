@@ -26,6 +26,8 @@ __all__ = ["Converted", "convert", "rewrite_examples"]
 _TARGET = re.compile(r"(?P<part>[^@/]*)(?:@(?P<scope>[^/]*))?(?:/(?P<sub>.*))?")
 _TIER_DOCS = ("subject_text", "may_touch", "one_file_per", "cases_from", "data")
 _DOCS_NAME = {"subject_text": "subject"}
+_FIRST = 0
+"""Where format 1 read the spec of a call that builds a mock, besides its spec keywords: its first argument."""
 
 
 @dataclass(frozen=True)
@@ -354,6 +356,7 @@ def _testing(old: OldProfile, presets: Mapping[str, Any]) -> Any:
         for old_key, new_key in (("mocks", "calls"), ("autospec", "autospec"), ("spec", "spec_keywords")):
             if old_key in stand_ins:
                 mocks[new_key] = list(stand_ins[old_key])
+        mocks["spec_position"] = _FIRST
         if "fixtures" in stand_ins:
             mocks["fixtures"] = {param: _fixture(spec) for param, spec in stand_ins["fixtures"].items()}
         testing["mocks"] = mocks

@@ -55,12 +55,14 @@ class Fixture:
 class StandIns:
     """The guard stand-ins: the dotted names of the calls that build a mock, of those that build a mock from a spec
     given as an argument (autospec), and the keywords a mock is given its spec by; the first keyword is the one an
-    autospec call takes; and the fixtures, whose methods build mocks the same way. The other parameters are those of
-    `fakes`."""
+    autospec call takes; the fixtures, whose methods build mocks the same way; and the position of the argument that
+    names the spec of a call that builds a mock (spec_position, from 0; None: only a keyword names it). The other
+    parameters are those of `fakes`."""
     mocks: tuple[tuple[str, ...], ...]
     autospec: tuple[tuple[str, ...], ...]
     spec: tuple[str, ...]
     fixtures: tuple[Fixture, ...] = ()
+    spec_position: int | None = None
 
 
 @dataclass(frozen=True)

@@ -40,12 +40,14 @@ the reader and the platform.
 """
 import ast
 import re
+from dataclasses import fields
 from pathlib import Path
 
 import pytest
 import yaml
 
 import xarch
+from xarch.profile_values.language import CheckedLanguage
 
 SRC = Path(xarch.__file__).parent
 READING_SOURCE = {"ast", "tokenize", "symtable", "inspect", "importlib"}
@@ -284,26 +286,46 @@ def test_the_reader_and_the_platform_are_where_the_language_may_be_named(tmp_pat
     assert [file for file, _, _ in leaks(tmp_path, pattern, names)] == ["other.py"]
 
 
-ENGINE = ("modules/rules/domain/rule.py", "modules/rules/domain/vocabulary.py",
-          *(f"modules/rules/application/logic/{name}.py" for name in
-            ("facts", "filters", "targets", "sentences", "engine", "expansion")))
-"""The engine of rules as data: the vocabulary, the rule, and the files that read, filter, match, say and expand."""
-SYNTAX = {"signature", "positional", "keyword_only", "star", "double", "decorated", "args", "keywords", "callee"}
+ENGINE = tuple(sorted(str(path.relative_to(SRC)) for folder in ("modules/rules/domain", "modules/rules/application/logic",
+                                                                 "modules/rules/application/services", "kernel/logic")
+                     for path in (SRC / folder).glob("*.py")))
+"""The engine of rules and what it builds on: the domain of rules (the vocabulary, the rule, the records the reader
+fills), its logic and services (the files that read, filter, match, say and expand, and the checks), and the kernel's
+logic."""
+SYNTAX = {"signature", "positional", "keyword_only", "star", "double", "decorated", "callee"}
 """The fields of the reader's records that say how the language writes a function and a call: its parameters by kind,
-its decorators, the arguments of its one call. What they mean (a method that only forwards) is the reader's to say."""
-SAID = {"marks", "interface", "is_special", "is_public", "comment", "directives", "shebang", "encoding",
-        "title", "dynamic"}
-"""What the engine may read of the language: what its data file says (see CheckedLanguage)."""
+its decorators, the callee of its one call. What they mean (a method that only forwards) is the reader's to say. The
+arguments of a call are read by the position and the keywords the profile's data gives."""
+SAID = {field.name for field in fields(CheckedLanguage)} | {
+    name for name, member in vars(CheckedLanguage).items()
+    if not name.startswith("_") and (isinstance(member, property) or callable(member))}
+"""What the engine may read of the language: what its data file says, CheckedLanguage's fields, and what CheckedLanguage
+works out of them, its public properties and methods."""
 
 
 def read_attributes(path: Path) -> set[str]:
     return {node.attr for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))) if isinstance(node, ast.Attribute)}
 
 
+def _is_language(node: ast.AST) -> bool:
+    return isinstance(node, ast.Attribute) and node.attr == "language"
+
+
+def _annotated_language(arg: ast.arg) -> bool:
+    annotation = arg.annotation
+    return (isinstance(annotation, ast.Name) and annotation.id == CheckedLanguage.__name__) or (
+        isinstance(annotation, ast.Constant) and annotation.value == CheckedLanguage.__name__)
+
+
 def language_reads(path: Path) -> set[str]:
+    """The attributes read of the language: on `<x>.language`, on a local name bound to one (`lang = x.language`), and
+    on a parameter annotated CheckedLanguage."""
     tree = ast.parse(path.read_text(encoding="utf-8"))
+    aliases = {target.id for node in ast.walk(tree) if isinstance(node, ast.Assign) and _is_language(node.value)
+               for target in node.targets if isinstance(target, ast.Name)}
+    aliases |= {node.arg for node in ast.walk(tree) if isinstance(node, ast.arg) and _annotated_language(node)}
     return {node.attr for node in ast.walk(tree) if isinstance(node, ast.Attribute)
-            and isinstance(node.value, ast.Attribute) and node.value.attr == "language"}
+            and (_is_language(node.value) or (isinstance(node.value, ast.Name) and node.value.id in aliases))}
 
 
 @pytest.mark.parametrize("file", ENGINE)
@@ -312,8 +334,17 @@ def test_the_engine_holds_no_fact_of_the_language_but_what_its_data_file_says(fi
     assert language_reads(SRC / file) <= SAID
 
 
-def test_the_guard_would_catch_the_engine_reading_how_a_function_is_written(tmp_path):
-    (tmp_path / "facts.py").write_text("def f(function, profile):\n    return function.signature.star or "
-                                       "profile.language.call\n")
+@pytest.mark.parametrize("code, syntax, unsaid", [
+    pytest.param("def f(function, profile):\n    return function.signature.star or profile.language.keywords\n",
+                 {"signature", "star"}, {"keywords"}, id="how a function is written, and a word the data file lacks"),
+    pytest.param("def f(profile):\n    lang = profile.language\n    return lang.decorators, lang.extension\n",
+                 set(), {"decorators"}, id="a read through a local name bound to the language"),
+    pytest.param("def f(language: CheckedLanguage):\n    return language.keywords, language.is_public('x')\n",
+                 set(), {"keywords"}, id="a read of a parameter annotated as the language"),
+    pytest.param("def f(profile):\n    return profile.language.call, profile.language.marks\n", set(), set(),
+                 id="a field and a property of the language are said"),
+])
+def test_the_guard_would_catch_the_engine_reading_what_the_language_does_not_say(tmp_path, code, syntax, unsaid):
+    (tmp_path / "facts.py").write_text(code)
     assert (read_attributes(tmp_path / "facts.py") & SYNTAX, language_reads(tmp_path / "facts.py") - SAID) == (
-        {"signature", "star"}, {"call"})
+        syntax, unsaid)

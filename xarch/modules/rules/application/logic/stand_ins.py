@@ -15,8 +15,9 @@ A port with no methods is neither, and no rule applies to it. A read port X has 
 <prefix>X in a file below the fakes' folder (by name only: one fake serves ports of the same name in two instances).
 
 In a test whose tier may import the fakes (see tier_imports), every call of one of the profile's mocks names its
-spec, as its first argument or by one of the profile's spec keywords, and every call of one of its autospec
-functions its first argument or the first spec keyword; one that names none is a violation. A spec that is a class
+spec, as its argument at the profile's spec_position (when the profile gives one) or by one of the profile's spec
+keywords, and every call of one of its autospec functions as that argument or by the first spec keyword; one that
+names none is a violation. A spec that is a class
 of the app, `from <module> import X` or `<module alias>.X`, whose module is a port's file and X a read port there,
 is a violation that points to its fake.
 
@@ -157,8 +158,8 @@ def _mocks(tests: list[SourceFile], ports: dict[tuple[tuple[str, ...], str], Por
 @dataclass(frozen=True)
 class Built:
     """A call that builds a mock: the call as the source tree read it (of an imported name, or of a fixture's method),
-    how it is shown (`Mock`, or `mocker.Mock` for a fixture's), and whether it takes its spec as its first argument
-    only (an autospec)."""
+    how it is shown (`Mock`, or `mocker.Mock` for a fixture's), and whether it is an autospec, which takes its spec by
+    the argument at the profile's position or by the first spec keyword only."""
     made: Call | ParameterCall
     shown: str
     autospec: bool
@@ -182,30 +183,31 @@ def _mock(file: SourceFile, mock: Built, ports: dict[tuple[tuple[str, ...], str]
     prefix = mock.shown.rpartition(".")[0]
     constructor = f"{prefix}." if prefix else ""
     suggested = f"{constructor}{names.mocks[0][-1]}({names.spec[0]}=<port>)"
-    named, spec = _spec(mock, names.spec[:1] if mock.autospec else names.spec)
+    named, spec, placed = _spec(mock, names.spec[:1] if mock.autospec else names.spec, names.spec_position)
     if not named:
         return [Violation(file.name, mock.made.line, f"{mock.shown}() names nothing it stands in for {GUARD}", RULE,
                           f"give it a spec, such as {suggested}")]
     if spec is not None and spec[:1] == (root,):
         port = ports.get((spec[1:-1], spec[-1]))
         if port is not None and port.kind == "read":
-            written = f"{mock.shown}({names.spec[0]}={port.name})" if not mock.made.args else \
-                f"{mock.shown}({port.name})"
+            before = "..., " * (names.spec_position or 0)
+            written = f"{mock.shown}({before}{port.name})" if placed else \
+                f"{mock.shown}({names.spec[0]}={port.name})"
             return [Violation(file.name, mock.made.line, f"{written} stands in for {port.name}, a read port {GUARD}", RULE,
                               f"use its fake {profile.fakes.prefix}{port.name}")]
     return []
 
 
-def _spec(call: Built, names: tuple[str, ...]) -> tuple[bool, tuple[str, ...] | None]:
-    """Whether the call names a spec (or may, when it unpacks arguments), by its first argument or one of the keywords
-    names, and the spec when it is a name."""
+def _spec(call: Built, names: tuple[str, ...], position: int | None) -> tuple[bool, tuple[str, ...] | None, bool]:
+    """Whether the call names a spec (or may, when it unpacks arguments), by its argument at position (None: by no
+    argument) or one of the keywords names; the spec when it is a name; and whether the argument at position names it."""
     made = call.made
     keywords = dict(made.keywords)
-    if made.args:
-        return True, made.args[0]
+    if position is not None and len(made.args) > position:
+        return True, made.args[position], True
     for name in names:
         if name in keywords:
-            return True, keywords[name]
-    return made.unpacked, None
+            return True, keywords[name], False
+    return made.unpacked, None, False
 
 

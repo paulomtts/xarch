@@ -110,6 +110,7 @@ _KEYS: tuple[Key, ...] = (
     Key(MOCKS, "calls", True, rules=("stand-ins",)),
     Key(MOCKS, "autospec", rules=("stand-ins",)),
     Key(MOCKS, "spec_keywords", True, rules=("stand-ins",)),
+    Key(MOCKS, "spec_position", rules=("stand-ins",)),
     Key(MOCKS, "fixtures", rules=("stand-ins",), opens=FIXTURE),
 
     Key(FIXTURE, "calls", True, rules=("stand-ins",)),

@@ -501,9 +501,10 @@ def _testing(value: Any, presets: Mapping[str, Any], problems: list[str], langua
 def _mocks(value: Any, problems: list[str], language: Language) -> StandIns | None:
     where = "testing.mocks"
     if not isinstance(value, Mapping):
-        problems.append(f"{where}: must be a mapping {{calls, spec_keywords}}, and optionally autospec and fixtures: "
-                        "the dotted names of the calls that build a mock, the keywords a mock is given its spec by, "
-                        "and the parameters of a test function whose methods build one")
+        problems.append(f"{where}: must be a mapping {{calls, spec_keywords}}, and optionally autospec, spec_position "
+                        "and fixtures: the dotted names of the calls that build a mock, the keywords a mock is given "
+                        "its spec by, the position of the argument that names it, and the parameters of a test "
+                        "function whose methods build one")
         return None
     count = len(problems)
     problems += ck.unknown_keys(value, names_of(MOCKS), where)
@@ -516,9 +517,13 @@ def _mocks(value: Any, problems: list[str], language: Language) -> StandIns | No
                                language) if "spec_keywords" in value else None)
     fixtures = (ck.fixtures(value["fixtures"], f"{where}.fixtures", problems, language, "calls")
                 if "fixtures" in value else ())
+    position = value.get("spec_position")
+    if position is not None and not _whole(position, 0):
+        problems.append(f"{where}.spec_position: must be a whole number, at least 0, such as 0: the position of the "
+                        "argument that names the spec; leave it out when only a keyword names it")
     if len(problems) != count or calls is None or autospec is None or keywords is None or fixtures is None:
         return None
-    return StandIns(calls, autospec, keywords, fixtures)
+    return StandIns(calls, autospec, keywords, fixtures, position)
 
 
 def _tiers(document: Mapping[Any, Any], specs: dict[str, Any], parts: dict[str, Part], declared: set[str],

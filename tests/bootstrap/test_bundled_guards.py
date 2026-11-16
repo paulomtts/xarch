@@ -27,7 +27,7 @@ def test_the_bundled_profiles_use_every_guard_of_their_own(name):
         scenarios=ScenarioCoverage("contract", "integration", "Result", ("given", "when", "then"), table, "test_{name}.py"),
         no_comments=True,
         stand_ins=StandIns(tuple(("unittest", "mock", m) for m in mocks), (("unittest", "mock", "create_autospec"),),
-                               ("spec", "spec_set"), (Fixture("mocker", mocks, ("create_autospec",)),)),
+                               ("spec", "spec_set"), (Fixture("mocker", mocks, ("create_autospec",)),), 0),
         no_duplicates=4, no_twins=3, no_twins_renamed=3, no_twins_subset=3, dead_code=True, untested=True,
         pass_through=("services", "controller", "adapters"),
         private_imports=True)

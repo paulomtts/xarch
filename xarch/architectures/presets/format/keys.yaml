@@ -622,7 +622,7 @@ keys:
       <<table>>
   testing.mocks:
     meaning: how a mock is built
-    accepts: a map {calls, autospec, spec_keywords, fixtures}
+    accepts: a map {calls, autospec, spec_keywords, spec_position, fixtures}
     example: |
       <<testing>>
         mocks:
@@ -674,6 +674,15 @@ keys:
       <<testing>>
         mocks:
       <<mocks>>
+  testing.mocks.spec_position:
+    meaning: where a call that builds a mock takes its spec
+    accepts: "a whole number, the position of the argument that names the spec; left out: only a keyword of
+      `spec_keywords` names it"
+    example: |
+      <<testing>>
+        mocks:
+      <<mocks>>
+          spec_position: 0
   testing.mocks.fixtures:
     meaning: test parameters whose methods build mocks
     accepts: "a map {<parameter>: {calls, autospec}}"

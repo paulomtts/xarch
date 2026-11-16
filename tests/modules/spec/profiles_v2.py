@@ -20,7 +20,7 @@ TESTING = {"files": ["test_*.py", "*_test.py"], "functions": "test_*", "skips": 
                      "keywords": ["argnames", "argvalues"]},
            "mocks": {"calls": ["unittest.mock.Mock", "unittest.mock.MagicMock"],
                      "autospec": ["unittest.mock.create_autospec"], "spec_keywords": ["spec", "spec_set"],
-                     "fixtures": {"mocker": {"calls": ["Mock", "MagicMock"], "autospec": ["create_autospec"]}}}}
+                     "spec_position": 0, "fixtures": {"mocker": {"calls": ["Mock", "MagicMock"], "autospec": ["create_autospec"]}}}}
 PRESETS = {"pytest": TESTING}
 LANGUAGES = {"python": PYTHON}
 EX = {"ex": ("tests/src/billing/service/test_rules.py", "tests/src/billing/builders.py", "tests/checks/rules/test_x.py")}

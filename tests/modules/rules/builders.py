@@ -83,7 +83,7 @@ PROFILE = Profile(
     scenarios=ScenarioCoverage("contract", "integration", "Result", ("given", "when", "then"), TABLE, "test_{name}.py"),
     no_comments=True,
     stand_ins=StandIns((MOCK, ("unittest", "mock", "MagicMock")), (AUTOSPEC,), ("spec", "spec_set"),
-                       (Fixture("mocker", ("Mock", "MagicMock"), ("create_autospec",)),)),
+                       (Fixture("mocker", ("Mock", "MagicMock"), ("create_autospec",)),), 0),
     framework=Framework(("test_*.py", "*_test.py"), "test_*"),
     forbidden={"domain": (NOW, ("builtins", "open"), ("socket",))}, language=PYTHON, default_tests="tests")
 

@@ -24,9 +24,12 @@ TABLE = ("layered.yaml: testing.table: must be a mapping {decorator, row, id}, a
          "two arguments may be given by")
 KEYWORDS = ("layered.yaml: testing.table.keywords: must be two keyword names, the decorator's names and its rows, "
             "such as [names, rows]")
-MOCKS = ("layered.yaml: testing.mocks: must be a mapping {calls, spec_keywords}, and optionally autospec and "
-         "fixtures: the dotted names of the calls that build a mock, the keywords a mock is given its spec by, and "
-         "the parameters of a test function whose methods build one")
+MOCKS = ("layered.yaml: testing.mocks: must be a mapping {calls, spec_keywords}, and optionally autospec, "
+         "spec_position and fixtures: the dotted names of the calls that build a mock, the keywords a mock is given "
+         "its spec by, the position of the argument that names it, and the parameters of a test function whose "
+         "methods build one")
+POSITION = ("layered.yaml: testing.mocks.spec_position: must be a whole number, at least 0, such as 0: the position of "
+            "the argument that names the spec; leave it out when only a keyword names it")
 DOTTED = "must be a list of dotted names such as pkg.sub.Name"
 METHODS = "must be a list of method names such as [build]"
 WRITE = "write testing: <preset>, or testing: {files: [<pattern>, ...], functions: <pattern>}"
@@ -107,6 +110,17 @@ def test_the_mocks_load_the_fixtures_whose_methods_build_mocks():
                                                    Fixture("factory", ("build",)))
 
 
+@pytest.mark.parametrize("written, position", [
+    pytest.param({"spec_position": 0}, 0, id="the first argument"),
+    pytest.param({"spec_position": 2}, 2, id="a later argument"),
+    pytest.param({}, None, id="left out: no argument names the spec"),
+])
+def test_the_mocks_load_the_position_of_the_argument_that_names_the_spec(written, position):
+    mocks = {key: value for key, value in MOCKS_OK.items() if key != "spec_position"} | written
+    document = with_mocks(mocks) | {"guards": {"stand-ins": {}}, "fakes": FAKES}
+    assert parsed(document).guards[0].spec_position == position
+
+
 def test_the_fixtures_of_the_mocks_are_optional():
     mocks = {key: value for key, value in MOCKS_OK.items() if key != "fixtures"}
     document = with_mocks(mocks) | {"guards": {"stand-ins": {}}, "fakes": FAKES}
@@ -171,6 +185,9 @@ def test_a_bad_fixtures_entry_is_refused(fixtures, expected):
     pytest.param(MOCKS_OK | {"spec_keywords": ["a b"]},
                  "layered.yaml: testing.mocks.spec_keywords: 'a b' is not a keyword name",
                  id="a spec keyword that is no keyword name is refused"),
+    pytest.param(MOCKS_OK | {"spec_position": -1}, POSITION, id="a spec position below 0 is refused"),
+    pytest.param(MOCKS_OK | {"spec_position": "0"}, POSITION, id="a spec position that is text is refused"),
+    pytest.param(MOCKS_OK | {"spec_position": True}, POSITION, id="a spec position that is true is refused"),
 ])
 def test_a_bad_mocks_entry_is_refused(mocks, expected):
     assert problems(with_mocks(mocks)) == [expected]
