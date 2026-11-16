@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from xarch.kernel.logic.placement import Target
+from xarch.kernel.placement import Target
 
 
 @dataclass(frozen=True)

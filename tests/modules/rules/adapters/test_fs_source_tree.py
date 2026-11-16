@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from xarch.kernel.logic.source import Import, Unparsable
 from xarch.kernel.logic.testing import CaseTable
+from xarch.kernel.source import Import, Unparsable
 from xarch.modules.rules.adapters.fs_source_tree import FsSourceTree
 from xarch.modules.rules.domain.values import (
     Call,

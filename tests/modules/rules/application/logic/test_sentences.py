@@ -21,7 +21,7 @@ from tests.modules.rules.application.logic.world import (
     WIRING,
     found,
 )
-from xarch.kernel.logic.placement import Target
+from xarch.kernel.placement import Target
 from xarch.modules.rules.application.logic import sentences
 from xarch.modules.rules.application.logic.sentences import said, value
 from xarch.modules.rules.domain.rule import Match, Scope

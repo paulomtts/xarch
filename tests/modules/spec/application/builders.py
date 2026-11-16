@@ -10,7 +10,7 @@ from tests.fakes.runtime import FakeRuntime
 from tests.fakes.settings import FakeSettings
 from tests.modules.spec.application.helpers import controller
 from tests.modules.spec.languages import RUNTIME
-from xarch.kernel.logic.source import Import, Unparsable
+from xarch.kernel.source import Import, Unparsable
 
 TESTING = {"files": ["test_*.py"], "functions": "test_*"}
 BASE = {"xarch": 2, "name": "base", "testing": TESTING,

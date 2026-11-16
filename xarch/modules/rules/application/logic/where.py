@@ -22,9 +22,10 @@ from collections.abc import Collection, Iterable
 from pathlib import Path
 
 from xarch.kernel.logic.imports import may_import, shown_target
-from xarch.kernel.logic.placement import EACH, Place, Target, matches, repeat_of
+from xarch.kernel.logic.placement import repeat_of
 from xarch.kernel.logic.testing import TierView
-from xarch.modules.rules.application.logic.places import place, targets_of
+from xarch.kernel.placement import EACH, Place, Target
+from xarch.modules.rules.application.logic.places import matches, place, targets_of
 from xarch.modules.rules.application.logic.tier_of import NO_TIER, Tested, allowance, may_use_fakes, tested
 from xarch.modules.rules.domain.values import (
     FakePlace,

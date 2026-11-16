@@ -5,7 +5,7 @@ them so).
 """
 from __future__ import annotations
 
-from xarch.kernel.logic.placement import EVERYTHING
+from xarch.kernel.placement import EVERYTHING
 from xarch.modules.rules.application.logic.tier_of import NO_TIER, NO_TIER_FIX
 from xarch.modules.rules.domain.rule import (
     ALL,

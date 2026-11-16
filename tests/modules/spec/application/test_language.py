@@ -7,7 +7,7 @@ import pytest
 
 from tests.fakes.runtime import FakeRuntime
 from tests.modules.spec.application.builders import spec_controller
-from xarch.kernel.logic.capabilities import Shortfall
+from xarch.kernel.capabilities import Shortfall
 from xarch.kernel.logic.language import LanguageView
 from xarch.modules.spec.contract import CheckProfile, ProfileChecked
 

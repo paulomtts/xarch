@@ -57,7 +57,7 @@ from collections import Counter
 from collections.abc import Iterable, Iterator
 from dataclasses import replace
 
-from xarch.kernel.logic.placement import Place
+from xarch.kernel.placement import Place
 from xarch.modules.rules.application.logic.filters import in_scope
 from xarch.modules.rules.application.logic.imports import dotted, named_targets, targets
 from xarch.modules.rules.application.logic.places import place

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from xarch.kernel.errors import DomainError
 from xarch.kernel.logic.language import LanguageView
-from xarch.kernel.logic.placement import Place
-from xarch.kernel.logic.source import Import, Unparsable
 from xarch.kernel.logic.testing import TierView
+from xarch.kernel.placement import Place
+from xarch.kernel.source import Import, Unparsable
 from xarch.modules.rules.application.logic import enforcement, explained
 from xarch.modules.rules.application.logic.expandable import expands
 from xarch.modules.rules.application.logic.verdict import passed

@@ -20,7 +20,7 @@ from __future__ import annotations
 from dataclasses import replace
 
 from tests.modules.rules.builders import PROFILE, RULES, imp, in_tests, source
-from xarch.kernel.logic.placement import Target
+from xarch.kernel.placement import Target
 from xarch.modules.rules.application.logic.facts import facts_of
 from xarch.modules.rules.domain.rule import Fact, Found, Match, Read, Rule, Saying, Scope
 from xarch.modules.rules.domain.values import (

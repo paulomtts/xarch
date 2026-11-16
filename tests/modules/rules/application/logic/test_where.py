@@ -5,9 +5,9 @@ from pathlib import Path
 import pytest
 
 from tests.modules.rules.builders import PYTHON
-from xarch.kernel.logic.placement import EVERYTHING, Place, Repeat, Target
 from xarch.kernel.logic.testing import Fakes, Framework
 from xarch.kernel.logic.testing import TierView as Tier
+from xarch.kernel.placement import EVERYTHING, Place, Repeat, Target
 from xarch.modules.rules.application.logic.where import describe, resolve
 from xarch.modules.rules.domain.values import (
     FakePlace,

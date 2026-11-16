@@ -3,7 +3,7 @@ fields says, every fact a kind needs one the language's data file can supply, ev
 that exists, and every word applies to some kind of fact."""
 import pytest
 
-from xarch.kernel.logic.capabilities import FACTS
+from xarch.kernel.capabilities import FACTS
 from xarch.modules.rules.domain.vocabulary import FIELDS, FILTERS, KINDS, QUANTIFIERS, TARGETS, VARIABLES
 
 WORDS = {"kind": KINDS, "filter": FILTERS, "target": TARGETS, "variable": VARIABLES, "quantifier": QUANTIFIERS}

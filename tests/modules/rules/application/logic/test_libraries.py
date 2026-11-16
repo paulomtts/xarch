@@ -4,7 +4,7 @@ import pytest
 
 from tests.modules.rules.application.logic.checks import libraries as violations
 from tests.modules.rules.builders import PROFILE, imp, profile, source
-from xarch.kernel.logic.placement import EVERYTHING
+from xarch.kernel.placement import EVERYTHING
 
 
 def problems(path: str, *imports, checked=PROFILE) -> list[str]:

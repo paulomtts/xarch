@@ -20,7 +20,8 @@ from __future__ import annotations
 from collections.abc import Iterable, Iterator, Mapping
 
 from xarch.kernel.logic.placement import reaches
-from xarch.kernel.logic.source import Import, Unparsable, relative_target
+from xarch.kernel.logic.source import relative_target
+from xarch.kernel.source import Import, Unparsable
 from xarch.modules.spec.application.logic.defaults import TESTS
 from xarch.modules.spec.application.logic.project_files import EXAMPLE_APP
 from xarch.modules.spec.domain.values import Architecture, Example

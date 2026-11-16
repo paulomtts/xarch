@@ -4,7 +4,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any, Protocol
 
-from xarch.kernel.logic.capabilities import FACTS, Shortfall, shortfalls
+from xarch.kernel.capabilities import FACTS, Shortfall
+from xarch.kernel.logic.capabilities import shortfalls
 from xarch.kernel.logic.language import LanguageView
 from xarch.kernel.logic.origin import Origin
 from xarch.modules.rules.domain.errors import ChecksRefused, ProfileUnusable, RuleRefused

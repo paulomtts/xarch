@@ -4,8 +4,8 @@ and, for the rules given, only the kinds they read."""
 import pytest
 
 from tests.modules.rules.builders import PROFILE, imp, in_tests, source
-from xarch.kernel.logic.placement import Place
-from xarch.kernel.logic.source import Unparsable
+from xarch.kernel.placement import Place
+from xarch.kernel.source import Unparsable
 from xarch.modules.rules.application.logic.facts import KINDS, facts_of
 from xarch.modules.rules.domain.rule import (
     APP,

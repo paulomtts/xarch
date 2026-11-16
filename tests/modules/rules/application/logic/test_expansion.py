@@ -7,7 +7,7 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.rules.builders import PROFILE
-from xarch.kernel.logic.placement import Target
+from xarch.kernel.placement import Target
 from xarch.modules.rules.application.logic import expansion
 from xarch.modules.rules.domain.rule import Rule
 

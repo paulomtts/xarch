@@ -7,7 +7,7 @@ import pytest
 from tests.fakes.settings import FakeSettings
 from tests.modules.spec.application.builders import BASE, spec_controller
 from xarch.kernel.logic.origin import Origin
-from xarch.kernel.logic.source import Import
+from xarch.kernel.source import Import
 from xarch.modules.spec.contract import CheckProfile, NoProfileChosen, Problem, ProfileChecked, ProfileRefused
 from xarch.modules.spec.domain.values import Configured
 

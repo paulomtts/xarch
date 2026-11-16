@@ -8,7 +8,8 @@ from __future__ import annotations
 from collections.abc import Iterator, Mapping
 from typing import Any
 
-from xarch.kernel.logic.capabilities import FACTS, Shortfall, shortfalls
+from xarch.kernel.capabilities import FACTS, Shortfall
+from xarch.kernel.logic.capabilities import shortfalls
 from xarch.modules.spec.application.logic.key_lookup import keys_of
 from xarch.modules.spec.domain.profile_keys import GUARD, PART, PROFILE, TESTING, TIER, Key
 from xarch.modules.spec.domain.values import Language

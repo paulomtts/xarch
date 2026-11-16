@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from xarch.kernel.logic.source import Import
+from xarch.kernel.source import Import
 from xarch.modules.rules.application.ports.source_tree import SourceTree
 from xarch.modules.rules.domain.errors import Unreadable
 

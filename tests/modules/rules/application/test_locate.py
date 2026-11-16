@@ -7,8 +7,9 @@ import pytest
 from tests.fakes.filesystem import FakeSourceTree
 from tests.fakes.profiles import FakeProfiles
 from tests.modules.rules.application.helpers import controller
-from xarch.kernel.logic.placement import Excluded, Repeat, Target
+from xarch.kernel.logic.placement import Excluded
 from xarch.kernel.logic.testing import TierView as Tier
+from xarch.kernel.placement import Repeat, Target
 from xarch.modules.rules.contract import (
     ChecksCannotRun,
     CoveringTest,

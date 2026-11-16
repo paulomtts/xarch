@@ -78,8 +78,8 @@ import tokenize
 from collections.abc import Iterable
 from pathlib import Path
 
-from xarch.kernel.logic.source import Import, Unparsable
 from xarch.kernel.logic.testing import CaseTable
+from xarch.kernel.source import Import, Unparsable
 from xarch.modules.rules.domain.values import (
     Call,
     Callback,

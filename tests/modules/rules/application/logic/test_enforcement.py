@@ -5,7 +5,7 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.rules.builders import PYTHON
-from xarch.kernel.logic.capabilities import Shortfall
+from xarch.kernel.capabilities import Shortfall
 from xarch.kernel.logic.language import LanguageView
 from xarch.kernel.logic.origin import Loosened, Origin
 from xarch.kernel.logic.placement import Excluded

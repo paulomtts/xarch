@@ -59,8 +59,9 @@ from collections.abc import Collection, Mapping
 from dataclasses import dataclass, field, replace
 from typing import Any
 
-from xarch.kernel.logic.placement import EVERYTHING, Repeat, root_of
+from xarch.kernel.logic.placement import root_of
 from xarch.kernel.logic.testing import CaseTable, Fakes, Framework, ScenarioCoverage, StandIns
+from xarch.kernel.placement import EVERYTHING, Repeat
 from xarch.modules.spec.application.logic import profile_checks as ck
 from xarch.modules.spec.application.logic import profile_examples as ex
 from xarch.modules.spec.application.logic import profile_needs as needs

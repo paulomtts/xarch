@@ -8,10 +8,11 @@ from tests.fakes.filesystem import FakeSourceTree
 from tests.fakes.profiles import FakeProfiles
 from tests.modules.rules.application.helpers import controller
 from tests.modules.rules.builders import PYTHON
-from xarch.kernel.logic.capabilities import Shortfall
+from xarch.kernel.capabilities import Shortfall
 from xarch.kernel.logic.origin import Origin
-from xarch.kernel.logic.placement import Excluded, Repeat, Target
-from xarch.kernel.logic.source import Import
+from xarch.kernel.logic.placement import Excluded
+from xarch.kernel.placement import Repeat, Target
+from xarch.kernel.source import Import
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.contract import (
     ApproximateView,

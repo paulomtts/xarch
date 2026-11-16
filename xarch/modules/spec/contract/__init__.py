@@ -6,12 +6,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from xarch.kernel.logic.capabilities import Shortfall
+from xarch.kernel.capabilities import Shortfall
 from xarch.kernel.logic.language import LanguageView
 from xarch.kernel.logic.origin import Origin
-from xarch.kernel.logic.placement import Excluded, Repeat, Target
+from xarch.kernel.logic.placement import Excluded
 from xarch.kernel.logic.project_file import ProjectFile
 from xarch.kernel.logic.testing import Fakes, Framework, ScenarioCoverage, StandIns, TierView
+from xarch.kernel.placement import Repeat, Target
 
 __all__ = ["Entry", "Repeating", "Skeleton", "DocFile", "Docs", "ProjectFiles", "FilesResult", "OriginResult", "PartView",
            "GuardsView", "ProfileView", "ChooseApp", "AppChosen", "ChooseAppResult",

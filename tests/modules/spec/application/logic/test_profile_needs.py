@@ -7,7 +7,8 @@ import pytest
 
 from tests.modules.spec.languages import PYTHON
 from tests.modules.spec.profiles_v2 import covered, layered, parsed, problems
-from xarch.kernel.logic.capabilities import EXACT, FACTS, PARTIAL, Shortfall, Supply
+from xarch.kernel.capabilities import EXACT, FACTS, Shortfall, Supply
+from xarch.modules.spec.application.logic.language_file import PARTIAL
 from xarch.modules.spec.application.logic.profile_needs import configured
 from xarch.modules.spec.domain.profile_keys import KEYS
 

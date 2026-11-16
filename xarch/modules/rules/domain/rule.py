@@ -16,7 +16,7 @@ from difflib import get_close_matches
 from string import Formatter
 from typing import NamedTuple
 
-from xarch.kernel.logic.placement import Place, Target
+from xarch.kernel.placement import Place, Target
 from xarch.modules.rules.domain.errors import RuleRefused
 from xarch.modules.rules.domain.values import SourceFile
 from xarch.modules.rules.domain.vocabulary import (

@@ -6,22 +6,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from xarch.kernel.logic.capabilities import Shortfall, Supply
+from xarch.kernel.capabilities import Shortfall, Supply
 from xarch.kernel.logic.origin import Origin
-from xarch.kernel.logic.placement import (
-    EACH,
-    EVERYTHING,
-    Excluded,
-    Marks,
-    Place,
-    Repeat,
-    Scope,
-    Target,
-    place_of,
-    repeat_of,
-    with_itself,
-)
+from xarch.kernel.logic.placement import Excluded, place_of, repeat_of, with_itself
 from xarch.kernel.logic.testing import Fakes, Framework, ScenarioCoverage, StandIns
+from xarch.kernel.placement import EACH, EVERYTHING, Marks, Place, Repeat, Scope, Target
 
 
 @dataclass(frozen=True)

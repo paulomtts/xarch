@@ -3,7 +3,7 @@ a word quoted only where the format would read it otherwise, and the sayings but
 import pytest
 
 from xarch.kernel.logic.language import LanguageView
-from xarch.kernel.logic.placement import Target
+from xarch.kernel.placement import Target
 from xarch.modules.rules.application.logic.written import check, filled, written
 from xarch.modules.rules.domain.rule import (
     EXISTING,

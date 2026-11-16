@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from xarch.kernel.logic.placement import EACH, Place, Target, matches, place_of, reaches, with_itself
+from xarch.kernel.logic.placement import module_steps, place_of, reaches, with_itself
+from xarch.kernel.placement import EACH, Marks, Place, Target
 from xarch.modules.rules.domain.values import Profile
 
 
@@ -20,6 +21,13 @@ def place(profile: Profile, path: tuple[str, ...]) -> Place | None:
     if not path or any(matches(folder, path, profile.language.marks) for folder in profile.folders):
         return found
     return None
+
+
+def matches(pattern: tuple[str, ...], path: tuple[str, ...], marks: Marks) -> bool:
+    """Whether a path is exactly the pattern, `*` standing for any name."""
+    pattern, steps = module_steps(pattern, marks), module_steps(path, marks)
+    return len(pattern) == len(steps) and all(
+        step != EACH and want in (EACH, step) for want, step in zip(pattern, steps))
 
 
 def label(profile: Profile, where: Place) -> str:

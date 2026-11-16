@@ -6,7 +6,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from xarch.kernel.logic.placement import EVERYTHING, root_of
+from xarch.kernel.logic.placement import root_of
+from xarch.kernel.placement import EVERYTHING
 from xarch.modules.spec.domain.values import EACH, Part, Target
 
 WORD = "everything"

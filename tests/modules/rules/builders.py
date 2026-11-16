@@ -13,9 +13,9 @@ import sys
 from dataclasses import replace
 
 from xarch.kernel.logic.language import LanguageView
-from xarch.kernel.logic.placement import EVERYTHING, Repeat, Target
-from xarch.kernel.logic.source import Import
 from xarch.kernel.logic.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns, TierView
+from xarch.kernel.placement import EVERYTHING, Repeat, Target
+from xarch.kernel.source import Import
 from xarch.modules.rules.domain.values import Profile, SourceFile
 
 PYTHON = LanguageView("Python", ".py", "__init__.py", (("typing", "Protocol"), ("typing_extensions", "Protocol")),

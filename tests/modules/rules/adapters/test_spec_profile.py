@@ -2,12 +2,13 @@
 each looseness, and the init files are compared as text."""
 import pytest
 
-from xarch.kernel.logic.capabilities import EXACT, PARTIAL, Shortfall, Supply
+from xarch.kernel.capabilities import EXACT, Shortfall, Supply
 from xarch.kernel.logic.language import LanguageView
 from xarch.kernel.logic.origin import Loosened, Origin
-from xarch.kernel.logic.placement import Excluded, Repeat, Target
+from xarch.kernel.logic.placement import Excluded
 from xarch.kernel.logic.project_file import ProjectFile
 from xarch.kernel.logic.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns, TierView
+from xarch.kernel.placement import Repeat, Target
 from xarch.modules.rules.adapters.spec_profile import SpecProfiles, WrittenChecks
 from xarch.modules.rules.domain.errors import ProfileUnusable
 from xarch.modules.rules.domain.rule import APP, MAY_NOT, Condition, Match, Rule, Saying, Scope
@@ -105,7 +106,7 @@ CHECK = {"read": ("call",), "in": {"files": "app", "part": "core", "tier": "", "
          "cases": ({"when": ("of-kind call",), "message": "c", "fix": "f", "once_per": ()},),
          "examples": {"flagged": (("core/a.py", "x()\n"),), "clean": (("core/b.py", "\n"),)},
          "may_not": ({"kind": "path", "values": ("app.api", ".run()")}, {"kind": "part", "values": ("api",)})}
-SUPPLIES = LanguageView("Toy", supplies=(Supply("call", EXACT), Supply("import", PARTIAL, "no star imports")))
+SUPPLIES = LanguageView("Toy", supplies=(Supply("call", EXACT), Supply("import", "partial", "no star imports")))
 
 
 def test_a_check_the_profile_writes_becomes_a_rule_with_its_examples_and_its_key():

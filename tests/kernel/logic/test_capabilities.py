@@ -2,9 +2,10 @@
 partial or does not grade."""
 import pytest
 
-from xarch.kernel.logic.capabilities import EXACT, PARTIAL, Shortfall, Supply, shortfalls
+from xarch.kernel.capabilities import EXACT, Shortfall, Supply
+from xarch.kernel.logic.capabilities import shortfalls
 
-SUPPLIES = {"import": Supply("import", EXACT), "class": Supply("class", PARTIAL, "nested classes are not read")}
+SUPPLIES = {"import": Supply("import", EXACT), "class": Supply("class", "partial", "nested classes are not read")}
 
 
 @pytest.mark.parametrize("needs, short", [

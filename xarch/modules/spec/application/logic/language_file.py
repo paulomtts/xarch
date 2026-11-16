@@ -39,7 +39,7 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
-from xarch.kernel.logic.capabilities import EXACT, FACTS, PARTIAL, Supply
+from xarch.kernel.capabilities import EXACT, FACTS, Supply
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import Language
 
@@ -52,6 +52,8 @@ REQUIRED = ("title", "extension", "package_file", "namespace", "standard")
 _EXTENSION = re.compile(r"\.[A-Za-z0-9]+")
 _DOTTED = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*")
 _WORD = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+PARTIAL = "partial"
+"""How the data file grades a fact its reader supplies only partly, with what it misses."""
 _FOLDER = re.compile(r"[A-Za-z0-9_.-]+")
 _IMPORTING = re.compile(r"(?=[^\n]*\{dotted\})(?=[^\n]*\{name\})[^\n]+")
 

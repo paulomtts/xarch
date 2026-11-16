@@ -10,7 +10,7 @@ import re
 from collections.abc import Iterable
 
 from xarch.kernel.logic.language import LanguageView
-from xarch.kernel.logic.placement import Target
+from xarch.kernel.placement import Target
 from xarch.modules.rules.domain.rule import (
     ANY,
     APP,

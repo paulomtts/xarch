@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from xarch.kernel.logic.placement import EVERYTHING
+from xarch.kernel.placement import EVERYTHING
 from xarch.modules.rules.contract import (
     CoveringTest,
     Fake,

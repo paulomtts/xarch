@@ -2,8 +2,8 @@
 import pytest
 
 from tests.modules.rules.builders import PROFILE, TWO, profile, steps
-from xarch.kernel.logic.placement import Place, Target
-from xarch.modules.rules.application.logic.places import allowed, label, place, targets_of
+from xarch.kernel.placement import Marks, Place, Target
+from xarch.modules.rules.application.logic.places import allowed, label, matches, place, targets_of
 
 
 @pytest.mark.parametrize("path, expected", [
@@ -118,3 +118,21 @@ def test_a_place_of_the_second_repeating_folder_is_named_by_its_full_folder():
 ])
 def test_allowed_across_repeating_folders(src, dst, expected):
     assert allowed(TWO, src, dst) == expected
+
+
+MARKS = Marks(".src", "pkg.src")
+
+
+@pytest.mark.parametrize("path, answer", [
+    (("modules", "docs", "application"), True),
+    (("modules", "docs", "application", "pkg.src"), True),
+    (("modules", "docs"), False),
+    (("modules", "*", "application"), False),
+    (("modules", "docs", "application", "x.src"), False),
+])
+def test_a_path_matches_a_pattern_only_exactly(path, answer):
+    assert matches(("modules", "*", "application"), path, MARKS) is answer
+
+
+def test_a_path_is_matched_with_the_marks_it_is_given_and_with_none_as_written():
+    assert matches(("domain", "x"), ("domain", "x.src"), Marks()) is False

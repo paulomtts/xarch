@@ -4,7 +4,7 @@ language reads it: its imports, or where it does not parse."""
 from tests.modules.spec.profiles_v2 import covered, parsed
 from tests.modules.spec.profiles_v2 import layered as layered_v2
 from tests.modules.spec.profiles_v2 import parsed as v2
-from xarch.kernel.logic.source import Import, Unparsable
+from xarch.kernel.source import Import, Unparsable
 from xarch.modules.spec.application.logic.example_imports import Read, example_problems
 
 

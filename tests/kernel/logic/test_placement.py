@@ -1,19 +1,8 @@
 """Where a path sits among path patterns, and which places a rule's target reaches."""
 import pytest
 
-from xarch.kernel.logic.placement import (
-    EVERYTHING,
-    Marks,
-    Place,
-    Repeat,
-    Target,
-    matches,
-    place_of,
-    reaches,
-    repeat_of,
-    root_of,
-    with_itself,
-)
+from xarch.kernel.logic.placement import place_of, reaches, repeat_of, root_of, with_itself
+from xarch.kernel.placement import EVERYTHING, Marks, Place, Repeat, Target
 
 MARKS = Marks(".src", "pkg.src")
 
@@ -67,17 +56,6 @@ def test_a_target_reaches_its_part_in_its_scope_below_its_path(target, src, dst,
     assert reaches(target, src, dst) is answer
 
 
-@pytest.mark.parametrize("path, answer", [
-    (("modules", "docs", "application"), True),
-    (("modules", "docs", "application", "pkg.src"), True),
-    (("modules", "docs"), False),
-    (("modules", "*", "application"), False),
-    (("modules", "docs", "application", "x.src"), False),
-])
-def test_a_path_matches_a_pattern_only_exactly(path, answer):
-    assert matches(("modules", "*", "application"), path, MARKS) is answer
-
-
 REPEATS = (Repeat("module", ("modules",)), Repeat("plugin", ("plugins",)))
 
 
@@ -117,4 +95,3 @@ def test_a_path_is_read_with_the_marks_it_is_given_and_with_none_as_written():
     assert place_of(patterns, ("domain", "index.mod"), Marks(".mod", "index.mod")) == Place("domain")
     assert place_of(patterns, ("domain", "x.src"), Marks()) == Place("domain", None, ("x.src",))
     assert place_of(patterns, ("main.src",), Marks()) == Place("main")
-    assert matches(("domain", "x"), ("domain", "x.src"), Marks()) is False

@@ -2,7 +2,7 @@
 as a file not valid in the language of the profile."""
 from tests.modules.rules.application.logic.checks import syntax as violations
 from tests.modules.rules.builders import PYTHON, source
-from xarch.kernel.logic.source import Unparsable
+from xarch.kernel.source import Unparsable
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.domain.values import Profile
 

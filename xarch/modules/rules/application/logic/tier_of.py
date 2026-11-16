@@ -19,9 +19,10 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from fnmatch import fnmatchcase
 
-from xarch.kernel.logic.placement import EACH, Place, Repeat, Target, matches, place_of
+from xarch.kernel.logic.placement import place_of
 from xarch.kernel.logic.testing import TierView
-from xarch.modules.rules.application.logic.places import targets_of
+from xarch.kernel.placement import EACH, Place, Repeat, Target
+from xarch.modules.rules.application.logic.places import matches, targets_of
 from xarch.modules.rules.domain.values import Profile
 
 NO_TIER = "lies in no tier: no part's folder and no tier's `folder` is mirrored here"

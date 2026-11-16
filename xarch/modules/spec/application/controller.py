@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from xarch.kernel.errors import DomainError
 from xarch.kernel.logic.language import LanguageView
-from xarch.kernel.logic.placement import Target
 from xarch.kernel.logic.testing import ScenarioCoverage, StandIns, TierView
+from xarch.kernel.placement import Target
 from xarch.modules.spec.application.logic.docs_files import DOCS_ROOT
 from xarch.modules.spec.application.logic.explain import (
     cleaned,

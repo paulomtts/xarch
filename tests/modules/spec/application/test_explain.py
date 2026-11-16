@@ -3,7 +3,7 @@ import pytest
 
 from tests.modules.spec.application.builders import spec_controller
 from tests.modules.spec.languages import PYTHON
-from xarch.kernel.logic.capabilities import FACTS
+from xarch.kernel.capabilities import FACTS
 from xarch.modules.spec.application.logic.explain import said
 from xarch.modules.spec.contract import Explain, FormatExplained, KeyExplained, Need, Shown, Symbol, UnknownKey
 from xarch.modules.spec.domain.profile_keys import SMALLEST, SYMBOLS

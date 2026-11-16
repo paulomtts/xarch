@@ -1,7 +1,7 @@
 """In-memory implementation of spec's ExampleReader port. Not an adapter: a test double only."""
 from __future__ import annotations
 
-from xarch.kernel.logic.source import Import, Unparsable
+from xarch.kernel.source import Import, Unparsable
 
 
 class FakeExampleReader:

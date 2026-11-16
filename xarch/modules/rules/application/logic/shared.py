@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from xarch.kernel.logic.placement import EACH, Place
+from xarch.kernel.placement import EACH, Place
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.imports import dotted, named_targets
 from xarch.modules.rules.application.logic.places import place

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from xarch.kernel.logic.capabilities import Supply
-from xarch.kernel.logic.placement import Marks
+from xarch.kernel.capabilities import Supply
+from xarch.kernel.placement import Marks
 
 
 @dataclass(frozen=True)

@@ -13,7 +13,8 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
 
-from xarch.kernel.logic.placement import EVERYTHING, Target, with_itself
+from xarch.kernel.logic.placement import with_itself
+from xarch.kernel.placement import EVERYTHING, Target
 from xarch.modules.spec.application.logic.migrate_examples import Gathered, gather, rewrite_examples
 from xarch.modules.spec.application.logic.profile_v1 import EACH, read_v1
 from xarch.modules.spec.domain.migration import Copy, OldPart, OldProfile, Tree

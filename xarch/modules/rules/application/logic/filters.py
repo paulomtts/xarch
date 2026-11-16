@@ -8,7 +8,8 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 
-from xarch.kernel.logic.placement import EVERYTHING, name_matches
+from xarch.kernel.logic.placement import name_matches
+from xarch.kernel.placement import EVERYTHING
 from xarch.modules.rules.application.logic.places import narrowed
 from xarch.modules.rules.domain.rule import ALL, ANY, APP, STRUCTURE, TESTS, Condition, Facts, Found, Read, Scope
 from xarch.modules.rules.domain.values import Profile

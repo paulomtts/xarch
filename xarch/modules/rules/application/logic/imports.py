@@ -5,8 +5,9 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
 
-from xarch.kernel.logic.placement import Marks
-from xarch.kernel.logic.source import Import, relative_target
+from xarch.kernel.logic.source import relative_target
+from xarch.kernel.placement import Marks
+from xarch.kernel.source import Import
 
 
 def dotted(path: tuple[str, ...], marks: Marks) -> tuple[tuple[str, ...], bool]:

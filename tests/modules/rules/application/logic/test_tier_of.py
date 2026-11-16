@@ -3,9 +3,9 @@ else from the file parts of its folder when they share a tier, else from a tier'
 import pytest
 
 from tests.modules.rules.builders import GUARD, INTEGRATION, PARTS, PROFILE, RENDERING, TWO, UNIT, profile, steps
-from xarch.kernel.logic.placement import EACH, Place, Target
 from xarch.kernel.logic.testing import Framework
 from xarch.kernel.logic.testing import TierView as Tier
+from xarch.kernel.placement import EACH, Place, Target
 from xarch.modules.rules.application.logic import tier_of
 from xarch.modules.rules.application.logic.tier_of import as_place, is_test
 

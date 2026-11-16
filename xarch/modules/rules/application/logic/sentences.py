@@ -8,7 +8,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from string import Formatter
 
-from xarch.kernel.logic.placement import EVERYTHING
+from xarch.kernel.placement import EVERYTHING
 from xarch.modules.rules.application.logic.places import label, narrowed, targets_of
 from xarch.modules.rules.domain.rule import Facts, Found, Match
 from xarch.modules.rules.domain.values import Profile

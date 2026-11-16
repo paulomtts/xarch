@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from tests.fakes.filesystem import FakeSourceTree
-from xarch.kernel.logic.source import Import, Unparsable
+from xarch.kernel.source import Import, Unparsable
 from xarch.modules.rules.application.controller import ReaderController
 from xarch.modules.rules.application.services.source_reading import SourceReadService
 from xarch.modules.rules.domain.values import SourceFile

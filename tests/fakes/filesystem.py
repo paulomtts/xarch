@@ -5,8 +5,8 @@ from collections.abc import Iterable
 from dataclasses import replace
 from pathlib import Path
 
-from xarch.kernel.logic.source import Import
 from xarch.kernel.logic.testing import CaseTable
+from xarch.kernel.source import Import
 from xarch.modules.layout.domain.structure import Requirement
 from xarch.modules.rules.domain.values import SourceFile
 from xarch.modules.scaffold.domain.values import FILE, FOLDER

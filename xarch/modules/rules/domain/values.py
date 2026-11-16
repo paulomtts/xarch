@@ -5,12 +5,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from xarch.kernel.logic.capabilities import Shortfall
+from xarch.kernel.capabilities import Shortfall
 from xarch.kernel.logic.language import LanguageView
 from xarch.kernel.logic.origin import Origin
-from xarch.kernel.logic.placement import Excluded, Place, Repeat, Target, repeat_of
-from xarch.kernel.logic.source import Import, Unparsable
+from xarch.kernel.logic.placement import Excluded, repeat_of
 from xarch.kernel.logic.testing import Fakes, Framework, ScenarioCoverage, StandIns, TierView
+from xarch.kernel.placement import Place, Repeat, Target
+from xarch.kernel.source import Import, Unparsable
 from xarch.kernel.violations import At, Violation, Weak
 
 if TYPE_CHECKING:

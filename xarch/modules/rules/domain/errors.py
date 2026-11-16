@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from xarch.kernel.errors import DomainError
-from xarch.kernel.logic.source import Unparsable
+from xarch.kernel.source import Unparsable
 
 
 class RootMissing(DomainError):
