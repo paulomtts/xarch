@@ -56,3 +56,12 @@ def test_how_a_check_is_written_lists_every_slot_and_every_category_with_its_wor
     assert [c.name for c in found.categories] == ["kinds", "quantifiers", "targets", "filters", "variables"]
     assert (found.example_key, found.example_profile) == ("checks.no-todo", "")
     assert found.example.splitlines()[:3] == ["checks:", "  no-todo:", "    read: comment"]
+
+
+def test_a_slot_of_a_check_is_explained_with_what_it_accepts_and_a_check_written_with_it():
+    found = explain({})(ExplainWords("checks.keep"))
+    assert (found.name, found.value, found.example_key) == ("keep", "filters", "checks.no-todo")
+    assert found.meaning.startswith("the filters a fact must pass, all of them, to be read: [<filter>, ...]")
+    assert explain({})(ExplainWords("checks.kep")) == UnknownWords("checks.kep", ("checks.keep", "checks.except",
+                                                                                 "checks.read"))
+    assert explain({"any": profile()})(ExplainWords("checks.may_only", ("any",))).example_key == "parts.kernel.may_import"

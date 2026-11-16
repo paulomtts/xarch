@@ -103,6 +103,13 @@ class RulesController:
                                WORKED[0].rule.key, "", written_own(WORKED[:1], language))
         if explained.category_at(typed):
             return WordsShown(_category(typed))
+        slot = explained.slot_at(typed)
+        if slot is not None:
+            key, location, example = self._example("quantifiers", slot.name, cmd.examples_from, language)
+            if not example:
+                key, location, example = WORKED[0].rule.key, "", written_own(WORKED[:1], language)
+            return WordShown(typed, CHECKS, slot.name, f"{slot.meaning}: {slot.accepts}", value=slot.takes,
+                             example_key=key, example_profile=location, example=example)
         at = explained.word_at(typed)
         if at is None:
             return UnknownWords(typed, explained.nearest(typed))

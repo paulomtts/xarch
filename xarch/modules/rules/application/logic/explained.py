@@ -15,11 +15,13 @@ from xarch.modules.rules.domain.vocabulary import (
     FILTERS,
     KINDS,
     QUANTIFIERS,
+    SLOTS,
     TARGETS,
     VARIABLES,
     Filter,
     Kind,
     Quantifier,
+    Slot,
     TargetKind,
     Variable,
 )
@@ -40,6 +42,8 @@ MEANINGS = {
 }
 """What each category holds, in a line."""
 NEAREST = 3
+SLOTTED = "checks"
+"""The first step of the address of a slot of a check: checks.keep."""
 
 
 def word_at(address: str) -> tuple[str, Word] | None:
@@ -55,7 +59,14 @@ def category_at(address: str) -> str:
 
 
 def addresses() -> list[str]:
-    return [*CATEGORIES, *(f"{category}.{word.name}" for category, words in CATEGORIES.items() for word in words)]
+    return [*CATEGORIES, *(f"{category}.{word.name}" for category, words in CATEGORIES.items() for word in words),
+            *(f"{SLOTTED}.{slot.name}" for slot in SLOTS)]
+
+
+def slot_at(address: str) -> Slot | None:
+    """The slot of a check at an address, `checks.<slot>`; None when there is none."""
+    prefix, _, name = address.strip().strip(".").partition(".")
+    return next((slot for slot in SLOTS if slot.name == name), None) if prefix == SLOTTED else None
 
 
 def nearest(typed: str) -> tuple[str, ...]:
