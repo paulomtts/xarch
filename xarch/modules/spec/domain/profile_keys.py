@@ -13,6 +13,7 @@ from dataclasses import dataclass, replace
 from textwrap import indent
 
 from xarch.modules.spec.domain.guards import GUARDS
+from xarch.modules.spec.domain.values import NoDuplicates, NoTwins
 
 PROFILE = "profile"
 PART = "part"
@@ -458,10 +459,11 @@ _KEYS: tuple[Key, ...] = (
     _k(SCENARIO_COVERAGE, "file", "the name of a use case's test file", "a name holding {name} once, for the use case",
        _COVERAGE_GUARD, True, rules=("scenario-coverage",)),
 
-    _k(NO_DUPLICATES, "min_statements", "the fewest statements that count", "a whole number, 4 when left out",
+    _k(NO_DUPLICATES, "min_statements", "the fewest statements that count",
+       f"a whole number, {NoDuplicates.min_statements} when left out",
        _guarded("no-duplicates: {min_statements: 6}\n"), rules=("no-duplicates",)),
 
-    _k(NO_TWINS, "min_fields", "the fewest fields that count", "a whole number, 3 when left out",
+    _k(NO_TWINS, "min_fields", "the fewest fields that count", f"a whole number, {NoTwins.min_fields} when left out",
        _guarded("no-twins: {min_fields: 3}\n"), rules=("no-twins",)),
     _k(NO_TWINS, "min_renamed", "also report a copy that renamed fields, from this many fields",
        "a whole number, at least 2; left out, the case is off. Two classes of parts with different names, the shorter "

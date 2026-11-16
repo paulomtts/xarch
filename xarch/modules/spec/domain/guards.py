@@ -2,6 +2,8 @@
 `package_only: true`) uses, each with the parameters it takes."""
 from __future__ import annotations
 
+from xarch.modules.spec.domain.values import NoDuplicates, NoTwins
+
 GUARDS = {
     "package-only": "`package_only: true` on each part: parts that are imported only as a package, never by their "
                     "files, from outside it",
@@ -25,12 +27,14 @@ GUARDS = {
                      "same code: the same tree once formatting, docstrings, annotations, defaults, decorators and "
                      "local names are ignored, so the same statements, calls, attributes, constants, keyword names, "
                      "async or not, and number of parameters; what is called is part of it. A function counts when "
-                     "it holds at least min_statements statements (nested ones counted; 4 when left out). The first "
-                     "by file and line is the original; each other is reported naming it",
+                     "it holds at least min_statements statements (nested ones counted; "
+                     f"{NoDuplicates.min_statements} when left out). The first by file and line is the original; "
+                     "each other is reported naming it",
     "no-twins": "{min_fields: <number>}: no two public classes of the app (never its tests), defined at the top level "
                 "of files of parts with different names, declare the same fields in the same order: the names their "
                 "bodies annotate, types and defaults aside, class variables left out. A class counts when it "
-                "declares at least min_fields of them (3 when left out) and is no %interface%; two classes of the "
+                f"declares at least min_fields of them ({NoTwins.min_fields} when left out) and is no %interface%; two "
+                "classes of the "
                 "same part, in one instance of a repeating folder or two, are not compared. Of the classes with "
                 "the same fields, in the order of the parts, then of file and line, each one with an earlier "
                 "twin in a part of another name is reported naming that twin, one of its own instance first. With "

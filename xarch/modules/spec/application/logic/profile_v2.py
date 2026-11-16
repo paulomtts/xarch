@@ -804,12 +804,7 @@ def _no_duplicates(spec: Any, where: str, problems: list[str]) -> NoDuplicates:
         problems.append(f"{where}: must be a mapping {{min_statements: <number>}}, or {{}} for the default")
         return NoDuplicates()
     problems += ck.unknown_keys(spec, names_of(NO_DUPLICATES), where)
-    least = spec.get("min_statements", NoDuplicates.min_statements)
-    if isinstance(least, bool) or not isinstance(least, int) or least < 1:
-        problems.append(f"{where}.min_statements: must be a whole number of statements, at least 1, such as "
-                        f"{NoDuplicates.min_statements}")
-        return NoDuplicates()
-    return NoDuplicates(least)
+    return NoDuplicates(_minimum(spec, "min_statements", NoDuplicates.min_statements, "statements", where, problems))
 
 
 def _no_twins(spec: Any, where: str, problems: list[str]) -> NoTwins:
@@ -820,11 +815,7 @@ def _no_twins(spec: Any, where: str, problems: list[str]) -> NoTwins:
                         "<number>}, or {} for the default")
         return NoTwins()
     problems += ck.unknown_keys(spec, names_of(NO_TWINS), where)
-    least = spec.get("min_fields", NoTwins.min_fields)
-    if isinstance(least, bool) or not isinstance(least, int) or least < 1:
-        problems.append(f"{where}.min_fields: must be a whole number of fields, at least 1, such as "
-                        f"{NoTwins.min_fields}")
-        least = NoTwins.min_fields
+    least = _minimum(spec, "min_fields", NoTwins.min_fields, "fields", where, problems)
     found = []
     for name in ("min_renamed", "min_subset"):
         value = spec.get(name)
@@ -834,6 +825,15 @@ def _no_twins(spec: Any, where: str, problems: list[str]) -> NoTwins:
             value = None
         found.append(value)
     return NoTwins(least, *found)
+
+
+def _minimum(spec: Mapping[Any, Any], key: str, default: int, noun: str, where: str, problems: list[str]) -> int:
+    """The fewest of something a guard counts, at key: a whole number, at least 1; default when left out or wrong."""
+    least = spec.get(key, default)
+    if isinstance(least, bool) or not isinstance(least, int) or least < 1:
+        problems.append(f"{where}.{key}: must be a whole number of {noun}, at least 1, such as {default}")
+        return default
+    return least
 
 
 def _pass_through(spec: Any, declared: set[str], parts: dict[str, Part], where: str,
