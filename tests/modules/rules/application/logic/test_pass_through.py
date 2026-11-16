@@ -3,7 +3,7 @@ listed as weak, never as a violation."""
 from tests.modules.rules.application.logic.checks import pass_through as weak
 from tests.modules.rules.builders import profile, source
 from xarch.modules.rules.domain.published import Weak
-from xarch.modules.rules.domain.values import Function, SoleCall
+from xarch.modules.rules.domain.values import Function, Signature, SoleCall
 
 ON = profile(pass_through=("services",))
 SERVICES = "modules/docs/application/services/doc.py"
@@ -11,8 +11,8 @@ SERVICES = "modules/docs/application/services/doc.py"
 
 def forwarding(line: int, name: str, callee: tuple[str, ...], owner: str = "") -> Function:
     """A function whose whole body passes its one parameter on to callee, as the reader records one that forwards."""
-    return Function(line, name, owner=owner, sole_call=SoleCall(callee, ("id",)),
-                    forwards=".".join(callee) if owner else "")
+    return Function(line, name, owner=owner, signature=Signature(("self", "id") if owner else ("id",)),
+                    sole_call=SoleCall(callee, ("id",)))
 
 
 def found(path: str = SERVICES, checked=ON, **fields):
@@ -52,7 +52,7 @@ def test_a_part_that_is_a_file_and_a_folder_part_are_read_alike():
 
 
 def test_a_method_that_returns_an_attribute_of_what_it_forwards_to_says_which():
-    method = Function(4, "language", owner="SpecSkeleton", forwards="self._spec.skeleton",
+    method = Function(4, "language", owner="SpecSkeleton", signature=Signature(("self", "profile")),
                       sole_call=SoleCall(("self", "_spec", "skeleton"), ("profile",), then=("view", "language")))
     assert weak([source(SERVICES, functions=(method,))], ON) == [Weak(
         "pass-through", f"app/{SERVICES}", 4,

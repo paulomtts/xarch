@@ -43,8 +43,6 @@ FACTS: dict[str, str] = {
     "function.signature": "a function's parameters by kind",
     "function.sole_call": "the one call a function's whole body makes, with its arguments",
     "function.decorated": "whether a function has a decorator",
-    "function.forwards": "whether a method only passes its arguments on to one call on what its object holds, and "
-                         "that call's callee",
     "function.returns": "the names a function's return annotation mentions",
     "function.blocks": "each statement of a function's body that opens a block, by its keyword",
     "function.expressions": "each expression of a function's body that chooses between values, by its keyword",

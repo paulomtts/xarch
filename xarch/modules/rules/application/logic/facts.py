@@ -28,8 +28,8 @@ turns its language's imports and names into such paths, and a fact into the app 
     class               each class defined at the top level, name its name, names those its bases and body mention;
                         exception, record, interface and immutable when it is one (below)
     function            each function defined at the top level or in a class of the top level, name its name, path
-                        its class and its name; top-level when it is in no class; forwards when it is a method the
-                        reader says only forwards, text the callee it forwards to and target the attributes it
+                        its class and its name; top-level when it is in no class; forwards when it is a method that
+                        only forwards (see forwarding), text the callee it forwards to and target the attributes it
                         returns of the call's result
     callback            each call of a function's own parameter by its bare name, path the function, name the
                         parameter; receiver when the parameter is the first of a method, annotated-callable when its
@@ -60,6 +60,7 @@ from dataclasses import replace
 
 from xarch.kernel.placement import Place
 from xarch.modules.rules.application.logic.filters import in_scope
+from xarch.modules.rules.application.logic.forwarding import forwards
 from xarch.modules.rules.application.logic.imports import dotted, named_targets, targets
 from xarch.modules.rules.application.logic.places import place
 from xarch.modules.rules.application.logic.tier_of import tested
@@ -67,6 +68,7 @@ from xarch.modules.rules.domain.rule import MUST_REACH, Defined, Fact, Facts, Re
 from xarch.modules.rules.domain.values import Class, Function, Profile, SourceFile
 from xarch.modules.rules.domain.vocabulary import KINDS as VOCABULARY
 from xarch.profile_values.checks import Scope
+from xarch.profile_values.language import CheckedLanguage
 
 Placements = dict[tuple[str, ...], Place | None]
 """Where each path below the root placed so far sits."""
@@ -169,7 +171,7 @@ def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: 
             return tuple(Fact("class", c.line, (c.name,), c.name, _class(c, file, read, profile, defined, ports),
                               names=c.named) for c in file.classes)
         case "function":
-            return tuple(_function(f) for f in file.functions)
+            return tuple(_function(f, profile.language) for f in file.functions)
         case "callback":
             return tuple(Fact("callback", c.line, (c.function,), c.parameter,
                               frozenset(n for n, on in ((_RECEIVER, c.receiver), (_ANNOTATED, c.annotated)) if on))
@@ -239,14 +241,15 @@ def _class(cls: Class, file: SourceFile, read: Read, profile: Profile, defined: 
                                      ("interface", ports.get(cls.name) is cls), ("immutable", cls.immutable)) if on)
 
 
-def _function(function: Function) -> Fact:
+def _function(function: Function, language: CheckedLanguage) -> Fact:
     path = (function.owner, function.name) if function.owner else (function.name,)
     if not function.owner:
         return Fact("function", function.line, path, function.name, _TOP)
-    if not function.forwards or function.sole_call is None:
+    callee = forwards(function, language)
+    if not callee or function.sole_call is None:
         return Fact("function", function.line, path, function.name)
     return Fact("function", function.line, path, function.name, _FORWARDS, target=function.sole_call.then,
-                text=function.forwards)
+                text=callee)
 
 
 def _file(file: SourceFile, read: Read, defined: Defined) -> frozenset[str]:

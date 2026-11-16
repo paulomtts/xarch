@@ -172,6 +172,9 @@ FIELDS: dict[str, str] = {
 _IMPORT = ("import",)
 _CLASS_EXCEPTION = ("class", "class.exception")
 
+_FORWARDS = ("function.decorated", "function.signature", "function.sole_call")
+"""What working out whether a method only forwards reads of the language's reader (see forwarding)."""
+
 KINDS: tuple[Kind, ...] = (
     Kind("syntax-error", "a file that does not parse, at the line of its error: no other check reads it",
          ("line", "text"), needs=("syntax",)),
@@ -211,8 +214,7 @@ KINDS: tuple[Kind, ...] = (
     Kind("function", "each function defined at the top level, or as a method of a class of the top level",
          ("line", "name", "top-level", "forwards"),
          {"forwarded": "forwards", "returned": "returns-an-attribute"}, needs=("function",),
-         field_needs={"forwards": ("function.forwards",), "forwarded": ("function.forwards",),
-                      "returned": ("function.forwards",)}),
+         field_needs={"forwards": _FORWARDS, "forwarded": _FORWARDS, "returned": _FORWARDS}),
     Kind("callback", "each call of a function's own parameter by its bare name",
          ("line", "function", "name", "receiver", "annotated-callable"), needs=("callback",), verb="call"),
 )

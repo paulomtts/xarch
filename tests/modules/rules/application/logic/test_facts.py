@@ -16,6 +16,7 @@ from xarch.modules.rules.domain.values import (
     Function,
     Method,
     MethodCall,
+    Signature,
     SoleCall,
     SourceFile,
     Use,
@@ -30,7 +31,7 @@ APP_FILES = [
                                                   Class(9, "Shown", methods=(Method(10, "__repr__", "str"),))),
            module_functions=("make",), comments=(Comment(3, "# a note"),),
            functions=(Function(4, "make", returns_named=frozenset({"Shown"})),
-                      Function(6, "get", owner="Doc", forwards="self.repo.get", sole_call=SoleCall(
+                      Function(6, "get", owner="Doc", signature=Signature(("self",)), sole_call=SoleCall(
                           ("self", "repo", "get"), then=("name",)))),
            callbacks=(Callback(7, "make", "check", annotated=True),), named=frozenset({"Doc", "make"})),
     source("modules/docs/application/services/publish.py", imp(1, "app.modules.docs.domain", "doc"),

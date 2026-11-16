@@ -589,7 +589,7 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "guards.dead-code": ("class", "named"),
     "guards.dead-code.untested": (*_IMPORTS, "function.statements", "class", "class.exception", "function", "file"),
     "guards.dead-code.tests_only": ("class", "class.exception", "function", "named"),
-    "guards.pass-through": ("function", "function.forwards"),
+    "guards.pass-through": ("function", "function.decorated", "function.signature", "function.sole_call"),
     "guards.private-imports": _IMPORTS,
 }
 """The facts of the source each key that configures a check needs, by its address."""

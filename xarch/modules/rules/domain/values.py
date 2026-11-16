@@ -289,8 +289,7 @@ class Function:
     reader); "" when it has no real statement. decorated: it has a decorator; signature: its parameters;
     sole_call: the one call its whole body makes, None when it does not (see SoleCall). returns_named is every name
     its return annotation mentions, by its last step alone, a string annotation read as the expression it holds.
-    forwards is the dotted callee of the one call a method only passes its arguments on to, as the reader of the
-    language tells a method that does (see the reader), "" for one that does not. named is every name its definition
+    named is every name its definition
     mentions, by its last step: its decorators, its parameters' annotations and defaults, its return annotation and its
     body (a string annotation read as the expression it holds, no other text). expressions holds each expression of its
     body that chooses between values, as (line, the keyword the reader records it by)."""
@@ -308,7 +307,6 @@ class Function:
     sole_call: SoleCall | None = None
     returns_named: frozenset[str] = frozenset()
     inert: int = 0
-    forwards: str = ""
     named: frozenset[str] = frozenset()
     expressions: tuple[tuple[int, str], ...] = ()
 
