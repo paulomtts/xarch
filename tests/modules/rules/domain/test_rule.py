@@ -186,6 +186,19 @@ REACHED = {"quantifier": MUST_BE_REACHED, "targets": EXISTING, "facts": ("class"
     pytest.param({"quantifier": MUST_REACH, "links": ("import-into-app",), "exempt": c("relative"), "sayings": say()},
                  ["except: relative does not apply to file: it reads relative, which it does not carry; it applies to "
                   "import and imported-name"], id="an exception of a reach to targets excuses a file"),
+    pytest.param({"facts": ("import", "use"), "keep": c("standard"), "targets": EXISTING, "sayings": say("{line}")},
+                 ["keep: standard drops every use, which never carries standard: read it in another check, or drop it "
+                  "from `read`"], id="(audit) a filter kept that applies to only some of the kinds read"),
+    pytest.param({"facts": ("import", "use", "comment"), "keep": c("relative"), "targets": EXISTING,
+                  "sayings": say("{line}")},
+                 ["keep: relative drops every use and comment, which never carries relative: read them in another "
+                  "check, or drop them from `read`"], id="several kinds a filter kept drops"),
+    pytest.param({"scope": Scope(APP), "facts": ("import", "import-into-app"), "quantifier": MUST_REACH,
+                  "targets": (Match("outside"), Match("part", words=("store",))),
+                  "links": ("import-into-app", "function-reference"), "via": c("takes-a-name"), "sayings": say()},
+                 ["must_reach.through_only: takes-a-name drops every function-reference, which never carries name: "
+                  "read it in another check, or drop it from `must_reach.through`"],
+                 id="a filter a link passes that applies to only some of the kinds of link"),
     pytest.param({"keep": c("sunny"), "mode": "fial", "sayings": say("{weather}")},
                  ["keep: no filter is named 'sunny': write one of test, tiered, placed, package-file, mirrors-a-part, "
                   "may-import-everything, below, relative, standard, reserved, "
@@ -207,6 +220,18 @@ def test_a_rule_that_names_what_does_not_exist_or_does_not_apply_is_refused_with
 
 def test_a_rule_whose_words_all_apply_is_made():
     assert made(sayings=say("{where} imports {package} at {line}")).problems() == []
+
+
+@pytest.mark.parametrize("changes", [
+    pytest.param({"facts": ("import", "use"), "keep": c("not standard")}, id="a filter kept negated"),
+    pytest.param({"facts": ("import", "use"), "keep": c("placed")}, id="a filter about the file"),
+    pytest.param({"facts": ("import", "use"), "exempt": c("standard")}, id="an exception, which only fails to excuse"),
+    pytest.param({"facts": ("import", "use"), "sayings": (*say("a", "b", "standard"), *say("{line}"))},
+                 id="a case, which only fails to be said"),
+    pytest.param({"facts": ("import", "imported-name"), "keep": c("standard")}, id="a filter both kinds carry"),
+])
+def test_a_filter_that_applies_to_only_some_kinds_is_made_where_it_drops_no_kind_whole(changes):
+    assert made(**({"targets": EXISTING, "sayings": say("{line}")} | changes)).problems() == []
 
 
 @pytest.mark.parametrize("text, condition", [

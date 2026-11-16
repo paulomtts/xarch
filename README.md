@@ -186,7 +186,8 @@ checks:
 
 Its findings carry its id as their `rule`; `hints` may name it. The enforcement section lists each check of your own
 with how many facts it read, and one that read nothing (`reads nothing`), which passes for want of anything to check,
-fails `--strict`. A check whose words do not exist or do not apply where they are written, or that needs a fact the
+fails `--strict`. A check whose words do not exist or do not apply where they are written (a filter it keeps, or that
+its links pass, must apply to every kind they read, or it would drop that kind whole), or that needs a fact the
 language's reader does not supply, is refused with every problem at once, each at its address (`checks.<id>.keep`).
 The whole vocabulary, from the same table the engine reads, is the command:
 

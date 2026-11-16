@@ -204,7 +204,7 @@ class Rule:
         found += [f"read: {kind.name} is a fact of the {kind.side} only, and the scope reads the files of the "
                   f"{self.scope.files}: write `in: {{files: {kind.side}}}`" for kind in known
                   if kind.side and side and side != kind.side]
-        found += _conditions("keep", self.keep, known, side, self.quantifier)
+        found += _conditions("keep", self.keep, known, side, self.quantifier, "read")
         found += _quantified(self, known)
         said = [_KINDS[name] for name in self.said_kinds if name in _KINDS]
         found += _conditions("except", self.exempt, said, side, self.quantifier)
@@ -291,7 +291,10 @@ def _value(slot: str, condition: Condition, wanted: str) -> list[str]:
 
 
 def _conditions(slot: str, conditions: tuple[Condition, ...], kinds: list[Kind], side: str,
-                quantifier: str) -> list[str]:
+                quantifier: str, read: str = "") -> list[str]:
+    """What is wrong with the conditions of a slot over the kinds it reads; a slot that keeps only what passes them
+    (read: the slot that names those kinds) also refuses a filter that holds of no fact of one of the kinds, which it
+    would drop whole."""
     problems: list[str] = []
     for condition in conditions:
         word = _FILTERS.get(condition.name)
@@ -304,6 +307,11 @@ def _conditions(slot: str, conditions: tuple[Condition, ...], kinds: list[Kind],
             problems.append(f"{slot}: {condition.name} does not apply to {_and(k.name for k in kinds)}: it reads "
                             f"{_or(word.reads)}, which {_carried(kinds)}; it applies to "
                             f"{_and(k.name for k in KINDS if word.applies_to(k))}")
+        elif read and not condition.negated and any(not word.applies_to(kind) for kind in kinds):
+            dropped = [kind.name for kind in kinds if not word.applies_to(kind)]
+            them = "it" if len(dropped) == 1 else "them"
+            problems.append(f"{slot}: {condition.name} drops every {_and(dropped)}, which never carries "
+                            f"{_or(word.reads)}: read {them} in another check, or drop {them} from `{read}`")
         if word.needs == HIT and quantifier != MAY_NOT:
             problems.append(f"{slot}: {condition.name} reads the target a fact matched, which only a check under "
                             f"{MAY_NOT} has")
@@ -342,7 +350,7 @@ def _quantified(rule: Rule, kinds: list[Kind]) -> list[str]:
         return problems
     problems += _links(f"{quantifier}.through", rule.links, "reaches" if quantifier == MUST_REACH else "")
     linked = [_KINDS[name] for name in rule.links if name in _KINDS]
-    problems += _conditions(f"{quantifier}.through_only", rule.via, linked, "", quantifier)
+    problems += _conditions(f"{quantifier}.through_only", rule.via, linked, "", quantifier, f"{quantifier}.through")
     if quantifier == MUST_REACH:
         problems += [f"{quantifier}.{name}: only a check under {MUST_BE_REACHED} has it: drop it"
                      for name, on in (("from", rule.roots), ("then_through", rule.spread),
