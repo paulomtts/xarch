@@ -58,8 +58,8 @@ def test_a_method_written_with_a_leading_dot_and_parentheses_is_kept_as_written(
                               "a method called on anything", id="a method without its parentheses"),
     pytest.param("path.absolute()", f"forbidden.pure: 'path.absolute()' {METHOD}", id="a dotted name with parentheses"),
     pytest.param(".a.b()", f"forbidden.pure: '.a.b()' {METHOD}", id="a method of more than one step"),
-    pytest.param(".__init__()", "forbidden.pure: '.__init__()' is a dunder method, which no code calls by name",
-                 id="a dunder method"),
+    pytest.param(".__init__()", "forbidden.pure: '.__init__()' is a special method, which no code calls by name",
+                 id="a special method of the language"),
 ])
 def test_a_bad_method_is_refused_saying_what_to_write(name, problem):
     assert problems(with_list([name])) == [f"layered.yaml: {problem}"]

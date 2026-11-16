@@ -171,7 +171,7 @@ def parse_v2(document: Any, source: str, files: Collection[str] = (), presets: M
     layers = ck.layer_chains(document["layers"], parts, declared, rules, problems) if "layers" in document else {}
     testing = _testing(document["testing"], presets or {}, problems, language) if "testing" in document else None
     tiers = _tiers(document, specs, parts, declared, examples, problems, language)
-    fakes = _fakes(document["fakes"], parts, declared, problems) if "fakes" in document else None
+    fakes = _fakes(document["fakes"], parts, declared, problems, language) if "fakes" in document else None
     problems += ck.folder_clashes(tiers, fakes)
     guards = _guards(document.get("guards", {}), specs, parts, declared, tiers, fakes, testing, problems, language)
     problems += _needs_testing(document)
@@ -490,8 +490,8 @@ def _mocks(value: Any, problems: list[str], language: Language) -> StandIns | No
     count = len(problems)
     problems += ck.unknown_keys(value, names_of(MOCKS), where)
     problems += [f"{where}: missing `{key}`" for key in required_of(MOCKS) if key not in value]
-    calls = ck.dotted_names(value["calls"], f"{where}.calls", problems) if "calls" in value else None
-    autospec = ck.dotted_names(value["autospec"], f"{where}.autospec", problems) if "autospec" in value else ()
+    calls = ck.dotted_names(value["calls"], f"{where}.calls", problems, language) if "calls" in value else None
+    autospec = ck.dotted_names(value["autospec"], f"{where}.autospec", problems, language) if "autospec" in value else ()
     problems += [f"{where}.autospec: {'.'.join(name)!r} is also listed in calls" for name in autospec or ()
                  if calls and name in calls]
     keywords = (ck.identifiers(value["spec_keywords"], f"{where}.spec_keywords", problems, "keyword", "[spec]",
@@ -622,7 +622,8 @@ def _helpers(value: Any, examples: ex.Examples, where: str, problems: list[str],
     return tuple(helper for helper in helpers if helper is not None)
 
 
-def _fakes(value: Any, parts: dict[str, Part], declared: set[str], problems: list[str]) -> Fakes | None:
+def _fakes(value: Any, parts: dict[str, Part], declared: set[str], problems: list[str],
+           language: Language) -> Fakes | None:
     where = "fakes"
     if not isinstance(value, Mapping):
         problems.append(f"{where}: must be a mapping {{folder, for}} and optionally prefix: the folder of the fakes "
@@ -632,7 +633,7 @@ def _fakes(value: Any, parts: dict[str, Part], declared: set[str], problems: lis
     problems += ck.unknown_keys(value, names_of(FAKES), where)
     problems += [f"{where}: missing `{key}`" for key in required_of(FAKES) if key not in value]
     prefix = value.get("prefix", "")
-    if "prefix" in value and (not isinstance(prefix, str) or not ck.PACKAGE.fullmatch(prefix)):
+    if "prefix" in value and (not isinstance(prefix, str) or not ck.is_name(prefix, language)):
         problems.append(f"{where}.prefix: must be the start of a class name, such as Fake")
     folder = value.get("folder")
     steps = tuple(folder.split("/")) if ck.line(folder) and not folder.startswith("/") else ()
@@ -705,7 +706,8 @@ def _scenario_coverage(spec: Any, parts: dict[str, Part], declared: set[str], ti
                         "{decorator, row, id}")
     if len(problems) != count:
         return None
-    ck.scenario_places(spec["results"], spec["tier"], spec["suffix"], parts, declared, tiers, where, problems)
+    ck.scenario_places(spec["results"], spec["tier"], spec["suffix"], parts, declared, tiers, where, problems,
+                       language)
     columns = ck.column_names(spec["columns"], f"{where}.columns", problems, language)
     framework = testing.framework if testing is not None else None
     file = ck.use_case_file(spec["file"], framework, f"{where}.file", problems, language, "testing.files")

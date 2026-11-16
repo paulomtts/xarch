@@ -23,24 +23,27 @@ from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework
 
 PART_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_-]*")
-PACKAGE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
-DOTTED = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+")
-NAME_OR_DOTTED = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*")
-METHOD = re.compile(r"\.(?P<name>[A-Za-z_][A-Za-z0-9_]*)\(\)")
-"""A method in a `forbidden` list, called on anything: `.absolute()`."""
-FUNCTION_PATTERN = re.compile(r"[A-Za-z0-9_*]+")
-
+"""What a profile calls a part: letters, digits, `_` and `-`, not starting with a digit or `-`."""
+CALLED = "()"
+"""How a method in a `forbidden` list, called on anything, ends: `.absolute()`."""
 
 
 def is_name(text: str, language: Language) -> bool:
-    """Whether text is a name the language allows, as its data file says (any text when it does not say)."""
+    """Whether text is a name the language allows, as its data file says (any text but nothing when it does not say)."""
     return re.fullmatch(language.names or ".+", text) is not None
 
 
-def is_special(name: str, language: Language) -> bool:
-    """Whether a name is one the language reserves for itself: it starts and ends as its data file says such a name
-    does."""
-    return bool(language.checked.special) and name.startswith(language.checked.special) and name.endswith(language.checked.special)
+def is_dotted(text: str, language: Language, least: int = 1) -> bool:
+    """Whether text is names the language allows joined by dots, at least least of them."""
+    steps = text.split(".")
+    return len(steps) >= least and all(is_name(step, language) for step in steps)
+
+
+def method_name(item: str, language: Language) -> str | None:
+    """The name of the method an item of a `forbidden` list names, `.<name>()`; None when it names none."""
+    name = item[1:-len(CALLED)] if item.startswith(".") and item.endswith(CALLED) else ""
+    return name if is_name(name, language) else None
+
 
 def file_pattern(language: Language) -> re.Pattern[str]:
     """What a file name pattern is: letters, digits, `_`, `.`, `-` and `*`, ending in the language's extension."""
@@ -362,8 +365,8 @@ def case_table(value: Any, where: str, problems: list[str], language: Language) 
     count = len(problems)
     problems += unknown_keys(value, names_of(TABLE), where)
     problems += [f"{where}: missing `{key}`" for key in required_of(TABLE) if key not in value]
-    decorator = dotted(value["decorator"], f"{where}.decorator", problems) if "decorator" in value else None
-    row = dotted(value["row"], f"{where}.row", problems) if "row" in value else None
+    decorator = dotted(value["decorator"], f"{where}.decorator", problems, language) if "decorator" in value else None
+    row = dotted(value["row"], f"{where}.row", problems, language) if "row" in value else None
     if "id" in value and not (isinstance(value["id"], str) and is_name(value["id"], language)):
         problems.append(f"{where}.id: must be a keyword name")
     keywords = value.get("keywords")
@@ -391,21 +394,21 @@ def use_case_file(value: Any, framework: Framework | None, where: str, problems:
     return value
 
 
-def dotted(value: Any, where: str, problems: list[str]) -> tuple[str, ...] | None:
+def dotted(value: Any, where: str, problems: list[str], language: Language) -> tuple[str, ...] | None:
     """A dotted name such as pkg.sub.name, the path an absolute import binds."""
-    if not isinstance(value, str) or not DOTTED.fullmatch(value):
+    if not isinstance(value, str) or not is_dotted(value, language, 2):
         problems.append(f"{where}: {value!r} is not a dotted name such as pkg.sub.name")
         return None
     return tuple(value.split("."))
 
 
-def dotted_names(value: Any, where: str, problems: list[str]) -> tuple[tuple[str, ...], ...] | None:
+def dotted_names(value: Any, where: str, problems: list[str], language: Language) -> tuple[tuple[str, ...], ...] | None:
     if not isinstance(value, list) or not value:
         problems.append(f"{where}: must be a list of dotted names such as pkg.sub.Name")
         return None
     found: list[tuple[str, ...]] = []
     for item in value:
-        name = dotted(item, where, problems)
+        name = dotted(item, where, problems, language)
         if name is not None and name in found:
             problems.append(f"{where}: {item!r} is listed twice")
         elif name is not None:
@@ -474,9 +477,9 @@ def framework_patterns(value: Any, problems: list[str], where: str, known: Colle
     problems += unknown_keys(value, known, where)
     problems += [f"{where}: missing `{key}`" for key in ("files", "functions") if key not in value]
     files = file_patterns(value["files"], problems, f"{where}.files", language) if "files" in value else None
-    skips = dotted_names(value["skips"], f"{where}.skips", problems) if "skips" in value else ()
+    skips = dotted_names(value["skips"], f"{where}.skips", problems, language) if "skips" in value else ()
     functions = value.get("functions")
-    if "functions" in value and not (isinstance(functions, str) and FUNCTION_PATTERN.fullmatch(functions)
+    if "functions" in value and not (isinstance(functions, str)
                                      and is_name(functions.replace("*", "x"), language)):
         problems.append(f"{where}.functions: must be a function name pattern: a name with `*` for any text")
     if len(problems) != count or files is None or skips is None:
@@ -550,7 +553,7 @@ def reserved_modules(value: Any, problems: list[str], language: Language) -> dic
         return {}
     found: dict[str, str] = {}
     for name, reason in value.items():
-        if not isinstance(name, str) or not PACKAGE.fullmatch(name):
+        if not isinstance(name, str) or not is_name(name, language):
             problems.append(f"reserved: {name!r} is not a top-level import name, such as ast")
         elif name not in language.standard_names:
             problems.append(f"reserved: {name!r} is not in the {language.checked.title} standard library: an outside package "
@@ -571,7 +574,7 @@ def package_names(value: Any, where: str, problems: list[str], language: Languag
         return None
     found: list[str] = []
     for package in value:
-        if not isinstance(package, str) or not PACKAGE.fullmatch(package):
+        if not isinstance(package, str) or not is_name(package, language):
             problems.append(f"{where}: {package!r} is not a top-level import name, such as sqlmodel")
         elif package in language.standard_names and package not in reserved:
             problems.append(f"{where}: {package!r} is in the standard library, which every part may import unless "
@@ -594,14 +597,13 @@ def forbidden_names(value: Any, where: str, problems: list[str],
         return None
     found: list[tuple[str, ...]] = []
     for item in value:
-        method = METHOD.fullmatch(item) if isinstance(item, str) else None
-        if method is not None and is_special(method["name"], language):
-            problems.append(f"{where}: {item!r} is a dunder method, which no code calls by name")
-        elif method is None and isinstance(item, str) and item.startswith(".") and NAME_OR_DOTTED.fullmatch(item[1:]) \
-                and "." not in item[1:]:
+        method = method_name(item, language) if isinstance(item, str) else None
+        if method is not None and language.checked.is_special(method):
+            problems.append(f"{where}: {item!r} is a special method, which no code calls by name")
+        elif method is None and isinstance(item, str) and item.startswith(".") and is_name(item[1:], language):
             problems.append(f"{where}: {item!r} is neither a dotted name nor a method: write {item}() for a method "
                             "called on anything")
-        elif method is None and (not isinstance(item, str) or not NAME_OR_DOTTED.fullmatch(item)):
+        elif method is None and (not isinstance(item, str) or not is_dotted(item, language)):
             problems.append(f"{where}: {item!r} is not a dotted name such as datetime.datetime.now, nor an import "
                             "name such as socket, nor a method such as .absolute()")
         elif "." not in item and item in language.builtin_names:
@@ -615,7 +617,7 @@ def forbidden_names(value: Any, where: str, problems: list[str],
 
 
 def scenario_places(results: Any, tier: Any, suffix: Any, parts: dict[str, Part], declared: set[str],
-                    tiers: tuple[Tier, ...], where: str, problems: list[str]) -> None:
+                    tiers: tuple[Tier, ...], where: str, problems: list[str], language: Language) -> None:
     """The part holding the result unions lies in a repeating folder, the tier is declared and tests that part, and the
     suffix is the end of a name."""
     part = parts.get(results) if isinstance(results, str) else None
@@ -630,5 +632,5 @@ def scenario_places(results: Any, tier: Any, suffix: Any, parts: dict[str, Part]
         problems.append(f"{where}.tier: no tier named {tier!r}")
     elif part is not None and not any(item.part == results for item in found.subject):
         problems.append(f"{where}.tier: tier '{tier}' does not test part '{results}'")
-    if not isinstance(suffix, str) or not PACKAGE.fullmatch(suffix):
+    if not isinstance(suffix, str) or not is_name(suffix, language):
         problems.append(f"{where}.suffix: must be the end of a name, such as Result")
