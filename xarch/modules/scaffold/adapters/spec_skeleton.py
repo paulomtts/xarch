@@ -39,8 +39,7 @@ class SpecSkeleton:
 
     def language(self, profile: str) -> Language:
         skeleton = self._skeleton(profile)
-        checked = skeleton.language
-        return Language(checked.title, checked.package_file, skeleton.reserved, skeleton.names, checked.private)
+        return Language(skeleton.title, skeleton.package_file, skeleton.reserved, skeleton.names, skeleton.private)
 
     def default_app(self) -> str:
         return DEFAULT_APP
