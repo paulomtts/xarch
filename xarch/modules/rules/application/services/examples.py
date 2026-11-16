@@ -3,11 +3,13 @@ from __future__ import annotations
 from dataclasses import replace
 
 from xarch.kernel.logic.examples import is_test_example
+from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.engine import run
 from xarch.modules.rules.application.logic.facts import facts_of
-from xarch.modules.rules.application.logic.own_checks import resolved
+from xarch.modules.rules.application.logic.own_checks import held_problems, resolved
 from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.application.ports.source_tree import SourceTree
+from xarch.modules.rules.domain.published import Weak
 from xarch.modules.rules.domain.rule import OwnCheck
 from xarch.modules.rules.domain.values import Profile, SourceFile
 from xarch.profile_values.checks import ChecksHeld
@@ -25,20 +27,13 @@ class ExamplesService:
         """What is wrong with the profile's own checks, each problem at its address, and how many checks it has;
         raises ChecksRefused when its checks cannot be made, and DomainError when the profile cannot be read."""
         profile = resolved(self._profiles.profile(location))
-        found: list[str] = []
-        for own in profile.checks:
-            flagged, clean = self._found(own, own.flagged, profile, app), self._found(own, own.clean, profile, app)
-            where = f"checks.{own.rule.id}.examples"
-            if not flagged:
-                found.append(f"{where}.flagged: the check finds nothing in it: make the code hold what the check is "
-                             "written to find, or correct the check")
-            if clean:
-                first = clean[0]
-                found.append(f"{where}.clean: the check finds {len(clean)} in it, the first "
-                             f"{first.file}:{first.line}: {first.message}: make the code clean, or correct the check")
+        found = [problem for own in profile.checks
+                 for problem in held_problems(own.rule.id, self._found(own, own.flagged, profile, app),
+                                              self._found(own, own.clean, profile, app))]
         return ChecksHeld(tuple(found), len(profile.checks))
 
-    def _found(self, own: OwnCheck, files: tuple[tuple[str, str], ...], profile: Profile, app: str) -> list:
+    def _found(self, own: OwnCheck, files: tuple[tuple[str, str], ...], profile: Profile,
+               app: str) -> list[Violation | Weak]:
         tests = profile.default_tests
         read = [(tuple(path.split("/")), self._tree.parsed(code)) for path, code in files]
         app_files = [self._placed(parsed, (app, *steps), steps) for steps, parsed in read

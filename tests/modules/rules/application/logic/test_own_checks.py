@@ -1,11 +1,13 @@
 """The checks a profile writes itself, made into rules: each target resolved by its kind (a place by the target grammar,
 a dotted name into its steps, a part checked against the profile), the check refused with every problem at once when
 a word does not apply, a place or a part is not the profile's, or the language lacks a fact it needs; and listed as
-approximate when the language supplies one of its facts only partly."""
+approximate when the language supplies one of its facts only partly; and what is wrong with how one holds to its
+examples."""
 import pytest
 
 from tests.modules.rules.builders import profile
-from xarch.modules.rules.application.logic.own_checks import approximate, own, resolved
+from xarch.kernel.violations import Violation
+from xarch.modules.rules.application.logic.own_checks import approximate, held_problems, own, resolved
 from xarch.modules.rules.domain.errors import ChecksRefused
 from xarch.modules.rules.domain.rule import MAY_NOT, Match, Rule
 from xarch.profile_values.capabilities import EXACT, Shortfall, Supply
@@ -73,3 +75,18 @@ def test_a_profile_resolved_holds_its_checks_as_rules_and_their_approximate_keys
     done = resolved(profile(language=SUPPLIES, written={"imports": importing}))
     assert ([check.rule.id for check in done.checks], done.approximate) == (
         ["imports"], (Shortfall("checks.imports", "import", "no star imports"),))
+
+
+FOUND = Violation("app/a.py", 3, "a finding", "names", "f")
+
+
+@pytest.mark.parametrize("flagged, clean, problems", [
+    pytest.param([FOUND], [], [], id="something found in the flagged code, nothing in the clean code"),
+    pytest.param([], [], ["checks.mine.examples.flagged: the check finds nothing in it: make the code hold what the "
+                          "check is written to find, or correct the check"], id="nothing found in the flagged code"),
+    pytest.param([FOUND], [FOUND, FOUND], ["checks.mine.examples.clean: the check finds 2 in it, the first app/a.py:3: "
+                                           "a finding: make the code clean, or correct the check"],
+                 id="something found in the clean code, said by the first"),
+])
+def test_a_check_holds_to_its_examples_when_it_finds_something_flagged_and_nothing_clean(flagged, clean, problems):
+    assert held_problems("mine", flagged, clean) == problems

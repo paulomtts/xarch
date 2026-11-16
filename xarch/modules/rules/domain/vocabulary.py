@@ -129,6 +129,20 @@ class Variable:
 
 
 @dataclass(frozen=True)
+class WordFacets:
+    """What a word of any category says besides its name and meaning, each "" or empty when its category says none:
+    what it asks about (a filter: the file, the fact or what the fact reaches), the side of the files it applies to,
+    what its value is, and for a kind its fields (each name, what it is, and the filter under which a fact carries
+    it), the facts of the source it needs and its verb."""
+    about: str = ""
+    side: str = ""
+    value: str = ""
+    fields: tuple[tuple[str, str, str], ...] = ()
+    needs: tuple[str, ...] = ()
+    verb: str = ""
+
+
+@dataclass(frozen=True)
 class Quantifier:
     """What a check does with what it keeps: its name, what it means, and whether it reaches through the facts that
     link a file to others (through, through_only, then_through) rather than compare each fact alone."""

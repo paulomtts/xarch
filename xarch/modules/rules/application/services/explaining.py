@@ -25,9 +25,8 @@ from xarch.modules.rules.contract import (
     WordsShown,
 )
 from xarch.modules.rules.domain.published import CHECKS
-from xarch.modules.rules.domain.rule import Rule
-from xarch.modules.rules.domain.vocabulary import READING, SLOTS, Kind
-from xarch.modules.rules.domain.worked import WORKED
+from xarch.modules.rules.domain.rule import OwnCheck, Rule
+from xarch.modules.rules.domain.vocabulary import READING, SLOTS
 from xarch.profile_values.language import CheckedLanguage
 
 
@@ -50,37 +49,34 @@ class ExplainingService:
         language = self.language(examples_from)
         if typed == CHECKS:
             categories = tuple(_category(name) for name in explained.CATEGORIES)
-            return ChecksShown(READING, SLOTS, categories, WORKED[0].rule.key, "",
-                               self._form.written(written_own(WORKED[:1], language)))
+            key, location, example = self._example("", "", (), language, explained.fallback(CHECKS, CHECKS))
+            return ChecksShown(READING, SLOTS, categories, key, location, example)
         if explained.category_at(typed):
             return WordsShown(_category(typed))
         slot = explained.slot_at(typed)
         if slot is not None:
-            key, location, example = self._example("quantifiers", slot.name, examples_from, language)
-            if not example:
-                key, location, example = WORKED[0].rule.key, "", self._form.written(written_own(WORKED[:1], language))
+            key, location, example = self._example("quantifiers", slot.name, examples_from, language,
+                                                   explained.fallback(CHECKS, slot.name))
             return WordShown(typed, CHECKS, slot.name, f"{slot.meaning}: {slot.accepts}", value=slot.takes,
                              example_key=key, example_profile=location, example=example)
         at = explained.word_at(typed)
         if at is None:
             return UnknownWords(typed, explained.nearest(typed))
         category, word = at
-        key, location, example = self._example(category, word.name, examples_from, language)
-        kind = word if isinstance(word, Kind) else None
-        return WordShown(typed, category, word.name, word.meaning, getattr(word, "about", ""), explained.applies(word),
-                         getattr(word, "side", ""), getattr(word, "value", "") or getattr(word, "values", ""),
-                         tuple(FieldShown(*f) for f in explained.fields(kind)) if kind else (),
-                         explained.needs(kind) if kind else (), kind.verb if kind else "", key, location, example,
-                         explained.about(word))
+        key, location, example = self._example(category, word.name, examples_from, language,
+                                               explained.fallback(category, word.name))
+        facets = explained.facets(word)
+        return WordShown(typed, category, word.name, word.meaning, facets.about, explained.applies(word), facets.side,
+                         facets.value, tuple(FieldShown(*f) for f in facets.fields), facets.needs, facets.verb, key,
+                         location, example, explained.about(word))
 
-    def _example(self, category: str, name: str, locations: tuple[str, ...],
-                 language: CheckedLanguage) -> tuple[str, str, str]:
-        """The key, the profile ("" for a check written for the explanation) and the text of a word's example."""
+    def _example(self, category: str, name: str, locations: tuple[str, ...], language: CheckedLanguage,
+                 own: OwnCheck | None) -> tuple[str, str, str]:
+        """The key, the profile ("" for a check written for the explanation, own) and the text of a word's example."""
         found = self.example(category, name, locations)
         if found is not None:
             location, rule = found
             return rule.key or rule.id, location, self._form.written({rule.id: check_of(rule)})
-        own = next((check for check in WORKED if explained.uses(check.rule, category, name)), None)
         return (own.rule.key, "", self._form.written(written_own((own,), language))) if own is not None else ("", "", "")
 
     def example(self, category: str, name: str, locations: tuple[str, ...]) -> tuple[str, Rule] | None:
@@ -116,8 +112,7 @@ class ExplainingService:
         if not rules and expands(address):
             return KeyUnset(address, location, self._profiles.key(address))
         if not rules:
-            return NoRuleShown(address, location, "it expands to no rule of the engine here: the profile does not set "
-                                                  "it, or it is checked by a check of its own")
+            return NoRuleShown(address, location, explained.NO_RULE)
         return RuleShown(address, location, self._form.written(written(rules)), len(rules),
                          tuple(dict.fromkeys(need for rule in rules for need in rule.needs)))
 

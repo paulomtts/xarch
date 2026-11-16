@@ -9,7 +9,7 @@ from collections.abc import Iterable
 from difflib import get_close_matches
 
 from xarch.modules.rules.domain.published import CHECKS, Slot
-from xarch.modules.rules.domain.rule import Rule
+from xarch.modules.rules.domain.rule import OwnCheck, Rule
 from xarch.modules.rules.domain.vocabulary import (
     FACT,
     FIELDS,
@@ -26,7 +26,9 @@ from xarch.modules.rules.domain.vocabulary import (
     Quantifier,
     TargetKind,
     Variable,
+    WordFacets,
 )
+from xarch.modules.rules.domain.worked import WORKED
 
 Word = Kind | Filter | TargetKind | Variable | Quantifier
 """A word of the vocabulary."""
@@ -96,9 +98,36 @@ ABOUT = {FILE: "the file a fact is in", FACT: "the fact", TARGET: "the target a 
 """What a filter asks about, as it is said."""
 
 
+NO_RULE = "it expands to no rule of the engine here: the profile does not set it, or it is checked by a check of its own"
+"""Why a key the engine does not expand shows no rule."""
+
+
+def facets(word: Word) -> WordFacets:
+    """What the word says besides its name and meaning, as its category has it."""
+    match word:
+        case Kind():
+            return WordFacets(side=word.side, fields=fields(word), needs=needs(word), verb=word.verb)
+        case Filter():
+            return WordFacets(about=word.about, side=word.side, value=word.value)
+        case TargetKind():
+            return WordFacets(side=word.side, value=word.values)
+        case Variable():
+            return WordFacets(side=word.side)
+    return WordFacets()
+
+
 def about(word: Word) -> str:
     """What a word asks about, as it is said; "" for a word that asks about nothing."""
-    return ABOUT.get(getattr(word, "about", ""), "")
+    return ABOUT.get(facets(word).about, "")
+
+
+def fallback(category: str, name: str) -> OwnCheck | None:
+    """The check written for the explanation that shows a word when no profile's rule does: the first written with it,
+    None when none is. For how a check is written (CHECKS), or a slot of it (CHECKS and the slot's name), the first
+    written with that quantifier, else the first of all."""
+    if category == CHECKS:
+        return next((check for check in WORKED if check.rule.quantifier == name), WORKED[0])
+    return next((check for check in WORKED if uses(check.rule, category, name)), None)
 
 
 def applies(word: Word) -> tuple[str, ...]:

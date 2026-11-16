@@ -8,6 +8,8 @@ from xarch.modules.rules.application.logic.explained import (
     MEANINGS,
     applies,
     category_at,
+    facets,
+    fallback,
     fields,
     keyed,
     nearest,
@@ -15,8 +17,10 @@ from xarch.modules.rules.application.logic.explained import (
     uses,
     word_at,
 )
+from xarch.modules.rules.domain.published import CHECKS
 from xarch.modules.rules.domain.rule import EXISTING, MAY_NOT, Match, Rule
-from xarch.modules.rules.domain.vocabulary import FILTERS, KINDS, QUANTIFIERS, TARGETS, VARIABLES
+from xarch.modules.rules.domain.vocabulary import FILTERS, KINDS, QUANTIFIERS, TARGETS, VARIABLES, WordFacets
+from xarch.modules.rules.domain.worked import WORKED
 from xarch.profile_values.checks import Condition, Saying, Scope
 
 RULE = Rule("names", Scope(part="store"), ("class",), MAY_NOT, (Match("name", words=("*Store",)),),
@@ -91,3 +95,34 @@ def test_a_key_expands_to_the_rules_of_that_key_or_of_any_part_in_its_place():
     assert keyed(rules, "parts.store.names") == [RULE]
     assert keyed(rules, "tiers.apply_forbidden") == [both]
     assert keyed(rules, "guards.no-comments") == []
+
+
+def word(table, name):
+    return next(w for w in table if w.name == name)
+
+
+@pytest.mark.parametrize("found, said", [
+    pytest.param(word(FILTERS, "below"), WordFacets(about="file", value=word(FILTERS, "below").value),
+                 id="a filter: what it asks about and its value"),
+    pytest.param(word(TARGETS, "place"), WordFacets(side=word(TARGETS, "place").side, value=word(TARGETS, "place").values),
+                 id="a target: its side and its values"),
+    pytest.param(word(QUANTIFIERS, "may_not"), WordFacets(), id="a quantifier: nothing besides"),
+])
+def test_a_word_says_what_its_category_has_besides_its_name_and_meaning(found, said):
+    assert facets(found) == said
+
+
+def test_a_kind_says_its_fields_needs_and_verb():
+    imported = word(KINDS, "imported-name")
+    assert facets(imported) == WordFacets(side=imported.side, fields=fields(imported), needs=needs(imported),
+                                          verb=imported.verb)
+
+
+@pytest.mark.parametrize("category, name, found", [
+    pytest.param("filters", "tiered", WORKED[1], id="a word: the first check written for the explanation with it"),
+    pytest.param("filters", "test", None, id="a word no such check is written with: none"),
+    pytest.param(CHECKS, CHECKS, WORKED[0], id="how a check is written: the first of them"),
+    pytest.param(CHECKS, "must_reach", WORKED[0], id="a slot none of them writes: the first of them"),
+])
+def test_a_word_no_profile_shows_falls_back_to_a_check_written_for_the_explanation(category, name, found):
+    assert fallback(category, name) == found

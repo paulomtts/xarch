@@ -13,7 +13,9 @@ from dataclasses import replace
 
 from xarch.kernel.logic.capabilities import shortfalls
 from xarch.kernel.logic.targets import target
+from xarch.kernel.violations import Violation
 from xarch.modules.rules.domain.errors import ChecksRefused, RuleRefused
+from xarch.modules.rules.domain.published import Weak
 from xarch.modules.rules.domain.rule import EXISTING, MUST_BE_REACHED, MUST_REACH, Match, OwnCheck, Rule
 from xarch.modules.rules.domain.values import Profile
 from xarch.modules.rules.domain.vocabulary import NAMES, PARTS, PLACES, TARGETS
@@ -104,3 +106,16 @@ def _match(written: WrittenTarget, owner: tuple[str, tuple[str, ...]] | None, pr
         return Match(kind, names=tuple(("", value[1:]) if value.startswith(".") else tuple(value.split("."))
                                        for value in values))
     return Match(kind, words=values)
+
+
+def held_problems(check_id: str, flagged: list[Violation | Weak], clean: list[Violation | Weak]) -> list[str]:
+    """What is wrong with how a check of the profile's own holds to its examples, each problem at its address: it must
+    find something in its flagged code (what it found there), and nothing in its clean code."""
+    where = f"checks.{check_id}.examples"
+    found = [] if flagged else [f"{where}.flagged: the check finds nothing in it: make the code hold what the check "
+                                "is written to find, or correct the check"]
+    if clean:
+        first = clean[0]
+        found.append(f"{where}.clean: the check finds {len(clean)} in it, the first {first.file}:{first.line}: "
+                     f"{first.message}: make the code clean, or correct the check")
+    return found
