@@ -15,7 +15,7 @@ contract's own.
     Resemblance whether a profile is bundled, the bundled one it resembles and how it is looser, which the command
           line shows
     Reviewed what checking a profile that loads found before its own checks are held, which the command line shows
-    Piece one piece of a source file as the reader cuts it, which ReaderController hands out
+    Piece one piece of a source file as the reader cuts it, which SourcesRead hands out
 
 and CHECKS, the address of how a check is written, the keys of the enforcement's sections (SECTIONS), where a file
 found to be read lies, and the kinds of a piece.
@@ -150,7 +150,7 @@ METHOD = "method"
 
 @dataclass(frozen=True)
 class Piece:
-    """One piece of a source file as its language's reader cuts it, which ReaderController hands out: a function or a
+    """One piece of a source file as its language's reader cuts it, which SourcesRead hands out: a function or a
     class at the top level of the file, or a method of such a class, which owner then names; its kind is one of
     FUNCTION, CLASS and METHOD. first and last are the lines it spans, counted from 1, its decorators included, so that
     its text is those lines."""
