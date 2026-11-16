@@ -12,6 +12,7 @@ from xarch.modules.spec.application.logic.example_imports import (
     example_problems,
     shipped_problems,
 )
+from xarch.modules.spec.application.logic.file_types import file_types_of
 from xarch.modules.spec.application.logic.language_file import first_language, language_of
 from xarch.modules.spec.application.logic.looseness import origin_of
 from xarch.modules.spec.application.logic.profile_file import parse_profile, source_of
@@ -23,7 +24,7 @@ from xarch.modules.spec.application.ports.example_reader import ExampleReader
 from xarch.modules.spec.application.ports.runtime import Runtime
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.published import DocFile, Origin, ProjectFile
-from xarch.modules.spec.domain.values import Architecture, ArchitectureSource, Language
+from xarch.modules.spec.domain.values import Architecture, ArchitectureSource, FileType, Language
 
 
 class ArchitectureService:
@@ -32,6 +33,7 @@ class ArchitectureService:
         self._bundled: dict[str, tuple[ArchitectureSource, Architecture]] = {}
         self._testing: dict[str, Any] | None = None
         self._languages: dict[str, Language] | None = None
+        self._types: dict[str, FileType] | None = None
 
     def load(self, location: str | Path) -> Architecture:
         """The architecture in a bundled file, by name, or in a file at a path; raises InvalidArchitecture."""
@@ -66,7 +68,7 @@ class ArchitectureService:
         problems = shipped_problems(architecture, self._reads(architecture, examples), source.bundled)
         if problems:
             raise InvalidArchitecture(source.location, problems)
-        return list(doc_files(architecture, texts, examples, tier_examples))
+        return list(doc_files(architecture, texts, examples, tier_examples, file_types=self._file_types()))
 
     def files(self, location: str | Path, app: str, presets: bool = True) -> list[ProjectFile]:
         """The project files the architecture declares for an app folder called app, each filled from its template
@@ -108,6 +110,12 @@ class ArchitectureService:
         if self._testing is None:
             self._testing = self._files.testing_presets()
         return self._testing
+
+    def _file_types(self) -> dict[str, FileType]:
+        """The kinds of file the docs quote besides the language of the app, read from their data file once."""
+        if self._types is None:
+            self._types = file_types_of(self._files.file_types())
+        return self._types
 
     def default_language(self) -> Language:
         """The language of an app whose profile names none: the first the data files of the languages give, by name."""

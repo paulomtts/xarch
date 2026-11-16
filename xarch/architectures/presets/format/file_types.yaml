@@ -1,0 +1,14 @@
+# The kinds of file the docs quote besides the language of the app, by the ending of the file's name: the word that
+# names the language of a fenced block of them (fence; left out, the ending without its dot), and the marker of a line
+# comment their header line is written after (comment; left out, the one of the language of the app). A file of the
+# language of the app is named by that language, and an ending not listed here takes both defaults.
+.sh: {fence: bash}
+.yml: {fence: yaml}
+.md: {fence: markdown}
+.js: {fence: javascript, comment: "//"}
+.ts: {fence: typescript, comment: "//"}
+.go: {comment: "//"}
+.rs: {comment: "//"}
+.java: {comment: "//"}
+.kt: {comment: "//"}
+.sql: {comment: "--"}

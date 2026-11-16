@@ -2,6 +2,7 @@
 docs."""
 import pytest
 
+from tests.modules.spec.format_files import FILE_TYPES
 from tests.modules.spec.profiles_v2 import covered, layered, parsed, problems
 from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.modules.spec.domain.errors import InvalidArchitecture, InvalidTemplate
@@ -137,7 +138,7 @@ TIER_TEXTS = {"unit": "def test_a_rule():\n    assert decide()\n\n", "integratio
 
 def rendered(template: str, document: dict | None = None, texts: dict | None = None) -> str:
     return fill(template, parse(document or tiered()), "testing.md",
-                tier_examples=TIER_TEXTS if texts is None else texts)
+                tier_examples=TIER_TEXTS if texts is None else texts, file_types=FILE_TYPES)
 
 
 def template_problems(template: str, document: dict | None = None, texts: dict | None = None) -> list[str]:
@@ -234,7 +235,7 @@ def test_tier_examples_not_read_or_of_mixed_kinds_are_reported():
     files = {"ex": (*FILES["ex"], "tests/src/test_api.sql")}
     document["tiers"]["integration"]["docs"]["example"] = "tests/src/test_api.sql"
     with pytest.raises(InvalidTemplate) as caught:
-        fill("{{tier_examples}}", parsed(document, folders=files), "testing.md", tier_examples=TIER_TEXTS)
+        fill("{{tier_examples}}", parsed(document, folders=files), "testing.md", tier_examples=TIER_TEXTS, file_types=FILE_TYPES)
     assert caught.value.problems == (
         "testing.md: {{tier_examples}}: one block cannot mix files of different kinds (.py, .sql)",)
 

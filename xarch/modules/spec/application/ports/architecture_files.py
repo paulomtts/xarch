@@ -27,6 +27,11 @@ class ArchitectureFiles(Protocol):
         but not validated; raises InvalidArchitecture if it cannot be read or parsed."""
         ...
 
+    def file_types(self) -> Any:
+        """The document of the data file of the kinds of file the docs quote, shipped as data with xarch, parsed but not
+        validated; raises InvalidArchitecture if it cannot be read or parsed."""
+        ...
+
     def read(self, source: ArchitectureSource) -> ArchitectureDocument:
         """The file, parsed but not validated; raises InvalidArchitecture if it cannot be read or parsed."""
         ...

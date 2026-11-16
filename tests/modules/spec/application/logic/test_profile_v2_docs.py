@@ -2,6 +2,7 @@
 hints, each with the address it has in the file."""
 import pytest
 
+from tests.modules.spec.format_files import FILE_TYPES
 from tests.modules.spec.profiles_v2 import layered, parsed, problems
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic.docs_template import fill
@@ -152,5 +153,5 @@ def test_the_guards_list_of_the_docs_says_in_words_that_a_part_may_import_any_ou
     document = layered()
     document["parts"]["store"]["libraries"] = ["sqlmodel"]
     document["parts"]["shared"]["libraries"] = "everything"
-    text = fill("{{guards}}", parsed(document), "layered.md")
+    text = fill("{{guards}}", parsed(document), "layered.md", file_types=FILE_TYPES)
     assert "`shared/`: any outside package" in text and "`shared/`: *" not in text

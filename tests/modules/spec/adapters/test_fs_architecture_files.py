@@ -63,15 +63,18 @@ class BrokenPackage(PackageData):
         return self._text if relative == self._broken else super().read_text(relative)
 
 
-def test_the_data_file_of_the_formats_texts_comes_from_the_package_data():
+def test_the_data_files_of_the_format_come_from_the_package_data():
     document = files().format_keys()
     assert list(document) == ["fragments", "smallest", "symbols", "keys"]
     assert document["keys"]["xarch"] == {"meaning": "the format version", "accepts": "the number 2", "example": "xarch: 2"}
+    assert files().file_types()[".sql"] == {"comment": "--"}
 
 
-def test_a_data_file_that_does_not_parse_is_an_invalid_architecture_naming_it():
-    broken = FsArchitectureFiles(FileSystem(), DataFileReader(), BrokenPackage("presets/format/keys.yaml", "keys: ["))
+@pytest.mark.parametrize("path, read", [("presets/format/keys.yaml", "format_keys"),
+                                        ("presets/format/file_types.yaml", "file_types")])
+def test_a_data_file_that_does_not_parse_is_an_invalid_architecture_naming_it(path, read):
+    broken = FsArchitectureFiles(FileSystem(), DataFileReader(), BrokenPackage(path, "keys: ["))
     with pytest.raises(InvalidArchitecture) as caught:
-        broken.format_keys()
-    assert caught.value.problems == ("presets/format/keys.yaml: cannot read the data file: not valid YAML: line 1, "
-                                     "column 8: expected the node content, but found '<stream end>'",)
+        getattr(broken, read)()
+    assert caught.value.problems == (f"{path}: cannot read the data file: not valid YAML: line 1, column 8: expected the "
+                                     "node content, but found '<stream end>'",)

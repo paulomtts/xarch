@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from tests.modules.spec.format_files import KEYS_DOCUMENT
+from tests.modules.spec.format_files import FILE_TYPES_DOCUMENT, KEYS_DOCUMENT
 from tests.modules.spec.languages import PYTHON_DOCUMENT
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import PROFILE_SUFFIX, ArchitectureDocument, ArchitectureSource
@@ -12,16 +12,19 @@ from xarch.modules.spec.domain.values import PROFILE_SUFFIX, ArchitectureDocumen
 class FakeArchitectureFiles:
     """Satisfies spec's ArchitectureFiles: documents already parsed, bundled by name or at a path, and the text of
     the files beside them by their relative path (text, or bytes for one that is not text), and the presets of
-    `testing` by name, the data files of the languages by name (Python's, unless given), and the document of the data
-    file of the format's texts (the shipped one, unless given). A document it does not hold cannot be read."""
+    `testing` by name, the data files of the languages by name (Python's, unless given), and the documents of the data
+    files of the format's texts and of the kinds of file the docs quote (the shipped ones, unless given). A document it
+    does not hold cannot be read."""
 
     def __init__(self, bundled: dict[str, Any] | None = None, files: dict[str, Any] | None = None,
                  texts: dict[str, str | bytes] | None = None, presets: dict[str, Any] | None = None,
-                 languages: dict[str, Any] | None = None, keys: Any = None):
+                 languages: dict[str, Any] | None = None, keys: Any = None,
+                 file_types: Any = None):
         self._bundled, self._files, self._texts = dict(bundled or {}), dict(files or {}), dict(texts or {})
         self._presets = dict(presets or {})
         self._languages = {"python": PYTHON_DOCUMENT} if languages is None else dict(languages)
         self._keys = KEYS_DOCUMENT if keys is None else keys
+        self._file_types = FILE_TYPES_DOCUMENT if file_types is None else file_types
 
     def testing_presets(self) -> dict[str, Any]:
         return dict(self._presets)
@@ -31,6 +34,9 @@ class FakeArchitectureFiles:
 
     def format_keys(self) -> Any:
         return self._keys
+
+    def file_types(self) -> Any:
+        return self._file_types
 
     def bundled(self) -> tuple[str, ...]:
         return tuple(sorted(self._bundled))

@@ -1,9 +1,11 @@
 """Filling a docs template from a profile file: the prose is the author's, the file supplies the structure."""
 import pytest
 
+from tests.modules.spec.format_files import FILE_TYPES
 from tests.modules.spec.profiles_v2 import parsed
 from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.modules.spec.domain.errors import InvalidTemplate
+from xarch.modules.spec.domain.values import FileType
 
 PARTS = {
     "store": {"path": "src/<module>/store", "role": "database access", "litmus": "Does it touch the database?",
@@ -35,12 +37,12 @@ def parts(**changes) -> dict:
 
 
 def filled(template: str, **extra) -> str:
-    return fill(template, parsed(layered(**extra), folders=EXAMPLES), "layered.md", TEXTS)
+    return fill(template, parsed(layered(**extra), folders=EXAMPLES), "layered.md", TEXTS, file_types=FILE_TYPES)
 
 
 def problems(template: str, document: dict | None = None) -> list[str]:
     with pytest.raises(InvalidTemplate) as caught:
-        fill(template, parsed(document or layered(), folders=EXAMPLES), "layered.md", TEXTS)
+        fill(template, parsed(document or layered(), folders=EXAMPLES), "layered.md", TEXTS, file_types=FILE_TYPES)
     assert caught.value.reason == "\n".join(caught.value.problems)
     return list(caught.value.problems)
 
@@ -97,6 +99,28 @@ def test_an_example_alone_is_a_fenced_block_of_its_file_under_its_path():
         "x\n\n```python\n# src/billing/service/charge.py\nfrom app.src.billing.store import save\n\ndef charge(): ..."
         "\n```\n\ny")
     assert filled("{{example:" + SCHEMA + "}}") == "```sql\n-- src/billing/store/schema.sql\ncreate table bills ();\n```"
+
+
+RUN, MAIN, NOTES = "scripts/run.sh", "src/billing/main.go", "src/billing/notes.txt"
+KINDS = {"ex": (SCHEMA, RUN, MAIN, NOTES)}
+KIND_TEXTS = {SCHEMA: "create table bills ();\n", RUN: "make\n", MAIN: "package main\n", NOTES: "a note\n"}
+
+
+@pytest.mark.parametrize("file, types, block", [
+    pytest.param(SCHEMA, FILE_TYPES, "```sql\n-- src/billing/store/schema.sql\ncreate table bills ();\n```",
+                 id="a kind whose comment the data file gives is named by its ending"),
+    pytest.param(RUN, FILE_TYPES, "```bash\n# scripts/run.sh\nmake\n```",
+                 id="a kind whose fence the data file gives takes the comment of the language of the app"),
+    pytest.param(MAIN, FILE_TYPES, "```go\n// src/billing/main.go\npackage main\n```",
+                 id="a kind whose comment alone the data file gives"),
+    pytest.param(NOTES, FILE_TYPES, "```txt\n# src/billing/notes.txt\na note\n```",
+                 id="a kind the data file does not list is named by its ending, with the comment of the app's language"),
+    pytest.param(NOTES, {".txt": FileType("text", ";")}, "```text\n; src/billing/notes.txt\na note\n```",
+                 id="what the data file says is what the block is written with"),
+])
+def test_a_quoted_file_of_another_language_is_fenced_and_commented_as_the_data_file_of_file_types_says(file, types, block):
+    architecture = parsed(layered(docs=DOCS | {"example_notes": {}}), folders=KINDS)
+    assert fill("{{example:" + file + "}}", architecture, "layered.md", KIND_TEXTS, file_types=types) == block
 
 
 def test_an_example_with_a_note_shows_it_after_its_path_behind_a_colon():
@@ -197,7 +221,7 @@ TWO = {
 
 def two(template: str, **extra) -> str:
     document = {"xarch": 2, "name": "two", "parts": TWO, "docs": {"entry": "shared"}} | extra
-    return fill(template, parsed(document), "two.md")
+    return fill(template, parsed(document), "two.md", file_types=FILE_TYPES)
 
 
 def test_the_tree_shows_every_repeating_folder_by_its_own_word():

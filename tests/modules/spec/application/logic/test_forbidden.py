@@ -2,6 +2,7 @@
 tiers whose tests are held to the list of the part they mirror."""
 import pytest
 
+from tests.modules.spec.format_files import FILE_TYPES
 from tests.modules.spec.profiles_v2 import covered, parsed, problems
 from xarch.modules.spec.application.logic.docs_template import fill
 
@@ -67,7 +68,7 @@ def test_a_bad_method_is_refused_saying_what_to_write(name, problem):
 
 def test_the_guards_section_shows_a_method_as_written_and_says_what_it_does_not_see():
     document = with_list([".resolve()", "os.getcwd"])
-    lines = fill("{{guards}}", parsed(document), "layered.md").splitlines()
+    lines = fill("{{guards}}", parsed(document), "layered.md", file_types=FILE_TYPES).splitlines()
     assert lines[3] == (
         "- `forbidden`: a part neither imports nor uses by name what is listed for it (`service/`: `.resolve()`, "
         "`os.getcwd`). It catches what is written in the part's own files, through their imports and aliases, and a "
@@ -87,7 +88,7 @@ def test_the_guards_section_lists_the_names_each_part_may_not_use_and_says_what_
     document["parts"]["store"]["forbidden"] = "clock"
     document["parts"]["api"]["forbidden"] = "printing"
     document["tiers"]["unit"]["apply_forbidden"] = True
-    lines = fill("{{guards}}", parsed(document), "layered.md").splitlines()
+    lines = fill("{{guards}}", parsed(document), "layered.md", file_types=FILE_TYPES).splitlines()
     assert lines[3] == (
         "- `forbidden`: a part neither imports nor uses by name what is listed for it (`api/`: `builtins.print`; "
         "`service/` and `store/`: `time.time`, `socket`), and neither do the "

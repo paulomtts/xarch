@@ -6,6 +6,7 @@ from typing import Any
 
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import (
+    FILE_TYPES,
     FORMAT_KEYS,
     LANGUAGES,
     PROFILE_SUFFIX,
@@ -38,6 +39,9 @@ class FsArchitectureFiles:
 
     def format_keys(self) -> Any:
         return self._document(FORMAT_KEYS, "the data file")
+
+    def file_types(self) -> Any:
+        return self._document(FILE_TYPES, "the data file")
 
     def _documents(self, folder: str) -> dict[str, Any]:
         return {name.removesuffix(PROFILE_SUFFIX): self._document(f"{folder}/{name}", "the preset")

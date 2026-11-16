@@ -8,5 +8,7 @@ SOURCE = "the view of a profile"
 
 
 def view(architecture: Architecture) -> tuple[str, str]:
-    """(the folder tree with the role of each folder, the table of what each part may import)."""
-    return fill("{{tree}}", architecture, SOURCE), fill("{{rules_table}}", architecture, SOURCE)
+    """(the folder tree with the role of each folder, the table of what each part may import); neither quotes a file, so
+    no kind of file is told."""
+    return (fill("{{tree}}", architecture, SOURCE, file_types={}),
+            fill("{{rules_table}}", architecture, SOURCE, file_types={}))

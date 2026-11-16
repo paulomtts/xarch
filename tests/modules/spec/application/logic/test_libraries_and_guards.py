@@ -2,7 +2,7 @@
 outside, which pre-built checks are in use and where the fakes live."""
 import pytest
 
-from tests.modules.spec.format_files import CATALOGUE
+from tests.modules.spec.format_files import CATALOGUE, FILE_TYPES
 from tests.modules.spec.profiles_v2 import covered, layered, parsed, problems
 from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.modules.spec.domain.guards import ORDER
@@ -74,7 +74,7 @@ def test_a_bad_guards_entry_is_refused_saying_what_to_write(guards, problem):
 def test_the_closed_tree_guard_is_listed_last_in_the_guards_section_of_the_docs():
     architecture = parsed(layered(guards={"closed-tree": {}}))
     assert architecture.guards == (ClosedTree(),)
-    assert fill("{{guards}}", architecture, "layered.md").splitlines()[-1] == (
+    assert fill("{{guards}}", architecture, "layered.md", file_types=FILE_TYPES).splitlines()[-1] == (
         "- `closed-tree`: every Python file of the app lies in a part, or is the package file (`__init__.py`) of a "
         "folder of the layout.")
 
@@ -100,7 +100,7 @@ def test_a_bad_fakes_folder_or_prefix_is_refused_saying_what_to_write(fakes, pro
 
 
 def test_the_guards_placeholder_leaves_out_what_the_profile_does_not_check():
-    text = fill("{{guards}}", parsed(layered()), "layered.md")
+    text = fill("{{guards}}", parsed(layered()), "layered.md", file_types=FILE_TYPES)
     assert text.splitlines() == [
         "- `structure`: every folder and file of the layout exists, in the app and in every `src/<name>/`.",
         "- `rules`: every import between parts is one that the `may_import` of the importing part allows "
@@ -143,7 +143,7 @@ def test_a_bad_reserved_module_is_refused_saying_what_to_write(reserved, librari
 
 
 def test_the_guards_section_says_which_parts_may_import_a_reserved_module():
-    lines = fill("{{guards}}", parsed(reserving({"ast": "the reader's"}, ["ast"])), "layered.md").splitlines()
+    lines = fill("{{guards}}", parsed(reserving({"ast": "the reader's"}, ["ast"])), "layered.md", file_types=FILE_TYPES).splitlines()
     assert lines[2] == ("- `libraries`: a part imports only the outside packages listed for it (`store/`: ast); the "
                         "standard library is always allowed but what `reserved` names (`ast`: the reader's), "
                         "and tests are not checked.")

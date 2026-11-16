@@ -32,9 +32,23 @@ FORMAT = "presets/format"
 """Where the data files of the profile format are, below the bundled folder."""
 FORMAT_KEYS = f"{FORMAT}/keys.yaml"
 """The data file of the texts `xarch profile explain` says for the keys of the format (see key_catalogue)."""
+FILE_TYPES = f"{FORMAT}/file_types.yaml"
+"""The data file of the kinds of file the docs quote besides the language of the app (see file_types)."""
 
 Layout = dict[str, "Layout | None"]
 """A layout tree: a dict is a folder, None a file; the key "*" is a repeating folder, one per instance."""
+
+
+@dataclass(frozen=True)
+class FileType:
+    """A kind of file the docs quote, by what its data file says of it.
+
+    fence: the word that names the language of a fenced block of such files; empty: the ending of their name, without
+        its dot
+    comment: the marker of a line comment in them; empty: the one of the language of the app
+    """
+    fence: str = ""
+    comment: str = ""
 
 
 @dataclass(frozen=True)

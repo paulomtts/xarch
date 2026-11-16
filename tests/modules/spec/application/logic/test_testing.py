@@ -2,6 +2,7 @@
 scenario-coverage and stand-ins read from it."""
 import pytest
 
+from tests.modules.spec.format_files import FILE_TYPES
 from tests.modules.spec.profiles_v2 import TESTING, covered, parsed, problems
 from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.profile_values.testing import Fixture
@@ -224,7 +225,7 @@ def guard_lines(**changes) -> list[str]:
     document = covered(guards={"scenario-coverage": SCENARIOS, "stand-ins": {}}, fakes=FAKES)
     document["testing"] = document["testing"] | changes.pop("testing", {})
     document["guards"] = document["guards"] | changes.pop("guards", {})
-    return fill("{{guards}}", parsed(document), "layered.md").splitlines()[-2:]
+    return fill("{{guards}}", parsed(document), "layered.md", file_types=FILE_TYPES).splitlines()[-2:]
 
 
 def test_the_guards_lines_say_the_names_of_the_framework_the_file_declares():
@@ -269,7 +270,7 @@ def test_a_tier_with_plain_tables_and_a_part_of_immutable_records_each_have_a_li
     document["tiers"]["unit"]["plain_tables"] = True
     document["parts"]["service"]["immutable"] = True
     document["parts"]["service"]["holds"] = "functions"
-    lines = fill("{{guards}}", parsed(document), "layered.md").splitlines()
+    lines = fill("{{guards}}", parsed(document), "layered.md", file_types=FILE_TYPES).splitlines()
     assert ("- `plain tables`: no table test of the unit tests holds a branch in its body: no `if`, `match`, `try`, "
             "`for` or `while` statement and no `if` expression.") in lines
     assert ("- `immutable`: every class of `service/` is an immutable record, as the Python data file marks one, or "
@@ -278,7 +279,8 @@ def test_a_tier_with_plain_tables_and_a_part_of_immutable_records_each_have_a_li
 
 def test_dead_code_s_names_used_only_by_the_tests_are_said_when_they_are_listed():
     document = covered(guards={"dead-code": {"tests_only": True}}, fakes=FAKES)
-    line = next(line for line in fill("{{guards}}", parsed(document), "layered.md").splitlines() if "dead-code" in line)
+    lines = fill("{{guards}}", parsed(document), "layered.md", file_types=FILE_TYPES).splitlines()
+    line = next(line for line in lines if "dead-code" in line)
     assert line.endswith("A public class or function of the app that no other file of the app names, so that only "
                          "the tests use it, or nothing does, is listed in the enforcement section, and fails `check "
                          "--strict` only.")
