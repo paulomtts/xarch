@@ -54,7 +54,7 @@ import re
 from collections.abc import Callable, Mapping
 
 from xarch.kernel.logic.imports import may_import, shown_target
-from xarch.kernel.placement import EACH, EVERYTHING, Repeat, Target
+from xarch.kernel.placement import EACH, EVERYTHING
 from xarch.modules.spec.application.logic.layout_walk import docs_name, is_file
 from xarch.modules.spec.domain.errors import InvalidTemplate
 from xarch.modules.spec.domain.published import DEFAULT_TESTS
@@ -77,6 +77,7 @@ from xarch.modules.spec.domain.values import (
     Subject,
     Tier,
 )
+from xarch.profile_values.placement import Repeat, Target
 from xarch.profile_values.testing import ScenarioCoverage, StandIns
 
 PLACEHOLDER = re.compile(r"\{\{(.*?)\}\}")

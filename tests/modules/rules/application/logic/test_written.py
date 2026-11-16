@@ -2,7 +2,6 @@
 a word quoted only where the format would read it otherwise, and the sayings but the last as cases."""
 import pytest
 
-from xarch.kernel.placement import Target
 from xarch.modules.rules.application.logic.written import check, filled, written
 from xarch.modules.rules.domain.rule import (
     EXISTING,
@@ -20,6 +19,7 @@ from xarch.modules.rules.domain.rule import (
     Scope,
 )
 from xarch.profile_values.language import CheckedLanguage
+from xarch.profile_values.placement import Target
 
 
 def c(*texts: str) -> tuple[Condition, ...]:

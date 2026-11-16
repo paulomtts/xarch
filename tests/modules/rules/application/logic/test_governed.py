@@ -3,10 +3,10 @@ folder of the layout governs; the others are listed as ungoverned."""
 import pytest
 
 from tests.modules.rules.builders import PYTHON
-from xarch.kernel.placement import Target
 from xarch.modules.rules.application.logic.governed import excluded, governed, ungoverned
 from xarch.modules.rules.domain.values import Profile
 from xarch.profile_values.excluded import Excluded
+from xarch.profile_values.placement import Target
 
 PROFILE = Profile(parts={"domain": ("modules", "*", "domain")}, rules={"domain": (Target("domain", "own"),)},
                   folders=((), ("modules",), ("modules", "*")), closed_tree=True, language=PYTHON)

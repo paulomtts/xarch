@@ -5,7 +5,6 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.rules.builders import PYTHON
-from xarch.kernel.capabilities import Shortfall
 from xarch.modules.rules.application.logic.enforcement import (
     detail,
     drift,
@@ -19,6 +18,7 @@ from xarch.modules.rules.application.logic.enforcement import (
 )
 from xarch.modules.rules.domain.published import At, Drift, Weak
 from xarch.modules.rules.domain.values import Enforcement, Finding, InitFile, Profile, SourceFile, Use
+from xarch.profile_values.capabilities import Shortfall
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.language import CheckedLanguage
 from xarch.profile_values.testing import Framework

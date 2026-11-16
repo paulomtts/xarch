@@ -2,8 +2,6 @@
 each looseness, and the init files are compared as text."""
 import pytest
 
-from xarch.kernel.capabilities import EXACT, Shortfall, Supply
-from xarch.kernel.placement import Repeat, Target
 from xarch.modules.rules.adapters.spec_profile import SpecProfiles, WrittenChecks
 from xarch.modules.rules.domain.errors import ProfileUnusable
 from xarch.modules.rules.domain.rule import APP, MAY_NOT, Condition, Match, Rule, Saying, Scope
@@ -20,8 +18,10 @@ from xarch.modules.spec.contract import (
     ProjectFile,
     ProjectFiles,
 )
+from xarch.profile_values.capabilities import EXACT, Shortfall, Supply
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.language import CheckedLanguage
+from xarch.profile_values.placement import Repeat, Target
 from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns
 from xarch.profile_values.tiers import CheckedTier
 

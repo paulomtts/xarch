@@ -7,9 +7,9 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.rules.builders import PROFILE
-from xarch.kernel.placement import Target
 from xarch.modules.rules.application.logic import expansion
 from xarch.modules.rules.domain.rule import Rule
+from xarch.profile_values.placement import Target
 
 ON = replace(PROFILE, private_imports=True, closed_tree=True, dead_code=True, untested=True, tests_only=True,
              immutable=("logic",),

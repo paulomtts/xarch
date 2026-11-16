@@ -16,7 +16,6 @@ from xarch.cli.reports.profile_report import (
     unknown_document,
     unknown_message,
 )
-from xarch.kernel.capabilities import EXACT, Supply
 from xarch.modules.spec.contract import (
     FilesTaken,
     KeyExplained,
@@ -26,6 +25,7 @@ from xarch.modules.spec.contract import (
     ProfileCreated,
     UnknownKey,
 )
+from xarch.profile_values.capabilities import EXACT, Supply
 
 
 def test_an_unknown_key_is_said_with_the_nearest_ones_in_text_and_in_json():

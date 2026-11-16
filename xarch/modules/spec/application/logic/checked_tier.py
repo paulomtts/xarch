@@ -2,8 +2,8 @@
 repeating folder, outside every instance for any other."""
 from __future__ import annotations
 
-from xarch.kernel.placement import Target
 from xarch.modules.spec.domain.values import Architecture, Tier
+from xarch.profile_values.placement import Target
 from xarch.profile_values.tiers import CheckedTier
 
 

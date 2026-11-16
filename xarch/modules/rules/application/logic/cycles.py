@@ -11,10 +11,10 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from xarch.kernel.placement import Repeat
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.imports import dotted, targets
 from xarch.modules.rules.domain.values import Profile, SourceFile
+from xarch.profile_values.placement import Repeat
 
 Edge = tuple[str, int, str]
 """An import that makes one instance depend on another: the file, its line, and what it imports, dotted."""

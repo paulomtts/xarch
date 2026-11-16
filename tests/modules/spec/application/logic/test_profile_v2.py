@@ -3,11 +3,11 @@ packages, the names it may not use, and the layers."""
 import pytest
 
 from tests.modules.spec.profiles_v2 import layered, parsed, problems, two_folders
-from xarch.kernel.placement import Repeat, Target
 from xarch.modules.spec.application.logic.key_lookup import names_of
 from xarch.modules.spec.application.logic.layout_walk import docs_name, is_file
 from xarch.modules.spec.domain.profile_keys import KEYS, SCOPES
 from xarch.modules.spec.domain.values import Part
+from xarch.profile_values.placement import Repeat, Target
 
 
 def test_the_smallest_profile_is_a_name_and_parts_and_checks_the_layout_and_the_imports():

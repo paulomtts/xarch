@@ -6,11 +6,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, ClassVar
 
-from xarch.kernel.capabilities import Shortfall
 from xarch.kernel.logic.placement import place_of, repeat_of, with_itself
-from xarch.kernel.placement import EACH, Place, Repeat, Target
+from xarch.kernel.placement import EACH, Place
+from xarch.profile_values.capabilities import Shortfall
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.language import CheckedLanguage
+from xarch.profile_values.placement import Repeat, Target
 from xarch.profile_values.testing import Fakes, Framework, ScenarioCoverage, StandIns
 
 

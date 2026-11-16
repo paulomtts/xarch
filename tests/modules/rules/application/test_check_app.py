@@ -8,7 +8,6 @@ from tests.fakes.filesystem import FakeSourceTree
 from tests.fakes.profiles import FakeProfiles
 from tests.fakes.structure import FakeStructure
 from tests.modules.rules.application.helpers import controller
-from xarch.kernel.placement import Target
 from xarch.kernel.source import Import
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.contract import (
@@ -21,6 +20,7 @@ from xarch.modules.rules.contract import (
     NotADirectory,
 )
 from xarch.modules.rules.domain.values import Profile
+from xarch.profile_values.placement import Target
 
 ROOT = Path("/src/pkg")
 PROFILE = Profile({"kernel": ("kernel",), "platform": ("platform",)},

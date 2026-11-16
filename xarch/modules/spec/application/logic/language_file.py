@@ -44,9 +44,9 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
-from xarch.kernel.capabilities import EXACT, FACTS, Supply
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import Language
+from xarch.profile_values.capabilities import EXACT, FACTS, Supply
 from xarch.profile_values.language import CheckedLanguage, RecordMark
 
 FOLDER = "presets/language"

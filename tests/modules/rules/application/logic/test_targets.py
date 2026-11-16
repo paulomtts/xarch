@@ -4,11 +4,11 @@ matches none of it; and a fact is a finding under may_not when it matches, under
 import pytest
 
 from tests.modules.rules.application.logic.world import DOMAIN, FACTS, PROFILE, SERVICE, TEST, found
-from xarch.kernel.placement import Target
 from xarch.modules.rules.application.logic import targets
 from xarch.modules.rules.application.logic.targets import finding, matched
 from xarch.modules.rules.domain.rule import MAY_NOT, MAY_ONLY, Match
 from xarch.modules.rules.domain.vocabulary import TARGETS
+from xarch.profile_values.placement import Target
 
 
 @pytest.mark.parametrize("match, file, kind, hits", [

@@ -4,7 +4,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any, Protocol
 
-from xarch.kernel.capabilities import FACTS, Shortfall
 from xarch.kernel.logic.capabilities import shortfalls
 from xarch.modules.rules.domain.errors import ChecksRefused, ProfileUnusable, RuleRefused
 from xarch.modules.rules.domain.rule import (
@@ -33,6 +32,7 @@ from xarch.modules.spec.contract import (
     ProfileView,
     ProjectFiles,
 )
+from xarch.profile_values.capabilities import FACTS, Shortfall
 from xarch.profile_values.language import CheckedLanguage
 
 

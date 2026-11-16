@@ -4,9 +4,10 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.rules.builders import PROFILE, TWO, profile, steps
-from xarch.kernel.placement import Marks, Place, Target
+from xarch.kernel.placement import Marks, Place
 from xarch.modules.rules.application.logic.places import allowed, excluded_by, label, matches, place, targets_of
 from xarch.profile_values.excluded import Excluded
+from xarch.profile_values.placement import Target
 
 
 @pytest.mark.parametrize("path, expected", [

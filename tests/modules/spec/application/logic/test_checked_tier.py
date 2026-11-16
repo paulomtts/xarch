@@ -1,8 +1,8 @@
 """A tier as the checks read it: each part it tests a target in the tested file's own instance when the part lies in a
 repeating folder, outside every instance when it does not."""
 from tests.modules.spec.profiles_v2 import covered, parsed
-from xarch.kernel.placement import Target
 from xarch.modules.spec.application.logic.checked_tier import checked_tier
+from xarch.profile_values.placement import Target
 from xarch.profile_values.tiers import CheckedTier
 
 

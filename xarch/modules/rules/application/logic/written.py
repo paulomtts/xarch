@@ -9,7 +9,6 @@ import json
 import re
 from collections.abc import Iterable
 
-from xarch.kernel.placement import Target
 from xarch.modules.rules.domain.rule import (
     ANY,
     APP,
@@ -26,6 +25,7 @@ from xarch.modules.rules.domain.rule import (
     Scope,
 )
 from xarch.profile_values.language import CheckedLanguage
+from xarch.profile_values.placement import Target
 
 PLAIN = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_./@()-]*(?: [A-Za-z0-9_./@()-]+)*")
 """A word written without quotes: what YAML reads as the text it is, in a list or a map written on one line."""

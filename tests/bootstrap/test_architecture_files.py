@@ -7,8 +7,8 @@ import pytest
 
 from tests.bootstrap.project import bundled_profiles
 from xarch.bootstrap.wiring import load_architecture
-from xarch.kernel.placement import Repeat, Target
 from xarch.modules.spec.domain.errors import InvalidArchitecture
+from xarch.profile_values.placement import Repeat, Target
 
 LAYERED = """\
 xarch: 2

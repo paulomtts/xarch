@@ -19,7 +19,6 @@ from pathlib import Path
 from textwrap import fill
 from typing import Any
 
-from xarch.kernel.capabilities import EXACT
 from xarch.modules.spec.contract import (
     CHECKS,
     EXAMPLES,
@@ -36,6 +35,7 @@ from xarch.modules.spec.contract import (
     Shown,
     UnknownKey,
 )
+from xarch.profile_values.capabilities import EXACT
 
 WIDTH = 100
 KEY = 28

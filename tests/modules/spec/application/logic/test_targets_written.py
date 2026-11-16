@@ -2,9 +2,10 @@
 one is allowed, `everything`, and each target refused with why."""
 import pytest
 
-from xarch.kernel.placement import EVERYTHING, Target
+from xarch.kernel.placement import EVERYTHING
 from xarch.modules.spec.application.logic.targets_written import may_import
 from xarch.modules.spec.domain.values import Part
+from xarch.profile_values.placement import Target
 
 API = Part("api", ("src", "*", "api"), "handlers")
 SERVICE = Part("service", ("src", "*", "service"), "logic")

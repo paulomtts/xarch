@@ -12,10 +12,11 @@ from __future__ import annotations
 import sys
 from dataclasses import replace
 
-from xarch.kernel.placement import EVERYTHING, Repeat, Target
+from xarch.kernel.placement import EVERYTHING
 from xarch.kernel.source import Import
 from xarch.modules.rules.domain.values import Profile, SourceFile
 from xarch.profile_values.language import CheckedLanguage, RecordMark
+from xarch.profile_values.placement import Repeat, Target
 from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns
 from xarch.profile_values.tiers import CheckedTier
 

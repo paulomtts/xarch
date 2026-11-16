@@ -5,12 +5,13 @@ language that does not supply that field, neither refused nor listed as approxim
 import pytest
 
 from tests.modules.rules.application.logic.world import BUILT, FACTS, LISTED, NARROWED, PROFILE, RESERVED
-from xarch.kernel.placement import Place, Target
+from xarch.kernel.placement import Place
 from xarch.modules.rules.application.logic.filters import holds
 from xarch.modules.rules.application.logic.targets import matched
 from xarch.modules.rules.domain.rule import Condition, Fact, Found, Match, Rule, Saying, Scope
 from xarch.modules.rules.domain.vocabulary import FACT, FILTERS, TARGET, TARGETS, Kind
 from xarch.modules.rules.domain.vocabulary import KINDS as VOCABULARY
+from xarch.profile_values.placement import Target
 
 KINDS = {kind.name: kind for kind in VOCABULARY}
 

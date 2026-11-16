@@ -4,10 +4,10 @@ that expands to no rule in a profile is either one that profile sets nowhere, wh
 check of xarch's own reads."""
 from __future__ import annotations
 
-from xarch.kernel.placement import Target
 from xarch.modules.rules.application.logic.expansion import book
 from xarch.modules.rules.application.logic.explained import general, keyed
 from xarch.modules.rules.domain.values import PartInfo, Profile
+from xarch.profile_values.placement import Target
 from xarch.profile_values.testing import Fakes, Framework
 from xarch.profile_values.tiers import CheckedTier
 

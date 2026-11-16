@@ -1,10 +1,10 @@
 """How well a language's reader supplies the facts a key or a rule needs: the facts it needs that the reader supplies
-partly or not at all (the facts and their grades are the vocabulary of capabilities in kernel/)."""
+partly or not at all (the facts and their grades are the vocabulary of capabilities in profile_values/)."""
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 
-from xarch.kernel.capabilities import EXACT, Shortfall, Supply
+from xarch.profile_values.capabilities import EXACT, Shortfall, Supply
 
 
 def shortfalls(address: str, needs: Iterable[str], supplies: Mapping[str, Supply]) -> list[Shortfall]:

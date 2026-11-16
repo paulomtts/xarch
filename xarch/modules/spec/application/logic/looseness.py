@@ -18,10 +18,11 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import replace
 
-from xarch.kernel.placement import EVERYTHING, Target
+from xarch.kernel.placement import EVERYTHING
 from xarch.modules.spec.domain.guards import GUARDS
 from xarch.modules.spec.domain.published import LITMUS, Loosened, Origin
 from xarch.modules.spec.domain.values import Architecture
+from xarch.profile_values.placement import Target
 
 Looser = tuple[str, str, str]
 """(key, part, what): one way a profile is looser, before it is said."""

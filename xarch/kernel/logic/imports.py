@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 
-from xarch.kernel.placement import EVERYTHING, Target
+from xarch.kernel.placement import EVERYTHING
+from xarch.profile_values.placement import Target
 
 
 def may_import(targets: Iterable[Target], folders: Mapping[str, str], words: Mapping[str, str]) -> str:

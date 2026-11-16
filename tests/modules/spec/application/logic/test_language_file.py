@@ -1,10 +1,10 @@
 """The data file of a language: what is true of the language as a whole, read from a preset and validated like a profile."""
 import pytest
 
-from xarch.kernel.capabilities import EXACT, Supply
 from xarch.modules.spec.application.logic.language_file import PARTIAL, language_of
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import Language
+from xarch.profile_values.capabilities import EXACT, Supply
 from xarch.profile_values.language import CheckedLanguage, RecordMark
 
 DOCUMENT = {"title": "Pascal", "extension": ".pas", "package_file": "unit.pas", "interface": ["sys.Contract"],

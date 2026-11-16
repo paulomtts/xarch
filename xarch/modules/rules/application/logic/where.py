@@ -23,7 +23,7 @@ from pathlib import Path
 
 from xarch.kernel.logic.imports import may_import, shown_target
 from xarch.kernel.logic.placement import repeat_of
-from xarch.kernel.placement import EACH, Place, Target
+from xarch.kernel.placement import EACH, Place
 from xarch.modules.rules.application.logic.places import excluded_by, matches, place, targets_of
 from xarch.modules.rules.application.logic.tier_of import NO_TIER, Tested, allowance, may_use_fakes, tested
 from xarch.modules.rules.domain.values import (
@@ -38,6 +38,7 @@ from xarch.modules.rules.domain.values import (
     SuitePlace,
     UngovernedPlace,
 )
+from xarch.profile_values.placement import Target
 from xarch.profile_values.tiers import CheckedTier
 
 SAMPLE = "x"

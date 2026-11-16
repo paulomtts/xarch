@@ -7,8 +7,8 @@ import pytest
 
 from tests.fakes.runtime import FakeRuntime
 from tests.modules.spec.application.builders import spec_controller
-from xarch.kernel.capabilities import Shortfall
 from xarch.modules.spec.contract import CheckProfile, ProfileChecked
+from xarch.profile_values.capabilities import Shortfall
 from xarch.profile_values.language import CheckedLanguage
 
 PASCAL = {"title": "Pascal", "extension": ".pas", "package_file": "unit.pas", "interface": ["sys.Contract"],

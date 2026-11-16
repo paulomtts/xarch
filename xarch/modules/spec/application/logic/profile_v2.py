@@ -60,7 +60,7 @@ from dataclasses import dataclass, field, replace
 from typing import Any
 
 from xarch.kernel.logic.placement import root_of
-from xarch.kernel.placement import EACH, EVERYTHING, Repeat, Target
+from xarch.kernel.placement import EACH, EVERYTHING
 from xarch.modules.spec.application.logic import profile_checks as ck
 from xarch.modules.spec.application.logic import profile_examples as ex
 from xarch.modules.spec.application.logic import profile_needs as needs
@@ -106,6 +106,7 @@ from xarch.modules.spec.domain.values import (
     Tier,
     TierExample,
 )
+from xarch.profile_values.placement import Repeat, Target
 from xarch.profile_values.testing import CaseTable, Fakes, Framework, ScenarioCoverage, StandIns
 
 _REPEATING = re.compile(r"<([A-Za-z_][A-Za-z0-9_-]*)>")

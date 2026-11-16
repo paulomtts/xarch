@@ -2,8 +2,8 @@
 partial or does not grade."""
 import pytest
 
-from xarch.kernel.capabilities import EXACT, Shortfall, Supply
 from xarch.kernel.logic.capabilities import shortfalls
+from xarch.profile_values.capabilities import EXACT, Shortfall, Supply
 
 SUPPLIES = {"import": Supply("import", EXACT), "class": Supply("class", "partial", "nested classes are not read")}
 

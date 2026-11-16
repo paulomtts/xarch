@@ -2,7 +2,6 @@
 import pytest
 
 from tests.modules.spec.application.builders import spec_controller
-from xarch.kernel.capabilities import EXACT, FACTS, Supply
 from xarch.modules.spec.application.logic.language_file import PARTIAL
 from xarch.modules.spec.contract import (
     Explain,
@@ -15,6 +14,7 @@ from xarch.modules.spec.contract import (
     UnknownKey,
 )
 from xarch.modules.spec.domain.profile_keys import SMALLEST
+from xarch.profile_values.capabilities import EXACT, FACTS, Supply
 
 BUNDLED = {"bundled": {"base": {}, "other": {}}}
 BROKEN = {"bundled": {"base": {}}, "languages": {"python": "not a mapping"}}

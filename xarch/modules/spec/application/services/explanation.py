@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from xarch.kernel.capabilities import FACTS
 from xarch.modules.spec.application.logic.explain import (
     cleaned,
     example_of,
@@ -24,6 +23,7 @@ from xarch.modules.spec.domain.profile_keys import (
     Key,
 )
 from xarch.modules.spec.domain.values import VERSION, Language
+from xarch.profile_values.capabilities import FACTS
 
 
 class ExplainService:

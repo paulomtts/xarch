@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from tests.modules.rules.builders import PYTHON
-from xarch.kernel.placement import EVERYTHING, Place, Repeat, Target
+from xarch.kernel.placement import EVERYTHING, Place
 from xarch.modules.rules.application.logic.where import describe, resolve
 from xarch.modules.rules.domain.values import (
     FakePlace,
@@ -18,6 +18,7 @@ from xarch.modules.rules.domain.values import (
     SuitePlace,
     UngovernedPlace,
 )
+from xarch.profile_values.placement import Repeat, Target
 from xarch.profile_values.testing import Fakes, Framework
 from xarch.profile_values.tiers import CheckedTier as Tier
 

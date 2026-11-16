@@ -14,11 +14,12 @@ from dataclasses import dataclass
 from typing import Any
 
 from xarch.kernel.logic.placement import with_itself
-from xarch.kernel.placement import EACH, EVERYTHING, Target
+from xarch.kernel.placement import EACH, EVERYTHING
 from xarch.modules.spec.application.logic.migrate_examples import Gathered, gather, rewrite_examples
 from xarch.modules.spec.application.logic.profile_v1 import read_v1
 from xarch.modules.spec.domain.migration import OldPart, OldProfile, Tree
 from xarch.modules.spec.domain.published import Copy
+from xarch.profile_values.placement import Target
 
 __all__ = ["Converted", "Copy", "convert", "rewrite_examples"]
 

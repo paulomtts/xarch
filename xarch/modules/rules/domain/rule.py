@@ -16,7 +16,7 @@ from difflib import get_close_matches
 from string import Formatter
 from typing import NamedTuple
 
-from xarch.kernel.placement import Place, Target
+from xarch.kernel.placement import Place
 from xarch.modules.rules.domain.errors import RuleRefused
 from xarch.modules.rules.domain.values import SourceFile
 from xarch.modules.rules.domain.vocabulary import (
@@ -40,6 +40,7 @@ from xarch.modules.rules.domain.vocabulary import (
     VARIABLES,
     Kind,
 )
+from xarch.profile_values.placement import Target
 
 ANY = "*"
 """A scope's part that any file of its files is in: a part, the structure or no part."""

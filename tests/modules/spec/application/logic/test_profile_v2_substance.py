@@ -4,8 +4,8 @@ guards private-imports and dead-code's untested."""
 import pytest
 
 from tests.modules.spec.profiles_v2 import covered, layered, parsed, problems
-from xarch.kernel.placement import Target
 from xarch.modules.spec.domain.values import DeadCode, PrivateImports
+from xarch.profile_values.placement import Target
 
 FAKES = {"folder": "fakes", "for": ["store"], "prefix": "Fake"}
 

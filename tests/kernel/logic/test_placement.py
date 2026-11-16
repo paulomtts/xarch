@@ -2,7 +2,8 @@
 import pytest
 
 from xarch.kernel.logic.placement import module_steps, place_of, reaches, repeat_of, root_of, stands_for_folder, with_itself
-from xarch.kernel.placement import EVERYTHING, Marks, Place, Repeat, Target
+from xarch.kernel.placement import EVERYTHING, Marks, Place
+from xarch.profile_values.placement import Repeat, Target
 
 MARKS = Marks(".src", "pkg.src")
 

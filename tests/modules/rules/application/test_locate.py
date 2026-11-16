@@ -7,7 +7,6 @@ import pytest
 from tests.fakes.filesystem import FakeSourceTree
 from tests.fakes.profiles import FakeProfiles
 from tests.modules.rules.application.helpers import controller
-from xarch.kernel.placement import Repeat, Target
 from xarch.modules.rules.contract import (
     CheckRefused,
     ChecksCannotRun,
@@ -24,6 +23,7 @@ from xarch.modules.rules.contract import (
 )
 from xarch.modules.rules.domain.values import PartInfo, Profile
 from xarch.profile_values.excluded import Excluded
+from xarch.profile_values.placement import Repeat, Target
 from xarch.profile_values.tiers import CheckedTier as Tier
 
 APP, TESTS = Path("/src/app"), Path("/src/tests")

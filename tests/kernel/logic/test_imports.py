@@ -2,7 +2,8 @@
 import pytest
 
 from xarch.kernel.logic.imports import may_import
-from xarch.kernel.placement import EVERYTHING, Target
+from xarch.kernel.placement import EVERYTHING
+from xarch.profile_values.placement import Target
 
 FOLDERS = {"domain": "domain/", "kernel": "kernel/", "contract": "contract/", "ports": "ports/", "platform": "platform/",
            "hooks": "hooks/"}

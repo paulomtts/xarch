@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from xarch.kernel.placement import Target
+from xarch.profile_values.placement import Target
 
 
 @dataclass(frozen=True)

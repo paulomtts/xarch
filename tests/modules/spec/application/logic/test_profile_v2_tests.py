@@ -3,7 +3,6 @@ fakes, and the guards."""
 import pytest
 
 from tests.modules.spec.profiles_v2 import EX, PRESETS, TESTING, covered, layered, parsed, problems
-from xarch.kernel.placement import Target
 from xarch.modules.spec.domain.values import (
     ClosedTree,
     DeadCode,
@@ -16,6 +15,7 @@ from xarch.modules.spec.domain.values import (
     Tier,
     TierExample,
 )
+from xarch.profile_values.placement import Target
 from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns
 
 PRESET_PROBLEM = ("layered.yaml: testing: must be a preset name or a mapping {files, functions}: the patterns of a "

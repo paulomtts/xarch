@@ -8,8 +8,8 @@ import pytest
 from tests.modules.rules.application.logic.checks import must_import as violations
 from tests.modules.rules.application.logic.checks import must_import_tiers as tier_violations
 from tests.modules.rules.builders import GUARD, INTEGRATION, RENDERING, imp, in_tests, profile, source
-from xarch.kernel.placement import Target
 from xarch.modules.rules.domain.values import Function
+from xarch.profile_values.placement import Target
 
 REQUIRED = profile(must_import={"adapters": (Target("platform"), Target("contract", "any"))})
 CODE = (Function(3, "get", statements=2),)

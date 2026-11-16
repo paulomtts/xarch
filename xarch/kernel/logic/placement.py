@@ -18,7 +18,8 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable, Mapping
 
-from xarch.kernel.placement import EACH, EVERYTHING, Marks, Place, Repeat, Target
+from xarch.kernel.placement import EACH, EVERYTHING, Marks, Place
+from xarch.profile_values.placement import Repeat, Target
 
 
 def root_of(pattern: tuple[str, ...]) -> tuple[str, ...] | None:

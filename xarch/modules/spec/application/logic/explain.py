@@ -5,10 +5,10 @@ from __future__ import annotations
 import re
 from difflib import get_close_matches
 
-from xarch.kernel.capabilities import Supply
 from xarch.modules.spec.application.logic.key_lookup import keys_of, plain
 from xarch.modules.spec.domain.profile_keys import KEYS, PROFILE, Key
 from xarch.modules.spec.domain.values import Language
+from xarch.profile_values.capabilities import Supply
 
 NEAREST = 3
 """How many keys an unknown one is answered with, at most."""
