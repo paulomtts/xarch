@@ -140,6 +140,7 @@ _KEYS: tuple[Key, ...] = (
     Key(NO_TWINS, "min_fields", rules=("no-twins",)),
     Key(NO_TWINS, "min_renamed", rules=("no-twins",)),
     Key(NO_TWINS, "min_subset", rules=("no-twins",)),
+    Key(NO_TWINS, "translated", rules=("no-twins",)),
 
     Key(DEAD_CODE, "untested", rules=("dead-code",)),
     Key(DEAD_CODE, "tests_only", rules=("dead-code",)),
@@ -201,6 +202,7 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "guards.no-duplicates": ("function", "function.statements", "function.shape"),
     "guards.no-twins": ("class", "class.fields"),
     "guards.no-twins.min_renamed": ("class", "class.fields", "class.types"),
+    "guards.no-twins.translated": ("class", "class.fields", "call", *_IMPORTS),
     "guards.dead-code": ("class", "named"),
     "guards.dead-code.untested": (*_IMPORTS, "function.statements", "class", "class.exception", "function", "file"),
     "guards.dead-code.tests_only": ("class", "class.exception", "function", "named"),

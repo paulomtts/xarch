@@ -69,6 +69,7 @@ class SpecProfiles:
                        must_import={p.name: p.must_import for p in parts if p.must_import},
                        no_duplicates=guards.no_duplicates, no_twins=guards.no_twins,
                        no_twins_renamed=guards.no_twins_renamed, no_twins_subset=guards.no_twins_subset,
+                       no_twins_translated=guards.no_twins_translated,
                        dead_code=guards.dead_code, untested=guards.untested, tests_only=guards.tests_only,
                        pass_through=guards.pass_through, holds={p.name: p.holds for p in parts if p.holds},
                        immutable=tuple(p.name for p in parts if p.immutable),

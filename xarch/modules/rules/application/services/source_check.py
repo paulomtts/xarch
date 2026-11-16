@@ -106,7 +106,7 @@ class SourceCheckService:
         found += run(book["built-by"], facts, rules)
         found += run(book["private-imports"], facts, rules)
         found += duplicates.violations(app, rules)
-        found += twins.violations(app, rules)
+        found += twins.violations(app, rules, package)
         found += shared.violations(app, rules, package)
         found += run(book["dead-code"], facts, rules)
         found += run(book["no-comments"], facts, rules)

@@ -25,6 +25,12 @@ Three cases, each with its own fewest fields:
   m), and A keeps at least half of B's fields (2m >= n): a value with fewer is a smaller value of its own. Types are
   not compared, as for the same fields.
 
+A pair is no twin when the profile lists, in `no_twins_translated`, a part one of whose files builds one of the two
+classes (a `construction`: a call of it read through the absolute import that binds it) and imports the file that
+defines the other: the mark of a translation at a seam. Such a pair is reported by no case, and its classes are read
+as no copy of each other where a type's name is read; a file that imports both files and builds neither, a translator
+in a part not listed, and one in no part translate nothing.
+
 The classes with the same fields form a group, in the order of the profile's parts (the order their litmus tests
 run, so the inner part comes first), then of file name and line. A class is reported at its own place when an earlier
 class of the group lies in a part of another name, naming one such: the first of those in its own instance of a
@@ -41,6 +47,7 @@ from collections.abc import Iterable
 
 from xarch.kernel.placement import Place
 from xarch.kernel.violations import Violation
+from xarch.modules.rules.application.logic.imports import dotted, named_targets
 from xarch.modules.rules.application.logic.places import file_place, label
 from xarch.modules.rules.domain.values import Class, Profile, SourceFile
 
@@ -53,15 +60,19 @@ RENAMED_FIX = ("keep one of the two, with one name for each field, and import it
                "{cls} the fields its reader needs instead of a renamed copy of {twin}'s")
 
 Counted = tuple[SourceFile, Class, Place]
+Built = frozenset[tuple[tuple[str, ...], tuple[str, ...]]]
+"""What the translators build from what: (the dotted path of a class they build, the steps of a file they import)."""
 
 
-def violations(app: Iterable[SourceFile], profile: Profile) -> list[Violation]:
+def violations(app: Iterable[SourceFile], profile: Profile, root: str) -> list[Violation]:
     if profile.no_twins is None:
         return []
+    app = list(app)
     order = {name: index for index, name in enumerate(profile.parts)}
+    built = _translated(app, profile, root)
     by_file = _counted(app, profile)
     counted = sorted(by_file, key=lambda item: order.get(item[2].part or "", len(order)))
-    found, pairs = _same(by_file, max(profile.no_twins, 1), order, profile)
+    found, pairs = _same(by_file, max(profile.no_twins, 1), order, profile, built, root)
     copied: dict[str, str] = {}
     for (_, cls, _), (_, twin, _) in pairs:
         copied.setdefault(cls.name, twin.name)
@@ -71,7 +82,7 @@ def violations(app: Iterable[SourceFile], profile: Profile) -> list[Violation]:
         grown = True
         while grown:
             names = _unique(counted, copied)
-            renamed = [(later, earlier) for later, earlier in _pairs(counted, pairs)
+            renamed = [(later, earlier) for later, earlier in _pairs(counted, pairs, built, root, profile)
                        if _renamed(earlier[1], later[1], least, names, profile.language.names) is not None]
             before = len(copied)
             for later, earlier in renamed:
@@ -83,7 +94,7 @@ def violations(app: Iterable[SourceFile], profile: Profile) -> list[Violation]:
         pairs += renamed
     if profile.no_twins_subset is not None:
         least = max(profile.no_twins_subset, 1)
-        for later, earlier in _pairs(counted, pairs):
+        for later, earlier in _pairs(counted, pairs, built, root, profile):
             if _partial(earlier[1].fields, later[1].fields, least) or _partial(later[1].fields, earlier[1].fields,
                                                                                  least):
                 found.append(_partial_violation(later, earlier, profile))
@@ -102,8 +113,32 @@ def _counted(app: Iterable[SourceFile], profile: Profile) -> list[Counted]:
     return found
 
 
-def _same(counted: list[Counted], least: int, order: dict[str, int],
-          profile: Profile) -> tuple[list[Violation], list[tuple[Counted, Counted]]]:
+def _translated(app: list[SourceFile], profile: Profile, root: str) -> Built:
+    """Each class a file of a part no_twins_translated lists builds, with each file of the app that file imports."""
+    if not profile.no_twins_translated:
+        return frozenset()
+    marks = profile.language.marks
+    files = [(file, *dotted(file.path, marks)) for file in app if file.error is None]
+    known = frozenset(steps for _, steps, _ in files)
+    found: set[tuple[tuple[str, ...], tuple[str, ...]]] = set()
+    for file, _, package in files:
+        where = file_place(profile, file.path)
+        if where is None or where.part not in profile.no_twins_translated:
+            continue
+        imported = {target for _, target, _ in named_targets(file.imports, package, known, root)}
+        found |= {(call.func, target) for call in file.calls if call.func[:1] == (root,) for target in imported}
+    return frozenset(found)
+
+
+def _built(first: Counted, second: Counted, built: Built, root: str, profile: Profile) -> bool:
+    """Whether a translator builds one of the two classes and imports the file that defines the other."""
+    marks = profile.language.marks
+    one, other = ((root, *dotted(item[0].path, marks)[0], item[1].name) for item in (first, second))
+    return (one, other[1:-1]) in built or (other, one[1:-1]) in built
+
+
+def _same(counted: list[Counted], least: int, order: dict[str, int], profile: Profile, built: Built,
+          root: str) -> tuple[list[Violation], list[tuple[Counted, Counted]]]:
     """The classes with the same fields, at least least of them, each group taken in the order of its first file."""
     groups: dict[tuple[str, ...], list[Counted]] = {}
     for item in counted:
@@ -115,7 +150,8 @@ def _same(counted: list[Counted], least: int, order: dict[str, int],
         group = sorted(members, key=lambda item: order.get(item[2].part or "", len(order)))
         for index, item in enumerate(group):
             file, cls, where = item
-            others = [other for other in group[:index] if other[2].part != where.part]
+            others = [other for other in group[:index]
+                      if other[2].part != where.part and not _built(item, other, built, root, profile)]
             twin = next((other for other in others if other[2].instance == where.instance),
                         others[0] if others else None)
             pairs += [(item, other) for other in others]
@@ -130,11 +166,14 @@ def _same(counted: list[Counted], least: int, order: dict[str, int],
     return found, pairs
 
 
-def _pairs(counted: list[Counted], reported: list[tuple[Counted, Counted]]) -> list[tuple[Counted, Counted]]:
-    """Every pair of counted classes in parts of different names, the later first, but those reported already."""
+def _pairs(counted: list[Counted], reported: list[tuple[Counted, Counted]], built: Built, root: str,
+           profile: Profile) -> list[tuple[Counted, Counted]]:
+    """Every pair of counted classes in parts of different names, the later first, but those reported already and
+    those a translator builds one of from the other."""
     done = {(id(later[1]), id(earlier[1])) for later, earlier in reported}
     return [(later, earlier) for index, later in enumerate(counted) for earlier in counted[:index]
-            if earlier[2].part != later[2].part and (id(later[1]), id(earlier[1])) not in done]
+            if earlier[2].part != later[2].part and (id(later[1]), id(earlier[1])) not in done
+            and not _built(later, earlier, built, root, profile)]
 
 
 def _unique(counted: list[Counted], copied: dict[str, str]) -> dict[str, str]:

@@ -47,7 +47,8 @@ class Profile:
     part, the targets each of its files must import one of (or an outside package); no_duplicates is the fewest
     statements a function needs to count as a duplicate (None: off); no_twins the fewest fields a class needs to count
     as a twin of another (None: off), no_twins_renamed the fewest a renamed copy needs, no_twins_subset the fewest a copy
-    of part of another's fields needs (None: that case is off; see twins); dead_code switches the unused ports and fakes
+    of part of another's fields needs (None: that case is off; see twins), no_twins_translated the parts whose files
+    translate one of a pair into the other, which is then no twin; dead_code switches the unused ports and fakes
     check on; pass_through lists the parts whose methods that only forward are listed (empty: off). untested lists,
     with dead_code, the files of a tiered part no test of its tier reaches; tests_only, with dead_code, the public names
     of the app no other file of the app names. holds says, by part, what its files define
@@ -85,6 +86,7 @@ class Profile:
     no_twins: int | None = None
     no_twins_renamed: int | None = None
     no_twins_subset: int | None = None
+    no_twins_translated: tuple[str, ...] = ()
     dead_code: bool = False
     pass_through: tuple[str, ...] = ()
     untested: bool = False

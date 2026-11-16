@@ -79,6 +79,7 @@ def _guards_view(guards: tuple[Guard, ...]) -> GuardsView:
         no_twins=next((g.min_fields for g in guards if isinstance(g, NoTwins)), None),
         no_twins_renamed=next((g.min_renamed for g in guards if isinstance(g, NoTwins)), None),
         no_twins_subset=next((g.min_subset for g in guards if isinstance(g, NoTwins)), None),
+        no_twins_translated=next((g.translated for g in guards if isinstance(g, NoTwins)), ()),
         dead_code=any(isinstance(g, DeadCode) for g in guards),
         untested=any(isinstance(g, DeadCode) and g.untested for g in guards),
         tests_only=any(isinstance(g, DeadCode) and g.tests_only for g in guards),

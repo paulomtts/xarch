@@ -55,15 +55,16 @@ def test_python_supplies_every_fact_a_bundled_check_reads():
 
 
 def test_the_keys_a_profile_sets_are_found_in_every_scope_and_through_a_testing_preset():
-    document = covered(guards={"dead-code": {"untested": True}, "no-comments": {}}, reserved={"json": "only io"})
+    document = covered(guards={"dead-code": {"untested": True}, "no-comments": {}, "no-twins": {"translated": ["api"]}},
+                       reserved={"json": "only io"})
     document["parts"]["service"]["holds"] = "classes"
     document["tiers"]["unit"]["must_import"] = ["service"]
     found = [address for address, _ in configured(document | {"testing": "pytest"},
                                                   {"pytest": document["testing"]})]
     assert found == ["reserved", "tiers", "parts.api.may_import", "parts.service.may_import", "parts.service.holds",
                      "parts.store.may_import", "parts.store.libraries", "tiers.unit.must_import", "testing.skips",
-                     "testing.table", "testing.mocks", "guards.no-comments", "guards.dead-code",
-                     "guards.dead-code.untested"]
+                     "testing.table", "testing.mocks", "guards.no-comments", "guards.no-twins",
+                     "guards.no-twins.translated", "guards.dead-code", "guards.dead-code.untested"]
 
 
 @pytest.mark.parametrize("key", [key for key in KEYS if key.needs], ids=lambda key: key.address)

@@ -2,9 +2,9 @@
 the same order are one type written twice."""
 import pytest
 
-from tests.modules.rules.builders import profile, source
+from tests.modules.rules.builders import APP, imp, profile, source
 from xarch.modules.rules.application.logic.twins import violations
-from xarch.modules.rules.domain.values import Class
+from xarch.modules.rules.domain.values import Call, Class
 
 ON = profile(no_twins=3)
 DOMAIN = "modules/docs/domain/values.py"
@@ -14,12 +14,12 @@ FIELDS = ("key", "part", "what")
 
 
 def problems(*files, checked=ON) -> list[str]:
-    return [str(v) for v in violations(list(files), checked)]
+    return [str(v) for v in violations(list(files), checked, APP)]
 
 
 def test_a_twin_in_another_part_is_reported_naming_both_places_with_what_to_do():
     found = violations([source(CONTRACT, classes=(Class(9, "LoosenedView", fields=FIELDS),)),
-                        source(DOMAIN, classes=(Class(5, "Loosened", fields=FIELDS),))], ON)
+                        source(DOMAIN, classes=(Class(5, "Loosened", fields=FIELDS),))], ON, APP)
     assert [(str(v), v.rule, v.fix) for v in found] == [(
         "app/modules/docs/contract/__init__.py:9: LoosenedView declares the fields of Loosened at "
         "app/modules/docs/domain/values.py:5 in the same order (key, part, what): contract/ of modules/docs and "
@@ -106,7 +106,7 @@ CHECKED = Class(9, "Checked", fields=("location", "problems", "files", "origin")
 
 
 def test_a_copy_that_renamed_a_field_is_reported_naming_the_names_and_what_to_do():
-    found = violations([source(CONTRACT, classes=(CHECKED,)), source(DOMAIN, classes=(LOADED,))], RENAMED)
+    found = violations([source(CONTRACT, classes=(CHECKED,)), source(DOMAIN, classes=(LOADED,))], RENAMED, APP)
     assert [(str(v), v.fix) for v in found] == [(
         "app/modules/docs/contract/__init__.py:9: Checked declares the fields of Loaded at "
         "app/modules/docs/domain/values.py:5 in the same order, but for problems in place of example_problems "
@@ -186,7 +186,8 @@ def test_a_type_that_is_itself_a_twin_counts_as_the_type_it_copies():
 def test_a_copy_that_kept_part_of_the_fields_in_order_is_reported_at_the_later_part():
     language = Class(5, "Language", fields=("title", "name", "extension", "package_file", "cache"))
     view = Class(9, "CheckedLanguage", fields=("title", "extension", "package_file"))
-    found = violations([source(DOMAIN, classes=(language,)), source("kernel/language.py", classes=(view,))], SUBSET)
+    found = violations([source(DOMAIN, classes=(language,)), source("kernel/language.py", classes=(view,))], SUBSET,
+                       APP)
     assert [(str(v), v.fix) for v in found] == [(
         "app/modules/docs/domain/values.py:5: Language declares the fields of CheckedLanguage at app/kernel/language.py:9 "
         "in the same order, and 2 more (name, cache) (title, name, extension, package_file and 1 more): domain/ of "
@@ -233,3 +234,53 @@ def test_the_renamed_and_the_partial_copies_are_off_unless_the_profile_gives_the
 def test_two_classes_of_one_part_are_never_compared_as_renamed_or_partial_copies():
     assert problems(source(DOMAIN, classes=(LOADED,)), source("modules/billing/domain/x.py", classes=(CHECKED,)),
                     checked=RENAMED) == []
+
+
+TRANSLATED = profile(no_twins=3, no_twins_translated=("adapters",))
+KNOWN = source(DOMAIN, classes=(Class(5, "Known", fields=FIELDS),))
+VIEW = source("modules/spec/contract/__init__.py", classes=(Class(9, "KnownView", fields=FIELDS),))
+BUILDS_KNOWN = (Call(7, ("app", "modules", "docs", "domain", "values", "Known")),)
+BUILDS_VIEW = (Call(7, ("app", "modules", "spec", "contract", "KnownView")),)
+BOTH = (imp(1, "app.modules.docs.domain.values", "Known"), imp(2, "app.modules.spec.contract", "KnownView"))
+REPORTED = ["app/modules/spec/contract/__init__.py:9: KnownView declares the fields of Known at "
+            "app/modules/docs/domain/values.py:5 in the same order (key, part, what): contract/ of modules/spec and "
+            "domain/ of modules/docs hold one type written twice (no-twins)"]
+
+
+@pytest.mark.parametrize("files, checked, expected", [
+    pytest.param([source("modules/docs/adapters/spec.py", *BOTH, calls=BUILDS_KNOWN)], TRANSLATED, [],
+                 id="a file of a listed part builds one and imports the other's file"),
+    pytest.param([source("modules/docs/adapters/spec.py", *BOTH, calls=BUILDS_VIEW)], TRANSLATED, [],
+                 id="it builds the other and imports the first one's file"),
+    pytest.param([], TRANSLATED, REPORTED, id="no translator"),
+    pytest.param([source("modules/docs/application/services/spec.py", *BOTH, calls=BUILDS_KNOWN)], TRANSLATED,
+                 REPORTED, id="the translator in a part not listed"),
+    pytest.param([source("modules/docs/adapters/spec.py", *BOTH, calls=BUILDS_KNOWN)], ON, REPORTED,
+                 id="no part listed"),
+    pytest.param([source("modules/docs/adapters/spec.py", *BOTH)], TRANSLATED, REPORTED,
+                 id="a file that imports both files and builds neither"),
+    pytest.param([source("modules/docs/adapters/spec.py", BOTH[0], calls=BUILDS_KNOWN)], TRANSLATED, REPORTED,
+                 id="a file that builds one and imports only its own file"),
+    pytest.param([source("scripts/spec.py", *BOTH, calls=BUILDS_KNOWN)], TRANSLATED, REPORTED,
+                 id="a translator in no part"),
+])
+def test_a_pair_a_file_of_a_listed_part_builds_one_of_from_the_other_s_file_is_no_twin(files, checked, expected):
+    assert problems(KNOWN, VIEW, *files, checked=checked) == expected
+
+
+def test_a_translated_pair_is_no_renamed_copy_either_and_other_pairs_are_still_reported():
+    renamed = source("modules/spec/contract/__init__.py", classes=(Class(9, "KnownView", fields=("key", "part", "say"),
+                                                                         types=("", "", "")),))
+    other = source("modules/billing/contract/__init__.py", classes=(Class(3, "Other", fields=FIELDS),))
+    translator = source("modules/docs/adapters/spec.py", *BOTH, calls=BUILDS_KNOWN)
+    checked = profile(no_twins=3, no_twins_renamed=2, no_twins_translated=("adapters",))
+    known = source(DOMAIN, classes=(Class(5, "Known", fields=FIELDS, types=("", "", "")),))
+    assert problems(known, renamed, checked=checked) == [
+        "app/modules/spec/contract/__init__.py:9: KnownView declares the fields of Known at "
+        "app/modules/docs/domain/values.py:5 in the same order, but for say in place of what (key, part, say): "
+        "contract/ of modules/spec and domain/ of modules/docs hold one type written twice (no-twins)"]
+    assert problems(known, renamed, translator, checked=checked) == []
+    assert problems(KNOWN, VIEW, other, translator, checked=TRANSLATED) == [
+        "app/modules/billing/contract/__init__.py:3: Other declares the fields of Known at "
+        "app/modules/docs/domain/values.py:5 in the same order (key, part, what): contract/ of modules/billing and "
+        "domain/ of modules/docs hold one type written twice (no-twins)"]

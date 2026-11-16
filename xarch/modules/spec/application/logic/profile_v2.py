@@ -698,7 +698,7 @@ def _guards(value: Any, specs: dict[str, Any], parts: dict[str, Part], declared:
         elif kind is NoDuplicates:
             guards.append(_no_duplicates(spec, where, problems))
         elif kind is NoTwins:
-            guards.append(_no_twins(spec, where, problems))
+            guards.append(_no_twins(spec, declared, parts, where, problems))
         elif kind is PassThrough:
             guard = _pass_through(spec, declared, parts, where, problems)
             if guard is not None:
@@ -840,12 +840,12 @@ def _no_duplicates(spec: Any, where: str, problems: list[str]) -> NoDuplicates:
     return NoDuplicates(_minimum(spec, "min_statements", NoDuplicates.min_statements, "statements", where, problems))
 
 
-def _no_twins(spec: Any, where: str, problems: list[str]) -> NoTwins:
+def _no_twins(spec: Any, declared: set[str], parts: dict[str, Part], where: str, problems: list[str]) -> NoTwins:
     if spec in ({}, None):
         return NoTwins()
     if not isinstance(spec, Mapping):
         problems.append(f"{where}: must be a mapping {{min_fields: <number>, min_renamed: <number>, min_subset: "
-                        "<number>}, or {} for the default")
+                        "<number>, translated: [<part>, ...]}, or {} for the default")
         return NoTwins()
     problems += ck.unknown_keys(spec, names_of(NO_TWINS), where)
     least = _minimum(spec, "min_fields", NoTwins.min_fields, "fields", where, problems)
@@ -857,7 +857,8 @@ def _no_twins(spec: Any, where: str, problems: list[str]) -> NoTwins:
                             "to switch this case off")
             value = None
         found.append(value)
-    return NoTwins(least, *found)
+    names = ck.part_names(spec["translated"], declared, f"{where}.translated", problems) if "translated" in spec else []
+    return NoTwins(least, *found, tuple(n for n in names if n in parts))
 
 
 def _minimum(spec: Mapping[Any, Any], key: str, default: int, noun: str, where: str, problems: list[str]) -> int:

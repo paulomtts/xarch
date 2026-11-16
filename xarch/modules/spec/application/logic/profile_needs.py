@@ -15,7 +15,7 @@ from xarch.modules.spec.domain.profile_keys import GUARD, PART, PROFILE, TESTING
 from xarch.modules.spec.domain.values import DeadCode, Language, NoTwins
 from xarch.profile_values.capabilities import FACTS, Shortfall
 
-_NESTED = {KEY[DeadCode]: ("untested",), KEY[NoTwins]: ("min_renamed",)}
+_NESTED = {KEY[DeadCode]: ("untested",), KEY[NoTwins]: ("min_renamed", "translated")}
 """The keys of a guard's own map that configure a check of their own, by guard."""
 
 

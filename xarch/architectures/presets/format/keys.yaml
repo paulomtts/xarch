@@ -790,7 +790,8 @@ keys:
       type (as written, a twin's name read as the name of the class it copies), unless it is the only renamed one and at
       least min_renamed others agree. With min_subset, also a partial copy: one class's field names (at least
       min_subset, and at least half of the other's) are some of the other's, in its order. Each such pair is reported
-      once, at the later of the two, naming the earlier; a case left out is off
+      once, at the later of the two, naming the earlier; a case left out is off. With `translated`, a pair one of whose
+      classes a file of a listed part builds while importing the other's file is not a twin
     example: |
       guards:
         no-twins: {min_fields: 3}
@@ -889,6 +890,22 @@ keys:
     example: |
       guards:
         no-twins: {min_fields: 3, min_subset: 3}
+  guards.no-twins.translated:
+    meaning: the parts whose files translate one module's values into another's
+    accepts: >-
+      a list of part names: a pair is no twin when a file of one of them builds one of the two classes and imports the
+      file that defines the other
+    example: |
+      parts:
+        documents:
+          path: documents
+          role: the documents
+        adapters:
+          path: adapters
+          role: the documents as the outside reads them
+          may_import: [documents]
+      guards:
+        no-twins: {min_fields: 2, translated: [adapters]}
   guards.dead-code.untested:
     meaning: also list the files no test of their tier reaches
     accepts: >-
