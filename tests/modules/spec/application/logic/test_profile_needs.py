@@ -7,9 +7,9 @@ import pytest
 
 from tests.modules.spec.languages import PYTHON
 from tests.modules.spec.profiles_v2 import covered, layered, parsed, problems
+from xarch.modules.spec.application.logic.key_table import KEYS
 from xarch.modules.spec.application.logic.language_file import PARTIAL
 from xarch.modules.spec.application.logic.profile_needs import configured
-from xarch.modules.spec.domain.profile_keys import KEYS
 from xarch.profile_values.capabilities import EXACT, FACTS, Shortfall, Supply
 
 TOY = replace(PYTHON, name="toy", checked=replace(

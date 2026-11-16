@@ -21,6 +21,9 @@ because it has no key for them. They are looked for in:
     every identifier      a name, an attribute, a parameter or keyword, a function or class name, an imported module or
                           name, read as snake_case and camelCase words, for NAMES_BESIDES and the title of the language
 
+The data files of the profile format (presets/format/), which hold the texts xarch says of a profile's keys, carry
+none of these words anywhere: they say a fact of the language only as a `%word%` that the language fills in.
+
 `Protocol` is a word of the literals and docstrings, not of the identifiers: xarch's own ports are typing.Protocol, and
 its own imports of the standard library are of no concern to the guard.
 
@@ -204,6 +207,17 @@ def written(language: Path) -> set[tuple[str, str]]:
 @pytest.mark.parametrize("language", LANGUAGES, ids=lambda path: path.stem)
 def test_no_file_outside_the_reader_and_the_platform_names_the_language_of_the_data_file(language):
     assert sorted(named(language) - set(EXEMPT)) == []
+
+
+FORMAT = tuple(sorted((SRC / "architectures" / "presets" / "format").glob("*.yaml")))
+"""The data files of the profile format, whose texts say a language's facts only through its `%word%`s."""
+
+
+@pytest.mark.parametrize("language", LANGUAGES, ids=lambda path: path.stem)
+def test_no_data_file_of_the_format_names_the_language_of_the_data_file(language):
+    pattern, _ = language_words(language)
+    found = [(path.name, match[0]) for path in FORMAT for match in pattern.finditer(path.read_text(encoding="utf-8"))]
+    assert FORMAT and found == []
 
 
 @pytest.mark.parametrize("language", LANGUAGES, ids=lambda path: path.stem)

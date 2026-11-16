@@ -1,7 +1,8 @@
 """A profile file (format version 2), parsed and validated into an Architecture.
 
-An Architecture, from a file that states each fact once, on the thing it is about. The keys, what
-each means and whether it is enforced are in profile_keys, which the messages below read; the shape:
+An Architecture, from a file that states each fact once, on the thing it is about. The keys and whether each is
+enforced are in key_table, which the messages below read, and what each means in the format's data file (see
+key_catalogue); the shape:
 
     xarch: 2
     name: <name>
@@ -71,13 +72,12 @@ from xarch.modules.spec.application.logic.language_file import first_language
 from xarch.modules.spec.application.logic.layout_walk import is_file
 from xarch.modules.spec.application.logic.targets_written import WORD, may_import
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.guards import GUARD, GUARDS, KEY
+from xarch.modules.spec.domain.guards import GUARD, KEY, ORDER
 from xarch.modules.spec.domain.profile_keys import (
     DEAD_CODE,
     DOCS,
     FAKES,
     MOCKS,
-    MOVED,
     NO_DUPLICATES,
     NO_TWINS,
     PART,
@@ -111,10 +111,21 @@ _REPEATING = re.compile(r"<([A-Za-z_][A-Za-z0-9_-]*)>")
 _HOLDS = ("classes", "functions")
 _TIER_TEXTS = ("subject", "may_touch", "one_file_per", "cases_from", "data")
 """The keys under a tier's `docs` that hold one line of text each."""
-_GUARDS = tuple(name for name in GUARDS if name != KEY[PackageOnly])
+_GUARDS = tuple(name for name in ORDER if name != KEY[PackageOnly])
 _NEEDS_TESTING = (KEY[ScenarioCoverage], KEY[StandIns])
 _PRESET_MAP = "{files, functions}"
 _TIER_INSTEAD = "`tier: <tier>`, or `untested: <reason>`"
+_MOVED = {
+    "layout": "delete it: the layout comes from each part's `path` and `folders`",
+    "notes": "write the note of a folder under `folders` on the part that holds it",
+    "rules": "write each part's targets as `may_import` on the part",
+    "placement": "delete it: the order of `parts` is the order the litmus tests run",
+    "naming": "move it to `docs.naming`",
+    "tests": "write `testing`: a preset name, or the map {files, functions, ...}",
+    "examples": "move it to `docs.examples`",
+    "libraries": "write each part's packages as `libraries` on the part",
+}
+"""A key of version 1 that has moved, with what to write instead."""
 
 
 @dataclass(frozen=True)
@@ -194,8 +205,8 @@ def parse_v2(document: Any, source: str, files: Collection[str] = (), presets: M
 
 def _keys(document: Mapping[Any, Any]) -> list[str]:
     """The keys of the file that are unknown: one that moved from format 1 says where it went."""
-    problems = [f"`{key}`: not a key of format 2: {MOVED[key]}" for key in sorted(map(str, document)) if key in MOVED]
-    unknown = sorted(str(key) for key in document if key not in names_of(PROFILE) and key not in MOVED)
+    problems = [f"`{key}`: not a key of format 2: {_MOVED[key]}" for key in sorted(map(str, document)) if key in _MOVED]
+    unknown = sorted(str(key) for key in document if key not in names_of(PROFILE) and key not in _MOVED)
     if unknown:
         problems.append(f"unknown key{'s' if len(unknown) > 1 else ''} {ck.quoted(unknown)}: "
                         f"use {', '.join(sorted(names_of(PROFILE)))}")

@@ -2,10 +2,12 @@
 packages, the names it may not use, and the layers."""
 import pytest
 
+from tests.modules.spec.format_files import CATALOGUE
 from tests.modules.spec.profiles_v2 import layered, parsed, problems, two_folders
 from xarch.modules.spec.application.logic.key_lookup import names_of
+from xarch.modules.spec.application.logic.key_table import KEYS
 from xarch.modules.spec.application.logic.layout_walk import docs_name, is_file
-from xarch.modules.spec.domain.profile_keys import KEYS, SCOPES
+from xarch.modules.spec.domain.profile_keys import SCOPES
 from xarch.modules.spec.domain.values import Part
 from xarch.profile_values.placement import Repeat, Target
 
@@ -44,7 +46,7 @@ def test_every_unknown_key_message_reads_the_table_of_keys():
 
 
 def test_every_key_of_the_table_has_a_scope_with_an_address_and_a_meaning():
-    assert all(key.scope in SCOPES and key.meaning and key.address for key in KEYS)
+    assert all(key.scope in SCOPES and CATALOGUE.texts[key.address].meaning and key.address for key in KEYS)
     assert len({key.address for key in KEYS}) == len(KEYS)
 
 

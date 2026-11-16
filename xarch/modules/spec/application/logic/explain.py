@@ -1,5 +1,6 @@
 """What `xarch profile explain` reads from the table of keys: the keys of the overview, the key at an address as a person
-types it, an example with the names xarch ships filled in, and the nearest keys to an address that does not exist."""
+types it, an example with the names xarch ships filled in, the nearest keys to an address that does not exist, and the
+words of a language a text of the format is said in."""
 from __future__ import annotations
 
 import re
@@ -7,7 +8,8 @@ from difflib import get_close_matches
 
 from xarch.kernel.logic.capabilities import shortfalls
 from xarch.modules.spec.application.logic.key_lookup import keys_of, plain
-from xarch.modules.spec.domain.profile_keys import KEYS, PART, PROFILE, TIER, Key
+from xarch.modules.spec.application.logic.key_table import KEYS
+from xarch.modules.spec.domain.profile_keys import PART, PROFILE, TIER, Key
 from xarch.modules.spec.domain.values import Language
 from xarch.profile_values.capabilities import Shortfall, Supply
 
@@ -20,17 +22,28 @@ _TOKENS = {"bundled": "<bundled>", "presets": "<preset>", "languages": "<languag
 _WORD = re.compile(r"%(\w+)%")
 
 
-def said(text: str, language: Language) -> str:
-    """The text with each `%word%` replaced by what the language says for it: the title, the extension, the package file,
-    the name of an interface and its dotted path, the namespace of the names bound without an import, the marker of a
-    line comment and the comments its tools read, each quoted after the marker; a word it has none for stays."""
+def words(language: Language) -> dict[str, str]:
+    """What the language says for each `%word%` a text of the format may write: the title, the extension, the package
+    file, the name of an interface and its dotted path, the namespace of the names bound without an import, the marker
+    of a line comment and the comments its tools read, each quoted after the marker."""
     checked = language.checked
-    words = {"language": checked.title, "extension": checked.extension, "package_file": checked.package_file,
-             "interface": language.interface_name,
-             "interface_path": ".".join(checked.interface[0]) if checked.interface else "",
-             "namespace": language.namespace, "comment": checked.comment,
-             "directives": ", ".join(f"`{checked.comment} {word}`" for word in checked.directives)}
-    return _WORD.sub(lambda found: words.get(found[1], found[0]), text)
+    return {"language": checked.title, "extension": checked.extension, "package_file": checked.package_file,
+            "interface": language.interface_name,
+            "interface_path": ".".join(checked.interface[0]) if checked.interface else "",
+            "namespace": language.namespace, "comment": checked.comment,
+            "directives": ", ".join(f"`{checked.comment} {word}`" for word in checked.directives)}
+
+
+def words_in(text: str) -> list[str]:
+    """The `%word%`s the text writes, each without its marks, in order."""
+    return _WORD.findall(text)
+
+
+def said(text: str, language: Language) -> str:
+    """The text with each `%word%` replaced by what the language says for it (see words); a word it has none for
+    stays."""
+    found = words(language)
+    return _WORD.sub(lambda word: found.get(word[1], word[0]), text)
 
 
 def holder_of(key: Key) -> str:
@@ -83,9 +96,9 @@ def held_by(key: Key) -> tuple[Key, ...]:
     return keys_of(key.opens) if key.opens else ()
 
 
-def example_of(key: Key, names: tuple[str, ...]) -> str:
-    """The key's example, with the first of the names xarch ships where it writes a token for one."""
-    return key.example.replace(_TOKENS[key.choices], names[0]) if names and key.choices else key.example
+def example_of(key: Key, example: str, names: tuple[str, ...]) -> str:
+    """The example of the key's text, with the first of the names xarch ships where it writes a token for one."""
+    return example.replace(_TOKENS[key.choices], names[0]) if names and key.choices else example
 
 
 def nearest(typed: str) -> tuple[str, ...]:

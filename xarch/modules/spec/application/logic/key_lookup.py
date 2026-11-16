@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import re
 
-from xarch.modules.spec.domain.profile_keys import KEYS, Key
+from xarch.modules.spec.application.logic.key_table import KEYS
+from xarch.modules.spec.domain.profile_keys import Key
 
 _PLACEHOLDER = re.compile(r"\.?<[^>]*>|\[\]")
 

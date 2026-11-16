@@ -16,6 +16,7 @@ from xarch.profile_values.capabilities import EXACT, FACTS, Shortfall, Supply
 
 BUNDLED = {"bundled": {"base": {}, "other": {}}}
 BROKEN = {"bundled": {"base": {}}, "languages": {"python": "not a mapping"}}
+UNTOLD = {"bundled": {"base": {}}, "keys": {"fragments": {}, "smallest": "xarch: 2\n", "symbols": []}}
 SAID = (
     Symbol("<word>", "in a path: a repeating folder, one per name, as in units/<unit>/store; there may be several"),
     Symbol("store", "in may_import, a bare name: that part, in the importer's own instance of its repeating folder"),
@@ -124,6 +125,10 @@ SHAPE = (
     pytest.param(BROKEN, Explain(), ProfileRefused("presets/language/python.yaml: must be a mapping of keys, such as title, "
                                                    "extension and package_file"),
                  id="the format is refused with why when the data file of a language does not load"),
+    pytest.param(UNTOLD, Explain("based_on"), ProfileRefused("presets/format/keys.yaml: missing `keys`\n"
+                                                             "presets/format/keys.yaml: symbols: must be a mapping of names "
+                                                             "to text"),
+                 id="a key is refused with why when the data file of the format's texts does not load"),
 ])
 def test_explain(given, when, then):
     spec, _ = spec_controller(**given)

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from xarch.modules.spec.domain.guards import GUARD, GUARDS, KEY
+from xarch.modules.spec.domain.guards import GUARD, KEY, ORDER
 from xarch.modules.spec.domain.values import (
     ArchitectureSource,
     ClosedTree,
@@ -32,4 +32,4 @@ def test_a_location_names_a_file_when_it_is_a_path_or_has_a_folder_or_a_suffix(l
 def test_each_guard_is_switched_on_by_the_name_the_format_lists_it_under():
     guards = (PackageOnly, ScenarioCoverage, NoComments, StandIns, ClosedTree, NoDuplicates, NoTwins, DeadCode,
               PassThrough, PrivateImports)
-    assert sorted(KEY[guard] for guard in guards) == sorted(GUARDS) == sorted(GUARD)
+    assert sorted(KEY[guard] for guard in guards) == sorted(ORDER) == sorted(GUARD)

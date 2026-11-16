@@ -50,3 +50,28 @@ def test_what_cannot_be_read_is_an_invalid_architecture_naming_the_file(tmp_path
     assert parsed.value.problems[0].startswith(f"{bad.location}: not valid YAML")
     assert text.value.problems == (f"{bad.location}: cannot read 'bin.md': it is not valid UTF-8 text",)
     assert missing.value.problems == (f"{bad.location}: cannot read 'gone.md': No such file or directory",)
+
+
+class BrokenPackage(PackageData):
+    """The package data with one file whose text is not a valid data file."""
+
+    def __init__(self, broken: str, text: str):
+        super().__init__("xarch", "architectures")
+        self._broken, self._text = broken, text
+
+    def read_text(self, relative: str) -> str:
+        return self._text if relative == self._broken else super().read_text(relative)
+
+
+def test_the_data_file_of_the_formats_texts_comes_from_the_package_data():
+    document = files().format_keys()
+    assert list(document) == ["fragments", "smallest", "symbols", "keys"]
+    assert document["keys"]["xarch"] == {"meaning": "the format version", "accepts": "the number 2", "example": "xarch: 2"}
+
+
+def test_a_data_file_that_does_not_parse_is_an_invalid_architecture_naming_it():
+    broken = FsArchitectureFiles(FileSystem(), DataFileReader(), BrokenPackage("presets/format/keys.yaml", "keys: ["))
+    with pytest.raises(InvalidArchitecture) as caught:
+        broken.format_keys()
+    assert caught.value.problems == ("presets/format/keys.yaml: cannot read the data file: not valid YAML: line 1, "
+                                     "column 8: expected the node content, but found '<stream end>'",)

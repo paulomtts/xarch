@@ -5,7 +5,13 @@ from pathlib import Path
 from typing import Any
 
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.values import LANGUAGES, PROFILE_SUFFIX, ArchitectureDocument, ArchitectureSource
+from xarch.modules.spec.domain.values import (
+    FORMAT_KEYS,
+    LANGUAGES,
+    PROFILE_SUFFIX,
+    ArchitectureDocument,
+    ArchitectureSource,
+)
 from xarch.platform.data_files import DataFileError, DataFileReader
 from xarch.platform.filesystem import FileSystem
 from xarch.platform.package_data import PackageData
@@ -30,16 +36,20 @@ class FsArchitectureFiles:
     def language_presets(self) -> dict[str, Any]:
         return self._documents(LANGUAGES)
 
+    def format_keys(self) -> Any:
+        return self._document(FORMAT_KEYS, "the data file")
+
     def _documents(self, folder: str) -> dict[str, Any]:
-        found: dict[str, Any] = {}
-        for name in self._package.files_in(folder):
-            if name.endswith(PROFILE_SUFFIX):
-                try:
-                    found[name.removesuffix(PROFILE_SUFFIX)] = self._reader.parse(
-                        self._package.read_text(f"{folder}/{name}"))
-                except (OSError, UnicodeDecodeError, DataFileError) as e:
-                    raise InvalidArchitecture(f"{folder}/{name}", [f"cannot read the preset: {e}"]) from e
-        return found
+        return {name.removesuffix(PROFILE_SUFFIX): self._document(f"{folder}/{name}", "the preset")
+                for name in self._package.files_in(folder) if name.endswith(PROFILE_SUFFIX)}
+
+    def _document(self, path: str, what: str) -> Any:
+        """The document of the data file at path below the bundled folder; raises InvalidArchitecture, saying what
+        cannot be read and why."""
+        try:
+            return self._reader.parse(self._package.read_text(path))
+        except (OSError, UnicodeDecodeError, DataFileError) as e:
+            raise InvalidArchitecture(path, [f"cannot read {what}: {e}"]) from e
 
     def read(self, source: ArchitectureSource) -> ArchitectureDocument:
         name = _name(source)

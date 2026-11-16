@@ -2,9 +2,10 @@
 outside, which pre-built checks are in use and where the fakes live."""
 import pytest
 
+from tests.modules.spec.format_files import CATALOGUE
 from tests.modules.spec.profiles_v2 import covered, layered, parsed, problems
 from xarch.modules.spec.application.logic.docs_template import fill
-from xarch.modules.spec.domain.guards import GUARDS
+from xarch.modules.spec.domain.guards import ORDER
 from xarch.modules.spec.domain.values import ClosedTree, NoComments, PackageOnly
 from xarch.profile_values.testing import CaseTable, ScenarioCoverage
 
@@ -40,9 +41,10 @@ def test_guards_name_the_pre_built_checks_in_use_with_their_parameters_and_packa
 
 
 def test_the_pre_built_checks_are_known_by_name_with_one_line_each():
-    assert list(GUARDS) == ["package-only", "scenario-coverage", "no-comments", "stand-ins", "closed-tree", "no-duplicates",
+    assert list(ORDER) == ["package-only", "scenario-coverage", "no-comments", "stand-ins", "closed-tree", "no-duplicates",
                              "no-twins", "dead-code", "pass-through", "private-imports"]
-    assert all(text and "\n" not in text for text in GUARDS.values())
+    texts = [CATALOGUE.texts[f"guards.{name}"].accepts for name in ORDER if name != "package-only"]
+    assert all(text and "\n" not in text for text in texts)
 
 
 @pytest.mark.parametrize("guards, problem", [

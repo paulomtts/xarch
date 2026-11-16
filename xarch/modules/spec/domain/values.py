@@ -28,6 +28,10 @@ PROFILE_SUFFIX = ".yaml"
 """The suffix of every bundled profile file, and of each one xarch writes."""
 LANGUAGES = "presets/language"
 """Where the data files of the languages are, below the bundled folder: one YAML file each, named for the language."""
+FORMAT = "presets/format"
+"""Where the data files of the profile format are, below the bundled folder."""
+FORMAT_KEYS = f"{FORMAT}/keys.yaml"
+"""The data file of the texts `xarch profile explain` says for the keys of the format (see key_catalogue)."""
 
 Layout = dict[str, "Layout | None"]
 """A layout tree: a dict is a folder, None a file; the key "*" is a repeating folder, one per instance."""

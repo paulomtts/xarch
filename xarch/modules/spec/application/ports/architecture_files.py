@@ -22,6 +22,11 @@ class ArchitectureFiles(Protocol):
         {"<name>": {...}}: shipped as data with xarch."""
         ...
 
+    def format_keys(self) -> Any:
+        """The document of the data file of the texts of the profile format's keys, shipped as data with xarch, parsed
+        but not validated; raises InvalidArchitecture if it cannot be read or parsed."""
+        ...
+
     def read(self, source: ArchitectureSource) -> ArchitectureDocument:
         """The file, parsed but not validated; raises InvalidArchitecture if it cannot be read or parsed."""
         ...

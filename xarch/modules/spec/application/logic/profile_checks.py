@@ -1,6 +1,6 @@
 """Checks of a profile file's values that the loader of format 2 shares between its keys: each takes the value found at a key, appends
 every problem it finds to `problems` (each naming the key by its address, as the caller gives it) and returns what it
-parsed, or None when it found problems. The keys a mapping accepts come from profile_keys for the maps both versions
+parsed, or None when it found problems. The keys a mapping accepts come from key_table for the maps both versions
 write the same way."""
 from __future__ import annotations
 

@@ -1,0 +1,1012 @@
+# The keys of a profile file (format 2) as `xarch profile explain` says them. keys: by each key's address in the file,
+# what it means (a few words), what it accepts and what that does, and an example: a fragment of a profile that loads
+# once merged into the smallest one; a guard's accepts is its parameters and what it checks. smallest: the smallest
+# valid profile; symbols: what a profile writes in paths and imports, each with what it means. fragments: pieces of
+# profile an example shares: a line that is exactly <<name>> stands for that fragment's text. A word written %word% is
+# said in the words of the language (%extension%, %interface%, ...), and %min_statements% and %min_fields% are the
+# defaults of no-duplicates and no-twins. Which keys exist, where they sit and what they enforce is xarch's own table;
+# this file holds a text for each of them, and no other.
+fragments:
+  part: |
+    parts:
+      documents:
+        path: documents
+        role: the documents
+  two: |
+    parts:
+      core:
+        path: core
+        role: the rules of the documents
+      documents:
+        path: documents
+        role: the documents
+        may_import: [core]
+  tiered-part: |
+    <<part>>
+        tier: unit
+  testing: |
+    testing:
+      files: [check_*%extension%]
+      functions: "check_*"
+  table: |2
+      table:
+        decorator: checks.cases
+        row: checks.case
+        id: id
+  mocks: |2
+        calls: [doubles.make]
+        spec_keywords: [spec]
+  fakes: |
+    fakes:
+      folder: fakes
+      for: [core]
+      prefix: Fake
+  coverage: |
+    <<testing>>
+    <<table>>
+    tiers:
+      integration:
+        proves: a use case
+    parts:
+      documents:
+        path: units/<unit>/documents
+        role: the documents
+        tier: integration
+      results:
+        path: units/<unit>/results
+        role: the result unions
+        tier: integration
+  coverage-guard: |
+    <<coverage>>
+    guards:
+      scenario-coverage:
+        results: results
+        tier: integration
+        suffix: Result
+        columns: [given, when, then]
+        file: check_{name}%extension%
+  check: |
+    checks:
+      no-todo:
+        read: comment
+        in: {where: [placed]}
+        may_not: {text: ["*TODO*"]}
+        message: "{file} leaves a note for later at line {line}: {text}"
+        fix: "do it now, or write it where the team tracks its work"
+        examples:
+          flagged: {documents/notes%extension%: "%comment% TODO: split this file\n"}
+          clean: {documents/notes%extension%: "%comment% split by kind\n"}
+  pages: |
+    docs:
+      pages:
+        statement.md:
+          from: docs/statement.md
+          note: the problem the documents solve
+smallest: |
+  xarch: 2
+  name: documents-app
+  parts:
+    documents:
+      path: documents
+      role: the documents
+symbols:
+  "<word>": "in a path: a repeating folder, one per name, as in units/<unit>/store; there may be several"
+  store: "in may_import, a bare name: that part, in the importer's own instance of its repeating folder"
+  store@any: that part in any instance; the only way to name a part of another repeating folder
+  store/schema: only what lies below that path of the part
+  store:*Id: "in may_import, after `:`: only the names that match the pattern, `*` for any text"
+  everything: "in may_import or libraries: no limit"
+  a path ending in %extension%: "a last path step with a dot: the part is one file, not a folder"
+keys:
+  xarch:
+    meaning: the format version
+    accepts: the number 2
+    example: "xarch: 2"
+  name:
+    meaning: what the profile is called
+    accepts: a non-empty string
+    example: "name: documents-app"
+  based_on:
+    meaning: the bundled profile this was copied from
+    accepts: "the name of a bundled profile: `profile check` reports how this one is looser than it"
+    example: "based_on: <bundled>"
+  language:
+    meaning: the language of the app
+    accepts: >-
+      the name of a language xarch ships, read from its data file: the ending of a source file, the package file, what
+      marks an interface, the names bound without an import and the standard library; the first by name is the default
+    example: "language: <language>"
+  testing:
+    meaning: how the test framework names things
+    accepts: >-
+      a preset name, or a map {files, functions, skips, table, mocks}; needed with `tiers` and the guards
+      scenario-coverage and stand-ins. Dotted names are what an absolute import binds; what stays %language% is
+      `%interface_path%` as the mark of a port, `%package_file%`, the syntax tree, import resolution and the standard
+      library's names
+    example: |-
+      testing:
+        files: [check_*%extension%]
+        functions: "check_*"
+  parts:
+    meaning: where code sits, in the order their litmus tests run
+    accepts: >-
+      a map {<part>: {path, role, ...}}: each part is a folder or a file below the app; the layout is made of their
+      paths and `folders`
+    example: |
+      <<two>>
+  forbidden:
+    meaning: named lists of names a part may not use
+    accepts: >-
+      a map {<list>: [<dotted name>, ...]}; a part points to one list with `forbidden: <list>`. An entry is a dotted
+      name as an absolute import binds it (`datetime.datetime.now`; a builtin as `%namespace%.open`, a bare `open` is
+      refused), a whole package (`socket`), or a method written with a leading dot and parentheses (`.absolute()`). A
+      file may not import a listed package or anything below it, nor use a listed name, called or not, as the file
+      writes it (through the import that binds it, or a builtin by its bare name where nothing shadows it), nor call a
+      listed method on anything no import names (a variable, a parameter, the result of a call), but on the method's own
+      object and what it holds (`self.paths.resolve()`: a port's or its own). A method entry matches any object with a
+      method of that name, so it belongs only in a list of parts that never call one legitimately. Silent on a name
+      reached through a variable or `getattr`, a method of an object the list does not name, an annotation, and what a
+      helper in another file does: a ban list, not a proof of purity
+    example: |
+      forbidden:
+        pure: [time.time, socket]
+        ambient: [pathlib.Path.cwd, .absolute()]
+      <<part>>
+          forbidden: pure
+  reserved:
+    meaning: standard-library names only some parts may import
+    accepts: >-
+      a map {<name>: <reason>}: a top-level import name of the %language% standard library, and why; the `libraries`
+      check reads it as an outside package, so a file of a part imports it only when the part's `libraries` lists it (or
+      is everything), and the violation says the reason. Tests are not checked
+    example: |
+      reserved:
+        json: only the store reads files
+      <<part>>
+          libraries: [json]
+  layers:
+    meaning: chains of parts from the inside out
+    accepts: >-
+      a map {<name>: [<part>, ...]}: no part imports one after it in its chain; refused at load when a `may_import`
+      breaks a chain
+    example: |
+      layers:
+        stack: [core, documents]
+      <<two>>
+  tiers:
+    meaning: the kinds of test, in the order their litmus tests run
+    accepts: >-
+      a map {<tier>: {...}}; with tiers, every part names its `tier` or says why it is `untested`; needs `testing`.
+      Tests mirror the app: tests/<path> for the app's <path>, and a test file has the tier of the part its folder
+      mirrors (a folder that mirrors no part belongs to the tier whose `folder` holds it). A test imports only the part
+      its folder mirrors and what that may import, a bare name meaning the instance it mirrors, and other test code only
+      from its own folder; a test in no tier is a violation. Every folder below tests/<a repeating folder>/ mirrors a
+      folder of the app
+    example: |
+      <<testing>>
+      tiers:
+        unit:
+          proves: a rule of the documents
+      <<tiered-part>>
+  fakes:
+    meaning: the folder of the test fakes, and what they stand in for
+    accepts: a map {folder, for, prefix}
+    example: |
+      <<two>>
+      <<fakes>>
+  guards:
+    meaning: the pre-built checks in use
+    accepts: >-
+      a map {<guard>: {...}}: a guard left out is off; `xarch profile explain guards.<guard>` says what one checks
+    example: |
+      guards:
+        no-comments: {}
+        no-duplicates: {min_statements: 6}
+  excluded:
+    meaning: folders below the app that are not its source
+    accepts: >-
+      a map {<folder>: <reason>}: a path below the app, never a folder of the layout; no check reads a %language% file
+      below one (`closed-tree` and the `ungoverned` list leave it out); `check` lists each under `enforcement` and
+      `where` says so; not a finding for `--strict`
+    example: |
+      excluded:
+        generated: written by a tool, not by hand
+  hints:
+    meaning: your own advice for a rule
+    accepts: >-
+      a map {<rule id>: <text>}: shown after the built-in fix of a violation of that rule, as a `hint:` line in the text
+      output and `hint` in the JSON; an id that is no rule of `check` is refused when the profile loads
+    example: |
+      hints:
+        rules: Ask the maintainer before adding an import.
+  checks:
+    meaning: checks of your own, beside the keys
+    accepts: >-
+      a map {<id>: <check>}: an id of your own (lowercase words joined by `-`, none of a check xarch has), and a check
+      written in the words of the engine: what it reads (`read`), where (`in`), what it keeps, what must or may not hold
+      of it, what excuses it, and its `message` and `fix`; with `examples`, code it must find something in and code it
+      must find nothing in, which `profile check` runs. `xarch profile explain checks` says how a check is written and
+      every word it is written in; `xarch profile explain <key> --rule` shows the rules a key expands to, written as
+      checks. A check that reads nothing in the project is listed under `enforcement`, and fails `check --strict`
+    example: |
+      <<part>>
+      <<check>>
+  files:
+    meaning: the files `init` writes besides the docs
+    accepts: "a map {<path>: <from> or {from, pinned, fill}}: `from` is a file or folder next to the profile"
+    example: |
+      files:
+        AGENTS.md: agents.md
+  docs:
+    meaning: everything that only fills the generated docs
+    accepts: a map {entry, pages, naming, examples, example_notes}
+    example: |
+      docs:
+        entry: documents
+  parts.<part>.path:
+    meaning: where the part lives below the app
+    accepts: >-
+      a folder, or a file when its last step holds a dot; a step written `<word>` is a repeating folder, one per name: a
+      profile may have several, each with a word of its own and one parent, and a path holds one
+    example: |
+      parts:
+        store:
+          path: units/<unit>/store
+          role: saves the documents of one unit
+  parts.<part>.role:
+    meaning: what the part is for, in one line
+    accepts: "one line of text: the note of its folder in the docs tree"
+    example: |
+      <<part>>
+          role: saves and loads documents
+  parts.<part>.litmus:
+    meaning: the question that tells code belongs here
+    accepts: >-
+      text, ideally a yes-or-no question. A part the bundled profile this one is compared with gives a litmus, redefined
+      here without one, is listed as looser, and fails `check --strict`
+    example: |
+      <<part>>
+          litmus: Does it save or load a document?
+  parts.<part>.may_import:
+    meaning: what the part may import besides itself
+    accepts: >-
+      [<part>, <part>@any, <part>/<path>, <part>:<pattern>, ...] or everything: a bare name is that part in the
+      importer's own instance (a part of another repeating folder has none: write `@any`), `@any` any instance,
+      `/<path>` only what lies below it, `:<pattern>` only the names that match the pattern (`*` for any text, such as
+      `core/ids:*Id`): `from <there> import <name>` for each name, never the file as a whole, and a file of the tests is
+      not narrowed; a part may always import itself, so a target that only says so is refused
+    example: |
+      <<two>>
+  parts.<part>.must_import:
+    meaning: what each file of the part has to reach
+    accepts: >-
+      [<target>, ...] written as `may_import` writes them, each one the part may import: each file imports one of them,
+      or an outside package (top-level, neither standard library nor the app's own, whatever `libraries` says), or
+      imports a file of its own part that does, however far the chain; files that only import each other meet nothing.
+      Exempt: `%package_file%` and a file with no function or method holding a real statement (types, constants,
+      %interface% stubs). A failing file is reported once, as a whole
+    example: |
+      <<two>>
+          must_import: [core]
+  parts.<part>.types_only:
+    meaning: the parts its files may use only as types
+    accepts: >-
+      [<part>, ...], each one `may_import` allows: a file of the part may import them to annotate, and for `isinstance`
+      and exception matching, but never call what it imports from them (`X(...)`, `m.X(...)`, `X.build(...)`) nor
+      reference one of their top-level functions at all; read through absolute imports only, as
+      `tiers.<tier>.types_only` reads a test
+    example: |
+      <<two>>
+          types_only: [core]
+  parts.<part>.holds:
+    meaning: what the files of the part define at the top level
+    accepts: >-
+      classes or functions. classes: no file of the part defines a public function at the top level (a name that does
+      not start with `_`). functions: no file of the part defines a class at the top level, whatever its name, but for
+      an exception class (one that derives from a builtin exception, directly or through classes of the app) and a
+      record (a class with no method of its own, dunder methods aside) that a top-level function of the same file names
+      in its return annotation. A package file (`%package_file%`) is exempt. Each one is listed as `weak` in the
+      enforcement section, and fails `check --strict` only
+    example: |
+      <<part>>
+          holds: classes
+  parts.<part>.immutable:
+    meaning: the classes of the part are immutable records
+    accepts: >-
+      true: every class a file of the part defines at the top level, whatever its name, is an immutable record, as the
+      language's data file says one is made (its `immutable`: a base, or a decorator called with its keywords), but for
+      an exception class. A package file (`%package_file%`) is exempt. Each other one is listed as `weak` in the
+      enforcement section, and fails `check --strict` only. Written beside `holds: functions`, it keeps the records a
+      part of functions returns from being changed by the code they are handed to
+    example: |
+      <<part>>
+          holds: functions
+          immutable: true
+  parts.<part>.no_callbacks:
+    meaning: its code calls none of its own parameters
+    accepts: >-
+      true: no function, method or nested function of the part calls, by its bare name, a parameter of a function it
+      lies in that is annotated as a callable type (alone, subscripted, in a union or as an optional), as in
+      `check(path)` for `check: Callable[[str], bool]`. Not read: the first parameter of a method (`self`, `cls`; a
+      staticmethod has none), a parameter with no such annotation, one passed on (`sorted(rows, key=key)`), one whose
+      method is called (`p.read()`), and one the body rebinds
+    example: |
+      <<part>>
+          no_callbacks: true
+  parts.<part>.names:
+    meaning: how the classes of the part are named
+    accepts: >-
+      a pattern, or a list of them, with `*` for any text: every public class (a name that does not start with `_`)
+      defined at the top level in a file of the part matches one of them
+    example: |
+      <<part>>
+          names: "*Store"
+  parts.<part>.built_by:
+    meaning: the only parts that may build its classes
+    accepts: >-
+      [<part>, ...]: only code of those parts calls the constructor of a class defined at the top level in a file of
+      this part, `X(...)` or `m.X(...)`, read through absolute imports; code of this part counts as any other, and tests
+      are not read. Silent on a class reached through a package file that re-exports it, built in its own file, or built
+      through a variable or a parameter
+    example: |
+      <<two>>
+          built_by: [core]
+  parts.<part>.shared:
+    meaning: the part is there to be shared, by at least this many users
+    accepts: >-
+      a whole number, at least 2: every public name a file of the part defines at the top level (a class, a function, a
+      name an assignment binds) is used by at least this many users, or it is reported where it is defined. A user is
+      the instance of a repeating folder a using file lies in, or the part of one outside them; the tests, a file in no
+      part, a file of a part that is shared itself and the part's own place do not count. A file uses a name when it
+      imports it and mentions it again, or reads it through an import of its file; an import it never mentions again is
+      a re-export, and who imports the name from there uses it. A name another name of a shared part mentions (a field's
+      type, a helper a function calls) has that name's users too. A name with one user belongs to that user
+    example: |
+      <<two>>
+          shared: 2
+  parts.<part>.libraries:
+    meaning: the outside packages the part may import
+    accepts: >-
+      [<package>, ...] by top-level name, or everything; none by default; the standard library is always allowed, but
+      for a name `reserved` holds, which a part lists here to import it; tests are not checked
+    example: |
+      <<part>>
+          libraries: [yaml]
+  parts.<part>.forbidden:
+    meaning: the list of names the part may not use
+    accepts: the name of a top-level `forbidden` list
+    example: |
+      forbidden:
+        pure: [time.time, socket]
+      <<part>>
+          forbidden: pure
+  parts.<part>.tier:
+    meaning: the tier whose tests cover the part
+    accepts: the name of a tier; one tier per part; with `tiers`, a part names its `tier` or is `untested`
+    example: |
+      <<testing>>
+      tiers:
+        unit: {}
+      <<tiered-part>>
+  parts.<part>.untested:
+    meaning: why no tier tests the part
+    accepts: one line of text
+    example: |
+      <<part>>
+          untested: it only wires the app
+  parts.<part>.package_only:
+    meaning: the part is imported only as a package
+    accepts: "true: from outside the part, import the package, never one of its files"
+    example: |
+      <<part>>
+          package_only: true
+  parts.<part>.folders:
+    meaning: the folders below the part that the layout shows
+    accepts: "{<folder>: <note>} or [<folder>, ...]"
+    example: |
+      <<part>>
+          folders:
+            schemas: the table definitions
+  tiers.<tier>.proves:
+    meaning: what its tests prove, in one line
+    accepts: one line of text
+    example: |
+      <<testing>>
+      tiers:
+        unit:
+          proves: a rule of the documents
+      <<tiered-part>>
+  tiers.<tier>.litmus:
+    meaning: the question that tells a test belongs to the tier
+    accepts: text, ideally a yes-or-no question
+    example: |
+      <<testing>>
+      tiers:
+        unit:
+          litmus: Does it call one rule directly and check its answer?
+      <<tiered-part>>
+  tiers.<tier>.apply_forbidden:
+    meaning: its tests keep to the forbidden list of the part they mirror
+    accepts: true or false
+    example: |
+      <<testing>>
+      tiers:
+        unit:
+          apply_forbidden: true
+      <<tiered-part>>
+  tiers.<tier>.plain_tables:
+    meaning: its table tests hold no branch
+    accepts: >-
+      true: no test function of the tier that holds a table of cases (as `testing.table` writes one) holds, in its body,
+      a statement that branches (the language's `branching`) or an expression that chooses between values (its
+      `branching_expressions`), as scenario-coverage holds the tables of a use case: the odd case is a test of its own;
+      needs `testing.table`
+    example: |
+      <<testing>>
+      <<table>>
+      tiers:
+        unit:
+          plain_tables: true
+      <<tiered-part>>
+  tiers.<tier>.types_only:
+    meaning: the parts its tests may import only as types
+    accepts: >-
+      [<part>, ...]: a test may import them to annotate, never to call: `def build(c: Controller)` is fine,
+      `Controller(...)` is not; a plain function of such a part may not be referenced at all, while `isinstance`,
+      exception matching and enum members stay allowed
+    example: |
+      <<testing>>
+      tiers:
+        unit:
+          types_only: [documents]
+      <<tiered-part>>
+  tiers.<tier>.must_import:
+    meaning: what each of its test files has to reach
+    accepts: >-
+      [<part>, ...]: each test file of the tier (a file whose name `testing.files` matches) imports from one of those
+      parts, in any instance, or imports test code that is no test file and does, however far the chain goes; a test
+      file with no function holding a real statement is exempt, and a file failing is reported once, as a whole. Silent
+      on what a test is handed without importing it, such as a fixture
+    example: |
+      <<testing>>
+      tiers:
+        unit:
+          must_import: [documents]
+      <<tiered-part>>
+  tiers.<tier>.folder:
+    meaning: a folder of tests that mirror no part
+    accepts: a folder below the tests folder, for a tier whose tests mirror no part of the app
+    example: |
+      <<testing>>
+      tiers:
+        unit: {}
+        guard:
+          folder: architecture
+      <<tiered-part>>
+  tiers.<tier>.may_import:
+    meaning: what the tests in its folder may import of the app
+    accepts: as a part's `may_import`; only for a tier with a `folder`
+    example: |
+      <<testing>>
+      tiers:
+        unit: {}
+        guard:
+          folder: architecture
+          may_import: everything
+      <<tiered-part>>
+  tiers.<tier>.docs:
+    meaning: what only fills the generated docs
+    accepts: a map {subject, may_touch, one_file_per, cases_from, data, example, helpers}
+    example: |
+      <<testing>>
+      tiers:
+        unit:
+          docs:
+            may_touch: temporary folders
+      <<tiered-part>>
+  tiers.<tier>.docs.subject:
+    meaning: the Subject cell, in place of the parts of the tier
+    accepts: one line of text
+    example: |
+      <<testing>>
+      tiers:
+        unit:
+          docs:
+            subject: the documents
+      <<tiered-part>>
+  tiers.<tier>.docs.may_touch:
+    meaning: what its tests may touch
+    accepts: one line of text
+    example: |
+      <<testing>>
+      tiers:
+        unit:
+          docs:
+            may_touch: temporary folders
+      <<tiered-part>>
+  tiers.<tier>.docs.one_file_per:
+    meaning: what one test file covers
+    accepts: one line of text
+    example: |
+      <<testing>>
+      tiers:
+        unit:
+          docs:
+            one_file_per: use case
+      <<tiered-part>>
+  tiers.<tier>.docs.cases_from:
+    meaning: where its cases come from
+    accepts: one line of text
+    example: |
+      <<testing>>
+      tiers:
+        unit:
+          docs:
+            cases_from: the rule's branches
+      <<tiered-part>>
+  tiers.<tier>.docs.data:
+    meaning: where its test data comes from
+    accepts: one line of text
+    example: |
+      <<testing>>
+      tiers:
+        unit:
+          docs:
+            data: built in the test
+      <<tiered-part>>
+  tiers.<tier>.docs.example:
+    meaning: its example test
+    accepts: a path in an example project listed in `docs.examples`
+    example: |
+      docs:
+        examples: [examples]
+      <<testing>>
+      tiers:
+        unit:
+          docs:
+            example: tests/documents/check_documents%extension%
+      <<tiered-part>>
+  tiers.<tier>.docs.helpers:
+    meaning: the files its tests share
+    accepts: "[<path in an example project>, ...]"
+    example: |
+      docs:
+        examples: [examples]
+      <<testing>>
+      tiers:
+        unit:
+          docs:
+            helpers: [tests/documents/builders%extension%]
+      <<tiered-part>>
+  testing.files:
+    meaning: patterns of a test file's name
+    accepts: a list of %extension% names with `*` for any text
+    example: |
+      <<testing>>
+  testing.functions:
+    meaning: the pattern of a test function's name
+    accepts: a name with `*` for any text
+    example: |
+      <<testing>>
+  testing.skips:
+    meaning: what skips a test or expects it to fail
+    accepts: "dotted names: `check` counts each use under `enforcement`"
+    example: |
+      <<testing>>
+        skips: [checks.skip, checks.expect_fail]
+  testing.table:
+    meaning: how a test function holds a table of cases
+    accepts: a map {decorator, row, id, keywords}
+    example: |
+      <<testing>>
+      <<table>>
+  testing.mocks:
+    meaning: how a mock is built
+    accepts: a map {calls, autospec, spec_keywords, fixtures}
+    example: |
+      <<testing>>
+        mocks:
+      <<mocks>>
+  testing.table.decorator:
+    meaning: the decorator that holds the rows
+    accepts: a dotted name
+    example: |
+      <<testing>>
+      <<table>>
+  testing.table.row:
+    meaning: a row of the table
+    accepts: a dotted name
+    example: |
+      <<testing>>
+      <<table>>
+  testing.table.id:
+    meaning: the keyword that gives a row its id
+    accepts: a keyword name
+    example: |
+      <<testing>>
+      <<table>>
+  testing.table.keywords:
+    meaning: the two keywords of the decorator's arguments
+    accepts: "[<cases name>, <rows name>]"
+    example: |
+      <<testing>>
+      <<table>>
+          keywords: [names, rows]
+  testing.mocks.calls:
+    meaning: the calls that build a mock
+    accepts: a list of dotted names
+    example: |
+      <<testing>>
+        mocks:
+      <<mocks>>
+  testing.mocks.autospec:
+    meaning: the calls that build a mock from a spec argument
+    accepts: a list of dotted names
+    example: |
+      <<testing>>
+        mocks:
+      <<mocks>>
+          autospec: [doubles.make_from]
+  testing.mocks.spec_keywords:
+    meaning: the keywords a mock is given its spec by
+    accepts: a list of keyword names
+    example: |
+      <<testing>>
+        mocks:
+      <<mocks>>
+  testing.mocks.fixtures:
+    meaning: test parameters whose methods build mocks
+    accepts: "a map {<parameter>: {calls, autospec}}"
+    example: |
+      <<testing>>
+        mocks:
+      <<mocks>>
+          fixtures:
+            maker:
+              calls: [build]
+  testing.mocks.fixtures.<parameter>.calls:
+    meaning: the methods that build a mock
+    accepts: a list of method names
+    example: |
+      <<testing>>
+        mocks:
+      <<mocks>>
+          fixtures:
+            maker:
+              calls: [build]
+  testing.mocks.fixtures.<parameter>.autospec:
+    meaning: the methods that build a mock from a spec argument
+    accepts: a list of method names
+    example: |
+      <<testing>>
+        mocks:
+      <<mocks>>
+          fixtures:
+            maker:
+              calls: [build]
+              autospec: [build_from]
+  fakes.folder:
+    meaning: the folder of the fakes
+    accepts: a folder below the tests folder
+    example: |
+      <<two>>
+      <<fakes>>
+  fakes.for:
+    meaning: the parts whose %interface%s the fakes stand in for
+    accepts: "[<part>, ...]"
+    example: |
+      <<two>>
+      <<fakes>>
+  fakes.prefix:
+    meaning: how a fake's name starts
+    accepts: "the start of a class name: the fake of DocumentRepo is FakeDocumentRepo"
+    example: |
+      <<two>>
+      <<fakes>>
+  guards.scenario-coverage:
+    meaning: every result of a use case has a row
+    accepts: >-
+      {results: <part>, tier: <tier>, suffix: <text>, columns: [<state>, <command>, <result>], file: <name>}: every
+      variant of a union named <Name><suffix> in a results part is the result column of a row of the table in its use
+      case's test file <file> (`{name}` is <Name> in snake_case) of that tier, or is named by a standalone test of it;
+      every row is a `testing.table.row` call with a `testing.table.id`, and a table test has no branching; read from
+      the syntax tree, never run
+    example: |
+      <<coverage-guard>>
+  guards.no-comments:
+    meaning: no `%comment%` comments in the app or its tests
+    accepts: >-
+      {}: no `%comment%` comments in the app or its tests, whole-line or trailing; docstrings stay, and so do
+      %directives%, a shebang and an encoding line
+    example: |
+      guards:
+        no-comments: {}
+  guards.stand-ins:
+    meaning: a %interface% is faked, or mocked with a spec
+    accepts: >-
+      {}: every %interface% in a part `fakes` stands in for is fire-only (every method returns None) or read (any one
+      returns a value), each method annotated; every read port has a fake <prefix><Port> in `fakes.folder`; and a test
+      of a tier that may import the fakes gives every mock (`testing.mocks`) a spec, never a read port's; silent where
+      it cannot read the code: `*args`, a spec that is a variable, a re-exported port, mocks made by `patch`
+    example: |
+      <<testing>>
+        mocks:
+      <<mocks>>
+      <<two>>
+      <<fakes>>
+      guards:
+        stand-ins: {}
+  guards.closed-tree:
+    meaning: every file lies in a part
+    accepts: >-
+      {}: every %language% file of the app lies in a part or is the package file of a folder of the layout; off unless
+      switched on, since a profile is a protocol, not a closed world; a folder the profile `excluded` is not looked at
+    example: |
+      guards:
+        closed-tree: {}
+  guards.no-duplicates:
+    meaning: no two functions with the same code
+    accepts: >-
+      {min_statements: <number>}: no two functions or methods of the app (never its tests) have the same code: the same
+      tree once formatting, docstrings, annotations, defaults, decorators and local names are ignored, so the same
+      statements, calls, attributes, constants, keyword names, async or not, and number of parameters; what is called is
+      part of it. A function counts when it holds at least min_statements statements (nested ones counted;
+      %min_statements% when left out). The first by file and line is the original; each other is reported naming it
+    example: |
+      guards:
+        no-duplicates: {min_statements: 6}
+  guards.no-twins:
+    meaning: no two classes in different parts with the same fields
+    accepts: >-
+      {min_fields: <number>}: no two public classes of the app (never its tests), defined at the top level of files of
+      parts with different names, declare the same fields in the same order: the names their bodies annotate, types and
+      defaults aside, class variables left out. A class counts when it declares at least min_fields of them
+      (%min_fields% when left out) and is no %interface%; two classes of the same part, in one instance of a repeating
+      folder or two, are not compared. Of the classes with the same fields, in the order of the parts, then of file and
+      line, each one with an earlier twin in a part of another name is reported naming that twin, one of its own
+      instance first. With min_renamed, also a renamed copy: of two such classes, the shorter (at least min_renamed
+      fields, and at least half as many as the other) against the other's first fields, position by position, differs in
+      one name or more, the names that agree are more than half of the longer class's, and every renamed field keeps its
+      type (as written, a twin's name read as the name of the class it copies), unless it is the only renamed one and at
+      least min_renamed others agree. With min_subset, also a partial copy: one class's field names (at least
+      min_subset, and at least half of the other's) are some of the other's, in its order. Each such pair is reported
+      once, at the later of the two, naming the earlier; a case left out is off
+    example: |
+      guards:
+        no-twins: {min_fields: 3}
+  guards.dead-code:
+    meaning: no %interface% nothing names, no fake no test uses
+    accepts: >-
+      {untested: true|false}: every port (a %interface% in a part `fakes.for` names) is named by another file of the
+      app, in code or an annotation, and every fake (a top-level class of the fakes folder whose name starts with
+      `prefix`) is named by a test outside that folder or by a fake that is itself used. The port's own file, package
+      files and the wiring (a part that may import `everything`) do not count; names are compared by their last step.
+      With `untested: true`, every file of a part that has a `tier` that no test of that tier reaches is also listed as
+      `weak`, failing `check --strict` only (see guards.dead-code.untested)
+    example: |
+      <<two>>
+      <<fakes>>
+      guards:
+        dead-code: {}
+  guards.pass-through:
+    meaning: a method that only forwards is listed
+    accepts: >-
+      {parts: [<part>, ...]}: a method of those parts whose whole body (a docstring aside) is one `return` or bare
+      statement of one call, perhaps awaited, on a chain of at least two attributes of its own first parameter
+      (`self.repo.get(...)`), passing every other parameter straight through and nothing more, or one `return` of a
+      chain of attributes read on the result of such a call (`return self.repo.get(id).name`), is listed as `weak` in
+      the enforcement section and fails `check --strict` only. Any other statement, any other use of the result (an
+      item, an operator, a call on it), a changed, extra or dropped argument, a decorator, a dunder method, a function
+      outside a class or a call on something not held by the object (`self.helper(...)`) is not one
+    example: |
+      <<two>>
+      guards:
+        pass-through:
+          parts: [documents]
+  guards.private-imports:
+    meaning: no name starting with `_` is imported from another file
+    accepts: >-
+      {}: no file of the app or its tests imports a name that starts with `_` (a dunder name aside) from a file of the
+      app or its tests, `from x import _y`; an import of a whole file, whatever its name, and an import from an outside
+      package or the standard library are not read
+    example: |
+      guards:
+        private-imports: {}
+  guards.scenario-coverage.results:
+    meaning: the part holding the result unions
+    accepts: the name of a part
+    example: |
+      <<coverage-guard>>
+  guards.scenario-coverage.tier:
+    meaning: the tier whose test files hold the tables
+    accepts: the name of a tier
+    example: |
+      <<coverage-guard>>
+  guards.scenario-coverage.suffix:
+    meaning: how a union's name ends
+    accepts: text, such as Result
+    example: |
+      <<coverage-guard>>
+  guards.scenario-coverage.columns:
+    meaning: the three parameter names of a table
+    accepts: "[<state>, <command>, <result>]"
+    example: |
+      <<coverage-guard>>
+  guards.scenario-coverage.file:
+    meaning: the name of a use case's test file
+    accepts: a name holding {name} once, for the use case
+    example: |
+      <<coverage-guard>>
+  guards.no-duplicates.min_statements:
+    meaning: the fewest statements that count
+    accepts: a whole number, %min_statements% when left out
+    example: |
+      guards:
+        no-duplicates: {min_statements: 6}
+  guards.no-twins.min_fields:
+    meaning: the fewest fields that count
+    accepts: a whole number, %min_fields% when left out
+    example: |
+      guards:
+        no-twins: {min_fields: 3}
+  guards.no-twins.min_renamed:
+    meaning: also report a copy that renamed fields, from this many fields
+    accepts: >-
+      a whole number, at least 2; left out, the case is off. Two classes of parts with different names, the shorter with
+      at least this many fields and at least half as many as the other, compared position by position with the other's
+      first fields: one name or more differs, the names that agree are more than half of the longer class's fields, and
+      every renamed field keeps its type, read as written but for a twin's name, which reads as the class it copies; a
+      field renamed and retyped is allowed only when it is the only renamed one and at least this many others agree
+    example: |
+      guards:
+        no-twins: {min_fields: 3, min_renamed: 3}
+  guards.no-twins.min_subset:
+    meaning: also report a copy of part of a class's fields, from this many fields
+    accepts: >-
+      a whole number, at least 2; left out, the case is off. A class whose field names, at least this many and at least
+      half of the other's, are some of another's in its order (other fields between or around them), in a part of
+      another name; types are not compared
+    example: |
+      guards:
+        no-twins: {min_fields: 3, min_subset: 3}
+  guards.dead-code.untested:
+    meaning: also list the files no test of their tier reaches
+    accepts: >-
+      true or false: every file of a part that has a `tier`, which no test code of that tier (a file below the tests
+      folder that the tier holds, test or not) imports, directly or through files of parts of that same tier that it
+      reaches, is listed as `weak` in the enforcement section and fails `check --strict` only. Exempt: a package file,
+      and a file with no function or method holding a real statement (types, constants, %interface% stubs). Read only
+      with a tests folder
+    example: |
+      <<two>>
+      <<fakes>>
+      guards:
+        dead-code: {untested: true}
+  guards.dead-code.tests_only:
+    meaning: also list the public names only the tests use
+    accepts: >-
+      true or false: every public class and top-level function a file of the app defines (a package file aside) that no
+      other file of the app names, in code or an annotation, by its last step, is listed as `weak` in the enforcement
+      section and fails `check --strict` only: only the tests use it, or nothing does. A name its own file alone uses is
+      listed too: make it private
+    example: |
+      <<two>>
+      <<fakes>>
+      guards:
+        dead-code: {tests_only: true}
+  guards.pass-through.parts:
+    meaning: the parts whose forwarding methods are listed
+    accepts: "[<part>, ...]"
+    example: |
+      <<two>>
+      guards:
+        pass-through:
+          parts: [documents]
+  docs.entry:
+    meaning: the part that is the entry point
+    accepts: the name of a part
+    example: |
+      docs:
+        entry: documents
+  docs.pages:
+    meaning: the project docs `init` writes below docs/project/
+    accepts: "a map {<path>: <from> or {from, note}}"
+    example: |
+      <<pages>>
+  docs.naming:
+    meaning: the naming table of the docs
+    accepts: a list of {kind, where, pattern, example}
+    example: |
+      docs:
+        naming:
+          - kind: store
+            where: [store]
+            pattern: <Thing>Store
+            example: [DocumentStore]
+  docs.examples:
+    meaning: folders next to the profile, each an example project
+    accepts: "[<folder>, ...]: a template quotes one of its files by its path with {{example:<path>}}"
+    example: |
+      docs:
+        examples: [examples]
+  docs.example_notes:
+    meaning: a note for an example
+    accepts: "a map {<path>: <note>}, shown after the example's path"
+    example: |
+      docs:
+        examples: [examples]
+        example_notes:
+          src/documents%extension%: the documents
+  docs.pages.<path>.from:
+    meaning: the template file, next to the profile
+    accepts: a path
+    example: |
+      <<pages>>
+  docs.pages.<path>.note:
+    meaning: shown after its line in the docs tree
+    accepts: one line of text
+    example: |
+      <<pages>>
+  docs.naming[].kind:
+    meaning: what is named
+    accepts: text, such as store
+    example: |
+      docs:
+        naming:
+          - kind: store
+            where: [store]
+            pattern: <Thing>Store
+            example: [DocumentStore]
+  docs.naming[].where:
+    meaning: the folders it lives in
+    accepts: text or a list of text
+    example: |
+      docs:
+        naming:
+          - kind: store
+            where: [store]
+            pattern: <Thing>Store
+            example: [DocumentStore]
+  docs.naming[].pattern:
+    meaning: how it is named
+    accepts: text
+    example: |
+      docs:
+        naming:
+          - kind: store
+            where: [store]
+            pattern: <Thing>Store
+            example: [DocumentStore]
+  docs.naming[].example:
+    meaning: names that follow the pattern
+    accepts: text or a list of text
+    example: |
+      docs:
+        naming:
+          - kind: store
+            where: [store]
+            pattern: <Thing>Store
+            example: [DocumentStore]
+  files.<path>.from:
+    meaning: the template file, or the folder of a path ending in /
+    accepts: "a path next to the profile: a file, or a folder when the key ends in /"
+    example: |
+      files:
+        tests/rules%extension%:
+          from: guard%extension%
+  files.<path>.pinned:
+    meaning: "`check` reports the file when it differs"
+    accepts: "true: the project keeps the file as `init` writes it"
+    example: |
+      files:
+        tests/rules%extension%:
+          from: guard%extension%
+          pinned: true
+  files.<path>.fill:
+    meaning: whether {{app}} is filled in
+    accepts: "false: the bytes are copied unchanged"
+    example: |
+      files:
+        tests/rules%extension%:
+          from: guard%extension%
+          fill: false

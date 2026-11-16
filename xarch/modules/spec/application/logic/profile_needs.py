@@ -1,5 +1,5 @@
 """What the keys a profile sets need of the language's reader: every key that configures a check needs the facts of
-the source that check reads (see capabilities and profile_keys). A key set to false configures nothing. A key whose
+the source that check reads (see capabilities and key_table). A key set to false configures nothing. A key whose
 language does not supply one of its facts is a problem of the profile, naming the key, the fact and what to do; one
 whose language supplies a fact partly is kept, and listed as approximate where the check is run.
 """

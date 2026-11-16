@@ -9,7 +9,7 @@ from xarch.modules.spec.application.logic.explain import (
     overview_keys,
 )
 from xarch.modules.spec.application.logic.key_lookup import plain
-from xarch.modules.spec.domain.profile_keys import KEYS
+from xarch.modules.spec.application.logic.key_table import KEYS
 
 
 def test_the_overview_lists_the_keys_of_the_file_with_the_keys_of_each_map_below_it_and_goes_no_deeper():
@@ -43,9 +43,9 @@ def test_a_key_that_holds_keys_gives_them_and_one_that_holds_none_gives_none():
 
 
 def test_the_example_of_a_key_that_names_something_xarch_ships_uses_the_first_name_of_the_list():
-    assert "based_on: base" in example_of(key_at("based_on"), ("base", "other"))
-    assert example_of(key_at("based_on"), ()) == key_at("based_on").example
-    assert example_of(key_at("parts.may_import"), ("base",)) == key_at("parts.may_import").example
+    assert example_of(key_at("based_on"), "based_on: <bundled>", ("base", "other")) == "based_on: base"
+    assert example_of(key_at("based_on"), "based_on: <bundled>", ()) == "based_on: <bundled>"
+    assert example_of(key_at("parts.may_import"), "may_import: [<bundled>]", ("base",)) == "may_import: [<bundled>]"
 
 
 def test_the_nearest_keys_read_like_what_was_typed_else_are_the_keys_of_the_deepest_key_that_exists():

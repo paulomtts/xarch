@@ -1,19 +1,15 @@
-"""The keys of a profile file (format version 2), in one table: the loader reads it for the keys each mapping accepts
-and the ones it needs, and `xarch profile explain` reads it for what each key means, accepts and shows as an example.
+"""The kinds of value the keys of a profile file (format version 2) are described by: a key of the table, the text
+`xarch profile explain` says for it, and the catalogue of those texts.
 
-A key sits in a scope, a kind of mapping, such as a part, written as its address in the file (`parts.<part>`). It has a
-meaning in a few words, says what it accepts, whether the profile needs it, whether it is enforced (changes what
-`xarch check` does, through the rule ids it lists) or documentary (only fills the generated docs or reports), and a
-short example: a fragment of a profile that loads once merged into the smallest one. A key that holds keys names the
-scope they sit in.
+A key sits in a scope, a kind of mapping, such as a part, written as its address in the file (`parts.<part>`). The table
+of keys says whether the profile needs one, whether it is enforced (changes what `xarch check` does, through the rule ids
+it lists) or documentary (only fills the generated docs or reports), and the scope a key that holds keys opens. Its text,
+read from a data file shipped with xarch, says its meaning in a few words, what it accepts, and a short example: a
+fragment of a profile that loads once merged into the smallest one.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
-from textwrap import indent
-
-from xarch.modules.spec.domain.guards import GUARDS
-from xarch.modules.spec.domain.values import NoDuplicates, NoTwins
+from dataclasses import dataclass
 
 PROFILE = "profile"
 PART = "part"
@@ -63,104 +59,23 @@ CHOICE_PRESETS = "presets"
 CHOICE_LANGUAGES = "languages"
 """What a key may name from a list xarch ships: the bundled profiles, the `testing` presets or the languages."""
 
-SMALLEST = """\
-xarch: 2
-name: documents-app
-parts:
-  documents:
-    path: documents
-    role: the documents
-"""
-"""The smallest valid profile: one part, no rule, no test."""
-
-SYMBOLS: tuple[tuple[str, str], ...] = (
-    ("<word>", "in a path: a repeating folder, one per name, as in units/<unit>/store; there may be several"),
-    ("store", "in may_import, a bare name: that part, in the importer's own instance of its repeating folder"),
-    ("store@any", "that part in any instance; the only way to name a part of another repeating folder"),
-    ("store/schema", "only what lies below that path of the part"),
-    ("store:*Id", "in may_import, after `:`: only the names that match the pattern, `*` for any text"),
-    ("everything", "in may_import or libraries: no limit"),
-    ("a path ending in %extension%", "a last path step with a dot: the part is one file, not a folder"),
-)
-"""The symbols a profile writes in paths and imports, each with what it means."""
-
-_PART = "parts:\n  documents:\n    path: documents\n    role: the documents\n"
-_TWO = ("parts:\n  core:\n    path: core\n    role: the rules of the documents\n  documents:\n    path: documents\n"
-        "    role: the documents\n    may_import: [core]\n")
-_TESTING = 'testing:\n  files: [check_*%extension%]\n  functions: "check_*"\n'
-_FAKES = "fakes:\n  folder: fakes\n  for: [core]\n  prefix: Fake\n"
-_MOCKS = "    calls: [doubles.make]\n    spec_keywords: [spec]\n"
-
-
-def _in_part(extra: str) -> str:
-    return _PART + indent(extra, "    ")
-
-
-def _in_two(extra: str) -> str:
-    return _TWO + indent(extra, "    ")
-
-
-def _tiered(tier: str) -> str:
-    return (_TESTING + "tiers:\n  unit:\n" + indent(tier, "    ")
-            + "parts:\n  documents:\n    path: documents\n    role: the documents\n    tier: unit\n")
-
-
-def _tier_folder(tier: str) -> str:
-    return (_TESTING + "tiers:\n  unit: {}\n  guard:\n    folder: architecture\n" + indent(tier, "    ")
-            + "parts:\n  documents:\n    path: documents\n    role: the documents\n    tier: unit\n")
-
-
-def _tests(extra: str) -> str:
-    return _TESTING + indent(extra, "  ")
-
-
-def _docs(extra: str) -> str:
-    return "docs:\n" + indent(extra, "  ")
-
-
-def _guarded(extra: str, before: str = "") -> str:
-    return before + "guards:\n" + indent(extra, "  ")
-
-
-_TABLE_BLOCK = "  table:\n    decorator: checks.cases\n    row: checks.case\n    id: id\n"
-_COVERAGE = (_TESTING + _TABLE_BLOCK + "tiers:\n  integration:\n    proves: a use case\n"
-             "parts:\n  documents:\n    path: units/<unit>/documents\n    role: the documents\n    tier: integration\n"
-             "  results:\n    path: units/<unit>/results\n    role: the result unions\n    tier: integration\n")
-_COVERAGE_GUARD = _COVERAGE + (
-    "guards:\n  scenario-coverage:\n    results: results\n    tier: integration\n    suffix: Result\n"
-    "    columns: [given, when, then]\n    file: check_{name}%extension%\n")
-_STAND_INS = (_TESTING + "  mocks:\n" + _MOCKS + _TWO + _FAKES)
-_CHECK = ("checks:\n  no-todo:\n    read: comment\n    in: {where: [placed]}\n    may_not: {text: [\"*TODO*\"]}\n"
-          "    message: \"{file} leaves a note for later at line {line}: {text}\"\n"
-          "    fix: \"do it now, or write it where the team tracks its work\"\n    examples:\n"
-          "      flagged: {documents/notes%extension%: \"%comment% TODO: split this file\\n\"}\n"
-          "      clean: {documents/notes%extension%: \"%comment% split by kind\\n\"}\n")
-"""A check of a profile's own, for the example of `checks`."""
-_PAGES = _docs("pages:\n  statement.md:\n    from: docs/statement.md\n    note: the problem the documents solve\n")
-
 
 @dataclass(frozen=True)
 class Key:
-    """One key: where it sits, what it means and accepts, whether the profile needs it, and whether `check` enforces it.
+    """One key: where it sits, whether the profile needs it, and whether `check` enforces it.
 
     scope: one of SCOPES
-    meaning: a few words, what the key is for
-    accepts: what to write, and what it does
-    example: a fragment of a profile that uses the key; merged into the smallest profile it loads
     required: the profile is refused without it
     enforced: it changes what `xarch check` does; False: it only feeds the generated docs or a report
     rules: the rule ids of `check` the key feeds; none for a key the loader alone enforces
     opens: the scope of the keys its value holds
     choices: CHOICE_BUNDLED, CHOICE_PRESETS or CHOICE_LANGUAGES when it names something from a list xarch ships;
-        `<bundled>`, `<preset>` and `<language>` in the example stand for the first of that list
+        `<bundled>`, `<preset>` and `<language>` in the example of its text stand for the first of that list
     needs: the facts of the source (see capabilities) the check it configures reads: a profile that sets it is
         refused when its language's reader does not supply one of them
     """
     scope: str
     name: str
-    meaning: str
-    accepts: str
-    example: str
     required: bool = False
     enforced: bool = True
     rules: tuple[str, ...] = ()
@@ -177,434 +92,23 @@ class Key:
         return self.name if self.scope == PROFILE else f"{self.where}.{self.name}"
 
 
-def _k(scope: str, name: str, meaning: str, accepts: str, example: str, required: bool = False, enforced: bool = True,
-       rules: tuple[str, ...] = (), opens: str = "", choices: str = "") -> Key:
-    return Key(scope, name, meaning, accepts, example, required, enforced, rules, opens, choices)
+@dataclass(frozen=True)
+class KeyText:
+    """What `xarch profile explain` says for one key, before the words of a language are put in.
+
+    meaning: a few words, what the key is for
+    accepts: what to write, and what it does
+    example: a fragment of a profile that uses the key; merged into the smallest profile it loads
+    """
+    meaning: str
+    accepts: str
+    example: str
 
 
-def _guard(name: str, meaning: str, example: str) -> Key:
-    return Key(GUARD, name, meaning, GUARDS[name], example, False, True, (name,), _GUARD_SCOPES.get(name, ""))
-
-
-_GUARD_SCOPES = {"scenario-coverage": SCENARIO_COVERAGE, "no-duplicates": NO_DUPLICATES, "no-twins": NO_TWINS,
-                 "dead-code": DEAD_CODE, "pass-through": PASS_THROUGH}
-
-
-_KEYS: tuple[Key, ...] = (
-    _k(PROFILE, "xarch", "the format version", "the number 2", "xarch: 2", True, False),
-    _k(PROFILE, "name", "what the profile is called", "a non-empty string", "name: documents-app", True, False),
-    _k(PROFILE, "based_on", "the bundled profile this was copied from",
-       "the name of a bundled profile: `profile check` reports how this one is looser than it", "based_on: <bundled>",
-       False, False, choices=CHOICE_BUNDLED),
-    _k(PROFILE, "language", "the language of the app",
-       "the name of a language xarch ships, read from its data file: the ending of a source file, the package file, what "
-       "marks an interface, the names bound without an import and the standard library; the first by name is the default",
-       "language: <language>", choices=CHOICE_LANGUAGES),
-    _k(PROFILE, "testing", "how the test framework names things",
-       "a preset name, or a map {files, functions, skips, table, mocks}; needed with `tiers` and the guards "
-       "scenario-coverage and stand-ins. Dotted names are what an absolute import binds; what stays %language% is "
-       "`%interface_path%` as the mark of a port, `%package_file%`, the syntax tree, import resolution and the standard "
-       "library's names", 'testing:\n  files: [check_*%extension%]\n  functions: "check_*"',
-       rules=("tiers", "test-tree"), opens=TESTING, choices=CHOICE_PRESETS),
-    _k(PROFILE, "parts", "where code sits, in the order their litmus tests run",
-       "a map {<part>: {path, role, ...}}: each part is a folder or a file below the app; the layout is made of "
-       "their paths and `folders`", _TWO, True, rules=("structure", "rules"), opens=PART),
-    _k(PROFILE, "forbidden", "named lists of names a part may not use",
-       "a map {<list>: [<dotted name>, ...]}; a part points to one list with `forbidden: <list>`. An entry is a dotted "
-       "name as an absolute import binds it (`datetime.datetime.now`; a builtin as `%namespace%.open`, a bare `open` is "
-       "refused), a whole package (`socket`), or a method written with a leading dot and parentheses (`.absolute()`). "
-       "A file may not import a listed package or anything below it, nor use a listed name, called or not, as the "
-       "file writes it (through the import that binds it, or a builtin by its bare name where nothing shadows it), "
-       "nor call a listed method on anything no import names (a variable, a parameter, the result of a call), but on "
-       "the method's own object and what it holds (`self.paths.resolve()`: a port's or its own). A method entry "
-       "matches any object with a method of that name, so it belongs only in a list of parts that never call one "
-       "legitimately. Silent on a name reached through a variable or `getattr`, a method of an object the list does "
-       "not name, an annotation, and what a helper in another file does: a ban list, not a proof of purity",
-       "forbidden:\n  pure: [time.time, socket]\n  ambient: [pathlib.Path.cwd, .absolute()]\n"
-       + _in_part("forbidden: pure\n"), rules=("forbidden",)),
-    _k(PROFILE, "reserved", "standard-library names only some parts may import",
-       "a map {<name>: <reason>}: a top-level import name of the %language% standard library, and why; the "
-       "`libraries` check reads it as an outside package, so a file of a part imports it only when the part's "
-       "`libraries` lists it (or is everything), and the violation says the reason. Tests are not checked",
-       "reserved:\n  json: only the store reads files\n" + _in_part("libraries: [json]\n"), rules=("libraries",)),
-    _k(PROFILE, "layers", "chains of parts from the inside out",
-       "a map {<name>: [<part>, ...]}: no part imports one after it in its chain; refused at load when a "
-       "`may_import` breaks a chain", "layers:\n  stack: [core, documents]\n" + _TWO),
-    _k(PROFILE, "tiers", "the kinds of test, in the order their litmus tests run",
-       "a map {<tier>: {...}}; with tiers, every part names its `tier` or says why it is `untested`; needs `testing`. "
-       "Tests mirror the app: tests/<path> for the app's <path>, and a test file has the tier of the part its folder "
-       "mirrors (a folder that mirrors no part belongs to the tier whose `folder` holds it). A test imports only the "
-       "part its folder mirrors and what that may import, a bare name meaning the instance it mirrors, and other test "
-       "code only from its own folder; a test in no tier is a violation. Every folder below tests/<a repeating "
-       "folder>/ mirrors a folder of the app",
-       _tiered("proves: a rule of the documents\n"), rules=("tiers", "test-tree"), opens=TIER),
-    _k(PROFILE, "fakes", "the folder of the test fakes, and what they stand in for",
-       "a map {folder, for, prefix}", _TWO + _FAKES, rules=("stand-ins", "dead-code"), opens=FAKES),
-    _k(PROFILE, "guards", "the pre-built checks in use",
-       "a map {<guard>: {...}}: a guard left out is off; `xarch profile explain guards.<guard>` says what one checks",
-       "guards:\n  no-comments: {}\n  no-duplicates: {min_statements: 6}\n", opens=GUARD),
-    _k(PROFILE, "excluded", "folders below the app that are not its source",
-       "a map {<folder>: <reason>}: a path below the app, never a folder of the layout; no check reads a %language% file "
-       "below one (`closed-tree` and the `ungoverned` list leave it out); `check` lists each under `enforcement` and "
-       "`where` says so; not a finding for `--strict`",
-       "excluded:\n  generated: written by a tool, not by hand\n", rules=()),
-    _k(PROFILE, "hints", "your own advice for a rule",
-       "a map {<rule id>: <text>}: shown after the built-in fix of a violation of that rule, as a `hint:` line in the "
-       "text output and `hint` in the JSON; an id that is no rule of `check` is refused when the profile loads",
-       "hints:\n  rules: Ask the maintainer before adding an import.\n", False, False),
-    _k(PROFILE, "checks", "checks of your own, beside the keys",
-       "a map {<id>: <check>}: an id of your own (lowercase words joined by `-`, none of a check xarch has), and a "
-       "check written in the words of the engine: what it reads (`read`), where (`in`), what it keeps, what must or "
-       "may not hold of it, what excuses it, and its `message` and `fix`; with `examples`, code it must find "
-       "something in and code it must find nothing in, which `profile check` runs. `xarch profile explain checks` "
-       "says how a check is written and every word it is written in; `xarch profile explain <key> --rule` shows the "
-       "rules a key expands to, written as checks. A check that reads nothing in the project is listed under "
-       "`enforcement`, and fails `check --strict`",
-       _PART + _CHECK, rules=()),
-    _k(PROFILE, "files", "the files `init` writes besides the docs",
-       "a map {<path>: <from> or {from, pinned, fill}}: `from` is a file or folder next to the profile",
-       "files:\n  AGENTS.md: agents.md\n", opens=FILE),
-    _k(PROFILE, "docs", "everything that only fills the generated docs",
-       "a map {entry, pages, naming, examples, example_notes}", "docs:\n  entry: documents\n", False, False,
-       opens=DOCS),
-
-    _k(PART, "path", "where the part lives below the app",
-       "a folder, or a file when its last step holds a dot; a step written `<word>` is a repeating folder, one "
-       "per name: a profile may have several, each with a word of its own and one parent, and a path holds one",
-       "parts:\n  store:\n    path: units/<unit>/store\n    role: saves the documents of one unit\n",
-       True, rules=("structure", "rules")),
-    _k(PART, "role", "what the part is for, in one line", "one line of text: the note of its folder in the docs tree",
-       _in_part("role: saves and loads documents\n"), True, False),
-    _k(PART, "litmus", "the question that tells code belongs here",
-       "text, ideally a yes-or-no question. A part the bundled profile this one is compared with gives a litmus, "
-       "redefined here without one, is listed as looser, and fails `check --strict`",
-       _in_part("litmus: Does it save or load a document?\n"), False, False),
-    _k(PART, "may_import", "what the part may import besides itself",
-       "[<part>, <part>@any, <part>/<path>, <part>:<pattern>, ...] or everything: a bare name is that part in the "
-       "importer's own instance (a part of another repeating folder has none: write `@any`), `@any` any instance, "
-       "`/<path>` only what lies below it, `:<pattern>` only the names that match the pattern (`*` for any text, "
-       "such as `core/ids:*Id`): `from <there> import <name>` for each name, never the file as a whole, and a "
-       "file of the tests is not narrowed; a part may always import itself, so a target that only says so is refused",
-       _TWO, rules=("rules",)),
-    _k(PART, "must_import", "what each file of the part has to reach",
-       "[<target>, ...] written as `may_import` writes them, each one the part may import: each file imports one "
-       "of them, or an outside package (top-level, neither standard library nor the app's own, whatever `libraries` "
-       "says), or imports a file of its own part that does, however far the chain; files that only import each other "
-       "meet nothing. Exempt: `%package_file%` and a file with no function or method holding a real statement (types, "
-       "constants, %interface% stubs). A failing file is reported once, as a whole", _in_two("must_import: [core]\n"),
-       rules=("must-import",)),
-    _k(PART, "types_only", "the parts its files may use only as types",
-       "[<part>, ...], each one `may_import` allows: a file of the part may import them to annotate, and for "
-       "`isinstance` and exception matching, but never call what it imports from them (`X(...)`, `m.X(...)`, "
-       "`X.build(...)`) nor reference one of their top-level functions at all; read through absolute imports "
-       "only, as `tiers.<tier>.types_only` reads a test", _in_two("types_only: [core]\n"), rules=("types-only",)),
-    _k(PART, "holds", "what the files of the part define at the top level",
-       "classes or functions. classes: no file of the part defines a public function at the top level (a name that "
-       "does not start with `_`). functions: no file of the part defines a class at the top level, whatever its name, "
-       "but for an exception class (one that derives from a builtin exception, directly or through classes of the "
-       "app) and a record (a class with no method of its own, dunder methods aside) that a top-level function of the "
-       "same file names in its return annotation. A package file (`%package_file%`) is exempt. Each one is listed as "
-       "`weak` in the enforcement section, and fails `check --strict` only", _in_part("holds: classes\n"),
-       rules=("holds",)),
-    _k(PART, "immutable", "the classes of the part are immutable records",
-       "true: every class a file of the part defines at the top level, whatever its name, is an immutable record, as "
-       "the language's data file says one is made (its `immutable`: a base, or a decorator called with its keywords), "
-       "but for an exception class. A package file (`%package_file%`) is exempt. Each other one is listed as `weak` "
-       "in the enforcement section, and fails `check --strict` only. Written beside `holds: functions`, it keeps the "
-       "records a part of functions returns from being changed by the code they are handed to",
-       _in_part("holds: functions\nimmutable: true\n"), rules=("immutable",)),
-    _k(PART, "no_callbacks", "its code calls none of its own parameters",
-       "true: no function, method or nested function of the part calls, by its bare name, a parameter of a function "
-       "it lies in that is annotated as a callable type (alone, subscripted, in a union or as an optional), as in "
-       "`check(path)` for `check: Callable[[str], bool]`. Not read: the first parameter of a method (`self`, `cls`; "
-       "a staticmethod has none), a parameter with no such annotation, one passed on (`sorted(rows, key=key)`), one "
-       "whose method is called (`p.read()`), and one the body rebinds",
-       _in_part("no_callbacks: true\n"), rules=("no-callbacks",)),
-    _k(PART, "names", "how the classes of the part are named",
-       "a pattern, or a list of them, with `*` for any text: every public class (a name that does not start with "
-       "`_`) defined at the top level in a file of the part matches one of them", _in_part('names: "*Store"\n'),
-       rules=("names",)),
-    _k(PART, "built_by", "the only parts that may build its classes",
-       "[<part>, ...]: only code of those parts calls the constructor of a class defined at the top level in a file "
-       "of this part, `X(...)` or `m.X(...)`, read through absolute imports; code of this part counts as any other, "
-       "and tests are not read. Silent on a class reached through a package file that re-exports it, built in its "
-       "own file, or built through a variable or a parameter", _in_two("built_by: [core]\n"), rules=("built-by",)),
-    _k(PART, "shared", "the part is there to be shared, by at least this many users",
-       "a whole number, at least 2: every public name a file of the part defines at the top level (a class, a function, "
-       "a name an assignment binds) is used by at least this many users, or it is reported where it is defined. A "
-       "user is the instance of a repeating folder a using file lies in, or the part of one outside them; the tests, "
-       "a file in no part, a file of a part that is shared itself and the part's own place do not count. A file uses "
-       "a name when it imports it and mentions it again, or reads it through an import of its file; an import it "
-       "never mentions again is a re-export, and who imports the name from there uses it. A name another name of a "
-       "shared part mentions (a field's type, a helper a function calls) has that name's users too. A name with one "
-       "user belongs to that user",
-       _in_two("shared: 2\n"), rules=("shared",)),
-    _k(PART, "libraries", "the outside packages the part may import",
-       "[<package>, ...] by top-level name, or everything; none by default; the standard library is always allowed, but "
-       "for a name `reserved` holds, which a part lists here to import it; tests are not checked", _in_part("libraries: [yaml]\n"),
-       rules=("libraries",)),
-    _k(PART, "forbidden", "the list of names the part may not use",
-       "the name of a top-level `forbidden` list", "forbidden:\n  pure: [time.time, socket]\n"
-       + _in_part("forbidden: pure\n"), rules=("forbidden",)),
-    _k(PART, "tier", "the tier whose tests cover the part",
-       "the name of a tier; one tier per part; with `tiers`, a part names its `tier` or is `untested`",
-       _tiered("{}\n").replace("  unit:\n    {}\n", "  unit: {}\n"), rules=("tiers",)),
-    _k(PART, "untested", "why no tier tests the part", "one line of text", _in_part("untested: it only wires the app\n"),
-       rules=()),
-    _k(PART, "package_only", "the part is imported only as a package",
-       "true: from outside the part, import the package, never one of its files", _in_part("package_only: true\n"),
-       rules=("package-only",)),
-    _k(PART, "folders", "the folders below the part that the layout shows",
-       "{<folder>: <note>} or [<folder>, ...]", _in_part("folders:\n  schemas: the table definitions\n"),
-       rules=("structure",)),
-
-    _k(TIER, "proves", "what its tests prove, in one line", "one line of text", _tiered("proves: a rule of the documents\n"),
-       False, False),
-    _k(TIER, "litmus", "the question that tells a test belongs to the tier", "text, ideally a yes-or-no question",
-       _tiered("litmus: Does it call one rule directly and check its answer?\n"), False, False),
-    _k(TIER, "apply_forbidden", "its tests keep to the forbidden list of the part they mirror",
-       "true or false", _tiered("apply_forbidden: true\n"), rules=("forbidden",)),
-    _k(TIER, "plain_tables", "its table tests hold no branch",
-       "true: no test function of the tier that holds a table of cases (as `testing.table` writes one) holds, in its "
-       "body, a statement that branches (the language's `branching`) or an expression that chooses between values "
-       "(its `branching_expressions`), as scenario-coverage holds the tables of a use case: the odd case is a test "
-       "of its own; needs `testing.table`",
-       _TESTING + _TABLE_BLOCK + "tiers:\n  unit:\n    plain_tables: true\n"
-       "parts:\n  documents:\n    path: documents\n    role: the documents\n    tier: unit\n",
-       rules=("scenario-coverage",)),
-    _k(TIER, "types_only", "the parts its tests may import only as types",
-       "[<part>, ...]: a test may import them to annotate, never to call: `def build(c: Controller)` is fine, "
-       "`Controller(...)` is not; a plain function of such a part may not be referenced at all, while "
-       "`isinstance`, exception matching and enum members stay allowed", _tiered("types_only: [documents]\n"),
-       rules=("types-only",)),
-    _k(TIER, "must_import", "what each of its test files has to reach",
-       "[<part>, ...]: each test file of the tier (a file whose name `testing.files` matches) imports from one of "
-       "those parts, in any instance, or imports test code that is no test file and does, however far the chain "
-       "goes; a test file with no function holding a real statement is exempt, and a file failing is reported once, "
-       "as a whole. Silent on what a test is handed without importing it, such as a fixture",
-       _tiered("must_import: [documents]\n"), rules=("must-import",)),
-    _k(TIER, "folder", "a folder of tests that mirror no part",
-       "a folder below the tests folder, for a tier whose tests mirror no part of the app",
-       _tier_folder(""), rules=("tiers", "test-tree")),
-    _k(TIER, "may_import", "what the tests in its folder may import of the app",
-       "as a part's `may_import`; only for a tier with a `folder`", _tier_folder("may_import: everything\n"),
-       rules=("tiers",)),
-    _k(TIER, "docs", "what only fills the generated docs",
-       "a map {subject, may_touch, one_file_per, cases_from, data, example, helpers}",
-       _tiered("docs:\n  may_touch: temporary folders\n"), False, False, opens=TIER_DOCS),
-
-    _k(TIER_DOCS, "subject", "the Subject cell, in place of the parts of the tier", "one line of text",
-       _tiered("docs:\n  subject: the documents\n"), False, False),
-    _k(TIER_DOCS, "may_touch", "what its tests may touch", "one line of text",
-       _tiered("docs:\n  may_touch: temporary folders\n"), False, False),
-    _k(TIER_DOCS, "one_file_per", "what one test file covers", "one line of text",
-       _tiered("docs:\n  one_file_per: use case\n"), False, False),
-    _k(TIER_DOCS, "cases_from", "where its cases come from", "one line of text",
-       _tiered("docs:\n  cases_from: the rule's branches\n"), False, False),
-    _k(TIER_DOCS, "data", "where its test data comes from", "one line of text",
-       _tiered("docs:\n  data: built in the test\n"), False, False),
-    _k(TIER_DOCS, "example", "its example test", "a path in an example project listed in `docs.examples`",
-       "docs:\n  examples: [examples]\n" + _tiered("docs:\n  example: tests/documents/check_documents%extension%\n"),
-       False, False),
-    _k(TIER_DOCS, "helpers", "the files its tests share", "[<path in an example project>, ...]",
-       "docs:\n  examples: [examples]\n" + _tiered("docs:\n  helpers: [tests/documents/builders%extension%]\n"), False, False),
-
-    _k(TESTING, "files", "patterns of a test file's name", "a list of %extension% names with `*` for any text",
-       _tests(""), True, rules=("tiers", "test-tree")),
-    _k(TESTING, "functions", "the pattern of a test function's name", "a name with `*` for any text",
-       _tests(""), True, rules=("scenario-coverage", "stand-ins")),
-    _k(TESTING, "skips", "what skips a test or expects it to fail",
-       "dotted names: `check` counts each use under `enforcement`", _tests("skips: [checks.skip, checks.expect_fail]\n"),
-       rules=()),
-    _k(TESTING, "table", "how a test function holds a table of cases", "a map {decorator, row, id, keywords}",
-       _TESTING + _TABLE_BLOCK, rules=("scenario-coverage",), opens=TABLE),
-    _k(TESTING, "mocks", "how a mock is built", "a map {calls, autospec, spec_keywords, fixtures}",
-       _TESTING + "  mocks:\n" + _MOCKS, rules=("stand-ins",), opens=MOCKS),
-
-    _k(TABLE, "decorator", "the decorator that holds the rows", "a dotted name", _TESTING + _TABLE_BLOCK, True,
-       rules=("scenario-coverage",)),
-    _k(TABLE, "row", "a row of the table", "a dotted name", _TESTING + _TABLE_BLOCK, True, rules=("scenario-coverage",)),
-    _k(TABLE, "id", "the keyword that gives a row its id", "a keyword name", _TESTING + _TABLE_BLOCK, True,
-       rules=("scenario-coverage",)),
-    _k(TABLE, "keywords", "the two keywords of the decorator's arguments", "[<cases name>, <rows name>]",
-       _TESTING + _TABLE_BLOCK + "    keywords: [names, rows]\n", rules=("scenario-coverage",)),
-
-    _k(MOCKS, "calls", "the calls that build a mock", "a list of dotted names", _TESTING + "  mocks:\n" + _MOCKS, True,
-       rules=("stand-ins",)),
-    _k(MOCKS, "autospec", "the calls that build a mock from a spec argument", "a list of dotted names",
-       _TESTING + "  mocks:\n" + _MOCKS + "    autospec: [doubles.make_from]\n", rules=("stand-ins",)),
-    _k(MOCKS, "spec_keywords", "the keywords a mock is given its spec by", "a list of keyword names",
-       _TESTING + "  mocks:\n" + _MOCKS, True, rules=("stand-ins",)),
-    _k(MOCKS, "fixtures", "test parameters whose methods build mocks", "a map {<parameter>: {calls, autospec}}",
-       _TESTING + "  mocks:\n" + _MOCKS + "    fixtures:\n      maker:\n        calls: [build]\n", rules=("stand-ins",),
-       opens=FIXTURE),
-
-    _k(FIXTURE, "calls", "the methods that build a mock", "a list of method names",
-       _TESTING + "  mocks:\n" + _MOCKS + "    fixtures:\n      maker:\n        calls: [build]\n", True,
-       rules=("stand-ins",)),
-    _k(FIXTURE, "autospec", "the methods that build a mock from a spec argument", "a list of method names",
-       _TESTING + "  mocks:\n" + _MOCKS + "    fixtures:\n      maker:\n        calls: [build]\n"
-       "        autospec: [build_from]\n", rules=("stand-ins",)),
-
-    _k(FAKES, "folder", "the folder of the fakes", "a folder below the tests folder", _TWO + _FAKES, True,
-       rules=("stand-ins", "dead-code")),
-    _k(FAKES, "for", "the parts whose %interface%s the fakes stand in for", "[<part>, ...]", _TWO + _FAKES, True,
-       rules=("stand-ins", "dead-code")),
-    _k(FAKES, "prefix", "how a fake's name starts", "the start of a class name: the fake of DocumentRepo is "
-       "FakeDocumentRepo", _TWO + _FAKES, rules=("stand-ins", "dead-code")),
-
-    _guard("scenario-coverage", "every result of a use case has a row", _COVERAGE_GUARD),
-    _guard("no-comments", "no `%comment%` comments in the app or its tests", _guarded("no-comments: {}\n")),
-    _guard("stand-ins", "a %interface% is faked, or mocked with a spec", _STAND_INS + _guarded("stand-ins: {}\n")),
-    _guard("closed-tree", "every file lies in a part", _guarded("closed-tree: {}\n")),
-    _guard("no-duplicates", "no two functions with the same code", _guarded("no-duplicates: {min_statements: 6}\n")),
-    _guard("no-twins", "no two classes in different parts with the same fields",
-           _guarded("no-twins: {min_fields: 3}\n")),
-    _guard("dead-code", "no %interface% nothing names, no fake no test uses", _TWO + _FAKES + _guarded("dead-code: {}\n")),
-    _guard("pass-through", "a method that only forwards is listed", _TWO + _guarded("pass-through:\n  parts: [documents]\n")),
-    _guard("private-imports", "no name starting with `_` is imported from another file",
-           _guarded("private-imports: {}\n")),
-
-    _k(SCENARIO_COVERAGE, "results", "the part holding the result unions", "the name of a part", _COVERAGE_GUARD, True,
-       rules=("scenario-coverage",)),
-    _k(SCENARIO_COVERAGE, "tier", "the tier whose test files hold the tables", "the name of a tier", _COVERAGE_GUARD, True,
-       rules=("scenario-coverage",)),
-    _k(SCENARIO_COVERAGE, "suffix", "how a union's name ends", "text, such as Result", _COVERAGE_GUARD, True,
-       rules=("scenario-coverage",)),
-    _k(SCENARIO_COVERAGE, "columns", "the three parameter names of a table", "[<state>, <command>, <result>]",
-       _COVERAGE_GUARD, True, rules=("scenario-coverage",)),
-    _k(SCENARIO_COVERAGE, "file", "the name of a use case's test file", "a name holding {name} once, for the use case",
-       _COVERAGE_GUARD, True, rules=("scenario-coverage",)),
-
-    _k(NO_DUPLICATES, "min_statements", "the fewest statements that count",
-       f"a whole number, {NoDuplicates.min_statements} when left out",
-       _guarded("no-duplicates: {min_statements: 6}\n"), rules=("no-duplicates",)),
-
-    _k(NO_TWINS, "min_fields", "the fewest fields that count", f"a whole number, {NoTwins.min_fields} when left out",
-       _guarded("no-twins: {min_fields: 3}\n"), rules=("no-twins",)),
-    _k(NO_TWINS, "min_renamed", "also report a copy that renamed fields, from this many fields",
-       "a whole number, at least 2; left out, the case is off. Two classes of parts with different names, the shorter "
-       "with at least this many fields and at least half as many as the other, compared position by position with the "
-       "other's first fields: one name or more differs, the names that agree are more than half of the longer "
-       "class's fields, and every renamed field keeps its type, read as written but for a twin's name, which reads "
-       "as the class it copies; a field renamed and retyped is allowed only when it is the only renamed one and at "
-       "least this many others agree", _guarded("no-twins: {min_fields: 3, min_renamed: 3}\n"), rules=("no-twins",)),
-    _k(NO_TWINS, "min_subset", "also report a copy of part of a class's fields, from this many fields",
-       "a whole number, at least 2; left out, the case is off. A class whose field names, at least this many and at "
-       "least half of the other's, are some of another's in its order (other fields between or around them), in a "
-       "part of another name; types are not compared", _guarded("no-twins: {min_fields: 3, min_subset: 3}\n"),
-       rules=("no-twins",)),
-
-    _k(DEAD_CODE, "untested", "also list the files no test of their tier reaches",
-       "true or false: every file of a part that has a `tier`, which no test code of that tier (a file below the "
-       "tests folder that the tier holds, test or not) imports, directly or through files of parts of that same tier "
-       "that it reaches, is listed as `weak` in the enforcement section and fails `check --strict` only. Exempt: a "
-       "package file, and a file with no function or method holding a real statement (types, constants, %interface% "
-       "stubs). Read only with a tests folder", _TWO + _FAKES + _guarded("dead-code: {untested: true}\n"),
-       rules=("dead-code",)),
-
-    _k(DEAD_CODE, "tests_only", "also list the public names only the tests use",
-       "true or false: every public class and top-level function a file of the app defines (a package file aside) "
-       "that no other file of the app names, in code or an annotation, by its last step, is listed as `weak` in the "
-       "enforcement section and fails `check --strict` only: only the tests use it, or nothing does. A name its own "
-       "file alone uses is listed too: make it private", _TWO + _FAKES + _guarded("dead-code: {tests_only: true}\n"),
-       rules=("dead-code",)),
-
-    _k(PASS_THROUGH, "parts", "the parts whose forwarding methods are listed", "[<part>, ...]",
-       _TWO + _guarded("pass-through:\n  parts: [documents]\n"), True, rules=("pass-through",)),
-
-    _k(DOCS, "entry", "the part that is the entry point", "the name of a part", _docs("entry: documents\n"), False, False),
-    _k(DOCS, "pages", "the project docs `init` writes below docs/project/",
-       "a map {<path>: <from> or {from, note}}", _PAGES, False, False, opens=PAGE),
-    _k(DOCS, "naming", "the naming table of the docs", "a list of {kind, where, pattern, example}",
-       _docs("naming:\n  - kind: store\n    where: [store]\n    pattern: <Thing>Store\n    example: [DocumentStore]\n"),
-       False, False, opens=NAMING),
-    _k(DOCS, "examples", "folders next to the profile, each an example project",
-       "[<folder>, ...]: a template quotes one of its files by its path with {{example:<path>}}",
-       _docs("examples: [examples]\n"), False, False),
-    _k(DOCS, "example_notes", "a note for an example", "a map {<path>: <note>}, shown after the example's path",
-       _docs("examples: [examples]\nexample_notes:\n  src/documents%extension%: the documents\n"), False, False),
-
-    _k(PAGE, "from", "the template file, next to the profile", "a path", _PAGES, False, False),
-    _k(PAGE, "note", "shown after its line in the docs tree", "one line of text", _PAGES, False, False),
-
-    _k(NAMING, "kind", "what is named", "text, such as store", _docs(
-        "naming:\n  - kind: store\n    where: [store]\n    pattern: <Thing>Store\n    example: [DocumentStore]\n"),
-       True, False),
-    _k(NAMING, "where", "the folders it lives in", "text or a list of text", _docs(
-        "naming:\n  - kind: store\n    where: [store]\n    pattern: <Thing>Store\n    example: [DocumentStore]\n"),
-       True, False),
-    _k(NAMING, "pattern", "how it is named", "text", _docs(
-        "naming:\n  - kind: store\n    where: [store]\n    pattern: <Thing>Store\n    example: [DocumentStore]\n"),
-       True, False),
-    _k(NAMING, "example", "names that follow the pattern", "text or a list of text", _docs(
-        "naming:\n  - kind: store\n    where: [store]\n    pattern: <Thing>Store\n    example: [DocumentStore]\n"),
-       True, False),
-
-    _k(FILE, "from", "the template file, or the folder of a path ending in /",
-       "a path next to the profile: a file, or a folder when the key ends in /",
-       "files:\n  tests/rules%extension%:\n    from: guard%extension%\n", True),
-    _k(FILE, "pinned", "`check` reports the file when it differs",
-       "true: the project keeps the file as `init` writes it",
-       "files:\n  tests/rules%extension%:\n    from: guard%extension%\n    pinned: true\n"),
-    _k(FILE, "fill", "whether {{app}} is filled in", "false: the bytes are copied unchanged",
-       "files:\n  tests/rules%extension%:\n    from: guard%extension%\n    fill: false\n"),
-)
-
-_IMPORTS = ("import", "import.relative")
-_FORBIDDEN = (*_IMPORTS, "use", "method_call")
-_TYPES_ONLY = ("call", "use", "module_functions")
-NEEDS: dict[str, tuple[str, ...]] = {
-    "parts.<part>.may_import": _IMPORTS,
-    "parts.<part>.must_import": (*_IMPORTS, "import.standard", "function.statements", "file"),
-    "parts.<part>.types_only": _TYPES_ONLY,
-    "parts.<part>.holds": ("class", "class.methods", "class.exception", "function", "function.returns"),
-    "parts.<part>.no_callbacks": ("callback",),
-    "parts.<part>.immutable": ("class", "class.exception", "class.immutable"),
-    "parts.<part>.names": ("class",),
-    "parts.<part>.built_by": ("class", "call"),
-    "parts.<part>.shared": (*_IMPORTS, "import.mentioned", "use", "class", "class.named", "function", "function.named",
-                            "module_functions", "constant"),
-    "parts.<part>.libraries": (*_IMPORTS, "import.standard"),
-    "parts.<part>.forbidden": _FORBIDDEN,
-    "parts.<part>.package_only": _IMPORTS,
-    "reserved": (*_IMPORTS, "import.standard"),
-    "tiers": (*_IMPORTS, "file"),
-    "tiers.<tier>.apply_forbidden": _FORBIDDEN,
-    "tiers.<tier>.types_only": _TYPES_ONLY,
-    "tiers.<tier>.must_import": (*_IMPORTS, "function.statements", "file"),
-    "tiers.<tier>.plain_tables": ("function.tables", "function.blocks", "function.expressions"),
-    "tiers.<tier>.may_import": _IMPORTS,
-    "testing.skips": ("use",),
-    "testing.table": ("function.tables",),
-    "testing.mocks": ("call", "parameter_call"),
-    "guards.scenario-coverage": ("union", "function.tables", "function.blocks", "function.expressions",
-                                 "function.asserts", "function.mentions"),
-    "guards.no-comments": ("comment",),
-    "guards.stand-ins": ("class", "class.methods", "class.attributes", "call", "parameter_call"),
-    "guards.closed-tree": ("file",),
-    "guards.no-duplicates": ("function", "function.statements", "function.shape"),
-    "guards.no-twins": ("class", "class.fields"),
-    "guards.no-twins.min_renamed": ("class", "class.fields", "class.types"),
-    "guards.dead-code": ("class", "named"),
-    "guards.dead-code.untested": (*_IMPORTS, "function.statements", "class", "class.exception", "function", "file"),
-    "guards.dead-code.tests_only": ("class", "class.exception", "function", "named"),
-    "guards.pass-through": ("function", "function.forwards"),
-    "guards.private-imports": _IMPORTS,
-}
-"""The facts of the source each key that configures a check needs, by its address."""
-
-KEYS: tuple[Key, ...] = tuple(replace(key, needs=NEEDS.get(key.address, ())) for key in _KEYS)
-"""Every key of every scope, in the order a file writes them."""
-
-MOVED = {
-    "layout": "delete it: the layout comes from each part's `path` and `folders`",
-    "notes": "write the note of a folder under `folders` on the part that holds it",
-    "rules": "write each part's targets as `may_import` on the part",
-    "placement": "delete it: the order of `parts` is the order the litmus tests run",
-    "naming": "move it to `docs.naming`",
-    "tests": "write `testing`: a preset name, or the map {files, functions, ...}",
-    "examples": "move it to `docs.examples`",
-    "libraries": "write each part's packages as `libraries` on the part",
-}
-"""A key of version 1 that has moved, with what to write instead."""
+@dataclass(frozen=True)
+class Catalogue:
+    """The texts of the format: each key's, by its address; the symbols a profile writes in paths and imports, each with
+    what it means; and the smallest valid profile (one part, no rule, no test), as text."""
+    texts: dict[str, KeyText]
+    symbols: tuple[tuple[str, str], ...]
+    smallest: str

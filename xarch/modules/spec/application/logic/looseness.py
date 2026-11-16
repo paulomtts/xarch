@@ -20,7 +20,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from xarch.kernel.placement import EVERYTHING
-from xarch.modules.spec.domain.guards import GUARDS, KEY
+from xarch.modules.spec.domain.guards import KEY, ORDER
 from xarch.modules.spec.domain.published import LITMUS, Loosened, Origin
 from xarch.modules.spec.domain.values import Architecture
 from xarch.profile_values.placement import Target
@@ -32,7 +32,7 @@ Looser = tuple[str, str, str]
 def guards_off(architecture: Architecture) -> tuple[str, ...]:
     """The guards xarch has that the profile does not switch on, in xarch's order."""
     on = {KEY[type(guard)] for guard in architecture.guards}
-    return tuple(name for name in GUARDS if name not in on)
+    return tuple(name for name in ORDER if name not in on)
 
 
 def closest(architecture: Architecture, bundled: Mapping[str, Architecture]) -> str | None:

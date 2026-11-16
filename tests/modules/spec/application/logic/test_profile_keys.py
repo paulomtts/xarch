@@ -1,27 +1,27 @@
-"""The table of profile keys explains every key the loader accepts, and only those: each key has its meaning, what it
-accepts and an example, and every example loads through the loader of format 2 once merged into the smallest profile."""
+"""The table of profile keys explains every key the loader accepts, and only those: the texts of the format's data file,
+as xarch ships it, give each key its meaning, what it accepts and an example, and every example loads through the loader
+of format 2 once merged into the smallest profile."""
 from copy import deepcopy
 
 import pytest
 import yaml
 
+from tests.modules.spec.format_files import CATALOGUE
 from tests.modules.spec.languages import PYTHON
 from tests.modules.spec.profiles_v2 import PRESETS, parsed, problems
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic.explain import said
 from xarch.modules.spec.application.logic.key_lookup import keys_of, plain
+from xarch.modules.spec.application.logic.key_table import KEYS
 from xarch.modules.spec.application.logic.profile_listing import referenced
-from xarch.modules.spec.domain.guards import GUARDS
+from xarch.modules.spec.domain.guards import ORDER
 from xarch.modules.spec.domain.profile_keys import (
     CHOICE_BUNDLED,
     CHOICE_LANGUAGES,
     CHOICE_PRESETS,
     GUARD,
-    KEYS,
     PROFILE,
     SCOPES,
-    SMALLEST,
-    SYMBOLS,
     Key,
 )
 from xarch.modules.spec.domain.values import Language
@@ -49,7 +49,7 @@ def merged(base: dict, extra: dict) -> dict:
 
 
 def document_of(key: Key) -> dict:
-    return merged(BASE, yaml.safe_load(filled(key.example)))
+    return merged(BASE, yaml.safe_load(filled(CATALOGUE.texts[key.address].example)))
 
 
 def every_folder(document: dict) -> dict[str, tuple[str, ...]]:
@@ -86,7 +86,9 @@ def holders(key: Key, document: dict) -> list[dict]:
 
 
 def test_every_key_says_what_it_means_what_it_accepts_and_shows_an_example():
-    assert [key.address for key in KEYS if not (key.meaning and key.accepts and key.example)] == []
+    assert list(CATALOGUE.texts) == [key.address for key in KEYS]
+    assert [address for address, text in CATALOGUE.texts.items()
+            if not (text.meaning and text.accepts and text.example)] == []
 
 
 def test_the_plain_address_of_every_key_is_unique_and_has_no_placeholder():
@@ -109,7 +111,7 @@ def test_a_key_that_holds_keys_opens_a_scope_and_every_scope_but_the_file_is_ope
 
 
 def test_the_guards_the_table_names_are_the_guards_the_loader_reads():
-    assert {key.name for key in keys_of(GUARD)} == set(GUARDS) - {"package-only"}
+    assert {key.name for key in keys_of(GUARD)} == set(ORDER) - {"package-only"}
     assert all(key.rules == (key.name,) for key in keys_of(GUARD))
     assert next(key for key in keys_of("part") if key.name == "package_only").rules == ("package-only",)
 
@@ -117,7 +119,7 @@ def test_the_guards_the_table_names_are_the_guards_the_loader_reads():
 @pytest.mark.parametrize("key", KEYS, ids=lambda key: plain(key.address))
 def test_the_example_of_a_key_uses_the_key_and_loads_in_the_smallest_profile_it_needs(key):
     document = document_of(key)
-    assert any(key.name in holder for holder in holders(key, document)), key.example
+    assert any(key.name in holder for holder in holders(key, document)), CATALOGUE.texts[key.address].example
     load(document)
 
 
@@ -130,8 +132,8 @@ def test_a_required_key_is_missing_in_the_loader_when_left_out(key):
 
 
 def test_the_smallest_profile_loads_and_every_symbol_is_explained():
-    assert load(yaml.safe_load(SMALLEST)).parts["documents"].path == ("documents",)
-    assert SYMBOLS and all(symbol and meaning for symbol, meaning in SYMBOLS)
+    assert load(yaml.safe_load(CATALOGUE.smallest)).parts["documents"].path == ("documents",)
+    assert CATALOGUE.symbols and all(symbol and meaning for symbol, meaning in CATALOGUE.symbols)
 
 
 @pytest.mark.parametrize("scope", sorted(SCOPES))
@@ -150,8 +152,8 @@ def test_the_choices_a_key_offers_are_bundled_names_testing_presets_or_languages
 
 
 def test_every_text_of_the_table_is_said_in_the_words_of_a_language_with_no_word_left_over():
-    texts = [*(text for key in KEYS for text in (key.meaning, key.accepts, key.example)), *GUARDS.values(),
-             *(text for pair in SYMBOLS for text in pair), SMALLEST]
+    texts = [*(part for text in CATALOGUE.texts.values() for part in (text.meaning, text.accepts, text.example)),
+             *(text for pair in CATALOGUE.symbols for text in pair), CATALOGUE.smallest]
     assert [text for text in texts if "%" in said(text, PYTHON)] == []
 
 

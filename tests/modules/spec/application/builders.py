@@ -28,9 +28,9 @@ def spec_controller(bundled: dict[str, Any] | None = None, files: dict[str, Any]
                     settings: FakeSettings | None = None, presets: dict[str, Any] | None = None,
                     languages: dict[str, Any] | None = None, runtime: FakeRuntime = RUNTIME,
                     reads: dict[str, tuple[Import, ...] | Unparsable] | None = None,
-                    own: dict[str, ChecksHeld] | None = None):
+                    own: dict[str, ChecksHeld] | None = None, keys: Any = None):
     port = FakeArchitectureFiles({"base": BASE} if bundled is None else bundled, files, TEXTS | (texts or {}),
-                                 presets if presets is not None else {"pytest": TESTING}, languages)
+                                 presets if presets is not None else {"pytest": TESTING}, languages, keys)
     output = FakeProfileOutput(existing)
     return controller(port, settings, output, runtime=runtime, reader=FakeExampleReader(reads),
                       own=FakeOwnChecks(own)), output
