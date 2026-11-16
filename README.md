@@ -73,7 +73,7 @@ everything else is optional, and a key left out means off):
 xarch: 2*  name*  based_on  language  hints  excluded  reserved
 testing:  <preset> | {files*, functions*, skips, table, mocks}
 parts*:   {<part>: {path*, role*, litmus, may_import, must_import, libraries, forbidden, tier | untested,
-                    package_only, folders, holds, types_only, no_callbacks, names, built_by}}
+                    package_only, folders, holds, types_only, no_callbacks, names, built_by, shared}}
 forbidden: {<list>: [<dotted name> | .<method>(), ...]}       layers: {<chain>: [<part>, ...]}
 tiers:    {<tier>: {proves, litmus, apply_forbidden, types_only, folder, may_import, must_import, docs}}
 fakes:    {folder*, for*, prefix}
@@ -161,7 +161,7 @@ profile it is based on, as information. With no argument it checks the project's
 ### Checks of your own
 
 Every check xarch runs from a key (all but `cycles`, `structure`, `test-tree`, `stand-ins`, `scenario-coverage`,
-`no-duplicates` and `no-twins`) is a rule written in a small vocabulary, and a profile may write rules of its own in the
+`no-duplicates`, `no-twins` and `shared`) is a rule written in a small vocabulary, and a profile may write rules of its own in the
 same words under `checks`: each reads the facts of a kind (`read`) in some files (`in`), keeps those its filters pass
 (`keep`), and says that a kept fact may not match its targets (`may_not`), may only match them (`may_only`), or that a
 file must reach a target (`must_reach`) or a fact be reached from some files (`must_be_reached`); an exception
@@ -232,7 +232,7 @@ that switches or configures each (`-` for none: the rule is always on):
 | `stand-ins` | a read port without a fake, or a mock without a spec or with a read port's | `guards.stand-ins`, `fakes` |
 | `closed-tree` | a Python file of the app that lies in no part | `guards.closed-tree` |
 | `no-duplicates` | two functions or methods of the app with the same code | `guards.no-duplicates` |
-| `no-twins` | two public classes in parts of different names that declare the same fields in the same order: one type written twice | `guards.no-twins` |
+| `no-twins` | two public classes in parts of different names that declare the same fields in the same order: one type written twice; with `min_renamed`, also a copy that renamed a field, and with `min_subset`, one that kept at least half of the other's fields in its order | `guards.no-twins` |
 | `dead-code` | a port no other file names, a fake no test uses; with `untested`, a file no test of its tier reaches, listed as `weak` only | `guards.dead-code`, `fakes` |
 | `pass-through` | a method that only forwards its arguments to a collaborator, or returns an attribute of what that call answers; never a violation: listed as `weak`, and fails only `--strict` | `guards.pass-through` |
 | `holds` | a public function at the top level of a part that holds classes, or a class (whatever its name) in one that holds functions; listed as `weak`, and fails only `--strict` | `parts.holds` |
@@ -240,6 +240,7 @@ that switches or configures each (`-` for none: the rule is always on):
 | `names` | a public class of a part whose name matches none of the part's patterns | `parts.names` |
 | `built-by` | a call of the constructor of a part's class from a part it does not list | `parts.built_by` |
 | `private-imports` | an import of a name starting with `_` from another file of the app or its tests | `guards.private-imports` |
+| `shared` | a public name of a part declared shared that fewer users use than it says (a user: an instance of a repeating folder, or a part outside them; tests not read) | `parts.shared` |
 
 A key left out means its check is off. For what a key means, accepts and exactly checks, run
 `xarch profile explain <key>` (for example `xarch profile explain guards.no-duplicates`, `parts.must_import`,
