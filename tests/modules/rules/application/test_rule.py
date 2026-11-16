@@ -15,7 +15,7 @@ TEXT = """checks:
     in: {part: services}
     keep: [public]
     may_only: {name: ["*Service"]}
-    message: "{name} does not match {targets}, as every class of {part} must ({key})"
+    message: "{name} does not match {targets}, as every class of {where} must ({key})"
     fix: "rename {name} to match {targets}, or move it to the part whose kind of class it is"
 """
 

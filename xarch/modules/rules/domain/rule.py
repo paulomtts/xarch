@@ -32,6 +32,7 @@ from xarch.modules.rules.domain.vocabulary import (
     NEGATION,
     PART_KEYS,
     QUANTIFIERS,
+    RENAMED_VARIABLES,
     SCOPE_PART,
     TARGETS,
     TESTS_SIDE,
@@ -237,6 +238,12 @@ def _nearest(name: str, known: dict) -> str:
     return f": did you mean {' or '.join(close)}?" if close else f": write one of {_listed(known)}"
 
 
+def _nearest_variable(name: str) -> str:
+    if name in RENAMED_VARIABLES:
+        return f": it is called {{{RENAMED_VARIABLES[name]}}} now: write that"
+    return _nearest(name, _VARIABLES)
+
+
 def _listed(known: dict) -> str:
     return ", ".join(known)
 
@@ -328,28 +335,28 @@ def _quantified(rule: Rule, kinds: list[Kind]) -> list[str]:
     else:
         problems += _targets(slot, rule, kinds)
     if quantifier not in _REACH:
-        extra = [name for name, on in (("through", rule.links), ("keep_links", rule.via), ("from", rule.roots),
-                                       ("onward", rule.spread), ("by_another_file", rule.elsewhere)) if on]
+        extra = [name for name, on in (("through", rule.links), ("through_only", rule.via), ("from", rule.roots),
+                                       ("then_through", rule.spread), ("by_another_file", rule.elsewhere)) if on]
         problems += [f"{name}: only a check under {MUST_REACH} or {MUST_BE_REACHED} reaches through links: drop it"
                      for name in extra]
         return problems
     problems += _links(f"{quantifier}.through", rule.links, "reaches" if quantifier == MUST_REACH else "")
     linked = [_KINDS[name] for name in rule.links if name in _KINDS]
-    problems += _conditions(f"{quantifier}.keep_links", rule.via, linked, "", quantifier)
+    problems += _conditions(f"{quantifier}.through_only", rule.via, linked, "", quantifier)
     if quantifier == MUST_REACH:
         problems += [f"{quantifier}.{name}: only a check under {MUST_BE_REACHED} has it: drop it"
-                     for name, on in (("from", rule.roots), ("onward", rule.spread),
+                     for name, on in (("from", rule.roots), ("then_through", rule.spread),
                                       ("by_another_file", rule.elsewhere)) if on]
         return problems
     if not rule.links:
         problems.append(f"{quantifier}.through: names no kind of fact: write the kinds that link a root onwards, "
-                        "such as mentions or import-into-app")
+                        "such as names-mentioned or import-into-app")
     if rule.roots is None:
         problems.append(f"{quantifier}.from: is missing: write the files the reach starts from, as `in` writes a "
                         "scope")
     else:
         problems += _scope(f"{quantifier}.from", rule.roots)
-    problems += _links(f"{quantifier}.onward", rule.spread, "")
+    problems += _links(f"{quantifier}.then_through", rule.spread, "")
     problems += [f"read: under {quantifier}, a fact is reached by its name, which {kind.name} does not carry: read "
                  "file, or a kind that carries a name" for kind in kinds if kind.name != "file"
                  and "name" not in kind.fields]
@@ -427,7 +434,7 @@ def _sayings(rule: Rule, kinds: list[Kind], side: str) -> list[str]:
         for name in saying.once:
             variable = _VARIABLES.get(name)
             if variable is None:
-                problems.append(f"{slot}once_per: no variable is named {name!r}{_nearest(name, _VARIABLES)}")
+                problems.append(f"{slot}once_per: no variable is named {name!r}{_nearest_variable(name)}")
             else:
                 problems += _variable(f"{slot}once_per", variable, rule, held, side, guards)
     return problems
@@ -447,7 +454,7 @@ def _sentence(slot: str, text: str, rule: Rule, kinds: list[Kind], side: str, gu
         variable = _VARIABLES.get(name)
         if not name or spec or conversion or variable is None:
             problems.append(f"{slot}: {{{name}{f'!{conversion}' if conversion else ''}{f':{spec}' if spec else ''}}} "
-                            f"is no variable{_nearest(name, _VARIABLES) if name else ''}")
+                            f"is no variable{_nearest_variable(name) if name else ''}")
             continue
         problems += _variable(slot, variable, rule, kinds, side, guards)
     return problems

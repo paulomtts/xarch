@@ -18,7 +18,6 @@ OWNERS = 3
 """How many parts that may import or call what a finding is about a fix names before it says "or another part"."""
 SHOWN = 3
 """How many parts that hold the other kind a fix of holds names."""
-VOWELS = "aeiou"
 
 
 def said(text: str, found: Found, facts: Facts, profile: Profile) -> str:
@@ -55,10 +54,6 @@ def _top(found: Found) -> str:
     return "".join(found.fact.path[:1])
 
 
-def _a_tier(tier: str) -> str:
-    return f"a{'n' if (tier or 'u')[0] in VOWELS else ''} {tier or 'untiered'}"
-
-
 def _targets(found: Found) -> str:
     return " or ".join(shown for match in found.rule.targets for shown in _shown(match))
 
@@ -71,7 +66,7 @@ def _shown(match: Match) -> list[str]:
     return [*match.words, *(".".join(n) if n[0] else f".{n[1]}" for n in match.names)]
 
 
-def _not_name(found: Found) -> str:
+def _disallowed_name(found: Found) -> str:
     return f"not {found.fact.name}" if found.fact.name is not None else "not the file as a whole"
 
 
@@ -86,9 +81,8 @@ _VALUES: dict[str, Callable[[Found, Facts, Profile], str]] = {
     "hit": lambda found, facts, profile: ".".join(found.hit or ()),
     "file": lambda found, facts, profile: found.read.file.name,
     "line": lambda found, facts, profile: str(found.fact.line),
-    "part": lambda found, facts, profile: _place_of(found, profile),
+    "where": lambda found, facts, profile: _place_of(found, profile),
     "tier": lambda found, facts, profile: found.read.tier,
-    "a_tier": lambda found, facts, profile: _a_tier(found.read.tier),
     "mirrored_parts": lambda found, facts, profile: " and ".join(f"{p}/" for p in found.read.mirrors),
     "mirrored_may_import": lambda found, facts, profile: ", ".join(f"parts.{p}.may_import" for p in found.read.mirrors),
     "own_folder": lambda found, facts, profile: "/".join((facts.tests_root, *found.read.own)),
@@ -115,9 +109,9 @@ _VALUES: dict[str, Callable[[Found, Facts, Profile], str]] = {
     "target_package": lambda found, facts, profile: _package(found, facts),
     "built_by": lambda found, facts, profile: " or ".join(
         f"{p}/" for p in profile.built_by.get(_target_part_name(found), ())),
-    "narrowing_patterns": lambda found, facts, profile: " or ".join(
+    "allowed_names": lambda found, facts, profile: " or ".join(
         narrowed(found.read.place, found.fact.at, profile)),
-    "not_name": lambda found, facts, profile: _not_name(found),
+    "disallowed_name": lambda found, facts, profile: _disallowed_name(found),
     "move_fix": lambda found, facts, profile: _move(found, profile),
     "type_only_fix": lambda found, facts, profile: _caller_fix(found, profile),
     "tier_type_only_fix": lambda found, facts, profile: _tier_fix(found, profile),

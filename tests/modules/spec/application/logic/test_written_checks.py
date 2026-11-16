@@ -11,7 +11,7 @@ from xarch.modules.spec.domain.values import Target
 
 ARCHITECTURE = parsed(layered())
 EXAMPLES = {"flagged": {"src/billing/api/x.py": "print(1)\n"}, "clean": {"src/billing/api/y.py": "pass\n"}}
-SMALL = {"read": "call", "may_not": {"path": ["builtins.print"]}, "message": "{part} prints", "fix": "log it",
+SMALL = {"read": "call", "may_not": {"path": ["builtins.print"]}, "message": "{where} prints", "fix": "log it",
          "examples": EXAMPLES}
 
 
@@ -26,7 +26,7 @@ def test_a_check_comes_back_with_each_slot_as_the_rules_read_it_and_the_defaults
     assert problems == []
     assert found == {"no-print": {
         "read": ("call",), "in": {"files": "app", "part": "*", "tier": "", "where": ()}, "keep": (), "except": (),
-        "mode": "fail", "message": "{part} prints", "fix": "log it", "once_per": (), "cases": (),
+        "mode": "fail", "message": "{where} prints", "fix": "log it", "once_per": (), "cases": (),
         "examples": {"flagged": (("src/billing/api/x.py", "print(1)\n"),), "clean": (("src/billing/api/y.py", "pass\n"),)},
         "may_not": ({"kind": "path", "values": ("builtins.print",)},)}}
 
@@ -35,7 +35,7 @@ def test_a_reach_to_targets_reads_its_places_from_the_part_its_scope_names():
     body = {**SMALL, "read": ["import", "import-into-app"], "in": {"part": "store", "where": ["not package-file",
                                                                                               {"not below": "x/y"}]},
             "keep": [{"named": "*Repo"}], "must_reach": {"targets": [{"place": ["shared"]}, "outside"],
-                                                          "through": "import-into-app", "keep_links": ["target-in-own-part"]},
+                                                          "through": "import-into-app", "through_only": ["target-in-own-part"]},
             "cases": [{"when": ["relative"], "message": "m", "fix": "f", "once_per": ["line"]}]}
     del body["may_not"]
     found, problems = read({"reach": body})
@@ -44,19 +44,19 @@ def test_a_reach_to_targets_reads_its_places_from_the_part_its_scope_names():
     assert (check["in"], check["keep"], check["cases"]) == (
         {"files": "app", "part": "store", "tier": "", "where": ("not package-file", "not below x/y")}, ("named *Repo",),
         ({"when": ("relative",), "message": "m", "fix": "f", "once_per": ("line",)},))
-    assert check["must_reach"] == {"through": ("import-into-app",), "keep_links": ("target-in-own-part",),
+    assert check["must_reach"] == {"through": ("import-into-app",), "through_only": ("target-in-own-part",),
                                    "targets": ({"kind": "place", "values": (Target("shared"),)},
                                                {"kind": "outside", "values": ()})}
 
 
 def test_a_reach_from_roots_reads_its_roots_as_a_scope():
-    body = {**SMALL, "read": "class", "must_be_reached": {"from": {"files": "tests"}, "through": "mentions",
-                                                          "onward": "class", "by_another_file": True}}
+    body = {**SMALL, "read": "class", "must_be_reached": {"from": {"files": "tests"}, "through": "names-mentioned",
+                                                          "then_through": "class", "by_another_file": True}}
     del body["may_not"]
     found, problems = read({"used": body})
     assert problems == [] and found["used"]["must_be_reached"] == {
-        "through": ("mentions",), "keep_links": (), "from": {"files": "tests", "part": "*", "tier": "", "where": ()},
-        "onward": ("class",), "by_another_file": True}
+        "through": ("names-mentioned",), "through_only": (), "from": {"files": "tests", "part": "*", "tier": "", "where": ()},
+        "then_through": ("class",), "by_another_file": True}
 
 
 @pytest.mark.parametrize("value, problems", [

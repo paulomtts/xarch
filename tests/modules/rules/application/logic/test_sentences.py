@@ -9,7 +9,6 @@ from tests.modules.rules.application.logic.world import (
     BUILT,
     DOMAIN,
     FACTS,
-    HELPER,
     LISTED,
     NARROWED,
     PORTS,
@@ -43,12 +42,10 @@ SERVICES = replace(RULE, scope=Scope(part="services"))
     pytest.param("hit", DOMAIN, "use", RULE, PROFILE, ["datetime.datetime", "datetime.datetime"], id="hit"),
     pytest.param("file", DOMAIN, "file", RULE, PROFILE, [DOMAIN], id="file"),
     pytest.param("line", DOMAIN, "comment", RULE, PROFILE, ["13", "14"], id="line"),
-    pytest.param("part", DOMAIN, "file", RULE, PROFILE, ["domain/ of modules/docs"], id="part"),
-    pytest.param("part", STRUCTURE, "file", RULE, PROFILE, ["structure/"], id="part: the structure"),
+    pytest.param("where", DOMAIN, "file", RULE, PROFILE, ["domain/ of modules/docs"], id="where"),
+    pytest.param("where", STRUCTURE, "file", RULE, PROFILE, ["structure/"], id="where: the structure"),
     pytest.param("tier", DOMAIN, "file", RULE, PROFILE, ["unit"], id="tier: the tier that tests a file of the app"),
     pytest.param("tier", TEST, "file", RULE, PROFILE, ["unit"], id="tier: a test's own"),
-    pytest.param("a_tier", TEST, "file", RULE, PROFILE, ["an unit"], id="a_tier: the article by the tier's first letter"),
-    pytest.param("a_tier", HELPER, "file", RULE, PROFILE, ["an untiered"], id="a_tier: of no tier"),
     pytest.param("mirrored_parts", TEST, "file", RULE, PROFILE, ["domain/"], id="mirrored_parts"),
     pytest.param("mirrored_may_import", TEST, "file", RULE, PROFILE, ["parts.domain.may_import"],
                  id="mirrored_may_import"),
@@ -90,10 +87,10 @@ SERVICES = replace(RULE, scope=Scope(part="services"))
     pytest.param("target_package", SERVICE, "import-into-app", RULE, PROFILE,
                  ["app.modules.docs.domain", "app.modules.docs.domain", "app.platform"], id="target_package"),
     pytest.param("built_by", WIRING, "construction", RULE, BUILT, ["bootstrap/"], id="built_by"),
-    pytest.param("narrowing_patterns", SERVICE, "import-into-app", RULE, NARROWED, ["*Id", "*Id", ""],
-                 id="narrowing_patterns"),
-    pytest.param("not_name", SERVICE, "import-into-app", RULE, PROFILE,
-                 ["not the file as a whole", "not Doc", "not the file as a whole"], id="not_name"),
+    pytest.param("allowed_names", SERVICE, "import-into-app", RULE, NARROWED, ["*Id", "*Id", ""],
+                 id="allowed_names"),
+    pytest.param("disallowed_name", SERVICE, "import-into-app", RULE, PROFILE,
+                 ["not the file as a whole", "not Doc", "not the file as a whole"], id="disallowed_name"),
     pytest.param("move_fix", SERVICE, "import-into-app", RULE, PROFILE,
                  ["move this code to contract/, controller/, logic/ or another part that may import it"] * 2
                  + ["move this code to adapters/, which may import it"], id="move_fix"),
@@ -118,7 +115,7 @@ def test_a_variable_prints_what_it_says_of_each_finding(name, file, kind, rule, 
 
 def test_a_sentence_is_said_with_each_variable_filled_in():
     (first, *_) = found(PORTS, "class")
-    assert said("{name} of {part} at line {line}, {{braces}} kept", first, FACTS, PROFILE) == (
+    assert said("{name} of {where} at line {line}, {{braces}} kept", first, FACTS, PROFILE) == (
         "Repo of ports/ of modules/docs at line 2, {braces} kept")
 
 

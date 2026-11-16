@@ -89,13 +89,13 @@ def _saying(saying: Saying) -> list[str]:
 def _quantified(rule: Rule) -> list[str]:
     if rule.quantifier == MUST_REACH:
         lines = [f"{INDENT}targets: {_targets(rule.targets)}", f"{INDENT}through: {_one_or_list(rule.links)}"]
-        lines += [f"{INDENT}keep_links: {_list(map(_filter, rule.via))}"] if rule.via else []
+        lines += [f"{INDENT}through_only: {_list(map(_filter, rule.via))}"] if rule.via else []
         return [f"{rule.quantifier}:", *lines]
     if rule.quantifier == MUST_BE_REACHED:
         lines = [f"{INDENT}from: {_scope(rule.roots or Scope(), always=True)}",
                  f"{INDENT}through: {_one_or_list(rule.links)}"]
-        lines += [f"{INDENT}keep_links: {_list(map(_filter, rule.via))}"] if rule.via else []
-        lines += [f"{INDENT}onward: {_one_or_list(rule.spread)}"] if rule.spread else []
+        lines += [f"{INDENT}through_only: {_list(map(_filter, rule.via))}"] if rule.via else []
+        lines += [f"{INDENT}then_through: {_one_or_list(rule.spread)}"] if rule.spread else []
         lines += [f"{INDENT}by_another_file: true"] if rule.elsewhere else []
         return [f"{rule.quantifier}:", *lines]
     return [f"{rule.quantifier}: {_targets(rule.targets)}"]

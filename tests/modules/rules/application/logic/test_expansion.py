@@ -31,7 +31,7 @@ def shape(rule: Rule) -> str:
     pytest.param("syntax", ["syntax: all/* read syntax-error may_not exist"], id="syntax"),
     pytest.param("rules", [*(f"rules: app/{p} read import-into-app may_only permitted" for p in PROFILE.parts),
                            "rules: app/structure read import-into-app may_only permitted"], id="rules"),
-    pytest.param("libraries", [f"libraries: app/{p} read import may_only package" for p in PROFILE.parts],
+    pytest.param("libraries", [f"libraries: app/{p} read import may_only package" for p in PROFILE.parts for _ in (0, 1)],
                  id="libraries"),
     pytest.param("forbidden", ["forbidden: app/domain read imported-name, use, method-call may_not path",
                                "forbidden: tests/domain/unit where not below fakes read imported-name, use, method-call "

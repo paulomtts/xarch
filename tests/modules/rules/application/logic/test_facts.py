@@ -110,7 +110,7 @@ def test_a_use_reads_its_path_and_how_far_its_import_bound_it():
 
 
 def test_a_method_call_on_what_the_object_holds_says_so():
-    assert SERVICE.facts["method-call"] == (Fact("method-call", 8, name="resolve", traits=frozenset({"held"})),)
+    assert SERVICE.facts["method-call"] == (Fact("method-call", 8, name="resolve", traits=frozenset({"on-own-object"})),)
 
 
 def test_a_class_carries_its_name_the_names_it_mentions_and_what_it_is():
@@ -128,8 +128,8 @@ def test_a_function_says_whether_it_is_at_the_top_level_or_a_method_that_forward
 def test_a_callback_a_comment_the_names_of_a_file_and_the_file_as_a_whole_are_facts():
     assert DOMAIN.facts["callback"] == (Fact("callback", 7, ("make",), "check", frozenset({"annotated-callable"})),)
     assert DOMAIN.facts["comment"] == (Fact("comment", 3, text="# a note"),)
-    assert DOMAIN.facts["mentions"] == (Fact("mentions", 0, names=frozenset({"Doc", "make"})),)
-    assert DOMAIN.facts["file"] == (Fact("file", 0, traits=frozenset({"inert"})),)
+    assert DOMAIN.facts["names-mentioned"] == (Fact("names-mentioned", 0, names=frozenset({"Doc", "make"})),)
+    assert DOMAIN.facts["file"] == (Fact("file", 0, traits=frozenset({"no-statements"})),)
 
 
 def test_a_file_that_does_not_parse_says_only_its_error():
@@ -152,10 +152,10 @@ def _rule(**changes) -> Rule:
                   "kernel/broken.py": {"import", "import-into-app"},
                   "modules/docs/application/services/publish.py": {"import", "import-into-app", "file"}},
                  id="a rule a file must reach reads its kinds and links on its side, and the file of its scope"),
-    pytest.param(_rule(scope=Scope(APP, "domain"), facts=("class",), quantifier=MUST_BE_REACHED, links=("mentions",),
+    pytest.param(_rule(scope=Scope(APP, "domain"), facts=("class",), quantifier=MUST_BE_REACHED, links=("names-mentioned",),
                        roots=Scope(TESTS, where=(Condition("test"),)), spread=("class",),
                        sayings=(Saying("{name}", "x"),)),
-                 {"modules/docs/domain/doc.py": {"class", "mentions"}, "modules/docs/domain/test_doc.py": {"mentions"}},
+                 {"modules/docs/domain/doc.py": {"class", "names-mentioned"}, "modules/docs/domain/test_doc.py": {"names-mentioned"}},
                  id="a rule a fact must be reached by reads its kinds, its links and spread, and the links of its roots"),
 ])
 def test_for_the_rules_given_a_file_holds_only_the_kinds_they_read(rule, kinds):

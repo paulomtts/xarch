@@ -16,7 +16,7 @@ WORKED: tuple[OwnCheck, ...] = (
              (("documents/notes%extension%", "%comment% TODO: split this file\n"),),
              (("documents/notes%extension%", "%comment% split by kind\n"),)),
     OwnCheck(Rule("no-todo-in-tests", Scope(TESTS, where=(Condition("tiered"),)), ("comment",), MAY_NOT, TODO,
-                  (Saying("{a_tier} test leaves a note for later: {text}",
+                  (Saying("a test of the {tier} tier leaves a note for later: {text}",
                           "write the case now, or drop the note"),), key="checks.no-todo-in-tests"),
              (("tests/documents/check_notes%extension%", "%comment% TODO: a case for an empty title\n"),),
              (("tests/documents/check_notes%extension%", "%comment% one case per title\n"),)),

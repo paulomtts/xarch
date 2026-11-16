@@ -269,7 +269,7 @@
 "must-import",
 "tests/cli/test_report.py",
 0,
-"a wired test imports nothing from bootstrap/, directly or through test code it imports (tiers.wired.must_import)",
+"a test of the wired tier imports nothing from bootstrap/, directly or through test code it imports (tiers.wired.must_import)",
 "drive what it proves through bootstrap/, or move it to the tier of the part it calls directly"
 ],
 [

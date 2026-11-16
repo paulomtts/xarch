@@ -46,7 +46,7 @@ def test_a_word_no_rule_of_the_profiles_uses_has_a_check_written_for_the_explana
 
 def test_a_kind_is_explained_with_its_fields_what_it_needs_of_the_language_and_its_verb():
     found = explain({})(ExplainWords("kinds.method-call"))
-    assert [f.name for f in found.fields] == ["line", "method", "name", "held"]
+    assert [f.name for f in found.fields] == ["line", "method", "name", "on-own-object"]
     assert (found.needs, found.verb) == (("method_call",), "call")
 
 

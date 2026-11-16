@@ -95,8 +95,8 @@ def _relative(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
     return "relative" in found.fact.traits
 
 
-def _unreserved_standard(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
-    return "standard" in found.fact.traits and _top(found) not in profile.reserved
+def _standard(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
+    return "standard" in found.fact.traits
 
 
 def _reserved(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
@@ -120,8 +120,8 @@ def _takes_a_name(found: Found, facts: Facts, profile: Profile, value: str) -> b
     return found.fact.name is not None
 
 
-def _held(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
-    return "held" in found.fact.traits
+def _on_own_object(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
+    return "on-own-object" in found.fact.traits
 
 
 def _public(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
@@ -156,11 +156,11 @@ def _directive(found: Found, facts: Facts, profile: Profile, value: str) -> bool
         re.match(rf"^[ \t\f]*{marker}.*?{language.encoding}", comment.text))
 
 
-def _already_imported(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
+def _reported_at_import(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
     return bool(found.hit) and found.fact.bound >= len(found.hit)
 
 
-def _narrowed(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
+def _names_restricted(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
     return bool(narrowed(found.read.place, found.fact.at, profile))
 
 
@@ -195,23 +195,23 @@ def _target_below(found: Found, facts: Facts, profile: Profile, value: str) -> b
     return bool(found.fact.target) and found.fact.target[:len(folder)] == folder
 
 
-def _target_part_lists(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
+def _target_allows_under(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
     src, at = found.read.place, found.fact.at
     listed = {"built_by": profile.built_by}.get(value, {})
     return src is not None and at is not None and src.part in listed.get(at.part or "", ())
 
 
 _FACT: dict[str, Asked] = {
-    "relative": _relative, "unreserved-standard": _unreserved_standard, "reserved": _reserved,
+    "relative": _relative, "standard": _standard, "reserved": _reserved,
     "listed-by-another-part": _listed_by_another_part, "app-package": _app_package, "own-code": _own_code,
-    "takes-a-name": _takes_a_name, "held": _held, "public": _public, "special": _special, "named": _named,
+    "takes-a-name": _takes_a_name, "on-own-object": _on_own_object, "public": _public, "special": _special, "named": _named,
     **{name: _trait(name) for name in ("top-level", "forwards", "exception", "record", "interface", "receiver",
-                                       "annotated-callable", "inert", "exceptions-only")},
-    "returns-an-attribute": _returns_an_attribute, "directive": _directive, "already-imported": _already_imported,
-    "narrowed": _narrowed, "of-kind": _of_kind, "target-placed": _target_placed,
+                                       "annotated-callable", "no-statements", "exceptions-only")},
+    "returns-an-attribute": _returns_an_attribute, "directive": _directive, "reported-at-import": _reported_at_import,
+    "names-restricted": _names_restricted, "of-kind": _of_kind, "target-placed": _target_placed,
     "target-inside-part": _target_inside_part, "target-in-own-part": _target_in_own_part,
     "target-in-own-tier": _target_in_own_tier, "target-test": _target_test, "target-below": _target_below,
-    "target-part-lists": _target_part_lists}
+    "target-allows-under": _target_allows_under}
 """Each filter about the fact or what it reaches by its name, the question it asks."""
 
 NAMES = (*_FILE, *_FACT)

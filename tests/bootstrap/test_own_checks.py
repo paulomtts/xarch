@@ -12,7 +12,7 @@ from xarch.bootstrap.app import app
 
 runner = CliRunner()
 CHECK = {"read": "class", "in": {"part": "store"}, "keep": ["public"], "may_only": {"name": ["*Store"]},
-         "message": "{name} is no store, as every class of {part} is ({key})",
+         "message": "{name} is no store, as every class of {where} is ({key})",
          "fix": "rename {name} to end in Store", "examples": {"flagged": {"store/x.py": "class Thing: ...\n"},
                                                               "clean": {"store/x.py": "class DocumentStore: ...\n"}}}
 

@@ -33,7 +33,7 @@ DOMAIN, KERNEL = "modules/docs/domain/doc.py", "kernel/ids.py"
 FILES = [source(DOMAIN, imp(1, "yaml"), imp(2, "json"), imp(3, "yaml", "load", "dump")),
          source(KERNEL, imp(1, "yaml"), imp(4, "", "x", up=0)), source("modules/__init__.py", imp(1, "yaml"))]
 TESTS_FILES = [in_tests("modules/docs/domain/test_doc.py", imp(5, "yaml"))]
-SAY = Saying("{part} imports {package}", "drop {package}")
+SAY = Saying("{where} imports {package}", "drop {package}")
 YAML = (Match("package", words=("yaml",)),)
 
 
@@ -98,7 +98,7 @@ def test_a_fact_matches_the_first_of_the_targets_it_matches():
 
 
 def test_a_fact_a_filter_does_not_keep_is_not_read_and_one_an_exemption_excuses_is_no_finding():
-    any_import = rule(scope=Scope(APP, "kernel"), targets=EXISTING, sayings=(Saying("{part} imports {written}", "x"),))
+    any_import = rule(scope=Scope(APP, "kernel"), targets=EXISTING, sayings=(Saying("{where} imports {written}", "x"),))
     assert said(any_import) == ["app/kernel/ids.py:1: kernel/ imports yaml; x",
                                 "app/kernel/ids.py:4: kernel/ imports .; x"]
     assert said(replace(any_import, keep=c("not relative"))) == ["app/kernel/ids.py:1: kernel/ imports yaml; x"]
@@ -106,9 +106,9 @@ def test_a_fact_a_filter_does_not_keep_is_not_read_and_one_an_exemption_excuses_
 
 
 def test_a_finding_is_said_by_the_first_saying_whose_conditions_all_hold_and_once_per_file_when_it_keeps_it_once():
-    sayings = (Saying("{part} imports reserved {package} and takes {name}", "x", c("reserved", "takes-a-name"),
+    sayings = (Saying("{where} imports reserved {package} and takes {name}", "x", c("reserved", "takes-a-name"),
                       ("package",)),
-               Saying("{part} imports reserved {package}", "x", c("reserved")), Saying("{part} imports {package}", "y"))
+               Saying("{where} imports reserved {package}", "x", c("reserved")), Saying("{where} imports {package}", "y"))
     reserving = replace(PROFILE, reserved={"yaml": "only the store"})
     found = run((rule(scope=Scope(APP, "domain"), facts=("imported-name",), sayings=sayings),),
                 facts_of(FILES, [], reserving, "app"), reserving)
@@ -126,7 +126,7 @@ def test_under_must_reach_a_file_reaches_by_its_own_fact_or_through_its_links_ho
     files = [source("kernel/a.py", imp(1, "app.kernel", "b")), source("kernel/b.py", imp(1, "app.kernel", "c")),
              source("kernel/c.py", imp(1, "yaml")), source("kernel/d.py", imp(1, "json"))]
     reach = rule(scope=Scope(APP, "kernel"), facts=("import",), quantifier=MUST_REACH, links=("import-into-app",),
-                 via=c("target-in-own-part"), sayings=(Saying("{part} reaches no {targets}", "x"),))
+                 via=c("target-in-own-part"), sayings=(Saying("{where} reaches no {targets}", "x"),))
     found = run((reach,), facts_of(files, [], PROFILE, "app", rules=(reach,)), PROFILE)
     assert [f"{v.file}: {v.message}" for v in found] == ["app/kernel/d.py: kernel/ reaches no yaml"]
 
@@ -136,7 +136,7 @@ def test_under_must_be_reached_a_declaration_is_reached_from_a_root_or_from_a_de
                                                 Class(3, "FakeC", named=frozenset({"FakeC"})))),
              in_tests("modules/docs/domain/test_doc.py", named=frozenset({"FakeA"}))]
     reached = rule(scope=Scope(TESTS, where=c("below fakes")), facts=("class",), quantifier=MUST_BE_REACHED,
-                   targets=EXISTING, links=("mentions",), roots=Scope(TESTS, where=c("not below fakes")),
+                   targets=EXISTING, links=("names-mentioned",), roots=Scope(TESTS, where=c("not below fakes")),
                    spread=("class",), sayings=(Saying("{name} is unnamed", "x"),))
     found = run((reached,), facts_of([], tests, PROFILE, "app", "tests", (reached,)), PROFILE)
     assert [v.message for v in found] == ["FakeC is unnamed"]
@@ -147,7 +147,7 @@ def test_a_declaration_reached_only_from_its_own_file_is_unreached_when_the_rule
                   named=frozenset({"Repo", "Clock"})),
            source("modules/docs/application/services/doc.py", named=frozenset({"Clock"}))]
     reached = rule(scope=Scope(APP, "ports"), facts=("class",), quantifier=MUST_BE_REACHED, targets=EXISTING,
-                   links=("mentions",), roots=Scope(APP), sayings=(Saying("{name} is unnamed", "x"),))
+                   links=("names-mentioned",), roots=Scope(APP), sayings=(Saying("{name} is unnamed", "x"),))
     facts = facts_of(app, [], PROFILE, "app", rules=(reached,))
     assert [v.message for v in run((reached,), facts, PROFILE)] == []
     assert [v.message for v in run((replace(reached, elsewhere=True),), facts, PROFILE)] == ["Repo is unnamed"]

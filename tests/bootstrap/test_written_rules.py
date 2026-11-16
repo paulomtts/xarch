@@ -15,6 +15,19 @@ from typer.testing import CliRunner
 from xarch.bootstrap.app import app
 
 runner = CliRunner()
+TESTS_TODO = """
+checks:
+  no-todo-in-tests:
+    read: comment
+    in: {files: tests, where: [tiered]}
+    may_not: {text: ["*TODO*"]}
+    message: "a test of the {tier} tier leaves a note for later: {text}"
+    fix: "write the case now, or drop the note"
+    examples:
+      flagged: {tests/documents/check_notes.py: "# TODO: a case for an empty title\\n"}
+      clean: {tests/documents/check_notes.py: "# one case per title\\n"}
+"""
+"""The second check written for the explanation, which no word's example shows."""
 CORPORA = Path(__file__).parent / "corpora"
 HAND_WRITTEN = {"cycles", "stand-ins", "scenario-coverage", "no-duplicates", "no-twins", "structure", "test-tree",
                 "syntax"}
@@ -86,11 +99,11 @@ def test_every_rule_of_a_bundled_profile_written_as_a_check_finds_what_the_key_f
 
 
 def test_the_checks_written_for_the_explanation_load_and_behave_as_their_examples_say(tmp_path):
-    shown = [ask(address) for address in ("checks", "targets.text", "variables.a_tier", "filters.placed",
-                                          "variables.file")]
+    shown = [ask(address) for address in ("checks", "targets.text", "filters.placed", "variables.file")]
     written = {}
     for item in shown:
         written |= yaml.safe_load(item["example"]["check"])["checks"]
+    written |= yaml.safe_load(TESTS_TODO)["checks"]
     profile = {"xarch": 2, "name": "worked", "testing": {"files": ["check_*.py"], "functions": "check_*"},
                "tiers": {"unit": {}}, "parts": {"documents": {"path": "documents", "role": "the documents",
                                                               "tier": "unit"}}, "checks": written}

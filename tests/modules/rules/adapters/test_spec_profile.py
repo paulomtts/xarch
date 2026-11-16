@@ -99,7 +99,7 @@ def test_a_profile_whose_origin_spec_refuses_cannot_be_checked():
 
 
 CHECK = {"read": ("call",), "in": {"files": "app", "part": "core", "tier": "", "where": ()}, "keep": ("target-placed",),
-         "except": (), "mode": "fail", "message": "{part} calls {path}", "fix": "do not", "once_per": ("line",),
+         "except": (), "mode": "fail", "message": "{where} calls {path}", "fix": "do not", "once_per": ("line",),
          "cases": ({"when": ("of-kind call",), "message": "c", "fix": "f", "once_per": ()},),
          "examples": {"flagged": (("core/a.py", "x()\n"),), "clean": (("core/b.py", "\n"),)},
          "may_not": ({"kind": "path", "values": ("app.api", ".run()")}, {"kind": "part", "values": ("api",)})}
@@ -110,7 +110,7 @@ def test_a_check_the_profile_writes_becomes_a_rule_with_its_examples_and_its_key
     (own,) = WrittenChecks().own({"no-api": CHECK}, SUPPLIES)
     assert own.rule == Rule("no-api", Scope(APP, "core"), ("call",), MAY_NOT,
                             (Match("path", names=(("app", "api"), ("", "run()"))), Match("part", words=("api",))),
-                            (Saying("c", "f", (Condition("of-kind", "call"),)), Saying("{part} calls {path}", "do not",
+                            (Saying("c", "f", (Condition("of-kind", "call"),)), Saying("{where} calls {path}", "do not",
                                                                                       once=("line",))),
                             keep=(Condition("target-placed"),), key="checks.no-api")
     assert (own.flagged, own.clean) == ((("core/a.py", "x()\n"),), (("core/b.py", "\n"),))

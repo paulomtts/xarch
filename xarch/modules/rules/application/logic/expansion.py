@@ -41,9 +41,9 @@ def libraries(profile: Profile) -> tuple[Rule, ...]:
     for a part whose list is everything."""
     if profile.libraries is None:
         return ()
-    reserved = ("{part} may not import {package}, which the profile reserves: {reserved_reason} (reserved.{package}; "
+    reserved = ("{where} may not import {package}, which the profile reserves: {reserved_reason} (reserved.{package}; "
                 "{key})")
-    outside = "{part} may not import the outside package {package} ({key})"
+    outside = "{where} may not import the outside package {package} ({key})"
     owners = "move the code that needs {package} to {library_owners}, which may import it (parts.{first_library_owner}" \
              ".libraries)"
     once = ("line", "package")
@@ -54,9 +54,10 @@ def libraries(profile: Profile) -> tuple[Rule, ...]:
                Saying(outside, "use the standard library or a package listed in {key}, since {package} is listed for "
                                "no part", once=once))
     return tuple(Rule("libraries", Scope(APP, part), ("import",), MAY_ONLY, (Match("package", words=allowed),),
-                      sayings, keep=_all("not relative"), exempt=_all("app-package", "unreserved-standard"),
-                      key=f"parts.{part}.libraries")
-                 for part in profile.parts if EVERYTHING not in (allowed := profile.libraries.get(part, ())))
+                      sayings, keep=keep, exempt=exempt, key=f"parts.{part}.libraries")
+                 for part in profile.parts if EVERYTHING not in (allowed := profile.libraries.get(part, ()))
+                 for keep, exempt in ((_all("not relative", "not reserved"), _all("app-package", "standard")),
+                                      (_all("not relative", "reserved"), _all("app-package"))))
 
 
 def forbidden(profile: Profile) -> tuple[Rule, ...]:
@@ -66,10 +67,10 @@ def forbidden(profile: Profile) -> tuple[Rule, ...]:
     if not profile.forbidden:
         return ()
     facts = ("imported-name", "use", "method-call")
-    keep, exempt = _all("not relative", "not held"), _all("already-imported")
+    keep, exempt = _all("not relative", "not on-own-object"), _all("reported-at-import")
     fakes = (_of(f"not below {'/'.join(profile.fakes.folder)}"),) if profile.fakes is not None else ()
     found = [Rule("forbidden", Scope(APP, part), facts, MAY_NOT, (Match("path", names=names),),
-                  (Saying("{part} may not {verb} {hit} ({key})", FORBIDDEN_FIX, once=("line", "hit")),),
+                  (Saying("{where} may not {verb} {hit} ({key})", FORBIDDEN_FIX, once=("line", "hit")),),
                   keep=keep, exempt=exempt, key=f"parts.{part}.forbidden")
              for part, names in profile.forbidden.items()]
     found += [Rule("forbidden", Scope(TESTS, part, tier.name, fakes), facts, MAY_NOT, (Match("path", names=names),),
@@ -110,22 +111,22 @@ def built_by(profile: Profile) -> tuple[Rule, ...]:
     if not profile.built_by:
         return ()
     return (Rule("built-by", Scope(APP), ("construction",), MAY_NOT, (Match("part", words=tuple(profile.built_by)),),
-                 (Saying("{part} builds {name}, a class of {target_part}, which only {built_by} may build "
+                 (Saying("{where} builds {name}, a class of {target_part}, which only {built_by} may build "
                          "(parts.{target_part_name}.built_by)",
                          "take {name} as a parameter of the constructor, and build it in {built_by}"),),
-                 exempt=_all("target-part-lists built_by"), key="parts.<part>.built_by"),)
+                 exempt=_all("target-allows-under built_by"), key="parts.<part>.built_by"),)
 
 
 def rules(profile: Profile) -> tuple[Rule, ...]:
     """Every import between places the profile governs is allowed by the rules of the importing file's part: a part
     may import itself and its `may_import` row, where a target with a name pattern allows only the names it matches;
     the structure may import nothing the profile governs."""
-    narrowed = Saying("{part} may import only {narrowing_patterns} from {target_part}, {not_name} ({target_name})",
-                      "import from {target_part} only names that match {narrowing_patterns} ({key}), or move what "
-                      "needs the rest to a part that may import it", _all("narrowed"))
-    plain = "{part} may not import {target_part} ({target})"
+    narrowed = Saying("{where} may import only {allowed_names} from {target_part}, {disallowed_name} ({target_name})",
+                      "import from {target_part} only names that match {allowed_names} ({key}), or move what "
+                      "needs the rest to a part that may import it", _all("names-restricted"))
+    plain = "{where} may not import {target_part} ({target})"
     found = [Rule("rules", Scope(APP, part), ("import-into-app",), MAY_ONLY, (Match("permitted"),),
-                  (narrowed, Saying(plain, "import only {importable_parts} in {part} ({key}), or {move_fix}")),
+                  (narrowed, Saying(plain, "import only {importable_parts} in {where} ({key}), or {move_fix}")),
                   keep=_all("target-placed"), key=f"parts.{part}.may_import") for part in profile.parts]
     return (*found, Rule("rules", Scope(APP, STRUCTURE), ("import-into-app",), MAY_ONLY, (Match("permitted"),),
                          (Saying(plain, "drop the import of {target_part}, or {move_fix}"),), keep=_all("target-placed")))
@@ -141,7 +142,7 @@ def types_only_tiers(profile: Profile) -> tuple[Rule, ...]:
 
 def types_only_parts(profile: Profile) -> tuple[Rule, ...]:
     """A file of a part that names parts in its own `types_only` is held to the same rule."""
-    return tuple(_types_only(Scope(APP, part), "{part}", f"parts.{part}.types_only", parts, "{type_only_fix}")
+    return tuple(_types_only(Scope(APP, part), "{where}", f"parts.{part}.types_only", parts, "{type_only_fix}")
                  for part, parts in profile.types_only.items())
 
 
@@ -194,7 +195,7 @@ def syntax(profile: Profile) -> tuple[Rule, ...]:
 def names(profile: Profile) -> tuple[Rule, ...]:
     """Every public class of a part that lists `names` matches one of its patterns, `*` standing for any text."""
     return tuple(Rule("names", Scope(APP, part), ("class",), MAY_ONLY, (Match("name", words=patterns),),
-                      (Saying("{name} does not match {targets}, as every class of {part} must ({key})",
+                      (Saying("{name} does not match {targets}, as every class of {where} must ({key})",
                               "rename {name} to match {targets}, or move it to the part whose kind of class it is"),),
                       keep=_all("public"), key=f"parts.{part}.names")
                  for part, patterns in profile.names.items())
@@ -204,7 +205,7 @@ def no_callbacks(profile: Profile) -> tuple[Rule, ...]:
     """Code of a part that lists `no_callbacks` calls none of its own parameters annotated as callables; the first
     parameter of a method, the object it is called on, is no callback."""
     return tuple(Rule("no-callbacks", Scope(APP, part), ("callback",), MAY_NOT, EXISTING,
-                      (Saying("{function} calls its parameter {name}: {part} takes no callback ({key})",
+                      (Saying("{function} calls its parameter {name}: {where} takes no callback ({key})",
                               "have the caller call {name} first and pass {function} the answer as a value"),),
                       keep=_all("annotated-callable"), exempt=_all("receiver"), key=f"parts.{part}.no_callbacks")
                  for part in profile.no_callbacks)
@@ -240,13 +241,13 @@ def holds(profile: Profile) -> tuple[Rule, ...]:
         if kind == "classes":
             found.append(Rule("holds", Scope(APP, part, where=_all("not package-file")), ("function",), MAY_NOT,
                               EXISTING,
-                              (Saying("{name} is a function at the top level, but {part} holds classes ({key})",
+                              (Saying("{name} is a function at the top level, but {where} holds classes ({key})",
                                       "make {name} a method of the class whose rule it is, or move it to "
                                       "{parts_holding_functions}"),),
                               keep=_all("top-level", "public"), mode=LIST, key=key))
         else:
             found.append(Rule("holds", Scope(APP, part, where=_all("not package-file")), ("class",), MAY_NOT, EXISTING,
-                              (Saying("{name} is a class, but {part} holds functions ({key})",
+                              (Saying("{name} is a class, but {where} holds functions ({key})",
                                       "move {name} to {parts_holding_classes}, or make what it does functions"),),
                               exempt=_all("exception", "record"), mode=LIST, key=key))
     return tuple(found)
@@ -258,11 +259,11 @@ def must_import(profile: Profile) -> tuple[Rule, ...]:
     statement are not said."""
     return tuple(Rule("must-import", Scope(APP, part), ("import", "import-into-app"), MUST_REACH,
                       (Match("place", places=wanted), Match("outside")),
-                      (Saying("{part} imports nothing from {targets} and no outside package, so it touches no "
+                      (Saying("{where} imports nothing from {targets} and no outside package, so it touches no "
                               "technology ({key})",
                               "import what it wraps from {targets}, or an outside package, or move its code to a part "
                               "that needs no technology"),),
-                      exempt=_all("package-file", "inert"), key=f"parts.{part}.must_import",
+                      exempt=_all("package-file", "no-statements"), key=f"parts.{part}.must_import",
                       links=("import-into-app",), via=_all("target-in-own-part"))
                  for part, wanted in profile.must_import.items())
 
@@ -273,11 +274,11 @@ def must_import_tiers(profile: Profile) -> tuple[Rule, ...]:
     said."""
     return tuple(Rule("must-import", Scope(TESTS, tier=tier.name, where=_all("test")), ("import-into-app",),
                       MUST_REACH, (Match("part", words=tier.must_import),),
-                      (Saying("{a_tier} test imports nothing from {targets}, directly or through test code it imports "
+                      (Saying("a test of the {tier} tier imports nothing from {targets}, directly or through test code it imports "
                               "({key})",
                               "drive what it proves through {targets}, or move it to the tier of the part it calls "
                               "directly"),),
-                      keep=_all("target-placed"), exempt=_all("inert"), key=f"tiers.{tier.name}.must_import",
+                      keep=_all("target-placed"), exempt=_all("no-statements"), key=f"tiers.{tier.name}.must_import",
                       links=("import-into-tests",), via=_all("not target-test"))
                  for tier in profile.tiers if tier.must_import)
 
@@ -291,14 +292,14 @@ def dead_code(profile: Profile) -> tuple[Rule, ...]:
     ports = [Rule("dead-code", Scope(APP, part), ("class",), MUST_BE_REACHED, EXISTING,
                   (Saying("{name} is a port that nothing else in the app names (dead-code)",
                           "delete {name} and its fake, or add the code that uses it"),),
-                  keep=_all("interface"), links=("mentions",),
+                  keep=_all("interface"), links=("names-mentioned",),
                   roots=Scope(APP, where=_all("not package-file", "not may-import-everything")), elsewhere=True,
                   key="guards.dead-code")
              for part in profile.fakes.stand_in_for]
     fakes = Rule("dead-code", Scope(TESTS, where=_all(f"below {folder}")), ("class",), MUST_BE_REACHED, EXISTING,
                  (Saying("{name} is a fake that no test names (dead-code)",
                          "delete {name}, or write the test that uses it"),),
-                 keep=_all(f"named {prefix}*"), exempt=_all(f"named {prefix}") if prefix else (), links=("mentions",),
+                 keep=_all(f"named {prefix}*"), exempt=_all(f"named {prefix}") if prefix else (), links=("names-mentioned",),
                  roots=Scope(TESTS, where=_all(f"not below {folder}")), spread=("class",), key="guards.dead-code")
     return (*ports, fakes)
 
@@ -310,9 +311,9 @@ def untested(profile: Profile) -> tuple[Rule, ...]:
     if not profile.dead_code or not profile.untested:
         return ()
     return (Rule("dead-code", Scope(APP, where=_all("tiered")), ("file",), MUST_BE_REACHED, EXISTING,
-                 (Saying("a file of {part} that no {tier} test reaches (guards.dead-code.untested)",
+                 (Saying("a file of {where} that no {tier} test reaches (guards.dead-code.untested)",
                          "write its {tier} test in {tests_folder}/, or delete what nothing uses"),),
-                 exempt=_all("package-file", "exceptions-only", "inert"), mode=LIST, links=("import-into-app",),
+                 exempt=_all("package-file", "exceptions-only", "no-statements"), mode=LIST, links=("import-into-app",),
                  via=_all("target-in-own-tier"), roots=Scope(TESTS, where=_all("tiered")),
                  spread=("import-into-app",), key="guards.dead-code.untested"),)
 

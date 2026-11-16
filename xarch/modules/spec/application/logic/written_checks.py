@@ -8,8 +8,8 @@ is the rules module's, which reads what this gives back.
       in: {files: app | tests | all, part: <part> | structure, tier: <tier>, where: [<filter>, ...]}
       keep: [<filter>, ...]
       may_not | may_only: <target> | [<target>, ...]
-      must_reach: {targets: <target> | [<target>, ...], through: <kind> | [<kind>, ...], keep_links: [<filter>, ...]}
-      must_be_reached: {from: <scope as in>, through: ..., keep_links: [...], onward: <kind> | [...], by_another_file: true}
+      must_reach: {targets: <target> | [<target>, ...], through: <kind> | [<kind>, ...], through_only: [<filter>, ...]}
+      must_be_reached: {from: <scope as in>, through: ..., through_only: [...], then_through: <kind> | [...], by_another_file: true}
       except: [<filter>, ...]
       mode: fail | list
       message: <sentence>         with {<variable>}s
@@ -37,8 +37,8 @@ SLOTS = ("read", "in", "keep", "may_not", "may_only", "must_reach", "must_be_rea
 """Every slot of a check, in the order a check is written."""
 QUANTIFIERS = ("may_not", "may_only", "must_reach", "must_be_reached")
 SCOPE = ("files", "part", "tier", "where")
-REACH = {"must_reach": ("targets", "through", "keep_links"),
-         "must_be_reached": ("from", "through", "keep_links", "onward", "by_another_file")}
+REACH = {"must_reach": ("targets", "through", "through_only"),
+         "must_be_reached": ("from", "through", "through_only", "then_through", "by_another_file")}
 CASE = ("when", "message", "fix", "once_per")
 EXAMPLES = ("flagged", "clean")
 NOT = "not "
@@ -221,12 +221,12 @@ def _quantified(slot: str, value: Any, where: str, owner: Part | None, parts: Ma
     required = ("targets",) if slot == "must_reach" else ("from", "through")
     problems += [f"{where}: missing `{key}`" for key in required if key not in value]
     found: dict[str, Any] = {"through": _names(value.get("through"), f"{where}.through", problems),
-                             "keep_links": _filters(value.get("keep_links", []), f"{where}.keep_links", problems)}
+                             "through_only": _filters(value.get("through_only", []), f"{where}.through_only", problems)}
     if slot == "must_reach":
         found["targets"] = _targets(value.get("targets", []), f"{where}.targets", owner, parts, declared, problems)
         return found
     found["from"] = _scope(value.get("from", {}), f"{where}.from", declared, tiers, problems)
-    found["onward"] = _names(value.get("onward"), f"{where}.onward", problems)
+    found["then_through"] = _names(value.get("then_through"), f"{where}.then_through", problems)
     elsewhere = value.get("by_another_file", False)
     if not isinstance(elsewhere, bool):
         problems.append(f"{where}.by_another_file: must be true or false")

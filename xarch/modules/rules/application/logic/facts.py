@@ -7,16 +7,16 @@ A dotted name starts at a namespace: the app's own code at the app's root packag
 turns its language's imports and names into such paths, and a fact into the app or the tests is read below that root.
 
     syntax-error        how a file fails to parse: the line, text the parser's message
-    file                the file as a whole, at line 0; traits inert when no function or method of it holds a real
-                        statement, exceptions-only when it defines classes, every one an exception (below), and no
+    file                the file as a whole, at line 0; traits no-statements when no function or method of it holds
+                        a real statement, exceptions-only when it defines classes, every one an exception (below), and no
                         top-level function
-    mentions            every name the file mentions, annotations included, by its last step alone
+    names-mentioned     every name the file mentions, annotations included, by its last step alone
     import              each import as written: the module it names (path), relative, standard
     imported-name       each name an import takes, path the module and the name (the module alone for an import of
                         a whole module), the name it takes (None for a whole module); its traits are the import's
     use                 each name read, path the dotted path it reaches, bound how many steps the binding import bound
-    method-call         each call of an attribute no import binds, name the attribute; held when it is on the object
-                        a method is called on
+    method-call         each call of an attribute no import binds, name the attribute; on-own-object when it is
+                        on the object a method is called on
     call                each call whose callee an import binds, path the callee; at where the callee sits when it is
                         the app's
     import-into-app     each import into the app's own package, the target the file or package it reaches below the
@@ -73,7 +73,7 @@ KINDS = tuple(kind.name for kind in VOCABULARY)
 """Every kind of fact, in the order a file's facts are worked out."""
 
 _TRAITS = {(relative, standard, held): frozenset(name for name, on in (("relative", relative), ("standard", standard),
-                                                                       ("held", held)) if on)
+                                                                       ("on-own-object", held)) if on)
            for relative in (False, True) for standard in (False, True) for held in (False, True)}
 """The traits of a fact, by whether it is relative, of the standard library and held."""
 _TOP = frozenset({"top-level"})
@@ -158,8 +158,8 @@ def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: 
             return ()
         case "file":
             return (Fact("file", 0, traits=_file(file, read, defined)),)
-        case "mentions":
-            return (Fact("mentions", 0, names=file.named),)
+        case "names-mentioned":
+            return (Fact("names-mentioned", 0, names=file.named),)
         case "comment":
             return tuple(Fact("comment", c.line, text=c.text) for c in file.comments)
         case "class":
@@ -251,7 +251,7 @@ def _file(file: SourceFile, read: Read, defined: Defined) -> frozenset[str]:
     code = any(f.real_statements for f in file.functions)
     raising = bool(file.classes) and not read.test and all(
         (read.steps, c.name) in defined.exceptions for c in file.classes) and not any(not f.owner for f in file.functions)
-    return frozenset(n for n, on in (("inert", not code), ("exceptions-only", raising)) if on)
+    return frozenset(n for n, on in (("no-statements", not code), ("exceptions-only", raising)) if on)
 
 
 def exceptions(files: Iterable[tuple[SourceFile, tuple[str, ...]]], root: str) -> set[tuple[tuple[str, ...], str]]:

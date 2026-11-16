@@ -137,8 +137,8 @@ class WrittenChecks:
         return Rule(name, self._scope(body["in"]), body["read"], quantifier, targets, sayings,
                     keep=self._conditions(body["keep"]), exempt=self._conditions(body["except"]), mode=body["mode"],
                     key=f"checks.{name}", links=reach.get("through", ()),
-                    via=self._conditions(reach.get("keep_links", ())),
-                    roots=self._scope(reach["from"]) if "from" in reach else None, spread=reach.get("onward", ()),
+                    via=self._conditions(reach.get("through_only", ())),
+                    roots=self._scope(reach["from"]) if "from" in reach else None, spread=reach.get("then_through", ()),
                     elsewhere=reach.get("by_another_file", False))
 
     def _scope(self, scope: Mapping[str, Any]) -> Scope:

@@ -39,7 +39,7 @@ def made(**changes) -> Rule:
     return Rule(**fields)
 
 
-REACHED = {"quantifier": MUST_BE_REACHED, "targets": EXISTING, "facts": ("class",), "links": ("mentions",),
+REACHED = {"quantifier": MUST_BE_REACHED, "targets": EXISTING, "facts": ("class",), "links": ("names-mentioned",),
            "roots": Scope(TESTS), "sayings": say("{name}")}
 
 
@@ -69,7 +69,7 @@ REACHED = {"quantifier": MUST_BE_REACHED, "targets": EXISTING, "facts": ("class"
                  id="every fact matching beside another target"),
     pytest.param({"links": ("import-into-app",), "via": c("target-in-own-part")},
                  ["through: only a check under must_reach or must_be_reached reaches through links: drop it",
-                  "keep_links: only a check under must_reach or must_be_reached reaches through links: drop it"],
+                  "through_only: only a check under must_reach or must_be_reached reaches through links: drop it"],
                  id="(audit) links on a rule that does not reach"),
     pytest.param({"facts": ("use",), "targets": EXISTING, "sayings": say("{written}")},
                  ["message: {written} prints nothing for use: it reads written; it applies to import and imported-name"],
@@ -85,26 +85,26 @@ REACHED = {"quantifier": MUST_BE_REACHED, "targets": EXISTING, "facts": ("class"
     pytest.param({"facts": ("function",), "targets": EXISTING, "sayings": say("{function}")},
                  ["message: {function} prints nothing for function: it reads function; it applies to callback"],
                  id="(audit) a variable that named the class of a function"),
-    pytest.param({"scope": Scope(TESTS), "targets": EXISTING, "sayings": say("{part}")},
-                 ["message: {part} applies only to the files of the app: write it in a check whose scope reads them "
+    pytest.param({"scope": Scope(TESTS), "targets": EXISTING, "sayings": say("{where}")},
+                 ["message: {where} applies only to the files of the app: write it in a check whose scope reads them "
                   "(`in: {files: app}`)"], id="(audit) the part of a test"),
-    pytest.param({"scope": Scope(ALL), "targets": EXISTING, "sayings": say("{part}")},
-                 ["message: {part} applies only to the files of the app: write it in a check whose scope reads them "
+    pytest.param({"scope": Scope(ALL), "targets": EXISTING, "sayings": say("{where}")},
+                 ["message: {where} applies only to the files of the app: write it in a check whose scope reads them "
                   "(`in: {files: app}`)"], id="a variable of the app in a scope of both"),
     pytest.param({"scope": Scope(APP), "quantifier": MUST_REACH, "links": ("use",), "sayings": say("{file}")},
                  ["must_reach.through: use leads nowhere: write a kind that leads to a file or to names, one of "
                   "function-reference, import-into-app, import-into-tests"],
                  id="(audit) a link that reaches nothing"),
-    pytest.param({"facts": ("use",), "quantifier": MUST_BE_REACHED, "targets": EXISTING, "links": ("mentions",),
+    pytest.param({"facts": ("use",), "quantifier": MUST_BE_REACHED, "targets": EXISTING, "links": ("names-mentioned",),
                   "roots": Scope(TESTS), "sayings": say("{line}")},
                  ["read: under must_be_reached, a fact is reached by its name, which use does not carry: read file, or "
                   "a kind that carries a name"], id="(audit) a reach by a name the kind does not carry"),
     pytest.param({"facts": ("use",), "quantifier": MAY_ONLY, "targets": (Match("path", names=(("a",),)),),
-                  "exempt": c("already-imported"), "sayings": say()},
-                 ["except: already-imported reads the target a fact matched, which only a check under may_not has"],
+                  "exempt": c("reported-at-import"), "sayings": say()},
+                 ["except: reported-at-import reads the target a fact matched, which only a check under may_not has"],
                  id="(audit) a filter of the hit under may_only"),
     pytest.param({"sayings": say(once=("weather",))},
-                 ["once_per: no variable is named 'weather': did you mean a_tier or tier or path?"],
+                 ["once_per: no variable is named 'weather': did you mean where or tier or path?"],
                  id="(audit) a variable to say once by that does not exist"),
     pytest.param({"quantifier": MAY_ONLY, "sayings": say("{hit}")},
                  ["message: {hit} is the target a fact matched, which only a check under may_not has"],
@@ -121,7 +121,12 @@ REACHED = {"quantifier": MUST_BE_REACHED, "targets": EXISTING, "facts": ("class"
                  ["message: {name} prints something for imported-name only when takes-a-name holds: keep it "
                   "(`keep: [takes-a-name]`), or say it in a case `when: [takes-a-name]`"],
                  id="a field the kind carries only sometimes"),
-    pytest.param({"sayings": say("{weather}")}, ["message: {weather} is no variable: did you mean a_tier or tier or path?"],
+    pytest.param({"sayings": say("{part}")}, ["message: {part} is no variable: it is called {where} now: write that"],
+                 id="a variable that was called otherwise"),
+    pytest.param({"sayings": say(once=("part",))},
+                 ["once_per: no variable is named 'part': it is called {where} now: write that"],
+                 id="a variable to say once by that was called otherwise"),
+    pytest.param({"sayings": say("{weather}")}, ["message: {weather} is no variable: did you mean where or tier or path?"],
                  id="a variable no table holds"),
     pytest.param({"sayings": say("{line:>4}")}, ["message: {line:>4} is no variable: did you mean line or tier or name?"],
                  id="a format of a variable"),
@@ -150,8 +155,8 @@ REACHED = {"quantifier": MUST_BE_REACHED, "targets": EXISTING, "facts": ("class"
                  id="a folder that is no folder below the root"),
     pytest.param({"keep": c("of-kind imprt")}, ["keep: of-kind 'imprt': no kind of fact is named so: did you mean import "
                                                 "or imported-name or import-into-app?"], id="a kind no table holds as a value"),
-    pytest.param({"facts": ("construction",), "keep": c("target-part-lists may_import"), "targets": EXISTING,
-                  "sayings": say()}, ["keep: target-part-lists 'may_import': write one of built_by"],
+    pytest.param({"facts": ("construction",), "keep": c("target-allows-under may_import"), "targets": EXISTING,
+                  "sayings": say()}, ["keep: target-allows-under 'may_import': write one of built_by"],
                  id="a key of a part that lists no parts"),
     pytest.param({"targets": (Match("packages", words=("yaml",)),)},
                  ["may_not: no kind of target is named 'packages': did you mean package or place?"],
@@ -174,24 +179,24 @@ REACHED = {"quantifier": MUST_BE_REACHED, "targets": EXISTING, "facts": ("class"
     pytest.param({"quantifier": MUST_REACH, "links": ("import-into-app",), "roots": Scope(TESTS), "sayings": say()},
                  ["must_reach.from: only a check under must_be_reached has it: drop it"], id="roots of a reach to targets"),
     pytest.param(REACHED | {"links": ()}, ["must_be_reached.through: names no kind of fact: write the kinds that link a "
-                                           "root onwards, such as mentions or import-into-app"], id="a reach through nothing"),
+                                           "root onwards, such as names-mentioned or import-into-app"], id="a reach through nothing"),
     pytest.param(REACHED | {"spread": ("use",)},
-                 ["must_be_reached.onward: use leads nowhere: write a kind that leads to a file or to names, one of "
-                  "mentions, function-reference, import-into-app, import-into-tests, class"], id="onward through nothing"),
+                 ["must_be_reached.then_through: use leads nowhere: write a kind that leads to a file or to names, one of "
+                  "names-mentioned, function-reference, import-into-app, import-into-tests, class"], id="then_through through nothing"),
     pytest.param({"quantifier": MUST_REACH, "links": ("import-into-app",), "exempt": c("relative"), "sayings": say()},
                  ["except: relative does not apply to file: it reads relative, which it does not carry; it applies to "
                   "import and imported-name"], id="an exception of a reach to targets excuses a file"),
     pytest.param({"keep": c("sunny"), "mode": "fial", "sayings": say("{weather}")},
                  ["keep: no filter is named 'sunny': write one of test, tiered, placed, package-file, mirrors-a-part, "
-                  "may-import-everything, below, relative, unreserved-standard, reserved, "
-                  "listed-by-another-part, app-package, own-code, takes-a-name, held, public, special, named, top-level, "
+                  "may-import-everything, below, relative, standard, reserved, "
+                  "listed-by-another-part, app-package, own-code, takes-a-name, on-own-object, public, special, named, top-level, "
                   "forwards, returns-an-attribute, exception, record, interface, receiver, annotated-callable, "
-                  "directive, inert, exceptions-only, already-imported, narrowed, of-kind, target-placed, "
+                  "directive, no-statements, exceptions-only, reported-at-import, names-restricted, of-kind, target-placed, "
                   "target-inside-part, target-in-own-part, target-in-own-tier, target-test, target-below, "
-                  "target-part-lists",
+                  "target-allows-under",
                   "mode: is 'fial': write fail (a finding fails the check) or list (it is listed as weak and fails only "
                   "`check --strict`)",
-                  "message: {weather} is no variable: did you mean a_tier or tier or path?"],
+                  "message: {weather} is no variable: did you mean where or tier or path?"],
                  id="every problem at once"),
 ])
 def test_a_rule_that_names_what_does_not_exist_or_does_not_apply_is_refused_with_every_problem(changes, problems):
@@ -201,7 +206,7 @@ def test_a_rule_that_names_what_does_not_exist_or_does_not_apply_is_refused_with
 
 
 def test_a_rule_whose_words_all_apply_is_made():
-    assert made(sayings=say("{part} imports {package} at {line}")).problems() == []
+    assert made(sayings=say("{where} imports {package} at {line}")).problems() == []
 
 
 @pytest.mark.parametrize("text, condition", [
