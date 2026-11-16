@@ -162,3 +162,4 @@ def test_a_word_of_the_table_is_what_the_language_says_for_it():
         "every Python file, `__init__.py`, a list of .py names, `builtins.open`")
     assert said("a %interface% as `%interface_path%`; %other%", PYTHON) == "a Protocol as `typing.Protocol`; %other%"
     assert said("%interface%s", Language()) == "s"
+    assert said("a name that starts with `%private%`", PYTHON) == "a name that starts with `_`"

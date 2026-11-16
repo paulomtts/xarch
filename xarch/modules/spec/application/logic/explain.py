@@ -25,9 +25,10 @@ _WORD = re.compile(r"%(\w+)%")
 def words(language: Language) -> dict[str, str]:
     """What the language says for each `%word%` a text of the format may write: the title, the extension, the package
     file, the name of an interface and its dotted path, the namespace of the names bound without an import, the marker
-    of a line comment and the comments its tools read, each quoted after the marker."""
+    of a line comment and the comments its tools read, each quoted after the marker, and the prefix of a private name."""
     checked = language.checked
     return {"language": checked.title, "extension": checked.extension, "package_file": checked.package_file,
+            "private": checked.private,
             "interface": language.interface_name,
             "interface_path": ".".join(checked.interface[0]) if checked.interface else "",
             "namespace": language.namespace, "comment": checked.comment,

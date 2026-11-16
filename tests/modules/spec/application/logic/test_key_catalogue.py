@@ -9,7 +9,7 @@ from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.profile_keys import KeyText
 
 SOURCE = "presets/format/keys.yaml"
-WORDS = ("%language%, %extension%, %package_file%, %interface%, %interface_path%, %namespace%, %comment%, %directives%, "
+WORDS = ("%language%, %extension%, %package_file%, %private%, %interface%, %interface_path%, %namespace%, %comment%, %directives%, "
          "%min_statements%, %min_fields%")
 FRAGMENTS = {"part": "parts:\n  documents:\n    path: documents\n    role: the documents\n"}
 TEXT = {"meaning": "the documents", "accepts": "a name", "example": "documents: {}"}

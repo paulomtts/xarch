@@ -12,7 +12,7 @@ SOURCE = "presets/format/file_types.yaml"
 
 def test_the_shipped_file_names_the_fence_and_the_comment_of_each_kind_it_lists():
     assert file_types_of(FILE_TYPES_DOCUMENT) == {
-        ".sh": FileType("bash"), ".yml": FileType("yaml"), ".md": FileType("markdown"),
+        ".sh": FileType("bash", "#"), ".yml": FileType("yaml", "#"), ".md": FileType("markdown"),
         ".js": FileType("javascript", "//"), ".ts": FileType("typescript", "//"), ".go": FileType(comment="//"),
         ".rs": FileType(comment="//"), ".java": FileType(comment="//"), ".kt": FileType(comment="//"),
         ".sql": FileType(comment="--")}
