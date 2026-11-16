@@ -1,12 +1,14 @@
 """The values review reads through its ports: the profile's words review reads (its parts as placement offers them,
-and what review may send), and the files found at the paths given, read or not, with their pieces; and the pieces as
-review judges them."""
+what review may send, and the evals of its own), and the files found at the paths given, read or not, with their
+pieces; what an eval of the profile's own reads in files; the record of the evals held to their examples; and the
+pieces as review judges them."""
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from xarch.kernel.source import Import, Unparsable
-from xarch.modules.review.domain.published import LeftOut
+from xarch.modules.review.domain.published import Choice, LeftOut
 
 
 @dataclass(frozen=True)
@@ -22,12 +24,31 @@ class PartText:
 
 
 @dataclass(frozen=True)
+class EvalText:
+    """An eval of the profile's own as review asks it: its id; its question; the names of the options whose
+    probability reads as the fault; the line the profile writes (None: calibration sets it); what is said of a
+    reading and what to do, with {file}, {line}, {name} and {value}; its flagged and clean examples, each a file by its
+    path below the app with its code; and what it reads, where and passing which filters, as one text, which review
+    never reads but holds the eval to as written."""
+    asked: str
+    question: Choice
+    flagged: tuple[str, ...]
+    line: float | None = None
+    message: str = ""
+    fix: str = ""
+    flagged_examples: tuple[tuple[str, str], ...] = ()
+    clean_examples: tuple[tuple[str, str], ...] = ()
+    reads: str = ""
+
+
+@dataclass(frozen=True)
 class Words:
     """What review reads of a profile: its parts, in its order; the paths below the app of the files review never
-    sends; and the texts it hides before it sends, each as the profile writes it."""
+    sends; the texts it hides before it sends, each as the profile writes it; and the evals of its own, in its order."""
     parts: tuple[PartText, ...]
     never: tuple[str, ...] = ()
     mask: tuple[str, ...] = ()
+    evals: tuple[EvalText, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -82,3 +103,48 @@ class Answer:
     probabilities: tuple[tuple[str, float], ...]
     input_tokens: int = 0
     output_tokens: int = 0
+
+
+@dataclass(frozen=True)
+class Read:
+    """One thing an eval of the profile's own reads in a file: the lines it spans, counted from 1 ((0, 0) for the file
+    whole), and its name (Class.method for a method, "" for the file whole)."""
+    lines: tuple[int, int]
+    name: str
+
+
+@dataclass(frozen=True)
+class Reads:
+    """What an eval of the profile's own reads in one file given: the file, by its path below the app as given; its
+    imports, as its language's reader reads them; and each thing it reads, in the order of their lines."""
+    path: str
+    imports: tuple[Import, ...]
+    read: tuple[Read, ...]
+
+
+@dataclass(frozen=True)
+class Calibration:
+    """An eval of the profile's own as it was held to its examples, as recorded: the hash of what it was held as
+    (question, answer, scope, line written and examples); the model asked; the model version that answered; whether it
+    passed; its line; the value of each example file, by path, the flagged ones and the clean ones; and what crossed
+    when it did not pass. It holds no code and no question."""
+    held: str
+    model: str
+    answered: str
+    passed: bool
+    line: float
+    flagged: tuple[tuple[str, float], ...] = ()
+    clean: tuple[tuple[str, float], ...] = ()
+    crossed: str = ""
+
+
+@dataclass(frozen=True)
+class Run:
+    """The questions of one run so far: the folder the answers are kept in; whether the run may send nothing; the
+    answers the decision model gave and those read from the folder, in order; and the decision model's words when it
+    failed ("" while it has not), after which nothing more is sent."""
+    folder: Path
+    offline: bool
+    asked: tuple[Answer, ...] = ()
+    reused: tuple[Answer, ...] = ()
+    failure: str = ""

@@ -93,7 +93,8 @@ def test_the_json_of_a_dry_run_holds_every_request_in_full_and_the_question_once
                                  {"name": "main", "description": "starts the app"}]},
         "requests": [{"file": "app/a.py", "part": "domain", "chars": 1200, "cached": False,
                       "text": "from <masked> import A\n\nx = 1\n", "body": '{"state": "..."}', "piece": None,
-                      "kind": None, "first": None, "last": None}],
+                      "kind": None, "first": None, "last": None, "eval": None}],
+        "evals": [],
         "pieces": False, "piece_question": None, "context": "none",
         "characters": 1250, "tokens": 313, "reorders": 0, "mask": [],
         "sends": {"name": "Model", "at": "https://model.example.test", "model": "m-1", "key": "MODEL_KEY", "keyed": False}}
@@ -230,9 +231,10 @@ def test_the_json_of_a_reading_holds_each_file_with_the_probability_of_each_part
                                  "distribution": {"domain": 0.71, "logic": 0.29}}],
                       "parts": []},
         "pieces": [],
+        "evals": [],
         "sends": {"name": "Model", "at": "https://model.example.test", "model": "m-1", "key": "MODEL_KEY", "keyed": True},
         "sent": {"calls": 1, "cached": 1, "input_tokens": 2400, "output_tokens": 3},
-        "unanswered": [{"file": "app/c.py", "why": "not-cached", "piece": None}], "failure": None}
+        "unanswered": [{"file": "app/c.py", "why": "not-cached", "piece": None, "eval": None}], "failure": None}
 
 
 LOWEST = (PieceReading(1, "method", "DocumentService.export_pdf", (41, 88), 1530, 0.11, (("services", 0.11),

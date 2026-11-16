@@ -13,10 +13,15 @@ as review holds it, so there is nothing to reshape.
     PartRead how the files of one part read in a run: how many were read and how many read as doubtful
     PieceReading  what the decision model read of one piece of a file, ranked inside the file
     PiecesRead    the pieces of one file, ranked inside it: the lowest few
+    EvalReading   a reading of an eval of the profile's own at or above its line, with what is said of it
+    EvalRead      how an eval of the profile's own went in a run: whether it ran, and if not why, and its readings
+    ExampleRead   the value an eval of the profile's own read of one of its example files
+    EvalHeld      an eval of the profile's own held to its examples: the value of each, the verdict and the line
 
 and the reasons a file is left out, the size of the smallest file judged, how many files one run judges, the ways files
 are chosen, how near its line a file is asked again, why a question has no answer, and how many files of a part a run
-must read, and read as doubtful, to say anything of the part; and how pieces are cut, judged, shown and sent.
+must read, and read as doubtful, to say anything of the part; and how pieces are cut, judged, shown and sent; the
+forms of a question; and the states of an eval of the profile's own, and what holds one to its examples.
 """
 from __future__ import annotations
 
@@ -68,6 +73,21 @@ NOT_CACHED, FAILED = "not-cached", "failed"
 on it or on a question before it, and nothing more was sent."""
 
 
+CHOOSE, YES_NO, SCORE = "choice", "yes-no", "score"
+"""The forms of a question: one option out of several (placement's); yes or no; a level of a score, 0 to 4."""
+CALIBRATED, UNCALIBRATED, FAILED_EXAMPLES, STALE = "calibrated", "uncalibrated", "failed", "stale"
+"""The states of an eval of the profile's own: held to its examples, by the model asked, as it is written now, so that
+it runs; never held to them; held to them and failed; held to them as it was written before, or by another model.
+Only a calibrated eval runs."""
+FLAGGED, CLEAN = "flagged", "clean"
+"""The kinds of example of an eval of the profile's own: code it must read as the fault, and code it must not."""
+GAP = 0.4
+"""How far above the mean of an eval's clean examples the mean of its flagged ones must read for it to pass: the
+weakest checks that passed the trials read +0.42 and +0.46, the one that failed +0.21."""
+LOWEST_LINE = 0.5
+"""The lowest line calibration sets an eval of a yes or no or a choice, when the profile writes none."""
+
+
 @dataclass(frozen=True)
 class Option:
     """One option of a question with one answer out of several: its name and its description."""
@@ -77,9 +97,11 @@ class Option:
 
 @dataclass(frozen=True)
 class Choice:
-    """A question with one answer out of several: what it asks and its options, in the order they are sent."""
+    """A question with one answer out of several: what it asks, its options, in the order they are sent, and its
+    form: CHOOSE (one of the options), YES_NO (the options `yes` and `no`) or SCORE (the levels `0` to `4`)."""
     ask: str
     options: tuple[Option, ...]
+    form: str = CHOOSE
 
 
 @dataclass(frozen=True)
@@ -87,7 +109,10 @@ class Request:
     """What one question about one file, or one piece of it, sends: the file, as `check` shows it; the part it lies in;
     how many characters the file (or the piece) holds; the text sent, masked; whether its answer is in the cache
     already, so that it is not sent; the body the service receives, as JSON text, the key left out (it travels
-    apart); and, for a piece, its name, its kind and the lines it spans ("" and (0, 0) for a whole file)."""
+    apart); and, for a piece, its name, its kind and the lines it spans ("" and (0, 0) for a whole file); and, for a
+    question of an eval of the profile's own, its id ("" for placement's), the piece being what it reads (a whole file
+    named ""), and, for one about an example of the eval, FLAGGED or CLEAN, the kind of example ("" for a file of the
+    app)."""
     file: str
     part: str
     chars: int
@@ -97,6 +122,8 @@ class Request:
     piece: str = ""
     kind: str = ""
     lines: tuple[int, int] = (0, 0)
+    asked: str = ""
+    example: str = ""
 
 
 @dataclass(frozen=True)
@@ -133,11 +160,13 @@ class Reading:
 
 @dataclass(frozen=True)
 class Unasked:
-    """A file judged whose question has no answer: the file, as `check` shows it, why (NOT_CACHED or FAILED), and the
-    piece of it whose question it is ("" for the whole file)."""
+    """A file judged whose question has no answer: the file, as `check` shows it, why (NOT_CACHED or FAILED), the
+    piece of it whose question it is ("" for the whole file), and the eval of the profile's own that asks it ("" for
+    placement)."""
     file: str
     why: str
     piece: str = ""
+    asked: str = ""
 
 
 @dataclass(frozen=True)
@@ -194,3 +223,59 @@ class PiecesRead:
     context: str
     lowest: tuple[PieceReading, ...]
     answered: bool = True
+
+
+@dataclass(frozen=True)
+class EvalReading:
+    """A reading of an eval of the profile's own at or above its line: the file, as `check` shows it; the first line
+    of what was read (0 for a file whole); its name (Class.method for a method, "" for a file whole); the value read;
+    and the eval's message and fix, filled in."""
+    file: str
+    line: int
+    name: str
+    value: float
+    message: str
+    fix: str
+
+
+@dataclass(frozen=True)
+class EvalRead:
+    """How an eval of the profile's own went in a run: its id; its state (CALIBRATED, UNCALIBRATED, FAILED_EXAMPLES or
+    STALE); why it did not run, in a few words ("" when it ran); the line a reading is listed from (0 when it has
+    none); how many flagged and clean examples it was held to, and by which model; how many things it was asked of;
+    its readings at or above the line, the highest first; and its question and the question's form."""
+    asked: str
+    state: str
+    why: str = ""
+    line: float = 0.0
+    flagged: int = 0
+    clean: int = 0
+    model: str = ""
+    read: int = 0
+    readings: tuple[EvalReading, ...] = ()
+    ask: str = ""
+    form: str = CHOOSE
+
+
+@dataclass(frozen=True)
+class ExampleRead:
+    """The value an eval of the profile's own read of one of its example files: the file, by its path below the app;
+    whether it is a flagged example; and its value, the highest of what the eval read in it."""
+    path: str
+    flagged: bool
+    value: float
+
+
+@dataclass(frozen=True)
+class EvalHeld:
+    """An eval of the profile's own held to its examples: its id; the value of each example file, flagged ones first;
+    whether it passed; the line it reads from (written, else set from the examples); what crossed when it did not
+    pass ("" when it passed); whether every example has its answer (none of it is recorded otherwise); and whether the
+    profile writes the line."""
+    asked: str
+    examples: tuple[ExampleRead, ...]
+    passed: bool
+    line: float
+    crossed: str = ""
+    complete: bool = True
+    by_hand: bool = False

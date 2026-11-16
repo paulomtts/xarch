@@ -1,5 +1,5 @@
-"""A client for TypeSafe's decision model, Jev: questions about a state, each with one answer out of several options, go
-out, and the probability of each option comes back. Knows no module.
+"""A client for TypeSafe's decision model, Jev: questions about a state go out (a yes or no, one option out of several,
+or a level of a score), and the probability of each answer comes back. Knows no module.
 
 Whatever is given as the state and in the questions leaves the machine: it is sent as it is to TypeSafe's service, over
 the network. Nothing else is sent: no telemetry, and only the headers the API needs and the plain User-Agent `xarch`.
@@ -25,6 +25,7 @@ from typing import Any
 URL = "https://api.typesafe.ai"
 """Where TypeSafe's decision model answers."""
 MAX_OPTIONS = 255
+MAX_LEVELS = 10
 FIRST_WAIT = 0.5
 LONGEST_WAIT = 60.0
 BUSY = (429, 529)
@@ -87,6 +88,28 @@ def _text(value: Any, what: str, optional: bool = True) -> None:
 
 
 @dataclass(frozen=True)
+class NoulQuestion:
+    """A yes or no question, or a statement true or false; true and false say what each answer means."""
+
+    instructions: str | None = None
+    true: str | None = None
+    false: str | None = None
+
+    def __post_init__(self) -> None:
+        for name in ("instructions", "true", "false"):
+            _text(getattr(self, name), f"a noul question's {name}")
+
+    def body(self) -> dict[str, Any]:
+        body: dict[str, Any] = {"type": "noul"}
+        if self.instructions is not None:
+            body["instructions"] = self.instructions
+        criteria = {k: v for k, v in (("true", self.true), ("false", self.false)) if v is not None}
+        if criteria:
+            body["criteria"] = criteria
+        return body
+
+
+@dataclass(frozen=True)
 class ChoiceQuestion:
     """One option out of 1 to 255, each a name and its description (None: the name alone says it)."""
 
@@ -112,12 +135,59 @@ class ChoiceQuestion:
 
 
 @dataclass(frozen=True)
+class ScoreQuestion:
+    """A level out of 1 to 10, described in order: the position of a level is its score, from 0."""
+
+    criteria: Sequence[str]
+    instructions: str | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "criteria", tuple(self.criteria))
+        if not 1 <= len(self.criteria) <= MAX_LEVELS:
+            raise _invalid(f"a score question needs 1 to {MAX_LEVELS} levels, not {len(self.criteria)}")
+        for level in self.criteria:
+            _text(level, "a score level", optional=False)
+        _text(self.instructions, "a score question's instructions")
+
+    def body(self) -> dict[str, Any]:
+        body: dict[str, Any] = {"type": "score"}
+        if self.instructions is not None:
+            body["instructions"] = self.instructions
+        body["criteria"] = list(self.criteria)
+        return body
+
+
+Question = NoulQuestion | ChoiceQuestion | ScoreQuestion
+
+
+@dataclass(frozen=True)
+class NoulAnswer:
+    """The probability, 0 to 1, that the answer is yes or true. It has no confidence of its own."""
+
+    noul: float
+
+
+@dataclass(frozen=True)
 class ChoiceAnswer:
     """The option chosen, how concentrated the probabilities are (0 to 1) and the probability of each option."""
 
     choice: str
     confidence: float
     probabilities: Mapping[str, float]
+
+
+@dataclass(frozen=True)
+class ScoreAnswer:
+    """The probability-weighted average of the levels, so possibly fractional, with the confidence, the description of
+    each level and the probability of each, by level."""
+
+    score: float
+    confidence: float
+    legend: Mapping[str, Any]
+    probabilities: Mapping[str, float]
+
+
+Answer = NoulAnswer | ChoiceAnswer | ScoreAnswer
 
 
 @dataclass(frozen=True)
@@ -132,11 +202,11 @@ class Response:
     the tokens used."""
 
     model: str
-    answers: Mapping[str, ChoiceAnswer]
+    answers: Mapping[str, Answer]
     usage: Usage
 
 
-def build_request(model: str, state: Any, questions: Mapping[str, ChoiceQuestion]) -> dict[str, Any]:
+def build_request(model: str, state: Any, questions: Mapping[str, Question]) -> dict[str, Any]:
     """The JSON body of a call; raises InvalidRequestError for a limit the docs state or a state that is not JSON."""
     if not isinstance(model, str) or not model:
         raise _invalid("a model name is required")
@@ -157,10 +227,10 @@ def _unexpected(what: str, status: int | None = 200) -> UnexpectedResponseError:
     return UnexpectedResponseError(f"TypeSafe's answer is not the documented shape: {what}", status=status)
 
 
-def _number(value: Any, what: str) -> float:
+def _number(value: Any, what: str, unit: bool = True) -> float:
     if isinstance(value, bool) or not isinstance(value, int | float) or not math.isfinite(value):
         raise _unexpected(f"{what} is not a number")
-    if not 0 <= value <= 1:
+    if unit and not 0 <= value <= 1:
         raise _unexpected(f"{what} is not between 0 and 1")
     return value
 
@@ -183,21 +253,26 @@ def _field(body: dict[str, Any], key: str, what: str) -> Any:
     return body[key]
 
 
-def _answer(raw: Any, question: ChoiceQuestion, name: str) -> ChoiceAnswer:
+def _answer(raw: Any, question: Question, name: str) -> Answer:
     what = f"answer {name}"
     body = _object(raw, what)
     kind = _field(body, "type", what)
     if kind != question.body()["type"]:
         raise _unexpected(f"{what} is of type {kind!r}, not the kind asked")
+    if isinstance(question, NoulQuestion):
+        return NoulAnswer(_number(_field(body, "noul", what), f"{what}.noul"))
     confidence = _number(_field(body, "confidence", what), f"{what}.confidence")
     probabilities = _probabilities(_field(body, "probabilities", what), f"{what}.probabilities")
-    choice = _field(body, "choice", what)
-    if not isinstance(choice, str):
-        raise _unexpected(f"{what}.choice is not text")
-    return ChoiceAnswer(choice, confidence, probabilities)
+    if isinstance(question, ChoiceQuestion):
+        choice = _field(body, "choice", what)
+        if not isinstance(choice, str):
+            raise _unexpected(f"{what}.choice is not text")
+        return ChoiceAnswer(choice, confidence, probabilities)
+    score = _number(_field(body, "score", what), f"{what}.score", unit=False)
+    return ScoreAnswer(score, confidence, _object(_field(body, "legend", what), f"{what}.legend"), probabilities)
 
 
-def _read_response(body: Any, questions: Mapping[str, ChoiceQuestion]) -> Response:
+def _read_response(body: Any, questions: Mapping[str, Question]) -> Response:
     """The Response in a call's JSON body, of the answers to exactly these questions; raises UnexpectedResponseError."""
     top = _object(body, "the body")
     model = _field(top, "model", "the body")
@@ -282,7 +357,7 @@ class TypeSafe:
     def __repr__(self) -> str:
         return f"TypeSafe(base_url={self._base!r}, model={self._model!r})"
 
-    def ask(self, state: Any, questions: Mapping[str, ChoiceQuestion]) -> Response:
+    def ask(self, state: Any, questions: Mapping[str, Question]) -> Response:
         """The answers to the questions about the state, which is sent as given: a string, an object or an array of JSON
         values; raises a TypeSafeError."""
         body = build_request(self._model, state, questions)

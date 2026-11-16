@@ -49,3 +49,11 @@ class Unanswered(DomainError):
 class Refused(DomainError):
     """The files or the profile cannot be read: a path outside the project, a profile that cannot be used; reason
     says which, as the module that refused says it."""
+
+
+class NoSuchEval(DomainError):
+    """Evals were asked for by ids the profile writes no eval of its own of: those ids, and the ids it does write."""
+
+    def __init__(self, names: tuple[str, ...], known: tuple[str, ...]):
+        super().__init__(f"no eval of the profile's own named {', '.join(names)}")
+        self.names, self.known = names, known

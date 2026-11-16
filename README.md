@@ -48,10 +48,13 @@ xarch profile new NAME --from BUNDLED [--out FOLDER] [--app PATH]
                                                              # copy a bundled profile into the project, with its files
 xarch profile check [NAME|FILE] [--app PATH] [--format text|json]
                                                              # validate a profile without an app
-xarch review [PATH ...] [--files-from FILE|-] [--all] [--pieces] [--context none|imports] [--dry-run | --offline] [--cache DIR] [--max-files N] [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json]
+xarch review [PATH ... | calibrate [--eval ID ...]] [--files-from FILE|-] [--all] [--pieces] [--context none|imports] [--dry-run | --offline] [--cache DIR] [--max-files N] [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json]
                                                              # advisory: a decision model's reading of where each file
-                                                             # chosen belongs, and with --pieces a ranking of its
-                                                             # pieces; sends the masked text when the key is set
+                                                             # chosen belongs, with --pieces a ranking of its pieces,
+                                                             # and the profile's own evals that are calibrated; sends
+                                                             # the masked text when the key is set. `review calibrate`
+                                                             # holds the profile's own evals to their examples and
+                                                             # records the verdicts in .xarch/calibration.json
 ```
 
 `WORD` is the word between `<` and `>` in the profile's paths: in both bundled profiles `<module>`, so

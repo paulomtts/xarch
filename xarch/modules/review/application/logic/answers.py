@@ -6,11 +6,14 @@ import hashlib
 import json
 from pathlib import Path
 
-from xarch.modules.review.domain.published import Choice
+from xarch.modules.review.domain.published import CHOOSE, Choice
 
 CACHE = (".xarch", "cache", "review")
 """The folder the answers are kept in, below the project's root (the folder holding the app), which the project
 commits."""
+RECORD = (".xarch", "calibration.json")
+"""The file the evals of the profile's own held to their examples are recorded in, below the project's root, which the
+project commits."""
 
 
 def cache_folder(app: Path, given: Path | None) -> Path:
@@ -18,10 +21,17 @@ def cache_folder(app: Path, given: Path | None) -> Path:
     return given if given is not None else app.parent.joinpath(*CACHE)
 
 
+def record_file(app: Path) -> Path:
+    """The file the evals held to their examples are recorded in: RECORD below the folder holding app."""
+    return app.parent.joinpath(*RECORD)
+
+
 def request_key(model: str, text: str, question: Choice) -> str:
     """The key an answer is kept under: a hash of the model asked, the text sent and the question with its options in
-    order, so that a change to any of them asks again. It holds none of them."""
-    canonical = json.dumps({"model": model, "text": text, "ask": question.ask,
-                            "options": [[option.name, option.description] for option in question.options]},
-                           ensure_ascii=False, separators=(",", ":"))
+    order, and its form unless it is a choice (so that a choice's key is what it was before questions had forms), so
+    that a change to any of them asks again. It holds none of them."""
+    asked = {"model": model, "text": text, "ask": question.ask,
+             "options": [[option.name, option.description] for option in question.options]}
+    form = {} if question.form == CHOOSE else {"form": question.form}
+    canonical = json.dumps(asked | form, ensure_ascii=False, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()

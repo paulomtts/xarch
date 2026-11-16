@@ -9,7 +9,7 @@ from xarch.modules.review.adapters.rules_code import RulesCode
 from xarch.modules.review.domain import published as review
 from xarch.modules.review.domain.errors import Refused
 from xarch.modules.review.domain.published import LeftOut
-from xarch.modules.review.domain.values import CodeFile, Found, Span
+from xarch.modules.review.domain.values import CodeFile, Found, Read, Reads, Span
 from xarch.modules.rules.contract import (
     EXCLUDED,
     IN_NO_PART,
@@ -20,6 +20,11 @@ from xarch.modules.rules.contract import (
     NOT_THERE,
     CheckRefused,
     ChecksCannotRun,
+    FactKept,
+    FactsKept,
+    FileKept,
+    KeepFacts,
+    KeptResult,
     Outside,
     Piece,
     ReadSources,
@@ -40,12 +45,16 @@ READ = SourcesRead((SourceRead("app/kernel/ids.py", IN_PART, "kernel", "class Id
 class Rules:
     """Rules' controller as review's adapter uses it, answering from a fixed result and keeping what it was asked."""
 
-    def __init__(self, result: SourcesResult):
-        self._result, self.asked = result, []
+    def __init__(self, result: SourcesResult, kept: KeptResult = FactsKept(())):
+        self._result, self._kept, self.asked = result, kept, []
 
     def sources(self, cmd: ReadSources) -> SourcesResult:
         self.asked.append(cmd)
         return self._result
+
+    def kept(self, cmd: KeepFacts) -> KeptResult:
+        self.asked.append(cmd)
+        return self._kept
 
 
 def test_a_file_in_a_part_is_handed_on_as_it_was_read_and_any_other_left_out_with_why_in_review_s_words():
@@ -68,3 +77,22 @@ def test_a_file_in_a_part_is_handed_on_as_it_was_read_and_any_other_left_out_wit
 def test_a_refusal_of_rules_is_refused_with_its_reason(result, reason):
     with pytest.raises(Refused, match=reason):
         RulesCode(Rules(result)).files((Path("x"),), Path("/src"), Path("/src/app"), "p", None)
+
+
+def test_what_an_eval_reads_is_handed_on_file_by_file_with_each_thing_s_lines_and_name():
+    kept = FactsKept((FileKept("kernel/ids.py", (IDS,), (FactKept(2, 4, "Id.new"),)), FileKept("kernel/x.py", (), ())))
+    rules = Rules(READ, kept)
+    files = (("kernel/ids.py", "class Id: ...\n"), ("kernel/x.py", "x = 1\n"))
+    assert RulesCode(rules).reads("p", "app", "rule", files) == (
+        Reads("kernel/ids.py", (IDS,), (Read((2, 4), "Id.new"),)), Reads("kernel/x.py", (), ()))
+    assert rules.asked == [KeepFacts("p", "app", "rule", files)]
+
+
+@pytest.mark.parametrize("result, reason", [
+    pytest.param(CheckRefused("gone: no such file"), "gone: no such file", id="a profile that cannot be used"),
+    pytest.param(ChecksCannotRun(("evals.rule.keep: one", "evals.rule.in: two")), "evals.rule.keep: one; evals.rule.in: two",
+                 id="an eval that cannot be read, with every problem"),
+])
+def test_a_refusal_of_rules_to_say_what_an_eval_reads_is_refused_with_its_reason(result, reason):
+    with pytest.raises(Refused, match=reason):
+        RulesCode(Rules(READ, result)).reads("p", "app", "rule", ())

@@ -10,6 +10,7 @@ from dataclasses import replace
 from xarch.modules.rules.application.logic.facts import facts_of
 from xarch.modules.rules.application.logic.own_checks import placed
 from xarch.modules.rules.domain.errors import RuleRefused
+from xarch.modules.rules.domain.published import Piece
 from xarch.modules.rules.domain.rule import EXISTING, MAY_NOT, Fact, Facts, Read, Rule
 from xarch.modules.rules.domain.values import Asked, Profile, SourceFile
 from xarch.profile_values.checks import LIST, Saying
@@ -35,6 +36,17 @@ def made(name: str, asked: Asked) -> tuple[Rule | None, list[str]]:
 def named(fact: Fact) -> str:
     """How a fact an eval reads is named: Class.method for a method, its name for any other, "" for a file whole."""
     return ".".join(fact.path) if len(fact.path) > 1 else fact.name or ""
+
+
+def span(fact: Fact, pieces: tuple[Piece, ...]) -> tuple[int, int]:
+    """The lines a fact an eval reads spans: those of the piece of its name around its line, as the reader cuts it
+    (0 and 0 for a file whole; its own line alone when the reader cuts no such piece)."""
+    if not fact.line:
+        return 0, 0
+    owner = fact.path[0] if len(fact.path) > 1 else ""
+    found = next((piece for piece in pieces if piece.name == fact.name and piece.owner == owner
+                  and piece.first <= fact.line <= piece.last), None)
+    return (found.first, found.last) if found is not None else (fact.line, fact.line)
 
 
 def unread(name: str, side: str, files: tuple[tuple[str, str], ...], kept: list[tuple[Read, Fact]],

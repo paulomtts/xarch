@@ -2,8 +2,9 @@
 word of the vocabulary refused at the eval's address), the facts it reads in a small project of files, how each is
 named, and an example file in which it reads nothing named at its address."""
 from tests.modules.rules.builders import profile
-from xarch.modules.rules.application.logic.asked import made, named, project, unread
+from xarch.modules.rules.application.logic.asked import made, named, project, span, unread
 from xarch.modules.rules.application.logic.engine import kept
+from xarch.modules.rules.domain.published import Piece
 from xarch.modules.rules.domain.rule import Fact
 from xarch.modules.rules.domain.values import Asked, Class, Function, SourceFile
 from xarch.profile_values.checks import APP, Condition, Scope
@@ -46,3 +47,13 @@ def test_an_example_file_in_which_the_eval_reads_nothing_is_named_at_its_address
     assert unread("rule", "clean", files, kept(rule, facts, profile()), "class") == [
         "evals.rule.examples.clean.modules/docs/domain/y.py: holds no class the eval reads (in its scope, passing "
         "keep): give it one"]
+
+
+def test_what_an_eval_reads_spans_the_lines_of_the_piece_of_its_name_around_its_line():
+    pieces = (Piece("class", "Document", 1, 9), Piece("method", "publish", 2, 5, "Document"),
+              Piece("function", "publish", 11, 14))
+    assert span(Fact("function", 3, ("Document", "publish"), "publish"), pieces) == (2, 5)
+    assert span(Fact("function", 12, ("publish",), "publish"), pieces) == (11, 14)
+    assert span(Fact("class", 1, (), "Document"), pieces) == (1, 9)
+    assert span(Fact("function", 20, ("lost",), "lost"), pieces) == (20, 20)
+    assert span(Fact("file", 0), pieces) == (0, 0)

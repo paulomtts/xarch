@@ -5,8 +5,10 @@ import pytest
 
 from xarch.modules.review.adapters.spec_profile import SpecWords
 from xarch.modules.review.domain.errors import Refused
-from xarch.modules.review.domain.values import PartText, Words
-from xarch.modules.spec.contract import PartView, ProfileRefused, ProfileResult, ProfileView
+from xarch.modules.review.domain.published import SCORE, Choice, Option
+from xarch.modules.review.domain.values import EvalText, PartText, Words
+from xarch.modules.spec.contract import Eval, PartView, ProfileRefused, ProfileResult, ProfileView
+from xarch.profile_values.checks import APP, Condition, Scope
 
 VIEW = ProfileView(parts=(PartView("core", ("core",), (), "the rules", "Is it a rule?", "core/"),
                           PartView("api", ("src", "*", "api"), (), "handlers", shown="api/ of src/<module>")),
@@ -33,3 +35,16 @@ def test_each_part_is_read_with_its_folder_litmus_role_and_line_in_order_and_wha
 def test_a_profile_spec_refuses_is_refused_with_spec_s_reason():
     with pytest.raises(Refused, match="gone: no such file"):
         SpecWords(Spec(ProfileRefused("gone: no such file"))).words("gone")
+
+
+PURITY = Eval("How far does it reach?", "score", tuple((str(n), f"level {n}") for n in range(5)), ("3", "4"), "function",
+              Scope(APP, "core", "", (Condition("placed"),)), (Condition("public"), Condition("named", "run*", True)),
+              0.7, "{name} ({value})", "read it", (("core/a.py", "x\n"),), (("core/b.py", "y\n"),))
+
+
+def test_each_eval_of_the_profile_own_is_read_with_its_question_its_form_and_what_it_reads_as_one_text():
+    words = SpecWords(Spec(ProfileView(parts=(), evals={"purity": PURITY}))).words("p")
+    assert words.evals == (EvalText(
+        "purity", Choice("How far does it reach?", tuple(Option(str(n), f"level {n}") for n in range(5)), SCORE),
+        ("3", "4"), 0.7, "{name} ({value})", "read it", (("core/a.py", "x\n"),), (("core/b.py", "y\n"),),
+        "function | core | where | placed | keep | public | not named run*"),)

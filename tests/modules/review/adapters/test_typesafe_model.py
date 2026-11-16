@@ -7,10 +7,20 @@ import pytest
 
 from xarch.modules.review.adapters.typesafe_model import KEY, NAME, SERVICE, TypeSafeModel
 from xarch.modules.review.domain.errors import NoKey, Unanswered
-from xarch.modules.review.domain.published import Choice, Option, Sender
+from xarch.modules.review.domain.published import SCORE, YES_NO, Choice, Option, Sender
 from xarch.modules.review.domain.values import Answer
 from xarch.platform.data_files import DataFileWriter
-from xarch.platform.typesafe import ChoiceAnswer, ChoiceQuestion, InvalidRequestError, Response, Usage
+from xarch.platform.typesafe import (
+    ChoiceAnswer,
+    ChoiceQuestion,
+    InvalidRequestError,
+    NoulAnswer,
+    NoulQuestion,
+    Response,
+    ScoreAnswer,
+    ScoreQuestion,
+    Usage,
+)
 
 QUESTION = Choice("Which part?", (Option("domain", "Is it a value?"), Option("main", "starts the app")))
 AT = "https://model.example.test"
@@ -73,3 +83,30 @@ def test_the_body_is_the_request_the_service_receives_as_json_with_no_key():
     assert body == {"model": "jev-1.14.0", "state": "class A: ...\n", "questions": {NAME: {
         "type": "choice", "instructions": "Which part?",
         "criteria": {"domain": "Is it a value?", "main": "starts the app"}}}}
+
+
+YES_OR_NO = Choice("Does it decide the rule itself?", (Option("yes", "it tests the fields"), Option("no", "")), YES_NO)
+LEVELS = Choice("How far does it reach?", tuple(Option(str(n), f"level {n}") for n in range(5)), SCORE)
+
+
+def test_a_yes_or_no_is_sent_as_a_noul_its_yes_as_true_and_read_back_as_the_probability_of_yes_and_of_no():
+    client = Client(Response("jev-1.14.0", {NAME: NoulAnswer(0.75)}, Usage(300, 1)))
+    assert model(client).ask("def a(): ...\n", YES_OR_NO) == Answer("jev-1.14.0", (("yes", 0.75), ("no", 0.25)), 300, 1)
+    assert client.asked == [("def a(): ...\n", {NAME: NoulQuestion("Does it decide the rule itself?",
+                                                                   "it tests the fields", None)})]
+
+
+def test_a_score_is_sent_as_its_levels_in_order_and_read_back_as_the_probability_of_each_level():
+    answer = ScoreAnswer(2.5, 0.6, {str(n): f"level {n}" for n in range(5)}, {"2": 0.5, "3": 0.5})
+    client = Client(Response("jev-1.14.0", {NAME: answer}, Usage(300, 1)))
+    assert model(client).ask("x", LEVELS).probabilities == (("0", 0.0), ("1", 0.0), ("2", 0.5), ("3", 0.5), ("4", 0.0))
+    assert client.asked[0][1] == {NAME: ScoreQuestion([f"level {n}" for n in range(5)], "How far does it reach?")}
+
+
+def test_the_body_of_a_yes_or_no_and_of_a_score_is_what_the_service_receives():
+    noul = json.loads(model(None).body("x", YES_OR_NO))["questions"][NAME]
+    score = json.loads(model(None).body("x", LEVELS))["questions"][NAME]
+    assert noul == {"type": "noul", "instructions": "Does it decide the rule itself?",
+                    "criteria": {"true": "it tests the fields"}}
+    assert score == {"type": "score", "instructions": "How far does it reach?",
+                     "criteria": [f"level {n}" for n in range(5)]}

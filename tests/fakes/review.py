@@ -5,15 +5,17 @@ from pathlib import Path
 
 from xarch.modules.review.domain.errors import NoKey, Refused, Unanswered
 from xarch.modules.review.domain.published import Choice, Sender
-from xarch.modules.review.domain.values import Answer, Found, Words
+from xarch.modules.review.domain.values import Answer, Calibration, Found, Read, Reads, Words
 
 
 class FakeCode:
     """Satisfies review's Code: the files found at each path, by the path as given (a path given nowhere finds
     nothing), the files of the paths joined in order; a path listed as refused raises Refused with its reason."""
 
-    def __init__(self, found: dict[str, Found], refused: dict[str, str] | None = None):
-        self._found, self._refused = found, dict(refused or {})
+    def __init__(self, found: dict[str, Found], refused: dict[str, str] | None = None,
+                 reads: dict[tuple[str, str], tuple[Read, ...]] | None = None):
+        self._found, self._refused, self._reads = found, dict(refused or {}), dict(reads or {})
+        self.asked: list[tuple[str, tuple[str, ...]]] = []
 
     def files(self, paths: tuple[Path, ...], cwd: Path, app: Path, profile: str, tests: Path | None) -> Found:
         for path in paths:
@@ -21,6 +23,12 @@ class FakeCode:
                 raise Refused(self._refused[path.as_posix()])
         each = [self._found.get(path.as_posix(), Found(())) for path in paths]
         return Found(tuple(file for f in each for file in f.read), tuple(item for f in each for item in f.unread))
+
+    def reads(self, profile: str, app: str, asked: str, files: tuple[tuple[str, str], ...]) -> tuple[Reads, ...]:
+        """What the eval reads in each file, by the eval and the file's text: the file whole when none is set; the
+        paths each eval was asked of recorded."""
+        self.asked.append((asked, tuple(path for path, _ in files)))
+        return tuple(Reads(path, (), self._reads.get((asked, text), (Read((0, 0), ""),))) for path, text in files)
 
 
 class FakeProfile:
@@ -73,3 +81,16 @@ class FakeAnswers:
 
     def put(self, folder: Path, key: str, answer: Answer) -> None:
         self.kept[(folder, key)] = answer
+
+
+class FakeCalibrations:
+    """Satisfies review's Calibrations: the evals recorded, by the record's path; every record put kept here."""
+
+    def __init__(self, kept: dict[Path, dict[str, Calibration]] | None = None):
+        self.kept = {path: dict(held) for path, held in (kept or {}).items()}
+
+    def get(self, record: Path) -> dict[str, Calibration]:
+        return dict(self.kept.get(record, {}))
+
+    def put(self, record: Path, held: dict[str, Calibration]) -> None:
+        self.kept[record] = dict(held)

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from xarch.modules.rules.application.logic.asked import made, named, project
+from xarch.modules.rules.application.logic.asked import made, named, project, span
 from xarch.modules.rules.application.logic.engine import kept
 from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.application.ports.source_tree import SourceTree
-from xarch.modules.rules.contract import FactKept, FactsKept, KeepFacts
+from xarch.modules.rules.contract import FactKept, FactsKept, FileKept, KeepFacts
 from xarch.modules.rules.domain.errors import ChecksRefused
 
 
@@ -23,6 +23,8 @@ class AskingService:
         rule, problems = made(cmd.asked, profile.asked[cmd.asked])
         if rule is None:
             raise ChecksRefused(tuple(problems))
-        facts = project([(path, self._tree.parsed(text)) for path, text in cmd.files], profile, cmd.app, (rule,))
-        return FactsKept(tuple(FactKept("/".join(read.file.path), fact.line, named(fact))
-                               for read, fact in kept(rule, facts, profile)))
+        parsed = [(path, self._tree.parsed(text)) for path, text in cmd.files]
+        found = kept(rule, project(parsed, profile, cmd.app, (rule,)), profile)
+        return FactsKept(tuple(FileKept(path, file.imports, tuple(
+            FactKept(*span(fact, file.pieces), named(fact)) for read, fact in found if "/".join(read.file.path) == path))
+            for path, file in parsed))

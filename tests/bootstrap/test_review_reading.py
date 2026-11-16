@@ -132,7 +132,7 @@ def test_offline_a_file_whose_answer_is_not_kept_is_unanswered_and_the_run_exits
     assert result.exit_code == 3, result.output
     assert f"  {SERVICE}: not in the cache, and --offline sends nothing" in result.output.splitlines()
     document = json.loads(review(SERVICE, "--offline", "--format", "json", key=None).output)
-    assert (document["complete"], document["unanswered"]) == (False, [{"file": SERVICE, "why": "not-cached", "piece": None}])
+    assert (document["complete"], document["unanswered"]) == (False, [{"file": SERVICE, "why": "not-cached", "piece": None, "eval": None}])
 
 
 def test_a_cache_folder_given_is_the_one_written_and_read(served, tmp_path):
@@ -163,8 +163,8 @@ def test_a_failure_of_the_decision_model_leaves_the_rest_unanswered_exits_3_and_
         server.stop()
     assert (text.exit_code, document.exit_code) == (3, 3)
     assert f"  the decision model said: TypeSafe answered {status}" in text.output
-    assert json.loads(document.output)["unanswered"] == [{"file": SERVICE, "why": "failed", "piece": None},
-                                                          {"file": VALUES, "why": "failed", "piece": None}]
+    assert json.loads(document.output)["unanswered"] == [{"file": SERVICE, "why": "failed", "piece": None, "eval": None},
+                                                          {"file": VALUES, "why": "failed", "piece": None, "eval": None}]
     assert KEY not in text.output + document.output
     assert len(server.received) == 2
 

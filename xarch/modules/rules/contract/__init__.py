@@ -51,7 +51,7 @@ __all__ = ["At", "Weak", "Piece", "KnownName", "Translation", "Slot", "KeyFacts"
            "WordsResult", "ExplainRule", "RuleShown", "KeyUnset", "NoRuleShown", "RuleResult", "ApproximateView",
            "Loosened", "Resemblance", "Reviewed", "CheckProfile", "ChecksHeld", "ProfileHeld", "ProfileUnloaded",
            "NoProfileChosen", "ProfileCheckResult", "ReadSources", "SourceRead", "SourcesRead", "SourcesResult",
-           "KeepFacts", "FactKept", "FactsKept", "KeptResult",
+           "KeepFacts", "FactKept", "FileKept", "FactsKept", "KeptResult",
            "IN_PART", "NOT_THERE", "NOT_SOURCE", "IN_TESTS", "IN_PROJECT", "EXCLUDED", "IN_NO_PART"]
 
 
@@ -369,17 +369,26 @@ class KeepFacts:
 
 @dataclass(frozen=True)
 class FactKept:
-    """One thing an eval reads: the file it is in, by its path below the app as given; the first line it is on (0 for
-    a file whole); and its name (Class.method for a method, "" for a file whole)."""
-    path: str
+    """One thing an eval reads in a file: the first and last lines it spans, as the reader cuts it (its decorators
+    included; 0 and 0 for a file whole), and its name (Class.method for a method, "" for a file whole)."""
     first: int
+    last: int
     name: str
 
 
 @dataclass(frozen=True)
-class FactsKept:
-    """What the eval reads in the files, in the order of the files and then of their lines."""
+class FileKept:
+    """What an eval reads in one file given: the file, by its path below the app as given; its imports; and each thing
+    the eval reads in it, in the order of their lines."""
+    path: str
+    imports: tuple[Import, ...]
     facts: tuple[FactKept, ...]
+
+
+@dataclass(frozen=True)
+class FactsKept:
+    """What the eval reads in each file given, in the order given."""
+    files: tuple[FileKept, ...]
 
 
 KeptResult = FactsKept | ChecksCannotRun | CheckRefused

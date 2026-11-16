@@ -6,6 +6,7 @@ from __future__ import annotations
 from typing import Any
 
 from xarch.cli.reports.document import document
+from xarch.cli.reports.eval_report import UNASKED, eval_documents, eval_lines, eval_plan_lines, sends_of
 from xarch.modules.review.contract import (
     A_TEST,
     BAND,
@@ -13,7 +14,6 @@ from xarch.modules.review.contract import (
     BY_LIST,
     BY_PATHS,
     EXCLUDED,
-    FAILED,
     FEWEST_SUMMED,
     IMPORTS,
     MARKED_SMALL,
@@ -21,7 +21,6 @@ from xarch.modules.review.contract import (
     MISSING,
     NEVER,
     NO_CONTEXT,
-    NOT_CACHED,
     NOT_SOURCE,
     OUTSIDE,
     PIECE_CHARS,
@@ -48,8 +47,6 @@ BASED_ON = ("measured on two codebases with one reader's labels and one model ve
 """What the numbers of placement rest on, said with them in text and in JSON."""
 TO_DO = ("If the litmus says it belongs, leave it. In trials, about 1 in 2 to 1 in 3 files read this way was really "
          "misplaced.")
-UNASKED = {NOT_CACHED: "not in the cache, and --offline sends nothing",
-           FAILED: "not answered: the decision model failed, and nothing more was sent"}
 WAYS = {BY_PATHS: "paths", BY_LIST: "--files-from", BY_ALL: "--all"}
 WHY = {MISSING: "not there", NOT_SOURCE: "no source file of the app's language", A_TEST: "a test: review reads the app's "
        "files only", OUTSIDE: "outside the app folder", EXCLUDED: "below a folder the profile excludes",
@@ -76,7 +73,7 @@ def plan_lines(planned: ReviewPlanned) -> list[str]:
     """The header, the question every request carries, each request with the exact text it would send, then the files
     left out and why."""
     asked = len(planned.requests)
-    judged = sum(not item.piece for item in planned.requests)
+    judged = sum(not item.piece and not item.asked for item in planned.requests)
     cached = sum(item.cached for item in planned.requests)
     lines = [f"review: advisory. {ADVISORY}", NOTHING_SENT, _what_leaves(planned.sends, bool(planned.piece_ask)),
              f"{planned.found} file(s) found ({', '.join(WAYS[way] for way in planned.by)}), {judged} to be judged, "
@@ -93,9 +90,12 @@ def plan_lines(planned: ReviewPlanned) -> list[str]:
     lines += ["", f"{MASKED}: {', '.join(planned.mask)}" if planned.mask else f"{MASKED}: nothing more"]
     for number, item in enumerate(planned.requests, 1):
         kept = ", in the cache: not sent" if item.cached else ""
-        what = (f"piece {item.piece} ({item.kind}, lines {item.lines[0]}-{item.lines[1]}, " if item.piece else "(")
+        what = (f"eval {item.asked}: {item.piece or 'the file whole'} (lines {item.lines[0]}-{item.lines[1]}, "
+                if item.asked and item.piece else f"eval {item.asked}: the file whole (" if item.asked
+                else f"piece {item.piece} ({item.kind}, lines {item.lines[0]}-{item.lines[1]}, " if item.piece else "(")
         lines += ["", f"request {number} of {asked}: {item.file} {what}{item.part}, {item.chars:,} characters{kept})",
                   *_quoted(item)]
+    lines += eval_plan_lines(planned.evals)
     if planned.left_out:
         lines += ["", "left out:", *(f"  {item.file}: {_why(item)}" for item in planned.left_out)]
     return lines
@@ -119,12 +119,14 @@ def plan_document(profile: str, planned: ReviewPlanned) -> str:
                      "options": [{"name": o.name, "description": o.description} for o in planned.question.options]},
         "requests": [{"file": r.file, "part": r.part, "chars": r.chars, "cached": r.cached, "text": r.text,
                       "body": r.body, "piece": r.piece or None, "kind": r.kind or None,
-                      "first": r.lines[0] if r.piece else None, "last": r.lines[1] if r.piece else None}
+                      "first": r.lines[0] if r.piece else None, "last": r.lines[1] if r.piece else None,
+                      "eval": r.asked or None}
                      for r in planned.requests],
+        "evals": eval_documents(planned.evals),
         "pieces": bool(planned.piece_ask), "piece_question": planned.piece_ask or None, "context": planned.context,
         "characters": planned.characters, "tokens": planned.tokens, "reorders": planned.reorders,
         "mask": list(planned.mask),
-        "sends": _sends(planned.sends)}
+        "sends": sends_of(planned.sends)}
     return document(content)
 
 
@@ -132,7 +134,7 @@ def reading_lines(read: ReviewReading) -> list[str]:
     """The header, then the files doubtful here, the most doubtful first, each with what to do; the files that read as
     placed, lowest first; what small means, when a file is; how the files of each part read; the files left out and
     why; and those with no answer, and why."""
-    judged = len(read.readings) + len(read.unasked)
+    judged = len(read.readings) + sum(not item.piece and not item.asked for item in read.unasked)
     lines = [f"review: advisory. {ADVISORY}",
              f"Model {read.sends.model}. {read.found} file(s) found ({', '.join(WAYS[way] for way in read.by)}), "
              f"{judged} judged, {len(read.left_out)} left out. Asked {read.sent}, from cache {read.cached}."]
@@ -155,6 +157,7 @@ def reading_lines(read: ReviewReading) -> list[str]:
     if any(item.small for item in read.readings):
         lines += ["", f"small: under {MARKED_SMALL:,} characters; small files read lower for being small (in trials, a "
                       "tenth of the smallest quarter of files read as doubtful, a fiftieth of the largest)"]
+    lines += eval_lines(read.evals)
     if read.parts:
         lines += ["", "parts (read this run)", *(line for part in read.parts for line in _part(part))]
     if read.role_only:
@@ -163,8 +166,7 @@ def reading_lines(read: ReviewReading) -> list[str]:
         lines += ["", "left out:", *(f"  {item.file}: {_why(item)}" for item in read.left_out)]
     if read.unasked:
         lines += ["", f"unanswered ({len(read.unasked)}): the review is incomplete (exit 3)",
-                  *(f"  {item.file}{f' (piece {item.piece})' if item.piece else ''}: {UNASKED[item.why]}"
-                    for item in read.unasked)]
+                  *(f"  {item.file}{_of(item)}: {UNASKED[item.why]}" for item in read.unasked)]
         lines += [f"  the decision model said: {read.failure}"] if read.failure else []
         lines.append("  what to do: run it again once the cache holds the answers, or without --offline with the key "
                      "set; what was answered is kept and not asked again")
@@ -177,13 +179,15 @@ def reading_document(profile: str, read: ReviewReading) -> str:
     content: dict[str, Any] = {
         "ok": True, "advisory": ADVISORY, "profile": profile, "dry_run": False, "complete": read.complete,
         "model": read.sends.model,
-        "selection": {"by": list(read.by), "found": read.found, "judged": len(read.readings) + len(read.unasked),
+        "selection": {"by": list(read.by), "found": read.found,
+                      "judged": len(read.readings) + sum(not item.piece and not item.asked for item in read.unasked),
                       "left_out": [_left_out(item) for item in read.left_out]},
         "placement": {"calibration": {"state": "measured", "evidence": BASED_ON},
                       "role_only": list(read.role_only), "files": [_file(item) for item in read.readings],
                       "parts": [_part_read(part) for part in read.parts]},
         "pieces": [_pieces_read(pieces) for pieces in read.pieces],
-        "sends": _sends(read.sends),
+        "evals": eval_documents(read.evals),
+        "sends": sends_of(read.sends),
         "sent": {"calls": read.sent, "cached": read.cached, "input_tokens": read.input_tokens,
                  "output_tokens": read.output_tokens},
         "unanswered": [_unasked(item) for item in read.unasked], "failure": read.failure or None}
@@ -295,8 +299,11 @@ def _left_out(item: LeftOut) -> dict[str, Any]:
 
 
 def _unasked(item: Unasked) -> dict[str, Any]:
-    return {"file": item.file, "why": item.why, "piece": item.piece or None}
+    return {"file": item.file, "why": item.why, "piece": item.piece or None, "eval": item.asked or None}
 
 
-def _sends(sends: Sender) -> dict[str, Any]:
-    return {"name": sends.service, "at": sends.at, "model": sends.model, "key": sends.key, "keyed": sends.keyed}
+def _of(item: Unasked) -> str:
+    """What of a file a question with no answer is about: a piece, or what an eval reads."""
+    if item.asked:
+        return f" (eval {item.asked}{f': {item.piece}' if item.piece else ''})"
+    return f" (piece {item.piece})" if item.piece else ""

@@ -7,11 +7,14 @@ from typing import Protocol
 
 from xarch.modules.review.domain.errors import Refused
 from xarch.modules.review.domain.published import A_TEST, EXCLUDED, MISSING, NOT_SOURCE, OUTSIDE, UNPLACED, LeftOut
-from xarch.modules.review.domain.values import CodeFile, Found, Span
+from xarch.modules.review.domain.values import CodeFile, Found, Read, Reads, Span
 from xarch.modules.rules import contract as rules
 from xarch.modules.rules.contract import (
     CheckRefused,
     ChecksCannotRun,
+    FactsKept,
+    KeepFacts,
+    KeptResult,
     Outside,
     ReadSources,
     SourceRead,
@@ -29,6 +32,8 @@ class _Rules(Protocol):
 
     def sources(self, cmd: ReadSources) -> SourcesResult: ...
 
+    def kept(self, cmd: KeepFacts) -> KeptResult: ...
+
 
 class RulesCode:
     """Satisfies review's Code port by translating rules' SourcesRead."""
@@ -44,6 +49,18 @@ class RulesCode:
                 return Found(tuple(_read(file) for file in files if file.lies == rules.IN_PART),
                              tuple(LeftOut(file.shown, _WHY[file.lies]) for file in files if file.lies != rules.IN_PART))
             case Outside(reason) | CheckRefused(reason):
+                raise Refused(reason)
+            case ChecksCannotRun(problems):
+                raise Refused("; ".join(problems))
+
+
+    def reads(self, profile: str, app: str, asked: str, files: tuple[tuple[str, str], ...]) -> tuple[Reads, ...]:
+        """A refusal of rules raises Refused with its reason, or with each problem of an eval that cannot be read."""
+        match self._rules.kept(KeepFacts(profile, app, asked, files)):
+            case FactsKept(found):
+                return tuple(Reads(file.path, file.imports, tuple(Read((fact.first, fact.last), fact.name)
+                                                                  for fact in file.facts)) for file in found)
+            case CheckRefused(reason):
                 raise Refused(reason)
             case ChecksCannotRun(problems):
                 raise Refused("; ".join(problems))
