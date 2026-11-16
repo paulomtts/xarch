@@ -363,6 +363,13 @@ class InitFile:
 
 
 @dataclass(frozen=True)
+class Known:
+    """The profiles a project knows: the one in force for it (None: none is configured), and the bundled ones."""
+    in_force: str | None
+    bundled: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class Standing:
     """How the profile in force stands, besides its rules: the guards xarch has that it leaves off, in xarch's order,
     and those the bundled profile it is, or is compared with, leaves off too (baseline_off); the files `init` would

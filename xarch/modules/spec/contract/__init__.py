@@ -33,7 +33,7 @@ __all__ = ["DEFAULT_APP", "DEFAULT_TESTS", "Entry", "Repeating", "Skeleton", "Do
            "MigrateResult", "Shown", "Symbol", "Explain", "FormatExplained", "KeyExplained", "UnknownKey",
            "ExplainResult", "Need", "ViewProfile", "ProfileViewed", "ViewResult", "CheckProfile", "LOAD", "EXAMPLES",
            "Problem", "ProfileChecked",
-           "CheckResult", "KnownProfiles", "NewProfile", "ProfileCreated", "NewResult", "Supply", "Shortfall"]
+           "CheckResult", "KnownProfiles", "KnownResult", "NewProfile", "ProfileCreated", "NewResult", "Supply", "Shortfall"]
 
 
 @dataclass(frozen=True)
@@ -391,10 +391,12 @@ CheckResult = ProfileChecked | NoProfileChosen | ProfileRefused
 
 @dataclass(frozen=True)
 class KnownProfiles:
-    """The profiles a project knows: the one in force for it (None: none is, or its settings cannot be read or it does
-    not load), and the bundled ones."""
-    in_force: str | None
+    """The profiles a project knows: the one in force for it, which loads, and the bundled ones."""
+    in_force: str
     bundled: tuple[str, ...]
+
+
+KnownResult = KnownProfiles | NoProfileChosen | ProfileRefused
 
 
 @dataclass(frozen=True)

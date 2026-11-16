@@ -6,7 +6,7 @@ from typing import Protocol
 
 from xarch.modules.rules.domain.errors import NoProfile, ProfileUnusable, Unloaded
 from xarch.modules.rules.domain.published import KeyFacts, Loosened, Resemblance, Reviewed
-from xarch.modules.rules.domain.values import InitFile, PartInfo, Profile, Standing
+from xarch.modules.rules.domain.values import InitFile, Known, PartInfo, Profile, Standing
 from xarch.modules.spec.contract import (
     DEFAULT_TESTS,
     LITMUS,
@@ -17,6 +17,7 @@ from xarch.modules.spec.contract import (
     FilesResult,
     KeyExplained,
     KnownProfiles,
+    KnownResult,
     NoProfileChosen,
     Origin,
     OriginResult,
@@ -37,7 +38,7 @@ class _Spec(Protocol):
 
     def files(self, profile: str, app: str, presets: bool = True) -> FilesResult: ...
 
-    def known(self, app: Path) -> KnownProfiles: ...
+    def known(self, app: Path) -> KnownResult: ...
 
     def explain(self, cmd: Explain) -> ExplainResult: ...
 
@@ -86,15 +87,23 @@ class SpecProfiles:
                        reserved=dict(view.reserved),
                        approximate=view.approximate, written=dict(view.checks), default_tests=DEFAULT_TESTS)
 
-    def known(self, app: Path) -> tuple[str, ...]:
-        """The profile in force first, then the bundled ones."""
-        known = self._spec.known(app)
-        return (*filter(None, (known.in_force,)), *known.bundled)
+    def known(self, app: Path) -> Known:
+        """None configured is no profile in force; one spec refuses raises ProfileUnusable with its reason."""
+        match self._spec.known(app):
+            case KnownProfiles(in_force, bundled):
+                return Known(in_force, bundled)
+            case NoProfileChosen(known):
+                return Known(None, known)
+            case ProfileRefused(reason):
+                raise ProfileUnusable(reason)
 
     def key(self, address: str) -> KeyFacts:
+        """An explanation spec refuses raises ProfileUnusable with its reason."""
         match self._spec.explain(Explain(address)):
             case KeyExplained() as explained:
                 return KeyFacts(explained.example, explained.name, explained.holder)
+            case ProfileRefused(reason):
+                raise ProfileUnusable(reason)
         return KeyFacts()
 
     def reviewed(self, app: Path, target: str | None) -> Reviewed:

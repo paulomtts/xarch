@@ -6,23 +6,24 @@ from pathlib import Path
 from xarch.kernel.errors import DomainError
 from xarch.modules.rules.domain.errors import ChecksRefused, ProfileUnusable
 from xarch.modules.rules.domain.published import KeyFacts, Reviewed
-from xarch.modules.rules.domain.values import InitFile, Profile, Standing
+from xarch.modules.rules.domain.values import InitFile, Known, Profile, Standing
 
 
 class FakeProfiles:
     """Satisfies rules' Profiles: a fixed Profile per location, with the guards it leaves off, those its baseline
     leaves off too and the parts it redefines without their litmus (none unless given), and the init files it writes
-    (none unless given), whatever the app's name; the profiles a project knows (those given, unless known says), what
-    the format says of a key (nothing unless given); a location whose own checks are refused raises ChecksRefused with
+    (none unless given), whatever the app's name; the profiles a project knows (none in force and those given as the
+    bundled ones, unless known says; a DomainError there is raised), what the format says of a key (nothing unless
+    given; a DomainError there is raised); a location whose own checks are refused raises ChecksRefused with
     their problems, and one spec refuses raises ProfileUnusable with spec's reason."""
 
     def __init__(self, profiles: dict[str, Profile], guards: dict[str, Standing] | None = None,
                  files: dict[str, tuple[InitFile, ...]] | None = None, refused: dict[str, tuple[str, ...]] | None = None,
-                 unusable: dict[str, str] | None = None, known: tuple[str, ...] | None = None,
-                 keys: dict[str, KeyFacts] | None = None,
+                 unusable: dict[str, str] | None = None, known: Known | DomainError | None = None,
+                 keys: dict[str, KeyFacts | DomainError] | None = None,
                  reviewed: dict[str | None, Reviewed | DomainError] | None = None):
         self._profiles, self._guards, self._files = profiles, dict(guards or {}), dict(files or {})
-        self._known = tuple(profiles) if known is None else known
+        self._known = Known(None, tuple(profiles)) if known is None else known
         self._keys, self._reviewed = dict(keys or {}), dict(reviewed or {})
         self._refused, self._unusable = dict(refused or {}), dict(unusable or {})
 
@@ -33,11 +34,16 @@ class FakeProfiles:
             raise ProfileUnusable(self._unusable[location])
         return self._profiles[location]
 
-    def known(self, app: Path) -> tuple[str, ...]:
+    def known(self, app: Path) -> Known:
+        if isinstance(self._known, DomainError):
+            raise self._known
         return self._known
 
     def key(self, address: str) -> KeyFacts:
-        return self._keys.get(address, KeyFacts())
+        found = self._keys.get(address, KeyFacts())
+        if isinstance(found, DomainError):
+            raise found
+        return found
 
     def reviewed(self, app: Path, target: str | None) -> Reviewed:
         found = self._reviewed[target]

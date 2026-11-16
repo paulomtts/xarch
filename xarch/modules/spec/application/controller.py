@@ -20,7 +20,7 @@ from xarch.modules.spec.contract import (
     ExplainResult,
     FilesResult,
     FilesTaken,
-    KnownProfiles,
+    KnownResult,
     MigrateProfile,
     MigrateResult,
     MigrationRefused,
@@ -124,13 +124,16 @@ class SpecController:
         except DomainError as e:
             return ProfileRefused(e.reason)
 
-    def known(self, app: Path) -> KnownProfiles:
+    def known(self, app: Path) -> KnownResult:
         """The profiles known to the project holding the app folder, given in full: the one in force and the bundled
-        ones; when none is in force, or it cannot be read or loaded, the bundled ones alone."""
+        ones; none configured comes back with the bundled ones, and one that cannot be chosen or loaded is refused with
+        why."""
         try:
             return self._selection.known(app)
-        except DomainError:
-            return self._selection.known(None)
+        except NoProfile as e:
+            return NoProfileChosen(e.known)
+        except DomainError as e:
+            return ProfileRefused(e.reason)
 
     def view(self, cmd: ViewProfile) -> ViewResult:
         """The folder tree and import table of a profile; one that cannot be chosen or loaded is refused with why."""

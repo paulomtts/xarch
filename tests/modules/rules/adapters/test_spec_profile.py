@@ -9,7 +9,7 @@ from xarch.modules.rules.adapters.spec_profile import SpecProfiles
 from xarch.modules.rules.domain import published
 from xarch.modules.rules.domain.errors import NoProfile, ProfileUnusable, Unloaded
 from xarch.modules.rules.domain.published import KeyFacts, Resemblance, Reviewed
-from xarch.modules.rules.domain.values import InitFile, PartInfo, Profile, Standing
+from xarch.modules.rules.domain.values import InitFile, Known, PartInfo, Profile, Standing
 from xarch.modules.spec.contract import (
     CheckProfile,
     CheckResult,
@@ -19,6 +19,7 @@ from xarch.modules.spec.contract import (
     GuardsView,
     KeyExplained,
     KnownProfiles,
+    KnownResult,
     Loosened,
     NoProfileChosen,
     Origin,
@@ -80,10 +81,14 @@ class Spec:
     def files(self, profile: str, app: str, presets: bool = True) -> FilesResult:
         return ProfileRefused("cannot write them") if self._files is None else ProjectFiles(self._files)
 
-    def known(self, app: Path) -> KnownProfiles:
-        return KnownProfiles(None if app == Path("/p/none") else "mine.yaml", ("cli",))
+    def known(self, app: Path) -> KnownResult:
+        return {Path("/p/none"): NoProfileChosen(("cli",)),
+                Path("/p/broken"): ProfileRefused("mine.yaml: missing `parts`")}.get(app, KnownProfiles("mine.yaml",
+                                                                                                         ("cli",)))
 
     def explain(self, cmd: Explain) -> ExplainResult:
+        if cmd.key == "parts.refused":
+            return ProfileRefused("python: cannot read the data file")
         return KEY if cmd.key == KEY.key else UnknownKey(cmd.key, ())
 
     def check_profile(self, cmd: CheckProfile) -> CheckResult:
@@ -140,14 +145,21 @@ def test_a_profile_whose_origin_spec_refuses_cannot_be_checked():
         SpecProfiles(Spec(origin=ProfileRefused("no such profile"))).standing("mine.yaml", "app")
 
 
-def test_the_profiles_a_project_knows_are_spec_s():
-    assert SpecProfiles(Spec()).known(Path("/p/app")) == ("mine.yaml", "cli")
-    assert SpecProfiles(Spec()).known(Path("/p/none")) == ("cli",)
+def test_the_profiles_a_project_knows_are_spec_s_none_chosen_is_none_in_force_and_one_refused_raises_its_reason():
+    assert SpecProfiles(Spec()).known(Path("/p/app")) == Known("mine.yaml", ("cli",))
+    assert SpecProfiles(Spec()).known(Path("/p/none")) == Known(None, ("cli",))
+    with pytest.raises(ProfileUnusable, match="^mine.yaml: missing `parts`$"):
+        SpecProfiles(Spec()).known(Path("/p/broken"))
 
 
 def test_what_the_format_says_of_a_key_is_its_example_its_name_and_what_holds_it_and_nothing_for_no_key():
     assert SpecProfiles(Spec()).key("parts.types_only") == KeyFacts("parts:\n  a: {}\n", "types_only", "part")
     assert SpecProfiles(Spec()).key("parts.nothing") == KeyFacts()
+
+
+def test_an_explanation_spec_refuses_raises_its_reason():
+    with pytest.raises(ProfileUnusable, match="^python: cannot read the data file$"):
+        SpecProfiles(Spec()).key("parts.refused")
 
 
 @pytest.mark.parametrize("checked, then", [

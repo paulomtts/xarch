@@ -298,7 +298,7 @@ guards:
   closed-tree: {}
   stand-ins: {}
   no-duplicates: {min_statements: 4}
-  no-twins: {min_fields: 2, min_renamed: 3, min_subset: 3}
+  no-twins: {min_fields: 2, min_renamed: 3, min_subset: 3, translated: [adapters]}
   dead-code: {untested: true}
   pass-through: {parts: [services, controller, adapters]}
   private-imports: {}

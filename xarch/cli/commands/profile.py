@@ -121,6 +121,8 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
                     return
                 case UnknownWords() as unknown:
                     raise refuse_with(output, words.unknown_message(unknown), words.unknown_document(unknown))
+                case CheckRefused(why):
+                    raise refuse(why)
         if profile is not None or configured:
             if key is not None or (profile is not None and configured):
                 raise refuse(key_or_profile())

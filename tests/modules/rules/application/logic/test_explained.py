@@ -14,11 +14,13 @@ from xarch.modules.rules.application.logic.explained import (
     keyed,
     nearest,
     needs,
+    searched,
     uses,
     word_at,
 )
 from xarch.modules.rules.domain.published import CHECKS
 from xarch.modules.rules.domain.rule import EXISTING, MAY_NOT, Match, Rule
+from xarch.modules.rules.domain.values import Known
 from xarch.modules.rules.domain.vocabulary import FILTERS, KINDS, QUANTIFIERS, TARGETS, VARIABLES, WordFacets
 from xarch.modules.rules.domain.worked import WORKED
 from xarch.profile_values.checks import Condition, Saying, Scope
@@ -126,3 +128,11 @@ def test_a_kind_says_its_fields_needs_and_verb():
 ])
 def test_a_word_no_profile_shows_falls_back_to_a_check_written_for_the_explanation(category, name, found):
     assert fallback(category, name) == found
+
+
+@pytest.mark.parametrize("known, found", [
+    pytest.param(Known("mine.yaml", ("cli", "web")), ("mine.yaml", "cli", "web"), id="the one in force first"),
+    pytest.param(Known(None, ("cli", "web")), ("cli", "web"), id="none in force: the bundled ones alone"),
+])
+def test_an_example_is_searched_for_in_the_profile_in_force_then_the_bundled_ones(known, found):
+    assert searched(known) == found

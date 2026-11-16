@@ -7,6 +7,7 @@ from tests.fakes.profiles import FakeProfiles
 from tests.modules.rules.application.helpers import controller
 from tests.modules.rules.builders import profile
 from xarch.modules.rules.contract import ExplainRule, KeyFacts, KeyUnset, NoRuleShown, RuleShown
+from xarch.modules.rules.domain.errors import ProfileUnusable
 
 NAMED = profile(names={"services": ("*Service",), "controller": ("*Controller",)})
 TEXT = "names-services: reads class\n"
@@ -25,10 +26,14 @@ TEXT = "names-services: reads class\n"
                  id="a key the engine expands that the profile sets on no part comes back unset, as the format says it"),
     pytest.param({"named": NAMED}, ExplainRule("parts.services.holds", "named"),
                  KeyUnset("parts.services.holds", "named"), id="so does such a key of one part"),
+    pytest.param({"named": NAMED}, ExplainRule("parts.immutable", "named"),
+                 NoRuleShown("parts.immutable", "named", "python: cannot read the data file"),
+                 id="such a key whose format cannot be explained comes back with why"),
 ])
 def test_rule(given, when, then):
     profiles = FakeProfiles(given, keys={"parts.types_only": KeyFacts("parts:\n  a: {types_only: [b]}\n", "types_only",
-                                                                      "part")})
+                                                                      "part"),
+                                         "parts.immutable": ProfileUnusable("python: cannot read the data file")})
     assert controller(FakeSourceTree(None, {}), profiles).explain_rule(when) == then
 
 

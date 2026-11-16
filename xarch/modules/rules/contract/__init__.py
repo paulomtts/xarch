@@ -415,7 +415,7 @@ class NoWords:
     close: tuple[str, ...]
 
 
-WordsResult = ChecksShown | WordsShown | WordShown | UnknownWords | NoWords
+WordsResult = ChecksShown | WordsShown | WordShown | UnknownWords | NoWords | CheckRefused
 
 
 @dataclass(frozen=True)

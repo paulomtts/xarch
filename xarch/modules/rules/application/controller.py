@@ -55,8 +55,12 @@ class RulesController:
     def explain_words(self, cmd: ExplainWords) -> WordsResult:
         """How a check is written, a category of its words or one word, from the vocabulary the engine reads; an
         address of no word comes back with the nearest ones. A word's example is the first rule of the profiles the
-        project knows that is written with it, else a check of a profile's own written for the explanation."""
-        return self._explaining.words(cmd.address, cmd.app)
+        project knows that is written with it, else a check of a profile's own written for the explanation. A project
+        whose profile cannot be chosen or loaded is refused with why."""
+        try:
+            return self._explaining.words(cmd.address, cmd.app)
+        except DomainError as e:
+            return CheckRefused(e.reason)
 
     def explain_rule(self, cmd: ExplainRule) -> RuleResult:
         """The rules a key of a profile expands to, written as checks; a key the engine expands that the profile sets

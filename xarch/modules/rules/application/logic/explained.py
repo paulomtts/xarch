@@ -10,6 +10,7 @@ from difflib import get_close_matches
 
 from xarch.modules.rules.domain.published import CHECKS, Slot
 from xarch.modules.rules.domain.rule import OwnCheck, Rule
+from xarch.modules.rules.domain.values import Known
 from xarch.modules.rules.domain.vocabulary import (
     FACT,
     FIELDS,
@@ -182,3 +183,8 @@ def general(key: str) -> str:
     """A key with the part or tier it names left out: parts.services.names as parts.names."""
     steps = key.split(".")
     return ".".join((steps[0], *steps[2:])) if steps[0] in ("parts", "tiers") and len(steps) > 2 else key
+
+
+def searched(known: Known) -> tuple[str, ...]:
+    """The profiles a word's example is looked for in, in order: the one in force first, then the bundled ones."""
+    return (*filter(None, (known.in_force,)), *known.bundled)
