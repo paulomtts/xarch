@@ -5,6 +5,7 @@ contract's own.
     At    a place in a file, as the enforcement section names a skip or a dynamic import; the command line shows it
     Weak  a check met to the letter only, which the enforcement section lists and the command line shows
     Slot  a slot of a check as a profile writes it, which `profile explain checks` shows
+    Drift an init file as it stands against what `init` would write, which the enforcement section lists
 """
 from __future__ import annotations
 
@@ -37,3 +38,11 @@ class Slot:
     meaning: str
     accepts: str
     takes: str = ""
+
+
+@dataclass(frozen=True)
+class Drift:
+    """An init file as it stands: missing, or changed from what `init` would write (pinned files only). path is its
+    path below the folder holding the app."""
+    path: tuple[str, ...]
+    state: str

@@ -6,23 +6,15 @@ from pathlib import Path
 from typing import ClassVar
 
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.domain.published import At, Slot, Weak
+from xarch.modules.rules.domain.published import At, Drift, Slot, Weak
 
 __all__ = ["At", "Weak", "Slot", "ChecksCannotRun", "CheckRefused", "OwnCheckView",
-           "DriftView", "FindingView", "ExcludedView", "EnforcementView", "ReachView", "NearestView", "TierInfoView",
+           "Drift", "FindingView", "ExcludedView", "EnforcementView", "ReachView", "NearestView", "TierInfoView",
            "PartShown", "CoveringTest", "Untested", "InPart", "InStructure", "Ungoverned", "InTests", "Support", "Fake",
            "WhereAnswer", "CheckImports", "ImportsChecked", "NotADirectory", "CheckResult", "CheckApp", "AppChecked",
            "CheckAppResult", "Locate", "Located", "Outside", "LocateResult", "CATEGORIES", "ExplainWords",
            "WordLine", "CategoryShown", "ChecksShown", "WordsShown", "FieldShown", "WordShown", "UnknownWords",
            "WordsResult", "ExplainRule", "RuleShown", "KeyUnset", "NoRuleShown", "RuleResult", "CheckExamples", "ExamplesChecked"]
-
-
-@dataclass(frozen=True)
-class DriftView:
-    """An init file missing, or changed from what `init` would write: its path below the folder holding the app, as
-    posix, and which."""
-    file: str
-    state: str
 
 
 @dataclass(frozen=True)
@@ -68,7 +60,7 @@ class EnforcementView:
     each with how many facts it read in the project."""
     ungoverned: tuple[str, ...] = ()
     ungoverned_folders: tuple[str, ...] = ()
-    init_files: tuple[DriftView, ...] = ()
+    init_files: tuple[Drift, ...] = ()
     skipped: tuple[At, ...] = ()
     dynamic: tuple[At, ...] = ()
     weak: tuple[Weak, ...] = ()

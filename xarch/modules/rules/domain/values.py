@@ -10,7 +10,7 @@ from xarch.kernel.logic.placement import repeat_of
 from xarch.kernel.placement import Place, Repeat, Target
 from xarch.kernel.source import Import, Unparsable
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.domain.published import At, Weak
+from xarch.modules.rules.domain.published import At, Drift, Weak
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.language import CheckedLanguage
 from xarch.profile_values.testing import Fakes, Framework, ScenarioCoverage, StandIns
@@ -355,14 +355,6 @@ class Standing:
     guards_off: tuple[str, ...]
     baseline_off: tuple[str, ...]
     init_files: tuple[InitFile, ...]
-
-
-@dataclass(frozen=True)
-class Drift:
-    """An init file as it stands: missing, or changed from what `init` would write (pinned files only). path is its
-    path below the folder holding the app."""
-    path: tuple[str, ...]
-    state: str
 
 
 @dataclass(frozen=True)

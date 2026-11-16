@@ -17,7 +17,7 @@ from xarch.modules.rules.contract import (
     CheckImports,
     CheckRefused,
     ChecksCannotRun,
-    DriftView,
+    Drift,
     EnforcementView,
     ExcludedView,
     FindingView,
@@ -118,7 +118,7 @@ def test_the_enforcement_holds_the_ungoverned_files_the_init_files_and_what_stri
     result = controller_of(tree, profiles).check(CheckImports(ROOT, "app", "cli"))
     assert result.enforcement == EnforcementView(
         ("pkg/stray.py",), ("pkg/stray.py",),
-        (DriftView("tests/test_rules.py", "changed"), DriftView("AGENTS.md", "missing")),
+        (Drift(("tests", "test_rules.py"), "changed"), Drift(("AGENTS.md",), "missing")),
         strict=(FindingView("ungoverned", "pkg/stray.py"), FindingView("init_files", "tests/test_rules.py is changed"),
                 FindingView("init_files", "AGENTS.md is missing")))
 

@@ -68,7 +68,7 @@ def enforcement_lines(origin: Origin, state: EnforcementView, strict: bool,
         lines.append(_line("ungoverned", f"{_count(count, f'{state.language or "source"} file')} outside every part "
                                          f"({', '.join(state.ungoverned_folders)})", 2))
     lines += [_line("excluded", f"{item.folder}/ ({item.reason})", 2) for item in state.excluded]
-    lines += [_line("init files", f"{item.file} is {item.state}", 2) for item in state.init_files]
+    lines += [_line("init files", f"{'/'.join(item.path)} is {item.state}", 2) for item in state.init_files]
     if state.skipped:
         lines.append(_line("skipped", f"{_count(len(state.skipped), 'skip')} ({_places(state.skipped)})", 2))
     if state.dynamic:
@@ -120,7 +120,7 @@ def enforcement_document(origin: Origin, state: EnforcementView) -> dict[str, An
         "ungoverned": {"count": len(state.ungoverned), "folders": list(state.ungoverned_folders),
                        "files": list(state.ungoverned)},
         "excluded": [{"folder": item.folder, "reason": item.reason} for item in state.excluded],
-        "init_files": [{"file": item.file, "state": item.state} for item in state.init_files],
+        "init_files": [{"file": "/".join(item.path), "state": item.state} for item in state.init_files],
         "skipped": {"count": len(state.skipped), "at": _at(state.skipped)},
         "dynamic": {"count": len(state.dynamic), "at": _at(state.dynamic)},
         "weak": [{"rule": weak.rule, "file": weak.file, "line": weak.line, "message": weak.message,

@@ -21,7 +21,6 @@ from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.application.ports.source_tree import SourceTree
 from xarch.modules.rules.contract import (
     ApproximateView,
-    DriftView,
     EnforcementView,
     ExcludedView,
     FindingView,
@@ -50,7 +49,7 @@ class SourceCheckService:
         """The state of the check's enforcement as the enforcement section shows it."""
         return EnforcementView(
             state.ungoverned, tuple(enforcement.folders(state.ungoverned)),
-            tuple(DriftView("/".join(d.path), d.state) for d in state.init_files), state.skipped, state.dynamic,
+            state.init_files, state.skipped, state.dynamic,
             state.weak, tuple(FindingView(f.key, enforcement.detail(f.item)) for f in state.strict),
             tuple(ExcludedView(enforcement.excluded_folder(state.app, e), e.reason) for e in state.excluded),
             state.language, tuple(ApproximateView(a.address, a.fact, a.note or "",

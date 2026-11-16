@@ -4,7 +4,7 @@ from pathlib import Path
 
 from tests.bootstrap.project import APP, TABLE, TESTS, write
 from xarch.bootstrap.wiring import build_controllers
-from xarch.modules.rules.contract import At, CheckImports, DriftView, EnforcementView, ImportsChecked, Weak
+from xarch.modules.rules.contract import At, CheckImports, Drift, EnforcementView, ImportsChecked, Weak
 from xarch.modules.spec.contract import Origin
 
 PORTS = "modules/docs/application/ports/"
@@ -38,9 +38,9 @@ def test_a_python_file_no_part_governs_is_listed(tmp_path):
 
 def test_a_missing_or_edited_guard_test_is_listed(tmp_path):
     assert enforcement(tmp_path, tests={"architecture/test_rules.py": None}).init_files == (
-        DriftView("tests/architecture/test_rules.py", "missing"),)
+        Drift(("tests", "architecture", "test_rules.py"), "missing"),)
     assert enforcement(tmp_path, tests={"architecture/test_rules.py": "def test_nothing():\n    pass\n"}).init_files == (
-        DriftView("tests/architecture/test_rules.py", "changed"),)
+        Drift(("tests", "architecture", "test_rules.py"), "changed"),)
 
 
 def test_skipped_tests_and_dynamic_imports_are_listed_where_they_are(tmp_path):
