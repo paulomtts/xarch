@@ -52,9 +52,9 @@ def test_xarch_accepts_as_only_the_tests_exactly_the_loader_its_tests_load_profi
     assert (dead.untested, dead.tests_only, dead.known) == (True, True, ("bootstrap/wiring.py:load_architecture",))
 
 
-def test_xarch_is_split_into_its_four_modules():
+def test_xarch_is_split_into_its_five_modules():
     modules = {p.name for p in (SRC / "modules").iterdir() if p.is_dir() and not p.name.startswith("_")}
-    assert modules == {"spec", "rules", "layout", "scaffold"}
+    assert modules == {"spec", "rules", "layout", "scaffold", "review"}
 
 
 def test_the_self_check_would_catch_a_broken_rule(tmp_path):
