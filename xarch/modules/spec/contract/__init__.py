@@ -1,4 +1,6 @@
-"""What the spec module publishes: the skeleton of a profile as flat lists of entries, and which profile is in force."""
+"""What the spec module publishes, each command with the Results it answers: which app folder and which profile are in
+force; a profile's skeleton as flat lists of entries, its docs, the files `init` writes, the profile as the checks read
+it and where it comes from; and what explaining, viewing, checking, migrating and copying a profile found."""
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -21,7 +23,8 @@ __all__ = ["DEFAULT_APP", "Entry", "Repeating", "Skeleton", "DocFile", "Docs", "
            "NoProfileChosen", "SelectResult", "MigrateProfile", "Copy", "MigratedFile", "Origin", "Loosened",
            "Migrated", "FilesTaken", "MigrationRefused",
            "MigrateResult", "Shown", "Symbol", "Explain", "FormatExplained", "KeyExplained", "UnknownKey",
-           "ExplainResult", "ViewProfile", "ProfileViewed", "ViewResult", "CheckProfile", "LOAD", "EXAMPLES", "Problem", "ProfileChecked",
+           "ExplainResult", "Need", "ViewProfile", "ProfileViewed", "ViewResult", "CheckProfile", "LOAD", "EXAMPLES",
+           "Problem", "ProfileChecked",
            "CheckResult", "NewProfile", "ProfileCreated", "NewResult"]
 
 

@@ -290,7 +290,7 @@ class Language:
 
 @dataclass(frozen=True)
 class Architecture:
-    """An architecture as described in an architecture file (format version 1).
+    """An architecture as described in an architecture file (format version VERSION).
 
     rules: every part, in the order of parts, with what it may import besides itself (which a part may always
         import, and no row says); a part with no row may import only itself
