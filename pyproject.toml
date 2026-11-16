@@ -3,6 +3,8 @@ name = "xarch"
 version = "0.1.0"
 description = "Check and scaffold the architecture in docs/project/architecture.md"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
     { name = "Paulo Mattos Ferreira de Azevedo e Menezes", email = "paulomtts@outlook.com" }
 ]
