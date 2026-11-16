@@ -8,6 +8,7 @@ from tests.bootstrap.project import APP, TABLE, TESTS, line_of, problems, source
 PUBLISH = "tests/modules/docs/application/test_publish.py"
 PORT = "from typing import Protocol\n\n\nclass Repo(Protocol):\n    def get(self) -> int: ...\n"
 THREE = APP["modules/docs/contract/results.py"].replace("Missing\n", "Missing | Rejected\n")
+LONE = "from app.modules.docs.application.ports.repo import Repo\n\n\ndef size(repo: Repo):\n    return 1\n"
 
 
 def test_a_project_following_every_check_passes(tmp_path):
@@ -53,6 +54,10 @@ def test_a_project_following_every_check_passes(tmp_path):
                  ["app/modules/docs/domain/document.py:2: a comment (no-comments)",
                   "tests/conftest.py:1: a comment (no-comments)"],
                  id="no-comments: a comment in the app and the tests, a tool directive left alone"),
+    pytest.param({"modules/docs/adapters/lone.py": LONE}, {},
+                 ["app/modules/docs/adapters/lone.py: adapters/ of modules/docs imports nothing from platform/ or "
+                  "contract/ and no outside package, though each of its files must (parts.adapters.must_import)"],
+                 id="must-import: a file of the adapters that imports none of its targets"),
     pytest.param({"kernel/bad.py": "def (:\n"}, {}, ["app/kernel/bad.py:1: not valid Python: invalid syntax"],
                  id="a file that does not parse is reported"),
     pytest.param({"examples/modules/docs/domain/x.py": "# x\nfrom app.platform import sql\n",
@@ -102,18 +107,6 @@ def test_the_same_function_in_two_places_of_the_app_is_reported_at_the_later_one
 def test_the_same_function_in_two_tests_or_a_test_and_the_app_is_not_compared(tmp_path):
     assert problems(tmp_path, {"kernel/a.py": COPY}, {"modules/docs/domain/test_a.py": COPY + "\n\n" + COPY.replace(
         "copy", "clone"), "modules/docs/domain/test_b.py": COPY}) == []
-
-
-def test_a_file_of_the_adapters_that_imports_none_of_its_targets_is_reported_unless_it_reaches_one_through_a_sibling(tmp_path):
-    ports = "from app.modules.docs.application.ports.repo import Repo\n"
-    engine = "from app.platform.sql import engine\n\n\ndef open_engine():\n    return engine\n"
-    wraps = "from app.modules.docs.adapters.engine import open_engine\n\n\ndef query():\n    return open_engine()\n"
-    lone = ports + "\n\ndef size(repo: Repo):\n    return 1\n"
-    assert problems(tmp_path, {"platform/sql.py": "engine = 1\n", "modules/docs/adapters/engine.py": engine,
-                               "modules/docs/adapters/query.py": wraps}) == []
-    assert problems(tmp_path, {"modules/docs/adapters/lone.py": lone}) == [
-        "app/modules/docs/adapters/lone.py: adapters/ of modules/docs imports nothing from platform/ or contract/ and no "
-        "outside package, though each of its files must (parts.adapters.must_import)"]
 
 
 def test_a_port_no_service_names_and_a_fake_no_test_names_are_reported(tmp_path):

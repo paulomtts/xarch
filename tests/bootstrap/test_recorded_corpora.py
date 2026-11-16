@@ -27,8 +27,10 @@ as `[kind, rule, file, line, message, fix]` with kind V or W:
       kept, and show for every file that the findings are the same and only their order differs.
     - A change of what a check finds: extend the oracle by the same change, in its own worktree, and record from it;
       recording from the code under test would make it test itself.
-    - A new check, a new key or a new format of profile: add a corpus (a new archive and its findings, or a new
-      profile beside stress.yaml). Never edit an archived project or its profile, whose findings were recorded from it.
+    - A new check, a new key or a new format of profile, which the oracle cannot know: prove it by unit and wired
+      tests; or add a corpus (a new archive and its findings, or a new profile beside stress.yaml) recorded from an
+      oracle extended by the same change in its own worktree. Never edit an archived project or its profile, whose
+      findings were recorded from it.
 """
 import json
 import lzma
