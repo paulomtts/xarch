@@ -74,8 +74,7 @@ parts:
       that only hands a command to a use case that cannot fail is honest here. If it builds a Result from logic or
       domain values itself, that assembly belongs in a service. If it parses arguments or prints, it belongs in
       `cli/`.
-    # domain/values: the values the ports hand back, which a test of a controller builds its fakes' answers with
-    may_import: [services, contract, domain/errors, domain/values, kernel, kernel-logic, profile-values]
+    may_import: [services, contract, domain/errors, kernel, kernel-logic, profile-values]
     holds: classes
     names: "*Controller"
     forbidden: ambient
@@ -260,6 +259,8 @@ tiers:
     apply_forbidden: true
     plain_tables: true
     must_import: [controller]
+    # domain/values: the values the ports hand back, which a test of a controller builds its fakes' answers with
+    may_also_import: [domain/values]
     docs:
       may_touch: what the part it mirrors may import; `tests/fakes/`
 
