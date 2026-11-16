@@ -125,8 +125,24 @@ class FsSourceTree:
 
     def read(self, root: Path, paths: list[tuple[str, ...]], table: CaseTable | None = None,
              immutable: tuple[RecordMark, ...] = ()) -> list[SourceFile]:
-        return [_parsed(root.joinpath(*path).relative_to(root.parent).as_posix(), path,
-                        self._fs.read_text(root.joinpath(*path)), table, immutable) for path in paths]
+        """Each file below root, read as UTF-8 and parsed; one that is not UTF-8, or cannot be read, holds why as its
+        error, as one that does not parse does."""
+        found: list[SourceFile] = []
+        for path in paths:
+            name = root.joinpath(*path).relative_to(root.parent).as_posix()
+            try:
+                text = self._fs.read_text(root.joinpath(*path))
+            except UnicodeDecodeError as e:
+                found.append(SourceFile(name, path, (), error=Unparsable(
+                    0, f"not UTF-8 text (byte {e.object[e.start]:#04x} at offset {e.start} cannot be decoded)",
+                    unreadable=True)))
+                continue
+            except OSError as e:
+                found.append(SourceFile(name, path, (), error=Unparsable(
+                    0, f"cannot be read ({e.strerror or e})", unreadable=True)))
+                continue
+            found.append(_parsed(name, path, text, table, immutable))
+        return found
 
     def existing(self, paths: Iterable[Path]) -> frozenset[Path]:
         return frozenset(path for path in paths if self._fs.exists(path))

@@ -4,6 +4,7 @@ publishes and the engine does not answer, or answers wrongly, fails here; a nega
 import pytest
 
 from tests.modules.rules.application.logic.world import (
+    BROKEN,
     BUILT,
     DOMAIN,
     ERRORS,
@@ -19,6 +20,7 @@ from tests.modules.rules.application.logic.world import (
     SERVICE,
     STRUCTURE,
     TEST,
+    UNREAD,
     WIRING,
     found,
 )
@@ -70,6 +72,8 @@ from xarch.modules.rules.domain.vocabulary import FILTERS
     pytest.param("receiver", DOMAIN, "callback", [16], PROFILE, None, id="receiver"),
     pytest.param("annotated-callable", DOMAIN, "callback", [15], PROFILE, None, id="annotated-callable"),
     pytest.param("directive", DOMAIN, "comment", [13], PROFILE, None, id="directive"),
+    pytest.param("unreadable", UNREAD, "syntax-error", [0], PROFILE, None, id="unreadable"),
+    pytest.param("unreadable", BROKEN, "syntax-error", [], PROFILE, None, id="unreadable: a file that does not parse"),
     pytest.param("no-statements", PORTS, "file", [0], PROFILE, None, id="no-statements"),
     pytest.param("no-statements", DOMAIN, "file", [], PROFILE, None, id="no-statements: a file with a real statement is not"),
     pytest.param("exceptions-only", ERRORS, "file", [0], PROFILE, None, id="exceptions-only"),

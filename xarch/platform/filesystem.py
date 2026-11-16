@@ -60,7 +60,9 @@ class FileSystem:
         return path.resolve()
 
     def read_text(self, path: Path) -> str:
-        return path.read_text()
+        """The text of the file at path, read as UTF-8; raises UnicodeDecodeError when it is not UTF-8, OSError when
+        it cannot be read."""
+        return path.read_text(encoding="utf-8")
 
     def read_bytes(self, path: Path) -> bytes:
         return path.read_bytes()
@@ -71,7 +73,7 @@ class FileSystem:
     def write_text(self, path: Path, text: str) -> None:
         """Write text to path, creating the folders above it."""
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text)
+        path.write_text(text, encoding="utf-8")
 
     def write_bytes(self, path: Path, data: bytes) -> None:
         """Write data to path, creating the folders above it."""

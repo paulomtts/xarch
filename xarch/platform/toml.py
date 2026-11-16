@@ -9,4 +9,4 @@ from typing import Any
 class TomlReader:
     def read(self, path: Path) -> dict[str, Any]:
         """The parsed document; raises ValueError if it is not valid TOML."""
-        return tomllib.loads(path.read_text())
+        return tomllib.loads(path.read_text(encoding="utf-8"))

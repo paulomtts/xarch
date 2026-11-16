@@ -3,7 +3,7 @@
 proven by the unit tests of tests/modules/rules/ on hand-made values; here one case per check shows it is wired."""
 import pytest
 
-from tests.bootstrap.project import APP, TABLE, line_of, problems
+from tests.bootstrap.project import APP, TABLE, TESTS, line_of, problems, source_check, write
 
 PUBLISH = "tests/modules/docs/application/test_publish.py"
 PORT = "from typing import Protocol\n\n\nclass Repo(Protocol):\n    def get(self) -> int: ...\n"
@@ -61,6 +61,25 @@ def test_a_project_following_every_check_passes(tmp_path):
 ])
 def test_each_check_is_wired(tmp_path, app, tests, found):
     assert problems(tmp_path, app, tests) == found
+
+
+def test_a_file_that_is_not_utf_8_is_reported_as_not_read_in_the_app_and_the_tests(tmp_path):
+    app, tests = write(tmp_path / "app", APP), write(tmp_path / "tests", TESTS)
+    (app / "kernel" / "latin.py").write_bytes(b"\xff\xfe\x00import os\n")
+    (tests / "kernel").mkdir()
+    (tests / "kernel" / "test_latin.py").write_bytes(b"x = '\xe9'\n")
+    assert [str(v) for v in source_check(app, "web", tests).violations] == [
+        "app/kernel/latin.py: not UTF-8 text (byte 0xff at offset 0 cannot be decoded), so no check reads it",
+        "tests/kernel/test_latin.py: not UTF-8 text (byte 0xe9 at offset 5 cannot be decoded), so no check reads it"]
+
+
+def test_a_file_that_cannot_be_read_is_reported_as_not_read(tmp_path):
+    app, tests = write(tmp_path / "app", APP), write(tmp_path / "tests", TESTS)
+    locked = app / "kernel" / "locked.py"
+    locked.write_text("import os\n")
+    locked.chmod(0)
+    assert [str(v) for v in source_check(app, "web", tests).violations] == [
+        "app/kernel/locked.py: cannot be read (Permission denied), so no check reads it"]
 
 
 @pytest.mark.parametrize("where", [

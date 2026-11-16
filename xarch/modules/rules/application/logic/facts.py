@@ -6,7 +6,8 @@ that it is there.
 A dotted name starts at a namespace: the app's own code at the app's root package, the tests' at theirs; a reader
 turns its language's imports and names into such paths, and a fact into the app or the tests is read below that root.
 
-    syntax-error        how a file fails to parse: the line, text the parser's message
+    syntax-error        how a file fails to parse: the line, text the parser's message; trait unreadable when it
+                        could not be read as text at all, text then saying why
     file                the file as a whole, at line 0; traits no-statements when no function or method of it holds
                         a real statement, exceptions-only when it defines classes, every one an exception (below), and no
                         top-level function
@@ -154,7 +155,9 @@ def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: 
     file, root = read.file, defined.root
     package = read.steps if read.package else read.steps[:-1]
     if file.error is not None:
-        return (Fact("syntax-error", file.error.line, text=file.error.message),) if kind == "syntax-error" else ()
+        unreadable = frozenset({"unreadable"} if file.error.unreadable else ())
+        return (Fact("syntax-error", file.error.line, text=file.error.message, traits=unreadable),) \
+            if kind == "syntax-error" else ()
     match kind:
         case "syntax-error":
             return ()

@@ -226,7 +226,7 @@ that switches or configures each (`-` for none: the rule is always on):
 
 | Rule id | What it catches | Key |
 |---|---|---|
-| `syntax` | a file that does not parse, so no other check could read it | - |
+| `syntax` | a file that does not parse, or that cannot be read as UTF-8 text at all (the message says which), so no other check could read it | - |
 | `structure` | a folder or file of the layout missing, at any depth, in the app and in every instance of each repeating folder | `parts.path`, `parts.folders` |
 | `rules` | an import between parts that the importing part's `may_import` does not allow, or a name its pattern does not match | `parts.may_import` |
 | `libraries` | an outside package a part does not list, or a standard-library name `reserved` holds that it does not list; the rest of the standard library is always allowed, tests are not checked | `parts.libraries`, `reserved` |
@@ -320,7 +320,7 @@ how many facts it read in the project.
   rule, else `null`. `rule` is one of: `rules`, `libraries`, `forbidden`, `tiers`
   (a test's imports, or a test in no tier), `types-only`, `test-tree`, `cycles`, `structure`, `package-only`,
   `scenario-coverage`, `no-comments`, `stand-ins`, `closed-tree`, `must-import`, `no-duplicates`, `dead-code`,
-  `pass-through` (never a violation: a `weak` item), and `syntax` (a file that does not parse), or the id of a check
+  `pass-through` (never a violation: a `weak` item), and `syntax` (a file that does not parse, or cannot be read as UTF-8 text), or the id of a check
   the profile writes itself.
 - `enforcement`: every key always present, empty when there is nothing to report. `profile.looser` items are
   `{"key", "part", "what", "sentence"}` with `key` one of `may_import`, `libraries`, `forbidden`, `untested`,

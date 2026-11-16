@@ -25,6 +25,9 @@ class Import:
 
 @dataclass(frozen=True)
 class Unparsable:
-    """A source text that does not parse: the line the parser stopped at (0 when it gives none) and its message."""
+    """A source text that does not parse: the line the parser stopped at (0 when it gives none) and its message;
+    unreadable: the file could not be read as text at all (it is not UTF-8, or it cannot be opened), so it was never
+    parsed, and the message says which."""
     line: int
     message: str
+    unreadable: bool = False

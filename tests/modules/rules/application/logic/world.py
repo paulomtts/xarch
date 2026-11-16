@@ -11,6 +11,8 @@ and variable can name a fact by its file and line: PROFILE's app (package `app`)
     app/bootstrap/wiring.py                   bootstrap, which may import everything
     app/modules/__init__.py                   the structure's package file
     app/modules/docs/domain/errors.py         a file of exceptions only
+    app/platform/latin.py                     a file that could not be read as text
+    app/platform/broken.py                    a file that does not parse
     tests/modules/docs/domain/test_doc.py     a unit test of domain: imports of the app, a helper, a fake, a test
     tests/modules/docs/builders.py            a helper that is no test
     tests/fakes/repo.py                       the fakes: FakeRepo, and Fake itself
@@ -21,6 +23,7 @@ from __future__ import annotations
 from dataclasses import replace
 
 from tests.modules.rules.builders import PROFILE, RULES, imp, in_tests, source
+from xarch.kernel.source import Unparsable
 from xarch.modules.rules.application.logic.facts import facts_of
 from xarch.modules.rules.domain.rule import Fact, Found, Match, Read, Rule
 from xarch.modules.rules.domain.values import (
@@ -47,6 +50,8 @@ TEST = "tests/modules/docs/domain/test_doc.py"
 HELPER = "tests/modules/docs/builders.py"
 FAKE = "tests/fakes/repo.py"
 GUARD = "tests/architecture/test_rules.py"
+UNREAD = "app/platform/latin.py"
+BROKEN = "app/platform/broken.py"
 DOC = ("app", "modules", "docs", "domain", "doc", "Doc")
 MAKE = ("app", "modules", "docs", "domain", "doc", "make")
 
@@ -75,6 +80,8 @@ APP = [
     source("bootstrap/wiring.py", imp(1, "app.modules.docs.domain.doc", "Doc"), calls=(Call(2, DOC),)),
     source("modules/__init__.py", imp(1, "app.kernel", "ids")),
     source("kernel/ids.py"), source("platform/db.py"),
+    source("platform/latin.py", error=Unparsable(0, "not UTF-8 text", unreadable=True)),
+    source("platform/broken.py", error=Unparsable(3, "invalid syntax")),
     source("modules/docs/domain/errors.py", classes=(Class(1, "DocMissing", exception=True),))]
 TESTS = [
     in_tests("modules/docs/domain/test_doc.py", imp(1, "app.modules.docs.domain", "doc"),

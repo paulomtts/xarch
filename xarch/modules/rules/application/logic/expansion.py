@@ -176,9 +176,12 @@ def _tiers(profile: Profile) -> tuple[Rule, ...]:
 
 
 def _syntax(profile: Profile) -> tuple[Rule, ...]:
-    """A file that does not parse is a violation, at the line its error is on, and no other rule reads it."""
+    """A file that does not parse is a violation, at the line its error is on, and no other rule reads it; so is one
+    that cannot be read as text at all, which says why."""
     return (Rule("syntax", Scope(ALL), ("syntax-error",), MAY_NOT, EXISTING,
-                 (Saying("not valid {language}: {text}", "correct the syntax so that the file can be read"),)),)
+                 (Saying("{text}, so no check reads it", "save the file as UTF-8 text that xarch may read",
+                         _all("unreadable")),
+                  Saying("not valid {language}: {text}", "correct the syntax so that the file can be read"))),)
 
 
 def _names(profile: Profile) -> tuple[Rule, ...]:

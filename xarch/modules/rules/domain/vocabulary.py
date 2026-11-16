@@ -180,6 +180,7 @@ FIELDS: dict[str, str] = {
     "annotated-callable": "whether a parameter's annotation says it is a callable",
     "no-statements": "whether no function or method of a file holds a real statement",
     "exceptions-only": "whether a file defines classes, every one an exception, and no top-level function",
+    "unreadable": "whether a file could not be read as text at all",
 }
 """Every field a kind of fact may carry, and what it is."""
 
@@ -187,8 +188,8 @@ _IMPORT = ("import",)
 _CLASS_EXCEPTION = ("class", "class.exception")
 
 KINDS: tuple[Kind, ...] = (
-    Kind("syntax-error", "a file that does not parse, at the line of its error: no other check reads it",
-         ("line", "text"), needs=("syntax",)),
+    Kind("syntax-error", "a file that does not parse, at the line of its error, or that cannot be read as text at all: "
+                         "no other check reads it", ("line", "text", "unreadable"), needs=("syntax",)),
     Kind("file", "the file as a whole, at line 0", ("line", "no-statements", "exceptions-only"), needs=("file",),
          field_needs={"no-statements": ("function.statements",), "exceptions-only": (*_CLASS_EXCEPTION, "function")}),
     Kind("names-mentioned", "every name the file mentions, annotations included, as one fact at line 0", ("line", "mentions"),
@@ -281,6 +282,7 @@ FILTERS: tuple[Filter, ...] = (
            ("immutable",)),
     Filter("receiver", "the parameter called is the object or class its method is called on", FACT, ("receiver",)),
     Filter("annotated-callable", "the parameter called is annotated as a callable", FACT, ("annotated-callable",)),
+    Filter("unreadable", "the file could not be read as text at all, so it was never parsed", FACT, ("unreadable",)),
     Filter("directive", "the comment is one the language's tools read: a directive after the comment marker, a "
                         "shebang on line 1, an encoding declaration on line 1 or 2", FACT, ("text",)),
     Filter("no-statements", "no function or method of the file holds a real statement: types, constants, interface "
