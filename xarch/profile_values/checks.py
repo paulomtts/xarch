@@ -32,16 +32,6 @@ class Condition:
     value: str = ""
     negated: bool = False
 
-    @classmethod
-    def of(cls, text: str) -> Condition:
-        """A condition as written: `[not ]<name>[ <value>]`."""
-        negated = text.startswith(NEGATION)
-        name, _, value = text.removeprefix(NEGATION).partition(" ")
-        return cls(name, value, negated)
-
-    def __str__(self) -> str:
-        return f"{NEGATION if self.negated else ''}{self.name}{f' {self.value}' if self.value else ''}"
-
 
 @dataclass(frozen=True)
 class Scope:

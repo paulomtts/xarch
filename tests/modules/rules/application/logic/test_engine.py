@@ -6,6 +6,7 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.rules.builders import PROFILE, imp, in_tests, source
+from xarch.kernel.logic.conditions import condition
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.engine import read, run
 from xarch.modules.rules.application.logic.facts import facts_of
@@ -23,7 +24,7 @@ YAML = (Match("package", words=("yaml",)),)
 
 
 def c(*texts: str) -> tuple[Condition, ...]:
-    return tuple(Condition.of(text) for text in texts)
+    return tuple(condition(text) for text in texts)
 
 
 def rule(**changes) -> Rule:

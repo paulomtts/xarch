@@ -9,6 +9,7 @@ import pytest
 from tests.modules.rules.builders import PROFILE
 from xarch.modules.rules.application.logic import expansion
 from xarch.modules.rules.domain.rule import Rule
+from xarch.profile_values.checks import Condition
 from xarch.profile_values.placement import Target
 
 ON = replace(PROFILE, private_imports=True, closed_tree=True, dead_code=True, untested=True, tests_only=True,
@@ -20,9 +21,13 @@ ON = replace(PROFILE, private_imports=True, closed_tree=True, dead_code=True, un
 OFF = replace(PROFILE, libraries=None, forbidden={}, tiers=(), package_only=(), no_comments=False, dead_code=False)
 
 
+def written(condition: Condition) -> str:
+    return " ".join(filter(None, ("not" if condition.negated else "", condition.name, condition.value)))
+
+
 def shape(rule: Rule) -> str:
     scope = rule.scope
-    where = f" where {', '.join(map(str, scope.where))}" if scope.where else ""
+    where = f" where {', '.join(map(written, scope.where))}" if scope.where else ""
     tier = f"/{scope.tier}" if scope.tier else ""
     return (f"{rule.id}: {scope.files}/{scope.part or 'structure'}{tier}{where} read {', '.join(rule.facts)} "
             f"{rule.quantifier} {', '.join(m.kind for m in rule.targets)}")

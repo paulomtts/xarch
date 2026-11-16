@@ -3,6 +3,7 @@ out, a word quoted only where the format would read it otherwise, the sayings bu
 when a check has any."""
 import pytest
 
+from xarch.kernel.logic.conditions import condition
 from xarch.modules.rules.adapters.yaml_check_format import YamlCheckFormat
 from xarch.platform.yaml_writer import YamlWriter
 from xarch.profile_values.checks import (
@@ -20,7 +21,7 @@ FORMAT = YamlCheckFormat(YamlWriter())
 
 
 def c(*texts: str) -> tuple[Condition, ...]:
-    return tuple(Condition.of(text) for text in texts)
+    return tuple(condition(text) for text in texts)
 
 
 @pytest.mark.parametrize("check, lines", [

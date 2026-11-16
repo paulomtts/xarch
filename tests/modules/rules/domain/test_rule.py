@@ -5,6 +5,7 @@ a typo that silently listed a finding instead of failing it, a filter that match
 nothing or crashed."""
 import pytest
 
+from xarch.kernel.logic.conditions import condition
 from xarch.modules.rules.domain.errors import RuleRefused
 from xarch.modules.rules.domain.rule import EXISTING, MAY_NOT, MAY_ONLY, MUST_BE_REACHED, MUST_REACH, Match, Rule
 from xarch.profile_values.checks import ALL, APP, TESTS, Condition, Saying, Scope
@@ -13,7 +14,7 @@ YAML = (Match("package", words=("yaml",)),)
 
 
 def c(*texts: str) -> tuple[Condition, ...]:
-    return tuple(Condition.of(text) for text in texts)
+    return tuple(condition(text) for text in texts)
 
 
 def say(message: str = "m", fix: str = "f", *when: str, once: tuple[str, ...] = ()) -> tuple[Saying, ...]:
@@ -219,16 +220,6 @@ def test_a_rule_whose_words_all_apply_is_made():
 ])
 def test_a_filter_that_applies_to_only_some_kinds_is_made_where_it_drops_no_kind_whole(changes):
     assert made(**({"targets": EXISTING, "sayings": say("{line}")} | changes)).problems() == []
-
-
-@pytest.mark.parametrize("text, condition", [
-    pytest.param("public", Condition("public"), id="a name"),
-    pytest.param("not relative", Condition("relative", negated=True), id="a negated name"),
-    pytest.param("below units/docs", Condition("below", "units/docs"), id="a name and its value"),
-    pytest.param("not below fakes", Condition("below", "fakes", True), id="a negated name and its value"),
-])
-def test_a_condition_is_written_as_its_name_negated_or_not_and_its_value(text, condition):
-    assert (Condition.of(text), str(condition)) == (condition, text)
 
 
 def test_a_rule_needs_the_facts_of_its_kinds_and_of_the_fields_its_words_read():

@@ -22,10 +22,10 @@ from tests.modules.rules.application.logic.world import (
     WIRING,
     found,
 )
+from xarch.kernel.logic.conditions import condition
 from xarch.modules.rules.application.logic import filters
 from xarch.modules.rules.application.logic.filters import holds
 from xarch.modules.rules.domain.vocabulary import FILTERS
-from xarch.profile_values.checks import Condition
 
 
 @pytest.mark.parametrize("text, file, kind, lines, profile, hit", [
@@ -89,11 +89,11 @@ from xarch.profile_values.checks import Condition
                  id="target-allows-under: a part not listed"),
 ])
 def test_a_filter_holds_of_the_facts_it_says(text, file, kind, lines, profile, hit):
-    assert [f.fact.line for f in found(file, kind, hit=hit) if holds(Condition.of(text), f, FACTS, profile)] == lines
+    assert [f.fact.line for f in found(file, kind, hit=hit) if holds(condition(text), f, FACTS, profile)] == lines
 
 
 def test_a_negated_filter_holds_where_the_filter_does_not():
-    assert [f.fact.line for f in found(DOMAIN, "import") if holds(Condition.of("not relative"), f, FACTS, PROFILE)] == [
+    assert [f.fact.line for f in found(DOMAIN, "import") if holds(condition("not relative"), f, FACTS, PROFILE)] == [
         1, 2, 4, 5]
 
 

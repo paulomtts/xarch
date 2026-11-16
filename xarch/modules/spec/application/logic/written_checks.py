@@ -28,6 +28,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from xarch.kernel.logic.conditions import condition
 from xarch.kernel.violations import OWN_ID, RULES
 from xarch.modules.spec.domain.values import Language, Tier
 from xarch.profile_values.checks import (
@@ -157,7 +158,7 @@ def _filters(value: Any, where: str, problems: list[str]) -> tuple[Condition, ..
                 problems.append(f"{where}: {dict(item)!r}: write a filter that takes a value as {{<name>: <value>}}")
         else:
             problems.append(f"{where}: {item!r} is not a filter: write a name, `not <name>`, or {{<name>: <value>}}")
-    return tuple(Condition.of(text) for text in found)
+    return tuple(condition(text) for text in found)
 
 
 def _scope(value: Any, where: str, declared: set[str], tiers: set[str], problems: list[str]) -> Scope:
