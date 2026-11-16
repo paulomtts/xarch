@@ -71,11 +71,12 @@ class ArchitectureService:
 
     def files(self, location: str | Path, app: str, presets: bool = True) -> list[ProjectFile]:
         """The project files the architecture declares for an app folder called app, each filled from its template
-        unless it says otherwise, a folder entry as every file under its folder (unless presets is off, which leaves
-        those unread); raises InvalidArchitecture."""
+        unless it says otherwise, a folder entry as every file under its folder but those the language's tools compile
+        (unless presets is off, which leaves those unread); raises InvalidArchitecture."""
         source, architecture = self._load(location)
         kept = entries(architecture, presets)
-        listing = {file.source: self._files.files_under(source, file.source) for file in kept if file.folder}
+        listing = {file.source: [name for name in self._files.files_under(source, file.source)
+                                 if not architecture.language.compiled(name)] for file in kept if file.folder}
         contents = {file.source: self._files.read_bytes(source, file.source) for file in kept if not file.folder}
         contents.update({f"{folder}/{name}": self._files.read_bytes(source, f"{folder}/{name}")
                          for folder, names in listing.items() for name in names})

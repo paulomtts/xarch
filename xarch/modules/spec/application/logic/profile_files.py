@@ -15,5 +15,4 @@ def pointed_files(architecture: Architecture, folders: Mapping[str, Sequence[str
         found += ([f"{entry.source.rstrip('/')}/{name}" for name in folders.get(entry.source, ())] if entry.folder
                   else [entry.source])
     found += [example.file for example in architecture.examples.values()]
-    cache = architecture.language.cache
-    return tuple(name for name in dict.fromkeys(found) if not cache or cache not in name.split("/"))
+    return tuple(name for name in dict.fromkeys(found) if not architecture.language.compiled(name))

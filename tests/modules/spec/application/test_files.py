@@ -48,3 +48,12 @@ def test_the_presets_can_be_left_out_so_that_a_check_reads_only_the_single_files
 def test_a_file_the_skeleton_writes_is_refused_with_the_profile_named():
     assert controller({"shop/__init__.py": {"from": "guard.py"}}).files("cli", "shop") == ProfileRefused(
         "cli: files.shop/__init__.py: 'shop/__init__.py' is the package file the skeleton writes")
+
+
+def test_what_the_language_s_tools_compiled_in_a_preset_folder_is_not_written():
+    files_port = FakeArchitectureFiles({"cli": LAYERED | {"files": INTO_APP}},
+                                       texts={**TEXTS, "preset/__pycache__/tokens.cpython-313.pyc": b"\x00"})
+    files = spec_controller(files_port).files("cli", "shop")
+    assert isinstance(files, ProjectFiles)
+    assert [file.path for file in files.files] == [("shop", "src", "design", "fonts", "f.woff"),
+                                                   ("shop", "src", "design", "tokens.css")]

@@ -51,7 +51,7 @@ def _roots(value: Any, files: Collection[str], found: Examples, problems: list[s
             problems.append(f"{where}: no folder '{root}' holding a file next to the profile file")
             continue
         for relative in listing:
-            if language.cache and language.cache in relative.split("/"):
+            if language.compiled(relative):
                 continue
             if relative in owners:
                 clashes.append(f"docs.examples: '{relative}' is in both '{owners[relative]}' and '{root}': an example "

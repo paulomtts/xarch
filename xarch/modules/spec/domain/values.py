@@ -287,6 +287,10 @@ class Language:
         """What an interface is called in the language: the last step of the first name that marks one."""
         return self.checked.interface[0][-1] if self.checked.interface else ""
 
+    def compiled(self, path: str) -> bool:
+        """Whether a path, written with `/`, lies in the folder in which the language's tools keep what they compile."""
+        return bool(self.cache) and self.cache in path.split("/")
+
 
 @dataclass(frozen=True)
 class Architecture:

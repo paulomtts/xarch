@@ -8,7 +8,8 @@ runtime knows are added to it by the service that holds the runtime.
     interface      dotted names, any of which among a class's bases marks it as an interface
     dynamic        dotted names of what imports by a name worked out when the code runs; optional
     namespace      the namespace of the names the language binds without an import
-    cache          the folder in which its tools keep what they compile, which no check or example reads; optional
+    cache          the folder in which its tools keep what they compile, left out of the examples, of a copy of a
+                   profile and of the files init writes; optional
     standard       where the names of the standard library are known from
 
 and, all optional, the tokens of its code the checks and the docs need (empty: the language has none):
