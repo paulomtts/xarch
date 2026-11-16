@@ -24,9 +24,11 @@ FROZEN = Path(__file__).parent / "profiles_v1"
 CWD = {("pathlib", "Path", "cwd"), ("pathlib", "Path", "absolute"), ("os", "getcwd"), ("os", "path", "abspath"),
        ("os", "path", "realpath"), ("pathlib", "Path", "resolve"), ("pathlib", "Path", "home"),
        ("pathlib", "Path", "expanduser"), ("os", "path", "expanduser"), ("os", "getcwdb"), ("os", "chdir"),
-       ("", "absolute()"), ("", "resolve()"), ("", "expanduser()")}
+       ("", "absolute()"), ("", "resolve()"), ("", "expanduser()"), ("", "chdir()")}
 """The names that read the working directory or resolve a path on disk, added to the `pure` lists and in the
 `ambient` list after format 1."""
+HELD = ("integration",)
+"""The tiers of xarch's own profile that came to apply the forbidden list of the part they mirror after format 1."""
 OPAQUE = {("typing", "Any")}
 """The opaque types xarch's own contract parts came to forbid after format 1, in a list of their own."""
 OWN = Path(xarch.__file__).parent.parent / "architecture.yaml"
@@ -64,14 +66,17 @@ def comparable(architecture: Architecture) -> Architecture:
     what format 1 never had: each part's `must_import`, `holds`, `types_only`, `no_callbacks`, `names` and `built_by`,
     a tier's `must_import`, a name pattern on a target, the names that read the working directory and the opaque
     types in a `forbidden` list (and a list of nothing else), the names `reserved` holds and the parts' libraries that list them, and the
-    guards no-duplicates, no-twins, dead-code, pass-through and private-imports; and `kernel/logic/`, a folder of
+    guards no-duplicates, no-twins, dead-code, pass-through and private-imports; whether the tiers HELD of xarch's own
+    profile apply the forbidden lists; and `kernel/logic/`, a folder of
     `kernel/` in format 1 and a part of its own now, which every part that may import `kernel/` may import too, as
     the part it was a folder of (see kernel_logic); and what changed when services came to assemble what a use case
     hands out, and the part xarch's own profile gained for the values spec builds and rules reads in full (see
     assembled)."""
     architecture = assembled(kernel_logic(architecture))
+    held = HELD if architecture.name == OWN_NAME else ()
     tiers = tuple(replace(tier, subject=tuple(sorted(tier.subject, key=lambda s: s.part)), example=None, helpers=(),
-                          must_import=()) for tier in architecture.tiers)
+                          must_import=(), forbidden=False if tier.name in held else tier.forbidden)
+                  for tier in architecture.tiers)
     parts = {name: replace(part, must_import=(), holds="", types_only=(), no_callbacks=False, names=(), built_by=(),
                            shared=None)
              for name, part in architecture.parts.items()}
