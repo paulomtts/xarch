@@ -15,7 +15,7 @@ REQUIRED = profile(must_import={"adapters": (Target("platform"), Target("contrac
 CODE = (Function(3, "get", statements=2),)
 DIR = "modules/docs/adapters"
 MESSAGE = ("app/modules/docs/adapters/{name}.py: adapters/ of modules/docs imports nothing from platform/ or contract/ "
-           "and no outside package, so it touches no technology (parts.adapters.must_import)")
+           "and no outside package, though each of its files must (parts.adapters.must_import)")
 
 
 def problems(*files, checked=REQUIRED) -> list[str]:
@@ -84,8 +84,8 @@ def test_a_part_that_lists_nothing_and_a_file_in_no_part_are_not_checked():
 def test_the_violation_is_for_the_whole_file_and_says_what_to_do():
     [found] = violations([adapter("db_repo")], REQUIRED, "app")
     assert (found.line, found.rule) == (0, "must-import")
-    assert found.fix == ("import what it wraps from platform/ or contract/, or an outside package, or move its code to "
-                         "a part that needs no technology")
+    assert found.fix == ("import what it works with from platform/ or contract/, or an outside package, or move its "
+                         "code to a part that need not")
 
 
 WIRED = profile(tiers=(replace(INTEGRATION, must_import=("controller",)), RENDERING, GUARD))

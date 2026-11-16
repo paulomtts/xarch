@@ -33,6 +33,3 @@ WORKED: tuple[OwnCheck, ...] = (
               ("documents/rules%extension%", "%import app.documents.types.title Title%\n"))),
 )
 """The worked checks, the first the example of how a check is written."""
-PROFILE = ("xarch: 2\nname: worked\ntesting:\n  files: [check_*%extension%]\n  functions: check_*\ntiers:\n  unit: {}\n"
-           "parts:\n  documents:\n    path: documents\n    role: the documents\n    tier: unit\n")
-"""The profile the worked checks are written for, without its checks."""

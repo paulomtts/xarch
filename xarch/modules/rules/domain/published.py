@@ -27,8 +27,9 @@ class At:
 
 @dataclass(frozen=True)
 class Weak:
-    """A check satisfied to the letter only, which is not a violation: the stable id of the check it concerns (one of
-    RULES), where, and why; fix is what to do about it, empty when there is no advice."""
+    """A check satisfied to the letter only, which is not a violation: the id of the check it concerns (one of RULES,
+    or the id of a check the profile writes itself, listed by its mode), where, and why; fix is what to do about it,
+    empty when there is no advice."""
     rule: str
     file: str
     line: int

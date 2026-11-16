@@ -1,4 +1,6 @@
-"""What the rules module promises: check the imports below a root folder against section 5."""
+"""What the rules module promises: check an app, its imports, its tests and its structure against a profile; say what a
+path is and what code there may do; explain the words a check is written in and the rules a key expands to; and hold
+a profile's own checks to their examples."""
 from __future__ import annotations
 
 from dataclasses import dataclass

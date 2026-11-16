@@ -113,7 +113,7 @@ def test_the_same_function_in_two_tests_or_a_test_and_the_app_is_not_compared(tm
         "copy", "clone"), "modules/docs/domain/test_b.py": COPY}) == []
 
 
-def test_a_file_of_the_adapters_that_touches_no_technology_is_reported_unless_it_reaches_one_through_a_sibling(tmp_path):
+def test_a_file_of_the_adapters_that_imports_none_of_its_targets_is_reported_unless_it_reaches_one_through_a_sibling(tmp_path):
     ports = "from app.modules.docs.application.ports.repo import Repo\n"
     engine = "from app.platform.sql import engine\n\n\ndef open_engine():\n    return engine\n"
     wraps = "from app.modules.docs.adapters.engine import open_engine\n\n\ndef query():\n    return open_engine()\n"
@@ -122,7 +122,7 @@ def test_a_file_of_the_adapters_that_touches_no_technology_is_reported_unless_it
                                "modules/docs/adapters/query.py": wraps}) == []
     assert problems(tmp_path, {"modules/docs/adapters/lone.py": lone}) == [
         "app/modules/docs/adapters/lone.py: adapters/ of modules/docs imports nothing from platform/ or contract/ and no "
-        "outside package, so it touches no technology (parts.adapters.must_import)"]
+        "outside package, though each of its files must (parts.adapters.must_import)"]
 
 
 def test_a_port_no_service_names_and_a_fake_no_test_names_are_reported(tmp_path):

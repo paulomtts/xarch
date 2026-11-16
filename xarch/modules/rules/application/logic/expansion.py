@@ -256,10 +256,10 @@ def must_import(profile: Profile) -> tuple[Rule, ...]:
     statement are not said."""
     return tuple(Rule("must-import", Scope(APP, part), ("import", "import-into-app"), MUST_REACH,
                       (Match("place", places=wanted), Match("outside")),
-                      (Saying("{where} imports nothing from {targets} and no outside package, so it touches no "
-                              "technology ({key})",
-                              "import what it wraps from {targets}, or an outside package, or move its code to a part "
-                              "that needs no technology"),),
+                      (Saying("{where} imports nothing from {targets} and no outside package, though each of its "
+                              "files must ({key})",
+                              "import what it works with from {targets}, or an outside package, or move its code to a "
+                              "part that need not"),),
                       exempt=_all("package-file", "no-statements"), key=f"parts.{part}.must_import",
                       links=("import-into-app",), via=_all("target-in-own-part"))
                  for part, wanted in profile.must_import.items())

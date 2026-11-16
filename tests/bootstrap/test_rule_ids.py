@@ -1,6 +1,7 @@
 """Every violation names the stable id of the check that found it and tells what to do, on a throwaway web project with
 one violation planted at a time; and no rule id can produce one without a fix. Where a check's unit tests own the
-wording of its fix, a test here says only that the finding carries one."""
+wording of its fix, word for word, a test here says only that the finding carries one (OWNED); the other rows keep
+the fix's wording, which no unit test pins as the real profile says it (CASES)."""
 import shutil
 from pathlib import Path
 
@@ -40,12 +41,6 @@ CASES = [
                  "no part", id="libraries"),
     pytest.param({"kernel/x.py": "import socket\n"}, {}, "forbidden",
                  "do what needs socket outside kernel/, and hand kernel/ the result", id="forbidden"),
-    pytest.param({}, {"modules/docs/domain/test_document.py": f"from {CONTROLLER} import C\n"}, "tiers",
-                 "import here only what domain/ may; test controller/ of modules/docs from the folder that mirrors it",
-                 id="tiers: an import"),
-    pytest.param({}, {"misc/test_x.py": ""}, "tiers",
-                 "move it to the folder that mirrors its subject's path in the app, or into a tier's `folder`",
-                 id="tiers: no tier"),
     pytest.param({}, {"web/conftest.py": f"from {CONTROLLER} import DocumentController\nDocumentController(None)\n"},
                  "types-only", "use controller/ here only as a type, and drive what you test through web/ "
                                "(rendering tests may touch: a fake controller, injected; the real controller's class "
@@ -54,22 +49,6 @@ CASES = [
                  "break the cycle: remove the import of app.modules.mod.contract at "
                  "app/modules/docs/adapters/mod_review.py:1, or move what it needs to a part that both may import",
                  id="cycles"),
-    pytest.param({"web/routes/docs.py": "from app.modules.docs.contract.results import Published\n"}, {},
-                 "package-only", "import from app.modules.docs.contract", id="package-only"),
-    pytest.param({}, {"modules/docs/application/test_publish.py": "def test_publish():\n    assert True\n"},
-                 "scenario-coverage", "add a table test whose parameters are given, when, then",
-                 id="scenario-coverage"),
-    pytest.param({"kernel/x.py": "x = 1  # why\n"}, {}, "no-comments",
-                 "say it in a docstring or a name, and delete the comment", id="no-comments"),
-    pytest.param({"modules/docs/application/ports/repo.py": PORT}, {}, "stand-ins",
-                 "write FakeRepo under tests/fakes/", id="stand-ins"),
-    pytest.param({"modules/docs/adapters/x.py": "from app.modules.docs.application.ports.repo import Repo\n\n\n"
-                                                 "def size(repo: Repo):\n    return 1\n"}, {}, "must-import",
-                 "import what it wraps from platform/ or contract/, or an outside package, or move its code to a part that needs no "
-                 "technology", id="must-import"),
-    pytest.param({"kernel/a.py": COPY, "kernel/b.py": COPY}, {}, "no-duplicates",
-                 "keep one of the two and import it where the other is, or move it to a part both may import when they "
-                 "cannot import each other", id="no-duplicates"),
     pytest.param({"modules/docs/domain/document.py": TWIN, "modules/docs/contract/views.py": TWIN.replace("Doc", "DocView")},
                  {}, "no-twins", "keep one of the two and import it from a part both may import, or give DocView the "
                                  "fields its reader needs instead of a copy of Doc's", id="no-twins"),
@@ -77,11 +56,6 @@ CASES = [
                  "delete Notifier and its fake, or add the code that uses it", id="dead-code: a port"),
     pytest.param({}, {"fakes/notifier.py": "class FakeNotifier:\n    def send(self) -> None: ...\n"}, "dead-code",
                  "delete FakeNotifier, or write the test that uses it", id="dead-code: a fake"),
-    pytest.param({"kernel/x.py": "def (:\n"}, {}, "syntax", "correct the syntax so that the file can be read",
-                 id="syntax"),
-    pytest.param({"modules/docs/contract/ids.py": "from app.modules.docs.domain.values import Document\n"}, {}, "rules",
-                 "import from domain/ of modules/docs only names that match *Id (parts.contract.may_import), or move "
-                 "what needs the rest to a part that may import it", id="rules: a name the pattern does not match"),
     pytest.param({}, {"modules/docs/domain/test_x.py": "from tests.modules.docs.domain.test_document import X\n"},
                  "tiers", "move what tests.modules.docs.domain.test_document holds that this test needs into test code "
                           "of its folder that is no test file, and import it from there", id="tiers: a test file"),
@@ -91,20 +65,44 @@ CASES = [
                  "have the caller call has first and pass ok the answer as a value", id="no-callbacks"),
     pytest.param({"modules/docs/application/services/doc.py": "class Publisher: ...\n"}, {}, "names",
                  "rename Publisher to match *Service, or move it to the part whose kind of class it is", id="names"),
-    pytest.param({"modules/docs/application/services/doc.py": "class DocService: ...\n",
-                  "modules/docs/application/controller.py":
-                      "from app.modules.docs.application.services.doc import DocService\n\nDocService()\n"},
-                 {}, "built-by", "take DocService as a parameter of the constructor, and build it in bootstrap/",
-                 id="built-by"),
     pytest.param({"kernel/x.py": "from app.kernel.y import _z\n"}, {}, "private-imports",
                  "make _z public where it is defined (drop the `_`), or move it to a file both may import",
                  id="private-imports"),
 ]
+"""The rules whose fix the wired tier pins word for word: no unit test asserts it as it is said here."""
+OWNED = [
+    pytest.param({}, {"modules/docs/domain/test_document.py": f"from {CONTROLLER} import C\n"}, "tiers", id="tiers: an import"),
+    pytest.param({}, {"misc/test_x.py": ""}, "tiers", id="tiers: no tier"),
+    pytest.param({"web/routes/docs.py": "from app.modules.docs.contract.results import Published\n"}, {},
+                 "package-only", id="package-only"),
+    pytest.param({}, {"modules/docs/application/test_publish.py": "def test_publish():\n    assert True\n"},
+                 "scenario-coverage", id="scenario-coverage"),
+    pytest.param({"kernel/x.py": "x = 1  # why\n"}, {}, "no-comments", id="no-comments"),
+    pytest.param({"modules/docs/application/ports/repo.py": PORT}, {}, "stand-ins", id="stand-ins"),
+    pytest.param({"modules/docs/adapters/x.py": "from app.modules.docs.application.ports.repo import Repo\n\n\n"
+                                                 "def size(repo: Repo):\n    return 1\n"}, {}, "must-import", id="must-import"),
+    pytest.param({"kernel/a.py": COPY, "kernel/b.py": COPY}, {}, "no-duplicates", id="no-duplicates"),
+    pytest.param({"kernel/x.py": "def (:\n"}, {}, "syntax", id="syntax"),
+    pytest.param({"modules/docs/contract/ids.py": "from app.modules.docs.domain.values import Document\n"}, {}, "rules",
+                 id="rules: a name the pattern does not match"),
+    pytest.param({"modules/docs/application/services/doc.py": "class DocService: ...\n",
+                  "modules/docs/application/controller.py":
+                      "from app.modules.docs.application.services.doc import DocService\n\nDocService()\n"},
+                 {}, "built-by", id="built-by"),
+]
+
+
+"""The rules whose fix a unit test of the check asserts word for word: here a finding only has to carry one."""
 
 
 @pytest.mark.parametrize("app, tests, rule, fix", CASES)
 def test_a_violation_names_its_rule_and_carries_its_fix(tmp_path, app, tests, rule, fix):
     assert [(v.rule, v.fix) for v in found(tmp_path, app, tests)] == [(rule, fix)]
+
+
+@pytest.mark.parametrize("app, tests, rule", OWNED)
+def test_a_violation_whose_fix_a_unit_test_owns_names_its_rule_and_carries_a_fix(tmp_path, app, tests, rule):
+    assert [(v.rule, bool(v.fix)) for v in found(tmp_path, app, tests)] == [(rule, True)]
 
 
 def structural(tmp_path: Path) -> list[Violation]:
@@ -135,7 +133,7 @@ def test_a_closed_tree_names_its_rule_and_its_fix(tmp_path):
 
 
 def test_every_rule_id_has_a_case_here_that_produces_a_violation_with_a_fix():
-    cases = {case.values[2] for case in CASES}
+    cases = {case.values[2] for case in (*CASES, *OWNED)}
     assert cases | {"structure", "test-tree", "closed-tree", "pass-through", "holds", "shared"} == set(RULES)
 
 
