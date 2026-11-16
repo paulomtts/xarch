@@ -109,7 +109,7 @@ _VALUES: dict[str, Callable[[Found, Facts, Profile], str]] = {
     "text": lambda found, facts, profile: found.fact.text,
     "target": lambda found, facts, profile: _target(found, facts),
     "target_name": lambda found, facts, profile: ".".join(
-        (facts.root, *found.fact.target, *([found.fact.name] if found.fact.name is not None else []))),
+        (_target(found, facts), *([found.fact.name] if found.fact.name is not None else []))),
     "target_part": lambda found, facts, profile: _target_part(found, profile),
     "target_part_name": lambda found, facts, profile: _target_part_name(found),
     "target_package": lambda found, facts, profile: _package(found, facts),
