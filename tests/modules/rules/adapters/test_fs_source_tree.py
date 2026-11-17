@@ -11,6 +11,7 @@ from xarch.modules.rules.domain.values import (
     Call,
     Callback,
     Class,
+    Comment,
     Constant,
     Method,
     MethodCall,
@@ -828,3 +829,18 @@ def test_the_pieces_of_a_file_are_its_top_level_functions_and_classes_and_their_
 
 def test_a_text_in_no_file_has_its_pieces_too():
     assert FsSourceTree(FileSystem()).parsed("def f():\n    pass\n").pieces == (Piece("function", "f", 1, 2),)
+
+
+@pytest.mark.parametrize("text, comments", [
+    pytest.param("x = 1  # one\n    # two\n", (Comment(1, "# one", 7, 12), Comment(2, "# two", 4, 9)),
+                 id="a comment after code and one on a line of its own, each where it lies on its line"),
+    pytest.param("x = '# not one'  # one\n", (Comment(1, "# one", 17, 22),), id="a # inside a string is no comment"),
+    pytest.param('"""# no comment"""\ndef f():\n    """Nor # this."""\n', (),
+                 id="a docstring is no comment, whatever it holds"),
+    pytest.param("x = 1  # one\ry = 2  # two\r\nz = 3  # three\n",
+                 (Comment(1, "# one", 7, 12), Comment(2, "# two", 7, 12), Comment(3, "# three", 7, 14)),
+                 id="a line ended by a carriage return alone is a line of its own, as the parser counts it"),
+])
+def test_each_comment_is_read_with_where_it_lies(tmp_path, text, comments):
+    assert parsed(tmp_path, text).comments == comments
+    assert FsSourceTree(FileSystem()).parsed(text).comments == comments

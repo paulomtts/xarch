@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from xarch.kernel.source import Import, Unparsable
+from xarch.kernel.source import CommentSpan, Import, Unparsable
 from xarch.modules.review.domain.published import Choice, LeftOut
 
 
@@ -67,8 +67,9 @@ class Span:
 @dataclass(frozen=True)
 class CodeFile:
     """A source file of the app in a part, read: the file, as `check` shows it; the part; its text; its imports; how
-    it fails to parse (None: it parses); its pieces, in the order of their first line; and, when a link makes it
-    another file of the app, that file, shown as the file is ("" when it is itself)."""
+    it fails to parse (None: it parses); its pieces, in the order of their first line; when a link makes it another
+    file of the app, that file, shown as the file is ("" when it is itself); and where each of its comments lies, as
+    its language's reader finds them."""
     file: str
     part: str
     text: str
@@ -76,6 +77,7 @@ class CodeFile:
     error: Unparsable | None = None
     spans: tuple[Span, ...] = ()
     target: str = ""
+    comments: tuple[CommentSpan, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -119,10 +121,10 @@ class Read:
 
 @dataclass(frozen=True)
 class Reads:
-    """What an eval of the profile's own reads in one file given: the file, by its path below the app as given; its
-    imports, as its language's reader reads them; and each thing it reads, in the order of their lines."""
-    path: str
-    imports: tuple[Import, ...]
+    """What an eval of the profile's own reads in one file given: the file as its language's reader reads it, by its
+    path below the app as given, with its text, its imports and where each of its comments lies (in no part); and each
+    thing the eval reads in it, in the order of their lines."""
+    file: CodeFile
     read: tuple[Read, ...]
 
 

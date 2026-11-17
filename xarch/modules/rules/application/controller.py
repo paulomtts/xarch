@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from xarch.kernel.errors import DomainError
-from xarch.kernel.source import Import, Unparsable
+from xarch.kernel.source import CommentSpan, Import, Unparsable
 from xarch.modules.rules.application.services.app_check import AppCheckService
 from xarch.modules.rules.application.services.asking import AskingService
 from xarch.modules.rules.application.services.examples import ExamplesService
@@ -132,5 +132,13 @@ class ReaderController:
         """What a text that is in no file imports, in order; one that does not parse comes back as where and why."""
         try:
             return self._reading.imports(text)
+        except Unreadable as e:
+            return e.found
+
+    def comments(self, text: str) -> tuple[CommentSpan, ...] | Unparsable:
+        """Where each comment of a text that is in no file lies, in order; one that does not parse comes back as where
+        and why."""
+        try:
+            return self._reading.comments(text)
         except Unreadable as e:
             return e.found

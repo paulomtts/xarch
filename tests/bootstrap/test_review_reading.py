@@ -438,3 +438,30 @@ def test_every_file_of_the_app_in_pieces_is_refused_with_exit_2():
     result = review("--all", "--pieces", key=None)
     assert result.exit_code == 2
     assert "--pieces ranks the pieces of files already chosen, never of every file" in result.output
+
+
+NOTED_BODY = ('"""Publishing documents: # a docstring is no comment."""\nfrom app.kernel.time import Clock  # NOTE-1 kernel\n'
+              "\n\n# NOTE-2 a use case of documents\n"
+              + "def publish(clock: Clock) -> None:\n    # NOTE-3 the service orchestrates\n" + "    clock.now()\n" * 80
+              + "\n\ndef export(clock: Clock) -> None:\n" + "    render_pdf('# kept: a string')  # NOTE-4 a port\n" * 30
+              + "\n\ndef archive(clock: Clock) -> None:\n" + "    clock.now()\n" * 70)
+
+
+def test_no_comment_is_in_what_a_dry_run_shows_nor_in_what_the_service_receives_and_no_line_of_a_piece_moves(
+        served, tmp_path):
+    (tmp_path / PIECED).write_text(NOTED_BODY)
+    args = (PIECED, "--pieces", "--context", "imports")
+    planned = json.loads(review(*args, "--dry-run", "--format", "json", key=None).output)
+    text = review(*args, "--dry-run", key=None).output
+    assert planned["masked"] == ["own-imports", "e-mail", "comments"]
+    assert "masked in each text: every comment (cut from its line, the line kept)" in text
+    assert review(*args, url=served.url).exit_code == 0
+    shown = [item["text"] for item in planned["requests"]]
+    sent = [body["state"] for _, _, body in served.received]
+    assert sent == shown and [item["chars"] for item in planned["requests"]] == [len(state) for state in sent]
+    assert not any("NOTE-" in state for state in sent) and "NOTE-" not in text
+    assert shown[0].startswith('"""Publishing documents: # a docstring is no comment."""\nfrom <masked> import Clock\n'
+                               "\n\n\ndef publish(clock: Clock) -> None:\n\n    clock.now()\n")
+    assert "    render_pdf('# kept: a string')\n" in shown[0]
+    assert [(item["piece"], item["first"], item["last"]) for item in planned["requests"][1:]] == [
+        ("publish", 6, 87), ("export", 90, 120), ("archive", 123, 193)]

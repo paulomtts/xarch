@@ -22,6 +22,7 @@ from xarch.modules.rules.contract import (
     CheckRefused,
     ChecksCannotRun,
     FactsKept,
+    FileKept,
     KeepFacts,
     KeptResult,
     Outside,
@@ -67,15 +68,20 @@ class RulesCode:
         """A refusal of rules raises Refused with its reason, or with each problem of an eval that cannot be read."""
         match self._rules.kept(KeepFacts(profile, app, asked, files)):
             case FactsKept(found):
-                return tuple(Reads(file.path, file.imports, tuple(Read((fact.first, fact.last), fact.name)
-                                                                  for fact in file.facts)) for file in found)
+                texts = dict(files)
+                return tuple(_reads(file, texts[file.path]) for file in found)
             case CheckRefused(reason):
                 raise Refused(reason)
             case ChecksCannotRun(problems):
                 raise Refused("; ".join(problems))
 
 
+def _reads(file: FileKept, text: str) -> Reads:
+    return Reads(CodeFile(file.path, "", text, file.imports, comments=file.comments),
+                 tuple(Read((fact.first, fact.last), fact.name) for fact in file.facts))
+
+
 def _read(file: SourceRead) -> CodeFile:
     return CodeFile(file.shown, file.part, file.text, file.imports, file.error,
                     tuple(Span(piece.kind, piece.name, piece.owner, (piece.first, piece.last)) for piece in file.pieces),
-                    file.target)
+                    file.target, file.comments)

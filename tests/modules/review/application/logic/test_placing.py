@@ -1,6 +1,10 @@
 """Placement held to its examples: the hash of what it is held as, each part's verdict (its clean examples at or above
 its line, a flagged one and every other part's example below it on it, none of its own measured elsewhere only), how
 it stands against its record, and a part whose examples disagree never marking its files doubtful."""
+import hashlib
+import json
+from dataclasses import replace
+
 import pytest
 
 from xarch.modules.review.application.logic.placing import held_as, marked, standing, undoubted, verdicts
@@ -95,3 +99,22 @@ def test_what_placement_is_held_as_changes_with_how_its_examples_are_masked():
     plain = held_as(QUESTION, PARTS, ((VALUE,), ()))
     assert plain != held_as(QUESTION, PARTS, ((VALUE,), ()), ("shop",))
     assert plain != held_as(QUESTION, PARTS, ((VALUE,), ()), (), ("Value",))
+
+
+def before_comments(question: Choice, parts: tuple[PartText, ...], examples: tuple[tuple[CodeFile, ...], ...],
+                    roots: tuple[str, ...] = (), mask: tuple[str, ...] = ()) -> str:
+    """What placement was held as before review masked comments: the same, with no word of what it always masks."""
+    canonical = json.dumps({"ask": question.ask, "options": [[o.name, o.description] for o in question.options],
+                            "roots": list(roots), "mask": list(mask),
+                            "lines": [[part.name, part.line] for part in parts],
+                            "examples": [[[e.file, e.part, e.text] for e in side] for side in examples]},
+                           ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def test_a_record_of_placement_held_before_review_masked_comments_is_stale():
+    examples = ((VALUE, CASE), (WRONG,))
+    old = PlacementHeld(before_comments(QUESTION, PARTS, examples, ("app",), ("Doc*",)), "m-1", "m-1.2", ())
+    now = held_as(QUESTION, PARTS, examples, ("app",), ("Doc*",))
+    assert now != old.held and standing(old, now, "m-1").state == STALE
+    assert standing(replace(old, held=now), now, "m-1").state == CALIBRATED

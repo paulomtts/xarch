@@ -8,6 +8,7 @@ import pytest
 from tests.fakes.review import FakeAnswers, FakeCode, FakeDecisionModel, FakeProfile
 from tests.modules.review.application.helpers import controller
 from tests.modules.review.builders import BODY, OWN, PARTS, found
+from xarch.kernel.source import CommentSpan
 from xarch.modules.review.contract import (
     BY_PATHS,
     FAILED,
@@ -477,3 +478,40 @@ def test_a_key_that_cannot_be_used_blocks_no_review_whose_every_answer_is_kept()
     model = FakeDecisionModel({}, unusable=UNUSABLE)
     found = controller(code, profile, model, answers).review(review("app/x.py"))
     assert isinstance(found, ReviewReading) and found.cached == 1 and model.asked == []
+
+
+NOTED_TEXT = ("from app.kernel.ids import DocumentId  # ids are kernel's\n# a value of domain/\nMARK = '# kept: no comment'\n"
+              + BODY)
+NOTED = CodeFile("app/modules/documents/domain/noted.py", "domain", NOTED_TEXT, (OWN,),
+                 comments=(CommentSpan(1, 39, 57), CommentSpan(2, 0, 20)))
+NOTED_SENT = "from <masked> import DocumentId\n\nMARK = '# kept: no comment'\n" + BODY
+
+
+def test_each_comment_of_a_file_is_cut_from_what_its_request_sends_and_its_characters_are_those_sent():
+    code = FakeCode({"app/n.py": Found((NOTED,))})
+    planned = controller(code, FakeProfile(WORDS), FakeDecisionModel({}), FakeAnswers()).review(
+        review("app/n.py", dry_run=True))
+    assert isinstance(planned, ReviewPlanned)
+    assert [(item.text, item.chars) for item in planned.requests] == [(NOTED_SENT, len(NOTED_SENT))]
+    assert planned.characters == len(NOTED_SENT) + ASKED
+    model = FakeDecisionModel({NOTED_SENT: HIGH})
+    assert isinstance(controller(code, FakeProfile(WORDS), model, FakeAnswers()).review(review("app/n.py")),
+                      ReviewReading) and model.asked == [NOTED_SENT]
+
+
+def test_a_comment_inside_a_piece_or_in_the_opening_lines_sent_before_it_is_cut_and_no_line_of_a_piece_moves():
+    text = ("from app.kernel.ids import DocumentId  # the ids\n\n" + "def first():\n    # first is domain\n"
+            + "    a = 1\n" * 119 + SECOND + THIRD + TINY)
+    pieced = replace(PIECED, text=text, comments=(CommentSpan(1, 39, 48), CommentSpan(4, 4, 21)))
+    code = FakeCode({"app/p.py": Found((pieced,))})
+    first = "def first():\n\n" + "    a = 1\n" * 119
+    model = FakeDecisionModel({OPENING + first: _on(0.5), OPENING + SECOND: _on(0.05), OPENING + THIRD + TINY: _on(0.7),
+                               text.replace("app.kernel.ids", "<masked>").replace("  # the ids", "").replace(
+                                   "    # first is domain", ""): _on(0.9)})
+    found = controller(code, FakeProfile(WORDS), model, FakeAnswers()).review(
+        review("app/p.py", pieces=True, context=IMPORTS))
+    assert isinstance(found, ReviewReading)
+    assert [(p.name, p.lines) for p in found.pieces[0].lowest] == [
+        ("second", (124, 244)), ("first", (3, 123)), ("third, Tiny", (245, 367))]
+    assert model.asked[1:] == [OPENING + first, OPENING + SECOND, OPENING + THIRD + TINY]
+    assert not any("the ids" in sent or "first is domain" in sent for sent in model.asked)

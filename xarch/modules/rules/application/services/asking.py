@@ -26,5 +26,5 @@ class AskingService:
         parsed = [(path, self._tree.parsed(text)) for path, text in cmd.files]
         found = kept(rule, project(parsed, profile, cmd.app, (rule,)), profile)
         return FactsKept(tuple(FileKept(path, file.imports, tuple(
-            FactKept(*span(fact, file.pieces), named(fact)) for read, fact in found if "/".join(read.file.path) == path))
-            for path, file in parsed))
+            FactKept(*span(fact, file.pieces), named(fact)) for read, fact in found if "/".join(read.file.path) == path),
+            tuple(comment.span for comment in file.comments)) for path, file in parsed))

@@ -20,7 +20,8 @@ as review holds it, so there is nothing to reshape.
 
 and the reasons a file is left out, the size of the smallest file judged and of the largest, how many files one run judges, the ways files
 are chosen, how near its line a file is asked again, why a question has no answer, and how many files of a part a run
-must read, and read as doubtful, to say anything of the part; and how pieces are cut, judged, shown and sent; the
+must read, and read as doubtful, to say anything of the part; and how pieces are cut, judged, shown and sent; what
+review always masks; the
 forms of a question; and the states of an eval of the profile's own, and what holds one to its examples.
 """
 from __future__ import annotations
@@ -57,6 +58,12 @@ NO_CONTEXT, IMPORTS = "none", "imports"
 """What is sent before each piece: nothing; or the file's opening lines, those before its first piece (for most files
 its docstring and imports). Numbers of the two never compare: in the trials, the context raised every one by about
 0.11."""
+OWN_IMPORTS, ADDRESSES, COMMENTS = "own-imports", "e-mail", "comments"
+"""What review masks in every text it sends, before what the profile's review.mask hides: the dotted name each import
+of the app's own code imports from, every e-mail address, and every comment, as the language's reader finds it."""
+ALWAYS_MASKED = (OWN_IMPORTS, ADDRESSES, COMMENTS)
+"""What review masks in every text it sends, in the order it masks them: a record of an eval or of placement held to
+its examples under other masks is stale."""
 
 BY_PATHS, BY_LIST, BY_ALL = "paths", "files-from", "all"
 """The ways files are chosen: named as paths, listed one per line, or every file of the app."""

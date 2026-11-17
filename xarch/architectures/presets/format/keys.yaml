@@ -1149,8 +1149,9 @@ keys:
     meaning: the texts review hides before it sends
     accepts: >-
       a list of texts, each one line, as written (case counts), `*` standing for a run of one or more letters, digits,
-      `_`, `-` and `.`: each match in a file's text is sent as `<masked>`. It adds to what review always hides, the
-      module each import of the app's own code names and every e-mail address. Refused: a text of nothing but `*` and
+      `_`, `-` and `.`: each match in a file's text is sent as `<masked>`. It adds to what review always hides: every
+      comment, as the reader of the language finds it (cut from its line, the line kept), the module each import of the
+      app's own code names and every e-mail address. Refused: a text of nothing but `*` and
       spaces (it would hide every word), a text of two lines, the same text twice. `profile check` lists a text the
       profile it is compared with hides that this one does not as looser
     example: |

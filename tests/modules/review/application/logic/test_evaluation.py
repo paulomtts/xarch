@@ -1,5 +1,9 @@
 """How an eval of the profile's own reads an answer (yes or no, a score, a choice in two orders), the lowest its line
 may be, the hash of what it is held as, whether it may run, the verdict on its examples, and the text it reads."""
+import hashlib
+import json
+from dataclasses import replace
+
 import pytest
 
 from xarch.modules.review.application.logic.evaluation import cut, floor, held_as, orders, said, state, value, verdict
@@ -117,3 +121,23 @@ def test_what_an_eval_is_held_as_changes_with_how_its_examples_are_masked():
     plain = EvalText("rule", YES_OR_NO, ("yes",))
     assert held_as(plain) != held_as(plain, ("shop",)) != held_as(plain, ("shop",), ("Doc*",))
     assert held_as(plain, ("shop",), ("Doc*",)) == held_as(plain, ("shop",), ("Doc*",))
+
+
+def before_comments(asked: EvalText, roots: tuple[str, ...] = (), mask: tuple[str, ...] = ()) -> str:
+    """What an eval was held as before review masked comments: the same, with no word of what it always masks."""
+    canonical = json.dumps({"ask": asked.question.ask, "form": asked.question.form, "roots": list(roots),
+                            "mask": list(mask),
+                            "options": [[option.name, option.description] for option in asked.question.options],
+                            "flagged": list(asked.flagged), "reads": asked.reads, "line": asked.line,
+                            "examples": [list(map(list, asked.flagged_examples)), list(map(list, asked.clean_examples))]},
+                           ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def test_a_record_of_an_eval_held_before_review_masked_comments_is_stale():
+    old = replace(held(), held=before_comments(RULE, ("app",), ("Doc*",)))
+    assert old.held != held_as(RULE, ("app",), ("Doc*",))
+    assert state(RULE, old, "m-1", ("app",), ("Doc*",)) == (
+        STALE, "its question, answer, scope, line or examples changed since it was held to its examples")
+    assert state(RULE, replace(old, held=held_as(RULE, ("app",), ("Doc*",))), "m-1", ("app",), ("Doc*",)) == (
+        CALIBRATED, "")

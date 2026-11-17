@@ -10,7 +10,7 @@ from tests.fakes.runtime import FakeRuntime
 from tests.fakes.settings import FakeSettings
 from tests.modules.spec.application.helpers import controller
 from tests.modules.spec.languages import RUNTIME
-from xarch.kernel.source import Import, Unparsable
+from xarch.kernel.source import CommentSpan, Import, Unparsable
 
 TESTING = {"files": ["test_*.py"], "functions": "test_*"}
 BASE = {"xarch": 2, "name": "base", "testing": TESTING,
@@ -26,8 +26,8 @@ def spec_controller(bundled: dict[str, Any] | None = None, files: dict[str, Any]
                     settings: FakeSettings | None = None, presets: dict[str, Any] | None = None,
                     languages: dict[str, Any] | None = None, runtime: FakeRuntime = RUNTIME,
                     reads: dict[str, tuple[Import, ...] | Unparsable] | None = None,
-                    keys: Any = None):
+                    keys: Any = None, comments: dict[str, tuple[CommentSpan, ...] | Unparsable] | None = None):
     port = FakeArchitectureFiles({"base": BASE} if bundled is None else bundled, files, TEXTS | (texts or {}),
                                  presets if presets is not None else {"pytest": TESTING}, languages, keys)
     output = FakeProfileOutput(existing)
-    return controller(port, settings, output, runtime=runtime, reader=FakeExampleReader(reads)), output
+    return controller(port, settings, output, runtime=runtime, reader=FakeExampleReader(reads, comments)), output

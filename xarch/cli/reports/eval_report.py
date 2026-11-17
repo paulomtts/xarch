@@ -9,6 +9,7 @@ from typing import Any
 
 from xarch.cli.reports.document import document
 from xarch.modules.review.contract import (
+    ALWAYS_MASKED,
     CALIBRATED,
     DISAGREE,
     ELSEWHERE,
@@ -31,6 +32,9 @@ from xarch.modules.review.contract import (
     Unasked,
 )
 
+MASKED = ("masked in each text: every comment (cut from its line, the line kept), the dotted name each import of the "
+          "app's own code imports from, and every e-mail address, always; and what review.mask hides")
+"""What a dry run says is masked in each text it shows, before the patterns of review.mask."""
 UNKNOWN = "how often it reads well-written code as flagged is not known"
 """What an eval's numbers rest on: its examples only, written to be clear."""
 REWORD = "make it one short rule about what the text shows; add a clean example of the case it must not catch"
@@ -258,13 +262,19 @@ def calibration_plan_lines(planned: CalibrationPlanned) -> list[str]:
              f"key alone allows it, and the key is {key_now(planned.sends)}.",
              f"evals: {', '.join(planned.evals) or 'none'}; {len(planned.requests)} request(s), "
              f"{planned.characters:,} characters, about {planned.tokens:,} tokens; {cached} in the cache already"
-             + "".join(f"; {rule}" for rule in rules), *_withheld(planned.held_back, planned.too_few)]
+             + "".join(f"; {rule}" for rule in rules), *_withheld(planned.held_back, planned.too_few),
+             masks(planned.mask)]
     for number, item in enumerate(planned.requests, 1):
         kept = ", in the cache: not sent" if item.cached else ""
         what = f" {item.piece} (lines {item.lines[0]}-{item.lines[1]})" if item.piece else ""
         lines += ["", f"request {number} of {len(planned.requests)}: {item.asked}, {item.example} example {item.file}{what}, "
                       f"{item.chars:,} characters{kept}", *quoted(item.text)]
     return lines
+
+
+def masks(mask: tuple[str, ...]) -> str:
+    """What a dry run says is masked in each text: always, and then the patterns of review.mask."""
+    return f"{MASKED}: {', '.join(mask)}" if mask else f"{MASKED}: nothing more"
 
 
 def calibration_plan_document(planned: CalibrationPlanned) -> str:
@@ -275,8 +285,8 @@ def calibration_plan_document(planned: CalibrationPlanned) -> str:
                       "name": r.piece or None, "first": r.lines[0] or None,
                       "last": r.lines[1] or None, "chars": r.chars, "cached": r.cached, "text": r.text, "body": r.body}
                      for r in planned.requests],
-        "characters": planned.characters, "tokens": planned.tokens, "mask": list(planned.mask),
-        "held_back": _held_back_of(planned.held_back),
+        "characters": planned.characters, "tokens": planned.tokens, "masked": list(ALWAYS_MASKED),
+        "mask": list(planned.mask), "held_back": _held_back_of(planned.held_back),
         "too_few": [{"id": name, "kind": kind} for name, kind in planned.too_few], "sends": sends_of(planned.sends)})
 
 

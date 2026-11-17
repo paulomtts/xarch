@@ -1,5 +1,6 @@
 """What a source file says as its language's reader records it, in terms no language owns: the values a reader answers
-with, which the rules module checks the app's imports with and spec its examples' imports with."""
+with, which the rules module checks the app's imports with and spec its examples' imports with, and where each
+comment lies, which review hides before it sends a text."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -32,3 +33,14 @@ class Unparsable:
     line: int
     message: str
     unreadable: bool = False
+
+
+@dataclass(frozen=True)
+class CommentSpan:
+    """Where one comment of a source text lies, as its language's reader finds it: from column start of line to
+    column end of line last (0: the line it starts on), columns counted in characters from 0, end being past its last
+    character. The text before it on its first line and after it on its last are not part of it."""
+    line: int
+    start: int
+    end: int
+    last: int = 0

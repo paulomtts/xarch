@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from xarch.kernel.source import Import
+from xarch.kernel.source import CommentSpan, Import
 from xarch.modules.spec.domain.published import (
     CHOICE,
     DEFAULT_APP,
@@ -226,11 +226,13 @@ ProfileResult = ProfileView | ProfileRefused
 @dataclass(frozen=True)
 class ExampleFile:
     """A file placement is held to: its path below the app; the part it lies in, by its path ("" for none); its code;
-    and its imports, as the reader of the profile's language reads them (none when it does not parse)."""
+    its imports, as the reader of the profile's language reads them, and where each of its comments lies, as it finds
+    them (none of either when it does not parse)."""
     path: str
     part: str
     text: str
     imports: tuple[Import, ...] = ()
+    comments: tuple[CommentSpan, ...] = ()
 
 
 @dataclass(frozen=True)

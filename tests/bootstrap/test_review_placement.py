@@ -2,13 +2,17 @@
 profile's own examples. The answers are a recording built from a fake's table (each example read on its own part),
 served on this machine and kept in the project's cache, never the network; calibrate then reads them offline, and an
 example whose answer the recording does not hold is named. A real recording of the bundled examples is the owner's."""
+import io
 import json
 import threading
+import tokenize
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
 
+import xarch as xarch_package
 from xarch.bootstrap.app import app
 from xarch.bootstrap.wiring import build_controllers
 from xarch.cli.app import build
@@ -105,3 +109,24 @@ def test_an_example_whose_answer_the_recording_does_not_hold_is_named_and_nothin
     assert result.exit_code == 3
     assert ("  placement: clean example modules/documents/domain/values.py: not in the cache, and --offline sends nothing"
             in result.output.splitlines())
+
+
+def bundled_comments() -> set[str]:
+    """The text of every comment of the bundled example files, as the language's own tokens find them."""
+    found: set[str] = set()
+    for path in (Path(xarch_package.__file__).parent / "architectures" / "examples").rglob("*.py"):
+        tokens = tokenize.generate_tokens(io.StringIO(path.read_text(encoding="utf-8")).readline)
+        found |= {token.string for token in tokens if token.type == tokenize.COMMENT}
+    return found
+
+
+def test_no_comment_of_a_bundled_example_is_in_what_placement_s_dry_run_shows_nor_in_what_the_service_receives(
+        recorded):
+    planned, server = recorded
+    comments = bundled_comments()
+    assert len(comments) > 40
+    shown = [item["text"] for item in planned["requests"]]
+    assert planned["masked"] == ["own-imports", "e-mail", "comments"]
+    assert [item["chars"] for item in planned["requests"]] == [len(text) for text in shown]
+    assert sorted(server.sent) == sorted(shown)
+    assert not [(comment, text) for comment in comments for text in shown + server.sent if comment in text]

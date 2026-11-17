@@ -56,7 +56,7 @@ class SpecWords:
 
 
 def _example(file: ExampleFile) -> CodeFile:
-    return CodeFile(file.path, file.part, file.text, file.imports)
+    return CodeFile(file.path, file.part, file.text, file.imports, comments=file.comments)
 
 
 def _eval(name: str, asked: Eval) -> EvalText:

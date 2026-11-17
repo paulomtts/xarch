@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar
 
-from xarch.kernel.source import Import, Unparsable
+from xarch.kernel.source import CommentSpan, Import, Unparsable
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.domain.published import (
     APPROXIMATE,
@@ -340,7 +340,8 @@ class SourceRead:
     NOT_SOURCE, IN_TESTS, IN_PROJECT, EXCLUDED, IN_NO_PART or LINKED_OUT) and the part it lies in ("" for none). A
     file in a part is read: its text, its imports, how it fails to parse (None: it parses), its pieces, as its
     language's reader cuts them (see Piece), and, when a link makes it another file of the app, that file, shown as
-    it is ("" when it is itself); any other holds no text."""
+    it is ("" when it is itself), and where each of its comments lies, as its language's reader finds them; any other
+    holds no text."""
     shown: str
     lies: str
     part: str = ""
@@ -349,6 +350,7 @@ class SourceRead:
     error: Unparsable | None = None
     pieces: tuple[Piece, ...] = ()
     target: str = ""
+    comments: tuple[CommentSpan, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -382,11 +384,13 @@ class FactKept:
 
 @dataclass(frozen=True)
 class FileKept:
-    """What an eval reads in one file given: the file, by its path below the app as given; its imports; and each thing
-    the eval reads in it, in the order of their lines."""
+    """What an eval reads in one file given: the file, by its path below the app as given; its imports; each thing
+    the eval reads in it, in the order of their lines; and where each of its comments lies, as its language's reader
+    finds them."""
     path: str
     imports: tuple[Import, ...]
     facts: tuple[FactKept, ...]
+    comments: tuple[CommentSpan, ...] = ()
 
 
 @dataclass(frozen=True)

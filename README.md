@@ -602,12 +602,22 @@ through a link, or through a linked folder, is read only when the file it is lie
 followed, and is a source file of the app's language. A run judges at most `--max-files` files (50, or 20 with `--pieces`); past
 that it refuses, naming how many it chose.
 
-The text a file is judged by is its own, masked: the module each import of the app's own code names (an import named
-from the importing file's folder, or whose first step is the app's import name) is replaced by `<masked>` on the
-lines the import spans, however the source writes it (blanks around its dots, a line continued), since it would say
-the part; every e-mail address becomes `person@example.test`; then each text the
-profile's `review.mask` hides (below). Nothing else is masked: docstrings, comments and string literals are sent as
-written, so a file that must not leave the machine is one not to choose, or one for `review.never`.
+The text a file is judged by is its own, masked: every comment is cut, since it says what its writer thought of the
+code, often where it belongs, which the code itself does not; what a comment is, the language's reader says (a `#`
+inside a string is none, and a docstring is no comment), and each is cut from its line with the blanks before it, a
+line that held only a comment staying as an empty line, so that no line moves. Then the module each import of the
+app's own code names (an import named from the importing file's folder, or whose first step is the app's import name)
+is replaced by `<masked>` on the lines the import spans, however the source writes it (blanks around its dots, a line
+continued), since it would say the part; every e-mail address becomes `person@example.test`; then each text the
+profile's `review.mask` hides (below). Nothing else is masked: docstrings and string literals are sent as written, so
+a file that must not leave the machine is one not to choose, or one for `review.never`. The same masks apply to
+everything review and `review calibrate` send: a file, a piece and the opening lines sent before it, the text an eval
+reads, placement's examples and an eval's own, in a run and its dry run alike.
+
+Sizes are counted twice over. Whether a file is judged at all (800 to 200,000 characters, else left out as too small
+or too large, with its size) is counted on the file as it is; being marked `small` (under 2,000), how a file is cut
+into pieces (a class over 4,000, a piece under 200) and which pieces are judged (1,000 or more) are counted on the
+text sent, masked, which is the number of characters a request shows.
 
 `--dry-run` sends nothing and needs no key. It opens with what leaves the machine, to whom, and whether the key is set
 now (and when it is set but cannot be used, why), then prints the question once (it is the same for every file), the masks in force, and each file judged with the
@@ -785,7 +795,7 @@ and when it was not, what to run.
 "selection": {"by", "found", "judged", "left_out": [{"file", "why", "chars", "pattern"}]}, "question": {"ask",
 "role_only", "options": [{"name", "description"}]}, "requests": [{"file", "part", "chars", "cached", "text", "body",
 "piece", "kind", "first", "last", "eval"}], "pieces", "piece_question", "context", "characters", "tokens", "reorders",
-"mask", "never": [{"path", "matched"}], "evals", "sends": {"name", "at", "model", "key", "keyed", "unusable"}}`: `body` the request as the decision model's service would receive it
+"masked", "mask", "never": [{"path", "matched"}], "evals", "sends": {"name", "at", "model", "key", "keyed", "unusable"}}`: `body` the request as the decision model's service would receive it
 (JSON text, formatted: the same JSON value the service receives, not the same bytes; the key left out); `chars` how
 many characters the text sent holds, masked; `piece`, `kind`, `first` and `last` the piece a request is about and the lines it spans
 (null for a whole file); `pieces` whether pieces are asked, `piece_question` the question each piece carries (null
@@ -818,7 +828,8 @@ is false); `why` of an unanswered file or piece `not-cached`, `failed` or `refus
 unanswered question the eval that asks it (null for placement). In both, `why` of a file left out is one of
 `missing`, `not-source`, `test`, `outside`, `excluded`, `unplaced`, `never`, `unparsable`, `small`, `large`, `link`,
 `pattern` the
-`review.never` path that matched (null for any other `why`); a dry run's `mask` is the profile's `review.mask`. A
+`review.never` path that matched (null for any other `why`); a dry run's `masked` is what review always masks
+(`own-imports`, `e-mail`, `comments`) and its `mask` the profile's `review.mask`. A
 refusal is `{"ok": false, "error"}`.
 
 A calibration: `{"ok", "calibrated": [{"id", "complete", "passed", "line", "line_by_hand", "crossed", "too_few",
@@ -827,7 +838,7 @@ A calibration: `{"ok", "calibrated": [{"id", "complete", "passed", "line", "line
 "file", "kind", "why", "name", "said"}], "held_back": [{"id", "kind", "example", "pattern"}],
 "failure"}` (`placement` null when it was not held); its dry run: `{"ok", "dry_run": true, "sent": false, "evals",
 "requests": [{"id", "example", "kind", "part", "name", "first", "last", "chars", "cached", "text", "body"}],
-"characters", "tokens", "mask", "held_back", "too_few": [{"id", "kind"}], "sends"}`, `kind` `flagged` or `clean`;
+"characters", "tokens", "masked", "mask", "held_back", "too_few": [{"id", "kind"}], "sends"}`, `kind` `flagged` or `clean`;
 `held_back` each example `review.never` holds back (`id` its eval, `placement` for placement's, `pattern` the path that
 matched); `too_few` each eval left with too few examples of a kind to be held, and `too_few` of a calibrated eval
 whether it is one.

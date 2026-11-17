@@ -52,4 +52,4 @@ class SourcesService:
         unreadable = read.error is not None and read.error.unreadable
         text = "" if unreadable else self._tree.text(found.path) or ""
         return SourceRead(found.shown, place.lies, place.part, text, read.imports, read.error, read.pieces,
-                          target)
+                          target, tuple(comment.span for comment in read.comments))

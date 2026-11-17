@@ -1,8 +1,9 @@
-"""What text a question about a file carries: the modules the app's own imports name, e-mail addresses, and the texts
-the profile says review hides, masked."""
+"""What text a question about a file carries: the comments the reader finds cut, the modules the app's own imports
+name, e-mail addresses, and the texts the profile says review hides, masked."""
 import pytest
 
-from xarch.kernel.source import Import
+from xarch.kernel.source import CommentSpan, Import
+from xarch.modules.review.application.logic.lines import lines
 from xarch.modules.review.application.logic.masking import MASK, PERSON, masked, own
 
 OWN = Import(1, ("app", "kernel", "ids"), ("DocumentId",), written="app.kernel.ids")
@@ -89,3 +90,29 @@ def test_a_line_separator_or_a_form_feed_above_an_import_moves_no_line_and_the_i
 def test_the_module_of_an_import_is_masked_however_the_source_writes_it_on_the_lines_it_spans(text, imported, then):
     result = masked(text, (imported,), "app")
     assert result == then and len(result.splitlines()) == len(text.splitlines())
+
+
+@pytest.mark.parametrize("text, comments, then", [
+    pytest.param("x = 1  # one\ny = 2\n", (CommentSpan(1, 7, 12),), "x = 1\ny = 2\n",
+                 id="a comment after code is cut with the blanks before it"),
+    pytest.param("x = 1\n    # one\ny = 2\n", (CommentSpan(2, 4, 9),), "x = 1\n\ny = 2\n",
+                 id="a line that held only a comment stays as an empty line"),
+    pytest.param("x = '# no'  # yes\n", (CommentSpan(1, 12, 17),), "x = '# no'\n",
+                 id="only what the reader says is a comment is cut, the rest of the line as written"),
+    pytest.param("x = 1\t\x0c # one\r\ny = 2  # two\rz = 3\n", (CommentSpan(1, 8, 13), CommentSpan(2, 7, 12)),
+                 "x = 1\r\ny = 2\rz = 3\n", id="each line keeps its own line break"),
+    pytest.param("a /* one\ntwo\nthree */ b\nc\n", (CommentSpan(1, 2, 8, 3),), "a\n\n b\nc\n",
+                 id="a comment over lines leaves each of its lines, the text after it kept"),
+    pytest.param("a /* x */ b /* y */\n", (CommentSpan(1, 2, 9), CommentSpan(1, 12, 19)), "a b\n",
+                 id="two comments on one line are both cut"),
+    pytest.param("x = 1\n", (CommentSpan(4, 0, 3),), "x = 1\n", id="a comment past the text is left alone"),
+])
+def test_each_comment_the_reader_finds_is_cut_from_its_line_and_no_line_moves(text, comments, then):
+    result = masked(text, (), "app", comments=comments)
+    assert result == then and len(lines(result)) == len(lines(text))
+
+
+def test_a_comment_on_an_import_is_cut_and_the_import_masked_on_the_same_line():
+    text = "from app.kernel.ids import DocumentId  # the ids live in kernel\nx = 1  # mail ops@app.example\n"
+    assert masked(text, (OWN,), "app", ("kernel",), comments=(CommentSpan(1, 39, 63), CommentSpan(2, 7, 29))) == (
+        f"from {MASK} import DocumentId\nx = 1\n")

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from xarch.kernel.source import CommentSpan
 from xarch.modules.review.domain.errors import NoKey, NotAccepted, Refused, Unanswered
 from xarch.modules.review.domain.published import Choice, PlacementHeld, Sender
 from xarch.modules.review.domain.values import Answer, Calibration, CodeFile, Found, Read, Reads, Words
@@ -10,11 +11,14 @@ from xarch.modules.review.domain.values import Answer, Calibration, CodeFile, Fo
 
 class FakeCode:
     """Satisfies review's Code: the files found at each path, by the path as given (a path given nowhere finds
-    nothing), the files of the paths joined in order; a path listed as refused raises Refused with its reason."""
+    nothing), the files of the paths joined in order; a path listed as refused raises Refused with its reason; and
+    where the comments of a text an eval reads lie, by the text (none for any other)."""
 
     def __init__(self, found: dict[str, Found], refused: dict[str, str] | None = None,
-                 reads: dict[tuple[str, str], tuple[Read, ...]] | None = None):
+                 reads: dict[tuple[str, str], tuple[Read, ...]] | None = None,
+                 comments: dict[str, tuple[CommentSpan, ...]] | None = None):
         self._found, self._refused, self._reads = found, dict(refused or {}), dict(reads or {})
+        self._comments = dict(comments or {})
         self.asked: list[tuple[str, tuple[str, ...]]] = []
 
     def files(self, paths: tuple[Path, ...], cwd: Path, app: Path, profile: str, tests: Path | None) -> Found:
@@ -28,7 +32,8 @@ class FakeCode:
         """What the eval reads in each file, by the eval and the file's text: the file whole when none is set; the
         paths each eval was asked of recorded."""
         self.asked.append((asked, tuple(path for path, _ in files)))
-        return tuple(Reads(path, (), self._reads.get((asked, text), (Read((0, 0), ""),))) for path, text in files)
+        return tuple(Reads(CodeFile(path, "", text, comments=self._comments.get(text, ())),
+                           self._reads.get((asked, text), (Read((0, 0), ""),))) for path, text in files)
 
 
 class FakeProfile:

@@ -7,6 +7,7 @@ from pathlib import Path
 
 from xarch.modules.review.domain.published import (
     A_TEST,
+    ALWAYS_MASKED,
     BAND,
     BY_ALL,
     BY_LIST,
@@ -70,7 +71,8 @@ from xarch.modules.review.domain.published import (
     Unasked,
 )
 
-__all__ = ["A_TEST", "BAND", "BY_ALL", "BY_LIST", "BY_PATHS", "EXCLUDED", "FAILED", "FEWEST_SUMMED", "IMPORTS", "LARGE", "LINK",
+__all__ = ["A_TEST", "ALWAYS_MASKED", "BAND", "BY_ALL", "BY_LIST", "BY_PATHS", "EXCLUDED", "FAILED", "FEWEST_SUMMED", "IMPORTS",
+           "LARGE", "LINK",
            "MARKED_SMALL", "MAX_CHARS", "MAX_FILES", "MAX_PIECED", "MIN_CHARS", "MISSING", "NEVER", "NO_CONTEXT", "NOT_CACHED",
            "NOT_SOURCE", "OUTSIDE", "PIECE_CHARS", "REFUSED", "SHOWN", "SMALL", "UNPARSABLE", "UNPLACED", "Choice", "LeftOut",
            "Option", "PartRead", "PieceReading", "PiecesRead", "Reading", "Request", "Sender", "Unasked", "Review",

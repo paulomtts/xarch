@@ -22,7 +22,8 @@ FACTS: dict[str, str] = {
     "import.relative": "whether an import is named from the importing file's own folder, and how far it climbs",
     "import.standard": "whether an import names the standard library",
     "import.mentioned": "whether a file mentions a name an import takes anywhere else, in code or an annotation",
-    "comment": "each line comment, its text and line",
+    "comment": "each line comment, its text, its line and where on it it starts and ends, which review cuts before it "
+               "sends a text",
     "use": "each name read, as the dotted path the import binding its first name reaches, and how much it bound",
     "call": "each call whose callee an import binds, as that dotted path, with its arguments",
     "method_call": "each call of an attribute no import binds, and whether it is on the object a method is called on",

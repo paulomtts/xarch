@@ -12,6 +12,7 @@ import json
 
 from xarch.modules.review.application.logic.lines import lines as split
 from xarch.modules.review.domain.published import (
+    ALWAYS_MASKED,
     CALIBRATED,
     CHOOSE,
     FAILED_EXAMPLES,
@@ -53,9 +54,11 @@ def floor(question: Choice, flagged: tuple[str, ...]) -> float:
 
 def held_as(asked: EvalText, roots: tuple[str, ...] = (), mask: tuple[str, ...] = ()) -> str:
     """The hash of what an eval is held to its examples as: its question in order, its options flagged, what it reads
-    and where, the line it writes, its examples, and what decides how their text is masked (the import names of the
-    apps masked, roots, and the texts mask hides); a change to any of them makes its record stale."""
-    canonical = json.dumps({"ask": asked.question.ask, "form": asked.question.form, "roots": list(roots),
+    and where, the line it writes, its examples, and what decides how their text is masked (what review always masks,
+    the import names of the apps masked, roots, and the texts mask hides); a change to any of them makes its record
+    stale."""
+    canonical = json.dumps({"ask": asked.question.ask, "form": asked.question.form,
+                            "masked": list(ALWAYS_MASKED), "roots": list(roots),
                             "mask": list(mask),
                             "options": [[option.name, option.description] for option in asked.question.options],
                             "flagged": list(asked.flagged), "reads": asked.reads, "line": asked.line,

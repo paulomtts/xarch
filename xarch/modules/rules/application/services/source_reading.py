@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from xarch.kernel.source import Import
+from xarch.kernel.source import CommentSpan, Import
 from xarch.modules.rules.application.ports.source_tree import SourceTree
 from xarch.modules.rules.domain.errors import Unreadable
 
@@ -17,3 +17,10 @@ class SourceReadService:
         if read.error is not None:
             raise Unreadable(read.error)
         return read.imports
+
+    def comments(self, text: str) -> tuple[CommentSpan, ...]:
+        """Where each comment of the text lies, in order; raises Unreadable when it does not parse."""
+        read = self._tree.parsed(text)
+        if read.error is not None:
+            raise Unreadable(read.error)
+        return tuple(comment.span for comment in read.comments)

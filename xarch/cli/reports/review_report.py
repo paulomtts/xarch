@@ -13,6 +13,7 @@ from xarch.cli.reports.eval_report import (
     eval_lines,
     eval_plan_lines,
     key_now,
+    masks,
     model_said,
     quoted,
     sends_of,
@@ -22,6 +23,7 @@ from xarch.cli.reports.eval_report import (
 )
 from xarch.modules.review.contract import (
     A_TEST,
+    ALWAYS_MASKED,
     BAND,
     BY_ALL,
     BY_LIST,
@@ -74,8 +76,6 @@ WHY = {MISSING: "not there", NOT_SOURCE: "no source file of the app's language",
 CONTEXTS = {NO_CONTEXT: "nothing: the piece alone",
             IMPORTS: "the file's opening lines (those before its first piece), masked: numbers read so never compare "
                      "with numbers read without them"}
-MASKED = ("masked in each text: the dotted name each import of the app's own code imports from, and every e-mail "
-          "address, always; and what review.mask hides")
 
 
 def _what_leaves(sends: Sender, pieced: bool = False) -> str:
@@ -104,7 +104,7 @@ def plan_lines(planned: ReviewPlanned) -> list[str]:
     if planned.piece_ask:
         lines += [f"  a request of a piece of a file asks instead: {planned.piece_ask}",
                   f"  sent before each piece: {CONTEXTS[planned.context]}"]
-    lines += ["", f"{MASKED}: {', '.join(planned.mask)}" if planned.mask else f"{MASKED}: nothing more"]
+    lines += ["", masks(planned.mask)]
     lines += [f"held back by review.never: {', '.join(planned.never)}"] if planned.never else []
     lines += [f"  {pattern}: matched nothing this run (a path of review.never is read below the app, without its "
               "folder's name)" for pattern in planned.unmatched]
@@ -145,7 +145,7 @@ def plan_document(profile: str, planned: ReviewPlanned) -> str:
         "evals": eval_documents(planned.evals),
         "pieces": bool(planned.piece_ask), "piece_question": planned.piece_ask or None, "context": planned.context,
         "characters": planned.characters, "tokens": planned.tokens, "reorders": planned.reorders,
-        "mask": list(planned.mask),
+        "masked": list(ALWAYS_MASKED), "mask": list(planned.mask),
         "never": [{"path": pattern, "matched": pattern not in planned.unmatched} for pattern in planned.never],
         "sends": sends_of(planned.sends)}
     return document(content)

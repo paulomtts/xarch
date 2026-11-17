@@ -9,6 +9,7 @@ import pytest
 from tests.fakes.review import FakeAnswers, FakeCalibrations, FakeCode, FakeDecisionModel, FakeProfile
 from tests.modules.review.application.helpers import controller
 from tests.modules.review.builders import PARTS, found
+from xarch.kernel.source import CommentSpan
 from xarch.modules.review.contract import (
     CALIBRATED,
     DISAGREE,
@@ -178,3 +179,18 @@ def test_a_review_with_placement_held_under_another_mask_says_it_is_stale():
     result = controller(FakeCode({"app/x.py": Found((FILE,))}), profile, FakeDecisionModel({TEXT: DOUBTED}),
                         FakeAnswers(), calibrations).review(Review((Path("app/x.py"),), (), False, CWD, APP, "p"))
     assert isinstance(result, ReviewReading) and result.calibration.state == STALE
+
+
+def test_what_an_eval_reads_in_a_file_judged_is_sent_with_the_file_s_comments_cut():
+    noted = ("class Doc:\n    def publish(self):\n        # the rule lives here, in domain\n        if not self.title:"
+             "  # a title is needed\n            raise E\n" + "    x: int = 0\n" * 60)
+    file = replace(FILE, text=noted, comments=(CommentSpan(3, 8, 40), CommentSpan(4, 28, 47)))
+    code = FakeCode({"app/x.py": Found((file,))}, reads={("rule", noted): (Read((2, 5), "Doc.publish"),)})
+    model = FakeDecisionModel({noted.replace("        # the rule lives here, in domain", "").replace(
+        "  # a title is needed", ""): PLACED, "    def publish(self):\n\n        if not self.title:\n            raise E\n":
+        yes(0.83)})
+    command = Review((Path("app/x.py"),), (), False, CWD, APP, "p", None, False, None, False)
+    result = controller(code, FakeProfile({"p": Words(PARTS, evals=(RULE,))}), model, FakeAnswers(),
+                        FakeCalibrations({RECORD: {"rule": HELD}})).review(command)
+    assert isinstance(result, ReviewReading) and result.evals[0].readings[0].value == 0.83
+    assert not any("rule lives" in text or "title is needed" in text for text in model.asked)

@@ -72,9 +72,10 @@ class PublishingService:
             lines=dict(architecture.lines), evals=dict(architecture.evals))
 
     def examples(self, profile: str) -> ExamplesRead:
-        """The files placement is held to, each with its part and imports."""
+        """The files placement is held to, each with its part, imports and comments."""
         clean, flagged = self._architectures.placed(profile)
-        return ExamplesRead(*(tuple(ExampleFile(path, part, text, self._architectures.imports(text))
+        return ExamplesRead(*(tuple(ExampleFile(path, part, text, self._architectures.imports(text),
+                                                self._architectures.comments(text))
                                     for path, part, text in files) for files in (clean, flagged)))
 
     def docs(self, profile: str) -> Docs:

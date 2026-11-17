@@ -12,6 +12,7 @@ import json
 from dataclasses import replace
 
 from xarch.modules.review.domain.published import (
+    ALWAYS_MASKED,
     CALIBRATED,
     DISAGREE,
     ELSEWHERE,
@@ -35,10 +36,10 @@ Read = tuple[CodeFile, dict[str, float]]
 def held_as(question: Choice, parts: tuple[PartText, ...], examples: tuple[tuple[CodeFile, ...], ...],
             roots: tuple[str, ...] = (), mask: tuple[str, ...] = ()) -> str:
     """The hash of what placement is held to its examples as: its question in order, each part's line, every example
-    by its path, part and code, and what decides how their text is masked (the import names of the apps masked, roots,
-    and the texts mask hides)."""
+    by its path, part and code, and what decides how their text is masked (what review always masks, the import names
+    of the apps masked, roots, and the texts mask hides)."""
     canonical = json.dumps({"ask": question.ask, "options": [[o.name, o.description] for o in question.options],
-                            "roots": list(roots), "mask": list(mask),
+                            "masked": list(ALWAYS_MASKED), "roots": list(roots), "mask": list(mask),
                             "lines": [[part.name, part.line] for part in parts],
                             "examples": [[[e.file, e.part, e.text] for e in side] for side in examples]},
                            ensure_ascii=False, separators=(",", ":"))

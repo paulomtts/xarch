@@ -5,7 +5,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from xarch.kernel.source import Import
+from xarch.kernel.source import CommentSpan, Import
 from xarch.modules.spec.application.logic.docs_files import doc_files
 from xarch.modules.spec.application.logic.example_imports import (
     Read,
@@ -60,6 +60,12 @@ class ArchitectureService:
     def imports(self, text: str) -> tuple[Import, ...]:
         """The imports of a text, as the reader of the app's language reads them; none when it does not parse."""
         found = self._reader.imports(text)
+        return found if isinstance(found, tuple) else ()
+
+    def comments(self, text: str) -> tuple[CommentSpan, ...]:
+        """Where each comment of a text lies, as the reader of the app's language finds them; none when it does not
+        parse."""
+        found = self._reader.comments(text)
         return found if isinstance(found, tuple) else ()
 
     @staticmethod

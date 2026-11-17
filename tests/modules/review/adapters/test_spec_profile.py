@@ -3,7 +3,7 @@ litmus, role and line (the profile's, else spec's default), and what review may 
 Refused with spec's reason."""
 import pytest
 
-from xarch.kernel.source import Import
+from xarch.kernel.source import CommentSpan, Import
 from xarch.modules.review.adapters.spec_profile import SpecWords
 from xarch.modules.review.domain.errors import Refused
 from xarch.modules.review.domain.published import SCORE, Choice, Option
@@ -65,8 +65,10 @@ def test_each_eval_of_the_profile_own_is_read_with_its_question_its_form_and_wha
 
 def test_the_files_placement_is_held_to_are_read_with_their_part_code_and_imports_and_a_refusal_is_refused():
     clock = Import(1, ("app", "kernel", "time"), ("Clock",))
-    read = ExamplesRead((ExampleFile("core/a.py", "core", "x\n", (clock,)),), (ExampleFile("api/b.py", "api", "y\n"),))
+    noted = (CommentSpan(1, 2, 7),)
+    read = ExamplesRead((ExampleFile("core/a.py", "core", "x\n", (clock,)),),
+                        (ExampleFile("api/b.py", "api", "y  # b\n", comments=noted),))
     assert SpecWords(Spec(VIEW, read)).examples("p") == ((CodeFile("core/a.py", "core", "x\n", (clock,)),),
-                                                          (CodeFile("api/b.py", "api", "y\n"),))
+                                                          (CodeFile("api/b.py", "api", "y  # b\n", comments=noted),))
     with pytest.raises(Refused, match="gone: no such file"):
         SpecWords(Spec(VIEW, ProfileRefused("gone: no such file"))).examples("gone")

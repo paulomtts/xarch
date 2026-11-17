@@ -132,7 +132,11 @@ def test_a_dry_run_of_a_calibration_says_what_leaves_the_machine_and_each_reques
     assert "the key alone allows it, and the key is not set now" in lines[2]
     assert "request 1 of 1: rule, flagged example services/a.py a (lines 1-1), 8 characters" in lines
     assert "    | def a():" in lines
+    assert lines[4] == ("masked in each text: every comment (cut from its line, the line kept), the dotted name each "
+                        "import of the app's own code imports from, and every e-mail address, always; and what "
+                        "review.mask hides: nothing more")
     document = json.loads(calibration_plan_document(planned))
+    assert document["masked"] == ["own-imports", "e-mail", "comments"]
     assert document["requests"] == [{"id": "rule", "example": "services/a.py", "kind": "flagged", "part": None, "name": "a",
                                      "first": 1, "last": 1, "chars": 8, "cached": False, "text": "def a():\n",
                                      "body": "{}"}]

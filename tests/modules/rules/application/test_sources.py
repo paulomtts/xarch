@@ -9,7 +9,7 @@ from tests.fakes.filesystem import FakeSourceTree
 from tests.fakes.profiles import FakeProfiles
 from tests.modules.rules.application.helpers import controller
 from tests.modules.rules.builders import PYTHON
-from xarch.kernel.source import Import, Unparsable
+from xarch.kernel.source import CommentSpan, Import, Unparsable
 from xarch.modules.rules.contract import (
     EXCLUDED,
     IN_NO_PART,
@@ -27,7 +27,7 @@ from xarch.modules.rules.contract import (
     SourceRead,
     SourcesRead,
 )
-from xarch.modules.rules.domain.values import PartInfo, Profile, SourceFile
+from xarch.modules.rules.domain.values import Comment, PartInfo, Profile, SourceFile
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.placement import Repeat, Target
 
@@ -142,3 +142,11 @@ LINKS = {APP / "kernel/out.py": Path("/elsewhere/secret.py"), APP / "kernel/alia
 def test_a_file_reached_through_a_link_is_read_only_when_it_is_a_source_file_of_the_app(path, file):
     tree = FakeSourceTree(APP, LINKED, texts=LINKED_TEXTS, links=LINKS)
     assert controller(tree, FakeProfiles({"p": PROFILE})).sources(read(path)) == SourcesRead((file,))
+
+
+def test_a_file_in_a_part_is_read_with_where_each_of_its_comments_lies_as_its_reader_finds_them():
+    noted = SourceFile("", (), (), comments=(Comment(1, "# the id", 14, 22),))
+    tree = FakeSourceTree(APP, {**FILES, "kernel/ids.py": noted}, {TESTS: {"test_ids.py": []}}, texts=TEXTS)
+    found = controller(tree, FakeProfiles({"p": PROFILE})).sources(read("app/kernel/ids.py"))
+    assert found == SourcesRead((SourceRead("app/kernel/ids.py", IN_PART, "kernel", "class Id: ...\n",
+                                            comments=(CommentSpan(1, 14, 22),)),))

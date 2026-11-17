@@ -283,3 +283,26 @@ def test_placement_never_sends_a_docs_example_review_never_matches_and_its_part_
     assert {part["part"]: part["verdict"] for part in done["placement"]["parts"]}["adapters"] == "elsewhere"
     assert done["held_back"] == planned["held_back"]
     assert len(served.received) == len(planned["requests"])
+
+
+NOTED = ("from app.kernel.time import Clock  # NOTE-1 the clock is kernel's\n\n\n# NOTE-2 a service: it orchestrates\n"
+         "class PublishingService:\n    def publish(self, doc) -> None:\n        # NOTE-3 the rule lives in domain\n"
+         "        if not doc.title.strip():  # NOTE-4 a title\n            raise ValueError('# kept: a string')\n")
+
+
+def test_an_eval_s_own_examples_are_sent_with_their_comments_cut_in_a_calibration_and_its_dry_run_alike(served,
+                                                                                                       tmp_path):
+    document = yaml.safe_load((tmp_path / COPY).read_text())
+    document["evals"] = {"rule-outside-entity": {**EVALS["rule-outside-entity"],
+                                                 "examples": examples(NOTED, ASKS, "services")}}
+    (tmp_path / COPY).write_text(yaml.safe_dump(document, sort_keys=False))
+    planned = json.loads(xarch("review", "calibrate", "--eval", "rule-outside-entity", "--dry-run", "--format",
+                               "json").output)
+    shown = [item["text"] for item in planned["requests"]]
+    assert planned["masked"] == ["own-imports", "e-mail", "comments"]
+    assert shown[0] == ("    def publish(self, doc) -> None:\n\n        if not doc.title.strip():\n"
+                        "            raise ValueError('# kept: a string')\n")
+    assert xarch("review", "calibrate", "--eval", "rule-outside-entity", url=served.url).exit_code == 0
+    sent = [body["state"] for body in served.received]
+    assert set(sent) == set(shown) and not any("NOTE-" in text for text in shown + sent)
+    assert any("# kept: a string" in text for text in sent)

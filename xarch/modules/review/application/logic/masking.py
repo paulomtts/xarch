@@ -1,14 +1,16 @@
 """What text a question about a file carries: the file's text with what would give the answer away, or name a person,
-masked. The module an import of the app's own code names would say the part, and placement would read its answer
-there; so each such import has the module it names replaced on the lines the import spans, written as the source
-writes it, with any blanks or continued lines between its steps and dots. Then each text the
-profile says review hides (`review.mask`): as written, case counting, `*` standing for a run of one or more letters,
-digits, `_`, `-` and `.`."""
+masked. A comment says what its writer thought of the code, often where it belongs, which the code itself does not;
+so each comment, where the language's reader finds it, is cut from its line with the blanks before it, a line that
+held only a comment staying as an empty line, so that no line moves. The module an import of the app's own code names
+would say the part, and placement would read its answer there; so each such import has the module it names replaced
+on the lines the import spans, written as the source writes it, with any blanks or continued lines between its steps
+and dots. Then each text the profile says review hides (`review.mask`): as written, case counting, `*` standing for a
+run of one or more letters, digits, `_`, `-` and `.`."""
 from __future__ import annotations
 
 import re
 
-from xarch.kernel.source import Import
+from xarch.kernel.source import CommentSpan, Import
 from xarch.modules.review.application.logic.lines import lines as cut
 
 MASK = "<masked>"
@@ -46,11 +48,32 @@ def _hidden_name(found: re.Match[str]) -> str:
     return MASK + "".join(re.findall(r"\\(?:\r\n|\r|\n)", found.group()))
 
 
-def masked(text: str, imports: tuple[Import, ...], root: str, mask: tuple[str, ...] = (), also: tuple[str, ...] = ()) -> str:
-    """The text with the module each import of the app's own code names (root, or one of also, being its import name)
-    replaced by MASK on the lines the import spans, every e-mail address by PERSON, then each match of a text of mask
-    by MASK, in mask's order."""
-    lines = list(cut(text))
+def _break(line: str) -> str:
+    """The line break that ends a line, "" for none."""
+    return line[len(line.rstrip("\r\n")):]
+
+
+def _uncommented(lines: list[str], comments: tuple[CommentSpan, ...]) -> list[str]:
+    """The lines with each comment cut, and the blanks before it on its first line: the text after it on its last
+    line kept, and each line it spans keeping its line break, so that no line moves; the last comment of a line cut
+    first, so that the columns of the others still hold."""
+    found = list(lines)
+    for comment in sorted(comments, key=lambda c: (c.line, c.start), reverse=True):
+        last = max(comment.last, comment.line)
+        if 0 < comment.line and last <= len(found):
+            head = found[comment.line - 1][:comment.start].rstrip()
+            tail = found[last - 1][comment.end:]
+            between = [_break(line) for line in found[comment.line - 1:last - 1]]
+            found[comment.line - 1:last] = [head + between[0], *between[1:], tail] if between else [head + tail]
+    return found
+
+
+def masked(text: str, imports: tuple[Import, ...], root: str, mask: tuple[str, ...] = (), also: tuple[str, ...] = (),
+           comments: tuple[CommentSpan, ...] = ()) -> str:
+    """The text with each of comments cut from it, the module each import of the app's own code names (root, or one
+    of also, being its import name) replaced by MASK on the lines the import spans, every e-mail address by PERSON,
+    then each match of a text of mask by MASK, in mask's order."""
+    lines = _uncommented(list(cut(text)), comments)
     for imported in imports:
         last = max(imported.last, imported.line)
         if own(imported, root, also) and imported.written and 0 < imported.line and last <= len(lines):

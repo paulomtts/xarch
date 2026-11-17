@@ -37,7 +37,7 @@ def of_piece(question: Choice) -> Choice:
 def piece_requests(file: CodeFile, root: str, mask: tuple[str, ...], context: str) -> tuple[tuple[Request, ...], int]:
     """What the question about each piece of a file judged sends, in order, the file's opening lines before each with
     context IMPORTS; and how many pieces are too small to be judged."""
-    text = masked(file.text, file.imports, root, mask)
+    text = masked(file.text, file.imports, root, mask, comments=file.comments)
     found = sections(text, file.spans)
     judged = large(found)
     before = opening(text, file.spans) if context == IMPORTS else ""
@@ -51,9 +51,9 @@ def role_only(parts: tuple[PartText, ...]) -> tuple[str, ...]:
 
 
 def request(file: CodeFile, root: str, mask: tuple[str, ...] = (), also: tuple[str, ...] = ()) -> Request:
-    """What the question about a file sends: its text masked, root being the app's import name (and also those of
-    other apps it may be written for) and mask the texts the profile says review hides."""
-    text = masked(file.text, file.imports, root, mask, also)
+    """What the question about a file sends: its text masked, its comments cut, root being the app's import name (and
+    also those of other apps it may be written for) and mask the texts the profile says review hides."""
+    text = masked(file.text, file.imports, root, mask, also, file.comments)
     return Request(file.file, file.part, len(text), text)
 
 

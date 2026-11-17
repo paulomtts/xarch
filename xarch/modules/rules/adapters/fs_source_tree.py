@@ -251,8 +251,11 @@ def _last(node: ast.Import | ast.ImportFrom) -> int:
 
 
 def _comments(text: str) -> tuple[Comment, ...]:
-    tokens = tokenize.generate_tokens(io.StringIO(text).readline)
-    return tuple(Comment(t.start[0], t.string) for t in tokens if t.type == tokenize.COMMENT)
+    """Each comment the tokens of the text hold, a `#` inside a string being none, its lines cut where the parser
+    cuts them (a carriage return alone ending one too), so that they are the lines an import or a piece is on."""
+    tokens = tokenize.generate_tokens(io.StringIO(text, newline=None).readline)
+    return tuple(Comment(t.start[0], t.string, t.start[1], t.end[1], t.end[0] if t.end[0] != t.start[0] else 0)
+                 for t in tokens if t.type == tokenize.COMMENT)
 
 
 _BLOCKS = {ast.If: "if", ast.Match: "match", ast.Try: "try", ast.TryStar: "try", ast.For: "for",

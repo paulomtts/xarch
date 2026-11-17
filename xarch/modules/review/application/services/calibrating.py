@@ -156,9 +156,9 @@ class CalibrationService:
         text masked as a file of the app is."""
         found: list[Example] = []
         for flagged, files in ((True, asked.flagged_examples), (False, asked.clean_examples)):
-            code = dict(files)
             for reads in self._code.reads(cmd.profile, cmd.app.name, asked.asked, files):
-                text = masked(code[reads.path], reads.imports, cmd.app.name, mask)
-                found.append((asked, flagged, reads.path, tuple(replace(item, example=FLAGGED if flagged else CLEAN)
-                                                                for item in asked_of(asked, reads.path, "", text, reads))))
+                file = reads.file
+                text = masked(file.text, file.imports, cmd.app.name, mask, comments=file.comments)
+                found.append((asked, flagged, file.file, tuple(replace(item, example=FLAGGED if flagged else CLEAN)
+                                                               for item in asked_of(asked, file.file, "", text, reads))))
         return tuple(found)

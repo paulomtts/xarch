@@ -23,7 +23,7 @@ from xarch.modules.review.domain.published import (
     Request,
     Unasked,
 )
-from xarch.modules.review.domain.values import Answer, Calibration, EvalText, Read, Reads
+from xarch.modules.review.domain.values import Answer, Calibration, CodeFile, EvalText, Read, Reads
 
 QUESTION = Choice("Does it decide the rule itself?", (Option("yes", ""), Option("no", "")), YES_NO)
 RULE = EvalText("rule", QUESTION, ("yes",), None, "{name} may decide it ({value})", "read {name} against the litmus")
@@ -46,12 +46,13 @@ def test_an_eval_held_to_its_examples_stands_with_its_line_and_examples_and_one_
 
 
 def test_one_question_is_asked_of_each_thing_an_eval_reads_in_a_file_with_its_own_lines_alone():
-    found = Reads("modules/documents/domain/doc.py", (), (Read((2, 3), "Doc.publish"), Read((6, 7), "helper")))
+    found = Reads(CodeFile("modules/documents/domain/doc.py", "", TEXT), (Read((2, 3), "Doc.publish"),
+                                                                         Read((6, 7), "helper")))
     assert asked_of(RULE, FILE, "domain", TEXT, found) == (
         Request(FILE, "domain", 40, "    def publish(self):\n        return 1\n", piece="Doc.publish", lines=(2, 3),
                 asked="rule"),
         Request(FILE, "domain", 27, "def helper():\n    return 2\n", piece="helper", lines=(6, 7), asked="rule"))
-    whole = asked_of(RULE, FILE, "domain", TEXT, Reads("x.py", (), (Read((0, 0), ""),)))
+    whole = asked_of(RULE, FILE, "domain", TEXT, Reads(CodeFile("x.py", "", TEXT), (Read((0, 0), ""),)))
     assert [(item.text, item.piece) for item in whole] == [(TEXT, "")]
 
 

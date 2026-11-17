@@ -71,8 +71,9 @@ def test_a_dry_run_shows_the_question_once_and_each_request_with_the_exact_text_
     assert lines[5:10] == ["the question each request carries:", "  Which part?",
                            "  options: 2 parts, each described by its litmus test (by its role only: main)",
                            "    domain: Is it an invariant?", "    main: starts the app"]
-    assert lines[10:12] == ["", "masked in each text: the dotted name each import of the app's own code imports from, "
-                                "and every e-mail address, always; and what review.mask hides: nothing more"]
+    assert lines[10:12] == ["", "masked in each text: every comment (cut from its line, the line kept), the dotted name "
+                                "each import of the app's own code imports from, and every e-mail address, always; and "
+                                "what review.mask hides: nothing more"]
     assert lines[12:18] == ["", "request 1 of 1: app/a.py (domain, 1,200 characters)", "    | from <masked> import A",
                             "    |", "    | x = 1", ""]
     assert lines[18:] == ["left out:", "  app/b.py: under 800 characters (612)", "  app/c.py: not there"]
@@ -84,7 +85,7 @@ def test_a_dry_run_says_the_texts_review_mask_hides_and_each_file_review_never_s
     assert lines[11].endswith("and what review.mask hides: Northwind, DOC-*")
     assert lines[-2:] == ["left out:", "  app/k.py: held back by review.never (**/k.py)"]
     document = json.loads(plan_document("cli", held))
-    assert document["mask"] == ["Northwind", "DOC-*"]
+    assert (document["masked"], document["mask"]) == (["own-imports", "e-mail", "comments"], ["Northwind", "DOC-*"])
     assert document["selection"]["left_out"] == [{"file": "app/k.py", "why": "never", "chars": 900,
                                                   "pattern": "**/k.py"}]
 
@@ -103,7 +104,8 @@ def test_the_json_of_a_dry_run_holds_every_request_in_full_and_the_question_once
                       "kind": None, "first": None, "last": None, "eval": None}],
         "evals": [],
         "pieces": False, "piece_question": None, "context": "none",
-        "characters": 1250, "tokens": 313, "reorders": 0, "mask": [], "never": [],
+        "characters": 1250, "tokens": 313, "reorders": 0,
+        "masked": ["own-imports", "e-mail", "comments"], "mask": [], "never": [],
         "sends": {"name": "Model", "at": "https://model.example.test", "model": "m-1", "key": "MODEL_KEY", "keyed": False,
                   "unusable": None}}
 

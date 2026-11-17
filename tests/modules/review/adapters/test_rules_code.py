@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from xarch.kernel.source import Import, Unparsable
+from xarch.kernel.source import CommentSpan, Import, Unparsable
 from xarch.modules.review.adapters.rules_code import RulesCode
 from xarch.modules.review.domain import published as review
 from xarch.modules.review.domain.errors import Refused
@@ -89,7 +89,8 @@ def test_what_an_eval_reads_is_handed_on_file_by_file_with_each_thing_s_lines_an
     rules = Rules(READ, kept)
     files = (("kernel/ids.py", "class Id: ...\n"), ("kernel/x.py", "x = 1\n"))
     assert RulesCode(rules).reads("p", "app", "rule", files) == (
-        Reads("kernel/ids.py", (IDS,), (Read((2, 4), "Id.new"),)), Reads("kernel/x.py", (), ()))
+        Reads(CodeFile("kernel/ids.py", "", "class Id: ...\n", (IDS,)), (Read((2, 4), "Id.new"),)),
+        Reads(CodeFile("kernel/x.py", "", "x = 1\n"), ()))
     assert rules.asked == [KeepFacts("p", "app", "rule", files)]
 
 
@@ -101,3 +102,12 @@ def test_what_an_eval_reads_is_handed_on_file_by_file_with_each_thing_s_lines_an
 def test_a_refusal_of_rules_to_say_what_an_eval_reads_is_refused_with_its_reason(result, reason):
     with pytest.raises(Refused, match=reason):
         RulesCode(Rules(READ, result)).reads("p", "app", "rule", ())
+
+
+def test_where_the_comments_of_a_file_and_of_a_file_an_eval_reads_lie_is_handed_on_as_rules_found_it():
+    comments = (CommentSpan(1, 14, 20), CommentSpan(2, 4, 9))
+    read = SourcesRead((SourceRead("app/kernel/ids.py", IN_PART, "kernel", "class Id: ...\n", comments=comments),))
+    kept = FactsKept((FileKept("kernel/ids.py", (), (FactKept(0, 0, ""),), comments),))
+    code = RulesCode(Rules(read, kept))
+    assert code.files((Path("app/kernel"),), Path("/src"), Path("/src/app"), "p", None).read[0].comments == comments
+    assert code.reads("p", "app", "rule", (("kernel/ids.py", "class Id: ...\n"),))[0].file.comments == comments

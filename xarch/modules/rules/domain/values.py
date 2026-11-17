@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from xarch.kernel.logic.placement import repeat_of
 from xarch.kernel.placement import Place
-from xarch.kernel.source import Import, Unparsable
+from xarch.kernel.source import CommentSpan, Import, Unparsable
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.domain.published import At, Drift, KnownName, Loosened, Piece, Translation, Weak
 from xarch.profile_values.capabilities import Shortfall
@@ -131,9 +131,19 @@ class Profile:
 
 @dataclass(frozen=True)
 class Comment:
-    """A line comment as written, its marker included, and the line it is on."""
+    """A line comment as written, its marker included, and the line it is on; and where it lies there: from column
+    column to column end of line last (0: its own line), columns counted in characters from 0, end past its last
+    character."""
     line: int
     text: str
+    column: int = 0
+    end: int = 0
+    last: int = 0
+
+    @property
+    def span(self) -> CommentSpan:
+        """Where it lies, in the words of a module that reads the source as text."""
+        return CommentSpan(self.line, self.column, self.end, self.last)
 
 
 @dataclass(frozen=True)

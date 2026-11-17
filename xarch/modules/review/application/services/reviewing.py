@@ -159,9 +159,9 @@ class ReviewService:
             files = tuple((path, file.text) for path, file in shown.items())
             reads = self._code.reads(cmd.profile, cmd.app.name, asked.asked, files) if files else ()
             running.append((asked, stood, tuple(
-                item for found in reads for file in (shown[found.path],)
+                item for found in reads for file in (shown[found.file.file],)
                 for item in asked_of(asked, file.file, file.part, masked(file.text, file.imports, cmd.app.name,
-                                                                          words.mask), found))))
+                                                                          words.mask, comments=file.comments), found))))
         return tuple(running), tuple(idle)
 
     def _shown(self, requests: tuple[Request, ...], kept: tuple[Answer | None, ...],

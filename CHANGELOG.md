@@ -14,6 +14,18 @@ All notable changes to this project are written here. The format follows
   function), and seven short example files say why they sit where they do.
 - In the bundled example files, and so in the docs `init` writes from them, every comment sits on a line of its
   own, above the code it explains, never at the end of a code line; the words of each are kept.
+- `xarch review` and `xarch review calibrate` cut every comment from what they send: a file, a piece and the opening
+  lines sent before it, the text an eval reads, placement's examples and an eval's own, in a run and its dry run
+  alike. A comment would tell the decision model what its writer thought of the code, often where it belongs. What a
+  comment is, the language's reader says (a `#` inside a string is none, a docstring is no comment): it hands each
+  comment's place in its line through rules to review. A comment is cut with the blanks before it, and a line that
+  held only a comment stays as an empty line, so the lines of a piece do not move. A dry run says so where it lists
+  what is masked: in text, "masked in each text: every comment (cut from its line, the line kept), ...", now in
+  `review calibrate --dry-run` too; in JSON, `"masked": ["own-imports", "e-mail", "comments"]` beside `mask`.
+  `chars` is still the length of the text sent; whether a file is judged at all (800 to 200,000 characters) is counted
+  on the file as it is, `small` and the sizes of pieces on the text sent. What a calibration record is held as now
+  names what review always masks, so every record of placement or of an eval made before this is stale: run
+  `xarch review calibrate` again.
 
 ## [0.1.0] - 2026-11-17
 

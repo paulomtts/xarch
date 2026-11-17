@@ -10,10 +10,10 @@ from tests.fakes.filesystem import FakeSourceTree
 from tests.fakes.profiles import FakeProfiles
 from tests.modules.rules.application.helpers import controller
 from tests.modules.rules.builders import profile
-from xarch.kernel.source import Import
+from xarch.kernel.source import CommentSpan, Import
 from xarch.modules.rules.contract import CheckRefused, ChecksCannotRun, FactKept, FactsKept, FileKept, KeepFacts, Piece
 from xarch.modules.rules.domain.errors import ProfileUnusable
-from xarch.modules.rules.domain.values import Asked, Class, Function, SourceFile
+from xarch.modules.rules.domain.values import Asked, Class, Comment, Function, SourceFile
 from xarch.profile_values.checks import APP, Condition, Scope
 
 CLOCK = Import(1, ("app", "kernel", "time"), ("Clock",))
@@ -57,3 +57,12 @@ def kept(asked: dict[str, Asked], command: KeepFacts, refused: ProfileUnusable |
 ])
 def test_kept(given, when, then):
     assert kept(given, when, ProfileUnusable("gone: cannot read the file")) == then
+
+
+def test_each_file_given_comes_back_with_where_its_comments_lie_as_its_reader_finds_them():
+    parsed = {"noted": SourceFile("", (), (), comments=(Comment(1, "# why", 7, 12), Comment(2, "# how", 0, 5)),
+                                  functions=(Function(3, "run"),))}
+    profiles = FakeProfiles({"mine": profile(asked={"rule": FILES})})
+    found = controller(FakeSourceTree(Path("/src/app"), {}, parsed=parsed), profiles).kept(
+        KeepFacts("mine", "app", "rule", ((DOMAIN, "noted"),)))
+    assert found == FactsKept((FileKept(DOMAIN, (), (FactKept(0, 0, ""),), (CommentSpan(1, 7, 12), CommentSpan(2, 0, 5))),))

@@ -1,7 +1,7 @@
 """Use case: hold the evals of the profile's own to their examples around fakes: each example file asked as review
 would ask a file of the app, the verdict and the line read, and the record rewritten for each eval whose every example
 has its answer; with --dry-run nothing is sent or recorded; offline only the answers kept are read."""
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 import pytest
@@ -9,7 +9,7 @@ import pytest
 from tests.fakes.review import FakeAnswers, FakeCalibrations, FakeCode, FakeDecisionModel, FakeProfile
 from tests.modules.review.application.helpers import controller
 from tests.modules.review.builders import PARTS
-from xarch.kernel.source import Import
+from xarch.kernel.source import CommentSpan, Import
 from xarch.modules.review.contract import (
     CHOOSE,
     CLEAN,
@@ -321,3 +321,30 @@ def test_a_placement_example_review_never_matches_is_never_sent_and_its_part_is_
     assert isinstance(done, Calibrated) and model.asked == [START.text] and done.placement is not None
     assert done.held_back == planned.held_back
     assert done.placement.parts == (PartHeld("domain", ELSEWHERE), PartHeld("main", PASSED, "", 1))
+
+
+def test_placement_s_examples_are_sent_with_their_comments_cut_in_a_dry_run_and_a_calibration_alike():
+    example = CodeFile("modules/documents/domain/noted.py", "domain",
+                       "# an invariant: domain\nclass Value:  # one value\n    text = '# kept'\n",
+                       comments=(CommentSpan(1, 0, 22), CommentSpan(2, 14, 25)))
+    sent = "\nclass Value:\n    text = '# kept'\n"
+    planned, _ = holding({}, (example,), (), Calibrate(CWD, APP, "cli", dry_run=True))
+    assert isinstance(planned, CalibrationPlanned)
+    assert [(item.text, item.chars) for item in planned.requests] == [(sent, len(sent))]
+    result, held = holding({sent: Answer("m-1.2", (("domain", 0.9), ("main", 0.1)))}, (example,))
+    assert isinstance(result, Calibrated) and result.placement is not None and RECORD in held.placed
+
+
+def test_an_eval_s_own_examples_are_sent_with_their_comments_cut_in_a_dry_run_and_a_calibration_alike():
+    noted = "def a(doc):\n    # it decides here\n    if doc.x: raise E  # the rule\n"
+    rule = replace(RULE, flagged_examples=(("domain/a.py", noted), ("domain/b.py", WORSE)))
+    code = FakeCode({}, comments={noted: (CommentSpan(2, 4, 21), CommentSpan(3, 23, 33))})
+    sent = "def a(doc):\n\n    if doc.x: raise E\n"
+    profile = FakeProfile({"cli": Words(PARTS, evals=(rule,))})
+    planned = controller(code, profile, FakeDecisionModel({}), FakeAnswers()).calibrate(
+        Calibrate(CWD, APP, "cli", dry_run=True))
+    assert isinstance(planned, CalibrationPlanned) and planned.requests[0].text == sent
+    model = FakeDecisionModel({sent: yes(0.9), WORSE: yes(0.8), GOOD: yes(0.1), FINE: yes(0.2)})
+    found = controller(code, profile, model, FakeAnswers()).calibrate(Calibrate(CWD, APP, "cli"))
+    assert isinstance(found, Calibrated) and found.passed and model.asked[0] == sent
+    assert not any("decides here" in text or "the rule" in text for text in model.asked)
