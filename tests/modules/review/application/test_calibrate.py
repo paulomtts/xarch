@@ -17,6 +17,7 @@ from xarch.modules.review.contract import (
     FLAGGED,
     NOT_CACHED,
     PASSED,
+    REFUSED,
     YES_NO,
     Calibrate,
     Calibrated,
@@ -71,11 +72,12 @@ class Given:
     keyed: bool = True
     by_order: dict = field(default_factory=dict)
     recorded: dict = field(default_factory=dict)
+    refused: dict = field(default_factory=dict)
 
 
 def calibrate(given: Given, cmd: Calibrate):
     profile = FakeProfile({"cli": Words(PARTS, evals=given.evals)}, refused={"gone": "gone: cannot read the file"})
-    model = FakeDecisionModel(given.answers, keyed=given.keyed, by_order=given.by_order)
+    model = FakeDecisionModel(given.answers, keyed=given.keyed, by_order=given.by_order, refused=given.refused)
     held = FakeCalibrations({RECORD: given.recorded})
     result = controller(FakeCode({}), profile, model, FakeAnswers(), held).calibrate(cmd)
     return result, held, model
@@ -120,6 +122,30 @@ def calibrate(given: Given, cmd: Calibrate):
 ])
 def test_calibrate(given, when, then):
     assert calibrate(given, when)[0] == then
+
+
+def test_an_example_refused_alone_is_unanswered_with_the_words_its_eval_is_not_held_and_the_others_are_asked():
+    result, held, model = calibrate(Given(evals=(RULE, SENDING), answers=dict(PASSING),
+                                          refused={BAD: "TypeSafe answered 413: too large"},
+                                          by_order={(t, o): pick(0.9 if t in (BAD, WORSE) else 0.1)
+                                                    for t in (WORSE, GOOD, FINE) for o in ("reads", "sends")}),
+                                    Calibrate(CWD, APP, "cli"))
+    assert isinstance(result, Calibrated) and result.failure == "" and not result.complete
+    assert result.unasked == (Unasked("domain/a.py", REFUSED, "", "rule", FLAGGED, "TypeSafe answered 413: too large"),
+                              Unasked("domain/a.py", REFUSED, "", "sending", FLAGGED,
+                                      "TypeSafe answered 413: too large"))
+    assert [item.complete for item in result.held] == [False, False] and held.kept.get(RECORD, {}) == {}
+    assert model.asked.count(WORSE) == 3 and model.asked.count(FINE) == 3
+
+
+def test_a_placement_example_refused_alone_leaves_placement_unheld_and_the_next_example_is_asked():
+    profile = FakeProfile({"cli": Words(PARTS, examples_root="app")}, examples={"cli": ((VALUE, START), ())})
+    model = FakeDecisionModel(placed((START, {"domain": 0.1, "main": 0.9})), refused={VALUE.text: "too large"})
+    held = FakeCalibrations()
+    result = controller(FakeCode({}), profile, model, FakeAnswers(), held).calibrate(Calibrate(CWD, APP, "cli"))
+    assert isinstance(result, Calibrated) and result.placement is None and result.failure == ""
+    assert result.unasked == (Unasked(VALUE.file, REFUSED, "", "placement", CLEAN, "too large"),)
+    assert model.asked == [VALUE.text, START.text] and held.placed == {}
 
 
 def test_the_record_holds_each_eval_held_by_its_hash_the_model_asked_and_the_values_and_drops_one_no_longer_written():

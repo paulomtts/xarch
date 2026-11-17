@@ -7,7 +7,7 @@ from typing import Any
 
 from xarch.cli.reports.document import document
 from xarch.cli.reports.eval_report import (
-    UNASKED,
+    REFUSED_AGAIN,
     VERDICTS,
     eval_documents,
     eval_lines,
@@ -17,6 +17,7 @@ from xarch.cli.reports.eval_report import (
     sends_of,
     standing_document,
     standing_lines,
+    unasked_why,
 )
 from xarch.modules.review.contract import (
     A_TEST,
@@ -37,6 +38,7 @@ from xarch.modules.review.contract import (
     NOT_SOURCE,
     OUTSIDE,
     PIECE_CHARS,
+    REFUSED,
     SMALL,
     UNPARSABLE,
     UNPLACED,
@@ -191,8 +193,9 @@ def reading_lines(read: ReviewReading) -> list[str]:
         lines += ["", "left out:", *(f"  {item.file}: {_why(item)}" for item in read.left_out)]
     if read.unasked:
         lines += ["", f"unanswered ({len(read.unasked)}): the review is incomplete (exit 3)",
-                  *(f"  {item.file}{_of(item)}: {UNASKED[item.why]}" for item in read.unasked)]
+                  *(f"  {item.file}{_of(item)}: {unasked_why(item)}" for item in read.unasked)]
         lines += [f"  the decision model said: {read.failure}"] if read.failure else []
+        lines += [f"  {REFUSED_AGAIN}"] if any(item.why == REFUSED for item in read.unasked) else []
         lines.append("  what to do: run it again once the cache holds the answers, or without --offline with the key "
                      "set; what was answered is kept and not asked again")
     return lines
@@ -328,7 +331,8 @@ def _left_out(item: LeftOut) -> dict[str, Any]:
 
 
 def _unasked(item: Unasked) -> dict[str, Any]:
-    return {"file": item.file, "why": item.why, "piece": item.piece or None, "eval": item.asked or None}
+    return {"file": item.file, "why": item.why, "piece": item.piece or None, "eval": item.asked or None,
+            "said": item.said or None}
 
 
 def _of(item: Unasked) -> str:

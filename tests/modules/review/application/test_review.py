@@ -16,6 +16,7 @@ from xarch.modules.review.contract import (
     NEVER,
     NO_CONTEXT,
     NOT_CACHED,
+    REFUSED,
     SMALL,
     AllAndOthers,
     AllInPieces,
@@ -275,6 +276,35 @@ def test_when_the_other_order_fails_the_file_is_unanswered_and_nothing_more_is_s
     assert isinstance(found, ReviewReading)
     assert found.unasked == (Unasked(DOCUMENT.file, FAILED), Unasked(OTHER.file, FAILED))
     assert found.failure == "the decision model failed" and found.sent == 1
+
+
+TOO_LARGE = "TypeSafe answered 413: the state is too large"
+
+
+def test_a_request_refused_alone_leaves_its_file_unanswered_with_the_words_and_the_rest_is_still_asked():
+    model = FakeDecisionModel({SENT_OTHER: HIGH}, refused={SENT: TOO_LARGE})
+    answers = FakeAnswers()
+    found = _review(model, answers, review("app/two"))
+    assert isinstance(found, ReviewReading)
+    assert model.asked == [SENT, SENT_OTHER] and len(answers.kept) == 1
+    assert (found.readings, found.unasked) == ((PLACED,), (Unasked(DOCUMENT.file, REFUSED, said=TOO_LARGE),))
+    assert (found.failure, found.sent, found.complete) == ("", 1, False)
+
+
+def test_a_refused_request_is_said_as_refused_and_a_failure_after_it_still_stops_the_sending():
+    model = FakeDecisionModel({}, refused={SENT: TOO_LARGE})
+    found = _review(model, FakeAnswers(), review("app/two"))
+    assert isinstance(found, ReviewReading)
+    assert found.unasked == (Unasked(DOCUMENT.file, REFUSED, said=TOO_LARGE), Unasked(OTHER.file, FAILED))
+    assert found.failure == "the decision model failed" and model.asked == [SENT, SENT_OTHER]
+
+
+def test_a_file_whose_other_order_is_refused_is_unanswered_as_refused_and_the_next_file_is_asked():
+    model = FakeDecisionModel({SENT_OTHER: HIGH}, refused={SENT: TOO_LARGE})
+    found = _review(model, _kept(None), review("app/two"))
+    assert isinstance(found, ReviewReading) and model.asked == [SENT, SENT_OTHER]
+    assert found.unasked == (Unasked(DOCUMENT.file, REFUSED, said=TOO_LARGE),)
+    assert [item.file for item in found.readings] == [OTHER.file] and found.failure == ""
 
 
 def test_a_dry_run_says_in_how_many_other_orders_a_file_near_its_line_is_asked_again():

@@ -26,6 +26,7 @@ from xarch.modules.review.contract import (
     NO_CONTEXT,
     NOT_CACHED,
     PASSED,
+    REFUSED,
     SMALL,
     Choice,
     LeftOut,
@@ -222,6 +223,18 @@ def test_a_reading_with_files_unanswered_says_why_each_how_the_decision_model_fa
         "answered is kept and not asked again"]
 
 
+def test_a_file_refused_alone_is_unanswered_with_what_the_decision_model_said_of_it_and_what_to_do():
+    unanswered = replace(READ, unasked=(Unasked("app/c.py", REFUSED, said="TypeSafe answered 413: too large"),))
+    lines = reading_lines(unanswered)
+    at = lines.index("unanswered (1): the review is incomplete (exit 3)")
+    assert lines[at + 1:at + 3] == [
+        "  app/c.py: not answered: the decision model refused this request alone, and the rest was still sent: "
+        "TypeSafe answered 413: too large",
+        "  a request refused alone is refused again as it is: read what the decision model said of it"]
+    assert json.loads(reading_document("cli", unanswered))["unanswered"] == [
+        {"file": "app/c.py", "why": "refused", "piece": None, "eval": None, "said": "TypeSafe answered 413: too large"}]
+
+
 def test_the_json_of_a_reading_holds_each_file_with_the_probability_of_each_part_and_what_was_sent():
     document = json.loads(reading_document("cli", replace(READ, unasked=(Unasked("app/c.py", NOT_CACHED),))))
     assert document == {
@@ -243,7 +256,8 @@ def test_the_json_of_a_reading_holds_each_file_with_the_probability_of_each_part
         "evals": [],
         "sends": {"name": "Model", "at": "https://model.example.test", "model": "m-1", "key": "MODEL_KEY", "keyed": True},
         "sent": {"calls": 1, "cached": 1, "input_tokens": 2400, "output_tokens": 3},
-        "unanswered": [{"file": "app/c.py", "why": "not-cached", "piece": None, "eval": None}], "failure": None}
+        "unanswered": [{"file": "app/c.py", "why": "not-cached", "piece": None, "eval": None, "said": None}],
+        "failure": None}
 
 
 LOWEST = (PieceReading(1, "method", "DocumentService.export_pdf", (41, 88), 1530, 0.11, (("services", 0.11),

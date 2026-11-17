@@ -16,6 +16,7 @@ from xarch.modules.review.contract import (
     GAP,
     NOT_CACHED,
     PLACEMENT,
+    REFUSED,
     SCORE,
     YES_NO,
     Calibrated,
@@ -48,7 +49,10 @@ SANITY = ("the examples are short, and short files read lower for being short: a
           "a way to set lines")
 VERDICTS = {DISAGREE: "examples disagree", ELSEWHERE: "measured elsewhere only: no example of its own"}
 UNASKED = {NOT_CACHED: "not in the cache, and --offline sends nothing",
-           FAILED: "not answered: the decision model failed, and nothing more was sent"}
+           FAILED: "not answered: the decision model failed, and nothing more was sent",
+           REFUSED: "not answered: the decision model refused this request alone, and the rest was still sent"}
+REFUSED_AGAIN = "a request refused alone is refused again as it is: read what the decision model said of it"
+"""What to do about a request the decision model refused alone."""
 
 
 def _to_run(name: str) -> str:
@@ -142,6 +146,7 @@ def calibration_lines(done: Calibrated, record: str) -> list[str]:
         lines += ["", f"unanswered ({len(done.unasked)}): the calibration is incomplete (exit 3), and an eval with an "
                       "example unanswered is not recorded", *(_unasked(item) for item in done.unasked)]
         lines += [f"  the decision model said: {done.failure}"] if done.failure else []
+        lines += [f"  {REFUSED_AGAIN}"] if any(item.why == REFUSED for item in done.unasked) else []
     return lines
 
 
@@ -187,7 +192,12 @@ def _held(item: EvalHeld) -> list[str]:
 
 def _unasked(item: Unasked) -> str:
     kind = f"{item.example} example " if item.example else ""
-    return f"  {item.asked}: {kind}{item.file}{f' ({item.piece})' if item.piece else ''}: {UNASKED[item.why]}"
+    return f"  {item.asked}: {kind}{item.file}{f' ({item.piece})' if item.piece else ''}: {unasked_why(item)}"
+
+
+def unasked_why(item: Unasked) -> str:
+    """Why a question has no answer, with what the decision model said of it when it refused it alone."""
+    return f"{UNASKED[item.why]}: {item.said}" if item.said else UNASKED[item.why]
 
 
 def calibration_document(done: Calibrated, record: str) -> str:
@@ -208,7 +218,7 @@ def calibration_document(done: Calibrated, record: str) -> str:
         "sent": {"calls": done.sent, "cached": done.cached, "input_tokens": done.input_tokens,
                  "output_tokens": done.output_tokens},
         "unanswered": [{"id": item.asked, "file": item.file, "kind": item.example or None, "why": item.why,
-                        "name": item.piece or None}
+                        "name": item.piece or None, "said": item.said or None}
                        for item in done.unasked],
         "failure": done.failure or None})
 

@@ -145,11 +145,13 @@ class Calibration:
 @dataclass(frozen=True)
 class Run:
     """The questions of one run so far: the folder the answers are kept in; whether the run may send nothing; the
-    answers the decision model gave and those read from the folder, in order; and the decision model's words when it
-    failed ("" while it has not), after which nothing more is sent."""
+    answers the decision model gave and those read from the folder, in order; the decision model's words when it
+    failed ("" while it has not), after which nothing more is sent; and each question it refused alone, by the key its
+    answer would be kept under, with its words, after which the rest is still sent."""
     folder: Path
     offline: bool
     asked: tuple[Answer, ...] = ()
     reused: tuple[Answer, ...] = ()
     failure: str = ""
+    refused: tuple[tuple[str, str], ...] = ()
 

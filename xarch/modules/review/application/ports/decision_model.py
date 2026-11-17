@@ -20,5 +20,6 @@ class DecisionModel(Protocol):
 
     def ask(self, text: str, question: Choice) -> Answer:
         """The answer to the question about the text; raises NoKey when the key is not set, Refused when it cannot be
-        used, Unanswered when the service fails, its reason holding no key."""
+        used, NotAccepted when the service refuses this request alone as its own fault, Unanswered when it fails
+        otherwise, its reason holding no key."""
         ...

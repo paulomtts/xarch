@@ -109,7 +109,8 @@ class ReviewService:
                     answer, going = answering.answer(going, item.text, other)
                     answers.append(answer)
             if any(answer is None for answer in answers):
-                unasked.append(Unasked(item.file, why_unasked(bool(going.failure))))
+                said = answering.refusal(going, item.text, (question, *others))
+                unasked.append(Unasked(item.file, why_unasked(bool(going.failure), said), said=said))
             else:
                 readings.append(reading(item, averaged(tuple(a for a in answers if a is not None)), parts[item.part],
                                         len(answers)))
@@ -120,7 +121,8 @@ class ReviewService:
                 answer, going = answering.answer(going, item.text, piece)
                 pieces.append(answer)
                 if answer is None:
-                    unasked.append(Unasked(item.file, why_unasked(bool(going.failure)), item.piece))
+                    said = answering.refusal(going, item.text, (piece,))
+                    unasked.append(Unasked(item.file, why_unasked(bool(going.failure), said), item.piece, said=said))
             ranked_pieces.append(pieces_read(file, items, tuple(pieces), too_small, cmd.context))
         ran: list[EvalRead] = []
         for asked, stood, items in evals:
@@ -128,7 +130,8 @@ class ReviewService:
             for item in items:
                 found_answers, going = answering.all(going, item.text, orders(asked.question))
                 answered.append(found_answers)
-            unasked += unasked_of(asked, items, tuple(answered), bool(going.failure))
+            unasked += unasked_of(asked, items, tuple(answered), bool(going.failure),
+                                  tuple(answering.refusal(going, item.text, orders(asked.question)) for item in items))
             ran.append(went(asked, stood, items, tuple(answered)))
         judged_files = undoubted(tuple(readings), calibration)
         return ReviewReading(by, total, ranked(judged_files), left_out(files), tuple(unasked), sends,

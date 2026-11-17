@@ -37,6 +37,7 @@ from xarch.modules.review.domain.published import (
     PASSED,
     PIECE_CHARS,
     PLACEMENT,
+    REFUSED,
     SCORE,
     SHOWN,
     SMALL,
@@ -67,7 +68,7 @@ from xarch.modules.review.domain.published import (
 
 __all__ = ["A_TEST", "BAND", "BY_ALL", "BY_LIST", "BY_PATHS", "EXCLUDED", "FAILED", "FEWEST_SUMMED", "IMPORTS", "LINK",
            "MARKED_SMALL", "MAX_FILES", "MAX_PIECED", "MIN_CHARS", "MISSING", "NEVER", "NO_CONTEXT", "NOT_CACHED",
-           "NOT_SOURCE", "OUTSIDE", "PIECE_CHARS", "SHOWN", "SMALL", "UNPARSABLE", "UNPLACED", "Choice", "LeftOut",
+           "NOT_SOURCE", "OUTSIDE", "PIECE_CHARS", "REFUSED", "SHOWN", "SMALL", "UNPARSABLE", "UNPLACED", "Choice", "LeftOut",
            "Option", "PartRead", "PieceReading", "PiecesRead", "Reading", "Request", "Sender", "Unasked", "Review",
            "ReviewPlanned", "ReviewReading", "NothingChosen", "AllAndOthers", "AllInPieces", "TooManyFiles",
            "KeyMissing", "ReviewRefused", "ReviewResult", "CALIBRATED", "CHOOSE", "FAILED_EXAMPLES", "GAP", "SCORE",

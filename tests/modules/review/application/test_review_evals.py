@@ -15,6 +15,7 @@ from xarch.modules.review.contract import (
     FAILED_EXAMPLES,
     NOT_CACHED,
     PASSED,
+    REFUSED,
     STALE,
     UNCALIBRATED,
     YES_NO,
@@ -60,10 +61,10 @@ def calibrated() -> Calibration:
 HELD = calibrated()
 
 def review(record: dict[str, Calibration], answers: dict[str, Answer], dry_run: bool = False, offline: bool = False,
-           keyed: bool = True, evals: tuple[EvalText, ...] = (RULE,)):
+           keyed: bool = True, evals: tuple[EvalText, ...] = (RULE,), refused: dict[str, str] | None = None):
     code = FakeCode({"app/x.py": Found((FILE,))}, reads=READS)
     profile = FakeProfile({"p": Words(PARTS, evals=evals)})
-    model = FakeDecisionModel(answers, keyed)
+    model = FakeDecisionModel(answers, keyed, refused=refused)
     command = Review((Path("app/x.py"),), (), False, CWD, APP, "p", None, dry_run, None, offline)
     result = controller(code, profile, model, FakeAnswers(), FakeCalibrations({RECORD: record})).review(command)
     return result, model, code
@@ -124,6 +125,14 @@ def test_offline_a_question_of_an_eval_not_in_the_cache_is_unanswered():
     result, _, _ = review({"rule": HELD}, {}, offline=True)
     assert isinstance(result, ReviewReading) and not result.complete
     assert Unasked(FILE.file, NOT_CACHED, "Doc.publish", "rule") in result.unasked
+
+
+def test_a_question_of_an_eval_refused_alone_is_unanswered_with_the_words_and_placement_is_still_read():
+    result, model, _ = review({"rule": HELD}, {TEXT: PLACED}, refused={PUBLISH: "TypeSafe answered 422: state: too long"})
+    assert isinstance(result, ReviewReading) and not result.complete and result.failure == ""
+    assert result.unasked == (Unasked(FILE.file, REFUSED, "Doc.publish", "rule",
+                                      said="TypeSafe answered 422: state: too long"),)
+    assert [item.file for item in result.readings] == [FILE.file] and model.asked == [TEXT, PUBLISH]
 
 
 DOUBTED = Answer("m-1.2", (("domain", 0.1), ("main", 0.9)))

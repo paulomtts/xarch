@@ -46,6 +46,12 @@ class Unanswered(DomainError):
     """The decision model failed on a question; reason says how, the key in no word of it."""
 
 
+class NotAccepted(Unanswered):
+    """The decision model would not take one request, as that request's own fault (too large, or one it cannot read);
+    reason says why, the key in no word of it. Unlike any other failure, it says nothing of the next request, which is
+    still sent."""
+
+
 class Refused(DomainError):
     """The files or the profile cannot be read: a path outside the project, a profile that cannot be used; reason
     says which, as the module that refused says it."""

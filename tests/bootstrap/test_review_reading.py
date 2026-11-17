@@ -26,20 +26,22 @@ VALUES_SENT = len(VALUES_BODY.replace("docs@example.com", "person@example.test")
 
 
 class ModelServer:
-    """A decision model on this machine: it answers each question with a status and a body chosen by the text sent,
-    and keeps every request it was sent."""
+    """A decision model on this machine: it answers each question with a status and a body chosen by the text sent
+    (the status given only to a text holding only, when it is set, the others answered), and keeps every request it
+    was sent."""
 
-    def __init__(self, status: int = 200, detail: object = None):
-        self.status, self.detail, self.received = status, detail, []
+    def __init__(self, status: int = 200, detail: object = None, only: str = ""):
+        self.status, self.detail, self.only, self.received = status, detail, only, []
         owner = self
 
         class Handler(BaseHTTPRequestHandler):
             def do_POST(self):
                 body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
                 owner.received.append((self.path, dict(self.headers), body))
-                answer = owner.answer(body) if owner.status == 200 else {"detail": owner.detail}
+                status = owner.status if owner.only in body["state"] else 200
+                answer = owner.answer(body) if status == 200 else {"detail": owner.detail}
                 payload = json.dumps(answer).encode()
-                self.send_response(owner.status)
+                self.send_response(status)
                 self.send_header("Content-Length", str(len(payload)))
                 self.end_headers()
                 self.wfile.write(payload)
@@ -160,7 +162,8 @@ def test_offline_a_file_whose_answer_is_not_kept_is_unanswered_and_the_run_exits
     assert result.exit_code == 3, result.output
     assert f"  {SERVICE}: not in the cache, and --offline sends nothing" in result.output.splitlines()
     document = json.loads(review(SERVICE, "--offline", "--format", "json", key=None).output)
-    assert (document["complete"], document["unanswered"]) == (False, [{"file": SERVICE, "why": "not-cached", "piece": None, "eval": None}])
+    assert (document["complete"], document["unanswered"]) == (False, [{"file": SERVICE, "why": "not-cached", "piece": None,
+                                                                       "eval": None, "said": None}])
 
 
 def test_a_cache_folder_given_is_the_one_written_and_read(served, tmp_path):
@@ -179,7 +182,7 @@ def test_with_no_key_a_review_that_would_send_is_refused_with_exit_2_and_sends_n
 
 @pytest.mark.parametrize("status, detail", [
     pytest.param(401, f"Invalid API key {KEY}", id="a key refused and echoed back"),
-    pytest.param(422, [{"loc": ["body", KEY], "msg": f"bad {KEY}", "type": "x"}], id="a request refused naming the key"),
+    pytest.param(415, [{"loc": ["body", KEY], "msg": f"bad {KEY}", "type": "x"}], id="a media type refused naming the key"),
     pytest.param(502, KEY, id="a failure the documentation does not describe, echoing the key"),
 ])
 def test_a_failure_of_the_decision_model_leaves_the_rest_unanswered_exits_3_and_shows_no_key(status, detail):
@@ -191,10 +194,36 @@ def test_a_failure_of_the_decision_model_leaves_the_rest_unanswered_exits_3_and_
         server.stop()
     assert (text.exit_code, document.exit_code) == (3, 3)
     assert f"  the decision model said: TypeSafe answered {status}" in text.output
-    assert json.loads(document.output)["unanswered"] == [{"file": SERVICE, "why": "failed", "piece": None, "eval": None},
-                                                          {"file": VALUES, "why": "failed", "piece": None, "eval": None}]
+    assert json.loads(document.output)["unanswered"] == [
+        {"file": SERVICE, "why": "failed", "piece": None, "eval": None, "said": None},
+        {"file": VALUES, "why": "failed", "piece": None, "eval": None, "said": None}]
     assert KEY not in text.output + document.output
     assert len(server.received) == 2
+
+
+@pytest.mark.parametrize("status, detail", [
+    pytest.param(413, "the state is too large", id="a request too large"),
+    pytest.param(422, [{"loc": ["body", KEY], "msg": f"bad {KEY}", "type": "x"}], id="a request invalid naming the key"),
+    pytest.param(400, "malformed state", id="a bad request"),
+])
+def test_a_request_refused_alone_leaves_its_file_unanswered_the_rest_is_sent_and_read_and_the_run_exits_3(status,
+                                                                                                         detail):
+    server = ModelServer(status, detail, only="DocumentService")
+    try:
+        text = review(SERVICE, VALUES, url=server.url)
+        document = review(SERVICE, VALUES, "--format", "json", url=server.url)
+    finally:
+        server.stop()
+    assert (text.exit_code, document.exit_code) == (3, 3)
+    assert (f"  {SERVICE}: not answered: the decision model refused this request alone, and the rest was still sent: "
+            f"TypeSafe answered {status}") in text.output
+    assert "  the decision model said: " not in text.output
+    found = json.loads(document.output)
+    assert [(item["file"], item["why"]) for item in found["unanswered"]] == [(SERVICE, "refused")]
+    assert found["unanswered"][0]["said"].startswith(f"TypeSafe answered {status}") and found["failure"] is None
+    assert [item["file"] for item in found["placement"]["files"]] == [VALUES]
+    assert KEY not in text.output + document.output
+    assert len(server.received) == 3
 
 
 def test_the_key_is_in_no_output_of_a_dry_run_or_a_refusal_when_it_is_set():

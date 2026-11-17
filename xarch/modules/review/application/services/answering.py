@@ -6,15 +6,15 @@ from xarch.modules.review.application.logic.answers import fits, request_key
 from xarch.modules.review.application.logic.sending import asks
 from xarch.modules.review.application.ports.answers import Answers
 from xarch.modules.review.application.ports.decision_model import DecisionModel
-from xarch.modules.review.domain.errors import Unanswered
+from xarch.modules.review.domain.errors import NotAccepted, Unanswered
 from xarch.modules.review.domain.published import Choice
 from xarch.modules.review.domain.values import Answer, Run
 
 
 class AnsweringService:
     """Answers the questions of a run about texts: the answer kept in the run's folder is read, else the decision model
-    is asked and its answer kept; once it fails, nothing more is asked. Each answer comes back with the run as it now
-    stands."""
+    is asked and its answer kept; once it fails, nothing more is asked, but a request it refuses alone is set aside
+    with its words and the rest still asked. Each answer comes back with the run as it now stands."""
 
     def __init__(self, model: DecisionModel, answers: Answers):
         self._model, self._answers = model, answers
@@ -27,17 +27,27 @@ class AnsweringService:
         return found if found is not None and fits(found, question) else None
 
     def answer(self, run: Run, text: str, question: Choice) -> tuple[Answer | None, Run]:
-        """The answer kept, else the decision model's, which is kept; None when there is none (offline, or the decision
-        model failed now or before)."""
+        """The answer kept, else the decision model's, which is kept; None when there is none (offline, the decision
+        model refused this request alone, or it failed now or before)."""
         kept = self.kept(run, text, question)
         if not asks(kept, run.offline, bool(run.failure)):
             return kept, run if kept is None else replace(run, reused=(*run.reused, kept))
+        key = request_key(self._model.sends().model, text, question)
         try:
             answer = self._model.ask(text, question)
+        except NotAccepted as e:
+            return None, replace(run, refused=(*run.refused, (key, e.reason)))
         except Unanswered as e:
             return None, replace(run, failure=e.reason)
-        self._answers.put(run.folder, request_key(self._model.sends().model, text, question), answer)
+        self._answers.put(run.folder, key, answer)
         return answer, replace(run, asked=(*run.asked, answer))
+
+    def refusal(self, run: Run, text: str, questions: tuple[Choice, ...]) -> str:
+        """What the decision model said of the first of the questions about the text that it refused alone in the run;
+        "" when it refused none of them."""
+        said = dict(run.refused)
+        model = self._model.sends().model
+        return next((said[key] for question in questions if (key := request_key(model, text, question)) in said), "")
 
     def all(self, run: Run, text: str, questions: tuple[Choice, ...]) -> tuple[tuple[Answer, ...] | None, Run]:
         """The answer to each question about the text, in order; None when one has none."""

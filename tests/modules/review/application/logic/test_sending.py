@@ -2,7 +2,7 @@
 import pytest
 
 from xarch.modules.review.application.logic.sending import asks, needs_key, why_unasked
-from xarch.modules.review.domain.published import FAILED, NOT_CACHED
+from xarch.modules.review.domain.published import FAILED, NOT_CACHED, REFUSED
 from xarch.modules.review.domain.values import Answer
 
 KEPT = Answer("m", (("domain", 1.0),))
@@ -24,6 +24,11 @@ def test_whether_a_question_is_sent(kept, offline, failed, then):
 ])
 def test_why_a_question_has_no_answer(failed, then):
     assert why_unasked(failed) == then
+
+
+@pytest.mark.parametrize("failed", [False, True])
+def test_a_question_the_decision_model_refused_alone_is_refused_whatever_failed_after_it(failed):
+    assert why_unasked(failed, "TypeSafe answered 413: too large") == REFUSED
 
 
 @pytest.mark.parametrize("kept, offline, keyed, then", [

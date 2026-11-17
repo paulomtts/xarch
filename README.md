@@ -634,10 +634,12 @@ with its name, kind and lines, and the exact text it would send.
 Exit codes: 0 when the review ran to the end, whatever it read (doubtful files are not failures); 2 when it refused
 before sending anything (no selection, `--all` with paths, `--all --pieces`, `--dry-run` with `--offline`,
 `--context` without `--pieces`, over `--max-files`, an app folder that is not there, no key or one that cannot be used, a path outside the project, a profile that cannot be used, a `--files-from` list that is not UTF-8, a
-cache folder that cannot keep answers, a record that cannot be read), or when what it got cannot be written; 3 when some file or piece judged has no answer: not cached under `--offline`, or the decision
-model failed (unreachable, rate-limited after retries, a request refused), after which nothing more is sent. What was
-answered is printed, the rest is listed as unanswered with why and the decision model's words, and the answers already
-kept stay kept. When the reader of the output goes early (`| head`), the rest of the output is dropped quietly and the
+cache folder that cannot keep answers, a record that cannot be read), or when what it got cannot be written; 3 when some file or piece judged has no answer: not cached under `--offline`; refused by the
+decision model as that request's own fault (malformed, too large, a field it cannot accept), after which the rest is
+still sent; or the decision model failed otherwise (unreachable, a timeout or rate-limited after retries, a key
+refused, the service erroring), after which nothing more is sent. What was answered is printed, the rest is listed as
+unanswered with why and the decision model's words (for a request refused alone, under it), and the answers already
+kept stay kept. `review calibrate` does the same with its examples. When the reader of the output goes early (`| head`), the rest of the output is dropped quietly and the
 exit code is still the run's own, for every command. A path written `./calibrate` (or `calibrate/`) is a path to
 review, not the word `calibrate`.
 
@@ -781,14 +783,15 @@ A review: `{"ok", "advisory", "profile", "dry_run": false, "complete", "model", 
 [{"rank", "kind", "name", "first", "last", "chars", "probability", "distribution"}]}], "evals": [{"id", "state", "why",
 "run", "line", "ask", "form", "examples": {"flagged", "clean"}, "model", "asked", "readings": [{"file", "line", "name",
 "value", "message", "fix"}]}], "sends", "sent": {"calls", "cached", "input_tokens", "output_tokens"}, "unanswered":
-[{"file", "why", "piece", "eval"}], "failure"}`: `answered_by` the model versions that gave the answers read, asked
+[{"file", "why", "piece", "eval", "said"}], "failure"}`: `answered_by` the model versions that gave the answers read, asked
 or kept, each once (the text header names them when they are not the model asked alone); the files
 ranked from the lowest probability; `line_by_hand` whether the profile sets the part's line; `small` whether the file
 is under 2,000 characters; `orders` how many orders of the options it was asked in (`probability` and `distribution`
 are their mean); `distribution` the probability on each part by name, the only place another part is named (also for
 a piece); `parts` each part read, `summed` whether 3 or more of its files were read and `litmus_note` whether the note
 on its litmus applies; `pieces` each file's lowest 3 pieces (empty when fewer than 2 were judged, or when `answered`
-is false); `why` of an unanswered file or piece `not-cached` or `failed`, `piece` its name (null for a whole file);
+is false); `why` of an unanswered file or piece `not-cached`, `failed` or `refused` (that request alone), `piece` its name
+(null for a whole file), `said` the decision model's words of a request it refused alone (else null);
 `failure` the decision model's words when it failed (else null); `examples` of placement's calibration `calibrated`,
 `uncalibrated` or `stale`, each part's `verdict` `passed`, `disagree` or `elsewhere` (also a part's `examples` in
 `parts`, null when placement is not calibrated); each eval's `state` `calibrated`, `uncalibrated`, `failed` or
@@ -802,7 +805,7 @@ refusal is `{"ok": false, "error"}`.
 A calibration: `{"ok", "calibrated": [{"id", "complete", "passed", "line", "line_by_hand", "crossed", "examples":
 [{"path", "flagged", "value"}]}], "placement": {"model", "answered_by", "parts": [{"part", "verdict", "crossed",
 "examples"}]}, "passed", "complete", "record", "model", "answered_by", "sends", "sent", "unanswered": [{"id", "file",
-"kind", "why", "name"}],
+"kind", "why", "name", "said"}],
 "failure"}` (`placement` null when it was not held); its dry run: `{"ok", "dry_run": true, "sent": false, "evals",
 "requests": [{"id", "example", "kind", "part", "name", "first", "last", "chars", "cached", "text", "body"}],
 "characters", "tokens", "mask", "sends"}`, `kind` `flagged` or `clean`.

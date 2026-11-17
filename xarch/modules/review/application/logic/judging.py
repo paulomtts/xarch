@@ -61,10 +61,12 @@ def went(asked: EvalText, stood: EvalRead, requests: tuple[Request, ...],
 
 
 def unasked_of(asked: EvalText, requests: tuple[Request, ...], answers: tuple[tuple[Answer, ...] | None, ...],
-               failed: bool) -> list[Unasked]:
-    """Each thing an eval was to read whose question has no answer, with why."""
-    return [Unasked(item.file, why_unasked(failed), item.piece, asked.asked, item.example)
-            for item, answered in zip(requests, answers, strict=True) if answered is None]
+               failed: bool, refused: tuple[str, ...] = ()) -> list[Unasked]:
+    """Each thing an eval was to read whose question has no answer, with why, and what the decision model said of
+    each it refused alone (refused, by request, "" for one it did not; none given, it refused none)."""
+    said = refused or ("",) * len(requests)
+    return [Unasked(item.file, why_unasked(failed, words), item.piece, asked.asked, item.example, words)
+            for item, answered, words in zip(requests, answers, said, strict=True) if answered is None]
 
 
 def example_value(asked: EvalText, requests: tuple[Request, ...],

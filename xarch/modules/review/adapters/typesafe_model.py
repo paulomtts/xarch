@@ -5,13 +5,14 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from xarch.modules.review.domain.errors import NoKey, Refused, Unanswered
+from xarch.modules.review.domain.errors import NoKey, NotAccepted, Refused, Unanswered
 from xarch.modules.review.domain.published import SCORE, YES_NO, Choice, Option, Sender
 from xarch.modules.review.domain.values import Answer
 from xarch.platform.data_files import DataFileWriter
 from xarch.platform.typesafe import (
     ChoiceAnswer,
     ChoiceQuestion,
+    InvalidRequestError,
     NoulAnswer,
     NoulQuestion,
     Question,
@@ -32,6 +33,11 @@ NAME = "placement"
 """The name the question travels under in a request."""
 YES, NO = "yes", "no"
 """The options of a yes or no, by name, as review's question names them."""
+ONE_REQUEST = (400, 413, 422)
+"""The statuses with which TypeSafe refuses a request as that request's own fault (malformed, too large, a field it
+cannot accept), so that the next one may still be answered. Any other failure is not one request's: 415 is the media
+type every request is sent as, a rule the client catches before any call is one of the question every file is asked,
+and a key refused, TypeSafe busy after its retries, no connection, a timeout or TypeSafe erroring stop the run."""
 
 
 class TypeSafeModel:
@@ -49,12 +55,17 @@ class TypeSafeModel:
         return self._writer.json(build_request(self._model, text, {NAME: _question(question)}))
 
     def ask(self, text: str, question: Choice) -> Answer:
-        """A failure of the client raises Unanswered with the client's message, which holds no key."""
+        """A request TypeSafe refuses as its own fault raises NotAccepted, any other failure of the client Unanswered,
+        each with the client's message, which holds no key."""
         client = self._client()
         if client is None:
             raise NoKey(KEY)
         try:
             response = client.ask(text, {NAME: _question(question)})
+        except InvalidRequestError as e:
+            if e.status in ONE_REQUEST:
+                raise NotAccepted(str(e)) from None
+            raise Unanswered(str(e)) from None
         except TypeSafeError as e:
             raise Unanswered(str(e)) from None
         return _answer(response, question.options)

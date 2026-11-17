@@ -2,7 +2,7 @@
 whether a run is refused for want of a key, which happens before anything is sent."""
 from __future__ import annotations
 
-from xarch.modules.review.domain.published import FAILED, NOT_CACHED
+from xarch.modules.review.domain.published import FAILED, NOT_CACHED, REFUSED
 from xarch.modules.review.domain.values import Answer
 
 
@@ -11,9 +11,10 @@ def asks(kept: Answer | None, offline: bool, failed: bool) -> bool:
     return kept is None and not offline and not failed
 
 
-def why_unasked(failed: bool) -> str:
-    """Why a question has no answer: something failed, so nothing more was sent; or it was not kept, offline."""
-    return FAILED if failed else NOT_CACHED
+def why_unasked(failed: bool, refused: str = "") -> str:
+    """Why a question has no answer: the decision model refused it alone (refused, its words, is not ""); something
+    failed, so nothing more was sent; or it was not kept, offline."""
+    return REFUSED if refused else FAILED if failed else NOT_CACHED
 
 
 def needs_key(kept: tuple[Answer | None, ...], offline: bool, keyed: bool) -> bool:

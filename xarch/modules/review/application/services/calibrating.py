@@ -88,7 +88,8 @@ class CalibrationService:
                     found_answers, going = answering.all(going, item.text, orders(asked.question))
                     each_answer.append(found_answers)
                 answered = tuple(each_answer)
-                unasked += unasked_of(asked, items, answered, bool(going.failure))
+                unasked += unasked_of(asked, items, answered, bool(going.failure),
+                                      tuple(answering.refusal(going, item.text, orders(asked.question)) for item in items))
                 models += [answers[0].model for answers in answered if answers]
                 found = example_value(asked, items, answered)
                 if found is not None:
@@ -109,7 +110,8 @@ class CalibrationService:
         for example, side, item in placed:
             answer, going = answering.answer(going, item.text, question)
             if answer is None:
-                unasked.append(Unasked(example.file, why_unasked(bool(going.failure)), "", PLACEMENT, side))
+                said = answering.refusal(going, item.text, (question,))
+                unasked.append(Unasked(example.file, why_unasked(bool(going.failure), said), "", PLACEMENT, side, said))
             else:
                 reads[side].append((example, dict(answer.probabilities)))
                 answered_by = answered_by or answer.model

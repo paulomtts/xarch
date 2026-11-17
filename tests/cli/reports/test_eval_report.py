@@ -26,6 +26,7 @@ from xarch.modules.review.contract import (
     FLAGGED,
     NOT_CACHED,
     PASSED,
+    REFUSED,
     STALE,
     UNCALIBRATED,
     YES_NO,
@@ -192,6 +193,17 @@ def test_an_example_unanswered_says_whether_it_is_a_flagged_or_a_clean_one_in_te
     assert "  rule: flagged example services/a.py: not in the cache, and --offline sends nothing" in lines
     assert "  rule: clean example services/a.py: not in the cache, and --offline sends nothing" in lines
     assert [item["kind"] for item in json.loads(calibration_document(done, ""))["unanswered"]] == ["flagged", "clean"]
+
+
+def test_an_example_refused_alone_is_unanswered_with_what_the_decision_model_said_in_text_and_in_json():
+    done = Calibrated((EvalHeld("rule", (), False, 0.0, "", False),), None,
+                      (Unasked("services/a.py", REFUSED, "", "rule", FLAGGED, "TypeSafe answered 422: too long"),),
+                      SENDS, 0, 0, 0, 0, "")
+    assert ("  rule: flagged example services/a.py: not answered: the decision model refused this request alone, and "
+            "the rest was still sent: TypeSafe answered 422: too long") in calibration_lines(done, "")
+    assert json.loads(calibration_document(done, ""))["unanswered"] == [
+        {"id": "rule", "file": "services/a.py", "kind": "flagged", "why": "refused", "name": None,
+         "said": "TypeSafe answered 422: too long"}]
 
 
 def test_a_text_sent_is_quoted_with_each_character_a_terminal_would_not_show_written_as_its_code():

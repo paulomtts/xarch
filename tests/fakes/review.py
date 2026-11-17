@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from xarch.modules.review.domain.errors import NoKey, Refused, Unanswered
+from xarch.modules.review.domain.errors import NoKey, NotAccepted, Refused, Unanswered
 from xarch.modules.review.domain.published import Choice, PlacementHeld, Sender
 from xarch.modules.review.domain.values import Answer, Calibration, CodeFile, Found, Read, Reads, Words
 
@@ -58,11 +58,13 @@ class FakeProfile:
 class FakeDecisionModel:
     """Satisfies review's DecisionModel: the answer to each text by the text and the name of the question's first
     option, else by the text alone, every question asked recorded; a question with no answer (or None by its order)
-    raises Unanswered with reason; asking with keyed False raises NoKey."""
+    raises Unanswered with reason, one about a text in refused NotAccepted with the words given for it; asking with
+    keyed False raises NoKey."""
 
     def __init__(self, answers: dict[str, Answer], keyed: bool = True, reason: str = "the decision model failed",
-                 by_order: dict[tuple[str, str], Answer | None] | None = None):
+                 by_order: dict[tuple[str, str], Answer | None] | None = None, refused: dict[str, str] | None = None):
         self._answers, self._keyed, self._reason, self._by_order = answers, keyed, reason, dict(by_order or {})
+        self._refused = dict(refused or {})
         self.asked: list[str] = []
 
     def sends(self) -> Sender:
@@ -75,6 +77,8 @@ class FakeDecisionModel:
         if not self._keyed:
             raise NoKey("MODEL_KEY")
         self.asked.append(text)
+        if text in self._refused:
+            raise NotAccepted(self._refused[text])
         answer = self._by_order.get((text, question.options[0].name), self._answers.get(text))
         if answer is None:
             raise Unanswered(self._reason)

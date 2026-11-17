@@ -6,19 +6,23 @@ import json
 import pytest
 
 from xarch.modules.review.adapters.typesafe_model import KEY, NAME, SERVICE, TypeSafeModel
-from xarch.modules.review.domain.errors import NoKey, Refused, Unanswered
+from xarch.modules.review.domain.errors import NoKey, NotAccepted, Refused, Unanswered
 from xarch.modules.review.domain.published import SCORE, YES_NO, Choice, Option, Sender
 from xarch.modules.review.domain.values import Answer
 from xarch.platform.data_files import DataFileWriter
 from xarch.platform.typesafe import (
+    AuthenticationError,
     ChoiceAnswer,
     ChoiceQuestion,
     InvalidRequestError,
     NoulAnswer,
     NoulQuestion,
+    RateLimitedError,
     Response,
     ScoreAnswer,
     ScoreQuestion,
+    UnexpectedResponseError,
+    UnreachableError,
     Usage,
 )
 
@@ -70,6 +74,26 @@ def test_an_option_the_answer_gives_nothing_holds_0():
 def test_a_failure_of_the_client_is_unanswered_with_its_message():
     with pytest.raises(Unanswered, match="TypeSafe answered 413: too big"):
         model(Client(error=InvalidRequestError("TypeSafe answered 413: too big", 413))).ask("x", QUESTION)
+
+
+@pytest.mark.parametrize("status", [400, 413, 422])
+def test_a_request_the_service_refuses_as_its_own_fault_is_not_accepted_with_the_client_s_message(status):
+    with pytest.raises(NotAccepted, match=f"TypeSafe answered {status}: too big"):
+        model(Client(error=InvalidRequestError(f"TypeSafe answered {status}: too big", status))).ask("x", QUESTION)
+
+
+@pytest.mark.parametrize("error", [
+    pytest.param(InvalidRequestError("TypeSafe answered 415: no", 415), id="a media type, the same for every request"),
+    pytest.param(InvalidRequestError("a choice question needs 1 to 255 options"), id="a rule caught before any call"),
+    pytest.param(AuthenticationError("TypeSafe answered 401: no", 401), id="a key refused"),
+    pytest.param(UnreachableError("TypeSafe did not answer in time", timed_out=True), id="a timeout"),
+    pytest.param(UnexpectedResponseError("TypeSafe answered 502: down", 502), id="the service erroring"),
+    pytest.param(RateLimitedError("TypeSafe answered 429: busy", 429, retryable=True), id="busy after retries"),
+])
+def test_any_other_failure_of_the_client_is_unanswered_and_not_one_request_s_own(error):
+    with pytest.raises(Unanswered) as caught:
+        model(Client(error=error)).ask("x", QUESTION)
+    assert not isinstance(caught.value, NotAccepted)
 
 
 def test_with_no_key_set_asking_raises_no_key_naming_the_variable():

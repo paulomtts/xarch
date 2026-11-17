@@ -36,7 +36,10 @@ The first release.
   `--all --pieces` is refused. It sends each file's masked text to the decision model whenever its key is set in
   the environment, and refuses without one; `--dry-run` shows exactly what would be sent and sends nothing;
   answers are kept in the project's `.xarch/cache/review/` (or `--cache`), holding no code, and `--offline` reads them
-  only. Exit 0 when it ran, 2 when it refused, 3 when a file has no answer. It never changes what `check` finds. A
+  only. Exit 0 when it ran, 2 when it refused, 3 when a file has no answer. A request the decision model refuses as
+  its own fault (malformed, too large, a field it cannot accept) leaves that file, piece or example unanswered with
+  the decision model's words and the rest is still sent; any other failure stops the sending. It never changes what
+  `check` finds. A
   file reached through a link to a file outside the app, or to no source file, is left out and never read. The key
   is read without the whitespace around it; one a request header cannot carry is refused (exit 2) before anything is
   sent, and the key is in no message; a redirect is never followed. An answer kept that does not answer its question

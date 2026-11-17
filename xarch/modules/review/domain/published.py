@@ -62,9 +62,10 @@ in the trials, reordering the options moved a file's probability by up to 0.09 i
 it."""
 FEWEST_SUMMED = 3
 """The fewest files of a part a run reads to say how they read: fewer say nothing of the part."""
-NOT_CACHED, FAILED = "not-cached", "failed"
-"""Why a question has no answer: it is not in the cache and nothing was sent (offline); or the decision model failed
-on it or on a question before it, and nothing more was sent."""
+NOT_CACHED, FAILED, REFUSED = "not-cached", "failed", "refused"
+"""Why a question has no answer: it is not in the cache and nothing was sent (offline); the decision model failed
+on it or on a question before it, and nothing more was sent; or the decision model refused that request alone, as its
+own fault, and the rest was still sent."""
 
 
 CHOOSE, YES_NO, SCORE = "choice", "yes-no", "score"
@@ -159,15 +160,16 @@ class Reading:
 
 @dataclass(frozen=True)
 class Unasked:
-    """A file judged whose question has no answer: the file, as `check` shows it, why (NOT_CACHED or FAILED), the
-    piece of it whose question it is ("" for the whole file), the eval of the profile's own that asks it ("" for
-    placement), and, for an example a calibration asks of, FLAGGED or CLEAN, the kind of example ("" for a file of the
-    app)."""
+    """A file judged whose question has no answer: the file, as `check` shows it, why (NOT_CACHED, FAILED or
+    REFUSED), the piece of it whose question it is ("" for the whole file), the eval of the profile's own that asks it
+    ("" for placement), for an example a calibration asks of, FLAGGED or CLEAN, the kind of example ("" for a file of
+    the app), and, when it was REFUSED, what the decision model said of it ("" otherwise)."""
     file: str
     why: str
     piece: str = ""
     asked: str = ""
     example: str = ""
+    said: str = ""
 
 
 @dataclass(frozen=True)
