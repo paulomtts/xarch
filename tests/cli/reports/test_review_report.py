@@ -104,7 +104,8 @@ def test_the_json_of_a_dry_run_holds_every_request_in_full_and_the_question_once
         "evals": [],
         "pieces": False, "piece_question": None, "context": "none",
         "characters": 1250, "tokens": 313, "reorders": 0, "mask": [], "never": [],
-        "sends": {"name": "Model", "at": "https://model.example.test", "model": "m-1", "key": "MODEL_KEY", "keyed": False}}
+        "sends": {"name": "Model", "at": "https://model.example.test", "model": "m-1", "key": "MODEL_KEY", "keyed": False,
+                  "unusable": None}}
 
 
 def test_a_request_in_the_cache_already_is_said_not_to_be_sent():
@@ -262,7 +263,8 @@ def test_the_json_of_a_reading_holds_each_file_with_the_probability_of_each_part
                       "parts": []},
         "pieces": [],
         "evals": [],
-        "sends": {"name": "Model", "at": "https://model.example.test", "model": "m-1", "key": "MODEL_KEY", "keyed": True},
+        "sends": {"name": "Model", "at": "https://model.example.test", "model": "m-1", "key": "MODEL_KEY", "keyed": True,
+                  "unusable": None},
         "sent": {"calls": 1, "cached": 1, "input_tokens": 2400, "output_tokens": 3},
         "unanswered": [{"file": "app/c.py", "why": "not-cached", "piece": None, "eval": None, "said": None}],
         "failure": None}

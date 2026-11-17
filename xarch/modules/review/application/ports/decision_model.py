@@ -11,7 +11,7 @@ class DecisionModel(Protocol):
 
     def sends(self) -> Sender:
         """What a question is sent to: the service, where it answers, the model asked, the variable its key is read
-        from, and whether the key is set now; raises Refused when the key set cannot be used, saying none of it."""
+        from, whether the key is set now, and why the key set cannot be used, saying none of it."""
         ...
 
     def body(self, text: str, question: Choice) -> str:

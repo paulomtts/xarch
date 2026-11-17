@@ -450,3 +450,30 @@ def test_a_dry_run_says_the_paths_of_review_never_in_force_and_those_that_matche
     assert isinstance(planned, ReviewPlanned)
     assert (planned.never, planned.unmatched) == (("app/modules/documents/domain/document.py", "modules/*/domain/*.py"),
                                                   ("app/modules/documents/domain/document.py",))
+
+
+UNUSABLE = "it holds a character a request header cannot carry; set it to the key alone"
+
+
+def test_a_key_that_cannot_be_used_refuses_a_review_that_would_send_before_anything_is_sent():
+    model = FakeDecisionModel({SENT: LOW}, unusable=UNUSABLE)
+    found = controller(FakeCode(FOUND), FakeProfile(WORDS), model, FakeAnswers()).review(review("app/x.py"))
+    assert found == ReviewRefused(f"MODEL_KEY cannot be used: {UNUSABLE}") and model.tried == []
+
+
+def test_a_key_that_cannot_be_used_blocks_no_dry_run_which_says_why_and_no_review_offline():
+    model = FakeDecisionModel({}, unusable=UNUSABLE)
+    answers = FakeAnswers()
+    planned = controller(FakeCode(FOUND), FakeProfile(WORDS), model, answers).review(review("app/x.py", dry_run=True))
+    assert isinstance(planned, ReviewPlanned) and planned.sends == replace(SENDS, unusable=UNUSABLE)
+    offline = controller(FakeCode(FOUND), FakeProfile(WORDS), model, answers).review(review("app/x.py", offline=True))
+    assert isinstance(offline, ReviewReading) and [item.why for item in offline.unasked] == [NOT_CACHED]
+    assert model.asked == []
+
+
+def test_a_key_that_cannot_be_used_blocks_no_review_whose_every_answer_is_kept():
+    code, profile, answers = FakeCode(FOUND), FakeProfile(WORDS), FakeAnswers()
+    controller(code, profile, FakeDecisionModel({SENT: HIGH}), answers).review(review("app/x.py"))
+    model = FakeDecisionModel({}, unusable=UNUSABLE)
+    found = controller(code, profile, model, answers).review(review("app/x.py"))
+    assert isinstance(found, ReviewReading) and found.cached == 1 and model.asked == []

@@ -59,16 +59,19 @@ class FakeDecisionModel:
     """Satisfies review's DecisionModel: the answer to each text by the text and the name of the question's first
     option, else by the text alone, every question asked recorded; a question with no answer (or None by its order)
     raises Unanswered with reason, one about a text in refused NotAccepted with the words given for it; asking with
-    keyed False raises NoKey."""
+    keyed False raises NoKey, and with a key that cannot be used (unusable, why, is not "") Refused, the question
+    recorded as tried."""
 
     def __init__(self, answers: dict[str, Answer], keyed: bool = True, reason: str = "the decision model failed",
-                 by_order: dict[tuple[str, str], Answer | None] | None = None, refused: dict[str, str] | None = None):
+                 by_order: dict[tuple[str, str], Answer | None] | None = None, refused: dict[str, str] | None = None,
+                 unusable: str = ""):
         self._answers, self._keyed, self._reason, self._by_order = answers, keyed, reason, dict(by_order or {})
-        self._refused = dict(refused or {})
+        self._refused, self._unusable = dict(refused or {}), unusable
         self.asked: list[str] = []
+        self.tried: list[str] = []
 
     def sends(self) -> Sender:
-        return Sender("Model", "https://model.example.test", "m-1", "MODEL_KEY", self._keyed)
+        return Sender("Model", "https://model.example.test", "m-1", "MODEL_KEY", self._keyed, self._unusable)
 
     def body(self, text: str, question: Choice) -> str:
         return f"{question.ask} {len(question.options)} {text}"
@@ -76,6 +79,9 @@ class FakeDecisionModel:
     def ask(self, text: str, question: Choice) -> Answer:
         if not self._keyed:
             raise NoKey("MODEL_KEY")
+        if self._unusable:
+            self.tried.append(text)
+            raise Refused(f"MODEL_KEY cannot be used: {self._unusable}")
         self.asked.append(text)
         if text in self._refused:
             raise NotAccepted(self._refused[text])

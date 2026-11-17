@@ -41,8 +41,10 @@ The first release.
   the decision model's words and the rest is still sent; any other failure stops the sending. It never changes what
   `check` finds. A file over 200,000 characters is left out as too large, in a dry run too, and never sent. A
   file reached through a link to a file outside the app, or to no source file, is left out and never read. The key
-  is read without the whitespace around it; one a request header cannot carry is refused (exit 2) before anything is
-  sent, and the key is in no message; a redirect is never followed. An answer kept that does not answer its question
+  is read without the whitespace around it; one a request header cannot carry refuses a run that would send (exit 2)
+  before anything is sent, and blocks no run that sends nothing: `--dry-run` says, in text and in JSON
+  (`sends.unusable`), that the key is set but cannot be used, and why, and `--offline` runs as usual; the key is in
+  no message; a redirect is never followed. An answer kept that does not answer its question
   is asked again; the cache and the record are never read or written through a link; a cache folder that is a file,
   a record that cannot be read, a record or cache that cannot be written, and a `--files-from` list that is not UTF-8
   are refused (exit 2), never a traceback; the header names the model versions that answered when they are not the

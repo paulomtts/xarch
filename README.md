@@ -580,8 +580,9 @@ it**, so a key set for another purpose (a shell profile, a CI secret) starts sen
 without `--dry-run` or `--offline`. With no key set, a review that would send refuses (exit 2): "no key: set
 TYPESAFE_API_KEY, or run --dry-run to see what would be sent, or --offline to use cached answers only". The key is
 read without the whitespace around it, and one of whitespace alone is no key; a key holding a character a request
-header cannot carry (a line break inside it, a control character, a letter outside ASCII) is refused by every review,
-`--dry-run` included, before anything is sent (exit 2), in a sentence that holds none of it. What is sent
+header cannot carry (a line break inside it, a control character, a letter outside ASCII) refuses a review or a
+calibration that would send, before anything is sent (exit 2), in a sentence that holds none of it; it blocks no run
+that sends nothing: `--dry-run` says the key is set but cannot be used, and why, and `--offline` runs as usual. What is sent
 is, for each file judged whose answer is not cached, its masked text (below) and the question; the key travels as the
 `Authorization` header only, with `User-Agent: xarch`; a redirect is never followed, so the key goes to that one
 place. The key is never printed, logged, cached or written. Nothing
@@ -607,7 +608,7 @@ profile's `review.mask` hides (below). Nothing else is masked: docstrings, comme
 written, so a file that must not leave the machine is one not to choose, or one for `review.never`.
 
 `--dry-run` sends nothing and needs no key. It opens with what leaves the machine, to whom, and whether the key is set
-now, then prints the question once (it is the same for every file), the masks in force, and each file judged with the
+now (and when it is set but cannot be used, why), then prints the question once (it is the same for every file), the masks in force, and each file judged with the
 exact text it would send (in text, each character a terminal would not show as itself, such as an escape or a form
 feed, written as its code, `\x1b`; the JSON holds the text as it is) and how many characters that text holds, marked when its answer is in the cache already (it would not be sent). It ends with the
 characters in all and about how many tokens they make (one for every four characters), and how many more requests a
@@ -776,12 +777,13 @@ and when it was not, what to run.
 "selection": {"by", "found", "judged", "left_out": [{"file", "why", "chars", "pattern"}]}, "question": {"ask",
 "role_only", "options": [{"name", "description"}]}, "requests": [{"file", "part", "chars", "cached", "text", "body",
 "piece", "kind", "first", "last", "eval"}], "pieces", "piece_question", "context", "characters", "tokens", "reorders",
-"mask", "never": [{"path", "matched"}], "evals", "sends": {"name", "at", "model", "key", "keyed"}}`: `body` the request as the decision model's service would receive it
+"mask", "never": [{"path", "matched"}], "evals", "sends": {"name", "at", "model", "key", "keyed", "unusable"}}`: `body` the request as the decision model's service would receive it
 (JSON text, formatted: the same JSON value the service receives, not the same bytes; the key left out); `chars` how
 many characters the text sent holds, masked; `piece`, `kind`, `first` and `last` the piece a request is about and the lines it spans
 (null for a whole file); `pieces` whether pieces are asked, `piece_question` the question each piece carries (null
 without `--pieces`) and `context` `none` or `imports`; `reorders` how many other orders a file near its line is asked
-again in; `sends.key` the name of the variable the key is read from (never the key) and `keyed` whether it is set.
+again in; `sends.key` the name of the variable the key is read from (never the key), `keyed` whether it is set, and
+`unusable` why the key set cannot be used (null when it can, or none is set).
 
 A review: `{"ok", "advisory", "profile", "dry_run": false, "complete", "model", "answered_by", "selection", "placement":
 {"calibration": {"state", "evidence", "examples": {"state", "why", "parts": [{"part", "verdict", "crossed",

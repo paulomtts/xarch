@@ -69,7 +69,7 @@ def test_the_question_offers_every_part_of_the_profile_by_its_litmus():
                                                                               False)
     assert json.loads(sent["body"])["state"] == sent["text"] and "Authorization" not in sent["body"]
     assert document["sends"] == {"name": "TypeSafe", "at": "https://api.typesafe.ai", "model": "jev-1.14.0",
-                                 "key": "TYPESAFE_API_KEY", "keyed": False}
+                                 "key": "TYPESAFE_API_KEY", "keyed": False, "unusable": None}
 
 
 def test_a_list_is_read_from_stdin_and_what_is_not_judged_is_said_with_why():

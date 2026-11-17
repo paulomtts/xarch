@@ -133,13 +133,15 @@ class Request:
 @dataclass(frozen=True)
 class Sender:
     """What review sends to, as the decision model's adapter says it: the service by name, where it answers, the
-    model asked, the variable of the environment its key is read from, and whether that key is set now. Review's own
-    code names no service."""
+    model asked, the variable of the environment its key is read from, whether that key is set now, and why the key
+    set cannot be used ("" when it can, or none is set), in words that hold none of it. Review's own code names no
+    service."""
     service: str
     at: str
     model: str
     key: str
     keyed: bool
+    unusable: str = ""
 
 
 @dataclass(frozen=True)

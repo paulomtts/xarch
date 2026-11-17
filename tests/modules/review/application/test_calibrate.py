@@ -248,3 +248,19 @@ def test_placement_s_examples_are_masked_as_written_for_their_own_app_whatever_t
     result, _ = holding({}, (example,), (), Calibrate(CWD, Path("/src/shop"), "cli", dry_run=True))
     assert isinstance(result, CalibrationPlanned)
     assert [item.text for item in result.requests] == ["from <masked> import Value\n"]
+
+
+UNUSABLE = "it holds a character a request header cannot carry; set it to the key alone"
+
+
+def test_a_key_that_cannot_be_used_refuses_a_calibration_that_would_send_and_blocks_no_dry_run_nor_one_offline():
+    profile = FakeProfile({"cli": Words(PARTS, evals=(RULE,))})
+    model = FakeDecisionModel(PASSING, unusable=UNUSABLE)
+    held = FakeCalibrations({RECORD: {}})
+    calibrating = controller(FakeCode({}), profile, model, FakeAnswers(), held)
+    assert calibrating.calibrate(Calibrate(CWD, APP, "cli")) == ReviewRefused(f"MODEL_KEY cannot be used: {UNUSABLE}")
+    planned = calibrating.calibrate(Calibrate(CWD, APP, "cli", dry_run=True))
+    assert isinstance(planned, CalibrationPlanned) and planned.sends.unusable == UNUSABLE
+    offline = calibrating.calibrate(Calibrate(CWD, APP, "cli", offline=True))
+    assert isinstance(offline, Calibrated) and {item.why for item in offline.unasked} == {NOT_CACHED}
+    assert model.tried == [] and held.kept[RECORD] == {}

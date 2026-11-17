@@ -254,21 +254,60 @@ def test_a_key_is_read_without_the_whitespace_around_it_and_one_of_whitespace_al
     assert len(served.received) == 1
 
 
-@pytest.mark.parametrize("key", [
+UNUSABLE = [
     pytest.param("sk-wired\nsecret-7f3a", id="a line break inside the key"),
     pytest.param("sk-wired\x07secret-7f3a", id="a control character"),
     pytest.param("sk-wired-sécret-7f3a", id="a letter outside ASCII"),
-])
-def test_a_key_a_header_cannot_carry_is_refused_with_exit_2_before_anything_is_sent_and_is_in_no_output(served, key):
+]
+CANNOT = "it holds a character a request header cannot carry; set it to the key alone"
+
+
+def shows_no_key(*runs) -> bool:
+    return not any(part in result.output for result in runs for part in ("sk-wired", "secret", "7f3a"))
+
+
+@pytest.mark.parametrize("key", UNUSABLE)
+def test_a_key_a_header_cannot_carry_refuses_a_run_that_would_send_with_exit_2_before_anything_is_sent(served, key):
     runs = [review(SERVICE, key=key, url=served.url), review(SERVICE, "--format", "json", key=key, url=served.url),
-            review(SERVICE, "--dry-run", key=key, url=served.url),
-            review("calibrate", "--eval", "placement", key=key, url=served.url)]
+            review("calibrate", "--eval", "placement", key=key, url=served.url),
+            review("calibrate", "--format", "json", key=key, url=served.url)]
     assert [result.exit_code for result in runs] == [2, 2, 2, 2]
-    assert ("TYPESAFE_API_KEY cannot be used: it holds a character a request header cannot carry; set it to the key "
-            "alone") in runs[0].output
-    assert json.loads(runs[1].output)["ok"] is False
-    assert not any(part in result.output for result in runs for part in ("sk-wired", "7f3a"))
+    assert f"TYPESAFE_API_KEY cannot be used: {CANNOT}" in runs[0].output + runs[2].output
+    assert json.loads(runs[1].output)["ok"] is False and json.loads(runs[3].output)["ok"] is False
+    assert shows_no_key(*runs)
     assert served.received == []
+
+
+@pytest.mark.parametrize("key", UNUSABLE)
+def test_a_key_a_header_cannot_carry_blocks_no_dry_run_which_says_the_key_is_set_but_cannot_be_used_and_why(served,
+                                                                                                          key):
+    runs = [review(SERVICE, "--dry-run", key=key, url=served.url),
+            review("calibrate", "--dry-run", key=key, url=served.url)]
+    documents = [review(SERVICE, "--dry-run", "--format", "json", key=key, url=served.url),
+                 review("calibrate", "--dry-run", "--format", "json", key=key, url=served.url)]
+    assert [result.exit_code for result in runs + documents] == [0, 0, 0, 0]
+    assert all(f"and the key is set now but cannot be used: {CANNOT}." in result.output for result in runs)
+    assert [(json.loads(result.output)["sends"]["keyed"], json.loads(result.output)["sends"]["unusable"])
+            for result in documents] == [(True, CANNOT), (True, CANNOT)]
+    assert shows_no_key(*runs, *documents)
+    assert served.received == []
+
+
+@pytest.mark.parametrize("key", UNUSABLE)
+def test_a_key_a_header_cannot_carry_blocks_no_run_offline(served, key):
+    assert review(SERVICE, url=served.url).exit_code == 0
+    runs = [review(SERVICE, "--offline", key=key, url=served.url),
+            review(SERVICE, "--offline", "--format", "json", key=key, url=served.url),
+            review("calibrate", "--offline", key=key, url=served.url)]
+    assert [result.exit_code for result in runs[:2]] == [0, 0] and runs[2].exit_code != 2
+    assert json.loads(runs[1].output)["sends"]["unusable"] == CANNOT
+    assert shows_no_key(*runs)
+    assert len(served.received) == 1
+
+
+def test_a_usable_key_or_none_is_said_usable_in_json():
+    assert json.loads(review(SERVICE, "--dry-run", "--format", "json").output)["sends"]["unusable"] is None
+    assert json.loads(review(SERVICE, "--dry-run", "--format", "json", key=None).output)["sends"]["unusable"] is None
 
 
 def test_a_key_echoed_back_escaped_in_json_is_cut_from_what_the_decision_model_said():

@@ -9,14 +9,14 @@ from xarch.modules.review.application.logic.masking import masked
 from xarch.modules.review.application.logic.placing import held_as as held_as_placed
 from xarch.modules.review.application.logic.placing import verdicts
 from xarch.modules.review.application.logic.questions import characters, placement, request, tokens
-from xarch.modules.review.application.logic.sending import needs_key, why_unasked
+from xarch.modules.review.application.logic.sending import needs_key, unusable_key, why_unasked
 from xarch.modules.review.application.ports.calibrations import Calibrations
 from xarch.modules.review.application.ports.code import Code
 from xarch.modules.review.application.ports.decision_model import DecisionModel
 from xarch.modules.review.application.ports.profile import Profile
 from xarch.modules.review.application.services.answering import AnsweringService
 from xarch.modules.review.contract import Calibrate, Calibrated, CalibrationPlanned
-from xarch.modules.review.domain.errors import NoKey, NoSuchEval
+from xarch.modules.review.domain.errors import NoKey, NoSuchEval, Refused
 from xarch.modules.review.domain.published import (
     CLEAN,
     FLAGGED,
@@ -74,6 +74,8 @@ class CalibrationService:
                                       sent, tokens(sent), words.mask, sends)
         if needs_key(later, cmd.offline, sends.keyed):
             raise NoKey(sends.key)
+        if unusable := unusable_key(later, cmd.offline, sends):
+            raise Refused(unusable)
         record = self._calibrations.get(record_file(cmd.app))
         held: list[EvalHeld] = []
         unasked: list[Unasked] = []

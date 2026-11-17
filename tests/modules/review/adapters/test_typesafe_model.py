@@ -136,12 +136,13 @@ def test_the_body_of_a_yes_or_no_and_of_a_score_is_what_the_service_receives():
                      "criteria": [f"level {n}" for n in range(5)]}
 
 
-def test_a_key_the_client_refuses_is_refused_in_a_sentence_without_it_whether_it_would_send_or_not():
+def test_a_key_the_client_refuses_is_said_set_but_unusable_and_refused_when_asking_in_a_sentence_without_it():
     def connect():
-        raise InvalidRequestError("the API key holds a character a header cannot carry")
+        raise InvalidRequestError("the API key holds a character a header cannot carry sk-wired")
     model = TypeSafeModel(connect, "jev-1.14.0", AT, DataFileWriter())
-    for use in (model.sends, lambda: model.ask("text", QUESTION)):
-        with pytest.raises(Refused) as caught:
-            use()
-        assert caught.value.reason == (f"{KEY} cannot be used: it holds a character a request header cannot carry; "
-                                       "set it to the key alone")
+    why = "it holds a character a request header cannot carry; set it to the key alone"
+    assert model.sends() == Sender(SERVICE, AT, "jev-1.14.0", KEY, True, why)
+    with pytest.raises(Refused) as caught:
+        model.ask("text", QUESTION)
+    assert caught.value.reason == f"{KEY} cannot be used: {why}"
+    assert "sk-wired" not in repr(model.sends()) + caught.value.reason

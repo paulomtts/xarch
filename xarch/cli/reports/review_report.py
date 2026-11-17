@@ -12,6 +12,7 @@ from xarch.cli.reports.eval_report import (
     eval_documents,
     eval_lines,
     eval_plan_lines,
+    key_now,
     model_said,
     quoted,
     sends_of,
@@ -79,11 +80,10 @@ MASKED = ("masked in each text: the dotted name each import of the app's own cod
 
 def _what_leaves(sends: Sender, pieced: bool = False) -> str:
     """What leaves the machine in a review that sends, to whom, and that the key alone allows it."""
-    now = "set" if sends.keyed else "not set"
     each = "each file and each piece of a file" if pieced else "each file"
     return (f"Without --dry-run, review sends to {sends.service} ({sends.at}), as the model {sends.model}, the masked "
             f"text of {each} below that is not in the cache and the question after it: nothing else of the project. "
-            f"It sends whenever {sends.key} is set: the key alone allows it, and the key is {now} now.")
+            f"It sends whenever {sends.key} is set: the key alone allows it, and the key is {key_now(sends)}.")
 
 
 def plan_lines(planned: ReviewPlanned) -> list[str]:

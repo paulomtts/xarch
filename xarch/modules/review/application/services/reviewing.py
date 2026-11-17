@@ -28,7 +28,7 @@ from xarch.modules.review.application.logic.questions import (
     tokens,
 )
 from xarch.modules.review.application.logic.selection import chosen, judged, left_out, ways, within_cap
-from xarch.modules.review.application.logic.sending import needs_key, why_unasked
+from xarch.modules.review.application.logic.sending import needs_key, unusable_key, why_unasked
 from xarch.modules.review.application.logic.withholding import held_back, unmatched
 from xarch.modules.review.application.ports.calibrations import Calibrations
 from xarch.modules.review.application.ports.code import Code
@@ -36,7 +36,7 @@ from xarch.modules.review.application.ports.decision_model import DecisionModel
 from xarch.modules.review.application.ports.profile import Profile
 from xarch.modules.review.application.services.answering import AnsweringService
 from xarch.modules.review.contract import Review, ReviewPlanned, ReviewReading
-from xarch.modules.review.domain.errors import NoKey
+from xarch.modules.review.domain.errors import NoKey, Refused
 from xarch.modules.review.domain.published import CALIBRATED, Choice, EvalRead, PiecesRead, Reading, Request, Unasked
 from xarch.modules.review.domain.values import Answer, CodeFile, EvalText, Run, Words
 
@@ -99,6 +99,8 @@ class ReviewService:
                       if answer is not None and asked_again(answer, parts[item.part]) for other in others)
         if needs_key(kept + again + held + later, cmd.offline, sends.keyed):
             raise NoKey(sends.key)
+        if unusable := unusable_key(kept + again + held + later, cmd.offline, sends):
+            raise Refused(unusable)
         readings: list[Reading] = []
         unasked: list[Unasked] = []
         for item in requests:

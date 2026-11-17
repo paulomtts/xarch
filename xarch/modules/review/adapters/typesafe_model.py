@@ -33,6 +33,9 @@ NAME = "placement"
 """The name the question travels under in a request."""
 YES, NO = "yes", "no"
 """The options of a yes or no, by name, as review's question names them."""
+UNUSABLE = "it holds a character a request header cannot carry; set it to the key alone"
+"""Why a key the client refuses cannot be used, which is all the client refuses a key for: in words that hold none
+of it."""
 ONE_REQUEST = (400, 413, 422)
 """The statuses with which TypeSafe refuses a request as that request's own fault (malformed, too large, a field it
 cannot accept), so that the next one may still be answered. Any other failure is not one request's: 415 is the media
@@ -42,14 +45,17 @@ and a key refused, TypeSafe busy after its retries, no connection, a timeout or 
 
 class TypeSafeModel:
     """Satisfies review's DecisionModel by translating its question into TypeSafe's and the answer back. connect gives
-    the client with the key set, or None when it is not; the key never passes through here, and a key the client
-    refuses raises Refused with a sentence that holds none of it."""
+    the client with the key set, or None when it is not; the key never passes through here. A key the client refuses
+    is said set but unusable, and why, and asking with it raises Refused; neither holds any of it."""
 
     def __init__(self, connect: Callable[[], TypeSafe | None], model: str, at: str, writer: DataFileWriter):
         self._connect, self._model, self._at, self._writer = connect, model, at, writer
 
     def sends(self) -> Sender:
-        return Sender(SERVICE, self._at, self._model, KEY, self._client() is not None)
+        try:
+            return Sender(SERVICE, self._at, self._model, KEY, self._client() is not None)
+        except Refused:
+            return Sender(SERVICE, self._at, self._model, KEY, True, UNUSABLE)
 
     def body(self, text: str, question: Choice) -> str:
         return self._writer.json(build_request(self._model, text, {NAME: _question(question)}))
@@ -75,8 +81,7 @@ class TypeSafeModel:
         try:
             return self._connect()
         except TypeSafeError:
-            raise Refused(f"{KEY} cannot be used: it holds a character a request header cannot carry; set it to the "
-                          "key alone") from None
+            raise Refused(f"{KEY} cannot be used: {UNUSABLE}") from None
 
 
 def _question(question: Choice) -> Question:

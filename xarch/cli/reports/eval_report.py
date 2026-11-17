@@ -225,7 +225,6 @@ def calibration_document(done: Calibrated, record: str) -> str:
 
 def calibration_plan_lines(planned: CalibrationPlanned) -> list[str]:
     """What a calibration would send: to whom, then each request with the exact text it would send."""
-    now = "set" if planned.sends.keyed else "not set"
     cached = sum(item.cached for item in planned.requests)
     own = [name for name in planned.evals if name != PLACEMENT]
     rules = ([f"held to pass by every flagged example above every clean one, by {GAP} on the mean"] if own else []) + (
@@ -235,7 +234,7 @@ def calibration_plan_lines(planned: CalibrationPlanned) -> list[str]:
              f"Without --dry-run, calibrate sends to {planned.sends.service} ({planned.sends.at}), as the model "
              f"{planned.sends.model}, the masked text of each thing each eval reads in its examples that is not in the "
              f"cache, and its question: nothing else of the project. It sends whenever {planned.sends.key} is set: the "
-             f"key alone allows it, and the key is {now} now.",
+             f"key alone allows it, and the key is {key_now(planned.sends)}.",
              f"evals: {', '.join(planned.evals) or 'none'}; {len(planned.requests)} request(s), "
              f"{planned.characters:,} characters, about {planned.tokens:,} tokens; {cached} in the cache already"
              + "".join(f"; {rule}" for rule in rules)]
@@ -270,7 +269,15 @@ def shown_from(record: Path, cwd: Path) -> str:
     return record.relative_to(cwd).as_posix() if record.is_relative_to(cwd) else record.as_posix()
 
 
+def key_now(sends: Sender) -> str:
+    """Whether the key is set now, and when it is set but cannot be used, why; never the key."""
+    if sends.unusable:
+        return f"set now but cannot be used: {sends.unusable}"
+    return "set now" if sends.keyed else "not set now"
+
+
 def sends_of(sends: Sender) -> dict[str, Any]:
-    """What a run sends to, as JSON: the service, where it answers, the model, the variable of the key and whether it
-    is set; never the key."""
-    return {"name": sends.service, "at": sends.at, "model": sends.model, "key": sends.key, "keyed": sends.keyed}
+    """What a run sends to, as JSON: the service, where it answers, the model, the variable of the key, whether it
+    is set, and why the key set cannot be used (null when it can, or none is set); never the key."""
+    return {"name": sends.service, "at": sends.at, "model": sends.model, "key": sends.key, "keyed": sends.keyed,
+            "unusable": sends.unusable or None}
