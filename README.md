@@ -545,7 +545,8 @@ be added, an existing one keeps its name and meaning. A field that does not appl
 ## xarch review: an advisory reading
 
 `review` is a second, advisory command, apart from `check`: it never runs inside `check`, never changes what `check`
-finds or its exit code, and never exits 1. For each file chosen it asks a decision model which part of the profile the
+finds or its exit code, and a review of files never exits 1 (`review calibrate` exits 1 when an eval fails its
+examples). For each file chosen it asks a decision model which part of the profile the
 file belongs in, with every part's litmus test (its role, for a part with none) as the options, and prints the
 model's reading, ranked: a file whose probability on the part it sits in is below that part's line (0.3, unless the
 profile sets the part's own under `evals.placement.lines`) reads as **doubtful here**. That is a reason to read the file against its part's litmus, not a finding: in
@@ -630,12 +631,14 @@ never compared; the reading says which was used. `--dry-run --pieces` lists each
 with its name, kind and lines, and the exact text it would send.
 
 Exit codes: 0 when the review ran to the end, whatever it read (doubtful files are not failures); 2 when it refused
-before sending anything (no selection, `--all` with paths, `--all --pieces`, over `--max-files`, no key or one that
-cannot be used, a path outside the project, a profile that cannot be used, a `--files-from` list that is not UTF-8, a
+before sending anything (no selection, `--all` with paths, `--all --pieces`, `--dry-run` with `--offline`,
+`--context` without `--pieces`, over `--max-files`, an app folder that is not there, no key or one that cannot be used, a path outside the project, a profile that cannot be used, a `--files-from` list that is not UTF-8, a
 cache folder that cannot keep answers, a record that cannot be read), or when what it got cannot be written; 3 when some file or piece judged has no answer: not cached under `--offline`, or the decision
 model failed (unreachable, rate-limited after retries, a request refused), after which nothing more is sent. What was
 answered is printed, the rest is listed as unanswered with why and the decision model's words, and the answers already
-kept stay kept.
+kept stay kept. When the reader of the output goes early (`| head`), the rest of the output is dropped quietly and the
+exit code is still the run's own, for every command. A path written `./calibrate` (or `calibrate/`) is a path to
+review, not the word `calibrate`.
 
 ### What review may send: `review.never` and `review.mask`
 

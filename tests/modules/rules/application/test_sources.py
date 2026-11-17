@@ -73,6 +73,8 @@ def read(*paths: str, profile: str = "p") -> ReadSources:
                  id="a profile whose own checks cannot run is refused with every problem"),
     pytest.param(FILES, read("app/kernel/ids.py", profile="gone"), CheckRefused("gone: cannot read the file: no such file"),
                  id="a profile spec refuses is refused with spec's reason"),
+    pytest.param(FILES, ReadSources((Path("x.py"),), CWD, Path("/src/nowhere"), "p", TESTS),
+                 CheckRefused("/src/nowhere is not a directory"), id="an app folder that is no folder is refused"),
 ])
 def test_sources(given, when, then):
     assert sources(when) == then

@@ -64,7 +64,7 @@ from xarch.modules.review.contract import (
 )
 from xarch.modules.spec.application.controller import SpecController
 
-PathsArgument = Annotated[list[Path] | None, typer.Argument(
+PathsArgument = Annotated[list[str] | None, typer.Argument(
     show_default=False,
     help="Files to review, or folders for the files below them, given as `xarch where` takes a path; or `calibrate` "
          "alone, to hold the evals of the profile's own to their examples (a file named so is written ./calibrate).")]
@@ -105,8 +105,8 @@ INCOMPLETE = 3
 """The exit code of a review in which some file judged has no answer."""
 FAILED_EXAMPLES = 1
 """The exit code of a calibration in which an eval failed its examples: a defect of the profile."""
-CALIBRATE = Path("calibrate")
-"""The path word that runs `xarch review calibrate`."""
+CALIBRATE = "calibrate"
+"""The word that runs `xarch review calibrate`, written so: `./calibrate` or `calibrate/` is a path."""
 
 
 def register(app: typer.Typer, reviewing: ReviewController, spec: SpecController) -> None:
@@ -132,6 +132,10 @@ def register(app: typer.Typer, reviewing: ReviewController, spec: SpecController
         as a review sends files, and records the verdicts in .xarch/calibration.json, which the project commits. Exit
         0 when every eval passed, 1 when one failed, 2 when it refused, 3 when some example has no answer."""
         refuse = refusal(output)
+        if dry_run and offline:
+            raise refuse("--dry-run sends nothing and reads no answer, --offline reads the answers kept: give one")
+        if context is not _Context.none and not pieces:
+            raise refuse("--context says what is sent before each piece: give it with --pieces")
         cwd = in_full(Path())
         app_path = app_for(spec, cwd, app_path, refuse)
         chosen, tests_root = selection(spec, app_path, profile, tests, refuse)
@@ -148,8 +152,9 @@ def register(app: typer.Typer, reviewing: ReviewController, spec: SpecController
             listed = tuple(Path(line.strip()) for line in files_from or () if line.strip())
         except UnicodeDecodeError:
             raise refuse("the list given with --files-from is not UTF-8 text: give one path per line, as UTF-8") from None
+        named = tuple(Path(path) for path in paths or ())
         kept = cwd / cache if cache is not None else None
-        match reviewing.review(Review(tuple(paths or ()), listed, every, cwd, app_path, chosen, tests_root, dry_run,
+        match reviewing.review(Review(named, listed, every, cwd, app_path, chosen, tests_root, dry_run,
                                       max_files, offline, kept, pieces, context.value)):
             case NothingChosen():
                 raise refuse(nothing_chosen())

@@ -2,6 +2,9 @@
 as JSON, with nothing sent; the files left out and why; and every refusal, which exits 2. The app is built with no key
 in its environment, so that nothing can be sent."""
 import json
+import os
+import subprocess
+import sys
 
 import pytest
 from typer.testing import CliRunner
@@ -199,6 +202,42 @@ def test_check_never_acts_on_review_or_evals_but_a_value_written_wrong_makes_the
     profile.write_text(written + "evals:\n  placement:\n    lines: {domain: 2}\n")
     wrong = runner.invoke(app, ["check", "--profile", str(profile)])
     assert wrong.exit_code == 2 and "evals.placement.lines.domain: 2 is not a line" in wrong.output
+
+
+@pytest.mark.parametrize("written", ["./calibrate", "calibrate/"])
+def test_a_path_named_calibrate_written_as_a_path_is_reviewed_not_taken_for_the_word(tmp_path, written):
+    (tmp_path / "calibrate").mkdir()
+    result = review(written, "--dry-run", "--format", "json")
+    assert result.exit_code == 0, result.output
+    document = json.loads(result.output)
+    assert document["selection"]["by"] == ["paths"] and "question" in document
+
+
+@pytest.mark.parametrize("args, said", [
+    pytest.param(("--dry-run", "--offline"), "--dry-run sends nothing and reads no answer, --offline reads the answers "
+                                             "kept: give one", id="a dry run offline"),
+    pytest.param(("--context", "imports"), "--context says what is sent before each piece: give it with --pieces",
+                 id="context without pieces"),
+])
+def test_options_that_say_nothing_together_are_refused_with_exit_2(args, said):
+    result = review(SERVICE, *args)
+    assert result.exit_code == 2 and said in result.output
+
+
+def test_an_app_folder_that_is_not_there_is_refused_with_exit_2(tmp_path):
+    result = review("--all", "--dry-run", "--app", "nowhere")
+    assert result.exit_code == 2 and f"{tmp_path / 'nowhere'} is not a directory" in result.output
+
+
+def test_a_reader_that_closes_the_output_early_leaves_the_review_its_own_exit_code(tmp_path):
+    for n in range(12):
+        (tmp_path / f"app/modules/documents/domain/value_{n}.py").write_text(BODY * 20)
+    run = subprocess.Popen([sys.executable, "-c", "from xarch.bootstrap.app import app; app()", "review", "--dry-run",
+                            "--all"], cwd=tmp_path, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                           env={**os.environ, "TYPESAFE_API_KEY": ""})
+    assert run.stdout is not None and run.stdout.readline()
+    run.stdout.close()
+    assert run.wait(timeout=60) == 0 and b"Traceback" not in (run.stderr.read() if run.stderr else b"")
 
 
 def test_review_changes_nothing_check_finds():

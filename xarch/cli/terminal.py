@@ -1,6 +1,8 @@
 """What every command shares: the --app, --profile, --tests and --format options, choosing the app folder and the
 profile, how its help is wrapped, and how a refusal reaches the terminal, as text or as JSON."""
+import os
 import re
+import sys
 from collections.abc import Callable, Iterable
 from enum import Enum
 from pathlib import Path
@@ -103,6 +105,11 @@ def selection(spec: SpecController, app_path: Path, override: str | None,
 
 
 def echo(lines: Iterable[str]) -> None:
-    """Each line on the terminal, in order."""
-    for line in lines:
-        typer.echo(line)
+    """Each line on the terminal, in order. When the reader of the output has gone (a pipe closed early, as `| head`
+    closes it), the rest is dropped quietly and the command still ends with its own exit code."""
+    try:
+        for line in lines:
+            typer.echo(line)
+        sys.stdout.flush()
+    except BrokenPipeError:
+        os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())

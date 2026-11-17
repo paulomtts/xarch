@@ -8,7 +8,7 @@ from xarch.modules.rules.application.logic.where import candidates, resolve
 from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.application.ports.source_tree import SourceTree
 from xarch.modules.rules.contract import IN_PART, LINKED_OUT, ReadSources, SourceRead, SourcesRead
-from xarch.modules.rules.domain.errors import OutsideProject
+from xarch.modules.rules.domain.errors import OutsideProject, RootMissing
 from xarch.modules.rules.domain.values import Profile, Resolved
 
 
@@ -20,9 +20,11 @@ class SourcesService:
         self._tree, self._profiles = tree, profiles
 
     def sources(self, cmd: ReadSources) -> SourcesRead:
-        """The files at the paths, a folder standing for the source files below it, each once; raises OutsideProject
-        for a path outside the project."""
+        """The files at the paths, a folder standing for the source files below it, each once; raises RootMissing, with
+        the folder as given, when the app folder is no folder, and OutsideProject for a path outside the project."""
         app = self._tree.resolved(cmd.cwd, cmd.app)
+        if self._tree.absent([app]):
+            raise RootMissing(cmd.app)
         tests = self._tree.resolved(cmd.cwd, cmd.tests) if cmd.tests is not None else None
         profile = resolved(self._profiles.profile(cmd.profile))
         found: dict[str, SourceRead] = {}
