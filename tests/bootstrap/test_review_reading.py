@@ -14,6 +14,7 @@ from xarch.bootstrap.wiring import build_controllers
 from xarch.cli.app import build
 
 runner = CliRunner()
+ALIKE = "    alike: [[logic, kernel-logic]]\n"
 KEY = "sk-wired-secret-7f3a"
 SERVICE = "app/modules/documents/application/services/document_service.py"
 VALUES = "app/modules/documents/domain/values.py"
@@ -354,7 +355,7 @@ def test_an_unreachable_decision_model_leaves_the_files_unanswered_and_shows_no_
 def test_a_line_the_profile_sets_for_a_part_is_the_one_its_files_are_read_against_and_is_said(served, tmp_path):
     assert runner.invoke(app, ["profile", "new", "mine", "--from", "cli"]).exit_code == 0
     profile = tmp_path / "architecture" / "mine" / "mine.yaml"
-    profile.write_text(profile.read_text() + "evals:\n  placement:\n    lines: {domain: 0.1}\n")
+    profile.write_text(profile.read_text().replace(ALIKE, ALIKE + "    lines: {domain: 0.1}\n"))
     result = review(SERVICE, VALUES, "--profile", str(profile), url=served.url)
     assert result.exit_code == 0, result.output
     assert (f"  {VALUES}   domain   0.12 (line 0.10, set by the profile)   {VALUES_SENT:,} chars, small   the mean "

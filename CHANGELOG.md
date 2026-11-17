@@ -16,7 +16,8 @@ All notable changes to this project are written here. The format follows
   part of a group that it was held with the others. A dry run of either lists the groups. A record of placement held
   under other groups is stale; one held with none stays as it is. Each name must be a part, a group holds two parts or
   more, each once, a part is in one group at most, and the parts of a group must have the same `forbidden`, `holds`
-  and `immutable`. `xarch profile explain evals.placement.alike` says it.
+  and `immutable`. `xarch profile explain evals.placement.alike` says it. The bundled `cli` and `web` profiles name
+  `[[logic, kernel-logic]]`, which differ only in how many modules use a function.
 
 ### Changed
 

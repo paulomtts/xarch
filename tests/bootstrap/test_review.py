@@ -16,6 +16,7 @@ from xarch.cli.app import build
 runner = CliRunner()
 CONTROLLERS = build_controllers({})
 KEYLESS = build(CONTROLLERS.rules, CONTROLLERS.scaffold, CONTROLLERS.spec, CONTROLLERS.review, lambda: None)
+ALIKE = "    alike: [[logic, kernel-logic]]\n"
 SERVICE = "app/modules/documents/application/services/document_service.py"
 BODY = ('"""Publishing documents; questions to docs@example.com."""\n'
         "from app.kernel.time import Clock\n"
@@ -196,10 +197,10 @@ def test_check_never_acts_on_review_or_evals_but_a_value_written_wrong_makes_the
     profile = tmp_path / "architecture" / "mine" / "mine.yaml"
     written = profile.read_text()
     before = [runner.invoke(app, ["check", "--profile", str(profile), *strict]) for strict in ([], ["--strict"])]
-    profile.write_text(written + "review:\n  mask: [Northwind]\nevals:\n  placement:\n    lines: {domain: 0.1}\n")
+    profile.write_text(written.replace(ALIKE, ALIKE + "    lines: {domain: 0.1}\n") + "review:\n  mask: [Northwind]\n")
     after = [runner.invoke(app, ["check", "--profile", str(profile), *strict]) for strict in ([], ["--strict"])]
     assert [result.exit_code for result in after] == [result.exit_code for result in before]
-    profile.write_text(written + "evals:\n  placement:\n    lines: {domain: 2}\n")
+    profile.write_text(written.replace(ALIKE, ALIKE + "    lines: {domain: 2}\n"))
     wrong = runner.invoke(app, ["check", "--profile", str(profile)])
     assert wrong.exit_code == 2 and "evals.placement.lines.domain: 2 is not a line" in wrong.output
 
@@ -208,12 +209,12 @@ def test_the_groups_of_parts_a_profile_reads_alike_reach_a_dry_run_and_a_group_w
     assert runner.invoke(app, ["profile", "new", "mine", "--from", "cli"]).exit_code == 0
     profile = tmp_path / "architecture" / "mine" / "mine.yaml"
     written = profile.read_text()
-    profile.write_text(written + "evals:\n  placement:\n    alike: [[logic, kernel-logic]]\n")
+    assert ALIKE in written
     for chosen in ([SERVICE], ["calibrate"]):
         result = review(*chosen, "--dry-run", "--format", "json", "--profile", str(profile))
         assert result.exit_code == 0, result.output
         assert json.loads(result.output)["alike"] == [["logic", "kernel-logic"]]
-    profile.write_text(written + "evals:\n  placement:\n    alike: [[logic, ports]]\n")
+    profile.write_text(written.replace("[[logic, kernel-logic]]", "[[logic, ports]]"))
     wrong = review(SERVICE, "--dry-run", "--profile", str(profile))
     assert wrong.exit_code == 2 and "evals.placement.alike[0]: logic and ports differ in " in wrong.output
 

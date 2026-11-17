@@ -305,6 +305,10 @@ files:
   AGENTS.md: agents.md
   ruff.toml: lint.toml
 
+evals:
+  placement:
+    alike: [[logic, kernel-logic]]
+
 docs:
   entry: cli
   pages:

@@ -318,5 +318,9 @@ excluded:
     the example projects the bundled profiles ship as data, which their docs show; sources that xarch never imports or
     runs, so they are not part of its own code
 
+evals:
+  placement:
+    alike: [[logic, kernel-logic]]
+
 docs:
   entry: cli
