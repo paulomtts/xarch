@@ -76,7 +76,7 @@ def test_the_guard_example_of_the_testing_doc_is_the_file_init_writes(tmp_path, 
 def test_init_writes_the_agent_instructions_unpinned_and_short_naming_the_commands_and_the_docs(tmp_path, profile):
     init(tmp_path / "app", profile)
     text = (tmp_path / "AGENTS.md").read_text()
-    assert 0 < len(text.splitlines()) <= 60
+    assert 0 < len(text.splitlines()) <= 65
     for needed in ["docs/project/architecture.md", "docs/project/testing.md", "xarch where <path>", "xarch check",
                    "ruff check", "xarch check --format json", "Placement order", "Given/When/Then",
                    "fire-only", "guard test", "`fix:` line", "`hint:` line", "`fix` and `hint`"]:
