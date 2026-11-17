@@ -3,6 +3,16 @@
 All notable changes to this project are written here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Changed
+
+- The bundled `cli` and `web` profiles pass their own placement calibration for all 12 parts (it was 3 and 5 in
+  0.1.0), measured with `jev-1.14.0`. The litmus texts of `domain`, `adapters`, `platform`, `cli`/`web`, `bootstrap`,
+  `contract` and `kernel` say more exactly what decides a case (where an id and a module's errors are defined, who
+  fetches a controller for a command or a route and who starts the program, what is a primitive and what is a shared
+  function), and seven short example files say why they sit where they do.
+
 ## [0.1.0] - 2026-11-17
 
 The first release.
@@ -85,4 +95,5 @@ The first release.
 - Languages other than Python.
 - A stable check vocabulary: the words a profile's checks are written in may change.
 
+[Unreleased]: https://github.com/paulomtts/xarch/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/paulomtts/xarch/releases/tag/v0.1.0

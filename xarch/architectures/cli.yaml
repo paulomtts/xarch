@@ -10,9 +10,11 @@ parts:
     role: "entities, values (incl. ids), errors: invariants only"
     litmus: >-
       Is it an invariant of one of this module's entities or values (a state transition or a validation) that can run
-      with no database and no clock? If yes, it goes here, on that entity or value. If it is a value the module hands
-      out as it is, with nothing to reshape, it goes in `domain/published.py`, which `contract/` re-exports. If it is
-      a pure rule that is not one entity's invariant, it belongs in `application/logic/`. If it must load or save
+      with no database and no clock? If yes, it goes here, on that entity or value. An id that names one of the
+      module's things is defined here too, in `domain/values.py`, and `contract/` re-exports it; so are the errors
+      the module's rules raise, each a subclass of a base error of `kernel/`. If it is a value the module hands out
+      as it is, with nothing to reshape, it goes in `domain/published.py`, which `contract/` re-exports. If it is a
+      pure rule that is not one entity's invariant, it belongs in `application/logic/`. If it must load or save
       anything, it is a service step. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
     may_import: [kernel, kernel-logic]
     forbidden: pure
@@ -87,8 +89,9 @@ parts:
     litmus: >-
       Does it implement one of this module's ports against a real system, translating between the module's types and
       that system's, and naming no other module except the `contract/` of one whose controller it wraps? If yes, it
-      goes here. If it knows no module's types and is only a client or engine for a technology, it belongs in
-      `platform/`. If it contains a business rule, it belongs in `domain/`.
+      goes here, and so does the private `Protocol` it declares for the little it calls of what it wraps. If it knows
+      no module's types and is only a client or engine for a technology, it belongs in `platform/`. If it contains a
+      business rule, it belongs in `domain/`.
     may_import: [ports, domain, kernel, kernel-logic, platform, contract@any]
     must_import: [platform, contract@any]
     built_by: [bootstrap]
@@ -102,10 +105,10 @@ parts:
       shared technology clients: llm, embeddings, email, crypto, blob_storage, system clock, sql engine, sessions and
       table models
     litmus: >-
-      Is it a client or engine for an external technology (LLM, embeddings, email, crypto, blob storage, clock, SQL
-      engine, table models) that knows none of the types of any one module? If yes, it goes here, named for the
-      technology (a table model, for its table) and never for a module. If it translates a module's types for a port,
-      it belongs in that module's `adapters/`.
+      Is it a client or engine for an external technology (LLM, embeddings, email, crypto, blob storage, the system
+      clock, SQL engine, table models) that knows none of the types of any one module? If yes, it goes here, named
+      for the technology (a table model, for its table) and never for a module. If it translates a module's types for
+      a port, it belongs in that module's `adapters/`.
     may_import: [kernel, kernel-logic]
     libraries: [sqlmodel]
     untested: it wraps outside technology; adapters are tested against a stub of it
@@ -114,9 +117,10 @@ parts:
     path: cli
     role: the only place for commands and terminal output
     litmus: >-
-      Does it parse arguments or print to the terminal, whichever module's data it shows? If yes, it goes here. If it
-      reports a failure as a `Result`, it belongs in the controller. If it holds a business rule, it belongs in
-      `domain/`.
+      Does it parse arguments or print to the terminal, whichever module's data it shows, or fetch for a command,
+      from the context the command runs in, a controller that was built elsewhere? If yes, it goes here. If it builds
+      anything or starts the program, it belongs in `bootstrap/`. If it reports a failure as a `Result`, it belongs
+      in the controller. If it holds a business rule, it belongs in `domain/`.
     may_import: [controller@any, contract@any, kernel, kernel-logic]
     libraries: [typer]
     tier: rendering
@@ -128,8 +132,10 @@ parts:
     role: "composition root: binds ports to adapters, hands controllers to cli/"
     litmus: >-
       Does it choose which adapter fills which port, build the services and controller around them, wrap one module's
-      controller in another's adapter, or define the schema? If yes, it goes here, and nowhere else. If it only
-      implements one module's port against a real system, it belongs in `adapters/`.
+      controller in another's adapter, define the schema, or start the program (read its settings, build the app, run
+      it)? If yes, it goes here, and nowhere else. If it builds nothing and only fetches, for a command, a controller
+      that was built here, it belongs in `cli/`. If it only implements one module's port against a real system, it
+      belongs in `adapters/`.
     may_import: everything
     libraries: [sqlmodel, typer]
     untested: it wires the app and holds no rule; it has no test of its own
@@ -141,11 +147,11 @@ parts:
     role: "the module's published language: commands, DTOs, Results (one union per use case), ids"
     litmus: >-
       Is it part of what the module promises to callers outside it: an input a caller sends, an output that comes
-      back, or an id that names the module's things? If yes, it goes here, and an id is defined in `domain/values.py`
-      and re-exported here. A value with nothing to reshape may be handed out as it is: it is listed, on purpose, in
-      `domain/published.py`, and re-exported here as an id is; everything else the module hands out is a type of its
-      own here. If it is a `domain/` entity, a service type or a port, it stays where it is, and a DTO goes here
-      instead.
+      back, or an id that names the module's things? If yes, it goes here; an id is only re-exported here, and the
+      line that defines it stays in `domain/values.py`. A value with nothing to reshape may be handed out as it is:
+      it is listed, on purpose, in `domain/published.py`, and re-exported here as an id is; everything else the
+      module hands out is a type of its own here. If it is a `domain/` entity, a service type or a port, it stays
+      where it is, and a DTO goes here instead.
     may_import: ["domain/values:*Id", "domain/published", kernel, kernel-logic]
     forbidden: pure
     tier: integration
@@ -170,12 +176,13 @@ parts:
     path: kernel
     role: "pure primitives: id helpers, base errors, lifecycle fields, tracing, Clock"
     litmus: >-
-      Is it a primitive with no business meaning, one that could be lifted unchanged into an unrelated system (id
-      helpers, base errors, lifecycle fields, tracing carriers, `Clock`)? If yes, it goes here. Is it a pure function
-      with no port and no I/O that two or more modules need? If yes, it goes in `kernel/logic/`. If only one module
-      needs it, or it names one module's thing, such as a concrete id like `DocumentId`, it belongs in the owning
-      module. If it wraps a technology, it belongs in `platform/`. `xarch check` holds it to its `forbidden` list: no
-      clock and no I/O by name.
+      Is it a primitive with no business meaning, one that could be lifted unchanged into an unrelated system: a base
+      type, a protocol with no body, or a helper that makes a new id (base errors, lifecycle fields, tracing
+      carriers, the `Clock` protocol)? If yes, it goes here. A function that works a result out of its arguments is
+      not a primitive: when two or more modules need it, it goes in `kernel/logic/`. If only one module needs it, or
+      it names one module's thing, such as a concrete id like `DocumentId` or an error like `DocumentNotFound`, it
+      belongs in the owning module. If it wraps a technology or reads the real time, it belongs in `platform/`.
+      `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
     forbidden: pure
     tier: unit
 

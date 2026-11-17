@@ -1,3 +1,3 @@
-class DomainError(Exception):
+class DomainError(Exception):      # the base of every module's errors; it names no module's thing
     reason: str                    # a message safe to show the caller
 class NotFound(DomainError): ...

@@ -545,12 +545,14 @@ be added, an existing one keeps its name and meaning. A field that does not appl
 
 ## xarch review: an advisory reading
 
-`review` is experimental in 0.1.0: its command line, its output and its JSON may change, and the bundled profiles ship
-no calibration record. Measured on 2026-11-17 against the real model (`jev-1.14.0`), held to the bundled profiles' own
-doc examples, placement passes for 3 of the 12 parts of the `cli` profile and 5 of the 12 of the `web` profile; the
-examples of the other parts disagree (short example files read low on their own part, and some read high on a
-neighbouring part). A part whose examples disagree is read but never marked doubtful, so calibrating a bundled profile
-today leaves doubt on only those 3 or 5 parts. Better examples and litmus texts are planned after 0.1.0.
+`review` is experimental: its command line, its output and its JSON may change, and the bundled profiles ship no
+calibration record, so a project runs `xarch review calibrate` once and commits the record. In 0.1.0, held to the
+bundled profiles' own doc examples by the real model (`jev-1.14.0`, 2026-11-17), placement passed for 3 of the 12 parts
+of the `cli` profile and 5 of the 12 of the `web` profile, and a part whose examples disagree is read but never marked
+doubtful. Since then the litmus texts of seven parts were sharpened and seven short example files were made to say why
+they sit where they do; measured again on 2026-11-17 with the same model, placement passes for all 12 parts of both
+profiles, in each of three runs from an empty cache. That is a sanity check of the litmus texts against 27 short
+examples, not a measure of how often a reading of your code is right.
 
 `review` is a second, advisory command, apart from `check`: it never runs inside `check`, never changes what `check`
 finds or its exit code, and a review of files never exits 1 (`review calibrate` exits 1 when an eval fails its

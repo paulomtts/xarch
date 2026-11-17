@@ -309,7 +309,7 @@ from app.modules.documents.contract.results import Published, Missing, Rejected,
 ```
 
 > [!TIP]
-> **Litmus test.** Is it part of what the module promises to callers outside it: an input a caller sends, an output that comes back, or an id that names the module's things? If yes, it goes here, and an id is defined in `domain/values.py` and re-exported here. A value with nothing to reshape may be handed out as it is: it is listed, on purpose, in `domain/published.py`, and re-exported here as an id is; everything else the module hands out is a type of its own here. If it is a `domain/` entity, a service type or a port, it stays where it is, and a DTO goes here instead.
+> **Litmus test.** Is it part of what the module promises to callers outside it: an input a caller sends, an output that comes back, or an id that names the module's things? If yes, it goes here; an id is only re-exported here, and the line that defines it stays in `domain/values.py`. A value with nothing to reshape may be handed out as it is: it is listed, on purpose, in `domain/published.py`, and re-exported here as an id is; everything else the module hands out is a type of its own here. If it is a `domain/` entity, a service type or a port, it stays where it is, and a DTO goes here instead.
 
 > [!NOTE]
 > A contract grows into several files, and `__init__.py` lists the public names. Other code imports from `contract`, never from its files, so the split can change without touching a caller.
@@ -323,7 +323,7 @@ Entities and their state transitions, value objects (including typed ids) and th
 
 ```python
 # modules/documents/domain/values.py
-DocumentId = NewType("DocumentId", UUID)
+DocumentId = NewType("DocumentId", UUID)       # the id of a document, defined by its own module
 
 # modules/documents/domain/errors.py: each module subclasses the kernel's base errors
 from app.kernel.errors import DomainError, NotFound
@@ -353,7 +353,7 @@ class Document:
 ```
 
 > [!TIP]
-> **Litmus test.** Is it an invariant of one of this module's entities or values (a state transition or a validation) that can run with no database and no clock? If yes, it goes here, on that entity or value. If it is a value the module hands out as it is, with nothing to reshape, it goes in `domain/published.py`, which `contract/` re-exports. If it is a pure rule that is not one entity's invariant, it belongs in `application/logic/`. If it must load or save anything, it is a service step. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
+> **Litmus test.** Is it an invariant of one of this module's entities or values (a state transition or a validation) that can run with no database and no clock? If yes, it goes here, on that entity or value. An id that names one of the module's things is defined here too, in `domain/values.py`, and `contract/` re-exports it; so are the errors the module's rules raise, each a subclass of a base error of `kernel/`. If it is a value the module hands out as it is, with nothing to reshape, it goes in `domain/published.py`, which `contract/` re-exports. If it is a pure rule that is not one entity's invariant, it belongs in `application/logic/`. If it must load or save anything, it is a service step. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
 
 ### 8.3 application/controller.py
 
@@ -505,7 +505,7 @@ class DbDocumentRepo:                      # satisfies DocumentRepo
 The translation between the database's rows and the domain's entities lives here, in the adapter class, and never in `domain/` or in the table model: the domain never sees a row, and the service never sees one either.
 
 > [!TIP]
-> **Litmus test.** Does it implement one of this module's ports against a real system, translating between the module's types and that system's, and naming no other module except the `contract/` of one whose controller it wraps? If yes, it goes here. If it knows no module's types and is only a client or engine for a technology, it belongs in `platform/`. If it contains a business rule, it belongs in `domain/`.
+> **Litmus test.** Does it implement one of this module's ports against a real system, translating between the module's types and that system's, and naming no other module except the `contract/` of one whose controller it wraps? If yes, it goes here, and so does the private `Protocol` it declares for the little it calls of what it wraps. If it knows no module's types and is only a client or engine for a technology, it belongs in `platform/`. If it contains a business rule, it belongs in `domain/`.
 
 > [!NOTE]
 > Adapters are driven only. Whatever drives the module (today, a CLI command) calls the controller directly. The command is the translation from the caller's world to a controller call, so it lives in `cli/`.
@@ -546,7 +546,7 @@ Primitives with no business meaning: typed-id helpers, the base error hierarchy,
 def new_id() -> UUID: return uuid4()
 
 # kernel/errors.py
-class DomainError(Exception):
+class DomainError(Exception):      # the base of every module's errors; it names no module's thing
     reason: str                    # a message safe to show the caller
 class NotFound(DomainError): ...
 
@@ -555,11 +555,15 @@ class Clock(Protocol):
     def now(self) -> datetime: ...
 
 # kernel/logic/text.py: a pure function two modules need
-def normalized(title: str) -> str: return " ".join(title.split())
+def normalized(title: str) -> str:     # documents and moderation both compare titles this way
+    return " ".join(title.split()).casefold()
+
+def same_title(one: str, other: str) -> bool:
+    return normalized(one) == normalized(other)
 ```
 
 > [!TIP]
-> **Litmus test.** Is it a primitive with no business meaning, one that could be lifted unchanged into an unrelated system (id helpers, base errors, lifecycle fields, tracing carriers, `Clock`)? If yes, it goes here. Is it a pure function with no port and no I/O that two or more modules need? If yes, it goes in `kernel/logic/`. If only one module needs it, or it names one module's thing, such as a concrete id like `DocumentId`, it belongs in the owning module. If it wraps a technology, it belongs in `platform/`. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
+> **Litmus test.** Is it a primitive with no business meaning, one that could be lifted unchanged into an unrelated system: a base type, a protocol with no body, or a helper that makes a new id (base errors, lifecycle fields, tracing carriers, the `Clock` protocol)? If yes, it goes here. A function that works a result out of its arguments is not a primitive: when two or more modules need it, it goes in `kernel/logic/`. If only one module needs it, or it names one module's thing, such as a concrete id like `DocumentId` or an error like `DocumentNotFound`, it belongs in the owning module. If it wraps a technology or reads the real time, it belongs in `platform/`. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
 
 > [!TIP]
 > **Litmus test.** Is it a pure function with no port and no I/O, over `kernel/` primitives or plain values, that two or more modules need? If yes, it goes here, in a file named for the rule. If only one module needs it, it belongs in that module's `application/logic/`. If it is a value or a type rather than a function, it belongs in `kernel/`. If it must load or save anything, it is a service step. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
@@ -570,11 +574,19 @@ Clients and engines for technology used by several modules and owned by none: th
 
 ```python
 # platform/email/smtp_client.py
-class SmtpClient:
-    def send(self, to: str, subject: str, body: str) -> None: ...
+import smtplib
+
+class SmtpClient:                  # knows SMTP and no module: a module's adapter turns its own words into this call
+    def __init__(self, host: str, sender: str): self._host, self._sender = host, sender
+
+    def send(self, to: str, subject: str, body: str) -> None:
+        with smtplib.SMTP(self._host) as smtp:
+            smtp.sendmail(self._sender, to, f"Subject: {subject}\n\n{body}")
 
 # platform/clock.py
-class SystemClock:                 # satisfies kernel's Clock
+from datetime import UTC, datetime
+
+class SystemClock:                 # the real time, read from the machine; it has the shape of kernel's Clock
     def now(self) -> datetime: return datetime.now(UTC)
 
 # platform/sql/tables/documents.py: columns only, no module's types
@@ -588,7 +600,7 @@ class DocumentRow(SQLModel, table=True):   # the table model: the database's sha
 The email client speaks plain strings and knows no module. A module adapter that implements a notification port wraps it and translates the module's types into those strings. A table model is the same kind of thing: it names a table and its columns and knows no module's types, so every module's repo can use it and translate it into its own entities (section 8.7).
 
 > [!TIP]
-> **Litmus test.** Is it a client or engine for an external technology (LLM, embeddings, email, crypto, blob storage, clock, SQL engine, table models) that knows none of the types of any one module? If yes, it goes here, named for the technology (a table model, for its table) and never for a module. If it translates a module's types for a port, it belongs in that module's `adapters/`.
+> **Litmus test.** Is it a client or engine for an external technology (LLM, embeddings, email, crypto, blob storage, the system clock, SQL engine, table models) that knows none of the types of any one module? If yes, it goes here, named for the technology (a table model, for its table) and never for a module. If it translates a module's types for a port, it belongs in that module's `adapters/`.
 
 ### 9.3 cli/
 
@@ -596,6 +608,8 @@ The only place that parses command-line arguments or prints to the terminal, whi
 
 ```python
 # cli/dependencies.py: how a command reaches its controller
+from typer import Context
+
 from app.modules.documents.application.controller import DocumentController
 
 def documents_controller(ctx: Context) -> DocumentController:
@@ -619,7 +633,7 @@ def publish(ctx: Context, id: UUID) -> None:
 ```
 
 > [!TIP]
-> **Litmus test.** Does it parse arguments or print to the terminal, whichever module's data it shows? If yes, it goes here. If it reports a failure as a `Result`, it belongs in the controller. If it holds a business rule, it belongs in `domain/`.
+> **Litmus test.** Does it parse arguments or print to the terminal, whichever module's data it shows, or fetch for a command, from the context the command runs in, a controller that was built elsewhere? If yes, it goes here. If it builds anything or starts the program, it belongs in `bootstrap/`. If it reports a failure as a `Result`, it belongs in the controller. If it holds a business rule, it belongs in `domain/`.
 
 > [!NOTE]
 > A change that touches one module's behavior and its output spans two folders: `modules/<module>/` and `cli/`. That is the accepted cost of not splitting terminal output across modules.
@@ -698,7 +712,7 @@ def upgrade(engine: Engine) -> None:
 > A migration builds the table from the table model, so the table model declares the columns and the migration decides when the table is created. A later change to a column is a new migration file, never an edit of an old one. Every module that reads the table translates the same table model, so a column change reaches all of them through it.
 
 > [!TIP]
-> **Litmus test.** Does it choose which adapter fills which port, build the services and controller around them, wrap one module's controller in another's adapter, or define the schema? If yes, it goes here, and nowhere else. If it only implements one module's port against a real system, it belongs in `adapters/`.
+> **Litmus test.** Does it choose which adapter fills which port, build the services and controller around them, wrap one module's controller in another's adapter, define the schema, or start the program (read its settings, build the app, run it)? If yes, it goes here, and nowhere else. If it builds nothing and only fetches, for a command, a controller that was built here, it belongs in `cli/`. If it only implements one module's port against a real system, it belongs in `adapters/`.
 
 ## 10. Callers other than the entry point
 
