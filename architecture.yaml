@@ -33,6 +33,7 @@ parts:
     forbidden: pure
     holds: functions
     immutable: true
+    no_callbacks: true
     tier: unit
 
   ports:
@@ -243,6 +244,8 @@ forbidden:
             os.getcwd, os.getcwdb, os.chdir, os.path.abspath, os.path.realpath, os.path.expanduser, .absolute(),
             .resolve(), .expanduser(), .chdir(), os.environ, os.getenv]
   environment: [os.environ, os.getenv]
+
+layers: {application: [domain, contract, logic, ports, services, controller], edge: [platform, adapters]}
 
 reserved:
   ast: only the reader adapter parses the checked language, so that another language needs one new reader
