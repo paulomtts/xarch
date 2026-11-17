@@ -95,11 +95,13 @@ class Drift:
 
 @dataclass(frozen=True)
 class KeyFacts:
-    """What the format says of a key: how a profile writes it ("" for no example), its own name, and what holds it
-    when it is set on each of a kind of thing (part or tier, "" for neither)."""
+    """What the format says of a key: how a profile writes it ("" for no example), its own name, what holds it when
+    it is set on each of a kind of thing (part or tier, "" for neither), and the command other than `check` that alone
+    reads it ("" for none)."""
     example: str = ""
     name: str = ""
     holder: str = ""
+    read_by: str = ""
 
 
 @dataclass(frozen=True)

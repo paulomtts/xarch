@@ -546,9 +546,12 @@ class ChecksHeld:
     """What holding the checks a profile writes itself to their examples found: every problem, in the profile's
     order, each at its address in the profile (why a check cannot be made, or how one made does not find what its
     examples say; none: each finds something in its flagged code and nothing in its clean code), and how many checks
-    the profile writes itself, made or not."""
+    the profile writes itself, made or not; and every problem of an eval the profile writes itself, each at its
+    address (why it cannot be read, or an example in which it reads nothing), and how many it writes."""
     problems: tuple[str, ...]
     checks: int
+    evals: tuple[str, ...] = ()
+    asked: int = 0
 
 
 @dataclass(frozen=True)
@@ -560,7 +563,7 @@ class ProfileHeld:
 
     @property
     def ok(self) -> bool:
-        return not self.reviewed.examples and not self.own.problems
+        return not self.reviewed.examples and not self.own.problems and not self.own.evals
 
 
 @dataclass(frozen=True)

@@ -113,7 +113,7 @@ class ExplainingService:
         if not rules and expands(address):
             return KeyUnset(address, location, self._profiles.key(address))
         if not rules:
-            return NoRuleShown(address, location, explained.NO_RULE)
+            return NoRuleShown(address, location, explained.no_rule(self._profiles.key(address).read_by))
         return RuleShown(address, location, self._form.written(written(rules)), len(rules),
                          tuple(dict.fromkeys(need for rule in rules for need in rule.needs)))
 

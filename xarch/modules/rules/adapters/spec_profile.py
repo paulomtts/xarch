@@ -103,7 +103,7 @@ class SpecProfiles:
         """An explanation spec refuses raises ProfileUnusable with its reason."""
         match self._spec.explain(Explain(address)):
             case KeyExplained() as explained:
-                return KeyFacts(explained.example, explained.name, explained.holder)
+                return KeyFacts(explained.example, explained.name, explained.holder, explained.read_by)
             case ProfileRefused(reason):
                 raise ProfileUnusable(reason)
         return KeyFacts()

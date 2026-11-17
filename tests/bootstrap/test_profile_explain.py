@@ -164,3 +164,9 @@ def test_the_bundled_profiles_the_choices_name_are_the_ones_xarch_ships():
 def test_the_agent_instructions_every_bundled_profile_ships_say_that_xarch_profile_explain_exists(bundled):
     text = next(f.content for f in build_controllers().spec.files(bundled, "app").files if f.path == ("AGENTS.md",))
     assert "xarch profile explain" in text and "xarch profile check" in text
+
+
+def test_the_rule_of_a_key_review_alone_reads_is_refused_saying_review_reads_it():
+    result = runner.invoke(app, ["profile", "explain", "evals.placement.lines", "--rule", "--profile", "cli"])
+    assert result.exit_code == 2
+    assert "check makes no rule of it: only xarch review reads what it says" in result.output

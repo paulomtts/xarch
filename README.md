@@ -209,7 +209,8 @@ example-import check (the examples' imports obey the profile's own rules), holds
 to its examples, and shows how it differs from the bundled profile it is based on, as information (but for a part
 left without the litmus the bundled profile gives it, which fails `check --strict`). With no argument it checks the
 project's configured profile. Exit 0 when valid, 1 when it has problems, 2 when no profile can be chosen; `--format
-json` gives `{"ok", "profile", "problems": [{"check", "message"}], "files", "checks", "compared_with"}`, `files`
+json` gives `{"ok", "profile", "problems": [{"check", "message"}], "files", "checks", "compared_with"}`, `check`
+being `load`, `examples`, `checks` (a check of the profile's own) or `evals` (an eval of its own), `files`
 being how many files the profile points to and `checks` how many checks it writes itself, made or not; both are
 `null` for a profile that does not load.
 

@@ -103,6 +103,11 @@ NO_RULE = "it expands to no rule of the engine here: the profile does not set it
 """Why a key the engine does not expand shows no rule."""
 
 
+def no_rule(read_by: str) -> str:
+    """Why a key shows no rule: NO_RULE, or, for a key another command than `check` alone reads, that one."""
+    return f"check makes no rule of it: only xarch {read_by} reads what it says" if read_by else NO_RULE
+
+
 def facets(word: Word) -> WordFacets:
     """What the word says besides its name and meaning, as its category has it."""
     match word:

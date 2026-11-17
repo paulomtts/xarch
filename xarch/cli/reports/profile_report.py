@@ -50,7 +50,7 @@ DEEPER = ("xarch profile explain parts.may_import        one key in full: what i
 NEXT = ("edit {profile}", "xarch profile explain                 # the format, key by key",
         "xarch profile check {profile}")
 
-LOAD, EXAMPLES, CHECKS = "load", "examples", "checks"
+LOAD, EXAMPLES, CHECKS, EVALS = "load", "examples", "checks", "evals"
 """The check a problem of `profile check` is named by in the JSON document: the loader, the examples' imports, or the
 checks the profile writes itself."""
 
@@ -204,7 +204,10 @@ def check_lines(checked: ProfileHeld | ProfileUnloaded) -> list[str]:
     if own.checks or own.problems:
         lines += _section("checks", own.problems, "ok: its check finds what its examples say" if own.checks == 1 else
                           f"ok: its {own.checks} checks find what their examples say")
-    return [*lines, *_compared(reviewed.resemblance), _verdict(len(reviewed.examples) + len(own.problems))]
+    if own.asked or own.evals:
+        lines += _section("evals", own.evals, "ok: each reads something in each of its examples")
+    return [*lines, *_compared(reviewed.resemblance),
+            _verdict(len(reviewed.examples) + len(own.problems) + len(own.evals))]
 
 
 def _files(count: int) -> str:
@@ -251,7 +254,8 @@ def check_document(checked: ProfileHeld | ProfileUnloaded) -> str:
         compared = {"profile": resemblance.closest,
                     "looser": [{"key": i.key, "part": i.part, "what": i.what,
                                 "sentence": i.sentence} for i in resemblance.looser]}
-    problems = [*((EXAMPLES, text) for text in reviewed.examples), *((CHECKS, text) for text in own.problems)]
+    problems = [*((EXAMPLES, text) for text in reviewed.examples), *((CHECKS, text) for text in own.problems),
+                *((EVALS, text) for text in own.evals)]
     return _check_document(checked.ok, reviewed.location, problems, reviewed.files, own.checks, compared)
 
 

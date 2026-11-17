@@ -88,7 +88,8 @@ def _placement(placement: Any, declared: Collection[str], language: Language,
         problems.append("evals.placement: must be a mapping {lines, examples}: the line of each part, below which a "
                         "file reads as doubtful there, and the examples it is held to besides the docs'")
         return {}, ((), ())
-    problems += ck.unknown_keys(placement, names_of(PLACEMENT), "evals.placement")
+    written = {_SIDES.get(key, key) if isinstance(key, bool) else key: value for key, value in placement.items()}
+    problems += ck.unknown_keys(written, names_of(PLACEMENT), "evals.placement")
     lines = _lines(placement["lines"], declared, problems) if "lines" in placement else {}
     if "examples" not in placement:
         return lines, ((), ())
@@ -142,7 +143,7 @@ def _own(body: Any, where: str, declared: Collection[str], language: Language, p
 
 
 def _ask(value: Any, where: str, problems: list[str]) -> str:
-    if not ck.line(value) or len(value) > MAX_ASK or value.count("?") > 1:
+    if not ck.line(value) or len(value) > MAX_ASK or value.count("?") != 1:
         problems.append(f"{where}: must be one short question about what the text shows: one line, at most {MAX_ASK} "
                         "characters and one question mark")
         return ""

@@ -283,7 +283,7 @@ keys:
       by the parts' litmus tests), whose `lines` it tunes; and under any other id of your own (lowercase words joined
       by `-`) an eval of the profile's own, a map of slots: `ask` the question, `answer` its form, `yes` and `no` what
       each answer means (yes-no only), `reads` what one question is asked of, `in` the files it is asked in, `keep` the
-      filters a class or function must pass, `line` the value from which a reading is listed, `message` and `fix` what
+      filters a file, class or function must pass, `line` the value from which a reading is listed, `message` and `fix` what
       is said of one, and `examples`. Write one rule per question, about what the text shows. An eval of your own runs
       only once `xarch review calibrate` has held it to its examples with the model review asks, and only while it
       stays as it was then. `check` never acts on `evals`: a value written wrong makes the profile invalid for every
@@ -1253,7 +1253,7 @@ slots:
       <<part>>
       <<eval>>
   evals.<id>.keep:
-    meaning: the filters a class or function must pass to be asked
+    meaning: the filters a file, class or function must pass to be asked
     accepts: >-
       a list of filters of the check vocabulary (`xarch profile explain filters`), as a check's `keep`, such as
       [public]; `profile check` refuses a filter that does not apply to the kind read

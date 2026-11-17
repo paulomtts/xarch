@@ -36,6 +36,8 @@ NOT_A_LINE = "is not a line: write a number above 0 and below 1, such as 0.2"
                                       "besides the docs'", id="placement not a mapping"),
     pytest.param({"placement": {"line": 0.2}}, "evals.placement: unknown key 'line': use examples, lines",
                  id="an unknown slot"),
+    pytest.param({"placement": {True: "x"}}, "evals.placement: unknown key 'yes': use examples, lines",
+                 id="a slot of an eval of your own, which YAML reads yes as true, written under placement"),
     pytest.param({"placement": {"examples": {"clean": {"store/a.txt": "x"}}}},
                  "evals.placement.examples.clean: 'store/a.txt' is not a path of a source file below the app, ending in "
                  ".py", id="an example of placement that is no source file"),
@@ -116,6 +118,8 @@ VARIABLES = "use {file}, {line}, {name}, {value}"
                                     "message, no, reads, yes", id="an unknown slot"),
     pytest.param({"ask": "Is it? Or is it?"}, "evals.rule.ask: must be one short question about what the text shows: "
                  "one line, at most 400 characters and one question mark", id="a question of two questions"),
+    pytest.param({"ask": "Does it decide the rule itself."}, "evals.rule.ask: must be one short question about what "
+                 "the text shows: one line, at most 400 characters and one question mark", id="a question with no mark"),
     pytest.param({"ask": "x" * 401}, "evals.rule.ask: must be one short question about what the text shows: one line, "
                  "at most 400 characters and one question mark", id="a question over 400 characters"),
     pytest.param({"answer": "maybe"}, "evals.rule.answer: write yes-no, {score: [<5 levels>], flagged_from: <1 to 4>} "

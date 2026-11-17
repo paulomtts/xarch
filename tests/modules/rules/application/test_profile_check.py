@@ -114,4 +114,4 @@ def test_the_evals_a_profile_writes_itself_are_held_to_their_examples_statically
     profiles = FakeProfiles({"mine": profile(asked=evals)}, reviewed={"mine": MINE})
     tree = FakeSourceTree(Path("/src/app"), {}, parsed=PARSED)
     assert controller(tree, profiles).check_profile(CheckProfile(APP_FOLDER, "mine")) == ProfileHeld(
-        MINE, ChecksHeld(problems, 0))
+        MINE, ChecksHeld((), 0, problems, 1))

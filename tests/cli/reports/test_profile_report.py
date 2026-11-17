@@ -141,3 +141,13 @@ def test_a_profile_that_would_be_written_over_files_names_them_and_says_how_to_w
         "somewhere else",
         "old-v2/architecture.md already exists: nothing was written; `new` writes only new files, so pass "
         "`--out <folder>` to write somewhere else, or choose another name")
+
+
+def test_the_problems_of_an_eval_of_the_profile_s_own_are_said_under_evals_not_checks():
+    held = ProfileHeld(Reviewed("mine.yaml", (), 0, Resemblance(False, None, ())),
+                       ChecksHeld((), 0, ("evals.rule.keep: no filter is named 'x'",), 1))
+    lines = check_lines(held)
+    assert lines[lines.index("  evals: 1 problem") + 1] == "    evals.rule.keep: no filter is named 'x'"
+    assert not any(line.startswith("  checks:") for line in lines) and lines[-1] == "INVALID: 1 problem"
+    assert json.loads(check_document(held))["problems"] == [{"check": "evals",
+                                                              "message": "evals.rule.keep: no filter is named 'x'"}]

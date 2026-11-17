@@ -34,10 +34,11 @@ class ExamplesService:
 
     def _held(self, location: str, app: str) -> ChecksHeld:
         """What is wrong with the profile's own checks, in the profile's order, each problem at its address: why a
-        check cannot be made, or how one made does not hold to its examples; and how many checks the profile writes
-        itself, made or not."""
+        check cannot be made, or how one made does not hold to its examples; how many checks the profile writes
+        itself, made or not; and the same of the evals it writes itself."""
         profile = self._profiles.profile(location)
         found: list[str] = []
+        unread: list[str] = []
         for name, written in profile.written.items():
             checks = made({name: written}, profile)
             found += checks.problems
@@ -46,11 +47,11 @@ class ExamplesService:
                                        self._found(own, own.clean, profile, app))
         for name, asked in profile.asked.items():
             rule, problems = evals.made(name, asked)
-            found += problems
+            unread += problems
             for side, files in (("flagged", asked.flagged), ("clean", asked.clean)) if rule is not None else ():
                 facts = project([(path, self._tree.parsed(code)) for path, code in files], profile, app, (rule,))
-                found += evals.unread(name, side, files, kept(rule, facts, profile), asked.reads)
-        return ChecksHeld(tuple(found), len(profile.written))
+                unread += evals.unread(name, side, files, kept(rule, facts, profile), asked.reads)
+        return ChecksHeld(tuple(found), len(profile.written), tuple(unread), len(profile.asked))
 
     def _found(self, own: OwnCheck, files: tuple[tuple[str, str], ...], profile: Profile,
                app: str) -> list[Violation | Weak]:
