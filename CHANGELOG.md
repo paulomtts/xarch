@@ -47,8 +47,9 @@ The first release.
 - A profile's `review` key: `review.never`, the paths below the app of files review never sends (matched against a
   link and the file it links to), and `review.mask`,
   texts it hides before it sends. `check` never acts on either (a value written wrong makes the profile invalid for
-  every command, `check` included; no finding and no exit code of `check` depends on them); `profile explain` says them, and `profile check` lists
-  an entry the base profile has and the profile drops as looser.
+  every command, `check` included; no finding and no exit code of `check` depends on them); `profile explain` says
+  them, `profile check` lists an entry the base profile has and the profile drops as looser, and the dry run lists
+  the `never` paths in force, saying of each that matched nothing that it did.
 - A profile's `evals.placement.lines`: the line of a part, set by hand. `check` never acts on it (its enforcement
   lists a line set lower as looser, for information only); `profile explain`
   says it, and `profile check` lists a part whose line is below the base profile's as looser.
@@ -56,15 +57,17 @@ The first release.
   `no`, a score of five levels 0 to 4 with `flagged_from`, or a choice of three options or more with `flagged`), what
   it is asked of (`reads`: file, class or function) and where (`in`, `keep`), its `line`, `message` and `fix`, and at
   least 2 flagged and 2 clean examples. `profile check` refuses each slot written wrong at its address, a `keep` filter
-  of no word of the vocabulary, and an example in which the eval reads nothing; `profile explain evals.<slot>` says
-  each. The bundled profiles write none.
+  of no word of the vocabulary, and an example in which the eval reads nothing, under its own heading, `evals`;
+  `profile explain evals.<id>.<slot>` says each. The bundled profiles write none.
 - `xarch review calibrate [--eval ID ...]` holds the evals of the profile's own to their examples (every flagged one
   above every clean one, by 0.4 on the mean, on the right side of the line, which it sets when the profile writes
   none) and records the verdicts in `.xarch/calibration.json`, to commit; exit 1 when an eval fails. Review runs an
   eval only when it is calibrated as written now by the model asked, lists its readings at or above its line with its
   message and fix, and says of any other why it does not run (uncalibrated, failed, stale) and what to run. The same
   run holds placement to the docs' examples and to `evals.placement.examples`, part by part (a sanity check of the
-  litmus texts); review never marks doubtful a file of a part whose examples disagree.
+  litmus texts), its examples masked as written for the docs' example app; an example of `evals.placement.examples`
+  lying in no part is refused at its address; review never marks doubtful a file of a part whose examples disagree,
+  and lists such files under their own heading. A record that cannot be read is refused, never rewritten.
 - The generated `AGENTS.md` says in one paragraph how to use `xarch review` and that it never replaces `xarch check`.
 
 ### Not in this release
