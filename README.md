@@ -898,11 +898,13 @@ files:
 Both bundled profiles list three files: the guard test, `AGENTS.md` and `ruff.toml`. The last two are not pinned: a
 project edits them.
 
-`AGENTS.md` (beside the app folder, about 45 lines) is written for a coding agent that has never seen xarch: what governs
+`AGENTS.md` (beside the app folder, about 60 lines) is written for a coding agent that has never seen xarch: what governs
 the project (the profile and `docs/project/`), to run `xarch where <path>` before creating or moving a file and to
 take the first litmus test a piece of code passes, to run `xarch check` and `ruff check` before finishing, how tests are
-written, and what not to do to get a green check: move code into a folder no part covers, switch a guard off or loosen
-the profile, edit the guard test, skip a test. It is static text (it names the app folder with `{{app}}`).
+written, how to run `xarch review` as a second, advisory reading (with no key set it refuses: skip it, or run it with
+`--offline` when the project commits its answer cache; `xarch review calibrate` is the maintainer's), and what not to
+do to get a green check: move code into a folder no part covers, switch a guard off or loosen the profile, edit the
+guard test, skip a test. It is static text (it names the app folder with `{{app}}`).
 
 `ruff.toml` holds only the linter rules that are the same for every file: pyflakes and pycodestyle errors, import
 sorting, absolute imports only, a return annotation on public functions (which `stand-ins` needs on a port's methods),

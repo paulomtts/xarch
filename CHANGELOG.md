@@ -71,7 +71,9 @@ The first release.
   litmus texts), its examples masked as written for the docs' example app; an example of `evals.placement.examples`
   lying in no part is refused at its address; review never marks doubtful a file of a part whose examples disagree,
   and lists such files under their own heading. A record that cannot be read is refused, never rewritten.
-- The generated `AGENTS.md` says in one paragraph how to use `xarch review` and that it never replaces `xarch check`.
+- The generated `AGENTS.md` says in one paragraph how to use `xarch review` and that it never replaces `xarch check`;
+  that with no key set it refuses (exit 2), so the agent skips it, or runs it with `--offline` when the project commits
+  its answer cache; and that `xarch review calibrate` is the maintainer's to run, not the agent's.
 
 ### Not in this release
 

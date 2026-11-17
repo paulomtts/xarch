@@ -86,6 +86,18 @@ def test_init_writes_the_agent_instructions_unpinned_and_short_naming_the_comman
 
 
 @pytest.mark.parametrize("profile", PROFILES)
+def test_the_agent_instructions_say_what_to_do_with_no_key_and_that_calibrate_is_the_maintainer_s_to_run(tmp_path,
+                                                                                                          profile):
+    init(tmp_path / "app", profile)
+    review = (tmp_path / "AGENTS.md").read_text().split("## A second reading, advisory\n")[1].split("\n## ")[0]
+    said = " ".join(review.split())
+    for needed in ["With no key set it refuses (exit 2)", "skip it", "`--offline` when the project commits its answer "
+                   "cache", "`xarch review calibrate` is the maintainer's to run, not yours"]:
+        assert needed in said, needed
+    assert "TypeSafe" not in review and "TYPESAFE" not in review
+
+
+@pytest.mark.parametrize("profile", PROFILES)
 def test_a_project_that_has_agent_instructions_keeps_them(tmp_path, profile):
     (tmp_path / "AGENTS.md").write_text("mine\n")
     report = init(tmp_path / "app", profile).report

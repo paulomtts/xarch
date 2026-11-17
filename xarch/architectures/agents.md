@@ -47,7 +47,9 @@ replaces `xarch check`; never edit code or docstrings to raise its numbers. Run 
 `git diff --name-only <base> | xarch review --files-from - --pieces --format json`. It sends the masked text of
 those files to the model's service whenever its key is set, and nothing otherwise; `--dry-run` shows what would
 leave the machine. For a file it reads as doubtful, or the first piece it ranks in a file, read its part's litmus
-(`xarch where <path>`), then leave it or move it, and say why in one line.
+(`xarch where <path>`), then leave it or move it, and say why in one line. With no key set it refuses (exit 2): then
+skip it, or run it with `--offline` when the project commits its answer cache; `xarch review calibrate` is the
+maintainer's to run, not yours.
 
 ## What not to do to get a green check
 
