@@ -1,0 +1,90 @@
+{
+  "placement": {
+    "hash": "c59e6e22f0e419b6cda4fc02e178ecfa6fcf67b31af0da1acbd0671424337b3d",
+    "model": "jev-1.14.0",
+    "answered_by": "jev-1.14.0",
+    "parts": {
+      "domain": {
+        "verdict": "passed",
+        "crossed": "",
+        "examples": 3
+      },
+      "logic": {
+        "verdict": "passed",
+        "crossed": "",
+        "examples": 2,
+        "alike": [
+          "kernel-logic"
+        ]
+      },
+      "ports": {
+        "verdict": "passed",
+        "crossed": "",
+        "examples": 1
+      },
+      "services": {
+        "verdict": "passed",
+        "crossed": "",
+        "examples": 1
+      },
+      "controller": {
+        "verdict": "passed",
+        "crossed": "",
+        "examples": 1
+      },
+      "adapters": {
+        "verdict": "passed",
+        "crossed": "",
+        "examples": 1
+      },
+      "platform": {
+        "verdict": "passed",
+        "crossed": "",
+        "examples": 1
+      },
+      "cli": {
+        "verdict": "passed",
+        "crossed": "",
+        "examples": 1
+      },
+      "reports": {
+        "verdict": "passed",
+        "crossed": "",
+        "examples": 1
+      },
+      "main": {
+        "verdict": "passed",
+        "crossed": "",
+        "examples": 1
+      },
+      "bootstrap": {
+        "verdict": "passed",
+        "crossed": "",
+        "examples": 1
+      },
+      "contract": {
+        "verdict": "passed",
+        "crossed": "",
+        "examples": 1
+      },
+      "profile-values": {
+        "verdict": "passed",
+        "crossed": "",
+        "examples": 3
+      },
+      "kernel-logic": {
+        "verdict": "passed",
+        "crossed": "",
+        "examples": 2,
+        "alike": [
+          "logic"
+        ]
+      },
+      "kernel": {
+        "verdict": "passed",
+        "crossed": "",
+        "examples": 1
+      }
+    }
+  }
+}

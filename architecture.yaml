@@ -10,10 +10,13 @@ parts:
     role: "entities, values, errors: invariants only; in published.py, the values handed out as they are"
     litmus: >-
       Is it an invariant of one of this module's values or records (a validation that refuses to build a wrong one),
-      or an error the module raises, that runs with no file read and no clock? If yes, it goes here, on that value. If
+      or an error the module raises (a class of its own, whatever base error it subclasses), that runs with no file
+      read and no clock? If yes, it goes here, on that value. A value the module works out as it runs (what it saw in
+      a source file, a rule as it applies it) is this module's own. If
       it is a value the module hands out as it is, with nothing to reshape, it goes in `domain/published.py`, which
-      `contract/` re-exports. If it is a value a profile or its language's data file says, which spec builds and rules
-      reads in full too, it belongs in `profile_values/`. If it is a pure rule that is not one value's invariant, it
+      `contract/` re-exports. If it is a record of what a profile file writes under a key (a tier, the fakes, a
+      guard's settings) or of what its language's data file lists, which spec builds and rules reads in full too, it
+      belongs in `profile_values/`, with its invariants. If it is a pure rule that is not one value's invariant, it
       belongs in `application/logic/`. If it must read anything, it is a service step through a port.
     may_import: [kernel, kernel-logic, profile-values]
     forbidden: pure
@@ -182,8 +185,11 @@ parts:
     path: profile_values
     role: the values a profile and the data file of the language it names say, which spec builds and rules reads in full
     litmus: >-
-      Is it a value that a profile, or the data file of the language it names, says, which spec builds and rules reads
-      in full, field by field? If yes, it goes here, as a record with no rule beyond its own invariants. What a rule of
+      Is it a record of what a profile file writes under one of its keys (the tiers, the fakes, a guard's settings),
+      or of what the data file of the language it names lists (its file extension, the facts it supplies), which spec
+      builds and rules reads in full, field by field? If yes, it goes here, as a record with no rule beyond its own
+      invariants. A value no profile writes, worked out from an app's source (an import seen, an edge between two
+      parts), is not one: it belongs in the `domain/` of the module that works it out. What a rule of
       `kernel/logic/` grades of such values (a key's shortfall of the facts a language supplies), which spec and rules
       both read in full, goes here too. If it is what a use case of one module found, it is that module's Result, in
       its `contract/`. If rules reads less than all of it, spec hands it out in its contract and rules holds a smaller
@@ -218,7 +224,10 @@ parts:
       violation names"
     litmus: >-
       Is it a primitive with no business meaning, one that could be lifted unchanged into an unrelated system, such as
-      the base error or a finding at a place in a file tree? If yes, it goes here. One exception, named on purpose:
+      the base error or a finding at a place in a file tree? If yes, it goes here. An error one module raises, which
+      subclasses the base error, is that module's own, in its `domain/`. A function that works a result out of its
+      arguments is not a primitive, however general it reads: it goes in `kernel/logic/`, or in the one module that
+      needs it. One exception, named on purpose:
       `RULES` and `OWN_ID`, xarch's catalogue of check ids and how a profile writes its own, stay here beside the
       `Violation` that validates them, because spec and rules both need them and spec cannot import rules. If it is a
       value of the profile or of the language a check reads, it belongs in `profile_values/`. If it is a pure function
