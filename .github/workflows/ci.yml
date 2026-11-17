@@ -40,6 +40,8 @@ jobs:
           "$work/venv/bin/xarch" new module documents
           "$work/venv/bin/xarch" check
           "$work/venv/bin/python" -m xarch check --strict
+          env -u TYPESAFE_API_KEY "$work/venv/bin/xarch" review --all --dry-run > /dev/null
+          env -u TYPESAFE_API_KEY "$work/venv/bin/xarch" review calibrate --dry-run > /dev/null
           mkdir "$work/web"
           cd "$work/web"
           "$work/venv/bin/xarch" init --profile web

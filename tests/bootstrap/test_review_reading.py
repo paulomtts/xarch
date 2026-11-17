@@ -120,6 +120,25 @@ def test_the_body_a_dry_run_shows_is_the_json_the_service_receives_for_the_same_
     assert [item["chars"] for item in dry["requests"]] == [len(body["state"]) for _, _, body in served.received]
 
 
+@pytest.mark.parametrize("args", [
+    pytest.param((SERVICE, VALUES, "--offline"), id="a review offline"),
+    pytest.param((SERVICE, VALUES, "--dry-run"), id="a dry run"),
+    pytest.param(("calibrate", "--offline"), id="a calibration offline"),
+    pytest.param(("calibrate", "--dry-run"), id="a calibration's dry run"),
+])
+def test_offline_or_a_dry_run_sends_nothing_with_the_key_set_and_the_service_listening(served, args):
+    review(*args, url=served.url)
+    assert served.received == []
+
+
+def test_the_request_goes_with_the_user_agent_xarch_and_no_other_header_of_the_project(served):
+    assert review(SERVICE, url=served.url).exit_code == 0
+    (_, headers, _), = served.received
+    assert headers["User-Agent"] == "xarch"
+    assert {name.lower() for name in headers} <= {"user-agent", "authorization", "content-type", "content-length",
+                                                  "host", "accept-encoding", "connection"}
+
+
 def test_answers_kept_are_read_back_offline_with_no_key_and_nothing_is_sent(served):
     assert review(SERVICE, VALUES, url=served.url).exit_code == 0
     offline = review(SERVICE, VALUES, "--offline", "--format", "json", key=None, url=served.url)
