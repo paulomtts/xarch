@@ -117,8 +117,8 @@ def register(app: typer.Typer, reviewing: ReviewController, spec: SpecController
                app_path: AppPath = None, profile: ProfileName = None, tests: TestsPath = None,
                output: FormatOption = Format.text, max_files: MaxFiles = None, pieces: Pieces = False,
                context: ContextOption = _Context.none, evals: EvalOption = None) -> None:
-        """Ask a decision model of chosen files where each belongs, by the litmus tests of the profile's parts, and
-        show its reading, ranked: a file below its part's line reads as doubtful there. Advisory.
+        """Experimental: ask a decision model of chosen files where each belongs, by the litmus tests of the profile's
+        parts, and show its reading, ranked: a file below its part's line reads as doubtful there. Advisory.
 
         It sends the masked text of each file judged whenever the decision model's key is set in the environment:
         the key alone allows it. --dry-run shows what would be sent, needing no key; --offline reads only the answers

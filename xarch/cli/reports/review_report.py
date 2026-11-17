@@ -92,7 +92,7 @@ def plan_lines(planned: ReviewPlanned) -> list[str]:
     asked = len(planned.requests)
     judged = sum(not item.piece and not item.asked for item in planned.requests)
     cached = sum(item.cached for item in planned.requests)
-    lines = [f"review: advisory. {ADVISORY}", NOTHING_SENT, _what_leaves(planned.sends, bool(planned.piece_ask)),
+    lines = [f"review (experimental): advisory. {ADVISORY}", NOTHING_SENT, _what_leaves(planned.sends, bool(planned.piece_ask)),
              f"{planned.found} file(s) found ({', '.join(WAYS[way] for way in planned.by)}), {judged} to be judged, "
              f"{len(planned.left_out)} left out; {asked} request(s), {planned.characters:,} characters, about "
              f"{planned.tokens:,} tokens; {cached} in the cache already.", *_reasked(planned.reorders), "",
@@ -132,7 +132,7 @@ def _reasked(reorders: int) -> list[str]:
 def plan_document(profile: str, planned: ReviewPlanned) -> str:
     """The JSON document of a dry run: every request in full, with the question once, since every request carries it."""
     content: dict[str, Any] = {
-        "ok": True, "advisory": ADVISORY, "profile": profile, "dry_run": True, "sent": False,
+        "ok": True, "experimental": True, "advisory": ADVISORY, "profile": profile, "dry_run": True, "sent": False,
         "selection": {"by": list(planned.by), "found": planned.found, "judged": len(planned.requests),
                       "left_out": [_left_out(item) for item in planned.left_out]},
         "question": {"ask": planned.question.ask, "role_only": list(planned.role_only),
@@ -156,7 +156,7 @@ def reading_lines(read: ReviewReading) -> list[str]:
     placed, lowest first; what small means, when a file is; how the files of each part read; the files left out and
     why; and those with no answer, and why."""
     judged = len(read.readings) + sum(not item.piece and not item.asked for item in read.unasked)
-    lines = [f"review: advisory. {ADVISORY}",
+    lines = [f"review (experimental): advisory. {ADVISORY}",
              f"{model_said(read.sends.model, read.answered_by)}. {read.found} file(s) found ({', '.join(WAYS[way] for way in read.by)}), "
              f"{judged} judged, {len(read.left_out)} left out. Asked {read.sent}, from cache {read.cached}."]
     if read.sent:
@@ -208,7 +208,7 @@ def reading_document(profile: str, read: ReviewReading) -> str:
     """The JSON document of a review: every file answered with the probability of each part, the files left out and
     those with no answer, and what was sent to."""
     content: dict[str, Any] = {
-        "ok": True, "advisory": ADVISORY, "profile": profile, "dry_run": False, "complete": read.complete,
+        "ok": True, "experimental": True, "advisory": ADVISORY, "profile": profile, "dry_run": False, "complete": read.complete,
         "model": read.sends.model, "answered_by": list(read.answered_by),
         "selection": {"by": list(read.by), "found": read.found,
                       "judged": len(read.readings) + sum(not item.piece and not item.asked for item in read.unasked),

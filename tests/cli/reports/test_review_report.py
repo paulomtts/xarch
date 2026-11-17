@@ -55,7 +55,7 @@ PLANNED = ReviewPlanned((BY_PATHS, BY_LIST), 3, (Request("app/a.py", "domain", 1
 
 def test_a_dry_run_says_first_what_review_is_that_nothing_was_sent_and_what_leaves_the_machine():
     lines = plan_lines(PLANNED)
-    assert lines[0] == f"review: advisory. {ADVISORY}"
+    assert lines[0] == f"review (experimental): advisory. {ADVISORY}"
     assert lines[1] == "Nothing was sent (--dry-run)."
     assert lines[2] == ("Without --dry-run, review sends to Model (https://model.example.test), as the model m-1, the "
                         "masked text of each file below that is not in the cache and the question after it: nothing "
@@ -91,7 +91,7 @@ def test_a_dry_run_says_the_texts_review_mask_hides_and_each_file_review_never_s
 
 def test_the_json_of_a_dry_run_holds_every_request_in_full_and_the_question_once():
     assert json.loads(plan_document("cli", PLANNED)) == {
-        "ok": True, "advisory": ADVISORY, "profile": "cli", "dry_run": True, "sent": False,
+        "ok": True, "experimental": True, "advisory": ADVISORY, "profile": "cli", "dry_run": True, "sent": False,
         "selection": {"by": ["paths", "files-from"], "found": 3, "judged": 1,
                       "left_out": [{"file": "app/b.py", "why": "small", "chars": 612, "pattern": None},
                                    {"file": "app/c.py", "why": "missing", "chars": 0, "pattern": None}]},
@@ -137,7 +137,7 @@ READ = ReviewReading((BY_PATHS,), 4, (DOUBTFUL, PLACED), (LeftOut("app/b.py", SM
 
 def test_a_reading_says_what_review_is_what_was_sent_and_each_doubtful_file_with_what_to_do_naming_no_other_part():
     lines = reading_lines(READ)
-    assert lines[:3] == [f"review: advisory. {ADVISORY}",
+    assert lines[:3] == [f"review (experimental): advisory. {ADVISORY}",
                          "Model m-1. 4 file(s) found (paths), 2 judged, 1 left out. Asked 1, from cache 1.",
                          "Sent 1 request(s) to Model (https://model.example.test): 2,400 input tokens, 3 output tokens."]
     assert lines[4:9] == [
@@ -246,7 +246,7 @@ def test_a_file_refused_alone_is_unanswered_with_what_the_decision_model_said_of
 def test_the_json_of_a_reading_holds_each_file_with_the_probability_of_each_part_and_what_was_sent():
     document = json.loads(reading_document("cli", replace(READ, unasked=(Unasked("app/c.py", NOT_CACHED),))))
     assert document == {
-        "ok": True, "advisory": ADVISORY, "profile": "cli", "dry_run": False, "complete": False, "model": "m-1",
+        "ok": True, "experimental": True, "advisory": ADVISORY, "profile": "cli", "dry_run": False, "complete": False, "model": "m-1",
         "answered_by": [], "selection": {"by": ["paths"], "found": 4, "judged": 3,
                       "left_out": [{"file": "app/b.py", "why": "small", "chars": 612, "pattern": None}]},
         "placement": {"calibration": {"state": "measured", "evidence": document["placement"]["calibration"]["evidence"],
@@ -364,3 +364,22 @@ def test_a_reading_in_which_nothing_was_answered_says_so_and_not_that_nothing_re
     assert not any("reads as doubtful here" in line for line in reading_lines(nothing))
     some = replace(READ, readings=(PLACED,), unasked=(Unasked("app/c.py", NOT_CACHED),))
     assert "  no file judged reads as doubtful here (1 of 2 answered)" in reading_lines(some)
+
+
+def test_every_text_output_of_review_and_of_calibrate_opens_as_experimental_and_every_json_document_says_so():
+    from xarch.cli.reports.eval_report import (
+        calibration_document,
+        calibration_lines,
+        calibration_plan_document,
+        calibration_plan_lines,
+    )
+    from xarch.modules.review.contract import Calibrated, CalibrationPlanned
+
+    done = Calibrated((), None, (), SENDS, 0, 0, 0, 0, "")
+    planned = CalibrationPlanned((), ("placement",), 0, 0, (), SENDS)
+    firsts = [plan_lines(PLANNED)[0], reading_lines(READ)[0], calibration_lines(done, "")[0],
+              calibration_plan_lines(planned)[0]]
+    assert all("(experimental)" in first for first in firsts)
+    documents = [plan_document("cli", PLANNED), reading_document("cli", READ), calibration_document(done, ""),
+                 calibration_plan_document(planned)]
+    assert all(json.loads(text)["experimental"] is True for text in documents)

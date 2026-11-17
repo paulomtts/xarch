@@ -25,7 +25,7 @@ The first release.
 - Profile format 2: one YAML file that states each fact once, on the thing it is about.
 - A profile's own checks, written under `checks`, each held to its words, its facts and its examples.
 - Python, read through the interpreter's own syntax tree, with pytest as the testing preset.
-- `xarch review`, advisory: a decision model's reading of where each file chosen (as paths, with `--files-from -`, or
+- `xarch review`, experimental and advisory: a decision model's reading of where each file chosen (as paths, with `--files-from -`, or
   `--all`) belongs, by the litmus tests of the profile's parts, ranked, a file below its part's line (0.3, or the
   part's own) read as doubtful there, in text and JSON. A file whose answer falls within 0.15 of its part's line is
   asked again in two other orders of the options and read on the mean; a file under 2,000 characters is marked small;

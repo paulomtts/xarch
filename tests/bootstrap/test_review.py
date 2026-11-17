@@ -46,7 +46,7 @@ def test_a_dry_run_shows_the_masked_text_it_would_send_and_sends_nothing():
     result = review(SERVICE, "--dry-run")
     assert result.exit_code == 0, result.output
     lines = result.output.splitlines()
-    assert lines[0].startswith("review: advisory.")
+    assert lines[0].startswith("review (experimental): advisory.")
     assert lines[1] == "Nothing was sent (--dry-run)."
     assert lines[2] == ("Without --dry-run, review sends to TypeSafe (https://api.typesafe.ai), as the model "
                         "jev-1.14.0, the masked text of each file below that is not in the cache and the question after "

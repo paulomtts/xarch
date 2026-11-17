@@ -49,7 +49,7 @@ xarch profile new NAME --from BUNDLED [--out FOLDER] [--app PATH]
 xarch profile check [NAME|FILE] [--app PATH] [--format text|json]
                                                              # validate a profile without an app
 xarch review [PATH ... | calibrate [--eval ID ...]] [--files-from FILE|-] [--all] [--pieces] [--context none|imports] [--dry-run | --offline] [--cache DIR] [--max-files N] [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json]
-                                                             # advisory: a decision model's reading of where each file
+                                                             # experimental, advisory: a decision model's reading of where each file
                                                              # chosen belongs, with --pieces a ranking of its pieces,
                                                              # and the profile's own evals that are calibrated; sends
                                                              # the masked text when the key is set. `review calibrate`
@@ -544,6 +544,13 @@ be added, an existing one keeps its name and meaning. A field that does not appl
   code from. `note`: one line where the kind alone does not say it.
 
 ## xarch review: an advisory reading
+
+`review` is experimental in 0.1.0: its command line, its output and its JSON may change, and the bundled profiles ship
+no calibration record. Measured on 2026-11-17 against the real model (`jev-1.14.0`), held to the bundled profiles' own
+doc examples, placement passes for 3 of the 12 parts of the `cli` profile and 5 of the 12 of the `web` profile; the
+examples of the other parts disagree (short example files read low on their own part, and some read high on a
+neighbouring part). A part whose examples disagree is read but never marked doubtful, so calibrating a bundled profile
+today leaves doubt on only those 3 or 5 parts. Better examples and litmus texts are planned after 0.1.0.
 
 `review` is a second, advisory command, apart from `check`: it never runs inside `check`, never changes what `check`
 finds or its exit code, and a review of files never exits 1 (`review calibrate` exits 1 when an eval fails its

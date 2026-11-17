@@ -42,7 +42,7 @@ folder is not `app/`.
 
 ## A second reading, advisory
 
-`xarch review` asks a decision model where each file you give it belongs, by the parts' litmus tests. It never
+`xarch review` (experimental) asks a decision model where each file you give it belongs, by the parts' litmus tests. It never
 replaces `xarch check`; never edit code or docstrings to raise its numbers. Run it once the check is clean, as
 `git diff --name-only <base> | xarch review --files-from - --pieces --format json`. It sends the masked text of
 those files to the model's service whenever its key is set, and nothing otherwise; `--dry-run` shows what would

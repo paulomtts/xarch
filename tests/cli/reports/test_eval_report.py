@@ -175,14 +175,14 @@ def test_a_review_says_whether_placement_was_held_to_its_examples_and_each_part_
 
 def test_a_calibration_says_the_rule_of_what_it_holds_the_evals_pass_rule_only_for_evals_of_the_profile_s_own():
     alone = calibration_plan_lines(CalibrationPlanned((), ("placement",), 0, 0, (), SENDS))
-    assert alone[0].startswith("review calibrate: holds placement to its examples, part by part")
+    assert alone[0].startswith("review calibrate (experimental): holds placement to its examples, part by part")
     assert "held to pass by every flagged example" not in alone[3] and "placement held part by part" in alone[3]
     both = calibration_plan_lines(CalibrationPlanned((), ("placement", "rule"), 0, 0, (), SENDS))
-    assert both[0].startswith("review calibrate: holds the evals of the profile's own")
+    assert both[0].startswith("review calibrate (experimental): holds the evals of the profile's own")
     assert "held to pass by every flagged example above every clean one, by 0.4 on the mean" in both[3]
     assert "placement held part by part" in both[3]
     done = calibration_lines(Calibrated((), None, (), SENDS, 3, 0, 0, 0, "", PLACED), "")
-    assert done[0].startswith("review calibrate: holds placement to its examples")
+    assert done[0].startswith("review calibrate (experimental): holds placement to its examples")
 
 
 def test_an_example_unanswered_says_whether_it_is_a_flagged_or_a_clean_one_in_text_and_in_json():

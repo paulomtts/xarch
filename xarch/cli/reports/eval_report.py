@@ -33,9 +33,9 @@ UNKNOWN = "how often it reads well-written code as flagged is not known"
 """What an eval's numbers rest on: its examples only, written to be clear."""
 REWORD = "make it one short rule about what the text shows; add a clean example of the case it must not catch"
 """What to do about an eval whose examples failed."""
-CALIBRATION = ("review calibrate: holds the evals of the profile's own to their examples, with the model review asks: "
+CALIBRATION = ("review calibrate (experimental): holds the evals of the profile's own to their examples, with the model review asks: "
                "an eval runs in a review only once it passed, as it is written now")
-PLACEMENT_ONLY = ("review calibrate: holds placement to its examples, part by part, with the model review asks: a sanity "
+PLACEMENT_ONLY = ("review calibrate (experimental): holds placement to its examples, part by part, with the model review asks: a sanity "
                   "check of the litmus texts, which never fails the calibration")
 PLACEMENT_RULE = ("placement held part by part: a part's clean examples at or above its line, every example claimed for "
                   "it from elsewhere below it; a part whose examples disagree is said, and fails nothing")
@@ -203,7 +203,7 @@ def unasked_why(item: Unasked) -> str:
 def calibration_document(done: Calibrated, record: str) -> str:
     """The JSON document of a calibration."""
     return document({
-        "ok": True, "calibrated": [{"id": item.asked, "complete": item.complete, "passed": item.passed,
+        "ok": True, "experimental": True, "calibrated": [{"id": item.asked, "complete": item.complete, "passed": item.passed,
                                     "line": item.line if item.complete else None, "line_by_hand": item.by_hand,
                                     "crossed": item.crossed or None,
                                     "examples": [{"path": example.path, "flagged": example.flagged,
@@ -250,7 +250,7 @@ def calibration_plan_lines(planned: CalibrationPlanned) -> list[str]:
 def calibration_plan_document(planned: CalibrationPlanned) -> str:
     """The JSON document of a calibration's dry run: every request in full."""
     return document({
-        "ok": True, "dry_run": True, "sent": False, "evals": list(planned.evals),
+        "ok": True, "experimental": True, "dry_run": True, "sent": False, "evals": list(planned.evals),
         "requests": [{"id": r.asked, "example": r.file, "kind": r.example, "part": r.part or None,
                       "name": r.piece or None, "first": r.lines[0] or None,
                       "last": r.lines[1] or None, "chars": r.chars, "cached": r.cached, "text": r.text, "body": r.body}
