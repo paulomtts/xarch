@@ -982,3 +982,10 @@ its test framework or the linter (xarch's code never runs it). The repository's 
 bundled profiles write (`xarch/architectures/lint.toml`, named so that the linter does not read it as a config of
 its own) plus an exclusion of the reference snippets under `xarch/architectures/examples/` and of `.claude/`; a test
 keeps the two identical otherwise.
+
+`architecture.yaml` also has example files of its own, one or two per part, in `docs/examples/` (outside the package,
+so not in the wheel, and outside the app folder, so `check` does not read them as xarch's source; they are linted as
+the rest of the repository is): short files in xarch's own vocabulary that its `docs.examples` names, so that
+`xarch review calibrate` holds the placement eval to xarch's own parts, together with the two flagged examples of
+`evals.placement.examples` that sit in `profile_values/` and a module's `domain/` but belong in the other. It has no
+generated architecture page yet: the bundled `cli.md` and `testing.md` templates quote the `documents` example project.

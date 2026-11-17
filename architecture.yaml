@@ -321,6 +321,72 @@ excluded:
 evals:
   placement:
     alike: [[logic, kernel-logic]]
+    examples:
+      flagged:
+        profile_values/import_edge.py: |
+          from __future__ import annotations
+
+          from dataclasses import dataclass
+
+
+          @dataclass(frozen=True)
+          class ImportEdge:
+              importer: str
+              target: str
+              file: str
+              line: int
+
+              def __post_init__(self) -> None:
+                  if self.line < 1:
+                      raise ValueError(f"{self.file}: an import sits on a line, 1 or more")
+                  if self.importer == self.target:
+                      raise ValueError(f"{self.file}:{self.line}: a part importing itself is no edge")
+        modules/rules/domain/fakes.py: |
+          from __future__ import annotations
+
+          from dataclasses import dataclass
+
+
+          @dataclass(frozen=True)
+          class Fakes:
+              folder: str
+              parts: tuple[str, ...]
+              prefix: str = "Fake"
+
+              def __post_init__(self) -> None:
+                  if not self.parts:
+                      raise ValueError("fakes: name the parts whose classes the fakes stand in for")
+                  if not self.prefix[:1].isupper():
+                      raise ValueError(f"fakes: a prefix starts a class name, so it is capitalized, not {self.prefix!r}")
+
+              def name_for(self, port: str) -> str:
+                  return f"{self.prefix}{port}"
 
 docs:
   entry: cli
+  naming:
+    - {kind: command, where: contract/, pattern: verb and thing, example: [CheckApp, CheckStructure, Locate]}
+    - {kind: DTO, where: contract/, pattern: thing and `View`, example: [FindingView, EnforcementView]}
+    - {kind: Result variant, where: contract/, pattern: "the outcome, in a word or two",
+       example: [AppChecked, NotADirectory, CheckRefused]}
+    - {kind: Result union, where: contract/, pattern: "the command or use case, and `Result`",
+       example: [CheckAppResult, ProfileCheckResult]}
+    - {kind: domain error, where: domain/, pattern: what went wrong, example: [ProfileUnusable, NoKey]}
+    - {kind: service, where: application/services/, pattern: "the use case and `Service`",
+       example: [AppCheckService, StructureCheckService]}
+    - {kind: pure rule, where: [application/logic/, kernel/logic/],
+       pattern: "a file named for the rule, a function for what it answers", example: [cycles.py, part_of]}
+    - {kind: controller, where: application/, pattern: "the module and `Controller`",
+       example: [RulesController, SpecController]}
+    - {kind: port, where: application/ports/, pattern: "what the module needs, in its own words",
+       example: [SourceTree, Disk, DecisionModel]}
+    - {kind: adapter, where: adapters/, pattern: "`<System><PortName>`", example: [FsSourceTree, SpecProfile, FsDisk]}
+    - {kind: platform client, where: platform/, pattern: "the technology", example: [FileSystem, YamlWriter, TomlReader]}
+    - {kind: test fake, where: tests/fakes/, pattern: "`Fake` and the port's name", example: [FakeSourceTree, FakeDisk]}
+  examples: [docs/examples]
+  example_notes:
+    modules/rules/adapters/fs_source_tree.py: the only kind of file that parses the checked language
+    modules/rules/contract/__init__.py: the public names; a kernel value is re-exported as it is
+    kernel/logic/shortfall.py: a pure rule over a value of profile_values/ that two modules need
+    platform/filesystem.py: refuses a relative path; the caller says which folder it is read from
+    bootstrap/wiring.py: the only file that names an adapter and the port it fills
