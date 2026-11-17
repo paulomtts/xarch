@@ -986,6 +986,7 @@ keeps the two identical otherwise.
 `architecture.yaml` also has example files of its own, one or two per part, in `docs/examples/` (outside the package,
 so not in the wheel, and outside the app folder, so `check` does not read them as xarch's source; they are linted as
 the rest of the repository is): short files in xarch's own vocabulary that its `docs.examples` names, so that
-`xarch review calibrate` holds the placement eval to xarch's own parts, together with the two flagged examples of
-`evals.placement.examples` that sit in `profile_values/` and a module's `domain/` but belong in the other. xarch's own
+`xarch review calibrate` holds the placement eval to xarch's own parts. Its `evals.placement.alike` names two pairs,
+`logic` with `kernel-logic` and `domain` with `profile-values`: each pair differs only in how many modules use a file,
+which `check` decides (`shared`) and one file does not show. xarch's own
 architecture page, generated from it and `docs/templates/`, is `docs/xarch/architecture.md` (and `docs/xarch/testing.md`).

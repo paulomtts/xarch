@@ -1,13 +1,16 @@
 {
   "placement": {
-    "hash": "c59e6e22f0e419b6cda4fc02e178ecfa6fcf67b31af0da1acbd0671424337b3d",
+    "hash": "3ee0e9b4366d02116944335d850b0b4dd75493b928d95294d169922b1ccf92b6",
     "model": "jev-1.14.0",
     "answered_by": "jev-1.14.0",
     "parts": {
       "domain": {
         "verdict": "passed",
         "crossed": "",
-        "examples": 3
+        "examples": 2,
+        "alike": [
+          "profile-values"
+        ]
       },
       "logic": {
         "verdict": "passed",
@@ -70,7 +73,10 @@
       "profile-values": {
         "verdict": "passed",
         "crossed": "",
-        "examples": 3
+        "examples": 2,
+        "alike": [
+          "domain"
+        ]
       },
       "kernel-logic": {
         "verdict": "passed",

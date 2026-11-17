@@ -343,47 +343,7 @@ excluded:
 
 evals:
   placement:
-    alike: [[logic, kernel-logic]]
-    examples:
-      flagged:
-        profile_values/import_edge.py: |
-          from __future__ import annotations
-
-          from dataclasses import dataclass
-
-
-          @dataclass(frozen=True)
-          class ImportEdge:
-              importer: str
-              target: str
-              file: str
-              line: int
-
-              def __post_init__(self) -> None:
-                  if self.line < 1:
-                      raise ValueError(f"{self.file}: an import sits on a line, 1 or more")
-                  if self.importer == self.target:
-                      raise ValueError(f"{self.file}:{self.line}: a part importing itself is no edge")
-        modules/rules/domain/fakes.py: |
-          from __future__ import annotations
-
-          from dataclasses import dataclass
-
-
-          @dataclass(frozen=True)
-          class Fakes:
-              folder: str
-              parts: tuple[str, ...]
-              prefix: str = "Fake"
-
-              def __post_init__(self) -> None:
-                  if not self.parts:
-                      raise ValueError("fakes: name the parts whose classes the fakes stand in for")
-                  if not self.prefix[:1].isupper():
-                      raise ValueError(f"fakes: a prefix starts a class name, so it is capitalized, not {self.prefix!r}")
-
-              def name_for(self, port: str) -> str:
-                  return f"{self.prefix}{port}"
+    alike: [[logic, kernel-logic], [domain, profile-values]]
 
 docs:
   entry: cli
