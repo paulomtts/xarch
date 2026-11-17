@@ -71,7 +71,7 @@ def _row(shown: Shown) -> str:
 
 
 def overview_lines(whole: FormatExplained) -> list[str]:
-    lines = [f"xarch profile format {whole.version}: one yaml file; `check` enforces what is marked enforced, "
+    lines = ["xarch profile format: one yaml file; `check` enforces what is marked enforced, "
              "the rest only fills the docs",
              "need: a key under another is needed in the map it sits in, such as parts.path in each part", "",
              f"{'key':<{KEY}} {'need':<{NEED}} {'check':<12} what it is"]
@@ -135,7 +135,7 @@ def unknown_message(found: UnknownKey, words: Sequence[str] = ()) -> str:
 
 
 def overview_document(whole: FormatExplained) -> str:
-    return document({"ok": True, "format": whole.version, "shape": [_shown(shown) for shown in whole.shape],
+    return document({"ok": True, "shape": [_shown(shown) for shown in whole.shape],
                   "symbols": [{"symbol": s.symbol, "meaning": s.meaning} for s in whole.symbols],
                   "smallest": whole.smallest, "deeper": DEEPER})
 

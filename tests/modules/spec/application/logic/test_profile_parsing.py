@@ -1,19 +1,27 @@
-"""A profile file in format 2: its keys, its parts and the layout they imply, what a part may import, its outside
+"""A profile file: its keys, its parts and the layout they imply, what a part may import, its outside
 packages, the names it may not use, and the layers."""
 import pytest
 
 from tests.modules.spec.format_files import CATALOGUE
-from tests.modules.spec.profiles_v2 import layered, parsed, problems, two_folders
+from tests.modules.spec.profiles import layered, parsed, problems, two_folders
 from xarch.modules.spec.application.logic.key_lookup import names_of
 from xarch.modules.spec.application.logic.key_table import KEYS
 from xarch.modules.spec.application.logic.layout_walk import docs_name, is_file
+from xarch.modules.spec.application.logic.profile_parsing import parse_profile
+from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.profile_keys import SCOPES
 from xarch.modules.spec.domain.values import Part
 from xarch.profile_values.placement import Repeat, Target
 
 
+def test_a_document_that_is_no_mapping_is_refused():
+    with pytest.raises(InvalidArchitecture) as caught:
+        parse_profile([1], "layered.yaml")
+    assert caught.value.problems == ("layered.yaml: must be a mapping of keys",)
+
+
 def test_the_smallest_profile_is_a_name_and_parts_and_checks_the_layout_and_the_imports():
-    architecture = parsed({"xarch": 2, "name": "tiny", "parts": {
+    architecture = parsed({"name": "tiny", "parts": {
         "core": {"path": "core", "role": "the rules"},
         "cli": {"path": "cli", "role": "commands and output", "may_import": ["core"], "libraries": ["typer"]}}})
     assert architecture.name == "tiny"
@@ -35,7 +43,7 @@ def test_a_profile_says_what_it_does_not_have_by_leaving_it_out():
 def test_unknown_keys_are_refused_with_the_keys_that_exist_in_the_file():
     assert problems(layered(colour=1, extra=2)) == [
         "layered.yaml: unknown keys 'colour', 'extra': use based_on, checks, docs, evals, excluded, fakes, files, forbidden, guards, "
-        "hints, language, layers, name, parts, reserved, review, testing, tiers, xarch"]
+        "hints, language, layers, name, parts, reserved, review, testing, tiers"]
 
 
 def test_every_unknown_key_message_reads_the_table_of_keys():
@@ -51,7 +59,7 @@ def test_every_key_of_the_table_has_a_scope_with_an_address_and_a_meaning():
 
 
 def test_the_required_keys_are_reported_together():
-    assert problems({"xarch": 2}) == ["layered.yaml: missing `name`", "layered.yaml: missing `parts`"]
+    assert problems({}) == ["layered.yaml: missing `name`", "layered.yaml: missing `parts`"]
 
 
 @pytest.mark.parametrize("name", ["", "  ", 3, None])
@@ -437,7 +445,7 @@ def test_every_problem_of_a_profile_is_reported_at_once():
     document["parts"]["store"]["may_import"] = ["repo"]
     assert problems(document) == [
         "layered.yaml: unknown keys 'colour', 'layout': use based_on, checks, docs, evals, excluded, fakes, files, forbidden, "
-        "guards, hints, language, layers, name, parts, reserved, review, testing, tiers, xarch",
+        "guards, hints, language, layers, name, parts, reserved, review, testing, tiers",
         "layered.yaml: language: 'ruby' is not a language xarch reads: use python",
         "layered.yaml: parts.store.may_import: 'repo' names no part 'repo'"]
 

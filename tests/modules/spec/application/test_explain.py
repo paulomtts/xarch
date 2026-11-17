@@ -16,7 +16,7 @@ from xarch.profile_values.capabilities import EXACT, FACTS, Shortfall, Supply
 
 BUNDLED = {"bundled": {"base": {}, "other": {}}}
 BROKEN = {"bundled": {"base": {}}, "languages": {"python": "not a mapping"}}
-UNTOLD = {"bundled": {"base": {}}, "keys": {"fragments": {}, "smallest": "xarch: 2\n", "symbols": []}}
+UNTOLD = {"bundled": {"base": {}}, "keys": {"fragments": {}, "smallest": "name: n\n", "symbols": []}}
 SAID = (
     Symbol("<word>", "in a path: a repeating folder, one per name, as in units/<unit>/store; there may be several"),
     Symbol("store", "in may_import, a bare name: that part, in the importer's own instance of its repeating folder"),
@@ -27,7 +27,7 @@ SAID = (
     Symbol("a path ending in .py", "a last path step with a dot: the part is one file, not a folder"),
 )
 """The symbols as the format says them for the default language, its extension in place of %extension%."""
-SMALLEST = "xarch: 2\nname: documents-app\nparts:\n  documents:\n    path: documents\n    role: the documents\n"
+SMALLEST = "name: documents-app\nparts:\n  documents:\n    path: documents\n    role: the documents\n"
 """The smallest valid profile, as the format shows it."""
 
 
@@ -38,7 +38,6 @@ def explained(key: str):
 BASED_ON = explained("based_on")
 FORMAT = spec_controller(**BUNDLED)[0].explain(Explain())
 SHAPE = (
-    Shown('xarch', 0, 'the format version', True, False),
     Shown('name', 0, 'what the profile is called', True, False),
     Shown('based_on', 0, 'the bundled profile this was copied from', False, False),
     Shown('language', 0, 'the language of the app', False, True),
@@ -116,7 +115,7 @@ may send and of how it reads what it asks are left to the explanation of `review
 
 
 @pytest.mark.parametrize("given, when, then", [
-    pytest.param(BUNDLED, Explain(), FormatExplained(2, SHAPE, SAID, SMALLEST),
+    pytest.param(BUNDLED, Explain(), FormatExplained(SHAPE, SAID, SMALLEST),
                  id="with no key the whole format is explained"),
     pytest.param(BUNDLED, Explain("based_on"),
                  KeyExplained("based_on", "the file", "the bundled profile this was copied from",
@@ -141,9 +140,9 @@ def test_explain(given, when, then):
 
 
 def test_the_whole_format_is_the_keys_of_the_file_their_symbols_and_the_smallest_profile():
-    assert FORMAT.version == 2 and FORMAT.smallest == SMALLEST
+    assert FORMAT.smallest == SMALLEST
     assert FORMAT.symbols == SAID
-    assert FORMAT.shape[0] == Shown("xarch", 0, "the format version", True, False)
+    assert FORMAT.shape[0] == Shown("name", 0, "what the profile is called", True, False)
     assert Shown("parts.may_import", 1, "what the part may import besides itself", False, True) in FORMAT.shape
 
 

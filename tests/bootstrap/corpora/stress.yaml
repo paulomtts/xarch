@@ -1,4 +1,3 @@
-xarch: 2
 name: stress
 based_on: cli
 language: python

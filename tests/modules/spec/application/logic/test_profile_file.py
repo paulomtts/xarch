@@ -1,37 +1,26 @@
-"""Which loader reads a profile file: the format version it starts with decides, and any other version is refused."""
+"""Where a profile comes from: a bare name is a bundled profile, anything else a path to a file, and a bare name that
+is no bundled profile is refused with the ones there are."""
+from pathlib import Path
+
 import pytest
 
-from tests.modules.spec.profiles_v2 import PRESETS, SOURCE, layered
-from xarch.modules.spec.application.logic.profile_file import parse_profile
-from xarch.modules.spec.application.logic.profile_v2 import parse_v2
+from xarch.modules.spec.application.logic.profile_file import source_of
 from xarch.modules.spec.domain.errors import InvalidArchitecture
+from xarch.modules.spec.domain.values import ArchitectureSource
 
 
-def load(document):
-    return parse_profile(document, SOURCE, (), PRESETS, ("cli",))
+@pytest.mark.parametrize("location, found", [
+    pytest.param("cli", ArchitectureSource("cli", bundled=True), id="a bare name is a bundled profile"),
+    pytest.param("mine.yaml", ArchitectureSource("mine.yaml", bundled=False), id="a name with a suffix is a file"),
+    pytest.param("arch/cli", ArchitectureSource("arch/cli", bundled=False), id="a name with a folder is a file"),
+    pytest.param(Path("cli"), ArchitectureSource("cli", bundled=False), id="a path is a file"),
+])
+def test_a_bare_name_is_a_bundled_profile_and_anything_else_a_file(location, found):
+    assert source_of(location, ("cli", "web")) == found
 
 
-def problems(document) -> list[str]:
+def test_a_bare_name_that_is_no_bundled_profile_is_refused_with_the_ones_there_are():
     with pytest.raises(InvalidArchitecture) as caught:
-        load(document)
-    return list(caught.value.problems)
-
-
-def test_format_2_is_read_by_its_own_loader():
-    document = layered(based_on="cli")
-    assert load(document) == parse_v2(document, SOURCE, (), PRESETS, ("cli",))
-    assert load(document).based_on == "cli"
-
-
-def test_a_document_that_is_no_mapping_is_refused():
-    assert problems([1]) == ["layered.yaml: must be a mapping of keys, starting with `xarch: 2`"]
-
-
-def test_a_missing_version_is_refused_naming_the_version_there_is():
-    assert problems({"name": "x"}) == ["layered.yaml: missing format version: start the file with `xarch: 2`"]
-
-
-@pytest.mark.parametrize("version", [1, 3, 0, "2", "1", True, 2.0, None])
-def test_any_other_version_is_refused(version):
-    assert problems({"xarch": version}) == [
-        f"layered.yaml: unknown format version {version!r}: this xarch reads `xarch: 2`"]
+        source_of("nope", ("cli", "web"))
+    assert caught.value.problems == (
+        "nope: no bundled architecture 'nope': use one of cli, web, or a path to a .yaml or .json file",)

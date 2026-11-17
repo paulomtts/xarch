@@ -1,7 +1,7 @@
 """The top-level `hints` key: a profile's own advice for a rule id, shown after the built-in fix."""
 import pytest
 
-from tests.modules.spec.profiles_v2 import layered, parsed, problems
+from tests.modules.spec.profiles import layered, parsed, problems
 from xarch.kernel.violations import RULES
 
 

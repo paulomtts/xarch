@@ -1,14 +1,14 @@
-"""Loading a profile file of format 2: what only fills the docs and the files `init` writes, the layers, the entry,
+"""Loading a profile file: what only fills the docs and the files `init` writes, the layers, the entry,
 the way a part is shown, and every problem reported with the file's name, never a traceback."""
 import pytest
 
-from tests.modules.spec.profiles_v2 import layered, parsed, problems
+from tests.modules.spec.profiles import layered, parsed, problems
 from xarch.modules.spec.application.logic.layout_walk import docs_name
 from xarch.modules.spec.domain.values import Doc, FileEntry
 
 
 def test_a_document_that_is_not_a_mapping_stops_at_once():
-    assert problems(["xarch", 2]) == ["layered.yaml: must be a mapping of keys, starting with `xarch: 2`"]
+    assert problems(["name", 2]) == ["layered.yaml: must be a mapping of keys"]
 
 
 @pytest.mark.parametrize("layers, expected", [

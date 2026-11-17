@@ -11,8 +11,7 @@ from typer.testing import CliRunner
 from xarch.bootstrap.app import app
 
 runner = CliRunner()
-EVERY_KEY = """xarch: 2
-name: every-key
+EVERY_KEY = """name: every-key
 testing: pytest
 parts:
   core:

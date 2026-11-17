@@ -1,5 +1,4 @@
 # A command-line app of modules: each module is a vertical slice; shared technology sits in platform/, commands in cli/.
-xarch: 2
 name: cli
 language: python
 testing: pytest

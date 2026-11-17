@@ -1,4 +1,4 @@
-"""The table of every key of a profile file (format version 2): the loader reads it for the keys each mapping accepts
+"""The table of every key of a profile file: the loader reads it for the keys each mapping accepts
 and the ones it needs, and `xarch profile explain` reads it for where each key sits, whether it is enforced and through
 which rules, and the texts of the format's data file (see key_catalogue) for what each means, accepts and shows."""
 from __future__ import annotations
@@ -45,7 +45,6 @@ def _guard(name: str) -> Key:
 
 
 _KEYS: tuple[Key, ...] = (
-    Key(PROFILE, "xarch", True, False),
     Key(PROFILE, "name", True, False),
     Key(PROFILE, "based_on", False, False, choices=CHOICE_BUNDLED),
     Key(PROFILE, "language", choices=CHOICE_LANGUAGES),

@@ -1,9 +1,9 @@
 """The example check: the imports of an architecture's examples obey that architecture's own rules; a tier's example
 test under tests/ is only read, one in a part obeys its rules. Each example is given as the reader of the app's
 language reads it: its imports, or where it does not parse."""
-from tests.modules.spec.profiles_v2 import covered, parsed
-from tests.modules.spec.profiles_v2 import layered as layered_v2
-from tests.modules.spec.profiles_v2 import parsed as v2
+from tests.modules.spec.profiles import covered, parsed
+from tests.modules.spec.profiles import layered as layered_v2
+from tests.modules.spec.profiles import parsed as v2
 from xarch.kernel.source import Import, Unparsable
 from xarch.modules.spec.application.logic.example_imports import Read, example_problems
 
@@ -19,7 +19,7 @@ def whole(module: str) -> Import:
     return Import(1, tuple(module.split(".")))
 
 PROFILE = {
-    "xarch": 2, "name": "layered",
+    "name": "layered",
     "parts": {"shared": {"path": "shared", "role": "code every module uses"},
               "store": {"path": "src/<module>/store", "role": "database access", "may_import": ["sql", "shared/text"]},
               "sql": {"path": "src/<module>/store/sql", "role": "queries"},

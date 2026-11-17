@@ -1,6 +1,6 @@
 """The table of profile keys explains every key the loader accepts, and only those: the texts of the format's data file,
 as xarch ships it, give each key its meaning, what it accepts and an example, and every example loads through the loader
-of format 2 once merged into the smallest profile."""
+once merged into the smallest profile."""
 from copy import deepcopy
 
 import pytest
@@ -8,7 +8,7 @@ import yaml
 
 from tests.modules.spec.format_files import CATALOGUE
 from tests.modules.spec.languages import PYTHON
-from tests.modules.spec.profiles_v2 import PRESETS, parsed, problems
+from tests.modules.spec.profiles import PRESETS, parsed, problems
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic.explain import said
 from xarch.modules.spec.application.logic.key_lookup import keys_of, plain
@@ -26,7 +26,7 @@ from xarch.modules.spec.domain.profile_keys import (
 )
 from xarch.modules.spec.domain.values import Language
 
-BASE = {"xarch": 2, "name": "example", "parts": {"documents": {"path": "documents", "role": "the documents"}}}
+BASE = {"name": "example", "parts": {"documents": {"path": "documents", "role": "the documents"}}}
 LISTING = ("src/documents.py", "tests/documents/check_documents.py", "tests/documents/builders.py")
 BUNDLED = ("base",)
 SUBSTITUTIONS = {"<bundled>": "base", "<preset>": "pytest", "<language>": "python"}

@@ -1,4 +1,4 @@
-"""The kinds of value the keys of a profile file (format version 2) are described by: a key of the table, the text
+"""The kinds of value the keys of a profile file are described by: a key of the table, the text
 `xarch profile explain` says for it, and the catalogue of those texts.
 
 A key sits in a scope, a kind of mapping, such as a part, written as its address in the file (`parts.<part>`). The table

@@ -80,7 +80,7 @@ def test_json_gives_each_of_them_as_one_document():
 def test_a_word_asked_in_a_project_whose_configured_profile_cannot_be_used_is_refused_with_why(tmp_path, configured,
                                                                                                 said):
     (tmp_path / "pyproject.toml").write_text(f"[tool.xarch]\n{configured}\n", encoding="utf-8")
-    (tmp_path / "broken.yaml").write_text("xarch: 2\nname: broken\n", encoding="utf-8")
+    (tmp_path / "broken.yaml").write_text("name: broken\n", encoding="utf-8")
     result = explain("filters.public")
     assert (result.exit_code, result.output) == (
         2, said.format(pyproject=tmp_path / "pyproject.toml", folder=tmp_path) + "\n")

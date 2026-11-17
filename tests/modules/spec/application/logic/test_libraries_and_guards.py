@@ -1,9 +1,9 @@
-"""The `libraries` of a part and the `guards` and `fakes` keys of a profile of format 2: what a part may import from
+"""The `libraries` of a part and the `guards` and `fakes` keys of a profile: what a part may import from
 outside, which pre-built checks are in use and where the fakes live."""
 import pytest
 
 from tests.modules.spec.format_files import CATALOGUE, FILE_TYPES
-from tests.modules.spec.profiles_v2 import covered, layered, parsed, problems
+from tests.modules.spec.profiles import covered, layered, parsed, problems
 from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.modules.spec.domain.guards import ORDER
 from xarch.modules.spec.domain.values import ClosedTree, NoComments, PackageOnly

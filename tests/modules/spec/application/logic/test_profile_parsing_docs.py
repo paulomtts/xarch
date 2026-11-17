@@ -1,9 +1,9 @@
-"""A profile file in format 2: what only fills the docs (`docs`), the files `init` writes, the excluded folders and the
+"""A profile file: what only fills the docs (`docs`), the files `init` writes, the excluded folders and the
 hints, each with the address it has in the file."""
 import pytest
 
 from tests.modules.spec.format_files import FILE_TYPES
-from tests.modules.spec.profiles_v2 import layered, parsed, problems
+from tests.modules.spec.profiles import layered, parsed, problems
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.modules.spec.domain.values import Doc, Example, FileEntry, Naming

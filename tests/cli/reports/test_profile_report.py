@@ -82,7 +82,7 @@ def test_a_key_another_command_reads_is_said_to_be_read_by_it_and_never_by_check
                                   "every command); only xarch review reads what it says")
     assert json.loads(key_document(held))["read_by"] == "review"
     shape = (Shown("docs", 0, "the docs", False, False), Shown("review", 0, "what review may send", False, False, "review"))
-    rows = overview_lines(FormatExplained(2, shape, (Symbol("<word>", "a repeating folder"),), "xarch: 2\n"))[4:6]
+    rows = overview_lines(FormatExplained(shape, (Symbol("<word>", "a repeating folder"),), "name: n\n"))[4:6]
     assert [row.split()[:3] for row in rows] == [["docs", "optional", "documentary"], ["review", "optional", "review"]]
 
 

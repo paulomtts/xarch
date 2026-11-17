@@ -283,8 +283,7 @@ class Explain:
 
 @dataclass(frozen=True)
 class FormatExplained:
-    """The whole format: version, the keys as a tree (shape), the symbols, and the smallest valid profile (as text)."""
-    version: int
+    """The whole format: the keys as a tree (shape), the symbols, and the smallest valid profile (as text)."""
     shape: tuple[Shown, ...]
     symbols: tuple[Symbol, ...]
     smallest: str

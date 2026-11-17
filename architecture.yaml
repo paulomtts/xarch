@@ -1,5 +1,4 @@
 # The architecture xarch itself follows: the cli profile, with the packages xarch uses and the tests it has.
-xarch: 2
 name: xarch
 based_on: cli
 language: python

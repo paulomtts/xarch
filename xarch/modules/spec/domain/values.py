@@ -23,8 +23,6 @@ class Configured:
     source: Path
 
 
-VERSION = 2
-"""The one format version of a profile this xarch reads and writes."""
 PROFILE_SUFFIX = ".yaml"
 """The suffix of every bundled profile file, and of each one xarch writes."""
 LANGUAGES = "presets/language"
@@ -338,7 +336,7 @@ class Language:
 
 @dataclass(frozen=True)
 class Architecture:
-    """An architecture as described in an architecture file (format version VERSION).
+    """An architecture as described in an architecture file.
 
     rules: every part, in the order of parts, with what it may import besides itself (which a part may always
         import, and no row says); a part with no row may import only itself

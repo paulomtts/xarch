@@ -3,7 +3,7 @@
 of writing either wrong refused at its address."""
 import pytest
 
-from tests.modules.spec.profiles_v2 import layered, parsed, problems
+from tests.modules.spec.profiles import layered, parsed, problems
 from xarch.modules.spec.domain.published import CHOICE, SCORE, YES_NO, Eval
 from xarch.profile_values.checks import Condition, Scope
 

@@ -2,7 +2,7 @@
 each as written, and every way of writing one wrong refused at its address."""
 import pytest
 
-from tests.modules.spec.profiles_v2 import layered, parsed, problems
+from tests.modules.spec.profiles import layered, parsed, problems
 
 
 def test_a_profile_without_review_never_holds_back_or_hides_anything():

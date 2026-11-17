@@ -9,7 +9,6 @@ from xarch.bootstrap.wiring import build_controllers
 from xarch.modules.scaffold.contract import InitProject, NewInstance, Scaffolded
 
 PROFILE = """\
-xarch: 2
 name: presets
 forbidden:
   nothing_printed: [builtins.print]

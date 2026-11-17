@@ -13,11 +13,11 @@ from tests.modules.spec.languages import RUNTIME
 from xarch.kernel.source import CommentSpan, Import, Unparsable
 
 TESTING = {"files": ["test_*.py"], "functions": "test_*"}
-BASE = {"xarch": 2, "name": "base", "testing": TESTING,
+BASE = {"name": "base", "testing": TESTING,
         "parts": {"core": {"path": "core", "role": "the rules"},
                   "api": {"path": "api", "role": "the handlers", "may_import": ["core"]}},
         "docs": {"pages": {"a.md": {"from": "docs/a.md"}}}, "files": {"AGENTS.md": "agents.md"}}
-BASE_TEXT = "# the base\nxarch: 2\nname: base\ntesting: x\n"
+BASE_TEXT = "# the base\nname: base\ntesting: x\n"
 TEXTS = {"base.yaml": BASE_TEXT, "docs/a.md": "page\n", "agents.md": "agents\n"}
 
 

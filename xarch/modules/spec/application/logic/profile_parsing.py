@@ -1,10 +1,9 @@
-"""A profile file (format version 2), parsed and validated into an Architecture.
+"""A profile file, parsed and validated into an Architecture.
 
 An Architecture, from a file that states each fact once, on the thing it is about. The keys and whether each is
 enforced are in key_table, which the messages below read, and what each means in the format's data file (see
 key_catalogue); the shape:
 
-    xarch: 2
     name: <name>
     based_on: <bundled name>   optional; the bundled profile this one was copied from, which a report compares with
     language: <language>       optional; the language of the app: the name of a language xarch ships (the first by name
@@ -98,7 +97,6 @@ from xarch.modules.spec.domain.profile_keys import (
     TIER_DOCS,
 )
 from xarch.modules.spec.domain.values import (
-    VERSION,
     Architecture,
     DeadCode,
     Guard,
@@ -145,14 +143,14 @@ class _Layout:
     repeats: tuple[Repeat, ...]
 
 
-def parse_v2(document: Any, source: str, files: Collection[str] = (), presets: Mapping[str, Any] | None = None,
+def parse_profile(document: Any, source: str, files: Collection[str] = (), presets: Mapping[str, Any] | None = None,
              bundled: Collection[str] = (), languages: Mapping[str, Language] | None = None) -> Architecture:
     """The architecture the document describes; raises InvalidArchitecture listing every problem. files are the files
     next to the profile file that it names, and every file below the folders it names, each as a path from the folder
     holding it (see profile_listing); presets are the documents of the `testing` presets by name; bundled are the
     names of the bundled profiles, which `based_on` may name; languages are the languages xarch ships, by name."""
     if not isinstance(document, Mapping):
-        raise InvalidArchitecture(source, [f"must be a mapping of keys, starting with `xarch: {VERSION}`"])
+        raise InvalidArchitecture(source, ["must be a mapping of keys"])
     problems: list[str] = []
     problems += _keys(document)
     name = document.get("name")
@@ -691,7 +689,7 @@ def _guards(value: Any, specs: dict[str, Any], parts: dict[str, Part], declared:
         where = f"guards.{name}"
         kind = GUARD.get(name)
         if kind is PackageOnly:
-            problems.append(f"{where}: a fact about a part in format 2: write `package_only: true` on each part")
+            problems.append(f"{where}: a fact about a part: write `package_only: true` on each part")
         elif name not in _GUARDS:
             problems.append(f"guards: unknown guard {name!r}: use {', '.join(sorted(_GUARDS))}")
         elif kind is ScenarioCoverage:

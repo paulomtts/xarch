@@ -1,7 +1,7 @@
 """The top-level `excluded` key: folders below the app that are not its source, each with the reason."""
 import pytest
 
-from tests.modules.spec.profiles_v2 import layered, parsed, problems
+from tests.modules.spec.profiles import layered, parsed, problems
 from xarch.profile_values.excluded import Excluded
 
 

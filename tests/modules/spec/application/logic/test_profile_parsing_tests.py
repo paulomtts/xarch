@@ -1,8 +1,8 @@
-"""A profile file in format 2: the test framework (a preset or the map), the tiers and which part each covers, the
+"""A profile file: the test framework (a preset or the map), the tiers and which part each covers, the
 fakes, and the guards."""
 import pytest
 
-from tests.modules.spec.profiles_v2 import EX, PRESETS, TESTING, covered, layered, parsed, problems
+from tests.modules.spec.profiles import EX, PRESETS, TESTING, covered, layered, parsed, problems
 from xarch.modules.spec.domain.values import (
     ClosedTree,
     DeadCode,
@@ -370,7 +370,7 @@ def test_guards_are_off_unless_named_and_package_only_comes_first():
                                   "no-comments, no-duplicates, no-twins, pass-through, private-imports, "
                                   "scenario-coverage, stand-ins"],
                  id="an unknown guard"),
-    pytest.param({"package-only": ["api"]}, ["layered.yaml: guards.package-only: a fact about a part in format 2: write "
+    pytest.param({"package-only": ["api"]}, ["layered.yaml: guards.package-only: a fact about a part: write "
                                              "`package_only: true` on each part"], id="package-only moved to the parts"),
     pytest.param({"no-comments": {"x": 1}}, ["layered.yaml: guards.no-comments: takes no parameters: write {}"],
                  id="a parameter where none is taken"),

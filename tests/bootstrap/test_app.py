@@ -136,7 +136,7 @@ def test_new_refuses_the_folder_of_a_kind_in_place_of_its_word_and_says_what_to_
 
 def test_a_project_may_check_against_its_own_architecture_file(tmp_path):
     (tmp_path / "layered.yaml").write_text(
-        'xarch: 2\nname: layered\n'
+        'name: layered\n'
         'parts: {lib: {path: lib, role: shared}, api: {path: "modules/<module>/api", role: handlers, may_import: [lib]}}\n')
     write_pyproject(tmp_path, "layered.yaml")
     assert runner.invoke(app, ["init"]).exit_code == 0
@@ -149,7 +149,7 @@ def test_a_project_may_check_against_its_own_architecture_file(tmp_path):
 
 
 def test_a_bad_architecture_file_is_a_clear_usage_error(tmp_path):
-    (tmp_path / "bad.yaml").write_text("xarch: 2\nname: bad\nparts: {x: {path: nowhere}}\n")
+    (tmp_path / "bad.yaml").write_text("name: bad\nparts: {x: {path: nowhere}}\n")
     result = runner.invoke(app, ["check", "--profile", "bad.yaml"])
     assert result.exit_code == 2
     assert "error: bad.yaml: parts.x: missing `role`" in result.output
@@ -300,7 +300,7 @@ def test_a_missing_tests_folder_is_a_usage_error():
 def test_init_refuses_a_profile_whose_file_replaces_what_the_skeleton_writes(tmp_path):
     (tmp_path / "guard.tpl").write_text("{{app}}\n")
     (tmp_path / "layered.yaml").write_text(
-        "xarch: 2\nname: layered\nparts: {src: {path: src, role: code}}\n"
+        "name: layered\nparts: {src: {path: src, role: code}}\n"
         "files: {app/__init__.py: {from: guard.tpl}}\n")
     result = runner.invoke(app, ["init", "--profile", "layered.yaml"])
     assert result.exit_code == 2

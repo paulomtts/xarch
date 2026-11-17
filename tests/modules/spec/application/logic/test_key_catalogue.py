@@ -24,7 +24,7 @@ def keyed(texts: dict | None = None) -> dict:
 
 def document(**sections) -> dict:
     """A data file that loads, each section given in place of its own; one given as None is left out."""
-    found = {"fragments": FRAGMENTS, "smallest": "xarch: 2\n", "symbols": {"store": "a part"}, "keys": keyed(),
+    found = {"fragments": FRAGMENTS, "smallest": "name: n\n", "symbols": {"store": "a part"}, "keys": keyed(),
              "slots": {key.address: TEXT for key in SLOTS}}
     found.update(sections)
     return {name: value for name, value in found.items() if value is not None}
@@ -39,7 +39,7 @@ def problems(given) -> list[str]:
 def test_the_shipped_file_gives_a_text_for_every_key_of_the_table_and_no_other():
     catalogue = catalogue_of(KEYS_DOCUMENT)
     assert list(catalogue.texts) == [key.address for key in KEYS]
-    assert catalogue.smallest.startswith("xarch: 2\n") and catalogue.symbols[0][0] == "<word>"
+    assert catalogue.smallest.startswith("name: documents-app\n") and catalogue.symbols[0][0] == "<word>"
     assert catalogue.texts["guards.no-duplicates.min_statements"].accepts == "a whole number, 4 when left out"
     assert catalogue.texts["guards.no-twins.min_fields"].accepts == "a whole number, 3 when left out"
 
@@ -67,10 +67,10 @@ def test_a_fragment_may_hold_another_and_the_lines_around_it_stay():
     pytest.param(document(keys=keyed({ROLE: None, "parts.<part>.colour": TEXT})),
                  ["keys: the format has no key 'parts.<part>.colour'", "keys: missing the text of 'parts.<part>.role'"],
                  id="the texts are of the keys of the table, one each"),
-    pytest.param(document(keys=keyed({"name": TEXT | {"meaning": "", "note": "n"}, "xarch": "x"})),
-                 ["keys.xarch: must be a mapping of meaning, accepts, example",
-                  "keys.name: unknown key 'note': use meaning, accepts, example",
-                  "keys.name.meaning: must be a non-empty string"],
+    pytest.param(document(keys=keyed({"name": TEXT | {"meaning": "", "note": "n"}, "based_on": "x"})),
+                 ["keys.name: unknown key 'note': use meaning, accepts, example",
+                  "keys.name.meaning: must be a non-empty string",
+                  "keys.based_on: must be a mapping of meaning, accepts, example"],
                  id="a text is a meaning, what the key accepts and an example, none of them empty"),
     pytest.param(document(keys=keyed({ROLE: TEXT | {"example": "<<parts>>\n"}})),
                  ["keys.parts.<part>.role.example: no fragment 'parts': use part"],

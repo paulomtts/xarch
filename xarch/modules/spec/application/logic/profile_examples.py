@@ -1,4 +1,4 @@
-"""The examples of a profile file (format version 2): `docs.examples` lists folders next to the profile, each an
+"""The examples of a profile file: `docs.examples` lists folders next to the profile, each an
 example project, and every file below one is an example, named by its path in the project. A template quotes one with
 `{{example:<path>}}`, a tier shows one as its example or helper by the same path, and `docs.example_notes` says
 something after a path. Which part an example illustrates is the part its path lies in."""

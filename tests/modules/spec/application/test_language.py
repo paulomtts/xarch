@@ -16,7 +16,7 @@ PASCAL = {"title": "Pascal", "extension": ".pas", "package_file": "unit.pas", "i
 PYTHON = {"title": "Python", "extension": ".py", "package_file": "__init__.py", "interface": ["typing.Protocol"],
           "namespace": "builtins", "cache": "__pycache__", "standard": "interpreter"}
 APP = Path("/p/app")
-BASE = {"xarch": 2, "name": "base", "parts": {"core": {"path": "core", "role": "the rules"}}}
+BASE = {"name": "base", "parts": {"core": {"path": "core", "role": "the rules"}}}
 RUNTIME = FakeRuntime(frozenset({"strutils"}), frozenset({"writeln"}), frozenset({"begin"}))
 
 

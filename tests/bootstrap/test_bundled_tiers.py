@@ -28,7 +28,6 @@ def test_the_bundled_tier_examples_pass_the_example_check(profile):
 
 
 CUSTOM = """\
-xarch: 2
 name: layered
 testing: pytest
 parts:

@@ -11,6 +11,10 @@ All notable changes to this project are written here. The format follows
   only for it. A file that starts `xarch: 1` is now refused as an unknown format version, like any other, and the keys
   of format 1 that moved (`layout`, `notes`, `rules`, `placement`, `naming`, `tests`, `examples`, `libraries`) are
   refused as unknown keys, with no word of where they went.
+- The profile has no format version: the top-level key `xarch` is gone from the format, from the bundled `cli` and
+  `web` profiles, from the copy `profile new` writes, and from `profile explain` (its overview no longer says a format
+  number, and its JSON no longer has `format`). A profile that still starts with `xarch: 2` is refused as an unknown
+  key: delete the line.
 
 ## [0.1.1] - 2026-11-17
 

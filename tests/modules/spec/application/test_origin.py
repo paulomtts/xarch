@@ -16,7 +16,7 @@ def controller(custom: dict) -> SpecController:
 @pytest.mark.parametrize("given, when, then", [
     pytest.param(BASE, "base", Origin("base", True, None, OFF, OFF, ()),
                  id="a bundled profile lists the guards it leaves off as its own defaults"),
-    pytest.param({"xarch": 2, "name": "mine"}, "mine.yaml", ProfileRefused("mine.yaml: missing `parts`"),
+    pytest.param({"name": "mine"}, "mine.yaml", ProfileRefused("mine.yaml: missing `parts`"),
                  id="a profile that does not load is refused with why"),
 ])
 def test_origin(given, when, then):
@@ -70,7 +70,7 @@ def test_a_part_that_may_import_any_outside_package_is_looser_than_one_that_list
 
 
 def test_a_custom_profile_sharing_no_part_resembles_no_bundled_profile_and_has_no_baseline():
-    custom = {"xarch": 2, "name": "mine", "parts": {"x": {"path": "x", "role": "all"}}}
+    custom = {"name": "mine", "parts": {"x": {"path": "x", "role": "all"}}}
     origin = controller(custom).origin("mine.yaml")
     assert (origin.closest, origin.baseline_off, origin.looser) == (None, (), ())
     assert origin.guards_off == ("package-only", "scenario-coverage", "no-comments", *OFF[2:])

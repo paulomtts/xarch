@@ -7,7 +7,7 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.spec.application.origins import BASE, PARTS, TESTING, TIER, part
-from tests.modules.spec.profiles_v2 import covered, layered, parsed
+from tests.modules.spec.profiles import covered, layered, parsed
 from xarch.modules.spec.application.logic.looseness import LOOSER, origin_of
 from xarch.modules.spec.domain.published import Loosened
 from xarch.modules.spec.domain.values import Architecture

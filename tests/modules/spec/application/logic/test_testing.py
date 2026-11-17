@@ -3,7 +3,7 @@ scenario-coverage and stand-ins read from it."""
 import pytest
 
 from tests.modules.spec.format_files import FILE_TYPES
-from tests.modules.spec.profiles_v2 import TESTING, covered, parsed, problems
+from tests.modules.spec.profiles import TESTING, covered, parsed, problems
 from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.profile_values.testing import Fixture
 

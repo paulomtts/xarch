@@ -1,5 +1,4 @@
 # A web app of modules: each module is a vertical slice; shared technology sits in platform/, routes in web/.
-xarch: 2
 name: web
 language: python
 testing: pytest

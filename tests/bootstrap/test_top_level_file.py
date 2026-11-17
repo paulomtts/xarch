@@ -9,8 +9,7 @@ from xarch.bootstrap.app import app
 from xarch.bootstrap.wiring import build_controllers
 
 runner = CliRunner()
-PROFILE = """xarch: 2
-name: shim
+PROFILE = """name: shim
 parts:
   main:
     path: __main__.py

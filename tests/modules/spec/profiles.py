@@ -1,5 +1,5 @@
-"""Builders for the spec module's tests of profile format 2: a profile with a repeating src/<module>/ folder (api,
-service, store) and a shared/ part, written in format 2, each document built afresh so a test changes its own copy;
+"""Builders for the spec module's tests of profiles: a profile with a repeating src/<module>/ folder (api,
+service, store) and a shared/ part, each document built afresh so a test changes its own copy;
 and how a document is parsed, or rejected with its problems."""
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import pytest
 
 from tests.modules.spec.languages import PYTHON
 from xarch.modules.spec.application.logic.profile_listing import listing, referenced
-from xarch.modules.spec.application.logic.profile_v2 import parse_v2
+from xarch.modules.spec.application.logic.profile_parsing import parse_profile
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import Architecture
 
@@ -28,9 +28,9 @@ EX = {"ex": ("tests/src/billing/service/test_rules.py", "tests/src/billing/build
 
 
 def layered(**changes) -> dict:
-    """A profile in format 2 with no tiers and no tests; the keys given are added or replaced."""
+    """A profile with no tiers and no tests; the keys given are added or replaced."""
     return {
-        "xarch": 2, "name": "layered",
+        "name": "layered",
         "parts": {
             "api": {"path": "src/<module>/api", "role": "HTTP handlers", "may_import": ["service"]},
             "service": {"path": "src/<module>/service", "role": "business logic", "may_import": ["store", "shared"]},
@@ -72,7 +72,7 @@ def listed(document: dict, files: Collection[str] | None = None, folders: Mappin
 def parsed(document: dict, files: Collection[str] | None = None, presets=PRESETS, bundled=("cli", "web"),
            folders: Mapping[str, tuple[str, ...]] | None = None, missing: Collection[str] = (),
            languages=LANGUAGES) -> Architecture:
-    return parse_v2(document, SOURCE, listed(document, files, folders, missing), presets, bundled, languages)
+    return parse_profile(document, SOURCE, listed(document, files, folders, missing), presets, bundled, languages)
 
 
 def problems(document: dict, files: Collection[str] | None = None, presets=PRESETS, bundled=("cli", "web"),

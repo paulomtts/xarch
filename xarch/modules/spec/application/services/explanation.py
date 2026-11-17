@@ -26,7 +26,7 @@ from xarch.modules.spec.domain.profile_keys import (
     Catalogue,
     Key,
 )
-from xarch.modules.spec.domain.values import VERSION, Language
+from xarch.modules.spec.domain.values import Language
 from xarch.profile_values.capabilities import FACTS
 
 
@@ -45,8 +45,8 @@ class ExplainService:
         catalogue = self._texts()
         if address is None:
             shape = tuple(_shown(key, depth, catalogue, language) for key, depth in overview_keys())
-            return FormatExplained(VERSION, shape, tuple(Symbol(said(s, language), said(m, language))
-                                                         for s, m in catalogue.symbols), catalogue.smallest)
+            return FormatExplained(shape, tuple(Symbol(said(s, language), said(m, language))
+                                                for s, m in catalogue.symbols), catalogue.smallest)
         key = key_at(address)
         if key is None:
             return UnknownKey(cleaned(address), nearest(cleaned(address)))

@@ -1,5 +1,5 @@
 """A profile at a glance: its folder tree with the role of each folder, and its import table."""
-from tests.modules.spec.profiles_v2 import layered, parsed
+from tests.modules.spec.profiles import layered, parsed
 from xarch.modules.spec.application.logic.profile_view import view
 
 

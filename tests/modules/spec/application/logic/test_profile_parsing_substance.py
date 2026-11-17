@@ -1,9 +1,9 @@
-"""A profile file in format 2: the keys that say what code of a part holds and how it may be used (holds, immutable,
+"""A profile file: the keys that say what code of a part holds and how it may be used (holds, immutable,
 types_only, no_callbacks, names, built_by), a name pattern on a target of may_import, what each test of a tier must reach, and the
 guards private-imports and dead-code's untested."""
 import pytest
 
-from tests.modules.spec.profiles_v2 import covered, layered, parsed, problems
+from tests.modules.spec.profiles import covered, layered, parsed, problems
 from xarch.modules.spec.domain.values import DeadCode, PrivateImports
 from xarch.profile_values.placement import Target
 

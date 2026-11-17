@@ -6,7 +6,6 @@ from pathlib import Path
 from tests.bootstrap.project import source_check
 
 PROFILE = """
-xarch: 2
 name: other
 testing:
   files: ["*_spec.py"]
@@ -143,6 +142,6 @@ def test_a_profile_with_no_testing_key_names_no_framework_and_still_checks(tmp_p
     (tmp_path / "tests").mkdir()
     (tmp_path / "app" / "sub" / "a.py").write_text("x = 1\n")
     (tmp_path / "tests" / "test_a.py").write_text("import pytest\n")
-    (tmp_path / "min.yaml").write_text('xarch: 2\nname: min\n'
+    (tmp_path / "min.yaml").write_text('name: min\n'
                                        'parts: {sub: {path: sub, role: "the only part"}}\n')
     assert source_check(tmp_path / "app", str(tmp_path / "min.yaml"), tmp_path / "tests").violations == ()

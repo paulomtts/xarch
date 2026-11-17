@@ -1,9 +1,9 @@
-"""The `forbidden` key of a profile of format 2: named lists of the calls and modules a part may not use, and the
+"""The `forbidden` key of a profile: named lists of the calls and modules a part may not use, and the
 tiers whose tests are held to the list of the part they mirror."""
 import pytest
 
 from tests.modules.spec.format_files import FILE_TYPES
-from tests.modules.spec.profiles_v2 import covered, parsed, problems
+from tests.modules.spec.profiles import covered, parsed, problems
 from xarch.modules.spec.application.logic.docs_template import fill
 
 DOTTED = "is not a dotted name such as datetime.datetime.now, nor an import name such as socket"

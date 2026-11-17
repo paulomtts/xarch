@@ -2,7 +2,7 @@
 
 import pytest
 
-from tests.modules.spec.profiles_v2 import SOURCE, parsed
+from tests.modules.spec.profiles import SOURCE, parsed
 from xarch.modules.spec.application.logic.project_files import project_files, with_app
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.published import ProjectFile
@@ -12,7 +12,7 @@ PARTS = {"src": {"path": "src", "role": "code"}}
 
 
 def architecture(files: dict, parts: dict | None = None):
-    document = {"xarch": 2, "name": "layered", "parts": parts or PARTS, "files": files}
+    document = {"name": "layered", "parts": parts or PARTS, "files": files}
     return parsed(document, missing={"preset"}, folders={"preset": ("x",)})
 
 
@@ -37,7 +37,7 @@ def test_any_other_placeholder_is_written_as_it_stands():
 
 
 def test_an_architecture_without_files_yields_none():
-    declared = parsed({"xarch": 2, "name": "layered", "parts": PARTS})
+    declared = parsed({"name": "layered", "parts": PARTS})
     assert written(declared, {}) == []
 
 

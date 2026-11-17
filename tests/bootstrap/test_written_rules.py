@@ -105,7 +105,7 @@ def test_the_checks_written_for_the_explanation_load_and_behave_as_their_example
     for item in shown:
         written |= yaml.safe_load(item["example"]["check"])["checks"]
     written |= yaml.safe_load(TESTS_TODO)["checks"]
-    profile = {"xarch": 2, "name": "worked", "testing": {"files": ["check_*.py"], "functions": "check_*"},
+    profile = {"name": "worked", "testing": {"files": ["check_*.py"], "functions": "check_*"},
                "tiers": {"unit": {}}, "parts": {"documents": {"path": "documents", "role": "the documents",
                                                               "tier": "unit"}}, "checks": written}
     (tmp_path / "worked.yaml").write_text(yaml.safe_dump(profile, sort_keys=False))

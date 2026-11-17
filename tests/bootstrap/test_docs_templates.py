@@ -62,7 +62,6 @@ def write(path: Path, text: str) -> Path:
 
 
 ARCHITECTURE = """\
-xarch: 2
 name: layered
 parts:
   api:   {path: "src/<module>/api", role: handlers, litmus: "Does it parse?", may_import: [store]}

@@ -5,10 +5,10 @@ from tests.fakes.architecture_files import FakeArchitectureFiles
 from tests.modules.spec.application.helpers import controller
 from xarch.modules.spec.contract import DocFile, Docs, ProfileRefused
 
-LAYERED = {"xarch": 2, "name": "layered", "parts": {"src": {"path": "src", "role": "code"}},
+LAYERED = {"name": "layered", "parts": {"src": {"path": "src", "role": "code"}},
            "docs": {"entry": "src", "pages": {"notes.md": "notes.md"}}}
 BAD = LAYERED | {"docs": {"entry": "src", "pages": {"notes.md": "bad.md"}}}
-SPEC = controller(FakeArchitectureFiles({"cli": LAYERED, "bad": BAD, "broken": {"xarch": 2, "name": "broken"}},
+SPEC = controller(FakeArchitectureFiles({"cli": LAYERED, "bad": BAD, "broken": {"name": "broken"}},
                                         texts={"notes.md": "# Notes\n", "bad.md": "{{nothing}}\n"}))
 UNTYPED = controller(FakeArchitectureFiles({"cli": LAYERED}, texts={"notes.md": "# Notes\n"}, file_types={"sql": {}}))
 

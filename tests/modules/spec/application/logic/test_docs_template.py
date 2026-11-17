@@ -2,7 +2,7 @@
 import pytest
 
 from tests.modules.spec.format_files import FILE_TYPES
-from tests.modules.spec.profiles_v2 import parsed
+from tests.modules.spec.profiles import parsed
 from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.modules.spec.domain.errors import InvalidTemplate
 from xarch.modules.spec.domain.values import FileType
@@ -28,7 +28,7 @@ DOCS = {"entry": "api", "naming": NAMING, "examples": ["ex"], "example_notes": {
 
 
 def layered(**extra) -> dict:
-    return {"xarch": 2, "name": "layered", "parts": PARTS, "layers": {"inside": ["store", "service"]},
+    return {"name": "layered", "parts": PARTS, "layers": {"inside": ["store", "service"]},
             "docs": DOCS} | extra
 
 
@@ -222,7 +222,7 @@ TWO = {
 
 
 def two(template: str, **extra) -> str:
-    document = {"xarch": 2, "name": "two", "parts": TWO, "docs": {"entry": "shared"}} | extra
+    document = {"name": "two", "parts": TWO, "docs": {"entry": "shared"}} | extra
     return fill(template, parsed(document), "two.md", file_types=FILE_TYPES)
 
 

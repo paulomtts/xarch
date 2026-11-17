@@ -11,7 +11,7 @@ from typing import Any
 
 
 def referenced(document: Any) -> tuple[tuple[str, ...], tuple[str, ...]]:
-    """The files and the folders a profile in format 2 names next to it, each as written: every template of
+    """The files and the folders a profile names next to it, each as written: every template of
     `docs.pages`, every folder of `docs.examples`, and every `from` of `files`, which is looked up as both, since an
     entry may name a folder where a file is meant; each sorted. What is no mapping or no text is left out: the loader
     reports it."""

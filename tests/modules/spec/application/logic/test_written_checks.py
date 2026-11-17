@@ -5,7 +5,7 @@ its address and left out; what a target's values name is the rules module's to r
 import pytest
 
 from tests.modules.spec.languages import PYTHON
-from tests.modules.spec.profiles_v2 import layered, parsed
+from tests.modules.spec.profiles import layered, parsed
 from xarch.modules.spec.application.logic.written_checks import checks
 from xarch.profile_values.checks import (
     ANY,

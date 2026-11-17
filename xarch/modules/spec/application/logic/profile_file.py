@@ -1,32 +1,11 @@
-"""Which loader reads a profile file, and where a profile comes from.
-
-The format version the file starts with decides: `xarch: 2` is read by profile_v2. A file with no version, or any
-other, is refused.
-"""
+"""Where a profile comes from."""
 from __future__ import annotations
 
-from collections.abc import Collection, Mapping
+from collections.abc import Collection
 from pathlib import Path
-from typing import Any
 
-from xarch.modules.spec.application.logic.profile_v2 import parse_v2
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.values import VERSION, Architecture, ArchitectureSource, Language
-
-
-def parse_profile(document: Any, source: str, files: Collection[str] = (), presets: Mapping[str, Any] | None = None,
-                  bundled: Collection[str] = (), languages: Mapping[str, Language] | None = None) -> Architecture:
-    """The architecture the document describes; raises InvalidArchitecture listing every problem. See parse_v2 for what
-    the arguments are."""
-    written = f"`xarch: {VERSION}`"
-    if not isinstance(document, Mapping):
-        raise InvalidArchitecture(source, [f"must be a mapping of keys, starting with {written}"])
-    if "xarch" not in document:
-        raise InvalidArchitecture(source, [f"missing format version: start the file with {written}"])
-    version = document["xarch"]
-    if type(version) is int and version == VERSION:
-        return parse_v2(document, source, files, presets, bundled, languages)
-    raise InvalidArchitecture(source, [f"unknown format version {version!r}: this xarch reads {written}"])
+from xarch.modules.spec.domain.values import ArchitectureSource
 
 
 def source_of(location: str | Path, bundled: Collection[str]) -> ArchitectureSource:

@@ -1,4 +1,4 @@
-# The keys of a profile file (format 2) as `xarch profile explain` says them. keys: by each key's address in the file,
+# The keys of a profile file as `xarch profile explain` says them. keys: by each key's address in the file,
 # what it means (a few words), what it accepts and what that does, and an example: a fragment of a profile that loads
 # once merged into the smallest one; a guard's accepts is its parameters and what it checks. smallest: the smallest
 # valid profile; symbols: what a profile writes in paths and imports, each with what it means. fragments: pieces of
@@ -105,7 +105,6 @@ fragments:
             documents/publish%extension%: "%comment% asks the document to publish itself\n"
             documents/rename%extension%: "%comment% asks the document to take the new title\n"
 smallest: |
-  xarch: 2
   name: documents-app
   parts:
     documents:
@@ -120,10 +119,6 @@ symbols:
   everything: "in may_import or libraries: no limit"
   a path ending in %extension%: "a last path step with a dot: the part is one file, not a folder"
 keys:
-  xarch:
-    meaning: the format version
-    accepts: the number 2
-    example: "xarch: 2"
   name:
     meaning: what the profile is called
     accepts: a non-empty string

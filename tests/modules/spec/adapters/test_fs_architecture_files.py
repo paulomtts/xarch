@@ -25,13 +25,13 @@ def test_the_bundled_profiles_and_the_testing_presets_come_from_the_package_data
 
 
 def test_a_profile_on_disk_is_read_with_the_files_beside_it(tmp_path):
-    (tmp_path / "mine.yaml").write_text("xarch: 2\nname: mine\n")
+    (tmp_path / "mine.yaml").write_text("name: mine\n")
     (tmp_path / "kit" / "deep").mkdir(parents=True)
     (tmp_path / "kit" / "a.txt").write_text("a")
     (tmp_path / "kit" / "deep" / "b.bin").write_bytes(b"\xff")
     source = ArchitectureSource(str(tmp_path / "mine.yaml"), bundled=False)
-    assert files().read(source).document == {"xarch": 2, "name": "mine"}
-    assert files().profile_text(source) == "xarch: 2\nname: mine\n"
+    assert files().read(source).document == {"name": "mine"}
+    assert files().profile_text(source) == "name: mine\n"
     assert files().files_under(source, "kit") == ("a.txt", "deep/b.bin")
     assert (files().read_text(source, "kit/a.txt"), files().read_bytes(source, "kit/deep/b.bin")) == ("a", b"\xff")
     assert files().has_file(source, "kit/a.txt") and not files().has_file(source, "kit")
@@ -66,7 +66,8 @@ class BrokenPackage(PackageData):
 def test_the_data_files_of_the_format_come_from_the_package_data():
     document = files().format_keys()
     assert list(document) == ["fragments", "smallest", "symbols", "keys", "slots"]
-    assert document["keys"]["xarch"] == {"meaning": "the format version", "accepts": "the number 2", "example": "xarch: 2"}
+    assert document["keys"]["name"] == {"meaning": "what the profile is called", "accepts": "a non-empty string",
+                                        "example": "name: documents-app"}
     assert files().file_types()[".sql"] == {"comment": "--"}
 
 

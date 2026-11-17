@@ -3,7 +3,7 @@ docs."""
 import pytest
 
 from tests.modules.spec.format_files import FILE_TYPES
-from tests.modules.spec.profiles_v2 import covered, layered, parsed, problems
+from tests.modules.spec.profiles import covered, layered, parsed, problems
 from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.modules.spec.domain.errors import InvalidArchitecture, InvalidTemplate
 from xarch.modules.spec.domain.values import TierExample

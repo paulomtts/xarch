@@ -14,7 +14,7 @@ from xarch.modules.spec.application.logic.key_table import KEYS, SLOTS
 
 def test_the_overview_lists_the_keys_of_the_file_with_the_keys_of_each_map_below_it_and_goes_no_deeper():
     found = [(plain(key.address), depth) for key, depth in overview_keys()]
-    assert found[:3] == [("xarch", 0), ("name", 0), ("based_on", 0)]
+    assert found[:3] == [("name", 0), ("based_on", 0), ("language", 0)]
     assert ("parts", 0) in found and ("parts.may_import", 1) in found
     assert {depth for _, depth in found} == {0, 1}
 
@@ -51,4 +51,4 @@ def test_the_example_of_a_key_that_names_something_xarch_ships_uses_the_first_na
 def test_the_nearest_keys_read_like_what_was_typed_else_are_the_keys_of_the_deepest_key_that_exists():
     assert nearest("parts.may_imports")[0] == "parts.may_import" and nearest("pats")[0] == "parts"
     assert all(key.startswith("parts.") for key in nearest("parts.colour"))
-    assert "xarch" in nearest("zzzzzz")
+    assert "name" in nearest("zzzzzz")

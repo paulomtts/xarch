@@ -8,7 +8,6 @@ NO_TIER = ("tests/scripts/test_x.py: lies in no tier: no part's folder and no ti
            "fix: move it to the folder that mirrors its subject's path in the app, or into a tier's `folder`")
 
 PROFILE = """\
-xarch: 2
 name: min
 testing: pytest
 parts:

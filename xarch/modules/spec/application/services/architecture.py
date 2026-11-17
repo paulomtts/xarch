@@ -16,9 +16,10 @@ from xarch.modules.spec.application.logic.example_imports import (
 from xarch.modules.spec.application.logic.file_types import file_types_of
 from xarch.modules.spec.application.logic.language_file import first_language, language_of
 from xarch.modules.spec.application.logic.looseness import origin_of
-from xarch.modules.spec.application.logic.profile_file import parse_profile, source_of
+from xarch.modules.spec.application.logic.profile_file import source_of
 from xarch.modules.spec.application.logic.profile_files import pointed_files
 from xarch.modules.spec.application.logic.profile_listing import listing, referenced
+from xarch.modules.spec.application.logic.profile_parsing import parse_profile
 from xarch.modules.spec.application.logic.project_files import entries, project_files, with_app
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
 from xarch.modules.spec.application.ports.example_reader import ExampleReader

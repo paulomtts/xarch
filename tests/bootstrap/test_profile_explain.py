@@ -24,7 +24,7 @@ def test_with_no_key_the_whole_format_is_one_screen_with_the_shape_the_symbols_a
     assert any(line.startswith("parts") and "required" in line and "enforced" in line for line in lines)
     assert any(line.strip().startswith("parts.may_import") for line in lines)
     assert "symbols" in result.output and "<word>" in result.output and "@any" in result.output
-    assert "smallest valid profile" in result.output and "\n  xarch: 2\n" in result.output
+    assert "smallest valid profile" in result.output and "\n  name: documents-app\n" in result.output
     assert "xarch profile explain parts.may_import" in result.output
     assert len(lines) < 100 and max(map(len, lines)) <= 120
 
@@ -67,12 +67,12 @@ def test_a_key_of_the_format_is_explained_in_a_project_whose_pyproject_cannot_be
 
 def test_json_gives_the_shape_the_symbols_and_the_smallest_profile_and_for_a_key_the_fields_of_its_explanation():
     whole = json.loads(runner.invoke(app, ["profile", "explain", "--format", "json"]).output)
-    assert whole["ok"] is True and whole["format"] == 2
+    assert whole["ok"] is True and "format" not in whole
     assert {"key": "parts.may_import", "depth": 1, "meaning": "what the part may import besides itself",
             "required": False, "enforced": True, "read_by": None} in whole["shape"]
     assert {"key": "review", "depth": 0, "meaning": "what `xarch review` may send: never, mask", "required": False,
             "enforced": False, "read_by": "review"} in whole["shape"]
-    assert whole["symbols"][0]["symbol"] == "<word>" and whole["smallest"].startswith("xarch: 2")
+    assert whole["symbols"][0]["symbol"] == "<word>" and whole["smallest"].startswith("name: documents-app")
     assert "xarch profile explain parts.may_import" in whole["deeper"]
     key = json.loads(runner.invoke(app, ["profile", "explain", "parts.may_import", "--format", "json"]).output)
     assert key["ok"] is True and key["key"] == "parts.may_import" and key["rules"] == ["rules"]

@@ -13,6 +13,6 @@ def test_the_files_taken_in_a_folder_are_named_in_the_order_given(tmp_path):
 
 
 def test_every_file_is_written_at_its_path_in_the_folder(tmp_path):
-    FsProfileOutput(FileSystem()).write(tmp_path / "out", {"mine.yaml": b"xarch: 2\n", "docs/a.md": b"page\n"})
-    assert (tmp_path / "out" / "mine.yaml").read_bytes() == b"xarch: 2\n"
+    FsProfileOutput(FileSystem()).write(tmp_path / "out", {"mine.yaml": b"name: mine\n", "docs/a.md": b"page\n"})
+    assert (tmp_path / "out" / "mine.yaml").read_bytes() == b"name: mine\n"
     assert (tmp_path / "out" / "docs" / "a.md").read_bytes() == b"page\n"

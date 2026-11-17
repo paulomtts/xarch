@@ -42,7 +42,7 @@ def test_new(given, when, then):
 def test_the_copy_is_named_and_based_on_the_original_and_holds_every_file_as_it_was():
     spec, output = spec_controller()
     spec.new_profile(NewProfile("mine", "base", APP, ROOT))
-    assert output.written == {MINE / "mine.yaml": b"# the base\nxarch: 2\nname: mine\nbased_on: base\ntesting: x\n",
+    assert output.written == {MINE / "mine.yaml": b"# the base\nname: mine\nbased_on: base\ntesting: x\n",
                               MINE / "docs/a.md": b"page\n", MINE / "agents.md": b"agents\n"}
 
 
@@ -53,7 +53,7 @@ def test_nothing_is_written_when_any_file_exists():
 
 
 def test_a_copy_that_would_not_load_is_refused_before_anything_is_written():
-    broken = {**{"xarch": 2, "name": "base"}, "parts": {"core": {"path": "core"}}}
+    broken = {**{"name": "base"}, "parts": {"core": {"path": "core"}}}
     spec, output = spec_controller({"base": broken})
     refused = spec.new_profile(NewProfile("mine", "base", APP, ROOT))
     assert isinstance(refused, ProfileRefused) and refused.reason.startswith("base: ")

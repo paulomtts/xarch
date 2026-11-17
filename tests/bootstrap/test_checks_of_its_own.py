@@ -20,7 +20,7 @@ CHECK = {"read": "class", "in": {"part": "store"}, "keep": ["public"], "may_only
 
 
 def project(tmp_path, checks: dict, files: dict[str, str], **extra) -> None:
-    profile = {"xarch": 2, "name": "mine", "parts": {"store": {"path": "store", "role": "saves documents", **extra}},
+    profile = {"name": "mine", "parts": {"store": {"path": "store", "role": "saves documents", **extra}},
                "checks": checks}
     (tmp_path / "mine.yaml").write_text(yaml.safe_dump(profile, sort_keys=False))
     (tmp_path / "pyproject.toml").write_text('[tool.xarch]\nprofile = "mine.yaml"\n')

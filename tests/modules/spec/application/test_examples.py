@@ -24,7 +24,7 @@ FILES = {"ex/core/rules.py": "def rule(): ...\n", "ex/tests/test_rules.py": "def
                       ExampleFile("api/route.py", "api", "from app.core.rules import rule\n", (RULE,))),
                      (ExampleFile("core/handler.py", "core", "def handle(request): ...\n"),)),
                  id="the docs' examples in a part, then placement's own, each with its part, code and imports"),
-    pytest.param(dict(files={"broken.yaml": {"xarch": 2, "name": "broken"}}), "broken.yaml",
+    pytest.param(dict(files={"broken.yaml": {"name": "broken"}}), "broken.yaml",
                  ProfileRefused("broken.yaml: missing `parts`"), id="a profile that does not load is refused with why"),
 ])
 def test_examples(given, when, then):

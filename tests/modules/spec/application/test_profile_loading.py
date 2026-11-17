@@ -1,5 +1,5 @@
-"""Use case: a profile file is read by the loader of format 2, any other version is refused, and a profile that says what
-it is based on is compared with that bundled profile, whatever it shares most parts with."""
+"""Use case: a profile file is read by the loader, and a profile that says what it is based on is compared with that
+bundled profile, whatever it shares most parts with."""
 from pathlib import Path
 
 from tests.fakes.architecture_files import FakeArchitectureFiles
@@ -10,7 +10,7 @@ from xarch.modules.spec.contract import CheckProfile, Loosened, Problem, Profile
 
 APP = Path("/p/app")
 PRESET = {"files": ["test_*.py"], "functions": "test_*"}
-MINE = {"xarch": 2, "name": "mine", "testing": "kit", "parts": {
+MINE = {"name": "mine", "testing": "kit", "parts": {
     "core": {"path": "core", "role": "rules", "forbidden": "pure"},
     "store": {"path": "store", "role": "storage", "may_import": ["core"], "libraries": ["sqlmodel", "requests"]},
     "edge": {"path": "edge", "role": "entry", "may_import": "everything", "libraries": "everything"}},
@@ -32,15 +32,10 @@ def problems(custom: dict) -> tuple[Problem, ...]:
     return checked.problems
 
 
-def test_a_profile_in_format_2_is_loaded_with_its_preset_read_from_the_files_port():
+def test_a_profile_is_loaded_with_its_preset_read_from_the_files_port():
     assert problems(MINE) == ()
     framework = controller(MINE).profile("mine.yaml").framework
     assert framework is not None and framework.files == ("test_*.py",)
-
-
-def test_a_profile_in_another_format_is_refused_naming_the_one_there_is():
-    assert problems(MINE | {"xarch": 1}) == (Problem("load", "mine.yaml: unknown format version 1: this xarch reads "
-                                                      "`xarch: 2`"),)
 
 
 def test_a_preset_the_files_port_does_not_hold_is_refused_listing_the_ones_it_does():

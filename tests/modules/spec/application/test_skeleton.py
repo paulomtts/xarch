@@ -8,8 +8,8 @@ from tests.modules.spec.application.helpers import controller
 from tests.modules.spec.languages import PYTHON
 from xarch.modules.spec.contract import Entry, ProfileRefused, Skeleton
 
-LAYERED = {"xarch": 2, "name": "layered", "parts": {"src": {"path": "src", "role": "code"}}}
-SPEC = controller(FakeArchitectureFiles({"cli": LAYERED, "broken": {"xarch": 2, "name": "broken"}}))
+LAYERED = {"name": "layered", "parts": {"src": {"path": "src", "role": "code"}}}
+SPEC = controller(FakeArchitectureFiles({"cli": LAYERED, "broken": {"name": "broken"}}))
 
 
 @pytest.mark.parametrize("given, when, then", [

@@ -45,7 +45,6 @@ def test_trailing_comments(text, lines):
 
 
 CUSTOM = """\
-xarch: 2
 name: layered
 parts:
   api:   {path: "src/<module>/api", role: handlers, may_import: [store]}

@@ -110,7 +110,7 @@ litmus tests run, which is also the order of the generated docs' tree and rules 
 everything else is optional, and a key left out means off):
 
 ```
-xarch: 2*  name*  based_on  language  hints  excluded  reserved
+name*  based_on  language  hints  excluded  reserved
 testing:  <preset> | {files*, functions*, skips, table, mocks}
 parts*:   {<part>: {path*, role*, litmus, may_import, must_import, libraries, forbidden, tier | untested,
                     package_only, folders, holds, immutable, types_only, no_callbacks, names, built_by, shared}}
@@ -156,7 +156,6 @@ supplies every fact exactly.
 The smallest valid profile is a name and one part (it runs `structure`, the import rules, `libraries` and `syntax`):
 
 ```yaml
-xarch: 2
 name: documents-app
 parts:
   documents:
@@ -190,7 +189,7 @@ xarch profile check [NAME|FILE]            # validate a profile without an app
 "rules", "example", "choices", "keys", "needs", "language"}` for a key, `read_by` the command other than `check` that
 alone reads it (`review` for `review` and its keys, else null; each `shape` entry has it too), `language` the language whose reader `needs` is graded
 by; `{"ok", "key", "profile", "rules", "checks", "needs"}` for a key with
-`--rule`, `needs` the facts its rules read; `{"ok", "format", "shape", "symbols", "smallest", "deeper"}` for the whole) and
+`--rule`, `needs` the facts its rules read; `{"ok", "shape", "symbols", "smallest", "deeper"}` for the whole) and
 exits 2 for a key the format does not have, naming the nearest (in JSON, `nearest` the format's keys and `words` the
 words of a check). The key may be written with or without the placeholder
 steps (`parts.may_import` or `parts.<part>.may_import`). `--profile NAME|FILE` (or `--configured`, the project's profile)

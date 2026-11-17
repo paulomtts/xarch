@@ -11,7 +11,6 @@ from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.profile_values.placement import Repeat, Target
 
 LAYERED = """\
-xarch: 2
 name: layered
 parts:
   api:
@@ -30,7 +29,7 @@ parts:
     litmus: "Does it touch the database?"
 """
 LAYERED_DATA = {
-    "xarch": 2, "name": "layered",
+    "name": "layered",
     "parts": {"api": {"path": "src/<module>/api", "role": "HTTP handlers",
                       "litmus": "Does it parse a request and call a service?", "may_import": ["service"]},
               "service": {"path": "src/<module>/service", "role": "business logic",
@@ -39,7 +38,7 @@ LAYERED_DATA = {
                         "litmus": "Does it touch the database?"}},
 }
 """LAYERED as data, as its YAML reads."""
-MUST_BE_A_MAPPING = "must be a mapping of keys, starting with `xarch: 2`"
+MUST_BE_A_MAPPING = "must be a mapping of keys"
 
 
 def write(path: Path, text: str) -> Path:
@@ -127,11 +126,11 @@ def test_duplicate_part_names_are_rejected(tmp_path):
     path = write(tmp_path / "layered.yaml", text)
     with pytest.raises(InvalidArchitecture) as caught:
         load_architecture(path)
-    assert caught.value.problems == (f"{path}: line 14: duplicate key 'api'",)
+    assert caught.value.problems == (f"{path}: line 13: duplicate key 'api'",)
 
 
 def test_duplicate_keys_in_json_are_rejected(tmp_path):
-    path = write(tmp_path / "layered.json", '{"xarch": 2, "parts": {"api": {}, "api": {}}}')
+    path = write(tmp_path / "layered.json", '{"parts": {"api": {}, "api": {}}}')
     with pytest.raises(InvalidArchitecture) as caught:
         load_architecture(path)
     assert caught.value.problems == (f"{path}: duplicate key 'api'",)
@@ -143,8 +142,10 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
     pytest.param('[]', [MUST_BE_A_MAPPING], id='a list'),
     pytest.param('3', [MUST_BE_A_MAPPING], id='a number'),
     pytest.param('just a string', [MUST_BE_A_MAPPING], id='a string'),
-    pytest.param('xarch: 2', ['missing `name`', 'missing `parts`'], id='only the version'),
-    pytest.param('xarch: 2\nname: [a]\nparts: [1]\nforbidden: x\nlayers: 3\ntiers: 4\nfakes: 5\nguards: 6\n'
+    pytest.param('xarch: 2', ["unknown key 'xarch': use based_on, checks, docs, evals, excluded, fakes, files, forbidden, "
+                              "guards, hints, language, layers, name, parts, reserved, review, testing, tiers",
+                              'missing `name`', 'missing `parts`'], id='a version line is an unknown key'),
+    pytest.param('name: [a]\nparts: [1]\nforbidden: x\nlayers: 3\ntiers: 4\nfakes: 5\nguards: 6\n'
                  'excluded: 7\nhints: 8\nfiles: 9\ndocs: 10\n',
                  ['`name` must be a non-empty string',
                   'forbidden: must be a mapping of list names to lists of dotted names, such as '
@@ -163,26 +164,26 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
                   '{vendor: copied code}',
                   'hints: must be a mapping of rule ids to one line of text, such as {rules: see the docs}'],
                  id='every top-level value of the wrong type'),
-    pytest.param('xarch: 2\nname: n\nparts: {a: {path: a/<x>/<y>, role: r}}\n',
+    pytest.param('name: n\nparts: {a: {path: a/<x>/<y>, role: r}}\n',
                  ["parts.a.path: 'a/<x>/<y>' has two repeating steps, <x> and <y>: a repeating folder cannot sit inside "
                   "another, so give each its own folder"],
                  id='a path with two repeating folders'),
-    pytest.param('xarch: 2\nname: n\nparts: {1: {path: 1}, p: {path: [a]}, q: 3}\n',
+    pytest.param('name: n\nparts: {1: {path: 1}, p: {path: [a]}, q: 3}\n',
                  ["parts: 1 is not a part name: use letters, digits, '_' and '-'",
                   'parts.p: missing `role`',
                   "parts.p.path: must be a path such as 'src/<name>/api'",
                   'parts.q: must be a mapping with `path` and `role`'],
                  id='keys that are not names'),
-    pytest.param('xarch: 2\nname: n\nparts: {1: {path: a}, null: {}, yes: {path: b}}\n',
-                 ["line 3: duplicate key 'True'"],
+    pytest.param('name: n\nparts: {1: {path: a}, null: {}, yes: {path: b}}\n',
+                 ["line 2: duplicate key 'True'"],
                  id='a key 1 and a key yes are one key, True'),
-    pytest.param('xarch: 2\nname: n\nparts: {a: {path: a, role: r, may_import: [a]}}\n',
+    pytest.param('name: n\nparts: {a: {path: a, role: r, may_import: [a]}}\n',
                  ["parts.a.may_import: 'a' is implied: a part may always import itself; remove it"],
                  id='a may_import that only says a part may import itself'),
-    pytest.param('xarch: 2\nname: n\nparts: {a: {path: a, role: r, forbidden: l}}\nforbidden: {l: [open]}\n',
+    pytest.param('name: n\nparts: {a: {path: a, role: r, forbidden: l}}\nforbidden: {l: [open]}\n',
                  ["forbidden.l: 'open' is a Python builtin, which a bare name does not ban: write builtins.open"],
                  id='a bare builtin in a forbidden list'),
-    pytest.param('xarch: 2\nname: n\nparts: {a: {path: a, role: r, untested: 3, litmus: 4}}\n'
+    pytest.param('name: n\nparts: {a: {path: a, role: r, untested: 3, litmus: 4}}\n'
                  'docs: {entry: 1, pages: 2, naming: 3, examples: 4}\n',
                  ['parts.a.litmus: must be a string',
                   'parts.a.untested: must be one line of text: why no tier tests the part',
@@ -193,7 +194,7 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
                   'docs/statement.md}}',
                   'docs.naming: must be a list of rows such as {kind, where, pattern, example}'],
                  id='the optional keys of a part and of docs of the wrong type'),
-    pytest.param('xarch: 2\nname: n\nparts: {a: {path: a, role: r, untested: [1], folders: 3}}\n'
+    pytest.param('name: n\nparts: {a: {path: a, role: r, untested: [1], folders: 3}}\n'
                  'layers: {1: [a], x: [[1]], y: a}\n'
                  'docs: {naming: [{kind: 1, where: [1], pattern: [], example: {}}, null]}\n',
                  ['parts.a.untested: must be one line of text: why no tier tests the part',
@@ -207,7 +208,7 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
                   'docs.naming[0].example: must be a string or a list of strings',
                   'docs.naming[1]: must be a mapping with `kind`, `where`, `pattern` and `example`'],
                  id='the entries of the optional keys of the wrong type'),
-    pytest.param('xarch: 2\nname: n\nparts: {a: {path: a, role: r}}\n'
+    pytest.param('name: n\nparts: {a: {path: a, role: r}}\n'
                  'tiers: {unit: 3, 1: {}, integ: {proves: 1, litmus: [], docs: {example: 3, helpers: x, subject: 1}}}\n',
                  ["parts.a: no tier tests it: give it `tier: <tier>`, or `untested: <reason>`",
                   'tiers.unit: must be a mapping, {} if it takes nothing',
@@ -220,17 +221,17 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
                   'missing `testing`: `tiers` must recognise a test file by its name: write testing: <preset>, or '
                   'testing: {files: [<pattern>, ...], functions: <pattern>}'],
                  id='tiers of the wrong shape'),
-    pytest.param('xarch: 2\nname: n\nparts: {a: {path: a, role: r}}\nfiles: {1: {from: 2}, x: [1], y: {z: 1}}\n',
+    pytest.param('name: n\nparts: {a: {path: a, role: r}}\nfiles: {1: {from: 2}, x: [1], y: {z: 1}}\n',
                  ['files.1: must be a path of plain names below the project root',
                   'files.x: must be a mapping such as {from: <file>}',
                   "files.y: unknown key 'z': use fill, from, pinned",
                   'files.y: missing `from`, the template file'],
                  id='files of the wrong shape'),
-    pytest.param('xarch: 2\nname: n\nparts: {a: {path: a, role: r}}\nxarch2: 1\nrules: {a: []}\n',
+    pytest.param('name: n\nparts: {a: {path: a, role: r}}\nxarch2: 1\nrules: {a: []}\n',
                  ["unknown keys 'rules', 'xarch2': use based_on, checks, docs, evals, excluded, fakes, files, forbidden, guards, hints, "
-                  "language, layers, name, parts, reserved, review, testing, tiers, xarch"],
+                  "language, layers, name, parts, reserved, review, testing, tiers"],
                  id='two keys that are nowhere'),
-    pytest.param('xarch: 2\n  bad: indentation\n',
+    pytest.param('name: n\n  bad: indentation\n',
                  ['not valid YAML: line 2, column 6: mapping values are not allowed here'],
                  id='bad indentation'),
 ])

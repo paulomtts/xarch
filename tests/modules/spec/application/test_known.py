@@ -13,8 +13,8 @@ from xarch.modules.spec.domain.values import Configured
 
 APP = Path("/src/app")
 PYPROJECT = Path("/src/pyproject.toml")
-LAYERED = {"xarch": 2, "name": "layered", "parts": {"api": {"path": "api", "role": "handlers"}}}
-BROKEN = {"xarch": 2, "name": "broken"}
+LAYERED = {"name": "layered", "parts": {"api": {"path": "api", "role": "handlers"}}}
+BROKEN = {"name": "broken"}
 FILES = FakeArchitectureFiles({"cli": LAYERED, "web": LAYERED}, {"/src/broken.yaml": BROKEN})
 
 

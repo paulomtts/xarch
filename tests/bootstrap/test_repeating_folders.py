@@ -11,7 +11,6 @@ from xarch.bootstrap.app import app
 runner = CliRunner()
 
 PROFILE = """\
-xarch: 2
 name: duo
 testing: pytest
 parts:

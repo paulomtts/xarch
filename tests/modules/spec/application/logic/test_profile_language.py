@@ -5,7 +5,7 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.spec.languages import PYTHON
-from tests.modules.spec.profiles_v2 import covered, layered, parsed, problems
+from tests.modules.spec.profiles import covered, layered, parsed, problems
 from xarch.modules.spec.domain.values import Language
 from xarch.profile_values.language import CheckedLanguage
 
