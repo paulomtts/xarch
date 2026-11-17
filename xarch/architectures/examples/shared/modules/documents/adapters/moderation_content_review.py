@@ -7,10 +7,10 @@ class _Moderation(Protocol):
 
 # satisfies ContentReview, with no inheritance
 class ModerationContentReview:
-    def __init__(self, moderation: _Moderation): self._m = moderation
+    def __init__(self, moderation_controller: _Moderation): self._moderation = moderation_controller
 
     def review(self, title: str) -> Allowed | Denied:
         # moderation's contract, translated to documents' words
-        match self._m.review(ReviewText(title)):
+        match self._moderation.review(ReviewText(title)):
             case Clean():      return Allowed()
             case Flagged(why): return Denied(why)

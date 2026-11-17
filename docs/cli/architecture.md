@@ -221,11 +221,11 @@ class _Moderation(Protocol):
 
 # satisfies ContentReview, with no inheritance
 class ModerationContentReview:
-    def __init__(self, moderation: _Moderation): self._m = moderation
+    def __init__(self, moderation_controller: _Moderation): self._moderation = moderation_controller
 
     def review(self, title: str) -> Allowed | Denied:
         # moderation's contract, translated to documents' words
-        match self._m.review(ReviewText(title)):
+        match self._moderation.review(ReviewText(title)):
             case Clean():      return Allowed()
             case Flagged(why): return Denied(why)
 ```
@@ -365,7 +365,7 @@ class Document:
 ```
 
 > [!TIP]
-> **Litmus test.** Is it an invariant of one of this module's entities or values (a state transition or a validation) that can run with no database and no clock? If yes, it goes here, on that entity or value. An id that names one of the module's things is defined here too, in `domain/values.py`, and `contract/` re-exports it; so are the errors the module's rules raise, each a subclass of a base error of `kernel/`. If it is a value the module hands out as it is, with nothing to reshape, it goes in `domain/published.py`, which `contract/` re-exports. If it is a pure rule that is not one entity's invariant, it belongs in `application/logic/`. If it must load or save anything, it is a service step. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
+> **Litmus test.** Is it an invariant of one of this module's entities or values (a state transition or a validation) that can run with no database and no clock? If yes, it goes here, on that entity or value. An id that names one of the module's things is defined here too, in `domain/values.py`, and `contract/` re-exports it; so are the errors the module's rules raise, each named for the module's thing; the bases they subclass, which name no module's thing, are `kernel/`'s. If it is a value the module hands out as it is, with nothing to reshape, it goes in `domain/published.py`, which `contract/` re-exports. If it is a pure rule that is not one entity's invariant, it belongs in `application/logic/`. If it must load or save anything, it is a service step. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
 
 ### 8.3 application/controller.py
 
@@ -404,7 +404,7 @@ class DocumentController:
 ```
 
 > [!TIP]
-> **Litmus test.** Does it turn each exception a service raises into the `Result` variant that says it, and return what the service assembled on success, without deciding any business rule? If yes, it goes here, and no module's error leaves the module past it. When a use case cannot fail, it builds the `Result` from the plain values the service returns. If it names argument parsing or terminal output, it belongs in `cli/`. If it handles a table row, it belongs in `adapters/`.
+> **Litmus test.** Does it call this module's own services, turn each exception a service raises into the `Result` variant that says it, and return what the service assembled on success, without deciding any business rule? If yes, it goes here, and no module's error leaves the module past it. When a use case cannot fail, it builds the `Result` from the plain values the service returns. If it names argument parsing or terminal output, it belongs in `cli/`. If it handles a table row, or reads another module's `Result` to answer one of this module's ports, it belongs in `adapters/`.
 
 > [!NOTE]
 > The name overlaps with the usual meaning of "controller" (the thing that receives a request). Here the thing that receives the request is the command in `cli/`. The controller never sees argv or the terminal.
@@ -534,7 +534,7 @@ class DbDocumentRepo:
 The translation between the database's rows and the domain's entities lives here, in the adapter class, and never in `domain/` or in the table model: the domain never sees a row, and the service never sees one either.
 
 > [!TIP]
-> **Litmus test.** Does it implement one of this module's ports against a real system, translating between the module's types and that system's, and naming no other module except the `contract/` of one whose controller it wraps? If yes, it goes here, and so does the private `Protocol` it declares for the little it calls of what it wraps. If it knows no module's types and is only a client or engine for a technology, it belongs in `platform/`. If it contains a business rule, it belongs in `domain/`.
+> **Litmus test.** Does it implement one of this module's ports against a real system, or against another module's controller (it calls that controller and turns the `Result` that comes back into the port's own answer), translating between the module's types and theirs, and naming no other module except the `contract/` of one whose controller it wraps? If yes, it goes here, and so does the private `Protocol` it declares for the little it calls of what it wraps. If it knows no module's types and is only a client or engine for a technology, it belongs in `platform/`. If it contains a business rule, it belongs in `domain/`.
 
 > [!NOTE]
 > Adapters are driven only. Whatever drives the module (today, a CLI command) calls the controller directly. The command is the translation from the caller's world to a controller call, so it lives in `cli/`.
@@ -587,15 +587,18 @@ class Clock(Protocol):
 
 # kernel/logic/text.py: a pure function two modules need
 # documents and moderation both compare titles this way
-def normalized(title: str) -> str:
-    return " ".join(title.split()).casefold()
+def normalized(text: str) -> str:
+    return " ".join(text.split()).casefold()
 
-def same_title(one: str, other: str) -> bool:
+def same_text(one: str, other: str) -> bool:
     return normalized(one) == normalized(other)
+
+def shortened(text: str, limit: int) -> str:
+    return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
 ```
 
 > [!TIP]
-> **Litmus test.** Is it a primitive with no business meaning, one that could be lifted unchanged into an unrelated system: a base type, a protocol with no body, or a helper that makes a new id (base errors, lifecycle fields, tracing carriers, the `Clock` protocol)? If yes, it goes here. A function that works a result out of its arguments is not a primitive: when two or more modules need it, it goes in `kernel/logic/`. If only one module needs it, or it names one module's thing, such as a concrete id like `DocumentId` or an error like `DocumentNotFound`, it belongs in the owning module. If it wraps a technology or reads the real time, it belongs in `platform/`. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
+> **Litmus test.** Is it a primitive with no business meaning, one that could be lifted unchanged into an unrelated system: a base type, a protocol with no body, or a helper that makes a new id (base errors, lifecycle fields, tracing carriers, the `Clock` protocol, but no class that implements it)? If yes, it goes here. A function that works a result out of its arguments is not a primitive: when two or more modules need it, it goes in `kernel/logic/`. If only one module needs it, or it names one module's thing, such as a concrete id like `DocumentId` or an error like `DocumentNotFound`, it belongs in the owning module. If it wraps a technology or reads the real time, it belongs in `platform/`. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
 
 > [!TIP]
 > **Litmus test.** Is it a pure function with no port and no I/O, over `kernel/` primitives or plain values, that two or more modules need? If yes, it goes here, in a file named for the rule. If only one module needs it, it belongs in that module's `application/logic/`. If it is a value or a type rather than a function, it belongs in `kernel/`. If it must load or save anything, it is a service step. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
@@ -635,7 +638,7 @@ class DocumentRow(SQLModel, table=True):
 The email client speaks plain strings and knows no module. A module adapter that implements a notification port wraps it and translates the module's types into those strings. A table model is the same kind of thing: it names a table and its columns and knows no module's types, so every module's repo can use it and translate it into its own entities (section 8.7).
 
 > [!TIP]
-> **Litmus test.** Is it a client or engine for an external technology (LLM, embeddings, email, crypto, blob storage, the system clock, SQL engine, table models) that knows none of the types of any one module? If yes, it goes here, named for the technology (a table model, for its table) and never for a module. If it translates a module's types for a port, it belongs in that module's `adapters/`.
+> **Litmus test.** Is it a client or engine for an external technology (LLM, embeddings, email, crypto, blob storage, the system clock that reads the real time, SQL engine, table models) that knows none of the types of any one module? If yes, it goes here, named for the technology (a table model, for its table) and never for a module. If it translates a module's types for a port, it belongs in that module's `adapters/`.
 
 ### 9.3 cli/
 
