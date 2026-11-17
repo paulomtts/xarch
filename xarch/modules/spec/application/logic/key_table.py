@@ -178,6 +178,7 @@ _KEYS: tuple[Key, ...] = (
 
     Key(EVALS, "placement", False, False, opens=PLACEMENT, read_by=READ_BY_REVIEW),
     Key(PLACEMENT, "lines", False, False, read_by=READ_BY_REVIEW),
+    Key(PLACEMENT, "alike", False, False, read_by=READ_BY_REVIEW),
     Key(PLACEMENT, "examples", False, False, read_by=READ_BY_REVIEW),
 )
 

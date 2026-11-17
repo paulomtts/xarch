@@ -124,8 +124,8 @@ files:    {<path>: <from> | {from*, pinned, fill}}      docs: {entry, pages, nam
 checks:   {<id>: {read*, in, keep, may_not | may_only | must_reach | must_be_reached*, except, mode, message*, fix*,
                   once_per, cases, examples*}}
 review:   {never, mask}                                 what `xarch review` may send; `check` never acts on it
-evals:    {placement: {lines, examples}, <id>: {ask*, answer*, yes, no, reads*, in, keep, line, message*, fix*,
-          examples*}}                                   what `xarch review` asks; `check` never acts on it
+evals:    {placement: {lines, alike, examples}, <id>: {ask*, answer*, yes, no, reads*, in, keep, line, message*,
+          fix*, examples*}}                             what `xarch review` asks; `check` never acts on it
 ```
 
 `language` names the language of the app: `python`, which is the default and the only one xarch reads today. What is
@@ -552,7 +552,8 @@ file belongs in, with every part's litmus test (its role, for a part with none) 
 model's reading, ranked: a file whose probability on the part it sits in is below that part's line (0.3, unless the
 profile sets the part's own under `evals.placement.lines`) reads as **doubtful here**. That is a reason to read the file against its part's litmus, not a finding: in
 trials, about 7 to 10% of well-placed files read as doubtful, and about 1 in 2 to 1 in 3 doubtful files was really
-misplaced. The text output names no other part; the JSON gives the probability on every part.
+misplaced. The text output names no other part but those its part is read alike with (below); the JSON gives the
+probability on every part.
 
 The order of the options moves a probability only near the line, so a file whose first answer falls within 0.15 of its
 part's line is asked again in two other orders (the options rotated by a third and by two thirds; one other order for
@@ -705,6 +706,29 @@ says a line set this way as "set by the profile", since the trials' numbers hold
 exit code of `check` depends on what it says; its enforcement lists a line set lower as looser, for information only. `profile check` lists a part whose line is below the one the profile it is compared with gives it as looser:
 it flags less. `xarch profile explain evals.placement.lines` says it in full.
 
+### Parts one file cannot tell apart: `evals.placement.alike`
+
+Some parts differ in something no single file shows: two parts of pure functions, one a module's own and one shared by
+several modules, differ only in how many modules use a function. A profile may name such parts as a group, and a file
+of one is then read on the sum of the probabilities on the group's parts, against its own part's line.
+
+```yaml
+evals:
+  placement:
+    alike: [[logic, kernel-logic]]
+```
+
+The sum decides everything a run does with the number: doubt, asking again near the line, the order of the readings,
+the summary of each part, and the ranking of pieces. Each reading says the parts counted with its own ("summed with
+kernel-logic (evals.placement.alike)"; `alike` in the JSON, empty when none), and the JSON's `distribution` keeps the
+probability on each part as answered. `review calibrate` holds a group to its lines as one: an example's reading on its
+own part is the group's sum, an example of one part reading at or above the line of another part of its group crosses
+nothing, and its report says of each part of a group that it was held with the others; changing the groups makes the
+record of placement stale. Each name must be a part, a group needs two parts or more, each named once, and a part is in
+one group at most; the parts of a group must have the same `forbidden`, `holds` and `immutable`, since parts `check`
+tells apart by rule are not alike. A group hides every doubt between its parts: name only parts one file truly cannot
+tell apart. `xarch profile explain evals.placement.alike` says it in full.
+
 ### Evals of the profile's own
 
 A profile may write evals of its own under `evals`, each under an id of its own (lowercase words joined by `-`, never
@@ -786,7 +810,7 @@ and when it was not, what to run.
 "selection": {"by", "found", "judged", "left_out": [{"file", "why", "chars", "pattern"}]}, "question": {"ask",
 "role_only", "options": [{"name", "description"}]}, "requests": [{"file", "part", "chars", "cached", "text", "body",
 "piece", "kind", "first", "last", "eval"}], "pieces", "piece_question", "context", "characters", "tokens", "reorders",
-"masked", "mask", "never": [{"path", "matched"}], "evals", "sends": {"name", "at", "model", "key", "keyed", "unusable"}}`: `body` the request as the decision model's service would receive it
+"masked", "mask", "never": [{"path", "matched"}], "alike", "evals", "sends": {"name", "at", "model", "key", "keyed", "unusable"}}`: `body` the request as the decision model's service would receive it
 (JSON text, formatted: the same JSON value the service receives, not the same bytes; the key left out); `chars` how
 many characters the text sent holds, masked; `piece`, `kind`, `first` and `last` the piece a request is about and the lines it spans
 (null for a whole file); `pieces` whether pieces are asked, `piece_question` the question each piece carries (null
@@ -797,8 +821,8 @@ again in; `sends.key` the name of the variable the key is read from (never the k
 A review: `{"ok", "advisory", "profile", "dry_run": false, "complete", "model", "answered_by", "selection", "placement":
 {"calibration": {"state", "evidence", "examples": {"state", "why", "parts": [{"part", "verdict", "crossed",
 "examples"}]}}, "role_only", "files": [{"file", "part", "probability", "line", "line_by_hand", "doubtful", "chars",
-"small", "orders", "model", "distribution"}], "parts": [{"part", "read", "doubtful", "line", "line_by_hand", "summed",
-"litmus_note", "examples"}]}, "pieces": [{"file", "part", "judged", "too_small", "context", "answered", "lowest":
+"small", "orders", "model", "alike", "distribution"}], "parts": [{"part", "read", "doubtful", "line", "line_by_hand",
+"summed", "litmus_note", "examples"}]}, "pieces": [{"file", "part", "judged", "too_small", "context", "answered", "alike", "lowest":
 [{"rank", "kind", "name", "first", "last", "chars", "probability", "distribution"}]}], "evals": [{"id", "state", "why",
 "run", "line", "ask", "form", "examples": {"flagged", "clean"}, "model", "asked", "readings": [{"file", "line", "name",
 "value", "message", "fix"}]}], "sends", "sent": {"calls", "cached", "input_tokens", "output_tokens"}, "unanswered":
@@ -806,8 +830,9 @@ A review: `{"ok", "advisory", "profile", "dry_run": false, "complete", "model", 
 or kept, each once (the text header names them when they are not the model asked alone); the files
 ranked from the lowest probability; `line_by_hand` whether the profile sets the part's line; `small` whether the file
 is under 2,000 characters; `orders` how many orders of the options it was asked in (`probability` and `distribution`
-are their mean); `distribution` the probability on each part by name, the only place another part is named (also for
-a piece); `parts` each part read, `summed` whether 3 or more of its files were read and `litmus_note` whether the note
+are their mean); `alike` the other parts of the group of the file's part, whose probabilities `probability` counts
+with its own (empty when its part is in no group; also for a file's pieces), and of a dry run each group;
+`distribution` the probability on each part by name, as answered (also for a piece); `parts` each part read, `summed` whether 3 or more of its files were read and `litmus_note` whether the note
 on its litmus applies; `pieces` each file's lowest 3 pieces (empty when fewer than 2 were judged, or when `answered`
 is false); `why` of an unanswered file or piece `not-cached`, `failed` or `refused` (that request alone), `piece` its name
 (null for a whole file), `said` the decision model's words of a request it refused alone (else null);
@@ -825,11 +850,12 @@ refusal is `{"ok": false, "error"}`.
 
 A calibration: `{"ok", "calibrated": [{"id", "complete", "passed", "line", "line_by_hand", "crossed", "too_few",
 "examples": [{"path", "flagged", "value"}]}], "placement": {"model", "answered_by", "parts": [{"part", "verdict",
-"crossed", "examples"}]}, "passed", "complete", "record", "model", "answered_by", "sends", "sent", "unanswered": [{"id",
+"crossed", "examples", "alike"}]}, "passed", "complete", "record", "model", "answered_by", "sends", "sent", "unanswered": [{"id",
 "file", "kind", "why", "name", "said"}], "held_back": [{"id", "kind", "example", "pattern"}],
 "failure"}` (`placement` null when it was not held); its dry run: `{"ok", "dry_run": true, "sent": false, "evals",
 "requests": [{"id", "example", "kind", "part", "name", "first", "last", "chars", "cached", "text", "body"}],
-"characters", "tokens", "masked", "mask", "held_back", "too_few": [{"id", "kind"}], "sends"}`, `kind` `flagged` or `clean`;
+"characters", "tokens", "masked", "mask", "alike", "held_back", "too_few": [{"id", "kind"}], "sends"}`, `kind` `flagged` or `clean`;
+`alike` of a part the other parts of its group, held with it as one, and of a dry run each group placement would hold;
 `held_back` each example `review.never` holds back (`id` its eval, `placement` for placement's, `pattern` the path that
 matched); `too_few` each eval left with too few examples of a kind to be held, and `too_few` of a calibrated eval
 whether it is one.

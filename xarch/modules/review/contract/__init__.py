@@ -117,8 +117,9 @@ class ReviewPlanned:
     would send to, in how many other orders of the options a file whose answer is near its line is asked again, and
     when the pieces of the files are asked of too (each request of a piece says which), what the question of a piece
     asks ("" when they are not) and what is sent before each piece; how each eval of the profile's own stands (the
-    requests of each that runs say which); and the paths of review.never in force, in the profile's order, and those of
-    them that matched no file found this run."""
+    requests of each that runs say which); the paths of review.never in force, in the profile's order, and those of
+    them that matched no file found this run; and the groups of parts read alike, a file of each read on the sum of
+    the group's probabilities, each its parts in the profile's order."""
     by: tuple[str, ...]
     found: int
     requests: tuple[Request, ...]
@@ -135,6 +136,7 @@ class ReviewPlanned:
     evals: tuple[EvalRead, ...] = ()
     never: tuple[str, ...] = ()
     unmatched: tuple[str, ...] = ()
+    alike: tuple[tuple[str, ...], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -232,8 +234,9 @@ class CalibrationPlanned:
     reads in each example file (each says its eval, and the example by its path below the app), in each order of the
     options it is asked in; the evals it would hold, by id; the characters and about how many tokens they would send;
     the texts the profile says review hides; what it would send to; each example review.never holds back, never sent;
-    and the evals it leaves with too few examples to be held, each by id with the kind it is short of, nothing of
-    which would be sent."""
+    the evals it leaves with too few examples to be held, each by id with the kind it is short of, nothing of
+    which would be sent; and, when placement would be held, the groups of parts it would hold as one, each its parts
+    in the profile's order."""
     requests: tuple[Request, ...]
     evals: tuple[str, ...]
     characters: int
@@ -242,6 +245,7 @@ class CalibrationPlanned:
     sends: Sender
     held_back: tuple[HeldExample, ...] = ()
     too_few: tuple[tuple[str, str], ...] = ()
+    alike: tuple[tuple[str, ...], ...] = ()
 
 
 @dataclass(frozen=True)

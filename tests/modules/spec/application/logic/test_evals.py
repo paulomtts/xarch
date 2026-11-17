@@ -1,5 +1,7 @@
 """The top-level `evals` key: the line of each part placement reads a file's answer against
-(`evals.placement.lines`), by part as written; the evals of the profile's own, each in its answer form; and every way
+(`evals.placement.lines`), by part as written; the groups of parts one file cannot tell apart
+(`evals.placement.alike`), each refused when it names no part, fewer than two, a part twice or a part of another group,
+or parts `check` tells apart by rule; the evals of the profile's own, each in its answer form; and every way
 of writing either wrong refused at its address."""
 import pytest
 
@@ -31,12 +33,13 @@ NOT_A_LINE = "is not a line: write a number above 0 and below 1, such as 0.2"
     pytest.param({"placement": {}, "Purity": {}}, "evals: 'Purity' is no id of an eval of your own, lowercase words "
                                                   "joined by - such as rule-outside-entity, nor a key of evals: use "
                                                   "placement", id="an id that is not one"),
-    pytest.param({"placement": "on"}, "evals.placement: must be a mapping {lines, examples}: the line of each part, "
-                                      "below which a file reads as doubtful there, and the examples it is held to "
-                                      "besides the docs'", id="placement not a mapping"),
-    pytest.param({"placement": {"line": 0.2}}, "evals.placement: unknown key 'line': use examples, lines",
+    pytest.param({"placement": "on"}, "evals.placement: must be a mapping {lines, alike, examples}: the line of "
+                                      "each part, below which a file reads as doubtful there, the groups of parts one "
+                                      "file cannot tell apart, and the examples it is held to besides the docs'",
+                 id="placement not a mapping"),
+    pytest.param({"placement": {"line": 0.2}}, "evals.placement: unknown key 'line': use alike, examples, lines",
                  id="an unknown slot"),
-    pytest.param({"placement": {True: "x"}}, "evals.placement: unknown key 'yes': use examples, lines",
+    pytest.param({"placement": {True: "x"}}, "evals.placement: unknown key 'yes': use alike, examples, lines",
                  id="a slot of an eval of your own, which YAML reads yes as true, written under placement"),
     pytest.param({"placement": {"examples": {"clean": {"store/a.txt": "x"}}}},
                  "evals.placement.examples.clean: 'store/a.txt' is not a path of a source file below the app, ending in "
@@ -174,3 +177,76 @@ def test_placement_is_held_to_examples_of_its_own_besides_the_docs_flagged_or_cl
     assert parsed(layered(evals={"placement": {"examples": placed}})).placed == (
         (("src/documents/store/api.py", "def handle(request): ...\n"),), ())
     assert parsed(layered()).placed == ((), ())
+
+
+def alike(*groups, **parts) -> dict:
+    """layered(), its placement reading the groups given alike, each part named changed as given."""
+    document = layered(evals={"placement": {"alike": [list(group) for group in groups]}})
+    for name, changes in parts.items():
+        document["parts"][name] |= changes
+    return document
+
+
+def test_a_profile_without_alike_reads_no_parts_alike():
+    assert parsed(layered()).alike == ()
+    assert parsed(layered(evals={"placement": {}})).alike == ()
+
+
+def test_the_groups_of_parts_read_alike_load_in_the_order_of_the_file_each_in_its_own_order():
+    assert parsed(alike(("store", "shared"), ("api", "service"))).alike == (("store", "shared"), ("api", "service"))
+
+
+def test_parts_that_forbid_the_same_list_hold_the_same_and_are_alike_immutable_may_be_read_alike():
+    document = alike(("store", "shared"), store={"forbidden": "pure", "holds": "functions", "immutable": True},
+                     shared={"forbidden": "same", "holds": "functions", "immutable": True})
+    document["forbidden"] = {"pure": ["time.time"], "same": ["time.time"]}
+    assert parsed(document).alike == (("store", "shared"),)
+
+
+NOT_ALIKE = ("check tells them apart by rule, so one file is not all that tells them apart: write the same forbidden, "
+             "holds and immutable for each, or drop the group")
+
+
+@pytest.mark.parametrize("given, problem", [
+    pytest.param(layered(evals={"placement": {"alike": {"store": "shared"}}}),
+                 "evals.placement.alike: must be a list of groups, each a list of two parts or more that one file "
+                 "cannot tell apart, such as [[drafts, documents]]", id="a mapping instead of a list"),
+    pytest.param(layered(evals={"placement": {"alike": ["store"]}}),
+                 "evals.placement.alike[0]: must be a list of two parts or more that one file cannot tell apart, such "
+                 "as [drafts, documents]", id="a group that is no list"),
+    pytest.param(alike(("store", "domain")), "evals.placement.alike[0]: 'domain' is not a part of this profile: name a "
+                                             "part under parts", id="a name that is no part"),
+    pytest.param(alike(("store",)), "evals.placement.alike[0]: must name two parts or more: a part alone is alike to "
+                                    "no other", id="a group of one part"),
+    pytest.param(alike(("store", "store")), "evals.placement.alike[0]: names 'store' twice: name each part once",
+                 id="a part twice in its group"),
+    pytest.param(alike(("store", "shared"), ("api", "shared")),
+                 "evals.placement.alike[1]: 'shared' is in evals.placement.alike[0] already: a part is in one group at "
+                 "most; join the groups", id="a part in two groups"),
+    pytest.param(alike(("store", "shared"), store={"holds": "functions"}),
+                 f"evals.placement.alike[0]: store and shared differ in holds: {NOT_ALIKE}", id="holds differ"),
+    pytest.param(alike(("store", "shared"), shared={"immutable": True}),
+                 f"evals.placement.alike[0]: store and shared differ in immutable: {NOT_ALIKE}", id="immutable differs"),
+    pytest.param(alike(("api", "store", "shared"), store={"holds": "classes", "immutable": True}),
+                 f"evals.placement.alike[0]: api and store differ in holds and immutable: {NOT_ALIKE}",
+                 id="each part of a group is held to the first, every key that differs said"),
+])
+def test_alike_written_wrong_is_refused_at_its_address(given, problem):
+    assert f"layered.yaml: {problem}" in problems(given)
+
+
+def test_a_group_refused_leaves_every_group_unread_so_that_no_later_one_is_said_at_another_address():
+    found = problems(alike(("store", "nowhere"), ("api", "service"), api={"holds": "functions"}))
+    assert "layered.yaml: evals.placement.alike[0]: 'nowhere' is not a part of this profile: name a part under parts" in (
+        found)
+    assert not any("differ in" in problem for problem in found)
+
+
+def test_parts_that_forbid_different_things_are_not_alike():
+    document = alike(("store", "shared"), store={"forbidden": "pure"}, shared={"forbidden": "ambient"})
+    document["forbidden"] = {"pure": ["time.time"], "ambient": ["os.getcwd"]}
+    assert f"layered.yaml: evals.placement.alike[0]: store and shared differ in forbidden: {NOT_ALIKE}" in problems(
+        document)
+    document["parts"]["shared"].pop("forbidden")
+    assert f"layered.yaml: evals.placement.alike[0]: store and shared differ in forbidden: {NOT_ALIKE}" in problems(
+        document)

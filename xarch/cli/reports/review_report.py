@@ -1,14 +1,17 @@
 """xarch review, shown: what a review would send, and what the decision model read of the files judged, in text for a
 person or an agent and as one JSON document, and why one is refused. Every run opens with what review is: advisory,
-never a check. A file is "doubtful here" and nothing more: no other part is named but in the JSON's distribution."""
+never a check. A file is "doubtful here" and nothing more: no other part is named but in the JSON's distribution, and
+the parts of its group whose probabilities its reading counts with its own (`evals.placement.alike`)."""
 from __future__ import annotations
 
 from typing import Any
 
 from xarch.cli.reports.document import document
 from xarch.cli.reports.eval_report import (
+    ALIKE,
     REFUSED_AGAIN,
     VERDICTS,
+    alike_lines,
     eval_documents,
     eval_lines,
     eval_plan_lines,
@@ -104,7 +107,7 @@ def plan_lines(planned: ReviewPlanned) -> list[str]:
     if planned.piece_ask:
         lines += [f"  a request of a piece of a file asks instead: {planned.piece_ask}",
                   f"  sent before each piece: {CONTEXTS[planned.context]}"]
-    lines += ["", masks(planned.mask)]
+    lines += ["", masks(planned.mask), *alike_lines(planned.alike)]
     lines += [f"held back by review.never: {', '.join(planned.never)}"] if planned.never else []
     lines += [f"  {pattern}: matched nothing this run (a path of review.never is read below the app, without its "
               "folder's name)" for pattern in planned.unmatched]
@@ -147,7 +150,7 @@ def plan_document(profile: str, planned: ReviewPlanned) -> str:
         "characters": planned.characters, "tokens": planned.tokens, "reorders": planned.reorders,
         "masked": list(ALWAYS_MASKED), "mask": list(planned.mask),
         "never": [{"path": pattern, "matched": pattern not in planned.unmatched} for pattern in planned.never],
-        "sends": sends_of(planned.sends)}
+        "alike": [list(group) for group in planned.alike], "sends": sends_of(planned.sends)}
     return document(content)
 
 
@@ -266,8 +269,9 @@ def _why(item: LeftOut) -> str:
 def _reading(item: Reading) -> str:
     line = f"line {item.line:.2f}, set by the profile" if item.by_hand else f"line {item.line:.2f}"
     small = ", small" if item.small else ""
+    alike = f"   summed with {', '.join(item.alike)} ({ALIKE})" if item.alike else ""
     orders = f"   the mean of {item.orders} orders of the options" if item.orders > 1 else ""
-    return f"  {item.file}   {item.part}   {item.probability:.2f} ({line})   {item.chars:,} chars{small}{orders}"
+    return f"  {item.file}   {item.part}   {item.probability:.2f} ({line})   {item.chars:,} chars{small}{alike}{orders}"
 
 
 def _pieces(read: PiecesRead) -> list[str]:
@@ -281,8 +285,9 @@ def _pieces(read: PiecesRead) -> list[str]:
                 "unanswered)"]
     context = ("; each sent after the file's opening lines, which raises every number: never compare these with "
                "numbers read without them" if read.context == IMPORTS else "")
+    alike = f"; each read on {read.part} summed with {', '.join(read.alike)} ({ALIKE})" if read.alike else ""
     lines = [f"pieces of {read.file} (ranked inside this file only: the lowest {len(read.lowest)} of {read.judged} "
-             f"judged{small}{context})"]
+             f"judged{small}{context}{alike})"]
     lines += [f"  {item.rank}. {item.name}   {item.kind}   lines {item.lines[0]}-{item.lines[1]}   "
               f"{item.probability:.2f}   {item.chars:,} chars" for item in read.lowest]
     lines.append(f"      what to do: read the first one against the litmus of {read.part} (`xarch where {read.file}`). "
@@ -311,13 +316,13 @@ def _part(part: PartRead) -> list[str]:
 def _file(item: Reading) -> dict[str, Any]:
     return {"file": item.file, "part": item.part, "probability": item.probability, "line": item.line,
             "line_by_hand": item.by_hand, "doubtful": item.doubtful, "chars": item.chars, "small": item.small,
-            "orders": item.orders, "model": item.model,
+            "orders": item.orders, "model": item.model, "alike": list(item.alike),
             "distribution": dict(item.distribution)}
 
 
 def _pieces_read(read: PiecesRead) -> dict[str, Any]:
     return {"file": read.file, "part": read.part, "judged": read.judged, "too_small": read.too_small,
-            "context": read.context, "answered": read.answered,
+            "context": read.context, "answered": read.answered, "alike": list(read.alike),
             "lowest": [{"rank": item.rank, "kind": item.kind, "name": item.name, "first": item.lines[0],
                         "last": item.lines[1], "chars": item.chars, "probability": item.probability,
                         "distribution": dict(item.distribution)} for item in read.lowest]}

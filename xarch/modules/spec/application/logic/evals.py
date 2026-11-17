@@ -1,8 +1,10 @@
 """What `evals` says of the questions review asks, each refused at its address when it is written wrong; `check` never
 acts on it, though a value written wrong makes the profile invalid for every command. Under `placement`, the built-in
 eval, the line of each part below which a file reads as doubtful there
-(`evals.placement.lines`) and the examples placement is held to besides the docs' (`evals.placement.examples`);
-under any other id, an eval of the profile's own:
+(`evals.placement.lines`), the groups of parts one file cannot tell apart, each read on the sum of its parts'
+probabilities (`evals.placement.alike`: each a part, two or more to a group, a part in one group at most, the parts of a
+group alike in what `check` holds them to by `forbidden`, `holds` and `immutable`) and the examples placement is held to
+besides the docs' (`evals.placement.examples`); under any other id, an eval of the profile's own:
 
     <id>:                 lowercase words joined by `-`, never `placement`
       ask: <question>     one line, at most MAX_ASK characters and one question mark
@@ -54,16 +56,21 @@ _SIDES = {True: "yes", False: "no"}
 
 Examples = tuple[tuple[str, str], ...]
 """Example files, each by its path below the app with its code."""
+Groups = tuple[tuple[str, ...], ...]
+"""The groups of parts placement reads alike, each its parts by name in the order written."""
+_RULED = ("forbidden", "holds", "immutable")
+"""The keys of a part by which `check` tells parts apart, so that parts that differ in one are not alike."""
 
 
 def evals(value: Any, declared: Collection[str], language: Language,
-          problems: list[str]) -> tuple[dict[str, float], tuple[Examples, Examples], dict[str, Eval]]:
-    """The line of each part the profile writes one for, by part; placement's own flagged and clean examples; and
-    every eval of the profile's own, by id; each in the order of the file, an eval with a problem left out."""
+          problems: list[str]) -> tuple[dict[str, float], tuple[Examples, Examples], dict[str, Eval], Groups]:
+    """The line of each part the profile writes one for, by part; placement's own flagged and clean examples; every
+    eval of the profile's own, by id; and the groups of parts placement reads alike; each in the order of the file, an
+    eval or a group with a problem left out."""
     if not isinstance(value, Mapping):
         problems.append("evals: must be a mapping of the evals review asks, by id, such as "
                         "{placement: {lines: {documents: 0.2}}}")
-        return {}, ((), ()), {}
+        return {}, ((), ()), {}, ()
     own: dict[str, Eval] = {}
     for name, body in value.items():
         if name == BUILT_IN:
@@ -76,24 +83,78 @@ def evals(value: Any, declared: Collection[str], language: Language,
         found = _own(body, f"evals.{name}", declared, language, problems)
         if found is not None and len(problems) == count:
             own[name] = found
-    lines, examples = _placement(value.get(BUILT_IN), declared, language, problems)
-    return lines, examples, own
+    lines, examples, alike = _placement(value.get(BUILT_IN), declared, language, problems)
+    return lines, examples, own, alike
 
 
 def _placement(placement: Any, declared: Collection[str], language: Language,
-               problems: list[str]) -> tuple[dict[str, float], tuple[Examples, Examples]]:
+               problems: list[str]) -> tuple[dict[str, float], tuple[Examples, Examples], Groups]:
     if placement is None:
-        return {}, ((), ())
+        return {}, ((), ()), ()
     if not isinstance(placement, Mapping):
-        problems.append("evals.placement: must be a mapping {lines, examples}: the line of each part, below which a "
-                        "file reads as doubtful there, and the examples it is held to besides the docs'")
-        return {}, ((), ())
+        problems.append("evals.placement: must be a mapping {lines, alike, examples}: the line of each part, below "
+                        "which a file reads as doubtful there, the groups of parts one file cannot tell apart, and the "
+                        "examples it is held to besides the docs'")
+        return {}, ((), ()), ()
     written = {_SIDES.get(key, key) if isinstance(key, bool) else key: value for key, value in placement.items()}
     problems += ck.unknown_keys(written, names_of(PLACEMENT), "evals.placement")
     lines = _lines(placement["lines"], declared, problems) if "lines" in placement else {}
+    alike = _alike(placement["alike"], declared, problems) if "alike" in placement else ()
     if "examples" not in placement:
-        return lines, ((), ())
-    return lines, _examples(placement["examples"], "evals.placement.examples", language, problems, needed=0)
+        return lines, ((), ()), alike
+    return lines, _examples(placement["examples"], "evals.placement.examples", language, problems, needed=0), alike
+
+
+def _alike(value: Any, declared: Collection[str], problems: list[str]) -> Groups:
+    """The groups written, each refused at its address: one that is no list of names, names a part twice, names
+    fewer than two or a name that is no part, or names a part an earlier group holds; none when one is refused, so
+    that each group kept stands at its own address."""
+    where = "evals.placement.alike"
+    if not isinstance(value, list):
+        problems.append(f"{where}: must be a list of groups, each a list of two parts or more that one file cannot tell "
+                        "apart, such as [[drafts, documents]]")
+        return ()
+    found: list[tuple[str, ...]] = []
+    held: dict[str, str] = {}
+    count = len(problems)
+    for i, group in enumerate(value):
+        at = f"{where}[{i}]"
+        if not isinstance(group, list) or not all(isinstance(name, str) for name in group):
+            problems.append(f"{at}: must be a list of two parts or more that one file cannot tell apart, such as "
+                            "[drafts, documents]")
+            continue
+        problems += [f"{at}: {name!r} is not a part of this profile: name a part under parts" for name in group
+                     if name not in declared]
+        problems += [f"{at}: names {name!r} twice: name each part once" for name in dict.fromkeys(group)
+                     if group.count(name) > 1]
+        if len(set(group)) < 2:
+            problems.append(f"{at}: must name two parts or more: a part alone is alike to no other")
+        problems += [f"{at}: {name!r} is in {held[name]} already: a part is in one group at most; join the groups"
+                     for name in dict.fromkeys(group) if name in held]
+        found.append(tuple(group))
+        held |= {name: at for name in group if name not in held}
+    return tuple(found) if len(problems) == count else ()
+
+
+def unlike(alike: Groups, ruled: Mapping[str, tuple[Any, ...]]) -> list[str]:
+    """Each part of a group that `check` holds to other rules than the group's first part (ruled, what it holds each
+    part to by _RULED, by part; a group naming a part not in it is passed over): parts `check` tells apart by rule are
+    not alike, so the group is refused at its address, naming every key that differs."""
+    found: list[str] = []
+    for i, (first, *others) in enumerate(alike):
+        if not all(name in ruled for name in (first, *others)):
+            continue
+        for other in others:
+            differ = [key for key, mine, theirs in zip(_RULED, ruled[first], ruled[other], strict=True) if mine != theirs]
+            if differ:
+                found.append(f"evals.{BUILT_IN}.alike[{i}]: {first} and {other} differ in {_and(differ)}: check tells "
+                             "them apart by rule, so one file is not all that tells them apart: write the same "
+                             "forbidden, holds and immutable for each, or drop the group")
+    return found
+
+
+def _and(words: list[str]) -> str:
+    return words[0] if len(words) == 1 else f"{', '.join(words[:-1])} and {words[-1]}"
 
 
 def _lines(value: Any, declared: Collection[str], problems: list[str]) -> dict[str, float]:

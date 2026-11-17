@@ -14,13 +14,16 @@ from xarch.modules.review.domain.published import Choice, LeftOut
 @dataclass(frozen=True)
 class PartText:
     """A part as placement offers it: its name, its folder as the docs show it, its litmus test ("" for none), its
-    role, the line below which a file reads as doubtful there, and whether the profile sets that line by hand."""
+    role, the line below which a file reads as doubtful there, whether the profile sets that line by hand, and the
+    other parts of the group one file cannot tell it apart from (`evals.placement.alike`), in the group's order (none
+    when it is in no group), whose probabilities a file of it is read on with its own."""
     name: str
     folder: str
     litmus: str
     role: str
     line: float
     by_hand: bool = False
+    alike: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

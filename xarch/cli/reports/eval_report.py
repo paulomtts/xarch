@@ -54,6 +54,8 @@ UNSEEN = re.compile("[\x00-\x08\x0b-\x1f\x7f-\x9f\u2028\u2029]")
 SANITY = ("the examples are short, and short files read lower for being short: a sanity check of the litmus texts, not "
           "a way to set lines")
 VERDICTS = {DISAGREE: "examples disagree", ELSEWHERE: "measured elsewhere only: no example of its own"}
+ALIKE = "evals.placement.alike"
+"""The key a profile names the groups of parts one file cannot tell apart under, said with what it does."""
 UNASKED = {NOT_CACHED: "not in the cache, and --offline sends nothing",
            FAILED: "not answered: the decision model failed, and nothing more was sent",
            REFUSED: "not answered: the decision model refused this request alone, and the rest was still sent"}
@@ -162,9 +164,18 @@ def _placement_lines(held: PlacementHeld) -> list[str]:
     lines = [f"placement   held to the docs' examples and the profile's own, by {held.answered or held.model}; {SANITY}"]
     for part in held.parts:
         said = VERDICTS.get(part.verdict, f"passed ({part.examples} example(s) of its own)")
+        with_others = f"; held with {', '.join(part.alike)} as one ({ALIKE})" if part.alike else ""
         lines.append(f"  {part.part}   {said}" + (f": {part.crossed}; read its litmus against the example, and the "
-                                                    "example against the litmus" if part.crossed else ""))
+                                                    "example against the litmus" if part.crossed else "") + with_others)
     return lines
+
+
+def alike_lines(alike: tuple[tuple[str, ...], ...]) -> list[str]:
+    """What a dry run says of the groups of parts read alike: nothing when there are none."""
+    if not alike:
+        return []
+    return [f"read alike, each file of a part of a group read on the sum of the group's probabilities ({ALIKE}): "
+            + "; ".join(" + ".join(group) for group in alike)]
 
 
 def standing_lines(stood: PlacementStanding) -> list[str]:
@@ -237,7 +248,7 @@ def calibration_document(done: Calibrated, record: str) -> str:
         "placement": None if done.placement is None else {
             "model": done.placement.model, "answered_by": done.placement.answered,
             "parts": [{"part": part.part, "verdict": part.verdict, "crossed": part.crossed or None,
-                       "examples": part.examples} for part in done.placement.parts]},
+                       "examples": part.examples, "alike": list(part.alike)} for part in done.placement.parts]},
         "passed": done.passed, "complete": done.complete, "record": record if done.record is not None else None,
         "model": done.sends.model, "answered_by": list(done.answered_by), "sends": sends_of(done.sends),
         "sent": {"calls": done.sent, "cached": done.cached, "input_tokens": done.input_tokens,
@@ -263,7 +274,7 @@ def calibration_plan_lines(planned: CalibrationPlanned) -> list[str]:
              f"evals: {', '.join(planned.evals) or 'none'}; {len(planned.requests)} request(s), "
              f"{planned.characters:,} characters, about {planned.tokens:,} tokens; {cached} in the cache already"
              + "".join(f"; {rule}" for rule in rules), *_withheld(planned.held_back, planned.too_few),
-             masks(planned.mask)]
+             masks(planned.mask), *alike_lines(planned.alike)]
     for number, item in enumerate(planned.requests, 1):
         kept = ", in the cache: not sent" if item.cached else ""
         what = f" {item.piece} (lines {item.lines[0]}-{item.lines[1]})" if item.piece else ""
@@ -286,7 +297,8 @@ def calibration_plan_document(planned: CalibrationPlanned) -> str:
                       "last": r.lines[1] or None, "chars": r.chars, "cached": r.cached, "text": r.text, "body": r.body}
                      for r in planned.requests],
         "characters": planned.characters, "tokens": planned.tokens, "masked": list(ALWAYS_MASKED),
-        "mask": list(planned.mask), "held_back": _held_back_of(planned.held_back),
+        "mask": list(planned.mask), "alike": [list(group) for group in planned.alike],
+        "held_back": _held_back_of(planned.held_back),
         "too_few": [{"id": name, "kind": kind} for name, kind in planned.too_few], "sends": sends_of(planned.sends)})
 
 

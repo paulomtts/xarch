@@ -370,6 +370,8 @@ class Architecture:
     evals: the evals of the profile's own, by id, in the order of the file, which review asks
     placed: the examples placement is held to besides the docs' (`evals.placement.examples`): the flagged ones (each
         lying in a part it does not belong in) and the clean ones, each by its path below the app with its code
+    alike: the groups of parts one file cannot tell apart (`evals.placement.alike`), in the order of the file, each its
+        parts by name in the order written: review reads a file of one on the sum of the group's probabilities
     """
     name: str
     layout: Layout
@@ -401,6 +403,7 @@ class Architecture:
     lines: dict[str, float] = field(default_factory=dict)
     evals: dict[str, Eval] = field(default_factory=dict)
     placed: tuple[tuple[tuple[str, str], ...], tuple[tuple[str, str], ...]] = ((), ())
+    alike: tuple[tuple[str, ...], ...] = ()
 
     @property
     def entry(self) -> Part | None:

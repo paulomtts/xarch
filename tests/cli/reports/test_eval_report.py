@@ -214,3 +214,32 @@ def test_a_text_sent_is_quoted_with_each_character_a_terminal_would_not_show_wri
     assert quoted("x = 1\n\x1b[8mhidden\x1b[0m\tkept\r\n\x0cfeed\u2028sep\n") == [
         "    | x = 1", "    | \\x1b[8mhidden\\x1b[0m\tkept\\x0d", "    | \\x0cfeed\\u2028sep"]
     assert quoted("no break at the end") == ["    | no break at the end"]
+
+
+GROUPED = PlacementHeld("h", "m-1", "m-1.2", (PartHeld("logic", PASSED, "", 2, ("kernel-logic",)),
+                                              PartHeld("kernel-logic", ELSEWHERE, alike=("logic",)),
+                                              PartHeld("services", PASSED, "", 3)))
+
+
+def test_a_calibration_says_of_each_part_of_a_group_read_alike_that_it_was_held_with_the_others_in_text_and_in_json():
+    done = Calibrated((), Path("/p/.xarch/calibration.json"), (), SENDS, 3, 0, 0, 0, "", GROUPED)
+    assert calibration_lines(done, ".xarch/calibration.json")[5:8] == [
+        "  logic   passed (2 example(s) of its own); held with kernel-logic as one (evals.placement.alike)",
+        "  kernel-logic   measured elsewhere only: no example of its own; held with logic as one "
+        "(evals.placement.alike)",
+        "  services   passed (3 example(s) of its own)"]
+    assert json.loads(calibration_document(done, ".xarch/calibration.json"))["placement"]["parts"] == [
+        {"part": "logic", "verdict": "passed", "crossed": None, "examples": 2, "alike": ["kernel-logic"]},
+        {"part": "kernel-logic", "verdict": "elsewhere", "crossed": None, "examples": 0, "alike": ["logic"]},
+        {"part": "services", "verdict": "passed", "crossed": None, "examples": 3, "alike": []}]
+
+
+def test_a_dry_run_of_a_calibration_says_the_groups_of_parts_read_alike_after_what_is_masked_and_none_when_none():
+    planned = CalibrationPlanned((), ("placement",), 0, 0, (), SENDS, alike=(("logic", "kernel-logic"), ("a", "b", "c")))
+    assert calibration_plan_lines(planned)[5] == (
+        "read alike, each file of a part of a group read on the sum of the group's probabilities "
+        "(evals.placement.alike): logic + kernel-logic; a + b + c")
+    assert json.loads(calibration_plan_document(planned))["alike"] == [["logic", "kernel-logic"], ["a", "b", "c"]]
+    alone = CalibrationPlanned((), ("placement",), 0, 0, (), SENDS)
+    assert not any(line.startswith("read alike") for line in calibration_plan_lines(alone))
+    assert json.loads(calibration_plan_document(alone))["alike"] == []

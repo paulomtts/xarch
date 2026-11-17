@@ -204,6 +204,20 @@ def test_check_never_acts_on_review_or_evals_but_a_value_written_wrong_makes_the
     assert wrong.exit_code == 2 and "evals.placement.lines.domain: 2 is not a line" in wrong.output
 
 
+def test_the_groups_of_parts_a_profile_reads_alike_reach_a_dry_run_and_a_group_written_wrong_is_refused(tmp_path):
+    assert runner.invoke(app, ["profile", "new", "mine", "--from", "cli"]).exit_code == 0
+    profile = tmp_path / "architecture" / "mine" / "mine.yaml"
+    written = profile.read_text()
+    profile.write_text(written + "evals:\n  placement:\n    alike: [[logic, kernel-logic]]\n")
+    for chosen in ([SERVICE], ["calibrate"]):
+        result = review(*chosen, "--dry-run", "--format", "json", "--profile", str(profile))
+        assert result.exit_code == 0, result.output
+        assert json.loads(result.output)["alike"] == [["logic", "kernel-logic"]]
+    profile.write_text(written + "evals:\n  placement:\n    alike: [[logic, ports]]\n")
+    wrong = review(SERVICE, "--dry-run", "--profile", str(profile))
+    assert wrong.exit_code == 2 and "evals.placement.alike[0]: logic and ports differ in " in wrong.output
+
+
 @pytest.mark.parametrize("written", ["./calibrate", "calibrate/"])
 def test_a_path_named_calibrate_written_as_a_path_is_reviewed_not_taken_for_the_word(tmp_path, written):
     (tmp_path / "calibrate").mkdir()

@@ -105,7 +105,7 @@ def test_the_json_of_a_dry_run_holds_every_request_in_full_and_the_question_once
         "evals": [],
         "pieces": False, "piece_question": None, "context": "none",
         "characters": 1250, "tokens": 313, "reorders": 0,
-        "masked": ["own-imports", "e-mail", "comments"], "mask": [], "never": [],
+        "masked": ["own-imports", "e-mail", "comments"], "mask": [], "never": [], "alike": [],
         "sends": {"name": "Model", "at": "https://model.example.test", "model": "m-1", "key": "MODEL_KEY", "keyed": False,
                   "unusable": None}}
 
@@ -258,10 +258,10 @@ def test_the_json_of_a_reading_holds_each_file_with_the_probability_of_each_part
                       "role_only": [],
                       "files": [{"file": DOUBTFUL.file, "part": "adapters", "probability": 0.0812, "line": 0.3,
                                  "line_by_hand": False, "doubtful": True, "chars": 2140, "small": False, "orders": 1, "model": "m-1.0.1",
-                                 "distribution": {"adapters": 0.0812, "logic": 0.9188}},
+                                 "alike": [], "distribution": {"adapters": 0.0812, "logic": 0.9188}},
                                 {"file": PLACED.file, "part": "domain", "probability": 0.71, "line": 0.3,
                                  "line_by_hand": False, "doubtful": False, "chars": 1200, "small": False, "orders": 1, "model": "m-1.0.1",
-                                 "distribution": {"domain": 0.71, "logic": 0.29}}],
+                                 "alike": [], "distribution": {"domain": 0.71, "logic": 0.29}}],
                       "parts": []},
         "pieces": [],
         "evals": [],
@@ -310,7 +310,7 @@ def test_the_json_of_pieces_holds_each_ranked_piece_with_its_lines_and_the_proba
     document = json.loads(reading_document("cli", replace(READ, pieces=(PIECES,))))
     assert document["pieces"] == [{
         "file": "app/s.py", "part": "services", "judged": 2, "too_small": 3, "context": "none", "answered": True,
-        "lowest": [{"rank": 1, "kind": "method", "name": "DocumentService.export_pdf", "first": 41, "last": 88,
+        "alike": [], "lowest": [{"rank": 1, "kind": "method", "name": "DocumentService.export_pdf", "first": 41, "last": 88,
                     "chars": 1530, "probability": 0.11, "distribution": {"services": 0.11, "logic": 0.89}},
                    {"rank": 2, "kind": "method", "name": "DocumentService.publish", "first": 14, "last": 27,
                     "chars": 1100, "probability": 0.64, "distribution": {"services": 0.64}}]}]
@@ -387,3 +387,34 @@ def test_every_text_output_of_review_and_of_calibrate_opens_as_experimental_and_
     documents = [plan_document("cli", PLANNED), reading_document("cli", READ), calibration_document(done, ""),
                  calibration_plan_document(planned)]
     assert all(json.loads(text)["experimental"] is True for text in documents)
+
+
+SUMMED = Reading("app/modules/documents/application/logic/titles.py", "logic", 1200, 0.62, 0.3, False,
+                 (("logic", 0.22), ("kernel-logic", 0.4), ("domain", 0.38)), "m-1.0.1", alike=("kernel-logic",))
+
+
+def test_a_file_of_a_part_read_alike_says_which_parts_were_counted_with_its_own_in_text_and_in_json():
+    read = replace(READ, readings=(SUMMED,))
+    assert ("  app/modules/documents/application/logic/titles.py   logic   0.62 (line 0.30)   1,200 chars   summed with "
+            "kernel-logic (evals.placement.alike)") in reading_lines(read)
+    (file,) = json.loads(reading_document("cli", read))["placement"]["files"]
+    assert (file["probability"], file["alike"], file["distribution"]) == (
+        0.62, ["kernel-logic"], {"logic": 0.22, "kernel-logic": 0.4, "domain": 0.38})
+
+
+def test_the_pieces_of_a_file_of_a_part_read_alike_say_which_parts_were_counted_with_its_own_in_text_and_in_json():
+    read = replace(READ, pieces=(replace(PIECES, alike=("logic", "kernel")),), left_out=())
+    assert ("pieces of app/s.py (ranked inside this file only: the lowest 2 of 2 judged; 3 piece(s) under 1,000 "
+            "characters not judged; each read on services summed with logic, kernel (evals.placement.alike))"
+            in reading_lines(read))
+    assert json.loads(reading_document("cli", read))["pieces"][0]["alike"] == ["logic", "kernel"]
+
+
+def test_a_dry_run_says_the_groups_of_parts_read_alike_after_what_is_masked_and_nothing_of_them_when_none():
+    lines = plan_lines(replace(PLANNED, alike=(("logic", "kernel-logic"),)))
+    at = lines.index("read alike, each file of a part of a group read on the sum of the group's probabilities "
+                     "(evals.placement.alike): logic + kernel-logic")
+    assert lines[at - 1].startswith("masked in each text:")
+    assert json.loads(plan_document("cli", replace(PLANNED, alike=(("logic", "kernel-logic"),))))["alike"] == [
+        ["logic", "kernel-logic"]]
+    assert not any(line.startswith("read alike") for line in plan_lines(PLANNED))

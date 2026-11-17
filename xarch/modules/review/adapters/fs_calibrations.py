@@ -1,6 +1,7 @@
 """The record of the evals of the profile's own held to their examples, one JSON file in the project, which the
 project commits: for each eval by id, the hash of what it was held as, the model asked and the version that answered,
-the verdict, the line, the value of each example file by path and what crossed; no code and no question."""
+the verdict, the line, the value of each example file by path and what crossed; and for placement each part's
+verdict, with the other parts of its group it was held with when it is in one; no code and no question."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -41,8 +42,7 @@ class FsCalibrations:
     def put_placement(self, record: Path, held: PlacementHeld) -> None:
         document = self._document(record)
         document["placement"] = {"hash": held.held, "model": held.model, "answered_by": held.answered,
-                                 "parts": {part.part: {"verdict": part.verdict, "crossed": part.crossed,
-                                                       "examples": part.examples} for part in held.parts}}
+                                 "parts": {part.part: _part(part) for part in held.parts}}
         self._write(record, document)
 
     def _write(self, record: Path, document: dict[str, Any]) -> None:
@@ -102,6 +102,13 @@ def _number(value: Any) -> bool:
     return isinstance(value, int | float) and not isinstance(value, bool) and 0 <= value <= 1
 
 
+def _part(part: PartHeld) -> dict[str, Any]:
+    """A part of placement as recorded: no word of a group when it is in none, as a record held before a profile
+    could write groups."""
+    entry: dict[str, Any] = {"verdict": part.verdict, "crossed": part.crossed, "examples": part.examples}
+    return entry | ({"alike": list(part.alike)} if part.alike else {})
+
+
 def _placed(entry: Any) -> PlacementHeld | None:
     if not isinstance(entry, dict) or not isinstance(entry.get("parts"), dict):
         return None
@@ -110,7 +117,12 @@ def _placed(entry: Any) -> PlacementHeld | None:
     if not all(isinstance(text, str) for text in texts) or len(parts) != len(entry["parts"]):
         return None
     if not all(isinstance(held.get("verdict"), str) and isinstance(held.get("crossed"), str)
-               and isinstance(held.get("examples"), int) for _, held in parts):
+               and isinstance(held.get("examples"), int) and _names(held.get("alike", [])) for _, held in parts):
         return None
     return PlacementHeld(texts[0], texts[1], texts[2], tuple(PartHeld(str(name), held["verdict"], held["crossed"],
-                                                                      held["examples"]) for name, held in parts))
+                                                                      held["examples"], tuple(held.get("alike", [])))
+                                                             for name, held in parts))
+
+
+def _names(value: Any) -> bool:
+    return isinstance(value, list) and all(isinstance(name, str) for name in value)

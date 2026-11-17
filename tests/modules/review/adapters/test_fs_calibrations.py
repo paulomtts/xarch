@@ -8,7 +8,7 @@ import pytest
 
 from xarch.modules.review.adapters.fs_calibrations import FsCalibrations
 from xarch.modules.review.domain.errors import Refused
-from xarch.modules.review.domain.published import DISAGREE, ELSEWHERE, PartHeld, PlacementHeld
+from xarch.modules.review.domain.published import DISAGREE, ELSEWHERE, PASSED, PartHeld, PlacementHeld
 from xarch.modules.review.domain.values import Calibration
 from xarch.platform.data_files import DataFileReader, DataFileWriter
 from xarch.platform.filesystem import FileSystem
@@ -66,11 +66,25 @@ def test_placement_held_is_recorded_beside_the_evals_each_kept_when_the_other_is
                   "kernel": {"verdict": "elsewhere", "crossed": "", "examples": 0}}}
 
 
+def test_a_part_held_with_the_other_parts_of_its_group_is_recorded_with_them_and_a_part_alone_with_no_word_of_it(
+        tmp_path):
+    record = tmp_path / "calibration.json"
+    grouped = PlacementHeld("h", "m", "m.1", (PartHeld("logic", PASSED, "", 2, ("kernel-logic",)),
+                                              PartHeld("main", ELSEWHERE)))
+    calibrations().put_placement(record, grouped)
+    assert calibrations().placement(record) == grouped
+    assert json.loads(record.read_text())["placement"]["parts"] == {
+        "logic": {"verdict": "passed", "crossed": "", "examples": 2, "alike": ["kernel-logic"]},
+        "main": {"verdict": "elsewhere", "crossed": "", "examples": 0}}
+
+
 @pytest.mark.parametrize("text", [
     pytest.param('{"placement": []}', id="placement that is not an object"),
     pytest.param('{"placement": {"hash": "x", "model": "m", "answered_by": "m", "parts": {"a": {"verdict": 1, '
                  '"crossed": "", "examples": 0}}}}', id="a verdict that is not text"),
     pytest.param('{"placement": {"model": "m", "answered_by": "m", "parts": {}}}', id="no hash"),
+    pytest.param('{"placement": {"hash": "x", "model": "m", "answered_by": "m", "parts": {"a": {"verdict": "passed", '
+                 '"crossed": "", "examples": 0, "alike": "b"}}}}', id="the other parts of a group that are no list"),
 ])
 def test_a_record_of_placement_not_of_the_shape_written_is_none(tmp_path, text):
     record = tmp_path / "calibration.json"

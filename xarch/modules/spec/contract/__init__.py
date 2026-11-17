@@ -152,8 +152,9 @@ class ProfileView:
     the vocabulary in them are the rules module's to read); and what review may send, which no check reads: the path
     patterns below the app of the files it never sends (`review.never`) and the text patterns it hides
     (`review.mask`), each as written; and the line of each part the profile writes one for under
-    `evals.placement.lines`, by part (any other part's is LINE); and the evals of its own, by id, which review asks
-    and rules holds to their examples."""
+    `evals.placement.lines`, by part (any other part's is LINE); the evals of its own, by id, which review asks
+    and rules holds to their examples; and the groups of parts one file cannot tell apart (`evals.placement.alike`),
+    each its parts by name, which review reads a file of on the sum of the group's probabilities."""
     parts: tuple[PartView, ...]
     folders: tuple[tuple[str, ...], ...] = ()
     tiers: tuple[CheckedTier, ...] = ()
@@ -172,6 +173,7 @@ class ProfileView:
     mask: tuple[str, ...] = ()
     lines: dict[str, float] = field(default_factory=dict)
     evals: dict[str, Eval] = field(default_factory=dict)
+    alike: tuple[tuple[str, ...], ...] = ()
 
 
 @dataclass(frozen=True)

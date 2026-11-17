@@ -1,5 +1,6 @@
-"""What a file's answer says: the probability on the part it sits in, and whether that is below the part's line (the
-profile's, else the default), so that the file reads as doubtful there; whether a file is near enough its line to be
+"""What a file's answer says: the probability on the part it sits in (with the probabilities on the other parts of its
+group, for a part one file cannot tell apart from others), and whether that is below the part's line (the profile's,
+else the default), so that the file reads as doubtful there; whether a file is near enough its line to be
 asked again in other orders of the options, and the mean of its answers then; the order the readings are shown in,
 the most doubtful first; how the files of each part read, so that a part low across the board points at its
 litmus; and the pieces of a file ranked inside it."""
@@ -23,18 +24,26 @@ FEWEST_NOTED = 3
 part's litmus may not describe its files."""
 
 
+def on_part(probabilities: tuple[tuple[str, float], ...], part: str, alike: tuple[str, ...] = ()) -> float:
+    """The probability an answer puts on a part: on the part itself (0 when it gives none), and on each of the other
+    parts of its group, alike, summed."""
+    each = dict(probabilities)
+    return sum(each.get(name, 0.0) for name in (part, *alike))
+
+
 def reading(request: Request, answer: Answer, part: PartText, orders: int = 1) -> Reading:
-    """The reading of a file's answer, asked in orders orders of the options: the probability on its part (0 when the
-    answer gives none), doubtful below the part's line, small under MARKED_SMALL characters."""
-    probability = dict(answer.probabilities).get(request.part, 0.0)
+    """The reading of a file's answer, asked in orders orders of the options: the probability on its part, with the
+    other parts of its group, doubtful below the part's line, small under MARKED_SMALL characters."""
+    probability = on_part(answer.probabilities, request.part, part.alike)
     return Reading(request.file, request.part, request.chars, probability, part.line, probability < part.line,
-                   answer.probabilities, answer.model, part.by_hand, orders, request.chars < MARKED_SMALL)
+                   answer.probabilities, answer.model, part.by_hand, orders, request.chars < MARKED_SMALL, part.alike)
 
 
 def asked_again(answer: Answer, part: PartText) -> bool:
-    """Whether a file's first answer puts the probability on its part within BAND of the part's line, where the order
-    of the options can move it across: the file is then asked again in other orders."""
-    return round(abs(dict(answer.probabilities).get(part.name, 0.0) - part.line), 9) <= BAND
+    """Whether a file's first answer puts the probability on its part, with the other parts of its group, within BAND
+    of the part's line, where the order of the options can move it across: the file is then asked again in other
+    orders."""
+    return round(abs(on_part(answer.probabilities, part.name, part.alike) - part.line), 9) <= BAND
 
 
 def averaged(answers: tuple[Answer, ...]) -> Answer:
@@ -70,16 +79,17 @@ def ranks(requests: tuple[Request, ...]) -> bool:
 
 
 def pieces_read(file: CodeFile, requests: tuple[Request, ...], answers: tuple[Answer | None, ...], too_small: int,
-                context: str) -> PiecesRead:
-    """The pieces of a file ranked by the probability on its part, the lowest SHOWN, ranked from 1 (by first line on
-    a tie); none when fewer than two were judged (none was asked, and answers is empty), or when one of them has no
-    answer."""
+                context: str, alike: tuple[str, ...] = ()) -> PiecesRead:
+    """The pieces of a file ranked by the probability on its part, with the other parts of its group (alike), the
+    lowest SHOWN, ranked from 1 (by first line on a tie); none when fewer than two were judged (none was asked, and
+    answers is empty), or when one of them has no answer."""
     if not ranks(requests):
-        return PiecesRead(file.file, file.part, len(requests), too_small, context, ())
+        return PiecesRead(file.file, file.part, len(requests), too_small, context, (), alike=alike)
     answered = all(answer is not None for answer in answers)
-    read = sorted(((dict(answer.probabilities).get(file.part, 0.0), item, answer)
+    read = sorted(((on_part(answer.probabilities, file.part, alike), item, answer)
                    for item, answer in zip(requests, answers, strict=True) if answer is not None),
                   key=lambda found: (found[0], found[1].lines))
     lowest = tuple(PieceReading(rank, item.kind, item.piece, item.lines, item.chars, probability, answer.probabilities)
                    for rank, (probability, item, answer) in enumerate(read[:SHOWN], 1))
-    return PiecesRead(file.file, file.part, len(requests), too_small, context, lowest if answered else (), answered)
+    return PiecesRead(file.file, file.part, len(requests), too_small, context, lowest if answered else (), answered,
+                      alike)

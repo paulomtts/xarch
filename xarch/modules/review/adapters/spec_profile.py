@@ -36,13 +36,15 @@ class SpecWords:
         self._spec = spec
 
     def words(self, profile: str) -> Words:
-        """Each part's line is the one the profile writes, else spec's default; placement's examples are written for
-        spec's example app. A profile spec refuses raises Refused with spec's reason."""
+        """Each part's line is the one the profile writes, else spec's default, and the parts read alike with it the
+        others of its group; placement's examples are written for spec's example app. A profile spec refuses raises
+        Refused with spec's reason."""
         match self._spec.profile(profile):
-            case ProfileView(parts=parts, never=never, mask=mask, lines=lines, evals=evals):
+            case ProfileView(parts=parts, never=never, mask=mask, lines=lines, evals=evals, alike=alike):
+                others = {name: tuple(other for other in group if other != name) for group in alike for name in group}
                 return Words(tuple(PartText(part.name, part.shown, part.litmus, part.role, lines.get(part.name, LINE),
-                                            part.name in lines) for part in parts), never, mask,
-                             tuple(_eval(name, asked) for name, asked in evals.items()), EXAMPLE_APP)
+                                            part.name in lines, others.get(part.name, ())) for part in parts), never,
+                             mask, tuple(_eval(name, asked) for name, asked in evals.items()), EXAMPLE_APP)
             case ProfileRefused(reason):
                 raise Refused(reason)
 
