@@ -96,7 +96,7 @@ def test_the_json_of_a_dry_run_holds_every_request_in_full_and_the_question_once
                       "kind": None, "first": None, "last": None, "eval": None}],
         "evals": [],
         "pieces": False, "piece_question": None, "context": "none",
-        "characters": 1250, "tokens": 313, "reorders": 0, "mask": [],
+        "characters": 1250, "tokens": 313, "reorders": 0, "mask": [], "never": [],
         "sends": {"name": "Model", "at": "https://model.example.test", "model": "m-1", "key": "MODEL_KEY", "keyed": False}}
 
 
@@ -309,3 +309,13 @@ def test_the_model_versions_that_answered_are_said_when_they_are_not_the_model_a
     assert reading_lines(replace(READ, answered_by=("m-1",)))[1].startswith("Model m-1. ")
     assert reading_lines(replace(READ, answered_by=("m-0.9", "m-1")))[1].startswith("Model m-1, answered by m-0.9, m-1. ")
     assert json.loads(reading_document("cli", replace(READ, answered_by=("m-0.9",))))["answered_by"] == ["m-0.9"]
+
+
+def test_a_dry_run_lists_the_paths_of_review_never_and_says_each_that_matched_nothing():
+    held = replace(PLANNED, never=("app/modules/x.py", "**/k.py"), unmatched=("app/modules/x.py",))
+    lines = plan_lines(held)
+    at = lines.index("held back by review.never: app/modules/x.py, **/k.py")
+    assert lines[at + 1] == ("  app/modules/x.py: matched nothing this run (a path of review.never is read below the "
+                             "app, without its folder's name)")
+    assert json.loads(plan_document("cli", held))["never"] == [{"path": "app/modules/x.py", "matched": False},
+                                                               {"path": "**/k.py", "matched": True}]

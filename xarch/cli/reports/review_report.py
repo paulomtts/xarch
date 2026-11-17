@@ -99,6 +99,9 @@ def plan_lines(planned: ReviewPlanned) -> list[str]:
         lines += [f"  a request of a piece of a file asks instead: {planned.piece_ask}",
                   f"  sent before each piece: {CONTEXTS[planned.context]}"]
     lines += ["", f"{MASKED}: {', '.join(planned.mask)}" if planned.mask else f"{MASKED}: nothing more"]
+    lines += [f"held back by review.never: {', '.join(planned.never)}"] if planned.never else []
+    lines += [f"  {pattern}: matched nothing this run (a path of review.never is read below the app, without its "
+              "folder's name)" for pattern in planned.unmatched]
     for number, item in enumerate(planned.requests, 1):
         kept = ", in the cache: not sent" if item.cached else ""
         what = (f"eval {item.asked}: {item.piece or 'the file whole'} (lines {item.lines[0]}-{item.lines[1]}, "
@@ -137,6 +140,7 @@ def plan_document(profile: str, planned: ReviewPlanned) -> str:
         "pieces": bool(planned.piece_ask), "piece_question": planned.piece_ask or None, "context": planned.context,
         "characters": planned.characters, "tokens": planned.tokens, "reorders": planned.reorders,
         "mask": list(planned.mask),
+        "never": [{"path": pattern, "matched": pattern not in planned.unmatched} for pattern in planned.never],
         "sends": sends_of(planned.sends)}
     return document(content)
 

@@ -118,12 +118,12 @@ def run(world: World, when: Review):
                  ReviewPlanned((BY_PATHS,), 3, (), (GONE, LeftOut(DOCUMENT.file, NEVER, len(DOCUMENT.text),
                                                                   "modules/*/domain/document.py"),
                                                    LeftOut(SMALL_FILE.file, SMALL, 6)), QUESTION, ("main",), 0, 0,
-                               ("Doc*", "title"), SENDS, 1),
+                               ("Doc*", "title"), SENDS, 1, never=("modules/*/domain/document.py",)),
                  id="a file a path review never sends matches is left out with that path and sends nothing"),
     pytest.param(World(found={"app/x.py": Found((DOCUMENT,))}), review("app/x.py", dry_run=True, profile="kept"),
                  ReviewPlanned((BY_PATHS,), 1, (), (LeftOut(DOCUMENT.file, NEVER, len(DOCUMENT.text),
                                                             "modules/*/domain/document.py"),), QUESTION, ("main",), 0, 0,
-                               ("Doc*", "title"), SENDS, 1),
+                               ("Doc*", "title"), SENDS, 1, never=("modules/*/domain/document.py",)),
                  id="a file held back is held back however it is chosen"),
     pytest.param(World(answers={SENT: LOW}), review("app/modules/documents/domain"),
                  ReviewReading((BY_PATHS,), 3, (DOUBTFUL,), (GONE, LeftOut(SMALL_FILE.file, SMALL, 6)), (), SENDS, 1, 0,
@@ -397,3 +397,12 @@ def test_examples_that_cannot_be_read_are_refused_before_anything_is_sent(when):
     profile = FakeProfile(WORDS, unreadable={"p": "examples/text.py: not valid UTF-8"})
     result = controller(FakeCode(FOUND), profile, model, FakeAnswers()).review(when)
     assert (result, model.asked) == (ReviewRefused("examples/text.py: not valid UTF-8"), [])
+
+
+def test_a_dry_run_says_the_paths_of_review_never_in_force_and_those_that_matched_no_file_found():
+    profile = FakeProfile({"p": Words(PARTS, ("app/modules/documents/domain/document.py", "modules/*/domain/*.py"))})
+    planned = controller(FakeCode(FOUND), profile, FakeDecisionModel({}), FakeAnswers()).review(
+        review("app/x.py", dry_run=True))
+    assert isinstance(planned, ReviewPlanned)
+    assert (planned.never, planned.unmatched) == (("app/modules/documents/domain/document.py", "modules/*/domain/*.py"),
+                                                  ("app/modules/documents/domain/document.py",))

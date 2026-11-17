@@ -108,8 +108,9 @@ class ReviewPlanned:
     would send in all, the texts the profile says review hides, which no request holds, what a review that sends
     would send to, in how many other orders of the options a file whose answer is near its line is asked again, and
     when the pieces of the files are asked of too (each request of a piece says which), what the question of a piece
-    asks ("" when they are not) and what is sent before each piece; and how each eval of the profile's own stands (the
-    requests of each that runs say which)."""
+    asks ("" when they are not) and what is sent before each piece; how each eval of the profile's own stands (the
+    requests of each that runs say which); and the paths of review.never in force, in the profile's order, and those of
+    them that matched no file found this run."""
     by: tuple[str, ...]
     found: int
     requests: tuple[Request, ...]
@@ -124,6 +125,8 @@ class ReviewPlanned:
     piece_ask: str = ""
     context: str = NO_CONTEXT
     evals: tuple[EvalRead, ...] = ()
+    never: tuple[str, ...] = ()
+    unmatched: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

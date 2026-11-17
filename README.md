@@ -653,7 +653,9 @@ review:
   written, `*` for any text inside one step, and a step that is `**` for any number of folders (none included). A path
   matches a file, or a folder and every file below it, and is matched against a link's own path and the path of the
 file it links to. A file chosen that one matches is left out of every run,
-  `--dry-run` included, as "held back by review.never (<path>)"; its text goes into no request.
+  `--dry-run` included, as "held back by review.never (<path>)"; its text goes into no request. `--dry-run` lists
+  the paths in force, and says of each that matched no file found in that run that it matched nothing: a path of
+  `never` is read below the app, so one copied from review's output with the app folder's name first matches nothing.
 - `mask`: texts hidden in each file's text before it is sent, after the built-in masks: each as written (case counts),
   `*` standing for a run of one or more letters, digits, `_`, `-` and `.`; each match is sent as `<masked>`.
   `--dry-run` shows the texts masked and lists the patterns in force.
@@ -759,7 +761,7 @@ and when it was not, what to run.
 "selection": {"by", "found", "judged", "left_out": [{"file", "why", "chars", "pattern"}]}, "question": {"ask",
 "role_only", "options": [{"name", "description"}]}, "requests": [{"file", "part", "chars", "cached", "text", "body",
 "piece", "kind", "first", "last", "eval"}], "pieces", "piece_question", "context", "characters", "tokens", "reorders",
-"mask", "evals", "sends": {"name", "at", "model", "key", "keyed"}}`: `body` the request as the decision model's service would receive it
+"mask", "never": [{"path", "matched"}], "evals", "sends": {"name", "at", "model", "key", "keyed"}}`: `body` the request as the decision model's service would receive it
 (JSON text, formatted: the same JSON value the service receives, not the same bytes; the key left out); `chars` how
 many characters the text sent holds, masked; `piece`, `kind`, `first` and `last` the piece a request is about and the lines it spans
 (null for a whole file); `pieces` whether pieces are asked, `piece_question` the question each piece carries (null

@@ -44,3 +44,8 @@ def held_back(found: Found, never: tuple[str, ...]) -> Found:
     held = tuple(LeftOut(file.file, NEVER, len(file.text), pattern) for file in found.read
                  if (pattern := _held_by(file, never)))
     return Found(kept, found.unread + held)
+
+
+def unmatched(found: Found, never: tuple[str, ...]) -> tuple[str, ...]:
+    """The paths of never that match no file read, nor the file any links to, in never's order."""
+    return tuple(pattern for pattern in never if not any(_held_by(file, (pattern,)) for file in found.read))

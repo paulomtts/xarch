@@ -29,7 +29,7 @@ from xarch.modules.review.application.logic.questions import (
 )
 from xarch.modules.review.application.logic.selection import chosen, judged, left_out, ways, within_cap
 from xarch.modules.review.application.logic.sending import needs_key, why_unasked
-from xarch.modules.review.application.logic.withholding import held_back
+from xarch.modules.review.application.logic.withholding import held_back, unmatched
 from xarch.modules.review.application.ports.calibrations import Calibrations
 from xarch.modules.review.application.ports.code import Code
 from xarch.modules.review.application.ports.decision_model import DecisionModel
@@ -92,7 +92,8 @@ class ReviewService:
             return ReviewPlanned(by, total, shown, left_out(files), question, role_only(words.parts), sent,
                                  tokens(sent), words.mask, sends, len(reordered(question)),
                                  piece.ask if cmd.pieces else "", cmd.context,
-                                 in_order(idle + tuple(s for _, s, _ in evals), words.evals))
+                                 in_order(idle + tuple(s for _, s, _ in evals), words.evals), words.never,
+                                 unmatched(found, words.never))
         others = reordered(question)
         again = tuple(answering.kept(going, item.text, other) for item, answer in zip(requests, kept, strict=True)
                       if answer is not None and asked_again(answer, parts[item.part]) for other in others)
