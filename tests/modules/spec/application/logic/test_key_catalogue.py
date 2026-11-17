@@ -4,8 +4,8 @@ import pytest
 
 from tests.modules.spec.format_files import KEYS_DOCUMENT
 from xarch.modules.spec.application.logic.key_catalogue import catalogue_of
-from xarch.modules.spec.application.logic.key_table import KEYS, SLOTS
 from xarch.modules.spec.domain.errors import InvalidArchitecture
+from xarch.modules.spec.domain.key_table import KEYS, SLOTS
 from xarch.modules.spec.domain.profile_keys import KeyText
 
 SOURCE = "presets/format/keys.yaml"

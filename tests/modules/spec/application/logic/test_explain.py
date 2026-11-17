@@ -9,7 +9,7 @@ from xarch.modules.spec.application.logic.explain import (
     overview_keys,
 )
 from xarch.modules.spec.application.logic.key_lookup import plain
-from xarch.modules.spec.application.logic.key_table import KEYS, SLOTS
+from xarch.modules.spec.domain.key_table import KEYS, SLOTS
 
 
 def test_the_overview_lists_the_keys_of_the_file_with_the_keys_of_each_map_below_it_and_goes_no_deeper():

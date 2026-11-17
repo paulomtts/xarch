@@ -8,7 +8,7 @@ from difflib import get_close_matches
 
 from xarch.kernel.logic.capabilities import shortfalls
 from xarch.modules.spec.application.logic.key_lookup import keys_of, plain, shown
-from xarch.modules.spec.application.logic.key_table import KEYS, SLOTS
+from xarch.modules.spec.domain.key_table import KEYS, SLOTS
 from xarch.modules.spec.domain.profile_keys import HELD, PART, PROFILE, SCOPES, TIER, Key
 from xarch.modules.spec.domain.values import Language
 from xarch.profile_values.capabilities import Shortfall, Supply

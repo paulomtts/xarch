@@ -21,8 +21,8 @@ from typing import Any
 
 from xarch.modules.spec.application.logic.evals import FEWEST_EXAMPLES, MAX_ASK
 from xarch.modules.spec.application.logic.explain import words, words_in
-from xarch.modules.spec.application.logic.key_table import KEYS, SLOTS
 from xarch.modules.spec.domain.errors import InvalidArchitecture
+from xarch.modules.spec.domain.key_table import KEYS, SLOTS
 from xarch.modules.spec.domain.profile_keys import Catalogue, Key, KeyText
 from xarch.modules.spec.domain.published import LINE
 from xarch.modules.spec.domain.values import FORMAT_KEYS, Language, NoDuplicates, NoTwins

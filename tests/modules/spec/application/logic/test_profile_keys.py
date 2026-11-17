@@ -12,9 +12,9 @@ from tests.modules.spec.profiles import PRESETS, parsed, problems
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic.explain import said
 from xarch.modules.spec.application.logic.key_lookup import keys_of, plain
-from xarch.modules.spec.application.logic.key_table import KEYS, SLOTS
 from xarch.modules.spec.application.logic.profile_listing import referenced
 from xarch.modules.spec.domain.guards import ORDER
+from xarch.modules.spec.domain.key_table import KEYS, SLOTS
 from xarch.modules.spec.domain.profile_keys import (
     CHOICE_BUNDLED,
     CHOICE_LANGUAGES,

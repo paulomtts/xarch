@@ -5,10 +5,10 @@ import pytest
 from tests.modules.spec.format_files import CATALOGUE
 from tests.modules.spec.profiles import layered, parsed, problems, two_folders
 from xarch.modules.spec.application.logic.key_lookup import names_of
-from xarch.modules.spec.application.logic.key_table import KEYS
 from xarch.modules.spec.application.logic.layout_walk import docs_name, is_file
 from xarch.modules.spec.application.logic.profile_parsing import parse_profile
 from xarch.modules.spec.domain.errors import InvalidArchitecture
+from xarch.modules.spec.domain.key_table import KEYS
 from xarch.modules.spec.domain.profile_keys import SCOPES
 from xarch.modules.spec.domain.values import Part
 from xarch.profile_values.placement import Repeat, Target
