@@ -4,7 +4,6 @@ from pathlib import Path
 import pytest
 
 from xarch.modules.spec.application.logic.profile_copy import (
-    conversion_refusal,
     copy_refusal,
     name_refusal,
     recorded,
@@ -30,10 +29,8 @@ def test_a_name_that_is_no_profile_name_is_refused_with_what_a_name_may_be():
                                           "with a letter or a digit")
 
 
-def test_a_copy_that_does_not_load_is_refused_with_every_problem_then_what_was_not_converted():
+def test_a_copy_that_does_not_load_is_refused_with_every_problem():
     assert copy_refusal(["a", "b"]) == "the copy does not load:\n  a\n  b"
-    assert conversion_refusal(["a"], ["c"]) == "the converted profile does not load:\n  a\nnot converted:\n  c"
-    assert conversion_refusal(["a"], []) == "the converted profile does not load:\n  a"
 
 
 def test_a_bundled_profile_with_no_name_line_is_refused_saying_so():

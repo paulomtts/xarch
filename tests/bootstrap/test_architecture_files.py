@@ -227,10 +227,9 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
                   'files.y: missing `from`, the template file'],
                  id='files of the wrong shape'),
     pytest.param('xarch: 2\nname: n\nparts: {a: {path: a, role: r}}\nxarch2: 1\nrules: {a: []}\n',
-                 ['`rules`: not a key of format 2: write each part\'s targets as `may_import` on the part',
-                  "unknown key 'xarch2': use based_on, checks, docs, evals, excluded, fakes, files, forbidden, guards, hints, "
+                 ["unknown keys 'rules', 'xarch2': use based_on, checks, docs, evals, excluded, fakes, files, forbidden, guards, hints, "
                   "language, layers, name, parts, reserved, review, testing, tiers, xarch"],
-                 id='a key of format 1 and a key that is nowhere'),
+                 id='two keys that are nowhere'),
     pytest.param('xarch: 2\n  bad: indentation\n',
                  ['not valid YAML: line 2, column 6: mapping values are not allowed here'],
                  id='bad indentation'),

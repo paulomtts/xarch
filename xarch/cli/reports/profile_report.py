@@ -27,7 +27,6 @@ from xarch.modules.spec.contract import (
     FilesTaken,
     FormatExplained,
     KeyExplained,
-    Migrated,
     Need,
     Origin,
     ProfileCreated,
@@ -278,11 +277,6 @@ def _taken_phrase(taken: Sequence[Path]) -> str:
     return f"{shown} already {verb}"
 
 
-def migrate_taken(refused: FilesTaken) -> str:
-    """Why migrate wrote nothing: the files it would write over, and how to write elsewhere."""
-    return f"{_taken_phrase(refused.taken)}: migrate writes only new files; pass `--out <folder>` to write somewhere else"
-
-
 def new_taken(refused: FilesTaken) -> str:
     """Why new wrote nothing: the files it would write over, and how to write elsewhere."""
     return (f"{_taken_phrase(refused.taken)}: nothing was written; `new` writes only new files, so pass `--out <folder>` "
@@ -309,28 +303,4 @@ def _summary(files: Sequence[str]) -> list[str]:
     for head, names in folders.items():
         if head:
             lines.append(f"{head}/ ({len(names)} file{'' if len(names) == 1 else 's'})")
-    return lines
-
-
-
-
-COMMENTS = "YAML comments are not carried over: the converted file has none, so copy the ones you need by hand."
-
-
-def migrated_lines(done: Migrated) -> list[str]:
-    where = done.folder.as_posix()
-    lines = [f"{'dry run, nothing written: would write' if done.dry_run else 'wrote'} to {where}/",
-             f"  {done.profile.relative_to(done.folder).as_posix()}"]
-    for file in done.files:
-        notes = [f"from {file.source}"]
-        if file.placeholders:
-            notes.append(f"{file.placeholders} example placeholder{'s' if file.placeholders > 1 else ''} rewritten")
-        lines.append(f"  {file.destination}  ({', '.join(notes)})")
-    if done.changes:
-        lines += ["changed:", *(f"  {item}" for item in done.changes)]
-    if done.by_hand:
-        lines += ["by hand:", *(f"  {item}" for item in done.by_hand)]
-    lines.append(COMMENTS)
-    lines.append("the old profile and its files are untouched; check the new one with `xarch check --profile "
-                 f"{done.profile.as_posix()}`")
     return lines

@@ -47,7 +47,6 @@ from xarch.modules.spec.adapters.yaml_profile_format import YamlProfileFormat
 from xarch.modules.spec.application.controller import SpecController
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.application.services.explanation import ExplainService
-from xarch.modules.spec.application.services.migration import MigrationService
 from xarch.modules.spec.application.services.profile_creation import ProfileCreationService
 from xarch.modules.spec.application.services.profile_review import ProfileReviewService
 from xarch.modules.spec.application.services.profile_selection import ProfileSelectionService
@@ -100,8 +99,8 @@ def _build_spec(fs: FileSystem, tree: FsSourceTree) -> SpecController:
     form = YamlProfileFormat(YamlWriter())
     selection = ProfileSelectionService(settings, architectures, files, folders)
     return SpecController(architectures, selection, ProfileReviewService(selection, architectures, files),
-                          ExplainService(files, architectures), MigrationService(files, architectures, output, form),
-                          ProfileCreationService(files, architectures, output, form), PublishingService(architectures, form))
+                          ExplainService(files, architectures), ProfileCreationService(files, architectures, output, form),
+                          PublishingService(architectures, form))
 
 
 def _build_architectures(fs: FileSystem | None = None) -> ArchitectureService:

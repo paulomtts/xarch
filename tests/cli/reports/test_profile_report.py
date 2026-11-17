@@ -10,7 +10,6 @@ from xarch.cli.reports.profile_report import (
     created_lines,
     key_document,
     key_lines,
-    migrate_taken,
     new_taken,
     origin_words,
     overview_lines,
@@ -121,24 +120,23 @@ def test_the_files_a_profile_points_to_are_said_as_many_as_they_are(files, said)
     assert check_lines(held)[2] == said
 
 
-MIGRATE = ": migrate writes only new files; pass `--out <folder>` to write somewhere else"
+NEW = (": nothing was written; `new` writes only new files, so pass `--out <folder>` to write somewhere else, or choose "
+       "another name")
 
 
 @pytest.mark.parametrize("taken, said", [
-    pytest.param([Path("out/a.yaml")], "out/a.yaml already exists" + MIGRATE, id="one file exists"),
-    pytest.param([Path("a"), Path("b")], "a, b already exist" + MIGRATE, id="two files exist"),
-    pytest.param([Path(n) for n in "abcde"], "a, b, c and 2 more already exist" + MIGRATE,
+    pytest.param([Path("out/a.yaml")], "out/a.yaml already exists" + NEW, id="one file exists"),
+    pytest.param([Path("a"), Path("b")], "a, b already exist" + NEW, id="two files exist"),
+    pytest.param([Path(n) for n in "abcde"], "a, b, c and 2 more already exist" + NEW,
                  id="past three the rest are counted"),
 ])
 def test_a_refusal_to_write_over_files_names_up_to_three_then_counts_the_rest(taken, said):
-    assert migrate_taken(FilesTaken(tuple(taken))) == said
+    assert new_taken(FilesTaken(tuple(taken))) == said
 
 
 def test_a_profile_that_would_be_written_over_files_names_them_and_says_how_to_write_elsewhere():
     taken = FilesTaken((Path("old-v2/architecture.md"),))
-    assert (migrate_taken(taken), new_taken(taken)) == (
-        "old-v2/architecture.md already exists: migrate writes only new files; pass `--out <folder>` to write "
-        "somewhere else",
+    assert new_taken(taken) == (
         "old-v2/architecture.md already exists: nothing was written; `new` writes only new files, so pass "
         "`--out <folder>` to write somewhere else, or choose another name")
 

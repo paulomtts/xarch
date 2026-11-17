@@ -50,20 +50,6 @@ def test_every_key_of_the_table_has_a_scope_with_an_address_and_a_meaning():
     assert len({key.address for key in KEYS}) == len(KEYS)
 
 
-@pytest.mark.parametrize("old, fix", [
-    pytest.param("layout", "delete it: the layout comes from each part's `path` and `folders`", id="layout"),
-    pytest.param("rules", "write each part's targets as `may_import` on the part", id="rules"),
-    pytest.param("placement", "delete it: the order of `parts` is the order the litmus tests run", id="placement"),
-    pytest.param("tests", "write `testing`: a preset name, or the map {files, functions, ...}", id="tests"),
-    pytest.param("notes", "write the note of a folder under `folders` on the part that holds it", id="notes"),
-    pytest.param("libraries", "write each part's packages as `libraries` on the part", id="libraries"),
-    pytest.param("naming", "move it to `docs.naming`", id="naming"),
-    pytest.param("examples", "move it to `docs.examples`", id="examples"),
-])
-def test_a_key_of_format_1_that_moved_says_where_it_went(old, fix):
-    assert problems(layered(**{old: {}})) == [f"layered.yaml: `{old}`: not a key of format 2: {fix}"]
-
-
 def test_the_required_keys_are_reported_together():
     assert problems({"xarch": 2}) == ["layered.yaml: missing `name`", "layered.yaml: missing `parts`"]
 
@@ -450,10 +436,8 @@ def test_every_problem_of_a_profile_is_reported_at_once():
     document = layered(colour=1, language="ruby", layout={})
     document["parts"]["store"]["may_import"] = ["repo"]
     assert problems(document) == [
-        "layered.yaml: `layout`: not a key of format 2: delete it: the layout comes from each part's `path` and "
-        "`folders`",
-        "layered.yaml: unknown key 'colour': use based_on, checks, docs, evals, excluded, fakes, files, forbidden, guards, hints, "
-        "language, layers, name, parts, reserved, review, testing, tiers, xarch",
+        "layered.yaml: unknown keys 'colour', 'layout': use based_on, checks, docs, evals, excluded, fakes, files, forbidden, "
+        "guards, hints, language, layers, name, parts, reserved, review, testing, tiers, xarch",
         "layered.yaml: language: 'ruby' is not a language xarch reads: use python",
         "layered.yaml: parts.store.may_import: 'repo' names no part 'repo'"]
 

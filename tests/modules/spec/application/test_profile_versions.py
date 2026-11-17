@@ -1,5 +1,5 @@
-"""Use case: a profile file is read by the loader of format 2, format 1 is refused, and a profile that says what it is
-based on is compared with that bundled profile, whatever it shares most parts with."""
+"""Use case: a profile file is read by the loader of format 2, any other version is refused, and a profile that says what
+it is based on is compared with that bundled profile, whatever it shares most parts with."""
 from pathlib import Path
 
 from tests.fakes.architecture_files import FakeArchitectureFiles
@@ -38,9 +38,9 @@ def test_a_profile_in_format_2_is_loaded_with_its_preset_read_from_the_files_por
     assert framework is not None and framework.files == ("test_*.py",)
 
 
-def test_a_profile_in_format_1_is_refused_saying_to_migrate_it():
-    assert problems(MINE | {"xarch": 1}) == (Problem("load", "mine.yaml: format 1 is no longer read: run `xarch profile "
-                                                      "migrate mine.yaml` to convert it to format 2"),)
+def test_a_profile_in_another_format_is_refused_naming_the_one_there_is():
+    assert problems(MINE | {"xarch": 1}) == (Problem("load", "mine.yaml: unknown format version 1: this xarch reads "
+                                                      "`xarch: 2`"),)
 
 
 def test_a_preset_the_files_port_does_not_hold_is_refused_listing_the_ones_it_does():

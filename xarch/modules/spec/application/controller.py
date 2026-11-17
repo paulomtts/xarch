@@ -5,7 +5,6 @@ from pathlib import Path
 from xarch.kernel.errors import DomainError
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.application.services.explanation import ExplainService
-from xarch.modules.spec.application.services.migration import MigrationService
 from xarch.modules.spec.application.services.profile_creation import ProfileCreationService
 from xarch.modules.spec.application.services.profile_review import ProfileReviewService
 from xarch.modules.spec.application.services.profile_selection import ProfileSelectionService
@@ -23,9 +22,6 @@ from xarch.modules.spec.contract import (
     FilesResult,
     FilesTaken,
     KnownResult,
-    MigrateProfile,
-    MigrateResult,
-    MigrationRefused,
     NewProfile,
     NewResult,
     NoProfileChosen,
@@ -46,11 +42,11 @@ class SpecController:
     """Publishes the skeleton of a profile, and decides which profile is in force."""
 
     def __init__(self, architectures: ArchitectureService, selection: ProfileSelectionService,
-                 review: ProfileReviewService, explanation: ExplainService, migration: MigrationService,
-                 creation: ProfileCreationService, publishing: PublishingService):
+                 review: ProfileReviewService, explanation: ExplainService, creation: ProfileCreationService,
+                 publishing: PublishingService):
         self._architectures, self._selection = architectures, selection
         self._review, self._explanation = review, explanation
-        self._migration, self._creation, self._publishing = migration, creation, publishing
+        self._creation, self._publishing = creation, publishing
 
     def skeleton(self, profile: str) -> SkeletonResult:
         """The skeleton of a profile, as callers got its name from select(); one that does not load is refused with
@@ -117,16 +113,6 @@ class SpecController:
             return NoProfileChosen(e.known)
         except DomainError as e:
             return ProfileRefused(e.reason)
-
-    def migrate(self, cmd: MigrateProfile) -> MigrateResult:
-        """Converts a profile of format 1 to format 2; one that would be written over files is refused naming them, and
-        one it cannot convert, or cannot write, with why."""
-        try:
-            return self._migration.migrate(cmd)
-        except WouldOverwrite as e:
-            return FilesTaken(e.taken)
-        except DomainError as e:
-            return MigrationRefused(e.reason)
 
     def explain(self, cmd: Explain) -> ExplainResult:
         """The format of a profile, whole or one key; a key the format does not have comes back with the nearest ones,

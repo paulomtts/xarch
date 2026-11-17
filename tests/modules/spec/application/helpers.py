@@ -12,7 +12,6 @@ from tests.modules.spec.languages import RUNTIME
 from xarch.modules.spec.application.controller import SpecController
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.application.services.explanation import ExplainService
-from xarch.modules.spec.application.services.migration import MigrationService
 from xarch.modules.spec.application.services.profile_creation import ProfileCreationService
 from xarch.modules.spec.application.services.profile_review import ProfileReviewService
 from xarch.modules.spec.application.services.profile_selection import ProfileSelectionService
@@ -28,6 +27,6 @@ def controller(files: FakeArchitectureFiles, settings: FakeSettings | None = Non
     folders = folders if folders is not None else FakeFolders()
     selection = ProfileSelectionService(settings, architectures, files, folders)
     return SpecController(architectures, selection, ProfileReviewService(selection, architectures, files),
-                          ExplainService(files, architectures), MigrationService(files, architectures, output, FakeProfileFormat()),
+                          ExplainService(files, architectures),
                           ProfileCreationService(files, architectures, output, FakeProfileFormat()),
                           PublishingService(architectures, FakeProfileFormat()))

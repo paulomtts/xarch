@@ -1,8 +1,7 @@
 """Which loader reads a profile file, and where a profile comes from.
 
-The format version the file starts with decides: `xarch: 2` is read by profile_v2. A profile in format 1 is not read at
-all: it is refused with the command that converts it, whatever else it holds. A file with no version, or any other, is
-refused too.
+The format version the file starts with decides: `xarch: 2` is read by profile_v2. A file with no version, or any
+other, is refused.
 """
 from __future__ import annotations
 
@@ -13,8 +12,6 @@ from typing import Any
 from xarch.modules.spec.application.logic.profile_v2 import parse_v2
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import VERSION, Architecture, ArchitectureSource, Language
-
-MIGRATE = "xarch profile migrate"
 
 
 def parse_profile(document: Any, source: str, files: Collection[str] = (), presets: Mapping[str, Any] | None = None,
@@ -27,9 +24,6 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     if "xarch" not in document:
         raise InvalidArchitecture(source, [f"missing format version: start the file with {written}"])
     version = document["xarch"]
-    if type(version) is int and version == 1:
-        raise InvalidArchitecture(source, [f"format 1 is no longer read: run `{MIGRATE} {source}` to convert it to "
-                                           f"format {VERSION}"])
     if type(version) is int and version == VERSION:
         return parse_v2(document, source, files, presets, bundled, languages)
     raise InvalidArchitecture(source, [f"unknown format version {version!r}: this xarch reads {written}"])

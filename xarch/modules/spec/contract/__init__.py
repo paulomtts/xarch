@@ -1,7 +1,7 @@
 """What the spec module publishes, each command with the Results it answers: which app folder and which profile are in
 force; a profile's skeleton as flat lists of entries, its docs, the files `init` writes, the profile as the checks read
-it and where it comes from; checks written as a profile writes them; and what explaining, viewing, checking,
-migrating and copying a profile found."""
+it and where it comes from; checks written as a profile writes them; and what explaining, viewing, checking
+and copying a profile found."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -39,9 +39,8 @@ __all__ = ["CHOICE", "READS", "SCORE", "YES_NO", "Eval", "ExampleFile", "Example
            "FilesResult", "SkeletonResult", "ProfileResult", "DocsResult", "OriginResult", "PartView",
            "GuardsView", "ProfileView", "ChooseApp", "AppChosen", "ChooseAppResult",
            "SelectProfile", "ProfileSelected", "ProfileRefused",
-           "NoProfileChosen", "SelectResult", "MigrateProfile", "MigratedFile", "Origin", "Loosened", "LITMUS",
-           "Migrated", "FilesTaken", "MigrationRefused",
-           "MigrateResult", "Shown", "Symbol", "Explain", "FormatExplained", "KeyExplained", "UnknownKey",
+           "NoProfileChosen", "SelectResult", "Origin", "Loosened", "LITMUS",
+           "FilesTaken", "Shown", "Symbol", "Explain", "FormatExplained", "KeyExplained", "UnknownKey",
            "ExplainResult", "Need", "ViewProfile", "ProfileViewed", "ViewResult", "CheckProfile", "LOAD", "EXAMPLES",
            "Problem", "ProfileChecked",
            "CheckResult", "KnownProfiles", "KnownResult", "WriteChecks", "ChecksWritten", "NewProfile", "ProfileCreated",
@@ -252,50 +251,10 @@ ChooseAppResult = AppChosen | ProfileRefused
 
 
 @dataclass(frozen=True)
-class MigrateProfile:
-    """Convert the profile file at path, in format 1, to format 2 in a new folder: out, else a folder beside the file
-    named for it with `-v2`. dry_run: report what would be written and write nothing."""
-    path: Path
-    out: Path | None = None
-    dry_run: bool = False
-
-
-@dataclass(frozen=True)
-class MigratedFile:
-    """A file the conversion copied beside the converted profile: where it goes, the file next to the old profile it is
-    read from, and how many `{{example:...}}` placeholders of a template it rewrote (placeholders)."""
-    destination: str
-    source: str
-    placeholders: int
-
-
-@dataclass(frozen=True)
-class Migrated:
-    """The conversion: the folder, the converted profile in it, the files copied beside it in the order written, what
-    now means something else (changes), what has no form in format 2 and is to be written by hand (by_hand), and
-    whether nothing was written because it was a dry run."""
-    folder: Path
-    profile: Path
-    files: tuple[MigratedFile, ...]
-    changes: tuple[str, ...]
-    by_hand: tuple[str, ...]
-    dry_run: bool
-
-
-@dataclass(frozen=True)
-class MigrationRefused:
-    """A refusal; reason is safe to show the user as-is."""
-    reason: str
-
-
-@dataclass(frozen=True)
 class FilesTaken:
     """A profile that would be written over files that exist, which are named, in the order written: nothing was
     written."""
     taken: tuple[Path, ...]
-
-
-MigrateResult = Migrated | FilesTaken | MigrationRefused
 
 
 @dataclass(frozen=True)

@@ -39,7 +39,6 @@ xarch check [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|jso
                                                              # with its fix, then the state of the check's own enforcement
 xarch where PATH [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json]
                                                              # what a path is and what code there may do, before it is written
-xarch profile migrate FILE [--out FOLDER] [--dry-run]        # convert a profile of format 1 to format 2, in a new folder
 xarch profile explain [KEY] [--profile NAME|FILE | --configured] [--rule] [--app PATH] [--format text|json]
                                                              # the format of a profile, whole or one key; or a profile's
                                                              # folder tree and import table; with --rule, the rules a
@@ -250,15 +249,6 @@ xarch profile explain filters              # a category of words: kinds, quantif
 xarch profile explain filters.public       # one word: what it means, what it applies to, an example
 xarch profile explain parts.names --rule   # the rules a key of your profile expands to, written as checks
 ```
-
-### Migrating a profile of format 1
-
-A file that starts `xarch: 1` is refused by every command, which names `xarch profile migrate FILE`. That command
-writes the format 2 profile and the files it names into a new folder (`FILE`'s name with `-v2`, or `--out FOLDER`),
-never over a file that exists and never changing the old ones; example files go to the paths they illustrate, and
-`{{example:<name>}}` in the templates becomes `{{example:<path>}}`. It validates the result before writing (`--dry-run`
-stops there), lists under `changed:` what now means something else and under `by hand:` what has no form in format 2.
-YAML comments are not carried over.
 
 ## What check checks
 

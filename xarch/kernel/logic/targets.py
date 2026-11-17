@@ -1,7 +1,7 @@
 """How a profile writes a target, a place a part may import or a check names: `<part>`, `<part>@any`,
 `<part>/<path>` and, where a pattern is allowed, `<part>:<pattern>`; checked against the parts declared, each by its
 path, and the part that writes it, each problem said at its address. Spec reads a part's `may_import` with it, and
-rules the places a check of the profile's own names; each writes a target back with target_written()."""
+rules the places a check of the profile's own names."""
 from __future__ import annotations
 
 import re
@@ -75,13 +75,6 @@ def target(value: Any, owner: tuple[str, tuple[str, ...]] | None, parts: Mapping
         problems.append(_implied(where, value, owner))
         return None
     return Target(name, chosen, steps, names or "")
-
-
-def target_written(made: Target) -> str:
-    """The target as a profile writes it, which target() reads back: `@any` for any instance of the repeating folder
-    (a bare name is the importer's own instance, or no instance), then the path below the part and the name pattern."""
-    return (made.part + ("@any" if made.scope == "any" else "") + ("/" + "/".join(made.sub) if made.sub else "")
-            + (f":{made.names}" if made.names else ""))
 
 
 def _implied(where: str, value: str, part: tuple[str, tuple[str, ...]]) -> str:

@@ -1,8 +1,7 @@
-"""How a profile writes a target, read against the parts by their paths and the part that writes it, and written back
-as it is read."""
+"""How a profile writes a target, read against the parts by their paths and the part that writes it."""
 import pytest
 
-from xarch.kernel.logic.targets import target, target_written
+from xarch.kernel.logic.targets import target
 from xarch.profile_values.placement import Target
 
 PARTS = {"domain": ("modules", "*", "domain"), "services": ("modules", "*", "services"), "kernel": ("kernel",)}
@@ -22,13 +21,6 @@ def test_a_target_is_read_from_its_written_form(written, owner, found):
     problems: list[str] = []
     assert (target(written, owner, PARTS, PARTS, "at", problems, patterns=True, alone="a tier's folder"), problems) == (
         found, [])
-
-
-@pytest.mark.parametrize("written, owner, found", READ)
-def test_a_target_is_written_as_it_is_read_and_reads_back_as_itself(written, owner, found):
-    assert (target_written(found), target(target_written(found), owner, PARTS, PARTS, "at", [], patterns=True,
-                                                   alone="a tier's folder")) == (
-        written, found)
 
 
 @pytest.mark.parametrize("written, owner, problem", [

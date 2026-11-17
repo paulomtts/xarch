@@ -37,7 +37,7 @@ ALLOWED: dict[tuple[str, str], str] = {}
 EXEMPT = {"mock", "mark", "param", "id", "spec", "test", "skip"}
 
 OWN_CONCEPTS = {"part", "parts", "tier", "tiers", "port", "ports", "fake", "fakes", "guard", "guards", "profile", "profiles",
-                "command", "migration"}
+                "command"}
 
 
 def inflected(names: set[str]) -> set[str]:

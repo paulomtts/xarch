@@ -3,6 +3,7 @@ the target grammar, dotted names joined), a rule of reach with how it reaches; e
 tokens of the language filled into the examples."""
 import pytest
 
+from xarch.kernel.logic.targets import target
 from xarch.modules.rules.application.logic.written import check_of, written, written_own
 from xarch.modules.rules.domain.rule import EXISTING, MAY_NOT, MUST_BE_REACHED, MUST_REACH, Match, OwnCheck, Rule
 from xarch.profile_values.checks import Condition, Quantified, Saying, Scope, WrittenCheck, WrittenTarget
@@ -10,6 +11,21 @@ from xarch.profile_values.language import CheckedLanguage
 from xarch.profile_values.placement import Target
 
 SAID = (Saying("m", "f"),)
+PARTS = {"domain": ("modules", "*", "domain"), "services": ("modules", "*", "services"), "kernel": ("kernel",)}
+SERVICES = ("services", PARTS["services"])
+
+
+@pytest.mark.parametrize("written, owner, found", [
+    pytest.param("domain", SERVICES, Target("domain", "own"), id="a bare name in the importer's repeating folder is its own instance"),
+    pytest.param("domain@any/values", SERVICES, Target("domain", "any", ("values",)), id="any instance, and a path below"),
+    pytest.param("kernel:*Id", SERVICES, Target("kernel", "none", (), "*Id"), id="a part outside, narrowed by a name pattern"),
+    pytest.param("domain@any", None, Target("domain", "any"), id="a scope of no part reaches an instance only by @any"),
+])
+def test_a_place_is_written_as_it_is_read_and_reads_back_as_itself(written, owner, found):
+    rule = Rule("x", Scope(), ("import-into-app",), MAY_NOT, (Match("place", places=(found,)),), SAID)
+    (place,) = check_of(rule).quantified.targets[0].values or ()
+    assert (place, target(place, owner, PARTS, PARTS, "at", [], patterns=True, alone="a tier's folder")) == (
+        written, found)
 
 
 @pytest.mark.parametrize("rule, check", [

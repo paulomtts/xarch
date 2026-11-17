@@ -46,9 +46,6 @@ from xarch.modules.spec.contract import (
     FilesTaken,
     FormatExplained,
     KeyExplained,
-    Migrated,
-    MigrateProfile,
-    MigrationRefused,
     NewProfile,
     ProfileCreated,
     ProfileRefused,
@@ -59,31 +56,9 @@ from xarch.modules.spec.contract import (
 
 
 def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> None:
-    group = typer.Typer(help="Work on a profile file: explain the format, copy a bundled profile, check one, convert one from "
-                                "format 1.", no_args_is_help=True)
+    group = typer.Typer(help="Work on a profile file: explain the format, copy a bundled profile, check one.",
+                        no_args_is_help=True)
     app.add_typer(group, name="profile")
-
-    @group.command()
-    @rewrapped
-    def migrate(path: Annotated[Path, typer.Argument(help="A profile file in format 1 (`xarch: 1`).")],
-                out: Annotated[Path | None, typer.Option(
-                    "--out", help="The folder to write to; no file in it may exist already. Default: a folder beside "
-                                  "the file, named for it with -v2. The old profile is never changed.")] = None,
-                dry_run: Annotated[bool, typer.Option(
-                    "--dry-run", metavar="", help="Report what would be written, and write nothing.")] = False) -> None:
-        """Convert a profile of format 1 to format 2, in a new folder.
-
-        The folder holds the converted profile, and every file it names, copied to where format 2 reads it (an example
-        file goes to the path it illustrates, and the templates quote it by that path). The result is validated
-        before it is written, and nothing is ever overwritten. What cannot be converted is listed with what to write
-        by hand."""
-        match spec.migrate(MigrateProfile(path, out, dry_run)):
-            case Migrated() as done:
-                echo(report.migrated_lines(done))
-            case FilesTaken() as taken:
-                raise fail(report.migrate_taken(taken))
-            case MigrationRefused(why):
-                raise fail(why)
 
     @group.command()
     @rewrapped

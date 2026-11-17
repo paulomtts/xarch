@@ -46,10 +46,6 @@ class InvalidTemplate(DomainError):
         super().__init__("\n".join(self.problems))
 
 
-class UnmigratableProfile(DomainError):
-    """A profile that its migration cannot convert, or whose conversion cannot be written; reason says why."""
-
-
 class NewProfileRefused(DomainError):
     """A copy of a bundled profile that cannot be written, as asked; reason says why and what to do."""
 

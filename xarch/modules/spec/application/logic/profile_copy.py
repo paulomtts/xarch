@@ -32,19 +32,7 @@ def unnamed_refusal(source: str) -> str:
 def copy_refusal(problems: Iterable[str]) -> str:
     """Why a copy of a bundled profile is refused because it does not load: every problem, each on a line of its
     own."""
-    return _refusal("the copy does not load:", problems, ())
-
-
-def conversion_refusal(problems: Iterable[str], by_hand: Iterable[str]) -> str:
-    """Why a conversion of a profile of format 1 is refused because it does not load: every problem, then what was not
-    converted, each on a line of its own."""
-    return _refusal("the converted profile does not load:", problems, by_hand)
-
-
-def _refusal(lead: str, problems: Iterable[str], by_hand: Iterable[str]) -> str:
-    lines = [lead, *(f"  {problem}" for problem in problems)]
-    by_hand = list(by_hand)
-    return "\n".join([*lines, "not converted:", *(f"  {item}" for item in by_hand)] if by_hand else lines)
+    return "\n".join(["the copy does not load:", *(f"  {problem}" for problem in problems)])
 
 
 def recorded(profile: Path, root: Path, cwd: Path) -> str:

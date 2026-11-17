@@ -3,6 +3,15 @@
 All notable changes to this project are written here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Removed
+
+- `xarch profile migrate`, which converted a profile of format 1 to format 2, is gone, with everything that existed
+  only for it. A file that starts `xarch: 1` is now refused as an unknown format version, like any other, and the keys
+  of format 1 that moved (`layout`, `notes`, `rules`, `placement`, `naming`, `tests`, `examples`, `libraries`) are
+  refused as unknown keys, with no word of where they went.
+
 ## [0.1.1] - 2026-11-17
 
 ### Changed

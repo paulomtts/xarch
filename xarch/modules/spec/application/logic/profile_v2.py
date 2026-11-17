@@ -124,17 +124,6 @@ _GUARDS = tuple(name for name in ORDER if name != KEY[PackageOnly])
 _NEEDS_TESTING = (KEY[ScenarioCoverage], KEY[StandIns])
 _PRESET_MAP = "{files, functions}"
 _TIER_INSTEAD = "`tier: <tier>`, or `untested: <reason>`"
-_MOVED = {
-    "layout": "delete it: the layout comes from each part's `path` and `folders`",
-    "notes": "write the note of a folder under `folders` on the part that holds it",
-    "rules": "write each part's targets as `may_import` on the part",
-    "placement": "delete it: the order of `parts` is the order the litmus tests run",
-    "naming": "move it to `docs.naming`",
-    "tests": "write `testing`: a preset name, or the map {files, functions, ...}",
-    "examples": "move it to `docs.examples`",
-    "libraries": "write each part's packages as `libraries` on the part",
-}
-"""A key of version 1 that has moved, with what to write instead."""
 
 
 @dataclass(frozen=True)
@@ -218,9 +207,9 @@ def parse_v2(document: Any, source: str, files: Collection[str] = (), presets: M
 
 
 def _keys(document: Mapping[Any, Any]) -> list[str]:
-    """The keys of the file that are unknown: one that moved from format 1 says where it went."""
-    problems = [f"`{key}`: not a key of format 2: {_MOVED[key]}" for key in sorted(map(str, document)) if key in _MOVED]
-    unknown = sorted(str(key) for key in document if key not in names_of(PROFILE) and key not in _MOVED)
+    """The keys of the file that are unknown, and those it is missing."""
+    problems: list[str] = []
+    unknown = sorted(str(key) for key in document if key not in names_of(PROFILE))
     if unknown:
         problems.append(f"unknown key{'s' if len(unknown) > 1 else ''} {ck.quoted(unknown)}: "
                         f"use {', '.join(sorted(names_of(PROFILE)))}")
