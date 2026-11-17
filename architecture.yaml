@@ -268,6 +268,10 @@ tiers:
     plain_tables: true
     docs:
       may_touch: what the part it mirrors may import; an adapter, temporary folders
+      one_file_per: file of the part it mirrors
+      cases_from: "a table of the rule's inputs and its answer, or of an adapter's input and what it translates it to"
+      data: built in the test; a rule's inputs are the columns of its table
+      example: tests/modules/rules/application/logic/test_cycles.py
 
   integration:
     proves: a use case, through its controller around fakes
@@ -279,6 +283,9 @@ tiers:
     may_also_import: [domain/values]
     docs:
       may_touch: what the part it mirrors may import; `tests/fakes/`
+      one_file_per: use case
+      cases_from: "a Given / When / Then table: a row for every `Result` variant"
+      data: "the `given` column: the state the fakes start with"
 
   wired:
     proves: a command, a check on real files, or what a bundled profile holds, through the app bootstrap/ wires
@@ -287,6 +294,9 @@ tiers:
     must_import: [bootstrap]
     docs:
       may_touch: anything bootstrap/ wires; temporary folders
+      one_file_per: command, or feature of the profile file
+      cases_from: what a command prints, or what a check finds in the files a test writes
+      data: files written in a temporary folder by the test, and the bundled profiles as they ship
 
   guard:
     proves: xarch follows the architecture it enforces
@@ -297,6 +307,10 @@ tiers:
     docs:
       subject: xarch's own source tree
       may_touch: "`tests/architecture/`"
+      one_file_per: what xarch holds itself to
+      cases_from: xarch's own source, tests and files
+      data: "none: the repository as it is"
+      example: tests/architecture/test_self_check.py
 
 fakes:
   folder: fakes
@@ -373,6 +387,9 @@ evals:
 
 docs:
   entry: cli
+  pages:
+    architecture.md: {from: docs/templates/architecture.md, note: this file}
+    testing.md: {from: docs/templates/testing.md, note: "how xarch is tested: tiers, placement, fakes, guards"}
   naming:
     - {kind: command, where: contract/, pattern: verb and thing, example: [CheckApp, CheckStructure, Locate]}
     - {kind: DTO, where: contract/, pattern: thing and `View`, example: [FindingView, EnforcementView]}
@@ -384,12 +401,12 @@ docs:
     - {kind: service, where: application/services/, pattern: "the use case and `Service`",
        example: [AppCheckService, StructureCheckService]}
     - {kind: pure rule, where: [application/logic/, kernel/logic/],
-       pattern: "a file named for the rule, a function for what it answers", example: [cycles.py, part_of]}
+       pattern: "a file named for the rule, a function for what it answers", example: [cycles.py, place_of]}
     - {kind: controller, where: application/, pattern: "the module and `Controller`",
        example: [RulesController, SpecController]}
     - {kind: port, where: application/ports/, pattern: "what the module needs, in its own words",
        example: [SourceTree, Disk, DecisionModel]}
-    - {kind: adapter, where: adapters/, pattern: "`<System><PortName>`", example: [FsSourceTree, SpecProfile, FsDisk]}
+    - {kind: adapter, where: adapters/, pattern: "`<System><PortName>`", example: [FsSourceTree, SpecProfiles, FsDisk]}
     - {kind: platform client, where: platform/, pattern: "the technology", example: [FileSystem, YamlWriter, TomlReader]}
     - {kind: test fake, where: tests/fakes/, pattern: "`Fake` and the port's name", example: [FakeSourceTree, FakeDisk]}
   examples: [docs/examples]

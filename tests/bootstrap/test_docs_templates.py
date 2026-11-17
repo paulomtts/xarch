@@ -55,6 +55,28 @@ def test_the_bundled_testing_template_is_shared_and_holds_no_hand_typed_tiers():
     assert "- unit, integration, rendering, guard: `<command>`" in template
 
 
+OWN = DOCS.parent / "architecture.yaml"
+OWN_DOCS = DOCS / "xarch"
+
+
+def test_xarch_own_architecture_generates_exactly_the_docs_checked_in_under_docs_xarch():
+    files = {"/".join(f.path): f.template for f in build_controllers().spec.docs(str(OWN)).files}
+    checked_in = {path.relative_to(OWN_DOCS).as_posix(): path.read_text(encoding="utf-8")
+                  for path in sorted(OWN_DOCS.rglob("*.md"))}
+    assert sorted(files) == sorted(checked_in) == ["architecture.md", "testing.md"]
+    for doc, text in files.items():
+        assert text == checked_in[doc], doc
+
+
+def test_xarch_own_template_quotes_the_litmus_of_every_part_of_its_architecture():
+    template = (DOCS / "templates" / "architecture.md").read_text(encoding="utf-8")
+    for placeholder in ["{{tree}}", "{{rules_table}}", "{{layers:application}}", "{{layers:edge}}", "{{placement}}",
+                        "{{naming}}"]:
+        assert template.count(placeholder) == 1, placeholder
+    for part in load_architecture(OWN).parts:
+        assert template.count(f"{{{{litmus:{part}}}}}") == 1, part
+
+
 def write(path: Path, text: str) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text)
