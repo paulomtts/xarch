@@ -17,7 +17,8 @@ import yaml
 
 from xarch.kernel.placement import EVERYTHING
 from xarch.kernel.source import Import
-from xarch.modules.rules.domain.values import Profile, SourceFile
+from xarch.modules.rules.domain.parsed import SourceFile
+from xarch.modules.rules.domain.profile import Profile
 from xarch.profile_values.language import CheckedLanguage, RecordMark
 from xarch.profile_values.placement import Repeat, Target
 from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns

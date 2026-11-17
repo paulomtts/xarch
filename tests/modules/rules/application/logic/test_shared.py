@@ -4,7 +4,7 @@ import pytest
 
 from tests.modules.rules.builders import imp, profile, source
 from xarch.modules.rules.application.logic.shared import violations
-from xarch.modules.rules.domain.values import Class, Constant, Function, Use
+from xarch.modules.rules.domain.parsed import Class, Constant, Function, Use
 
 ON = profile(shared={"kernel": 2})
 WEAK = source("kernel/violations.py", classes=(Class(40, "Weak"),))

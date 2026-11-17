@@ -23,16 +23,8 @@ from xarch.modules.rules.contract import (
     WhereAnswer,
 )
 from xarch.modules.rules.domain.errors import OutsideProject
-from xarch.modules.rules.domain.values import (
-    FakePlace,
-    PartAt,
-    PartInfo,
-    PartPlace,
-    Placed,
-    StructurePlace,
-    SuitePlace,
-    UngovernedPlace,
-)
+from xarch.modules.rules.domain.places import FakePlace, PartAt, PartPlace, Placed, StructurePlace, SuitePlace, UngovernedPlace
+from xarch.modules.rules.domain.profile import PartInfo
 from xarch.profile_values.tiers import CheckedTier
 
 

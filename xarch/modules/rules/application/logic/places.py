@@ -11,7 +11,7 @@ from dataclasses import replace
 
 from xarch.kernel.logic.placement import module_steps, place_of, reaches, with_itself
 from xarch.kernel.placement import EACH, Marks, Place
-from xarch.modules.rules.domain.values import Profile
+from xarch.modules.rules.domain.profile import Profile
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.placement import Repeat, Target
 

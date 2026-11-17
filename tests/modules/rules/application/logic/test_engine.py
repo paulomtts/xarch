@@ -10,9 +10,9 @@ from xarch.kernel.logic.conditions import condition
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.engine import read, run
 from xarch.modules.rules.application.logic.facts import facts_of
+from xarch.modules.rules.domain.parsed import Class
 from xarch.modules.rules.domain.published import Weak
 from xarch.modules.rules.domain.rule import EXISTING, LIST, MAY_NOT, MAY_ONLY, MUST_BE_REACHED, MUST_REACH, Match, Rule
-from xarch.modules.rules.domain.values import Class
 from xarch.profile_values.checks import ALL, ANY, APP, STRUCTURE, TESTS, Condition, Saying, Scope
 
 DOMAIN, KERNEL = "modules/docs/domain/doc.py", "kernel/ids.py"

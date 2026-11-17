@@ -24,7 +24,8 @@ from xarch.modules.rules.contract import (
     Reviewed,
 )
 from xarch.modules.rules.domain.errors import NoProfile, ProfileUnusable, Unloaded
-from xarch.modules.rules.domain.values import Asked, Class, SourceFile
+from xarch.modules.rules.domain.parsed import Class, SourceFile
+from xarch.modules.rules.domain.profile import Asked
 from xarch.profile_values.checks import APP, Condition, Quantified, Saying, Scope, WrittenCheck, WrittenTarget
 
 PARSED = {"manager": SourceFile("", (), (), classes=(Class(1, "Manager"),)), "nothing": SourceFile("", (), ())}

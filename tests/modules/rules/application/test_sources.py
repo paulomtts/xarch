@@ -27,7 +27,8 @@ from xarch.modules.rules.contract import (
     SourceRead,
     SourcesRead,
 )
-from xarch.modules.rules.domain.values import Comment, PartInfo, Profile, SourceFile
+from xarch.modules.rules.domain.parsed import Comment, SourceFile
+from xarch.modules.rules.domain.profile import PartInfo, Profile
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.placement import Repeat, Target
 

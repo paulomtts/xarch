@@ -5,8 +5,9 @@ from pathlib import Path
 
 from xarch.kernel.errors import DomainError
 from xarch.modules.rules.domain.errors import ChecksRefused, ProfileUnusable
+from xarch.modules.rules.domain.outcomes import InitFile, Known, Standing
+from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.published import KeyFacts, Reviewed
-from xarch.modules.rules.domain.values import InitFile, Known, Profile, Standing
 
 
 class FakeProfiles:

@@ -6,8 +6,9 @@ import pytest
 
 from tests.modules.rules.builders import PYTHON
 from xarch.modules.rules.application.logic.sources import below, linked, sited, walked
+from xarch.modules.rules.domain.places import Resolved, Sited
+from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.published import EXCLUDED, IN_NO_PART, IN_PART, IN_PROJECT, IN_TESTS, NOT_SOURCE, NOT_THERE
-from xarch.modules.rules.domain.values import Profile, Resolved, Sited
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.placement import Repeat
 

@@ -7,7 +7,7 @@ import pytest
 from xarch.kernel.source import Import, Unparsable
 from xarch.modules.rules.adapters.fs_source_tree import FsSourceTree
 from xarch.modules.rules.contract import Piece
-from xarch.modules.rules.domain.values import (
+from xarch.modules.rules.domain.parsed import (
     Call,
     Callback,
     Class,

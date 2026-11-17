@@ -64,8 +64,9 @@ from xarch.modules.rules.application.logic.filters import in_scope
 from xarch.modules.rules.application.logic.imports import dotted, named_targets, targets
 from xarch.modules.rules.application.logic.places import place
 from xarch.modules.rules.application.logic.tier_of import tested
+from xarch.modules.rules.domain.parsed import Class, Function, SourceFile
+from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.rule import MUST_REACH, Defined, Fact, Facts, Read, Rule
-from xarch.modules.rules.domain.values import Class, Function, Profile, SourceFile
 from xarch.modules.rules.domain.vocabulary import KINDS as VOCABULARY
 from xarch.profile_values.checks import Scope
 

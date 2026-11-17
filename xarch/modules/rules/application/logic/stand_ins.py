@@ -48,8 +48,9 @@ from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.imports import dotted
 from xarch.modules.rules.application.logic.places import file_place
 from xarch.modules.rules.application.logic.tier_of import may_use_fakes, tested
+from xarch.modules.rules.domain.parsed import Call, Class, ParameterCall, SourceFile
+from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.published import Weak
-from xarch.modules.rules.domain.values import Call, Class, ParameterCall, Profile, SourceFile
 from xarch.profile_values.testing import StandIns
 
 RULE = "stand-ins"

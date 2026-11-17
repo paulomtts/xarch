@@ -4,7 +4,7 @@ from tests.modules.rules.application.logic.checks import syntax as violations
 from tests.modules.rules.builders import PYTHON, source
 from xarch.kernel.source import Unparsable
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.domain.values import Profile
+from xarch.modules.rules.domain.profile import Profile
 
 
 def test_a_file_that_does_not_parse_is_a_violation_and_one_that_does_is_not():

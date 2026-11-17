@@ -4,7 +4,7 @@ import pytest
 
 from tests.modules.rules.application.logic.checks import built_by as violations
 from tests.modules.rules.builders import profile, source
-from xarch.modules.rules.domain.values import Call, Class
+from xarch.modules.rules.domain.parsed import Call, Class
 
 ON = profile(built_by={"services": ("bootstrap",)})
 SERVICE_FILE = source("modules/docs/application/services/doc.py", classes=(Class(3, "DocService"),))

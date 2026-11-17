@@ -2,7 +2,7 @@
 profile's number of statements, the later one reported against the first."""
 from tests.modules.rules.builders import profile, source
 from xarch.modules.rules.application.logic.duplicates import violations
-from xarch.modules.rules.domain.values import Function
+from xarch.modules.rules.domain.parsed import Function
 
 ON = profile(no_duplicates=4)
 

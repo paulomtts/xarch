@@ -8,7 +8,7 @@ from pathlib import Path
 
 from xarch.kernel.source import Import
 from xarch.modules.layout.domain.structure import Requirement
-from xarch.modules.rules.domain.values import SourceFile
+from xarch.modules.rules.domain.parsed import SourceFile
 from xarch.modules.scaffold.domain.values import FILE, FOLDER
 from xarch.profile_values.language import RecordMark
 from xarch.profile_values.testing import CaseTable

@@ -22,7 +22,7 @@ from fnmatch import fnmatchcase
 from xarch.kernel.logic.placement import place_of
 from xarch.kernel.placement import EACH, Place
 from xarch.modules.rules.application.logic.places import instance_root, matches, targets_of
-from xarch.modules.rules.domain.values import Profile
+from xarch.modules.rules.domain.profile import Profile
 from xarch.profile_values.placement import Target
 from xarch.profile_values.tiers import CheckedTier
 

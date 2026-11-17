@@ -4,8 +4,9 @@ import pytest
 
 from tests.modules.rules.builders import APP, imp, profile, source
 from xarch.modules.rules.application.logic.twins import checked as twins
+from xarch.modules.rules.domain.outcomes import Twins
+from xarch.modules.rules.domain.parsed import Call, Class, Function
 from xarch.modules.rules.domain.published import Translation
-from xarch.modules.rules.domain.values import Call, Class, Function, Twins
 
 ON = profile(no_twins=3)
 DOMAIN = "modules/docs/domain/values.py"

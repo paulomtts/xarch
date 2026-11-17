@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Protocol
 
-from xarch.modules.rules.domain.values import SourceFile
+from xarch.modules.rules.domain.parsed import SourceFile
 from xarch.profile_values.language import RecordMark
 from xarch.profile_values.testing import CaseTable
 

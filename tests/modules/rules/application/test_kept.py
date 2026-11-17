@@ -13,7 +13,8 @@ from tests.modules.rules.builders import profile
 from xarch.kernel.source import CommentSpan, Import
 from xarch.modules.rules.contract import CheckRefused, ChecksCannotRun, FactKept, FactsKept, FileKept, KeepFacts, Piece
 from xarch.modules.rules.domain.errors import ProfileUnusable
-from xarch.modules.rules.domain.values import Asked, Class, Comment, Function, SourceFile
+from xarch.modules.rules.domain.parsed import Class, Comment, Function, SourceFile
+from xarch.modules.rules.domain.profile import Asked
 from xarch.profile_values.checks import APP, Condition, Scope
 
 CLOCK = Import(1, ("app", "kernel", "time"), ("Clock",))

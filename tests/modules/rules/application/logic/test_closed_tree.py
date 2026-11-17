@@ -1,7 +1,7 @@
 """The closed-tree guard on a hand-built profile: a source file in no part and no folder of the layout is reported."""
 from tests.modules.rules.application.logic.checks import closed_tree as violations
 from tests.modules.rules.builders import PYTHON
-from xarch.modules.rules.domain.values import Profile
+from xarch.modules.rules.domain.profile import Profile
 from xarch.profile_values.placement import Target
 
 PROFILE = Profile(parts={"domain": ("modules", "*", "domain"), "entry": ("cli",),

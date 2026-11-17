@@ -10,9 +10,9 @@ from xarch.modules.rules.application.logic.own_checks import held_problems, made
 from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.application.ports.source_tree import SourceTree
 from xarch.modules.rules.contract import ChecksHeld, ProfileHeld
+from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.published import Weak
 from xarch.modules.rules.domain.rule import OwnCheck
-from xarch.modules.rules.domain.values import Profile
 
 
 class ExamplesService:

@@ -20,7 +20,8 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.domain.values import Function, Profile, SourceFile
+from xarch.modules.rules.domain.parsed import Function, SourceFile
+from xarch.modules.rules.domain.profile import Profile
 
 RULE = "no-duplicates"
 FIX = ("keep one of the two and import it where the other is, or move it to a part both may import when they cannot "

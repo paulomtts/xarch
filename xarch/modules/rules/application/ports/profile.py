@@ -3,8 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol
 
+from xarch.modules.rules.domain.outcomes import Known, Standing
+from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.published import KeyFacts, Reviewed
-from xarch.modules.rules.domain.values import Known, Profile, Standing
 
 
 class Profiles(Protocol):

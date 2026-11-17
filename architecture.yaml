@@ -279,8 +279,8 @@ tiers:
     apply_forbidden: true
     plain_tables: true
     must_import: [controller]
-    # domain/values: the values the ports hand back, which a test of a controller builds its fakes' answers with
-    may_also_import: [domain/values]
+    # the values the ports hand back, which a test of a controller builds its fakes' answers with
+    may_also_import: [domain/values, domain/profile, domain/parsed, domain/outcomes]
     docs:
       may_touch: what the part it mirrors may import; `tests/fakes/`
       one_file_per: use case

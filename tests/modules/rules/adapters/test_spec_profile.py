@@ -8,8 +8,9 @@ import pytest
 from xarch.modules.rules.adapters.spec_profile import SpecProfiles
 from xarch.modules.rules.domain import published
 from xarch.modules.rules.domain.errors import NoProfile, ProfileUnusable, Unloaded
+from xarch.modules.rules.domain.outcomes import InitFile, Known, Standing
+from xarch.modules.rules.domain.profile import PartInfo, Profile
 from xarch.modules.rules.domain.published import KeyFacts, Resemblance, Reviewed
-from xarch.modules.rules.domain.values import InitFile, Known, PartInfo, Profile, Standing
 from xarch.modules.spec.contract import (
     CheckProfile,
     CheckResult,

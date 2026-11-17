@@ -18,7 +18,7 @@ from typing import NamedTuple
 
 from xarch.kernel.placement import Place
 from xarch.modules.rules.domain.errors import RuleRefused
-from xarch.modules.rules.domain.values import SourceFile
+from xarch.modules.rules.domain.parsed import SourceFile
 from xarch.modules.rules.domain.vocabulary import (
     APP_SIDE,
     FILE,

@@ -9,9 +9,11 @@ from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic import expansion, known
 from xarch.modules.rules.application.logic.engine import run
 from xarch.modules.rules.application.logic.facts import facts_of
+from xarch.modules.rules.domain.outcomes import Accepting
+from xarch.modules.rules.domain.parsed import Comment, SourceFile
+from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.published import Weak
 from xarch.modules.rules.domain.rule import Rule
-from xarch.modules.rules.domain.values import Accepting, Comment, Profile, SourceFile
 from xarch.profile_values.language import CheckedLanguage
 
 

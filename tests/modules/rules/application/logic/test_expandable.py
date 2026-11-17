@@ -4,7 +4,7 @@ import pytest
 from xarch.modules.rules.application.logic.expandable import expands
 from xarch.modules.rules.application.logic.expansion import KEYS, book
 from xarch.modules.rules.application.logic.explained import general
-from xarch.modules.rules.domain.values import PartInfo, Profile
+from xarch.modules.rules.domain.profile import PartInfo, Profile
 from xarch.profile_values.placement import Target
 from xarch.profile_values.testing import Fakes, Framework
 from xarch.profile_values.tiers import CheckedTier

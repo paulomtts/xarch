@@ -5,7 +5,7 @@ import pytest
 from tests.modules.rules.application.logic.checks import comment_allowed as allowed
 from tests.modules.rules.application.logic.checks import no_comments as violations
 from tests.modules.rules.builders import PYTHON, source
-from xarch.modules.rules.domain.values import Comment
+from xarch.modules.rules.domain.parsed import Comment
 
 
 @pytest.mark.parametrize("comment, kept", [

@@ -18,9 +18,9 @@ from xarch.modules.rules.application.logic.explained import (
     uses,
     word_at,
 )
+from xarch.modules.rules.domain.outcomes import Known
 from xarch.modules.rules.domain.published import CHECKS, Slot
 from xarch.modules.rules.domain.rule import EXISTING, MAY_NOT, Match, Rule
-from xarch.modules.rules.domain.values import Known
 from xarch.modules.rules.domain.vocabulary import FIELDS, FILTERS, KINDS, QUANTIFIERS, TARGETS, VARIABLES, WordFacets
 from xarch.modules.rules.domain.worked import WORKED
 from xarch.profile_values.checks import Condition, Saying, Scope

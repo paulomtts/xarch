@@ -3,7 +3,7 @@ import pytest
 
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.verdict import passed
-from xarch.modules.rules.domain.values import Finding
+from xarch.modules.rules.domain.outcomes import Finding
 
 FOUND = [Violation("app/a.py", 1, "a problem", "rules", "do this")]
 FINDINGS = [Finding("ungoverned", "app/stray.py")]

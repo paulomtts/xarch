@@ -8,8 +8,8 @@ from __future__ import annotations
 from xarch.kernel.logic.conditions import condition
 from xarch.kernel.placement import EVERYTHING
 from xarch.modules.rules.application.logic.tier_of import NO_TIER, NO_TIER_FIX
+from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.rule import EXISTING, LIST, MAY_NOT, MAY_ONLY, MUST_BE_REACHED, MUST_REACH, Match, Rule
-from xarch.modules.rules.domain.values import Profile
 from xarch.profile_values.checks import ALL, APP, STRUCTURE, TESTS, Condition, Saying, Scope
 
 FORBIDDEN_FIX = "do what needs {hit} outside {scope_part}/, and hand {scope_part}/ the result"

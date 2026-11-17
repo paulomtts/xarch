@@ -14,7 +14,8 @@ from collections.abc import Iterable
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.imports import dotted, targets
 from xarch.modules.rules.application.logic.places import instance_root
-from xarch.modules.rules.domain.values import Profile, SourceFile
+from xarch.modules.rules.domain.parsed import SourceFile
+from xarch.modules.rules.domain.profile import Profile
 from xarch.profile_values.placement import Repeat
 
 Edge = tuple[str, int, str]

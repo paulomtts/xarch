@@ -54,8 +54,10 @@ from xarch.kernel.placement import Place
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.imports import dotted, named_targets
 from xarch.modules.rules.application.logic.places import file_place, label
+from xarch.modules.rules.domain.outcomes import Twins
+from xarch.modules.rules.domain.parsed import Class, Function, SourceFile
+from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.published import Translation
-from xarch.modules.rules.domain.values import Class, Function, Profile, SourceFile, Twins
 
 RULE = "no-twins"
 SHOWN = 4

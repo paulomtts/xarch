@@ -4,7 +4,8 @@ import pytest
 
 from tests.modules.rules.application.logic.checks import forbidden as violations
 from xarch.kernel.source import Import
-from xarch.modules.rules.domain.values import MethodCall, Profile, SourceFile, Use
+from xarch.modules.rules.domain.parsed import MethodCall, SourceFile, Use
+from xarch.modules.rules.domain.profile import Profile
 from xarch.profile_values.placement import Target
 from xarch.profile_values.testing import Fakes, Framework
 from xarch.profile_values.tiers import CheckedTier as Tier

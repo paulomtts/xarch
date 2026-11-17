@@ -6,8 +6,8 @@ import pytest
 
 from tests.modules.rules.builders import PROFILE, in_tests, profile, source
 from xarch.modules.rules.application.logic.scenarios import plain, violations, weak
+from xarch.modules.rules.domain.parsed import Function, Row, Table, Union
 from xarch.modules.rules.domain.published import Weak
-from xarch.modules.rules.domain.values import Function, Row, Table, Union
 
 COLUMNS = ("given", "when", "then")
 RESULTS = source("modules/docs/contract/results.py", unions=(Union(4, "PublishResult", ("Published", "Missing")),))

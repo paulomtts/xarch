@@ -19,7 +19,7 @@ from xarch.modules.rules.contract import (
     WordsShown,
 )
 from xarch.modules.rules.domain.errors import ProfileUnusable
-from xarch.modules.rules.domain.values import Known
+from xarch.modules.rules.domain.outcomes import Known
 
 APP = Path("/src/app")
 NAMED = profile(names={"services": ("*Service",)})

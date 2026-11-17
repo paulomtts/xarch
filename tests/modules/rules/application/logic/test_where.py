@@ -7,17 +7,8 @@ import pytest
 from tests.modules.rules.builders import PYTHON
 from xarch.kernel.placement import EVERYTHING, Place
 from xarch.modules.rules.application.logic.where import describe, resolve
-from xarch.modules.rules.domain.values import (
-    FakePlace,
-    PartAt,
-    PartInfo,
-    PartPlace,
-    Profile,
-    Resolved,
-    StructurePlace,
-    SuitePlace,
-    UngovernedPlace,
-)
+from xarch.modules.rules.domain.places import FakePlace, PartAt, PartPlace, Resolved, StructurePlace, SuitePlace, UngovernedPlace
+from xarch.modules.rules.domain.profile import PartInfo, Profile
 from xarch.profile_values.placement import Repeat, Target
 from xarch.profile_values.testing import Fakes, Framework
 from xarch.profile_values.tiers import CheckedTier as Tier

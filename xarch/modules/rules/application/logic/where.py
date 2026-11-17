@@ -26,18 +26,8 @@ from xarch.kernel.logic.placement import repeat_of
 from xarch.kernel.placement import EACH, Place
 from xarch.modules.rules.application.logic.places import excluded_by, matches, place, targets_of
 from xarch.modules.rules.application.logic.tier_of import NO_TIER, Tested, allowance, may_use_fakes, tested
-from xarch.modules.rules.domain.values import (
-    FakePlace,
-    PartAt,
-    PartInfo,
-    PartPlace,
-    Placed,
-    Profile,
-    Resolved,
-    StructurePlace,
-    SuitePlace,
-    UngovernedPlace,
-)
+from xarch.modules.rules.domain.places import FakePlace, PartAt, PartPlace, Placed, Resolved, StructurePlace, SuitePlace, UngovernedPlace
+from xarch.modules.rules.domain.profile import PartInfo, Profile
 from xarch.profile_values.placement import Target
 from xarch.profile_values.tiers import CheckedTier
 

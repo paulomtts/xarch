@@ -4,7 +4,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.domain.values import Finding
+from xarch.modules.rules.domain.outcomes import Finding
 
 
 def passed(violations: Sequence[Violation], strict_findings: Sequence[Finding], strict: bool) -> bool:

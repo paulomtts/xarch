@@ -10,8 +10,8 @@ from collections.abc import Callable
 from xarch.kernel.logic.placement import name_matches, reaches
 from xarch.modules.rules.application.logic.places import allowed
 from xarch.modules.rules.application.logic.tier_of import Tested, allowance, as_place, may_use_fakes
+from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.rule import MAY_NOT, MAY_ONLY, Facts, Found, Match
-from xarch.modules.rules.domain.values import Profile
 
 Matcher = Callable[[Match, Found, Facts, Profile], tuple[str, ...] | None]
 """How a fact is matched against a target: what it matched, None when it matches none."""

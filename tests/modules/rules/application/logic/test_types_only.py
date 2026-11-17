@@ -7,7 +7,7 @@ import pytest
 from tests.modules.rules.application.logic.checks import types_only as violations
 from tests.modules.rules.application.logic.checks import types_only_parts as part_violations
 from tests.modules.rules.builders import GUARD, PROFILE, RENDERING, in_tests, profile, source
-from xarch.modules.rules.domain.values import Call, Use
+from xarch.modules.rules.domain.parsed import Call, Use
 
 RENDERING_TEST = "web/test_docs.py"
 CONTROLLER = ("app", "modules", "docs", "application", "controller", "DocumentController")

@@ -115,7 +115,7 @@ SEAM = ("modules/rules/adapters/fs_source_tree.py", "platform/")
 """The reader adapter and the platform: where the language and its interpreter are allowed to be named."""
 
 EXEMPT: dict[tuple[str, str], str] = {
-    ("modules/rules/domain/values.py", "from"): "the records the reader fills say how it reads an import by an import "
+    ("modules/rules/domain/parsed.py", "from"): "the records the reader fills say how it reads an import by an import "
                                                 "of the language it reads: the engine's Python-shaped bundles, left on "
                                                 "purpose (engine R3-2)",
     ("__main__.py", "python"): "`python -m xarch` is how the interpreter that runs xarch starts it, not the language "

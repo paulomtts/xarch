@@ -8,9 +8,9 @@ from __future__ import annotations
 from collections.abc import Iterable
 from difflib import get_close_matches
 
+from xarch.modules.rules.domain.outcomes import Known
 from xarch.modules.rules.domain.published import CHECKS, Slot
 from xarch.modules.rules.domain.rule import OwnCheck, Rule
-from xarch.modules.rules.domain.values import Known
 from xarch.modules.rules.domain.vocabulary import (
     FACT,
     FIELDS,

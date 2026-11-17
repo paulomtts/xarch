@@ -10,7 +10,8 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from xarch.modules.rules.application.logic.places import excluded_by, file_place
-from xarch.modules.rules.domain.values import Profile, SourceFile
+from xarch.modules.rules.domain.parsed import SourceFile
+from xarch.modules.rules.domain.profile import Profile
 
 
 def ungoverned(paths: Iterable[tuple[str, ...]], profile: Profile, shown: str) -> list[str]:

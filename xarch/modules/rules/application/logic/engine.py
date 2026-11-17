@@ -28,6 +28,7 @@ from xarch.modules.rules.application.logic.facts import reach_scopes
 from xarch.modules.rules.application.logic.filters import Question, in_scope, question
 from xarch.modules.rules.application.logic.sentences import said, value
 from xarch.modules.rules.application.logic.targets import finding, matched
+from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.published import Weak
 from xarch.modules.rules.domain.rule import (
     FAIL,
@@ -40,7 +41,6 @@ from xarch.modules.rules.domain.rule import (
     Read,
     Rule,
 )
-from xarch.modules.rules.domain.values import Profile
 
 Reached = dict[tuple[str, ...] | str, set[int]]
 """What the links of a rule of reach reached: each declaration by its name, each file by its steps, with the files

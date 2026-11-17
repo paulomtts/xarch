@@ -4,9 +4,10 @@ named, and an example file in which it reads nothing named at its address."""
 from tests.modules.rules.builders import profile
 from xarch.modules.rules.application.logic.asked import made, named, project, span, unread
 from xarch.modules.rules.application.logic.engine import kept
+from xarch.modules.rules.domain.parsed import Class, Function, SourceFile
+from xarch.modules.rules.domain.profile import Asked
 from xarch.modules.rules.domain.published import Piece
 from xarch.modules.rules.domain.rule import Fact
-from xarch.modules.rules.domain.values import Asked, Class, Function, SourceFile
 from xarch.profile_values.checks import APP, Condition, Scope
 
 DOMAIN = "modules/docs/domain/x.py"

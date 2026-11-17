@@ -30,7 +30,8 @@ from xarch.kernel.placement import Place
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.imports import dotted, named_targets
 from xarch.modules.rules.application.logic.places import instance_folder, place
-from xarch.modules.rules.domain.values import Profile, SourceFile
+from xarch.modules.rules.domain.parsed import SourceFile
+from xarch.modules.rules.domain.profile import Profile
 
 RULE = "shared"
 

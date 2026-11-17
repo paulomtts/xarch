@@ -9,7 +9,8 @@ from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.application.ports.source_tree import SourceTree
 from xarch.modules.rules.contract import IN_PART, LINKED_OUT, ReadSources, SourceRead, SourcesRead
 from xarch.modules.rules.domain.errors import OutsideProject, RootMissing
-from xarch.modules.rules.domain.values import Profile, Resolved
+from xarch.modules.rules.domain.places import Resolved
+from xarch.modules.rules.domain.profile import Profile
 
 
 class SourcesService:

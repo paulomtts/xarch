@@ -7,8 +7,8 @@ import pytest
 
 from tests.modules.rules.builders import AUTOSPEC, MOCK, PROFILE, in_tests, profile, source
 from xarch.modules.rules.application.logic.stand_ins import violations, weak
+from xarch.modules.rules.domain.parsed import Call, Class, Method, ParameterCall
 from xarch.modules.rules.domain.published import Weak
-from xarch.modules.rules.domain.values import Call, Class, Method, ParameterCall
 
 PROTOCOL = ("typing", "Protocol")
 PORT_FILE = "modules/docs/application/ports/repo.py"

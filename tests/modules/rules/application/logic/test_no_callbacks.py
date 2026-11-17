@@ -1,7 +1,7 @@
 """The no-callbacks check on hand-made source files: code of a listed part never calls one of its own parameters."""
 from tests.modules.rules.application.logic.checks import no_callbacks as violations
 from tests.modules.rules.builders import profile, source
-from xarch.modules.rules.domain.values import Callback
+from xarch.modules.rules.domain.parsed import Callback
 
 ON = profile(no_callbacks=("logic",))
 LOGIC = "modules/docs/application/logic/rule.py"

@@ -5,8 +5,9 @@ from pathlib import Path
 from typing import Protocol
 
 from xarch.modules.rules.domain.errors import NoProfile, ProfileUnusable, Unloaded
+from xarch.modules.rules.domain.outcomes import InitFile, Known, Standing
+from xarch.modules.rules.domain.profile import Asked, PartInfo, Profile
 from xarch.modules.rules.domain.published import KeyFacts, Loosened, Resemblance, Reviewed
-from xarch.modules.rules.domain.values import Asked, InitFile, Known, PartInfo, Profile, Standing
 from xarch.modules.spec.contract import (
     DEFAULT_TESTS,
     CheckProfile,

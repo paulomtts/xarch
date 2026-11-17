@@ -27,7 +27,9 @@ from xarch.modules.rules.contract import (
     NotADirectory,
     Weak,
 )
-from xarch.modules.rules.domain.values import Class, Function, InitFile, Profile, SourceFile, Standing
+from xarch.modules.rules.domain.outcomes import InitFile, Standing
+from xarch.modules.rules.domain.parsed import Class, Function, SourceFile
+from xarch.modules.rules.domain.profile import Profile
 from xarch.profile_values.capabilities import Shortfall
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.placement import Repeat, Target

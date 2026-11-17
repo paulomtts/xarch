@@ -5,8 +5,8 @@ import pytest
 
 from tests.modules.rules.application.logic.checks import holds as weak
 from tests.modules.rules.builders import profile, source
+from xarch.modules.rules.domain.parsed import Class, Function, Method
 from xarch.modules.rules.domain.published import Weak
-from xarch.modules.rules.domain.values import Class, Function, Method
 
 ON = profile(holds={"domain": "classes", "logic": "functions"})
 DOMAIN = "modules/docs/domain/doc.py"

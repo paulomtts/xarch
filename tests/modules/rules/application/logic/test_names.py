@@ -3,7 +3,7 @@ import pytest
 
 from tests.modules.rules.application.logic.checks import names as violations
 from tests.modules.rules.builders import profile, source
-from xarch.modules.rules.domain.values import Class
+from xarch.modules.rules.domain.parsed import Class
 
 ON = profile(names={"services": ("*Service", "*Step")})
 SERVICES = "modules/docs/application/services/doc.py"

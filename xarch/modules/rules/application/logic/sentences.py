@@ -10,8 +10,8 @@ from string import Formatter
 
 from xarch.kernel.placement import EVERYTHING
 from xarch.modules.rules.application.logic.places import label, narrowed, targets_of
+from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.rule import Facts, Found, Match
-from xarch.modules.rules.domain.values import Profile
 from xarch.modules.rules.domain.vocabulary import KINDS
 
 OWNERS = 3

@@ -89,8 +89,7 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from xarch.kernel.source import Import, Unparsable
-from xarch.modules.rules.domain.published import CLASS, FUNCTION, METHOD, Piece
-from xarch.modules.rules.domain.values import (
+from xarch.modules.rules.domain.parsed import (
     Call,
     Callback,
     Class,
@@ -109,6 +108,7 @@ from xarch.modules.rules.domain.values import (
     Union,
     Use,
 )
+from xarch.modules.rules.domain.published import CLASS, FUNCTION, METHOD, Piece
 from xarch.platform.filesystem import FileSystem
 from xarch.profile_values.language import RecordMark
 from xarch.profile_values.testing import CaseTable

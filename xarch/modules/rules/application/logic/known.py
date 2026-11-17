@@ -13,9 +13,11 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from xarch.kernel.violations import Violation
+from xarch.modules.rules.domain.outcomes import Accepting
+from xarch.modules.rules.domain.parsed import SourceFile
+from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.published import KnownName, Weak
 from xarch.modules.rules.domain.rule import Facts, Read
-from xarch.modules.rules.domain.values import Accepting, Profile, SourceFile
 
 RULE = "dead-code"
 KEY = "guards.dead-code.known"

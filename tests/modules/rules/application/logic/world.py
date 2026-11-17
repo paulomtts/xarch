@@ -25,18 +25,8 @@ from dataclasses import replace
 from tests.modules.rules.builders import PROFILE, RULES, imp, in_tests, source
 from xarch.kernel.source import Unparsable
 from xarch.modules.rules.application.logic.facts import facts_of
+from xarch.modules.rules.domain.parsed import Call, Callback, Class, Comment, Function, Method, MethodCall, SoleCall, Use
 from xarch.modules.rules.domain.rule import Fact, Found, Match, Read, Rule
-from xarch.modules.rules.domain.values import (
-    Call,
-    Callback,
-    Class,
-    Comment,
-    Function,
-    Method,
-    MethodCall,
-    SoleCall,
-    Use,
-)
 from xarch.profile_values.checks import Saying, Scope
 from xarch.profile_values.placement import Target
 

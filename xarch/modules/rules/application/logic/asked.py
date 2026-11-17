@@ -10,9 +10,10 @@ from dataclasses import replace
 from xarch.modules.rules.application.logic.facts import facts_of
 from xarch.modules.rules.application.logic.own_checks import placed
 from xarch.modules.rules.domain.errors import RuleRefused
+from xarch.modules.rules.domain.parsed import SourceFile
+from xarch.modules.rules.domain.profile import Asked, Profile
 from xarch.modules.rules.domain.published import Piece
 from xarch.modules.rules.domain.rule import EXISTING, MAY_NOT, Fact, Facts, Read, Rule
-from xarch.modules.rules.domain.values import Asked, Profile, SourceFile
 from xarch.profile_values.checks import LIST, Saying
 
 _READ = "ask the eval's question of it"

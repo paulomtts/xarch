@@ -22,7 +22,7 @@ from xarch.modules.rules.contract import (
     TierInfoView,
     Ungoverned,
 )
-from xarch.modules.rules.domain.values import PartInfo, Profile
+from xarch.modules.rules.domain.profile import PartInfo, Profile
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.placement import Repeat, Target
 from xarch.profile_values.tiers import CheckedTier as Tier

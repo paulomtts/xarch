@@ -4,7 +4,8 @@ import pytest
 
 from tests.modules.rules.builders import PYTHON
 from xarch.modules.rules.application.logic.governed import excluded, governed, ungoverned, unread
-from xarch.modules.rules.domain.values import Profile, SourceFile
+from xarch.modules.rules.domain.parsed import SourceFile
+from xarch.modules.rules.domain.profile import Profile
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.placement import Target
 

@@ -8,7 +8,7 @@ from tests.fakes.filesystem import FakeSourceTree
 from xarch.kernel.source import CommentSpan, Import, Unparsable
 from xarch.modules.rules.application.controller import ReaderController
 from xarch.modules.rules.application.services.source_reading import SourceReadService
-from xarch.modules.rules.domain.values import Comment, SourceFile
+from xarch.modules.rules.domain.parsed import Comment, SourceFile
 
 IMPORTS = [Import(1, ("app", "kernel"), ("ids",)), Import(2, ("x",), ("y",), relative=True, up=1)]
 READS = {"two imports": IMPORTS, "broken": SourceFile("", (), (), error=Unparsable(3, "invalid syntax"))}

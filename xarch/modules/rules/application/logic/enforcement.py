@@ -25,6 +25,9 @@ from __future__ import annotations
 from collections.abc import Iterable, Sequence
 
 from xarch.kernel.violations import Violation
+from xarch.modules.rules.domain.outcomes import Enforcement, Finding, InitFile
+from xarch.modules.rules.domain.parsed import SourceFile
+from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.published import (
     APPROXIMATE,
     DYNAMIC,
@@ -40,7 +43,6 @@ from xarch.modules.rules.domain.published import (
     Loosened,
     Weak,
 )
-from xarch.modules.rules.domain.values import Enforcement, Finding, InitFile, Profile, SourceFile
 from xarch.profile_values.capabilities import Shortfall
 from xarch.profile_values.excluded import Excluded
 

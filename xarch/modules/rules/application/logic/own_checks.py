@@ -17,9 +17,9 @@ from xarch.kernel.logic.examples import is_test_example
 from xarch.kernel.logic.targets import target
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.domain.errors import ChecksRefused, RuleRefused
+from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.published import Weak
 from xarch.modules.rules.domain.rule import EXISTING, MUST_BE_REACHED, MUST_REACH, MadeChecks, Match, OwnCheck, Rule
-from xarch.modules.rules.domain.values import Profile
 from xarch.modules.rules.domain.vocabulary import NAMES, PARTS, PLACES, TARGETS
 from xarch.profile_values.capabilities import FACTS, Shortfall
 from xarch.profile_values.checks import WrittenCheck, WrittenTarget
