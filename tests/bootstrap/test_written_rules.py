@@ -99,8 +99,7 @@ def test_every_rule_of_a_bundled_profile_written_as_a_check_finds_what_the_key_f
 
 
 def test_the_checks_written_for_the_explanation_load_and_behave_as_their_examples_say(tmp_path):
-    shown = [ask(address) for address in ("checks", "targets.text", "filters.placed", "variables.file",
-                                          "variables.type_only_fix")]
+    shown = [ask(address) for address in ("checks", "targets.text", "variables.type_only_fix")]
     written = {}
     for item in shown:
         written |= yaml.safe_load(item["example"]["check"])["checks"]

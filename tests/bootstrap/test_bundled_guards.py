@@ -26,6 +26,7 @@ def test_the_bundled_profiles_use_every_guard_of_their_own(name):
         package_only=("contract",),
         scenarios=ScenarioCoverage("contract", "integration", "Result", ("given", "when", "then"), table, "test_{name}.py"),
         no_comments=True,
+        closed_tree=True,
         stand_ins=StandIns(tuple(("unittest", "mock", m) for m in mocks), (("unittest", "mock", "create_autospec"),),
                                ("spec", "spec_set"), (Fixture("mocker", mocks, ("create_autospec",)),), 0),
         no_duplicates=4, no_twins=3, no_twins_renamed=3, no_twins_subset=3, dead_code=True, untested=True,
@@ -48,7 +49,9 @@ PURE = ["datetime.datetime.now", "datetime.datetime.utcnow", "datetime.datetime.
         "os.path.expanduser", "os.getcwdb", "os.chdir"]
 AMBIENT = ["pathlib.Path.cwd", "pathlib.Path.absolute", "pathlib.Path.resolve", "pathlib.Path.home",
            "pathlib.Path.expanduser", "os.getcwd", "os.getcwdb", "os.chdir", "os.path.abspath", "os.path.realpath",
-           "os.path.expanduser", ".absolute()", ".resolve()", ".expanduser()"]
+           "os.path.expanduser", ".absolute()", ".resolve()", ".expanduser()", ".chdir()", "os.environ", "os.getenv"]
+ENVIRONMENT = ["os.environ", "os.getenv"]
+PUBLISHED = PURE + ["typing.Any"]
 
 
 @pytest.mark.parametrize("name", ["cli", "web"])
@@ -56,9 +59,11 @@ def test_the_bundled_profiles_forbid_the_clock_and_io_in_the_pure_parts_and_thei
     architecture = load_architecture(name)
     pure = tuple(tuple(n.split(".")) for n in PURE)
     ambient = tuple(tuple(n.split(".")) for n in AMBIENT)
+    environment = tuple(tuple(n.split(".")) for n in ENVIRONMENT)
+    published = tuple(tuple(n.split(".")) for n in PUBLISHED)
     assert architecture.forbidden == {"domain": pure, "logic": pure, "ports": pure, "services": ambient,
-                                      "controller": ambient, "adapters": ambient, "contract": pure, "kernel": pure,
-                                      "kernel-logic": pure}
+                                      "controller": ambient, "adapters": ambient, "platform": environment,
+                                      name: environment, "contract": published, "kernel": pure, "kernel-logic": pure}
     assert [tier.name for tier in architecture.tiers if tier.forbidden] == ["unit"]
 
 
@@ -73,9 +78,11 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
         "`platform/`: sqlmodel; `web/`: fastapi; `bootstrap/`: sqlmodel, fastapi, uvicorn); the standard library "
         "is always allowed, and tests are not checked.",
         "- `forbidden`: a part neither imports nor uses by name what is listed for it (`domain/`, "
-        "`application/logic/`, `application/ports/`, `contract/`, `kernel/logic/` and `kernel/`: "
+        "`application/logic/`, `application/ports/`, `kernel/logic/` and `kernel/`: "
         + ", ".join(f"`{n}`" for n in PURE) + "; `application/services/`, `application/controller.py` and `adapters/`: "
-        + ", ".join(f"`{n}`" for n in AMBIENT)
+        + ", ".join(f"`{n}`" for n in AMBIENT) + "; `platform/` and `web/`: "
+        + ", ".join(f"`{n}`" for n in ENVIRONMENT) + "; `contract/`: "
+        + ", ".join(f"`{n}`" for n in PUBLISHED)
         + "), and neither do the unit tests of those parts. It catches what is written in the part's own files, "
         "through their imports and aliases, and a method written `.name()` called on anything but the object itself "
         "and what it holds; not a name reached through a variable or `getattr`, nor I/O done on the part's behalf "
@@ -92,10 +99,10 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
         "- `must-import`: every file of `adapters/` imports from `platform/`, any module's `contract/`, or an outside "
         "package, or reaches one through a file of its own part; a package file and a file with no code of its own "
         "are exempt.",
-        "- `holds`: a file of `domain/`, `application/services/` and `application/controller.py` defines classes, "
-        "never a public function at the top level; a file of `application/logic/` and `kernel/logic/` defines "
-        "functions, never a class (a private one too) but exceptions and the records its functions return; listed in "
-        "the enforcement section, and fails `check --strict` only.",
+        "- `holds`: a file of `domain/`, `application/ports/`, `application/services/`, `application/controller.py` "
+        "and `adapters/` defines classes, never a public function at the top level; a file of `application/logic/` "
+        "and `kernel/logic/` defines functions, never a class (a private one too) but exceptions and the records its "
+        "functions return; listed in the enforcement section, and fails `check --strict` only.",
         "- `immutable`: every class of `application/logic/` and `kernel/logic/` is an immutable record, as the Python "
         "data file marks one, or an exception; listed in the enforcement section, and fails `check --strict` only.",
         "- `no-callbacks`: no function of `domain/` and `application/logic/` calls a parameter annotated as a "
@@ -112,6 +119,8 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
         "table test has no `if`, `match`, `try`, `for` or `while` statement and no `if` expression.",
         "- `no-comments`: no `#` comments in the app or its tests; docstrings and tool directives "
         "(`# type: ignore`, `# noqa`, `# pragma:`) stay.",
+        "- `closed-tree`: every Python file of the app lies in a part, or is the package file (`__init__.py`) of a "
+        "folder of the layout.",
         "- `stand-ins`: every `Protocol` in `application/ports/` is fire-only (every method returns `None`) or read "
         "(any method returns a value), each method annotated; every read port `<Port>` has a fake `Fake<Port>` in "
         "`tests/fakes/`; and every mock in the integration tests names what it stands in for, `Mock(spec=<Port>)` "

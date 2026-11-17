@@ -1,4 +1,5 @@
 """Tests for the CLI: exit codes and output, plus the scaffold-then-check drift guard."""
+import json
 from importlib import metadata
 
 import pytest
@@ -198,7 +199,7 @@ def test_an_unknown_profile_in_pyproject_is_a_usage_error(tmp_path):
     assert not (tmp_path / "app").exists()
 
 
-def test_extras_produce_no_violations(tmp_path):
+def test_extras_produce_no_violations_but_closed_tree_s_for_the_files_in_no_part(tmp_path):
     runner.invoke(app, ["init", "--profile", "cli"])
     runner.invoke(app, ["new", "module", "demo"])
     root = tmp_path / "app"
@@ -210,8 +211,12 @@ def test_extras_produce_no_violations(tmp_path):
         (root / rel).parent.mkdir(parents=True, exist_ok=True)
         (root / rel).write_text(body)
     (root / "README.txt").write_text("notes")
-    result = runner.invoke(app, ["check"])
-    assert result.exit_code == 0, result.output
+    result = runner.invoke(app, ["check", "--format", "json"])
+    assert result.exit_code == 1, result.output
+    assert [(v["rule"], v["file"]) for v in json.loads(result.stdout)["violations"]] == [
+        ("closed-tree", f"app/{rel}") for rel in ["main.py", "modules/demo/application/helpers.py",
+                                                  "modules/demo/helpers.py", "modules/demo/utils/x.py",
+                                                  "scripts/seed.py", "web/routes/a.py"]]
 
 
 DOCS = ["docs/project/statement.md", "docs/project/domain.md", "docs/project/design.md",

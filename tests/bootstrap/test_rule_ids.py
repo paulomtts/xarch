@@ -117,12 +117,8 @@ def test_the_layout_checks_name_their_rule_and_carry_their_fix(tmp_path):
 
 
 def test_a_closed_tree_names_its_rule_and_its_fix(tmp_path):
-    shutil.copytree(BUNDLED, tmp_path / "arch")
-    text = (BUNDLED / "web.yaml").read_text().replace("  no-comments: {}\n",
-                                                       "  no-comments: {}\n  closed-tree: {}\n")
-    (tmp_path / "arch/closed.yaml").write_text(text)
     write(tmp_path / "app", {"stray.py": ""})
-    result = source_check(tmp_path / "app", str(tmp_path / "arch/closed.yaml"))
+    result = source_check(tmp_path / "app", "web")
     assert [(v.rule, v.fix) for v in result.violations] == [
         ("closed-tree", "move app/stray.py into the part that fits it (run xarch where app/stray.py), or add its "
                         "folder to the layout")]

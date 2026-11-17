@@ -193,6 +193,16 @@ def test_a_forbidden_import_is_reported(tmp_path, profile, path, body, expected)
     pytest.param("platform/sql.py", "from sqlmodel import SQLModel", id="platform imports sqlmodel"),
     pytest.param(ADAPTER, "import sqlmodel", id="an adapter imports sqlmodel"),
     pytest.param(DOMAIN, "from __future__ import annotations\nimport sys, json", id="the standard library anywhere"),
+    pytest.param(DOMAIN, "from app.modules.a.helpers import h\nfrom app.modules.a.utils import u\n"
+                         "from ..application.helpers import h\nfrom app.scripts import seed\nimport app.<other package>",
+                 id="imports into places the profile does not govern are ignored"),
+])
+def test_an_allowed_or_ungoverned_import_is_not_reported(tmp_path, profile, path, body):
+    assert problems(tmp_path, profile, {path: body}) == []
+
+
+@PROFILES
+@pytest.mark.parametrize("path, body", [
     pytest.param("modules/a/helpers.py", "from app.platform import sql\nfrom app.modules.a.adapters import r",
                  id="a file in an instance but in no part is not checked"),
     pytest.param("modules/a/application/helpers.py", "from app.platform import sql",
@@ -201,12 +211,11 @@ def test_a_forbidden_import_is_reported(tmp_path, profile, path, body, expected)
     pytest.param("stray.py", "from app.platform import sql", id="nor one at the app's top"),
     pytest.param("scripts/seed.py", "from app.platform import sql", id="nor one in an extra top-level folder"),
     pytest.param("<other>/a.py", "from app.platform import sql", id="another profile's entry point is an extra folder"),
-    pytest.param(DOMAIN, "from app.modules.a.helpers import h\nfrom app.modules.a.utils import u\n"
-                         "from ..application.helpers import h\nfrom app.scripts import seed\nimport app.<other package>",
-                 id="imports into places the profile does not govern are ignored"),
 ])
-def test_an_allowed_or_ungoverned_import_is_not_reported(tmp_path, profile, path, body):
-    assert problems(tmp_path, profile, {path: body}) == []
+def test_an_import_of_a_file_in_no_part_is_not_reported_and_only_closed_tree_names_the_file(tmp_path, profile, path,
+                                                                                              body):
+    assert problems(tmp_path, profile, {path: body}) == [
+        filled(f"app/{path}: lies in no part and no folder of the layout (closed-tree)", profile)]
 
 
 @pytest.mark.parametrize("profile, path, body", [

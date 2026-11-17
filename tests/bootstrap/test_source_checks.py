@@ -61,8 +61,10 @@ def test_a_project_following_every_check_passes(tmp_path):
     pytest.param({"kernel/bad.py": "def (:\n"}, {}, ["app/kernel/bad.py:1: not valid Python: invalid syntax"],
                  id="a file that does not parse is reported"),
     pytest.param({"examples/modules/docs/domain/x.py": "# x\nfrom app.platform import sql\n",
-                  "examples/broken.py": "def (:\n"}, {}, [],
-                 id="code in a folder the layout does not hold is never read"),
+                  "examples/broken.py": "def (:\n"}, {},
+                 ["app/examples/broken.py: lies in no part and no folder of the layout (closed-tree)",
+                  "app/examples/modules/docs/domain/x.py: lies in no part and no folder of the layout (closed-tree)"],
+                 id="code in a folder the layout does not hold is never read, only reported by closed-tree"),
 ])
 def test_each_check_is_wired(tmp_path, app, tests, found):
     assert problems(tmp_path, app, tests) == found

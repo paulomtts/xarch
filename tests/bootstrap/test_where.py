@@ -85,7 +85,15 @@ def test_a_path_in_no_part_is_ungoverned_and_names_the_parts_near_it():
     found = lines("app/scripts/run.py")
     assert found["part"] == "none: ungoverned"
     assert found["nearest"].startswith("domain/ (app/modules/<module>/domain/), ")
+    assert found["closed-tree"] == "on: `xarch check` reports it"
+
+
+def test_a_path_in_no_part_under_a_profile_with_closed_tree_off_is_not_read(tmp_path):
+    shutil.copytree(BUNDLED, tmp_path / "arch")
+    (tmp_path / "arch/mine.yaml").write_text((BUNDLED / "web.yaml").read_text().replace("  closed-tree: {}\n", ""))
+    found = lines("app/scripts/run.py", "--profile", "arch/mine.yaml")
     assert found["closed-tree"] == "off: `xarch check` does not read it"
+    assert document("app/scripts/run.py", "--profile", "arch/mine.yaml")["closed_tree"] is False
 
 
 def test_a_folder_of_the_layout_that_holds_the_parts_is_structure():
@@ -120,7 +128,7 @@ def test_json_of_a_test_and_of_an_ungoverned_path():
     assert test["test"] == {"may_use_fakes": False, "fakes_path": "tests/fakes/", "types_only": [],
                             "code_from": "tests/modules/docs/"}
     stray = document("app/scripts/run.py")
-    assert (stray["kind"], stray["part"], stray["closed_tree"]) == ("ungoverned", None, False)
+    assert (stray["kind"], stray["part"], stray["closed_tree"]) == ("ungoverned", None, True)
     assert [n["part"] for n in stray["nearest"]][:2] == ["domain", "logic"]
 
 

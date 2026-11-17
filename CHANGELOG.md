@@ -5,6 +5,21 @@ All notable changes to this project are written here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The bundled `cli` and `web` profiles are stricter, with five rules xarch's own profile already held: `services`,
+  `controller` and `adapters` may not read the working folder, the home folder or the environment (the `ambient`
+  list, which now also holds `.chdir()`, `os.environ` and `os.getenv`); `platform` and the entry part (`cli` / `web`)
+  may not read the environment (`os.environ`, `os.getenv`): settings are read in `bootstrap` and handed in; the
+  `closed-tree` guard is on, so a Python file of the app in no part is a violation, and `check` no longer lists it as
+  a guard off; `contract` may not use `typing.Any` (its list, `published`, is the `pure` list and `typing.Any`); and
+  `ports` and `adapters` hold classes (`holds: classes`), so a public function at their top level is listed as weak
+  and fails `check --strict`. A project on a bundled profile may see new findings: move a stray file into the part
+  that fits it (`xarch where <file>` names the parts near it), or, with a profile of the project's own (`xarch profile
+  new mine --from cli`), list a folder that is not the app's source under `excluded`; read a setting in `bootstrap`
+  and hand it to the client or the command that needs it; give a contract field a type of its own; and put a helper
+  function of a port or an adapter in a method or in `application/logic/`.
+
 ### Removed
 
 - `xarch profile migrate`, which converted a profile of format 1 to format 2, is gone, with everything that existed

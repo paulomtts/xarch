@@ -48,6 +48,7 @@ parts:
       holds it to its `forbidden` list: no clock and no I/O by name.
     may_import: [domain, kernel, kernel-logic]
     forbidden: pure
+    holds: classes
     tier: integration
 
   services:
@@ -99,6 +100,7 @@ parts:
     built_by: [bootstrap]
     libraries: [sqlmodel]
     forbidden: ambient
+    holds: classes
     tier: unit
 
   platform:
@@ -113,6 +115,7 @@ parts:
       translates a module's types for a port, it belongs in that module's `adapters/`.
     may_import: [kernel, kernel-logic]
     libraries: [sqlmodel]
+    forbidden: environment
     untested: it wraps outside technology; adapters are tested against a stub of it
 
   cli:
@@ -125,6 +128,7 @@ parts:
       in the controller. If it holds a business rule, it belongs in `domain/`.
     may_import: [controller@any, contract@any, kernel, kernel-logic]
     libraries: [typer]
+    forbidden: environment
     tier: rendering
     folders:
       commands: one file per command group; each calls module controllers
@@ -155,7 +159,7 @@ parts:
       module hands out is a type of its own here. If it is a `domain/` entity, a service type or a port, it stays
       where it is, and a DTO goes here instead.
     may_import: ["domain/values:*Id", "domain/published", kernel, kernel-logic]
-    forbidden: pure
+    forbidden: published
     tier: integration
     package_only: true
 
@@ -194,9 +198,16 @@ forbidden:
          sys.stdout, sys.stderr, os.environ, os.getenv, socket, subprocess, sqlite3, urllib, http, shutil,
          pathlib.Path.cwd, pathlib.Path.absolute, os.getcwd, os.path.abspath, os.path.realpath, pathlib.Path.resolve,
          pathlib.Path.home, pathlib.Path.expanduser, os.path.expanduser, os.getcwdb, os.chdir]
+  published: [datetime.datetime.now, datetime.datetime.utcnow, datetime.datetime.today, datetime.date.today,
+              time.time, time.time_ns, time.monotonic, time.perf_counter, builtins.open, builtins.print,
+              builtins.input, sys.stdin, sys.stdout, sys.stderr, os.environ, os.getenv, socket, subprocess, sqlite3,
+              urllib, http, shutil, pathlib.Path.cwd, pathlib.Path.absolute, os.getcwd, os.path.abspath,
+              os.path.realpath, pathlib.Path.resolve, pathlib.Path.home, pathlib.Path.expanduser, os.path.expanduser,
+              os.getcwdb, os.chdir, typing.Any]
   ambient: [pathlib.Path.cwd, pathlib.Path.absolute, pathlib.Path.resolve, pathlib.Path.home, pathlib.Path.expanduser,
             os.getcwd, os.getcwdb, os.chdir, os.path.abspath, os.path.realpath, os.path.expanduser, .absolute(),
-            .resolve(), .expanduser()]
+            .resolve(), .expanduser(), .chdir(), os.environ, os.getenv]
+  environment: [os.environ, os.getenv]
 
 layers: {application: [domain, contract, logic, ports, services, controller], edge: [platform, adapters]}
 
@@ -281,6 +292,7 @@ guards:
     columns: [given, when, then]
     file: test_{name}.py
   no-comments: {}
+  closed-tree: {}
   stand-ins: {}
   no-duplicates: {min_statements: 4}
   no-twins: {min_fields: 3, min_renamed: 3, min_subset: 3}

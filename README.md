@@ -253,7 +253,7 @@ xarch profile explain parts.names --rule   # the rules a key of your profile exp
 
 `check` reads only the files the profile governs: a file in a part, or a package file of a folder of the layout. A file
 anywhere else is never read and is listed as `ungoverned` in the enforcement section; extra top-level folders and files
-at the app root are ignored unless the profile switches on `closed-tree`. A folder that is not the app's source at all
+at the app root are ignored unless the profile switches on `closed-tree`, as both bundled profiles do. A folder that is not the app's source at all
 is declared under `excluded`, and then no check looks at it. Extra files and subfolders inside a known part belong to
 that part.
 
@@ -329,8 +329,8 @@ and rule ids may be added, but an existing one keeps its name and meaning.
      "hint": null}
   ],
   "enforcement": {
-    "profile": {"location": "web", "bundled": true, "closest": null, "guards_off": ["closed-tree"],
-                "baseline_off": ["closed-tree"], "looser": []},
+    "profile": {"location": "web", "bundled": true, "closest": null, "guards_off": [], "baseline_off": [],
+                "looser": []},
     "ungoverned": {"count": 0, "folders": [], "files": []},
     "excluded": [],
     "known": [],
