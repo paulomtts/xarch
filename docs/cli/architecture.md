@@ -215,14 +215,17 @@ class ContentReview(Protocol):
 from app.modules.moderation.contract import ReviewText, ReviewResult, Clean, Flagged
 from app.modules.documents.application.ports.content_review import Allowed, Denied
 
-class _Moderation(Protocol):                                  # the little we use of moderation's controller
+# the little we use of moderation's controller
+class _Moderation(Protocol):
     def review(self, cmd: ReviewText) -> ReviewResult: ...
 
-class ModerationContentReview:                                # satisfies ContentReview, with no inheritance
+# satisfies ContentReview, with no inheritance
+class ModerationContentReview:
     def __init__(self, moderation: _Moderation): self._m = moderation
 
     def review(self, title: str) -> Allowed | Denied:
-        match self._m.review(ReviewText(title)):       # moderation's contract, translated to documents' words
+        # moderation's contract, translated to documents' words
+        match self._m.review(ReviewText(title)):
             case Clean():      return Allowed()
             case Flagged(why): return Denied(why)
 ```
@@ -266,19 +269,22 @@ What the module promises to everyone outside it: the inputs a caller sends the c
 # modules/documents/contract/commands.py
 from app.modules.documents.domain.values import DocumentId
 
+# input: what a caller sends the controller
 @dataclass(frozen=True)
-class PublishDocument:            # input: what a caller sends the controller
+class PublishDocument:
     id: DocumentId
 
+# input for the create use case
 @dataclass(frozen=True)
-class CreateDocument:             # input for the create use case
+class CreateDocument:
     title: str
 
 # modules/documents/contract/views.py
 from app.modules.documents.domain.values import DocumentId
 
+# DTO: what comes back
 @dataclass(frozen=True)
-class DocumentView:               # DTO: what comes back
+class DocumentView:
     id: DocumentId
     title: str
 
@@ -290,8 +296,9 @@ from app.modules.documents.contract.views import DocumentView
 class Published: view: DocumentView
 @dataclass(frozen=True)
 class Missing: ...
+# shared with the create Result
 @dataclass(frozen=True)
-class Rejected: reason: str          # shared with the create Result
+class Rejected: reason: str
 
 PublishResult = Published | Missing | Rejected
 
@@ -302,7 +309,8 @@ class Created: view: DocumentView
 CreateResult = Created | Rejected
 
 # modules/documents/contract/__init__.py: the public names; what is not listed here is not part of the contract
-from app.modules.documents.domain.values import DocumentId     # re-exported on purpose; defined in domain/values.py
+# re-exported on purpose; defined in domain/values.py
+from app.modules.documents.domain.values import DocumentId
 from app.modules.documents.contract.commands import PublishDocument, CreateDocument
 from app.modules.documents.contract.views import DocumentView
 from app.modules.documents.contract.results import Published, Missing, Rejected, PublishResult, Created, CreateResult
@@ -323,7 +331,8 @@ Entities and their state transitions, value objects (including typed ids) and th
 
 ```python
 # modules/documents/domain/values.py
-DocumentId = NewType("DocumentId", UUID)       # the id of a document, defined by its own module
+# the id of a document, defined by its own module
+DocumentId = NewType("DocumentId", UUID)
 
 # modules/documents/domain/errors.py: each module subclasses the kernel's base errors
 from app.kernel.errors import DomainError, NotFound
@@ -331,7 +340,8 @@ from app.kernel.errors import DomainError, NotFound
 class DocumentNotFound(NotFound):      reason = "The document does not exist."
 class DocumentIncomplete(DomainError): reason = "The document needs a title."
 class ContentRejected(DomainError):
-    def __init__(self, why: str): self.reason = why                    # the review's reason, passed on
+    # the review's reason, passed on
+    def __init__(self, why: str): self.reason = why
 
 # modules/documents/domain/document.py
 from app.kernel.identifiers import new_id
@@ -344,10 +354,12 @@ class Document:
 
     @classmethod
     def new(cls, title: str) -> "Document":
-        return cls(DocumentId(new_id()), title, None)                  # new_id comes from kernel/
+        # new_id comes from kernel/
+        return cls(DocumentId(new_id()), title, None)
 
     def publish(self, now: datetime) -> None:
-        if not self.title.strip():                                     # the rule: a document needs a title
+        # the rule: a document needs a title
+        if not self.title.strip():
             raise DocumentIncomplete(self.id)
         self.published_at = now
 ```
@@ -374,16 +386,19 @@ class DocumentController:
     def publish(self, cmd: PublishDocument) -> PublishResult:
         try:
             view = self._service.publish(cmd.id)
-        except DocumentNotFound:                         # exception -> Result
+        # exception -> Result
+        except DocumentNotFound:
             return Missing()
         except DocumentIncomplete as e:
             return Rejected(e.reason)
-        return Published(view)                           # the service built the DTO
+        # the service built the DTO
+        return Published(view)
 
     def create(self, cmd: CreateDocument) -> CreateResult:
         try:
             view = self._service.create(cmd.title)
-        except ContentRejected as e:                     # raised after another module said no, see section 6
+        # raised after another module said no, see section 6
+        except ContentRejected as e:
             return Rejected(e.reason)
         return Created(view)
 ```
@@ -409,25 +424,34 @@ from app.modules.documents.application.ports.content_review import ContentReview
 from app.modules.documents.application.ports.document_repo import DocumentRepo
 
 class DocumentService:
-    def __init__(self, repo: DocumentRepo, review: ContentReview, clock: Clock):   # review: another module, see section 6
+    # review: another module, see section 6
+    def __init__(self, repo: DocumentRepo, review: ContentReview, clock: Clock):
         self._repo, self._review, self._clock = repo, review, clock
 
     def publish(self, id: DocumentId) -> DocumentView:
-        doc = self._repo.get(id)                                 # load
+        # load
+        doc = self._repo.get(id)
         if doc is None:
-            raise DocumentNotFound(id)                           # precondition: it must exist
-        doc.publish(self._clock.now())                           # the domain decides if it is legal
-        self._repo.save(doc)                                     # persist
+            # precondition: it must exist
+            raise DocumentNotFound(id)
+        # the domain decides if it is legal
+        doc.publish(self._clock.now())
+        # persist
+        self._repo.save(doc)
         return self._view(doc)
 
     def create(self, title: str) -> DocumentView:
-        match self._review.review(title):                        # another module, through a port (section 6)
-            case Denied(why): raise ContentRejected(why)         # the controller maps this to Rejected
+        # another module, through a port (section 6)
+        match self._review.review(title):
+            # the controller maps this to Rejected
+            case Denied(why): raise ContentRejected(why)
         doc = Document.new(title)
-        self._repo.save(doc)                                     # persist
+        # persist
+        self._repo.save(doc)
         return self._view(doc)
 
-    def _view(self, doc: Document) -> DocumentView:      # the DTO is built here: contract/ cannot import the entity
+    # the DTO is built here: contract/ cannot import the entity
+    def _view(self, doc: Document) -> DocumentView:
         return DocumentView(id=doc.id, title=doc.title)
 ```
 
@@ -482,10 +506,13 @@ Code that implements this module's ports against a real system, using `platform/
 # modules/documents/adapters/db_document_repo.py
 from app.modules.documents.domain.document import Document
 from app.modules.documents.domain.values import DocumentId
-from app.platform.sql import Session       # the engine and sessions are platform clients
-from app.platform.sql.tables.documents import DocumentRow   # the table model, defined once in platform/
+# the engine and sessions are platform clients
+from app.platform.sql import Session
+# the table model, defined once in platform/
+from app.platform.sql.tables.documents import DocumentRow
 
-class DbDocumentRepo:                      # satisfies DocumentRepo
+# satisfies DocumentRepo
+class DbDocumentRepo:
     def __init__(self, session: Session): self._s = session
 
     def get(self, id: DocumentId) -> Document | None:
@@ -495,10 +522,12 @@ class DbDocumentRepo:                      # satisfies DocumentRepo
     def save(self, doc: Document) -> None:
         self._s.merge(self._from_domain(doc))
 
-    def _to_domain(self, row: DocumentRow) -> Document:   # table row in, domain entity out
+    # table row in, domain entity out
+    def _to_domain(self, row: DocumentRow) -> Document:
         return Document(DocumentId(row.id), row.title, row.published_at)
 
-    def _from_domain(self, doc: Document) -> DocumentRow: # domain entity in, table row out
+    # domain entity in, table row out
+    def _from_domain(self, doc: Document) -> DocumentRow:
         return DocumentRow(id=doc.id, title=doc.title, published_at=doc.published_at)
 ```
 
@@ -546,8 +575,10 @@ Primitives with no business meaning: typed-id helpers, the base error hierarchy,
 def new_id() -> UUID: return uuid4()
 
 # kernel/errors.py
-class DomainError(Exception):      # the base of every module's errors; it names no module's thing
-    reason: str                    # a message safe to show the caller
+# the base of every module's errors; it names no module's thing
+class DomainError(Exception):
+    # a message safe to show the caller
+    reason: str
 class NotFound(DomainError): ...
 
 # kernel/time.py
@@ -555,7 +586,8 @@ class Clock(Protocol):
     def now(self) -> datetime: ...
 
 # kernel/logic/text.py: a pure function two modules need
-def normalized(title: str) -> str:     # documents and moderation both compare titles this way
+# documents and moderation both compare titles this way
+def normalized(title: str) -> str:
     return " ".join(title.split()).casefold()
 
 def same_title(one: str, other: str) -> bool:
@@ -576,7 +608,8 @@ Clients and engines for technology used by several modules and owned by none: th
 # platform/email/smtp_client.py
 import smtplib
 
-class SmtpClient:                  # knows SMTP and no module: a module's adapter turns its own words into this call
+# knows SMTP and no module: a module's adapter turns its own words into this call
+class SmtpClient:
     def __init__(self, host: str, sender: str): self._host, self._sender = host, sender
 
     def send(self, to: str, subject: str, body: str) -> None:
@@ -586,11 +619,13 @@ class SmtpClient:                  # knows SMTP and no module: a module's adapte
 # platform/clock.py
 from datetime import UTC, datetime
 
-class SystemClock:                 # the real time, read from the machine; it has the shape of kernel's Clock
+# the real time, read from the machine; it has the shape of kernel's Clock
+class SystemClock:
     def now(self) -> datetime: return datetime.now(UTC)
 
 # platform/sql/tables/documents.py: columns only, no module's types
-class DocumentRow(SQLModel, table=True):   # the table model: the database's shape, defined once
+# the table model: the database's shape, defined once
+class DocumentRow(SQLModel, table=True):
     __tablename__ = "documents"
     id: UUID = Field(primary_key=True)
     title: str
@@ -613,20 +648,25 @@ from typer import Context
 from app.modules.documents.application.controller import DocumentController
 
 def documents_controller(ctx: Context) -> DocumentController:
-    return ctx.obj.documents           # bootstrap/ passes the App as the context object
+    # bootstrap/ passes the App as the context object
+    return ctx.obj.documents
 
 # cli/commands/documents.py
 from app.modules.documents.contract import PublishDocument, DocumentId, Published, Missing, Rejected
 from app.cli.dependencies import documents_controller
-from app.cli.terminal import echo, fail          # cli/terminal.py: the output helpers
+# the output helpers: cli/terminal.py
+from app.cli.terminal import echo, fail
 
-app = Typer()                              # bootstrap/ adds this group to the program's Typer
+# bootstrap/ adds this group to the program's Typer
+app = Typer()
 
 @app.command()
 def publish(ctx: Context, id: UUID) -> None:
     documents = documents_controller(ctx)
-    result = documents.publish(PublishDocument(DocumentId(id)))                 # controller call
-    match result:                                # the command branches on the Result
+    # controller call
+    result = documents.publish(PublishDocument(DocumentId(id)))
+    # the command branches on the Result
+    match result:
         case Published(view): echo(f"Published {view.title}")
         case Missing():       fail("No such document", code=1)
         case Rejected(why):   fail(why, code=2)
@@ -656,12 +696,15 @@ from app.modules.documents.application.services.document_service import Document
 # ... and the same three imports for moderation: DbFlagRepo, ModerationService, ModerationController
 
 def build_documents(session: Session, clock: Clock, review: ContentReview) -> DocumentController:
-    repo = DbDocumentRepo(session)                             # the adapter fills the port
-    service = DocumentService(repo, review, clock)             # injected into the service
+    # the adapter fills the port
+    repo = DbDocumentRepo(session)
+    # injected into the service
+    service = DocumentService(repo, review, clock)
     return DocumentController(service)
 
 def build_moderation(session: Session) -> ModerationController:
-    repo = DbFlagRepo(session)                                 # the same shape for every module
+    # the same shape for every module
+    repo = DbFlagRepo(session)
     service = ModerationService(repo)
     return ModerationController(service)
 
@@ -671,21 +714,27 @@ from app.modules.documents.adapters.moderation_content_review import ModerationC
 from app.modules.documents.application.controller import DocumentController
 from app.platform.clock import SystemClock
 from app.platform.sql import Session, create_engine
-from app.bootstrap.settings import Settings    # bootstrap/settings.py: reads the environment
+# reads the environment: bootstrap/settings.py
+from app.bootstrap.settings import Settings
 from app.bootstrap.wiring import build_documents, build_moderation
 
+# what main holds on to
 @dataclass
-class App:                              # what main holds on to
+class App:
     cli: Typer
     documents: DocumentController
 
 def build_app(settings: Settings) -> App:
-    engine = create_engine(settings.database_url)    # from platform/sql
+    # from platform/sql
+    engine = create_engine(settings.database_url)
     session = Session(engine)
-    clock = SystemClock()                            # from platform/, used as the kernel's Clock
+    # from platform/, used as the kernel's Clock
+    clock = SystemClock()
     moderation = build_moderation(session)
-    documents = build_documents(session, clock, review=ModerationContentReview(moderation))   # an adapter wraps the provider's controller
-    cli = Typer()                                    # the program's own app object
+    # an adapter wraps the provider's controller
+    documents = build_documents(session, clock, review=ModerationContentReview(moderation))
+    # the program's own app object
+    cli = Typer()
     cli.add_typer(documents_commands.app, name="documents")
     return App(cli=cli, documents=documents)
 
@@ -695,17 +744,20 @@ from app.bootstrap.settings import Settings
 
 def main() -> None:
     app = build_app(Settings.from_env())
-    app.cli(obj=app)                   # the App is the context object that cli/dependencies.py reads
+    # the App is the context object that cli/dependencies.py reads
+    app.cli(obj=app)
 ```
 
 The schema is created by the migrations, one file per change, applied in order. A migration builds its tables from the table models in `platform/`, which SQLModel turns into DDL:
 
 ```python
 # bootstrap/migrations/0001_create_documents.py
-from app.platform.sql.tables.documents import DocumentRow   # importing it registers its table
+# importing it registers its table
+from app.platform.sql.tables.documents import DocumentRow
 
 def upgrade(engine: Engine) -> None:
-    SQLModel.metadata.create_all(engine, tables=[DocumentRow.__table__])   # SQLModel builds the table from the table model
+    # SQLModel builds the table from the table model
+    SQLModel.metadata.create_all(engine, tables=[DocumentRow.__table__])
 ```
 
 > [!NOTE]

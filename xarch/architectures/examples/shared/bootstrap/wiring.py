@@ -7,11 +7,14 @@ from app.modules.documents.application.services.document_service import Document
 # ... and the same three imports for moderation: DbFlagRepo, ModerationService, ModerationController
 
 def build_documents(session: Session, clock: Clock, review: ContentReview) -> DocumentController:
-    repo = DbDocumentRepo(session)                             # the adapter fills the port
-    service = DocumentService(repo, review, clock)             # injected into the service
+    # the adapter fills the port
+    repo = DbDocumentRepo(session)
+    # injected into the service
+    service = DocumentService(repo, review, clock)
     return DocumentController(service)
 
 def build_moderation(session: Session) -> ModerationController:
-    repo = DbFlagRepo(session)                                 # the same shape for every module
+    # the same shape for every module
+    repo = DbFlagRepo(session)
     service = ModerationService(repo)
     return ModerationController(service)

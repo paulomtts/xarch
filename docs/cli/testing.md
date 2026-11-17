@@ -283,7 +283,8 @@ def a_document(id: DocumentId = A_ID, title: str = "Hello", published_at: dateti
 
 # tests/modules/documents/application/helpers.py
 def controller(repo: Iterable[Document] = (), review: Allowed | Denied = Allowed(), now: datetime = NOW) -> DocumentController:
-    service = DocumentService(FakeDocumentRepo(repo), FakeContentReview(review), FakeClock(now))   # each argument is a fake's start state
+    # each argument is a fake's start state
+    service = DocumentService(FakeDocumentRepo(repo), FakeContentReview(review), FakeClock(now))
     return DocumentController(service)
 
 # tests/cli/conftest.py
@@ -292,7 +293,8 @@ def client():
     def build(controller: DocumentController):
         cli = Typer()
         cli.add_typer(documents_commands.app, name="documents")
-        return partial(CliRunner().invoke, cli, obj=App(cli=cli, documents=controller))   # the command gets the fake controller
+        # the command gets the fake controller
+        return partial(CliRunner().invoke, cli, obj=App(cli=cli, documents=controller))
     return build
 ```
 

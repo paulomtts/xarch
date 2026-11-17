@@ -283,7 +283,8 @@ def a_document(id: DocumentId = A_ID, title: str = "Hello", published_at: dateti
 
 # tests/modules/documents/application/helpers.py
 def controller(repo: Iterable[Document] = (), review: Allowed | Denied = Allowed(), now: datetime = NOW) -> DocumentController:
-    service = DocumentService(FakeDocumentRepo(repo), FakeContentReview(review), FakeClock(now))   # each argument is a fake's start state
+    # each argument is a fake's start state
+    service = DocumentService(FakeDocumentRepo(repo), FakeContentReview(review), FakeClock(now))
     return DocumentController(service)
 
 # tests/web/conftest.py
@@ -292,7 +293,8 @@ def client():
     def build(controller: DocumentController) -> TestClient:
         app = FastAPI()
         app.include_router(router)
-        app.dependency_overrides[documents_controller] = lambda: controller          # the route gets the fake controller
+        # the route gets the fake controller
+        app.dependency_overrides[documents_controller] = lambda: controller
         return TestClient(app)
     return build
 ```

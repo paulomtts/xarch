@@ -12,6 +12,8 @@ All notable changes to this project are written here. The format follows
   `contract` and `kernel` say more exactly what decides a case (where an id and a module's errors are defined, who
   fetches a controller for a command or a route and who starts the program, what is a primitive and what is a shared
   function), and seven short example files say why they sit where they do.
+- In the bundled example files, and so in the docs `init` writes from them, every comment sits on a line of its
+  own, above the code it explains, never at the end of a code line; the words of each are kept.
 
 ## [0.1.0] - 2026-11-17
 

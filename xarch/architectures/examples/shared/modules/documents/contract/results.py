@@ -5,8 +5,9 @@ from app.modules.documents.contract.views import DocumentView
 class Published: view: DocumentView
 @dataclass(frozen=True)
 class Missing: ...
+# shared with the create Result
 @dataclass(frozen=True)
-class Rejected: reason: str          # shared with the create Result
+class Rejected: reason: str
 
 PublishResult = Published | Missing | Rejected
 

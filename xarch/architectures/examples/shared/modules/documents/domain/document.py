@@ -8,9 +8,11 @@ class Document:
 
     @classmethod
     def new(cls, title: str) -> "Document":
-        return cls(DocumentId(new_id()), title, None)                  # new_id comes from kernel/
+        # new_id comes from kernel/
+        return cls(DocumentId(new_id()), title, None)
 
     def publish(self, now: datetime) -> None:
-        if not self.title.strip():                                     # the rule: a document needs a title
+        # the rule: a document needs a title
+        if not self.title.strip():
             raise DocumentIncomplete(self.id)
         self.published_at = now

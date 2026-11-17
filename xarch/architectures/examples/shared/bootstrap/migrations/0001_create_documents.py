@@ -1,4 +1,6 @@
-from app.platform.sql.tables.documents import DocumentRow   # importing it registers its table
+# importing it registers its table
+from app.platform.sql.tables.documents import DocumentRow
 
 def upgrade(engine: Engine) -> None:
-    SQLModel.metadata.create_all(engine, tables=[DocumentRow.__table__])   # SQLModel builds the table from the table model
+    # SQLModel builds the table from the table model
+    SQLModel.metadata.create_all(engine, tables=[DocumentRow.__table__])

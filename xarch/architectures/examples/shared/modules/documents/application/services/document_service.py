@@ -7,23 +7,32 @@ from app.modules.documents.application.ports.content_review import ContentReview
 from app.modules.documents.application.ports.document_repo import DocumentRepo
 
 class DocumentService:
-    def __init__(self, repo: DocumentRepo, review: ContentReview, clock: Clock):   # review: another module, see section 6
+    # review: another module, see section 6
+    def __init__(self, repo: DocumentRepo, review: ContentReview, clock: Clock):
         self._repo, self._review, self._clock = repo, review, clock
 
     def publish(self, id: DocumentId) -> DocumentView:
-        doc = self._repo.get(id)                                 # load
+        # load
+        doc = self._repo.get(id)
         if doc is None:
-            raise DocumentNotFound(id)                           # precondition: it must exist
-        doc.publish(self._clock.now())                           # the domain decides if it is legal
-        self._repo.save(doc)                                     # persist
+            # precondition: it must exist
+            raise DocumentNotFound(id)
+        # the domain decides if it is legal
+        doc.publish(self._clock.now())
+        # persist
+        self._repo.save(doc)
         return self._view(doc)
 
     def create(self, title: str) -> DocumentView:
-        match self._review.review(title):                        # another module, through a port (section 6)
-            case Denied(why): raise ContentRejected(why)         # the controller maps this to Rejected
+        # another module, through a port (section 6)
+        match self._review.review(title):
+            # the controller maps this to Rejected
+            case Denied(why): raise ContentRejected(why)
         doc = Document.new(title)
-        self._repo.save(doc)                                     # persist
+        # persist
+        self._repo.save(doc)
         return self._view(doc)
 
-    def _view(self, doc: Document) -> DocumentView:      # the DTO is built here: contract/ cannot import the entity
+    # the DTO is built here: contract/ cannot import the entity
+    def _view(self, doc: Document) -> DocumentView:
         return DocumentView(id=doc.id, title=doc.title)

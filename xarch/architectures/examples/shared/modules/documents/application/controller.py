@@ -11,15 +11,18 @@ class DocumentController:
     def publish(self, cmd: PublishDocument) -> PublishResult:
         try:
             view = self._service.publish(cmd.id)
-        except DocumentNotFound:                         # exception -> Result
+        # exception -> Result
+        except DocumentNotFound:
             return Missing()
         except DocumentIncomplete as e:
             return Rejected(e.reason)
-        return Published(view)                           # the service built the DTO
+        # the service built the DTO
+        return Published(view)
 
     def create(self, cmd: CreateDocument) -> CreateResult:
         try:
             view = self._service.create(cmd.title)
-        except ContentRejected as e:                     # raised after another module said no, see section 6
+        # raised after another module said no, see section 6
+        except ContentRejected as e:
             return Rejected(e.reason)
         return Created(view)

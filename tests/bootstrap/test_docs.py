@@ -1,5 +1,7 @@
 """The docs of the bundled profiles, as the wired spec module publishes them: every document and folder of
 docs/project/, with templates."""
+import re
+
 import pytest
 
 from xarch.bootstrap.wiring import build_controllers
@@ -371,10 +373,8 @@ def block(text: str, header: str) -> str:
     The last one: an earlier mention may only excerpt the file.
     """
     body = text.split(f"# {header}")[-1]
-    cut = [i for i in (body.find("\n# modules/"), body.find("\n# bootstrap/"), body.find("\n# cli/"),
-                       body.find("\n# web/"), body.find("\n# kernel/"), body.find("\n# platform/"), body.find("\n```"))
-           if i != -1]
-    return body[:min(cut)]
+    cut = [found.start() for found in re.finditer(r"\n# (?:modules|bootstrap|cli|web|kernel|platform)/\S*\.py\b", body)]
+    return body[:min([*cut, *([body.find("\n```")] if "\n```" in body else [])])]
 
 
 @pytest.mark.parametrize("profile", ["cli", "web"])
