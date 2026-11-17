@@ -159,7 +159,8 @@ def standing_lines(stood: PlacementStanding) -> list[str]:
     """How placement stands, held to its examples, as a review says it under placement."""
     if stood.state != CALIBRATED:
         return [f"  held to its examples: no: {stood.state}: {stood.why}; run `{_to_run('placement')}`"]
-    lines = [f"  held to its examples: yes; {SANITY}"]
+    disagree = sum(part.verdict == DISAGREE for part in stood.parts)
+    lines = [f"  held to its examples: yes, {disagree} of {len(stood.parts)} parts disagree; {SANITY}"]
     lines += [f"  placement of {part.part}: examples disagree ({part.crossed}): its files are read, never marked "
               "doubtful" for part in stood.parts if part.verdict == DISAGREE]
     return lines

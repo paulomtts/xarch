@@ -750,7 +750,8 @@ lying in a part, read as clean, and the profile's own under `evals.placement.exa
 file's path puts it in a part it does not belong in; a path lying in no part is refused at its address). Each is asked placement's question once. A part passes when its
 clean examples read at or above its line, a flagged one lying in it below it, and every other part's example below its
 line on it (from the same answers); one with no example of its own is measured elsewhere only. A part whose examples
-disagree is said with the example that crossed, and review then reads its files but never marks them doubtful. The
+disagree is said with the example that crossed, and review then reads its files but never marks them doubtful, listing
+them under their own heading (not read against a line), never as read as placed; it says how many parts disagree. The
 examples are short, and short files read lower: this is a sanity check of the litmus texts, not a way to set lines,
 and a disagreement does not fail the calibration. Review says, under placement, whether it was held to its examples,
 and when it was not, what to run.

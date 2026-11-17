@@ -17,19 +17,24 @@ from xarch.cli.reports.review_report import (
 from xarch.modules.review.contract import (
     BY_LIST,
     BY_PATHS,
+    CALIBRATED,
+    DISAGREE,
     FAILED,
     IMPORTS,
     MISSING,
     NEVER,
     NO_CONTEXT,
     NOT_CACHED,
+    PASSED,
     SMALL,
     Choice,
     LeftOut,
     Option,
+    PartHeld,
     PartRead,
     PieceReading,
     PiecesRead,
+    PlacementStanding,
     Reading,
     Request,
     ReviewPlanned,
@@ -319,3 +324,21 @@ def test_a_dry_run_lists_the_paths_of_review_never_and_says_each_that_matched_no
                              "app, without its folder's name)")
     assert json.loads(plan_document("cli", held))["never"] == [{"path": "app/modules/x.py", "matched": False},
                                                                {"path": "**/k.py", "matched": True}]
+
+
+def test_a_file_of_a_part_whose_examples_disagree_is_not_said_to_read_as_placed_and_the_disagreement_is_counted():
+    low = replace(PLACED, probability=0.05, doubtful=False)
+    stood = PlacementStanding(CALIBRATED, "", (PartHeld("domain", DISAGREE, "it crossed", 1), PartHeld("adapters", PASSED)))
+    lines = reading_lines(replace(READ, readings=(DOUBTFUL, low), calibration=stood))
+    assert "placement: reads as placed (lowest first)" not in lines
+    at = lines.index("placement: not read against a line: the examples of domain disagree (lowest first)")
+    assert lines[at + 1].startswith("  app/modules/documents/domain/document.py   domain   0.05")
+    assert any(line.startswith("  held to its examples: yes, 1 of 2 parts disagree;") for line in lines)
+
+
+def test_a_reading_in_which_nothing_was_answered_says_so_and_not_that_nothing_reads_as_doubtful():
+    nothing = replace(READ, readings=(), unasked=(Unasked("app/a.py", NOT_CACHED), Unasked("app/c.py", NOT_CACHED)))
+    assert "  none of the 2 file(s) judged was answered" in reading_lines(nothing)
+    assert not any("reads as doubtful here" in line for line in reading_lines(nothing))
+    some = replace(READ, readings=(PLACED,), unasked=(Unasked("app/c.py", NOT_CACHED),))
+    assert "  no file judged reads as doubtful here (1 of 2 answered)" in reading_lines(some)

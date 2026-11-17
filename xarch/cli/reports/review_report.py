@@ -24,6 +24,7 @@ from xarch.modules.review.contract import (
     BY_ALL,
     BY_LIST,
     BY_PATHS,
+    DISAGREE,
     EXCLUDED,
     FEWEST_SUMMED,
     IMPORTS,
@@ -156,18 +157,26 @@ def reading_lines(read: ReviewReading) -> list[str]:
     if read.sent:
         lines.append(f"Sent {read.sent} request(s) to {read.sends.service} ({read.sends.at}): "
                      f"{read.input_tokens:,} input tokens, {read.output_tokens:,} output tokens.")
+    disagreeing = {part.part for part in read.calibration.parts if part.verdict == DISAGREE}
     doubtful = [item for item in read.readings if item.doubtful]
-    placed = [item for item in read.readings if not item.doubtful]
+    placed = [item for item in read.readings if not item.doubtful and item.part not in disagreeing]
+    unlined = [item for item in read.readings if not item.doubtful and item.part in disagreeing]
     lines += ["", "placement: doubtful here (probability on the part the file sits in, below that part's line)",
               f"  based on: {BASED_ON}"]
     for item in doubtful:
         lines += [_reading(item),
                   f"      what to do: read it against the litmus of {item.part} (`xarch where {item.file}`). {TO_DO}"]
-    if not doubtful:
-        lines.append("  no file judged reads as doubtful here")
+    if not read.readings and judged:
+        lines.append(f"  none of the {judged} file(s) judged was answered")
+    elif not doubtful:
+        answered = f" ({len(read.readings)} of {judged} answered)" if len(read.readings) < judged else ""
+        lines.append(f"  no file judged reads as doubtful here{answered}")
     lines += standing_lines(read.calibration)
     if placed:
         lines += ["", "placement: reads as placed (lowest first)", *(_reading(item) for item in placed)]
+    for part in sorted({item.part for item in unlined}):
+        lines += ["", f"placement: not read against a line: the examples of {part} disagree (lowest first)",
+                  *(_reading(item) for item in unlined if item.part == part)]
     for pieces in read.pieces:
         lines += ["", *_pieces(pieces)]
     if any(item.small for item in read.readings):
