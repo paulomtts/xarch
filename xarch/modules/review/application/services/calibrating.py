@@ -6,8 +6,8 @@ from xarch.modules.review.application.logic.answers import cache_folder, record_
 from xarch.modules.review.application.logic.evaluation import floor, held_as, orders, verdict
 from xarch.modules.review.application.logic.judging import asked_of, example_value, unasked_of
 from xarch.modules.review.application.logic.masking import masked
+from xarch.modules.review.application.logic.placing import groups, verdicts
 from xarch.modules.review.application.logic.placing import held_as as held_as_placed
-from xarch.modules.review.application.logic.placing import verdicts
 from xarch.modules.review.application.logic.questions import characters, placement, request, tokens
 from xarch.modules.review.application.logic.sending import needs_key, unusable_key, why_unasked
 from xarch.modules.review.application.logic.withholding import examples_held, files_held, kept_examples, kept_files, too_few
@@ -82,7 +82,8 @@ class CalibrationService:
                           for (item, order), kept in zip(each, later, strict=True))
             sent = sum(characters((item,), order) for item, order in each)
             return CalibrationPlanned(shown, (*((PLACEMENT,) if placed else ()), *(asked.asked for asked in evals)),
-                                      sent, tokens(sent), words.mask, sends, withheld, short)
+                                      sent, tokens(sent), words.mask, sends, withheld, short,
+                                      groups(words.parts) if placed else ())
         if needs_key(later, cmd.offline, sends.keyed):
             raise NoKey(sends.key)
         if unusable := unusable_key(later, cmd.offline, sends):

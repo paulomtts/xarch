@@ -15,7 +15,7 @@ from xarch.modules.review.application.logic.doubt import (
 from xarch.modules.review.application.logic.evaluation import orders
 from xarch.modules.review.application.logic.judging import asked_of, below_app, in_order, standing, unasked_of, went
 from xarch.modules.review.application.logic.masking import masked
-from xarch.modules.review.application.logic.placing import held_as, marked, undoubted
+from xarch.modules.review.application.logic.placing import groups, held_as, marked, undoubted
 from xarch.modules.review.application.logic.placing import standing as placed
 from xarch.modules.review.application.logic.questions import (
     characters,
@@ -94,7 +94,7 @@ class ReviewService:
                                  tokens(sent), words.mask, sends, len(reordered(question)),
                                  piece.ask if cmd.pieces else "", cmd.context,
                                  in_order(idle + tuple(s for _, s, _ in evals), words.evals), words.never,
-                                 unmatched(found, words.never))
+                                 unmatched(found, words.never), groups(words.parts))
         others = reordered(question)
         again = tuple(answering.kept(going, item.text, other) for item, answer in zip(requests, kept, strict=True)
                       if answer is not None and asked_again(answer, parts[item.part]) for other in others)
@@ -126,7 +126,8 @@ class ReviewService:
                 if answer is None:
                     said = answering.refusal(going, item.text, (piece,))
                     unasked.append(Unasked(item.file, why_unasked(bool(going.failure), said), item.piece, said=said))
-            ranked_pieces.append(pieces_read(file, items, tuple(pieces), too_small, cmd.context))
+            ranked_pieces.append(pieces_read(file, items, tuple(pieces), too_small, cmd.context,
+                                             parts[file.part].alike))
         ran: list[EvalRead] = []
         for asked, stood, items in evals:
             answered: list[tuple[Answer, ...] | None] = []

@@ -275,7 +275,7 @@ keys:
     meaning: "what `xarch review` asks: placement, and evals of your own"
     accepts: >-
       a map of the evals review asks, by id: `placement`, the eval review always asks (which part a file belongs in,
-      by the parts' litmus tests), whose `lines` it tunes; and under any other id of your own (lowercase words joined
+      by the parts' litmus tests), whose `lines` and `alike` it tunes; and under any other id of your own (lowercase words joined
       by `-`) an eval of the profile's own, a map of slots: `ask` the question, `answer` its form, `yes` and `no` what
       each answer means (yes-no only), `reads` what one question is asked of, `in` the files it is asked in, `keep` the
       filters a file, class or function must pass, `line` the value from which a reading is listed, `message` and `fix` what
@@ -1155,8 +1155,9 @@ keys:
   evals.placement:
     meaning: how review reads placement's answers
     accepts: >-
-      a map {lines, examples}: the line of each part, below which a file reads as doubtful where it sits, and the
-      examples `xarch review calibrate` holds placement to besides the docs' examples
+      a map {lines, alike, examples}: the line of each part, below which a file reads as doubtful where it sits, the
+      groups of parts one file cannot tell apart, and the examples `xarch review calibrate` holds placement to besides
+      the docs' examples
     example: |
       evals:
         placement:
@@ -1176,6 +1177,26 @@ keys:
       evals:
         placement:
           lines: {documents: 0.2}
+  evals.placement.alike:
+    meaning: the groups of parts one file cannot tell apart
+    accepts: >-
+      a list of groups, each a list of two parts or more, such as two parts of pure functions that differ only in how
+      many modules use them, which no single file shows. A file in a part of a group is read on the sum of the
+      probabilities on the group's parts, against its own part's line: for doubt, for asking again near the line, for
+      the order of the readings and for the summary of each part, its pieces ranked on the same sum; every reading
+      says the parts counted with its own, and the JSON keeps the probability on each part as answered. `xarch review
+      calibrate` holds each part of a group as one with the others: an example's reading on its own part is the
+      group's sum, an example of one part reading at or above the line of another part of its group crosses nothing,
+      and an example of a part outside the group is held below a part's line on the group's sum; a record of
+      placement held under other groups is stale. Refused: a name that is no part, a group of fewer than two parts or
+      naming a part twice, a part in two groups, and parts that differ in `forbidden`, `holds` or `immutable`
+      (`check` tells those apart by rule, so they are not alike). Name only parts that truly cannot be told apart
+      from one file: a group hides every doubt between its parts
+    example: |
+      <<two>>
+      evals:
+        placement:
+          alike: [[core, documents]]
   evals.placement.examples:
     meaning: the examples placement is held to, besides the docs'
     accepts: >-

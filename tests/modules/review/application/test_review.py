@@ -10,6 +10,7 @@ from tests.modules.review.application.helpers import controller
 from tests.modules.review.builders import BODY, OWN, PARTS, found
 from xarch.kernel.source import CommentSpan
 from xarch.modules.review.contract import (
+    BY_ALL,
     BY_PATHS,
     FAILED,
     IMPORTS,
@@ -40,7 +41,7 @@ from xarch.modules.review.contract import (
     TooManyFiles,
     Unasked,
 )
-from xarch.modules.review.domain.values import Answer, CodeFile, Found, Span, Words
+from xarch.modules.review.domain.values import Answer, CodeFile, Found, PartText, Span, Words
 
 CWD, APP = Path("/src"), Path("/src/app")
 FOLDER = Path("/src/.xarch/cache/review")
@@ -515,3 +516,74 @@ def test_a_comment_inside_a_piece_or_in_the_opening_lines_sent_before_it_is_cut_
         ("second", (124, 244)), ("first", (3, 123)), ("third, Tiny", (245, 367))]
     assert model.asked[1:] == [OPENING + first, OPENING + SECOND, OPENING + THIRD + TINY]
     assert not any("the ids" in sent or "first is domain" in sent for sent in model.asked)
+
+
+KERNEL = PartText("kernel", "kernel/", "Is it shared by every module?", "shared code", 0.3, alike=("domain",))
+ALIKE = Words((replace(PARTS[0], alike=("kernel",)), PARTS[1], KERNEL))
+"""A profile whose domain and kernel one file cannot tell apart."""
+SPLIT = Answer("m-1.0.1", (("domain", 0.25), ("main", 0.25), ("kernel", 0.5)), 100, 5)
+"""An answer that puts a quarter on domain alone, within the band of its line, and three quarters on its group."""
+SUMMED = Reading(DOCUMENT.file, "domain", len(SENT), 0.75, 0.3, False, SPLIT.probabilities, "m-1.0.1", small=True,
+                 alike=("kernel",))
+
+
+@dataclass(frozen=True)
+class Alike:
+    """What the fakes hold for a profile reading domain and kernel alike: the files found at each path; the answers a
+    run before this one kept, asked of its decision model with the same profile; and the answers the decision model
+    gives now."""
+    found: dict[str, Found] = field(default_factory=lambda: {"app/x.py": Found((DOCUMENT,)), "/src/app": Found((DOCUMENT,))})
+    earlier: dict[str, Answer] = field(default_factory=dict)
+    answers: dict[str, Answer] = field(default_factory=dict)
+
+
+def alike(given: Alike, when: Review):
+    code, profile, answers = FakeCode(given.found), FakeProfile({"alike": ALIKE}), FakeAnswers()
+    if given.earlier:
+        controller(code, profile, FakeDecisionModel(given.earlier), answers).review(review("app/x.py", profile="alike"))
+    model = FakeDecisionModel(given.answers)
+    return controller(code, profile, model, answers).review(replace(when, profile="alike")), model
+
+
+@pytest.mark.parametrize("given, when, then", [
+    pytest.param(Alike(answers={SENT: SPLIT}), review("app/x.py"),
+                 ReviewReading((BY_PATHS,), 1, (SUMMED,), (), (), SENDS, 1, 0, 100, 5, "", ("main",), read(1, 0),
+                               answered_by=("m-1.0.1",)),
+                 id="a file of a part read alike is read on its group's sum, far from its line, and asked once"),
+    pytest.param(Alike(earlier={SENT: SPLIT}), review("app/x.py", offline=True),
+                 ReviewReading((BY_PATHS,), 1, (SUMMED,), (), (), SENDS, 0, 1, 0, 0, "", ("main",), read(1, 0),
+                               answered_by=("m-1.0.1",)),
+                 id="offline, the answer kept is read on the group's sum alike"),
+    pytest.param(Alike(answers={SENT: SPLIT}), review(every=True),
+                 ReviewReading((BY_ALL,), 1, (SUMMED,), (), (), SENDS, 1, 0, 100, 5, "", ("main",), read(1, 0),
+                               answered_by=("m-1.0.1",)),
+                 id="every file of the app is read on its group's sum alike"),
+    pytest.param(Alike(), review("app/x.py", dry_run=True),
+                 ReviewPlanned((BY_PATHS,), 1, (replace(REQUEST, body=f"{PLACEMENT} 3 {SENT}"),), (),
+                               replace(QUESTION, options=(*QUESTION.options, Option("kernel", KERNEL.litmus))),
+                               ("main",), CHARACTERS + len("kernel") + len(KERNEL.litmus),
+                               -(-(CHARACTERS + len("kernel") + len(KERNEL.litmus)) // 4), (), SENDS, 2,
+                               alike=(("domain", "kernel"),)),
+                 id="a dry run says the groups of parts read alike"),
+])
+def test_review_with_parts_read_alike(given, when, then):
+    assert alike(given, when)[0] == then
+
+
+def test_a_file_of_a_part_read_alike_is_not_asked_again_though_its_own_part_alone_is_near_its_line():
+    _, model = alike(Alike(answers={SENT: SPLIT}), review("app/x.py"))
+    assert model.asked == [SENT]
+
+
+def test_the_pieces_of_a_file_of_a_part_read_alike_are_ranked_on_its_group_s_sum_and_say_so():
+    def split(own: float, other: float) -> Answer:
+        return Answer("m-1.0.1", (("domain", own), ("main", 1 - own - other), ("kernel", other)), 10, 1)
+
+    model = FakeDecisionModel({WHOLE: split(0.5, 0.5), FIRST: split(0.5, 0.25), SECOND: split(0.25, 0.0),
+                               THIRD + TINY: split(0.0, 0.5)})
+    found = controller(FakeCode({"app/p.py": Found((PIECED,))}), FakeProfile({"alike": ALIKE}), model,
+                       FakeAnswers()).review(review("app/p.py", profile="alike", pieces=True))
+    assert isinstance(found, ReviewReading)
+    (read,) = found.pieces
+    assert [(p.name, p.probability) for p in read.lowest] == [("second", 0.25), ("third, Tiny", 0.5), ("first", 0.75)]
+    assert read.alike == ("kernel",)

@@ -1,13 +1,14 @@
 """Placement held to its examples: the hash of what it is held as, each part's verdict (its clean examples at or above
-its line, a flagged one and every other part's example below it on it, none of its own measured elsewhere only), how
-it stands against its record, and a part whose examples disagree never marking its files doubtful."""
+its line, a flagged one and every other part's example below it on it, none of its own measured elsewhere only; a group
+of parts read alike held to its lines as one), how it stands against its record, and a part whose examples disagree
+never marking its files doubtful."""
 import hashlib
 import json
 from dataclasses import replace
 
 import pytest
 
-from xarch.modules.review.application.logic.placing import held_as, marked, standing, undoubted, verdicts
+from xarch.modules.review.application.logic.placing import groups, held_as, marked, standing, undoubted, verdicts
 from xarch.modules.review.domain.published import (
     CALIBRATED,
     DISAGREE,
@@ -76,8 +77,9 @@ HELD = PlacementHeld("h", "m-1", "m-1.2", (PartHeld("domain", DISAGREE, "it cros
     pytest.param(None, "h", "m-1", PlacementStanding(UNCALIBRATED, "it was never held to its examples"),
                  id="never held"),
     pytest.param(HELD, "h", "m-1", PlacementStanding(CALIBRATED, "", HELD.parts), id="held as it is now"),
-    pytest.param(HELD, "other", "m-1", PlacementStanding(STALE, "its parts, their texts, their lines or its examples "
-                                                                "changed since it was held to its examples"),
+    pytest.param(HELD, "other", "m-1", PlacementStanding(STALE, "its parts, their texts, their lines, the parts read "
+                                                                "alike or its examples changed since it was held to "
+                                                                "its examples"),
                  id="changed since"),
     pytest.param(HELD, "h", "m-2", PlacementStanding(STALE, "it was held to its examples by m-1, and m-2 is asked now"),
                  id="another model asked"),
@@ -118,3 +120,66 @@ def test_a_record_of_placement_held_before_review_masked_comments_is_stale():
     now = held_as(QUESTION, PARTS, examples, ("app",), ("Doc*",))
     assert now != old.held and standing(old, now, "m-1").state == STALE
     assert standing(replace(old, held=now), now, "m-1").state == CALIBRATED
+
+
+GROUPED = (PartText("domain", "domain/", "Is it a value?", "values", 0.3, alike=("kernel",)),
+           PartText("services", "services/", "Is it a use case?", "use cases", 0.3),
+           PartText("kernel", "kernel/", "Is it shared?", "shared", 0.2, alike=("domain",)))
+SHARED = CodeFile("kernel/ids.py", "kernel", "k\n")
+
+
+@pytest.mark.parametrize("clean, flagged, then", [
+    pytest.param(((VALUE, on(domain=0.2, kernel=0.3, services=0.5)), (SHARED, on(domain=0.6, kernel=0.1, services=0.3))),
+                 (),
+                 (PartHeld("domain", PASSED, "", 1, ("kernel",)), PartHeld("services", ELSEWHERE),
+                  PartHeld("kernel", PASSED, "", 1, ("domain",))),
+                 id="an example reads on its group's sum, and reading high on another part of its group crosses "
+                    "nothing"),
+    pytest.param(((VALUE, on(domain=0.1, kernel=0.1, services=0.8)),), (),
+                 (PartHeld("domain", DISAGREE, "clean example domain/value.py reads 0.20 summed with kernel, below its "
+                                               "line 0.30", 1, ("kernel",)),
+                  PartHeld("services", ELSEWHERE), PartHeld("kernel", ELSEWHERE, alike=("domain",))),
+                 id="a clean example whose group's sum is below its part's line"),
+    pytest.param(((VALUE, on(domain=0.9)), (CASE, on(domain=0.2, kernel=0.15, services=0.65)),
+                  (SHARED, on(kernel=0.9))), (),
+                 (PartHeld("domain", DISAGREE, "example services/case.py of services reads 0.35 on it summed with "
+                                               "kernel, not below its line 0.30", 1, ("kernel",)),
+                  PartHeld("services", PASSED, "", 1),
+                  PartHeld("kernel", DISAGREE, "example services/case.py of services reads 0.35 on it summed with "
+                                               "domain, not below its line 0.20", 1, ("domain",))),
+                 id="an example of a part outside the group claimed by the group's sum"),
+    pytest.param(((VALUE, on(domain=0.9)),), ((WRONG, on(domain=0.1, kernel=0.25, services=0.65)),),
+                 (PartHeld("domain", DISAGREE, "flagged example domain/case.py reads 0.35 summed with kernel, not below "
+                                               "its line 0.30", 2, ("kernel",)),
+                  PartHeld("services", ELSEWHERE), PartHeld("kernel", ELSEWHERE, alike=("domain",))),
+                 id="a flagged example lying in a part of a group reads on the group's sum"),
+])
+def test_each_part_of_a_group_read_alike_is_held_to_the_examples_with_the_others(clean, flagged, then):
+    assert verdicts(GROUPED, clean, flagged) == then
+
+
+def test_what_placement_is_held_as_changes_with_the_parts_read_alike_and_is_as_before_with_none():
+    examples = ((VALUE, CASE), (WRONG,))
+    plain = held_as(QUESTION, PARTS, examples, ("app",), ("Doc*",))
+    grouped = held_as(QUESTION, GROUPED, examples, ("app",), ("Doc*",))
+    assert plain == before_alike(QUESTION, PARTS, examples, ("app",), ("Doc*",))
+    assert grouped != plain
+    other = (GROUPED[0], replace(GROUPED[1], alike=("kernel",)), replace(GROUPED[2], alike=("domain", "services")))
+    assert held_as(QUESTION, other, examples, ("app",), ("Doc*",)) != grouped
+    assert standing(PlacementHeld(plain, "m-1", "m-1.2", ()), grouped, "m-1").state == STALE
+
+
+def before_alike(question: Choice, parts: tuple[PartText, ...], examples: tuple[tuple[CodeFile, ...], ...],
+                 roots: tuple[str, ...] = (), mask: tuple[str, ...] = ()) -> str:
+    """What placement was held as before a profile could read parts alike."""
+    canonical = json.dumps({"ask": question.ask, "options": [[o.name, o.description] for o in question.options],
+                            "masked": ["own-imports", "e-mail", "comments"], "roots": list(roots), "mask": list(mask),
+                            "lines": [[part.name, part.line] for part in parts],
+                            "examples": [[[e.file, e.part, e.text] for e in side] for side in examples]},
+                           ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def test_the_groups_read_alike_are_each_once_in_the_profile_s_order_of_their_first_part():
+    assert groups(GROUPED) == (("domain", "kernel"),)
+    assert groups(PARTS) == ()

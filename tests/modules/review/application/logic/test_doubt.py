@@ -1,5 +1,5 @@
-"""What a file's answer says: the probability on the part it sits in, doubtful below the line; and the readings
-ranked, the most doubtful first."""
+"""What a file's answer says: the probability on the part it sits in (summed over its group, for a part read alike with
+others), doubtful below the line; and the readings ranked, the most doubtful first."""
 import pytest
 
 from xarch.modules.review.application.logic.doubt import (
@@ -126,3 +126,41 @@ def test_fewer_than_two_pieces_judged_is_nothing_to_rank():
 def test_pieces_with_one_unanswered_are_not_ranked():
     found = pieces_read(FILE, (_piece("a", 1), _piece("b", 11)), (_on(0.2), None), 0, "imports")
     assert (found.lowest, found.answered, found.context) == ((), False, "imports")
+
+
+LOGIC = PartText("logic", "logic/", "Is it pure?", "functions", 0.3, alike=("kernel",))
+SPLIT = (("logic", 0.2), ("kernel", 0.25), ("main", 0.55))
+
+
+@pytest.mark.parametrize("part, then", [
+    pytest.param(LOGIC, (0.45, False, ("kernel",)), id="a part read alike with others reads the sum over its group"),
+    pytest.param(PartText("logic", "logic/", "Is it pure?", "functions", 0.3), (0.2, True, ()),
+                 id="a part read alike with none reads its own probability alone"),
+])
+def test_a_file_of_a_part_read_alike_is_read_on_the_sum_of_its_group_and_its_distribution_is_kept_as_answered(part,
+                                                                                                          then):
+    found = reading(Request("app/a.py", "logic", 1200, "text"), Answer("m", SPLIT), part)
+    assert (round(found.probability, 9), found.doubtful, found.alike) == then
+    assert found.distribution == SPLIT
+
+
+@pytest.mark.parametrize("probabilities, again", [
+    pytest.param((("logic", 0.1), ("kernel", 0.15), ("main", 0.75)), True,
+                 id="alone below the band, summed with its group within it"),
+    pytest.param((("logic", 0.3), ("kernel", 0.6), ("main", 0.1)), False,
+                 id="alone on the line, summed with its group above the band"),
+])
+def test_a_file_of_a_part_read_alike_is_asked_again_by_the_sum_of_its_group(probabilities, again):
+    assert asked_again(Answer("m", probabilities), LOGIC) is again
+
+
+def test_the_pieces_of_a_file_of_a_part_read_alike_are_ranked_on_the_sum_of_its_group_and_say_which_parts():
+    def split(own: float, other: float) -> Answer:
+        return Answer("m", (("logic", own), ("kernel", other), ("main", 1 - own - other)))
+
+    pieces = (Request("app/a.py", "logic", 1200, "a", piece="a", kind="function", lines=(1, 10)),
+              Request("app/a.py", "logic", 1200, "b", piece="b", kind="function", lines=(11, 20)))
+    found = pieces_read(CodeFile("app/a.py", "logic", "text"), pieces, (split(0.1, 0.8), split(0.3, 0.1)), 0, "none",
+                        ("kernel",))
+    assert [(item.name, round(item.probability, 9)) for item in found.lowest] == [("b", 0.4), ("a", 0.9)]
+    assert found.alike == ("kernel",)

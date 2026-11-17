@@ -5,6 +5,19 @@ All notable changes to this project are written here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `evals.placement.alike`: a profile may name groups of parts that one file cannot tell apart, such as
+  `[[logic, kernel-logic]]`. `xarch review` reads a file (and a piece) of a part of a group on the sum of the
+  probabilities on the group's parts, for doubt, for asking again near the line, for the ranking and for the summary of
+  each part, and each reading says which parts it counted with its own, in text and in JSON (`alike`); the
+  probability on each part stays in `distribution` as answered. `review calibrate` holds a group as one: an example
+  reading at or above the line of another part of its group is no longer a disagreement, and the report says of each
+  part of a group that it was held with the others. A dry run of either lists the groups. A record of placement held
+  under other groups is stale; one held with none stays as it is. Each name must be a part, a group holds two parts or
+  more, each once, a part is in one group at most, and the parts of a group must have the same `forbidden`, `holds`
+  and `immutable`. `xarch profile explain evals.placement.alike` says it.
+
 ### Changed
 
 - The bundled `cli` and `web` profiles are stricter, with five rules xarch's own profile already held: `services`,

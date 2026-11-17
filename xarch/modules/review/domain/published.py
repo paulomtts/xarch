@@ -160,7 +160,8 @@ class Reading:
     characters it holds; the probability on that part; the line below which it is doubtful there; whether it is; the
     probability on each part, in the profile's order, the mean over the orders of the options it was asked in; the
     model version that answered first; whether the profile sets the part's line by hand; and in how many orders of the
-    options it was asked; and whether it holds fewer than MARKED_SMALL characters."""
+    options it was asked; whether it holds fewer than MARKED_SMALL characters; and the other parts of the group of its
+    part, whose probabilities the probability on its part counts with its own (none when its part is in no group)."""
     file: str
     part: str
     chars: int
@@ -172,6 +173,7 @@ class Reading:
     by_hand: bool = False
     orders: int = 1
     small: bool = False
+    alike: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -220,8 +222,8 @@ class PartRead:
 class PieceReading:
     """What the decision model read of one piece of a file: its rank inside the file (1 the lowest); its kind and its
     name, as the language's reader names them (Class.method for a method; the names joined for small pieces merged);
-    the lines it spans; how many characters it holds; the probability on the part its file sits in; and the
-    probability on each part, in the profile's order."""
+    the lines it spans; how many characters it holds; the probability on the part its file sits in (with the other parts
+    of its group); and the probability on each part, in the profile's order."""
     rank: int
     kind: str
     name: str
@@ -235,8 +237,9 @@ class PieceReading:
 class PiecesRead:
     """The pieces of one file, ranked inside it only: the file, as `check` shows it; the part it sits in; how many of
     its pieces were judged and how many were too small to be; what was sent before each (NO_CONTEXT or IMPORTS); the
-    lowest SHOWN of those judged, ranked, none when fewer than two were judged (nothing to rank); and whether every
-    piece judged has its answer (the ranking is given only then)."""
+    lowest SHOWN of those judged, ranked, none when fewer than two were judged (nothing to rank); whether every
+    piece judged has its answer (the ranking is given only then); and the other parts of the group of its part, whose
+    probabilities the probability of each piece counts with its own (none when its part is in no group)."""
     file: str
     part: str
     judged: int
@@ -244,6 +247,7 @@ class PiecesRead:
     context: str
     lowest: tuple[PieceReading, ...]
     answered: bool = True
+    alike: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -317,11 +321,13 @@ class HeldExample:
 @dataclass(frozen=True)
 class PartHeld:
     """A part of placement held to its examples: the part; PASSED, DISAGREE or ELSEWHERE; what crossed when its
-    examples disagree ("" else); and how many examples of its own it was held to."""
+    examples disagree ("" else); how many examples of its own it was held to; and the other parts of its group, held
+    with it as one (none when it is in no group)."""
     part: str
     verdict: str
     crossed: str = ""
     examples: int = 0
+    alike: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

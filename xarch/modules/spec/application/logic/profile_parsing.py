@@ -51,10 +51,11 @@ key_catalogue); the shape:
                                an example project, whose every file is an example named by its path in the project
     review: {never, mask}      what `xarch review` may send: path patterns below the app of the files it never sends,
                                and text patterns it hides before it sends; `check` reads neither (see sending)
-    evals: {placement: {lines, examples}, <id>: {ask, answer, reads, ...}}
+    evals: {placement: {lines, alike, examples}, <id>: {ask, answer, reads, ...}}
                                how review reads what it asks: the line of each part below which a file reads as doubtful
-                               there, the examples placement is held to besides the docs', and the evals of the
-                               profile's own; `check` never acts on it (see evals)
+                               there, the groups of parts one file cannot tell apart, the examples placement is held to
+                               besides the docs', and the evals of the profile's own; `check` never acts on it (see
+                               evals)
 
 Every problem found is collected, so one InvalidArchitecture lists them all, each naming the key by its address in the
 file and saying what to write instead; a problem that makes the rest meaningless stops early.
@@ -73,7 +74,7 @@ from xarch.modules.spec.application.logic import profile_checks as ck
 from xarch.modules.spec.application.logic import profile_examples as ex
 from xarch.modules.spec.application.logic import profile_needs as needs
 from xarch.modules.spec.application.logic import written_checks as own_checks
-from xarch.modules.spec.application.logic.evals import evals, unplaced
+from xarch.modules.spec.application.logic.evals import evals, unlike, unplaced
 from xarch.modules.spec.application.logic.key_lookup import keys_of, names_of, required_of
 from xarch.modules.spec.application.logic.language_file import first_language
 from xarch.modules.spec.application.logic.layout_walk import is_file
@@ -192,16 +193,18 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
            else {})
     hints = ck.rule_hints(document["hints"], problems, own) if "hints" in document else {}
     never, mask = sending(document["review"], problems) if "review" in document else ((), ())
-    placement, placed, own_evals = (evals(document["evals"], declared, language, problems) if "evals" in document
-                                    else ({}, ((), ()), {}))
+    placement, placed, own_evals, alike = (evals(document["evals"], declared, language, problems) if "evals" in document
+                                           else ({}, ((), ()), {}, ()))
     problems += unplaced(placed, {name: part.path for name, part in parts.items()}, language)
+    problems += unlike(alike, {name: (frozenset(forbidden.get(name, ())), part.holds, part.immutable)
+                               for name, part in parts.items()})
     if problems:
         raise InvalidArchitecture(source, problems)
     shown = ex.examples_of(examples, built.tree, parts, language)
     return Architecture(name, built.tree, parts, rules, pages, shown, built.notes, layers, tuple(parts), naming, tiers,
                         libraries, guards, fakes, built.repeats, written, testing.framework if testing else None, forbidden,
                         excluded, hints, based_on, language, reserved, needs.approximate(shortfalls), own, never, mask,
-                        placement, own_evals, placed)
+                        placement, own_evals, placed, alike)
 
 
 def _keys(document: Mapping[Any, Any]) -> list[str]:

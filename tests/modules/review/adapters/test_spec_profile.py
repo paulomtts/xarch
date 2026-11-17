@@ -45,6 +45,14 @@ def test_each_part_is_read_with_its_folder_litmus_role_and_line_in_order_and_wha
         ("src/*/drafts", "**/secrets"), ("Northwind",), examples_root="app")
 
 
+def test_each_part_of_a_group_read_alike_is_read_with_the_other_parts_of_its_group_in_the_group_s_order():
+    parts = (PartView("core", ("core",), (), "the rules"), PartView("api", ("api",), (), "handlers"),
+             PartView("kernel", ("kernel",), (), "shared rules"))
+    words = SpecWords(Spec(ProfileView(parts=parts, alike=(("kernel", "core"),)))).words("p")
+    assert [(part.name, part.alike) for part in words.parts] == [("core", ("kernel",)), ("api", ()),
+                                                                  ("kernel", ("core",))]
+
+
 def test_a_profile_spec_refuses_is_refused_with_spec_s_reason():
     with pytest.raises(Refused, match="gone: no such file"):
         SpecWords(Spec(ProfileRefused("gone: no such file"))).words("gone")

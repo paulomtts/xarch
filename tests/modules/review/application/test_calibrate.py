@@ -36,7 +36,7 @@ from xarch.modules.review.contract import (
     Unasked,
     UnknownEvals,
 )
-from xarch.modules.review.domain.values import Answer, Calibration, CodeFile, EvalText, Read, Words
+from xarch.modules.review.domain.values import Answer, Calibration, CodeFile, EvalText, PartText, Read, Words
 
 CWD, APP = Path("/src"), Path("/src/app")
 RECORD = Path("/src/.xarch/calibration.json")
@@ -348,3 +348,38 @@ def test_an_eval_s_own_examples_are_sent_with_their_comments_cut_in_a_dry_run_an
     found = controller(code, profile, model, FakeAnswers()).calibrate(Calibrate(CWD, APP, "cli"))
     assert isinstance(found, Calibrated) and found.passed and model.asked[0] == sent
     assert not any("decides here" in text or "the rule" in text for text in model.asked)
+
+
+ALIKE = (replace(PARTS[0], alike=("kernel",)), PARTS[1],
+         PartText("kernel", "kernel/", "Is it shared by every module?", "shared code", 0.3, alike=("domain",)))
+"""A profile whose domain and kernel one file cannot tell apart."""
+SHARED = CodeFile("kernel/ids.py", "kernel", "ids()\n")
+SPLIT = placed((VALUE, {"domain": 0.25, "main": 0.25, "kernel": 0.5}), (SHARED, {"domain": 0.5, "main": 0.0, "kernel": 0.5}),
+               (START, {"domain": 0.125, "main": 0.75, "kernel": 0.125}))
+"""Answers that read each example of the group low on its own part alone, high on the other part of its group, and the
+example of main below the line on the group's sum."""
+
+
+def holding_alike(parts: tuple[PartText, ...], cmd: Calibrate):
+    profile = FakeProfile({"cli": Words(parts, examples_root="app")}, examples={"cli": ((VALUE, SHARED, START), ())})
+    held = FakeCalibrations()
+    return controller(FakeCode({}), profile, FakeDecisionModel(SPLIT), FakeAnswers(), held).calibrate(cmd), held
+
+
+def test_placement_holds_the_parts_of_a_group_read_alike_to_their_lines_as_one_and_records_them_with_the_others():
+    result, held = holding_alike(ALIKE, Calibrate(CWD, APP, "cli"))
+    assert isinstance(result, Calibrated) and result.placement is not None
+    assert result.placement.parts == (PartHeld("domain", PASSED, "", 1, ("kernel",)), PartHeld("main", PASSED, "", 1),
+                                      PartHeld("kernel", PASSED, "", 1, ("domain",)))
+    assert held.placed[RECORD] == result.placement
+    alone, _ = holding_alike(PARTS + (replace(ALIKE[2], alike=()),), Calibrate(CWD, APP, "cli"))
+    assert isinstance(alone, Calibrated) and alone.placement is not None
+    assert [part.verdict for part in alone.placement.parts] == [DISAGREE, PASSED, DISAGREE]
+    assert alone.placement.held != result.placement.held
+
+
+def test_a_dry_run_of_placement_says_the_groups_of_parts_read_alike():
+    result, _ = holding_alike(ALIKE, Calibrate(CWD, APP, "cli", dry_run=True))
+    assert isinstance(result, CalibrationPlanned) and result.alike == (("domain", "kernel"),)
+    alone, _ = holding_alike(PARTS, Calibrate(CWD, APP, "cli", dry_run=True))
+    assert isinstance(alone, CalibrationPlanned) and alone.alike == ()
