@@ -29,7 +29,7 @@ from xarch.modules.review.application.logic.questions import (
 )
 from xarch.modules.review.application.logic.selection import chosen, judged, left_out, ways, within_cap
 from xarch.modules.review.application.logic.sending import needs_key, unusable_key, why_unasked
-from xarch.modules.review.application.logic.withholding import held_back, unmatched
+from xarch.modules.review.application.logic.withholding import held_back, kept_examples, kept_files, unmatched
 from xarch.modules.review.application.ports.calibrations import Calibrations
 from xarch.modules.review.application.ports.code import Code
 from xarch.modules.review.application.ports.decision_model import DecisionModel
@@ -57,13 +57,14 @@ class ReviewService:
         """What placement and the evals that may run would send for each file judged (and each piece of it, with
         pieces), with a dry run; else the reading of each, from the answers kept and those asked, a file whose first
         answer is near its part's line asked again in other orders of the options and read on their mean, the pieces of
-        each ranked inside it, and the readings of each eval of the profile's own at or above its line; raises
+        each ranked inside it, and the readings of each eval of the profile's own at or above its line (placement and each
+        eval standing as held to the examples review.never does not match); raises
         NoSelection, AllWithOthers, InPieces, OverCap, Refused (the files, the profile, its examples or the record
         cannot be read), and NoKey for a question to send with no key set, before anything is sent."""
         paths = chosen(cmd.paths, cmd.listed, cmd.every, cmd.app, cmd.pieces)
         found = self._code.files(paths, cmd.cwd, cmd.app, cmd.profile, cmd.tests)
         words = self._profile.words(cmd.profile)
-        examples = self._profile.examples(cmd.profile)
+        examples = tuple(kept_files(side, words.never) for side in self._profile.examples(cmd.profile))
         question, parts = placement(words.parts), {part.name: part for part in words.parts}
         files = held_back(found, words.never)
         judging = within_cap(judged(files), cmd.max_files, cmd.pieces)
@@ -150,7 +151,7 @@ class ReviewService:
         running: list[Asking] = []
         idle: list[EvalRead] = []
         for asked in words.evals:
-            stood = standing(asked, record, model, (cmd.app.name,), words.mask)
+            stood = standing(kept_examples(asked, words.never), record, model, (cmd.app.name,), words.mask)
             if stood.state != CALIBRATED:
                 idle.append(stood)
                 continue

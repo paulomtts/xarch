@@ -1134,7 +1134,11 @@ keys:
       a list of paths below the app, each with its steps written with `/`: a step as written, `*` for any text inside
       one step, and a step that is `**` for any number of folders, none included; a path matches a file, or a folder
       and every file below it. A file chosen that one matches is not read into any request: every run, `--dry-run`
-      included, lists it as left out with the path that matched. Refused: a path that starts with `/` or has an empty,
+      included, lists it as left out with the path that matched. The profile's own examples are covered too (a file of
+      `docs.examples` or `evals.placement.examples`, an example of an eval of its own, by its path below the app):
+      `review calibrate`, `--dry-run` included, never sends one it matches and lists it as held back with the path;
+      placement and each eval are held to, and held as, the examples that remain, and an eval left with fewer than
+      %fewest_examples% of a kind is not held. Refused: a path that starts with `/` or has an empty,
       `.` or `..` step, `**` inside a longer step, a path of nothing but `*` and `**` (it would hold back every file),
       the same path twice. `profile check` lists a path the profile it is compared with holds that this one does not as
       looser

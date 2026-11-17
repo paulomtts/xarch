@@ -13,6 +13,7 @@ from xarch.modules.review.contract import (
     DISAGREE,
     ELSEWHERE,
     FAILED,
+    FEWEST_EXAMPLES,
     GAP,
     NOT_CACHED,
     PLACEMENT,
@@ -23,6 +24,7 @@ from xarch.modules.review.contract import (
     CalibrationPlanned,
     EvalHeld,
     EvalRead,
+    HeldExample,
     PlacementHeld,
     PlacementStanding,
     Sender,
@@ -134,6 +136,7 @@ def calibration_lines(done: Calibrated, record: str) -> list[str]:
     if done.sent:
         lines.append(f"Sent {done.sent} request(s) to {done.sends.service} ({done.sends.at}): "
                      f"{done.input_tokens:,} input tokens, {done.output_tokens:,} output tokens.")
+    lines += _withheld(done.held_back)
     if not done.held and done.placement is None and not done.unasked:
         return [*lines, "", "nothing to calibrate: the profile writes no eval of its own and has no example"]
     if done.placement is not None:
@@ -178,9 +181,27 @@ def standing_document(stood: PlacementStanding) -> dict[str, Any]:
                        "examples": part.examples} for part in stood.parts]}
 
 
+def _withheld(held_back: tuple[HeldExample, ...], too_few: tuple[tuple[str, str], ...] = ()) -> list[str]:
+    """Each example review.never holds back, with the path that matched, and each eval it leaves too few to hold."""
+    if not held_back and not too_few:
+        return []
+    return ["", "examples left out, never sent:",
+            *(f"  {item.asked}: {item.example} example {item.file}: held back by review.never ({item.pattern})"
+              for item in held_back),
+            *(f"  {name}: fewer than {FEWEST_EXAMPLES} of its {kind} examples remain: it is not held, and nothing of it "
+              "is sent" for name, kind in too_few)]
+
+
+def _held_back_of(held_back: tuple[HeldExample, ...]) -> list[dict[str, Any]]:
+    return [{"id": item.asked, "kind": item.example, "example": item.file, "pattern": item.pattern} for item in held_back]
+
+
 def _held(item: EvalHeld) -> list[str]:
     if not item.complete:
         return [f"{item.asked}   not held: some of its examples have no answer (see unanswered)"]
+    if item.too_few:
+        return [f"{item.asked}   not held: {item.crossed}: write more examples it does not match, or narrow "
+                "review.never"]
     line = "written in the profile" if item.by_hand else "set from the examples"
     said = (f"passed: line {item.line:.2f} ({line})" if item.passed
             else f"failed: {item.crossed}: {REWORD}")
@@ -205,7 +226,7 @@ def calibration_document(done: Calibrated, record: str) -> str:
     return document({
         "ok": True, "experimental": True, "calibrated": [{"id": item.asked, "complete": item.complete, "passed": item.passed,
                                     "line": item.line if item.complete else None, "line_by_hand": item.by_hand,
-                                    "crossed": item.crossed or None,
+                                    "crossed": item.crossed or None, "too_few": item.too_few,
                                     "examples": [{"path": example.path, "flagged": example.flagged,
                                                   "value": example.value} for example in item.examples]}
                                    for item in done.held],
@@ -220,7 +241,7 @@ def calibration_document(done: Calibrated, record: str) -> str:
         "unanswered": [{"id": item.asked, "file": item.file, "kind": item.example or None, "why": item.why,
                         "name": item.piece or None, "said": item.said or None}
                        for item in done.unasked],
-        "failure": done.failure or None})
+        "held_back": _held_back_of(done.held_back), "failure": done.failure or None})
 
 
 def calibration_plan_lines(planned: CalibrationPlanned) -> list[str]:
@@ -237,7 +258,7 @@ def calibration_plan_lines(planned: CalibrationPlanned) -> list[str]:
              f"key alone allows it, and the key is {key_now(planned.sends)}.",
              f"evals: {', '.join(planned.evals) or 'none'}; {len(planned.requests)} request(s), "
              f"{planned.characters:,} characters, about {planned.tokens:,} tokens; {cached} in the cache already"
-             + "".join(f"; {rule}" for rule in rules)]
+             + "".join(f"; {rule}" for rule in rules), *_withheld(planned.held_back, planned.too_few)]
     for number, item in enumerate(planned.requests, 1):
         kept = ", in the cache: not sent" if item.cached else ""
         what = f" {item.piece} (lines {item.lines[0]}-{item.lines[1]})" if item.piece else ""
@@ -255,7 +276,8 @@ def calibration_plan_document(planned: CalibrationPlanned) -> str:
                       "last": r.lines[1] or None, "chars": r.chars, "cached": r.cached, "text": r.text, "body": r.body}
                      for r in planned.requests],
         "characters": planned.characters, "tokens": planned.tokens, "mask": list(planned.mask),
-        "sends": sends_of(planned.sends)})
+        "held_back": _held_back_of(planned.held_back),
+        "too_few": [{"id": name, "kind": kind} for name, kind in planned.too_few], "sends": sends_of(planned.sends)})
 
 
 def unknown_evals(names: tuple[str, ...], known: tuple[str, ...]) -> str:

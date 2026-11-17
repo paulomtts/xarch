@@ -115,6 +115,13 @@ def test_what_review_may_send_is_read_by_review_alone_and_its_keys_are_listed_in
     assert (never["where"], never["enforced"], never["read_by"], never["rules"]) == ("review", False, "review", [])
 
 
+def test_review_never_says_it_holds_back_the_profile_s_own_examples_from_a_calibration_too():
+    never = json.loads(runner.invoke(app, ["profile", "explain", "review.never", "--format", "json"]).output)
+    assert ("The profile's own examples are covered too (a file of `docs.examples` or `evals.placement.examples`, an "
+            "example of an eval of its own, by its path below the app): `review calibrate`, `--dry-run` included, "
+            "never sends one it matches") in " ".join(never["accepts"].split())
+
+
 def test_how_review_reads_what_it_asks_is_read_by_review_alone_down_to_the_line_of_each_part():
     overview = runner.invoke(app, ["profile", "explain"]).output.splitlines()
     assert [line.split()[:3] for line in overview if line.split()[:1] in (["evals"], ["evals.placement"])] == [

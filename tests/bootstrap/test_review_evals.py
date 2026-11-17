@@ -196,3 +196,90 @@ def test_calibrate_refuses_files_an_eval_it_does_not_write_and_no_key():
     assert unknown.exit_code == 2 and "no eval of the profile's own named other" in unknown.output
     assert xarch("review", "calibrate", key=None).exit_code == 2
     assert xarch("review", SERVICE, "--eval", "logic-purity", key=None).exit_code == 2
+
+
+THIRD = "modules/documents/application/services/drafts/c.py"
+THIRD_CODE = DECIDES.replace("PublishingService", "DraftingService")
+
+
+def written(tmp_path, never: list[str] | None, third: bool = True) -> None:
+    document = yaml.safe_load((tmp_path / COPY).read_text())
+    if third:
+        document["evals"]["rule-outside-entity"]["examples"]["flagged"][THIRD] = THIRD_CODE
+    document.pop("review", None)
+    if never is not None:
+        document["review"] = {"never": never}
+    (tmp_path / COPY).write_text(yaml.safe_dump(document, sort_keys=False))
+
+
+def stands(eval_id: str) -> str:
+    found = json.loads(xarch("review", SERVICE, "--offline", "--format", "json", key=None).output)
+    return {item["id"]: item for item in found["evals"]}[eval_id]["state"]
+
+
+def test_an_example_review_never_matches_is_never_sent_in_a_calibration_nor_its_dry_run_and_is_listed_held_back(
+        served, tmp_path):
+    written(tmp_path, ["**/drafts"])
+    assert runner.invoke(app, ["profile", "check"]).exit_code == 0
+    dry = xarch("review", "calibrate", "--eval", "rule-outside-entity", "--dry-run", url=served.url)
+    assert dry.exit_code == 0, dry.output
+    assert f"  rule-outside-entity: flagged example {THIRD}: held back by review.never (**/drafts)" in (
+        dry.output.splitlines())
+    assert "DraftingService" not in dry.output
+    planned = json.loads(xarch("review", "calibrate", "--dry-run", "--format", "json", url=served.url).output)
+    assert THIRD not in [item["example"] for item in planned["requests"]]
+    assert planned["held_back"] == [{"id": "rule-outside-entity", "kind": "flagged", "example": THIRD,
+                                     "pattern": "**/drafts"}] and planned["too_few"] == []
+    done = xarch("review", "calibrate", "--format", "json", url=served.url)
+    assert done.exit_code == 0, done.output
+    found = json.loads(done.output)
+    assert found["held_back"] == planned["held_back"]
+    assert {item["id"]: item["passed"] for item in found["calibrated"]}["rule-outside-entity"] is True
+    assert served.received and not any("DraftingService" in body["state"] for body in served.received)
+    assert stands("rule-outside-entity") == "calibrated"
+
+
+def test_a_record_made_with_an_example_does_not_stand_once_review_never_holds_it_back_nor_the_reverse(served,
+                                                                                                    tmp_path):
+    written(tmp_path, None)
+    assert xarch("review", "calibrate", "--eval", "rule-outside-entity", url=served.url).exit_code == 0
+    assert stands("rule-outside-entity") == "calibrated"
+    written(tmp_path, ["**/drafts"])
+    assert stands("rule-outside-entity") == "stale"
+    assert xarch("review", "calibrate", "--eval", "rule-outside-entity", url=served.url).exit_code == 0
+    assert stands("rule-outside-entity") == "calibrated"
+    written(tmp_path, ["**/no-such-folder"])
+    assert stands("rule-outside-entity") == "stale"
+    written(tmp_path, ["**/drafts", "**/no-such-folder"])
+    assert stands("rule-outside-entity") == "calibrated"
+
+
+def test_an_eval_review_never_leaves_with_too_few_examples_is_not_held_sends_nothing_of_it_and_exits_1(served,
+                                                                                                      tmp_path):
+    written(tmp_path, ["modules/documents/application/logic/a.py"], third=False)
+    dry = xarch("review", "calibrate", "--eval", "logic-purity", "--dry-run", url=served.url)
+    assert dry.exit_code == 0, dry.output
+    assert ("  logic-purity: fewer than 2 of its flagged examples remain: it is not held, and nothing of it is sent"
+            in dry.output.splitlines())
+    result = xarch("review", "calibrate", url=served.url)
+    assert result.exit_code == 1, result.output
+    assert ("logic-purity   not held: fewer than 2 of its flagged examples remain once review.never holds some back: "
+            "write more examples it does not match, or narrow review.never") in result.output.splitlines()
+    assert served.received and not any("def stale(" in body["state"] for body in served.received)
+    assert stands("logic-purity") == "failed"
+    assert stands("rule-outside-entity") == "calibrated"
+
+
+def test_placement_never_sends_a_docs_example_review_never_matches_and_its_part_is_measured_elsewhere_only(served,
+                                                                                                         tmp_path):
+    written(tmp_path, ["modules/documents/adapters"], third=False)
+    planned = json.loads(xarch("review", "calibrate", "--eval", "placement", "--dry-run", "--format", "json",
+                               url=served.url).output)
+    assert [(item["id"], item["kind"], item["example"]) for item in planned["held_back"]] == [
+        ("placement", "clean", "modules/documents/adapters/db_document_repo.py"),
+        ("placement", "clean", "modules/documents/adapters/moderation_content_review.py")]
+    assert not any(item["example"].startswith("modules/documents/adapters/") for item in planned["requests"])
+    done = json.loads(xarch("review", "calibrate", "--eval", "placement", "--format", "json", url=served.url).output)
+    assert {part["part"]: part["verdict"] for part in done["placement"]["parts"]}["adapters"] == "elsewhere"
+    assert done["held_back"] == planned["held_back"]
+    assert len(served.received) == len(planned["requests"])

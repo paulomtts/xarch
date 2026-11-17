@@ -87,6 +87,9 @@ PLACEMENT = "placement"
 """The id of placement, the eval review always asks, among the evals calibrate holds to their examples."""
 UNHELD = "it was never held to its examples"
 """Why an eval, or placement, is uncalibrated."""
+FEWEST_EXAMPLES = 2
+"""How few flagged examples, and how few clean ones, an eval of the profile's own is held to at the least, as the
+profile's format asks of `evals.<id>.examples`: one that review.never leaves with fewer is not held."""
 GAP = 0.4
 """How far above the mean of an eval's clean examples the mean of its flagged ones must read for it to pass: the
 weakest checks that passed the trials read +0.42 and +0.46, the one that failed +0.21."""
@@ -281,8 +284,9 @@ class ExampleRead:
 class EvalHeld:
     """An eval of the profile's own held to its examples: its id; the value of each example file, flagged ones first;
     whether it passed; the line it reads from (written, else set from the examples); what crossed when it did not
-    pass ("" when it passed); whether every example has its answer (none of it is recorded otherwise); and whether the
-    profile writes the line."""
+    pass ("" when it passed); whether every example has its answer (none of it is recorded otherwise); whether the
+    profile writes the line; and whether review.never left it with too few examples to be held (nothing of it is then
+    sent, and it fails, crossed saying which kind is short)."""
     asked: str
     examples: tuple[ExampleRead, ...]
     passed: bool
@@ -290,6 +294,17 @@ class EvalHeld:
     crossed: str = ""
     complete: bool = True
     by_hand: bool = False
+    too_few: bool = False
+
+
+@dataclass(frozen=True)
+class HeldExample:
+    """An example review.never holds back, never sent: the eval it is of (placement's id for placement), its kind
+    (flagged or clean), its path below the app, and the path of never that matched it."""
+    asked: str
+    example: str
+    file: str
+    pattern: str
 
 
 @dataclass(frozen=True)

@@ -668,7 +668,13 @@ review:
   written, `*` for any text inside one step, and a step that is `**` for any number of folders (none included). A path
   matches a file, or a folder and every file below it, and is matched against a link's own path and the path of the
 file it links to. A file chosen that one matches is left out of every run,
-  `--dry-run` included, as "held back by review.never (<path>)"; its text goes into no request. `--dry-run` lists
+  `--dry-run` included, as "held back by review.never (<path>)"; its text goes into no request. So is each of the
+  profile's own examples whose path below the app one matches (a file of `docs.examples` or of
+  `evals.placement.examples`, and an example of an eval of its own): `review calibrate`, its dry run included, never
+  sends it and lists it as held back by review.never, with the path; placement and each eval are then held to the
+  examples that remain (a part left with none is measured elsewhere only; an eval left with fewer than 2 flagged or 2
+  clean is not held, sends nothing and fails), and what a record is held as is those examples, so a record made
+  before an example was held back, or while it was, does not stand once that changes. `--dry-run` lists
   the paths in force, and says of each that matched no file found in that run that it matched nothing: a path of
   `never` is read below the app, so one copied from review's output with the app folder's name first matches nothing.
 - `mask`: texts hidden in each file's text before it is sent, after the built-in masks: each as written (case counts),
@@ -813,13 +819,16 @@ unanswered question the eval that asks it (null for placement). In both, `why` o
 `review.never` path that matched (null for any other `why`); a dry run's `mask` is the profile's `review.mask`. A
 refusal is `{"ok": false, "error"}`.
 
-A calibration: `{"ok", "calibrated": [{"id", "complete", "passed", "line", "line_by_hand", "crossed", "examples":
-[{"path", "flagged", "value"}]}], "placement": {"model", "answered_by", "parts": [{"part", "verdict", "crossed",
-"examples"}]}, "passed", "complete", "record", "model", "answered_by", "sends", "sent", "unanswered": [{"id", "file",
-"kind", "why", "name", "said"}],
+A calibration: `{"ok", "calibrated": [{"id", "complete", "passed", "line", "line_by_hand", "crossed", "too_few",
+"examples": [{"path", "flagged", "value"}]}], "placement": {"model", "answered_by", "parts": [{"part", "verdict",
+"crossed", "examples"}]}, "passed", "complete", "record", "model", "answered_by", "sends", "sent", "unanswered": [{"id",
+"file", "kind", "why", "name", "said"}], "held_back": [{"id", "kind", "example", "pattern"}],
 "failure"}` (`placement` null when it was not held); its dry run: `{"ok", "dry_run": true, "sent": false, "evals",
 "requests": [{"id", "example", "kind", "part", "name", "first", "last", "chars", "cached", "text", "body"}],
-"characters", "tokens", "mask", "sends"}`, `kind` `flagged` or `clean`.
+"characters", "tokens", "mask", "held_back", "too_few": [{"id", "kind"}], "sends"}`, `kind` `flagged` or `clean`;
+`held_back` each example `review.never` holds back (`id` its eval, `placement` for placement's, `pattern` the path that
+matched); `too_few` each eval left with too few examples of a kind to be held, and `too_few` of a calibrated eval
+whether it is one.
 
 ## Project docs
 

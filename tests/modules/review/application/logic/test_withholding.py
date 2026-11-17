@@ -5,7 +5,7 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.review.builders import found
-from xarch.modules.review.application.logic.withholding import held_back
+from xarch.modules.review.application.logic.withholding import held_back, held_by
 from xarch.modules.review.domain.published import MISSING, NEVER, LeftOut
 from xarch.modules.review.domain.values import Found
 
@@ -57,3 +57,14 @@ def test_a_link_is_held_back_when_a_path_matches_the_file_it_links_to_or_its_own
     assert held_back(Found((alias,)), ("**/alias.py",)) == Found(
         (), (LeftOut(alias.file, NEVER, len(alias.text), "**/alias.py"),))
     assert held_back(Found((plain,)), ("**/legal_archive.py",)) == Found((plain,))
+
+
+@pytest.mark.parametrize("pattern, path, held", [
+    pytest.param("drafts", "drafts/c.py", "drafts", id="a folder above the example"),
+    pytest.param("**/c.py", "modules/drafts/c.py", "**/c.py", id="two stars"),
+    pytest.param("modules/*/c.py", "modules/drafts/c.py", "modules/*/c.py", id="a star for one step"),
+    pytest.param("drafts", "app/drafts/c.py", "", id="an example's path is read below the app as it is written"),
+    pytest.param("drafts/d.py", "drafts/c.py", "", id="another file"),
+])
+def test_an_example_is_held_back_by_the_first_path_of_never_matching_its_path_below_the_app(pattern, path, held):
+    assert held_by(path, (pattern,)) == held

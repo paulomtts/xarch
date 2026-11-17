@@ -14,6 +14,7 @@ from xarch.modules.review.contract import (
     CHOOSE,
     CLEAN,
     DISAGREE,
+    ELSEWHERE,
     FLAGGED,
     NOT_CACHED,
     PASSED,
@@ -25,6 +26,7 @@ from xarch.modules.review.contract import (
     Choice,
     EvalHeld,
     ExampleRead,
+    HeldExample,
     KeyMissing,
     Option,
     PartHeld,
@@ -264,3 +266,58 @@ def test_a_key_that_cannot_be_used_refuses_a_calibration_that_would_send_and_blo
     offline = calibrating.calibrate(Calibrate(CWD, APP, "cli", offline=True))
     assert isinstance(offline, Calibrated) and {item.why for item in offline.unasked} == {NOT_CACHED}
     assert model.tried == [] and held.kept[RECORD] == {}
+
+
+THIRD = "def c(doc):\n    if doc.y: raise E\n"
+WIDER = EvalText("rule", QUESTION, ("yes",), None, "{name} ({value})", "read it",
+                 (("domain/a.py", BAD), ("domain/b.py", WORSE), ("drafts/c.py", THIRD)),
+                 (("domain/a.py", GOOD), ("domain/b.py", FINE)), "f")
+
+
+def test_an_example_review_never_matches_is_never_sent_is_listed_held_back_and_the_eval_held_on_the_rest():
+    given = Given(evals=(WIDER,), answers=dict(PASSING) | {THIRD: yes(0.1)})
+    profile = FakeProfile({"cli": Words(PARTS, ("drafts",), evals=(WIDER,))})
+    model, held = FakeDecisionModel(given.answers), FakeCalibrations({RECORD: {}})
+    calibrating = controller(FakeCode({}), profile, model, FakeAnswers(), held)
+    planned = calibrating.calibrate(Calibrate(CWD, APP, "cli", dry_run=True))
+    assert isinstance(planned, CalibrationPlanned) and THIRD not in [item.text for item in planned.requests]
+    assert planned.held_back == (HeldExample("rule", FLAGGED, "drafts/c.py", "drafts"),)
+    done = calibrating.calibrate(Calibrate(CWD, APP, "cli"))
+    assert isinstance(done, Calibrated) and THIRD not in model.asked and done.passed
+    assert done.held_back == (HeldExample("rule", FLAGGED, "drafts/c.py", "drafts"),)
+    assert [item.path for item in done.held[0].examples] == ["domain/a.py", "domain/b.py", "domain/a.py", "domain/b.py"]
+    _, plain, _ = calibrate(Given(), Calibrate(CWD, APP, "cli"))
+    _, wider, _ = calibrate(Given(evals=(WIDER,), answers=given.answers), Calibrate(CWD, APP, "cli"))
+    assert held.kept[RECORD]["rule"].held == plain.kept[RECORD]["rule"].held != wider.kept[RECORD]["rule"].held
+
+
+def test_an_eval_left_with_too_few_examples_by_review_never_is_not_held_sends_nothing_and_is_recorded_failed():
+    profile = FakeProfile({"cli": Words(PARTS, ("domain/a.py",), evals=(RULE,))})
+    model, held = FakeDecisionModel(dict(PASSING)), FakeCalibrations({RECORD: {}})
+    calibrating = controller(FakeCode({}), profile, model, FakeAnswers(), held)
+    planned = calibrating.calibrate(Calibrate(CWD, APP, "cli", dry_run=True))
+    assert isinstance(planned, CalibrationPlanned) and planned.requests == () and planned.too_few == (("rule", FLAGGED),)
+    assert planned.held_back == (HeldExample("rule", FLAGGED, "domain/a.py", "domain/a.py"),
+                                 HeldExample("rule", CLEAN, "domain/a.py", "domain/a.py"))
+    done = calibrating.calibrate(Calibrate(CWD, APP, "cli"))
+    why = "fewer than 2 of its flagged examples remain once review.never holds some back"
+    assert isinstance(done, Calibrated) and model.asked == [] and not done.passed and done.complete
+    assert done.held == (EvalHeld("rule", (), False, 0.0, why, too_few=True),)
+    entry = held.kept[RECORD]["rule"]
+    _, plain, _ = calibrate(Given(), Calibrate(CWD, APP, "cli"))
+    assert entry == Calibration(entry.held, "m-1", "m-1", False, 0.0, crossed=why)
+    assert len(entry.held) == 64 and entry.held != plain.kept[RECORD]["rule"].held
+
+
+def test_a_placement_example_review_never_matches_is_never_sent_and_its_part_is_then_measured_elsewhere_only():
+    profile = FakeProfile({"cli": Words(PARTS, ("modules/*/domain/value.py",), examples_root="app")},
+                          examples={"cli": ((VALUE, START), ())})
+    model, held = FakeDecisionModel(placed((START, {"domain": 0.1, "main": 0.9}))), FakeCalibrations()
+    calibrating = controller(FakeCode({}), profile, model, FakeAnswers(), held)
+    planned = calibrating.calibrate(Calibrate(CWD, APP, "cli", dry_run=True))
+    assert isinstance(planned, CalibrationPlanned) and [item.file for item in planned.requests] == [START.file]
+    assert planned.held_back == (HeldExample("placement", CLEAN, VALUE.file, "modules/*/domain/value.py"),)
+    done = calibrating.calibrate(Calibrate(CWD, APP, "cli"))
+    assert isinstance(done, Calibrated) and model.asked == [START.text] and done.placement is not None
+    assert done.held_back == planned.held_back
+    assert done.placement.parts == (PartHeld("domain", ELSEWHERE), PartHeld("main", PASSED, "", 1))

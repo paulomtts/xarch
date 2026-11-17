@@ -50,7 +50,10 @@ The first release.
   are refused (exit 2), never a traceback; the header names the model versions that answered when they are not the
   model asked alone.
 - A profile's `review` key: `review.never`, the paths below the app of files review never sends (matched against a
-  link and the file it links to), and `review.mask`,
+  link and the file it links to), the profile's own examples included: `review calibrate`, its dry run too, never
+  sends an example of `docs.examples`, `evals.placement.examples` or an eval of its own that one matches, lists it as
+  held back with the path (in JSON `held_back`), and holds placement and each eval to (and as) the examples that
+  remain, an eval left with fewer than 2 of a kind not held and failed; and `review.mask`,
   texts it hides before it sends. `check` never acts on either (a value written wrong makes the profile invalid for
   every command, `check` included; no finding and no exit code of `check` depends on them); `profile explain` says
   them, `profile check` lists an entry the base profile has and the profile drops as looser, and the dry run lists

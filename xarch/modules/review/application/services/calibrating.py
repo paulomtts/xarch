@@ -10,6 +10,7 @@ from xarch.modules.review.application.logic.placing import held_as as held_as_pl
 from xarch.modules.review.application.logic.placing import verdicts
 from xarch.modules.review.application.logic.questions import characters, placement, request, tokens
 from xarch.modules.review.application.logic.sending import needs_key, unusable_key, why_unasked
+from xarch.modules.review.application.logic.withholding import examples_held, files_held, kept_examples, kept_files, too_few
 from xarch.modules.review.application.ports.calibrations import Calibrations
 from xarch.modules.review.application.ports.code import Code
 from xarch.modules.review.application.ports.decision_model import DecisionModel
@@ -19,6 +20,7 @@ from xarch.modules.review.contract import Calibrate, Calibrated, CalibrationPlan
 from xarch.modules.review.domain.errors import NoKey, NoSuchEval, Refused
 from xarch.modules.review.domain.published import (
     CLEAN,
+    FEWEST_EXAMPLES,
     FLAGGED,
     PLACEMENT,
     EvalHeld,
@@ -47,21 +49,30 @@ class CalibrationService:
         """What holding the evals asked for (every one, and placement, with none) to their examples would send, with a
         dry run; else each eval held to them, and the record rewritten for each eval whose every example has its
         answer, an eval no longer in the profile dropped from it, and placement's for placement when every example of
-        it has its answer; raises NoSuchEval for an id of no eval, Refused, and NoKey for a question to send with no
+        it has its answer. An example review.never matches is never sent and is said held back; each eval, and
+        placement, is held to (and held as) the examples that remain, and an eval left with too few is not held, sends
+        nothing and is recorded failed; raises NoSuchEval for an id of no eval, Refused, and NoKey for a question to send with no
         key set, before anything is sent."""
         words = self._profile.words(cmd.profile)
         known = (PLACEMENT, *(asked.asked for asked in words.evals))
         unknown = tuple(name for name in cmd.evals if name not in known)
         if unknown:
             raise NoSuchEval(unknown, known)
-        evals = tuple(asked for asked in words.evals if not cmd.evals or asked.asked in cmd.evals)
-        clean, flagged = self._profile.examples(cmd.profile) if not cmd.evals or PLACEMENT in cmd.evals else ((), ())
+        chosen = tuple(asked for asked in words.evals if not cmd.evals or asked.asked in cmd.evals)
+        evals = tuple(kept_examples(asked, words.never) for asked in chosen)
+        given = self._profile.examples(cmd.profile) if not cmd.evals or PLACEMENT in cmd.evals else ((), ())
+        clean, flagged = (kept_files(side, words.never) for side in given)
+        withheld = (*(item for side, examples in zip((CLEAN, FLAGGED), given, strict=True)
+                      for item in files_held(side, examples, words.never)),
+                    *(item for asked in chosen for item in examples_held(asked, words.never)))
+        short = tuple((asked.asked, kind) for asked in evals if (kind := too_few(asked)))
         question = placement(words.parts)
         placed = tuple((example, side, request(example, cmd.app.name, words.mask, (words.examples_root,)))
                        for side, examples in ((CLEAN, clean), (FLAGGED, flagged)) for example in examples if example.part)
         sends = self._model.sends()
         going, answering = Run(cache_folder(cmd.app, cmd.cache), cmd.offline), self._answering
-        examples = tuple(example for asked in evals for example in self._examples(cmd, asked, words.mask))
+        examples = tuple(example for asked in evals if not too_few(asked)
+                         for example in self._examples(cmd, asked, words.mask))
         each = tuple((item, order) for asked, _, _, items in examples for item in items
                      for order in orders(asked.question))
         each += tuple((replace(item, asked=PLACEMENT, example=side), question) for _, side, item in placed)
@@ -71,7 +82,7 @@ class CalibrationService:
                           for (item, order), kept in zip(each, later, strict=True))
             sent = sum(characters((item,), order) for item, order in each)
             return CalibrationPlanned(shown, (*((PLACEMENT,) if placed else ()), *(asked.asked for asked in evals)),
-                                      sent, tokens(sent), words.mask, sends)
+                                      sent, tokens(sent), words.mask, sends, withheld, short)
         if needs_key(later, cmd.offline, sends.keyed):
             raise NoKey(sends.key)
         if unusable := unusable_key(later, cmd.offline, sends):
@@ -80,6 +91,13 @@ class CalibrationService:
         held: list[EvalHeld] = []
         unasked: list[Unasked] = []
         for asked in evals:
+            if kind := too_few(asked):
+                why = f"fewer than {FEWEST_EXAMPLES} of its {kind} examples remain once review.never holds some back"
+                line = asked.line if asked.line is not None else 0.0
+                held.append(EvalHeld(asked.asked, (), False, line, why, by_hand=asked.line is not None, too_few=True))
+                record[asked.asked] = Calibration(held_as(asked, (cmd.app.name,), words.mask), sends.model, sends.model,
+                                                  False, line, crossed=why)
+                continue
             read: list[ExampleRead] = []
             models: list[str] = []
             for of, on_flagged, path, items in examples:
@@ -131,7 +149,7 @@ class CalibrationService:
         return Calibrated(tuple(held), record_file(cmd.app) if written or held_placement else None, tuple(unasked),
                           sends, len(going.asked), len(going.reused), sum(a.input_tokens for a in going.asked),
                           sum(a.output_tokens for a in going.asked), going.failure, held_placement,
-                          versions(*going.asked, *going.reused))
+                          versions(*going.asked, *going.reused), withheld)
 
     def _examples(self, cmd: Calibrate, asked: EvalText, mask: tuple[str, ...]) -> tuple[Example, ...]:
         """Each example file of the eval, flagged ones first, with one question about each thing it reads in it, its

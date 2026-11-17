@@ -19,6 +19,7 @@ from xarch.modules.review.domain.published import (
     EXCLUDED,
     FAILED,
     FAILED_EXAMPLES,
+    FEWEST_EXAMPLES,
     FEWEST_SUMMED,
     FLAGGED,
     GAP,
@@ -54,6 +55,7 @@ from xarch.modules.review.domain.published import (
     EvalRead,
     EvalReading,
     ExampleRead,
+    HeldExample,
     LeftOut,
     Option,
     PartHeld,
@@ -76,7 +78,8 @@ __all__ = ["A_TEST", "BAND", "BY_ALL", "BY_LIST", "BY_PATHS", "EXCLUDED", "FAILE
            "KeyMissing", "ReviewRefused", "ReviewResult", "CALIBRATED", "CHOOSE", "FAILED_EXAMPLES", "GAP", "SCORE",
            "STALE", "UNCALIBRATED", "YES_NO", "EvalHeld", "EvalRead", "EvalReading", "ExampleRead", "Calibrate",
            "CalibrationPlanned", "Calibrated", "UnknownEvals", "CalibrateResult", "FLAGGED", "CLEAN", "PASSED", "DISAGREE",
-           "ELSEWHERE", "PLACEMENT", "PartHeld", "PlacementHeld", "PlacementStanding", "UNHELD"]
+           "ELSEWHERE", "PLACEMENT", "PartHeld", "PlacementHeld", "PlacementStanding", "UNHELD", "FEWEST_EXAMPLES",
+           "HeldExample"]
 
 
 @dataclass(frozen=True)
@@ -226,13 +229,17 @@ class CalibrationPlanned:
     """What holding the evals to their examples would send, and nothing sent: the request about each thing each eval
     reads in each example file (each says its eval, and the example by its path below the app), in each order of the
     options it is asked in; the evals it would hold, by id; the characters and about how many tokens they would send;
-    the texts the profile says review hides; and what it would send to."""
+    the texts the profile says review hides; what it would send to; each example review.never holds back, never sent;
+    and the evals it leaves with too few examples to be held, each by id with the kind it is short of, nothing of
+    which would be sent."""
     requests: tuple[Request, ...]
     evals: tuple[str, ...]
     characters: int
     tokens: int
     mask: tuple[str, ...]
     sends: Sender
+    held_back: tuple[HeldExample, ...] = ()
+    too_few: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -242,8 +249,8 @@ class Calibrated:
     sent and how many answers were read from the cache; the tokens the questions sent cost; how the decision model
     failed, when it did ("" when it did not); and placement held to its examples, each part's verdict (None when it was
     not asked for, has no example, or some example has no answer); and the model versions that gave the answers read,
-    asked or kept, each once, sorted. A part whose examples disagree does not fail the calibration: it is said, and
-    review then never marks its files doubtful."""
+    asked or kept, each once, sorted; and each example review.never holds back, never sent. A part whose examples
+    disagree does not fail the calibration: it is said, and review then never marks its files doubtful."""
     held: tuple[EvalHeld, ...]
     record: Path | None
     unasked: tuple[Unasked, ...]
@@ -255,6 +262,7 @@ class Calibrated:
     failure: str
     placement: PlacementHeld | None = None
     answered_by: tuple[str, ...] = ()
+    held_back: tuple[HeldExample, ...] = ()
 
     @property
     def complete(self) -> bool:

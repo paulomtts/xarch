@@ -105,7 +105,7 @@ def test_a_calibration_says_each_verdict_with_its_line_and_examples_what_to_do_a
     document = json.loads(calibration_document(done, ".xarch/calibration.json"))
     assert (document["passed"], document["complete"], document["record"]) == (False, True, ".xarch/calibration.json")
     assert document["calibrated"][0] == {"id": "rule", "complete": True, "passed": True, "line": 0.5,
-                                         "line_by_hand": False, "crossed": None,
+                                         "line_by_hand": False, "crossed": None, "too_few": False,
                                          "examples": [{"path": "services/a.py", "flagged": True, "value": 0.9},
                                                       {"path": "services/b.py", "flagged": False, "value": 0.1}]}
 
