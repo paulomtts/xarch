@@ -7,7 +7,18 @@ from tests.modules.review.builders import BROKEN, found
 from xarch.kernel.source import Unparsable
 from xarch.modules.review.application.logic.selection import chosen, judged, left_out, ways, within_cap
 from xarch.modules.review.domain.errors import AllWithOthers, InPieces, NoSelection, OverCap
-from xarch.modules.review.domain.published import BY_ALL, BY_LIST, BY_PATHS, MIN_CHARS, MISSING, SMALL, UNPARSABLE, LeftOut
+from xarch.modules.review.domain.published import (
+    BY_ALL,
+    BY_LIST,
+    BY_PATHS,
+    LARGE,
+    MAX_CHARS,
+    MIN_CHARS,
+    MISSING,
+    SMALL,
+    UNPARSABLE,
+    LeftOut,
+)
 from xarch.modules.review.domain.values import Found
 
 APP = Path("/src/app")
@@ -44,6 +55,7 @@ def test_how_the_files_were_chosen(paths, listed, every, then):
 @pytest.mark.parametrize("file, why", [
     pytest.param(BROKEN, UNPARSABLE, id="a file that does not parse"),
     pytest.param(found(text="x" * (MIN_CHARS - 1)), SMALL, id="under the smallest size judged"),
+    pytest.param(found(text="x" * (MAX_CHARS + 1)), LARGE, id="over the largest size sent"),
     pytest.param(found(text="x" * (MIN_CHARS - 1), error=Unparsable(1, "bad")), UNPARSABLE,
                  id="a file that does not parse, whatever its size"),
 ])
@@ -54,6 +66,7 @@ def test_why_a_file_read_is_left_out(file, why):
 @pytest.mark.parametrize("file", [
     pytest.param(found(), id="a file read that parses and is big enough"),
     pytest.param(found(text="x" * MIN_CHARS), id="a file of exactly the smallest size judged"),
+    pytest.param(found(text="x" * MAX_CHARS), id="a file of exactly the largest size sent"),
 ])
 def test_a_file_is_judged(file):
     assert (judged(Found((file,))), left_out(Found((file,)))) == ((file,), ())
@@ -65,6 +78,10 @@ def test_the_files_not_read_come_first_then_those_read_not_judged_each_in_order(
     files = Found((found(), small, BROKEN), (missing,))
     assert (judged(files), left_out(files)) == ((found(),), (missing, LeftOut(small.file, SMALL, 6),
                                                              LeftOut(BROKEN.file, UNPARSABLE, len(BROKEN.text))))
+
+
+def test_the_largest_file_sent_holds_200_000_characters():
+    assert MAX_CHARS == 200_000
 
 
 def test_no_more_files_than_one_run_judges():

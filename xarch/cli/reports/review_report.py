@@ -29,8 +29,10 @@ from xarch.modules.review.contract import (
     EXCLUDED,
     FEWEST_SUMMED,
     IMPORTS,
+    LARGE,
     LINK,
     MARKED_SMALL,
+    MAX_CHARS,
     MIN_CHARS,
     MISSING,
     NEVER,
@@ -66,7 +68,8 @@ WAYS = {BY_PATHS: "paths", BY_LIST: "--files-from", BY_ALL: "--all"}
 WHY = {MISSING: "not there", NOT_SOURCE: "no source file of the app's language", A_TEST: "a test: review reads the app's "
        "files only", OUTSIDE: "outside the app folder", EXCLUDED: "below a folder the profile excludes",
        UNPLACED: "in no part", NEVER: "held back by review.never", UNPARSABLE: "does not parse",
-       SMALL: f"under {MIN_CHARS:,} characters", LINK: "a link to a file outside the app, or to no source file"}
+       SMALL: f"under {MIN_CHARS:,} characters", LARGE: f"over {MAX_CHARS:,} characters, never sent",
+       LINK: "a link to a file outside the app, or to no source file"}
 CONTEXTS = {NO_CONTEXT: "nothing: the piece alone",
             IMPORTS: "the file's opening lines (those before its first piece), masked: numbers read so never compare "
                      "with numbers read without them"}
@@ -255,7 +258,7 @@ def _quoted(item: Request) -> list[str]:
 
 
 def _why(item: LeftOut) -> str:
-    if item.why == SMALL:
+    if item.why in (SMALL, LARGE):
         return f"{WHY[item.why]} ({item.chars:,})"
     return f"{WHY[item.why]} ({item.pattern})" if item.pattern else WHY[item.why]
 

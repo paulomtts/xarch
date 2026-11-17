@@ -12,6 +12,8 @@ from xarch.modules.review.contract import (
     BY_PATHS,
     FAILED,
     IMPORTS,
+    LARGE,
+    MAX_CHARS,
     MISSING,
     NEVER,
     NO_CONTEXT,
@@ -193,6 +195,18 @@ def test_after_a_failure_nothing_more_is_asked_and_what_is_kept_is_still_read():
     assert model.asked == [SENT_OTHER]
     assert isinstance(result, ReviewReading)
     assert (result.readings, result.unasked, result.complete) == ((DOUBTFUL,), (Unasked(OTHER.file, FAILED),), False)
+
+
+HUGE = found("app/modules/documents/domain/huge.py", text="x = 1\n" * (MAX_CHARS // 6 + 1))
+
+
+@pytest.mark.parametrize("dry_run", [True, False])
+def test_a_file_over_the_largest_size_sent_is_left_out_with_its_size_and_never_sent(dry_run):
+    world = World(found={"app/two": Found((HUGE, DOCUMENT))}, answers={SENT: LOW})
+    result, model, _ = run(world, review("app/two", dry_run=dry_run))
+    assert result.left_out == (LeftOut(HUGE.file, LARGE, len(HUGE.text)),)
+    assert all(HUGE.text not in text for text in model.asked)
+    assert [item.file for item in getattr(result, "requests", getattr(result, "readings", ()))] == [DOCUMENT.file]
 
 
 def test_every_file_of_the_app_is_the_app_folder_read():

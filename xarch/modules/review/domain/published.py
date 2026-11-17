@@ -18,7 +18,7 @@ as review holds it, so there is nothing to reshape.
     ExampleRead   the value an eval of the profile's own read of one of its example files
     EvalHeld      an eval of the profile's own held to its examples: the value of each, the verdict and the line
 
-and the reasons a file is left out, the size of the smallest file judged, how many files one run judges, the ways files
+and the reasons a file is left out, the size of the smallest file judged and of the largest, how many files one run judges, the ways files
 are chosen, how near its line a file is asked again, why a question has no answer, and how many files of a part a run
 must read, and read as doubtful, to say anything of the part; and how pieces are cut, judged, shown and sent; the
 forms of a question; and the states of an eval of the profile's own, and what holds one to its examples.
@@ -27,16 +27,20 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-MISSING, NOT_SOURCE, A_TEST, OUTSIDE, EXCLUDED, UNPLACED, NEVER, UNPARSABLE, SMALL, LINK = (
-    "missing", "not-source", "test", "outside", "excluded", "unplaced", "never", "unparsable", "small", "link")
+MISSING, NOT_SOURCE, A_TEST, OUTSIDE, EXCLUDED, UNPLACED, NEVER, UNPARSABLE, SMALL, LARGE, LINK = (
+    "missing", "not-source", "test", "outside", "excluded", "unplaced", "never", "unparsable", "small", "large", "link")
 """Why a file found is not judged: it is not there; it is no source file of the app's language; it is a test; it lies
 outside the app folder; it lies below a folder the profile excludes; it lies in no part; a path the profile says review
-never sends matches it, or the file it links to; it does not parse; it is under the smallest size judged; it is
-reached through a link to a file outside the app, or to no source file of the app's language."""
+never sends matches it, or the file it links to; it does not parse; it is under the smallest size judged; it is over
+the largest size sent; it is reached through a link to a file outside the app, or to no source file of the app's
+language."""
 
 MIN_CHARS = 800
 """The fewest characters a file judged holds: under it, a file is too small to be judged (the smallest file the trials
 measured held 817)."""
+MAX_CHARS = 200_000
+"""The most characters a file judged holds: over it, a file is too large to be judged, and is left out and never
+sent."""
 MARKED_SMALL = 2000
 """The fewest characters a file judged holds not to be marked small: small files read lower for being small (in the
 trials a tenth of the smallest quarter of files read as doubtful, a fiftieth of the largest)."""

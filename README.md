@@ -584,9 +584,10 @@ It reads only the files it is given, and refuses (exit 2) when none is: name the
 source files below it), pipe a list with `--files-from -` (one path per line, such as
 `git diff --name-only main | xarch review --files-from -`), or take every file of the app with `--all`
 (alone). A path is read as `xarch where` reads one; one outside the project is refused. Of the files found, a source
-file of the app in a part, that parses and holds at least 800 characters, is judged; every other is listed as left out,
-with why (not there, no source file, a test, outside the app folder, excluded, in no part, held back by
-`review.never`, does not parse, too small, a link to a file outside the app or to no source file). A file reached
+file of the app in a part, that parses and holds from 800 to 200,000 characters, is judged; every other is listed as
+left out, with why (not there, no source file, a test, outside the app folder, excluded, in no part, held back by
+`review.never`, does not parse, too small, too large (over 200,000 characters: never sent, `--dry-run` included), a
+link to a file outside the app or to no source file). A file reached
 through a link, or through a linked folder, is read only when the file it is lies in the app folder once every link is
 followed, and is a source file of the app's language. A run judges at most `--max-files` files (50, or 20 with `--pieces`); past
 that it refuses, naming how many it chose.
@@ -798,7 +799,8 @@ is false); `why` of an unanswered file or piece `not-cached`, `failed` or `refus
 `stale`, `run` the command that holds it to its examples (null when it ran), `form` `yes-no`, `score` or `choice`,
 `asked` how many things it was asked of, `readings` those at or above its `line`; `eval` of a request or of an
 unanswered question the eval that asks it (null for placement). In both, `why` of a file left out is one of
-`missing`, `not-source`, `test`, `outside`, `excluded`, `unplaced`, `never`, `unparsable`, `small`, `link`, `pattern` the
+`missing`, `not-source`, `test`, `outside`, `excluded`, `unplaced`, `never`, `unparsable`, `small`, `large`, `link`,
+`pattern` the
 `review.never` path that matched (null for any other `why`); a dry run's `mask` is the profile's `review.mask`. A
 refusal is `{"ok": false, "error"}`.
 

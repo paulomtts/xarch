@@ -133,6 +133,17 @@ def test_offline_or_a_dry_run_sends_nothing_with_the_key_set_and_the_service_lis
     assert served.received == []
 
 
+def test_a_file_over_200_000_characters_is_left_out_as_large_in_a_dry_run_and_a_review_and_never_sent(served,
+                                                                                                    tmp_path):
+    huge = "app/modules/documents/domain/huge.py"
+    (tmp_path / huge).write_text("x = 1\n" * 40_000)
+    dry = review(huge, SERVICE, "--dry-run", url=served.url)
+    assert dry.exit_code == 0 and f"  {huge}: over 200,000 characters, never sent (240,000)" in dry.output.splitlines()
+    found = json.loads(review(huge, SERVICE, "--format", "json", url=served.url).output)
+    assert found["selection"]["left_out"] == [{"file": huge, "why": "large", "chars": 240_000, "pattern": None}]
+    assert [body["state"][:3] for _, _, body in served.received] == ['"""']
+
+
 def test_the_request_goes_with_the_user_agent_xarch_and_no_other_header_of_the_project(served):
     assert review(SERVICE, url=served.url).exit_code == 0
     (_, headers, _), = served.received

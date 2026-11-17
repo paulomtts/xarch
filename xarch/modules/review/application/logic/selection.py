@@ -9,6 +9,8 @@ from xarch.modules.review.domain.published import (
     BY_ALL,
     BY_LIST,
     BY_PATHS,
+    LARGE,
+    MAX_CHARS,
     MAX_FILES,
     MAX_PIECED,
     MIN_CHARS,
@@ -41,8 +43,10 @@ def ways(paths: tuple[Path, ...], listed: tuple[Path, ...], every: bool) -> tupl
 
 
 def _why_unjudged(file: CodeFile) -> str:
-    """Why a file read is not judged, "" when it is: it does not parse, or it is too small."""
-    return UNPARSABLE if file.error is not None else SMALL if len(file.text) < MIN_CHARS else ""
+    """Why a file read is not judged, "" when it is: it does not parse, it is too small, or it is too large to send."""
+    if file.error is not None:
+        return UNPARSABLE
+    return SMALL if len(file.text) < MIN_CHARS else LARGE if len(file.text) > MAX_CHARS else ""
 
 
 def judged(found: Found) -> tuple[CodeFile, ...]:

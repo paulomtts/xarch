@@ -21,6 +21,7 @@ from xarch.modules.review.contract import (
     DISAGREE,
     FAILED,
     IMPORTS,
+    LARGE,
     MISSING,
     NEVER,
     NO_CONTEXT,
@@ -208,6 +209,13 @@ def test_a_reading_with_nothing_sent_says_no_more_than_where_it_read_from_and_on
     assert lines[1].endswith("Asked 0, from cache 1.") and lines[2] == ""
     assert lines[5] == "  no file judged reads as doubtful here"
     assert lines[-1] == "parts the question describes by their role only, having no litmus: main"
+
+
+def test_a_file_over_the_largest_size_sent_is_left_out_with_its_size_in_text_and_in_json():
+    large = replace(READ, left_out=(LeftOut("app/huge.py", LARGE, 250_000),))
+    assert reading_lines(large)[-2:] == ["left out:", "  app/huge.py: over 200,000 characters, never sent (250,000)"]
+    assert json.loads(reading_document("cli", large))["selection"]["left_out"] == [
+        {"file": "app/huge.py", "why": "large", "chars": 250_000, "pattern": None}]
 
 
 def test_a_reading_with_files_unanswered_says_why_each_how_the_decision_model_failed_and_what_to_do():
