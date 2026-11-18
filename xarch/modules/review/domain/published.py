@@ -10,6 +10,8 @@ as review holds it, so there is nothing to reshape.
              asked, the variable its key is read from and whether the key is set
     Reading  what the decision model read of one file: the probability on the part it sits in, against that part's line
     RuledOut a part ruled out of a file's answer by a rule of the profile, with the probability the answer put on it
+    Acceptance  what a person said of a doubtful file they read and found fine, and what it read as then
+    StaleAcceptance  a file the record of accepted files names that is gone, moved, no longer doubtful or not judged
     Unasked  a file judged whose question has no answer, and why
     PartRead how the files of one part read in a run: how many were read and how many read as doubtful
     PieceReading  what the decision model read of one piece of a file, ranked inside the file
@@ -22,8 +24,8 @@ as review holds it, so there is nothing to reshape.
 and the reasons a file is left out, the size of the smallest file judged and of the largest, how many files one run judges, the ways files
 are chosen, how near its line a file is asked again, why a question has no answer, and how many files of a part a run
 must read, and read as doubtful, to say anything of the part; and how pieces are cut, judged, shown and sent; what
-review always masks; the rules by which a part is ruled out of an answer; the forms of a question; and the states of an
-eval of the profile's own, and what holds one to its examples.
+review always masks; the rules by which a part is ruled out of an answer; why a file accepted is stale; the forms of
+a question; and the states of an eval of the profile's own, and what holds one to its examples.
 """
 from __future__ import annotations
 
@@ -87,6 +89,10 @@ read as summing to 1; the file's own part never is."""
 RULED_BY = (HOLDS,)
 """The rules by which parts are ruled out of an answer, in the order they are: a record of placement held to its
 examples under others is stale."""
+GONE, MOVED, SETTLED, UNJUDGED = "gone", "moved", "not-doubtful", "not-judged"
+"""Why a file accepted is stale in the record, judged in a run that found it (or, with every file, in any run): it is
+no longer there; it lies in another part now, or in none; it no longer reads as doubtful, so there is nothing to
+accept; it is not judged now, for a reason a file found may be left out for."""
 
 
 CHOOSE, YES_NO, SCORE = "choice", "yes-no", "score"
@@ -174,6 +180,25 @@ class RuledOut:
 
 
 @dataclass(frozen=True)
+class Acceptance:
+    """What a person said of a doubtful file once they read it and found it fine: why, and the part it read as then
+    (the one, outside its own part's group, its answer put most on)."""
+    why: str
+    reads_as: str
+
+
+@dataclass(frozen=True)
+class StaleAcceptance:
+    """A file the record of accepted files names that is stale: the file, as review shows it; the part it was
+    accepted in; why it is stale (GONE, MOVED, SETTLED or UNJUDGED); and, when it moved, the part it lies in now ("" for
+    none), when it is not judged, why it is left out (one of the reasons a file is), else ""."""
+    file: str
+    part: str
+    why: str
+    now: str = ""
+
+
+@dataclass(frozen=True)
 class Reading:
     """What the decision model read of one file: the file, as `check` shows it; the part it sits in; how many
     characters it holds; the probability on that part; the line below which it is doubtful there; whether it is; the
@@ -182,7 +207,9 @@ class Reading:
     options it was asked; whether it holds fewer than MARKED_SMALL characters; the other parts of the group of its
     part, whose probabilities the probability on its part counts with its own (none when its part is in no group);
     and the parts ruled out of the answer, in the profile's order: the probability on its part, and so whether it is
-    doubtful, is read on what remains, made to sum to 1 again, while the distribution stays as answered."""
+    doubtful, is read on what remains, made to sum to 1 again, while the distribution stays as answered; and, for a
+    doubtful file a person accepted, what they said: accepted when its code is the same as then (the file is then not
+    doubtful), accepted_before when its code changed since (it is doubtful again), None otherwise."""
     file: str
     part: str
     chars: int
@@ -196,6 +223,8 @@ class Reading:
     small: bool = False
     alike: tuple[str, ...] = ()
     ruled_out: tuple[RuledOut, ...] = ()
+    accepted: Acceptance | None = None
+    accepted_before: Acceptance | None = None
 
 
 @dataclass(frozen=True)

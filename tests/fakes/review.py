@@ -6,7 +6,7 @@ from pathlib import Path
 from xarch.kernel.source import CommentSpan
 from xarch.modules.review.domain.errors import NoKey, NotAccepted, Refused, Unanswered
 from xarch.modules.review.domain.published import Choice, PlacementHeld, Sender
-from xarch.modules.review.domain.values import Answer, Calibration, CodeFile, Found, Read, Reads, Words
+from xarch.modules.review.domain.values import AcceptedFile, Answer, Calibration, CodeFile, Found, Read, Reads, Words
 
 
 class FakeCode:
@@ -143,3 +143,21 @@ class FakeCalibrations:
 
     def put(self, record: Path, held: dict[str, Calibration]) -> None:
         self.kept[record] = dict(held)
+
+
+class FakeAcceptances:
+    """Satisfies review's Acceptances: the files accepted, by the record's path; every record put kept here; a record
+    listed as unreadable raises Refused with its reason."""
+
+    def __init__(self, kept: dict[Path, dict[str, AcceptedFile]] | None = None,
+                 unreadable: dict[Path, str] | None = None):
+        self.kept = {path: dict(files) for path, files in (kept or {}).items()}
+        self._unreadable = dict(unreadable or {})
+
+    def get(self, record: Path) -> dict[str, AcceptedFile]:
+        if record in self._unreadable:
+            raise Refused(self._unreadable[record])
+        return dict(self.kept.get(record, {}))
+
+    def put(self, record: Path, accepted: dict[str, AcceptedFile]) -> None:
+        self.kept[record] = dict(accepted)

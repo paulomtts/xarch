@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from xarch.kernel.errors import DomainError
+from xarch.modules.review.domain.published import LeftOut, Reading
 
 
 class NoSelection(DomainError):
@@ -63,3 +64,43 @@ class NoSuchEval(DomainError):
     def __init__(self, names: tuple[str, ...], known: tuple[str, ...]):
         super().__init__(f"no eval of the profile's own named {', '.join(names)}")
         self.names, self.known = names, known
+
+
+class NoWhy(DomainError):
+    """A file was to be accepted with no reason given: a person accepts a file for a reason, which the record keeps."""
+
+    def __init__(self) -> None:
+        super().__init__("no reason was given")
+
+
+class Unjudged(DomainError):
+    """Files were to be accepted that review does not judge: each, with why it is left out."""
+
+    def __init__(self, files: tuple[LeftOut, ...]):
+        super().__init__(f"review does not judge {', '.join(item.file for item in files)}")
+        self.files = files
+
+
+class NoAnswerKept(DomainError):
+    """Files were to be accepted whose answer is not in the cache: accepting sends nothing, so they must be reviewed
+    first."""
+
+    def __init__(self, files: tuple[str, ...]):
+        super().__init__(f"no answer is kept for {', '.join(files)}")
+        self.files = files
+
+
+class Undoubted(DomainError):
+    """Files were to be accepted that do not read as doubtful: there is nothing to accept; each, as it reads."""
+
+    def __init__(self, readings: tuple[Reading, ...]):
+        super().__init__(f"{', '.join(item.file for item in readings)} do not read as doubtful")
+        self.readings = readings
+
+
+class Unrecorded(DomainError):
+    """Files were to be taken out of the record of accepted files that it does not name: each, as review shows it."""
+
+    def __init__(self, files: tuple[str, ...]):
+        super().__init__(f"the record of accepted files does not name {', '.join(files)}")
+        self.files = files

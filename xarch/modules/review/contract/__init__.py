@@ -24,6 +24,7 @@ from xarch.modules.review.domain.published import (
     FEWEST_SUMMED,
     FLAGGED,
     GAP,
+    GONE,
     HOLDS,
     IMPORTS,
     LARGE,
@@ -34,6 +35,7 @@ from xarch.modules.review.domain.published import (
     MAX_PIECED,
     MIN_CHARS,
     MISSING,
+    MOVED,
     NEVER,
     NO_CONTEXT,
     NOT_CACHED,
@@ -45,14 +47,17 @@ from xarch.modules.review.domain.published import (
     REFUSED,
     RULED_BY,
     SCORE,
+    SETTLED,
     SHOWN,
     SMALL,
     STALE,
     UNCALIBRATED,
     UNHELD,
+    UNJUDGED,
     UNPARSABLE,
     UNPLACED,
     YES_NO,
+    Acceptance,
     Choice,
     EvalHeld,
     EvalRead,
@@ -71,6 +76,7 @@ from xarch.modules.review.domain.published import (
     Request,
     RuledOut,
     Sender,
+    StaleAcceptance,
     Unasked,
 )
 
@@ -84,7 +90,9 @@ __all__ = ["A_TEST", "ALWAYS_MASKED", "BAND", "BY_ALL", "BY_LIST", "BY_PATHS", "
            "STALE", "UNCALIBRATED", "YES_NO", "EvalHeld", "EvalRead", "EvalReading", "ExampleRead", "Calibrate",
            "CalibrationPlanned", "Calibrated", "UnknownEvals", "CalibrateResult", "FLAGGED", "CLEAN", "PASSED", "DISAGREE",
            "ELSEWHERE", "PLACEMENT", "PartHeld", "PlacementHeld", "PlacementStanding", "UNHELD", "FEWEST_EXAMPLES",
-           "HeldExample", "HOLDS", "RULED_BY", "RuledOut"]
+           "HeldExample", "HOLDS", "RULED_BY", "RuledOut", "GONE", "MOVED", "SETTLED", "UNJUDGED", "Acceptance",
+           "StaleAcceptance", "Accept", "FileAccepted", "Accepted", "Removed", "NoReason", "NotJudged", "NotAnswered",
+           "NotDoubtful", "NotRecorded", "AcceptResult"]
 
 
 @dataclass(frozen=True)
@@ -140,6 +148,7 @@ class ReviewPlanned:
     never: tuple[str, ...] = ()
     unmatched: tuple[str, ...] = ()
     alike: tuple[tuple[str, ...], ...] = ()
+    accepted: int = 0
 
 
 @dataclass(frozen=True)
@@ -151,8 +160,10 @@ class ReviewReading:
     did not), which stopped the sending; the parts the question describes by their role alone; and how the files of
     each part read, in the profile's order; and, when pieces were asked for, the pieces of each file judged, ranked
     inside it; how each eval of the profile's own went, in the profile's order: those that do not run with why,
-    those that ran with their readings; how placement stands held to its examples; and the model versions that gave
-    the answers read, asked or kept, each once, sorted."""
+    those that ran with their readings; how placement stands held to its examples; the model versions that gave
+    the answers read, asked or kept, each once, sorted; how many files the record of accepted files names (a doubtful
+    file of them whose code is as it was then reads as accepted, and is not doubtful); and the files of the record
+    that are stale, judged only for the files this run found (and, with every file, for every file), by file."""
     by: tuple[str, ...]
     found: int
     readings: tuple[Reading, ...]
@@ -170,6 +181,8 @@ class ReviewReading:
     evals: tuple[EvalRead, ...] = ()
     calibration: PlacementStanding = PlacementStanding(UNCALIBRATED, UNHELD)
     answered_by: tuple[str, ...] = ()
+    accepted: int = 0
+    stale: tuple[StaleAcceptance, ...] = ()
 
     @property
     def complete(self) -> bool:
@@ -293,3 +306,79 @@ class UnknownEvals:
 
 
 CalibrateResult = CalibrationPlanned | Calibrated | UnknownEvals | KeyMissing | ReviewRefused
+
+
+@dataclass(frozen=True)
+class Accept:
+    """Accept the doubtful files at paths (given as a review takes them), each read from the answers kept in the cache
+    (None: the project's own) and never sent, for why, a person's reason, recording each in the project; or, with
+    remove, take the files at paths out of the record. app is the app folder, profile the architecture in force, tests
+    the tests root (None: none)."""
+    paths: tuple[Path, ...]
+    cwd: Path
+    app: Path
+    profile: str
+    why: str = ""
+    remove: bool = False
+    tests: Path | None = None
+    cache: Path | None = None
+
+
+@dataclass(frozen=True)
+class FileAccepted:
+    """A file accepted: the file, as review shows it; the part it lies in; and the part it reads as, the one outside
+    its own part's group its answer put most on ("" for none)."""
+    file: str
+    part: str
+    reads_as: str
+
+
+@dataclass(frozen=True)
+class Accepted:
+    """The files accepted, in the order found, for why; and the record they were written to."""
+    files: tuple[FileAccepted, ...]
+    why: str
+    record: Path
+
+
+@dataclass(frozen=True)
+class Removed:
+    """The files taken out of the record of accepted files, in the order found; and the record."""
+    files: tuple[str, ...]
+    record: Path
+
+
+@dataclass(frozen=True)
+class NoReason:
+    """A file was to be accepted with no reason given (none, or one of whitespace alone), and nothing was recorded."""
+
+
+@dataclass(frozen=True)
+class NotJudged:
+    """Files were to be accepted that review does not judge, each with why it is left out, and nothing was
+    recorded."""
+    files: tuple[LeftOut, ...]
+
+
+@dataclass(frozen=True)
+class NotAnswered:
+    """Files were to be accepted whose answer is not in the cache (accepting sends nothing), and nothing was
+    recorded."""
+    files: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class NotDoubtful:
+    """Files were to be accepted that do not read as doubtful, each as it reads: there is nothing to accept, and
+    nothing was recorded."""
+    readings: tuple[Reading, ...]
+
+
+@dataclass(frozen=True)
+class NotRecorded:
+    """Files were to be taken out of the record of accepted files that it does not name, and nothing was changed."""
+    files: tuple[str, ...]
+
+
+AcceptResult = (Accepted | Removed | NoReason | NotJudged | NotAnswered | NotDoubtful | NotRecorded | NothingChosen
+                | TooManyFiles | ReviewRefused)

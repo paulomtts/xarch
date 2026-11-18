@@ -12,12 +12,14 @@ from xarch.modules.layout.adapters.fs_disk import FsDisk
 from xarch.modules.layout.adapters.spec_skeleton import SpecSkeleton as LayoutSkeleton
 from xarch.modules.layout.application.controller import LayoutController
 from xarch.modules.layout.application.services.structure_check import StructureCheckService
+from xarch.modules.review.adapters.fs_acceptances import FsAcceptances
 from xarch.modules.review.adapters.fs_answers import FsAnswers
 from xarch.modules.review.adapters.fs_calibrations import FsCalibrations
 from xarch.modules.review.adapters.rules_code import RulesCode
 from xarch.modules.review.adapters.spec_profile import SpecWords
 from xarch.modules.review.adapters.typesafe_model import KEY, TypeSafeModel
 from xarch.modules.review.application.controller import ReviewController
+from xarch.modules.review.application.services.accepting import AcceptingService
 from xarch.modules.review.application.services.answering import AnsweringService
 from xarch.modules.review.application.services.calibrating import CalibrationService
 from xarch.modules.review.application.services.reviewing import ReviewService
@@ -142,14 +144,16 @@ def _client(environment: Mapping[str, str], url: str) -> TypeSafe | None:
 def _build_review(fs: FileSystem, rules: RulesController, spec: SpecController, environment: Mapping[str, str],
                   url: str) -> ReviewController:
     """Review, which reads the app's files through rules and the profile's words through spec, asks the decision model
-    at url, its key read from environment, and keeps the answers and the record of the evals held to their examples
-    on the filesystem."""
+    at url, its key read from environment, and keeps the answers, the record of the evals held to their examples and
+    the record of the files accepted on the filesystem; accepting reads through the same review."""
     model = TypeSafeModel(partial(_client, environment, url), MODEL, url, DataFileWriter())
     answers = FsAnswers(fs, DataFileReader(), DataFileWriter())
     calibrations = FsCalibrations(fs, DataFileReader(), DataFileWriter())
+    acceptances = FsAcceptances(fs, DataFileReader(), DataFileWriter())
     code, words, answering = RulesCode(rules), SpecWords(spec), AnsweringService(model, answers)
-    return ReviewController(ReviewService(code, words, model, answering, calibrations),
-                            CalibrationService(code, words, model, answering, calibrations))
+    reviewing = ReviewService(code, words, model, answering, calibrations, acceptances)
+    return ReviewController(reviewing, CalibrationService(code, words, model, answering, calibrations),
+                            AcceptingService(reviewing, code, words, acceptances))
 
 
 def build_controllers(environment: Mapping[str, str] | None = None, url: str = URL) -> _Controllers:

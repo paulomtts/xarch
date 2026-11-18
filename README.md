@@ -47,13 +47,15 @@ xarch profile new NAME --from BUNDLED [--out FOLDER] [--app PATH]
                                                              # copy a bundled profile into the project, with its files
 xarch profile check [NAME|FILE] [--app PATH] [--format text|json]
                                                              # validate a profile without an app
-xarch review [PATH ... | calibrate [--eval ID ...]] [--files-from FILE|-] [--all] [--pieces] [--context none|imports] [--dry-run | --offline] [--cache DIR] [--max-files N] [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json]
+xarch review [PATH ... | calibrate [--eval ID ...] | accept PATH ... (--why TEXT | --remove)] [--files-from FILE|-] [--all] [--pieces] [--context none|imports] [--dry-run | --offline] [--cache DIR] [--max-files N] [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json]
                                                              # experimental, advisory: a decision model's reading of where each file
                                                              # chosen belongs, with --pieces a ranking of its pieces,
                                                              # and the profile's own evals that are calibrated; sends
                                                              # the masked text when the key is set. `review calibrate`
                                                              # holds the profile's own evals to their examples and
-                                                             # records the verdicts in .xarch/calibration.json
+                                                             # records the verdicts in .xarch/calibration.json;
+                                                             # `review accept` records doubtful files read and found
+                                                             # fine in .xarch/accepted.json
 ```
 
 `WORD` is the word between `<` and `>` in the profile's paths: in both bundled profiles `<module>`, so
@@ -751,6 +753,44 @@ example is read without it), so that a run and its calibration agree; a record o
 parts out is stale. Pieces (`--pieces`) are read as answered: a piece is one class or function on its own, which no
 `holds` decides. Only `holds` rules parts out; no other rule does. A dry run says so.
 
+### Accepting a doubtful file: `xarch review accept`
+
+A person who has read a doubtful file against its part's litmus and found it fine can accept it:
+
+```
+xarch review accept app/modules/documents/application/logic/checks.py --why "one rule over a document, read against the litmus"
+xarch review accept --remove app/modules/documents/application/logic/checks.py
+```
+
+`accept` sends nothing, ever: it reads each file as an `--offline` review would, from the answers in the cache (the
+same `--cache`, and the same default), and refuses (exit 2), naming each file and what to do, when `--why` is missing
+or holds whitespace alone; when a file is one review does not judge (in no part, a test, too small, held back by
+`review.never`, ...); when its answer is not in the cache ("run `xarch review <file>` first"); and when it does not
+read as doubtful (there is nothing to accept). Nothing is recorded unless every file named can be. `--remove` takes the
+files named out of the record (a file no longer there included), and refuses one the record does not name.
+
+The record is `.xarch/accepted.json`, beside `calibration.json`: for each file, by its path as review shows it, the part
+it lies in, `reads_as` (the part outside its own part's group that its answer, once parts are ruled out, put most on),
+`hash` and `why`, the files in the order of their paths, two spaces to a level, so that a diff of it reads; no code,
+no absolute path, no key. Commit it. `hash` is the SHA-256 of the text review sends for the file (masked, every
+comment cut), normalised so that an edit of comments alone leaves it as it is: the text is cut at each line feed, each
+line loses the whitespace at its end (as Python's `str.rstrip` takes it), a line left empty is dropped, and the rest
+are joined with a line feed before the hash of their UTF-8 is taken. Cutting a comment keeps its line, empty, so a
+comment added, changed or removed changes nothing; docstrings are code here, and change it, as does any other edit
+(the indentation of a line included), and so does a change to what `review.mask` hides.
+
+In a run of `review`, a doubtful file the record names in the part it lies in reads as **accepted** while its code
+hashes as it did: it is not doubtful (in the file's reading, in the summary of its part and in the totals), and is
+listed under its own heading with what it read as then and why (`accepted: {why, reads_as}` in the JSON, null
+otherwise). Once its code changed, it is doubtful again and says so: accepted before, changed since, with the old
+reason and what it read as then beside the new reading (`accepted_before` in the JSON). An accepted file is still
+asked whenever its text is not in the cache, as any file is: that is how a change is seen, and accepting saves no
+request. Every run says how many files the record names. A file of the record is **stale** when it is gone, lies in
+another part now (or in none), no longer reads as doubtful, or is not judged now; that is judged only for the files
+the run found (every file of the app with `--all`), and each is listed with the command that takes it out. `review`
+never edits the record itself, and its exit codes are as they were: accepting is advisory too. A record that cannot be
+read is refused, naming it, by every review and by `accept`, and is never rewritten while it cannot be read.
+
 ### Evals of the profile's own
 
 A profile may write evals of its own under `evals`, each under an id of its own (lowercase words joined by `-`, never
@@ -843,7 +883,9 @@ again in; `sends.key` the name of the variable the key is read from (never the k
 A review: `{"ok", "advisory", "profile", "dry_run": false, "complete", "model", "answered_by", "selection", "placement":
 {"calibration": {"state", "evidence", "examples": {"state", "why", "parts": [{"part", "verdict", "crossed",
 "examples"}]}}, "role_only", "files": [{"file", "part", "probability", "line", "line_by_hand", "doubtful", "chars",
-"small", "orders", "model", "alike", "distribution", "ruled_out": [{"part", "by", "probability"}]}], "parts": [{"part", "read", "doubtful", "line", "line_by_hand",
+"small", "orders", "model", "alike", "distribution", "ruled_out": [{"part", "by", "probability"}], "accepted":
+{"why", "reads_as"}, "accepted_before": {"why", "reads_as"}}], "accepted": {"recorded", "stale": [{"file", "part",
+"why", "now"}]}, "parts": [{"part", "read", "doubtful", "line", "line_by_hand",
 "summed", "litmus_note", "examples"}]}, "pieces": [{"file", "part", "judged", "too_small", "context", "answered", "alike", "lowest":
 [{"rank", "kind", "name", "first", "last", "chars", "probability", "distribution"}]}], "evals": [{"id", "state", "why",
 "run", "line", "ask", "form", "examples": {"flagged", "clean"}, "model", "asked", "readings": [{"file", "line", "name",
@@ -856,7 +898,11 @@ are their mean); `alike` the other parts of the group of the file's part, whose 
 with its own (empty when its part is in no group; also for a file's pieces), and of a dry run each group;
 `distribution` the probability on each part by name, as answered (also for a piece); `ruled_out` each part ruled out
 of the file's answer, `by` the rule that rules it out (`holds`) and `probability` what the answer put on it (empty
-when none), `probability` being read on what remains; a dry run's `ruled_out_by` the rules that rule parts out; `parts` each part read, `summed` whether 3 or more of its files were read and `litmus_note` whether the note
+when none), `probability` being read on what remains; a dry run's `ruled_out_by` the rules that rule parts out;
+`accepted` of a file what was said when it was accepted, its code as it was then (null otherwise), `accepted_before`
+the same once its code changed since; `accepted` of placement how many files `.xarch/accepted.json` names
+(`recorded`, also `accepted` of a dry run) and each stale, `why` `gone`, `moved`, `not-doubtful` or `not-judged`, `now`
+the part a moved file lies in now (null for none) or why a file is not judged; `parts` each part read, `summed` whether 3 or more of its files were read and `litmus_note` whether the note
 on its litmus applies; `pieces` each file's lowest 3 pieces (empty when fewer than 2 were judged, or when `answered`
 is false); `why` of an unanswered file or piece `not-cached`, `failed` or `refused` (that request alone), `piece` its name
 (null for a whole file), `said` the decision model's words of a request it refused alone (else null);
@@ -885,6 +931,9 @@ is not held);
 `held_back` each example `review.never` holds back (`id` its eval, `placement` for placement's, `pattern` the path that
 matched); `too_few` each eval left with too few examples of a kind to be held, and `too_few` of a calibrated eval
 whether it is one.
+
+An acceptance: `{"ok", "experimental", "accepted": [{"file", "part", "reads_as"}], "why", "record"}`; a removal:
+`{"ok", "experimental", "removed", "record"}`; a refusal of either, `{"ok": false, "error"}`.
 
 ## Project docs
 

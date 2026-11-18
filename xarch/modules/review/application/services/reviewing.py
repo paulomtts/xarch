@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from xarch.modules.review.application.logic.answers import cache_folder, record_file, versions
+from xarch.modules.review.application.logic.accepting import accepted, digest, stale
+from xarch.modules.review.application.logic.answers import accepted_file, cache_folder, record_file, versions
 from xarch.modules.review.application.logic.doubt import (
     asked_again,
     averaged,
@@ -30,6 +31,7 @@ from xarch.modules.review.application.logic.questions import (
 from xarch.modules.review.application.logic.selection import chosen, judged, left_out, ways, within_cap
 from xarch.modules.review.application.logic.sending import needs_key, unusable_key, why_unasked
 from xarch.modules.review.application.logic.withholding import held_back, kept_examples, kept_files, unmatched
+from xarch.modules.review.application.ports.acceptances import Acceptances
 from xarch.modules.review.application.ports.calibrations import Calibrations
 from xarch.modules.review.application.ports.code import Code
 from xarch.modules.review.application.ports.decision_model import DecisionModel
@@ -49,9 +51,9 @@ class ReviewService:
     and asks it of the decision model, an answer kept being read instead of asked again."""
 
     def __init__(self, code: Code, profile: Profile, model: DecisionModel, answering: AnsweringService,
-                 calibrations: Calibrations):
+                 calibrations: Calibrations, acceptances: Acceptances):
         self._code, self._profile, self._model, self._answering = code, profile, model, answering
-        self._calibrations = calibrations
+        self._calibrations, self._acceptances = calibrations, acceptances
 
     def review(self, cmd: Review) -> ReviewPlanned | ReviewReading:
         """What placement and the evals that may run would send for each file judged (and each piece of it, with
@@ -59,8 +61,9 @@ class ReviewService:
         answer is near its part's line asked again in other orders of the options and read on their mean, each read
         once the parts whose `holds` it would break are ruled out of its answers, the pieces of each ranked inside it,
         and the readings of each eval of the profile's own at or above its line (placement and each eval standing as
-        held to the examples review.never does not match); raises
-        NoSelection, AllWithOthers, InPieces, OverCap, Refused (the files, the profile, its examples or the record
+        held to the examples review.never does not match), a doubtful file a person accepted read as accepted while its
+        code is as it was then, and the files of the record of accepted files that are stale; raises
+        NoSelection, AllWithOthers, InPieces, OverCap, Refused (the files, the profile, its examples or a record
         cannot be read), and NoKey for a question to send with no key set, before anything is sent."""
         paths = chosen(cmd.paths, cmd.listed, cmd.every, cmd.app, cmd.pieces)
         found = self._code.files(paths, cmd.cwd, cmd.app, cmd.profile, cmd.tests)
@@ -73,6 +76,7 @@ class ReviewService:
         calibration = placed(self._calibrations.placement(record_file(cmd.app)),
                              held_as(question, words.parts, examples, (cmd.app.name, words.examples_root), words.mask),
                              sends.model)
+        record = self._acceptances.get(accepted_file(cmd.app))
         going, answering = Run(cache_folder(cmd.app, cmd.cache), cmd.offline), self._answering
         requests = tuple(request(file, cmd.app.name, words.mask) for file in judging)
         kept = tuple(answering.kept(going, item.text, question) for item in requests)
@@ -95,7 +99,7 @@ class ReviewService:
                                  tokens(sent), words.mask, sends, len(reordered(question)),
                                  piece.ask if cmd.pieces else "", cmd.context,
                                  in_order(idle + tuple(s for _, s, _ in evals), words.evals), words.never,
-                                 unmatched(found, words.never), groups(words.parts))
+                                 unmatched(found, words.never), groups(words.parts), len(record))
         others, breaks = reordered(question), self._breaks(cmd, judging)
         again = tuple(answering.kept(going, item.text, other) for item, answer in zip(requests, kept, strict=True)
                       if answer is not None and asked_again(answer, parts[item.part], breaks[item.file])
@@ -139,12 +143,14 @@ class ReviewService:
             unasked += unasked_of(asked, items, tuple(answered), bool(going.failure),
                                   tuple(answering.refusal(going, item.text, orders(asked.question)) for item in items))
             ran.append(went(asked, stood, items, tuple(answered)))
-        judged_files = undoubted(tuple(readings), calibration)
+        judged_files = accepted(undoubted(tuple(readings), calibration),
+                                {item.file: digest(item.text) for item in requests}, record)
         return ReviewReading(by, total, ranked(judged_files), left_out(files), tuple(unasked), sends,
                              len(going.asked), len(going.reused), sum(a.input_tokens for a in going.asked),
                              sum(a.output_tokens for a in going.asked), going.failure, role_only(words.parts),
                              marked(by_part(judged_files, words.parts), calibration), tuple(ranked_pieces),
-                             in_order(idle + tuple(ran), words.evals), calibration, versions(*going.asked, *going.reused))
+                             in_order(idle + tuple(ran), words.evals), calibration, versions(*going.asked, *going.reused),
+                             len(record), stale(record, judging, left_out(files), judged_files, cmd.every))
 
     def _breaks(self, cmd: Review, judging: tuple[CodeFile, ...]) -> dict[str, tuple[str, ...]]:
         """The parts whose `holds` each file judged would break were it to lie there, by the file, read with the

@@ -1,6 +1,8 @@
 """Files and parts for the review module's tests: a small profile of two parts, and files of every kind found."""
 from __future__ import annotations
 
+import hashlib
+
 from xarch.kernel.source import Import, Unparsable
 from xarch.modules.review.domain.values import CodeFile, PartText
 
@@ -20,3 +22,10 @@ def found(file: str = "app/modules/documents/domain/document.py", text: str = HE
 
 
 BROKEN = found("app/modules/documents/domain/broken.py", error=Unparsable(2, "invalid syntax"))
+
+
+def code_hash(text: str) -> str:
+    """The hash of a file's code as README says accept takes it: the SHA-256 of its lines without the whitespace at
+    their end, those left empty dropped, joined with line feeds."""
+    lines = [line.rstrip() for line in text.split("\n")]
+    return hashlib.sha256("\n".join(line for line in lines if line).encode("utf-8")).hexdigest()

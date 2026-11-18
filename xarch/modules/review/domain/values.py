@@ -1,7 +1,7 @@
 """The values review reads through its ports: the profile's words review reads (its parts as placement offers them,
 what review may send, and the evals of its own), and the files found at the paths given, read or not, with their
-pieces; what an eval of the profile's own reads in files; the record of the evals held to their examples; and the
-pieces as review judges them."""
+pieces; what an eval of the profile's own reads in files; the record of the evals held to their examples; the
+pieces as review judges them; and the files accepted, as recorded."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -160,3 +160,12 @@ class Run:
     failure: str = ""
     refused: tuple[tuple[str, str], ...] = ()
 
+
+@dataclass(frozen=True)
+class AcceptedFile:
+    """A doubtful file a person read, found fine and accepted, as recorded: the part it lay in, the part it read as
+    then, the hash of its code as review sent it (see accepting), and why they accepted it. It holds no code."""
+    part: str
+    reads_as: str
+    code: str
+    why: str

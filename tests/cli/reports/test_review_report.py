@@ -1,36 +1,55 @@
 """xarch review, shown: a dry run and a reading as text and as JSON, and every refusal in words."""
 import json
 from dataclasses import replace
+from pathlib import Path
 
 from xarch.cli.reports.review_report import (
     ADVISORY,
+    accept_nothing,
+    accepted_document,
+    accepted_lines,
     all_and_others,
     all_in_pieces,
     no_key,
+    no_reason,
+    not_answered,
+    not_doubtful,
+    not_judged,
+    not_recorded,
     nothing_chosen,
     plan_document,
     plan_lines,
     reading_document,
     reading_lines,
+    removed_document,
+    removed_lines,
     too_many,
 )
 from xarch.modules.review.contract import (
+    A_TEST,
     BY_LIST,
     BY_PATHS,
     CALIBRATED,
     DISAGREE,
     FAILED,
+    GONE,
     HOLDS,
     IMPORTS,
     LARGE,
     MISSING,
+    MOVED,
     NEVER,
     NO_CONTEXT,
     NOT_CACHED,
     PASSED,
     REFUSED,
+    SETTLED,
     SMALL,
+    UNJUDGED,
+    Acceptance,
+    Accepted,
     Choice,
+    FileAccepted,
     LeftOut,
     Option,
     PartHeld,
@@ -39,11 +58,13 @@ from xarch.modules.review.contract import (
     PiecesRead,
     PlacementStanding,
     Reading,
+    Removed,
     Request,
     ReviewPlanned,
     ReviewReading,
     RuledOut,
     Sender,
+    StaleAcceptance,
     Unasked,
 )
 
@@ -73,15 +94,16 @@ def test_a_dry_run_shows_the_question_once_and_each_request_with_the_exact_text_
     assert lines[5:10] == ["the question each request carries:", "  Which part?",
                            "  options: 2 parts, each described by its litmus test (by its role only: main)",
                            "    domain: Is it an invariant?", "    main: starts the app"]
-    assert lines[10:13] == ["", "masked in each text: every comment (cut from its line, the line kept), the dotted name "
+    assert lines[10:14] == ["", "masked in each text: every comment (cut from its line, the line kept), the dotted name "
                                 "each import of the app's own code imports from, and every e-mail address, always; and "
                                 "what review.mask hides: nothing more",
                             "ruled out of each answer of a whole file: a part whose `holds` the file would break were "
                             "it to lie there (parts.<part>.holds): its probability dropped and what remains read as "
-                            "summing to 1; never the file's own part, and never in the answer of a piece"]
-    assert lines[13:19] == ["", "request 1 of 1: app/a.py (domain, 1,200 characters)", "    | from <masked> import A",
+                            "summing to 1; never the file's own part, and never in the answer of a piece",
+                            "accepted: 0 file(s) in .xarch/accepted.json"]
+    assert lines[14:20] == ["", "request 1 of 1: app/a.py (domain, 1,200 characters)", "    | from <masked> import A",
                             "    |", "    | x = 1", ""]
-    assert lines[19:] == ["left out:", "  app/b.py: under 800 characters (612)", "  app/c.py: not there"]
+    assert lines[20:] == ["left out:", "  app/b.py: under 800 characters (612)", "  app/c.py: not there"]
 
 
 def test_a_dry_run_says_the_texts_review_mask_hides_and_each_file_review_never_sends_with_the_path_that_matched():
@@ -111,7 +133,7 @@ def test_the_json_of_a_dry_run_holds_every_request_in_full_and_the_question_once
         "pieces": False, "piece_question": None, "context": "none",
         "characters": 1250, "tokens": 313, "reorders": 0,
         "masked": ["own-imports", "e-mail", "comments"], "mask": [], "never": [], "alike": [], "ruled_out_by": ["holds"],
-        "sends": {"name": "Model", "at": "https://model.example.test", "model": "m-1", "key": "MODEL_KEY", "keyed": False,
+        "accepted": 0, "sends": {"name": "Model", "at": "https://model.example.test", "model": "m-1", "key": "MODEL_KEY", "keyed": False,
                   "unusable": None}}
 
 
@@ -148,7 +170,7 @@ def test_a_reading_says_what_review_is_what_was_sent_and_each_doubtful_file_with
     assert lines[:3] == [f"review (experimental): advisory. {ADVISORY}",
                          "Model m-1. 4 file(s) found (paths), 2 judged, 1 left out. Asked 1, from cache 1.",
                          "Sent 1 request(s) to Model (https://model.example.test): 2,400 input tokens, 3 output tokens."]
-    assert lines[4:9] == [
+    assert lines[4:10] == [
         "placement: doubtful here (probability on the part the file sits in, below that part's line)",
         "  based on: measured on two codebases with one reader's labels and one model version: about 7 to 10% of "
         "well-placed files read as doubtful, and about 1 in 2 to 1 in 3 doubtful files is really misplaced",
@@ -156,9 +178,10 @@ def test_a_reading_says_what_review_is_what_was_sent_and_each_doubtful_file_with
         "      what to do: read it against the litmus of adapters (`xarch where "
         "app/modules/documents/adapters/export.py`). If the litmus says it belongs, leave it. In trials, about 1 in "
         "2 to 1 in 3 files read this way was really misplaced.",
+        "  accepted: 0 file(s) in .xarch/accepted.json, 0 of them read as accepted this run",
         "  held to its examples: no: uncalibrated: it was never held to its examples; run `xarch review calibrate "
         "--eval placement`"]
-    assert lines[9:] == ["", "placement: reads as placed (lowest first)",
+    assert lines[10:] == ["", "placement: reads as placed (lowest first)",
                          "  app/modules/documents/domain/document.py   domain   0.71 (line 0.30)   1,200 chars",
                          "", "left out:", "  app/b.py: under 800 characters (612)"]
     assert "logic" not in "\n".join(lines)
@@ -263,11 +286,13 @@ def test_the_json_of_a_reading_holds_each_file_with_the_probability_of_each_part
                       "role_only": [],
                       "files": [{"file": DOUBTFUL.file, "part": "adapters", "probability": 0.0812, "line": 0.3,
                                  "line_by_hand": False, "doubtful": True, "chars": 2140, "small": False, "orders": 1, "model": "m-1.0.1",
-                                 "alike": [], "distribution": {"adapters": 0.0812, "logic": 0.9188}, "ruled_out": []},
+                                 "alike": [], "distribution": {"adapters": 0.0812, "logic": 0.9188}, "ruled_out": [],
+                                 "accepted": None, "accepted_before": None},
                                 {"file": PLACED.file, "part": "domain", "probability": 0.71, "line": 0.3,
                                  "line_by_hand": False, "doubtful": False, "chars": 1200, "small": False, "orders": 1, "model": "m-1.0.1",
-                                 "alike": [], "distribution": {"domain": 0.71, "logic": 0.29}, "ruled_out": []}],
-                      "parts": []},
+                                 "alike": [], "distribution": {"domain": 0.71, "logic": 0.29}, "ruled_out": [],
+                                 "accepted": None, "accepted_before": None}],
+                      "parts": [], "accepted": {"recorded": 0, "stale": []}},
         "pieces": [],
         "evals": [],
         "sends": {"name": "Model", "at": "https://model.example.test", "model": "m-1", "key": "MODEL_KEY", "keyed": True,
@@ -439,3 +464,87 @@ def test_a_reading_with_parts_ruled_out_says_each_with_what_the_answer_put_on_it
                                  {"part": "domain", "by": "holds", "probability": 0.31}]
     assert file["distribution"] == {"logic": 0.13, "profile-values": 0.45, "domain": 0.31, "kernel-logic": 0.11}
 
+
+
+WHY_FINE = "it implements the port against the file system"
+ACCEPTED_FILE = replace(DOUBTFUL, doubtful=False, accepted=Acceptance(WHY_FINE, "logic"))
+CHANGED = replace(DOUBTFUL, accepted_before=Acceptance(WHY_FINE, "logic"))
+
+
+def test_a_file_accepted_is_listed_in_its_own_section_with_its_reason_and_not_as_doubtful_in_text_and_in_json():
+    read = replace(READ, readings=(ACCEPTED_FILE, PLACED), accepted=2)
+    lines = reading_lines(read)
+    assert "  accepted: 2 file(s) in .xarch/accepted.json, 1 of them read as accepted this run" in lines
+    at = lines.index("placement: accepted (doubtful here, and accepted by a person who read it; its code as it was "
+                     "then)")
+    assert lines[at + 1:at + 3] == [
+        "  app/modules/documents/adapters/export.py   adapters   0.08 (line 0.30)   2,140 chars",
+        f"      accepted: it read as logic then; why: {WHY_FINE}"]
+    assert "  no file judged reads as doubtful here" in lines
+    assert lines.count("  app/modules/documents/adapters/export.py   adapters   0.08 (line 0.30)   2,140 chars") == 1
+    document = json.loads(reading_document("cli", read))
+    file = document["placement"]["files"][0]
+    assert (file["doubtful"], file["accepted"], file["accepted_before"]) == (
+        False, {"why": WHY_FINE, "reads_as": "logic"}, None)
+    assert document["placement"]["accepted"] == {"recorded": 2, "stale": []}
+
+
+def test_a_file_accepted_before_and_changed_since_is_doubtful_with_the_old_reason_and_what_it_read_as_then():
+    lines = reading_lines(replace(READ, readings=(CHANGED,), accepted=1))
+    at = lines.index("  app/modules/documents/adapters/export.py   adapters   0.08 (line 0.30)   2,140 chars")
+    assert lines[at + 1:at + 3] == [
+        f"      accepted before, changed since: it read as logic then; why: {WHY_FINE}",
+        "      read it again: if it still belongs, accept it again (`xarch review accept "
+        "app/modules/documents/adapters/export.py --why \"...\"`)"]
+    file = json.loads(reading_document("cli", replace(READ, readings=(CHANGED,))))["placement"]["files"][0]
+    assert (file["doubtful"], file["accepted"], file["accepted_before"]) == (
+        True, None, {"why": WHY_FINE, "reads_as": "logic"})
+
+
+def test_the_files_of_the_record_that_are_stale_are_listed_with_why_and_the_command_that_takes_them_out():
+    stale = (StaleAcceptance("app/gone.py", "domain", GONE), StaleAcceptance("app/moved.py", "domain", MOVED, "logic"),
+             StaleAcceptance("app/none.py", "domain", MOVED), StaleAcceptance("app/fine.py", "domain", SETTLED),
+             StaleAcceptance("app/test.py", "domain", UNJUDGED, A_TEST))
+    read = replace(READ, accepted=5, stale=stale)
+    lines = reading_lines(read)
+    at = lines.index("accepted, stale (5): .xarch/accepted.json names them, and review never edits it")
+    assert lines[at + 1:at + 7] == [
+        "  app/gone.py (accepted in domain): no longer there",
+        "  app/moved.py (accepted in domain): lies in logic now",
+        "  app/none.py (accepted in domain): lies in no part now",
+        "  app/fine.py (accepted in domain): no longer reads as doubtful: there is nothing to accept",
+        "  app/test.py (accepted in domain): not judged now (a test: review reads the app's files only)",
+        "  what to do: xarch review accept --remove app/gone.py app/moved.py app/none.py app/fine.py app/test.py"]
+    assert json.loads(reading_document("cli", read))["placement"]["accepted"]["stale"][:2] == [
+        {"file": "app/gone.py", "part": "domain", "why": "gone", "now": None},
+        {"file": "app/moved.py", "part": "domain", "why": "moved", "now": "logic"}]
+
+
+def test_files_accepted_and_removed_are_said_with_the_record_in_text_and_in_json():
+    done = Accepted((FileAccepted("app/x.py", "domain", "logic"),), WHY_FINE, Path("/src/.xarch/accepted.json"))
+    assert accepted_lines(done, ".xarch/accepted.json") == [
+        "review accept (experimental): 1 file(s) accepted, nothing sent",
+        "  app/x.py   domain   reads as logic", f"  why: {WHY_FINE}",
+        "recorded in .xarch/accepted.json: commit it; a review reads each as accepted while its code is as it is now, "
+        "and any change to its code brings it back as doubtful"]
+    assert json.loads(accepted_document(done, ".xarch/accepted.json")) == {
+        "ok": True, "experimental": True, "accepted": [{"file": "app/x.py", "part": "domain", "reads_as": "logic"}],
+        "why": WHY_FINE, "record": ".xarch/accepted.json"}
+    gone = Removed(("app/x.py",), Path("/src/.xarch/accepted.json"))
+    assert removed_lines(gone, ".xarch/accepted.json") == [
+        "review accept --remove (experimental): 1 file(s) taken out of .xarch/accepted.json", "  app/x.py"]
+    assert json.loads(removed_document(gone, ".xarch/accepted.json"))["removed"] == ["app/x.py"]
+
+
+def test_each_refusal_of_accept_names_the_file_and_what_to_do():
+    assert no_reason() == ("accept needs a reason, which the record keeps: give --why \"<what you read, and why the "
+                           "file belongs where it is>\"")
+    assert not_judged((LeftOut("app/b.py", SMALL, 612),)) == (
+        "app/b.py is not judged by review (under 800 characters (612)): only a file review judges can be accepted")
+    assert not_answered(("app/x.py",)) == ("app/x.py has no answer in the cache, and accept sends nothing: run "
+                                           "`xarch review app/x.py` first, then accept it")
+    assert not_doubtful((PLACED,)) == ("app/modules/documents/domain/document.py does not read as doubtful (0.71 on "
+                                       "domain, line 0.30): there is nothing to accept")
+    assert not_recorded(("app/x.py",)) == "app/x.py is not in .xarch/accepted.json: there is nothing to take out"
+    assert accept_nothing() == ("accept takes the files to accept, named as paths: `xarch review accept <file> --why "
+                                "\"...\"`, or `xarch review accept --remove <file>`")

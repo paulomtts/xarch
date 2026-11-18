@@ -29,6 +29,18 @@ All notable changes to this project are written here. The format follows
   placement held before is stale; recalibrate with `xarch review calibrate --eval placement`. Pieces are read as
   answered. Both dry runs say what is ruled out (`ruled_out_by` in their JSON).
 
+- `xarch review accept <file>... --why "<reason>"`: a person who has read a doubtful file and found it fine accepts
+  it, and `.xarch/accepted.json` records it, by the path review shows, with its part, the part it read as, a hash of
+  its code and the reason. `accept` sends nothing: it needs the file's answer in the cache, and refuses (exit 2),
+  naming each file and what to do, with no reason, for a file review does not judge, one with no answer kept, or one
+  that does not read as doubtful; `--remove` takes files out of the record. The hash is of what review sends for the
+  file, blind to blank lines and whitespace at the end of a line, so an edit of comments alone keeps it and any other
+  change brings the file back. A review reads a doubtful file accepted, while its code is as it was, as accepted and
+  not doubtful, listed apart with its reason (`accepted` in the JSON); one changed since is doubtful again, with the
+  old reason and what it read as then (`accepted_before`); every run says how many files are accepted, and lists as
+  stale, with the command that takes them out, the files of the record it found gone, in another part, no longer
+  doubtful or not judged. Review never edits the record, and its exit codes are unchanged.
+
 ### Changed
 
 - The bundled `cli` and `web` profiles are stricter, with five rules xarch's own profile already held: `services`,

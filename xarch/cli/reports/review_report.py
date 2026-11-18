@@ -36,6 +36,7 @@ from xarch.modules.review.contract import (
     DISAGREE,
     EXCLUDED,
     FEWEST_SUMMED,
+    GONE,
     IMPORTS,
     LARGE,
     LINK,
@@ -43,6 +44,7 @@ from xarch.modules.review.contract import (
     MAX_CHARS,
     MIN_CHARS,
     MISSING,
+    MOVED,
     NEVER,
     NO_CONTEXT,
     NOT_SOURCE,
@@ -50,17 +52,23 @@ from xarch.modules.review.contract import (
     PIECE_CHARS,
     REFUSED,
     RULED_BY,
+    SETTLED,
     SMALL,
+    UNJUDGED,
     UNPARSABLE,
     UNPLACED,
+    Acceptance,
+    Accepted,
     LeftOut,
     PartRead,
     PiecesRead,
     Reading,
+    Removed,
     Request,
     ReviewPlanned,
     ReviewReading,
     Sender,
+    StaleAcceptance,
     Unasked,
 )
 
@@ -79,6 +87,10 @@ WHY = {MISSING: "not there", NOT_SOURCE: "no source file of the app's language",
        UNPLACED: "in no part", NEVER: "held back by review.never", UNPARSABLE: "does not parse",
        SMALL: f"under {MIN_CHARS:,} characters", LARGE: f"over {MAX_CHARS:,} characters, never sent",
        LINK: "a link to a file outside the app, or to no source file"}
+ACCEPTED_RECORD = ".xarch/accepted.json"
+"""Where the files accepted are recorded, below the project's root, as a review names it."""
+STALE = {GONE: "no longer there", SETTLED: "no longer reads as doubtful: there is nothing to accept"}
+"""Why a file of the record is stale, for each reason but a move and a file not judged, which say more."""
 CONTEXTS = {NO_CONTEXT: "nothing: the piece alone",
             IMPORTS: "the file's opening lines (those before its first piece), masked: numbers read so never compare "
                      "with numbers read without them"}
@@ -110,7 +122,8 @@ def plan_lines(planned: ReviewPlanned) -> list[str]:
     if planned.piece_ask:
         lines += [f"  a request of a piece of a file asks instead: {planned.piece_ask}",
                   f"  sent before each piece: {CONTEXTS[planned.context]}"]
-    lines += ["", masks(planned.mask), *alike_lines(planned.alike), *ruled_lines()]
+    lines += ["", masks(planned.mask), *alike_lines(planned.alike), *ruled_lines(),
+              f"accepted: {planned.accepted} file(s) in {ACCEPTED_RECORD}"]
     lines += [f"held back by review.never: {', '.join(planned.never)}"] if planned.never else []
     lines += [f"  {pattern}: matched nothing this run (a path of review.never is read below the app, without its "
               "folder's name)" for pattern in planned.unmatched]
@@ -153,7 +166,7 @@ def plan_document(profile: str, planned: ReviewPlanned) -> str:
         "characters": planned.characters, "tokens": planned.tokens, "reorders": planned.reorders,
         "masked": list(ALWAYS_MASKED), "mask": list(planned.mask),
         "never": [{"path": pattern, "matched": pattern not in planned.unmatched} for pattern in planned.never],
-        "alike": [list(group) for group in planned.alike], "ruled_out_by": list(RULED_BY),
+        "alike": [list(group) for group in planned.alike], "ruled_out_by": list(RULED_BY), "accepted": planned.accepted,
         "sends": sends_of(planned.sends)}
     return document(content)
 
@@ -171,19 +184,28 @@ def reading_lines(read: ReviewReading) -> list[str]:
                      f"{read.input_tokens:,} input tokens, {read.output_tokens:,} output tokens.")
     disagreeing = {part.part for part in read.calibration.parts if part.verdict == DISAGREE}
     doubtful = [item for item in read.readings if item.doubtful]
-    placed = [item for item in read.readings if not item.doubtful and item.part not in disagreeing]
-    unlined = [item for item in read.readings if not item.doubtful and item.part in disagreeing]
+    accepted = [(item, item.accepted) for item in read.readings if item.accepted is not None]
+    placed = [item for item in read.readings
+              if not item.doubtful and item.accepted is None and item.part not in disagreeing]
+    unlined = [item for item in read.readings
+               if not item.doubtful and item.accepted is None and item.part in disagreeing]
     lines += ["", "placement: doubtful here (probability on the part the file sits in, below that part's line)",
               f"  based on: {BASED_ON}"]
     for item in doubtful:
-        lines += [*_reading(item),
+        lines += [*_reading(item), *_before(item),
                   f"      what to do: read it against the litmus of {item.part} (`xarch where {item.file}`). {TO_DO}"]
     if not read.readings and judged:
         lines.append(f"  none of the {judged} file(s) judged was answered")
     elif not doubtful:
         answered = f" ({len(read.readings)} of {judged} answered)" if len(read.readings) < judged else ""
         lines.append(f"  no file judged reads as doubtful here{answered}")
+    lines.append(f"  accepted: {read.accepted} file(s) in {ACCEPTED_RECORD}, {len(accepted)} of them read as accepted "
+                 "this run")
     lines += standing_lines(read.calibration)
+    if accepted:
+        lines += ["", "placement: accepted (doubtful here, and accepted by a person who read it; its code as it was then)",
+                  *(line for item, said in accepted for line in _accepted(item, said))]
+    lines += _stale(read.stale)
     if placed:
         lines += ["", "placement: reads as placed (lowest first)", *(line for item in placed for line in _reading(item))]
     for part in sorted({item.part for item in unlined}):
@@ -223,7 +245,10 @@ def reading_document(profile: str, read: ReviewReading) -> str:
         "placement": {"calibration": {"state": "measured", "evidence": BASED_ON,
                                       "examples": standing_document(read.calibration)},
                       "role_only": list(read.role_only), "files": [_file(item) for item in read.readings],
-                      "parts": [_part_read(part) for part in read.parts]},
+                      "parts": [_part_read(part) for part in read.parts],
+                      "accepted": {"recorded": read.accepted, "stale": [
+                          {"file": item.file, "part": item.part, "why": item.why, "now": item.now or None}
+                          for item in read.stale]}},
         "pieces": [_pieces_read(pieces) for pieces in read.pieces],
         "evals": eval_documents(read.evals),
         "sends": sends_of(read.sends),
@@ -328,7 +353,97 @@ def _file(item: Reading) -> dict[str, Any]:
             "line_by_hand": item.by_hand, "doubtful": item.doubtful, "chars": item.chars, "small": item.small,
             "orders": item.orders, "model": item.model, "alike": list(item.alike),
             "distribution": dict(item.distribution),
-            "ruled_out": [{"part": out.part, "by": out.by, "probability": out.probability} for out in item.ruled_out]}
+            "ruled_out": [{"part": out.part, "by": out.by, "probability": out.probability} for out in item.ruled_out],
+            "accepted": _acceptance(item.accepted), "accepted_before": _acceptance(item.accepted_before)}
+
+
+def _acceptance(said: Acceptance | None) -> dict[str, str] | None:
+    return {"why": said.why, "reads_as": said.reads_as} if said is not None else None
+
+
+def _before(item: Reading) -> list[str]:
+    """What was said of a doubtful file accepted before its code changed."""
+    if item.accepted_before is None:
+        return []
+    return [f"      accepted before, changed since: it read as {item.accepted_before.reads_as or 'no other part'} "
+            f"then; why: {item.accepted_before.why}",
+            f"      read it again: if it still belongs, accept it again (`xarch review accept {item.file} --why "
+            "\"...\"`)"]
+
+
+def _accepted(item: Reading, said: Acceptance) -> list[str]:
+    """A file accepted, as it reads, with what was said of it."""
+    return [*_reading(item), f"      accepted: it read as {said.reads_as or 'no other part'} then; why: {said.why}"]
+
+
+def _stale(stale: tuple[StaleAcceptance, ...]) -> list[str]:
+    """The files of the record that are stale, each with why, and the command that takes them out of it."""
+    if not stale:
+        return []
+    return ["", f"accepted, stale ({len(stale)}): {ACCEPTED_RECORD} names them, and review never edits it",
+            *(f"  {item.file} (accepted in {item.part}): {_stale_why(item)}" for item in stale),
+            f"  what to do: xarch review accept --remove {' '.join(item.file for item in stale)}"]
+
+
+def _stale_why(item: StaleAcceptance) -> str:
+    if item.why == MOVED:
+        return f"lies in {item.now} now" if item.now else "lies in no part now"
+    if item.why == UNJUDGED:
+        return f"not judged now ({WHY.get(item.now, item.now)})"
+    return STALE[item.why]
+
+
+def accepted_lines(done: Accepted, record: str) -> list[str]:
+    """The files accepted, each with what it reads as, the reason, and where they are recorded."""
+    return [f"review accept (experimental): {len(done.files)} file(s) accepted, nothing sent",
+            *(f"  {item.file}   {item.part}   reads as {item.reads_as or 'no other part'}" for item in done.files),
+            f"  why: {done.why}",
+            f"recorded in {record}: commit it; a review reads each as accepted while its code is as it is now, and any "
+            "change to its code brings it back as doubtful"]
+
+
+def accepted_document(done: Accepted, record: str) -> str:
+    return document({"ok": True, "experimental": True, "accepted": [
+        {"file": item.file, "part": item.part, "reads_as": item.reads_as or None} for item in done.files],
+        "why": done.why, "record": record})
+
+
+def removed_lines(done: Removed, record: str) -> list[str]:
+    return [f"review accept --remove (experimental): {len(done.files)} file(s) taken out of {record}",
+            *(f"  {file}" for file in done.files)]
+
+
+def removed_document(done: Removed, record: str) -> str:
+    return document({"ok": True, "experimental": True, "removed": list(done.files), "record": record})
+
+
+def no_reason() -> str:
+    return ("accept needs a reason, which the record keeps: give --why \"<what you read, and why the file belongs "
+            "where it is>\"")
+
+
+def not_judged(files: tuple[LeftOut, ...]) -> str:
+    return "; ".join(f"{item.file} is not judged by review ({_why(item)}): only a file review judges can be accepted"
+                     for item in files)
+
+
+def not_answered(files: tuple[str, ...]) -> str:
+    return "; ".join(f"{file} has no answer in the cache, and accept sends nothing: run `xarch review {file}` first, "
+                     "then accept it" for file in files)
+
+
+def not_doubtful(readings: tuple[Reading, ...]) -> str:
+    return "; ".join(f"{item.file} does not read as doubtful ({item.probability:.2f} on {item.part}, line "
+                     f"{item.line:.2f}): there is nothing to accept" for item in readings)
+
+
+def not_recorded(files: tuple[str, ...]) -> str:
+    return "; ".join(f"{file} is not in {ACCEPTED_RECORD}: there is nothing to take out" for file in files)
+
+
+def accept_nothing() -> str:
+    return ("accept takes the files to accept, named as paths: `xarch review accept <file> --why \"...\"`, or "
+            "`xarch review accept --remove <file>`")
 
 
 def _pieces_read(read: PiecesRead) -> dict[str, Any]:

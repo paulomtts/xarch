@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from tests.fakes.review import FakeAnswers, FakeCode, FakeDecisionModel, FakeProfile
+from tests.fakes.review import FakeAcceptances, FakeAnswers, FakeCode, FakeDecisionModel, FakeProfile
 from tests.modules.review.application.helpers import controller
-from tests.modules.review.builders import BODY, OWN, PARTS, found
+from tests.modules.review.builders import BODY, OWN, PARTS, code_hash, found
 from xarch.kernel.source import CommentSpan
 from xarch.modules.review.contract import (
     BY_ALL,
@@ -22,7 +22,9 @@ from xarch.modules.review.contract import (
     NO_CONTEXT,
     NOT_CACHED,
     REFUSED,
+    SETTLED,
     SMALL,
+    Acceptance,
     AllAndOthers,
     AllInPieces,
     Choice,
@@ -40,10 +42,12 @@ from xarch.modules.review.contract import (
     ReviewRefused,
     RuledOut,
     Sender,
+    StaleAcceptance,
     TooManyFiles,
     Unasked,
 )
-from xarch.modules.review.domain.values import Answer, CodeFile, Found, PartText, Span, Words
+from xarch.modules.review.contract import GONE as GONE_FILE
+from xarch.modules.review.domain.values import AcceptedFile, Answer, CodeFile, Found, PartText, Span, Words
 
 CWD, APP = Path("/src"), Path("/src/app")
 FOLDER = Path("/src/.xarch/cache/review")
@@ -608,3 +612,59 @@ def test_nothing_is_asked_of_where_else_a_file_could_lie_in_a_dry_run():
     code = FakeCode(FOUND, breaks={DOCUMENT.text: ("main",)})
     controller(code, FakeProfile(WORDS), FakeDecisionModel({}), FakeAnswers()).review(review("app/x.py", dry_run=True))
     assert code.held == []
+
+
+ACCEPTED_RECORD = Path("/src/.xarch/accepted.json")
+
+
+def _accepted(record: dict, when: Review, answers: dict | None = None):
+    acceptances = FakeAcceptances({ACCEPTED_RECORD: record})
+    model = FakeDecisionModel(answers if answers is not None else {SENT: LOW, SENT_OTHER: HIGH})
+    return controller(FakeCode(FOUND), FakeProfile(WORDS), model, FakeAnswers(), acceptances=acceptances).review(when)
+
+
+def test_a_doubtful_file_accepted_whose_code_is_as_it_was_reads_as_accepted_and_not_doubtful():
+    record = {DOCUMENT.file: AcceptedFile("domain", "main", code_hash(SENT), "read: the values")}
+    found = _accepted(record, review("app/x.py"))
+    assert isinstance(found, ReviewReading)
+    assert found.readings == (replace(DOUBTFUL, doubtful=False, accepted=Acceptance("read: the values", "main")),)
+    assert (found.parts, found.accepted, found.stale) == (read(1, 0), 1, ())
+
+
+def test_a_doubtful_file_accepted_whose_code_changed_since_is_doubtful_again_with_what_was_said_before():
+    record = {DOCUMENT.file: AcceptedFile("domain", "main", code_hash(SENT + "x = 1\n"), "read: the values")}
+    found = _accepted(record, review("app/x.py"))
+    assert isinstance(found, ReviewReading)
+    assert found.readings == (replace(DOUBTFUL, accepted_before=Acceptance("read: the values", "main")),)
+    assert found.parts == read(1, 1)
+
+
+def test_the_files_of_the_record_that_are_stale_are_said_for_the_files_found_and_every_file_with_all():
+    record = {OTHER.file: AcceptedFile("domain", "main", code_hash(SENT_OTHER), "w"),
+              GONE.file: AcceptedFile("domain", "main", "x", "w"), "app/elsewhere.py": AcceptedFile("domain", "", "x", "w")}
+    found = _accepted(record, review("app/modules/documents/domain", "app/two"))
+    assert isinstance(found, ReviewReading)
+    assert found.stale == (StaleAcceptance(GONE.file, "domain", GONE_FILE),
+                           StaleAcceptance(OTHER.file, "domain", SETTLED))
+    every = _accepted(record, review(every=True), {SENT: LOW})
+    assert isinstance(every, ReviewReading) and every.readings == ()
+    assert every.stale == tuple(StaleAcceptance(file, "domain", GONE_FILE) for file in sorted(record))
+
+
+def test_a_file_accepted_is_still_asked_when_its_answer_is_not_kept_and_a_dry_run_says_how_many_are_accepted():
+    record = {DOCUMENT.file: AcceptedFile("domain", "main", code_hash(SENT), "w")}
+    acceptances = FakeAcceptances({ACCEPTED_RECORD: record})
+    model = FakeDecisionModel({SENT: LOW})
+    controller(FakeCode(FOUND), FakeProfile(WORDS), model, FakeAnswers(), acceptances=acceptances).review(
+        review("app/x.py"))
+    assert model.asked == [SENT]
+    planned = _accepted(record, review("app/x.py", dry_run=True))
+    assert isinstance(planned, ReviewPlanned) and planned.accepted == 1
+
+
+def test_a_record_of_accepted_files_that_cannot_be_read_refuses_the_review_before_anything_is_sent():
+    acceptances = FakeAcceptances(unreadable={ACCEPTED_RECORD: "the record of accepted files cannot be read"})
+    model = FakeDecisionModel({SENT: LOW})
+    found = controller(FakeCode(FOUND), FakeProfile(WORDS), model, FakeAnswers(), acceptances=acceptances).review(
+        review("app/x.py"))
+    assert found == ReviewRefused("the record of accepted files cannot be read") and model.asked == []

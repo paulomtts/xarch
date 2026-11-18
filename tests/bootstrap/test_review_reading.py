@@ -495,3 +495,68 @@ def test_no_comment_is_in_what_a_dry_run_shows_nor_in_what_the_service_receives_
     assert "    render_pdf('# kept: a string')\n" in shown[0]
     assert [(item["piece"], item["first"], item["last"]) for item in planned["requests"][1:]] == [
         ("publish", 6, 87), ("export", 90, 120), ("archive", 123, 193)]
+
+
+def test_a_doubtful_file_accepted_reads_as_accepted_until_its_code_changes_and_is_taken_out_of_the_record_on_demand(
+        served, tmp_path):
+    assert review(SERVICE, VALUES, url=served.url).exit_code == 0
+    accepted = review("accept", VALUES, "--why", "the values of a document, read against the litmus", key=None)
+    assert accepted.exit_code == 0, accepted.output
+    assert accepted.output.splitlines()[:3] == ["review accept (experimental): 1 file(s) accepted, nothing sent",
+                                                f"  {VALUES}   domain   reads as platform",
+                                                "  why: the values of a document, read against the litmus"]
+    record = json.loads((tmp_path / ".xarch" / "accepted.json").read_text())
+    assert list(record) == [VALUES] and record[VALUES]["part"] == "domain" and len(record[VALUES]["hash"]) == 64
+    assert set(record[VALUES]) == {"part", "reads_as", "hash", "why"} and str(tmp_path) not in json.dumps(record)
+    (tmp_path / VALUES).write_text(VALUES_BODY.replace("    text: str\n", "    text: str  # the text\n", 1) + "\n\n")
+    quiet = review(SERVICE, VALUES, url=served.url)
+    assert quiet.exit_code == 0, quiet.output
+    assert quiet.output.splitlines()[1].endswith("Asked 1, from cache 1.")
+    assert "  no file judged reads as doubtful here" in quiet.output.splitlines()
+    assert "      accepted: it read as platform then; why: the values of a document, read against the litmus" in (
+        quiet.output.splitlines())
+    (tmp_path / VALUES).write_text(VALUES_BODY + "\n@dataclass(frozen=True)\nclass Extra:\n    text: str\n")
+    again = review(VALUES, "--format", "json", url=served.url)
+    (file,) = json.loads(again.output)["placement"]["files"]
+    assert (file["doubtful"], file["accepted"], file["accepted_before"]) == (
+        True, None, {"why": "the values of a document, read against the litmus", "reads_as": "platform"})
+    removed = review("accept", "--remove", VALUES, key=None)
+    assert removed.exit_code == 0, removed.output
+    assert json.loads((tmp_path / ".xarch" / "accepted.json").read_text()) == {}
+
+
+def test_accept_refuses_with_no_reason_a_file_not_doubtful_one_not_answered_and_one_not_judged_and_sends_nothing(
+        served, tmp_path):
+    assert review(SERVICE, url=served.url).exit_code == 0
+    received = len(served.received)
+    for args, said in [
+        (("accept", SERVICE), "accept needs a reason"),
+        (("accept", SERVICE, "--why", "fine"), f"{SERVICE} does not read as doubtful"),
+        (("accept", VALUES, "--why", "fine"), f"{VALUES} has no answer in the cache, and accept sends nothing: run "
+                                              f"`xarch review {VALUES}` first"),
+        (("accept", "README.md", "--why", "fine"), "README.md is not judged by review"),
+        (("accept", "--remove", SERVICE), f"{SERVICE} is not in .xarch/accepted.json"),
+        (("accept", SERVICE, "--why", "fine", "--dry-run"), "accept takes the files named, and sends nothing"),
+        ((SERVICE, "--why", "fine"), "--why and --remove are accept's"),
+    ]:
+        result = review(*args, url=served.url)
+        assert result.exit_code == 2, (args, result.output)
+        assert said in result.output, (args, result.output)
+    assert len(served.received) == received and not (tmp_path / ".xarch" / "accepted.json").exists()
+
+
+def test_a_file_accepted_that_is_gone_or_no_longer_doubtful_is_listed_stale_with_the_command_that_takes_it_out(
+        served, tmp_path):
+    assert review(SERVICE, VALUES, url=served.url).exit_code == 0
+    assert review("accept", VALUES, "--why", "fine", key=None).exit_code == 0
+    record = tmp_path / ".xarch" / "accepted.json"
+    kept = json.loads(record.read_text())
+    record.write_text(json.dumps(kept | {SERVICE: kept[VALUES] | {"part": "services"}}))
+    (tmp_path / VALUES).unlink()
+    result = review(SERVICE, VALUES, "--offline", key=None)
+    lines = result.output.splitlines()
+    at = lines.index("accepted, stale (2): .xarch/accepted.json names them, and review never edits it")
+    assert lines[at + 1:at + 4] == [
+        f"  {SERVICE} (accepted in services): no longer reads as doubtful: there is nothing to accept",
+        f"  {VALUES} (accepted in domain): no longer there",
+        f"  what to do: xarch review accept --remove {SERVICE} {VALUES}"]

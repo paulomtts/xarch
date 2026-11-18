@@ -19,6 +19,11 @@ RECORD = (".xarch", "calibration.json")
 project commits."""
 
 
+ACCEPTED = (".xarch", "accepted.json")
+"""The file the doubtful files a person accepted are recorded in, below the project's root, beside the record of the
+evals, which the project commits."""
+
+
 def cache_folder(app: Path, given: Path | None) -> Path:
     """The folder given, else the project's own: CACHE below the folder holding app."""
     return given if given is not None else app.parent.joinpath(*CACHE)
@@ -27,6 +32,11 @@ def cache_folder(app: Path, given: Path | None) -> Path:
 def record_file(app: Path) -> Path:
     """The file the evals held to their examples are recorded in: RECORD below the folder holding app."""
     return app.parent.joinpath(*RECORD)
+
+
+def accepted_file(app: Path) -> Path:
+    """The file the files accepted are recorded in: ACCEPTED below the folder holding app."""
+    return app.parent.joinpath(*ACCEPTED)
 
 
 def request_key(model: str, text: str, question: Choice) -> str:
