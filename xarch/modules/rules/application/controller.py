@@ -6,10 +6,12 @@ from xarch.modules.rules.application.services.app_check import AppCheckService
 from xarch.modules.rules.application.services.asking import AskingService
 from xarch.modules.rules.application.services.examples import ExamplesService
 from xarch.modules.rules.application.services.explaining import ExplainingService
+from xarch.modules.rules.application.services.holding import HoldingService
 from xarch.modules.rules.application.services.locate import LocateService
 from xarch.modules.rules.application.services.source_reading import SourceReadService
 from xarch.modules.rules.application.services.sources import SourcesService
 from xarch.modules.rules.contract import (
+    AskHolds,
     CheckApp,
     CheckAppResult,
     CheckProfile,
@@ -17,6 +19,7 @@ from xarch.modules.rules.contract import (
     ChecksCannotRun,
     ExplainRule,
     ExplainWords,
+    HoldsResult,
     KeepFacts,
     KeptResult,
     Locate,
@@ -37,9 +40,9 @@ from xarch.modules.rules.domain.errors import ChecksRefused, NoProfile, OutsideP
 
 class RulesController:
     def __init__(self, locator: LocateService, app: AppCheckService, explaining: ExplainingService,
-                 examples: ExamplesService, sources: SourcesService, asking: AskingService):
+                 examples: ExamplesService, sources: SourcesService, asking: AskingService, holding: HoldingService):
         self._locator, self._app, self._explaining, self._examples = locator, app, explaining, examples
-        self._sources, self._asking = sources, asking
+        self._sources, self._asking, self._holding = sources, asking, holding
 
     def check_profile(self, cmd: CheckProfile) -> ProfileCheckResult:
         """Validates a profile without an app: every problem at once, what spec's check of it finds and what its own
@@ -114,6 +117,16 @@ class RulesController:
         that cannot be made, is refused with every problem, and so is a profile that cannot be used."""
         try:
             return self._asking.kept(cmd)
+        except ChecksRefused as e:
+            return ChecksCannotRun(e.problems)
+        except DomainError as e:
+            return CheckRefused(e.reason)
+
+    def holds(self, cmd: AskHolds) -> HoldsResult:
+        """Where else files given as text could lie by the profile's `holds`; a profile whose own checks cannot run is
+        refused with every problem, and one that cannot be used with why."""
+        try:
+            return self._holding.holds(cmd)
         except ChecksRefused as e:
             return ChecksCannotRun(e.problems)
         except DomainError as e:

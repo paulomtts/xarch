@@ -13,6 +13,7 @@ from xarch.modules.review.contract import (
     BY_ALL,
     BY_PATHS,
     FAILED,
+    HOLDS,
     IMPORTS,
     LARGE,
     MAX_CHARS,
@@ -37,6 +38,7 @@ from xarch.modules.review.contract import (
     ReviewPlanned,
     ReviewReading,
     ReviewRefused,
+    RuledOut,
     Sender,
     TooManyFiles,
     Unasked,
@@ -587,3 +589,22 @@ def test_the_pieces_of_a_file_of_a_part_read_alike_are_ranked_on_its_group_s_sum
     (read,) = found.pieces
     assert [(p.name, p.probability) for p in read.lowest] == [("second", 0.25), ("third, Tiny", 0.5), ("first", 0.75)]
     assert read.alike == ("kernel",)
+
+
+def test_a_file_is_read_once_the_parts_whose_holds_it_would_break_are_ruled_out_of_its_answer():
+    code = FakeCode(FOUND, breaks={DOCUMENT.text: ("main", "domain")})
+    model = FakeDecisionModel({SENT: Answer("m-1.0.1", (("domain", 0.25), ("main", 0.75)), 100, 5)})
+    found = controller(code, FakeProfile(WORDS), model, FakeAnswers()).review(review("app/x.py"))
+    assert isinstance(found, ReviewReading)
+    (file,) = found.readings
+    assert (file.probability, file.doubtful, file.orders) == (1.0, False, 1)
+    assert file.ruled_out == (RuledOut("main", HOLDS, 0.75),)
+    assert file.distribution == (("domain", 0.25), ("main", 0.75))
+    assert found.parts == read(1, 0)
+    assert code.held == [("app", ("modules/documents/domain/document.py",), APP)]
+
+
+def test_nothing_is_asked_of_where_else_a_file_could_lie_in_a_dry_run():
+    code = FakeCode(FOUND, breaks={DOCUMENT.text: ("main",)})
+    controller(code, FakeProfile(WORDS), FakeDecisionModel({}), FakeAnswers()).review(review("app/x.py", dry_run=True))
+    assert code.held == []

@@ -10,7 +10,7 @@ from xarch.modules.review.application.logic.doubt import (
     ranked,
     reading,
 )
-from xarch.modules.review.domain.published import PartRead, PieceReading, PiecesRead, Reading, Request
+from xarch.modules.review.domain.published import HOLDS, PartRead, PieceReading, PiecesRead, Reading, Request, RuledOut
 from xarch.modules.review.domain.values import Answer, CodeFile, PartText
 
 REQUEST = Request("app/a.py", "domain", 1200, "text")
@@ -164,3 +164,16 @@ def test_the_pieces_of_a_file_of_a_part_read_alike_are_ranked_on_the_sum_of_its_
                         ("kernel",))
     assert [(item.name, round(item.probability, 9)) for item in found.lowest] == [("b", 0.4), ("a", 0.9)]
     assert found.alike == ("kernel",)
+
+
+def test_a_file_is_read_on_what_remains_once_the_parts_whose_holds_it_would_break_are_ruled_out():
+    answer = Answer("m", (("domain", 0.2), ("main", 0.4), ("logic", 0.4)))
+    found = reading(REQUEST, answer, DOMAIN, breaks=("main",))
+    assert (round(found.probability, 9), found.doubtful) == (round(0.2 / 0.6, 9), False)
+    assert found.ruled_out == (RuledOut("main", HOLDS, 0.4),) and found.distribution == answer.probabilities
+
+
+def test_a_file_near_its_line_once_parts_are_ruled_out_is_asked_again():
+    answer = Answer("m", (("domain", 0.1), ("main", 0.6), ("logic", 0.3)))
+    assert asked_again(answer, DOMAIN) is False
+    assert asked_again(answer, DOMAIN, ("main",)) is True

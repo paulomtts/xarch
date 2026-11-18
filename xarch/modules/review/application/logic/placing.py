@@ -4,9 +4,10 @@ own reads at or above its line, each flagged example lying in it reads below it,
 reads below its line on it (a deliberate claim, read from the same answer at no extra cost). A part with no example of
 its own is measured elsewhere only. A part one file cannot tell apart from others is held with the other parts of its
 group as one: each reading on it is the sum over the group, and an example of another part of its group claims nothing
-of it. The examples are short snippets, and short files read lower: this is a sanity check of the litmus texts, not a
-way to set lines. A record of it is stale when the question (the parts and their texts), the lines, the groups or the
-examples change, or another model is asked."""
+of it. Each example is read as a file of the app is, once the parts whose `holds` it would break are ruled out of its
+answer. The examples are short snippets, and short files read lower: this is a sanity check of the litmus texts, not a
+way to set lines. A record of it is stale when the question (the parts and their texts), the lines, the groups, the
+examples or the rules that rule parts out of an answer change, or another model is asked."""
 from __future__ import annotations
 
 import hashlib
@@ -20,6 +21,7 @@ from xarch.modules.review.domain.published import (
     DISAGREE,
     ELSEWHERE,
     PASSED,
+    RULED_BY,
     STALE,
     UNCALIBRATED,
     UNHELD,
@@ -40,10 +42,11 @@ def held_as(question: Choice, parts: tuple[PartText, ...], examples: tuple[tuple
             roots: tuple[str, ...] = (), mask: tuple[str, ...] = ()) -> str:
     """The hash of what placement is held to its examples as: its question in order, each part's line, the groups of
     parts read alike (no word of them when there are none, so that a record held before a profile could write them
-    stands), every example by its path, part and code, and what decides how their text is masked (what review always
-    masks, the import names of the apps masked, roots, and the texts mask hides)."""
+    stands), every example by its path, part and code, what decides how their text is masked (what review always
+    masks, the import names of the apps masked, roots, and the texts mask hides), and the rules by which parts are
+    ruled out of an answer (RULED_BY), so that a record held before review ruled any out is stale."""
     held = {"ask": question.ask, "options": [[o.name, o.description] for o in question.options],
-            "masked": list(ALWAYS_MASKED), "roots": list(roots), "mask": list(mask),
+            "masked": list(ALWAYS_MASKED), "roots": list(roots), "mask": list(mask), "ruled_out": list(RULED_BY),
             "lines": [[part.name, part.line] for part in parts],
             "examples": [[[e.file, e.part, e.text] for e in side] for side in examples]}
     alike = groups(parts)
@@ -96,8 +99,9 @@ def standing(record: PlacementHeld | None, held: str, model: str) -> PlacementSt
     if record is None:
         return PlacementStanding(UNCALIBRATED, UNHELD)
     if record.held != held:
-        return PlacementStanding(STALE, "its parts, their texts, their lines, the parts read alike or its examples "
-                                        "changed since it was held to its examples")
+        return PlacementStanding(STALE, "its parts, their texts, their lines, the parts read alike, its examples or "
+                                        "the rules that rule parts out of an answer changed since it was held to its "
+                                        "examples")
     if record.model != model:
         return PlacementStanding(STALE, f"it was held to its examples by {record.model}, and {model} is asked now")
     return PlacementStanding(CALIBRATED, "", record.parts)

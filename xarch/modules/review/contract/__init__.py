@@ -24,6 +24,7 @@ from xarch.modules.review.domain.published import (
     FEWEST_SUMMED,
     FLAGGED,
     GAP,
+    HOLDS,
     IMPORTS,
     LARGE,
     LINK,
@@ -42,6 +43,7 @@ from xarch.modules.review.domain.published import (
     PIECE_CHARS,
     PLACEMENT,
     REFUSED,
+    RULED_BY,
     SCORE,
     SHOWN,
     SMALL,
@@ -67,6 +69,7 @@ from xarch.modules.review.domain.published import (
     PlacementStanding,
     Reading,
     Request,
+    RuledOut,
     Sender,
     Unasked,
 )
@@ -81,7 +84,7 @@ __all__ = ["A_TEST", "ALWAYS_MASKED", "BAND", "BY_ALL", "BY_LIST", "BY_PATHS", "
            "STALE", "UNCALIBRATED", "YES_NO", "EvalHeld", "EvalRead", "EvalReading", "ExampleRead", "Calibrate",
            "CalibrationPlanned", "Calibrated", "UnknownEvals", "CalibrateResult", "FLAGGED", "CLEAN", "PASSED", "DISAGREE",
            "ELSEWHERE", "PLACEMENT", "PartHeld", "PlacementHeld", "PlacementStanding", "UNHELD", "FEWEST_EXAMPLES",
-           "HeldExample"]
+           "HeldExample", "HOLDS", "RULED_BY", "RuledOut"]
 
 
 @dataclass(frozen=True)

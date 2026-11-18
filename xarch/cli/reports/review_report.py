@@ -1,7 +1,8 @@
 """xarch review, shown: what a review would send, and what the decision model read of the files judged, in text for a
 person or an agent and as one JSON document, and why one is refused. Every run opens with what review is: advisory,
-never a check. A file is "doubtful here" and nothing more: no other part is named but in the JSON's distribution, and
-the parts of its group whose probabilities its reading counts with its own (`evals.placement.alike`)."""
+never a check. A file is "doubtful here" and nothing more: no other part is named but in the JSON's distribution, the
+parts of its group whose probabilities its reading counts with its own (`evals.placement.alike`), and the parts ruled
+out of its answer, with what the answer put on each."""
 from __future__ import annotations
 
 from typing import Any
@@ -19,6 +20,7 @@ from xarch.cli.reports.eval_report import (
     masks,
     model_said,
     quoted,
+    ruled_lines,
     sends_of,
     standing_document,
     standing_lines,
@@ -47,6 +49,7 @@ from xarch.modules.review.contract import (
     OUTSIDE,
     PIECE_CHARS,
     REFUSED,
+    RULED_BY,
     SMALL,
     UNPARSABLE,
     UNPLACED,
@@ -107,7 +110,7 @@ def plan_lines(planned: ReviewPlanned) -> list[str]:
     if planned.piece_ask:
         lines += [f"  a request of a piece of a file asks instead: {planned.piece_ask}",
                   f"  sent before each piece: {CONTEXTS[planned.context]}"]
-    lines += ["", masks(planned.mask), *alike_lines(planned.alike)]
+    lines += ["", masks(planned.mask), *alike_lines(planned.alike), *ruled_lines()]
     lines += [f"held back by review.never: {', '.join(planned.never)}"] if planned.never else []
     lines += [f"  {pattern}: matched nothing this run (a path of review.never is read below the app, without its "
               "folder's name)" for pattern in planned.unmatched]
@@ -150,7 +153,8 @@ def plan_document(profile: str, planned: ReviewPlanned) -> str:
         "characters": planned.characters, "tokens": planned.tokens, "reorders": planned.reorders,
         "masked": list(ALWAYS_MASKED), "mask": list(planned.mask),
         "never": [{"path": pattern, "matched": pattern not in planned.unmatched} for pattern in planned.never],
-        "alike": [list(group) for group in planned.alike], "sends": sends_of(planned.sends)}
+        "alike": [list(group) for group in planned.alike], "ruled_out_by": list(RULED_BY),
+        "sends": sends_of(planned.sends)}
     return document(content)
 
 
@@ -172,7 +176,7 @@ def reading_lines(read: ReviewReading) -> list[str]:
     lines += ["", "placement: doubtful here (probability on the part the file sits in, below that part's line)",
               f"  based on: {BASED_ON}"]
     for item in doubtful:
-        lines += [_reading(item),
+        lines += [*_reading(item),
                   f"      what to do: read it against the litmus of {item.part} (`xarch where {item.file}`). {TO_DO}"]
     if not read.readings and judged:
         lines.append(f"  none of the {judged} file(s) judged was answered")
@@ -181,10 +185,10 @@ def reading_lines(read: ReviewReading) -> list[str]:
         lines.append(f"  no file judged reads as doubtful here{answered}")
     lines += standing_lines(read.calibration)
     if placed:
-        lines += ["", "placement: reads as placed (lowest first)", *(_reading(item) for item in placed)]
+        lines += ["", "placement: reads as placed (lowest first)", *(line for item in placed for line in _reading(item))]
     for part in sorted({item.part for item in unlined}):
         lines += ["", f"placement: not read against a line: the examples of {part} disagree (lowest first)",
-                  *(_reading(item) for item in unlined if item.part == part)]
+                  *(line for item in unlined if item.part == part for line in _reading(item))]
     for pieces in read.pieces:
         lines += ["", *_pieces(pieces)]
     if any(item.small for item in read.readings):
@@ -266,12 +270,18 @@ def _why(item: LeftOut) -> str:
     return f"{WHY[item.why]} ({item.pattern})" if item.pattern else WHY[item.why]
 
 
-def _reading(item: Reading) -> str:
+def _reading(item: Reading) -> list[str]:
+    """A file's reading on a line, and under it the parts ruled out of its answer, by rule, each with the probability
+    the answer put on it."""
     line = f"line {item.line:.2f}, set by the profile" if item.by_hand else f"line {item.line:.2f}"
     small = ", small" if item.small else ""
     alike = f"   summed with {', '.join(item.alike)} ({ALIKE})" if item.alike else ""
     orders = f"   the mean of {item.orders} orders of the options" if item.orders > 1 else ""
-    return f"  {item.file}   {item.part}   {item.probability:.2f} ({line})   {item.chars:,} chars{small}{alike}{orders}"
+    ruled = [f"      ruled out by {rule}: "
+             + ", ".join(f"{out.part} {out.probability:.2f}" for out in item.ruled_out if out.by == rule)
+             for rule in dict.fromkeys(out.by for out in item.ruled_out)]
+    return [f"  {item.file}   {item.part}   {item.probability:.2f} ({line})   {item.chars:,} chars{small}{alike}{orders}",
+            *ruled]
 
 
 def _pieces(read: PiecesRead) -> list[str]:
@@ -317,7 +327,8 @@ def _file(item: Reading) -> dict[str, Any]:
     return {"file": item.file, "part": item.part, "probability": item.probability, "line": item.line,
             "line_by_hand": item.by_hand, "doubtful": item.doubtful, "chars": item.chars, "small": item.small,
             "orders": item.orders, "model": item.model, "alike": list(item.alike),
-            "distribution": dict(item.distribution)}
+            "distribution": dict(item.distribution),
+            "ruled_out": [{"part": out.part, "by": out.by, "probability": out.probability} for out in item.ruled_out]}
 
 
 def _pieces_read(read: PiecesRead) -> dict[str, Any]:

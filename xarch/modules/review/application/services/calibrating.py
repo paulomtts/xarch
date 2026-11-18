@@ -9,6 +9,7 @@ from xarch.modules.review.application.logic.masking import masked
 from xarch.modules.review.application.logic.placing import groups, verdicts
 from xarch.modules.review.application.logic.placing import held_as as held_as_placed
 from xarch.modules.review.application.logic.questions import characters, placement, request, tokens
+from xarch.modules.review.application.logic.ruling import ruled
 from xarch.modules.review.application.logic.sending import needs_key, unusable_key, why_unasked
 from xarch.modules.review.application.logic.withholding import examples_held, files_held, kept_examples, kept_files, too_few
 from xarch.modules.review.application.ports.calibrations import Calibrations
@@ -29,7 +30,7 @@ from xarch.modules.review.domain.published import (
     Request,
     Unasked,
 )
-from xarch.modules.review.domain.values import Answer, Calibration, CodeFile, EvalText, Run
+from xarch.modules.review.domain.values import Answer, Calibration, CodeFile, EvalText, Run, Words
 
 Example = tuple[EvalText, bool, str, tuple[Request, ...]]
 """One example file of an eval: the eval, whether the file is a flagged example, its path, and one question about each
@@ -51,8 +52,9 @@ class CalibrationService:
         answer, an eval no longer in the profile dropped from it, and placement's for placement when every example of
         it has its answer. An example review.never matches is never sent and is said held back; each eval, and
         placement, is held to (and held as) the examples that remain, and an eval left with too few is not held, sends
-        nothing and is recorded failed; raises NoSuchEval for an id of no eval, Refused, and NoKey for a question to send with no
-        key set, before anything is sent."""
+        nothing and is recorded failed; each example of placement is read once the parts whose `holds` it would break
+        are ruled out of its answer, as review reads a file of the app; raises NoSuchEval for an id of no eval,
+        Refused, and NoKey for a question to send with no key set, before anything is sent."""
         words = self._profile.words(cmd.profile)
         known = (PLACEMENT, *(asked.asked for asked in words.evals))
         unknown = tuple(name for name in cmd.evals if name not in known)
@@ -128,13 +130,16 @@ class CalibrationService:
                                               line, flagged_read, clean_read, crossed)
         reads: dict[str, list[tuple[CodeFile, dict[str, float]]]] = {CLEAN: [], FLAGGED: []}
         answered_by = ""
-        for example, side, item in placed:
+        unfit = tuple(breaks for examples in (clean, flagged)
+                      for breaks in self._breaks(cmd, words, tuple(example for example in examples if example.part)))
+        for (example, side, item), breaks in zip(placed, unfit, strict=True):
             answer, going = answering.answer(going, item.text, question)
             if answer is None:
                 said = answering.refusal(going, item.text, (question,))
                 unasked.append(Unasked(example.file, why_unasked(bool(going.failure), said), "", PLACEMENT, side, said))
             else:
-                reads[side].append((example, dict(answer.probabilities)))
+                remains, _ = ruled(answer, example.part, breaks)
+                reads[side].append((example, dict(remains.probabilities)))
                 answered_by = answered_by or answer.model
         whole = placed and not any(item.asked == PLACEMENT for item in unasked)
         held_placement = PlacementHeld(held_as_placed(question, words.parts, (clean, flagged),
@@ -151,6 +156,14 @@ class CalibrationService:
                           sends, len(going.asked), len(going.reused), sum(a.input_tokens for a in going.asked),
                           sum(a.output_tokens for a in going.asked), going.failure, held_placement,
                           versions(*going.asked, *going.reused), withheld)
+
+    def _breaks(self, cmd: Calibrate, words: Words, examples: tuple[CodeFile, ...]) -> tuple[tuple[str, ...], ...]:
+        """The parts whose `holds` each example of placement would break were it to lie there, read as a small project
+        of the examples given, written for the app their code imports."""
+        if not examples:
+            return ()
+        return self._code.breaks(cmd.profile, words.examples_root or cmd.app.name,
+                                 tuple((example.file, example.text) for example in examples))
 
     def _examples(self, cmd: Calibrate, asked: EvalText, mask: tuple[str, ...]) -> tuple[Example, ...]:
         """Each example file of the eval, flagged ones first, with one question about each thing it reads in it, its

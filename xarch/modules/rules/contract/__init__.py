@@ -52,7 +52,8 @@ __all__ = ["At", "Weak", "Piece", "KnownName", "Translation", "Slot", "KeyFacts"
            "WordsResult", "ExplainRule", "RuleShown", "KeyUnset", "NoRuleShown", "RuleResult", "ApproximateView",
            "Loosened", "Resemblance", "Reviewed", "CheckProfile", "ChecksHeld", "ProfileHeld", "ProfileUnloaded",
            "NoProfileChosen", "ProfileCheckResult", "ReadSources", "SourceRead", "SourcesRead", "SourcesResult",
-           "KeepFacts", "FactKept", "FileKept", "FactsKept", "KeptResult",
+           "KeepFacts", "FactKept", "FileKept", "FactsKept", "KeptResult", "AskHolds", "HoldsOf", "HoldsAsked",
+           "HoldsResult",
            "IN_PART", "NOT_THERE", "NOT_SOURCE", "IN_TESTS", "IN_PROJECT", "EXCLUDED", "IN_NO_PART",
            "LINKED_OUT"]
 
@@ -400,6 +401,36 @@ class FactsKept:
 
 
 KeptResult = FactsKept | ChecksCannotRun | CheckRefused
+
+
+@dataclass(frozen=True)
+class AskHolds:
+    """Find, for each file given (a path below the app with its text), the parts whose `holds` it would break were it
+    to lie there, by the rule `check` runs in each: read as the app's files of a small project, the app being the
+    package named app, or, with root (the app folder, given in full), with every other file of the app that `check`
+    reads read from there too, so that a class reads as an exception through a class of another file as `check` reads
+    it; profile is the architecture in force."""
+    profile: str
+    app: str
+    files: tuple[tuple[str, str], ...]
+    root: Path | None = None
+
+
+@dataclass(frozen=True)
+class HoldsOf:
+    """One file given: its path below the app, as given, and the parts whose `holds` it would break were it to lie
+    there, in the profile's order (its own part among them when it breaks that one, as `check` lists)."""
+    path: str
+    breaks: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class HoldsAsked:
+    """Each file given, in the order given."""
+    files: tuple[HoldsOf, ...]
+
+
+HoldsResult = HoldsAsked | ChecksCannotRun | CheckRefused
 
 
 

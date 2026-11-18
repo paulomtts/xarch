@@ -9,6 +9,7 @@ as review holds it, so there is nothing to reshape.
     Sender   what review sends to, as the decision model's adapter says it: the service, where it answers, the model
              asked, the variable its key is read from and whether the key is set
     Reading  what the decision model read of one file: the probability on the part it sits in, against that part's line
+    RuledOut a part ruled out of a file's answer by a rule of the profile, with the probability the answer put on it
     Unasked  a file judged whose question has no answer, and why
     PartRead how the files of one part read in a run: how many were read and how many read as doubtful
     PieceReading  what the decision model read of one piece of a file, ranked inside the file
@@ -21,8 +22,8 @@ as review holds it, so there is nothing to reshape.
 and the reasons a file is left out, the size of the smallest file judged and of the largest, how many files one run judges, the ways files
 are chosen, how near its line a file is asked again, why a question has no answer, and how many files of a part a run
 must read, and read as doubtful, to say anything of the part; and how pieces are cut, judged, shown and sent; what
-review always masks; the
-forms of a question; and the states of an eval of the profile's own, and what holds one to its examples.
+review always masks; the rules by which a part is ruled out of an answer; the forms of a question; and the states of an
+eval of the profile's own, and what holds one to its examples.
 """
 from __future__ import annotations
 
@@ -77,6 +78,15 @@ NOT_CACHED, FAILED, REFUSED = "not-cached", "failed", "refused"
 """Why a question has no answer: it is not in the cache and nothing was sent (offline); the decision model failed
 on it or on a question before it, and nothing more was sent; or the decision model refused that request alone, as its
 own fault, and the rest was still sent."""
+
+
+HOLDS = "holds"
+"""The rule of the profile by which a part is ruled out of a file's answer: a part whose `holds` the file would break
+were it to lie there (a file of functions in a part of classes, say) is dropped from the answer, and what remains is
+read as summing to 1; the file's own part never is."""
+RULED_BY = (HOLDS,)
+"""The rules by which parts are ruled out of an answer, in the order they are: a record of placement held to its
+examples under others is stale."""
 
 
 CHOOSE, YES_NO, SCORE = "choice", "yes-no", "score"
@@ -155,13 +165,24 @@ class Sender:
 
 
 @dataclass(frozen=True)
+class RuledOut:
+    """A part ruled out of a file's answer: the part, the rule of the profile that rules it out (HOLDS), and the
+    probability the answer put on it, as answered."""
+    part: str
+    by: str
+    probability: float
+
+
+@dataclass(frozen=True)
 class Reading:
     """What the decision model read of one file: the file, as `check` shows it; the part it sits in; how many
     characters it holds; the probability on that part; the line below which it is doubtful there; whether it is; the
     probability on each part, in the profile's order, the mean over the orders of the options it was asked in; the
     model version that answered first; whether the profile sets the part's line by hand; and in how many orders of the
-    options it was asked; whether it holds fewer than MARKED_SMALL characters; and the other parts of the group of its
-    part, whose probabilities the probability on its part counts with its own (none when its part is in no group)."""
+    options it was asked; whether it holds fewer than MARKED_SMALL characters; the other parts of the group of its
+    part, whose probabilities the probability on its part counts with its own (none when its part is in no group);
+    and the parts ruled out of the answer, in the profile's order: the probability on its part, and so whether it is
+    doubtful, is read on what remains, made to sum to 1 again, while the distribution stays as answered."""
     file: str
     part: str
     chars: int
@@ -174,6 +195,7 @@ class Reading:
     orders: int = 1
     small: bool = False
     alike: tuple[str, ...] = ()
+    ruled_out: tuple[RuledOut, ...] = ()
 
 
 @dataclass(frozen=True)

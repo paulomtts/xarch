@@ -20,6 +20,7 @@ from xarch.modules.review.contract import (
     CALIBRATED,
     DISAGREE,
     FAILED,
+    HOLDS,
     IMPORTS,
     LARGE,
     MISSING,
@@ -41,6 +42,7 @@ from xarch.modules.review.contract import (
     Request,
     ReviewPlanned,
     ReviewReading,
+    RuledOut,
     Sender,
     Unasked,
 )
@@ -71,12 +73,15 @@ def test_a_dry_run_shows_the_question_once_and_each_request_with_the_exact_text_
     assert lines[5:10] == ["the question each request carries:", "  Which part?",
                            "  options: 2 parts, each described by its litmus test (by its role only: main)",
                            "    domain: Is it an invariant?", "    main: starts the app"]
-    assert lines[10:12] == ["", "masked in each text: every comment (cut from its line, the line kept), the dotted name "
+    assert lines[10:13] == ["", "masked in each text: every comment (cut from its line, the line kept), the dotted name "
                                 "each import of the app's own code imports from, and every e-mail address, always; and "
-                                "what review.mask hides: nothing more"]
-    assert lines[12:18] == ["", "request 1 of 1: app/a.py (domain, 1,200 characters)", "    | from <masked> import A",
+                                "what review.mask hides: nothing more",
+                            "ruled out of each answer of a whole file: a part whose `holds` the file would break were "
+                            "it to lie there (parts.<part>.holds): its probability dropped and what remains read as "
+                            "summing to 1; never the file's own part, and never in the answer of a piece"]
+    assert lines[13:19] == ["", "request 1 of 1: app/a.py (domain, 1,200 characters)", "    | from <masked> import A",
                             "    |", "    | x = 1", ""]
-    assert lines[18:] == ["left out:", "  app/b.py: under 800 characters (612)", "  app/c.py: not there"]
+    assert lines[19:] == ["left out:", "  app/b.py: under 800 characters (612)", "  app/c.py: not there"]
 
 
 def test_a_dry_run_says_the_texts_review_mask_hides_and_each_file_review_never_sends_with_the_path_that_matched():
@@ -105,7 +110,7 @@ def test_the_json_of_a_dry_run_holds_every_request_in_full_and_the_question_once
         "evals": [],
         "pieces": False, "piece_question": None, "context": "none",
         "characters": 1250, "tokens": 313, "reorders": 0,
-        "masked": ["own-imports", "e-mail", "comments"], "mask": [], "never": [], "alike": [],
+        "masked": ["own-imports", "e-mail", "comments"], "mask": [], "never": [], "alike": [], "ruled_out_by": ["holds"],
         "sends": {"name": "Model", "at": "https://model.example.test", "model": "m-1", "key": "MODEL_KEY", "keyed": False,
                   "unusable": None}}
 
@@ -258,10 +263,10 @@ def test_the_json_of_a_reading_holds_each_file_with_the_probability_of_each_part
                       "role_only": [],
                       "files": [{"file": DOUBTFUL.file, "part": "adapters", "probability": 0.0812, "line": 0.3,
                                  "line_by_hand": False, "doubtful": True, "chars": 2140, "small": False, "orders": 1, "model": "m-1.0.1",
-                                 "alike": [], "distribution": {"adapters": 0.0812, "logic": 0.9188}},
+                                 "alike": [], "distribution": {"adapters": 0.0812, "logic": 0.9188}, "ruled_out": []},
                                 {"file": PLACED.file, "part": "domain", "probability": 0.71, "line": 0.3,
                                  "line_by_hand": False, "doubtful": False, "chars": 1200, "small": False, "orders": 1, "model": "m-1.0.1",
-                                 "alike": [], "distribution": {"domain": 0.71, "logic": 0.29}}],
+                                 "alike": [], "distribution": {"domain": 0.71, "logic": 0.29}, "ruled_out": []}],
                       "parts": []},
         "pieces": [],
         "evals": [],
@@ -418,3 +423,19 @@ def test_a_dry_run_says_the_groups_of_parts_read_alike_after_what_is_masked_and_
     assert json.loads(plan_document("cli", replace(PLANNED, alike=(("logic", "kernel-logic"),))))["alike"] == [
         ["logic", "kernel-logic"]]
     assert not any(line.startswith("read alike") for line in plan_lines(PLANNED))
+
+
+RULED = Reading("app/modules/documents/application/logic/checks.py", "logic", 2400, 0.42, 0.3, False,
+                (("logic", 0.13), ("profile-values", 0.45), ("domain", 0.31), ("kernel-logic", 0.11)), "m-1.0.1",
+                ruled_out=(RuledOut("profile-values", HOLDS, 0.45), RuledOut("domain", HOLDS, 0.31)))
+
+
+def test_a_reading_with_parts_ruled_out_says_each_with_what_the_answer_put_on_it_in_text_and_in_json():
+    lines = reading_lines(replace(READ, readings=(RULED,)))
+    at = lines.index("  app/modules/documents/application/logic/checks.py   logic   0.42 (line 0.30)   2,400 chars")
+    assert lines[at + 1] == "      ruled out by holds: profile-values 0.45, domain 0.31"
+    (file,) = json.loads(reading_document("cli", replace(READ, readings=(RULED,))))["placement"]["files"]
+    assert file["ruled_out"] == [{"part": "profile-values", "by": "holds", "probability": 0.45},
+                                 {"part": "domain", "by": "holds", "probability": 0.31}]
+    assert file["distribution"] == {"logic": 0.13, "profile-values": 0.45, "domain": 0.31, "kernel-logic": 0.11}
+

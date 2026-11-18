@@ -19,11 +19,15 @@ from xarch.modules.rules.contract import (
     LINKED_OUT,
     NOT_SOURCE,
     NOT_THERE,
+    AskHolds,
     CheckRefused,
     ChecksCannotRun,
     FactKept,
     FactsKept,
     FileKept,
+    HoldsAsked,
+    HoldsOf,
+    HoldsResult,
     KeepFacts,
     KeptResult,
     Outside,
@@ -48,8 +52,8 @@ READ = SourcesRead((SourceRead("app/kernel/ids.py", IN_PART, "kernel", "class Id
 class Rules:
     """Rules' controller as review's adapter uses it, answering from a fixed result and keeping what it was asked."""
 
-    def __init__(self, result: SourcesResult, kept: KeptResult = FactsKept(())):
-        self._result, self._kept, self.asked = result, kept, []
+    def __init__(self, result: SourcesResult, kept: KeptResult = FactsKept(()), held: HoldsResult = HoldsAsked(())):
+        self._result, self._kept, self._held, self.asked = result, kept, held, []
 
     def sources(self, cmd: ReadSources) -> SourcesResult:
         self.asked.append(cmd)
@@ -58,6 +62,10 @@ class Rules:
     def kept(self, cmd: KeepFacts) -> KeptResult:
         self.asked.append(cmd)
         return self._kept
+
+    def holds(self, cmd: AskHolds) -> HoldsResult:
+        self.asked.append(cmd)
+        return self._held
 
 
 def test_a_file_in_a_part_is_handed_on_as_it_was_read_and_any_other_left_out_with_why_in_review_s_words():
@@ -111,3 +119,20 @@ def test_where_the_comments_of_a_file_and_of_a_file_an_eval_reads_lie_is_handed_
     code = RulesCode(Rules(read, kept))
     assert code.files((Path("app/kernel"),), Path("/src"), Path("/src/app"), "p", None).read[0].comments == comments
     assert code.reads("p", "app", "rule", (("kernel/ids.py", "class Id: ...\n"),))[0].file.comments == comments
+
+
+def test_the_parts_whose_holds_each_file_would_break_are_handed_on_in_the_order_given():
+    rules = Rules(READ, held=HoldsAsked((HoldsOf("kernel/ids.py", ("logic",)), HoldsOf("kernel/x.py"))))
+    files = (("kernel/ids.py", "class Id: ...\n"), ("kernel/x.py", "x = 1\n"))
+    assert RulesCode(rules).breaks("p", "app", files, Path("/src/app")) == (("logic",), ())
+    assert rules.asked == [AskHolds("p", "app", files, Path("/src/app"))]
+
+
+@pytest.mark.parametrize("result, reason", [
+    pytest.param(CheckRefused("gone: no such file"), "gone: no such file", id="a profile that cannot be used"),
+    pytest.param(ChecksCannotRun(("checks.a: one", "checks.b: two")), "checks.a: one; checks.b: two",
+                 id="a profile whose own checks cannot run, with every problem"),
+])
+def test_a_refusal_of_rules_to_say_where_else_files_could_lie_is_refused_with_its_reason(result, reason):
+    with pytest.raises(Refused, match=reason):
+        RulesCode(Rules(READ, held=result)).breaks("p", "app", ())

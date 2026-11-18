@@ -78,8 +78,9 @@ HELD = PlacementHeld("h", "m-1", "m-1.2", (PartHeld("domain", DISAGREE, "it cros
                  id="never held"),
     pytest.param(HELD, "h", "m-1", PlacementStanding(CALIBRATED, "", HELD.parts), id="held as it is now"),
     pytest.param(HELD, "other", "m-1", PlacementStanding(STALE, "its parts, their texts, their lines, the parts read "
-                                                                "alike or its examples changed since it was held to "
-                                                                "its examples"),
+                                                                "alike, its examples or the rules that rule parts out "
+                                                                "of an answer changed since it was held to its "
+                                                                "examples"),
                  id="changed since"),
     pytest.param(HELD, "h", "m-2", PlacementStanding(STALE, "it was held to its examples by m-1, and m-2 is asked now"),
                  id="another model asked"),
@@ -170,14 +171,23 @@ def test_what_placement_is_held_as_changes_with_the_parts_read_alike_and_is_as_b
 
 
 def before_alike(question: Choice, parts: tuple[PartText, ...], examples: tuple[tuple[CodeFile, ...], ...],
-                 roots: tuple[str, ...] = (), mask: tuple[str, ...] = ()) -> str:
-    """What placement was held as before a profile could read parts alike."""
-    canonical = json.dumps({"ask": question.ask, "options": [[o.name, o.description] for o in question.options],
-                            "masked": ["own-imports", "e-mail", "comments"], "roots": list(roots), "mask": list(mask),
-                            "lines": [[part.name, part.line] for part in parts],
-                            "examples": [[[e.file, e.part, e.text] for e in side] for side in examples]},
-                           ensure_ascii=False, separators=(",", ":"))
+                 roots: tuple[str, ...] = (), mask: tuple[str, ...] = (), ruled_out: tuple[str, ...] = ("holds",)) -> str:
+    """What placement was held as before a profile could read parts alike, with the rules that rule parts out of an
+    answer (none: as it was held before review ruled any out)."""
+    held = {"ask": question.ask, "options": [[o.name, o.description] for o in question.options],
+            "masked": ["own-imports", "e-mail", "comments"], "roots": list(roots), "mask": list(mask),
+            **({"ruled_out": list(ruled_out)} if ruled_out else {}), "lines": [[part.name, part.line] for part in parts],
+            "examples": [[[e.file, e.part, e.text] for e in side] for side in examples]}
+    canonical = json.dumps(held, ensure_ascii=False, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def test_a_record_of_placement_held_before_review_ruled_parts_out_of_an_answer_is_stale():
+    examples = ((VALUE, CASE), (WRONG,))
+    now = held_as(QUESTION, PARTS, examples, ("app",), ("Doc*",))
+    before = before_alike(QUESTION, PARTS, examples, ("app",), ("Doc*",), ruled_out=())
+    assert now != before
+    assert standing(PlacementHeld(before, "m-1", "m-1.2", ()), now, "m-1").state == STALE
 
 
 def test_the_groups_read_alike_are_each_once_in_the_profile_s_order_of_their_first_part():

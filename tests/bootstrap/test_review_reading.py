@@ -57,7 +57,7 @@ class ModelServer:
     @staticmethod
     def answer(body: dict) -> dict:
         own = "domain" if "Value0" in body["state"] else "services"
-        probabilities = {own: 0.9, "logic": 0.1} if own == "services" else {own: 0.12, "logic": 0.88}
+        probabilities = {own: 0.9, "platform": 0.1} if own == "services" else {own: 0.12, "platform": 0.88}
         if "render_pdf" in body["state"] and "def publish" not in body["state"]:
             probabilities = {"services": 0.08, "logic": 0.92}
         return {"model": "jev-1.14.0", "usage": {"input_tokens": 2500, "output_tokens": 4},
@@ -106,7 +106,7 @@ def test_a_review_sends_the_masked_text_and_the_question_with_the_key_as_the_hea
     assert lines[-3:] == ["parts (read this run)",
                           "  domain   1 file(s) read: too few to say anything of the part (fewer than 3)",
                           "  services   1 file(s) read: too few to say anything of the part (fewer than 3)"]
-    assert "logic" not in result.output and KEY not in result.output
+    assert "platform" not in result.output and KEY not in result.output
     (path, headers, body), _ = served.received
     assert (path, headers["Authorization"], body["model"]) == ("/v1/systemone", f"Bearer {KEY}", "jev-1.14.0")
     assert body["state"].startswith('"""Publishing documents."""\nfrom <masked> import Clock\n')
@@ -162,11 +162,40 @@ def test_answers_kept_are_read_back_offline_with_no_key_and_nothing_is_sent(serv
                                                               "output_tokens": 0})
     assert [(item["file"], item["doubtful"]) for item in document["placement"]["files"]] == [(VALUES, True),
                                                                                            (SERVICE, False)]
-    assert document["placement"]["files"][0]["distribution"] == {"domain": 0.12, "logic": 0.88} | {
-        part: 0.0 for part in document["placement"]["files"][0]["distribution"] if part not in ("domain", "logic")}
+    assert document["placement"]["files"][0]["distribution"] == {"domain": 0.12, "platform": 0.88} | {
+        part: 0.0 for part in document["placement"]["files"][0]["distribution"] if part not in ("domain", "platform")}
     again = review(SERVICE, VALUES, url=served.url)
     assert again.output.splitlines()[1].endswith("Asked 0, from cache 2.")
     assert len(served.received) == 2
+
+
+class LogicServer(ModelServer):
+    """A decision model on this machine that reads a file of the values of a document as a file of logic, a part of
+    functions it cannot lie in."""
+
+    @staticmethod
+    def answer(body: dict) -> dict:
+        probabilities = {"domain": 0.12, "logic": 0.88}
+        return {"model": "jev-1.14.0", "usage": {"input_tokens": 2500, "output_tokens": 4},
+                "answers": {name: {"type": "choice", "choice": "logic", "confidence": 0.8,
+                                   "probabilities": probabilities} for name in body["questions"]}}
+
+
+def test_a_part_whose_holds_a_file_would_break_is_ruled_out_of_its_answer_and_said_with_what_the_answer_put_on_it():
+    server = LogicServer()
+    try:
+        result = review(VALUES, url=server.url)
+        document = json.loads(review(VALUES, "--offline", "--format", "json", key=None).output)
+    finally:
+        server.stop()
+    assert result.exit_code == 0, result.output
+    lines = result.output.splitlines()
+    at = lines.index(f"  {VALUES}   domain   1.00 (line 0.30)   {VALUES_SENT:,} chars, small")
+    assert lines[at + 1] == "      ruled out by holds: logic 0.88"
+    (file,) = document["placement"]["files"]
+    assert (file["probability"], file["doubtful"]) == (1.0, False)
+    assert file["ruled_out"] == [{"part": "logic", "by": "holds", "probability": 0.88}]
+    assert (file["distribution"]["domain"], file["distribution"]["logic"]) == (0.12, 0.88)
 
 
 def test_offline_a_file_whose_answer_is_not_kept_is_unanswered_and_the_run_exits_3(tmp_path):

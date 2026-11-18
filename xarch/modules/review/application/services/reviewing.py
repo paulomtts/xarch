@@ -56,9 +56,10 @@ class ReviewService:
     def review(self, cmd: Review) -> ReviewPlanned | ReviewReading:
         """What placement and the evals that may run would send for each file judged (and each piece of it, with
         pieces), with a dry run; else the reading of each, from the answers kept and those asked, a file whose first
-        answer is near its part's line asked again in other orders of the options and read on their mean, the pieces of
-        each ranked inside it, and the readings of each eval of the profile's own at or above its line (placement and each
-        eval standing as held to the examples review.never does not match); raises
+        answer is near its part's line asked again in other orders of the options and read on their mean, each read
+        once the parts whose `holds` it would break are ruled out of its answers, the pieces of each ranked inside it,
+        and the readings of each eval of the profile's own at or above its line (placement and each eval standing as
+        held to the examples review.never does not match); raises
         NoSelection, AllWithOthers, InPieces, OverCap, Refused (the files, the profile, its examples or the record
         cannot be read), and NoKey for a question to send with no key set, before anything is sent."""
         paths = chosen(cmd.paths, cmd.listed, cmd.every, cmd.app, cmd.pieces)
@@ -95,9 +96,10 @@ class ReviewService:
                                  piece.ask if cmd.pieces else "", cmd.context,
                                  in_order(idle + tuple(s for _, s, _ in evals), words.evals), words.never,
                                  unmatched(found, words.never), groups(words.parts))
-        others = reordered(question)
+        others, breaks = reordered(question), self._breaks(cmd, judging)
         again = tuple(answering.kept(going, item.text, other) for item, answer in zip(requests, kept, strict=True)
-                      if answer is not None and asked_again(answer, parts[item.part]) for other in others)
+                      if answer is not None and asked_again(answer, parts[item.part], breaks[item.file])
+                      for other in others)
         if needs_key(kept + again + held + later, cmd.offline, sends.keyed):
             raise NoKey(sends.key)
         if unusable := unusable_key(kept + again + held + later, cmd.offline, sends):
@@ -107,7 +109,7 @@ class ReviewService:
         for item in requests:
             first, going = answering.answer(going, item.text, question)
             answers = [first]
-            if first is not None and asked_again(first, parts[item.part]):
+            if first is not None and asked_again(first, parts[item.part], breaks[item.file]):
                 for other in others:
                     answer, going = answering.answer(going, item.text, other)
                     answers.append(answer)
@@ -116,7 +118,7 @@ class ReviewService:
                 unasked.append(Unasked(item.file, why_unasked(bool(going.failure), said), said=said))
             else:
                 readings.append(reading(item, averaged(tuple(a for a in answers if a is not None)), parts[item.part],
-                                        len(answers)))
+                                        len(answers), breaks[item.file]))
         ranked_pieces: list[PiecesRead] = []
         for file, items, too_small in pieced:
             pieces: list[Answer | None] = []
@@ -143,6 +145,15 @@ class ReviewService:
                              sum(a.output_tokens for a in going.asked), going.failure, role_only(words.parts),
                              marked(by_part(judged_files, words.parts), calibration), tuple(ranked_pieces),
                              in_order(idle + tuple(ran), words.evals), calibration, versions(*going.asked, *going.reused))
+
+    def _breaks(self, cmd: Review, judging: tuple[CodeFile, ...]) -> dict[str, tuple[str, ...]]:
+        """The parts whose `holds` each file judged would break were it to lie there, by the file, read with the
+        other files of the app."""
+        if not judging:
+            return {}
+        files = tuple((below_app(file.file), file.text) for file in judging)
+        return dict(zip((file.file for file in judging), self._code.breaks(cmd.profile, cmd.app.name, files, cmd.app),
+                        strict=True))
 
     def _evals(self, cmd: Review, words: Words, judging: tuple[CodeFile, ...],
                model: str) -> tuple[tuple[Asking, ...], tuple[EvalRead, ...]]:

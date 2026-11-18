@@ -19,10 +19,13 @@ from xarch.modules.review.domain.published import (
 from xarch.modules.review.domain.values import CodeFile, Found, Read, Reads, Span
 from xarch.modules.rules import contract as rules
 from xarch.modules.rules.contract import (
+    AskHolds,
     CheckRefused,
     ChecksCannotRun,
     FactsKept,
     FileKept,
+    HoldsAsked,
+    HoldsResult,
     KeepFacts,
     KeptResult,
     Outside,
@@ -43,6 +46,8 @@ class _Rules(Protocol):
     def sources(self, cmd: ReadSources) -> SourcesResult: ...
 
     def kept(self, cmd: KeepFacts) -> KeptResult: ...
+
+    def holds(self, cmd: AskHolds) -> HoldsResult: ...
 
 
 class RulesCode:
@@ -70,6 +75,18 @@ class RulesCode:
             case FactsKept(found):
                 texts = dict(files)
                 return tuple(_reads(file, texts[file.path]) for file in found)
+            case CheckRefused(reason):
+                raise Refused(reason)
+            case ChecksCannotRun(problems):
+                raise Refused("; ".join(problems))
+
+    def breaks(self, profile: str, app: str, files: tuple[tuple[str, str], ...],
+               root: Path | None = None) -> tuple[tuple[str, ...], ...]:
+        """A refusal of rules raises Refused with its reason, or with each problem of a profile whose own checks cannot
+        run."""
+        match self._rules.holds(AskHolds(profile, app, files, root)):
+            case HoldsAsked(found):
+                return tuple(item.breaks for item in found)
             case CheckRefused(reason):
                 raise Refused(reason)
             case ChecksCannotRun(problems):

@@ -1,11 +1,13 @@
 """What a file's answer says: the probability on the part it sits in (with the probabilities on the other parts of its
 group, for a part one file cannot tell apart from others), and whether that is below the part's line (the profile's,
-else the default), so that the file reads as doubtful there; whether a file is near enough its line to be
-asked again in other orders of the options, and the mean of its answers then; the order the readings are shown in,
+else the default), so that the file reads as doubtful there, both read on what remains of the answer once the parts
+whose `holds` the file would break are ruled out; whether a file is near enough its line to be asked again in other
+orders of the options, and the mean of its answers then; the order the readings are shown in,
 the most doubtful first; how the files of each part read, so that a part low across the board points at its
 litmus; and the pieces of a file ranked inside it."""
 from __future__ import annotations
 
+from xarch.modules.review.application.logic.ruling import ruled
 from xarch.modules.review.domain.published import (
     BAND,
     FEWEST_SUMMED,
@@ -31,19 +33,23 @@ def on_part(probabilities: tuple[tuple[str, float], ...], part: str, alike: tupl
     return sum(each.get(name, 0.0) for name in (part, *alike))
 
 
-def reading(request: Request, answer: Answer, part: PartText, orders: int = 1) -> Reading:
+def reading(request: Request, answer: Answer, part: PartText, orders: int = 1, breaks: tuple[str, ...] = ()) -> Reading:
     """The reading of a file's answer, asked in orders orders of the options: the probability on its part, with the
-    other parts of its group, doubtful below the part's line, small under MARKED_SMALL characters."""
-    probability = on_part(answer.probabilities, request.part, part.alike)
+    other parts of its group, read on what remains once the parts whose `holds` it would break (breaks) are ruled out,
+    doubtful below the part's line, small under MARKED_SMALL characters."""
+    remains, out = ruled(answer, request.part, breaks)
+    probability = on_part(remains.probabilities, request.part, part.alike)
     return Reading(request.file, request.part, request.chars, probability, part.line, probability < part.line,
-                   answer.probabilities, answer.model, part.by_hand, orders, request.chars < MARKED_SMALL, part.alike)
+                   answer.probabilities, answer.model, part.by_hand, orders, request.chars < MARKED_SMALL, part.alike,
+                   out)
 
 
-def asked_again(answer: Answer, part: PartText) -> bool:
+def asked_again(answer: Answer, part: PartText, breaks: tuple[str, ...] = ()) -> bool:
     """Whether a file's first answer puts the probability on its part, with the other parts of its group, within BAND
-    of the part's line, where the order of the options can move it across: the file is then asked again in other
-    orders."""
-    return round(abs(on_part(answer.probabilities, part.name, part.alike) - part.line), 9) <= BAND
+    of the part's line, where the order of the options can move it across, read on what remains once the parts whose
+    `holds` it would break (breaks) are ruled out: the file is then asked again in other orders."""
+    remains, _ = ruled(answer, part.name, breaks)
+    return round(abs(on_part(remains.probabilities, part.name, part.alike) - part.line), 9) <= BAND
 
 
 def averaged(answers: tuple[Answer, ...]) -> Answer:

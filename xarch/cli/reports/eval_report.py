@@ -16,9 +16,11 @@ from xarch.modules.review.contract import (
     FAILED,
     FEWEST_EXAMPLES,
     GAP,
+    HOLDS,
     NOT_CACHED,
     PLACEMENT,
     REFUSED,
+    RULED_BY,
     SCORE,
     YES_NO,
     Calibrated,
@@ -54,6 +56,8 @@ UNSEEN = re.compile("[\x00-\x08\x0b-\x1f\x7f-\x9f\u2028\u2029]")
 SANITY = ("the examples are short, and short files read lower for being short: a sanity check of the litmus texts, not "
           "a way to set lines")
 VERDICTS = {DISAGREE: "examples disagree", ELSEWHERE: "measured elsewhere only: no example of its own"}
+RULES = {HOLDS: "a part whose `holds` the file would break were it to lie there (parts.<part>.holds)"}
+"""What each rule by which a part is ruled out of an answer rules out, said in a dry run."""
 ALIKE = "evals.placement.alike"
 """The key a profile names the groups of parts one file cannot tell apart under, said with what it does."""
 UNASKED = {NOT_CACHED: "not in the cache, and --offline sends nothing",
@@ -274,13 +278,21 @@ def calibration_plan_lines(planned: CalibrationPlanned) -> list[str]:
              f"evals: {', '.join(planned.evals) or 'none'}; {len(planned.requests)} request(s), "
              f"{planned.characters:,} characters, about {planned.tokens:,} tokens; {cached} in the cache already"
              + "".join(f"; {rule}" for rule in rules), *_withheld(planned.held_back, planned.too_few),
-             masks(planned.mask), *alike_lines(planned.alike)]
+             masks(planned.mask), *alike_lines(planned.alike),
+             *(ruled_lines() if PLACEMENT in planned.evals else [])]
     for number, item in enumerate(planned.requests, 1):
         kept = ", in the cache: not sent" if item.cached else ""
         what = f" {item.piece} (lines {item.lines[0]}-{item.lines[1]})" if item.piece else ""
         lines += ["", f"request {number} of {len(planned.requests)}: {item.asked}, {item.example} example {item.file}{what}, "
                       f"{item.chars:,} characters{kept}", *quoted(item.text)]
     return lines
+
+
+def ruled_lines() -> list[str]:
+    """What a dry run says is ruled out of each answer of a whole file, and by which rule."""
+    return [f"ruled out of each answer of a whole file: {'; '.join(RULES[rule] for rule in RULED_BY)}: its probability "
+            "dropped and what remains read as summing to 1; never the file's own part, and never in the answer of a "
+            "piece"]
 
 
 def masks(mask: tuple[str, ...]) -> str:
@@ -298,6 +310,7 @@ def calibration_plan_document(planned: CalibrationPlanned) -> str:
                      for r in planned.requests],
         "characters": planned.characters, "tokens": planned.tokens, "masked": list(ALWAYS_MASKED),
         "mask": list(planned.mask), "alike": [list(group) for group in planned.alike],
+        "ruled_out_by": list(RULED_BY) if PLACEMENT in planned.evals else [],
         "held_back": _held_back_of(planned.held_back),
         "too_few": [{"id": name, "kind": kind} for name, kind in planned.too_few], "sends": sends_of(planned.sends)})
 

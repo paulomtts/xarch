@@ -11,15 +11,19 @@ from xarch.modules.review.domain.values import Answer, Calibration, CodeFile, Fo
 
 class FakeCode:
     """Satisfies review's Code: the files found at each path, by the path as given (a path given nowhere finds
-    nothing), the files of the paths joined in order; a path listed as refused raises Refused with its reason; and
-    where the comments of a text an eval reads lie, by the text (none for any other)."""
+    nothing), the files of the paths joined in order; a path listed as refused raises Refused with its reason;
+    where the comments of a text an eval reads lie, by the text (none for any other); and the parts whose `holds` a
+    text would break, by the text (none for any other), each set of files asked of recorded with the app and the root
+    they were asked with."""
 
     def __init__(self, found: dict[str, Found], refused: dict[str, str] | None = None,
                  reads: dict[tuple[str, str], tuple[Read, ...]] | None = None,
-                 comments: dict[str, tuple[CommentSpan, ...]] | None = None):
+                 comments: dict[str, tuple[CommentSpan, ...]] | None = None,
+                 breaks: dict[str, tuple[str, ...]] | None = None):
         self._found, self._refused, self._reads = found, dict(refused or {}), dict(reads or {})
-        self._comments = dict(comments or {})
+        self._comments, self._breaks = dict(comments or {}), dict(breaks or {})
         self.asked: list[tuple[str, tuple[str, ...]]] = []
+        self.held: list[tuple[str, tuple[str, ...], Path | None]] = []
 
     def files(self, paths: tuple[Path, ...], cwd: Path, app: Path, profile: str, tests: Path | None) -> Found:
         for path in paths:
@@ -34,6 +38,11 @@ class FakeCode:
         self.asked.append((asked, tuple(path for path, _ in files)))
         return tuple(Reads(CodeFile(path, "", text, comments=self._comments.get(text, ())),
                            self._reads.get((asked, text), (Read((0, 0), ""),))) for path, text in files)
+
+    def breaks(self, profile: str, app: str, files: tuple[tuple[str, str], ...],
+               root: Path | None = None) -> tuple[tuple[str, ...], ...]:
+        self.held.append((app, tuple(path for path, _ in files), root))
+        return tuple(self._breaks.get(text, ()) for _, text in files)
 
 
 class FakeProfile:

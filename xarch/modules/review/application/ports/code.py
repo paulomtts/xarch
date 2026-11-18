@@ -21,3 +21,11 @@ class Code(Protocol):
         read as the app's files of a small project, the app being the package named app; raises Refused for an eval
         that cannot be read or a profile that cannot be used."""
         ...
+
+    def breaks(self, profile: str, app: str, files: tuple[tuple[str, str], ...],
+               root: Path | None = None) -> tuple[tuple[str, ...], ...]:
+        """For each file given, by its path below the app with its text, in the order given, the parts whose `holds`
+        it would break were it to lie there, in the profile's order (its own part among them when it breaks that one):
+        read with the other files of the app at root (None: as a small project of the files given alone), the app
+        being the package named app; raises Refused for a profile that cannot be used."""
+        ...

@@ -19,6 +19,16 @@ All notable changes to this project are written here. The format follows
   and `immutable`. `xarch profile explain evals.placement.alike` says it. The bundled `cli` and `web` profiles name
   `[[logic, kernel-logic]]`, which differ only in how many modules use a function.
 
+- `xarch review` rules out of each file's answer the parts whose `holds` the file would break were it to lie there
+  (a file of functions in a part of classes, say), as the rule `check` runs in each part decides it on the file read
+  with the rest of the app: the probability on such a part is dropped and what remains is read as summing to 1, for
+  doubt, for asking again near the line, for the sum over a group read alike, for the ranking and for the summary of
+  each part. The file's own part is never ruled out. Each reading says what was ruled out, with what the answer put on
+  each: `ruled out by holds: ...` under it in text, `ruled_out: [{part, by, probability}]` in the JSON, while
+  `distribution` stays as answered. `review calibrate` reads placement's examples the same way, so a record of
+  placement held before is stale; recalibrate with `xarch review calibrate --eval placement`. Pieces are read as
+  answered. Both dry runs say what is ruled out (`ruled_out_by` in their JSON).
+
 ### Changed
 
 - The bundled `cli` and `web` profiles are stricter, with five rules xarch's own profile already held: `services`,

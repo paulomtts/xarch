@@ -383,3 +383,15 @@ def test_a_dry_run_of_placement_says_the_groups_of_parts_read_alike():
     assert isinstance(result, CalibrationPlanned) and result.alike == (("domain", "kernel"),)
     alone, _ = holding_alike(PARTS, Calibrate(CWD, APP, "cli", dry_run=True))
     assert isinstance(alone, CalibrationPlanned) and alone.alike == ()
+
+
+def test_each_example_of_placement_is_read_once_the_parts_whose_holds_it_would_break_are_ruled_out_of_its_answer():
+    answers = placed((VALUE, {"domain": 0.9, "main": 0.1}), (START, {"domain": 0.4, "main": 0.6}),
+                     (WRONG, {"domain": 0.1, "main": 0.9}))
+    profile = FakeProfile({"cli": Words(PARTS, examples_root="app")}, examples={"cli": ((VALUE, START, STRAY), (WRONG,))})
+    code = FakeCode({}, breaks={START.text: ("domain",), WRONG.text: ("domain",)})
+    result = controller(code, profile, FakeDecisionModel(answers), FakeAnswers(), FakeCalibrations()).calibrate(
+        Calibrate(CWD, Path("/src/shop"), "cli"))
+    assert isinstance(result, Calibrated) and result.placement is not None
+    assert result.placement.parts == (PartHeld("domain", PASSED, "", 2), PartHeld("main", PASSED, "", 1))
+    assert code.held == [("app", (VALUE.file, START.file), None), ("app", (WRONG.file,), None)]

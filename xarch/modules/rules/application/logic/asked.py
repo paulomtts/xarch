@@ -58,11 +58,14 @@ def unread(name: str, side: str, files: tuple[tuple[str, str], ...], kept: list[
             "it one" for path, _ in files if path not in holding]
 
 
-def project(files: list[tuple[str, SourceFile]], profile: Profile, app: str, rules: tuple[Rule, ...]) -> Facts:
+def project(files: list[tuple[str, SourceFile]], profile: Profile, app: str, rules: tuple[Rule, ...],
+            others: tuple[SourceFile, ...] = ()) -> Facts:
     """The facts of a small project of files, each by its path below the app (tests/<path> for a test) as parsed, the
-    app being the package app names: what a check or an eval of the profile's own is held to its examples on."""
+    app being the package app names, with the files of the app others, read already: what a check or an eval of the
+    profile's own is held to its examples on, and what a file given is read with to be asked where else it could
+    lie."""
     tests = profile.default_tests
     read = [(placed(path, app, tests), parsed) for path, parsed in files]
     app_files = [replace(parsed, name="/".join(shown), path=steps) for (shown, steps, test), parsed in read if not test]
     test_files = [replace(parsed, name="/".join(shown), path=steps) for (shown, steps, test), parsed in read if test]
-    return facts_of(app_files, test_files, profile, app, tests, rules)
+    return facts_of([*app_files, *others], test_files, profile, app, tests, rules)

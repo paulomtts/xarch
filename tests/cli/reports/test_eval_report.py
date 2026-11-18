@@ -243,3 +243,12 @@ def test_a_dry_run_of_a_calibration_says_the_groups_of_parts_read_alike_after_wh
     alone = CalibrationPlanned((), ("placement",), 0, 0, (), SENDS)
     assert not any(line.startswith("read alike") for line in calibration_plan_lines(alone))
     assert json.loads(calibration_plan_document(alone))["alike"] == []
+
+
+def test_a_dry_run_of_placement_s_calibration_says_what_is_ruled_out_of_each_answer_and_one_of_evals_alone_does_not():
+    placement = CalibrationPlanned((), ("placement",), 0, 0, (), SENDS)
+    alone = CalibrationPlanned((), ("rule",), 0, 0, (), SENDS)
+    assert any(line.startswith("ruled out of each answer of a whole file:") for line in calibration_plan_lines(placement))
+    assert not any(line.startswith("ruled out of each answer") for line in calibration_plan_lines(alone))
+    assert json.loads(calibration_plan_document(placement))["ruled_out_by"] == ["holds"]
+    assert json.loads(calibration_plan_document(alone))["ruled_out_by"] == []
