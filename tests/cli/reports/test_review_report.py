@@ -171,13 +171,15 @@ def test_a_reading_says_what_review_is_what_was_sent_and_each_doubtful_file_with
                          "Model m-1. 4 file(s) found (paths), 2 judged, 1 left out. Asked 1, from cache 1.",
                          "Sent 1 request(s) to Model (https://model.example.test): 2,400 input tokens, 3 output tokens."]
     assert lines[4:10] == [
-        "placement: doubtful here (probability on the part the file sits in, below that part's line)",
+        "placement: doubtful here: some of a file's content may not fit the part it sits in (probability on that part, "
+        "below its line)",
         "  based on: measured on two codebases with one reader's labels and one model version: about 7 to 10% of "
         "well-placed files read as doubtful, and about 1 in 2 to 1 in 3 doubtful files is really misplaced",
         "  app/modules/documents/adapters/export.py   adapters   0.08 (line 0.30)   2,140 chars",
         "      what to do: read it against the litmus of adapters (`xarch where "
-        "app/modules/documents/adapters/export.py`). If the litmus says it belongs, leave it. In trials, about 1 in "
-        "2 to 1 in 3 files read this way was really misplaced.",
+        "app/modules/documents/adapters/export.py`). Some of its content may not fit there, or all of it, or none: "
+        "move only what does not fit, and if the litmus says it all belongs, leave it. In trials, about 1 in 2 to 1 "
+        "in 3 files read this way was really misplaced.",
         "  accepted: 0 file(s) in .xarch/accepted.json, 0 of them read as accepted this run",
         "  held to its examples: no: uncalibrated: it was never held to its examples; run `xarch review calibrate "
         "--eval placement`"]

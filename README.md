@@ -552,7 +552,7 @@ finds or its exit code, and a review of files never exits 1 (`review calibrate` 
 examples). For each file chosen it asks a decision model which part of the profile the
 file belongs in, with every part's litmus test (its role, for a part with none) as the options, and prints the
 model's reading, ranked: a file whose probability on the part it sits in is below that part's line (0.3, unless the
-profile sets the part's own under `evals.placement.lines`) reads as **doubtful here**. That is a reason to read the file against its part's litmus, not a finding: in
+profile sets the part's own under `evals.placement.lines`) reads as **doubtful here**. That says some of the file's content may not fit its part (all of it, a function of it, or none), and is a reason to read the file against its part's litmus, not a finding: in
 trials, about 7 to 10% of well-placed files read as doubtful, and about 1 in 2 to 1 in 3 doubtful files was really
 misplaced. The text output names no other part but those its part is read alike with and those ruled out of its
 answer (below); the JSON gives the probability on every part.

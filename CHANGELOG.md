@@ -43,6 +43,10 @@ All notable changes to this project are written here. The format follows
 
 ### Changed
 
+- `xarch review` says what a doubtful file is: some of its content may not fit the part it sits in (all of it, a
+  function of it, or none). The heading of the doubtful files, what to do about each one, the README and the agents'
+  guide say so, and tell the reader to move only what does not fit. The question asked of the model, the lines and the
+  JSON are unchanged.
 - The bundled `cli` and `web` profiles are stricter, with five rules xarch's own profile already held: `services`,
   `controller` and `adapters` may not read the working folder, the home folder or the environment (the `ambient`
   list, which now also holds `.chdir()`, `os.environ` and `os.getenv`); `platform` and the entry part (`cli` / `web`)

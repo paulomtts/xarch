@@ -99,9 +99,10 @@ def test_a_review_sends_the_masked_text_and_the_question_with_the_key_as_the_hea
     assert lines[1] == "Model jev-1.14.0. 2 file(s) found (paths), 2 judged, 0 left out. Asked 2, from cache 0."
     assert lines[2] == f"Sent 2 request(s) to TypeSafe ({served.url}): 5,000 input tokens, 8 output tokens."
     assert lines[6:8] == [f"  {VALUES}   domain   0.12 (line 0.30)   {VALUES_SENT:,} chars, small",
-                          f"      what to do: read it against the litmus of domain (`xarch where {VALUES}`). If the "
-                          "litmus says it belongs, leave it. In trials, about 1 in 2 to 1 in 3 files read this way "
-                          "was really misplaced."]
+                          f"      what to do: read it against the litmus of domain (`xarch where {VALUES}`). Some of "
+                          "its content may not fit there, or all of it, or none: move only what does not fit, and if "
+                          "the litmus says it all belongs, leave it. In trials, about 1 in 2 to 1 in 3 files read "
+                          "this way was really misplaced."]
     assert f"  {SERVICE}   services   0.90 (line 0.30)   {SERVICE_SENT:,} chars" in lines
     assert lines[-3:] == ["parts (read this run)",
                           "  domain   1 file(s) read: too few to say anything of the part (fewer than 3)",

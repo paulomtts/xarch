@@ -1,8 +1,8 @@
 """xarch review, shown: what a review would send, and what the decision model read of the files judged, in text for a
 person or an agent and as one JSON document, and why one is refused. Every run opens with what review is: advisory,
-never a check. A file is "doubtful here" and nothing more: no other part is named but in the JSON's distribution, the
-parts of its group whose probabilities its reading counts with its own (`evals.placement.alike`), and the parts ruled
-out of its answer, with what the answer put on each."""
+never a check. A file is "doubtful here", which says some of its content may not fit its part, and nothing more: no
+other part is named but in the JSON's distribution, the parts of its group whose probabilities its reading counts with
+its own (`evals.placement.alike`), and the parts ruled out of its answer, with what the answer put on each."""
 from __future__ import annotations
 
 from typing import Any
@@ -79,8 +79,8 @@ NOTHING_SENT = "Nothing was sent (--dry-run)."
 BASED_ON = ("measured on two codebases with one reader's labels and one model version: about 7 to 10% of well-placed "
             "files read as doubtful, and about 1 in 2 to 1 in 3 doubtful files is really misplaced")
 """What the numbers of placement rest on, said with them in text and in JSON."""
-TO_DO = ("If the litmus says it belongs, leave it. In trials, about 1 in 2 to 1 in 3 files read this way was really "
-         "misplaced.")
+TO_DO = ("Some of its content may not fit there, or all of it, or none: move only what does not fit, and if the litmus "
+         "says it all belongs, leave it. In trials, about 1 in 2 to 1 in 3 files read this way was really misplaced.")
 WAYS = {BY_PATHS: "paths", BY_LIST: "--files-from", BY_ALL: "--all"}
 WHY = {MISSING: "not there", NOT_SOURCE: "no source file of the app's language", A_TEST: "a test: review reads the app's "
        "files only", OUTSIDE: "outside the app folder", EXCLUDED: "below a folder the profile excludes",
@@ -189,7 +189,8 @@ def reading_lines(read: ReviewReading) -> list[str]:
               if not item.doubtful and item.accepted is None and item.part not in disagreeing]
     unlined = [item for item in read.readings
                if not item.doubtful and item.accepted is None and item.part in disagreeing]
-    lines += ["", "placement: doubtful here (probability on the part the file sits in, below that part's line)",
+    lines += ["", "placement: doubtful here: some of a file's content may not fit the part it sits in (probability on "
+                  "that part, below its line)",
               f"  based on: {BASED_ON}"]
     for item in doubtful:
         lines += [*_reading(item), *_before(item),

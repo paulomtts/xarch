@@ -46,8 +46,9 @@ folder is not `app/`.
 replaces `xarch check`; never edit code or docstrings to raise its numbers. Run it once the check is clean, as
 `git diff --name-only <base> | xarch review --files-from - --pieces --format json`. It sends the masked text of
 those files to the model's service whenever its key is set, and nothing otherwise; `--dry-run` shows what would
-leave the machine. For a file it reads as doubtful, or the first piece it ranks in a file, read its part's litmus
-(`xarch where <path>`), then leave it or move it, and say why in one line. With no key set it refuses (exit 2): then
+leave the machine. A file it reads as doubtful may hold some content that does not fit its part, or none: for such a
+file, or the first piece it ranks in a file, read its part's litmus (`xarch where <path>`), then leave it or move
+what does not fit, and say why in one line. With no key set it refuses (exit 2): then
 skip it, or run it with `--offline` when the project commits its answer cache; `xarch review calibrate` is the
 maintainer's to run, not yours.
 
