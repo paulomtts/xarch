@@ -1,0 +1,44 @@
+{
+  "xarch/modules/review/domain/published.py": {
+    "part": "domain",
+    "reads_as": "contract",
+    "hash": "3802859ac47545fe6e0dad30b999a320c4c55240c856f01b20dbef70e1af6cb1",
+    "why": "Domain values of the review module that its contract re-exports: the contract only publishes them, and they are defined and used inside the module."
+  },
+  "xarch/modules/rules/application/logic/sentences.py": {
+    "part": "logic",
+    "reads_as": "reports",
+    "hash": "fc03555ce27ce5fe579318d3d51b5c5de72f6311345eeefa0487632367867fdb",
+    "why": "Pure logic that decides what a finding says from the rules; it produces text, but the cli reports only print it."
+  },
+  "xarch/modules/rules/domain/places.py": {
+    "part": "domain",
+    "reads_as": "contract",
+    "hash": "9df4c0731748ba1cbb31b8c34207ce9009eb750d9d50a4406f50faaefdaca3b8",
+    "why": "The answers of xarch where: domain values of the rules module, which its contract happens to publish."
+  },
+  "xarch/modules/rules/domain/published.py": {
+    "part": "domain",
+    "reads_as": "contract",
+    "hash": "37e5691a55373a3cd20912cf6b901d6354d02b82b0ec3d55077c07906fb54ad0",
+    "why": "Domain values of the rules module that its contract re-exports: the contract only publishes them, and they are defined and used inside the module."
+  },
+  "xarch/modules/scaffold/domain/values.py": {
+    "part": "domain",
+    "reads_as": "kernel",
+    "hash": "0eef9b23d6289a831d6d205aac32402d09e1388c044adac6630242a22a8ee6ec",
+    "why": "Values only the scaffold module uses; they look generic, but nothing outside the module reads them, so they are not kernel."
+  },
+  "xarch/modules/spec/application/logic/docs_template.py": {
+    "part": "logic",
+    "reads_as": "reports",
+    "hash": "efa6a52537b13926b7896a741cd1d985ff02404f933fda191a38cc8db9f2abf0",
+    "why": "Pure logic that fills the document templates from the profile; it produces text, but writing and printing happen elsewhere."
+  },
+  "xarch/platform/yaml_writer.py": {
+    "part": "platform",
+    "reads_as": "kernel",
+    "hash": "91d7ca97bf3932fd463e3016a7d4200c9171431d5548558b446279bc298d8d05",
+    "why": "Writes yaml text with the yaml library, which only platform may import; it is a tool the adapters are handed, not shared kernel code."
+  }
+}
