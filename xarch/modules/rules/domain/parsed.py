@@ -34,9 +34,11 @@ class Union:
 
 
 Ref = tuple[str, ...] | None
-"""A name as the dotted path its absolute import binds, e.g. ("pkg", "sub", "Name") for `Name` after `from pkg.sub
-import Name`, or `sub.Name` after `from pkg import sub`; None for anything else: a literal, an expression, or a name
-bound some other way (a parameter, an assignment, a relative import) in the scope it is read."""
+"""The place a name reaches, as steps: for a name of the app, the app's root, the steps of the file that defines it
+below the root, then the name; for an outside name, its package as one step, then the steps below it. However the
+import is written (absolute, relative, or by a name the project maps to a folder), the reader follows it. None for
+a name no import binds (a literal, an expression, a parameter, an assignment), and for an import the reader could
+not follow (see Import.unresolved)."""
 
 
 @dataclass(frozen=True)
@@ -80,8 +82,9 @@ class Callback:
 class Use:
     """A name read where it is used, called or not, as the dotted path it reaches, and the line it is on: `dt.now`
     after `from datetime import datetime as dt` is ("datetime", "datetime", "now"). bound is how many steps of the
-    path the import that binds its first name bound (2 here: `from datetime import datetime`); a builtin used by its
-    bare name is (<its namespace>, <name>), bound 0."""
+    path the import that binds its first name names from the top (2 here: `from datetime import datetime`; 0 for a
+    relative import, which names none of them so, and whose line therefore carries no finding on the path); a builtin
+    used by its bare name is (<its namespace>, <name>), bound 0."""
     line: int
     name: tuple[str, ...]
     bound: int

@@ -76,8 +76,138 @@ def test_a_name_imported_and_rebound_at_module_level_is_not_read_through_the_imp
     assert parsed(tmp_path, text).calls == ()
 
 
-def test_relative_imports_bind_nothing(tmp_path):
-    assert parsed(tmp_path, "from .helpers import build\nbuild()\n").calls == ()
+ORDER = "app/domain/order.py"
+SERVICES = "app/domain/services.py"
+
+
+def read_at(tmp_path: Path, files: dict[str, str], path: str) -> SourceFile:
+    """The file at path, its first step the root it is read below, once every file given is written below tmp_path."""
+    for rel, body in files.items():
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / rel).write_text(body)
+    root, *steps = path.split("/")
+    return FsSourceTree(FileSystem()).read(tmp_path / root, [tuple(steps)])[0]
+
+
+def test_a_relative_import_of_a_name_binds_the_place_it_names(tmp_path):
+    found = read_at(tmp_path, {ORDER: "class Order: ...\n", SERVICES: "from .order import Order\n\nOrder()\n"}, SERVICES)
+    assert found.calls == (Call(3, ("app", "domain", "order", "Order")),)
+    assert found.imports == (Import(1, ("order",), ("Order",), relative=True, up=0, written=".order"),)
+
+
+def test_a_module_imported_relatively_is_the_place_its_names_are_read_on(tmp_path):
+    found = read_at(tmp_path, {ORDER: "class Order: ...\n", SERVICES: "from . import order\n\norder.Order()\n"}, SERVICES)
+    assert found.calls == (Call(3, ("app", "domain", "order", "Order")),)
+    assert found.imports == (Import(1, (), ("order",), relative=True, up=0, written="."),)
+
+
+def test_a_relative_import_with_more_dots_climbs_a_folder_for_each(tmp_path):
+    text = "from ..kernel.errors import Failed\nfrom .. import kernel\n\nFailed\nkernel\n"
+    found = read_at(tmp_path, {"app/kernel/errors.py": "class Failed(Exception): ...\n", SERVICES: text}, SERVICES)
+    assert found.uses == (Use(4, ("app", "kernel", "errors", "Failed"), 0), Use(5, ("app", "kernel"), 0))
+    assert [(i.up, i.unresolved) for i in found.imports] == [(1, False), (1, False)]
+
+
+def test_a_package_file_imports_relatively_from_its_own_folder(tmp_path):
+    init = "app/domain/__init__.py"
+    found = read_at(tmp_path, {ORDER: "class Order: ...\n", init: "from .order import Order\n\nOrder()\n"}, init)
+    assert found.calls == (Call(3, ("app", "domain", "order", "Order")),)
+
+
+def test_an_alias_of_a_relative_import_keeps_the_place_it_names(tmp_path):
+    text = "from .order import Order as O\nfrom . import order as o\n\nO()\no.Order()\n"
+    found = read_at(tmp_path, {ORDER: "class Order: ...\n", SERVICES: text}, SERVICES)
+    assert found.calls == (Call(4, ("app", "domain", "order", "Order")), Call(5, ("app", "domain", "order", "Order")))
+
+
+def test_a_relative_import_of_a_folder_is_followed_to_it(tmp_path):
+    files = {"app/domain/order/__init__.py": "class Order: ...\n", SERVICES: "from .order import Order\n\nOrder()\n"}
+    found = read_at(tmp_path, files, SERVICES)
+    assert found.calls == (Call(3, ("app", "domain", "order", "Order")),)
+    assert found.imports[0].unresolved is False
+
+
+def test_a_relative_import_of_nothing_below_the_root_binds_nothing_and_is_unresolved(tmp_path):
+    found = read_at(tmp_path, {ORDER: "class Order: ...\n", SERVICES: "from .ordr import Order\n\nOrder()\n"}, SERVICES)
+    assert (found.calls, found.uses) == ((), ())
+    assert found.imports == (Import(1, ("ordr",), ("Order",), relative=True, up=0, written=".ordr", unresolved=True),)
+
+
+@pytest.mark.parametrize("text", [
+    pytest.param("from .. import x\n\nx()\n", id="one folder above a file at the root"),
+    pytest.param("from ... import x\n\nx()\n", id="two folders above it"),
+    pytest.param("from ..up import x\n\nx()\n", id="a module of a folder above it"),
+])
+def test_a_relative_import_that_climbs_above_the_root_binds_nothing_and_is_unresolved(tmp_path, text):
+    found = read_at(tmp_path, {"app/a.py": text}, "app/a.py")
+    assert (found.calls, [i.unresolved for i in found.imports]) == ((), [True])
+
+
+def test_a_file_at_the_root_imports_relatively_from_the_root_s_own_folder(tmp_path):
+    found = read_at(tmp_path, {"app/a.py": "from . import b\n\nb()\n"}, "app/a.py")
+    assert (found.calls, [i.unresolved for i in found.imports]) == ((Call(3, ("app", "b")),), [False])
+
+
+def test_a_name_imported_relatively_reaches_every_reading_at_its_place_bound_none_of_its_steps(tmp_path):
+    text = ("from unittest.mock import Mock\nfrom .base import Base\nfrom .ports import Repo\n\n\nclass Store(Base): ...\n\n\n"
+            "def build(repo: Repo):\n    return Mock(spec=Repo)\n")
+    files = {"app/domain/base.py": "class Base: ...\n", "app/domain/ports.py": "class Repo: ...\n", SERVICES: text}
+    found = read_at(tmp_path, files, SERVICES)
+    assert found.classes[0].bases == (("app", "domain", "base", "Base"),)
+    assert found.calls == (Call(10, ("unittest", "mock", "Mock"), (), (("spec", ("app", "domain", "ports", "Repo")),)),)
+    assert Use(9, ("app", "domain", "ports", "Repo"), 0) in found.uses
+
+
+def test_a_relative_import_in_a_function_or_a_class_body_is_followed_there(tmp_path):
+    text = ("def make():\n    from .order import Order\n    return Order()\n\n\n"
+            "class Shop:\n    from .order import Order\n    built = Order()\n")
+    found = read_at(tmp_path, {ORDER: "class Order: ...\n", SERVICES: text}, SERVICES)
+    assert found.calls == (Call(3, ("app", "domain", "order", "Order")), Call(8, ("app", "domain", "order", "Order")))
+
+
+def test_an_absolute_import_is_resolved_and_read_as_before(tmp_path):
+    found = read_at(tmp_path, {SERVICES: "from app.domain.order import Order\nimport os\n\nOrder()\nos.getcwd()\n"}, SERVICES)
+    assert [i.unresolved for i in found.imports] == [False, False]
+    assert found.calls == (Call(4, ("app", "domain", "order", "Order")), Call(5, ("os", "getcwd")))
+    assert found.uses == (Use(4, ("app", "domain", "order", "Order"), 4), Use(5, ("os", "getcwd"), 1))
+
+
+def test_a_relative_import_of_a_file_beside_binds_its_name(tmp_path):
+    files = {"app/domain/helpers.py": "def build(): ...\n", "app/domain/x.py": "from .helpers import build\nbuild()\n"}
+    assert read_at(tmp_path, files, "app/domain/x.py").calls == (Call(2, ("app", "domain", "helpers", "build")),)
+
+
+def test_a_text_read_with_no_file_follows_no_relative_import():
+    found = FsSourceTree(FileSystem()).parsed("from .order import Order\nimport os\n\nOrder()\nos.getcwd()\n")
+    assert found.calls == (Call(5, ("os", "getcwd")),)
+    assert [i.unresolved for i in found.imports] == [True, False]
+
+
+def test_a_test_file_s_relative_import_binds_a_place_of_the_tests(tmp_path):
+    files = {"tests/fakes/repo.py": "class FakeRepo: ...\n",
+             "tests/modules/test_x.py": "from ..fakes.repo import FakeRepo\n\nFakeRepo()\n"}
+    found = read_at(tmp_path, files, "tests/modules/test_x.py")
+    assert found.calls == (Call(3, ("tests", "fakes", "repo", "FakeRepo")),)
+
+
+def test_a_relative_star_import_is_resolved_as_any_other_relative_import(tmp_path):
+    found = read_at(tmp_path, {ORDER: "", SERVICES: "from .order import *\nfrom .ordr import *\n"}, SERVICES)
+    assert [i.unresolved for i in found.imports] == [False, True]
+
+
+def denied(self: FileSystem, path: Path) -> bool:
+    raise PermissionError(13, "Permission denied", str(path))
+
+
+def test_a_place_the_file_system_cannot_look_up_is_missing(tmp_path, monkeypatch):
+    files = {ORDER: "class Order: ...\n", SERVICES: "from .order import Order\n\nOrder()\n"}
+    for rel, body in files.items():
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / rel).write_text(body)
+    monkeypatch.setattr(FileSystem, "is_dir", denied)
+    monkeypatch.setattr(FileSystem, "is_file", denied)
+    found = FsSourceTree(FileSystem()).read(tmp_path / "app", [("domain", "services.py")])[0]
+    assert (found.calls, [i.unresolved for i in found.imports]) == ((), [True])
 
 
 def test_a_class_lists_its_bases_as_paths_and_its_methods_with_their_return_annotations(tmp_path):
@@ -756,8 +886,9 @@ def test_a_path_is_resolved_from_the_folder_given_with_its_links_followed(tmp_pa
     pytest.param("from app.kernel import ids, Name\n", (Import(1, ("app", "kernel"), ("ids", "Name"), written="app.kernel"),),
          id="names imported from a module named from the top"),
     pytest.param("from . import doc\nfrom ..store import Repo\n",
-         (Import(1, (), ("doc",), True, 0, written="."), Import(2, ("store",), ("Repo",), True, 1, written="..store")),
-         id="a relative import climbs one folder fewer than its dots"),
+         (Import(1, (), ("doc",), True, 0, written=".", unresolved=True),
+          Import(2, ("store",), ("Repo",), True, 1, written="..store", unresolved=True)),
+         id="a relative import climbs one folder fewer than its dots, and with no file it is not followed"),
     pytest.param("from app.kernel import *\n", (Import(1, ("app", "kernel"), ("*",), written="app.kernel", every=True),),
          id="a star import imports every public name"),
     pytest.param("from \\\n    app.kernel import (\n    ids,\n)\nimport app . platform\n",

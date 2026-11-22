@@ -1,9 +1,14 @@
 """The never-use check on a throwaway web project, as the bundled profile lists it: the pure parts may not read the
 clock or do I/O by name, and neither may the unit tests of those parts."""
+import shutil
+from pathlib import Path
+
 import pytest
 
+import xarch
 from tests.bootstrap.project import problems
 
+BUNDLED = Path(xarch.__file__).parent / "architectures"
 DOMAIN = "modules/docs/domain/document.py"
 
 
@@ -31,3 +36,24 @@ def test_a_unit_test_of_a_pure_part_is_held_to_its_list(tmp_path):
     assert problems(tmp_path, tests={"modules/docs/domain/test_document.py": body}) == [
         "tests/modules/docs/domain/test_document.py:5: a test of domain/ (unit tier) may not use time.time "
         "(parts.domain.uses.never; tiers.unit.uses.apply_never)"]
+
+
+@pytest.mark.parametrize("imported, problem", [
+    pytest.param("from app.kernel.clock import now",
+                 f"app/{DOMAIN}:1: domain/ of modules/docs may not import app.kernel.clock.now (parts.domain.uses.never)",
+                 id="imported from the top: found at the import, which names it in full"),
+    pytest.param("from ....kernel.clock import now",
+                 f"app/{DOMAIN}:4: domain/ of modules/docs may not use app.kernel.clock.now (parts.domain.uses.never)",
+                 id="imported relatively: found at the use, since the import names it from the file's folder"),
+])
+def test_a_name_of_the_app_on_a_never_list_is_found_however_it_is_imported(tmp_path, imported, problem):
+    """No bundled list names a name of the app, which is all a relative import reaches, so the web profile's pure list
+    is given one."""
+    shutil.copytree(BUNDLED, tmp_path / "arch")
+    text = (BUNDLED / "web.yaml").read_text()
+    listed = "  pure: [datetime.datetime.now,"
+    assert text.count(listed) == 1
+    (tmp_path / "arch/clocked.yaml").write_text(text.replace(listed, "  pure: [app.kernel.clock.now, datetime.datetime.now,"))
+    body = f"{imported}\n\ndef stamp():\n    return now()\n"
+    assert problems(tmp_path, app={"kernel/clock.py": "def now(): ...\n", DOMAIN: body},
+                    profile=str(tmp_path / "arch/clocked.yaml")) == [problem]
