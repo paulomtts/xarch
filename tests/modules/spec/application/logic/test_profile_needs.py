@@ -102,12 +102,14 @@ def test_a_part_s_never_list_under_uses_needs_the_facts_its_check_reads():
     document = services(uses={"never": "pure"})
     document["never"] = {"pure": ["socket"]}
     assert problems(document, languages=LANGUAGES) == [refusal("parts.service.uses.never", "use"),
-                                                       refusal("parts.service.uses.never", "method_call")]
+                                                       refusal("parts.service.uses.never", "method_call"),
+                                                       refusal("parts.service.uses.never", "import.resolved")]
 
 
 def test_a_tier_that_applies_the_never_lists_needs_the_facts_their_check_reads():
     assert problems(tiered(uses={"apply_never": True}), languages=LANGUAGES) == [
-        refusal("tiers.unit.uses.apply_never", "use"), refusal("tiers.unit.uses.apply_never", "method_call")]
+        refusal("tiers.unit.uses.apply_never", "use"), refusal("tiers.unit.uses.apply_never", "method_call"),
+        refusal("tiers.unit.uses.apply_never", "import.resolved")]
 
 
 def test_apply_never_false_configures_nothing():
@@ -118,3 +120,8 @@ def test_apply_never_false_configures_nothing():
 def test_a_uses_that_is_no_mapping_configures_nothing_in_any_language(uses):
     document = services(uses=uses)
     assert short(document, {}, TOY) == []
+
+
+def test_a_key_whose_check_reads_names_through_imports_needs_them_followed_however_written():
+    assert problems(services(built_by=["api"]), languages=LANGUAGES) == [
+        refusal("parts.service.built_by", "call"), refusal("parts.service.built_by", "import.resolved")]

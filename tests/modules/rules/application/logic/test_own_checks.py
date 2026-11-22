@@ -15,8 +15,8 @@ from xarch.profile_values.checks import APP, Condition, Quantified, Saying, Scop
 from xarch.profile_values.language import CheckedLanguage
 from xarch.profile_values.placement import Target
 
-SUPPLIES = CheckedLanguage("Toy", supplies=(Supply("call", EXACT), Supply("import", "partial", "no star imports"),
-                                            Supply("file", EXACT)))
+SUPPLIES = CheckedLanguage("Toy", supplies=(Supply("call", EXACT), Supply("import.resolved", EXACT),
+                                            Supply("import", "partial", "no star imports"), Supply("file", EXACT)))
 PROFILE = profile(language=SUPPLIES)
 CHECK = WrittenCheck(("call",), Scope(APP, "kernel"),
                      Quantified(MAY_NOT, (WrittenTarget("path", ("app.api", ".run()")), WrittenTarget("part", ("web",)))),

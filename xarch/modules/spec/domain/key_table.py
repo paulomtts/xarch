@@ -189,8 +189,8 @@ _KEYS: tuple[Key, ...] = (
 )
 
 _IMPORTS = ("import", "import.relative")
-_NEVER_USE = (*_IMPORTS, "use", "method_call")
-_TYPES_ONLY = ("call", "use", "module_functions")
+_NEVER_USE = (*_IMPORTS, "use", "method_call", "import.resolved")
+_TYPES_ONLY = ("call", "use", "module_functions", "import.resolved")
 NEEDS: dict[str, tuple[str, ...]] = {
     "parts.<part>.may_import": _IMPORTS,
     "parts.<part>.must_import": (*_IMPORTS, "import.standard", "function.statements", "file"),
@@ -199,9 +199,9 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "parts.<part>.no_callbacks": ("callback",),
     "parts.<part>.immutable": ("class", "class.exception", "class.immutable"),
     "parts.<part>.names": ("class",),
-    "parts.<part>.built_by": ("class", "call"),
+    "parts.<part>.built_by": ("class", "call", "import.resolved"),
     "parts.<part>.shared": (*_IMPORTS, "import.mentioned", "use", "class", "class.named", "function", "function.named",
-                            "module_functions", "constant"),
+                            "module_functions", "constant", "import.resolved"),
     "parts.<part>.libraries": (*_IMPORTS, "import.standard"),
     "parts.<part>.uses.never": _NEVER_USE,
     "parts.<part>.package_only": _IMPORTS,
@@ -213,18 +213,20 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "tiers.<tier>.plain_tables": ("function.tables", "function.blocks", "function.expressions"),
     "tiers.<tier>.may_import": _IMPORTS,
     "tiers.<tier>.may_also_import": _IMPORTS,
-    "testing.skips": ("use",),
+    "testing.skips": ("use", "import.resolved"),
     "testing.table": ("function.tables",),
-    "testing.mocks": ("call", "parameter_call"),
+    "testing.mocks": ("call", "parameter_call", "import.resolved"),
     "guards.scenario-coverage": ("union", "function.tables", "function.blocks", "function.expressions",
                                  "function.asserts", "function.mentions"),
     "guards.no-comments": ("comment",),
-    "guards.stand-ins": ("class", "class.methods", "class.attributes", "call", "parameter_call"),
+    "guards.stand-ins": ("class", "class.methods", "class.attributes", "call", "parameter_call",
+                         "import.resolved"),
     "guards.closed-tree": ("file",),
     "guards.no-duplicates": ("function", "function.statements", "function.shape"),
     "guards.no-twins": ("class", "class.fields"),
     "guards.no-twins.min_renamed": ("class", "class.fields", "class.types"),
-    "guards.no-twins.translated": ("class", "class.fields", "call", "function", "function.named", *_IMPORTS),
+    "guards.no-twins.translated": ("class", "class.fields", "call", "function", "function.named", *_IMPORTS,
+                                   "import.resolved"),
     "guards.dead-code": ("class", "named"),
     "guards.dead-code.untested": (*_IMPORTS, "function.statements", "class", "class.exception", "function", "file"),
     "guards.dead-code.tests_only": ("class", "class.exception", "function", "named"),

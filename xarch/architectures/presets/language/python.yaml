@@ -44,6 +44,7 @@ supplies:
   import: exact
   import.relative: exact
   import.standard: exact
+  import.resolved: exact
   import.mentioned: exact
   comment: exact
   use: exact

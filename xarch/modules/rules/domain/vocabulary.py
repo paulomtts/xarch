@@ -201,16 +201,18 @@ KINDS: tuple[Kind, ...] = (
          ("line", "path", "written", "relative", "standard"), {"name": "takes-a-name"}, needs=_IMPORT,
          field_needs={"relative": ("import.relative",), "standard": ("import.standard",)}, verb="import"),
     Kind("use", "each name read, called or not, as the dotted path the import binding its first name reaches",
-         ("line", "path", "bound"), needs=("use",), verb="use"),
+         ("line", "path", "bound"), needs=("use", "import.resolved"), verb="use"),
     Kind("method-call", "each call of a method on something no import names (a variable, a parameter, an attribute)",
          ("line", "method", "name", "on-own-object"), needs=("method_call",), verb="call"),
     Kind("call", "each call whose callee an import binds, as that dotted path", ("line", "path"),
-         {"place": "target-placed"}, needs=("call",), verb="call"),
+         {"place": "target-placed"}, needs=("call", "import.resolved"), verb="call"),
     Kind("construction", "each call of a class the app defines at the top level of a file, read through the import "
-                         "that binds it", ("line", "path", "name", "place"), needs=("call", "class"), verb="build"),
+                         "that binds it", ("line", "path", "name", "place"), needs=("call", "class", "import.resolved"),
+         verb="build"),
     Kind("function-reference", "each name read that is a function the app defines at the top level of a file, other "
                                "than as the callee of a call (passed on, stored)",
-         ("line", "path", "reaches", "place"), needs=("use", "call", "module_functions"), verb="reference"),
+         ("line", "path", "reaches", "place"), needs=("use", "call", "module_functions", "import.resolved"),
+         verb="reference"),
     Kind("import-into-app", "each import of a file or package of the app, as the file or package it reaches (an "
                             "import that takes a name from a file or package reaches the name's own file when it is "
                             "one, else the file or package it takes the name from)",

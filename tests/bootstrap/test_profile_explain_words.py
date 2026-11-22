@@ -62,7 +62,7 @@ def test_json_gives_each_of_them_as_one_document():
     checks = json.loads(explain("checks", "--format", "json").output)
     assert checks["ok"] is True and checks["slots"][0]["name"] == "read" and checks["example"]["profile"] is None
     word = json.loads(explain("kinds.call", "--format", "json").output)
-    assert (word["name"], word["verb"], word["needs"]) == ("call", "call", ["call"])
+    assert (word["name"], word["verb"], word["needs"]) == ("call", "call", ["call", "import.resolved"])
     assert {"name": "place", "meaning": "where what it leads to sits: a part, or a folder of the layout",
             "when": "target-placed"} in word["fields"]
     rule = json.loads(explain("parts.names", "--rule", "--profile", "cli", "--format", "json").output)

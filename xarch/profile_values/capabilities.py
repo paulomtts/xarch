@@ -21,6 +21,7 @@ FACTS: dict[str, str] = {
     "import": "each import: what it names, the names it takes from it, the line",
     "import.relative": "whether an import is named from the importing file's own folder, and how far it climbs",
     "import.standard": "whether an import names the standard library",
+    "import.resolved": "every import of the app is followed to the place it names, however written",
     "import.mentioned": "whether a file mentions a name an import takes anywhere else, in code or an annotation",
     "comment": "each line comment, its text, its line and where on it it starts and ends, which review cuts before it "
                "sends a text",
