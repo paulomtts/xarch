@@ -123,5 +123,7 @@ def test_a_uses_that_is_no_mapping_configures_nothing_in_any_language(uses):
 
 
 def test_a_key_whose_check_reads_names_through_imports_needs_them_followed_however_written():
-    assert problems(services(built_by=["api"]), languages=LANGUAGES) == [
-        refusal("parts.service.built_by", "call"), refusal("parts.service.built_by", "import.resolved")]
+    """Toy is given calls, so the one fact built_by still lacks is that its imports are followed."""
+    calling = replace(TOY, checked=replace(TOY.checked, supplies=(*TOY.checked.supplies, Supply("call", EXACT))))
+    assert problems(services(built_by=["api"]), languages={"toy": calling}) == [
+        refusal("parts.service.built_by", "import.resolved")]
