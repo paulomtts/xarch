@@ -5,11 +5,14 @@ import json
 import pytest
 from typer.testing import CliRunner
 
-from tests.bootstrap.project import bundled_profiles
+from tests.bootstrap.project import bundled_profiles, retiring
 from xarch.bootstrap.app import app
 from xarch.bootstrap.wiring import build_controllers
+from xarch.modules.spec.domain.profile_keys import PART
 
 runner = CliRunner()
+
+RENAMED = "renamed in 0.3.0: write tier"
 
 
 @pytest.fixture(autouse=True)
@@ -177,3 +180,37 @@ def test_the_rule_of_a_key_review_alone_reads_is_refused_saying_review_reads_it(
     result = runner.invoke(app, ["profile", "explain", "evals.placement.lines", "--rule", "--profile", "cli"])
     assert result.exit_code == 2
     assert "check makes no rule of it: only xarch review reads what it says" in result.output
+
+
+def test_an_address_xarch_retired_is_refused_with_its_fixed_text_in_text_and_in_json(monkeypatch):
+    retiring(monkeypatch, PART, "tested_by", RENAMED)
+    text = runner.invoke(app, ["profile", "explain", "parts.<part>.tested_by"])
+    assert text.exit_code == 2
+    assert f"error: no key `parts.tested_by` in the format: {RENAMED}; the nearest are " in text.output
+    found = runner.invoke(app, ["profile", "explain", "parts.tested_by", "--format", "json"])
+    assert found.exit_code == 2
+    document = json.loads(found.output)
+    assert (document["ok"], document["key"], document["retired"]) == (False, "parts.tested_by", RENAMED)
+    assert document["error"].startswith(f"no key `parts.tested_by` in the format: {RENAMED}; the nearest are ")
+
+
+def test_a_key_of_the_format_is_explained_even_with_an_entry_at_its_address(monkeypatch):
+    retiring(monkeypatch, PART, "may_import", RENAMED)
+    result = runner.invoke(app, ["profile", "explain", "parts.may_import"])
+    assert (result.exit_code, result.output.splitlines()[0]) == (0, "parts.may_import")
+    assert RENAMED not in result.output
+
+
+def test_an_address_with_no_entry_is_refused_as_today_with_retired_null_in_json():
+    text = runner.invoke(app, ["profile", "explain", "parts.colour"])
+    assert text.exit_code == 2 and "error: no key `parts.colour` in the format: the nearest are " in text.output
+    found = runner.invoke(app, ["profile", "explain", "parts.colour", "--format", "json"])
+    assert found.exit_code == 2 and json.loads(found.output)["retired"] is None
+
+
+def test_an_address_xarch_retired_in_a_project_whose_profile_does_not_load_is_refused_with_why(tmp_path, monkeypatch):
+    retiring(monkeypatch, PART, "tested_by", RENAMED)
+    (tmp_path / "pyproject.toml").write_text("[tool.xarch\n")
+    refused = runner.invoke(app, ["profile", "explain", "parts.tested_by"])
+    assert refused.exit_code == 2 and "cannot read" in refused.output and "pyproject.toml" in refused.output
+    assert RENAMED not in refused.output

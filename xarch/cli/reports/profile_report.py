@@ -131,7 +131,8 @@ def _wrapped(label: str, text: str) -> list[str]:
 
 def unknown_message(found: UnknownKey, words: Sequence[str] = ()) -> str:
     also = f"; of the words of a check, {', '.join(words)}" if words else ""
-    return f"no key `{found.key}` in the format: the nearest are {', '.join(found.nearest)}{also}"
+    retired = f"{found.retired}; " if found.retired else ""
+    return f"no key `{found.key}` in the format: {retired}the nearest are {', '.join(found.nearest)}{also}"
 
 
 def overview_document(whole: FormatExplained) -> str:
@@ -160,7 +161,7 @@ def _grade(need: Need, graded: bool) -> str | None:
 
 def unknown_document(found: UnknownKey, words: Sequence[str] = ()) -> str:
     return document({"ok": False, "error": unknown_message(found, words), "key": found.key,
-                  "nearest": list(found.nearest), "words": list(words)})
+                  "nearest": list(found.nearest), "words": list(words), "retired": found.retired or None})
 
 
 def _shown(shown: Shown) -> dict[str, Any]:

@@ -2,9 +2,13 @@
 the check of its source finds once files are added, replaced or (None) removed."""
 from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
 
 from xarch.bootstrap.wiring import build_controllers
 from xarch.modules.rules.contract import AppChecked, CheckApp
+from xarch.modules.spec.application.logic import key_lookup
 from xarch.modules.spec.contract import CheckProfile, Explain, KeyExplained, ProfileChecked
 
 APP = {
@@ -104,3 +108,9 @@ def example_problems(location: str | Path) -> tuple[str, ...]:
     checked = build_controllers().spec.check_profile(CheckProfile(Path("app"), str(location)))
     assert isinstance(checked, ProfileChecked) and all(p.check == "examples" for p in checked.problems), checked
     return tuple(problem.text for problem in checked.problems)
+
+
+def retiring(monkeypatch: pytest.MonkeyPatch, scope: str, name: str, text: str) -> None:
+    """The table of retired names holds one entry, (scope, name, text), for this test alone: a record with the fields
+    the lookup reads, since a wired test builds no value of domain/ itself."""
+    monkeypatch.setattr(key_lookup, "RETIRED", (SimpleNamespace(scope=scope, name=name, text=text),))
