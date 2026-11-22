@@ -375,9 +375,8 @@ how many facts it read in the project.
   `{"rule", "file", "line", "message", "fix"}` (`fix` is `null` for a weak check that has none); `approximate` items
   `{"key", "fact", "note"}`; `strict_failures` items `{"key", "detail"}`, `key` one of `guards_off`, `ungoverned`,
   `init_files`, `skipped`, `dynamic`, `unresolved`, `weak`, `approximate`, `vacuous` (a check of the profile's own
-  that read nothing), `litmus` (a
-  part redefined without the litmus its compared profile gives it). `strict_failures` is filled whether or not `--strict` was given: it
-  is what `--strict` fails on.
+  that read nothing), `litmus` (a part redefined without the litmus its compared profile gives it). `strict_failures`
+  is filled whether or not `--strict` was given: it is what `--strict` fails on.
 - A refusal (exit 2: an unknown or invalid profile, a missing folder) prints `{"ok": false, "error": "<reason>"}` on
   stdout, so a caller always gets JSON. Only an error in the command line itself (an unknown option, a `--format`
   that is neither `text` nor `json`) is typer's usage message on stderr.
@@ -453,9 +452,8 @@ Without `--strict` the section never changes the exit code. `--strict` fails (ex
 `strict_failures`: what the profile in force leaves unenforced or unseen: each guard left off that the bundled profile
 in force, or the one a custom profile is compared with, does not also leave off (with no profile to compare with,
 every guard left off); each ungoverned file; each missing or changed init file; each skip; each dynamic import; each
-unresolved import; each weak finding;
-each approximate key; each part redefined without its litmus. The text
-lists them after the section, under `strict:`. The guard test `init` writes runs `check` without `--strict`: a
+unresolved import; each weak finding; each approximate key; each part redefined without its litmus. The text lists
+them after the section, under `strict:`. The guard test `init` writes runs `check` without `--strict`: a
 project opts in by running `xarch check --strict` in CI or a pre-commit hook.
 
 ## xarch where: ask before you write
