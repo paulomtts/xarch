@@ -4,7 +4,7 @@ from pathlib import Path
 
 from tests.bootstrap.project import APP, TABLE, TESTS, source_check, write
 from xarch.bootstrap.wiring import build_controllers
-from xarch.modules.rules.contract import At, Drift, EnforcementView, Weak
+from xarch.modules.rules.contract import At, Drift, EnforcementView, Unresolved, Weak
 from xarch.modules.spec.contract import Origin
 
 PORTS = "modules/docs/application/ports/"
@@ -84,3 +84,28 @@ def test_a_fake_that_defines_every_method_of_one_port_of_its_name_is_not_weak(tm
                               "    def save(self, text):\n        pass\n",
              "fakes/mod_repo.py": "class FakeRepo:\n    def find(self):\n        return ''\n"}
     assert enforcement(tmp_path, app, fakes).weak == ()
+
+
+def test_an_import_the_reader_could_not_follow_is_listed_in_an_app_file_and_in_a_test_file(tmp_path):
+    found = enforcement(tmp_path, {"kernel/a.py": "x = 1\nfrom .ordr import X\n"},
+                        {"kernel/test_b.py": "from .gone import Y\n"})
+    assert [view.item for view in found.unresolved] == [Unresolved("app/kernel/a.py", 2, ".ordr"),
+                                                        Unresolved("tests/kernel/test_b.py", 1, ".gone")]
+    assert [view.sentence for view in found.unresolved] == [
+        'app/kernel/a.py:2: import ".ordr" names no file of the app',
+        'tests/kernel/test_b.py:1: import ".gone" names no file of the app']
+
+
+def test_a_relative_import_of_a_file_that_exists_is_not_listed(tmp_path):
+    found = enforcement(tmp_path, {"kernel/a.py": "x = 1\nfrom .order import X\n", "kernel/order.py": "X = 1\n"})
+    assert found.unresolved == ()
+    assert [f for f in found.strict if f.key == "unresolved"] == []
+
+
+def test_the_unresolved_imports_of_a_file_are_listed_by_line_whatever_the_reader_yields_first(tmp_path):
+    text = ("def f():\n    from .inner import Z\n    return Z\n\n\nfrom .outer import W\nfrom ...above import V\n"
+            "from .gone import (\n    a,\n    b,\n)\n")
+    found = enforcement(tmp_path, {"kernel/c.py": text})
+    assert [(view.item.line, view.item.written) for view in found.unresolved] == [
+        (2, ".inner"), (6, ".outer"), (7, "...above"), (8, ".gone")]
+    assert [f.detail for f in found.strict if f.key == "unresolved"] == [view.sentence for view in found.unresolved]
