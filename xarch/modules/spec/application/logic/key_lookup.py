@@ -53,9 +53,14 @@ def _at(entry: Retired, typed: str, written: str) -> bool:
     if entry.scope == PROFILE:
         return typed == entry.name
     if entry.scope in HELD:
-        holder, _, name = typed.rpartition(".")
-        above, _, entry_id = holder.rpartition(".")
-        held = HELD[entry.scope]
-        return name == entry.name and (written == f"{entry.scope}.{entry.name}"
-                                       or (above == SCOPES[held] and bool(entry_id) and entry_id not in names_of(held)))
+        return written == f"{entry.scope}.{entry.name}" or of_an_entry(typed, entry.scope, entry.name)
     return entry.scope in SCOPES and typed == plain(f"{SCOPES[entry.scope]}.{entry.name}")
+
+
+def of_an_entry(typed: str, scope: str, name: str) -> bool:
+    """Whether a typed address is the name's in the scope of an entry of a map of ids (see HELD) under an id of the
+    entry: the map's address, an id that is no key of the map, and the name."""
+    holder, _, last = typed.rpartition(".")
+    above, _, entry = holder.rpartition(".")
+    held = HELD.get(scope, "")
+    return last == name and above == SCOPES.get(held, "") and bool(entry) and entry not in names_of(held)

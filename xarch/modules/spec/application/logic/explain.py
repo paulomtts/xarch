@@ -7,9 +7,9 @@ import re
 from difflib import get_close_matches
 
 from xarch.kernel.logic.capabilities import shortfalls
-from xarch.modules.spec.application.logic.key_lookup import keys_of, plain, shown
+from xarch.modules.spec.application.logic.key_lookup import keys_of, of_an_entry, plain, shown
 from xarch.modules.spec.domain.key_table import KEYS, SLOTS
-from xarch.modules.spec.domain.profile_keys import HELD, PART, PROFILE, SCOPES, TIER, Key
+from xarch.modules.spec.domain.profile_keys import HELD, PART, PROFILE, TIER, Key
 from xarch.modules.spec.domain.values import Language
 from xarch.profile_values.capabilities import Shortfall, Supply
 
@@ -95,17 +95,7 @@ def key_at(address: str) -> Key | None:
     typed = cleaned(address)
     written = address.strip().strip(".")
     found = next((key for key in KEYS if plain(key.address) == typed), None)
-    return found or next((slot for slot in SLOTS if written == slot.address or _of_an_entry(typed, slot)), None)
-
-
-def _of_an_entry(typed: str, slot: Key) -> bool:
-    """Whether a typed address is the slot's under an id of an entry: the map's address, an id that is no key of the
-    map, and the slot's name."""
-    holder, _, name = typed.rpartition(".")
-    above, _, entry = holder.rpartition(".")
-    keys = {key.name for key in keys_of(HELD.get(slot.scope, ""))}
-    return (name == slot.name and above == SCOPES.get(HELD.get(slot.scope, ""), "") and bool(entry)
-            and entry not in keys)
+    return found or next((slot for slot in SLOTS if written == slot.address or of_an_entry(typed, slot.scope, slot.name)), None)
 
 
 def held_by(key: Key) -> tuple[Key, ...]:
