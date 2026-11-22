@@ -38,11 +38,14 @@ import tarfile
 from pathlib import Path
 
 import pytest
+import yaml
 
 from xarch.bootstrap.wiring import build_controllers
 from xarch.modules.rules.contract import AppChecked, CheckApp
 
 CORPORA = Path(__file__).parent / "corpora"
+ARCHIVED = ["7cc6111", "df537ca"]
+"""The commits archived with their profile beside the archive as plain yaml."""
 
 
 def archived(name: str, into: Path) -> Path:
@@ -82,12 +85,31 @@ def test_a_difference_is_said_by_the_first_finding_that_differs(found, recorded,
     assert first_difference(found, recorded) == said
 
 
-@pytest.mark.parametrize("commit", ["7cc6111", "df537ca"])
+@pytest.mark.parametrize("commit", ARCHIVED)
 def test_an_earlier_commit_checked_against_its_own_profile_gives_the_findings_recorded_from_the_old_checks(
         commit, tmp_path):
     project = archived(commit, tmp_path)
     recorded = json.loads((CORPORA / f"{commit}.json").read_text(encoding="utf-8"))["findings"]
-    assert first_difference(findings(project, str(project / "architecture.yaml")), recorded) == ""
+    assert first_difference(findings(project, str(CORPORA / f"{commit}.yaml")), recorded) == ""
+
+
+@pytest.mark.parametrize("commit", ARCHIVED)
+def test_each_archived_commit_has_its_profile_beside_its_archive_as_plain_yaml(commit):
+    profile = yaml.safe_load((CORPORA / f"{commit}.yaml").read_text(encoding="utf-8"))
+    assert (profile["name"], profile["based_on"]) == ("xarch", "cli")
+
+
+@pytest.mark.parametrize("commit", ARCHIVED)
+def test_no_archived_commit_holds_a_profile_of_its_own(commit):
+    with tarfile.open(CORPORA / f"{commit}.tar.xz") as archive:
+        assert "architecture.yaml" not in archive.getnames(), f"{commit}.tar.xz holds architecture.yaml"
+
+
+def test_a_missing_plain_profile_is_named_and_nothing_from_the_archive_stands_in(tmp_path):
+    project = archived("7cc6111", tmp_path / "project")
+    assert not (project / "architecture.yaml").exists()
+    with pytest.raises(AssertionError, match=r"7cc6111\.yaml: cannot read the file"):
+        findings(project, str(tmp_path / "7cc6111.yaml"))
 
 
 def test_an_earlier_commit_checked_against_a_tightened_profile_gives_the_findings_recorded_from_the_old_checks(
