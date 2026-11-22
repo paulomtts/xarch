@@ -186,7 +186,7 @@ def test_the_guards_section_shows_a_method_as_written_and_says_what_it_does_not_
         "reached through a variable or `getattr`, nor I/O done on the part's behalf elsewhere.")
 
 
-def test_the_guards_section_lists_the_names_each_part_may_not_use_and_says_what_it_does_not_see():
+def test_the_guards_section_lists_the_names_each_part_never_uses_and_says_what_it_does_not_see():
     document = covered(never={"clock": ["time.time", "socket"], "printing": ["builtins.print"]})
     document["parts"]["service"]["uses"] = {"never": "clock"}
     document["parts"]["store"]["uses"] = {"never": "clock"}

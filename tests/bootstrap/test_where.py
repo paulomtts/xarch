@@ -36,7 +36,7 @@ def document(*args: str) -> dict:
     return json.loads(result.stdout)
 
 
-def test_a_file_in_a_part_says_its_part_role_litmus_imports_libraries_forbidden_names_and_test():
+def test_a_file_in_a_part_says_its_part_role_litmus_imports_libraries_never_uses_and_test():
     found = lines(DOMAIN)
     assert found["path"] == f"{DOMAIN} (exists)"
     assert found["part"] == "domain/ in module 'docs'"

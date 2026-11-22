@@ -88,7 +88,7 @@ def test_the_tests_folder_may_lie_outside_the_project_root():
     assert resolved == Resolved("tests", ("a.py",), Path("/elsewhere/t/a.py"), False, "/elsewhere/t/a.py")
 
 
-def test_code_in_a_part_gets_its_role_litmus_imports_libraries_forbidden_names_and_test():
+def test_code_in_a_part_gets_its_role_litmus_imports_libraries_never_uses_and_test():
     here = where("modules", "docs", "domain", "invoice.py")
     assert isinstance(here, PartPlace)
     assert (here.found.shown, here.place.part, here.info.role, here.info.litmus, here.info.shown) == (
@@ -222,7 +222,7 @@ def test_a_test_placed_by_its_tiers_example_folder_mirrors_no_part():
         True, "guard", None, False, "tests/architecture/")
 
 
-def test_a_test_of_a_tier_not_held_to_forbidden_names_none_and_a_tier_s_types_only_parts_are_shown():
+def test_a_test_of_a_tier_not_held_to_the_lists_never_uses_none_and_a_tier_s_types_only_parts_are_shown():
     rendering = Tier("rendering", (Target("entry"),), None, ("controller",))
     checked = Profile(**{**vars(PROFILE), "tiers": (*PROFILE.tiers, rendering)})
     here = describe(checked, found("tests", "front", "test_page.py"), APP, TESTS)
@@ -269,7 +269,7 @@ def test_a_folder_of_the_layout_is_no_violation_of_the_closed_tree():
     assert isinstance(where("modules", "docs", closed=True), StructurePlace)
 
 
-def test_a_test_of_a_listed_part_in_a_tier_not_held_to_the_list_is_told_no_forbidden_names():
+def test_a_test_of_a_listed_part_in_a_tier_not_held_to_the_list_is_told_no_never_uses():
     loose = Profile(**{**vars(PROFILE), "tiers": (Tier("unit", (Target("domain", "own"),)),)})
     here = describe(loose, found("tests", "modules", "docs", "domain", "test_invoice.py"), APP, TESTS)
     assert (here.tier.name, here.uses_never) == ("unit", ())

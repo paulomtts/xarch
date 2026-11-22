@@ -1,4 +1,4 @@
-"""The forbidden check on a throwaway web project, as the bundled profile lists it: the pure parts may not read the
+"""The never-use check on a throwaway web project, as the bundled profile lists it: the pure parts may not read the
 clock or do I/O by name, and neither may the unit tests of those parts."""
 import pytest
 
@@ -22,7 +22,7 @@ DOMAIN = "modules/docs/domain/document.py"
     (DOMAIN, "def show(print):\n    print('x')\n", None),
     ("platform/clock.py", "from datetime import datetime\n\ndef now():\n    return datetime.now()\n", None),
 ])
-def test_a_pure_part_may_not_use_what_the_bundled_profile_forbids_it(tmp_path, path, body, problem):
+def test_a_pure_part_never_uses_what_the_bundled_profile_lists_for_it(tmp_path, path, body, problem):
     assert problems(tmp_path, app={path: body}) == ([problem] if problem else [])
 
 

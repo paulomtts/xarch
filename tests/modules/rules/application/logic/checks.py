@@ -27,7 +27,7 @@ def libraries(files: Iterable[SourceFile], profile: Profile, root: str) -> list[
     return checked(expansion.book(profile)["libraries"], profile, files, root=root)
 
 
-def forbidden(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile) -> list[Violation | Weak]:
+def never_use(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile) -> list[Violation | Weak]:
     return checked(expansion.book(profile)["never-use"], profile, app, tests)
 
 

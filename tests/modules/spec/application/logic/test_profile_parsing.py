@@ -386,7 +386,7 @@ def test_bad_libraries_are_refused(libraries, expected):
     assert problems(document) == [expected]
 
 
-def test_a_part_refers_to_a_list_of_forbidden_names_by_its_name():
+def test_a_part_refers_to_a_list_under_never_by_its_name():
     document = layered(never={"pure": ["datetime.datetime.now", "builtins.open", "socket"]})
     document["parts"]["service"]["uses"] = {"never": "pure"}
     document["parts"]["shared"]["uses"] = {"never": "pure"}

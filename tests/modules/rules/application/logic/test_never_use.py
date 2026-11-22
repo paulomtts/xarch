@@ -1,8 +1,8 @@
-"""The forbidden check on a hand-built profile: a file of a part neither imports a module its list names nor uses a
+"""The never-use check on a hand-built profile: a file of a part neither imports a module its list names nor uses a
 name it lists, and a test of a tier that says so is held to the list of the part it mirrors."""
 import pytest
 
-from tests.modules.rules.application.logic.checks import forbidden as violations
+from tests.modules.rules.application.logic.checks import never_use as violations
 from xarch.kernel.source import Import
 from xarch.modules.rules.domain.parsed import MethodCall, SourceFile, Use
 from xarch.modules.rules.domain.profile import Profile

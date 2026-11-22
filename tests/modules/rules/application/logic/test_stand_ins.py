@@ -220,7 +220,7 @@ def test_without_fixtures_in_the_profile_a_parameter_call_is_not_read():
     pytest.param("scripts/test_x.py", id="a test in no tier"),
     pytest.param("fakes/helpers.py", id="a fake"),
 ])
-def test_mocks_in_a_test_that_may_not_use_the_fakes_are_not_checked(path):
+def test_mocks_in_a_test_barred_from_the_fakes_are_not_checked(path):
     assert problems([PORTS], [FAKE, in_tests(path, calls=(Call(5, MOCK),),
                                              parameter_calls=(ParameterCall(5, "mocker", "Mock"),))]) == []
 
