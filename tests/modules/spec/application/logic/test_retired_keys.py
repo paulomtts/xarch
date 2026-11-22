@@ -10,21 +10,31 @@ from xarch.modules.spec.application.logic import key_lookup
 from xarch.modules.spec.application.logic.key_lookup import names_of, retired, retired_at
 from xarch.modules.spec.application.logic.profile_checks import rule_hints, unknown_keys
 from xarch.modules.spec.domain.profile_keys import (
+    DEAD_CODE,
     DOCS,
     EVAL,
+    FAKES,
+    FILE,
     FIXTURE,
     GUARD,
     HELD,
+    MOCKS,
     NAMING,
     NO_DUPLICATES,
+    NO_TWINS,
+    PAGE,
     PART,
+    PASS_THROUGH,
     PLACEMENT,
     PROFILE,
     REVIEW,
     RULE_ID,
+    SCENARIO_COVERAGE,
     SCOPES,
+    TABLE,
     TESTING,
     TIER,
+    TIER_DOCS,
     Retired,
 )
 
@@ -234,6 +244,35 @@ def test_a_file_whose_only_unknown_keys_are_retired_gives_no_joined_problem(monk
 def test_each_mapping_reads_the_entries_of_its_own_scope(monkeypatch, scope, document, problem):
     table(monkeypatch, (scope, "banned", RENAMED))
     assert problems(document) == [f"layered.yaml: {problem}"]
+
+
+@pytest.mark.parametrize("scope, document, problem", [
+    pytest.param(MOCKS, writing(covered(), "testing", "mocks"),
+                 "testing.mocks: unknown key 'banned'", id="testing.mocks"),
+    pytest.param(TABLE, writing(covered(), "testing", "table"),
+                 "testing.table: unknown key 'banned'", id="testing.table"),
+    pytest.param(TIER_DOCS, writing(covered(tiers={"unit": {"proves": "a rule", "docs": {}},
+                                                   "integration": {"proves": "a request"}}), "tiers", "unit", "docs"),
+                 "tiers.unit.docs: unknown key 'banned'", id="a tier's docs"),
+    pytest.param(FAKES, writing(covered(fakes={}), "fakes"), "fakes: unknown key 'banned'", id="fakes"),
+    pytest.param(SCENARIO_COVERAGE, writing(covered(guards={"scenario-coverage": {}}), "guards", "scenario-coverage"),
+                 "guards.scenario-coverage: unknown key 'banned'", id="scenario-coverage"),
+    pytest.param(DEAD_CODE, writing(layered(guards={"dead-code": {}}), "guards", "dead-code"),
+                 "guards.dead-code: unknown key 'banned'", id="dead-code"),
+    pytest.param(NO_TWINS, writing(layered(guards={"no-twins": {}}), "guards", "no-twins"),
+                 "guards.no-twins: unknown key 'banned'", id="no-twins"),
+    pytest.param(PASS_THROUGH, writing(layered(guards={"pass-through": {"parts": ["api"]}}), "guards", "pass-through"),
+                 "guards.pass-through: unknown key 'banned'", id="pass-through"),
+    pytest.param(NAMING, layered(docs={"naming": [{"kind": "x", "where": "api", "pattern": "x", "example": "x",
+                                                   "banned": "x"}]}),
+                 "docs.naming[0]: unknown key 'banned'", id="a row of docs.naming"),
+    pytest.param(PAGE, layered(docs={"pages": {"a.md": {"banned": "x"}}}),
+                 "docs.pages.a.md: unknown key 'banned'", id="a page of docs.pages"),
+    pytest.param(FILE, layered(files={"a.md": {"banned": "x"}}), "files.a.md: unknown key 'banned'", id="a file"),
+])
+def test_every_other_mapping_reads_the_entries_of_its_own_scope(monkeypatch, scope, document, problem):
+    table(monkeypatch, (scope, "banned", RENAMED))
+    assert problems(document)[0].startswith(f"layered.yaml: {problem}: {RENAMED}; use ")
 
 
 def test_a_retired_guard_is_refused_with_its_text_and_another_unknown_guard_keeps_todays(monkeypatch):
