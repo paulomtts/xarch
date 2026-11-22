@@ -344,7 +344,7 @@ QUANTIFIERS: tuple[Quantifier, ...] = (
 """What a check does with what it keeps."""
 
 VARIABLES: tuple[Variable, ...] = (
-    Variable("key", "the key of the profile the check comes from: parts.store.forbidden, checks.<id>",
+    Variable("key", "the key of the profile the check comes from: parts.store.uses.never, checks.<id>",
              needs=KEY_OF_RULE),
     Variable("scope_part", "the part the check's scope names, bare: store", needs=SCOPE_PART),
     Variable("targets", "the values of the check's targets, joined by `or`: a part or a place as `<part>/`",

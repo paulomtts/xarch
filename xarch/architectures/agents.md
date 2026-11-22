@@ -55,7 +55,7 @@ maintainer's to run, not yours.
 ## What not to do to get a green check
 
 - Do not move code into a folder that no part covers, to escape a rule.
-- Do not switch a guard off, and do not loosen the profile, its `may_import`, `libraries` or `forbidden` entries.
+- Do not switch a guard off, and do not loosen the profile, its `may_import`, `libraries` or `uses.never` entries.
 - Do not edit or delete the guard test (`tests/architecture/test_rules.py`).
 - Do not skip a test or mark it as expected to fail.
 

@@ -1,8 +1,9 @@
 """How `xarch where` shows its answer, on hand-made answers: the labelled lines and the JSON document."""
 import json
+from dataclasses import replace
 
 from xarch.cli.reports.where_report import where_document, where_lines
-from xarch.modules.rules.contract import InPart, PartShown, Ungoverned, Untested
+from xarch.modules.rules.contract import InPart, InTests, PartShown, Ungoverned, Untested
 
 PART = InPart("app/cli/app.py", True, PartShown("cli", "cli", role="the commands", litmus="Is it a command?"), (),
               "contract", ("typer",), (), Untested("a shim"))
@@ -27,3 +28,22 @@ def test_a_place_in_no_part_is_shown_as_such_and_its_document_leaves_what_does_n
     document = json.loads(where_document("custom", nowhere))
     assert (document["ok"], document["profile"], document["kind"], document["part"], document["test"]) == (
         True, "custom", "ungoverned", None, None)
+
+
+def test_the_names_a_part_never_uses_are_a_line_of_their_own_and_the_field_never_uses():
+    held = replace(PART, forbidden=("socket", "builtins.open"))
+    assert where_lines(held)[6] == "never uses:     socket, builtins.open"
+    document = json.loads(where_document("custom", held))
+    assert document["never_uses"] == ["socket", "builtins.open"] and "forbidden" not in document
+
+
+def test_a_test_held_to_the_list_of_the_part_it_mirrors_shows_it_under_the_same_label_and_field():
+    test = InTests("tests/cli/test_app.py", True, PART.part, (), "contract", (), ("socket",), None, False, "", "", "")
+    assert "never uses:     socket" in where_lines(test)
+    document = json.loads(where_document("custom", test))
+    assert document["never_uses"] == ["socket"] and "forbidden" not in document
+
+
+def test_an_answer_that_is_no_part_gives_never_uses_empty():
+    document = json.loads(where_document("custom", Ungoverned("app/odd.py", False, (), None, "")))
+    assert document["never_uses"] == [] and "forbidden" not in document

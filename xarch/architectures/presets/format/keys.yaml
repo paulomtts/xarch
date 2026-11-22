@@ -1213,7 +1213,7 @@ keys:
       group's sum, an example of one part reading at or above the line of another part of its group crosses nothing,
       and an example of a part outside the group is held below a part's line on the group's sum; a record of
       placement held under other groups is stale. Refused: a name that is no part, a group of fewer than two parts or
-      naming a part twice, a part in two groups, and parts that differ in `forbidden`, `holds` or `immutable`
+      naming a part twice, a part in two groups, and parts that differ in `uses.never`, `holds` or `immutable`
       (`check` tells those apart by rule, so they are not alike). Name only parts that truly cannot be told apart
       from one file: a group hides every doubt between its parts
     example: |

@@ -89,12 +89,12 @@ class Loosened:
         may_import      part may also import what (a target as written)
         libraries       part may also import the outside package what; with no part, outside packages are unchecked
         must_import     part may also meet must_import with the target what; with no what, it has none now
-        forbidden       part no longer forbids what
+        uses.never      part no longer forbids what
         untested        part is newly marked untested
         litmus          part has no litmus, though the bundled profile gives it one (LITMUS)
         types_only      the tests of tier part may now call what
         may_also_import the tests of tier part may also import what (a target as written)
-        apply_forbidden the tests of tier part are no longer held to their part's forbidden list
+        uses.apply_never the tests of tier part are no longer held to their part's never list
         testing.skips   what is no longer counted as a skip
         files.pinned    the init file what is no longer pinned
         reserved        the standard-library name what is no longer reserved

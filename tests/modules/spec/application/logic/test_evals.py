@@ -203,7 +203,7 @@ def test_parts_that_forbid_the_same_list_hold_the_same_and_are_alike_immutable_m
     assert parsed(document).alike == (("store", "shared"),)
 
 
-NOT_ALIKE = ("check tells them apart by rule, so one file is not all that tells them apart: write the same forbidden, "
+NOT_ALIKE = ("check tells them apart by rule, so one file is not all that tells them apart: write the same uses.never, "
              "holds and immutable for each, or drop the group")
 
 
@@ -245,8 +245,8 @@ def test_a_group_refused_leaves_every_group_unread_so_that_no_later_one_is_said_
 def test_parts_that_forbid_different_things_are_not_alike():
     document = alike(("store", "shared"), store={"uses": {"never": "pure"}}, shared={"uses": {"never": "ambient"}})
     document["never"] = {"pure": ["time.time"], "ambient": ["os.getcwd"]}
-    assert f"layered.yaml: evals.placement.alike[0]: store and shared differ in forbidden: {NOT_ALIKE}" in problems(
+    assert f"layered.yaml: evals.placement.alike[0]: store and shared differ in uses.never: {NOT_ALIKE}" in problems(
         document)
     document["parts"]["shared"].pop("uses")
-    assert f"layered.yaml: evals.placement.alike[0]: store and shared differ in forbidden: {NOT_ALIKE}" in problems(
+    assert f"layered.yaml: evals.placement.alike[0]: store and shared differ in uses.never: {NOT_ALIKE}" in problems(
         document)
