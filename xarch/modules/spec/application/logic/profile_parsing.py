@@ -165,7 +165,7 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     shortfalls = needs.short(document, presets or {}, language)
     problems += needs.refused(shortfalls, language)
     based_on = _based_on(document["based_on"], bundled, problems) if "based_on" in document else ""
-    lists = _forbidden_lists(document["never"], problems, language) if "never" in document else {}
+    never_lists = _never_lists(document["never"], problems, language) if "never" in document else {}
     specs = _specs(document.get("parts", {}), problems)
     declared = set(specs)
     built = _layout(specs, problems)
@@ -179,7 +179,7 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     parts = {part: replace(item, must_import=_must_import(specs[part], item, parts, declared, rules[part], problems))
              for part, item in parts.items()}
     parts = {part: _substance(specs[part], item, declared, rules[part], problems) for part, item in parts.items()}
-    forbidden = _forbidden_refs(specs, parts, lists, problems)
+    uses_never = _never_refs(specs, parts, never_lists, problems)
     layers = ck.layer_chains(document["layers"], parts, declared, rules, problems) if "layers" in document else {}
     testing = _testing(document["testing"], presets or {}, problems, language) if "testing" in document else None
     tiers = _tiers(document, specs, parts, declared, examples, problems, language)
@@ -200,13 +200,13 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     placement, placed, own_evals, alike = (evals(document["evals"], declared, language, problems) if "evals" in document
                                            else ({}, ((), ()), {}, ()))
     problems += unplaced(placed, {name: part.path for name, part in parts.items()}, language)
-    problems += unlike(alike, {name: (frozenset(forbidden.get(name, ())), part.holds, part.immutable)
+    problems += unlike(alike, {name: (frozenset(uses_never.get(name, ())), part.holds, part.immutable)
                                for name, part in parts.items()})
     if problems:
         raise InvalidArchitecture(source, problems)
     shown = ex.examples_of(examples, built.tree, parts, language)
     return Architecture(name, built.tree, parts, rules, pages, shown, built.notes, layers, tuple(parts), naming, tiers,
-                        libraries, guards, fakes, built.repeats, written, testing.framework if testing else None, forbidden,
+                        libraries, guards, fakes, built.repeats, written, testing.framework if testing else None, uses_never,
                         excluded, hints, based_on, language, reserved, needs.approximate(shortfalls), own, never, mask,
                         placement, own_evals, placed, alike)
 
@@ -444,46 +444,46 @@ def _libraries(spec: Mapping[Any, Any], where: str, problems: list[str], languag
     return ck.package_names(value, where, problems, language, reserved) or ()
 
 
-def _forbidden_lists(value: Any, problems: list[str],
-                     language: Language) -> dict[str, tuple[tuple[str, ...], ...] | None] | None:
+def _never_lists(value: Any, problems: list[str],
+                 language: Language) -> dict[str, tuple[tuple[str, ...], ...] | None] | None:
     """The named lists of names a part never uses; a list already reported is None. None: `never` is no mapping."""
     if not isinstance(value, Mapping):
         problems.append("never: must be a mapping of list names to lists of dotted names, such as "
                         "{pure: [datetime.datetime.now, socket]}")
         return None
-    lists: dict[str, tuple[tuple[str, ...], ...] | None] = {}
+    never_lists: dict[str, tuple[tuple[str, ...], ...] | None] = {}
     for name, names in value.items():
         if not ck.text(name) or not ck.PART_NAME.fullmatch(name):
             problems.append(f"never: {name!r} is not a list name: use letters, digits, '_' and '-'")
         else:
-            lists[name] = ck.forbidden_names(names, f"never.{name}", problems, language)
-    return lists
+            never_lists[name] = ck.never_names(names, f"never.{name}", problems, language)
+    return never_lists
 
 
-def _forbidden_refs(specs: dict[str, Any], parts: dict[str, Part],
-                    lists: dict[str, tuple[tuple[str, ...], ...] | None] | None,
-                    problems: list[str]) -> dict[str, tuple[tuple[str, ...], ...]]:
+def _never_refs(specs: dict[str, Any], parts: dict[str, Part],
+                never_lists: dict[str, tuple[tuple[str, ...], ...] | None] | None,
+                problems: list[str]) -> dict[str, tuple[tuple[str, ...], ...]]:
     """What each part whose `uses` names a list under `never` never uses; when `never` is no mapping, a part's list
     says nothing more."""
-    forbidden: dict[str, tuple[tuple[str, ...], ...]] = {}
+    uses_never: dict[str, tuple[tuple[str, ...], ...]] = {}
     for name in parts:
         spec = specs[name]
         if "uses" not in spec:
             continue
         uses = _group(spec["uses"], PART_USES, "{never: pure}", f"parts.{name}.uses", problems)
-        if "never" not in uses or lists is None:
+        if "never" not in uses or never_lists is None:
             continue
         ref, where = uses["never"], f"parts.{name}.uses.never"
         if isinstance(ref, list):
             problems.append(f"{where}: names one list under never: write the name of a list, such as pure")
         elif not isinstance(ref, str):
             problems.append(f"{where}: must be the name of a list under `never`")
-        elif ref not in lists:
-            use = f"use {', '.join(sorted(lists))}, or write it" if lists else "write it"
+        elif ref not in never_lists:
+            use = f"use {', '.join(sorted(never_lists))}, or write it" if never_lists else "write it"
             problems.append(f"{where}: no list named {ref!r}: {use} under `never`")
-        elif lists[ref] is not None:
-            forbidden[name] = lists[ref]
-    return forbidden
+        elif never_lists[ref] is not None:
+            uses_never[name] = never_lists[ref]
+    return uses_never
 
 
 def _group(value: Any, scope: str, example: str, where: str, problems: list[str]) -> Mapping[Any, Any]:

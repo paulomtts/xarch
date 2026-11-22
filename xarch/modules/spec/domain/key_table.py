@@ -189,7 +189,7 @@ _KEYS: tuple[Key, ...] = (
 )
 
 _IMPORTS = ("import", "import.relative")
-_FORBIDDEN = (*_IMPORTS, "use", "method_call")
+_NEVER_USE = (*_IMPORTS, "use", "method_call")
 _TYPES_ONLY = ("call", "use", "module_functions")
 NEEDS: dict[str, tuple[str, ...]] = {
     "parts.<part>.may_import": _IMPORTS,
@@ -203,11 +203,11 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "parts.<part>.shared": (*_IMPORTS, "import.mentioned", "use", "class", "class.named", "function", "function.named",
                             "module_functions", "constant"),
     "parts.<part>.libraries": (*_IMPORTS, "import.standard"),
-    "parts.<part>.uses.never": _FORBIDDEN,
+    "parts.<part>.uses.never": _NEVER_USE,
     "parts.<part>.package_only": _IMPORTS,
     "reserved": (*_IMPORTS, "import.standard"),
     "tiers": (*_IMPORTS, "file"),
-    "tiers.<tier>.uses.apply_never": _FORBIDDEN,
+    "tiers.<tier>.uses.apply_never": _NEVER_USE,
     "tiers.<tier>.types_only": _TYPES_ONLY,
     "tiers.<tier>.must_import": (*_IMPORTS, "function.statements", "file"),
     "tiers.<tier>.plain_tables": ("function.tables", "function.blocks", "function.expressions"),

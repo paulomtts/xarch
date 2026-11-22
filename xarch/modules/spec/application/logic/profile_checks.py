@@ -606,8 +606,8 @@ def package_names(value: Any, where: str, problems: list[str], language: Languag
     return tuple(found)
 
 
-def forbidden_names(value: Any, where: str, problems: list[str],
-                    language: Language) -> tuple[tuple[str, ...], ...] | None:
+def never_names(value: Any, where: str, problems: list[str],
+                language: Language) -> tuple[tuple[str, ...], ...] | None:
     """The names a part may not use: dotted names, or modules by their import name; a builtin is written in the
     language's namespace for them, <namespace>.<name>. A method called on anything is written `.<name>()` and kept as
     written, split at its dot: ("", "<name>()")."""

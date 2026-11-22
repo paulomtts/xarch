@@ -5,7 +5,7 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.spec.languages import PYTHON
-from xarch.modules.spec.application.logic.profile_checks import dotted_names, forbidden_names, is_name
+from xarch.modules.spec.application.logic.profile_checks import dotted_names, is_name, never_names
 
 DASHED = replace(PYTHON, names="[a-z][a-z-]*")
 NOT_DOTTED = "is not a dotted name such as datetime.datetime.now, nor an import name such as socket, nor a method such as " \
@@ -13,9 +13,9 @@ NOT_DOTTED = "is not a dotted name such as datetime.datetime.now, nor an import 
 
 
 def forbidding(item: str) -> tuple[tuple[tuple[str, ...], ...] | None, list[str]]:
-    """What a part's `forbidden` list of the one item comes to: the names it bans, and every problem."""
+    """What a `never` list of the one item comes to: the names it bans, and every problem."""
     problems: list[str] = []
-    return forbidden_names([item], "at", problems, PYTHON), problems
+    return never_names([item], "at", problems, PYTHON), problems
 
 
 @pytest.mark.parametrize("text, language, name", [
