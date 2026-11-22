@@ -79,7 +79,7 @@ def test_libraries_are_strict_by_default(tmp_path):
 
 def test_the_names_a_part_forbids_are_enforced(tmp_path):
     assert check(tmp_path, {"core/rules.py": "print(1)\n"}) == [
-        "app/core/rules.py:1: core/ may not use builtins.print (parts.core.forbidden)"]
+        "app/core/rules.py:1: core/ may not use builtins.print (parts.core.uses.never)"]
 
 
 def test_the_preset_is_read_from_the_data_file_beside_the_bundled_profiles(tmp_path):

@@ -228,3 +228,8 @@ def test_a_tier_s_uses_holds_the_switch_that_applies_the_part_s_never_list_to_it
 def test_review_never_and_the_top_level_never_each_name_the_other_as_another_list():
     assert "`review.never`" in explained("never").accepts
     assert "the top-level `never`" in explained("review.never").accepts
+
+
+def test_the_keys_of_never_feed_the_rule_never_use():
+    assert [explained(address).rules for address in ("never", "parts.uses.never", "tiers.uses.apply_never")] == [
+        ("never-use",)] * 3

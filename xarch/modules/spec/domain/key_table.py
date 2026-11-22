@@ -52,7 +52,7 @@ _KEYS: tuple[Key, ...] = (
     Key(PROFILE, "language", choices=CHOICE_LANGUAGES),
     Key(PROFILE, "testing", rules=("tiers", "test-tree"), opens=TESTING, choices=CHOICE_PRESETS),
     Key(PROFILE, "parts", True, rules=("structure", "rules"), opens=PART),
-    Key(PROFILE, "never", rules=("forbidden",)),
+    Key(PROFILE, "never", rules=("never-use",)),
     Key(PROFILE, "reserved", rules=("libraries",)),
     Key(PROFILE, "layers"),
     Key(PROFILE, "tiers", rules=("tiers", "test-tree"), opens=TIER),
@@ -85,7 +85,7 @@ _KEYS: tuple[Key, ...] = (
     Key(PART, "package_only", rules=("package-only",)),
     Key(PART, "folders", rules=("structure",)),
 
-    Key(PART_USES, "never", rules=("forbidden",)),
+    Key(PART_USES, "never", rules=("never-use",)),
 
     Key(TIER, "proves", False, False),
     Key(TIER, "litmus", False, False),
@@ -106,7 +106,7 @@ _KEYS: tuple[Key, ...] = (
     Key(TIER_DOCS, "example", False, False),
     Key(TIER_DOCS, "helpers", False, False),
 
-    Key(TIER_USES, "apply_never", rules=("forbidden",)),
+    Key(TIER_USES, "apply_never", rules=("never-use",)),
 
     Key(TESTING, "files", True, rules=("tiers", "test-tree")),
     Key(TESTING, "functions", True, rules=("scenario-coverage", "stand-ins")),

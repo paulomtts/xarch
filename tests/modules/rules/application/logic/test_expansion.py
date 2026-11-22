@@ -39,9 +39,9 @@ def shape(rule: Rule) -> str:
                            "rules: app/structure read import-into-app may_only permitted"], id="rules"),
     pytest.param("libraries", [f"libraries: app/{p} read import may_only package" for p in PROFILE.parts for _ in (0, 1)],
                  id="libraries"),
-    pytest.param("forbidden", ["forbidden: app/domain read imported-name, use, method-call may_not path",
-                               "forbidden: tests/domain/unit where not below fakes read imported-name, use, method-call "
-                               "may_not path"], id="forbidden"),
+    pytest.param("never-use", ["never-use: app/domain read imported-name, use, method-call may_not path",
+                               "never-use: tests/domain/unit where not below fakes read imported-name, use, method-call "
+                               "may_not path"], id="never-use"),
     pytest.param("tiers", ["tiers: tests/* where not tiered, test, not below fakes read file may_not exist",
                            "tiers: tests/* where tiered read import-into-app may_only permitted",
                            "tiers: tests/* where tiered read import-into-tests may_only permitted"], id="tiers"),

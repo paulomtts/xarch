@@ -73,7 +73,7 @@ def test_the_python_file_of_a_preset_that_follows_its_part_passes_the_check(tmp_
 
 
 @pytest.mark.parametrize("palette, rule", [
-    pytest.param(b"print('loaded')\n", "forbidden", id="a name the part forbids"),
+    pytest.param(b"print('loaded')\n", "never-use", id="a name the part forbids"),
     pytest.param(b"from shop.kernel import x\n", "rules", id="an import the part's rules do not allow"),
 ])
 def test_the_python_file_of_a_preset_that_breaks_its_part_is_reported(tmp_path, palette, rule):

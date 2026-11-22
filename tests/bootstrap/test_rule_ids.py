@@ -36,8 +36,8 @@ CASES = [
     pytest.param({"kernel/x.py": "import requests\n"}, {}, "libraries",
                  "use the standard library or a package listed in parts.kernel.libraries, since requests is listed for "
                  "no part", id="libraries"),
-    pytest.param({"kernel/x.py": "import socket\n"}, {}, "forbidden",
-                 "do what needs socket outside kernel/, and hand kernel/ the result", id="forbidden"),
+    pytest.param({"kernel/x.py": "import socket\n"}, {}, "never-use",
+                 "do what needs socket outside kernel/, and hand kernel/ the result", id="never-use"),
     pytest.param({}, {"web/conftest.py": f"from {CONTROLLER} import DocumentController\nDocumentController(None)\n"},
                  "types-only", "use controller/ here only as a type, and drive what you test through web/ "
                                "(rendering tests may touch: a fake controller, injected; the real controller's class "

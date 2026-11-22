@@ -355,7 +355,7 @@ how many facts it read in the project.
 - `violations`: sorted by `file`, then `line` (a whole-file or folder violation, `line: null`, first), then `rule`.
   `file` is the path the text output prints; `message` the sentence it prints after the path; `fix` what to do about
   it, always a non-empty string (a violation cannot be made without one); `hint` the profile's own advice for the
-  rule, else `null`. `rule` is one of: `rules`, `libraries`, `forbidden`, `tiers` (a test's imports, or a test in no
+  rule, else `null`. `rule` is one of: `rules`, `libraries`, `never-use`, `tiers` (a test's imports, or a test in no
   tier), `types-only`, `cycles`, `package-only`, `scenario-coverage`, `no-comments`, `stand-ins`, `closed-tree`,
   `must-import`, `no-duplicates`, `no-twins`, `dead-code`, `pass-through`, `holds`, `immutable` (these three never a
   violation, only a weak item), `no-callbacks`, `names`, `built-by`, `private-imports`, `shared`, `structure`,

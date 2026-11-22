@@ -87,7 +87,7 @@ class SourceCheckService:
         test_files = [f for f in test_files if f.error is None]
         found = run(book["syntax"], facts, rules) + run(book["rules"], facts, rules) + run(book["libraries"], facts,
                                                                                            rules)
-        found += run(book["forbidden"], facts, rules)
+        found += run(book["never-use"], facts, rules)
         found += cycles.violations(app, rules, package)
         found += run(book["tiers"], facts, rules)
         found += run(book["types-only tiers"], facts, rules)

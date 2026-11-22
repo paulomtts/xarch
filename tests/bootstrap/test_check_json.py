@@ -37,8 +37,8 @@ def test_each_violation_carries_its_rule_file_line_message_and_fix_sorted_by_fil
     assert document["violations"] == [
         {"rule": "no-comments", "file": "app/kernel/x.py", "line": 1, "message": "a comment (no-comments)",
          "fix": "say it in a docstring or a name, and delete the comment", "hint": None},
-        {"rule": "forbidden", "file": "app/modules/docs/domain/clock.py", "line": 1,
-         "message": "domain/ of modules/docs may not import socket (parts.domain.forbidden)",
+        {"rule": "never-use", "file": "app/modules/docs/domain/clock.py", "line": 1,
+         "message": "domain/ of modules/docs may not import socket (parts.domain.uses.never)",
          "fix": "do what needs socket outside domain/, and hand domain/ the result", "hint": None},
         {"rule": "no-comments", "file": "app/modules/docs/domain/clock.py", "line": 1,
          "message": "a comment (no-comments)", "fix": "say it in a docstring or a name, and delete the comment",
@@ -94,12 +94,12 @@ def test_the_hint_of_a_profile_follows_the_fix_of_every_violation_of_its_rule_in
         "app/kernel/x.py:1: kernel/ may not import platform/ (app.platform)",
         "    fix: import only kernel/ in kernel/ (parts.kernel.may_import), or move this code to adapters/, which may import it",
         "    hint: the layers are in docs/project/architecture.md",
-        "app/kernel/x.py:2: kernel/ may not import socket (parts.kernel.forbidden)",
+        "app/kernel/x.py:2: kernel/ may not import socket (parts.kernel.uses.never)",
         "    fix: do what needs socket outside kernel/, and hand kernel/ the result",
         "2 violation(s) in 1 file(s)"]
     document = json.loads(runner.invoke(app, ["check", "--profile", "arch/mine.yaml", "--format", "json"]).stdout)
     assert [(v["rule"], v["hint"]) for v in document["violations"]] == [
-        ("rules", "the layers are in docs/project/architecture.md"), ("forbidden", None)]
+        ("rules", "the layers are in docs/project/architecture.md"), ("never-use", None)]
 
 
 def test_a_profile_with_a_hint_for_an_unknown_rule_is_refused(tmp_path):

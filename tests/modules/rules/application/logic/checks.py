@@ -28,7 +28,7 @@ def libraries(files: Iterable[SourceFile], profile: Profile, root: str) -> list[
 
 
 def forbidden(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile) -> list[Violation | Weak]:
-    return checked(expansion.book(profile)["forbidden"], profile, app, tests)
+    return checked(expansion.book(profile)["never-use"], profile, app, tests)
 
 
 def package_only(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile,

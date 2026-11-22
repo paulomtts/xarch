@@ -86,12 +86,12 @@ def test_whether_a_rule_is_written_with_a_word(category, name, used):
 
 def test_a_key_expands_to_the_rules_of_that_key_or_of_any_part_in_its_place():
     other = Rule("names", Scope(part="api"), ("class",), MAY_NOT, EXISTING, (Saying("m", "f"),), key="parts.api.names")
-    both = Rule("forbidden", Scope(part="store"), ("use",), MAY_NOT, (Match("path", names=(("x",),)),),
-                (Saying("m", "f"),), key="parts.store.forbidden; tiers.unit.apply_forbidden")
+    both = Rule("never-use", Scope(part="store"), ("use",), MAY_NOT, (Match("path", names=(("x",),)),),
+                (Saying("m", "f"),), key="parts.store.uses.never; tiers.unit.uses.apply_never")
     rules = [RULE, other, both]
     assert keyed(rules, "parts.names") == [RULE, other]
     assert keyed(rules, "parts.store.names") == [RULE]
-    assert keyed(rules, "tiers.apply_forbidden") == [both]
+    assert keyed(rules, "tiers.uses.apply_never") == [both]
     assert keyed(rules, "guards.no-comments") == []
 
 

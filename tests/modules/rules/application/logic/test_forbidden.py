@@ -26,30 +26,30 @@ def file(path=DOMAIN, imports=(), uses=()) -> SourceFile:
 
 
 @pytest.mark.parametrize("imports, uses, problems", [
-    pytest.param([], [Use(4, NOW, 2)], ["4: domain/ of modules/docs may not use datetime.datetime.now (parts.domain.forbidden)"],
+    pytest.param([], [Use(4, NOW, 2)], ["4: domain/ of modules/docs may not use datetime.datetime.now (parts.domain.uses.never)"],
                  id="a listed name used through the import that binds its first steps is reported where it is used"),
     pytest.param([], [Use(4, ("datetime", "datetime", "now", "date"), 1)],
-                 ["4: domain/ of modules/docs may not use datetime.datetime.now (parts.domain.forbidden)"],
+                 ["4: domain/ of modules/docs may not use datetime.datetime.now (parts.domain.uses.never)"],
                  id="a use reaching below a listed name is a use of it"),
     pytest.param([], [Use(4, ("datetime", "datetime", "fromisoformat"), 2), Use(5, ("datetime", "datetime"), 2)], [],
                  id="a name beside or above a listed one is no use of it"),
     pytest.param([], [Use(2, ("builtins", "open"), 0)],
-                 ["2: domain/ of modules/docs may not use builtins.open (parts.domain.forbidden)"],
+                 ["2: domain/ of modules/docs may not use builtins.open (parts.domain.uses.never)"],
                  id="a builtin used by its bare name is reported"),
     pytest.param([Import(1, ("socket",))], [Use(3, ("socket", "create_connection"), 1)],
-                 ["1: domain/ of modules/docs may not import socket (parts.domain.forbidden)"],
+                 ["1: domain/ of modules/docs may not import socket (parts.domain.uses.never)"],
                  id="a listed module is reported where it is imported and not again where it is used"),
     pytest.param([Import(1, ("urllib", "request"))], [],
-                 ["1: domain/ of modules/docs may not import urllib (parts.domain.forbidden)"],
+                 ["1: domain/ of modules/docs may not import urllib (parts.domain.uses.never)"],
                  id="a module below a listed one is the listed one"),
     pytest.param([Import(1, ("datetime",), names=("datetime", "date"))], [], [],
                  id="importing what holds a listed name is fine"),
     pytest.param([Import(1, ("datetime", "datetime"), names=("now",))], [Use(2, NOW, 3)],
-                 ["1: domain/ of modules/docs may not import datetime.datetime.now (parts.domain.forbidden)"],
+                 ["1: domain/ of modules/docs may not import datetime.datetime.now (parts.domain.uses.never)"],
                  id="importing a listed name itself is reported at the import"),
     pytest.param([Import(1, ("socket",), relative=True)], [], [], id="a relative import is the app's own"),
     pytest.param([Import(1, ("socket",), names=("socket", "create_connection"))], [],
-                 ["1: domain/ of modules/docs may not import socket (parts.domain.forbidden)"],
+                 ["1: domain/ of modules/docs may not import socket (parts.domain.uses.never)"],
                  id="two names of one listed module on one line are reported once"),
     pytest.param([Import(1, ("time",), names=("time",))], [Use(2, ("time", "time"), 2)], [],
                  id="a name the list does not hold is not reported, even beside a listed one"),
@@ -63,7 +63,7 @@ def test_forbidden(imports, uses, problems):
 
 def test_a_violation_names_its_rule_and_how_to_fix_it():
     found = violations([file(uses=[Use(4, NOW, 2)])], [], PROFILE)[0]
-    assert (found.rule, found.fix) == ("forbidden", "do what needs datetime.datetime.now outside domain/, and hand "
+    assert (found.rule, found.fix) == ("never-use", "do what needs datetime.datetime.now outside domain/, and hand "
                                                     "domain/ the result")
 
 
@@ -80,7 +80,7 @@ def test_a_test_of_a_tier_held_to_the_list_is_checked_as_the_part_it_mirrors():
                        uses=(Use(3, ("builtins", "open"), 0),))
     assert [str(v) for v in violations([], [held, loose], PROFILE)] == [
         "tests/modules/docs/domain/test_doc.py:3: a test of domain/ (unit tier) may not use builtins.open "
-        "(parts.domain.forbidden; tiers.unit.apply_forbidden)"]
+        "(parts.domain.uses.never; tiers.unit.uses.apply_never)"]
 
 
 def test_without_a_forbidden_list_nothing_is_checked():
@@ -114,20 +114,20 @@ SERVICE = ("modules", "docs", "services", "doc.py")
 
 @pytest.mark.parametrize("calls, uses, problems", [
     pytest.param([MethodCall(4, "absolute")], [],
-                 ["4: services/ of modules/docs may not call .absolute() (parts.services.forbidden)"],
+                 ["4: services/ of modules/docs may not call .absolute() (parts.services.uses.never)"],
                  id="a listed method called on anything is reported where it is called"),
     pytest.param([MethodCall(4, "absolute", held=True)], [], [],
                  id="a method of the object itself or of what it holds is a port's or its own, not reported"),
     pytest.param([MethodCall(4, "absolutely"), MethodCall(5, "name")], [], [], id="another method is not reported"),
     pytest.param([MethodCall(4, "resolve"), MethodCall(4, "absolute")], [],
-                 ["4: services/ of modules/docs may not call .resolve() (parts.services.forbidden)",
-                  "4: services/ of modules/docs may not call .absolute() (parts.services.forbidden)"],
+                 ["4: services/ of modules/docs may not call .resolve() (parts.services.uses.never)",
+                  "4: services/ of modules/docs may not call .absolute() (parts.services.uses.never)"],
                  id="two listed methods on one line are each reported"),
     pytest.param([MethodCall(4, "resolve"), MethodCall(4, "resolve")], [],
-                 ["4: services/ of modules/docs may not call .resolve() (parts.services.forbidden)"],
+                 ["4: services/ of modules/docs may not call .resolve() (parts.services.uses.never)"],
                  id="one method twice on one line is reported once"),
     pytest.param([], [Use(3, ("pathlib", "Path", "cwd"), 2)],
-                 ["3: services/ of modules/docs may not use pathlib.Path.cwd (parts.services.forbidden)"],
+                 ["3: services/ of modules/docs may not use pathlib.Path.cwd (parts.services.uses.never)"],
                  id="the dotted names of the same list are read as before"),
 ])
 def test_a_method_listed_with_a_leading_dot_is_a_call_of_that_name_on_anything_the_object_does_not_hold(calls, uses,

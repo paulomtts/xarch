@@ -3,7 +3,7 @@ files written as the parser would hand them over, each argument defaulted so a t
 
 PROFILE's app is the package `app`, its tests the package `tests`; its repeating folder is modules/<module>/, holding
 domain/, contract/, application/{controller.py, services/, logic/, ports/} and adapters/, beside kernel/, platform/,
-web/ (the entry) and bootstrap/. Its tiers are unit (kernel, domain, logic, adapters; held to `forbidden`),
+web/ (the entry) and bootstrap/. Its tiers are unit (kernel, domain, logic, adapters; held to `uses.never`),
 integration (controller, services, ports, contract), rendering (web; the controller as a type only) and guard (by
 its folder, architecture/).
 """
