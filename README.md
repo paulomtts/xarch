@@ -114,10 +114,10 @@ everything else is optional, and a key left out means off):
 ```
 name*  based_on  language  hints  excluded  reserved
 testing:  <preset> | {files*, functions*, skips, table, mocks}
-parts*:   {<part>: {path*, role*, litmus, may_import, must_import, libraries, forbidden, tests | untested,
+parts*:   {<part>: {path*, role*, litmus, may_import, must_import, libraries, uses: {never}, tests | untested,
                     package_only, folders, holds, immutable, types_only, no_callbacks, names, built_by, shared}}
-forbidden: {<list>: [<dotted name> | .<method>(), ...]}       layers: {<chain>: [<part>, ...]}
-tiers:    {<tier>: {proves, litmus, apply_forbidden, plain_tables, types_only, folder, may_import, may_also_import,
+never:    {<list>: [<dotted name> | .<method>(), ...]}        layers: {<chain>: [<part>, ...]}
+tiers:    {<tier>: {proves, litmus, uses: {apply_never}, plain_tables, types_only, folder, may_import, may_also_import,
                     must_import, docs}}
 fakes:    {folder*, for*, prefix}
 guards:   {scenario-coverage, no-comments, stand-ins, closed-tree, no-duplicates, no-twins, dead-code,
@@ -268,7 +268,7 @@ that switches or configures each (`-` for none: the rule is always on):
 | `structure` | a folder or file of the layout missing, at any depth, in the app and in every instance of each repeating folder | `parts.path`, `parts.folders` |
 | `rules` | an import between parts that the importing part's `may_import` does not allow, or a name its pattern does not match | `parts.may_import` |
 | `libraries` | an outside package a part does not list, or a standard-library name `reserved` holds that it does not list; the rest of the standard library is always allowed, tests are not checked | `parts.libraries`, `reserved` |
-| `forbidden` | a name or module a part (or, with `apply_forbidden`, its tests) may not use, or a method written `.name()` it may not call on anything but its own object and what that holds | `forbidden`, `parts.forbidden`, `tiers.apply_forbidden` |
+| `never-use` | a name or module a part (or, with `uses.apply_never`, its tests) may not use, or a method written `.name()` it may not call on anything but its own object and what that holds | `never`, `parts.uses.never`, `tiers.uses.apply_never` |
 | `tiers` | a test importing what its tier does not allow, or another test file, or a test in no tier | `tiers`, `tiers.folder`, `tiers.may_import`, `tiers.may_also_import`, `parts.tests` |
 | `test-tree` | a folder below `tests/<repeating folder>/` that mirrors no folder of the app | `tiers`, `testing` |
 | `types-only` | a test, or code of a part, calling what it may import only as a type | `tiers.types_only`, `parts.types_only` |
@@ -293,7 +293,7 @@ that switches or configures each (`-` for none: the rule is always on):
 
 A key left out means its check is off. For what a key means, accepts and exactly checks, run
 `xarch profile explain <key>` (for example `xarch profile explain guards.no-duplicates`, `parts.must_import`,
-`forbidden` or `tiers`); it reads the table the loader reads, so it cannot drift. A violation's `fix:` says what to do
+`never` or `tiers`); it reads the table the loader reads, so it cannot drift. A violation's `fix:` says what to do
 about that finding, and a profile's `hints` add its own advice after it.
 
 ## The output of check
@@ -325,8 +325,8 @@ and rule ids may be added, but an existing one keeps its name and meaning.
   "strict": false,
   "profile": "web",
   "violations": [
-    {"rule": "forbidden", "file": "app/modules/docs/domain/clock.py", "line": 1,
-     "message": "domain/ of modules/docs may not import socket (parts.domain.forbidden)",
+    {"rule": "never-use", "file": "app/modules/docs/domain/clock.py", "line": 1,
+     "message": "domain/ of modules/docs may not import socket (parts.domain.uses.never)",
      "fix": "do what needs socket outside domain/, and hand domain/ the result",
      "hint": null}
   ],
@@ -362,8 +362,8 @@ how many facts it read in the project.
   `test-tree`, and `syntax` (a file that does not parse, or cannot be read as UTF-8 text), or the id of a check the
   profile writes itself.
 - `enforcement`: every key always present, empty when there is nothing to report. `profile.looser` items are
-  `{"key", "part", "what", "sentence"}` with `key` one of `may_import`, `libraries`, `forbidden`, `untested`,
-  `types_only`, `may_also_import`, `apply_forbidden`, `testing.skips`, `files.pinned`, `reserved`, `must_import`, `litmus`, `known`,
+  `{"key", "part", "what", "sentence"}` with `key` one of `may_import`, `libraries`, `uses.never`, `untested`,
+  `types_only`, `may_also_import`, `uses.apply_never`, `testing.skips`, `files.pinned`, `reserved`, `must_import`, `litmus`, `known`,
   `translated` (the `sentence` names the full address, such as `parts.kernel.may_import`); `excluded` items
   `{"folder", "reason"}`; `known` items `{"file", "line", "name"}`, each public name `guards.dead-code.known` accepts
   as only the tests'; `translated` items `{"file", "line", "function", "built", "other"}`, each pair of classes
@@ -406,8 +406,8 @@ enforcement
   too; one of them, `package-only`, is switched on by a part's `package_only: true` rather than under `guards`, and the
   line names that key. For a custom file, each way it is looser than the one it resembles, compared only where both use the same
   name: a target added to a part's `may_import`, an outside package added to its `libraries` (or `everything`), a
-  name of its `forbidden` list no entry covers any more, a part newly `untested`, a part dropped from a tier's
-  `types_only`, a target added to a tier's `may_also_import`, a tier no longer `apply_forbidden`, a name dropped from `testing.skips`, a `files` entry no longer
+  name of its `uses.never` list no entry covers any more, a part newly `untested`, a part dropped from a tier's
+  `types_only`, a target added to a tier's `may_also_import`, a tier no longer `uses.apply_never`, a name dropped from `testing.skips`, a `files` entry no longer
   `pinned`, a target added to a part's `must_import` or the key dropped, a part redefined without the `litmus` the
   other gives it, a public name `guards.dead-code.known` accepts that the other's does not, a part
   `guards.no-twins.translated` lists that the other's does not, a line under `evals.placement.lines` set below the
@@ -472,8 +472,8 @@ tested by:       unit tier: tests/modules/documents/adapters/test_db_document_re
 
 For a path in the app: its part and the instance of its repeating folder, the part's role and litmus test, what it may
 import (its `may_import`, in the words of the docs' rules table), the outside packages it may import (`libraries`: `none`,
-a list, or `any outside package`), the names it may not use (`forbidden`), and the tier that tests it with the
-file its test would be in (a part that is one file, such as a controller, has its test by use case:
+a list, or `any outside package`), the names it never uses (`never uses`, from its `uses.never`), and the tier that
+tests it with the file its test would be in (a part that is one file, such as a controller, has its test by use case:
 `test_<use case>.py`; a part no tier tests says why). A path in no part is `ungoverned`, with the parts near it (those
 below the nearest folder of the layout that holds it) and whether `closed-tree` is on; a folder of the layout that no
 part claims is `structure`. A path in the project but outside the app and its tests is ungoverned too.
@@ -504,7 +504,7 @@ be added, an existing one keeps its name and meaning. A field that does not appl
                  {"part": "kernel", "scope": "none", "folder": "kernel/", "path": "app/kernel/"}],
   "may_import_text": "its own module's `domain/`, `kernel/`",
   "libraries": [],
-  "forbidden": ["datetime.datetime.now", "builtins.open"],
+  "never_uses": ["datetime.datetime.now", "builtins.open"],
   "tier": {"name": "unit", "proves": "...", "may_touch": "...", "litmus": "..."},
   "tested_in": {"folder": "tests/modules/documents/domain/", "file": "test_document.py"},
   "untested": null,
@@ -524,7 +524,7 @@ be added, an existing one keeps its name and meaning. A field that does not appl
   `scope` is `own` (the same instance), `any` (any instance) or `none`; `folder` is the part as the docs name it, `path`
   its folder below the project root, with `<module>` (the word in the profile's paths) for an instance that is not fixed.
   `may_import_text` says the same in words; `libraries` is the list of outside packages, null when the profile does
-  not check them; `forbidden` the dotted names the part may not use.
+  not check them; `never_uses` the dotted names the part never uses (its `uses.never`).
 - `tier`: for a `part`, the tier that tests it (null when none does, and `untested` then says why); for a test, its tier.
   `tested_in`: for a `part`, the test folder and the file (`file` is empty when the path is a folder or no Python file,
   a pattern for a use case's test).
@@ -727,7 +727,7 @@ probability on each part as answered. `review calibrate` holds a group to its li
 own part is the group's sum, an example of one part reading at or above the line of another part of its group crosses
 nothing, and its report says of each part of a group that it was held with the others; changing the groups makes the
 record of placement stale. Each name must be a part, a group needs two parts or more, each named once, and a part is in
-one group at most; the parts of a group must have the same `forbidden`, `holds` and `immutable`, since parts `check`
+one group at most; the parts of a group must have the same `uses.never`, `holds` and `immutable`, since parts `check`
 tells apart by rule are not alike. A group hides every doubt between its parts: name only parts one file truly cannot
 tell apart. `xarch profile explain evals.placement.alike` says it in full.
 
@@ -1033,7 +1033,7 @@ guard test, skip a test. It is static text (it names the app folder with `{{app}
 sorting, absolute imports only, a return annotation on public functions (which `stand-ins` needs on a port's methods),
 the pytest-style rules, no `print`, no naive datetime and no unused `noqa`, for Python 3.13 and a line length of 140.
 What differs by part (which imports, names or outside packages a part may use) is the profile's job, via
-`may_import`, `libraries` and `forbidden`; `xarch check` does not run the linter.
+`may_import`, `libraries` and `uses.never`; `xarch check` does not run the linter.
 
 The guard test, `tests/architecture/test_rules.py`, runs `python -m xarch check --app <project>/<app>` with the
 interpreter running the test, and fails with `xarch check`'s output as its message, so every guard runs with the
