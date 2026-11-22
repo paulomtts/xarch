@@ -27,6 +27,11 @@ All notable changes to this project are written here. The format follows
   old name is refused with its new form, which `xarch profile explain <old address>` also gives, and `never:` on a
   part or `apply_never:` on a tier is told it is a key of `uses`. Finding and fix texts are otherwise unchanged.
 
+- The rule id `rules` is renamed `may-import`, in findings, in JSON and under `hints`. A profile writing `hints.rules`
+  is refused with "renamed in 0.3.0: write may-import", and a check of the profile's own may now take the id `rules`.
+  On a line with findings of both, the `may-import` findings now come before the `package-only` ones. Finding and fix
+  texts are unchanged.
+
 ## [0.2.0] - 2026-11-18
 
 ### Added

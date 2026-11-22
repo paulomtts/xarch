@@ -266,7 +266,7 @@ that switches or configures each (`-` for none: the rule is always on):
 |---|---|---|
 | `syntax` | a file that does not parse, or that cannot be read as UTF-8 text at all (the message says which), so no other check could read it | - |
 | `structure` | a folder or file of the layout missing, at any depth, in the app and in every instance of each repeating folder | `parts.path`, `parts.folders` |
-| `rules` | an import between parts that the importing part's `may_import` does not allow, or a name its pattern does not match | `parts.may_import` |
+| `may-import` | an import between parts that the importing part's `may_import` does not allow, or a name its pattern does not match | `parts.may_import` |
 | `libraries` | an outside package a part does not list, or a standard-library name `reserved` holds that it does not list; the rest of the standard library is always allowed, tests are not checked | `parts.libraries`, `reserved` |
 | `never-use` | a name or module a part (or, with `uses.apply_never`, its tests) may not use, or a method written `.name()` it may not call on anything but its own object and what that holds | `never`, `parts.uses.never`, `tiers.uses.apply_never` |
 | `tiers` | a test importing what its tier does not allow, or another test file, or a test in no tier | `tiers`, `tiers.folder`, `tiers.may_import`, `tiers.may_also_import`, `parts.tests` |
