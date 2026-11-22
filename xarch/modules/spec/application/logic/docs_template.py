@@ -409,8 +409,8 @@ def _guards(architecture: Architecture, _: str, _q: Texts, _t: Texts, _f: bool, 
         but = f" but what `reserved` names ({reserved})" if reserved else ""
         lines.append(f"`libraries`: a part imports only the outside packages listed for it ({listed}); the standard "
                      f"library is always allowed{but}, and tests are not checked.")
-    if architecture.forbidden:
-        lines.append(_forbidden_line(architecture))
+    if architecture.uses_never:
+        lines.append(_never_use_line(architecture))
     if architecture.tiers:
         fakes = ""
         if architecture.fakes is not None:
@@ -447,13 +447,13 @@ def _packages(packages: tuple[str, ...]) -> str:
     return "any outside package" if EVERYTHING in packages else ", ".join(packages)
 
 
-def _forbidden_line(architecture: Architecture) -> str:
+def _never_use_line(architecture: Architecture) -> str:
     """The parts that share a list are named together, in the order the file lists them."""
     groups: dict[tuple[tuple[str, ...], ...], list[str]] = {}
-    for name, names in architecture.forbidden.items():
+    for name, names in architecture.uses_never.items():
         groups.setdefault(names, []).append(f"`{docs_name(architecture, architecture.parts[name])}`")
     listed = "; ".join(f"{_and(parts)}: {_ticked(tuple('.'.join(n) for n in names))}" for names, parts in groups.items())
-    tiers = [tier.name for tier in architecture.tiers if tier.forbidden]
+    tiers = [tier.name for tier in architecture.tiers if tier.apply_never]
     tests = f", and neither do the {_and(tiers)} tests of those parts" if tiers else ""
     methods = any(not entry[0] for names in groups for entry in names)
     seen = (", and a method written `.name()` called on anything but the object itself and what it holds;" if methods

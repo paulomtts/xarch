@@ -42,7 +42,7 @@ from xarch.profile_values.tiers import CheckedTier
 
 TABLE = CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id")
 VIEW = ProfileView(
-    parts=(PartView("core", ("core",), (), "the rules", "Is it a rule?", "core/", forbidden=(("socket",),),
+    parts=(PartView("core", ("core",), (), "the rules", "Is it a rule?", "core/", uses_never=(("socket",),),
                     holds="functions", no_callbacks=True, shared=2, immutable=True),
            PartView("api", ("src", "*", "api"), (Target("core"),), "handlers", shown="api/ of src/<module>",
                     untested="it only wires", must_import=(Target("core"),), types_only=("core",), names=("*Api",),

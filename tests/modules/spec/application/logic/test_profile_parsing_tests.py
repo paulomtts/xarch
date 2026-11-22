@@ -130,7 +130,7 @@ def test_the_tests_of_a_tier_are_held_to_forbidden_and_may_use_parts_as_types_on
     document["tiers"]["unit"]["uses"] = {"apply_never": True}
     document["tiers"]["integration"]["types_only"] = ["service", "store"]
     tiers = parsed(document).tiers
-    assert [(t.forbidden, t.types_only) for t in tiers] == [(True, ()), (False, ("service", "store"))]
+    assert [(t.apply_never, t.types_only) for t in tiers] == [(True, ()), (False, ("service", "store"))]
 
 
 def test_a_tier_with_a_folder_of_its_own_says_what_its_tests_may_import_there():

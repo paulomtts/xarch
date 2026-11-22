@@ -35,7 +35,7 @@ def test_the_smallest_profile_is_a_name_and_parts_and_checks_the_layout_and_the_
 def test_a_profile_says_what_it_does_not_have_by_leaving_it_out():
     architecture = parsed(layered())
     assert (architecture.docs, architecture.examples, architecture.notes, architecture.layers, architecture.placement,
-            architecture.naming, architecture.fakes, architecture.files, architecture.forbidden,
+            architecture.naming, architecture.fakes, architecture.files, architecture.uses_never,
             architecture.excluded, architecture.hints, architecture.based_on) == (
         (), {}, {}, {}, ("api", "service", "store", "shared"), (), None, (), {}, (), {}, "")
 
@@ -390,13 +390,13 @@ def test_a_part_refers_to_a_list_of_forbidden_names_by_its_name():
     document = layered(never={"pure": ["datetime.datetime.now", "builtins.open", "socket"]})
     document["parts"]["service"]["uses"] = {"never": "pure"}
     document["parts"]["shared"]["uses"] = {"never": "pure"}
-    forbidden = parsed(document).forbidden
-    assert forbidden == {"service": (("datetime", "datetime", "now"), ("builtins", "open"), ("socket",)),
-                         "shared": (("datetime", "datetime", "now"), ("builtins", "open"), ("socket",))}
+    uses_never = parsed(document).uses_never
+    assert uses_never == {"service": (("datetime", "datetime", "now"), ("builtins", "open"), ("socket",)),
+                          "shared": (("datetime", "datetime", "now"), ("builtins", "open"), ("socket",))}
 
 
 def test_a_part_that_names_no_list_forbids_nothing():
-    assert parsed(layered(never={"pure": ["socket"]})).forbidden == {}
+    assert parsed(layered(never={"pure": ["socket"]})).uses_never == {}
 
 
 @pytest.mark.parametrize("never, part, expected", [

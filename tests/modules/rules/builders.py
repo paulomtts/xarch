@@ -67,7 +67,7 @@ FOLDERS = ((), ("bootstrap",), ("kernel",), ("kernel", "logic"), ("modules",), (
                                                   ("application", "ports"), ("adapters",)]),
            ("platform",), ("web",), ("web", "routes"))
 UNIT = CheckedTier("unit", (Target("kernel"), *own("domain", "logic", "adapters")), ("modules", "docs", "domain"),
-                forbidden=True)
+                apply_never=True)
 INTEGRATION = CheckedTier("integration", own("controller", "services", "ports", "contract"),
                        ("modules", "docs", "application"))
 RENDERING = CheckedTier("rendering", (Target("web"),), ("web",), types_only=("controller",))

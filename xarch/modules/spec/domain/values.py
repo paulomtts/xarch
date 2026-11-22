@@ -205,7 +205,7 @@ class Tier:
     data: where its test data comes from
     helpers: files its tests share (builders, a fixture), shown with {{tier_helpers}}
     types_only: parts its tests may import and use as types, but never call
-    forbidden: its tests are held to the `uses.never` list of the part they mirror
+    apply_never: its tests are held to the `uses.never` list of the part they mirror
     folder: the folder below the tests folder where its tests live when they mirror no part, e.g. ("architecture",);
         the example only shows a place, it never decides one
     may_import: what the tests in its own folder may import of the app, as targets; None for a tier with no folder,
@@ -228,7 +228,7 @@ class Tier:
     example: TierExample | None = None
     helpers: tuple[TierExample, ...] = ()
     types_only: tuple[str, ...] = ()
-    forbidden: bool = False
+    apply_never: bool = False
     folder: tuple[str, ...] | None = None
     may_import: tuple[Target, ...] | None = None
     must_import: tuple[str, ...] = ()
@@ -353,7 +353,7 @@ class Architecture:
         instance, and the folder it repeats in
     framework: how the test framework names test files and functions; None when no tier or guard needs them
     files: the project files `init` writes besides the docs, in order
-    forbidden: the dotted names and modules a part may not use, and the methods it may not call on anything, each as
+    uses_never: the dotted names and modules a part may not use, and the methods it may not call on anything, each as
         ("", "<name>()"), by part; a part not listed has none
     excluded: the folders below the app that are not its source, in the order of the file
     hints: the project's own advice for a rule id, shown after the built-in fix of a violation of that rule
@@ -390,7 +390,7 @@ class Architecture:
     repeats: tuple[Repeat, ...] = ()
     files: tuple[FileEntry, ...] = ()
     framework: Framework | None = None
-    forbidden: dict[str, tuple[tuple[str, ...], ...]] = field(default_factory=dict)
+    uses_never: dict[str, tuple[tuple[str, ...], ...]] = field(default_factory=dict)
     excluded: tuple[Excluded, ...] = ()
     hints: dict[str, str] = field(default_factory=dict)
     based_on: str = ""

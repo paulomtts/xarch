@@ -14,7 +14,7 @@ NOW = ("datetime", "datetime", "now")
 PROFILE = Profile(parts={"domain": ("modules", "*", "domain"), "adapters": ("modules", "*", "adapters")},
                   rules={"domain": (Target("domain", "own"),)},
                   folders=((), ("modules",), ("modules", "*")),
-                  tiers=(Tier("unit", (Target("domain", "own"),), forbidden=True),
+                  tiers=(Tier("unit", (Target("domain", "own"),), apply_never=True),
                          Tier("loose", (Target("adapters", "own"),))),
                   forbidden={"domain": (NOW, ("builtins", "open"), ("socket",), ("urllib",))},
                   framework=Framework(("test_*.py",), "test_*"))
@@ -94,7 +94,7 @@ def test_without_a_forbidden_list_nothing_is_checked():
 ])
 def test_a_test_that_mirrors_no_listed_part_is_not_checked(path):
     checked = Profile(**{**vars(PROFILE), "fakes": Fakes(("fakes",), ("ports",), "Fake"),
-                         "tiers": (*PROFILE.tiers, Tier("guard", (), ("architecture",), forbidden=True))})
+                         "tiers": (*PROFILE.tiers, Tier("guard", (), ("architecture",), apply_never=True))})
     test = SourceFile("tests/" + "/".join(path), path, (), uses=(Use(3, ("builtins", "open"), 0),))
     assert violations([], [test], checked) == []
 

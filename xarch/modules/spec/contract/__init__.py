@@ -104,7 +104,7 @@ class PartView:
     litmus: str = ""
     shown: str = ""
     untested: str = ""
-    forbidden: tuple[tuple[str, ...], ...] = ()
+    uses_never: tuple[tuple[str, ...], ...] = ()
     must_import: tuple[Target, ...] = ()
     holds: str = ""
     types_only: tuple[str, ...] = ()

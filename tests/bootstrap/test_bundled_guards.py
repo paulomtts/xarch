@@ -61,10 +61,10 @@ def test_the_bundled_profiles_forbid_the_clock_and_io_in_the_pure_parts_and_thei
     ambient = tuple(tuple(n.split(".")) for n in AMBIENT)
     environment = tuple(tuple(n.split(".")) for n in ENVIRONMENT)
     published = tuple(tuple(n.split(".")) for n in PUBLISHED)
-    assert architecture.forbidden == {"domain": pure, "logic": pure, "ports": pure, "services": ambient,
-                                      "controller": ambient, "adapters": ambient, "platform": environment,
-                                      name: environment, "contract": published, "kernel": pure, "kernel-logic": pure}
-    assert [tier.name for tier in architecture.tiers if tier.forbidden] == ["unit"]
+    assert architecture.uses_never == {"domain": pure, "logic": pure, "ports": pure, "services": ambient,
+                                       "controller": ambient, "adapters": ambient, "platform": environment,
+                                       name: environment, "contract": published, "kernel": pure, "kernel-logic": pure}
+    assert [tier.name for tier in architecture.tiers if tier.apply_never] == ["unit"]
 
 
 def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():

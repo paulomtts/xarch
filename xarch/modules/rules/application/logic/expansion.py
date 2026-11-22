@@ -63,7 +63,7 @@ def _forbidden(profile: Profile) -> tuple[Rule, ...]:
                    (Saying("a test of {scope_part}/ ({tier} tier) may not {verb} {hit} ({key})", FORBIDDEN_FIX,
                            once=("line", "hit")),),
                    keep=keep, exempt=exempt, key=f"parts.{part}.uses.never; tiers.{tier.name}.uses.apply_never")
-              for tier in profile.tiers if tier.forbidden for part, names in profile.forbidden.items()]
+              for tier in profile.tiers if tier.apply_never for part, names in profile.forbidden.items()]
     return tuple(found)
 
 

@@ -10,7 +10,7 @@ from xarch.profile_values.placement import Target
 class CheckedTier:
     """One kind of test as a check reads it: its name; the parts it tests, each as a target (in its own instance for a
     part of a repeating folder); the folder below the tests root of tests that mirror no part (an empty folder places
-    nothing); the parts its tests may use as types only; whether its tests keep to the forbidden list of the part they
+    nothing); the parts its tests may use as types only; whether its tests keep to the `uses.never` list of the part they
     mirror; its words (proves, may_touch, litmus, one_file_per), which `where` shows; what the tests of its folder may
     import of the app (None: no folder, and the tests import what the part they mirror may); the parts one of which
     each of its test files must reach; whether every table test of it holds no branch in its body; and what each of
@@ -19,7 +19,7 @@ class CheckedTier:
     subject: tuple[Target, ...]
     folder: tuple[str, ...] | None = None
     types_only: tuple[str, ...] = ()
-    forbidden: bool = False
+    apply_never: bool = False
     proves: str = ""
     may_touch: str = ""
     litmus: str = ""

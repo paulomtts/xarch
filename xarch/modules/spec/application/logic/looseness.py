@@ -66,8 +66,8 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
             found += [("libraries", name, package) for name in shared for package in custom.libraries.get(name, ())
                       if package not in base.libraries.get(name, ())]
     for name in shared:
-        kept = custom.forbidden.get(name, ())
-        found += [("uses.never", name, ".".join(banned)) for banned in base.forbidden.get(name, ())
+        kept = custom.uses_never.get(name, ())
+        found += [("uses.never", name, ".".join(banned)) for banned in base.uses_never.get(name, ())
                   if not any(banned[:len(entry)] == entry for entry in kept)]
     for name in shared:
         before, now = base.parts[name].must_import, custom.parts[name].must_import
@@ -85,7 +85,7 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
             found += [("may_also_import", tier.name, _shown(t)) for t in mine.may_also_import
                       if not any(_covers(b, t) for b in tier.may_also_import)]
     found += [("uses.apply_never", tier.name, "") for tier in base.tiers
-              if tier.forbidden and tier.name in tiers and not tiers[tier.name].forbidden]
+              if tier.apply_never and tier.name in tiers and not tiers[tier.name].apply_never]
     skips = custom.framework.skips if custom.framework is not None else ()
     if base.framework is not None:
         found += [("testing.skips", "", ".".join(name)) for name in base.framework.skips if name not in skips]

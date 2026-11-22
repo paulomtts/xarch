@@ -11,5 +11,5 @@ PROFILE = Path(xarch.__file__).parent.parent / "architecture.yaml"
 def test_only_bootstrap_may_read_the_environment_where_review_s_key_is():
     architecture = load_architecture(str(PROFILE))
     reading = {("os", "environ"), ("os", "getenv")}
-    assert {part for part in architecture.parts if not reading <= set(architecture.forbidden.get(part, ()))} == {
+    assert {part for part in architecture.parts if not reading <= set(architecture.uses_never.get(part, ()))} == {
         "bootstrap"}

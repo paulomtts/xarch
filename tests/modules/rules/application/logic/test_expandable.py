@@ -12,7 +12,7 @@ from xarch.profile_values.tiers import CheckedTier
 EVERY_KEY = Profile(
     parts={"one": ("one",), "two": ("two",)}, rules={"one": (Target("two"),), "two": ()},
     libraries={"one": ("outside",)}, forbidden={"one": (("outside",),)},
-    tiers=(CheckedTier("tier", (Target("one"),), ("tier",), types_only=("two",), forbidden=True,
+    tiers=(CheckedTier("tier", (Target("one"),), ("tier",), types_only=("two",), apply_never=True,
                        may_import=(Target("two"),), must_import=("two",), may_also_import=(Target("two"),)),),
     package_only=("two",), types_only={"one": ("two",)}, no_callbacks=("one",), names={"one": ("*",)},
     built_by={"two": ("one",)}, private_imports=True, no_comments=True, closed_tree=True, holds={"one": "classes"},

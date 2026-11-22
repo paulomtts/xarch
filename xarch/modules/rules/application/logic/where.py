@@ -198,7 +198,7 @@ def _tier_place(profile: Profile, where: Tested, found: Resolved, tests: str, ap
     part = where.parts[0] if where.parts else ""
     folders = {name: i.shown for name, i in profile.info.items()}
     targets = tuple(dict.fromkeys(allowance(profile, where)))
-    names = tuple(".".join(n) for p in where.parts for n in profile.forbidden.get(p, ())) if where.tier.forbidden else ()
+    names = tuple(".".join(n) for p in where.parts for n in profile.forbidden.get(p, ())) if where.tier.apply_never else ()
     mirrored = Place(part, where.instance) if part else None
     return SuitePlace(found, where.is_test, where.tier, mirrored, profile.info.get(part) if part else None,
                       _word_of_instance(profile, where) or _singular(profile, part),

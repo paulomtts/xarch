@@ -84,11 +84,11 @@ def test_a_builtin_named_bare_bans_nothing_so_it_is_rejected(name, problem):
     pytest.param("Open", id="a name that differs from a builtin by case is no builtin"),
 ])
 def test_a_name_that_is_no_bare_builtin_is_kept(name):
-    assert parsed(with_list([name])).forbidden == {"service": (tuple(name.split(".")),)}
+    assert parsed(with_list([name])).uses_never == {"service": (tuple(name.split(".")),)}
 
 
 def test_a_method_written_with_a_leading_dot_and_parentheses_is_kept_as_written():
-    assert parsed(with_list([".absolute()", "pathlib.Path.cwd"])).forbidden == {
+    assert parsed(with_list([".absolute()", "pathlib.Path.cwd"])).uses_never == {
         "service": (("", "absolute()"), ("pathlib", "Path", "cwd"))}
 
 
@@ -148,8 +148,8 @@ def test_a_never_that_is_no_mapping_is_the_one_problem_and_the_parts_naming_it_a
 
 
 def test_a_part_naming_a_list_under_uses_never_uses_its_names_and_a_part_without_uses_none():
-    assert parsed(service_uses({"never": "ambient"})).forbidden == {"service": (("os", "getcwd"),)}
-    assert parsed(covered(never=LISTS)).forbidden == {}
+    assert parsed(service_uses({"never": "ambient"})).uses_never == {"service": (("os", "getcwd"),)}
+    assert parsed(covered(never=LISTS)).uses_never == {}
 
 
 @pytest.mark.parametrize("uses, problem", [
@@ -169,7 +169,7 @@ def test_a_tier_s_uses_written_wrong_is_refused_at_its_address(uses, problem):
 def test_a_tier_may_hold_its_tests_to_the_list_of_the_part_they_mirror():
     document = with_list(["socket"])
     document["tiers"]["unit"]["uses"] = {"apply_never": True}
-    assert [tier.forbidden for tier in parsed(document).tiers] == [True, False]
+    assert [tier.apply_never for tier in parsed(document).tiers] == [True, False]
 
 
 def test_apply_never_false_is_the_same_tier_as_no_uses():
