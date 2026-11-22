@@ -10,6 +10,11 @@ All notable changes to this project are written here. The format follows
 - The two archived corpora's profiles (`7cc6111`, `df537ca`) are plain yaml files beside their archives in
   `tests/bootstrap/corpora/`, so a change of format edits them as files; the recorded findings are unchanged.
 
+- A key, a guard or a rule id that xarch has retired is refused with a fixed hint naming what to write instead, one
+  problem per retired name ahead of the keys that are only unknown, read from one table that
+  `xarch profile explain <old key>` also answers from (the hint in its error, `retired` in its JSON, `null` for an
+  address with no entry); no name is retired yet.
+
 ## [0.2.0] - 2026-11-18
 
 ### Added
