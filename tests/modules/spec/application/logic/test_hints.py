@@ -43,3 +43,13 @@ def test_every_bad_hint_is_reported_at_once():
     assert problems(layered(hints={"nope": "x", "may-import": "", "cycles": "fine"})) == [
         f"layered.yaml: hints.nope: unknown rule id 'nope': use {KNOWN}",
         "layered.yaml: hints.may-import: must be one line of text"]
+
+
+def test_a_hint_for_the_rule_id_rules_is_told_it_is_renamed_may_import():
+    assert problems(layered(hints={"rules": "see the docs"})) == [
+        f"layered.yaml: hints.rules: unknown rule id 'rules': renamed in 0.3.0: write may-import; use {KNOWN}"]
+
+
+def test_the_text_written_under_hints_rules_is_in_no_problem():
+    found = problems(layered(hints={"rules": "secret text"}))
+    assert (len(found), "secret text" in "\n".join(found)) == (1, False)

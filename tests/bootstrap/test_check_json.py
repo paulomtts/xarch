@@ -9,6 +9,7 @@ from typer.testing import CliRunner
 
 import xarch
 from xarch.bootstrap.app import app
+from xarch.kernel.violations import RULES
 
 runner = CliRunner()
 BUNDLED = Path(xarch.__file__).parent / "architectures"
@@ -108,3 +109,12 @@ def test_a_profile_with_a_hint_for_an_unknown_rule_is_refused(tmp_path):
     result = runner.invoke(app, ["check", "--profile", "arch/mine.yaml"])
     assert result.exit_code == 2
     assert "hints.nothing: unknown rule id 'nothing': use built-by, closed-tree, cycles, dead-code" in result.output
+
+
+def test_a_profile_with_a_hint_for_the_rule_id_rules_is_refused_with_its_new_name_and_not_its_text(tmp_path):
+    shutil.copytree(BUNDLED, tmp_path / "arch")
+    (tmp_path / "arch/mine.yaml").write_text((BUNDLED / "web.yaml").read_text() + "\nhints:\n  rules: secret words\n")
+    result = runner.invoke(app, ["check", "--profile", "arch/mine.yaml"])
+    assert result.exit_code == 2
+    assert result.output == ("error: arch/mine.yaml: hints.rules: unknown rule id 'rules': renamed in 0.3.0: write "
+                             f"may-import; use {', '.join(sorted(RULES))}\n")

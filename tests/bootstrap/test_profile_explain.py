@@ -214,6 +214,16 @@ def test_an_address_with_no_entry_is_refused_as_today_with_retired_null_in_json(
     assert found.exit_code == 2 and json.loads(found.output)["retired"] is None
 
 
+@pytest.mark.parametrize("address", [pytest.param("rules", id="the bare rule id"),
+                                     pytest.param("hints.rules", id="the rule id under hints")])
+def test_the_rule_id_rules_has_no_address_and_is_refused_as_any_unknown_key(address):
+    text = runner.invoke(app, ["profile", "explain", address])
+    assert text.exit_code == 2 and f"error: no key `{address}` in the format: the nearest are " in text.output
+    assert "may-import" not in text.output
+    found = runner.invoke(app, ["profile", "explain", address, "--format", "json"])
+    assert found.exit_code == 2 and json.loads(found.output)["retired"] is None
+
+
 def test_an_address_xarch_retired_in_a_project_whose_profile_does_not_load_is_refused_with_why(tmp_path, monkeypatch):
     retiring(monkeypatch, PART, "tested_by", RENAMED)
     (tmp_path / "pyproject.toml").write_text("[tool.xarch\n")

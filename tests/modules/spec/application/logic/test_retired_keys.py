@@ -88,6 +88,7 @@ LIST_MOVED = "moved in 0.3.0: write uses: {never: <list>}"
 SWITCH_MOVED = "moved in 0.3.0: write uses: {apply_never: true}"
 BLOCK = "renamed in 0.3.0: write never"
 RULE = "renamed in 0.3.0: write never-use"
+IMPORT_RULE = "renamed in 0.3.0: write may-import"
 LIST_OUTSIDE = "a key of uses: write uses: {never: <list>}"
 SWITCH_OUTSIDE = "a key of uses: write uses: {apply_never: true}"
 
@@ -98,6 +99,8 @@ SWITCH_OUTSIDE = "a key of uses: write uses: {apply_never: true}"
     pytest.param(TIER, "apply_forbidden", SWITCH_MOVED, id="the tier key apply_forbidden"),
     pytest.param(PROFILE, "forbidden", BLOCK, id="the block forbidden"),
     pytest.param(RULE_ID, "forbidden", RULE, id="the rule id forbidden"),
+    pytest.param(RULE_ID, "rules", IMPORT_RULE, id="the rule id rules"),
+    pytest.param(RULE_ID, "may-import", "", id="the rule id may-import, which xarch has"),
     pytest.param(PART, "never", LIST_OUTSIDE, id="never on a part"),
     pytest.param(TIER, "apply_never", SWITCH_OUTSIDE, id="apply_never on a tier"),
     pytest.param(PART_USES, "never", "", id="never under a part's uses, a key"),
