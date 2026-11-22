@@ -11,3 +11,4 @@ package: '%?[A-Za-z][A-Za-z0-9]*'
 member: "."
 interface: ["%Library.RegisteredObject"]
 dynamic: ["%SYSTEM.OBJ.Load"]
+immutable: ["%SerialObject"]

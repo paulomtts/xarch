@@ -194,3 +194,10 @@ def test_a_namespace_is_a_name_the_language_allows():
 def test_a_test_only_language_loads_with_the_three_keys_that_say_how_an_outside_name_is_written(path):
     checked = language_of(path.stem, yaml.safe_load(path.read_text(encoding="utf-8"))).checked
     assert checked.names and checked.package and checked.member
+
+
+def test_the_percent_test_only_language_reads_its_lists_by_its_own_patterns():
+    path = next(path for path in TEST_LANGUAGES if path.stem == "percent")
+    checked = language_of("percent", yaml.safe_load(path.read_text(encoding="utf-8"))).checked
+    assert (checked.interface, checked.dynamic, checked.immutable) == (
+        (("%Library", "RegisteredObject"),), (("%SYSTEM", "OBJ", "Load"),), (RecordMark(("%SerialObject",)),))
