@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import pytest
 
+from tests.modules.rules import builders
 from tests.modules.rules.builders import PYTHON
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.enforcement import (
@@ -15,12 +16,13 @@ from xarch.modules.rules.application.logic.enforcement import (
     reading,
     skipped,
     strict_findings,
+    unresolved,
     weak_of,
 )
 from xarch.modules.rules.domain.outcomes import Enforcement, Finding, InitFile
 from xarch.modules.rules.domain.parsed import SourceFile, Use
 from xarch.modules.rules.domain.profile import Profile
-from xarch.modules.rules.domain.published import At, Drift, Weak
+from xarch.modules.rules.domain.published import At, Drift, Unresolved, Weak
 from xarch.profile_values.capabilities import Shortfall
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.language import CheckedLanguage
@@ -70,15 +72,18 @@ def test_a_file_that_is_not_pinned_is_reported_only_when_missing():
 def test_strict_fails_on_every_finding_but_the_guards_its_baseline_also_leaves_off_and_how_the_profile_differs():
     enforcement = Enforcement(
         ("no-comments", "closed-tree"), ("closed-tree",),
-        ungoverned=("app/scripts/x.py",), init_files=(CHANGED,), skipped=(SKIP,), dynamic=(DYNAMIC,), weak=(WEAK,))
+        ungoverned=("app/scripts/x.py",), init_files=(CHANGED,), skipped=(SKIP,), dynamic=(DYNAMIC,),
+        unresolved=(UNRESOLVED_ITEM,), weak=(WEAK,))
     assert strict_findings(enforcement) == (
         Finding("guards_off", "no-comments"), Finding("ungoverned", "app/scripts/x.py"), Finding("init_files", CHANGED),
-        Finding("skipped", SKIP), Finding("dynamic", DYNAMIC), Finding("weak", WEAK))
+        Finding("skipped", SKIP), Finding("dynamic", DYNAMIC), Finding("unresolved", UNRESOLVED_ITEM),
+        Finding("weak", WEAK))
 
 
 CHANGED = Drift(("tests", "test_rules.py"), "changed")
 SKIP = At("tests/test_a.py", 3)
 DYNAMIC = At("app/kernel/dyn.py", 2)
+UNRESOLVED_ITEM = Unresolved("app/x.py", 3, ".ordr")
 WEAK = Weak("stand-ins", "tests/fakes/repo.py", 1, "FakeRepo does not define get, which Repo declares")
 
 
@@ -86,6 +91,8 @@ WEAK = Weak("stand-ins", "tests/fakes/repo.py", 1, "FakeRepo does not define get
     pytest.param("no-comments", "no-comments", id="a guard or a file is its name"),
     pytest.param(CHANGED, "tests/test_rules.py is changed", id="an init file is its path and its state"),
     pytest.param(SKIP, "tests/test_a.py:3", id="a place is its file and line"),
+    pytest.param(UNRESOLVED_ITEM, 'app/x.py:3: import ".ordr" names no file of the app',
+                 id="an import the reader could not follow is its place, its module as written and why"),
     pytest.param(WEAK, "tests/fakes/repo.py:1: FakeRepo does not define get, which Repo declares",
                  id="a weak check is its place and its message"),
     pytest.param(Weak("dead-code", "app/x.py", 0, "a file no test reaches"), "app/x.py: a file no test reaches",
@@ -172,3 +179,35 @@ def test_the_weak_findings_listed_are_those_found_then_the_untested_ones_when_th
     violation = Violation("c.py", 3, "m", "may-import", "f")
     assert weak_of([found, violation], [untested], True) == [found, untested]
     assert weak_of([found], [untested], False) == [found]
+
+
+def test_an_import_the_reader_could_not_follow_is_listed_by_its_file_line_and_module_as_written():
+    files = [builders.source("domain/services.py", builders.imp(1, "app.kernel", "ids"),
+                             builders.imp(2, "", "order", up=0),
+                             builders.aliased(3, "@app/domain/order", "app.domain.order", "Order"),
+                             builders.unresolved(4, ".ordr", "Order", "Line"))]
+    assert unresolved(files) == [Unresolved("app/domain/services.py", 4, ".ordr")]
+
+
+def test_the_unresolved_imports_keep_the_order_of_the_files_and_within_a_file_go_by_line():
+    files = [builders.source("kernel/a.py", builders.unresolved(9, ".late", "x"), builders.unresolved(3, ".early", "y")),
+             builders.in_tests("kernel/test_a.py", builders.unresolved(2, "..gone", "z"))]
+    assert unresolved(files) == [Unresolved("app/kernel/a.py", 3, ".early"), Unresolved("app/kernel/a.py", 9, ".late"),
+                                 Unresolved("tests/kernel/test_a.py", 2, "..gone")]
+
+
+def test_with_no_import_the_reader_could_not_follow_nothing_is_listed():
+    assert unresolved([]) == []
+    assert unresolved([builders.source("kernel/a.py", builders.imp(1, "app.kernel", "ids")),
+                       builders.source("kernel/b.py")]) == []
+
+
+def test_an_aliased_import_resolved_to_the_root_is_not_listed_and_one_the_reader_could_not_follow_fails_strict():
+    aliased = builders.source("modules/docs/domain/values.py",
+                              builders.aliased(3, "@app/platform/sql", "app.platform", "sql"))
+    lost = builders.source("domain/services.py", builders.unresolved(4, "@app/domain/ordr", "Order"))
+    assert unresolved([aliased]) == []
+    found = tuple(unresolved([aliased, lost]))
+    assert found == (Unresolved("app/domain/services.py", 4, "@app/domain/ordr"),)
+    assert strict_findings(Enforcement(unresolved=found)) == (Finding("unresolved", found[0]),)
+    assert detail(found[0]) == 'app/domain/services.py:4: import "@app/domain/ordr" names no file of the app'

@@ -135,3 +135,14 @@ def in_tests(path: str, *imports: Import, **fields) -> SourceFile:
     """A file at path below the tests root."""
     return source(path, *imports, root=TESTS, **fields)
 
+
+def aliased(line: int, written: str, module: str, *names: str) -> Import:
+    """An import written by an alias the project maps, such as `@app/domain/order`, that the reader resolved to module
+    from the top: absolute, as the reader hands it over, with the module as the source writes it."""
+    return Import(line, dotted(module), names or None, written=written)
+
+
+def unresolved(line: int, written: str, *names: str) -> Import:
+    """An import naming a place of the app the reader found no file or folder for, as the Python reader hands over a
+    relative one it cannot follow: no module, relative, climbing none, marked unresolved, as written."""
+    return Import(line, (), names or None, True, 0, written=written, unresolved=True)

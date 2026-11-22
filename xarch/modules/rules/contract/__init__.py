@@ -26,6 +26,7 @@ from xarch.modules.rules.domain.published import (
     SKIPPED,
     UNGOVERNED,
     UNPLACED,
+    UNRESOLVED,
     VACUOUS,
     WEAK,
     At,
@@ -38,11 +39,12 @@ from xarch.modules.rules.domain.published import (
     Reviewed,
     Slot,
     Translation,
+    Unresolved,
     Weak,
 )
 
 __all__ = ["At", "Weak", "Piece", "KnownName", "Translation", "Slot", "KeyFacts", "SECTIONS", "GUARDS_OFF", "UNGOVERNED",
-           "INIT_FILES", "SKIPPED", "DYNAMIC",
+           "INIT_FILES", "SKIPPED", "DYNAMIC", "UNRESOLVED", "Unresolved",
            "WEAK", "APPROXIMATE", "VACUOUS", "UNPLACED", "ChecksCannotRun", "CheckRefused", "OwnCheckView",
            "Drift", "FindingView", "ExcludedView", "EnforcementView", "ReachView", "NearestView", "TierInfoView",
            "PartShown", "CoveringTest", "Untested", "InPart", "InStructure", "Ungoverned", "InTests", "Support", "Fake",

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.domain.profile import Profile
-from xarch.modules.rules.domain.published import At, Drift, KnownName, Loosened, Translation, Weak
+from xarch.modules.rules.domain.published import At, Drift, KnownName, Loosened, Translation, Unresolved, Weak
 from xarch.profile_values.capabilities import Shortfall
 from xarch.profile_values.excluded import Excluded
 
@@ -42,10 +42,11 @@ class Standing:
 class Finding:
     """An enforcement finding that `--strict` fails on: the key of the enforcement section it is under, and the item
     there that fails: a guard left off or an ungoverned file (by name), an init file that drifted, a skip or a dynamic
-    import (where it is), a weak check, a key whose check reads a fact the language supplies only partly, a check
-    of the profile's own that read nothing (its id), or a part redefined without its litmus (as said)."""
+    import (where it is), an import the reader could not follow, a weak check, a key whose check reads a fact the
+    language supplies only partly, a check of the profile's own that read nothing (its id), or a part redefined
+    without its litmus (as said)."""
     key: str
-    item: str | Drift | At | Weak | Shortfall
+    item: str | Drift | At | Unresolved | Weak | Shortfall
 
 
 @dataclass(frozen=True)
@@ -53,7 +54,8 @@ class Enforcement:
     """The state of the check's own enforcement, beside its violations: the guards the profile leaves off, and those the
     bundled profile it is, or is compared with, leaves off too (baseline_off); the app's source files no part and no
     folder of the layout governs (never read, so never checked), as shown; the init files missing or changed; the
-    tests skipped or expected to fail, and the dynamic imports, where they are; the checks satisfied to the letter
+    tests skipped or expected to fail, and the dynamic imports, where they are; the imports of the files read that the
+    reader could not follow, with the module as written; the checks satisfied to the letter
     only; and strict, the findings `--strict` fails on; the folders the profile excludes, which no check reads; app,
     the name of the app folder the shown paths start with; language, how the language of the app is named;
     approximate, the keys whose check reads a fact the language supplies only partly, so that it may miss what it
@@ -69,6 +71,7 @@ class Enforcement:
     init_files: tuple[Drift, ...] = ()
     skipped: tuple[At, ...] = ()
     dynamic: tuple[At, ...] = ()
+    unresolved: tuple[Unresolved, ...] = ()
     weak: tuple[Weak, ...] = ()
     strict: tuple[Finding, ...] = ()
     excluded: tuple[Excluded, ...] = ()

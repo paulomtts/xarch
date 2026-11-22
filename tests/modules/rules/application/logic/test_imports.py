@@ -5,7 +5,7 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.rules.application.logic.checks import rules as violations
-from tests.modules.rules.builders import PROFILE, PYTHON, imp, source, steps
+from tests.modules.rules.builders import PROFILE, PYTHON, aliased, imp, source, steps
 from xarch.kernel.placement import Marks
 from xarch.modules.rules.application.logic.imports import dotted, targets
 from xarch.profile_values.placement import Target
@@ -126,3 +126,14 @@ def test_a_target_with_a_name_pattern_allows_only_the_names_it_matches(imports, 
     assert {v.fix for v in found} <= {
         "import from domain/ of modules/docs only names that match *Id (parts.contract.may_import), or move what needs "
         "the rest to a part that may import it"}
+
+
+def test_an_import_written_by_an_alias_and_resolved_below_the_root_is_checked_as_an_absolute_import():
+    written = source("modules/docs/domain/values.py", aliased(3, "@app/platform/sql", "app.platform", "sql"))
+    absolute = source("modules/docs/domain/values.py", imp(3, "app.platform", "sql"))
+    found = violations([written, *APP], PROFILE, "app")
+    assert [str(v) for v in found] == ["app/modules/docs/domain/values.py:3: domain/ of modules/docs may not import "
+                                       "platform/ (app.platform.sql)"]
+    assert found == violations([absolute, *APP], PROFILE, "app")
+    allowed = source("modules/docs/domain/values.py", aliased(3, "@app/kernel/ids", "app.kernel", "ids"))
+    assert violations([allowed, *APP], PROFILE, "app") == []

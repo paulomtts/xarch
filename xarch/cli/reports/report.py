@@ -27,6 +27,7 @@ from xarch.modules.rules.contract import (
     SKIPPED,
     UNGOVERNED,
     UNPLACED,
+    UNRESOLVED,
     VACUOUS,
     WEAK,
     AppChecked,
@@ -43,7 +44,8 @@ INDENT = "    "
 SHOWN = 5
 """How many places a text line of skips or dynamic imports names before it counts the rest."""
 LABELS = {GUARDS_OFF: "guards off", UNGOVERNED: "ungoverned", INIT_FILES: "init files", SKIPPED: "skipped",
-          DYNAMIC: "dynamic", WEAK: "weak", APPROXIMATE: "approximate", VACUOUS: "reads nothing", UNPLACED: "litmus"}
+          DYNAMIC: "dynamic", UNRESOLVED: "unresolved", WEAK: "weak", APPROXIMATE: "approximate",
+          VACUOUS: "reads nothing", UNPLACED: "litmus"}
 """How each section of the enforcement is labelled, by its key."""
 
 
