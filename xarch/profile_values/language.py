@@ -10,7 +10,7 @@ from xarch.profile_values.capabilities import Supply
 
 @dataclass(frozen=True)
 class RecordMark:
-    """What makes a class an immutable record in the language: a dotted name among its bases or its decorators, and,
+    """What makes a class an immutable record in the language: an outside name among its bases or its decorators, and,
     for a decorator, the keywords it is called with, each with its value as written (none: any call, or none)."""
     path: tuple[str, ...]
     keywords: tuple[tuple[str, str], ...] = ()
@@ -29,7 +29,9 @@ class CheckedLanguage:
     immutable record (immutable). An empty token: the language has none. supplies are the facts its reader supplies,
     each graded (None: its data file does not say); importing is how a file imports a name from another file of the
     app, {dotted} standing for that file's dotted path and {name} for the name (empty: its data file does not say); names
-is the pattern of a name the language allows, a regular expression (empty: its data file gives none)."""
+is the pattern of a name the language allows, a regular expression (empty: its data file gives none); package is the
+pattern of what an import names from outside the app as one step, and member the text that joins a package to a name
+in it in a profile's lists (both empty: its data file does not say, and an outside name is then its whole text)."""
     title: str = ""
     extension: str = ""
     package_file: str = ""
@@ -49,6 +51,8 @@ is the pattern of a name the language allows, a regular expression (empty: its d
     immutable: tuple[RecordMark, ...] = ()
     branching_expressions: tuple[str, ...] = ()
     names: str = ""
+    package: str = ""
+    member: str = ""
 
     @property
     def marks(self) -> Marks:

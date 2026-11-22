@@ -18,3 +18,7 @@ def test_a_name_is_told_by_the_tokens_of_the_language(name, public, special):
 
 def test_a_language_that_gives_no_tokens_has_every_name_public():
     assert (CheckedLanguage().is_public("_load"), CheckedLanguage().is_special("__init__")) == (True, False)
+
+
+def test_a_language_that_says_nothing_has_no_package_pattern_and_no_member():
+    assert (CheckedLanguage().package, CheckedLanguage().member) == ("", "")
