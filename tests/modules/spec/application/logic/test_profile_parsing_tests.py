@@ -356,18 +356,20 @@ def test_a_path_written_for_tests_is_told_it_names_a_tier_not_a_folder():
         "use unit, integration"]
 
 
-@pytest.mark.parametrize("value, folder", [
-    pytest.param("tests/units", True, id="a folder of the tests"),
-    pytest.param("a/b", True, id="any text holding a slash"),
-    pytest.param("unit/", True, id="a tier name with a trailing slash"),
-    pytest.param("units", False, id="no slash: the plain message"),
-    pytest.param("tests", False, id="the tests folder's name, with no slash"),
-    pytest.param("tests\\units", False, id="a backslash is no slash"),
+FOLDER = ": it names a tier of `tiers`, not a folder"
+
+
+@pytest.mark.parametrize("value, clause", [
+    pytest.param("tests/units", FOLDER, id="a folder of the tests"),
+    pytest.param("a/b", FOLDER, id="any text holding a slash"),
+    pytest.param("unit/", FOLDER, id="a tier name with a trailing slash"),
+    pytest.param("units", "", id="no slash: the plain message"),
+    pytest.param("tests", "", id="the tests folder's name, with no slash"),
+    pytest.param("tests\\units", "", id="a backslash is no slash"),
 ])
-def test_a_value_of_tests_that_is_no_tier_name(value, folder):
+def test_a_value_of_tests_that_is_no_tier_name(value, clause):
     document = covered()
     document["parts"]["api"]["tests"] = value
-    clause = ": it names a tier of `tiers`, not a folder" if folder else ""
     assert problems(document) == [
         f"layered.yaml: parts.api.tests: no tier named {value!r}{clause}: use unit, integration"]
 
