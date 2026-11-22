@@ -135,7 +135,9 @@ true of a language as a whole lives in a data file shipped beside the profiles, 
 <name>.yaml`, the way `testing: pytest` resolves to `presets/testing/pytest.yaml`: the ending of a source file, the file
 that stands for a folder, what marks an interface, the namespace of the builtins, the callables that import by a
 computed name, the folder of compiled files, and where the standard library's names are known from (`interpreter`);
-and the tokens of its code the checks and the docs need: what a name may be, how a private name starts, what a special
+and the tokens of its code the checks and the docs need: what a name may be, what an import names from outside the app
+as one step (`package`) and the text that joins a package to a name in it in the profile's lists (`member`, `.` for
+Python), so that an outside name is written `<package><member><name>`, how a private name starts, what a special
 name starts and ends with, the special method calling an instance runs, the annotation of no value, the comment marker
 and the comments its tools read, the shebang, the encoding declaration, the keywords of the statements that branch and
 of the expressions that choose between values (`branching_expressions`), and what makes a class

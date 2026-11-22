@@ -50,6 +50,16 @@ All notable changes to this project are written here. The format follows
   import (`strict_failures` key `unresolved`). A project with no such import sees only the empty JSON key
   `"unresolved": []`.
 
+- A language's data file gives `package`, what an import names from outside the app as one step, and `member`, the
+  text that joins a package to a name in it (`.` for Python), beside `name`: the three are given together or not at
+  all. The outside names a profile writes (`libraries`, `reserved`, the `never` lists, `testing.skips`,
+  `testing.mocks.calls` and `autospec`, `testing.table.decorator` and `row`, a check's `path` target) and the data
+  file's `interface`, `dynamic` and `immutable` are read by them; no Python profile entry changes. The refusals say
+  so: `'<entry>' is not a package name the language Python allows` under `libraries` and `reserved`;
+  `'<value>' is not an outside name such as <package>.<name>` under the testing names; and under a `never` list
+  `'<entry>' is not an outside name such as <package>.<name>, nor a package, nor a method such as .<name>()` and
+  `'<entry>' is neither an outside name nor a method: write <entry>() for a method called on anything`.
+
 ## [0.2.0] - 2026-11-18
 
 ### Added
