@@ -33,9 +33,9 @@ def test_every_way_a_custom_profile_is_looser_than_the_bundled_one_it_resembles_
     parts = {**PARTS, "core": {**PARTS["core"], "may_import": ["store"], "libraries": ["yaml"]},
              "store": {"path": "store", "role": "storage", "may_import": ["core"],
                        "libraries": ["sqlmodel", "requests"], "untested": "trust me"}}
-    custom = {**BASE, "parts": parts, "forbidden": {"pure": ["socket"]},
+    custom = {**BASE, "parts": parts, "never": {"pure": ["socket"]},
               "tiers": {"unit": {key: value for key, value in TIER.items() if key != "types_only"}
-                        | {"apply_forbidden": False, "may_also_import": ["edge"]}},
+                        | {"uses": {"apply_never": False}, "may_also_import": ["edge"]}},
               "testing": {**TESTING, "skips": ["pytest.mark.skip"]},
               "guards": {},
               "files": {"tests/test_rules.py": {"from": "guard.py"}}}
@@ -58,8 +58,8 @@ def test_every_way_a_custom_profile_is_looser_than_the_bundled_one_it_resembles_
 
 
 def test_a_stricter_custom_profile_lists_nothing_and_a_broader_ban_covers_a_narrower_one():
-    custom = {**BASE, "parts": part("store", may_import=[]) | part("core", forbidden="pure"),
-              "forbidden": {"pure": ["time", "socket"]}}
+    custom = {**BASE, "parts": part("store", may_import=[]) | part("core", uses={"never": "pure"}),
+              "never": {"pure": ["time", "socket"]}}
     assert controller(custom).origin("mine.yaml").looser == ()
 
 

@@ -151,10 +151,10 @@ keys:
       paths and `folders`
     example: |
       <<two>>
-  forbidden:
-    meaning: named lists of names a part may not use
+  never:
+    meaning: named lists of names a part never uses
     accepts: >-
-      a map {<list>: [<dotted name>, ...]}; a part points to one list with `forbidden: <list>`. An entry is a dotted
+      a map {<list>: [<dotted name>, ...]}; a part points to one list with `uses: {never: <list>}`. An entry is a dotted
       name as an absolute import binds it (`datetime.datetime.now`; a builtin as `%namespace%.open`, a bare `open` is
       refused), a whole package (`socket`), or a method written with a leading dot and parentheses (`.absolute()`). A
       file may not import a listed package or anything below it, nor use a listed name, called or not, as the file
@@ -163,13 +163,14 @@ keys:
       object and what it holds (`self.paths.resolve()`: a port's or its own). A method entry matches any object with a
       method of that name, so it belongs only in a list of parts that never call one legitimately. Silent on a name
       reached through a variable or `getattr`, a method of an object the list does not name, an annotation, and what a
-      helper in another file does: a ban list, not a proof of purity
+      helper in another file does: a ban list, not a proof of purity. Not `review.never`, the files review never sends,
+      which is another list
     example: |
-      forbidden:
+      never:
         pure: [time.time, socket]
         ambient: [pathlib.Path.cwd, .absolute()]
       <<part>>
-          forbidden: pure
+          uses: {never: pure}
   reserved:
     meaning: standard-library names only some parts may import
     accepts: >-
@@ -418,14 +419,14 @@ keys:
     example: |
       <<part>>
           libraries: [yaml]
-  parts.<part>.forbidden:
-    meaning: the list of names the part may not use
-    accepts: the name of a top-level `forbidden` list
+  parts.<part>.uses:
+    meaning: what the part's code uses
+    accepts: "a map {never}: `never` names the list under the top-level `never` of what the part's code never uses"
     example: |
-      forbidden:
+      never:
         pure: [time.time, socket]
       <<part>>
-          forbidden: pure
+          uses: {never: pure}
   parts.<part>.tests:
     meaning: the tier whose tests cover the part
     accepts: the name of a tier; one tier per part; with `tiers`, a part names the tier that `tests` it or is `untested`
@@ -453,6 +454,17 @@ keys:
       <<part>>
           folders:
             schemas: the table definitions
+  parts.<part>.uses.never:
+    meaning: the list of names the part never uses
+    accepts: >-
+      the name of one list under the top-level `never`: no file of the part uses a name the list holds, by an import or
+      in its code, a module, a dotted name or a method; the built-in form of a check `may_not` over names used. It names
+      code, not the parts the part may import, which `may_import` says
+    example: |
+      never:
+        pure: [time.time, socket]
+      <<part>>
+          uses: {never: pure}
   tiers.<tier>.proves:
     meaning: what its tests prove, in one line
     accepts: one line of text
@@ -471,14 +483,14 @@ keys:
         unit:
           litmus: Does it call one rule directly and check its answer?
       <<tiered-part>>
-  tiers.<tier>.apply_forbidden:
-    meaning: its tests keep to the forbidden list of the part they mirror
-    accepts: true or false
+  tiers.<tier>.uses:
+    meaning: what its tests keep to of the part they mirror
+    accepts: "a map {apply_never}: `apply_never: true` holds its tests to the `uses.never` list of the part they mirror"
     example: |
       <<testing>>
       tiers:
         unit:
-          apply_forbidden: true
+          uses: {apply_never: true}
       <<tiered-part>>
   tiers.<tier>.plain_tables:
     meaning: its table tests hold no branch
@@ -643,6 +655,18 @@ keys:
         unit:
           docs:
             helpers: [tests/documents/builders%extension%]
+      <<tiered-part>>
+  tiers.<tier>.uses.apply_never:
+    meaning: its tests keep to the never list of the part they mirror
+    accepts: >-
+      true or false, a switch and not a list: true holds the tier's tests to the `uses.never` list of the part they
+      mirror (it applies the part's never list to them as well; it does not read as "never apply"); false is the same as
+      leaving it out
+    example: |
+      <<testing>>
+      tiers:
+        unit:
+          uses: {apply_never: true}
       <<tiered-part>>
   testing.files:
     meaning: patterns of a test file's name
@@ -1136,7 +1160,7 @@ keys:
       %fewest_examples% of a kind is not held. Refused: a path that starts with `/` or has an empty,
       `.` or `..` step, `**` inside a longer step, a path of nothing but `*` and `**` (it would hold back every file),
       the same path twice. `profile check` lists a path the profile it is compared with holds that this one does not as
-      looser
+      looser. Not the top-level `never`, the names a part never uses, which is another list
     example: |
       review:
         never: [documents/drafts, "**/secrets"]

@@ -17,7 +17,7 @@ parts:
       it belongs in `application/logic/`. If it must load or save anything, it is a service step. `xarch check` holds
       it to its `forbidden` list: no clock and no I/O by name.
     may_import: [kernel, kernel-logic]
-    forbidden: pure
+    uses: {never: pure}
     holds: classes
     no_callbacks: true
     tests: unit
@@ -31,7 +31,7 @@ parts:
       in `domain/`. If another module needs it too, it belongs in `kernel/logic/`. If it must load or save anything,
       it is a service step. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
     may_import: [domain, kernel, kernel-logic]
-    forbidden: pure
+    uses: {never: pure}
     holds: functions
     immutable: true
     no_callbacks: true
@@ -47,7 +47,7 @@ parts:
       belongs in `kernel/`. If it has a body that talks to a real system, it belongs in `adapters/`. `xarch check`
       holds it to its `forbidden` list: no clock and no I/O by name.
     may_import: [domain, kernel, kernel-logic]
-    forbidden: pure
+    uses: {never: pure}
     holds: classes
     tests: integration
 
@@ -64,7 +64,7 @@ parts:
     may_import: [logic, domain, ports, contract, kernel, kernel-logic]
     holds: classes
     names: "*Service"
-    forbidden: ambient
+    uses: {never: ambient}
     built_by: [bootstrap]
     tests: integration
 
@@ -81,7 +81,7 @@ parts:
     may_import: [services, logic, domain, ports, contract, kernel, kernel-logic]
     holds: classes
     names: "*Controller"
-    forbidden: ambient
+    uses: {never: ambient}
     built_by: [bootstrap]
     tests: integration
 
@@ -99,7 +99,7 @@ parts:
     must_import: [platform, contract@any]
     built_by: [bootstrap]
     libraries: [sqlmodel]
-    forbidden: ambient
+    uses: {never: ambient}
     holds: classes
     tests: unit
 
@@ -115,7 +115,7 @@ parts:
       translates a module's types for a port, it belongs in that module's `adapters/`.
     may_import: [kernel, kernel-logic]
     libraries: [sqlmodel]
-    forbidden: environment
+    uses: {never: environment}
     untested: it wraps outside technology; adapters are tested against a stub of it
 
   cli:
@@ -128,7 +128,7 @@ parts:
       in the controller. If it holds a business rule, it belongs in `domain/`.
     may_import: [controller@any, contract@any, kernel, kernel-logic]
     libraries: [typer]
-    forbidden: environment
+    uses: {never: environment}
     tests: rendering
     folders:
       commands: one file per command group; each calls module controllers
@@ -159,7 +159,7 @@ parts:
       module hands out is a type of its own here. If it is a `domain/` entity, a service type or a port, it stays
       where it is, and a DTO goes here instead.
     may_import: ["domain/values:*Id", "domain/published", kernel, kernel-logic]
-    forbidden: published
+    uses: {never: published}
     tests: integration
     package_only: true
 
@@ -173,7 +173,7 @@ parts:
       must load or save anything, it is a service step. `xarch check` holds it to its `forbidden` list: no clock and
       no I/O by name.
     may_import: [kernel]
-    forbidden: pure
+    uses: {never: pure}
     holds: functions
     immutable: true
     tests: unit
@@ -189,10 +189,10 @@ parts:
       If only one module needs it, or it names one module's thing, such as a concrete id like `DocumentId` or an
       error like `DocumentNotFound`, it belongs in the owning module. If it wraps a technology or reads the real
       time, it belongs in `platform/`. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
-    forbidden: pure
+    uses: {never: pure}
     tests: unit
 
-forbidden:
+never:
   pure: [datetime.datetime.now, datetime.datetime.utcnow, datetime.datetime.today, datetime.date.today, time.time,
          time.time_ns, time.monotonic, time.perf_counter, builtins.open, builtins.print, builtins.input, sys.stdin,
          sys.stdout, sys.stderr, os.environ, os.getenv, socket, subprocess, sqlite3, urllib, http, shutil,
@@ -219,7 +219,7 @@ tiers:
       from `logic/`, or by handing an adapter a stub client and checking what it translates, with no port in sight? If
       yes, it is a unit test. If it needs a port to get an answer, it is an integration test. If it asserts how a port
       was called, it is testing nothing.
-    apply_forbidden: true
+    uses: {apply_never: true}
     docs:
       may_touch: >-
         nothing: no I/O, no clock (checked by `forbidden` for the pure parts), no fakes; an adapter gets a stub of its

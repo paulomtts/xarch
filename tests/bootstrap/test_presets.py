@@ -10,14 +10,14 @@ from xarch.modules.scaffold.contract import InitProject, NewInstance, Scaffolded
 
 PROFILE = """\
 name: presets
-forbidden:
+never:
   nothing_printed: [builtins.print]
 parts:
   kernel: {path: kernel, role: primitives}
   ui:
     path: web/ui
     role: pages
-    forbidden: nothing_printed
+    uses: {never: nothing_printed}
 files:
   "{{app}}/web/ui/design/": {from: presets/design/}
   "notes.txt": {from: presets/design/tokens.css, fill: false}

@@ -28,7 +28,7 @@ OFF = ("package-only", "scenario-coverage", "no-comments", "stand-ins", "closed-
                  CheckProfile(APP, "mine.yaml"),
                  ProfileChecked("mine.yaml", (
                      Problem("load", "mine.yaml: unknown key 'colour': use based_on, checks, docs, evals, excluded, fakes, files, "
-                                     "forbidden, guards, hints, language, layers, name, parts, reserved, review, testing, tiers"),
+                                     "guards, hints, language, layers, name, never, parts, reserved, review, testing, tiers"),
                      Problem("load", "mine.yaml: parts.core: missing `role`")), 0, None),
                  id="a profile that does not load has every problem reported at once"),
     pytest.param(dict(files={"mine.yaml": WITH_EXAMPLE}, texts=WITH_EXAMPLE_FILES, reads=WITH_EXAMPLE_READS),

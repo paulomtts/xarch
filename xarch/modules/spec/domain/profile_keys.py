@@ -13,8 +13,10 @@ from dataclasses import dataclass, field
 
 PROFILE = "profile"
 PART = "part"
+PART_USES = "part.uses"
 TIER = "tier"
 TIER_DOCS = "tier.docs"
+TIER_USES = "tier.uses"
 TESTING = "testing"
 TABLE = "testing.table"
 MOCKS = "testing.mocks"
@@ -38,8 +40,10 @@ EVAL = "evals.<id>"
 SCOPES = {
     PROFILE: "the file",
     PART: "parts.<part>",
+    PART_USES: "parts.<part>.uses",
     TIER: "tiers.<tier>",
     TIER_DOCS: "tiers.<tier>.docs",
+    TIER_USES: "tiers.<tier>.uses",
     TESTING: "testing",
     TABLE: "testing.table",
     MOCKS: "testing.mocks",

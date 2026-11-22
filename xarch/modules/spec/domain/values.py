@@ -205,7 +205,7 @@ class Tier:
     data: where its test data comes from
     helpers: files its tests share (builders, a fixture), shown with {{tier_helpers}}
     types_only: parts its tests may import and use as types, but never call
-    forbidden: its tests are held to the `forbidden` list of the part they mirror
+    forbidden: its tests are held to the `uses.never` list of the part they mirror
     folder: the folder below the tests folder where its tests live when they mirror no part, e.g. ("architecture",);
         the example only shows a place, it never decides one
     may_import: what the tests in its own folder may import of the app, as targets; None for a tier with no folder,

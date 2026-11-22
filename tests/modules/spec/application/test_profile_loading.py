@@ -11,10 +11,10 @@ from xarch.modules.spec.contract import CheckProfile, Loosened, Problem, Profile
 APP = Path("/p/app")
 PRESET = {"files": ["test_*.py"], "functions": "test_*"}
 MINE = {"name": "mine", "testing": "kit", "parts": {
-    "core": {"path": "core", "role": "rules", "forbidden": "pure"},
+    "core": {"path": "core", "role": "rules", "uses": {"never": "pure"}},
     "store": {"path": "store", "role": "storage", "may_import": ["core"], "libraries": ["sqlmodel", "requests"]},
     "edge": {"path": "edge", "role": "entry", "may_import": "everything", "libraries": "everything"}},
-    "forbidden": {"pure": ["socket"]}}
+    "never": {"pure": ["socket"]}}
 
 
 def ports(custom: dict) -> FakeArchitectureFiles:

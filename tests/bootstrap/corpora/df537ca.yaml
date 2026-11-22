@@ -9,7 +9,7 @@ parts:
     path: modules/<module>/domain
     role: "entities, values, errors: invariants only"
     may_import: [kernel]
-    forbidden: pure
+    uses: {never: pure}
     holds: classes
     no_callbacks: true
     tests: unit
@@ -18,7 +18,7 @@ parts:
     path: modules/<module>/application/logic
     role: pure functions over the module's domain objects
     may_import: [domain, kernel]
-    forbidden: pure
+    uses: {never: pure}
     holds: functions
     no_callbacks: true
     tests: unit
@@ -27,7 +27,7 @@ parts:
     path: modules/<module>/application/ports
     role: Protocols for what the module needs from the outside
     may_import: [domain, kernel]
-    forbidden: pure
+    uses: {never: pure}
     holds: classes
     tests: integration
 
@@ -38,7 +38,7 @@ parts:
     types_only: [contract]
     holds: classes
     names: "*Service"
-    forbidden: ambient
+    uses: {never: ambient}
     built_by: [bootstrap]
     tests: integration
 
@@ -48,7 +48,7 @@ parts:
     may_import: [services, logic, domain, ports, contract, kernel]
     holds: classes
     names: "*Controller"
-    forbidden: ambient
+    uses: {never: ambient}
     built_by: [bootstrap]
     tests: integration
 
@@ -81,7 +81,7 @@ parts:
     path: cli/reports
     role: formatting of Results into text and JSON
     may_import: [contract@any, kernel]
-    forbidden: pure
+    uses: {never: pure}
     holds: functions
     tests: unit
 
@@ -105,18 +105,18 @@ parts:
     path: modules/<module>/contract
     role: "the module's published language: commands, Results"
     may_import: ["domain/values:*Id", kernel]
-    forbidden: pure
+    uses: {never: pure}
     tests: integration
     package_only: true
 
   kernel:
     path: kernel
     role: pure primitives and the rules two modules share
-    forbidden: pure
+    uses: {never: pure}
     tests: unit
     folders: [logic]
 
-forbidden:
+never:
   pure: [datetime.datetime.now, datetime.datetime.utcnow, datetime.datetime.today, datetime.date.today, time.time,
          time.time_ns, time.monotonic, time.perf_counter, builtins.open, builtins.print, builtins.input, sys.stdin,
          sys.stdout, sys.stderr, os.environ, os.getenv, socket, subprocess, sqlite3, urllib, http, shutil,
@@ -134,7 +134,7 @@ tiers:
   unit:
     proves: a pure rule of the kernel or a module, or an adapter's translation
     litmus: Does it call one part's own code directly, with nothing wired, and check its answer?
-    apply_forbidden: true
+    uses: {apply_never: true}
     docs:
       may_touch: what the part it mirrors may import; an adapter, temporary folders
 

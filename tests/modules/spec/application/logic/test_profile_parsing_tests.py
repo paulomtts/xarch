@@ -125,9 +125,9 @@ def test_what_only_fills_the_docs_sits_under_docs_and_loads_into_the_same_fields
 
 
 def test_the_tests_of_a_tier_are_held_to_forbidden_and_may_use_parts_as_types_only_when_it_says_so():
-    document = covered(forbidden={"pure": ["socket"]})
-    document["parts"]["service"]["forbidden"] = "pure"
-    document["tiers"]["unit"]["apply_forbidden"] = True
+    document = covered(never={"pure": ["socket"]})
+    document["parts"]["service"]["uses"] = {"never": "pure"}
+    document["tiers"]["unit"]["uses"] = {"apply_never": True}
     document["tiers"]["integration"]["types_only"] = ["service", "store"]
     tiers = parsed(document).tiers
     assert [(t.forbidden, t.types_only) for t in tiers] == [(True, ()), (False, ("service", "store"))]
@@ -169,18 +169,18 @@ def test_a_tier_name_is_one_line_of_text_and_a_tier_is_a_mapping():
 
 
 @pytest.mark.parametrize("tier, expected", [
-    pytest.param({"colour": 1}, "layered.yaml: tiers.unit: unknown key 'colour': use apply_forbidden, docs, folder, "
-                                "litmus, may_also_import, may_import, must_import, plain_tables, proves, "
-                                "types_only", id="an unknown key"),
+    pytest.param({"colour": 1}, "layered.yaml: tiers.unit: unknown key 'colour': use docs, folder, litmus, "
+                                "may_also_import, may_import, must_import, plain_tables, proves, types_only, "
+                                "uses", id="an unknown key"),
     pytest.param({"plain_tables": "yes"}, "layered.yaml: tiers.unit.plain_tables: must be true or false: whether "
                                           "every table test of the tier holds no branch in its body",
                  id="plain_tables that is no boolean"),
     pytest.param({"proves": "a\nb"}, "layered.yaml: tiers.unit.proves: must be one line of text", id="proves of two lines"),
     pytest.param({"litmus": 3}, "layered.yaml: tiers.unit.litmus: must be text: the question that tells a test "
                                 "belongs to the tier", id="a litmus that is no text"),
-    pytest.param({"apply_forbidden": "yes"}, "layered.yaml: tiers.unit.apply_forbidden: must be true or false: "
-                                             "whether its tests are held to the `forbidden` list of the part they "
-                                             "mirror", id="apply_forbidden that is no boolean"),
+    pytest.param({"uses": {"apply_never": "yes"}}, "layered.yaml: tiers.unit.uses.apply_never: must be true or false: "
+                                                   "whether its tests are held to the `uses.never` list of the part "
+                                                   "they mirror", id="apply_never that is no boolean"),
     pytest.param({"types_only": ["repo"]}, "layered.yaml: tiers.unit.types_only: no part named 'repo'", id="types_only of no part"),
     pytest.param({"may_import": ["shared"]}, "layered.yaml: tiers.unit.may_import: only a tier with a `folder` has an "
                                              "allowance of its own: without one, its tests import what the part "
@@ -298,8 +298,8 @@ def test_a_part_that_is_not_a_text_for_its_tier_is_refused():
     assert problems(document) == ["layered.yaml: parts.api.tests: must be the name of a tier: use unit, integration"]
 
 
-PART_KEYS = ("built_by, folders, forbidden, holds, immutable, libraries, litmus, may_import, must_import, names, "
-             "no_callbacks, package_only, path, role, shared, tests, types_only, untested")
+PART_KEYS = ("built_by, folders, holds, immutable, libraries, litmus, may_import, must_import, names, no_callbacks, "
+             "package_only, path, role, shared, tests, types_only, untested, uses")
 RETIRED_TIER = f"unknown key 'tier': renamed in 0.3.0: write tests; use {PART_KEYS}"
 NO_TIER = "no tier tests it: give it `tests: <tier>`, or `untested: <reason>`"
 
@@ -344,8 +344,8 @@ def test_tier_under_a_tier_is_only_unknown_with_the_plain_message():
     document = covered()
     document["tiers"]["unit"]["tier"] = "x"
     assert problems(document) == [
-        "layered.yaml: tiers.unit: unknown key 'tier': use apply_forbidden, docs, folder, litmus, may_also_import, "
-        "may_import, must_import, plain_tables, proves, types_only"]
+        "layered.yaml: tiers.unit: unknown key 'tier': use docs, folder, litmus, may_also_import, may_import, "
+        "must_import, plain_tables, proves, types_only, uses"]
 
 
 def test_a_path_written_for_tests_is_told_it_names_a_tier_not_a_folder():

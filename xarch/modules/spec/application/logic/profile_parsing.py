@@ -22,21 +22,22 @@ key_catalogue); the shape:
         libraries: [<package>, ...] | everything
                                the outside packages by top-level import name; a part that lists none may import none,
                                and everything leaves the part unchecked
-        forbidden: <list>      the name of a top-level `forbidden` list the part may not use
+        uses: {never: <list>}  the name of a list under the top-level `never`, which the part never uses
         tests: <tier> | untested: <reason>
                                one tier covers the part, or the reason none does; with `tiers`, one of the two
         package_only: true     the part is imported only as a package from outside it
         folders: {<folder>: <note>} | [<folder>, ...]
                                folders below the part that the layout shows
-    forbidden: {<list>: [<name>, ...]}         named lists of what a part may not use
+    never: {<list>: [<name>, ...]}             named lists of what a part never uses
     reserved: {<module>: <reason>}             standard-library modules only the parts whose `libraries` list them
                                may import
     layers: {<name>: [<part>, ...]}            chains of parts from the inside out: none imports one after it
-    tiers: {<tier>: {proves, litmus, apply_forbidden, types_only, folder, may_import, may_also_import, docs}}
+    tiers: {<tier>: {proves, litmus, uses, types_only, folder, may_import, may_also_import, docs}}
                                the kinds of test, in the order their litmus tests run. A tier with a `folder` below
                                the tests folder says in `may_import` what the tests there may import; `may_also_import`
-                               what each of its tests may import beyond that or what the part it mirrors may; `docs`
-                               holds what only fills the generated docs
+                               what each of its tests may import beyond that or what the part it mirrors may;
+                               `uses: {apply_never: true}` holds its tests to the `uses.never` list of the part they
+                               mirror; `docs` holds what only fills the generated docs
     fakes: {folder, for, prefix}               the folder of the test fakes below the tests folder, the parts they
                                stand in for, and how a fake's name starts
     guards: {<guard>: {...}}                   the pre-built checks in use; left out means off
@@ -90,12 +91,14 @@ from xarch.modules.spec.domain.profile_keys import (
     NO_DUPLICATES,
     NO_TWINS,
     PART,
+    PART_USES,
     PASS_THROUGH,
     PROFILE,
     SCENARIO_COVERAGE,
     TESTING,
     TIER,
     TIER_DOCS,
+    TIER_USES,
 )
 from xarch.modules.spec.domain.profile_keys import GUARD as GUARD_SCOPE
 from xarch.modules.spec.domain.values import (
@@ -162,7 +165,7 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     shortfalls = needs.short(document, presets or {}, language)
     problems += needs.refused(shortfalls, language)
     based_on = _based_on(document["based_on"], bundled, problems) if "based_on" in document else ""
-    lists = _forbidden_lists(document["forbidden"], problems, language) if "forbidden" in document else {}
+    lists = _forbidden_lists(document["never"], problems, language) if "never" in document else {}
     specs = _specs(document.get("parts", {}), problems)
     declared = set(specs)
     built = _layout(specs, problems)
@@ -443,38 +446,58 @@ def _libraries(spec: Mapping[Any, Any], where: str, problems: list[str], languag
 
 def _forbidden_lists(value: Any, problems: list[str],
                      language: Language) -> dict[str, tuple[tuple[str, ...], ...] | None] | None:
-    """The named lists of names a part may not use; a list already reported is None. None: `forbidden` is no mapping."""
+    """The named lists of names a part never uses; a list already reported is None. None: `never` is no mapping."""
     if not isinstance(value, Mapping):
-        problems.append("forbidden: must be a mapping of list names to lists of dotted names, such as "
+        problems.append("never: must be a mapping of list names to lists of dotted names, such as "
                         "{pure: [datetime.datetime.now, socket]}")
         return None
     lists: dict[str, tuple[tuple[str, ...], ...] | None] = {}
     for name, names in value.items():
         if not ck.text(name) or not ck.PART_NAME.fullmatch(name):
-            problems.append(f"forbidden: {name!r} is not a list name: use letters, digits, '_' and '-'")
+            problems.append(f"never: {name!r} is not a list name: use letters, digits, '_' and '-'")
         else:
-            lists[name] = ck.forbidden_names(names, f"forbidden.{name}", problems, language)
+            lists[name] = ck.forbidden_names(names, f"never.{name}", problems, language)
     return lists
 
 
 def _forbidden_refs(specs: dict[str, Any], parts: dict[str, Part],
                     lists: dict[str, tuple[tuple[str, ...], ...] | None] | None,
                     problems: list[str]) -> dict[str, tuple[tuple[str, ...], ...]]:
-    """What each part that names a list may not use."""
+    """What each part whose `uses` names a list under `never` never uses; when `never` is no mapping, a part's list
+    says nothing more."""
     forbidden: dict[str, tuple[tuple[str, ...], ...]] = {}
     for name in parts:
         spec = specs[name]
-        if "forbidden" not in spec or lists is None:
+        if "uses" not in spec:
             continue
-        ref, where = spec["forbidden"], f"parts.{name}.forbidden"
-        if not isinstance(ref, str):
-            problems.append(f"{where}: must be the name of a list under `forbidden`")
+        uses = _group(spec["uses"], PART_USES, "{never: pure}", f"parts.{name}.uses", problems)
+        if "never" not in uses or lists is None:
+            continue
+        ref, where = uses["never"], f"parts.{name}.uses.never"
+        if isinstance(ref, list):
+            problems.append(f"{where}: names one list under never: write the name of a list, such as pure")
+        elif not isinstance(ref, str):
+            problems.append(f"{where}: must be the name of a list under `never`")
         elif ref not in lists:
             use = f"use {', '.join(sorted(lists))}, or write it" if lists else "write it"
-            problems.append(f"{where}: no list named {ref!r}: {use} under `forbidden`")
+            problems.append(f"{where}: no list named {ref!r}: {use} under `never`")
         elif lists[ref] is not None:
             forbidden[name] = lists[ref]
     return forbidden
+
+
+def _group(value: Any, scope: str, example: str, where: str, problems: list[str]) -> Mapping[Any, Any]:
+    """What a group of keys a part or a tier opens holds, such as `uses`: {} when it is no mapping or says nothing, each
+    said at where; its unknown keys are refused under its own scope."""
+    names = ", ".join(key.name for key in keys_of(scope))
+    if not isinstance(value, Mapping):
+        problems.append(f"{where}: must be a mapping {{{names}}}, such as {example}")
+        return {}
+    if not value:
+        problems.append(f"{where}: says nothing: write {names}, or drop it")
+        return {}
+    problems += ck.unknown_keys(value, names_of(scope), where, scope)
+    return value
 
 
 def _testing(value: Any, presets: Mapping[str, Any], problems: list[str], language: Language) -> _Testing | None:
@@ -593,10 +616,11 @@ def _tier(name: str, spec: Any, subject: tuple[Subject, ...], parts: dict[str, P
         problems.append(f"{where}.proves: must be one line of text")
     if "litmus" in spec and not ck.text(spec["litmus"]):
         problems.append(f"{where}.litmus: must be text: the question that tells a test belongs to the tier")
-    held = spec.get("apply_forbidden", False)
+    uses = _group(spec["uses"], TIER_USES, "{apply_never: true}", f"{where}.uses", problems) if "uses" in spec else {}
+    held = uses.get("apply_never", False)
     if not isinstance(held, bool):
-        problems.append(f"{where}.apply_forbidden: must be true or false: whether its tests are held to the "
-                        "`forbidden` list of the part they mirror")
+        problems.append(f"{where}.uses.apply_never: must be true or false: whether its tests are held to the "
+                        "`uses.never` list of the part they mirror")
     plain = spec.get("plain_tables", False)
     if not isinstance(plain, bool):
         problems.append(f"{where}.plain_tables: must be true or false: whether every table test of the tier holds no "

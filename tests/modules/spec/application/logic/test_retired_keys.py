@@ -41,10 +41,10 @@ from xarch.modules.spec.domain.profile_keys import (
 RENAMED = "renamed in 0.3.0: write tier"
 MOVED = "moved in 0.3.0: write uses: {never: <list>}"
 MISPLACED = "a key of uses: write uses: {never: <list>}"
-PART_USE = ("built_by, folders, forbidden, holds, immutable, libraries, litmus, may_import, must_import, names, "
-            "no_callbacks, package_only, path, role, shared, tests, types_only, untested")
-TIER_USE = "apply_forbidden, docs, folder, litmus, may_also_import, may_import, must_import, plain_tables, proves, types_only"
-PROFILE_USE = ("based_on, checks, docs, evals, excluded, fakes, files, forbidden, guards, hints, language, layers, name, "
+PART_USE = ("built_by, folders, holds, immutable, libraries, litmus, may_import, must_import, names, no_callbacks, "
+            "package_only, path, role, shared, tests, types_only, untested, uses")
+TIER_USE = "docs, folder, litmus, may_also_import, may_import, must_import, plain_tables, proves, types_only, uses"
+PROFILE_USE = ("based_on, checks, docs, evals, excluded, fakes, files, guards, hints, language, layers, name, never, "
                "parts, reserved, review, testing, tiers")
 GUARD_USE = ("closed-tree, dead-code, no-comments, no-duplicates, no-twins, pass-through, private-imports, "
              "scenario-coverage, stand-ins")

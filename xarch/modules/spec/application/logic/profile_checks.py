@@ -27,7 +27,7 @@ from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework
 PART_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_-]*")
 """What a profile calls a part: letters, digits, `_` and `-`, not starting with a digit or `-`."""
 CALLED = "()"
-"""How a method in a `forbidden` list, called on anything, ends: `.absolute()`."""
+"""How a method in a `never` list, called on anything, ends: `.absolute()`."""
 
 
 def is_name(text: str, language: Language) -> bool:
@@ -42,7 +42,7 @@ def _is_dotted(text: str, language: Language, least: int = 1) -> bool:
 
 
 def _method_name(item: str, language: Language) -> str | None:
-    """The name of the method an item of a `forbidden` list names, `.<name>()`; None when it names none."""
+    """The name of the method an item of a `never` list names, `.<name>()`; None when it names none."""
     name = item[1:-len(CALLED)] if item.startswith(".") and item.endswith(CALLED) else ""
     return name if is_name(name, language) else None
 

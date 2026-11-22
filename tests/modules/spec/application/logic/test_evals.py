@@ -197,9 +197,9 @@ def test_the_groups_of_parts_read_alike_load_in_the_order_of_the_file_each_in_it
 
 
 def test_parts_that_forbid_the_same_list_hold_the_same_and_are_alike_immutable_may_be_read_alike():
-    document = alike(("store", "shared"), store={"forbidden": "pure", "holds": "functions", "immutable": True},
-                     shared={"forbidden": "same", "holds": "functions", "immutable": True})
-    document["forbidden"] = {"pure": ["time.time"], "same": ["time.time"]}
+    document = alike(("store", "shared"), store={"uses": {"never": "pure"}, "holds": "functions", "immutable": True},
+                     shared={"uses": {"never": "same"}, "holds": "functions", "immutable": True})
+    document["never"] = {"pure": ["time.time"], "same": ["time.time"]}
     assert parsed(document).alike == (("store", "shared"),)
 
 
@@ -243,10 +243,10 @@ def test_a_group_refused_leaves_every_group_unread_so_that_no_later_one_is_said_
 
 
 def test_parts_that_forbid_different_things_are_not_alike():
-    document = alike(("store", "shared"), store={"forbidden": "pure"}, shared={"forbidden": "ambient"})
-    document["forbidden"] = {"pure": ["time.time"], "ambient": ["os.getcwd"]}
+    document = alike(("store", "shared"), store={"uses": {"never": "pure"}}, shared={"uses": {"never": "ambient"}})
+    document["never"] = {"pure": ["time.time"], "ambient": ["os.getcwd"]}
     assert f"layered.yaml: evals.placement.alike[0]: store and shared differ in forbidden: {NOT_ALIKE}" in problems(
         document)
-    document["parts"]["shared"].pop("forbidden")
+    document["parts"]["shared"].pop("uses")
     assert f"layered.yaml: evals.placement.alike[0]: store and shared differ in forbidden: {NOT_ALIKE}" in problems(
         document)

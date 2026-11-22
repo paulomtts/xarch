@@ -235,3 +235,10 @@ def test_the_part_key_tests_and_the_tier_of_scenario_coverage_are_explained():
     guard = runner.invoke(app, ["profile", "explain", "guards.scenario-coverage.tier"])
     assert (guard.exit_code, guard.output.splitlines()[0]) == (0, "guards.scenario-coverage.tier")
     assert SHIPPED not in tests.output + guard.output
+
+
+@pytest.mark.parametrize("address", ["never", "parts.uses", "parts.uses.never", "tiers.uses", "tiers.uses.apply_never",
+                                     "review.never"])
+def test_never_its_groups_and_review_never_are_explained(address):
+    found = runner.invoke(app, ["profile", "explain", address])
+    assert (found.exit_code, found.output.splitlines()[0]) == (0, address)
