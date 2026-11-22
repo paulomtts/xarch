@@ -97,7 +97,7 @@ def _placement(placement: Any, declared: Collection[str], language: Language,
                         "examples it is held to besides the docs'")
         return {}, ((), ()), ()
     written = {_SIDES.get(key, key) if isinstance(key, bool) else key: value for key, value in placement.items()}
-    problems += ck.unknown_keys(written, names_of(PLACEMENT), "evals.placement")
+    problems += ck.unknown_keys(written, names_of(PLACEMENT), "evals.placement", PLACEMENT)
     lines = _lines(placement["lines"], declared, problems) if "lines" in placement else {}
     alike = _alike(placement["alike"], declared, problems) if "alike" in placement else ()
     if "examples" not in placement:
@@ -183,7 +183,7 @@ def _own(body: Any, where: str, declared: Collection[str], language: Language, p
         problems.append(f"{where}: must be a map of slots: {', '.join(sorted(slots))}")
         return None
     body = {_SIDES.get(key, key) if isinstance(key, bool) else key: value for key, value in body.items()}
-    problems += ck.unknown_keys(body, slots, where)
+    problems += ck.unknown_keys(body, slots, where, EVAL)
     problems += [f"{where}: missing `{slot}`" for slot in _WRITTEN if slot not in body]
     ask = _ask(body.get("ask"), f"{where}.ask", problems) if "ask" in body else ""
     form, options, flagged = _answer(body.get("answer"), body, where, problems)

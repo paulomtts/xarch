@@ -22,7 +22,7 @@ def sending(value: Any, problems: list[str]) -> tuple[tuple[str, ...], tuple[str
         problems.append("review: must be a mapping {never, mask}: the files review never sends and the texts it hides "
                         "before it sends")
         return (), ()
-    problems += ck.unknown_keys(value, names_of(REVIEW), "review")
+    problems += ck.unknown_keys(value, names_of(REVIEW), "review", REVIEW)
     never = _never(value["never"], problems) if "never" in value else ()
     mask = _mask(value["mask"], problems) if "mask" in value else ()
     return never, mask

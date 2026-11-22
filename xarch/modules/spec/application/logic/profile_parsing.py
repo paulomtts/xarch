@@ -97,6 +97,7 @@ from xarch.modules.spec.domain.profile_keys import (
     TIER,
     TIER_DOCS,
 )
+from xarch.modules.spec.domain.profile_keys import GUARD as GUARD_SCOPE
 from xarch.modules.spec.domain.values import (
     Architecture,
     DeadCode,
@@ -208,12 +209,8 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
 
 
 def _keys(document: Mapping[Any, Any]) -> list[str]:
-    """The keys of the file that are unknown, and those it is missing."""
-    problems: list[str] = []
-    unknown = sorted(str(key) for key in document if key not in names_of(PROFILE))
-    if unknown:
-        problems.append(f"unknown key{'s' if len(unknown) > 1 else ''} {ck.quoted(unknown)}: "
-                        f"use {', '.join(sorted(names_of(PROFILE)))}")
+    """The keys of the file that are unknown, those xarch retired first, and those it is missing."""
+    problems = ck.unknown_of(document, names_of(PROFILE), PROFILE)
     problems += [f"missing `{key}`" for key in required_of(PROFILE) if key not in document]
     return problems
 
@@ -273,7 +270,7 @@ def _layout(specs: dict[str, Any], problems: list[str]) -> _Layout:
         if not isinstance(spec, Mapping):
             problems.append(f"{where}: must be a mapping with `path` and `role`")
             continue
-        problems += ck.unknown_keys(spec, names_of(PART), where)
+        problems += ck.unknown_keys(spec, names_of(PART), where, PART)
         problems += [f"{where}: missing `{key}`" for key in required_of(PART) if key not in spec]
         for key in ("role", "litmus"):
             if key in spec and not isinstance(spec[key], str):
@@ -493,7 +490,7 @@ def _testing(value: Any, presets: Mapping[str, Any], problems: list[str], langua
                         "and of a test function's")
         return None
     count = len(problems)
-    framework = ck.framework_patterns(value, problems, "testing", names_of(TESTING), language)
+    framework = ck.framework_patterns(value, problems, "testing", names_of(TESTING), language, TESTING)
     table = ck.case_table(value["table"], "testing.table", problems, language) if "table" in value else None
     mocks = _mocks(value["mocks"], problems, language) if "mocks" in value else None
     if len(problems) != count or framework is None:
@@ -510,7 +507,7 @@ def _mocks(value: Any, problems: list[str], language: Language) -> StandIns | No
                         "function whose methods build one")
         return None
     count = len(problems)
-    problems += ck.unknown_keys(value, names_of(MOCKS), where)
+    problems += ck.unknown_keys(value, names_of(MOCKS), where, MOCKS)
     problems += [f"{where}: missing `{key}`" for key in required_of(MOCKS) if key not in value]
     calls = ck.dotted_names(value["calls"], f"{where}.calls", problems, language) if "calls" in value else None
     autospec = ck.dotted_names(value["autospec"], f"{where}.autospec", problems, language) if "autospec" in value else ()
@@ -590,7 +587,7 @@ def _tier(name: str, spec: Any, subject: tuple[Subject, ...], parts: dict[str, P
         problems.append(f"{where}: must be a mapping, {{}} if it takes nothing")
         return None
     count = len(problems)
-    problems += ck.unknown_keys(spec, names_of(TIER), where)
+    problems += ck.unknown_keys(spec, names_of(TIER), where, TIER)
     if "proves" in spec and not ck.line(spec["proves"]):
         problems.append(f"{where}.proves: must be one line of text")
     if "litmus" in spec and not ck.text(spec["litmus"]):
@@ -630,7 +627,7 @@ def _tier_docs(value: Any, folder: tuple[str, ...] | None, examples: ex.Examples
     if not isinstance(value, Mapping):
         problems.append(f"{where}: must be a mapping of {{{', '.join(key.name for key in keys_of(TIER_DOCS))}}}")
         return {}
-    problems += ck.unknown_keys(value, names_of(TIER_DOCS), where)
+    problems += ck.unknown_keys(value, names_of(TIER_DOCS), where, TIER_DOCS)
     problems += [f"{where}.{key}: must be one line of text" for key in _TIER_TEXTS if key in value and not ck.line(value[key])]
     found: dict[str, Any] = {key: value[key] for key in _TIER_TEXTS if key in value and ck.line(value[key])}
     if "example" in value:
@@ -662,7 +659,7 @@ def _fakes(value: Any, parts: dict[str, Part], declared: set[str], problems: lis
                         "below the tests folder, the parts they stand in for, and how a fake's name starts")
         return None
     count = len(problems)
-    problems += ck.unknown_keys(value, names_of(FAKES), where)
+    problems += ck.unknown_keys(value, names_of(FAKES), where, FAKES)
     problems += [f"{where}: missing `{key}`" for key in required_of(FAKES) if key not in value]
     prefix = value.get("prefix", "")
     if "prefix" in value and (not isinstance(prefix, str) or not ck.is_name(prefix, language)):
@@ -694,7 +691,7 @@ def _guards(value: Any, specs: dict[str, Any], parts: dict[str, Part], declared:
         if kind is PackageOnly:
             problems.append(f"{where}: a fact about a part: write `package_only: true` on each part")
         elif name not in _GUARDS:
-            problems.append(f"guards: unknown guard {name!r}: use {', '.join(sorted(_GUARDS))}")
+            problems.append(f"guards: unknown guard {name!r}: {ck.advice(GUARD_SCOPE, str(name), _GUARDS)}")
         elif kind is ScenarioCoverage:
             guard = _scenario_coverage(spec, parts, declared, tiers, testing, where, problems, language)
             if guard is not None:
@@ -732,7 +729,7 @@ def _scenario_coverage(spec: Any, parts: dict[str, Part], declared: set[str], ti
                         "of a use case's test file")
         return None
     count = len(problems)
-    problems += ck.unknown_keys(spec, names_of(SCENARIO_COVERAGE), where)
+    problems += ck.unknown_keys(spec, names_of(SCENARIO_COVERAGE), where, SCENARIO_COVERAGE)
     problems += [f"{where}: missing `{key}`" for key in sorted(required_of(SCENARIO_COVERAGE)) if key not in spec]
     if testing is not None and testing.table is None:
         problems.append(f"{where}: needs `testing.table`: how a table of cases is written, such as "
@@ -774,7 +771,7 @@ def _dead_code(spec: Any, fakes: Fakes | None, where: str, problems: list[str],
                         "[<file>:<name>, ...]}, or {}")
         return None
     count = len(problems)
-    problems += ck.unknown_keys(spec, names_of(DEAD_CODE), where)
+    problems += ck.unknown_keys(spec, names_of(DEAD_CODE), where, DEAD_CODE)
     untested = spec.get("untested", False)
     if not isinstance(untested, bool):
         problems.append(f"{where}.untested: must be true or false")
@@ -870,7 +867,7 @@ def _no_duplicates(spec: Any, where: str, problems: list[str]) -> NoDuplicates:
     if not isinstance(spec, Mapping):
         problems.append(f"{where}: must be a mapping {{min_statements: <number>}}, or {{}} for the default")
         return NoDuplicates()
-    problems += ck.unknown_keys(spec, names_of(NO_DUPLICATES), where)
+    problems += ck.unknown_keys(spec, names_of(NO_DUPLICATES), where, NO_DUPLICATES)
     return NoDuplicates(_minimum(spec, "min_statements", NoDuplicates.min_statements, "statements", where, problems))
 
 
@@ -881,7 +878,7 @@ def _no_twins(spec: Any, declared: set[str], parts: dict[str, Part], where: str,
         problems.append(f"{where}: must be a mapping {{min_fields: <number>, min_renamed: <number>, min_subset: "
                         "<number>, translated: [<part>, ...]}, or {} for the default")
         return NoTwins()
-    problems += ck.unknown_keys(spec, names_of(NO_TWINS), where)
+    problems += ck.unknown_keys(spec, names_of(NO_TWINS), where, NO_TWINS)
     least = _minimum(spec, "min_fields", NoTwins.min_fields, "fields", where, problems)
     found = []
     for name in ("min_renamed", "min_subset"):
@@ -916,7 +913,7 @@ def _pass_through(spec: Any, declared: set[str], parts: dict[str, Part], where: 
                         "when they only forward")
         return None
     count = len(problems)
-    problems += ck.unknown_keys(spec, names_of(PASS_THROUGH), where)
+    problems += ck.unknown_keys(spec, names_of(PASS_THROUGH), where, PASS_THROUGH)
     problems += [f"{where}: missing `{key}`" for key in required_of(PASS_THROUGH) if key not in spec]
     names = ck.part_names(spec["parts"], declared, f"{where}.parts", problems) if "parts" in spec else []
     if len(problems) != count:
@@ -964,7 +961,7 @@ def _docs(value: Any, declared: set[str], files: Collection[str], problems: list
     if not isinstance(value, Mapping):
         problems.append(f"docs: must be a mapping of {{{', '.join(key.name for key in keys_of(DOCS))}}}")
         return "", (), ()
-    problems += ck.unknown_keys(value, names_of(DOCS), "docs")
+    problems += ck.unknown_keys(value, names_of(DOCS), "docs", DOCS)
     entry = value.get("entry", "")
     if "entry" in value and (not isinstance(entry, str) or entry not in declared):
         problems.append(f"docs.entry: no part named {entry!r}")

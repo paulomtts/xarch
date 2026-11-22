@@ -14,11 +14,11 @@ from xarch.kernel.logic.placement import place_of
 from xarch.kernel.placement import EACH
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic.docs_files import DOCS_ROOT
-from xarch.modules.spec.application.logic.key_lookup import names_of, required_of
+from xarch.modules.spec.application.logic.key_lookup import names_of, required_of, retired
 from xarch.modules.spec.application.logic.layout_walk import lies_in
 from xarch.modules.spec.application.logic.profile_listing import listing_in
 from xarch.modules.spec.application.logic.project_files import APP_PLACEHOLDER
-from xarch.modules.spec.domain.profile_keys import FILE, NAMING, PAGE, TABLE
+from xarch.modules.spec.domain.profile_keys import FILE, FIXTURE, NAMING, PAGE, RULE_ID, TABLE
 from xarch.modules.spec.domain.values import NAME, Doc, FileEntry, Language, Layout, Naming, Part, Tier
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.placement import Target
@@ -102,7 +102,7 @@ def naming_rows(value: Any, problems: list[str], at: str) -> tuple[Naming, ...]:
             problems.append(f"{where}: must be a mapping with `kind`, `where`, `pattern` and `example`")
             continue
         count = len(problems)
-        problems += unknown_keys(spec, names_of(NAMING), where)
+        problems += unknown_keys(spec, names_of(NAMING), where, NAMING)
         problems += [f"{where}: missing `{key}`" for key in required_of(NAMING) if key not in spec]
         problems += [f"{where}.{key}: must be a string" for key in ("kind", "pattern")
                      if key in spec and not text(spec[key])]
@@ -141,7 +141,7 @@ def doc_pages(value: Any, listed: Collection[str], problems: list[str], at: str)
             problems.append(f"{where}: must be a mapping such as {{from: <file>, note: <text>}}")
             continue
         count = len(problems)
-        problems += unknown_keys(spec, names_of(PAGE), where)
+        problems += unknown_keys(spec, names_of(PAGE), where, PAGE)
         if "note" in spec and not line(spec["note"]):
             problems.append(f"{where}.note: must be one line of text")
         source = _doc_source(spec, where, folder, listed, problems)
@@ -176,7 +176,7 @@ def init_files(value: Any, docs: tuple[Doc, ...], files: Collection[str], proble
             problems.append(f"{where}: must be a mapping such as {{from: <file>}}")
             continue
         count = len(problems)
-        problems += unknown_keys(spec, names_of(FILE), where)
+        problems += unknown_keys(spec, names_of(FILE), where, FILE)
         source = (_folder_source(spec, where, files, problems) if folder
                   else _file_source(spec, where, files, problems))
         pinned = spec.get("pinned", False)
@@ -335,7 +335,7 @@ def rule_hints(value: Any, problems: list[str], own: Collection[str] = ()) -> di
     found: dict[str, str] = {}
     for rule, text in value.items():
         if rule not in RULES and rule not in own:
-            problems.append(f"hints.{rule}: unknown rule id {rule!r}: use {', '.join(sorted((*RULES, *own)))}")
+            problems.append(f"hints.{rule}: unknown rule id {rule!r}: {advice(RULE_ID, str(rule), (*RULES, *own))}")
         elif not line(text):
             problems.append(f"hints.{rule}: must be one line of text")
         else:
@@ -365,7 +365,7 @@ def case_table(value: Any, where: str, problems: list[str], language: Language) 
                         "decorator's two arguments may be given by")
         return None
     count = len(problems)
-    problems += unknown_keys(value, names_of(TABLE), where)
+    problems += unknown_keys(value, names_of(TABLE), where, TABLE)
     problems += [f"{where}: missing `{key}`" for key in required_of(TABLE) if key not in value]
     decorator = _dotted(value["decorator"], f"{where}.decorator", problems, language) if "decorator" in value else None
     row = _dotted(value["row"], f"{where}.row", problems, language) if "row" in value else None
@@ -438,7 +438,7 @@ def fixtures(value: Any, where: str, problems: list[str], language: Language,
             problems.append(f"{at}: must be a mapping {{{calls}}}, and optionally autospec")
             continue
         before = len(problems)
-        problems += unknown_keys(spec, {calls, "autospec"}, at)
+        problems += unknown_keys(spec, {calls, "autospec"}, at, FIXTURE)
         problems += [f"{at}: missing `{calls}`"] if calls not in spec else []
         mocks = identifiers(spec[calls], f"{at}.{calls}", problems, "method", "[build]", language) if calls in spec else None
         autospec = (identifiers(spec["autospec"], f"{at}.autospec", problems, "method", "[build]", language)
@@ -468,15 +468,16 @@ def identifiers(value: Any, where: str, problems: list[str], noun: str, example:
 
 
 def framework_patterns(value: Any, problems: list[str], where: str, known: Collection[str],
-                       language: Language) -> Framework | None:
+                       language: Language, scope: str = "") -> Framework | None:
     """How the test framework names test files and functions, the map written at `where`; `known` are the keys the
-    map may hold, which the caller may widen with what it reads itself."""
+    map may hold, which the caller may widen with what it reads itself, and `scope` the scope whose retired names
+    the map's unknown keys are looked up in."""
     if not isinstance(value, Mapping):
         problems.append(f"{where}: must be a mapping {{files, functions}}: the patterns of a test file's name and of a "
                         "test function's")
         return None
     count = len(problems)
-    problems += unknown_keys(value, known, where)
+    problems += unknown_keys(value, known, where, scope)
     problems += [f"{where}: missing `{key}`" for key in ("files", "functions") if key not in value]
     files = _file_patterns(value["files"], problems, f"{where}.files", language) if "files" in value else None
     skips = dotted_names(value["skips"], f"{where}.skips", problems, language) if "skips" in value else ()
@@ -524,11 +525,28 @@ def column_names(value: Any, where: str, problems: list[str], language: Language
     return (value[0], value[1], value[2]) if len(problems) == count else None
 
 
-def unknown_keys(spec: Mapping[Any, Any], known: Collection[str], where: str) -> list[str]:
+def unknown_keys(spec: Mapping[Any, Any], known: Collection[str], where: str, scope: str = "") -> list[str]:
+    """The problems of the keys of the mapping at where that are not known (see unknown_of), each naming where."""
+    return [f"{where}: {problem}" for problem in unknown_of(spec, known, scope)]
+
+
+def unknown_of(spec: Mapping[Any, Any], known: Collection[str], scope: str = "") -> list[str]:
+    """The problems of the keys of a mapping that are not known, as the top of the file, which has no address, says
+    them: one of its own for each that the table of retired names holds under the scope, in sorted order, then one for
+    all the others; a scope of "" reads no entry."""
     unknown = sorted(str(k) for k in spec if k not in known)
-    if not unknown:
-        return []
-    return [f"{where}: unknown key{'s' if len(unknown) > 1 else ''} {quoted(unknown)}: use {', '.join(sorted(known))}"]
+    problems = [f"unknown key {quoted([name])}: {advice(scope, name, known)}" for name in unknown if retired(scope, name)]
+    rest = [name for name in unknown if not retired(scope, name)]
+    if rest:
+        problems.append(f"unknown key{'s' if len(rest) > 1 else ''} {quoted(rest)}: use {', '.join(sorted(known))}")
+    return problems
+
+
+def advice(scope: str, name: str, known: Collection[str]) -> str:
+    """What a name that is not known is told: the fixed text of its entry in the table of retired names under the
+    scope, when it has one, then the names that are, sorted."""
+    text = retired(scope, name)
+    return f"{text}; use {', '.join(sorted(known))}" if text else f"use {', '.join(sorted(known))}"
 
 
 def text(value: Any) -> bool:
