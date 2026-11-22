@@ -32,6 +32,9 @@ All notable changes to this project are written here. The format follows
   On a line with findings of both, the `may-import` findings now come before the `package-only` ones. Finding and fix
   texts are unchanged.
 
+- Internal names follow the 0.3.0 key names: the fields and functions that read `uses.never` and `uses.apply_never`
+  say `uses_never`, `apply_never` and `never_lists` in place of `forbidden`; no output changes.
+
 ## [0.2.0] - 2026-11-18
 
 ### Added
