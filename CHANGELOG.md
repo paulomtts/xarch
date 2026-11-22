@@ -13,7 +13,12 @@ All notable changes to this project are written here. The format follows
 - A key, a guard or a rule id that xarch has retired is refused with a fixed hint naming what to write instead, one
   problem per retired name ahead of the keys that are only unknown, read from one table that
   `xarch profile explain <old key>` also answers from (the hint in its error, `retired` in its JSON, `null` for an
-  address with no entry); no name is retired yet.
+  address with no entry).
+
+- The part key `tier` is renamed `tests`: a part writes `tests: <tier>` or `untested: <reason>`. A profile still
+  writing `tier` on a part is refused with "renamed in 0.3.0: write tests", which `xarch profile explain parts.tier`
+  also gives, and a value of `tests` holding a `/` is told it names a tier of `tiers`, not a folder. Nothing else a
+  profile writes or xarch reports changes.
 
 ## [0.2.0] - 2026-11-18
 

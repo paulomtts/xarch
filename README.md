@@ -114,7 +114,7 @@ everything else is optional, and a key left out means off):
 ```
 name*  based_on  language  hints  excluded  reserved
 testing:  <preset> | {files*, functions*, skips, table, mocks}
-parts*:   {<part>: {path*, role*, litmus, may_import, must_import, libraries, forbidden, tier | untested,
+parts*:   {<part>: {path*, role*, litmus, may_import, must_import, libraries, forbidden, tests | untested,
                     package_only, folders, holds, immutable, types_only, no_callbacks, names, built_by, shared}}
 forbidden: {<list>: [<dotted name> | .<method>(), ...]}       layers: {<chain>: [<part>, ...]}
 tiers:    {<tier>: {proves, litmus, apply_forbidden, plain_tables, types_only, folder, may_import, may_also_import,
@@ -269,7 +269,7 @@ that switches or configures each (`-` for none: the rule is always on):
 | `rules` | an import between parts that the importing part's `may_import` does not allow, or a name its pattern does not match | `parts.may_import` |
 | `libraries` | an outside package a part does not list, or a standard-library name `reserved` holds that it does not list; the rest of the standard library is always allowed, tests are not checked | `parts.libraries`, `reserved` |
 | `forbidden` | a name or module a part (or, with `apply_forbidden`, its tests) may not use, or a method written `.name()` it may not call on anything but its own object and what that holds | `forbidden`, `parts.forbidden`, `tiers.apply_forbidden` |
-| `tiers` | a test importing what its tier does not allow, or another test file, or a test in no tier | `tiers`, `tiers.folder`, `tiers.may_import`, `tiers.may_also_import`, `parts.tier` |
+| `tiers` | a test importing what its tier does not allow, or another test file, or a test in no tier | `tiers`, `tiers.folder`, `tiers.may_import`, `tiers.may_also_import`, `parts.tests` |
 | `test-tree` | a folder below `tests/<repeating folder>/` that mirrors no folder of the app | `tiers`, `testing` |
 | `types-only` | a test, or code of a part, calling what it may import only as a type | `tiers.types_only`, `parts.types_only` |
 | `cycles` | instances of the repeating folders that import each other, directly or through others (across repeating folders too); each elementary cycle is reported once, at its first import | - (needs a repeating folder) |
