@@ -253,7 +253,7 @@ def test_the_guards_name_every_repeating_folder():
     assert two("{{guards}}").splitlines() == [
         "- `structure`: every folder and file of the layout exists, in the app and in every `src/<name>/` and "
         "`ext/<name>/`.",
-        "- `rules`: every import between parts is one that the `may_import` of the importing part allows "
+        "- `may-import`: every import between parts is one that the `may_import` of the importing part allows "
         "(architecture.md, section 5).",
         "- `libraries`: a part imports only the outside packages listed for it (`hooks/`: yaml); the standard "
         "library is always allowed, and tests are not checked.",
