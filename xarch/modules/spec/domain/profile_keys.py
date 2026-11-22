@@ -151,5 +151,5 @@ class Retired:
     text: str
 
 
-RETIRED: tuple[Retired, ...] = ()
+RETIRED: tuple[Retired, ...] = (Retired(PART, "tier", "renamed in 0.3.0: write tests"),)
 """Every key, guard and rule id xarch has retired: a profile writing one is refused with the entry's text."""

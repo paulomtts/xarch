@@ -1,8 +1,8 @@
 """The table of retired names as xarch ships it: each entry has a scope of the format (or the scope of rule ids), a
-name and one line of fixed text, once, and names nothing the format still has; at this step it has no entry."""
+name and one line of fixed text, once, and names nothing the format still has; it holds the part key tier, renamed tests."""
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.domain.key_table import KEYS, SLOTS
-from xarch.modules.spec.domain.profile_keys import HELD, RETIRED, RULE_ID, SCOPES
+from xarch.modules.spec.domain.profile_keys import HELD, PART, RETIRED, RULE_ID, SCOPES, Retired
 
 
 def test_every_entry_has_a_scope_a_name_and_one_line_of_text():
@@ -20,5 +20,5 @@ def test_no_entry_names_a_key_its_scope_still_has_nor_a_rule_id_xarch_checks():
     assert [entry for entry in RETIRED if (entry.scope, entry.name) in known] == []
 
 
-def test_no_name_is_retired_yet():
-    assert RETIRED == ()
+def test_the_one_name_retired_is_the_part_key_tier_renamed_tests():
+    assert RETIRED == (Retired(PART, "tier", "renamed in 0.3.0: write tests"),)

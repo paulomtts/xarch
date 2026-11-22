@@ -214,3 +214,24 @@ def test_an_address_xarch_retired_in_a_project_whose_profile_does_not_load_is_re
     refused = runner.invoke(app, ["profile", "explain", "parts.tested_by"])
     assert refused.exit_code == 2 and "cannot read" in refused.output and "pyproject.toml" in refused.output
     assert RENAMED not in refused.output
+
+
+SHIPPED = "renamed in 0.3.0: write tests"
+
+
+def test_the_part_key_tier_is_refused_with_the_rename_in_text_and_in_json():
+    text = runner.invoke(app, ["profile", "explain", "parts.tier"])
+    assert text.exit_code == 2
+    assert f"error: no key `parts.tier` in the format: {SHIPPED}; the nearest are " in text.output
+    found = runner.invoke(app, ["profile", "explain", "parts.<part>.tier", "--format", "json"])
+    assert found.exit_code == 2
+    document = json.loads(found.output)
+    assert (document["ok"], document["key"], document["retired"]) == (False, "parts.tier", SHIPPED)
+
+
+def test_the_part_key_tests_and_the_tier_of_scenario_coverage_are_explained():
+    tests = runner.invoke(app, ["profile", "explain", "parts.tests"])
+    assert (tests.exit_code, tests.output.splitlines()[0]) == (0, "parts.tests")
+    guard = runner.invoke(app, ["profile", "explain", "guards.scenario-coverage.tier"])
+    assert (guard.exit_code, guard.output.splitlines()[0]) == (0, "guards.scenario-coverage.tier")
+    assert SHIPPED not in tests.output + guard.output

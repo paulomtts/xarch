@@ -227,6 +227,12 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
                   "files.y: unknown key 'z': use fill, from, pinned",
                   'files.y: missing `from`, the template file'],
                  id='files of the wrong shape'),
+    pytest.param('name: n\ntesting: pytest\ntiers: {unit: {}}\nparts: {a: {path: a, role: r, tier: secret-value}}\n',
+                 ["parts.a: unknown key 'tier': renamed in 0.3.0: write tests; use built_by, folders, forbidden, "
+                  "holds, immutable, libraries, litmus, may_import, must_import, names, no_callbacks, package_only, "
+                  "path, role, shared, tests, types_only, untested",
+                  "parts.a: no tier tests it: give it `tests: <tier>`, or `untested: <reason>`"],
+                 id='a part still writing tier'),
     pytest.param('name: n\nparts: {a: {path: a, role: r}}\nxarch2: 1\nrules: {a: []}\n',
                  ["unknown keys 'rules', 'xarch2': use based_on, checks, docs, evals, excluded, fakes, files, forbidden, guards, hints, "
                   "language, layers, name, parts, reserved, review, testing, tiers"],

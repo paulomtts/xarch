@@ -189,3 +189,17 @@ def test_the_part_key_of_the_tier_that_covers_it_is_tests_and_its_example_writes
         "parts.tests", "tests", "the tier whose tests cover the part", ("tiers",))
     assert "`tests`" in found.accepts and "`tier`" not in found.accepts
     assert found.example.endswith("    role: the documents\n    tests: unit\n") and "tier:" not in found.example
+
+
+def test_the_part_key_xarch_renamed_is_refused_with_the_fixed_text_however_it_is_typed():
+    spec, _ = spec_controller(**BUNDLED)
+    for address in ("parts.tier", "parts.<part>.tier"):
+        found = spec.explain(Explain(address))
+        assert isinstance(found, UnknownKey)
+        assert (found.key, found.retired) == ("parts.tier", "renamed in 0.3.0: write tests")
+
+
+def test_the_tier_of_scenario_coverage_is_still_a_key_of_the_format():
+    spec, _ = spec_controller(**BUNDLED)
+    found = spec.explain(Explain("guards.scenario-coverage.tier"))
+    assert isinstance(found, KeyExplained) and found.key == "guards.scenario-coverage.tier"

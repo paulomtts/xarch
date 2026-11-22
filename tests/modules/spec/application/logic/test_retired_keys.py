@@ -82,8 +82,10 @@ def test_the_lookup_gives_the_text_of_the_entry_for_a_scope_and_a_name_or_nothin
         == (RENAMED, "", "", "")
 
 
-def test_the_shipped_table_gives_nothing():
-    assert (retired(PART, "tier"), retired_at("parts.tier")) == ("", "")
+def test_the_shipped_table_retires_the_part_key_tier_alone():
+    renamed = "renamed in 0.3.0: write tests"
+    assert (retired(PART, "tier"), retired_at("parts.tier"), retired_at("parts.<part>.tier")) == (renamed,) * 3
+    assert (retired(TIER, "tier"), retired(SCENARIO_COVERAGE, "tier"), retired(PART, "tests")) == ("", "", "")
 
 
 @pytest.mark.parametrize("entry, address", [

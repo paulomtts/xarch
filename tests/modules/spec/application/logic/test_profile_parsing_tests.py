@@ -298,6 +298,56 @@ def test_a_part_that_is_not_a_text_for_its_tier_is_refused():
     assert problems(document) == ["layered.yaml: parts.api.tests: must be the name of a tier: use unit, integration"]
 
 
+PART_KEYS = ("built_by, folders, forbidden, holds, immutable, libraries, litmus, may_import, must_import, names, "
+             "no_callbacks, package_only, path, role, shared, tests, types_only, untested")
+RETIRED_TIER = f"unknown key 'tier': renamed in 0.3.0: write tests; use {PART_KEYS}"
+NO_TIER = "no tier tests it: give it `tests: <tier>`, or `untested: <reason>`"
+
+
+def test_a_part_still_writing_tier_is_refused_with_the_rename_and_is_tested_by_no_tier():
+    document = covered()
+    document["parts"]["store"].pop("tests")
+    document["parts"]["store"]["tier"] = "integration"
+    assert problems(document) == [f"layered.yaml: parts.store: {RETIRED_TIER}", f"layered.yaml: parts.store: {NO_TIER}"]
+
+
+def test_a_part_writing_tier_beside_tests_is_refused_for_tier_alone():
+    document = covered()
+    document["parts"]["store"]["tier"] = "integration"
+    assert problems(document) == [f"layered.yaml: parts.store: {RETIRED_TIER}"]
+
+
+def test_a_part_writing_tier_and_a_key_only_unknown_gets_the_retired_problem_first():
+    document = covered()
+    document["parts"]["store"]["tier"] = "integration"
+    document["parts"]["store"]["tierr"] = 1
+    assert problems(document) == [f"layered.yaml: parts.store: {RETIRED_TIER}",
+                                  f"layered.yaml: parts.store: unknown key 'tierr': use {PART_KEYS}"]
+
+
+def test_the_value_written_under_tier_is_in_no_problem():
+    document = covered()
+    document["parts"]["store"].pop("tests")
+    document["parts"]["store"]["tier"] = "secret-value"
+    found = problems(document)
+    assert found == [f"layered.yaml: parts.store: {RETIRED_TIER}", f"layered.yaml: parts.store: {NO_TIER}"]
+    assert not any("secret-value" in problem for problem in found)
+
+
+def test_a_part_writing_tier_in_a_profile_with_no_tiers_gets_the_retired_problem_alone():
+    document = layered()
+    document["parts"]["api"]["tier"] = "unit"
+    assert problems(document) == [f"layered.yaml: parts.api: {RETIRED_TIER}"]
+
+
+def test_tier_under_a_tier_is_only_unknown_with_the_plain_message():
+    document = covered()
+    document["tiers"]["unit"]["tier"] = "x"
+    assert problems(document) == [
+        "layered.yaml: tiers.unit: unknown key 'tier': use apply_forbidden, docs, folder, litmus, may_also_import, "
+        "may_import, must_import, plain_tables, proves, types_only"]
+
+
 def test_tiers_need_the_framework_to_tell_a_test_from_a_helper():
     document = covered()
     del document["testing"]
