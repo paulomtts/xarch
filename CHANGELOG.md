@@ -44,6 +44,11 @@ All notable changes to this project are written here. The format follows
   reads no config for aliases. The keys that read those names need the new fact `import.resolved`, which Python
   supplies `exact`; a language that does not supply it is refused on them with the existing message. A project with no
   relative import sees no change.
+- A new enforcement section, `unresolved`, lists each import the reader could not follow by file and line with the
+  module as written, in text (`unresolved:  app/domain/services.py:3: import ".ordr" names no file of the app`) and
+  under the JSON key `unresolved` (`{"file", "line", "written"}`), and `--strict` fails on each, as on a dynamic
+  import (`strict_failures` key `unresolved`). A project with no such import sees only the empty JSON key
+  `"unresolved": []`.
 
 ## [0.2.0] - 2026-11-18
 

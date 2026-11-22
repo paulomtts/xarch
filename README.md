@@ -340,6 +340,7 @@ and rule ids may be added, but an existing one keeps its name and meaning.
     "init_files": [],
     "skipped": {"count": 0, "at": []},
     "dynamic": {"count": 0, "at": []},
+    "unresolved": [],
     "weak": [],
     "approximate": [],
     "strict_failures": []
@@ -369,10 +370,12 @@ how many facts it read in the project.
   as only the tests'; `translated` items `{"file", "line", "function", "built", "other"}`, each pair of classes
   `no-twins` accepts as a translation (`guards.no-twins.translated`): the function that names both, where it is, the
   class its file builds and the other; `init_files` items `{"file", "state"}`, `state` `missing` or
-  `changed`; `skipped.at` and `dynamic.at` items `{"file", "line"}`; `weak` items `{"rule", "file", "line",
-  "message", "fix"}` (`fix` is `null` for a weak check that has none); `approximate` items `{"key", "fact", "note"}`;
-  `strict_failures` items `{"key", "detail"}`, `key` one of `guards_off`, `ungoverned`, `init_files`,
-  `skipped`, `dynamic`, `weak`, `approximate`, `vacuous` (a check of the profile's own that read nothing), `litmus` (a
+  `changed`; `skipped.at` and `dynamic.at` items `{"file", "line"}`; `unresolved` items `{"file", "line", "written"}`,
+  each import the reader could not follow, at its first line, with the module as the source writes it; `weak` items
+  `{"rule", "file", "line", "message", "fix"}` (`fix` is `null` for a weak check that has none); `approximate` items
+  `{"key", "fact", "note"}`; `strict_failures` items `{"key", "detail"}`, `key` one of `guards_off`, `ungoverned`,
+  `init_files`, `skipped`, `dynamic`, `unresolved`, `weak`, `approximate`, `vacuous` (a check of the profile's own
+  that read nothing), `litmus` (a
   part redefined without the litmus its compared profile gives it). `strict_failures` is filled whether or not `--strict` was given: it
   is what `--strict` fails on.
 - A refusal (exit 2: an unknown or invalid profile, a missing folder) prints `{"ok": false, "error": "<reason>"}` on
@@ -396,6 +399,7 @@ enforcement
   init files:  tests/architecture/test_rules.py is changed
   skipped:     1 skip (tests/modules/docs/domain/test_x.py:4)
   dynamic:     1 dynamic import (app/kernel/dyn.py:3)
+  unresolved:  app/modules/docs/domain/services.py:3: import ".ordr" names no file of the app
   weak:        tests/fakes/repo.py:1: FakeRepo does not define save, which Repo declares (app/...)
   weak:        app/modules/docs/application/services/doc.py:9: DocService.get only passes its arguments on to self.repo.get
       fix: have the caller use self.repo.get, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`
@@ -433,6 +437,9 @@ enforcement
 - `dynamic`: each use, in the files read, of a callable the language's data file lists as importing by a computed name
   (for Python, `importlib.import_module`, `importlib.__import__` and the builtin `__import__`), so it needs no entry in
   the profile; the import rules cannot see what it imports.
+- `unresolved`: each import, in the files read, that names a place of the app (relative, or by an alias the project
+  maps) the reader found no file or folder for, at its first line, with the module as written, one line each; the
+  import rules cannot see what it names.
 - `weak`, met to the letter only, never a violation: a fake `<prefix><Port>` that defines in its own body (methods,
   or names its body or `self.` assigns) less than every port of its name declares; and a `Result` variant that no
   row covers, credited only to standalone tests that name it and hold no `assert`; and a method `pass-through` finds.
@@ -445,7 +452,8 @@ enforcement
 Without `--strict` the section never changes the exit code. `--strict` fails (exit 1) on every finding listed in
 `strict_failures`: what the profile in force leaves unenforced or unseen: each guard left off that the bundled profile
 in force, or the one a custom profile is compared with, does not also leave off (with no profile to compare with,
-every guard left off); each ungoverned file; each missing or changed init file; each skip; each dynamic import; each weak finding;
+every guard left off); each ungoverned file; each missing or changed init file; each skip; each dynamic import; each
+unresolved import; each weak finding;
 each approximate key; each part redefined without its litmus. The text
 lists them after the section, under `strict:`. The guard test `init` writes runs `check` without `--strict`: a
 project opts in by running `xarch check --strict` in CI or a pre-commit hook.
