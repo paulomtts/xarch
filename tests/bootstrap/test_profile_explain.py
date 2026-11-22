@@ -242,3 +242,18 @@ def test_the_part_key_tests_and_the_tier_of_scenario_coverage_are_explained():
 def test_never_its_groups_and_review_never_are_explained(address):
     found = runner.invoke(app, ["profile", "explain", address])
     assert (found.exit_code, found.output.splitlines()[0]) == (0, address)
+
+
+@pytest.mark.parametrize("address, text", [
+    pytest.param("forbidden", "renamed in 0.3.0: write never", id="the old block"),
+    pytest.param("parts.forbidden", "moved in 0.3.0: write uses: {never: <list>}", id="the old part key"),
+    pytest.param("tiers.apply_forbidden", "moved in 0.3.0: write uses: {apply_never: true}", id="the old tier key"),
+    pytest.param("parts.never", "a key of uses: write uses: {never: <list>}", id="never on a part"),
+    pytest.param("tiers.apply_never", "a key of uses: write uses: {apply_never: true}", id="apply_never on a tier"),
+])
+def test_an_old_name_of_never_is_refused_with_its_text_exit_2_and_retired_in_json(address, text):
+    said = runner.invoke(app, ["profile", "explain", address])
+    assert said.exit_code == 2
+    assert f"error: no key `{address}` in the format: {text}; the nearest are " in said.output
+    found = runner.invoke(app, ["profile", "explain", address, "--format", "json"])
+    assert found.exit_code == 2 and json.loads(found.output)["retired"] == text

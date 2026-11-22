@@ -155,5 +155,13 @@ class Retired:
     text: str
 
 
-RETIRED: tuple[Retired, ...] = (Retired(PART, "tier", "renamed in 0.3.0: write tests"),)
+RETIRED: tuple[Retired, ...] = (
+    Retired(PART, "tier", "renamed in 0.3.0: write tests"),
+    Retired(PART, "forbidden", "moved in 0.3.0: write uses: {never: <list>}"),
+    Retired(TIER, "apply_forbidden", "moved in 0.3.0: write uses: {apply_never: true}"),
+    Retired(PROFILE, "forbidden", "renamed in 0.3.0: write never"),
+    Retired(RULE_ID, "forbidden", "renamed in 0.3.0: write never-use"),
+    Retired(PART, "never", "a key of uses: write uses: {never: <list>}"),
+    Retired(TIER, "apply_never", "a key of uses: write uses: {apply_never: true}"),
+)
 """Every key, guard and rule id xarch has retired: a profile writing one is refused with the entry's text."""

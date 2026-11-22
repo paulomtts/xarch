@@ -5,6 +5,7 @@ import pytest
 
 from tests.modules.spec.format_files import FILE_TYPES
 from tests.modules.spec.profiles import covered, layered, parsed, problems
+from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic.docs_template import fill
 
 DOTTED = "is not a dotted name such as datetime.datetime.now, nor an import name such as socket"
@@ -32,6 +33,25 @@ def unit_uses(uses) -> dict:
     """The covered profile, its unit tier writing `uses` as given."""
     document = covered()
     document["tiers"]["unit"]["uses"] = uses
+    return document
+
+
+PART_USE = ("built_by, folders, holds, immutable, libraries, litmus, may_import, must_import, names, no_callbacks, "
+            "package_only, path, role, shared, tests, types_only, untested, uses")
+TIER_USE = "docs, folder, litmus, may_also_import, may_import, must_import, plain_tables, proves, types_only, uses"
+FILE_USE = ("based_on, checks, docs, evals, excluded, fakes, files, guards, hints, language, layers, name, never, parts, "
+            "reserved, review, testing, tiers")
+LIST_MOVED = "moved in 0.3.0: write uses: {never: <list>}"
+SWITCH_MOVED = "moved in 0.3.0: write uses: {apply_never: true}"
+LIST_OUTSIDE = "a key of uses: write uses: {never: <list>}"
+SWITCH_OUTSIDE = "a key of uses: write uses: {apply_never: true}"
+NO_TIER = "no tier tests it: give it `tests: <tier>`, or `untested: <reason>`"
+
+
+def service_writing(**keys) -> dict:
+    """The covered profile with the lists pure and ambient under `never`, its service part writing the keys given."""
+    document = covered(never=LISTS)
+    document["parts"]["service"] |= keys
     return document
 
 
@@ -178,3 +198,80 @@ def test_the_guards_section_lists_the_names_each_part_may_not_use_and_says_what_
         "`service/` and `store/`: `time.time`, `socket`), and neither do the "
         "unit tests of those parts. It catches what is written in the part's own files, through their imports and "
         "aliases, not a name reached through a variable or `getattr`, nor I/O done on the part's behalf elsewhere.")
+
+
+def test_a_part_writing_forbidden_is_told_the_list_moved_under_uses():
+    assert problems(service_writing(forbidden="pure")) == [
+        f"layered.yaml: parts.service: unknown key 'forbidden': {LIST_MOVED}; use {PART_USE}"]
+
+
+def test_the_list_a_part_wrote_under_forbidden_is_in_no_problem():
+    found = problems(service_writing(forbidden="secret-list"))
+    assert found == [f"layered.yaml: parts.service: unknown key 'forbidden': {LIST_MOVED}; use {PART_USE}"]
+    assert not any("secret-list" in problem for problem in found)
+
+
+def test_a_part_writing_never_outside_uses_is_told_it_is_a_key_of_uses():
+    assert problems(service_writing(never="pure")) == [
+        f"layered.yaml: parts.service: unknown key 'never': {LIST_OUTSIDE}; use {PART_USE}"]
+
+
+def test_apply_never_under_a_part_s_uses_is_only_unknown_there():
+    assert problems(service_writing(uses={"never": "pure", "apply_never": True})) == [
+        "layered.yaml: parts.service.uses: unknown key 'apply_never': use never"]
+
+
+def test_a_part_of_an_old_profile_writing_forbidden_and_tier_gets_both_in_sorted_order_then_no_tier_tests_it():
+    document = service_writing(forbidden="pure", tier="unit")
+    document["parts"]["service"].pop("tests")
+    assert problems(document) == [
+        f"layered.yaml: parts.service: unknown key 'forbidden': {LIST_MOVED}; use {PART_USE}",
+        f"layered.yaml: parts.service: unknown key 'tier': renamed in 0.3.0: write tests; use {PART_USE}",
+        f"layered.yaml: parts.service: {NO_TIER}"]
+
+
+def test_a_part_writing_forbidden_beside_uses_is_refused_for_forbidden_and_its_uses_read_as_written():
+    assert problems(service_writing(forbidden="pure", uses={"never": "nope"})) == [
+        f"layered.yaml: parts.service: unknown key 'forbidden': {LIST_MOVED}; use {PART_USE}",
+        "layered.yaml: parts.service.uses.never: no list named 'nope': use ambient, pure, or write it under `never`"]
+
+
+def test_a_tier_writing_apply_forbidden_is_told_the_switch_moved_under_uses():
+    document = covered()
+    document["tiers"]["unit"]["apply_forbidden"] = True
+    assert problems(document) == [
+        f"layered.yaml: tiers.unit: unknown key 'apply_forbidden': {SWITCH_MOVED}; use {TIER_USE}"]
+
+
+def test_a_tier_writing_apply_never_outside_uses_is_told_it_is_a_key_of_uses():
+    document = covered()
+    document["tiers"]["unit"]["apply_never"] = True
+    assert problems(document) == [
+        f"layered.yaml: tiers.unit: unknown key 'apply_never': {SWITCH_OUTSIDE}; use {TIER_USE}"]
+
+
+def test_a_file_writing_the_block_forbidden_is_told_it_is_renamed_never_and_its_parts_once_each():
+    document = covered(forbidden=LISTS)
+    document["parts"]["service"]["forbidden"] = "pure"
+    document["parts"]["store"]["forbidden"] = "pure"
+    assert problems(document) == [
+        f"layered.yaml: unknown key 'forbidden': renamed in 0.3.0: write never; use {FILE_USE}",
+        f"layered.yaml: parts.service: unknown key 'forbidden': {LIST_MOVED}; use {PART_USE}",
+        f"layered.yaml: parts.store: unknown key 'forbidden': {LIST_MOVED}; use {PART_USE}"]
+
+
+@pytest.mark.parametrize("never, after", [
+    pytest.param(LISTS, [], id="a never that loads adds no problem"),
+    pytest.param(["pure"], ["layered.yaml: never: must be a mapping of list names to lists of dotted names, such as "
+                            "{pure: [datetime.datetime.now, socket]}"], id="a never written wrong adds its own"),
+])
+def test_a_file_writing_forbidden_beside_never_is_refused_for_forbidden_and_never_read_as_written(never, after):
+    document = service_uses({"never": "pure"}) | {"forbidden": LISTS, "never": never}
+    assert problems(document) == [
+        f"layered.yaml: unknown key 'forbidden': renamed in 0.3.0: write never; use {FILE_USE}", *after]
+
+
+def test_a_hint_for_the_rule_id_forbidden_is_told_it_is_renamed_never_use():
+    assert problems(layered(hints={"forbidden": "see the docs"})) == [
+        "layered.yaml: hints.forbidden: unknown rule id 'forbidden': renamed in 0.3.0: write never-use; use "
+        f"{', '.join(sorted(RULES))}"]

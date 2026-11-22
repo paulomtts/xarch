@@ -233,3 +233,22 @@ def test_review_never_and_the_top_level_never_each_name_the_other_as_another_lis
 def test_the_keys_of_never_feed_the_rule_never_use():
     assert [explained(address).rules for address in ("never", "parts.uses.never", "tiers.uses.apply_never")] == [
         ("never-use",)] * 3
+
+
+@pytest.mark.parametrize("address, key, text", [
+    pytest.param("forbidden", "forbidden", "renamed in 0.3.0: write never", id="the old block"),
+    pytest.param("parts.forbidden", "parts.forbidden", "moved in 0.3.0: write uses: {never: <list>}",
+                 id="the old part key"),
+    pytest.param("parts.<part>.forbidden", "parts.forbidden", "moved in 0.3.0: write uses: {never: <list>}",
+                 id="the old part key with its placeholder"),
+    pytest.param("tiers.apply_forbidden", "tiers.apply_forbidden", "moved in 0.3.0: write uses: {apply_never: true}",
+                 id="the old tier key"),
+    pytest.param("tiers.<tier>.apply_forbidden", "tiers.apply_forbidden",
+                 "moved in 0.3.0: write uses: {apply_never: true}", id="the old tier key with its placeholder"),
+    pytest.param("parts.never", "parts.never", "a key of uses: write uses: {never: <list>}", id="never on a part"),
+    pytest.param("tiers.apply_never", "tiers.apply_never", "a key of uses: write uses: {apply_never: true}",
+                 id="apply_never on a tier"),
+])
+def test_an_old_or_misplaced_name_of_never_is_refused_with_its_fixed_text(address, key, text):
+    found = explained(address)
+    assert (type(found), found.key, found.retired) == (UnknownKey, key, text)

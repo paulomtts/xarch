@@ -233,6 +233,11 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
                   "role, shared, tests, types_only, untested, uses",
                   "parts.a: no tier tests it: give it `tests: <tier>`, or `untested: <reason>`"],
                  id='a part still writing tier'),
+    pytest.param('name: n\nnever: {pure: [socket]}\nparts: {a: {path: a, role: r, forbidden: secret-list}}\n',
+                 ["parts.a: unknown key 'forbidden': moved in 0.3.0: write uses: {never: <list>}; use built_by, "
+                  "folders, holds, immutable, libraries, litmus, may_import, must_import, names, no_callbacks, "
+                  "package_only, path, role, shared, tests, types_only, untested, uses"],
+                 id='a part still writing forbidden'),
     pytest.param('name: n\nparts: {a: {path: a, role: r}}\nxarch2: 1\nrules: {a: []}\n',
                  ["unknown keys 'rules', 'xarch2': use based_on, checks, docs, evals, excluded, fakes, files, guards, hints, "
                   "language, layers, name, never, parts, reserved, review, testing, tiers"],
