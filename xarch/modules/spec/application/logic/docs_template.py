@@ -31,7 +31,7 @@ architecture. Prose, diagrams and code examples stay as the author wrote them; o
     {{tier_helpers}}       the helper files of all tiers in one block, each under its header line, `# <path>` (its
                            note after it, in parentheses)
     {{guards}}             one line per check `xarch check` runs: the structure, the rules, the libraries (with
-                           `libraries`), what each part may not use (with `forbidden`), the tiers (with `tiers`), types-only
+                           `libraries`), what each part may not use (with `uses.never`), the tiers (with `tiers`), types-only
                            (one line per tier with `types_only`), the test tree and the cycles (with a repeating folder),
                            then each guard of `guards`, in order
     {{tier_examples}}      each tier's example test in one block, under its header line `# <tier>: <path>` (its note
@@ -458,9 +458,9 @@ def _forbidden_line(architecture: Architecture) -> str:
     methods = any(not entry[0] for names in groups for entry in names)
     seen = (", and a method written `.name()` called on anything but the object itself and what it holds;" if methods
             else ",")
-    return (f"`forbidden`: a part neither imports nor uses by name what is listed for it ({listed}){tests}. It "
-            f"catches what is written in the part's own files, through their imports and aliases{seen} not a name "
-            "reached through a variable or `getattr`, nor I/O done on the part's behalf elsewhere.")
+    return (f"`never-use`: a part neither imports nor uses by name what its `uses.never` list names ({listed})"
+            f"{tests}. It catches what is written in the part's own files, through their imports and aliases{seen} "
+            "not a name reached through a variable or `getattr`, nor I/O done on the part's behalf elsewhere.")
 
 
 def _structure_line(architecture: Architecture) -> str:

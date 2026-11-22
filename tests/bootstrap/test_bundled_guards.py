@@ -77,7 +77,7 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
         "- `libraries`: a part imports only the outside packages listed for it (`adapters/`: sqlmodel; "
         "`platform/`: sqlmodel; `web/`: fastapi; `bootstrap/`: sqlmodel, fastapi, uvicorn); the standard library "
         "is always allowed, and tests are not checked.",
-        "- `forbidden`: a part neither imports nor uses by name what is listed for it (`domain/`, "
+        "- `never-use`: a part neither imports nor uses by name what its `uses.never` list names (`domain/`, "
         "`application/logic/`, `application/ports/`, `kernel/logic/` and `kernel/`: "
         + ", ".join(f"`{n}`" for n in PURE) + "; `application/services/`, `application/controller.py` and `adapters/`: "
         + ", ".join(f"`{n}`" for n in AMBIENT) + "; `platform/` and `web/`: "

@@ -180,10 +180,10 @@ def test_the_guards_section_shows_a_method_as_written_and_says_what_it_does_not_
     document = with_list([".resolve()", "os.getcwd"])
     lines = fill("{{guards}}", parsed(document), "layered.md", file_types=FILE_TYPES).splitlines()
     assert lines[3] == (
-        "- `forbidden`: a part neither imports nor uses by name what is listed for it (`service/`: `.resolve()`, "
-        "`os.getcwd`). It catches what is written in the part's own files, through their imports and aliases, and a "
-        "method written `.name()` called on anything but the object itself and what it holds; not a name reached "
-        "through a variable or `getattr`, nor I/O done on the part's behalf elsewhere.")
+        "- `never-use`: a part neither imports nor uses by name what its `uses.never` list names (`service/`: "
+        "`.resolve()`, `os.getcwd`). It catches what is written in the part's own files, through their imports and "
+        "aliases, and a method written `.name()` called on anything but the object itself and what it holds; not a name "
+        "reached through a variable or `getattr`, nor I/O done on the part's behalf elsewhere.")
 
 
 def test_the_guards_section_lists_the_names_each_part_may_not_use_and_says_what_it_does_not_see():
@@ -194,8 +194,8 @@ def test_the_guards_section_lists_the_names_each_part_may_not_use_and_says_what_
     document["tiers"]["unit"]["uses"] = {"apply_never": True}
     lines = fill("{{guards}}", parsed(document), "layered.md", file_types=FILE_TYPES).splitlines()
     assert lines[3] == (
-        "- `forbidden`: a part neither imports nor uses by name what is listed for it (`api/`: `builtins.print`; "
-        "`service/` and `store/`: `time.time`, `socket`), and neither do the "
+        "- `never-use`: a part neither imports nor uses by name what its `uses.never` list names (`api/`: "
+        "`builtins.print`; `service/` and `store/`: `time.time`, `socket`), and neither do the "
         "unit tests of those parts. It catches what is written in the part's own files, through their imports and "
         "aliases, not a name reached through a variable or `getattr`, nor I/O done on the part's behalf elsewhere.")
 
