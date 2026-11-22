@@ -193,7 +193,8 @@ keys:
   tiers:
     meaning: the kinds of test, in the order their litmus tests run
     accepts: >-
-      a map {<tier>: {...}}; with tiers, every part names the tier that `tests` it or says why it is `untested`; needs `testing`.
+      a map {<tier>: {...}}; with tiers, every part names the tier that `tests` it or says why it is `untested`;
+      needs `testing`.
       Tests mirror the app: tests/<path> for the app's <path>, and a test file has the tier of the part its folder
       mirrors (a folder that mirrors no part belongs to the tier whose `folder` holds it). A test imports only the part
       its folder mirrors and what that may import, a bare name meaning the instance it mirrors, then what its tier's
@@ -858,11 +859,10 @@ keys:
       `fakes.for` names) is named by another file of the app, in code or an annotation, and every fake (a top-level
       class of the fakes folder whose name starts with `prefix`) is named by a test outside that folder or by a fake
       that is itself used. The port's own file, package files and the wiring (a part that may import `everything`) do
-      not count; names are compared by their last step. With `untested: true`, every file of a part whose `tests` names a tier
-      that no test of that tier reaches is also listed as `weak`, failing `check --strict` only (see
+      not count; names are compared by their last step. With `untested: true`, every file of a part whose `tests` names
+      a tier that no test of that tier reaches is also listed as `weak`, failing `check --strict` only (see
       guards.dead-code.untested); with `tests_only: true`, every public name only the tests use, but those `known`
-      accepts, which the enforcement section names instead (see guards.dead-code.tests_only and
-      guards.dead-code.known)
+      accepts, which the enforcement section names instead (see guards.dead-code.tests_only and guards.dead-code.known)
     example: |
       <<two>>
       <<fakes>>
@@ -972,11 +972,11 @@ keys:
   guards.dead-code.untested:
     meaning: also list the files no test of their tier reaches
     accepts: >-
-      true or false: every file of a part whose `tests` names a tier, which no test code of that tier (a file below the tests
-      folder that the tier holds, test or not) imports, directly or through files of parts of that same tier that it
-      reaches, is listed as `weak` in the enforcement section and fails `check --strict` only. Exempt: a package file,
-      and a file with no function or method holding a real statement (types, constants, %interface% stubs). Read only
-      with a tests folder
+      true or false: every file of a part whose `tests` names a tier, which no test code of that tier (a file below the
+      tests folder that the tier holds, test or not) imports, directly or through files of parts of that same tier that
+      it reaches, is listed as `weak` in the enforcement section and fails `check --strict` only. Exempt: a package
+      file, and a file with no function or method holding a real statement (types, constants, %interface% stubs). Read
+      only with a tests folder
     example: |
       <<two>>
       <<fakes>>
