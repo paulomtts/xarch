@@ -68,6 +68,7 @@ from collections.abc import Collection, Mapping
 from dataclasses import dataclass, replace
 from typing import Any
 
+from xarch.kernel.logic.names import is_name, outside_text
 from xarch.kernel.logic.placement import root_of
 from xarch.kernel.logic.targets import NAME_PATTERN
 from xarch.kernel.placement import EACH, EVERYTHING
@@ -532,10 +533,10 @@ def _mocks(value: Any, problems: list[str], language: Language) -> StandIns | No
     count = len(problems)
     problems += ck.unknown_keys(value, names_of(MOCKS), where, MOCKS)
     problems += [f"{where}: missing `{key}`" for key in required_of(MOCKS) if key not in value]
-    calls = ck.dotted_names(value["calls"], f"{where}.calls", problems, language) if "calls" in value else None
-    autospec = ck.dotted_names(value["autospec"], f"{where}.autospec", problems, language) if "autospec" in value else ()
-    problems += [f"{where}.autospec: {'.'.join(name)!r} is also listed in calls" for name in autospec or ()
-                 if calls and name in calls]
+    calls = ck.outside_names(value["calls"], f"{where}.calls", problems, language) if "calls" in value else None
+    autospec = ck.outside_names(value["autospec"], f"{where}.autospec", problems, language) if "autospec" in value else ()
+    problems += [f"{where}.autospec: {outside_text(name, language.checked.member)!r} is also listed in calls"
+                 for name in autospec or () if calls and name in calls]
     keywords = (ck.identifiers(value["spec_keywords"], f"{where}.spec_keywords", problems, "keyword", "[spec]",
                                language) if "spec_keywords" in value else None)
     fixtures = (ck.fixtures(value["fixtures"], f"{where}.fixtures", problems, language, "calls")
@@ -687,7 +688,7 @@ def _fakes(value: Any, parts: dict[str, Part], declared: set[str], problems: lis
     problems += ck.unknown_keys(value, names_of(FAKES), where, FAKES)
     problems += [f"{where}: missing `{key}`" for key in required_of(FAKES) if key not in value]
     prefix = value.get("prefix", "")
-    if "prefix" in value and (not isinstance(prefix, str) or not ck.is_name(prefix, language)):
+    if "prefix" in value and (not isinstance(prefix, str) or not is_name(prefix, language.names)):
         problems.append(f"{where}.prefix: must be the start of a class name, such as Fake")
     folder = value.get("folder")
     steps = tuple(folder.split("/")) if ck.line(folder) and not folder.startswith("/") else ()
@@ -827,7 +828,7 @@ def _known(value: Any, tests_only: bool, where: str, problems: list[str], langua
     for item in value:
         file, _, name = item.rpartition(":") if isinstance(item, str) else ("", "", "")
         if not file or file.startswith("/") or not file.endswith(language.checked.extension) \
-                or not ck.is_name(name, language):
+                or not is_name(name, language.names):
             problems.append(f"{where}: {item!r} is not <file below the app>:<name>, such as {example}")
         elif item in found:
             problems.append(f"{where}: {item!r} is listed twice")

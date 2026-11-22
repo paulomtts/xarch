@@ -30,7 +30,7 @@ MOCKS = ("layered.yaml: testing.mocks: must be a mapping {calls, spec_keywords},
          "methods build one")
 POSITION = ("layered.yaml: testing.mocks.spec_position: must be a whole number, at least 0, such as 0: the position of "
             "the argument that names the spec; leave it out when only a keyword names it")
-DOTTED = "must be a list of dotted names such as pkg.sub.Name"
+DOTTED = "must be a list of outside names such as <package>.<name>"
 METHODS = "must be a list of method names such as [build]"
 WRITE = "write testing: <preset>, or testing: {files: [<pattern>, ...], functions: <pattern>}"
 
@@ -82,12 +82,12 @@ def test_the_keywords_of_the_table_decorator_are_optional():
     pytest.param(TABLE_OK | {"id": "a b"}, "layered.yaml: testing.table.id: must be a keyword name",
                  id="an id that is no keyword name is refused"),
     pytest.param(TABLE_OK | {"decorator": "parametrize"},
-                 "layered.yaml: testing.table.decorator: 'parametrize' is not a dotted name such as pkg.sub.name",
+                 "layered.yaml: testing.table.decorator: 'parametrize' is not an outside name such as <package>.<name>",
                  id="a decorator that is not dotted is refused"),
     pytest.param(TABLE_OK | {"row": "pytest..param"},
-                 "layered.yaml: testing.table.row: 'pytest..param' is not a dotted name such as pkg.sub.name",
+                 "layered.yaml: testing.table.row: 'pytest..param' is not an outside name such as <package>.<name>",
                  id="a row with an empty step is refused"),
-    pytest.param(TABLE_OK | {"row": 3}, "layered.yaml: testing.table.row: 3 is not a dotted name such as pkg.sub.name",
+    pytest.param(TABLE_OK | {"row": 3}, "layered.yaml: testing.table.row: 3 is not an outside name such as <package>.<name>",
                  id="a row that is no text is refused"),
     pytest.param(TABLE_OK | {"keywords": ["argnames"]}, KEYWORDS, id="one keyword is refused"),
     pytest.param(TABLE_OK | {"keywords": ["a", "a"]}, KEYWORDS, id="the same keyword twice is refused"),
@@ -170,7 +170,7 @@ def test_a_bad_fixtures_entry_is_refused(fixtures, expected):
     pytest.param(MOCKS_OK | {"calls": "unittest.mock.Mock"}, f"layered.yaml: testing.mocks.calls: {DOTTED}",
                  id="calls given as one text are refused"),
     pytest.param(MOCKS_OK | {"calls": ["Mock"]},
-                 "layered.yaml: testing.mocks.calls: 'Mock' is not a dotted name such as pkg.sub.name",
+                 "layered.yaml: testing.mocks.calls: 'Mock' is not an outside name such as <package>.<name>",
                  id="a call that is not dotted is refused"),
     pytest.param(MOCKS_OK | {"calls": ["a.B", "a.B"]}, "layered.yaml: testing.mocks.calls: 'a.B' is listed twice",
                  id="a call listed twice is refused"),
@@ -274,7 +274,7 @@ def test_testing_may_name_the_markers_and_calls_that_skip_a_test_or_expect_it_to
 
 
 @pytest.mark.parametrize("skips, expected", [
-    pytest.param(["skip"], "'skip' is not a dotted name such as pkg.sub.name", id="a skip that is not dotted is refused"),
+    pytest.param(["skip"], "'skip' is not an outside name such as <package>.<name>", id="a skip that is not dotted is refused"),
     pytest.param([], DOTTED, id="no skip at all is refused"),
     pytest.param(["a.b", "a.b"], "'a.b' is listed twice", id="a skip listed twice is refused"),
 ])

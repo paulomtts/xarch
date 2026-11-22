@@ -4,12 +4,12 @@ refused at its address when it is written wrong, and the guards section of the d
 import pytest
 
 from tests.modules.spec.format_files import FILE_TYPES
+from tests.modules.spec.languages import BRACE
 from tests.modules.spec.profiles import covered, layered, parsed, problems
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic.docs_template import fill
 
-DOTTED = "is not a dotted name such as datetime.datetime.now, nor an import name such as socket"
-METHOD = f"{DOTTED}, nor a method such as .absolute()"
+METHOD = "is not an outside name such as <package>.<name>, nor a package, nor a method such as .<name>()"
 LISTS = {"pure": ["socket"], "ambient": ["os.getcwd"]}
 NO_NAME = "must be the name of a list under `never`"
 ONE_LIST = "names one list under never: write the name of a list, such as pure"
@@ -93,7 +93,7 @@ def test_a_method_written_with_a_leading_dot_and_parentheses_is_kept_as_written(
 
 
 @pytest.mark.parametrize("name, problem", [
-    pytest.param(".absolute", "never.pure: '.absolute' is neither a dotted name nor a method: write .absolute() for "
+    pytest.param(".absolute", "never.pure: '.absolute' is neither an outside name nor a method: write .absolute() for "
                               "a method called on anything", id="a method without its parentheses"),
     pytest.param("path.absolute()", f"never.pure: 'path.absolute()' {METHOD}", id="a dotted name with parentheses"),
     pytest.param(".a.b()", f"never.pure: '.a.b()' {METHOD}", id="a method of more than one step"),
@@ -275,3 +275,62 @@ def test_a_hint_for_the_rule_id_forbidden_is_told_it_is_renamed_never_use():
     assert problems(layered(hints={"forbidden": "see the docs"})) == [
         "layered.yaml: hints.forbidden: unknown rule id 'forbidden': renamed in 0.3.0: write never-use; use "
         f"{', '.join(sorted(RULES))}"]
+
+
+BRACED = {"brace": BRACE}
+
+
+def brace_document(ambient=("node:fs#readFileSync", "globalThis#fetch", ".toISOString()"),
+                   libraries=("lodash-es", "@scope/pkg")) -> dict:
+    """The layered profile as an app in the brace language writes it: its store's outside packages by the language's
+    package names, and a list of outside names under `never`, which its service part never uses."""
+    document = layered(never={"ambient": list(ambient)})
+    document["parts"]["store"]["libraries"] = list(libraries)
+    document["parts"]["service"]["uses"] = {"never": "ambient"}
+    return document
+
+
+def test_outside_names_are_read_by_the_package_pattern_and_the_member_of_the_language():
+    architecture = parsed(brace_document(), languages=BRACED)
+    assert (architecture.libraries["store"], architecture.uses_never) == (
+        ("lodash-es", "@scope/pkg"),
+        {"service": (("node:fs", "readFileSync"), ("globalThis", "fetch"), ("", "toISOString()"))})
+
+
+def test_the_same_outside_names_are_refused_under_a_language_whose_patterns_do_not_allow_them():
+    assert problems(brace_document()) == [
+        f"layered.yaml: never.ambient: 'node:fs#readFileSync' {METHOD}",
+        f"layered.yaml: never.ambient: 'globalThis#fetch' {METHOD}",
+        "layered.yaml: parts.store.libraries: 'lodash-es' is not a package name the language Python allows",
+        "layered.yaml: parts.store.libraries: '@scope/pkg' is not a package name the language Python allows"]
+
+
+def test_a_bare_builtin_is_told_to_be_written_in_the_namespace_with_the_member_of_the_language():
+    assert problems(brace_document(ambient=["fetch"]), languages=BRACED) == [
+        "layered.yaml: never.ambient: 'fetch' is a Brace builtin, which a bare name does not ban: write globalThis#fetch"]
+
+
+@pytest.mark.parametrize("entry", [
+    pytest.param("node:fs#", id="a member with nothing after it"),
+    pytest.param("#readFileSync", id="nothing before the member"),
+    pytest.param("Fs#readFileSync", id="a head that is neither a package nor the namespace"),
+])
+def test_an_outside_name_the_language_s_patterns_refuse_is_refused_under_that_language(entry):
+    assert problems(brace_document(ambient=[entry]), languages=BRACED) == [
+        f"layered.yaml: never.ambient: '{entry}' is not an outside name such as <package>#<name>, nor a package, nor a "
+        "method such as .<name>()"]
+
+
+def test_an_outside_name_listed_twice_is_refused_once_under_a_member_that_is_not_a_dot():
+    assert problems(brace_document(ambient=["node:fs#readFileSync", "node:fs#readFileSync"]), languages=BRACED) == [
+        "layered.yaml: never.ambient: 'node:fs#readFileSync' is listed twice"]
+
+
+def test_a_package_is_never_the_namespace_of_the_language():
+    assert problems(brace_document(libraries=["globalThis"]), languages=BRACED) == [
+        "layered.yaml: parts.store.libraries: 'globalThis' is not a package name the language Brace allows"]
+
+
+def test_the_guards_section_writes_an_outside_name_with_the_member_of_the_language():
+    text = fill("{{guards}}", parsed(brace_document(), languages=BRACED), "layered.md", file_types=FILE_TYPES)
+    assert "(`service/`: `node:fs#readFileSync`, `globalThis#fetch`, `.toISOString()`)" in text

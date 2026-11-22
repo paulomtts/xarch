@@ -376,7 +376,7 @@ def test_a_part_may_leave_libraries_unchecked_with_everything():
                         "[sqlmodel], or everything", id="a string that is not everything"),
     pytest.param(["json"], "layered.yaml: parts.store.libraries: 'json' is in the standard library, which every part "
                            "may import unless `reserved` names it", id="the standard library"),
-    pytest.param(["a.b"], "layered.yaml: parts.store.libraries: 'a.b' is not a top-level import name, such as sqlmodel",
+    pytest.param(["a.b"], "layered.yaml: parts.store.libraries: 'a.b' is not a package name the language Python allows",
                  id="a dotted name"),
     pytest.param(["x", "x"], "layered.yaml: parts.store.libraries: 'x' is listed twice", id="twice"),
 ])
@@ -402,8 +402,8 @@ def test_a_part_that_names_no_list_forbids_nothing():
 @pytest.mark.parametrize("never, part, expected", [
     pytest.param(3, "pure", ["layered.yaml: never: must be a mapping of list names to lists of dotted names, such "
                              "as {pure: [datetime.datetime.now, socket]}"], id="not a mapping"),
-    pytest.param({"pure": []}, "pure", ["layered.yaml: never.pure: must be a non-empty list of dotted names or "
-                                        "import names, such as [datetime.datetime.now, socket]"], id="an empty list"),
+    pytest.param({"pure": []}, "pure", ["layered.yaml: never.pure: must be a non-empty list of outside names, packages "
+                                        "or methods, such as [<package>.<name>, <package>, .<name>()]"], id="an empty list"),
     pytest.param({"pure": ["open"]}, "pure", ["layered.yaml: never.pure: 'open' is a Python builtin, which a bare "
                                               "name does not ban: write builtins.open"], id="a bare builtin"),
     pytest.param({"pure": ["socket", "socket"]}, "pure", ["layered.yaml: never.pure: 'socket' is listed twice"],

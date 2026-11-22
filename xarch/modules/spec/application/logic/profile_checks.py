@@ -30,21 +30,26 @@ CALLED = "()"
 """How a method in a `never` list, called on anything, ends: `.absolute()`."""
 
 
-def is_name(text: str, language: Language) -> bool:
-    """Whether text is a name the language allows, as its data file says (any text but nothing when it does not say)."""
-    return names.is_name(text, language.names)
+def _outside(text: str, language: Language, namespace: str = "") -> tuple[str, ...] | None:
+    """The steps of an outside name as the language writes one (see names.outside_name); None when the text is none."""
+    return names.outside_name(text, language.names, language.checked.package, language.checked.member, namespace)
 
 
-def _is_dotted(text: str, language: Language, least: int = 1) -> bool:
-    """Whether text is names the language allows joined by dots, at least least of them."""
-    steps = text.split(".")
-    return len(steps) >= least and all(is_name(step, language) for step in steps)
+def _such(language: Language) -> str:
+    """How a message shows an outside name of the language: <package>, its member, <name>."""
+    return f"<package>{language.checked.member}<name>"
+
+
+def _is_package(text: Any, language: Language) -> bool:
+    """Whether text names a package alone, as the language's package pattern says one is; never its namespace."""
+    steps = _outside(text, language) if isinstance(text, str) else None
+    return steps is not None and len(steps) == 1
 
 
 def _method_name(item: str, language: Language) -> str | None:
     """The name of the method an item of a `never` list names, `.<name>()`; None when it names none."""
     name = item[1:-len(CALLED)] if item.startswith(".") and item.endswith(CALLED) else ""
-    return name if is_name(name, language) else None
+    return name if names.is_name(name, language.names) else None
 
 
 def _file_pattern(language: Language) -> re.Pattern[str]:
@@ -367,13 +372,13 @@ def case_table(value: Any, where: str, problems: list[str], language: Language) 
     count = len(problems)
     problems += unknown_keys(value, names_of(TABLE), where, TABLE)
     problems += [f"{where}: missing `{key}`" for key in required_of(TABLE) if key not in value]
-    decorator = _dotted(value["decorator"], f"{where}.decorator", problems, language) if "decorator" in value else None
-    row = _dotted(value["row"], f"{where}.row", problems, language) if "row" in value else None
-    if "id" in value and not (isinstance(value["id"], str) and is_name(value["id"], language)):
+    decorator = outside_name_at(value["decorator"], f"{where}.decorator", problems, language) if "decorator" in value else None
+    row = outside_name_at(value["row"], f"{where}.row", problems, language) if "row" in value else None
+    if "id" in value and not (isinstance(value["id"], str) and names.is_name(value["id"], language.names)):
         problems.append(f"{where}.id: must be a keyword name")
     keywords = value.get("keywords")
     if "keywords" in value and not (isinstance(keywords, list) and len(keywords) == 2 and len(set(keywords)) == 2
-                                    and all(isinstance(k, str) and is_name(k, language) for k in keywords)):
+                                    and all(isinstance(k, str) and names.is_name(k, language.names) for k in keywords)):
         problems.append(f"{where}.keywords: must be two keyword names, the decorator's names and its rows, "
                         "such as [names, rows]")
     if len(problems) != count or decorator is None or row is None:
@@ -396,25 +401,27 @@ def use_case_file(value: Any, framework: Framework | None, where: str, problems:
     return value
 
 
-def _dotted(value: Any, where: str, problems: list[str], language: Language) -> tuple[str, ...] | None:
-    """A dotted name such as pkg.sub.name, the path an import binds."""
-    if not isinstance(value, str) or not _is_dotted(value, language, 2):
-        problems.append(f"{where}: {value!r} is not a dotted name such as pkg.sub.name")
+def outside_name_at(value: Any, where: str, problems: list[str], language: Language) -> tuple[str, ...] | None:
+    """An outside name of at least two steps, <package><member><name>: the path an import binds."""
+    steps = _outside(value, language) if isinstance(value, str) else None
+    if steps is None or len(steps) < 2:
+        problems.append(f"{where}: {value!r} is not an outside name such as {_such(language)}")
         return None
-    return tuple(value.split("."))
+    return steps
 
 
-def dotted_names(value: Any, where: str, problems: list[str], language: Language) -> tuple[tuple[str, ...], ...] | None:
+def outside_names(value: Any, where: str, problems: list[str], language: Language) -> tuple[tuple[str, ...], ...] | None:
+    """A non-empty list of outside names of at least two steps, each once."""
     if not isinstance(value, list) or not value:
-        problems.append(f"{where}: must be a list of dotted names such as pkg.sub.Name")
+        problems.append(f"{where}: must be a list of outside names such as {_such(language)}")
         return None
     found: list[tuple[str, ...]] = []
     for item in value:
-        name = _dotted(item, where, problems, language)
-        if name is not None and name in found:
+        steps = outside_name_at(item, where, problems, language)
+        if steps is not None and steps in found:
             problems.append(f"{where}: {item!r} is listed twice")
-        elif name is not None:
-            found.append(name)
+        elif steps is not None:
+            found.append(steps)
     return tuple(found)
 
 
@@ -430,7 +437,7 @@ def fixtures(value: Any, where: str, problems: list[str], language: Language,
     count = len(problems)
     found: list[Fixture] = []
     for name, spec in value.items():
-        if not isinstance(name, str) or not is_name(name, language):
+        if not isinstance(name, str) or not names.is_name(name, language.names):
             problems.append(f"{where}: {name!r} is not a parameter name")
             continue
         at = f"{where}.{name}"
@@ -458,7 +465,7 @@ def identifiers(value: Any, where: str, problems: list[str], noun: str, example:
         return None
     found: list[str] = []
     for item in value:
-        if not isinstance(item, str) or not is_name(item, language):
+        if not isinstance(item, str) or not names.is_name(item, language.names):
             problems.append(f"{where}: {item!r} is not a {noun} name")
         elif item in found:
             problems.append(f"{where}: {item!r} is listed twice")
@@ -480,10 +487,10 @@ def framework_patterns(value: Any, problems: list[str], where: str, known: Colle
     problems += unknown_keys(value, known, where, scope)
     problems += [f"{where}: missing `{key}`" for key in ("files", "functions") if key not in value]
     files = _file_patterns(value["files"], problems, f"{where}.files", language) if "files" in value else None
-    skips = dotted_names(value["skips"], f"{where}.skips", problems, language) if "skips" in value else ()
+    skips = outside_names(value["skips"], f"{where}.skips", problems, language) if "skips" in value else ()
     functions = value.get("functions")
     if "functions" in value and not (isinstance(functions, str)
-                                     and is_name(functions.replace("*", "x"), language)):
+                                     and names.is_name(functions.replace("*", "x"), language.names)):
         problems.append(f"{where}.functions: must be a function name pattern: a name with `*` for any text")
     if len(problems) != count or files is None or skips is None:
         return None
@@ -518,7 +525,7 @@ def column_names(value: Any, where: str, problems: list[str], language: Language
         return None
     count = len(problems)
     for i, name in enumerate(value):
-        if not is_name(name, language):
+        if not names.is_name(name, language.names):
             problems.append(f"{where}: {name!r} is not a name a parameter can have")
         elif name in value[:i]:
             problems.append(f"{where}: {name!r} is listed twice")
@@ -573,8 +580,8 @@ def reserved_modules(value: Any, problems: list[str], language: Language) -> dic
         return {}
     found: dict[str, str] = {}
     for name, reason in value.items():
-        if not isinstance(name, str) or not is_name(name, language):
-            problems.append(f"reserved: {name!r} is not a top-level import name, such as ast")
+        if not _is_package(name, language):
+            problems.append(f"reserved: {name!r} is not a package name the language {language.checked.title} allows")
         elif name not in language.standard_names:
             problems.append(f"reserved: {name!r} is not in the {language.checked.title} standard library: an outside package "
                             "is imported only by the parts whose `libraries` list it already")
@@ -594,8 +601,8 @@ def package_names(value: Any, where: str, problems: list[str], language: Languag
         return None
     found: list[str] = []
     for package in value:
-        if not isinstance(package, str) or not is_name(package, language):
-            problems.append(f"{where}: {package!r} is not a top-level import name, such as sqlmodel")
+        if not _is_package(package, language):
+            problems.append(f"{where}: {package!r} is not a package name the language {language.checked.title} allows")
         elif package in language.standard_names and package not in reserved:
             problems.append(f"{where}: {package!r} is in the standard library, which every part may import unless "
                             "`reserved` names it")
@@ -608,31 +615,34 @@ def package_names(value: Any, where: str, problems: list[str], language: Languag
 
 def never_names(value: Any, where: str, problems: list[str],
                 language: Language) -> tuple[tuple[str, ...], ...] | None:
-    """The names a part may not use: dotted names, or modules by their import name; a builtin is written in the
-    language's namespace for them, <namespace>.<name>. A method called on anything is written `.<name>()` and kept as
-    written, split at its dot: ("", "<name>()")."""
+    """The names a part may not use: outside names, <package><member><name>, or packages alone, read by the language's
+    patterns; a builtin is written in the language's namespace for them, <namespace><member><name>. A method called on
+    anything is written `.<name>()` and kept as written, split at its dot: ("", "<name>()")."""
+    member = language.checked.member
     if not isinstance(value, list) or not value:
-        problems.append(f"{where}: must be a non-empty list of dotted names or import names, such as "
-                        "[datetime.datetime.now, socket]")
+        problems.append(f"{where}: must be a non-empty list of outside names, packages or methods, such as "
+                        f"[{_such(language)}, <package>, .<name>()]")
         return None
     found: list[tuple[str, ...]] = []
     for item in value:
         method = _method_name(item, language) if isinstance(item, str) else None
+        steps = (("", f"{method}{CALLED}") if method is not None
+                 else _outside(item, language, language.namespace) if isinstance(item, str) else None)
         if method is not None and language.checked.is_special(method):
             problems.append(f"{where}: {item!r} is a special method, which no code calls by name")
-        elif method is None and isinstance(item, str) and item.startswith(".") and is_name(item[1:], language):
-            problems.append(f"{where}: {item!r} is neither a dotted name nor a method: write {item}() for a method "
+        elif method is None and isinstance(item, str) and item.startswith(".") and names.is_name(item[1:], language.names):
+            problems.append(f"{where}: {item!r} is neither an outside name nor a method: write {item}() for a method "
                             "called on anything")
-        elif method is None and (not isinstance(item, str) or not _is_dotted(item, language)):
-            problems.append(f"{where}: {item!r} is not a dotted name such as datetime.datetime.now, nor an import "
-                            "name such as socket, nor a method such as .absolute()")
-        elif "." not in item and item in language.builtin_names:
-            problems.append(f"{where}: {item!r} is a {language.checked.title} builtin, which a bare name does not ban: write "
-                            f"{language.namespace}.{item}")
-        elif tuple(item.split(".")) in found:
+        elif steps is None:
+            problems.append(f"{where}: {item!r} is not an outside name such as {_such(language)}, nor a package, nor a "
+                            "method such as .<name>()")
+        elif len(steps) == 1 and item in language.builtin_names:
+            problems.append(f"{where}: {item!r} is a {language.checked.title} builtin, which a bare name does not ban: "
+                            f"write {language.namespace}{member}{item}")
+        elif steps in found:
             problems.append(f"{where}: {item!r} is listed twice")
         else:
-            found.append(tuple(item.split(".")))
+            found.append(steps)
     return tuple(found)
 
 
@@ -652,5 +662,5 @@ def scenario_places(results: Any, tier: Any, suffix: Any, parts: dict[str, Part]
         problems.append(f"{where}.tier: no tier named {tier!r}")
     elif part is not None and not any(item.part == results for item in found.subject):
         problems.append(f"{where}.tier: tier '{tier}' does not test part '{results}'")
-    if not isinstance(suffix, str) or not is_name(suffix, language):
+    if not isinstance(suffix, str) or not names.is_name(suffix, language.names):
         problems.append(f"{where}.suffix: must be the end of a name, such as Result")
