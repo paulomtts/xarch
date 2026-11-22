@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 
 from xarch.modules.spec.domain.key_table import KEYS, SLOTS
-from xarch.modules.spec.domain.profile_keys import HELD, Key
+from xarch.modules.spec.domain.profile_keys import HELD, PROFILE, RETIRED, SCOPES, Key, Retired
 
 _PLACEHOLDER = re.compile(r"\.?<[^>]*>|\[\]")
 
@@ -32,3 +32,30 @@ def names_of(scope: str) -> set[str]:
 
 def required_of(scope: str) -> tuple[str, ...]:
     return tuple(key.name for key in keys_of(scope) if key.required)
+
+
+def retired(scope: str, name: str) -> str:
+    """The fixed text of the entry of the table of retired names for the name in the scope; "" when it has none."""
+    return next((entry.text for entry in RETIRED if entry.scope == scope and entry.name == name), "")
+
+
+def retired_at(address: str) -> str:
+    """The fixed text of the entry of the table of retired names at an address as a person types it: plain, with or
+    without placeholders (parts.tier and parts.<part>.tier), the bare name for a key of the file, and for a slot of an
+    entry of a map of ids the id's placeholder or any id in its step; "" when no entry is there. A rule id has no
+    address."""
+    written = address.strip().strip(".")
+    return next((entry.text for entry in RETIRED if _at(entry, plain(written), written)), "")
+
+
+def _at(entry: Retired, typed: str, written: str) -> bool:
+    """Whether the entry's address is the one typed (plain) or written (as typed, placeholders kept)."""
+    if entry.scope == PROFILE:
+        return typed == entry.name
+    if entry.scope in HELD:
+        holder, _, name = typed.rpartition(".")
+        above, _, entry_id = holder.rpartition(".")
+        held = HELD[entry.scope]
+        return name == entry.name and (written == f"{entry.scope}.{entry.name}"
+                                       or (above == SCOPES[held] and bool(entry_id) and entry_id not in names_of(held)))
+    return entry.scope in SCOPES and typed == plain(f"{SCOPES[entry.scope]}.{entry.name}")

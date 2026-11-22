@@ -63,6 +63,8 @@ SCOPES = {
 HELD = {EVAL: EVALS}
 """The scopes of an entry of a map the profile names by ids of its own, which no key opens (its address is the
 scope's own), each with the scope of the map that holds it: its slots are listed with the keys of that map."""
+RULE_ID = "rule-id"
+"""The scope of a rule id written as a key of `hints`: not a key of the format, so it has no address."""
 
 CHOICE_BUNDLED = "bundled"
 CHOICE_PRESETS = "presets"
@@ -133,3 +135,21 @@ class Catalogue:
     def text(self, address: str) -> KeyText:
         """The text of the key, or of the slot, at the address."""
         return self.texts[address] if address in self.texts else self.slots[address]
+
+
+@dataclass(frozen=True)
+class Retired:
+    """A name xarch no longer reads, and what a profile writes instead.
+
+    scope: one of SCOPES or HELD (GUARD for a guard's name), or RULE_ID for a rule id written under `hints`
+    name: the name as a profile writes it
+    text: the whole hint, fixed and one line, said after the name in the refusal, such as "renamed in 0.3.0: write
+        tests"
+    """
+    scope: str
+    name: str
+    text: str
+
+
+RETIRED: tuple[Retired, ...] = ()
+"""Every key, guard and rule id xarch has retired: a profile writing one is refused with the entry's text."""
