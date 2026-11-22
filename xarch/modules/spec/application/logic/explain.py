@@ -7,6 +7,7 @@ import re
 from difflib import get_close_matches
 
 from xarch.kernel.logic.capabilities import shortfalls
+from xarch.kernel.logic.names import outside_text
 from xarch.modules.spec.application.logic.key_lookup import keys_of, of_an_entry, plain, shown
 from xarch.modules.spec.domain.key_table import KEYS, SLOTS
 from xarch.modules.spec.domain.profile_keys import HELD, PART, PROFILE, TIER, Key
@@ -30,7 +31,7 @@ def words(language: Language) -> dict[str, str]:
     return {"language": checked.title, "extension": checked.extension, "package_file": checked.package_file,
             "private": checked.private,
             "interface": language.interface_name,
-            "interface_path": ".".join(checked.interface[0]) if checked.interface else "",
+            "interface_path": outside_text(checked.interface[0], checked.member) if checked.interface else "",
             "namespace": language.namespace, "comment": checked.comment,
             "directives": ", ".join(f"`{checked.comment} {word}`" for word in checked.directives)}
 

@@ -23,6 +23,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
+from xarch.kernel.logic.names import outside_text
 from xarch.kernel.placement import EVERYTHING
 from xarch.modules.spec.domain.guards import KEY, ORDER
 from xarch.modules.spec.domain.published import LINE, LITMUS, Loosened, Origin
@@ -53,6 +54,7 @@ def _closest(architecture: Architecture, bundled: Mapping[str, Architecture]) ->
 
 
 def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
+    member = custom.language.checked.member
     shared = [name for name in custom.parts if name in base.parts]
     found: list[Looser] = []
     for name in shared:
@@ -67,7 +69,7 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
                       if package not in base.libraries.get(name, ())]
     for name in shared:
         kept = custom.uses_never.get(name, ())
-        found += [("uses.never", name, ".".join(banned)) for banned in base.uses_never.get(name, ())
+        found += [("uses.never", name, outside_text(banned, member)) for banned in base.uses_never.get(name, ())
                   if not any(banned[:len(entry)] == entry for entry in kept)]
     for name in shared:
         before, now = base.parts[name].must_import, custom.parts[name].must_import
@@ -88,7 +90,7 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
               if tier.apply_never and tier.name in tiers and not tiers[tier.name].apply_never]
     skips = custom.framework.skips if custom.framework is not None else ()
     if base.framework is not None:
-        found += [("testing.skips", "", ".".join(name)) for name in base.framework.skips if name not in skips]
+        found += [("testing.skips", "", outside_text(name, member)) for name in base.framework.skips if name not in skips]
     files = {file.path: file for file in custom.files}
     found += [("files.pinned", "", "/".join(file.path)) for file in base.files
               if file.pinned and file.path in files and not files[file.path].pinned]

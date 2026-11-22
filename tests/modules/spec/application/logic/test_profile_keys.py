@@ -2,12 +2,13 @@
 as xarch ships it, give each key its meaning, what it accepts and an example, and every example loads through the loader
 once merged into the smallest profile."""
 from copy import deepcopy
+from dataclasses import replace
 
 import pytest
 import yaml
 
 from tests.modules.spec.format_files import CATALOGUE
-from tests.modules.spec.languages import PYTHON
+from tests.modules.spec.languages import PERCENT, PYTHON
 from tests.modules.spec.profiles import PRESETS, parsed, problems
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic.explain import said
@@ -179,3 +180,8 @@ def test_a_word_of_the_table_is_what_the_language_says_for_it():
     assert said("a %interface% as `%interface_path%`; %other%", PYTHON) == "a Protocol as `typing.Protocol`; %other%"
     assert said("%interface%s", Language()) == "s"
     assert said("a name that starts with `%private%`", PYTHON) == "a name that starts with `_`"
+
+
+def test_the_path_of_an_interface_is_said_with_the_member_of_the_language():
+    hashed = replace(PERCENT, checked=replace(PERCENT.checked, member="#"))
+    assert said("`%interface_path%`", hashed) == "`%Library#RegisteredObject`"

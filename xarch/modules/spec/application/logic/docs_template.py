@@ -55,6 +55,7 @@ import re
 from collections.abc import Callable, Mapping
 
 from xarch.kernel.logic.imports import may_import, shown_target
+from xarch.kernel.logic.names import outside_text
 from xarch.kernel.placement import EACH, EVERYTHING
 from xarch.modules.spec.application.logic.layout_walk import docs_name, is_file
 from xarch.modules.spec.domain.errors import InvalidTemplate
@@ -452,7 +453,9 @@ def _never_use_line(architecture: Architecture) -> str:
     groups: dict[tuple[tuple[str, ...], ...], list[str]] = {}
     for name, names in architecture.uses_never.items():
         groups.setdefault(names, []).append(f"`{docs_name(architecture, architecture.parts[name])}`")
-    listed = "; ".join(f"{_and(parts)}: {_ticked(tuple('.'.join(n) for n in names))}" for names, parts in groups.items())
+    member = architecture.language.checked.member
+    listed = "; ".join(f"{_and(parts)}: {_ticked(tuple(outside_text(n, member) for n in names))}"
+                       for names, parts in groups.items())
     tiers = [tier.name for tier in architecture.tiers if tier.apply_never]
     tests = f", and neither do the {_and(tiers)} tests of those parts" if tiers else ""
     methods = any(not entry[0] for names in groups for entry in names)

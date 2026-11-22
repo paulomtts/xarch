@@ -23,7 +23,7 @@ SERVICES = ("services", PARTS["services"])
 ])
 def test_a_place_is_written_as_it_is_read_and_reads_back_as_itself(written, owner, found):
     rule = Rule("x", Scope(), ("import-into-app",), MAY_NOT, (Match("place", places=(found,)),), SAID)
-    (place,) = check_of(rule).quantified.targets[0].values or ()
+    (place,) = check_of(rule, ".").quantified.targets[0].values or ()
     assert (place, target(place, owner, PARTS, PARTS, "at", [], patterns=True, alone="a tier's folder")) == (
         written, found)
 
@@ -53,15 +53,15 @@ def test_a_place_is_written_as_it_is_read_and_reads_back_as_itself(written, owne
                  id="a reach from roots, which names no target"),
 ])
 def test_a_rule_is_the_check_a_profile_would_write(rule, check):
-    assert check_of(rule) == check
+    assert check_of(rule, ".") == check
 
 
 def test_rules_written_as_checks_each_take_an_id_of_their_own():
     rule = Rule("names", Scope(part="store"), ("class",), MAY_NOT, EXISTING, SAID)
     other = Rule("names", Scope(), ("class",), MAY_NOT, EXISTING, SAID)
-    assert written([rule, rule, other]) == {"names-store": check_of(rule), "names-store-2": check_of(rule),
-                                            "names": check_of(other)}
-    assert written([rule, other]) == {"names-store": check_of(rule), "names": check_of(other)}
+    assert written([rule, rule, other], ".") == {
+        "names-store": check_of(rule, "."), "names-store-2": check_of(rule, "."), "names": check_of(other, ".")}
+    assert written([rule, other], ".") == {"names-store": check_of(rule, "."), "names": check_of(other, ".")}
 
 
 def test_a_check_of_one_s_own_is_written_under_its_id_with_its_examples_filled_in():
@@ -82,4 +82,10 @@ def test_the_tokens_of_the_language_are_filled_in(text, importing, written_out):
     rule = Rule("no-todo", Scope(), ("comment",), MAY_NOT, EXISTING, SAID)
     language = CheckedLanguage(extension=".py", comment="#", importing=importing)
     assert written_own((OwnCheck(rule, (("notes%extension%", text),), ()),), language) == {
-        "no-todo": check_of(rule, (("notes.py", written_out),), ())}
+        "no-todo": check_of(rule, language.member, (("notes.py", written_out),), ())}
+
+
+def test_an_outside_name_is_written_back_with_the_member_of_the_language():
+    rule = Rule("x", Scope(), ("use",), MAY_NOT,
+                (Match("path", names=(("node:fs", "readFileSync"), ("", "toISOString()"))),), SAID)
+    assert check_of(rule, "#").quantified.targets == (WrittenTarget("path", ("node:fs#readFileSync", ".toISOString()")),)

@@ -3,6 +3,7 @@ name it lists, and a test of a tier that says so is held to the list of the part
 import pytest
 
 from tests.modules.rules.application.logic.checks import never_use as violations
+from tests.modules.rules.builders import BRACE, PYTHON
 from xarch.kernel.source import Import
 from xarch.modules.rules.domain.parsed import MethodCall, SourceFile, Use
 from xarch.modules.rules.domain.profile import Profile
@@ -17,7 +18,7 @@ PROFILE = Profile(parts={"domain": ("modules", "*", "domain"), "adapters": ("mod
                   tiers=(Tier("unit", (Target("domain", "own"),), apply_never=True),
                          Tier("loose", (Target("adapters", "own"),))),
                   uses_never={"domain": (NOW, ("builtins", "open"), ("socket",), ("urllib",))},
-                  framework=Framework(("test_*.py",), "test_*"))
+                  framework=Framework(("test_*.py",), "test_*"), language=PYTHON)
 DOMAIN = ("modules", "docs", "domain", "doc.py")
 
 
@@ -108,7 +109,8 @@ def test_a_test_of_a_listed_part_in_a_tier_not_held_to_the_list_is_not_checked()
 
 AMBIENT = Profile(parts={"services": ("modules", "*", "services")}, rules={},
                   folders=((), ("modules",), ("modules", "*")),
-                  uses_never={"services": (("", "absolute()"), ("", "resolve()"), ("pathlib", "Path", "cwd"))})
+                  uses_never={"services": (("", "absolute()"), ("", "resolve()"), ("pathlib", "Path", "cwd"))},
+                  language=PYTHON)
 SERVICE = ("modules", "docs", "services", "doc.py")
 
 
@@ -140,3 +142,19 @@ def test_a_listed_method_says_what_to_do():
     file = SourceFile("app/modules/docs/services/doc.py", SERVICE, (), method_calls=(MethodCall(4, "absolute"),))
     assert violations([file], [], AMBIENT)[0].fix == ("do what needs .absolute() outside services/, and hand services/ "
                                                       "the result")
+
+
+BRACED = Profile(parts={"adapters": ("modules", "*", "adapters")}, rules={},
+                 folders=((), ("modules",), ("modules", "*")),
+                 uses_never={"adapters": (("node:fs", "readFileSync"), ("globalThis", "fetch"), ("", "toISOString()"))},
+                 language=BRACE)
+
+
+def test_a_listed_outside_name_of_another_language_is_said_with_its_member():
+    file = SourceFile("app/modules/docs/adapters/files.ts", ("modules", "docs", "adapters", "files.ts"), (),
+                      uses=(Use(4, ("node:fs", "readFileSync"), 1),))
+    (found,) = violations([file], [], BRACED)
+    assert (str(found), found.fix) == (
+        "app/modules/docs/adapters/files.ts:4: adapters/ of modules/docs may not use node:fs#readFileSync "
+        "(parts.adapters.uses.never)",
+        "do what needs node:fs#readFileSync outside adapters/, and hand adapters/ the result")

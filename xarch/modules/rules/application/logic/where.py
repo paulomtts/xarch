@@ -22,6 +22,7 @@ from collections.abc import Collection, Iterable
 from pathlib import Path
 
 from xarch.kernel.logic.imports import may_import, shown_target
+from xarch.kernel.logic.names import outside_text
 from xarch.kernel.logic.placement import repeat_of
 from xarch.kernel.placement import EACH, Place
 from xarch.modules.rules.application.logic.places import excluded_by, matches, place, targets_of
@@ -102,7 +103,7 @@ def _app(profile: Profile, found: Resolved, app: str, tests: str) -> Placed:
         found, where, info or PartInfo(), _singular(profile, part), _reaches(profile, targets, where.instance, app),
         may_import(targets, folders, profile.words()),
         None if profile.libraries is None else profile.libraries.get(part, ()),
-        tuple(".".join(n) for n in profile.uses_never.get(part, ())), tier,
+        tuple(outside_text(n, profile.language.member) for n in profile.uses_never.get(part, ())), tier,
         f"{tests}/{'/'.join(folder)}/".replace("//", "/") if tier else "", name if tier else "",
         info.untested if info and tier is None else "")
 
@@ -198,7 +199,8 @@ def _tier_place(profile: Profile, where: Tested, found: Resolved, tests: str, ap
     part = where.parts[0] if where.parts else ""
     folders = {name: i.shown for name, i in profile.info.items()}
     targets = tuple(dict.fromkeys(allowance(profile, where)))
-    names = tuple(".".join(n) for p in where.parts for n in profile.uses_never.get(p, ())) if where.tier.apply_never else ()
+    names = tuple(outside_text(n, profile.language.member) for p in where.parts for n in profile.uses_never.get(p, ())) \
+        if where.tier.apply_never else ()
     mirrored = Place(part, where.instance) if part else None
     return SuitePlace(found, where.is_test, where.tier, mirrored, profile.info.get(part) if part else None,
                       _word_of_instance(profile, where) or _singular(profile, part),

@@ -14,6 +14,7 @@ from dataclasses import replace
 
 from xarch.kernel.logic.capabilities import shortfalls
 from xarch.kernel.logic.examples import is_test_example
+from xarch.kernel.logic.names import outside_steps
 from xarch.kernel.logic.targets import target
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.domain.errors import ChecksRefused, RuleRefused
@@ -116,7 +117,7 @@ def _match(written: WrittenTarget, owner: tuple[str, tuple[str, ...]] | None, pr
             problems.append(f"{where}.part: no part named {', '.join(map(repr, missing))}")
             return None
     if form == NAMES:
-        return Match(kind, names=tuple(("", value[1:]) if value.startswith(".") else tuple(value.split("."))
+        return Match(kind, names=tuple(("", value[1:]) if value.startswith(".") else outside_steps(value, profile.language.member)
                                        for value in values))
     return Match(kind, words=values)
 

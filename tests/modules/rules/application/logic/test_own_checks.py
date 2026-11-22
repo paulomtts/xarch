@@ -3,6 +3,8 @@ a dotted name into its steps, a part checked against the profile), the check ref
 a word does not apply, a place or a part is not the profile's, or the language lacks a fact it needs, while each that
 can be made is made all the same when every problem of the others is listed; listed as approximate when the language
 supplies one of its facts only partly; and what is wrong with how one holds to its examples."""
+from dataclasses import replace
+
 import pytest
 
 from tests.modules.rules.builders import profile
@@ -16,7 +18,8 @@ from xarch.profile_values.language import CheckedLanguage
 from xarch.profile_values.placement import Target
 
 SUPPLIES = CheckedLanguage("Toy", supplies=(Supply("call", EXACT), Supply("import.resolved", EXACT),
-                                            Supply("import", "partial", "no star imports"), Supply("file", EXACT)))
+                                            Supply("import", "partial", "no star imports"), Supply("file", EXACT)),
+                           member=".")
 PROFILE = profile(language=SUPPLIES)
 CHECK = WrittenCheck(("call",), Scope(APP, "kernel"),
                      Quantified(MAY_NOT, (WrittenTarget("path", ("app.api", ".run()")), WrittenTarget("part", ("web",)))),
@@ -129,3 +132,10 @@ def test_a_check_holds_to_its_examples_when_it_finds_something_flagged_and_nothi
 ])
 def test_a_file_of_a_checks_example_is_placed_in_the_app_or_the_tests(path, placement):
     assert placed(path, "app", "tests") == placement
+
+
+def test_a_path_target_is_split_at_the_member_of_the_language_and_a_method_stays_a_method():
+    hashed = replace(CHECK, quantified=Quantified(MAY_NOT, (WrittenTarget("path", ("node:fs#readFileSync", ".run()")),
+                                                            WrittenTarget("part", ("web",)))))
+    (own,) = resolved(profile(language=replace(SUPPLIES, member="#"), written={"no-api": hashed})).checks
+    assert own.rule.targets[0].names == (("node:fs", "readFileSync"), ("", "run()"))

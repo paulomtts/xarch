@@ -12,6 +12,7 @@ from __future__ import annotations
 import sys
 from dataclasses import replace
 from importlib import resources
+from pathlib import Path
 
 import yaml
 
@@ -24,17 +25,24 @@ from xarch.profile_values.placement import Repeat, Target
 from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns
 from xarch.profile_values.tiers import CheckedTier
 
+PYTHON_FILE = yaml.safe_load(resources.files("xarch").joinpath("architectures", "presets", "language", "python.yaml")
+                             .read_text(encoding="utf-8"))
 PYTHON = CheckedLanguage("Python", ".py", "__init__.py", (("typing", "Protocol"), ("typing_extensions", "Protocol")),
                       (("importlib", "import_module"), ("importlib", "__import__"), ("builtins", "__import__")),
                       "_", "__", "__call__", "None", "#", ("type: ignore", "noqa", "pragma:"), "#!",
                       r"coding[:=][ \t]*[-\w.]+", ("if", "match", "try", "for", "while"),
                       immutable=(RecordMark(("typing", "NamedTuple")),
                                  RecordMark(("dataclasses", "dataclass"), (("frozen", "True"),))),
-                      branching_expressions=("if",),
-                      names=yaml.safe_load(resources.files("xarch").joinpath("architectures", "presets", "language",
-                                                                              "python.yaml").read_text(encoding="utf-8"))["name"])
-"""Python as its data file says it, for the checks that read the tokens of its code; the pattern of a name read from
-it."""
+                      branching_expressions=("if",), names=PYTHON_FILE["name"], package=PYTHON_FILE["package"],
+                      member=PYTHON_FILE["member"])
+"""Python as its data file says it, for the checks that read the tokens of its code; the patterns of a name and of a
+package, and the member that joins them, read from it."""
+BRACE_FILE = yaml.safe_load((Path(__file__).resolve().parents[2] / "fakes" / "languages" / "brace.yaml")
+                            .read_text(encoding="utf-8"))
+BRACE = CheckedLanguage(BRACE_FILE["title"], BRACE_FILE["extension"], BRACE_FILE["package_file"], (),
+                        (("node:module", "createRequire"),), names=BRACE_FILE["name"], package=BRACE_FILE["package"],
+                        member=BRACE_FILE["member"])
+"""The TypeScript-like test-only language as a check reads it, its patterns and member read from its data file."""
 APP, TESTS = "app", "tests"
 MODULES = Repeat("module", ("modules",))
 EACH_PARTS = {"domain": ("domain",), "contract": ("contract",), "controller": ("application", "controller.py"),

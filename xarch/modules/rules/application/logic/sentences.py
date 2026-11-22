@@ -8,6 +8,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from string import Formatter
 
+from xarch.kernel.logic.names import outside_text
 from xarch.kernel.placement import EVERYTHING
 from xarch.modules.rules.application.logic.places import label, narrowed, targets_of
 from xarch.modules.rules.domain.profile import Profile
@@ -54,16 +55,16 @@ def _top(found: Found) -> str:
     return "".join(found.fact.path[:1])
 
 
-def _targets(found: Found) -> str:
-    return " or ".join(shown for match in found.rule.targets for shown in _shown(match))
+def _targets(found: Found, member: str) -> str:
+    return " or ".join(shown for match in found.rule.targets for shown in _shown(match, member))
 
 
-def _shown(match: Match) -> list[str]:
+def _shown(match: Match, member: str) -> list[str]:
     if match.places:
         return list(dict.fromkeys(f"{t.part}/" for t in match.places))
     if match.kind == "part":
         return [f"{p}/" for p in match.words]
-    return [*match.words, *(".".join(n) if n[0] else f".{n[1]}" for n in match.names)]
+    return [*match.words, *(outside_text(n, member) for n in match.names)]
 
 
 def _disallowed_name(found: Found) -> str:
@@ -77,8 +78,8 @@ def _qualified(found: Found) -> str:
 _VALUES: dict[str, Callable[[Found, Facts, Profile], str]] = {
     "key": lambda found, facts, profile: found.rule.key,
     "scope_part": lambda found, facts, profile: found.rule.scope.named_part,
-    "targets": lambda found, facts, profile: _targets(found),
-    "hit": lambda found, facts, profile: ".".join(found.hit or ()),
+    "targets": lambda found, facts, profile: _targets(found, profile.language.member),
+    "hit": lambda found, facts, profile: outside_text(found.hit or (), profile.language.member),
     "file": lambda found, facts, profile: found.read.file.name,
     "line": lambda found, facts, profile: str(found.fact.line),
     "where": lambda found, facts, profile: _place_of(found, profile),
