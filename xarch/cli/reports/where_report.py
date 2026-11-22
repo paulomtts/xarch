@@ -58,8 +58,8 @@ def _none_lines(kind: str, nearest: tuple[NearestView, ...]) -> list[str]:
 def _part_lines(where: InPart) -> list[str]:
     lines = [_line("part", _part(where.part)), _line("role", where.part.role), _line("litmus", where.part.litmus or "none"),
              _line("may import", where.may_import_text), _line("libraries", _libraries(where.libraries))]
-    if where.forbidden:
-        lines.append(_line("never uses", ", ".join(where.forbidden)))
+    if where.uses_never:
+        lines.append(_line("never uses", ", ".join(where.uses_never)))
     match where.tested:
         case CoveringTest(tier=tier, path=path):
             lines.append(_line("tested by", f"{tier.name} tier: {path}"))
@@ -77,8 +77,8 @@ def _test_lines(where: InTests) -> list[str]:
         lines += [_line("mirrors", _part(where.mirrors)), _line("may import", where.may_import_text)]
         if where.types_only:
             lines.append(_line("types only", ", ".join(where.types_only)))
-        if where.forbidden:
-            lines.append(_line("never uses", ", ".join(where.forbidden)))
+        if where.uses_never:
+            lines.append(_line("never uses", ", ".join(where.uses_never)))
     if where.tier is not None:
         lines.append(_line("fakes", f"may import {where.fakes_path}" if where.may_use_fakes else "may not import them"))
         lines += [_line("tier proves", where.tier.proves), _line("tier may touch", where.tier.may_touch),
@@ -117,7 +117,7 @@ def where_document(profile: str, where: WhereAnswer) -> str:
         case InPart():
             shown |= {"part": _part_document(where.part), "may_import": [_reach(r) for r in where.may_import],
                          "may_import_text": where.may_import_text or None, "libraries": _list(where.libraries),
-                         "never_uses": list(where.forbidden)}
+                         "never_uses": list(where.uses_never)}
             match where.tested:
                 case CoveringTest(tier=tier, folder=folder, file=file):
                     shown |= {"tier": _tier(tier), "tested_in": {"folder": folder, "file": file}}
@@ -131,7 +131,7 @@ def where_document(profile: str, where: WhereAnswer) -> str:
         case InTests():
             shown |= {"part": _part_document(where.mirrors) if where.mirrors is not None else None,
                          "may_import": [_reach(r) for r in where.may_import],
-                         "may_import_text": where.may_import_text or None, "never_uses": list(where.forbidden),
+                         "may_import_text": where.may_import_text or None, "never_uses": list(where.uses_never),
                          "tier": _tier(where.tier) if where.tier is not None else None,
                          "test": {"may_use_fakes": where.may_use_fakes, "fakes_path": where.fakes_path or None,
                                   "types_only": list(where.types_only), "code_from": where.code_from or None},

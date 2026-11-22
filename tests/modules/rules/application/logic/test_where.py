@@ -37,7 +37,7 @@ PROFILE = Profile(
     libraries={"kernel": (), "domain": (), "platform": ("yaml",), "entry": ("typer",)}, default_tests="tests",
     fakes=Fakes(("fakes",), ("ports",), "Fake"), repeats=(Repeat("module", ("modules",)),),
     framework=Framework(("test_*.py",), "test_*"),
-    forbidden={"domain": (NOW, ("builtins", "open"))},
+    uses_never={"domain": (NOW, ("builtins", "open"))},
     info={name: PartInfo(f"the {name} role", f"Is it {name}?", SHOWN[name],
                          "wraps a library" if name == "platform" else "") for name in PARTS},
     language=PYTHON)
@@ -97,7 +97,7 @@ def test_code_in_a_part_gets_its_role_litmus_imports_libraries_forbidden_names_a
     assert here.reaches == (PartAt(Target("domain", "own"), "domain/", "app/modules/docs/domain/"),
                             PartAt(Target("kernel", "none"), "kernel/", "app/kernel/"))
     assert here.may_import_text == "its own module's `domain/`, `kernel/`"
-    assert (here.libraries, here.forbidden) == ((), ("datetime.datetime.now", "builtins.open"))
+    assert (here.libraries, here.uses_never) == ((), ("datetime.datetime.now", "builtins.open"))
     assert (here.tier, here.test_folder, here.test_file) == (PROFILE.tiers[0], "tests/modules/docs/domain/",
                                                              "test_invoice.py")
 
@@ -168,7 +168,7 @@ def test_a_test_gets_its_tier_the_part_it_mirrors_what_it_may_import_and_whether
     assert here.tier == PROFILE.tiers[0]
     assert here.reaches == (PartAt(Target("domain", "own"), "domain/", "app/modules/docs/domain/"),
                             PartAt(Target("kernel", "none"), "kernel/", "app/kernel/"))
-    assert (here.may_use_fakes, here.test_code_from, here.forbidden) == (
+    assert (here.may_use_fakes, here.test_code_from, here.uses_never) == (
         False, "tests/modules/docs/", ("datetime.datetime.now", "builtins.open"))
 
 
@@ -226,7 +226,7 @@ def test_a_test_of_a_tier_not_held_to_forbidden_names_none_and_a_tier_s_types_on
     rendering = Tier("rendering", (Target("entry"),), None, ("controller",))
     checked = Profile(**{**vars(PROFILE), "tiers": (*PROFILE.tiers, rendering)})
     here = describe(checked, found("tests", "front", "test_page.py"), APP, TESTS)
-    assert (here.tier.name, here.forbidden, here.tier.types_only) == ("rendering", (), ("controller",))
+    assert (here.tier.name, here.uses_never, here.tier.types_only) == ("rendering", (), ("controller",))
 
 
 def test_without_a_known_tests_folder_the_tests_are_shown_in_the_default_one_when_none_is_given():
@@ -272,7 +272,7 @@ def test_a_folder_of_the_layout_is_no_violation_of_the_closed_tree():
 def test_a_test_of_a_listed_part_in_a_tier_not_held_to_the_list_is_told_no_forbidden_names():
     loose = Profile(**{**vars(PROFILE), "tiers": (Tier("unit", (Target("domain", "own"),)),)})
     here = describe(loose, found("tests", "modules", "docs", "domain", "test_invoice.py"), APP, TESTS)
-    assert (here.tier.name, here.forbidden) == ("unit", ())
+    assert (here.tier.name, here.uses_never) == ("unit", ())
 
 
 TWO_ROOTS = Profile(

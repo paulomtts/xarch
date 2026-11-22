@@ -31,7 +31,7 @@ def test_a_place_in_no_part_is_shown_as_such_and_its_document_leaves_what_does_n
 
 
 def test_the_names_a_part_never_uses_are_a_line_of_their_own_and_the_field_never_uses():
-    held = replace(PART, forbidden=("socket", "builtins.open"))
+    held = replace(PART, uses_never=("socket", "builtins.open"))
     assert where_lines(held)[6] == "never uses:     socket, builtins.open"
     document = json.loads(where_document("custom", held))
     assert document["never_uses"] == ["socket", "builtins.open"] and "forbidden" not in document

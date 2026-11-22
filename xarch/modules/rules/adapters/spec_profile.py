@@ -82,7 +82,7 @@ class SpecProfiles:
                        shared={p.name: p.shared for p in parts if p.shared is not None},
                        private_imports=guards.private_imports,
                        framework=view.framework,
-                       forbidden={p.name: p.uses_never for p in parts if p.uses_never},
+                       uses_never={p.name: p.uses_never for p in parts if p.uses_never},
                        info={p.name: PartInfo(p.role, p.litmus, p.shown, p.untested) for p in parts},
                        excluded=view.excluded, hints=dict(view.hints), language=view.language,
                        reserved=dict(view.reserved),

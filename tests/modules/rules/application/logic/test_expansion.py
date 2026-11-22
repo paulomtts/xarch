@@ -18,7 +18,7 @@ ON = replace(PROFILE, private_imports=True, closed_tree=True, dead_code=True, un
              holds={"domain": "classes", "logic": "functions"}, must_import={"adapters": (Target("platform"),)},
              pass_through=("services",), types_only={"services": ("contract",)},
              tiers=tuple(replace(t, must_import=("domain",)) if t.name == "unit" else t for t in PROFILE.tiers))
-OFF = replace(PROFILE, libraries=None, forbidden={}, tiers=(), package_only=(), no_comments=False, dead_code=False)
+OFF = replace(PROFILE, libraries=None, uses_never={}, tiers=(), package_only=(), no_comments=False, dead_code=False)
 
 
 def written(condition: Condition) -> str:

@@ -112,7 +112,7 @@ def test_the_profile_view_becomes_the_profile_the_checks_see():
                             CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id"), "test_{name}.py"),
         no_comments=True, stand_ins=StandIns((("m", "Mock"),), (), ("spec",), (Fixture("mocker", ("Mock",)),)),
         closed_tree=True, framework=Framework(("test_*.py",), "test_*", (("skip",),)),
-        forbidden={"core": (("socket",),)},
+        uses_never={"core": (("socket",),)},
         info={"core": PartInfo("the rules", "Is it a rule?", "core/"),
               "api": PartInfo("handlers", "", "api/ of src/<module>", "it only wires")},
         excluded=(Excluded(("vendor",), "not ours"),), must_import={"api": (Target("core"),)}, no_duplicates=4, no_twins=3,

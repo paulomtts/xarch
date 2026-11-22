@@ -48,7 +48,7 @@ class Profile:
     is None when outside packages are not checked. repeats are the repeating folders of the layout, each its word and
     the folder holding its instances. framework names the test files and functions; None: no file is a test.
     package_only, scenarios, no_comments, stand_ins and closed_tree are the guards switched on (None or False: off).
-    forbidden holds, by part, the dotted names and modules a part may not use, and the methods it may not call on
+    uses_never holds, by part, the dotted names and modules a part may not use, and the methods it may not call on
     anything, each as ("", "<name>()"). info says each part in words. excluded
     holds the folders below the app that are not its source: no check reads a file below one. must_import holds, by
     part, the targets each of its files must import one of (or an outside package); no_duplicates is the fewest
@@ -87,7 +87,7 @@ class Profile:
     stand_ins: StandIns | None = None
     closed_tree: bool = False
     framework: Framework | None = None
-    forbidden: dict[str, tuple[tuple[str, ...], ...]] = field(default_factory=dict)
+    uses_never: dict[str, tuple[tuple[str, ...], ...]] = field(default_factory=dict)
     info: dict[str, PartInfo] = field(default_factory=dict)
     excluded: tuple[Excluded, ...] = ()
     must_import: dict[str, tuple[Target, ...]] = field(default_factory=dict)

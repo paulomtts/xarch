@@ -16,7 +16,7 @@ PROFILE = Profile(parts={"domain": ("modules", "*", "domain"), "adapters": ("mod
                   folders=((), ("modules",), ("modules", "*")),
                   tiers=(Tier("unit", (Target("domain", "own"),), apply_never=True),
                          Tier("loose", (Target("adapters", "own"),))),
-                  forbidden={"domain": (NOW, ("builtins", "open"), ("socket",), ("urllib",))},
+                  uses_never={"domain": (NOW, ("builtins", "open"), ("socket",), ("urllib",))},
                   framework=Framework(("test_*.py",), "test_*"))
 DOMAIN = ("modules", "docs", "domain", "doc.py")
 
@@ -108,7 +108,7 @@ def test_a_test_of_a_listed_part_in_a_tier_not_held_to_the_list_is_not_checked()
 
 AMBIENT = Profile(parts={"services": ("modules", "*", "services")}, rules={},
                   folders=((), ("modules",), ("modules", "*")),
-                  forbidden={"services": (("", "absolute()"), ("", "resolve()"), ("pathlib", "Path", "cwd"))})
+                  uses_never={"services": (("", "absolute()"), ("", "resolve()"), ("pathlib", "Path", "cwd"))})
 SERVICE = ("modules", "docs", "services", "doc.py")
 
 
