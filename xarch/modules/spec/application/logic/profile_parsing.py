@@ -572,7 +572,8 @@ def _coverage(specs: dict[str, Any], parts: dict[str, Part], names: list[str] | 
             if not isinstance(tier, str):
                 problems.append(f"{where}.tests: must be the name of a tier: {use}")
             elif tier not in names:
-                problems.append(f"{where}.tests: no tier named {tier!r}: {use}")
+                folder = ": it names a tier of `tiers`, not a folder" if "/" in tier else ""
+                problems.append(f"{where}.tests: no tier named {tier!r}{folder}: {use}")
             else:
                 assigned[name] = tier
         elif not named and not untested and names is not None:

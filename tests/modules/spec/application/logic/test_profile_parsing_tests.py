@@ -348,6 +348,48 @@ def test_tier_under_a_tier_is_only_unknown_with_the_plain_message():
         "may_import, must_import, plain_tables, proves, types_only"]
 
 
+def test_a_path_written_for_tests_is_told_it_names_a_tier_not_a_folder():
+    document = covered()
+    document["parts"]["api"]["tests"] = "tests/units"
+    assert problems(document) == [
+        "layered.yaml: parts.api.tests: no tier named 'tests/units': it names a tier of `tiers`, not a folder: "
+        "use unit, integration"]
+
+
+@pytest.mark.parametrize("value, folder", [
+    pytest.param("tests/units", True, id="a folder of the tests"),
+    pytest.param("a/b", True, id="any text holding a slash"),
+    pytest.param("unit/", True, id="a tier name with a trailing slash"),
+    pytest.param("units", False, id="no slash: the plain message"),
+    pytest.param("tests", False, id="the tests folder's name, with no slash"),
+    pytest.param("tests\\units", False, id="a backslash is no slash"),
+])
+def test_a_value_of_tests_that_is_no_tier_name(value, folder):
+    document = covered()
+    document["parts"]["api"]["tests"] = value
+    clause = ": it names a tier of `tiers`, not a folder" if folder else ""
+    assert problems(document) == [
+        f"layered.yaml: parts.api.tests: no tier named {value!r}{clause}: use unit, integration"]
+
+
+def test_a_tier_whose_name_holds_a_slash_is_named_by_tests_with_no_problem():
+    document = covered()
+    document["tiers"]["a/b"] = {}
+    document["parts"]["api"]["tests"] = "a/b"
+    architecture = parsed(document)
+    assert [subject.part for tier in architecture.tiers if tier.name == "a/b" for subject in tier.subject] == ["api"]
+
+
+@pytest.mark.parametrize("value", [
+    pytest.param(None, id="null"),
+    pytest.param(["tests/units"], id="a list holding a path"),
+])
+def test_a_value_of_tests_that_is_no_string_must_be_the_name_of_a_tier(value):
+    document = covered()
+    document["parts"]["api"]["tests"] = value
+    assert problems(document) == ["layered.yaml: parts.api.tests: must be the name of a tier: use unit, integration"]
+
+
 def test_tiers_need_the_framework_to_tell_a_test_from_a_helper():
     document = covered()
     del document["testing"]
