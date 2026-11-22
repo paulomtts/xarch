@@ -1,7 +1,7 @@
 """Whether a text is a name a language allows, by the pattern its data file gives (a regular expression; any text but
 nothing when it gives none), and whether a name is private, by how the language starts one ("" for none); and the
-names a profile writes from outside the app, by the language's package pattern and its member: read into their steps,
-and printed back from them. Nothing else splits or joins an outside name."""
+names a profile writes from outside the app, by the member of the language: split into their steps, checked against
+nothing, and printed back from them. Nothing else splits or joins an outside name."""
 from __future__ import annotations
 
 import re
