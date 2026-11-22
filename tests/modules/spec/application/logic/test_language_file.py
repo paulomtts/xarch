@@ -1,5 +1,8 @@
 """The data file of a language: what is true of the language as a whole, read from a preset and validated like a profile."""
+from pathlib import Path
+
 import pytest
+import yaml
 
 from xarch.modules.spec.application.logic.language_file import PARTIAL, first_language, language_of
 from xarch.modules.spec.domain.errors import InvalidArchitecture
@@ -14,6 +17,7 @@ DOCUMENT = {"title": "Pascal", "extension": ".pas", "package_file": "unit.pas", 
             "standard": "interpreter"} | JOINS
 UNJOINED = {key: value for key, value in DOCUMENT.items() if key not in JOINS}
 """DOCUMENT with none of name, package and member."""
+TEST_LANGUAGES = tuple(sorted((Path(__file__).resolve().parents[4] / "fakes" / "languages").glob("*.yaml")))
 PERCENT = {"name": "%?[A-Za-z][A-Za-z0-9]*", "package": "%?[A-Za-z][A-Za-z0-9]*", "member": ".", "namespace": "%SYSTEM",
            "interface": ["%RegisteredObject"], "dynamic": ["%SYSTEM.OBJ.Load"],
            "immutable": ["%SerialObject", "%Lib.Rec(frozen=yes)"]}
@@ -184,3 +188,9 @@ def test_a_namespace_is_a_name_the_language_allows():
     with pytest.raises(InvalidArchitecture) as caught:
         language_of("odd", DOCUMENT | {"namespace": "2sys"})
     assert caught.value.problems == ("presets/language/odd.yaml: namespace: must be a name",)
+
+
+@pytest.mark.parametrize("path", TEST_LANGUAGES, ids=lambda path: path.stem)
+def test_a_test_only_language_loads_with_the_three_keys_that_say_how_an_outside_name_is_written(path):
+    checked = language_of(path.stem, yaml.safe_load(path.read_text(encoding="utf-8"))).checked
+    assert checked.names and checked.package and checked.member

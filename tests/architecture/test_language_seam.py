@@ -53,7 +53,6 @@ import yaml
 
 import xarch
 from xarch.kernel.logic.names import outside_steps
-from xarch.modules.spec.application.logic.language_file import language_of
 from xarch.profile_values.language import CheckedLanguage
 
 SRC = Path(xarch.__file__).parent
@@ -254,10 +253,11 @@ def test_the_test_only_languages_are_the_brace_and_the_percent_ones():
 
 
 @pytest.mark.parametrize("language", TEST_LANGUAGES, ids=lambda path: path.stem)
-def test_a_test_only_language_loads_and_the_guard_reads_its_words(language):
-    loaded = language_of(language.stem, yaml.safe_load(language.read_text(encoding="utf-8")))
-    steps = {step for name in (*loaded.checked.interface, *loaded.checked.dynamic) for step in name}
-    expected = {loaded.checked.title, loaded.namespace, *steps}
+def test_the_guard_reads_the_words_of_a_test_only_language(language):
+    data = yaml.safe_load(language.read_text(encoding="utf-8"))
+    steps = {step for name in (*data.get("interface", ()), *data.get("dynamic", ()))
+             for step in outside_steps(name, data["member"])}
+    expected = {data["title"], data["namespace"], *steps}
     pattern, _ = language_words(language)
     assert {match[0] for match in pattern.finditer(" ".join(sorted(expected)))} == expected
 

@@ -16,6 +16,7 @@ from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic.docs_files import DOCS_ROOT
 from xarch.modules.spec.application.logic.key_lookup import names_of, required_of, retired
 from xarch.modules.spec.application.logic.layout_walk import lies_in
+from xarch.modules.spec.application.logic.outside_name import outside_name
 from xarch.modules.spec.application.logic.profile_listing import listing_in
 from xarch.modules.spec.application.logic.project_files import APP_PLACEHOLDER
 from xarch.modules.spec.domain.profile_keys import FILE, FIXTURE, NAMING, PAGE, RULE_ID, TABLE
@@ -31,8 +32,8 @@ CALLED = "()"
 
 
 def _outside(text: str, language: Language, namespace: str = "") -> tuple[str, ...] | None:
-    """The steps of an outside name as the language writes one (see names.outside_name); None when the text is none."""
-    return names.outside_name(text, language.names, language.checked.package, language.checked.member, namespace)
+    """The steps of an outside name as the language writes one (see outside_name); None when the text is none."""
+    return outside_name(text, language.names, language.checked.package, language.checked.member, namespace)
 
 
 def _such(language: Language) -> str:
@@ -372,8 +373,8 @@ def case_table(value: Any, where: str, problems: list[str], language: Language) 
     count = len(problems)
     problems += unknown_keys(value, names_of(TABLE), where, TABLE)
     problems += [f"{where}: missing `{key}`" for key in required_of(TABLE) if key not in value]
-    decorator = outside_name_at(value["decorator"], f"{where}.decorator", problems, language) if "decorator" in value else None
-    row = outside_name_at(value["row"], f"{where}.row", problems, language) if "row" in value else None
+    decorator = _outside_name_at(value["decorator"], f"{where}.decorator", problems, language) if "decorator" in value else None
+    row = _outside_name_at(value["row"], f"{where}.row", problems, language) if "row" in value else None
     if "id" in value and not (isinstance(value["id"], str) and names.is_name(value["id"], language.names)):
         problems.append(f"{where}.id: must be a keyword name")
     keywords = value.get("keywords")
@@ -401,7 +402,7 @@ def use_case_file(value: Any, framework: Framework | None, where: str, problems:
     return value
 
 
-def outside_name_at(value: Any, where: str, problems: list[str], language: Language) -> tuple[str, ...] | None:
+def _outside_name_at(value: Any, where: str, problems: list[str], language: Language) -> tuple[str, ...] | None:
     """An outside name of at least two steps, <package><member><name>: the path an import binds."""
     steps = _outside(value, language) if isinstance(value, str) else None
     if steps is None or len(steps) < 2:
@@ -417,7 +418,7 @@ def outside_names(value: Any, where: str, problems: list[str], language: Languag
         return None
     found: list[tuple[str, ...]] = []
     for item in value:
-        steps = outside_name_at(item, where, problems, language)
+        steps = _outside_name_at(item, where, problems, language)
         if steps is not None and steps in found:
             problems.append(f"{where}: {item!r} is listed twice")
         elif steps is not None:

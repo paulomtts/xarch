@@ -49,7 +49,8 @@ import re
 from collections.abc import Iterable, Mapping
 from typing import Any
 
-from xarch.kernel.logic.names import is_name, outside_name
+from xarch.kernel.logic.names import is_name
+from xarch.modules.spec.application.logic.outside_name import outside_name
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import LANGUAGES, Language
 from xarch.profile_values.capabilities import EXACT, FACTS, Supply
