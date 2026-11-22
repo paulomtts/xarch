@@ -36,9 +36,15 @@ def test_a_key_is_explained_with_what_it_accepts_whether_check_enforces_it_throu
     result = runner.invoke(app, ["profile", "explain", "parts.may_import"])
     assert result.exit_code == 0, result.output
     assert result.output.splitlines()[0] == "parts.may_import"
-    for expected in ("in: parts.<part>", "accepts:", "required: no", "enforced: yes, by the rule `rules`", "example:",
+    for expected in ("in: parts.<part>", "accepts:", "required: no", "enforced: yes, by the rule `may-import`", "example:",
                      "may_import: [core]", "keys: none"):
         assert expected in result.output
+
+
+def test_the_example_of_hints_gives_advice_for_the_rule_may_import():
+    result = runner.invoke(app, ["profile", "explain", "hints"])
+    assert result.exit_code == 0, result.output
+    assert "      may-import: Ask the maintainer before adding an import." in result.output.splitlines()
 
 
 def test_a_key_that_holds_keys_lists_them_and_a_guard_is_explained_by_its_name():
@@ -78,7 +84,7 @@ def test_json_gives_the_shape_the_symbols_and_the_smallest_profile_and_for_a_key
     assert whole["symbols"][0]["symbol"] == "<word>" and whole["smallest"].startswith("name: documents-app")
     assert "xarch profile explain parts.may_import" in whole["deeper"]
     key = json.loads(runner.invoke(app, ["profile", "explain", "parts.may_import", "--format", "json"]).output)
-    assert key["ok"] is True and key["key"] == "parts.may_import" and key["rules"] == ["rules"]
+    assert key["ok"] is True and key["key"] == "parts.may_import" and key["rules"] == ["may-import"]
     assert set(key) == {"ok", "key", "where", "meaning", "accepts", "required", "enforced", "read_by", "rules",
                         "example", "choices", "keys", "needs", "language"}
     assert key["read_by"] is None

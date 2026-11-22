@@ -111,10 +111,10 @@ def _rules(profile: Profile) -> tuple[Rule, ...]:
                       "import from {target_part} only names that match {allowed_names} ({key}), or move what "
                       "needs the rest to a part that may import it", _all("names-restricted"))
     plain = "{where} may not import {target_part} ({target})"
-    found = [Rule("rules", Scope(APP, part), ("import-into-app",), MAY_ONLY, (Match("permitted"),),
+    found = [Rule("may-import", Scope(APP, part), ("import-into-app",), MAY_ONLY, (Match("permitted"),),
                   (narrowed, Saying(plain, "import only {importable_parts} in {where} ({key}), or {move_fix}")),
                   keep=_all("target-placed"), key=f"parts.{part}.may_import") for part in profile.parts]
-    return (*found, Rule("rules", Scope(APP, STRUCTURE), ("import-into-app",), MAY_ONLY, (Match("permitted"),),
+    return (*found, Rule("may-import", Scope(APP, STRUCTURE), ("import-into-app",), MAY_ONLY, (Match("permitted"),),
                          (Saying(plain, "drop the import of {target_part}, or {move_fix}"),), keep=_all("target-placed")))
 
 
@@ -363,7 +363,7 @@ order of the book: a key the engine expands to rules when a profile sets it."""
 
 def book(profile: Profile) -> dict[str, tuple[Rule, ...]]:
     """Every check the engine runs, by the name of its group, each the rules its keys expand to."""
-    return {"syntax": _syntax(profile), "rules": _rules(profile), "libraries": _libraries(profile),
+    return {"syntax": _syntax(profile), "may-import": _rules(profile), "libraries": _libraries(profile),
             "never-use": _forbidden(profile), "tiers": _tiers(profile), "types-only tiers": _types_only_tiers(profile),
             "package-only": _package_only(profile), "types-only parts": _types_only_parts(profile),
             "no-callbacks": _no_callbacks(profile), "names": _names(profile), "built-by": _built_by(profile),

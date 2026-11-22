@@ -35,8 +35,8 @@ def shape(rule: Rule) -> str:
 
 @pytest.mark.parametrize("group, shapes", [
     pytest.param("syntax", ["syntax: all/* read syntax-error may_not exist"], id="syntax"),
-    pytest.param("rules", [*(f"rules: app/{p} read import-into-app may_only permitted" for p in PROFILE.parts),
-                           "rules: app/structure read import-into-app may_only permitted"], id="rules"),
+    pytest.param("may-import", [*(f"may-import: app/{p} read import-into-app may_only permitted" for p in PROFILE.parts),
+                                "may-import: app/structure read import-into-app may_only permitted"], id="may-import"),
     pytest.param("libraries", [f"libraries: app/{p} read import may_only package" for p in PROFILE.parts for _ in (0, 1)],
                  id="libraries"),
     pytest.param("never-use", ["never-use: app/domain read imported-name, use, method-call may_not path",
@@ -75,7 +75,7 @@ def test_each_group_of_the_book_expands_to_the_rules_its_keys_mean(group, shapes
 
 
 def test_a_profile_that_sets_no_key_of_a_check_expands_to_the_rules_every_profile_has_alone():
-    assert {group for group, rules in expansion.book(OFF).items() if rules} == {"syntax", "rules"}
+    assert {group for group, rules in expansion.book(OFF).items() if rules} == {"syntax", "may-import"}
 
 
 def test_every_group_of_the_book_has_a_row():

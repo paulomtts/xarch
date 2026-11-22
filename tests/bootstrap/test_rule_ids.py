@@ -30,9 +30,9 @@ def found(tmp_path: Path, app: dict[str, str], tests: dict[str, str]) -> list[Vi
 
 
 CASES = [
-    pytest.param({"kernel/x.py": "from app.platform import sql\n"}, {}, "rules",
+    pytest.param({"kernel/x.py": "from app.platform import sql\n"}, {}, "may-import",
                  "import only kernel/ in kernel/ (parts.kernel.may_import), or move this code to adapters/, which may import it",
-                 id="rules"),
+                 id="may-import"),
     pytest.param({"kernel/x.py": "import requests\n"}, {}, "libraries",
                  "use the standard library or a package listed in parts.kernel.libraries, since requests is listed for "
                  "no part", id="libraries"),
@@ -80,8 +80,8 @@ OWNED = [
                                                  "def size(repo: Repo):\n    return 1\n"}, {}, "must-import", id="must-import"),
     pytest.param({"kernel/a.py": COPY, "kernel/b.py": COPY}, {}, "no-duplicates", id="no-duplicates"),
     pytest.param({"kernel/x.py": "def (:\n"}, {}, "syntax", id="syntax"),
-    pytest.param({"modules/docs/contract/ids.py": "from app.modules.docs.domain.values import Document\n"}, {}, "rules",
-                 id="rules: a name the pattern does not match"),
+    pytest.param({"modules/docs/contract/ids.py": "from app.modules.docs.domain.values import Document\n"}, {}, "may-import",
+                 id="may-import: a name the pattern does not match"),
     pytest.param({"modules/docs/application/services/doc.py": "class DocService: ...\n",
                   "modules/docs/application/controller.py":
                       "from app.modules.docs.application.services.doc import DocService\n\nDocService()\n"},

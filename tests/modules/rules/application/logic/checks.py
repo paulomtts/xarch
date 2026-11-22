@@ -46,7 +46,7 @@ def built_by(app: Iterable[SourceFile], profile: Profile, root: str) -> list[Vio
 
 
 def rules(files: Iterable[SourceFile], profile: Profile, root: str) -> list[Violation | Weak]:
-    return checked(expansion.book(profile)["rules"], profile, files, root=root)
+    return checked(expansion.book(profile)["may-import"], profile, files, root=root)
 
 
 def types_only(tests: Iterable[SourceFile], app: Iterable[SourceFile], profile: Profile,

@@ -93,3 +93,10 @@ def test_a_part_s_never_list_and_a_tier_s_switch_expand_to_the_rules_never_use()
     assert "  never-use-domain:" in listed.output
     switch = explain("tiers.uses.apply_never", "--rule", "--profile", "web")
     assert switch.output.splitlines()[0] == "tiers.uses.apply_never expands to 11 rules in web, written as checks:"
+
+
+def test_a_part_s_may_import_expands_to_the_rules_may_import():
+    listed = explain("parts.may_import", "--rule", "--profile", "web")
+    assert listed.exit_code == 0, listed.output
+    assert listed.output.splitlines()[0] == "parts.may_import expands to 12 rules in web, written as checks:"
+    assert "  may-import-domain:" in listed.output.splitlines() and "  rules-domain:" not in listed.output.splitlines()

@@ -90,7 +90,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/rules/contract/__init__.py",
 8,
 "contract/ of modules/rules may import only *Id from domain/ of modules/rules, not At (xarch.modules.rules.domain.values.At)",
@@ -98,7 +98,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/rules/contract/__init__.py",
 8,
 "contract/ of modules/rules may import only *Id from domain/ of modules/rules, not Drift (xarch.modules.rules.domain.values.Drift)",
@@ -106,7 +106,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/rules/contract/__init__.py",
 8,
 "contract/ of modules/rules may import only *Id from domain/ of modules/rules, not Enforcement (xarch.modules.rules.domain.values.Enforcement)",
@@ -114,7 +114,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/rules/contract/__init__.py",
 8,
 "contract/ of modules/rules may import only *Id from domain/ of modules/rules, not Excluded (xarch.modules.rules.domain.values.Excluded)",
@@ -122,7 +122,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/rules/contract/__init__.py",
 8,
 "contract/ of modules/rules may import only *Id from domain/ of modules/rules, not Finding (xarch.modules.rules.domain.values.Finding)",
@@ -130,7 +130,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/rules/contract/__init__.py",
 8,
 "contract/ of modules/rules may import only *Id from domain/ of modules/rules, not Loosened (xarch.modules.rules.domain.values.Loosened)",
@@ -138,7 +138,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/rules/contract/__init__.py",
 8,
 "contract/ of modules/rules may import only *Id from domain/ of modules/rules, not Nearest (xarch.modules.rules.domain.values.Nearest)",
@@ -146,7 +146,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/rules/contract/__init__.py",
 8,
 "contract/ of modules/rules may import only *Id from domain/ of modules/rules, not Origin (xarch.modules.rules.domain.values.Origin)",
@@ -154,7 +154,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/rules/contract/__init__.py",
 8,
 "contract/ of modules/rules may import only *Id from domain/ of modules/rules, not Reach (xarch.modules.rules.domain.values.Reach)",
@@ -162,7 +162,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/rules/contract/__init__.py",
 8,
 "contract/ of modules/rules may import only *Id from domain/ of modules/rules, not TierInfo (xarch.modules.rules.domain.values.TierInfo)",
@@ -170,7 +170,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/rules/contract/__init__.py",
 8,
 "contract/ of modules/rules may import only *Id from domain/ of modules/rules, not Weak (xarch.modules.rules.domain.values.Weak)",
@@ -178,7 +178,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/rules/contract/__init__.py",
 8,
 "contract/ of modules/rules may import only *Id from domain/ of modules/rules, not Where (xarch.modules.rules.domain.values.Where)",
@@ -522,7 +522,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/spec/contract/__init__.py",
 7,
 "contract/ of modules/spec may import only *Id from domain/ of modules/spec, not Architecture (xarch.modules.spec.domain.values.Architecture)",
@@ -530,7 +530,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/spec/contract/__init__.py",
 7,
 "contract/ of modules/spec may import only *Id from domain/ of modules/spec, not CaseTable (xarch.modules.spec.domain.values.CaseTable)",
@@ -538,7 +538,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/spec/contract/__init__.py",
 7,
 "contract/ of modules/spec may import only *Id from domain/ of modules/spec, not ClosedTree (xarch.modules.spec.domain.values.ClosedTree)",
@@ -546,7 +546,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/spec/contract/__init__.py",
 7,
 "contract/ of modules/spec may import only *Id from domain/ of modules/spec, not DeadCode (xarch.modules.spec.domain.values.DeadCode)",
@@ -554,7 +554,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/spec/contract/__init__.py",
 7,
 "contract/ of modules/spec may import only *Id from domain/ of modules/spec, not Fixture (xarch.modules.spec.domain.values.Fixture)",
@@ -562,7 +562,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/spec/contract/__init__.py",
 7,
 "contract/ of modules/spec may import only *Id from domain/ of modules/spec, not Framework (xarch.modules.spec.domain.values.Framework)",
@@ -570,7 +570,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/spec/contract/__init__.py",
 7,
 "contract/ of modules/spec may import only *Id from domain/ of modules/spec, not NoComments (xarch.modules.spec.domain.values.NoComments)",
@@ -578,7 +578,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/spec/contract/__init__.py",
 7,
 "contract/ of modules/spec may import only *Id from domain/ of modules/spec, not NoDuplicates (xarch.modules.spec.domain.values.NoDuplicates)",
@@ -586,7 +586,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/spec/contract/__init__.py",
 7,
 "contract/ of modules/spec may import only *Id from domain/ of modules/spec, not PackageOnly (xarch.modules.spec.domain.values.PackageOnly)",
@@ -594,7 +594,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/spec/contract/__init__.py",
 7,
 "contract/ of modules/spec may import only *Id from domain/ of modules/spec, not Part (xarch.modules.spec.domain.values.Part)",
@@ -602,7 +602,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/spec/contract/__init__.py",
 7,
 "contract/ of modules/spec may import only *Id from domain/ of modules/spec, not PassThrough (xarch.modules.spec.domain.values.PassThrough)",
@@ -610,7 +610,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/spec/contract/__init__.py",
 7,
 "contract/ of modules/spec may import only *Id from domain/ of modules/spec, not PrivateImports (xarch.modules.spec.domain.values.PrivateImports)",
@@ -618,7 +618,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/spec/contract/__init__.py",
 7,
 "contract/ of modules/spec may import only *Id from domain/ of modules/spec, not Repeat (xarch.modules.spec.domain.values.Repeat)",
@@ -626,7 +626,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/spec/contract/__init__.py",
 7,
 "contract/ of modules/spec may import only *Id from domain/ of modules/spec, not ScenarioCoverage (xarch.modules.spec.domain.values.ScenarioCoverage)",
@@ -634,7 +634,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/spec/contract/__init__.py",
 7,
 "contract/ of modules/spec may import only *Id from domain/ of modules/spec, not StandIns (xarch.modules.spec.domain.values.StandIns)",
@@ -642,7 +642,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/spec/contract/__init__.py",
 7,
 "contract/ of modules/spec may import only *Id from domain/ of modules/spec, not Subject (xarch.modules.spec.domain.values.Subject)",
@@ -650,7 +650,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/spec/contract/__init__.py",
 7,
 "contract/ of modules/spec may import only *Id from domain/ of modules/spec, not Target (xarch.modules.spec.domain.values.Target)",
@@ -658,7 +658,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/spec/contract/__init__.py",
 7,
 "contract/ of modules/spec may import only *Id from domain/ of modules/spec, not Tier (xarch.modules.spec.domain.values.Tier)",
@@ -666,7 +666,7 @@
 ],
 [
 "V",
-"rules",
+"may-import",
 "xarch/modules/spec/contract/__init__.py",
 7,
 "contract/ of modules/spec may import only *Id from domain/ of modules/spec, not TierExample (xarch.modules.spec.domain.values.TierExample)",

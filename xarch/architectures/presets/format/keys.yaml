@@ -237,7 +237,7 @@ keys:
       output and `hint` in the JSON; an id that is no rule of `check` is refused when the profile loads
     example: |
       hints:
-        rules: Ask the maintainer before adding an import.
+        may-import: Ask the maintainer before adding an import.
   checks:
     meaning: checks of your own, beside the keys
     accepts: >-

@@ -31,7 +31,7 @@ def test_every_key_of_the_table_is_reached_from_the_overview_through_the_keys_ea
 
 def test_a_key_is_found_by_the_address_a_person_types_with_or_without_the_placeholders():
     found = key_at("parts.may_import")
-    assert found is not None and found.rules == ("rules",) and found.where == "parts.<part>"
+    assert found is not None and found.rules == ("may-import",) and found.where == "parts.<part>"
     assert key_at("parts.<part>.may_import") is found and key_at(" parts.may_import. ") is found
     assert key_at("guards.no-duplicates").rules == ("no-duplicates",)
     assert key_at("parts.may_imports") is None and cleaned(" a.<b>.c. ") == "a.c"

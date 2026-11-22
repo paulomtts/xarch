@@ -120,3 +120,15 @@ def test_a_check_of_its_own_may_not_take_the_id_never_use_and_may_take_forbidden
 def test_a_hint_for_a_check_of_its_own_named_forbidden_is_the_hint_of_that_check():
     architecture = parsed(layered(checks={"forbidden": SMALL}, hints={"forbidden": "see the docs"}))
     assert (list(architecture.checks), architecture.hints) == (["forbidden"], {"forbidden": "see the docs"})
+
+
+def test_a_check_of_its_own_may_not_take_the_id_may_import_and_may_take_rules_which_xarch_no_longer_has():
+    taken, free = read({"may-import": SMALL}), read({"rules": SMALL})
+    assert taken == ({}, ["checks.may-import: may-import is the id of a check xarch has: give your check an id of its "
+                          "own, such as my-may-import"])
+    assert (list(free[0]), free[1]) == (["rules"], [])
+
+
+def test_a_hint_for_a_check_of_its_own_named_rules_is_the_hint_of_that_check():
+    architecture = parsed(layered(checks={"rules": SMALL}, hints={"rules": "see the docs"}))
+    assert (list(architecture.checks), architecture.hints) == (["rules"], {"rules": "see the docs"})

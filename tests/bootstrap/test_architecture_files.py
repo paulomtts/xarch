@@ -162,7 +162,7 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
                   'files: must be a mapping of paths to {from}, such as {tests/rules.py: {from: guard.py}}',
                   'excluded: must be a mapping of folders below the app to the reason each is not its source, such as '
                   '{vendor: copied code}',
-                  'hints: must be a mapping of rule ids to one line of text, such as {rules: see the docs}'],
+                  'hints: must be a mapping of rule ids to one line of text, such as {may-import: see the docs}'],
                  id='every top-level value of the wrong type'),
     pytest.param('name: n\nparts: {a: {path: a/<x>/<y>, role: r}}\n',
                  ["parts.a.path: 'a/<x>/<y>' has two repeating steps, <x> and <y>: a repeating folder cannot sit inside "

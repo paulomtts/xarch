@@ -85,7 +85,7 @@ class SourceCheckService:
                          [*(r for group in book.values() for r in group), *own], unread)
         app = [f for f in app if f.error is None]
         test_files = [f for f in test_files if f.error is None]
-        found = run(book["syntax"], facts, rules) + run(book["rules"], facts, rules) + run(book["libraries"], facts,
+        found = run(book["syntax"], facts, rules) + run(book["may-import"], facts, rules) + run(book["libraries"], facts,
                                                                                            rules)
         found += run(book["never-use"], facts, rules)
         found += cycles.violations(app, rules, package)

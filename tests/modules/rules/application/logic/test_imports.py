@@ -76,7 +76,7 @@ def test_violations(file, expected):
 
 def test_a_violation_names_its_rule():
     found = violations([source("kernel/x.py", imp(1, "app.platform", "sql")), *APP], PROFILE, "app")
-    assert [v.rule for v in found] == ["rules"]
+    assert [v.rule for v in found] == ["may-import"]
 
 
 @pytest.mark.parametrize("file, fix", [

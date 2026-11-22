@@ -43,7 +43,7 @@ def test_each_violation_carries_its_rule_file_line_message_and_fix_sorted_by_fil
         {"rule": "no-comments", "file": "app/modules/docs/domain/clock.py", "line": 1,
          "message": "a comment (no-comments)", "fix": "say it in a docstring or a name, and delete the comment",
          "hint": None},
-        {"rule": "rules", "file": "app/modules/docs/domain/clock.py", "line": 2,
+        {"rule": "may-import", "file": "app/modules/docs/domain/clock.py", "line": 2,
          "message": "domain/ of modules/docs may not import platform/ (app.platform)",
          "fix": "import only domain/, kernel/, kernel-logic/ in domain/ of modules/docs (parts.domain.may_import), or move this code to "
                 "adapters/, which may import it", "hint": None},
@@ -82,7 +82,7 @@ def test_a_refusal_is_a_json_error_with_exit_code_2(arguments, error):
 
 def with_hints(tmp_path) -> None:
     shutil.copytree(BUNDLED, tmp_path / "arch")
-    text = (BUNDLED / "web.yaml").read_text() + "\nhints:\n  rules: the layers are in docs/project/architecture.md\n"
+    text = (BUNDLED / "web.yaml").read_text() + "\nhints:\n  may-import: the layers are in docs/project/architecture.md\n"
     (tmp_path / "arch/mine.yaml").write_text(text)
     (tmp_path / "app/kernel/x.py").write_text("from app.platform import x\nimport socket\n")
 
@@ -99,7 +99,7 @@ def test_the_hint_of_a_profile_follows_the_fix_of_every_violation_of_its_rule_in
         "2 violation(s) in 1 file(s)"]
     document = json.loads(runner.invoke(app, ["check", "--profile", "arch/mine.yaml", "--format", "json"]).stdout)
     assert [(v["rule"], v["hint"]) for v in document["violations"]] == [
-        ("rules", "the layers are in docs/project/architecture.md"), ("never-use", None)]
+        ("may-import", "the layers are in docs/project/architecture.md"), ("never-use", None)]
 
 
 def test_a_profile_with_a_hint_for_an_unknown_rule_is_refused(tmp_path):

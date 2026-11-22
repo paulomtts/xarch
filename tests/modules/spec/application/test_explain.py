@@ -149,7 +149,7 @@ def test_the_whole_format_is_the_keys_of_the_file_their_symbols_and_the_smallest
 def test_a_key_says_what_it_accepts_whether_check_enforces_it_through_which_rule_and_what_it_holds():
     key = explained("parts.may_import")
     assert (key.key, key.where, key.required, key.enforced, key.rules) == (
-        "parts.may_import", "parts.<part>", False, True, ("rules",))
+        "parts.may_import", "parts.<part>", False, True, ("may-import",))
     assert "@any" in key.accepts and "may_import: [core]" in key.example and key.keys == ()
     assert [(held_key.key, held_key.required) for held_key in explained("fakes").keys] == [
         ("fakes.folder", True), ("fakes.for", True), ("fakes.prefix", False)]
