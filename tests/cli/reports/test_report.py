@@ -18,6 +18,8 @@ from xarch.modules.rules.contract import (
     KnownName,
     OwnCheckView,
     Translation,
+    Unresolved,
+    UnresolvedView,
     Weak,
 )
 from xarch.modules.spec.contract import Loosened, Origin
@@ -218,3 +220,45 @@ def test_a_profile_file_below_the_working_folder_is_named_from_it():
         "OK: no violations", "enforcement", "  profile:     arch/mine.yaml (custom; closest bundled: web)"]
     assert lines(origin=Origin("/elsewhere/mine.yaml", False, "web"))[2] == (
         "  profile:     /elsewhere/mine.yaml (custom; closest bundled: web)")
+
+
+LOST = UnresolvedView(Unresolved("app/domain/services.py", 3, ".ordr"),
+                      'app/domain/services.py:3: import ".ordr" names no file of the app')
+GONE = UnresolvedView(Unresolved("tests/test_a.py", 1, "..gone"),
+                      'tests/test_a.py:1: import "..gone" names no file of the app')
+
+
+def test_each_import_the_reader_could_not_follow_has_a_line_of_its_own_after_the_dynamic_imports_and_before_weak():
+    state = EnforcementView(dynamic=(At("app/kernel/dyn.py", 3),), weak=(OLD,), unresolved=(LOST, GONE))
+    assert lines(state=state) == [
+        *OK, "  dynamic:     1 dynamic import (app/kernel/dyn.py:3)",
+        '  unresolved:  app/domain/services.py:3: import ".ordr" names no file of the app',
+        '  unresolved:  tests/test_a.py:1: import "..gone" names no file of the app',
+        "  weak:        tests/fakes/r.py:1: FakeR does not define get, which R declares"]
+    assert lines(state=EnforcementView()) == OK
+
+
+def test_every_import_the_reader_could_not_follow_has_its_line_however_many_there_are():
+    many = tuple(UnresolvedView(Unresolved("app/a.py", n, ".x"), f'app/a.py:{n}: import ".x" names no file of the app')
+                 for n in range(1, 8))
+    assert lines(state=EnforcementView(unresolved=many)) == [
+        *OK, *(f'  unresolved:  app/a.py:{n}: import ".x" names no file of the app' for n in range(1, 8))]
+
+
+def test_the_json_document_lists_each_import_the_reader_could_not_follow_and_none_as_an_empty_list():
+    state = EnforcementView(unresolved=(LOST, GONE))
+    document = json.loads(json_document("web", Origin("web"), AppChecked((), state, {}, True), False))
+    assert document["enforcement"]["unresolved"] == [
+        {"file": "app/domain/services.py", "line": 3, "written": ".ordr"},
+        {"file": "tests/test_a.py", "line": 1, "written": "..gone"}]
+    keys = list(document["enforcement"])
+    assert keys.index("unresolved") == keys.index("dynamic") + 1
+    empty = json.loads(json_document("web", Origin("web"), AppChecked((), EnforcementView(), {}, True), False))
+    assert empty["enforcement"]["unresolved"] == []
+
+
+def test_an_import_the_reader_could_not_follow_is_listed_under_strict_by_its_sentence():
+    state = EnforcementView(strict=(FindingView("unresolved", LOST.sentence),), unresolved=(LOST,))
+    assert lines(state=state, strict=True) == [
+        *OK, f"  unresolved:  {LOST.sentence}", "strict:      1 finding fails the check",
+        f"    unresolved: {LOST.sentence}"]

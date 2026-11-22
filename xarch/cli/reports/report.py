@@ -97,6 +97,7 @@ def _enforcement_lines(origin: Origin, state: EnforcementView, strict: bool, cwd
         lines.append(_line(LABELS[SKIPPED], f"{_count(len(state.skipped), 'skip')} ({_places(state.skipped)})", 2))
     if state.dynamic:
         lines.append(_line(LABELS[DYNAMIC], f"{_count(len(state.dynamic), 'dynamic import')} ({_places(state.dynamic)})", 2))
+    lines += [_line(LABELS[UNRESOLVED], item.sentence, 2) for item in state.unresolved]
     for weak in state.weak:
         lines.append(_line(LABELS[WEAK], f"{weak.file}{f':{weak.line}' if weak.line else ''}: {weak.message}", 2))
         if weak.fix:
@@ -154,6 +155,8 @@ def _enforcement_document(origin: Origin, state: EnforcementView) -> dict[str, A
         "init_files": [{"file": "/".join(item.path), "state": item.state} for item in state.init_files],
         "skipped": {"count": len(state.skipped), "at": _at(state.skipped)},
         "dynamic": {"count": len(state.dynamic), "at": _at(state.dynamic)},
+        "unresolved": [{"file": item.item.file, "line": item.item.line, "written": item.item.written}
+                       for item in state.unresolved],
         "weak": [{"rule": weak.rule, "file": weak.file, "line": weak.line, "message": weak.message,
                   "fix": weak.fix or None} for weak in state.weak],
         "approximate": [{"key": item.key, "fact": item.fact, "note": item.note} for item in state.approximate],

@@ -46,7 +46,7 @@ from xarch.modules.rules.domain.published import (
 __all__ = ["At", "Weak", "Piece", "KnownName", "Translation", "Slot", "KeyFacts", "SECTIONS", "GUARDS_OFF", "UNGOVERNED",
            "INIT_FILES", "SKIPPED", "DYNAMIC", "UNRESOLVED", "Unresolved",
            "WEAK", "APPROXIMATE", "VACUOUS", "UNPLACED", "ChecksCannotRun", "CheckRefused", "OwnCheckView",
-           "Drift", "FindingView", "ExcludedView", "EnforcementView", "ReachView", "NearestView", "TierInfoView",
+           "Drift", "FindingView", "ExcludedView", "UnresolvedView", "EnforcementView", "ReachView", "NearestView", "TierInfoView",
            "PartShown", "CoveringTest", "Untested", "InPart", "InStructure", "Ungoverned", "InTests", "Support", "Fake",
            "WhereAnswer", "NotADirectory", "CheckApp", "AppChecked",
            "CheckAppResult", "Locate", "Located", "Outside", "LocateResult", "ExplainWords", "NoWords",
@@ -95,6 +95,14 @@ class OwnCheckView:
 
 
 @dataclass(frozen=True)
+class UnresolvedView:
+    """An import the reader could not follow, as the enforcement section shows it: the import (its file as shown, its
+    first line and its module as the source writes it), and all of it in words."""
+    item: Unresolved
+    sentence: str
+
+
+@dataclass(frozen=True)
 class EnforcementView:
     """The state of the check's own enforcement, beside its violations, as the enforcement section shows it: the
     files no part governs, and the top folders holding them (each once, in order); the init
@@ -102,7 +110,8 @@ class EnforcementView:
     `--strict` fails on; the folders the profile excludes; how the language of the app is named; the keys whose
     check reads a fact the language supplies only partly, each in words; the checks the profile writes itself,
     each with how many facts it read in the project; the public names only the tests use that the profile
-    accepts; and the pairs of classes no-twins accepts as translations."""
+    accepts; the pairs of classes no-twins accepts as translations; and the imports of the files read that the
+    reader could not follow, each in words."""
     ungoverned: tuple[str, ...] = ()
     ungoverned_folders: tuple[str, ...] = ()
     init_files: tuple[Drift, ...] = ()
@@ -116,6 +125,7 @@ class EnforcementView:
     checks: tuple[OwnCheckView, ...] = ()
     known: tuple[KnownName, ...] = ()
     translated: tuple[Translation, ...] = ()
+    unresolved: tuple[UnresolvedView, ...] = ()
 
 
 @dataclass(frozen=True)
