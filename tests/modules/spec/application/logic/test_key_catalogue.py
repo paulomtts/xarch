@@ -53,10 +53,10 @@ def test_a_line_that_names_a_fragment_stands_for_its_text_and_the_defaults_of_th
 
 
 def test_a_fragment_may_hold_another_and_the_lines_around_it_stay():
-    fragments = FRAGMENTS | {"tiered": "<<part>>\n    tier: unit\n"}
+    fragments = FRAGMENTS | {"tiered": "<<part>>\n    tests: unit\n"}
     catalogue = catalogue_of(document(fragments=fragments, keys=keyed({
         ROLE: TEXT | {"example": "tiers:\n  unit: {}\n<<tiered>>\n"}})))
-    assert catalogue.texts[ROLE].example == "tiers:\n  unit: {}\n" + FRAGMENTS["part"] + "    tier: unit\n"
+    assert catalogue.texts[ROLE].example == "tiers:\n  unit: {}\n" + FRAGMENTS["part"] + "    tests: unit\n"
 
 
 @pytest.mark.parametrize("given, found", [
@@ -75,7 +75,7 @@ def test_a_fragment_may_hold_another_and_the_lines_around_it_stay():
     pytest.param(document(keys=keyed({ROLE: TEXT | {"example": "<<parts>>\n"}})),
                  ["keys.parts.<part>.role.example: no fragment 'parts': use part"],
                  id="an example names a fragment that is not there"),
-    pytest.param(document(fragments={"a": "<<b>>\n", "b": "<<a>>\n", "c": "tier: unit"}),
+    pytest.param(document(fragments={"a": "<<b>>\n", "b": "<<a>>\n", "c": "tests: unit"}),
                  ["fragments.b: the fragments include each other in a loop: a -> b -> a",
                   "fragments.a: the fragments include each other in a loop: b -> a -> b",
                   "fragments.c: must end with a line break"],

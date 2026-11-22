@@ -210,7 +210,7 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
                  id='the entries of the optional keys of the wrong type'),
     pytest.param('name: n\nparts: {a: {path: a, role: r}}\n'
                  'tiers: {unit: 3, 1: {}, integ: {proves: 1, litmus: [], docs: {example: 3, helpers: x, subject: 1}}}\n',
-                 ["parts.a: no tier tests it: give it `tier: <tier>`, or `untested: <reason>`",
+                 ["parts.a: no tier tests it: give it `tests: <tier>`, or `untested: <reason>`",
                   'tiers.unit: must be a mapping, {} if it takes nothing',
                   'tiers: 1 is not a tier name: one line of text',
                   'tiers.integ.proves: must be one line of text',

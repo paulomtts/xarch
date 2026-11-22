@@ -165,7 +165,7 @@ def test_untested_parts_say_why_in_one_line_each():
     assert rendered("{{untested}}") == "`shared/` gets no tier of its own: reached through the parts that use it."
     document = tiered()
     del document["parts"]["shared"]["untested"]
-    document["parts"]["shared"]["tier"] = "integration"
+    document["parts"]["shared"]["tests"] = "integration"
     assert rendered("{{untested}}", document) == ""
 
 

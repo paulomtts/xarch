@@ -275,26 +275,27 @@ def test_the_example_and_helpers_of_a_tier_must_be_files_of_an_example_project()
 def test_a_part_names_its_tier_or_says_why_it_has_none_when_the_profile_has_tiers():
     document = covered()
     document["parts"]["shared"].pop("untested")
-    document["parts"]["store"].pop("tier")
+    document["parts"]["store"].pop("tests")
     document["parts"]["api"]["untested"] = "no need"
-    document["parts"]["service"]["tier"] = "nope"
+    document["parts"]["service"]["tests"] = "nope"
     assert problems(document) == [
-        "layered.yaml: parts.api: has a `tier` and is `untested`: drop one",
-        "layered.yaml: parts.service.tier: no tier named 'nope': use unit, integration",
-        "layered.yaml: parts.store: no tier tests it: give it `tier: <tier>`, or `untested: <reason>`",
-        "layered.yaml: parts.shared: no tier tests it: give it `tier: <tier>`, or `untested: <reason>`"]
+        "layered.yaml: parts.api: has `tests` and is `untested`: drop one",
+        "layered.yaml: parts.service.tests: no tier named 'nope': use unit, integration",
+        "layered.yaml: parts.store: no tier tests it: give it `tests: <tier>`, or `untested: <reason>`",
+        "layered.yaml: parts.shared: no tier tests it: give it `tests: <tier>`, or `untested: <reason>`"]
 
 
 def test_a_part_naming_a_tier_in_a_profile_with_no_tiers_is_refused():
     document = layered()
-    document["parts"]["api"]["tier"] = "unit"
-    assert problems(document) == ["layered.yaml: parts.api.tier: the profile has no `tiers`: add them, or drop the key"]
+    document["parts"]["api"]["tests"] = "unit"
+    assert problems(document) == [
+        "layered.yaml: parts.api.tests: the profile has no `tiers`: add them, or drop the key"]
 
 
 def test_a_part_that_is_not_a_text_for_its_tier_is_refused():
     document = covered()
-    document["parts"]["api"]["tier"] = 3
-    assert problems(document) == ["layered.yaml: parts.api.tier: must be the name of a tier: use unit, integration"]
+    document["parts"]["api"]["tests"] = 3
+    assert problems(document) == ["layered.yaml: parts.api.tests: must be the name of a tier: use unit, integration"]
 
 
 def test_tiers_need_the_framework_to_tell_a_test_from_a_helper():

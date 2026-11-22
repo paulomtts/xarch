@@ -27,13 +27,13 @@ parts:
     no_callbacks: true
     names: "*"
     must_import: [api]
-    tier: unit
+    tests: unit
   api:
     path: api
     role: the api
     built_by: [core]
     holds: classes
-    tier: unit
+    tests: unit
 forbidden:
   pure: [time.time]
 reserved:

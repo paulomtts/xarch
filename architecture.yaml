@@ -22,7 +22,7 @@ parts:
     forbidden: pure
     holds: classes
     no_callbacks: true
-    tier: unit
+    tests: unit
 
   logic:
     path: modules/<module>/application/logic
@@ -37,7 +37,7 @@ parts:
     holds: functions
     immutable: true
     no_callbacks: true
-    tier: unit
+    tests: unit
 
   ports:
     path: modules/<module>/application/ports
@@ -51,7 +51,7 @@ parts:
     may_import: [domain, kernel, kernel-logic, profile-values]
     forbidden: pure
     holds: classes
-    tier: integration
+    tests: integration
 
   services:
     path: modules/<module>/application/services
@@ -67,7 +67,7 @@ parts:
     names: "*Service"
     forbidden: ambient
     built_by: [bootstrap]
-    tier: integration
+    tests: integration
 
   controller:
     path: modules/<module>/application/controller.py
@@ -84,7 +84,7 @@ parts:
     names: "*Controller"
     forbidden: ambient
     built_by: [bootstrap]
-    tier: integration
+    tests: integration
 
   adapters:
     path: modules/<module>/adapters
@@ -102,7 +102,7 @@ parts:
     forbidden: ambient
     holds: classes
     built_by: [bootstrap]
-    tier: unit
+    tests: unit
 
   platform:
     path: platform
@@ -116,7 +116,7 @@ parts:
     may_import: [kernel, kernel-logic]
     libraries: [yaml]
     forbidden: environment
-    tier: unit
+    tests: unit
 
   cli:
     path: cli
@@ -130,7 +130,7 @@ parts:
     may_import: [reports, controller@any, contract@any, kernel, kernel-logic]
     libraries: [typer]
     forbidden: environment
-    tier: wired
+    tests: wired
     folders: [commands]
 
   reports:
@@ -143,7 +143,7 @@ parts:
     forbidden: pure
     holds: functions
     immutable: true
-    tier: unit
+    tests: unit
 
   main:
     path: __main__.py
@@ -164,7 +164,7 @@ parts:
       class that implements a port, even against another module's controller, is an adapter and belongs in
       `adapters/`. If it decides a rule, it belongs in a module.
     may_import: everything
-    tier: wired
+    tests: wired
     folders: [migrations]
 
   contract:
@@ -178,7 +178,7 @@ parts:
       goes here instead.
     may_import: ["domain/values:*Id", "domain/published", kernel, kernel-logic, profile-values]
     forbidden: published
-    tier: integration
+    tests: integration
     package_only: true
 
   profile-values:
@@ -199,7 +199,7 @@ parts:
     shared: 2
     holds: classes
     forbidden: pure
-    tier: unit
+    tests: unit
 
   kernel-logic:
     path: kernel/logic
@@ -216,7 +216,7 @@ parts:
     forbidden: pure
     holds: functions
     immutable: true
-    tier: unit
+    tests: unit
 
   kernel:
     path: kernel
@@ -235,7 +235,7 @@ parts:
     shared: 2
     forbidden: pure
     holds: classes
-    tier: unit
+    tests: unit
 
 forbidden:
   pure: [datetime.datetime.now, datetime.datetime.utcnow, datetime.datetime.today, datetime.date.today, time.time,

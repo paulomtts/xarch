@@ -12,7 +12,7 @@ parts:
     forbidden: pure
     holds: classes
     no_callbacks: true
-    tier: unit
+    tests: unit
 
   logic:
     path: modules/<module>/application/logic
@@ -21,7 +21,7 @@ parts:
     forbidden: pure
     holds: functions
     no_callbacks: true
-    tier: unit
+    tests: unit
 
   ports:
     path: modules/<module>/application/ports
@@ -29,7 +29,7 @@ parts:
     may_import: [domain, kernel]
     forbidden: pure
     holds: classes
-    tier: integration
+    tests: integration
 
   services:
     path: modules/<module>/application/services
@@ -39,7 +39,7 @@ parts:
     holds: classes
     names: "*Service"
     built_by: [bootstrap]
-    tier: integration
+    tests: integration
 
   controller:
     path: modules/<module>/application/controller.py
@@ -48,7 +48,7 @@ parts:
     holds: classes
     names: "*Controller"
     built_by: [bootstrap]
-    tier: integration
+    tests: integration
 
   adapters:
     path: modules/<module>/adapters
@@ -57,7 +57,7 @@ parts:
     must_import: [platform, contract@any]
     holds: classes
     built_by: [bootstrap]
-    tier: unit
+    tests: unit
 
   platform:
     path: platform
@@ -71,7 +71,7 @@ parts:
     role: the only place for commands and terminal output
     may_import: [controller@any, contract@any, kernel]
     libraries: [typer]
-    tier: wired
+    tests: wired
     folders: [commands]
 
   main:
@@ -87,7 +87,7 @@ parts:
     path: bootstrap
     role: "composition root: binds ports to adapters, hands controllers to cli/"
     may_import: everything
-    tier: wired
+    tests: wired
     folders: [migrations]
 
   contract:
@@ -95,14 +95,14 @@ parts:
     role: "the module's published language: commands, Results"
     may_import: ["domain/values:*Id", kernel]
     forbidden: pure
-    tier: integration
+    tests: integration
     package_only: true
 
   kernel:
     path: kernel
     role: pure primitives and the rules two modules share
     forbidden: pure
-    tier: unit
+    tests: unit
     folders: [logic]
 
 forbidden:

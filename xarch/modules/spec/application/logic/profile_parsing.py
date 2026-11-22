@@ -23,7 +23,7 @@ key_catalogue); the shape:
                                the outside packages by top-level import name; a part that lists none may import none,
                                and everything leaves the part unchecked
         forbidden: <list>      the name of a top-level `forbidden` list the part may not use
-        tier: <tier> | untested: <reason>
+        tests: <tier> | untested: <reason>
                                one tier covers the part, or the reason none does; with `tiers`, one of the two
         package_only: true     the part is imported only as a package from outside it
         folders: {<folder>: <note>} | [<folder>, ...]
@@ -123,7 +123,7 @@ _TIER_TEXTS = ("subject", "may_touch", "one_file_per", "cases_from", "data")
 _GUARDS = tuple(name for name in ORDER if name != KEY[PackageOnly])
 _NEEDS_TESTING = (KEY[ScenarioCoverage], KEY[StandIns])
 _PRESET_MAP = "{files, functions}"
-_TIER_INSTEAD = "`tier: <tier>`, or `untested: <reason>`"
+_TIER_INSTEAD = "`tests: <tier>`, or `untested: <reason>`"
 
 
 @dataclass(frozen=True)
@@ -561,18 +561,18 @@ def _coverage(specs: dict[str, Any], parts: dict[str, Part], names: list[str] | 
     assigned: dict[str, str] = {}
     for name in parts:
         spec, where = specs[name], f"parts.{name}"
-        named, untested = "tier" in spec, "untested" in spec
+        named, untested = "tests" in spec, "untested" in spec
         if named and untested:
-            problems.append(f"{where}: has a `tier` and is `untested`: drop one")
+            problems.append(f"{where}: has `tests` and is `untested`: drop one")
         if named and not has_tiers:
-            problems.append(f"{where}.tier: the profile has no `tiers`: add them, or drop the key")
+            problems.append(f"{where}.tests: the profile has no `tiers`: add them, or drop the key")
         elif named and names is not None:
-            tier = spec["tier"]
+            tier = spec["tests"]
             use = f"use {', '.join(names)}"
             if not isinstance(tier, str):
-                problems.append(f"{where}.tier: must be the name of a tier: {use}")
+                problems.append(f"{where}.tests: must be the name of a tier: {use}")
             elif tier not in names:
-                problems.append(f"{where}.tier: no tier named {tier!r}: {use}")
+                problems.append(f"{where}.tests: no tier named {tier!r}: {use}")
             else:
                 assigned[name] = tier
         elif not named and not untested and names is not None:

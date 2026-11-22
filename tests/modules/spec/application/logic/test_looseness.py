@@ -161,7 +161,7 @@ def test_a_part_whose_line_is_below_the_one_the_base_gives_it_is_looser_and_a_hi
 
 def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
     """Each case of LOOSER is reached by one of these pairs (custom, base), and each key is said its own way."""
-    store = {key: value for key, value in PARTS["store"].items() if key != "tier"}
+    store = {key: value for key, value in PARTS["store"].items() if key != "tests"}
     every = {**BASE, "parts": {**PARTS, "store": store | {"untested": "trust me", "libraries": ["sqlmodel", "requests"]},
                                "core": {**PARTS["core"], "may_import": ["store"]}},
              "forbidden": {"pure": ["socket"]}, "testing": {**TESTING, "skips": ["pytest.mark.skip"]},

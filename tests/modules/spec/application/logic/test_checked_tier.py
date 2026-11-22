@@ -14,7 +14,7 @@ def test_a_part_of_a_repeating_folder_is_tested_in_its_own_instance():
 
 def test_a_part_outside_every_repeating_folder_is_tested_outside_the_instances():
     document = covered()
-    document["parts"]["shared"] = {"path": "shared", "role": "shared code", "tier": "unit"}
+    document["parts"]["shared"] = {"path": "shared", "role": "shared code", "tests": "unit"}
     architecture = parsed(document)
     assert checked_tier(architecture, architecture.tiers[0]).subject == (Target("service", "own"), Target("shared"))
 

@@ -2,9 +2,9 @@
 pinned init file, and other, with one part."""
 TESTING = {"files": ["test_*.py"], "functions": "test_*", "skips": ["pytest.mark.skip", "pytest.mark.xfail"]}
 TIER = {"proves": "a rule", "litmus": "Does it call a rule?", "apply_forbidden": True, "types_only": ["store"]}
-PARTS = {"core": {"path": "core", "role": "rules", "may_import": [], "forbidden": "pure", "tier": "unit"},
+PARTS = {"core": {"path": "core", "role": "rules", "may_import": [], "forbidden": "pure", "tests": "unit"},
          "store": {"path": "store", "role": "storage", "may_import": ["core"], "libraries": ["sqlmodel"],
-                   "tier": "unit"},
+                   "tests": "unit"},
          "edge": {"path": "edge", "role": "entry", "may_import": "everything", "libraries": "everything",
                   "untested": "it only wires"}}
 BASE = {"name": "base", "parts": PARTS, "forbidden": {"pure": ["time.time", "socket"]},

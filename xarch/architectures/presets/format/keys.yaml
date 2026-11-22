@@ -24,7 +24,7 @@ fragments:
         may_import: [core]
   tiered-part: |
     <<part>>
-        tier: unit
+        tests: unit
   testing: |
     testing:
       files: [check_*%extension%]
@@ -52,11 +52,11 @@ fragments:
       documents:
         path: units/<unit>/documents
         role: the documents
-        tier: integration
+        tests: integration
       results:
         path: units/<unit>/results
         role: the result unions
-        tier: integration
+        tests: integration
   coverage-guard: |
     <<coverage>>
     guards:
@@ -193,7 +193,7 @@ keys:
   tiers:
     meaning: the kinds of test, in the order their litmus tests run
     accepts: >-
-      a map {<tier>: {...}}; with tiers, every part names its `tier` or says why it is `untested`; needs `testing`.
+      a map {<tier>: {...}}; with tiers, every part names the tier that `tests` it or says why it is `untested`; needs `testing`.
       Tests mirror the app: tests/<path> for the app's <path>, and a test file has the tier of the part its folder
       mirrors (a folder that mirrors no part belongs to the tier whose `folder` holds it). A test imports only the part
       its folder mirrors and what that may import, a bare name meaning the instance it mirrors, then what its tier's
@@ -425,9 +425,9 @@ keys:
         pure: [time.time, socket]
       <<part>>
           forbidden: pure
-  parts.<part>.tier:
+  parts.<part>.tests:
     meaning: the tier whose tests cover the part
-    accepts: the name of a tier; one tier per part; with `tiers`, a part names its `tier` or is `untested`
+    accepts: the name of a tier; one tier per part; with `tiers`, a part names the tier that `tests` it or is `untested`
     example: |
       <<testing>>
       tiers:
@@ -554,11 +554,11 @@ keys:
         core:
           path: core
           role: the rules of the documents
-          tier: unit
+          tests: unit
         documents:
           path: documents
           role: the documents
-          tier: unit
+          tests: unit
   tiers.<tier>.docs:
     meaning: what only fills the generated docs
     accepts: a map {subject, may_touch, one_file_per, cases_from, data, example, helpers}
@@ -858,7 +858,7 @@ keys:
       `fakes.for` names) is named by another file of the app, in code or an annotation, and every fake (a top-level
       class of the fakes folder whose name starts with `prefix`) is named by a test outside that folder or by a fake
       that is itself used. The port's own file, package files and the wiring (a part that may import `everything`) do
-      not count; names are compared by their last step. With `untested: true`, every file of a part that has a `tier`
+      not count; names are compared by their last step. With `untested: true`, every file of a part whose `tests` names a tier
       that no test of that tier reaches is also listed as `weak`, failing `check --strict` only (see
       guards.dead-code.untested); with `tests_only: true`, every public name only the tests use, but those `known`
       accepts, which the enforcement section names instead (see guards.dead-code.tests_only and
@@ -972,7 +972,7 @@ keys:
   guards.dead-code.untested:
     meaning: also list the files no test of their tier reaches
     accepts: >-
-      true or false: every file of a part that has a `tier`, which no test code of that tier (a file below the tests
+      true or false: every file of a part whose `tests` names a tier, which no test code of that tier (a file below the tests
       folder that the tier holds, test or not) imports, directly or through files of parts of that same tier that it
       reaches, is listed as `weak` in the enforcement section and fails `check --strict` only. Exempt: a package file,
       and a file with no function or method holding a real statement (types, constants, %interface% stubs). Read only

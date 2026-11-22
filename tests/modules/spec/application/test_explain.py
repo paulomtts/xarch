@@ -62,7 +62,7 @@ SHAPE = (
     Shown('parts.shared', 1, 'the part is there to be shared, by at least this many users', False, True),
     Shown('parts.libraries', 1, 'the outside packages the part may import', False, True),
     Shown('parts.forbidden', 1, 'the list of names the part may not use', False, True),
-    Shown('parts.tier', 1, 'the tier whose tests cover the part', False, True),
+    Shown('parts.tests', 1, 'the tier whose tests cover the part', False, True),
     Shown('parts.untested', 1, 'why no tier tests the part', False, True),
     Shown('parts.package_only', 1, 'the part is imported only as a package', False, True),
     Shown('parts.folders', 1, 'the folders below the part that the layout shows', False, True),
@@ -179,3 +179,13 @@ def test_a_fact_the_default_language_does_not_grade_is_said_to_be_absent():
     assert (found.short, found.holder, found.name) == (
         (Shortfall("parts.names", "class", "nested classes are not read"),), "part", "names")
     assert spec.explain(Explain("parts.no_callbacks")).needs == (Need("callback", FACTS["callback"]),)
+
+
+def test_the_part_key_of_the_tier_that_covers_it_is_tests_and_its_example_writes_it():
+    spec, _ = spec_controller(**BUNDLED)
+    found = spec.explain(Explain("parts.<part>.tests"))
+    assert isinstance(found, KeyExplained)
+    assert (found.key, found.name, found.meaning, found.rules) == (
+        "parts.tests", "tests", "the tier whose tests cover the part", ("tiers",))
+    assert "`tests`" in found.accepts and "`tier`" not in found.accepts
+    assert found.example.endswith("    role: the documents\n    tests: unit\n") and "tier:" not in found.example

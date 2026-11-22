@@ -42,7 +42,7 @@ RENAMED = "renamed in 0.3.0: write tier"
 MOVED = "moved in 0.3.0: write uses: {never: <list>}"
 MISPLACED = "a key of uses: write uses: {never: <list>}"
 PART_USE = ("built_by, folders, forbidden, holds, immutable, libraries, litmus, may_import, must_import, names, "
-            "no_callbacks, package_only, path, role, shared, tier, types_only, untested")
+            "no_callbacks, package_only, path, role, shared, tests, types_only, untested")
 TIER_USE = "apply_forbidden, docs, folder, litmus, may_also_import, may_import, must_import, plain_tables, proves, types_only"
 PROFILE_USE = ("based_on, checks, docs, evals, excluded, fakes, files, forbidden, guards, hints, language, layers, name, "
                "parts, reserved, review, testing, tiers")

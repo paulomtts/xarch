@@ -12,7 +12,7 @@ parts:
     forbidden: pure
     holds: classes
     no_callbacks: true
-    tier: unit
+    tests: unit
 
   logic:
     path: modules/<module>/application/logic
@@ -21,7 +21,7 @@ parts:
     forbidden: pure
     holds: functions
     no_callbacks: true
-    tier: unit
+    tests: unit
 
   ports:
     path: modules/<module>/application/ports
@@ -29,7 +29,7 @@ parts:
     may_import: [domain, kernel]
     forbidden: pure
     holds: classes
-    tier: integration
+    tests: integration
 
   services:
     path: modules/<module>/application/services
@@ -40,7 +40,7 @@ parts:
     names: "*Service"
     forbidden: ambient
     built_by: [bootstrap]
-    tier: integration
+    tests: integration
 
   controller:
     path: modules/<module>/application/controller.py
@@ -50,7 +50,7 @@ parts:
     names: "*Controller"
     forbidden: ambient
     built_by: [bootstrap]
-    tier: integration
+    tests: integration
 
   adapters:
     path: modules/<module>/adapters
@@ -60,21 +60,21 @@ parts:
     libraries: [ast, tokenize]
     holds: classes
     built_by: [bootstrap]
-    tier: unit
+    tests: unit
 
   platform:
     path: platform
     role: the filesystem, the package data, the TOML and YAML readers and the YAML writer
     may_import: [kernel]
     libraries: [yaml]
-    tier: unit
+    tests: unit
 
   cli:
     path: cli
     role: the only place for commands and terminal output
     may_import: [reports, controller@any, contract@any, kernel]
     libraries: [typer]
-    tier: wired
+    tests: wired
     folders: [commands]
 
   reports:
@@ -83,7 +83,7 @@ parts:
     may_import: [contract@any, kernel]
     forbidden: pure
     holds: functions
-    tier: unit
+    tests: unit
 
   main:
     path: __main__.py
@@ -98,7 +98,7 @@ parts:
     path: bootstrap
     role: "composition root: binds ports to adapters, hands controllers to cli/"
     may_import: everything
-    tier: wired
+    tests: wired
     folders: [migrations]
 
   contract:
@@ -106,14 +106,14 @@ parts:
     role: "the module's published language: commands, Results"
     may_import: ["domain/values:*Id", kernel]
     forbidden: pure
-    tier: integration
+    tests: integration
     package_only: true
 
   kernel:
     path: kernel
     role: pure primitives and the rules two modules share
     forbidden: pure
-    tier: unit
+    tests: unit
     folders: [logic]
 
 forbidden:

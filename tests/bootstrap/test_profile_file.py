@@ -21,13 +21,13 @@ parts:
     path: core
     role: the rules
     forbidden: pure
-    tier: unit
+    tests: unit
   cli:
     path: cli
     role: commands and output
     may_import: [core]
     libraries: [typer]
-    tier: unit
+    tests: unit
 tiers:
   unit: {}
 """
@@ -35,8 +35,8 @@ PRESET_PROFILE = """\
 name: preset
 testing: pytest
 parts:
-  results: {path: modules/<module>/results, role: the results, tier: unit}
-  ports: {path: modules/<module>/ports, role: the ports, tier: unit}
+  results: {path: modules/<module>/results, role: the results, tests: unit}
+  ports: {path: modules/<module>/ports, role: the ports, tests: unit}
 tiers:
   unit: {}
 fakes: {folder: fakes, for: [ports], prefix: Fake}

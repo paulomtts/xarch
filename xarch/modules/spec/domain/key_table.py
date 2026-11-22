@@ -78,7 +78,7 @@ _KEYS: tuple[Key, ...] = (
     Key(PART, "shared", rules=("shared",)),
     Key(PART, "libraries", rules=("libraries",)),
     Key(PART, "forbidden", rules=("forbidden",)),
-    Key(PART, "tier", rules=("tiers",)),
+    Key(PART, "tests", rules=("tiers",)),
     Key(PART, "untested"),
     Key(PART, "package_only", rules=("package-only",)),
     Key(PART, "folders", rules=("structure",)),

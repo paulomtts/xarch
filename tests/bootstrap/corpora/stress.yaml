@@ -11,7 +11,7 @@ parts:
     forbidden: pure
     holds: classes
     no_callbacks: true
-    tier: unit
+    tests: unit
     package_only: true
     built_by:
     - bootstrap
@@ -25,7 +25,7 @@ parts:
     forbidden: pure
     holds: functions
     no_callbacks: true
-    tier: unit
+    tests: unit
     package_only: true
   ports:
     path: modules/<module>/application/ports
@@ -35,7 +35,7 @@ parts:
     - kernel
     forbidden: pure
     holds: classes
-    tier: integration
+    tests: integration
     package_only: true
   services:
     path: modules/<module>/application/services
@@ -53,7 +53,7 @@ parts:
     forbidden: ambient
     built_by:
     - bootstrap
-    tier: integration
+    tests: integration
     must_import:
     - ports
     no_callbacks: true
@@ -72,7 +72,7 @@ parts:
     forbidden: ambient
     built_by:
     - bootstrap
-    tier: integration
+    tests: integration
     no_callbacks: true
   adapters:
     path: modules/<module>/adapters
@@ -92,7 +92,7 @@ parts:
     holds: classes
     built_by:
     - bootstrap
-    tier: unit
+    tests: unit
     names: Fs*
     types_only:
     - domain
@@ -104,7 +104,7 @@ parts:
     - kernel
     libraries:
     - yaml
-    tier: unit
+    tests: unit
     names: '*Reader'
     holds: functions
   cli:
@@ -118,7 +118,7 @@ parts:
     libraries:
     - typer
     - json
-    tier: wired
+    tests: wired
     folders:
     - commands
     forbidden: ambient
@@ -130,7 +130,7 @@ parts:
     - kernel
     forbidden: pure
     holds: functions
-    tier: unit
+    tests: unit
     libraries: []
   main:
     path: __main__.py
@@ -143,7 +143,7 @@ parts:
     path: bootstrap
     role: 'composition root: binds ports to adapters, hands controllers to cli/'
     may_import: everything
-    tier: wired
+    tests: wired
     folders:
     - migrations
   contract:
@@ -153,13 +153,13 @@ parts:
     - domain/values:*Id
     - kernel
     forbidden: pure
-    tier: integration
+    tests: integration
     package_only: true
   kernel:
     path: kernel
     role: pure primitives and the rules two modules share
     forbidden: pure
-    tier: unit
+    tests: unit
     folders:
     - logic
     holds: classes
