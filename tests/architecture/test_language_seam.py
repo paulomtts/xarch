@@ -13,8 +13,8 @@ examples) and is allowed everywhere. Nor is importlib.metadata, which reads what
 Naming the language: no file of xarch's own code, but the reader and the platform (technology: the interpreter, the
 package data), carries a word that encodes what is true of the language. The words are read from the data file of
 the language the bundled profiles name: its title, the ending of a source file's name, the file that stands for a
-folder (and its stem), every step of the names that mark an interface and of those that import by a computed name, the
-namespace of the builtins and the folder of compiled files; and WORDS_BESIDES, the words the data file cannot hold
+folder (and its stem), every step of the names that mark an interface and of those that import by a computed name, split at the data file's
+member, the namespace of the builtins and the folder of compiled files; and WORDS_BESIDES, the words the data file cannot hold
 because it has no key for them. They are looked for in:
 
     every string literal  the text of an f-string included, whole words (an ending is a word that ends a name)
@@ -52,6 +52,8 @@ import pytest
 import yaml
 
 import xarch
+from xarch.kernel.logic.names import outside_steps
+from xarch.modules.spec.application.logic.language_file import language_of
 from xarch.profile_values.language import CheckedLanguage
 
 SRC = Path(xarch.__file__).parent
@@ -104,6 +106,9 @@ LANGUAGES = tuple(sorted((SRC / "architectures" / "presets" / "language").glob("
 """The data file of every language xarch reads: the guard holds the source to each."""
 LANGUAGE = SRC / "architectures" / "presets" / "language" / "python.yaml"
 """The language the guard's own tests below are written for."""
+TEST_LANGUAGES = tuple(sorted((Path(__file__).resolve().parents[1] / "fakes" / "languages").glob("*.yaml")))
+"""The test-only languages, which no profile names: each loads, and the guard reads its words; later steps extend
+them."""
 WORDS_BESIDES = {"stdlib_module_names": "the interpreter's list of the standard library, which no data file can hold "
                                         "current: the platform reads it and the reader marks each import with it"}
 NAMES_BESIDES = {"iskeyword", "kwlist", "isidentifier"}
@@ -131,9 +136,10 @@ EXEMPT: dict[tuple[str, str], str] = {
 def language_words(language: Path = LANGUAGE) -> tuple[re.Pattern[str], set[str]]:
     """The pattern of the words the data file gives, as literal text, and the lowercase words of an identifier."""
     data = yaml.safe_load(language.read_text(encoding="utf-8"))
-    steps = {step for name in (*data["interface"], *data["dynamic"]) for step in name.split(".")}
-    words = {data["namespace"], data["cache"], data["package_file"].removesuffix(data["extension"]), *steps,
-             *WORDS_BESIDES}
+    steps = {step for name in (*data.get("interface", ()), *data.get("dynamic", ()))
+             for step in outside_steps(name, data.get("member", ""))}
+    words = {word for word in (data["namespace"], data.get("cache", ""), data["package_file"].removesuffix(data["extension"]),
+                               *steps, *WORDS_BESIDES) if word}
     ending = re.escape(data["extension"])
     whole = "|".join(sorted((re.escape(word) for word in words), key=len, reverse=True))
     title = f"(?i:{re.escape(data['title'])})"
@@ -241,6 +247,19 @@ def leaks(root: Path, pattern: re.Pattern[str], names: set[str]) -> list[tuple[s
 
 def named(language: Path) -> set[tuple[str, str]]:
     return {(file, word) for file, _, word in leaks(SRC, *language_words(language))}
+
+
+def test_the_test_only_languages_are_the_brace_and_the_percent_ones():
+    assert [path.stem for path in TEST_LANGUAGES] == ["brace", "percent"]
+
+
+@pytest.mark.parametrize("language", TEST_LANGUAGES, ids=lambda path: path.stem)
+def test_a_test_only_language_loads_and_the_guard_reads_its_words(language):
+    loaded = language_of(language.stem, yaml.safe_load(language.read_text(encoding="utf-8")))
+    steps = {step for name in (*loaded.checked.interface, *loaded.checked.dynamic) for step in name}
+    expected = {loaded.checked.title, loaded.namespace, *steps}
+    pattern, _ = language_words(language)
+    assert {match[0] for match in pattern.finditer(" ".join(sorted(expected)))} == expected
 
 
 def written(language: Path) -> set[tuple[str, str]]:
