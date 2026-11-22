@@ -1,8 +1,8 @@
 """The check on xarch's own source at earlier commits, where it found many violations, gives exactly the findings the
 hand-written checks gave before they became rules as data: each finding's rule, file, line, message and fix, the
 violations in order of file, line and rule, then the weak findings in the order found. The source of a commit is
-kept beside this test as data, its Python files and its profile (`corpora/<commit>.tar.xz`, from `git archive
-<commit>`).
+kept beside this test as data, its Python files, archived (`corpora/<commit>.tar.xz`, from `git archive <commit>`),
+with its profile beside the archive as plain yaml (`corpora/<commit>.yaml`).
 
     7cc6111   its own profile: 90 violations and 111 weak findings
     df537ca   its own profile: 48 violations and 6 weak findings
@@ -29,8 +29,8 @@ as `[kind, rule, file, line, message, fix]` with kind V or W:
       recording from the code under test would make it test itself.
     - A new check, a new key or a new format of profile, which the oracle cannot know: prove it by unit and wired
       tests; or add a corpus (a new archive and its findings, or a new profile beside stress.yaml) recorded from an
-      oracle extended by the same change in its own worktree. Never edit an archived project or its profile, whose
-      findings were recorded from it.
+      oracle extended by the same change in its own worktree. Never edit the archived code, whose findings were
+      recorded from it.
 """
 import json
 import lzma
@@ -132,3 +132,11 @@ def test_the_bundled_examples_put_together_give_the_findings_recorded_from_the_o
                 into.write_bytes(file.read_bytes())
     recorded = json.loads((CORPORA / f"examples-{entry}.json").read_text(encoding="utf-8"))["findings"]
     assert first_difference(findings(tmp_path / "project", entry, "app"), recorded) == ""
+
+
+def test_the_docstring_says_the_profile_lies_beside_the_archive_and_forbids_editing_only_the_archived_code():
+    said = " ".join(__doc__.split())
+    assert ("its Python files, archived (`corpora/<commit>.tar.xz`, from `git archive <commit>`), with its profile "
+            "beside the archive as plain yaml (`corpora/<commit>.yaml`)") in said
+    assert "Never edit the archived code, whose findings were recorded from it." in said
+    assert "Never edit an archived project or its profile" not in said

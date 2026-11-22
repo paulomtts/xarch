@@ -5,6 +5,11 @@ All notable changes to this project are written here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The two archived corpora's profiles (`7cc6111`, `df537ca`) are plain yaml files beside their archives in
+  `tests/bootstrap/corpora/`, so a change of format edits them as files; the recorded findings are unchanged.
+
 ## [0.2.0] - 2026-11-18
 
 ### Added
