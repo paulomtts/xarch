@@ -28,7 +28,7 @@ profile's mocks, and one listed under `autospec` those of its autospec functions
 parameter and the method, joined by a dot.
 
 The check stays silent on what it cannot read: a call that unpacks its arguments, a spec that is not a name an
-absolute import binds (a variable, an expression, a string), a spec imported from a package that re-exports the port,
+import binds (a variable, an expression, a string), a spec imported from a package that re-exports the port,
 a mock built by a function the profile does not list among its mocks or autospec functions, and a fixture the function
 rebinds (the source tree reports only a parameter its function's signature alone binds), reaches through a longer
 chain of attributes, or calls itself.

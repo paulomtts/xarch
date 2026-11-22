@@ -46,7 +46,7 @@ and the facts derived from them over the whole app:
                         root, at where its file sits
     exception           a class that derives from one of the language's builtin exceptions, as the reader says, or from
                         a class of the app that is an exception, however far that goes (a base read through the
-                        absolute import that binds it)
+                        import that binds it)
     record              a class with no method but the language's special methods (its data file says how they are
                         named) that a top-level function of its file names in its return annotation
     interface           a class with one of the names the language's data file marks interfaces with among its bases,

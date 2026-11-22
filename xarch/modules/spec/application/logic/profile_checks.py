@@ -397,7 +397,7 @@ def use_case_file(value: Any, framework: Framework | None, where: str, problems:
 
 
 def _dotted(value: Any, where: str, problems: list[str], language: Language) -> tuple[str, ...] | None:
-    """A dotted name such as pkg.sub.name, the path an absolute import binds."""
+    """A dotted name such as pkg.sub.name, the path an import binds."""
     if not isinstance(value, str) or not _is_dotted(value, language, 2):
         problems.append(f"{where}: {value!r} is not a dotted name such as pkg.sub.name")
         return None

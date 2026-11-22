@@ -27,7 +27,7 @@ Three cases, each with its own fewest fields:
   not compared, as for the same fields.
 
 A pair is no twin when the profile lists, in `no_twins_translated`, a part one of whose files builds one of the two
-classes through an import (a call of it read through the absolute import that binds it), imports the other, and holds
+classes through an import (a call of it read through the import that binds it), imports the other, and holds
 one function that names both (in a parameter's annotation, its return annotation or its body): the mark of a
 translation at a seam. A class is reached through an import of the file that defines it or of a file that takes it
 from there, as often as one file passes it on to another. Such a pair is reported by no case, its classes are read as

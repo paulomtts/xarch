@@ -35,6 +35,16 @@ All notable changes to this project are written here. The format follows
 - Internal names follow the 0.3.0 key names: the fields and functions that read `uses.never` and `uses.apply_never`
   say `uses_never`, `apply_never` and `never_lists` in place of `forbidden`; no output changes.
 
+- The Python reader follows relative imports to the place they name: `from .order import Order` in
+  `app/domain/services.py` binds `app.domain.order.Order`, as `from app.domain.order import Order` does, so
+  `uses.never`, `built_by`, `types_only`, `shared`, the mocks, `stand-ins` and the twins' translation read names
+  imported relatively as they read absolute ones; a name of the app that a `uses.never` list names is found at its use,
+  since a relative import's line does not name it in full. An import it cannot follow (one that climbs above the root,
+  or names no file or folder below it) is marked unresolved and binds nothing. Python has no alias map, so the reader
+  reads no config for aliases. The keys that read those names need the new fact `import.resolved`, which Python
+  supplies `exact`; a language that does not supply it is refused on them with the existing message. A project with no
+  relative import sees no change.
+
 ## [0.2.0] - 2026-11-18
 
 ### Added

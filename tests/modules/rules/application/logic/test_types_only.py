@@ -1,5 +1,5 @@
 """The types-only check on hand-made source files: a test of a tier that names parts in `types_only` never calls what
-it reaches of them through an absolute import, and may call everything else."""
+it reaches of them through an import, however written, and may call everything else."""
 from dataclasses import replace
 
 import pytest

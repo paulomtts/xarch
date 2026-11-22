@@ -255,7 +255,7 @@ FILTERS: tuple[Filter, ...] = (
     Filter("reserved", "the top-level package the import names is one `reserved` lists", FACT, ("path",)),
     Filter("listed-by-another-part", "the top-level package the import names is in the `libraries` of a part other "
                                      "than the file's", FACT, ("path",), side=APP_SIDE),
-    Filter("app-package", "the import names the app's own package by its root (an absolute import of the app)", FACT,
+    Filter("app-package", "the import names the app's own package by its root (an import written from the top)", FACT,
            ("path",)),
     Filter("own-code", "the import is of the project's own code: relative, or naming the app's or the tests' package",
            FACT, ("path", "relative")),

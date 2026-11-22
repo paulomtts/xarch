@@ -137,7 +137,7 @@ keys:
     meaning: how the test framework names things
     accepts: >-
       a preset name, or a map {files, functions, skips, table, mocks}; needed with `tiers` and the guards
-      scenario-coverage and stand-ins. Dotted names are what an absolute import binds; what stays %language% is
+      scenario-coverage and stand-ins. Dotted names are what an import binds; what stays %language% is
       `%interface_path%` as the mark of a port, `%package_file%`, the syntax tree, import resolution and the standard
       library's names
     example: |-
@@ -155,7 +155,7 @@ keys:
     meaning: named lists of names a part never uses
     accepts: >-
       a map {<list>: [<dotted name>, ...]}; a part points to one list with `uses: {never: <list>}`. An entry is a dotted
-      name as an absolute import binds it (`datetime.datetime.now`; a builtin as `%namespace%.open`, a bare `open` is
+      name as an import binds it (`datetime.datetime.now`; a builtin as `%namespace%.open`, a bare `open` is
       refused), a whole package (`socket`), or a method written with a leading dot and parentheses (`.absolute()`). A
       file may not import a listed package or anything below it, nor use a listed name, called or not, as the file
       writes it (through the import that binds it, or a builtin by its bare name where nothing shadows it), nor call a
@@ -340,7 +340,7 @@ keys:
     accepts: >-
       [<part>, ...], each one `may_import` allows: a file of the part may import them to annotate, and for `isinstance`
       and exception matching, but never call what it imports from them (`X(...)`, `m.X(...)`, `X.build(...)`) nor
-      reference one of their top-level functions at all; read through absolute imports only, as
+      reference one of their top-level functions at all; read through every import, however written, as
       `tiers.<tier>.types_only` reads a test
     example: |
       <<two>>
@@ -392,9 +392,9 @@ keys:
     meaning: the only parts that may build its classes
     accepts: >-
       [<part>, ...]: only code of those parts calls the constructor of a class defined at the top level in a file of
-      this part, `X(...)` or `m.X(...)`, read through absolute imports; code of this part counts as any other, and tests
-      are not read. Silent on a class reached through a package file that re-exports it, built in its own file, or built
-      through a variable or a parameter
+      this part, `X(...)` or `m.X(...)`, read through every import, however written; code of this part counts as any
+      other, and tests are not read. Silent on a class reached through a package file that re-exports it, built in its
+      own file, or built through a variable or a parameter
     example: |
       <<two>>
           built_by: [core]
