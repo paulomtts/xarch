@@ -168,10 +168,14 @@ class Row:
 @dataclass(frozen=True)
 class Table:
     """One table decorating a test function (the decorator the profile names), and the line it is on: its parameter names, and its rows
-    (None when the rows are neither a list or tuple literal nor the name of one assigned at the top of the file)."""
+    (None when the rows are neither a list or tuple literal nor the name of one assigned at the top of the file); form, the
+    index from 0 of the form it was read by in the framework's list of forms; and runs, the line of the statement of the
+    test's own body that runs its rows, 0 when none does."""
     line: int
     columns: tuple[str, ...]
     rows: tuple[Row, ...] | None
+    form: int
+    runs: int
 
 
 @dataclass(frozen=True)

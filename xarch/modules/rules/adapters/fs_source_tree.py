@@ -623,7 +623,7 @@ def _table(decorator: ast.expr, scope: list[Scope], lists: dict[str, ast.expr], 
     rows = None
     if isinstance(values, (ast.List, ast.Tuple)) and not any(isinstance(v, ast.Starred) for v in values.elts):
         rows = tuple(_row(v, scope, form) for v in values.elts)
-    return Table(decorator.lineno, columns, rows)
+    return Table(decorator.lineno, columns, rows, form=0, runs=0)
 
 
 def _columns(node: ast.expr | None) -> tuple[str, ...] | None:

@@ -388,11 +388,11 @@ def test_a_parametrized_function_lists_its_rows_with_their_ids_and_the_names_hea
     function = parsed(tmp_path, TABLE).functions[0]
     assert (function.name, function.line) == ("test_go", line_of(TABLE, "def test_go"))
     assert function.tables == (Table(line_of(TABLE, "@pytest.mark.parametrize"), ("given", "when", "then"), (
-        Row(line_of(TABLE, "Go(1)"), True, "a", (None, "Go", "Missing")),
-        Row(line_of(TABLE, "Go(2)"), True, None, (None, "Go", "Published")),
-        Row(line_of(TABLE, "Go(3)"), True, "", (None, "Go", "Gone")),
-        Row(line_of(TABLE, "Go(4)"), False, None, (None, "Go", None)),
-        Row(line_of(TABLE, "other,"), False, None, ()))),)
+        Row(line_of(TABLE, "Go(1)"), written=True, id="a", cells=(None, "Go", "Missing")),
+        Row(line_of(TABLE, "Go(2)"), written=True, id=None, cells=(None, "Go", "Published")),
+        Row(line_of(TABLE, "Go(3)"), written=True, id="", cells=(None, "Go", "Gone")),
+        Row(line_of(TABLE, "Go(4)"), written=False, id=None, cells=(None, "Go", None)),
+        Row(line_of(TABLE, "other,"), written=False, id=None, cells=())), form=0, runs=0),)
 
 
 def test_a_function_lists_the_names_its_body_uses_and_its_branches(tmp_path):
@@ -432,6 +432,20 @@ def test_only_the_parametrize_of_pytest_makes_a_table(tmp_path):
     assert parsed(tmp_path, text).functions[0].tables == ()
 
 
+@pytest.mark.parametrize("text, count", [
+    pytest.param("import pytest\n\n@pytest.mark.parametrize('a', load())\ndef test_a(): ...\n", 1,
+                 id="a table whose rows cannot be read"),
+    pytest.param("import pytest\nCASES = [pytest.param(1, id='a')]\n\n@pytest.mark.parametrize('a', CASES)\n"
+                 "def test_a(): ...\n", 1, id="a table whose rows are a name assigned at the top of the file"),
+    pytest.param("import pytest\n\n@pytest.mark.parametrize('a', [1])\n@pytest.mark.parametrize('b', [2])\n"
+                 "def test_a(a, b): ...\n", 2, id="two tables of one function"),
+    pytest.param("import pytest\nCASES = [1]\n\n@pytest.mark.parametrize('a', [1])\ndef test_a(a):\n"
+                 "    for case in CASES:\n        assert case\n", 1, id="a test whose own body loops over cases"),
+])
+def test_every_table_the_reader_finds_is_read_by_the_first_form_and_run_by_no_statement(tmp_path, text, count):
+    assert [(t.form, t.runs) for t in parsed(tmp_path, text).functions[0].tables] == [(0, 0)] * count
+
+
 def test_the_functions_of_a_class_are_listed_in_source_order(tmp_path):
     text = "def a(): ...\nclass K:\n    def b(self): ...\ndef c(): ...\n"
     assert [f.name for f in parsed(tmp_path, text).functions] == ["a", "b", "c"]
@@ -448,9 +462,9 @@ def test_a_table_is_read_in_the_names_the_form_gives(tmp_path):
     functions = parsed(tmp_path, OTHER_TEXT, OTHER).functions
     a, c = line_of(OTHER_TEXT, "@cases.table('a, b'"), line_of(OTHER_TEXT, "@cases.table(names=")
     assert [(f.name, f.tables) for f in functions] == [
-        ("it_a", (Table(a, ("a", "b"), (Row(a, True, "x", (None, None)), Row(a, True, None, (None, None)))),)),
+        ("it_a", (Table(a, ("a", "b"), (Row(a, True, "x", (None, None)), Row(a, True, None, (None, None))), form=0, runs=0),)),
         ("it_b", ()),
-        ("it_c", (Table(c, ("a",), (Row(c, False, None, ()),)),)),
+        ("it_c", (Table(c, ("a",), (Row(c, False, None, ()),), form=0, runs=0),)),
     ]
 
 

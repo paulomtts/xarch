@@ -18,7 +18,7 @@ def row(then: str | None, line: int = 10, id: str | None = "an outcome", written
 
 
 def table(*rows: Row, columns=COLUMNS, line: int = 9) -> Table:
-    return Table(line, columns, rows)
+    return Table(line, columns, rows, 0, 0)
 
 
 TABLE = table(row("Published"), row("Missing", 11))
@@ -67,7 +67,7 @@ FILE = "tests/modules/docs/application/test_publish.py"
                                                      columns=("given", "when", "outcome")),))],
                  [f"{FILE}:1: no table test whose parameters are given, when, then (scenario-coverage)"],
                  id="a table without the three columns is not the use case's table"),
-    pytest.param([Function(8, "test_publish", (Table(9, COLUMNS, None),))],
+    pytest.param([Function(8, "test_publish", (Table(9, COLUMNS, None, 0, 0),))],
                  [f"{FILE}:9: the rows of the table cannot be read (scenario-coverage)"],
                  id="rows that cannot be read are reported, and no variant is then missing"),
     pytest.param([Function(8, "test_publish", (table(row("Published", written=False, id=None), row("Missing", 11)),))],
@@ -196,7 +196,7 @@ ARRANGE_FIX = "arrange from given, act with when, assert == then, and give the o
 @pytest.mark.parametrize("functions, fixes", [
     pytest.param([Function(8, "check_publish", (TABLE,))], ["add a table test whose parameters are given, when, then"],
                  id="no table test"),
-    pytest.param([Function(8, "test_publish", (Table(9, COLUMNS, None),))],
+    pytest.param([Function(8, "test_publish", (Table(9, COLUMNS, None, 0, 0),))],
                  ["write them as a list, or as the name of a list assigned at the top of the file"],
                  id="rows that cannot be read"),
     pytest.param([Function(8, "test_publish", (table(row("Published", written=False, id=None), row("Missing", 11)),))],

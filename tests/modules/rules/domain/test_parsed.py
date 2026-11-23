@@ -5,7 +5,7 @@ from dataclasses import fields
 import pytest
 
 from xarch.kernel.source import Import
-from xarch.modules.rules.domain.parsed import Class, Constant, Function, Row
+from xarch.modules.rules.domain.parsed import Class, Constant, Function, Row, Table
 
 
 def test_a_function_s_real_statements_are_those_that_are_not_inert():
@@ -26,3 +26,12 @@ def test_a_row_says_its_line_whether_it_is_written_as_a_row_its_id_and_its_cells
 def test_a_row_is_no_longer_built_with_param():
     with pytest.raises(TypeError):
         Row(1, param=True, id=None, cells=())
+
+
+def test_a_table_says_its_line_its_columns_its_rows_its_form_and_the_line_that_runs_them():
+    assert [f.name for f in fields(Table)] == ["line", "columns", "rows", "form", "runs"]
+
+
+def test_a_table_built_without_its_form_and_the_line_that_runs_it_is_refused():
+    with pytest.raises(TypeError):
+        Table(1, ("a",), None)
