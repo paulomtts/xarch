@@ -1,20 +1,22 @@
 """The evals the profile writes itself, as rules reads them: what one question of an eval is asked of is each fact of
 the kind it reads, in the files of its scope, that passes the filters it keeps, found as a check finds the facts it
 reads. An eval is made into a rule that lists each such fact and is never run as a check: a filter that is not a word
-of the vocabulary, or does not apply to the kind read, is a problem at the eval's address, as for a check. An example
-file holding no fact the eval reads is a problem too: the question would never be asked of it."""
+of the vocabulary, or does not apply to the kind read, is a problem at the eval's address, as for a check, and so is a
+fact the rule reads that the language's reader does not supply. An example file holding no fact the eval reads is a
+problem too: the question would never be asked of it."""
 from __future__ import annotations
 
 from dataclasses import replace
 
 from xarch.modules.rules.application.logic.facts import facts_of
-from xarch.modules.rules.application.logic.own_checks import placed
+from xarch.modules.rules.application.logic.own_checks import placed, unsupplied
 from xarch.modules.rules.domain.errors import RuleRefused
 from xarch.modules.rules.domain.parsed import SourceFile
 from xarch.modules.rules.domain.profile import Asked, Profile
 from xarch.modules.rules.domain.published import Piece
 from xarch.modules.rules.domain.rule import EXISTING, MAY_NOT, Fact, Facts, Read, Rule
 from xarch.profile_values.checks import LIST, Saying
+from xarch.profile_values.language import CheckedLanguage
 
 _READ = "ask the eval's question of it"
 """What the rule that lists the facts an eval reads says of each: it is never shown, since no check runs it."""
@@ -26,12 +28,15 @@ def asking(name: str, asked: Asked) -> Rule:
                 mode=LIST, key=f"evals.{name}")
 
 
-def made(name: str, asked: Asked) -> tuple[Rule | None, list[str]]:
-    """The rule of the eval, or None and each problem at its address."""
+def made(name: str, asked: Asked, language: CheckedLanguage) -> tuple[Rule | None, list[str]]:
+    """The rule of the eval, or None and each problem at its address: a word that does not exist or apply, or a fact
+    the rule reads that the language's reader does not supply."""
     try:
-        return asking(name, asked), []
+        rule = asking(name, asked)
     except RuleRefused as refused:
         return None, [f"evals.{name}.{problem}" for problem in refused.problems]
+    lacking = unsupplied(f"evals.{name}", rule, language, "eval")
+    return (None, lacking) if lacking else (rule, [])
 
 
 def named(fact: Fact) -> str:

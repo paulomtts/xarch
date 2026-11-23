@@ -46,7 +46,7 @@ class ExamplesService:
                 found += held_problems(own.rule.id, self._found(own, own.flagged, profile, app),
                                        self._found(own, own.clean, profile, app))
         for name, asked in profile.asked.items():
-            rule, problems = evals.made(name, asked)
+            rule, problems = evals.made(name, asked, profile.language)
             unread += problems
             for side, files in (("flagged", asked.flagged), ("clean", asked.clean)) if rule is not None else ():
                 facts = project([(path, self._tree.parsed(code, profile.language.standard_modules,

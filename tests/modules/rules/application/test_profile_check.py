@@ -4,6 +4,7 @@ the app's (or, below tests/, as the tests'): a check must find something in its 
 code; a check that cannot be made has its problems instead, in the profile's order, while the others are held all the
 same and every check is counted. A profile that does not load comes back with the loader's problems, none chosen with
 the profiles known, and one that cannot be used is refused with why."""
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -11,7 +12,7 @@ import pytest
 from tests.fakes.filesystem import FakeSourceTree
 from tests.fakes.profiles import FakeProfiles
 from tests.modules.rules.application.helpers import controller
-from tests.modules.rules.builders import profile
+from tests.modules.rules.builders import PYTHON, profile
 from xarch.modules.rules.contract import (
     CheckProfile,
     CheckRefused,
@@ -26,6 +27,7 @@ from xarch.modules.rules.contract import (
 from xarch.modules.rules.domain.errors import NoProfile, ProfileUnusable, Unloaded
 from xarch.modules.rules.domain.parsed import Class, SourceFile
 from xarch.modules.rules.domain.profile import Asked
+from xarch.profile_values.capabilities import EXACT, FACTS, Supply
 from xarch.profile_values.checks import APP, Condition, Quantified, Saying, Scope, WrittenCheck, WrittenTarget
 
 PARSED = {"manager": SourceFile("", (), (), classes=(Class(1, "Manager"),)), "nothing": SourceFile("", (), ())}
@@ -116,3 +118,20 @@ def test_the_evals_a_profile_writes_itself_are_held_to_their_examples_statically
     tree = FakeSourceTree(Path("/src/app"), {}, parsed=PARSED)
     assert controller(tree, profiles).check_profile(CheckProfile(APP_FOLDER, "mine")) == ProfileHeld(
         MINE, ChecksHeld((), 0, problems, 1))
+
+
+UNTOPPED = replace(PYTHON, title="Untopped",
+                   supplies=tuple(Supply(fact, EXACT) for fact in FACTS if fact != "function.top_level"))
+"""Python's language but for its reader, which supplies every fact but function.top_level."""
+UNTOPPED_EVAL = ("evals.rule: needs function.top_level (whether a function is defined at the top level of its file, in "
+                 "no class), which the reader of Untopped does not supply: read another kind of fact, or drop the eval")
+
+
+def test_an_eval_that_reads_a_fact_the_language_does_not_supply_is_refused_at_its_address_and_its_examples_unread():
+    evals = {"rule": Asked("function", Scope(APP, "domain"), (Condition("top-level"),), ((DOMAIN, "unreadable"),),
+                           ((DOMAIN, "unreadable"),))}
+    profiles = FakeProfiles({"mine": profile(asked=evals, language=UNTOPPED)}, reviewed={"mine": MINE})
+    tree = FakeSourceTree(Path("/src/app"), {}, parsed=PARSED)
+    assert controller(tree, profiles).check_profile(CheckProfile(APP_FOLDER, "mine")) == ProfileHeld(
+        MINE, ChecksHeld((), 0, (UNTOPPED_EVAL,), 1))
+    assert tree.handed == []

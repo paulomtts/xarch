@@ -2,6 +2,7 @@
 app's: each fact of the kind it reads, in its scope, passing the filters it keeps, with its first line and its name;
 an eval the profile does not write, or one whose filters are no words of the vocabulary, is refused with every
 problem, and so is a profile that cannot be used."""
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -9,12 +10,13 @@ import pytest
 from tests.fakes.filesystem import FakeSourceTree
 from tests.fakes.profiles import FakeProfiles
 from tests.modules.rules.application.helpers import controller
-from tests.modules.rules.builders import profile
+from tests.modules.rules.builders import PYTHON, profile
 from xarch.kernel.source import CommentSpan, Import
 from xarch.modules.rules.contract import CheckRefused, ChecksCannotRun, FactKept, FactsKept, FileKept, KeepFacts, Piece
 from xarch.modules.rules.domain.errors import ProfileUnusable
 from xarch.modules.rules.domain.parsed import Class, Comment, Function, SourceFile
 from xarch.modules.rules.domain.profile import Asked
+from xarch.profile_values.capabilities import EXACT, FACTS, Supply
 from xarch.profile_values.checks import APP, Condition, Scope
 
 CLOCK = Import(1, ("app", "kernel", "time"), ("Clock",))
@@ -67,3 +69,15 @@ def test_each_file_given_comes_back_with_where_its_comments_lie_as_its_reader_fi
     found = controller(FakeSourceTree(Path("/src/app"), {}, parsed=parsed), profiles).kept(
         KeepFacts("mine", "app", "rule", ((DOMAIN, "noted"),)))
     assert found == FactsKept((FileKept(DOMAIN, (), (FactKept(0, 0, ""),), (CommentSpan(1, 7, 12), CommentSpan(2, 0, 5))),))
+
+
+def test_an_eval_that_reads_a_fact_the_language_does_not_supply_is_refused_at_its_address():
+    untopped = replace(PYTHON, title="Untopped",
+                       supplies=tuple(Supply(fact, EXACT) for fact in FACTS if fact != "function.top_level"))
+    asked = {"rule": Asked("function", Scope(APP, "domain"), (Condition("top-level"),))}
+    profiles = FakeProfiles({"mine": profile(asked=asked, language=untopped)})
+    found = controller(FakeSourceTree(Path("/src/app"), {}, parsed=PARSED), profiles).kept(
+        KeepFacts("mine", "app", "rule", ((DOMAIN, "service"),)))
+    assert found == ChecksCannotRun((
+        "evals.rule: needs function.top_level (whether a function is defined at the top level of its file, in no "
+        "class), which the reader of Untopped does not supply: read another kind of fact, or drop the eval",))
