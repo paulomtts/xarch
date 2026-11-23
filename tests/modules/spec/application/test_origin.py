@@ -7,7 +7,7 @@ from tests.fakes.architecture_files import FakeArchitectureFiles
 from tests.modules.spec.application.helpers import controller as spec_controller
 from tests.modules.spec.application.origins import BASE, OFF, OTHER, PARTS, TESTING, TIER, part
 from xarch.modules.spec.application.controller import SpecController
-from xarch.modules.spec.contract import Loosened, Origin, ProfileRefused
+from xarch.modules.spec.contract import Loosened, Origin, ProfileRefused, ProfileView
 
 
 def held(may: list[str], must: list[str] | None = None) -> dict:
@@ -185,3 +185,131 @@ def test_against_names_no_bundled_profile_of_higher_match():
 def test_without_against_based_on_is_not_carried():
     origin = against({**BASE, "based_on": "base"}).origin("mine.yaml")
     assert (origin.chosen_by, origin.based_on) == ("based_on", "")
+
+
+TEAM = {**BASE, "name": "team", "based_on": "base", "guards": {"no-comments": {}, "closed-tree": {}}}
+"""A profile file based on base that switches closed-tree on too."""
+LIT = {**BASE, "name": "lit", "parts": {**PARTS, "core": {**PARTS["core"], "litmus": "Does it decide?"},
+                                       "store": {**PARTS["store"], "litmus": "Does it keep?"}}}
+"""A bundled profile that gives core and store a litmus."""
+
+
+def chained(files: dict, bundled: dict | None = None) -> SpecController:
+    """The controller over base and other, bundled (or the bundled profiles given), and the profile files given, by
+    their exact location: a file read from a wrong folder is a file that cannot be read."""
+    return spec_controller(FakeArchitectureFiles({"base": BASE, "other": OTHER} if bundled is None else bundled, files,
+                                                 {"guard.py": "check()\n"}))
+
+
+def test_a_based_on_path_is_read_from_the_folder_of_the_profile_and_compared_with_as_written():
+    decoy = {**BASE, "name": "decoy", "guards": {}}
+    mine = {**TEAM, "name": "mine", "based_on": "../team.yaml"}
+    origin = chained({"sub/mine.yaml": mine, "team.yaml": TEAM, "../team.yaml": decoy}).origin("sub/mine.yaml")
+    assert (origin.compared, origin.chosen_by, origin.anchor) == ("../team.yaml", "based_on", "base")
+    assert (origin.match, origin.looser) == (1.0, ())
+
+
+def test_a_based_on_path_with_no_suffix_is_read_as_a_file_and_never_as_a_bundled_name():
+    mine = {**TEAM, "name": "mine", "based_on": "../team"}
+    origin = chained({"sub/mine.yaml": mine, "team": TEAM}, {"base": BASE, "team": OTHER}).origin("sub/mine.yaml")
+    assert (origin.compared, origin.match, origin.anchor) == ("../team", 1.0, "base")
+
+
+MINE = {**BASE, "name": "mine", "based_on": "../team.yaml"}
+"""A copy of base at sub/mine.yaml based on team.yaml, by its path from sub/."""
+
+
+def test_a_file_of_the_chain_that_does_not_load_refuses_the_profile_with_its_first_problem():
+    assert chained({"sub/mine.yaml": MINE, "team.yaml": {"name": "team"}}).origin("sub/mine.yaml") == ProfileRefused(
+        "sub/mine.yaml: based_on: ../team.yaml does not load: team.yaml: missing `parts`")
+    many = chained({"sub/mine.yaml": MINE, "team.yaml": {"colour": 1}}).origin("sub/mine.yaml")
+    assert many.reason.startswith(
+        "sub/mine.yaml: based_on: ../team.yaml does not load: team.yaml: unknown key 'colour'")
+    assert many.reason.endswith(" (and 2 more)")
+    assert chained({"sub/mine.yaml": MINE}).origin("sub/mine.yaml") == ProfileRefused(
+        "sub/mine.yaml: based_on: ../team.yaml does not load: team.yaml: cannot read the file: no such file")
+
+
+def test_a_deeper_file_that_does_not_load_is_said_from_the_file_of_the_chain_that_names_it():
+    files = {"mine.yaml": {**BASE, "name": "mine", "based_on": "a.yaml"},
+             "a.yaml": {**BASE, "name": "a", "based_on": "b.yaml"}, "b.yaml": {"name": "b"}}
+    assert chained(files).origin("mine.yaml") == ProfileRefused(
+        "a.yaml: based_on: b.yaml does not load: b.yaml: missing `parts`")
+
+
+@pytest.mark.parametrize("files, location, reason", [
+    pytest.param({"mine.yaml": {**BASE, "based_on": "a.yaml"}, "a.yaml": {**BASE, "based_on": "mine.yaml"}},
+                 "mine.yaml", "mine.yaml: based_on: a.yaml is based on this profile", id="two files"),
+    pytest.param({"p/q/mine.yaml": {**BASE, "based_on": "../a.yaml"}, "p/a.yaml": {**BASE, "based_on": "../b.yaml"},
+                  "b.yaml": {**BASE, "based_on": "p/q/mine.yaml"}},
+                 "p/q/mine.yaml", "p/q/mine.yaml: based_on: ../a.yaml is based on this profile, through ../b.yaml",
+                 id="three files name the one between"),
+    pytest.param({"mine.yaml": {**BASE, "based_on": "mine.yaml"}}, "mine.yaml",
+                 "mine.yaml: based_on: mine.yaml is based on this profile", id="a profile based on itself"),
+    pytest.param({"mine.yaml": {**BASE, "based_on": "a.yaml"}, "a.yaml": {**BASE, "based_on": "b.yaml"},
+                  "b.yaml": {**BASE, "based_on": "a.yaml"}},
+                 "mine.yaml", "a.yaml: based_on: b.yaml is based on this profile",
+                 id="a loop the profile in force is not in"),
+])
+def test_a_chain_that_comes_back_to_a_file_of_it_refuses_the_profile(files, location, reason):
+    assert chained(files).origin(location) == ProfileRefused(reason)
+
+
+def test_the_anchor_is_the_bundled_profile_the_chain_ends_on_else_the_one_closest_to_its_last_file_else_none():
+    ends = chained({"mine.yaml": {**BASE, "name": "mine", "based_on": "team.yaml"}, "team.yaml": TEAM})
+    assert ends.origin("mine.yaml").anchor == "base"
+    closest = chained({"mine.yaml": {**OTHER, "name": "mine", "based_on": "team.yaml"},
+                       "team.yaml": {**BASE, "name": "team"}}).origin("mine.yaml")
+    assert (closest.anchor, closest.higher[0]) == ("base", "other")
+    alone = {"name": "alone", "parts": {"y": {"path": "y", "role": "all"}}}
+    none = chained({"mine.yaml": {**alone, "name": "mine", "based_on": "team.yaml"}, "team.yaml": alone}).origin(
+        "mine.yaml")
+    assert (none.anchor, none.baseline_off) == (None, ())
+
+
+def test_a_guard_the_profile_file_leaves_off_and_the_anchor_switches_on_is_not_excused():
+    lax = {**BASE, "guards": {}}
+    origin = chained({"mine.yaml": {**lax, "name": "mine", "based_on": "team.yaml"},
+                      "team.yaml": {**lax, "name": "team", "based_on": "base"}}).origin("mine.yaml")
+    assert "no-comments" in origin.guards_off and "no-comments" not in origin.baseline_off
+    assert origin.baseline_off == OFF
+
+
+def test_a_guard_the_profile_file_switches_on_and_the_anchor_leaves_off_is_not_excused():
+    origin = chained({"mine.yaml": {**BASE, "name": "mine", "based_on": "team.yaml"},
+                      "team.yaml": TEAM}).origin("mine.yaml")
+    assert "closed-tree" in origin.guards_off and "closed-tree" not in origin.baseline_off
+
+
+def test_a_litmus_the_profile_file_gives_and_one_the_anchor_gives_are_both_demanded():
+    team = {**BASE, "name": "team", "based_on": "lit", "parts": part("store", litmus="Does it keep?")}
+    origin = chained({"mine.yaml": {**BASE, "name": "mine", "based_on": "team.yaml"}, "team.yaml": team},
+                     {"lit": LIT}).origin("mine.yaml")
+    assert origin.looser == (
+        Loosened("litmus", "store", "",
+                 "store has no litmus, though the profile it is compared with gives it one (parts.store.litmus)"),
+        Loosened("litmus", "core", "lit",
+                 "core has no litmus, though lit, which --strict rests on, gives the part it pairs with one "
+                 "(parts.core.litmus)"))
+
+
+def test_with_against_a_path_based_on_is_said_beside_it_rests_on_nothing_and_its_chain_still_refuses():
+    files = {"mine.yaml": {**BASE, "name": "mine", "based_on": "team.yaml"}, "team.yaml": TEAM}
+    origin = chained(files).origin("mine.yaml", against="other")
+    assert (origin.compared, origin.chosen_by, origin.based_on, origin.anchor) == (
+        "other", "against", "team.yaml", None)
+    broken = chained({"mine.yaml": files["mine.yaml"]}).origin("mine.yaml", against="other")
+    assert broken == ProfileRefused(
+        "mine.yaml: based_on: team.yaml does not load: team.yaml: cannot read the file: no such file")
+
+
+def test_a_bundled_based_on_or_the_closest_is_the_anchor_and_a_bundled_profile_rests_on_none():
+    assert against({**BASE, "based_on": "base"}).origin("mine.yaml").anchor == "base"
+    assert controller(BASE).origin("mine.yaml").anchor == "base"
+    assert controller(BASE).origin("base").anchor is None
+
+
+def test_only_the_origin_reads_the_chain_so_the_profile_loads_with_its_based_on_file_missing():
+    spec = chained({"sub/mine.yaml": MINE})
+    assert isinstance(spec.profile("sub/mine.yaml"), ProfileView)
+    assert isinstance(spec.origin("sub/mine.yaml"), ProfileRefused)
