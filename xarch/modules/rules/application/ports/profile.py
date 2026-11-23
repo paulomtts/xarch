@@ -28,8 +28,9 @@ class Profiles(Protocol):
         the format cannot be explained."""
         ...
 
-    def reviewed(self, app: Path, target: str | None) -> Reviewed:
+    def reviewed(self, app: Path, target: str | None, against: str | None = None) -> Reviewed:
         """The profile target names (a bundled name or a path), else the one configured for the project holding the
-        app folder, checked but for its own checks; raises Unloaded with every problem when it does not load,
-        NoProfile when none is given or configured, and ProfileUnusable when it cannot be chosen."""
+        app folder, checked but for its own checks, and compared with the profile against names when it is given;
+        raises Unloaded with every problem when it does not load, NoProfile when none is given or configured, and
+        ProfileUnusable when it cannot be chosen or against does not load."""
         ...

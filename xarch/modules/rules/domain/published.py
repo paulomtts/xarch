@@ -132,10 +132,11 @@ class Resemblance:
     """How a profile stands to the bundled ones, as the spec module's origin of it says.
 
     bundled: whether it is one, its own baseline
-    compared: the bundled profile it is compared with; None when it is bundled or none is
+    compared: the profile it is compared with: for a custom profile the bundled one, and for either the one --against
+        names; None when it is bundled and --against is not given, or none is
     looser: how it is looser than the profile it is compared with, in the order the spec module finds it
-    chosen_by: why that one: "based_on", the profile says it is based on it, or "closest", it has the highest match;
-        None when nothing is compared
+    chosen_by: why that one: "based_on", the profile says it is based on it, "closest", it has the highest match, or
+        "against", --against names it for this run; None when nothing is compared
     match: the share of what `check` reads under either profile that has a counterpart in the other, rounded to two
         decimals; None when nothing is compared
     low: the match is below the line of a low one, or no part pairs
@@ -145,6 +146,7 @@ class Resemblance:
     elsewhere: each part the other profile has by the same name at another path, as "<name>: <its path there> there"
     higher: when it is compared with the profile it says it is based on, the bundled profile of higher match and that
         match; None when there is none
+    based_on: with --against, the profile its own based_on names, said beside it; empty otherwise
     """
     bundled: bool
     compared: str | None = None
@@ -157,6 +159,7 @@ class Resemblance:
     only_there: tuple[str, ...] = ()
     elsewhere: tuple[str, ...] = ()
     higher: tuple[str, float] | None = None
+    based_on: str = ""
 
 
 @dataclass(frozen=True)

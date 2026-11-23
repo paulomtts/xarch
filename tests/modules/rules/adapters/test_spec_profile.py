@@ -76,11 +76,14 @@ class Spec:
     def __init__(self, files: tuple[ProjectFile, ...] | None = None, origin: OriginResult = ORIGIN,
                  checked: CheckResult | None = None):
         self._files, self._origin, self._checked = files, origin, checked
+        self.asked: list[CheckProfile] = []
+        self.origins: list[tuple[str, ...]] = []
 
     def profile(self, location: str) -> ProfileView:
         return VIEW
 
-    def origin(self, location: str) -> OriginResult:
+    def origin(self, location: str, *against: str) -> OriginResult:
+        self.origins.append((location, *against))
         return self._origin
 
     def files(self, profile: str, app: str, presets: bool = True) -> FilesResult:
@@ -97,7 +100,8 @@ class Spec:
         return KEY if cmd.key == KEY.key else UnknownKey(cmd.key, ())
 
     def check_profile(self, cmd: CheckProfile) -> CheckResult:
-        assert cmd == CheckProfile(Path("/p/app"), "mine.yaml"), cmd
+        assert (cmd.app, cmd.target) == (Path("/p/app"), "mine.yaml"), cmd
+        self.asked.append(cmd)
         return self._checked
 
 
@@ -204,3 +208,13 @@ def test_spec_choosing_no_profile_raises_with_the_profiles_known():
 def test_a_profile_spec_refuses_to_check_raises_with_spec_s_reason():
     with pytest.raises(ProfileUnusable, match="^unknown profile 'nope'$"):
         SpecProfiles(Spec(checked=ProfileRefused("unknown profile 'nope'"))).reviewed(Path("/p/app"), "mine.yaml")
+
+
+def test_against_is_sent_to_spec_s_check_its_word_and_based_on_are_kept_and_the_standing_never_asks_for_it():
+    origin = Origin("mine.yaml", False, "web", chosen_by="against", match=0.73, low=True, based_on="cli")
+    spec = Spec(origin=origin, checked=ProfileChecked("mine.yaml", (), 3, origin))
+    reviewed = SpecProfiles(spec).reviewed(Path("/p/app"), "mine.yaml", "web")
+    assert spec.asked == [CheckProfile(Path("/p/app"), "mine.yaml", "web")]
+    assert reviewed.resemblance == Resemblance(False, "web", (), "against", 0.73, True, based_on="cli")
+    SpecProfiles(spec).standing("mine.yaml", "app")
+    assert spec.origins == [("mine.yaml",)]

@@ -583,9 +583,11 @@ RuleResult = RuleShown | KeyUnset | NoRuleShown
 @dataclass(frozen=True)
 class CheckProfile:
     """Check a profile without an app: the one target names (a bundled name or a path), else the one configured for
-    the project holding the app folder, whose name its own checks' examples are read below."""
+    the project holding the app folder, whose name its own checks' examples are read below; against, when given, the
+    profile it is compared with for this run, a bundled name or a path."""
     app: Path
     target: str | None = None
+    against: str | None = None
 
 
 @dataclass(frozen=True)
