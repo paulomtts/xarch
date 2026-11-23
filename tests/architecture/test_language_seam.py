@@ -149,6 +149,8 @@ EXEMPT: dict[tuple[str, str], str] = {
                                                             "(guards.scenario-coverage.file); it is no private prefix, "
                                                             "and a profile in another language would still say "
                                                             "{name} in that case",
+    ("kernel/logic/cases.py", "_"): "the separator of snake_case, the case a profile asks for with `{name:snake}` in the "
+                                    "test file of a use case (guards.scenario-coverage.file); it is no private prefix",
 }
 
 
