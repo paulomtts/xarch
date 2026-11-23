@@ -12,9 +12,9 @@ contract's own.
     Slot  a slot of a check as a profile writes it, which `profile explain checks` shows
     Drift an init file as it stands against what `init` would write, which the enforcement section lists
     KeyFacts what the format says of a key the profile sets nowhere, which the command line shows
-    Loosened one way a profile is looser than the bundled one it resembles, which the command line shows
-    Resemblance whether a profile is bundled, the bundled one it resembles and how it is looser, which the command
-          line shows
+    Loosened one way a profile is looser than the bundled one it is compared with, which the command line shows
+    Resemblance whether a profile is bundled, the bundled one it is compared with, how much the two have in common
+          and how it is looser, which the command line shows
     Reviewed what checking a profile that loads found before its own checks are held, which the command line shows
     Piece one piece of a source file as the reader cuts it, which SourcesRead hands out
 
@@ -129,11 +129,34 @@ class Loosened:
 
 @dataclass(frozen=True)
 class Resemblance:
-    """How a profile stands to the bundled ones: whether it is one (bundled), else the bundled one closest to it (None
-    when it resembles none), and how it is looser than that one, in the order the spec module finds it."""
+    """How a profile stands to the bundled ones, as the spec module's origin of it says.
+
+    bundled: whether it is one, its own baseline
+    compared: the bundled profile it is compared with; None when it is bundled or none is
+    looser: how it is looser than the profile it is compared with, in the order the spec module finds it
+    chosen_by: why that one: "based_on", the profile says it is based on it, or "closest", it has the highest match;
+        None when nothing is compared
+    match: the share of what `check` reads under either profile that has a counterpart in the other, rounded to two
+        decimals; None when nothing is compared
+    low: the match is below the line of a low one, or no part pairs
+    counts: (kind, comparable, all) for each kind of thing `check` reads, in the order they are said
+    only_here, only_there: the parts, then the tiers, of this profile, and of the one it is compared with, that pair
+        with none of the other's, each as "part <name>" or "tier <name>", by name
+    elsewhere: each part the other profile has by the same name at another path, as "<name>: <its path there> there"
+    higher: when it is compared with the profile it says it is based on, the bundled profile of higher match and that
+        match; None when there is none
+    """
     bundled: bool
-    closest: str | None = None
+    compared: str | None = None
     looser: tuple[Loosened, ...] = ()
+    chosen_by: str | None = None
+    match: float | None = None
+    low: bool = False
+    counts: tuple[tuple[str, int, int], ...] = ()
+    only_here: tuple[str, ...] = ()
+    only_there: tuple[str, ...] = ()
+    elsewhere: tuple[str, ...] = ()
+    higher: tuple[str, float] | None = None
 
 
 @dataclass(frozen=True)

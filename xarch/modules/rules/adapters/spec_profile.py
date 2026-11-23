@@ -121,7 +121,9 @@ class SpecProfiles:
             case ProfileChecked(location, problems, files, Origin() as origin):
                 looser = tuple(Loosened(item.key, item.part, item.what, item.sentence) for item in origin.looser)
                 return Reviewed(location, tuple(problem.text for problem in problems), files,
-                                Resemblance(origin.bundled, origin.closest, looser))
+                                Resemblance(origin.bundled, origin.compared, looser, origin.chosen_by, origin.match,
+                                            origin.low, origin.counts, origin.only_here, origin.only_there,
+                                            origin.elsewhere, origin.higher))
             case NoProfileChosen(known):
                 raise NoProfile(known)
             case ProfileRefused(reason):

@@ -49,8 +49,8 @@ def test_the_bundled_profile_a_profile_says_it_is_based_on_wins_over_the_one_sha
     full = parsed(layered())
     bundled = {"alpha": full, "beta": replace(full, parts={"api": full.parts["api"]})}
     mine = replace(full, parts={name: full.parts[name] for name in ("api", "store")})
-    assert origin_of("mine.yaml", mine, False, bundled).closest == "alpha"
-    assert origin_of("mine.yaml", replace(mine, based_on="beta"), False, bundled).closest == "beta"
+    assert origin_of("mine.yaml", mine, False, bundled).compared == "alpha"
+    assert origin_of("mine.yaml", replace(mine, based_on="beta"), False, bundled).compared == "beta"
 
 
 def test_a_profile_that_checks_no_outside_package_is_looser_than_one_that_does():

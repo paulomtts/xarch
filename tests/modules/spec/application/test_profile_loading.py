@@ -44,17 +44,17 @@ def test_a_preset_the_files_port_does_not_hold_is_refused_listing_the_ones_it_do
 
 
 def test_without_saying_so_a_profile_resembles_the_bundled_one_sharing_most_parts():
-    assert controller(MINE).origin("mine.yaml").closest == "base"
+    assert controller(MINE).origin("mine.yaml").compared == "base"
 
 
 def test_a_profile_says_which_bundled_profile_it_is_based_on_and_is_compared_with_that_one():
     origin = controller(MINE | {"based_on": "other"}).origin("mine.yaml")
-    assert origin.closest == "other"
+    assert origin.compared == "other"
     assert origin.looser == ()
 
 
 def test_based_on_a_bundled_profile_the_looseness_is_listed_against_it():
     origin = controller(MINE | {"based_on": "base"}).origin("mine.yaml")
-    assert origin.closest == "base"
+    assert origin.compared == "base"
     assert Loosened("imports.libraries", "store", "requests",
                     "store may also import requests (parts.store.imports.libraries)") in origin.looser

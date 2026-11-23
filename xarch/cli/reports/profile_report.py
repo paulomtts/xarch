@@ -186,8 +186,8 @@ def origin_words(origin: Origin | Resemblance) -> str:
     """Where a profile comes from, in words: bundled, or custom and the bundled profile closest to it, if any."""
     if origin.bundled:
         return "bundled"
-    if origin.closest is not None:
-        return f"custom; closest bundled: {origin.closest}"
+    if origin.compared is not None:
+        return f"custom; closest bundled: {origin.compared}"
     return "custom; no bundled profile resembles it"
 
 
@@ -234,11 +234,11 @@ def _verdict(problems: int) -> str:
 
 
 def _compared(resemblance: Resemblance) -> list[str]:
-    if resemblance.bundled or resemblance.closest is None:
+    if resemblance.bundled or resemblance.compared is None:
         return []
     if not resemblance.looser:
-        return [f"  compared: no looser than {resemblance.closest}"]
-    return [f"  compared: looser than {resemblance.closest} (information; a part left without the litmus it gives "
+        return [f"  compared: no looser than {resemblance.compared}"]
+    return [f"  compared: looser than {resemblance.compared} (information; a part left without the litmus it gives "
             "fails `check --strict`):",
             *(f"    {item.sentence}" for item in resemblance.looser)]
 
@@ -252,8 +252,8 @@ def check_document(checked: ProfileHeld | ProfileUnloaded) -> str:
             pass
     resemblance = reviewed.resemblance
     compared = None
-    if not resemblance.bundled and resemblance.closest is not None:
-        compared = {"profile": resemblance.closest,
+    if not resemblance.bundled and resemblance.compared is not None:
+        compared = {"profile": resemblance.compared,
                     "looser": [{"key": i.key, "part": i.part, "what": i.what,
                                 "sentence": i.sentence} for i in resemblance.looser]}
     problems = [*((EXAMPLES, text) for text in reviewed.examples), *((CHECKS, text) for text in own.problems),

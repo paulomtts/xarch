@@ -30,7 +30,7 @@ def test_origin(given, when, then):
 
 def test_a_copy_of_a_bundled_profile_is_compared_with_it_and_found_no_looser():
     origin = controller(BASE).origin("mine.yaml")
-    assert (origin.bundled, origin.closest, origin.looser) == (False, "base", ())
+    assert (origin.bundled, origin.compared, origin.looser) == (False, "base", ())
     assert origin.baseline_off == origin.guards_off
 
 
@@ -45,7 +45,7 @@ def test_every_way_a_custom_profile_is_looser_than_the_bundled_one_it_resembles_
               "guards": {},
               "files": {"tests/test_rules.py": {"from": "guard.py"}}}
     origin = controller(custom).origin("mine.yaml")
-    assert origin.closest == "base"
+    assert origin.compared == "base"
     assert origin.guards_off == ("package-only", "scenario-coverage", "no-comments", *OFF[2:])
     assert origin.baseline_off == OFF
     assert origin.looser == (
@@ -78,17 +78,17 @@ def test_a_part_that_may_import_any_outside_package_is_looser_than_one_that_list
 def test_a_custom_profile_sharing_no_part_resembles_no_bundled_profile_and_has_no_baseline():
     custom = {"name": "mine", "parts": {"x": {"path": "x", "role": "all"}}}
     origin = controller(custom).origin("mine.yaml")
-    assert (origin.closest, origin.baseline_off, origin.looser) == (None, (), ())
+    assert (origin.compared, origin.baseline_off, origin.looser) == (None, (), ())
     assert origin.guards_off == ("package-only", "scenario-coverage", "no-comments", *OFF[2:])
 
 
 def test_the_closest_bundled_profile_is_the_one_sharing_the_most_parts_the_first_by_name_on_a_tie():
     custom = {**OTHER, "parts": {**OTHER["parts"], "core": {"path": "core", "role": "x"},
                                  "store": {"path": "store", "role": "y"}}}
-    assert controller(custom).origin("mine.yaml").closest == "base"
-    assert controller(OTHER).origin("mine.yaml").closest == "other"
+    assert controller(custom).origin("mine.yaml").compared == "base"
+    assert controller(OTHER).origin("mine.yaml").compared == "other"
     tie = {**OTHER, "parts": {**OTHER["parts"], "core": {"path": "core", "role": "x"}}}
-    assert controller(tie).origin("mine.yaml").closest == "base"
+    assert controller(tie).origin("mine.yaml").compared == "base"
 
 
 def test_a_part_that_no_longer_has_to_import_or_may_meet_it_with_more_is_looser():

@@ -134,7 +134,7 @@ def test_with_no_bundled_profile_to_compare_with_every_guard_left_off_fails_stri
     assert strict_findings(enforcement) == (Finding("guards_off", "no-comments"), Finding("guards_off", "closed-tree"))
 
 
-def test_how_a_custom_profile_differs_from_the_closest_bundled_one_is_never_a_strict_finding():
+def test_how_a_custom_profile_differs_from_the_profile_it_is_compared_with_is_never_a_strict_finding():
     """The enforcement holds only the guards a profile leaves off: how it is looser is spec's, and shown beside it."""
     assert strict_findings(Enforcement((), ())) == ()
 

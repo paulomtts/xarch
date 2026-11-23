@@ -142,7 +142,7 @@ def _violation_document(violation: Violation, hints: Mapping[str, str] | None = 
 
 def _enforcement_document(origin: Origin, state: EnforcementView) -> dict[str, Any]:
     return {
-        "profile": {"location": origin.location, "bundled": origin.bundled, "closest": origin.closest,
+        "profile": {"location": origin.location, "bundled": origin.bundled, "closest": origin.compared,
                     "guards_off": list(origin.guards_off), "baseline_off": list(origin.baseline_off),
                     "looser": [{"key": item.key, "part": item.part, "what": item.what, "sentence": item.sentence}
                                for item in origin.looser]},

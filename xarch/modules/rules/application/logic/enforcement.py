@@ -18,7 +18,7 @@ changed, the skips, the dynamic imports, the imports the reader could not follow
 check reads a fact the language supplies only partly (approximate), the checks of the profile's own that read
 nothing (vacuous) and each part a custom profile
 redefines without the litmus the bundled profile it is compared with gives it (litmus), which leaves its code no
-question to be placed by. Every other way a custom profile differs from the closest bundled one (`origin.looser`) is
+question to be placed by. Every other way a custom profile differs from the profile it is compared with (`origin.looser`) is
 information in the enforcement section and no finding: the profile defines the architecture.
 
 What the enforcement section shows of them is worked out here too: the folders holding the ungoverned files, a

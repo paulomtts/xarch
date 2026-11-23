@@ -65,7 +65,9 @@ VIEW = ProfileView(
                                      (Saying("{where} prints", "log it"),))})
 
 
-ORIGIN = Origin("mine.yaml", False, "cli", ("closed-tree",), (), (Loosened("untested", "api"),))
+COUNTS = (("parts", 3, 4), ("part_keys", 5, 6), ("tiers", 2, 2), ("guards", 1, 1), ("profile", 2, 2))
+ORIGIN = Origin("mine.yaml", False, "cli", ("closed-tree",), (), (Loosened("untested", "api"),), "based_on", 0.87,
+                False, COUNTS, ("part jobs",), ("tier rendering",), ("store: src/*/store there",), ("web", 0.9))
 
 
 class Spec:
@@ -172,8 +174,11 @@ def test_an_explanation_spec_refuses_raises_its_reason():
 @pytest.mark.parametrize("checked, then", [
     pytest.param(ProfileChecked("mine.yaml", (Problem("examples", "example (core/a.py): imports app.api"),), 3, ORIGIN),
                  Reviewed("mine.yaml", ("example (core/a.py): imports app.api",), 3,
-                          Resemblance(False, "cli", (published.Loosened("untested", "api"),))),
-                 id="a profile that loads keeps its example problems, its files and how it resembles the bundled ones"),
+                          Resemblance(False, "cli", (published.Loosened("untested", "api"),), "based_on", 0.87, False,
+                                      COUNTS, ("part jobs",), ("tier rendering",), ("store: src/*/store there",),
+                                      ("web", 0.9))),
+                 id="a profile that loads keeps its example problems, its files and every field of how it resembles "
+                    "the bundled ones"),
     pytest.param(ProfileChecked("cli", (), 48, Origin("cli")), Reviewed("cli", (), 48, Resemblance(True)),
                  id="a bundled profile resembles itself and nothing else"),
 ])

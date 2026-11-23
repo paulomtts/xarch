@@ -1,9 +1,11 @@
 """The values spec hands out as they are, which its contract re-exports as it does an id: each is read outside spec
 just as spec holds it, so there is nothing to reshape. Everything else spec hands out is a type of the contract's own.
 
-    Origin       where the profile in force comes from and how far it can be trusted, which the command line shows
-                 and the checking module reads the guards of
-    Loosened     one way a profile is looser than the bundled one it resembles, held by Origin and shown as it is
+    Origin       where the profile in force comes from, the bundled profile it is compared with and how much the
+                 two have in common, which the command line shows and the checking module reads the guards of;
+                 BASED_ON and CLOSEST why it is compared with that one
+    Loosened     one way a profile is looser than the bundled one it is compared with, held by Origin and shown as it
+                 is
     LITMUS       the key of the Loosened that says a part lost its litmus, which the checking module fails
                  `check --strict` on
     ProjectFile  a file `init` writes beside the app folder, which the module that scaffolds writes and the checking
@@ -136,18 +138,46 @@ class Loosened:
     sentence: str = ""
 
 
+BASED_ON, CLOSEST = "based_on", "closest"
+"""Why a custom profile is compared with the bundled one it is (Origin.chosen_by): it says it is based on it, or that
+one has the highest match."""
+
+
 @dataclass(frozen=True)
 class Origin:
-    """Where a profile comes from: location as selected, a bundled name or a path; whether it is bundled; closest, for
-    a custom file, the bundled profile sharing the most parts (the first by name on a tie), None when it is bundled or
-    shares none; guards_off, the guards xarch has that it leaves off, in xarch's order; baseline_off, those the bundled
-    profile it is, or is compared with, leaves off too; and looser, how it is looser than closest."""
+    """Where a profile comes from and the profile it is compared with.
+
+    location: as selected, a bundled name or a path
+    bundled: whether it is a bundled profile, its own baseline
+    compared: for a custom file, the bundled profile it is compared with; None when it is bundled or none is
+    guards_off: the guards xarch has that it leaves off, in xarch's order
+    baseline_off: those the bundled profile it is, or is compared with, leaves off too
+    looser: how it is looser than the profile it is compared with
+    chosen_by: why that one: BASED_ON or CLOSEST; None when nothing is compared
+    match: the share of what `check` reads under either profile that has a counterpart in the other, rounded to two
+        decimals; None when nothing is compared
+    low: the match is below the line of a low one, or no part pairs
+    counts: (kind, comparable, all) for each kind of thing `check` reads, in the order they are said
+    only_here, only_there: the parts, then the tiers, of this profile, and of the one it is compared with, that pair
+        with none of the other's, each as "part <name>" or "tier <name>", by name
+    elsewhere: each part the other profile has by the same name at another path, as "<name>: <its path there> there"
+    higher: when it is compared with the profile it says it is based on, the bundled profile of higher match and that
+        match; None when there is none
+    """
     location: str = ""
     bundled: bool = True
-    closest: str | None = None
+    compared: str | None = None
     guards_off: tuple[str, ...] = ()
     baseline_off: tuple[str, ...] = ()
     looser: tuple[Loosened, ...] = ()
+    chosen_by: str | None = None
+    match: float | None = None
+    low: bool = False
+    counts: tuple[tuple[str, int, int], ...] = ()
+    only_here: tuple[str, ...] = ()
+    only_there: tuple[str, ...] = ()
+    elsewhere: tuple[str, ...] = ()
+    higher: tuple[str, float] | None = None
 
 
 @dataclass(frozen=True)
