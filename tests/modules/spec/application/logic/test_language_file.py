@@ -107,6 +107,7 @@ def test_a_token_that_is_not_what_its_key_takes_is_a_problem(given, problem):
         problem.split(":")[0]]
     assert caught.value.problems[0].removeprefix("presets/language/odd.yaml: ").startswith(problem)
 
+
 def test_a_special_name_that_is_no_regular_expression_says_why():
     with pytest.raises(re.error) as error:
         re.compile("(")
