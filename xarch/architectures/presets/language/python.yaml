@@ -13,10 +13,14 @@
 # the pattern of a name the language reserves for itself (a regular expression the whole name matches); call, the
 # special method that calling an instance runs; nothing, the return annotations that say a function gives no value,
 # as the reader writes them (a list); unannotated, left out here, would say with its one value, nothing, that a
-# function with no return annotation gives none; comment, the marker of a line comment; directives, the comments its
-# tools read as instructions, each after the marker (a space in one stands for any spaces); shebang, how line 1 names
-# the program that runs the file; encoding, how line 1 or 2 declares the file's encoding (a regular expression, after
-# the marker); branching, the keywords of the statements that branch; branching_expressions, the keywords of the
+# function with no return annotation gives none; comments, the forms a comment is written in, each {line: <marker>},
+# to the end of its line, {block: [<open>, <close>]}, or {doc: [<open>, <close>]}, a comment that holds documentation
+# (its closing may be "" for the end of its line; Python writes line comments only, its documentation being in
+# docstrings), the docs printing the first line form's marker; directives, the comments its tools read as
+# instructions, each after the marker of a comment of any form (a space in one stands for any spaces); shebang, how
+# line 1 names the program that runs the file; encoding, how line 1 or 2 declares the file's encoding (a regular
+# expression, after the marker of a comment of any form); branching, the keywords of the statements that branch;
+# branching_expressions, the keywords of the
 # expressions that choose between values, as its reader records them; immutable, what makes a class an immutable
 # record: a dotted name among its bases or its decorators, a decorator called with each keyword written after it, as
 # written; importing, how a file imports a name from another file of the app, {dotted} standing for that file's dotted
@@ -39,7 +43,7 @@ private: _
 special: '(?=__)\w*(?<=__)'
 call: __call__
 nothing: [None]
-comment: "#"
+comments: [{line: "#"}]
 directives: ["type: ignore", noqa, "pragma:"]
 shebang: "#!"
 encoding: 'coding[:=][ \t]*[-\w.]+'
@@ -56,6 +60,7 @@ supplies:
   import.resolved: exact
   import.mentioned: exact
   comment: exact
+  comment.doc: exact
   use: exact
   call: exact
   method_call: exact

@@ -26,9 +26,9 @@ _WORD = re.compile(r"%(\w+)%")
 def words(language: Language) -> dict[str, str]:
     """What the language says for each `%word%` a text of the format may write: the title, the extension, the package
     file, the name of an interface and its path (the first mark's base as an outside name, or its keyword), the
-    namespace of the names bound without an import, the marker of a line comment and the comments its tools read, each
-    quoted after the marker, the prefix of a private name, and the annotations of no value, each as written, joined by
-    ` or `."""
+    namespace of the names bound without an import, the comment marker (its first line form's, else its first block
+    form's opening, "" when it has neither) and the comments its tools read, each quoted after that marker, the prefix
+    of a private name, and the annotations of no value, each as written, joined by ` or `."""
     checked = language.checked
     first = checked.interface[0] if checked.interface else None
     path = "" if first is None else outside_text(first.base, checked.member) if first.base else first.keyword

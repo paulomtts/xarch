@@ -28,6 +28,21 @@ class InterfaceMark:
     keyword: str = ""
 
 
+LINE = "line"
+"""The kind of a comment form that runs from its marker to the end of its line."""
+BLOCK = "block"
+"""The kind of a comment form that runs from its opening to its closing."""
+
+
+@dataclass(frozen=True)
+class CommentForm:
+    """One form a comment of the language is written in: its kind (LINE, BLOCK or "doc"), the marker that opens it, and
+    the one that closes it ("" for a line form, and for a doc form that runs to the end of its line)."""
+    kind: str
+    opening: str
+    closing: str = ""
+
+
 @dataclass(frozen=True)
 class CheckedLanguage:
     """The language of the app as a check reads it: how a message names it, the endings of a source file's name
@@ -37,9 +52,12 @@ class CheckedLanguage:
     out when the code runs; and the tokens of its code: what a private name starts with, the pattern of a special
     name (special: a regular expression the whole name matches), the special method calling an instance runs, the
     return annotations of no value as its reader writes them (nothing), whether a method with no return annotation
-    gives none (unannotated: nothing when it does; empty when the data file does not say), the marker of a line
-    comment, the comments its tools read (after the marker, a space standing for any spaces), how line 1 names the
-    program that runs the file, how line 1 or 2 declares the encoding (a regular expression, after the marker), and
+    gives none (unannotated: nothing when it does; empty when the data file does not say), the forms a comment is
+    written in (comments, in the order written: a line form runs from its marker to the end of its line, a block form
+    from its opening to its closing, and a doc form, a comment the language keeps its documentation in, the same, an
+    empty closing being the end of its line; none: the language has no comments), the comments its tools read (after
+    the marker of a comment of any form, a space standing for any spaces), how line 1 names the program that runs the
+    file, how line 1 or 2 declares the encoding (a regular expression, after the marker of a comment), and
     the keywords of the statements that branch and of the expressions that choose between values
     (branching_expressions); and what makes a class an immutable record (immutable). An empty token: the language
     has none. supplies are the facts its reader supplies, each graded (None: its data file does not say); importing
@@ -59,7 +77,7 @@ class CheckedLanguage:
     special: str = ""
     call: str = ""
     nothing: tuple[str, ...] = ()
-    comment: str = ""
+    comments: tuple[CommentForm, ...] = ()
     directives: tuple[str, ...] = ()
     shebang: str = ""
     encoding: str = ""
@@ -89,6 +107,13 @@ class CheckedLanguage:
         """The first file that stands for its folder, the one a message prints and init writes; "" when the language
         has none."""
         return self.package_files[0] if self.package_files else ""
+
+    @property
+    def comment(self) -> str:
+        """The marker the docs and `%comment%` print: the first line form's, else the first block form's opening; ""
+        when the language has neither. A doc form's opening never is."""
+        line = next((form.opening for form in self.comments if form.kind == LINE), "")
+        return line or next((form.opening for form in self.comments if form.kind == BLOCK), "")
 
     def is_special(self, name: str) -> bool:
         """Whether a name is one the language reserves for itself: special, a regular expression, matches the whole

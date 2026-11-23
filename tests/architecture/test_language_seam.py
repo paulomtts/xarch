@@ -31,8 +31,9 @@ its own imports of the standard library are of no concern to the guard.
 The data file also gives the tokens of the language's code, which are looked for by their kind:
 
     a literal that is a token     the prefix of a private name, the affix of a special one, the special method calling
-                                  an instance runs, the annotation of no value, the comment marker, the shebang: a
-                                  string literal equal to one is the language's rule written in xarch's code
+                                  an instance runs, the annotation of no value, the comment markers (the marker of
+                                  each line form, the opening and the closing of each block or doc form), the
+                                  shebang: a string literal equal to one is the language's rule written in xarch's code
     a directive word              the comment texts its tools read, as whole words in literals and docstrings
     a branching keyword           quoted as code (`if`) in literals and docstrings: plain prose may say "if"
 
@@ -164,19 +165,35 @@ def language_words(language: Path = LANGUAGE) -> tuple[re.Pattern[str], set[str]
                      *WORDS_BESIDES, *NAMES_BESIDES}
 
 
-TOKEN_KEYS = ("private", "call", "comment", "shebang")
+TOKEN_KEYS = ("private", "call", "shebang")
 """The keys of the data file whose value is a token of the language's code; `nothing` lists several, each a token, and
-`special` is the pattern of a special name, which a literal may not match in full."""
+`comments` several markers, each a token too (comment_markers); `special` is the pattern of a special name, which a
+literal may not match in full."""
+
+
+def comment_markers(data: dict) -> set[str]:
+    """Every marker of the data file's comment forms: each line form's marker, and the opening and the closing of each
+    block or doc form; a doc form's empty closing (the end of its line) is none."""
+    found: set[str] = set()
+    for form in data.get("comments", ()):
+        for kind, value in form.items():
+            found |= {value} if kind == "line" else set(value)
+    return found - {""}
+
+
+def alternatives(words) -> str:
+    """The words as the alternatives of a pattern, the longest first; a pattern that matches nothing when there are
+    none."""
+    return "|".join(sorted((re.escape(word) for word in words), key=len, reverse=True)) or "(?!)"
 
 
 def language_tokens(language: Path = LANGUAGE) -> tuple[set[str], re.Pattern[str], re.Pattern[str]]:
     """The tokens a literal may not be, the pattern of a special name a literal may not match in full, and the pattern
     of the directive words and of the branching keywords quoted as code."""
     data = yaml.safe_load(language.read_text(encoding="utf-8"))
-    tokens = {data[key] for key in TOKEN_KEYS} | set(data.get("nothing", ()))
+    tokens = {data[key] for key in TOKEN_KEYS if key in data} | set(data.get("nothing", ())) | comment_markers(data)
     special = re.compile(data.get("special") or "(?!)")
-    directives = "|".join(sorted((re.escape(word) for word in data["directives"]), key=len, reverse=True))
-    branching = "|".join(re.escape(word) for word in data["branching"])
+    directives, branching = alternatives(data.get("directives", ())), alternatives(data.get("branching", ()))
     return tokens, special, re.compile(rf"(?<![A-Za-z0-9_])(?:{directives})(?![A-Za-z0-9_])|`(?:{branching})`")
 
 
@@ -209,11 +226,12 @@ def ticked_pattern(language: Path = LANGUAGE, testing: Path = TESTING) -> re.Pat
     names = {*mocks["fixtures"], *(name.split(".")[-1] for name in (*mocks["calls"], *mocks["autospec"])),
              *(name for fixture in mocks["fixtures"].values() for key in ("calls", "autospec")
                for name in fixture.get(key, ()))}
-    tokens = "|".join(re.escape(token) for token in (*(data[key] for key in TOKEN_KEYS), *data.get("nothing", ())))
+    markers = comment_markers(data)
+    tokens = alternatives((*(data[key] for key in TOKEN_KEYS if key in data), *data.get("nothing", ()), *markers))
     special, importing = data.get("special") or "(?!)", re.escape(data["importing"].split("{")[0].strip())
     words = "|".join(re.escape(name) for name in sorted({*data.get("nothing", ()), *names}, key=len, reverse=True))
     return re.compile(rf"^(?:{tokens})$|(?<!\w)(?:{words})(?!\w)|(?<!\w)(?:{special})(?!\w)|^{re.escape(data['private'])}\w"
-                      rf"|^{re.escape(data['comment'])}|^{importing}(?= )")
+                      rf"|^(?:{alternatives(markers)})|^{importing}(?= )")
 
 
 def ticked_leaks(root: Path, files: tuple[str, ...], pattern: re.Pattern[str]) -> list[tuple[str, int, str]]:
@@ -334,6 +352,13 @@ def test_every_exemption_is_one_some_language_still_needs():
 def test_the_guard_finds_a_token_of_the_language_where_it_is_written(tmp_path, text, found):
     (tmp_path / "tokens.py").write_text(text)
     assert sorted(token for _, _, token in token_leaks(tmp_path)) == sorted(found)
+
+
+def test_the_guard_finds_every_comment_marker_of_a_test_only_language_and_never_an_empty_closing(tmp_path):
+    brace, percent = (next(path for path in TEST_LANGUAGES if path.stem == stem) for stem in ("brace", "percent"))
+    (tmp_path / "tokens.py").write_text('A = "/*"\nB = "*/"\nC = "/**"\nD = "//"\nE = ";"\nF = "///"\nG = ""\nH = "/"\n')
+    assert sorted(token for _, _, token in token_leaks(tmp_path, brace)) == ["*/", "/*", "/**", "//"]
+    assert sorted(token for _, _, token in token_leaks(tmp_path, percent)) == ["*/", "/*", "//", "///", ";"]
 
 
 def test_the_words_are_read_from_the_data_file_of_the_language():

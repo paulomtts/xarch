@@ -1,5 +1,4 @@
 """Filling a docs template from a profile file: the prose is the author's, the file supplies the structure."""
-from dataclasses import replace
 
 import pytest
 
@@ -291,6 +290,16 @@ def test_a_shared_part_is_said_in_the_guards():
 def test_a_quoted_file_of_any_ending_of_the_language_of_the_app_is_fenced_with_the_language_s_name():
     view = "src/billing/api/view.tsx"
     architecture = parsed(layered(docs=DOCS | {"example_notes": {}}, language="brace"), folders={"ex": (view,)},
-                          languages={"python": PYTHON, "brace": replace(BRACE, checked=replace(BRACE.checked, comment="//"))})
+                          languages={"python": PYTHON, "brace": BRACE})
     assert fill("{{example:" + view + "}}", architecture, "layered.md", {view: "x\n"}, file_types=FILE_TYPES) == (
         "```brace\n// src/billing/api/view.tsx\nx\n```")
+
+
+def test_the_no_comments_line_says_the_first_comment_marker_of_the_language_and_each_directive_after_it():
+    view = "src/billing/api/view.tsx"
+    architecture = parsed(layered(docs=DOCS | {"example_notes": {}}, language="brace", guards={"no-comments": {}}),
+                          folders={"ex": (view,)}, languages={"python": PYTHON, "brace": BRACE})
+    filled_in = fill("{{guards}}", architecture, "layered.md", {view: "x\n"}, file_types=FILE_TYPES)
+    assert [line for line in filled_in.splitlines() if "`no-comments`" in line] == [
+        "- `no-comments`: no `//` comments in the app or its tests; docstrings and tool directives "
+        "(`// @ts-expect-error`, `// eslint-disable`) stay."]

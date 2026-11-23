@@ -2,9 +2,10 @@
 # packages are named as a package manager names them (a scope, a dash, a dot) or as its runtime's own modules
 # (node:fs), and a name in one is joined to it by #. It gives its standard library's top-level modules, its reserved
 # words and its builtins as lists, so that spec reads them from here and asks no runtime. Its source files end in .ts,
-# .tsx or .mts, and index.ts or index.tsx stands for the folder holding it; index.mts is a module like any other. The
-# tests load it to show that the profile and the checks read outside names by a language's own patterns; later steps
-# add their keys to it.
+# .tsx or .mts, and index.ts or index.tsx stands for the folder holding it; index.mts is a module like any other. Its
+# comments come in three forms, a line one (//), a block one (/* */) and a doc one (/** */), and its tools read two
+# directives after the marker of any of them. The tests load it to show that the profile and the checks read outside
+# names and comments by a language's own patterns; later steps add their keys to it.
 title: Brace
 extensions: [.ts, .tsx, .mts]
 package_files: [index.ts, index.tsx]
@@ -17,3 +18,5 @@ member: "#"
 interface: [{keyword: interface}]
 nothing: [void, "Promise<void>"]
 dynamic: ["node:module#createRequire"]
+comments: [{line: "//"}, {block: ["/*", "*/"]}, {doc: ["/**", "*/"]}]
+directives: ["@ts-expect-error", eslint-disable]

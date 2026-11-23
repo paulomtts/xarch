@@ -21,7 +21,7 @@ from xarch.kernel.placement import EVERYTHING
 from xarch.kernel.source import Import
 from xarch.modules.rules.domain.parsed import SourceFile
 from xarch.modules.rules.domain.profile import Profile
-from xarch.profile_values.language import CheckedLanguage, InterfaceMark, RecordMark
+from xarch.profile_values.language import LINE, CheckedLanguage, CommentForm, InterfaceMark, RecordMark
 from xarch.profile_values.placement import Repeat, Target
 from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns
 from xarch.profile_values.tiers import CheckedTier
@@ -34,13 +34,21 @@ def marks_of(file: dict) -> tuple[InterfaceMark, ...]:
                  else InterfaceMark(keyword=mark["keyword"]) for mark in file.get("interface", ()))
 
 
+def forms_of(file: dict) -> tuple[CommentForm, ...]:
+    """The comment forms a language's data file writes, as its loader reads them: a line form's marker alone, a block
+    form's or a doc form's opening and closing."""
+    return tuple(CommentForm(kind, value) if kind == LINE else CommentForm(kind, *value)
+                 for form in file.get("comments", ()) for kind, value in form.items())
+
+
 PYTHON_FILE = yaml.safe_load(resources.files("xarch").joinpath("architectures", "presets", "language", "python.yaml")
                              .read_text(encoding="utf-8"))
 PYTHON = CheckedLanguage(title="Python", extensions=(".py",), package_files=("__init__.py",),
                          interface=marks_of(PYTHON_FILE),
                          dynamic=(("importlib", "import_module"), ("importlib", "__import__"), ("builtins", "__import__")),
                          private="_", special=PYTHON_FILE["special"], call="__call__",
-                         nothing=tuple(PYTHON_FILE["nothing"]), comment="#", directives=("type: ignore", "noqa", "pragma:"), shebang="#!",
+                         nothing=tuple(PYTHON_FILE["nothing"]), comments=forms_of(PYTHON_FILE),
+                         directives=("type: ignore", "noqa", "pragma:"), shebang="#!",
                          encoding=r"coding[:=][ \t]*[-\w.]+", branching=("if", "match", "try", "for", "while"),
                          immutable=(RecordMark(("typing", "NamedTuple")),
                                     RecordMark(("dataclasses", "dataclass"), (("frozen", "True"),))),
@@ -53,18 +61,20 @@ BRACE_FILE = yaml.safe_load((Path(__file__).resolve().parents[2] / "fakes" / "la
 BRACE = CheckedLanguage(title=BRACE_FILE["title"], extensions=tuple(BRACE_FILE["extensions"]),
                         package_files=tuple(BRACE_FILE["package_files"]), interface=marks_of(BRACE_FILE),
                         dynamic=(("node:module", "createRequire"),), nothing=tuple(BRACE_FILE["nothing"]),
+                        comments=forms_of(BRACE_FILE), directives=tuple(BRACE_FILE["directives"]),
                         names=BRACE_FILE["name"], package=BRACE_FILE["package"], member=BRACE_FILE["member"],
                         standard_modules=frozenset(BRACE_FILE["standard"]["modules"]))
 """The TypeScript-like test-only language as a check reads it, its endings, package files, patterns, member, interface
-marks, annotations of no value and standard modules read from its data file."""
+marks, annotations of no value, comment forms, directives and standard modules read from its data file."""
 PERCENT_FILE = yaml.safe_load((Path(__file__).resolve().parents[2] / "fakes" / "languages" / "percent.yaml")
                               .read_text(encoding="utf-8"))
 PERCENT = CheckedLanguage(title=PERCENT_FILE["title"], extensions=tuple(PERCENT_FILE["extensions"]),
-                          interface=marks_of(PERCENT_FILE),
+                          interface=marks_of(PERCENT_FILE), comments=forms_of(PERCENT_FILE),
                           special=PERCENT_FILE["special"], unannotated=PERCENT_FILE["unannotated"],
                           names=PERCENT_FILE["name"], package=PERCENT_FILE["package"], member=PERCENT_FILE["member"])
-"""The ObjectScript-like test-only language as a check reads it: its interface marks, the pattern of a special name and
-its word on a method with no annotation read from its data file."""
+"""The ObjectScript-like test-only language as a check reads it: its interface marks, its comment forms (two line
+markers among them), the pattern of a special name and its word on a method with no annotation read from its data
+file."""
 APP, TESTS = "app", "tests"
 MODULES = Repeat("module", ("modules",))
 EACH_PARTS = {"domain": ("domain",), "contract": ("contract",), "controller": ("application", "controller.py"),

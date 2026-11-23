@@ -187,3 +187,11 @@ def test_file_package_is_a_fact_after_class_interface_and_only_the_keys_that_rea
     assert FACTS["file.package"] == "a file stands for the folder that holds it"
     needing = sorted(key.address for key in KEYS if "file.package" in key.needs)
     assert needing == ["guards.dead-code.untested", "parts.<part>.must_import", "parts.<part>.package_only"]
+
+
+def test_comment_doc_is_a_fact_after_file_package_and_comment_says_the_marker_it_opens_with():
+    facts = list(FACTS)
+    assert facts[facts.index("file.package") + 1] == "comment.doc"
+    assert FACTS["comment.doc"] == "whether a comment is a doc comment"
+    assert FACTS["comment"] == ("each comment, its text, its line and where on it it starts and ends, and the marker it "
+                                "opens with, which review cuts before it sends a text")

@@ -32,10 +32,16 @@ and, all optional, the tokens of its code the checks and the docs need (empty: t
     call           the special method that calling an instance runs
     nothing        the return annotations, as its reader writes them, that say a function gives no value: a list
     unannotated    `nothing`, its only value: a function with no return annotation gives no value
-    comment        the marker of a line comment
-    directives     the comments its tools read as instructions, each after the marker; a space stands for any spaces
+    comments       the forms a comment is written in, a non-empty list in the order written: {line: <marker>}, from
+                   the marker to the end of its line; {block: [<open>, <close>]}, from the one to the other; and
+                   {doc: [<open>, <close>]}, a comment the language keeps its documentation in, whose closing may be
+                   "" for the end of its line. The docs print the first line form's marker, else the first block
+                   form's opening
+    directives     the comments its tools read as instructions, each after the marker of a comment of any form; a
+                   space stands for any spaces
     shebang        how line 1 names the program that runs the file
-    encoding       a regular expression: how line 1 or 2 declares the file's encoding, after the marker
+    encoding       a regular expression: how line 1 or 2 declares the file's encoding, after the marker of a comment
+                   of any form
     branching      the keywords of the statements that branch
     branching_expressions
                    the keywords of the expressions that choose between values, as its reader records them
@@ -63,10 +69,10 @@ from xarch.modules.spec.application.logic.outside_name import outside_name
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import INTERPRETER, LANGUAGES, Language, StandardLists
 from xarch.profile_values.capabilities import EXACT, FACTS, Supply
-from xarch.profile_values.language import NOTHING, CheckedLanguage, InterfaceMark, RecordMark
+from xarch.profile_values.language import BLOCK, LINE, NOTHING, CheckedLanguage, CommentForm, InterfaceMark, RecordMark
 
 KEYS = ("title", "extensions", "package_files", "interface", "dynamic", "namespace", "cache", "standard", "name",
-        "package", "member", "private", "special", "call", "nothing", "unannotated", "comment", "directives", "shebang",
+        "package", "member", "private", "special", "call", "nothing", "unannotated", "comments", "directives", "shebang",
         "encoding", "branching", "importing", "supplies", "immutable", "branching_expressions")
 REQUIRED = ("title", "extensions", "namespace", "standard")
 JOINED = ("name", "package", "member")
@@ -79,6 +85,13 @@ EXTENSIONS = "extensions: must be a non-empty list of endings, each starting wit
 """What the loader says of a value of `extensions` that is not a list of endings, once for the key."""
 PACKAGE_FILES = "package_files: must be a list of file names, each ending in one of extensions"
 """What the loader says of a value of `package_files` that is not a list of file names, once for the key."""
+DOC = "doc"
+"""The kind of a comment form the language keeps its documentation in, from its opening to its closing (empty: the end
+of its line); `line` and `block` are LINE and BLOCK of the language value of `profile_values/`, which the language reads itself."""
+COMMENTS = "comments: each form is {line: <marker>}, {block: [<open>, <close>]} or {doc: [<open>, <close>]}"
+"""What the loader says of a value of `comments` that is not a list of comment forms, once for the key."""
+NO_COMMENTS = "comments: needs one form at least"
+"""What the loader says of an empty list of comment forms."""
 PARTIAL = "partial"
 """How the data file grades a fact its reader supplies only partly, with what it misses."""
 _FOLDER = re.compile(r"[A-Za-z0-9_.-]+")
@@ -120,7 +133,8 @@ def language_of(name: str, document: Any) -> Language:
     standard = _standard(document, problems, joins)
     cache = _text(document, "cache", "must be a folder name", problems, _FOLDER)
     tokens = {key: _text(document, key, "must be a non-empty string", problems)
-              for key in ("private", "call", "comment", "shebang")}
+              for key in ("private", "call", "shebang")}
+    comments = _comments(document, problems)
     special = _pattern(document, "special", problems)
     nothing = _annotations(document, problems)
     unannotated = _text(document, "unannotated", f"must be {NOTHING}", problems, re.compile(re.escape(NOTHING)))
@@ -137,7 +151,7 @@ def language_of(name: str, document: Any) -> Language:
         raise InvalidArchitecture(source, problems)
     checked = CheckedLanguage(title=title, extensions=extensions or (), package_files=package_files,
                               interface=interface, dynamic=dynamic, private=tokens["private"], special=special, call=tokens["call"],
-                              nothing=nothing, comment=tokens["comment"], directives=directives,
+                              nothing=nothing, comments=comments, directives=directives,
                               shebang=tokens["shebang"], encoding=encoding, branching=branching, supplies=supplies,
                               importing=importing, immutable=immutable, branching_expressions=expressions,
                               names=names, package=package, member=member, unannotated=unannotated)
@@ -173,6 +187,37 @@ def _package_files(document: Mapping[Any, Any], extensions: tuple[str, ...] | No
         problems += [f"package_files: {item!r} ends in none of extensions" for item in value
                      if not any(item.endswith(extension) and item != extension for extension in extensions)]
     return tuple(value)
+
+
+def _comments(document: Mapping[Any, Any], problems: list[str]) -> tuple[CommentForm, ...]:
+    """The forms a comment is written in, in the order written; none when the key is left out. One problem for the
+    key when it is an empty list, or no list, or any item is no form."""
+    if "comments" not in document:
+        return ()
+    value = document["comments"]
+    if value == []:
+        problems.append(NO_COMMENTS)
+        return ()
+    items = value if isinstance(value, list) else None
+    forms = tuple(form for form in (_comment_form(item) for item in items or ()) if form is not None)
+    if items is None or len(forms) != len(items):
+        problems.append(COMMENTS)
+        return ()
+    return forms
+
+
+def _comment_form(item: Any) -> CommentForm | None:
+    """One form: a map of one key, line with a non-empty marker, or block or doc with a list of two strings, the
+    opening non-empty and, for a block, the closing too; None when the item is none of them."""
+    if not (isinstance(item, Mapping) and len(item) == 1):
+        return None
+    ((kind, value),) = item.items()
+    if kind == LINE:
+        return CommentForm(LINE, value) if isinstance(value, str) and value.strip() else None
+    if kind in (BLOCK, DOC) and isinstance(value, list) and len(value) == 2 and all(isinstance(part, str) for part in value):
+        opening, closing = value
+        return CommentForm(kind, opening, closing) if opening.strip() and (closing.strip() or kind == DOC) else None
+    return None
 
 
 def _joins(document: Mapping[Any, Any], problems: list[str]) -> tuple[str, str, str] | None:

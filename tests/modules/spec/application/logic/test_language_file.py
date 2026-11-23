@@ -8,11 +8,11 @@ import yaml
 
 from tests.modules.spec.languages import PYTHON as PYTHON_LANGUAGE
 from xarch.kernel.placement import Marks
-from xarch.modules.spec.application.logic.language_file import PARTIAL, first_language, language_of
+from xarch.modules.spec.application.logic.language_file import DOC, PARTIAL, first_language, language_of
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import Language, StandardLists
 from xarch.profile_values.capabilities import EXACT, Supply
-from xarch.profile_values.language import CheckedLanguage, InterfaceMark, RecordMark
+from xarch.profile_values.language import BLOCK, LINE, CheckedLanguage, CommentForm, InterfaceMark, RecordMark
 
 NAME = r"[A-Za-z_]\w*"
 JOINS = {"name": NAME, "package": NAME, "member": "."}
@@ -30,10 +30,11 @@ INTERFACE = "interface: each mark is {base: <outside name>} or {keyword: <word>}
 STANDARD = "standard: must be interpreter, or a map of modules, reserved and builtins, each a list of names"
 LISTS = {"modules": [], "reserved": [], "builtins": []}
 """A standard that lists nothing, to which a test adds the lists it needs."""
-KEYS_USED = ("branching, branching_expressions, cache, call, comment, directives, dynamic, encoding, extensions, "
+KEYS_USED = ("branching, branching_expressions, cache, call, comments, directives, dynamic, encoding, extensions, "
              "immutable, importing, interface, member, name, namespace, nothing, package, package_files, private, "
              "shebang, special, standard, supplies, title, unannotated")
 """The keys of a data file, as the unknown-key text lists them."""
+COMMENTS = "comments: each form is {line: <marker>}, {block: [<open>, <close>]} or {doc: [<open>, <close>]}"
 EXTENSIONS = "extensions: must be a non-empty list of endings, each starting with a dot"
 PACKAGE_FILES = "package_files: must be a list of file names, each ending in one of extensions"
 UNLISTED = {key: value for key, value in DOCUMENT.items() if key != "package_files"}
@@ -85,7 +86,7 @@ def test_a_document_that_is_no_mapping_is_refused():
 
 def test_the_tokens_of_the_code_are_read_when_the_document_gives_them():
     tokens = {"name": "[A-Za-z]+", "private": "_", "special": r"(?=__)\w*(?<=__)", "call": "__call__", "nothing": ["None"],
-              "comment": "//", "directives": ["lint: off"], "shebang": "#!", "encoding": "utf-8",
+              "comments": [{"line": "//"}], "directives": ["lint: off"], "shebang": "#!", "encoding": "utf-8",
               "branching": ["if", "case"], "branching_expressions": ["?"]}
     language = language_of("pascal", DOCUMENT | tokens)
     checked = language.checked
@@ -98,7 +99,6 @@ def test_the_tokens_of_the_code_are_read_when_the_document_gives_them():
     pytest.param({"name": "[a-"}, "name: must be a regular expression", id="a name that is no regular expression"),
     pytest.param({"directives": "noqa"}, "directives: must be a list of non-empty strings", id="directives not a list"),
     pytest.param({"branching": ["if", ""]}, "branching: must be a list of non-empty strings", id="an empty keyword"),
-    pytest.param({"comment": ""}, "comment: must be a non-empty string", id="an empty comment marker"),
     pytest.param({"special": 3}, "special: must be a regular expression", id="a special name that is no text"),
     pytest.param({"special": ""}, "special: must be a regular expression", id="an empty special name"),
     pytest.param({"immutable": "pkg.Record"}, "immutable: must be a list of outside names",
@@ -442,3 +442,62 @@ def test_the_test_only_languages_say_several_endings_and_brace_two_package_files
             for path in TEST_LANGUAGES}
     assert (read["brace"].extensions, read["brace"].package_files) == ((".ts", ".tsx", ".mts"), ("index.ts", "index.tsx"))
     assert (read["percent"].extensions, read["percent"].package_files) == ((".cls", ".mac"), ())
+
+
+def test_the_test_only_languages_read_their_comment_forms_in_the_order_written():
+    read = {path.stem: language_of(path.stem, yaml.safe_load(path.read_text(encoding="utf-8"))).checked
+            for path in TEST_LANGUAGES}
+    assert read["brace"].comments == (CommentForm(LINE, "//"), CommentForm(BLOCK, "/*", "*/"),
+                                      CommentForm(DOC, "/**", "*/"))
+    assert read["percent"].comments == (CommentForm(LINE, "//"), CommentForm(LINE, ";"), CommentForm(BLOCK, "/*", "*/"),
+                                        CommentForm(DOC, "///", ""))
+    assert (read["brace"].comment, read["percent"].comment) == ("//", "//")
+
+
+@pytest.mark.parametrize("comments, comment", [
+    pytest.param([{"block": ["/*", "*/"]}], "/*", id="a block form alone gives its opening"),
+    pytest.param([{"doc": ["///", ""]}], "", id="a doc form alone gives none, a doc opening never being the comment"),
+    pytest.param([{"doc": ["/**", "*/"]}, {"block": ["/*", "*/"]}, {"line": "--"}], "--",
+                 id="a line form wins over a block form written before it"),
+])
+def test_the_comment_is_the_first_line_marker_else_the_first_block_opening(comments, comment):
+    assert language_of("pascal", DOCUMENT | {"comments": comments}).checked.comment == comment
+
+
+def test_comments_left_out_read_no_form_and_no_marker_and_the_file_loads():
+    checked = language_of("pascal", DOCUMENT).checked
+    assert (checked.comments, checked.comment) == ((), "")
+
+
+@pytest.mark.parametrize("value", [
+    pytest.param("#", id="a string"),
+    pytest.param([{"hash": "#"}], id="a form of an unknown kind"),
+    pytest.param([{"line": "#", "block": ["/*", "*/"]}], id="a form of two keys"),
+    pytest.param([{"line": ""}], id="a line form with an empty marker"),
+    pytest.param([{"line": 3}], id="a line form whose marker is no text"),
+    pytest.param([{"block": ["/*"]}], id="a block form of one item"),
+    pytest.param([{"block": ["/*", ""]}], id="a block form with an empty closing"),
+    pytest.param([{"doc": ["", "*/"]}], id="a doc form with an empty opening"),
+    pytest.param(["#"], id="a list holding a string"),
+    pytest.param([{"line": "//"}, {"line": ""}], id="one wrong form among right ones"),
+])
+def test_comments_that_are_not_a_list_of_forms_are_one_problem(value):
+    assert refused(DOCUMENT | {"comments": value}) == [COMMENTS]
+
+
+def test_comments_that_list_no_form_are_refused():
+    assert refused(DOCUMENT | {"comments": []}) == ["comments: needs one form at least"]
+
+
+def test_the_old_key_of_one_comment_marker_is_an_unknown_key():
+    assert refused(DOCUMENT | {"comment": "#"}) == [f"unknown key 'comment': use {KEYS_USED}"]
+    assert "comments" in KEYS_USED.split(", ") and "comment" not in KEYS_USED.split(", ")
+
+
+def test_python_writes_one_line_form_and_supplies_comment_doc_exactly():
+    document = yaml.safe_load(resources.files("xarch").joinpath("architectures", "presets", "language", "python.yaml")
+                              .read_text(encoding="utf-8"))
+    checked = PYTHON_LANGUAGE.checked
+    assert (checked.comments, checked.comment) == ((CommentForm(LINE, "#"),), "#")
+    assert list(document["supplies"])[list(document["supplies"]).index("comment") + 1] == "comment.doc"
+    assert Supply("comment.doc", EXACT) in checked.supplies
