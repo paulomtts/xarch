@@ -78,10 +78,10 @@ class RulesController:
             return NoRuleShown(cmd.address, cmd.profile, e.reason)
 
     def check_app(self, cmd: CheckApp) -> CheckAppResult:
-        """The whole check of an app; a root or tests folder that is no folder is refused, and so are a profile whose
-        own checks cannot run and one that cannot be used."""
+        """The whole check of an app; strict asked with against is refused first, a root or tests folder that is no
+        folder is refused, and so are a profile whose own checks cannot run and one that cannot be used."""
         try:
-            return self._app.check(cmd.root, cmd.profile, cmd.tests, cmd.cwd, cmd.strict)
+            return self._app.check(cmd.root, cmd.profile, cmd.tests, cmd.cwd, cmd.strict, cmd.against)
         except RootMissing as e:
             return NotADirectory(e.root)
         except ChecksRefused as e:

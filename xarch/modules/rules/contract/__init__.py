@@ -288,12 +288,14 @@ class CheckRefused:
 class CheckApp:
     """Check the app below root, its imports and its structure, and the tests below tests (None: no tests), against
     the architecture at profile (a bundled name or a path); strict also fails on the enforcement's findings. cwd is the
-    working folder, in full, that a relative root or tests folder is read from."""
+    working folder, in full, that a relative root or tests folder is read from. against is the profile the command
+    line compares the one in force with for this run, which the check itself never reads: with strict it is refused."""
     root: Path
     profile: str
     cwd: Path
     tests: Path | None = None
     strict: bool = False
+    against: str | None = None
 
 
 @dataclass(frozen=True)
