@@ -75,7 +75,7 @@ class CheckedLanguage:
 
     @property
     def marks(self) -> Marks:
-        return Marks(self.extension, self.package_file)
+        return Marks((self.extension,) if self.extension else (), (self.package_file,) if self.package_file else ())
 
     def is_special(self, name: str) -> bool:
         """Whether a name is one the language reserves for itself: special, a regular expression, matches the whole

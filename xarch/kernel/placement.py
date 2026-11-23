@@ -13,10 +13,11 @@ EVERYTHING = "*"
 
 @dataclass(frozen=True)
 class Marks:
-    """How the language of the app writes a path: the ending a source file's name carries, and the name of the file that
-    stands for the folder holding it. Empty marks leave a path as written."""
-    extension: str = ""
-    package_file: str = ""
+    """How the language of the app writes a path: the endings a source file's name may carry, and the names of the
+    files that stand for the folder holding them, each ending in one of them (none: no file does). Empty marks leave
+    a path as written."""
+    extensions: tuple[str, ...] = ()
+    package_files: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

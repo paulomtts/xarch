@@ -1,11 +1,11 @@
 """Where a path sits among path patterns, and which places a rule's target reaches."""
 import pytest
 
-from xarch.kernel.logic.placement import module_steps, place_of, reaches, repeat_of, root_of, stands_for_folder, with_itself
+from xarch.kernel.logic.placement import module_steps, place_of, reaches, repeat_of, root_of, stands_for_folder, stem, with_itself
 from xarch.kernel.placement import EVERYTHING, Marks, Place
 from xarch.profile_values.placement import Repeat, Target
 
-MARKS = Marks(".src", "pkg.src")
+MARKS = Marks((".src",), ("pkg.src",))
 
 PATTERNS = {
     "kernel": ("kernel",),
@@ -93,12 +93,12 @@ def test_a_part_may_always_import_itself_in_its_own_repeating_folder_whichever_i
 
 def test_a_path_is_read_with_the_marks_it_is_given_and_with_none_as_written():
     patterns = {"domain": ("domain",), "main": ("main.src",)}
-    assert place_of(patterns, ("domain", "index.mod"), Marks(".mod", "index.mod")) == Place("domain")
+    assert place_of(patterns, ("domain", "index.mod"), Marks((".mod",), ("index.mod",))) == Place("domain")
     assert place_of(patterns, ("domain", "x.src"), Marks()) == Place("domain", None, ("x.src",))
     assert place_of(patterns, ("main.src",), Marks()) == Place("main")
 
 
-SRC = Marks(".src", "pkg.src")
+SRC = Marks((".src",), ("pkg.src",))
 
 
 @pytest.mark.parametrize("path, steps, folder", [
@@ -110,3 +110,63 @@ SRC = Marks(".src", "pkg.src")
 ])
 def test_a_path_as_the_language_names_it_and_whether_it_stands_for_its_folder(path, steps, folder):
     assert (module_steps(path, SRC), stands_for_folder(path, SRC)) == (steps, folder)
+
+
+BRACE = Marks((".ts", ".tsx", ".mts"), ("index.ts", "index.tsx"))
+"""The marks of the TypeScript-like test-only language: three endings, two package files."""
+PERCENT = Marks((".cls", ".mac"))
+"""The marks of the ObjectScript-like test-only language: two endings and no package file."""
+
+
+@pytest.mark.parametrize("name, expected", [
+    pytest.param("b.tsx", "b", id="the second ending"),
+    pytest.param("b.ts", "b", id="the first ending"),
+    pytest.param("b.mts", "b", id="the third ending"),
+    pytest.param("b.js", None, id="an ending the language does not have"),
+    pytest.param("b", None, id="no ending"),
+])
+def test_a_name_loses_the_ending_it_carries_and_has_no_stem_when_it_carries_none(name, expected):
+    assert stem(name, BRACE) == expected
+
+
+def test_the_longest_ending_a_name_carries_is_the_one_it_loses():
+    assert stem("x.d.ts", Marks((".ts", ".d.ts"))) == "x"
+    assert stem("x.d.ts", Marks((".d.ts", ".ts"))) == "x"
+
+
+@pytest.mark.parametrize("path, place", [
+    pytest.param(("a", "b.tsx"), Place("a", None, ("b",)), id="a module of any ending"),
+    pytest.param(("a", "index.ts"), Place("a"), id="the first package file stands for its folder"),
+    pytest.param(("a", "index.tsx"), Place("a"), id="the second one too"),
+    pytest.param(("a", "index.mts"), Place("a", None, ("index",)), id="a module named index of an ending no package file has"),
+])
+def test_under_several_endings_a_path_is_placed_by_the_ending_it_carries(path, place):
+    assert place_of({"a": ("a",)}, path, BRACE) == place
+
+
+@pytest.mark.parametrize("path, folder", [
+    pytest.param(("a", "index.ts"), True, id="a package file"),
+    pytest.param(("a", "index"), True, id="a package file written without its ending"),
+    pytest.param(("a", "index.mts"), False, id="no listed package file"),
+    pytest.param(("a", "main.ts"), False, id="a module"),
+])
+def test_a_path_stands_for_its_folder_when_it_is_one_of_the_package_files(path, folder):
+    assert stands_for_folder(path, BRACE) is folder
+
+
+def test_with_no_package_file_no_path_stands_for_its_folder():
+    assert (module_steps(("a", "Package.cls"), PERCENT), stands_for_folder(("a", "Package.cls"), PERCENT)) == (
+        ("a", "Package"), False)
+    assert stands_for_folder(("a", "Package"), PERCENT) is False
+    assert module_steps(("a", "Run.mac"), PERCENT) == ("a", "Run")
+
+
+def test_a_step_that_carries_no_ending_is_kept_as_written():
+    assert module_steps(("a", "notes.txt"), BRACE) == ("a", "notes.txt")
+
+
+def test_python_s_package_file_stands_for_its_folder_with_its_ending_or_without_it():
+    python = Marks((".py",), ("__init__.py",))
+    assert [stands_for_folder(path, python) for path in (("a", "__init__.py"), ("a", "__init__"), ("a", "__init__.pyx"))] == [
+        True, True, False]
+    assert module_steps(("a", "__init__.py"), python) == ("a",)

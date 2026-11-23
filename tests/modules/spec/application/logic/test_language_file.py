@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from xarch.kernel.placement import Marks
 from xarch.modules.spec.application.logic.language_file import PARTIAL, first_language, language_of
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import Language, StandardLists
@@ -37,9 +38,8 @@ def test_a_language_is_read_from_the_document_of_its_preset_by_name():
         "system", "interpreter", ".objs", NAME)
 
 
-def test_the_marks_of_a_language_are_its_extension_and_its_package_file():
-    assert language_of("pascal", DOCUMENT).checked.marks.extension == ".pas"
-    assert language_of("pascal", DOCUMENT).checked.marks.package_file == "unit.pas"
+def test_the_marks_of_a_language_are_its_extensions_and_its_package_files():
+    assert language_of("pascal", DOCUMENT).checked.marks == Marks((".pas",), ("unit.pas",))
 
 
 def test_every_problem_of_a_document_is_listed_naming_the_preset():
