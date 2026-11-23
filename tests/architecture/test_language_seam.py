@@ -109,7 +109,8 @@ TEST_LANGUAGES = tuple(sorted((Path(__file__).resolve().parents[1] / "fakes" / "
 """The test-only languages, which no profile names: each loads, and the guard reads its words; later steps extend
 them."""
 WORDS_BESIDES = {"stdlib_module_names": "the interpreter's list of the standard library, which no data file can hold "
-                                        "current: the platform reads it and the reader marks each import with it"}
+                                        "current: the platform reads it, and spec hands the reader the modules it "
+                                        "lists"}
 NAMES_BESIDES = {"iskeyword", "kwlist", "isidentifier"}
 """Identifiers of the interpreter's own tests of a name against the language's rules, which no data file can hold."""
 IDENTIFIER_FREE = {"protocol", "typing", "typing_extensions"}

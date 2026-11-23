@@ -24,7 +24,7 @@ class HoldingService:
         place of the one at its path; raises ChecksRefused for a profile whose own checks cannot run, ProfileUnusable
         for one that cannot be used."""
         profile = self._profiles.profile(cmd.profile)
-        given = [(path, self._tree.parsed(text)) for path, text in cmd.files]
+        given = [(path, self._tree.parsed(text, profile.language.standard_modules)) for path, text in cmd.files]
         others = self._others(profile, cmd.root, {tuple(path.split("/")) for path, _ in cmd.files}) if cmd.root else ()
         found = broken(project(given, profile, cmd.app, reading(profile), others), profile,
                        frozenset(path for path, _ in cmd.files))
@@ -35,4 +35,4 @@ class HoldingService:
         paths = [p for p in self._tree.paths(root, profile.language.extension)
                  if not governed.excluded(profile, p) and governed.governed(profile, p) and p not in given]
         return tuple(self._tree.read(root, paths, immutable=profile.language.immutable,
-                                     interface=profile.language.interface))
+                                     interface=profile.language.interface, standard=profile.language.standard_modules))

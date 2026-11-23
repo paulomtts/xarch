@@ -45,17 +45,18 @@ PYTHON = CheckedLanguage(title="Python", extension=".py", package_file="__init__
                          immutable=(RecordMark(("typing", "NamedTuple")),
                                     RecordMark(("dataclasses", "dataclass"), (("frozen", "True"),))),
                          branching_expressions=("if",), names=PYTHON_FILE["name"], package=PYTHON_FILE["package"],
-                         member=PYTHON_FILE["member"])
+                         member=PYTHON_FILE["member"], standard_modules=frozenset(sys.stdlib_module_names))
 """Python as its data file says it, for the checks that read the tokens of its code; the patterns of a name and of a
-package, and the member that joins them, read from it."""
+package, and the member that joins them, read from it; its standard modules the interpreter's, as spec hands them."""
 BRACE_FILE = yaml.safe_load((Path(__file__).resolve().parents[2] / "fakes" / "languages" / "brace.yaml")
                             .read_text(encoding="utf-8"))
 BRACE = CheckedLanguage(title=BRACE_FILE["title"], extension=BRACE_FILE["extension"],
                         package_file=BRACE_FILE["package_file"], interface=marks_of(BRACE_FILE),
                         dynamic=(("node:module", "createRequire"),), nothing=tuple(BRACE_FILE["nothing"]),
-                        names=BRACE_FILE["name"], package=BRACE_FILE["package"], member=BRACE_FILE["member"])
-"""The TypeScript-like test-only language as a check reads it, its patterns, member, interface marks and annotations of
-no value read from its data file."""
+                        names=BRACE_FILE["name"], package=BRACE_FILE["package"], member=BRACE_FILE["member"],
+                        standard_modules=frozenset(BRACE_FILE["standard"]["modules"]))
+"""The TypeScript-like test-only language as a check reads it, its patterns, member, interface marks, annotations of
+no value and standard modules read from its data file."""
 PERCENT_FILE = yaml.safe_load((Path(__file__).resolve().parents[2] / "fakes" / "languages" / "percent.yaml")
                               .read_text(encoding="utf-8"))
 PERCENT = CheckedLanguage(title=PERCENT_FILE["title"], extension=PERCENT_FILE["extension"],
@@ -144,14 +145,15 @@ def dotted(name: str) -> tuple[str, ...]:
     return tuple(name.split("."))
 
 
-def imp(line: int, module: str, *names: str, up: int | None = None) -> Import:
+def imp(line: int, module: str, *names: str, up: int | None = None, language: CheckedLanguage = PYTHON) -> Import:
     """`import module` with no names, `from module import names` with some; up, for a relative import, how many
-    folders above the importing file's own it climbs. It is marked standard, and written, as the Python reader marks
-    it: absolute and a module of the standard library; the module with one dot more than up before it."""
+    folders above the importing file's own it climbs. It is marked standard, and written, as the reader marks it when
+    handed the standard modules of language (Python unless given): absolute and its first step one of them; the
+    module with one dot more than up before it."""
     steps = dotted(module) if module else ()
     relative = up is not None
     return Import(line, steps, names or None, relative, up or 0,
-                  not relative and bool(steps) and steps[0] in sys.stdlib_module_names,
+                  not relative and bool(steps) and steps[0] in language.standard_modules,
                   "." * ((up or 0) + 1) + module if relative else module)
 
 

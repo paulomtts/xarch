@@ -13,6 +13,10 @@ file or a folder of that name, looked up on the file system and never opened or 
 or names nothing below it, binds None and is marked unresolved; so is every relative import of a text read with no
 file. A name a relative import binds is bound none of its steps, since that import names none of them from the top.
 
+An absolute import is of the standard library when its first step is one of the standard modules the reader is
+handed, which spec reads from the language's data file or from the interpreter running xarch; a relative import
+never is, nor one that names no module.
+
 A call of a method of a parameter, `<parameter>.<method>(...)`, is listed apart, whatever the parameter's name, when
 the nearest scope binding the name binds it as a parameter of its function and nothing else binds it there: a
 parameter the body rebinds (an assignment, a loop, an import, a def, `global`) is not read, nor is a call of the
@@ -94,7 +98,6 @@ import builtins
 import copy
 import hashlib
 import io
-import sys
 import tokenize
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -137,7 +140,8 @@ class FsSourceTree:
         return [f.relative_to(root).parts for f in self._fs.files(root, f"*{extension}")]
 
     def read(self, root: Path, paths: list[tuple[str, ...]], table: CaseTable | None = None,
-             immutable: tuple[RecordMark, ...] = (), interface: tuple[InterfaceMark, ...] = ()) -> list[SourceFile]:
+             immutable: tuple[RecordMark, ...] = (), interface: tuple[InterfaceMark, ...] = (), *,
+             standard: frozenset[str]) -> list[SourceFile]:
         """Each file below root, read as UTF-8 and parsed; one that is not UTF-8, or cannot be read, holds why as its
         error, as one that does not parse does."""
         found: list[SourceFile] = []
@@ -154,7 +158,7 @@ class FsSourceTree:
                 found.append(SourceFile(name, path, (), error=Unparsable(
                     0, f"cannot be read ({e.strerror or e})", unreadable=True)))
                 continue
-            found.append(_parsed(name, path, text, table, immutable, interface,
+            found.append(_parsed(name, path, text, table, immutable, interface, standard,
                                  _Where((root.name, *path[:-1]), root, self._fs)))
         return found
 
@@ -164,8 +168,8 @@ class FsSourceTree:
     def text(self, path: Path) -> str | None:
         return self._fs.read_text(path) if self._fs.is_file(path) else None
 
-    def parsed(self, text: str) -> SourceFile:
-        return _parsed("", (), text, None)
+    def parsed(self, text: str, standard: frozenset[str]) -> SourceFile:
+        return _parsed("", (), text, None, (), (), standard)
 
     def resolved(self, folder: Path, path: Path) -> Path:
         return self._fs.real(folder / path)
@@ -204,9 +208,8 @@ class _Relative(tuple):
     none of them from the top (see the module's docstring)."""
 
 
-def _parsed(name: str, path: tuple[str, ...], text: str, form: CaseTable | None,
-            marks: tuple[RecordMark, ...] = (), interface: tuple[InterfaceMark, ...] = (),
-            where: _Where | None = None) -> SourceFile:
+def _parsed(name: str, path: tuple[str, ...], text: str, form: CaseTable | None, marks: tuple[RecordMark, ...],
+            interface: tuple[InterfaceMark, ...], standard: frozenset[str], where: _Where | None = None) -> SourceFile:
     try:
         tree = ast.parse(text)
         comments = _comments(text)
@@ -216,7 +219,7 @@ def _parsed(name: str, path: tuple[str, ...], text: str, form: CaseTable | None,
         return SourceFile(name, path, (), error=Unparsable(0, str(e)))
     calls = _Calls(_BUILTINS if not _star_import(tree) else frozenset(), where)
     calls.visit(tree)
-    return SourceFile(name, path, tuple(_imports(tree, where)), comments, _functions(tree, form, where),
+    return SourceFile(name, path, tuple(_imports(tree, standard, where)), comments, _functions(tree, form, where),
                       tuple(_unions(tree)), calls=tuple(calls.found), classes=tuple(_classes(tree, marks, interface, where)),
                       uses=tuple(calls.uses), parameter_calls=tuple(calls.parameter_calls),
                       module_functions=_module_functions(tree), named=_named(tree), callbacks=tuple(calls.callbacks),
@@ -268,10 +271,6 @@ _BUILTINS = frozenset(name for name in vars(builtins) if not name.startswith("__
 """Python's builtins, as a bare name reads them; the dunder names the builtins namespace holds about itself left out."""
 
 
-def _standard(name: str) -> bool:
-    return name in sys.stdlib_module_names
-
-
 def _star_import(tree: ast.AST) -> bool:
     return any(isinstance(n, ast.ImportFrom) and any(a.name == "*" for a in n.names) for n in ast.walk(tree))
 
@@ -287,16 +286,16 @@ def _from(node: ast.ImportFrom, where: _Where | None) -> tuple[str, ...] | None:
     return _Relative(found) if found is not None else None
 
 
-def _imports(tree: ast.AST, where: _Where | None = None) -> list[Import]:
+def _imports(tree: ast.AST, standard: frozenset[str], where: _Where | None = None) -> list[Import]:
     found: list[Import] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            found += [Import(node.lineno, tuple(alias.name.split(".")), standard=_standard(alias.name.split(".")[0]),
+            found += [Import(node.lineno, tuple(alias.name.split(".")), standard=alias.name.split(".")[0] in standard,
                              written=alias.name, last=_last(node)) for alias in node.names]
         elif isinstance(node, ast.ImportFrom):
             module = tuple(node.module.split(".")) if node.module else ()
             found.append(Import(node.lineno, module, tuple(a.name for a in node.names), node.level > 0,
-                                max(node.level - 1, 0), not node.level and bool(module) and _standard(module[0]),
+                                max(node.level - 1, 0), not node.level and bool(module) and module[0] in standard,
                                 "." * node.level + (node.module or ""), any(a.name == "*" for a in node.names),
                                 _last(node), _from(node, where) is None))
     return found

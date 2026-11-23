@@ -25,7 +25,7 @@ from tests.modules.rules.application.logic.world import (
     WIRING,
     found,
 )
-from tests.modules.rules.builders import source
+from tests.modules.rules.builders import BRACE, imp, source
 from xarch.kernel.logic.conditions import condition
 from xarch.modules.rules.application.logic import filters
 from xarch.modules.rules.application.logic.facts import facts_of
@@ -118,3 +118,12 @@ def test_the_interface_filter_holds_of_the_classes_the_reader_marks_whatever_the
     read = built.files[0]
     assert [fact.line for fact in read.facts["class"]
             if question(condition("interface"))(Found(RULE, read, fact, None), built, PROFILE)] == [2]
+
+
+def test_the_standard_filter_holds_of_the_imports_marked_by_the_standard_modules_of_the_language_read():
+    read_as_brace = source("modules/docs/domain/doc.py", imp(1, "fs", "readFile", language=BRACE),
+                           imp(2, "lodash", language=BRACE))
+    built = facts_of([read_as_brace], [], PROFILE, "app", "tests")
+    read = built.files[0]
+    assert [fact.line for fact in read.facts["import"]
+            if question(condition("standard"))(Found(RULE, read, fact, None), built, PROFILE)] == [1]

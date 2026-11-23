@@ -23,7 +23,7 @@ class AskingService:
         rule, problems = made(cmd.asked, profile.asked[cmd.asked])
         if rule is None:
             raise ChecksRefused(tuple(problems))
-        parsed = [(path, self._tree.parsed(text)) for path, text in cmd.files]
+        parsed = [(path, self._tree.parsed(text, profile.language.standard_modules)) for path, text in cmd.files]
         found = kept(rule, project(parsed, profile, cmd.app, (rule,)), profile)
         return FactsKept(tuple(FileKept(path, file.imports, tuple(
             FactKept(*span(fact, file.pieces), named(fact)) for read, fact in found if "/".join(read.file.path) == path),

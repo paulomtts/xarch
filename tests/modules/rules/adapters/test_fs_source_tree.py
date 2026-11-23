@@ -1,4 +1,5 @@
 """FsSourceTree on real files: the calls and classes a file holds, each name read through the import that binds it."""
+import sys
 from dataclasses import replace
 from pathlib import Path
 
@@ -28,11 +29,14 @@ from xarch.profile_values.language import InterfaceMark, RecordMark
 from xarch.profile_values.testing import CaseTable
 
 PYTEST = CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id", ("argnames", "argvalues"))
+STANDARD = frozenset(sys.stdlib_module_names)
+"""The modules spec hands the reader for the language the tests' sources are written in: the interpreter's standard
+library."""
 
 
 def parsed(tmp_path: Path, text: str, table: CaseTable | None = PYTEST) -> SourceFile:
     (tmp_path / "x.py").write_text(text)
-    return FsSourceTree(FileSystem()).read(tmp_path, [("x.py",)], table)[0]
+    return FsSourceTree(FileSystem()).read(tmp_path, [("x.py",)], table, standard=STANDARD)[0]
 
 
 def line_of(text: str, marker: str) -> int:
@@ -86,7 +90,7 @@ def read_at(tmp_path: Path, files: dict[str, str], path: str) -> SourceFile:
         (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / rel).write_text(body)
     root, *steps = path.split("/")
-    return FsSourceTree(FileSystem()).read(tmp_path / root, [tuple(steps)])[0]
+    return FsSourceTree(FileSystem()).read(tmp_path / root, [tuple(steps)], standard=STANDARD)[0]
 
 
 def test_a_relative_import_of_a_name_binds_the_place_it_names(tmp_path):
@@ -178,7 +182,7 @@ def test_a_relative_import_of_a_file_beside_binds_its_name(tmp_path):
 
 
 def test_a_text_read_with_no_file_follows_no_relative_import():
-    found = FsSourceTree(FileSystem()).parsed("from .order import Order\nimport os\n\nOrder()\nos.getcwd()\n")
+    found = FsSourceTree(FileSystem()).parsed("from .order import Order\nimport os\n\nOrder()\nos.getcwd()\n", STANDARD)
     assert found.calls == (Call(5, ("os", "getcwd")),)
     assert [i.unresolved for i in found.imports] == [True, False]
 
@@ -206,7 +210,7 @@ def test_a_place_the_file_system_cannot_look_up_is_missing(tmp_path, monkeypatch
         (tmp_path / rel).write_text(body)
     monkeypatch.setattr(FileSystem, "is_dir", denied)
     monkeypatch.setattr(FileSystem, "is_file", denied)
-    found = FsSourceTree(FileSystem()).read(tmp_path / "app", [("domain", "services.py")])[0]
+    found = FsSourceTree(FileSystem()).read(tmp_path / "app", [("domain", "services.py")], standard=STANDARD)[0]
     assert (found.calls, [i.unresolved for i in found.imports]) == ((), [True])
 
 
@@ -243,7 +247,7 @@ MARKS = (RecordMark(("typing", "NamedTuple")), RecordMark(("dataclasses", "datac
 ])
 def test_a_class_is_an_immutable_record_when_a_mark_names_one_of_its_bases_or_its_decorators(tmp_path, text, immutable):
     (tmp_path / "a.py").write_text(text)
-    assert FsSourceTree(FileSystem()).read(tmp_path, [("a.py",)], immutable=MARKS)[0].classes[0].immutable is immutable
+    assert FsSourceTree(FileSystem()).read(tmp_path, [("a.py",)], immutable=MARKS, standard=STANDARD)[0].classes[0].immutable is immutable
 
 
 def test_no_class_is_an_immutable_record_when_the_reader_is_given_no_mark(tmp_path):
@@ -269,7 +273,7 @@ INTERFACE = (InterfaceMark(("typing", "Protocol")), InterfaceMark(("typing_exten
 ])
 def test_a_class_is_an_interface_when_a_base_mark_names_one_of_its_bases(tmp_path, text, interface):
     (tmp_path / "a.py").write_text(text)
-    read = FsSourceTree(FileSystem()).read(tmp_path, [("a.py",)], interface=INTERFACE)[0]
+    read = FsSourceTree(FileSystem()).read(tmp_path, [("a.py",)], interface=INTERFACE, standard=STANDARD)[0]
     assert read.classes[-1].interface is interface
 
 
@@ -281,7 +285,7 @@ def test_no_class_is_an_interface_when_the_reader_is_given_no_mark(tmp_path):
                                      pytest.param("class", id="the keyword of a class")])
 def test_a_keyword_mark_marks_no_class_of_this_language(tmp_path, keyword):
     (tmp_path / "a.py").write_text("from typing import Protocol\nclass P(Protocol): ...\n")
-    read = FsSourceTree(FileSystem()).read(tmp_path, [("a.py",)], interface=(InterfaceMark(keyword=keyword),))[0]
+    read = FsSourceTree(FileSystem()).read(tmp_path, [("a.py",)], interface=(InterfaceMark(keyword=keyword),), standard=STANDARD)[0]
     assert read.classes[0].interface is False
 
 
@@ -931,7 +935,43 @@ def test_a_path_is_resolved_from_the_folder_given_with_its_links_followed(tmp_pa
          id="an import over several lines says its last line"),
 ])
 def test_the_imports_are_recorded_in_terms_no_language_owns(text, imports):
-    assert FsSourceTree(FileSystem()).parsed(text).imports == imports
+    assert FsSourceTree(FileSystem()).parsed(text, STANDARD).imports == imports
+
+
+@pytest.mark.parametrize("standard, marked", [
+    pytest.param(frozenset({"fs"}), [True, True, True, False],
+                 id="an import whose first step is a module the reader is handed is of the standard library"),
+    pytest.param(frozenset(), [False, False, False, False], id="handed none, no import is"),
+])
+def test_an_import_is_of_the_standard_library_by_the_modules_the_reader_is_handed(tmp_path, standard, marked):
+    (tmp_path / "x.py").write_text("import fs\nimport fs.sub\nfrom fs.sub import x\nimport os\n")
+    read = FsSourceTree(FileSystem()).read(tmp_path, [("x.py",)], standard=standard)[0]
+    assert [i.standard for i in read.imports] == marked
+
+
+def test_a_relative_import_is_never_of_the_standard_library_whatever_the_reader_is_handed(tmp_path):
+    (tmp_path / "fs.py").write_text("")
+    (tmp_path / "x.py").write_text("from . import fs\nfrom .fs import x\n")
+    read = FsSourceTree(FileSystem()).read(tmp_path, [("x.py",)], standard=frozenset({"fs"}))[0]
+    assert [i.standard for i in read.imports] == [False, False]
+
+
+def test_a_text_in_no_file_marks_its_imports_as_a_file_does(tmp_path):
+    text = "import fs\nfrom fs.sub import x\nimport os\nfrom .fs import y\n"
+    (tmp_path / "x.py").write_text(text)
+    tree = FsSourceTree(FileSystem())
+    read = tree.read(tmp_path, [("x.py",)], standard=frozenset({"fs"}))[0]
+    assert [i.standard for i in tree.parsed(text, frozenset({"fs"})).imports] == [i.standard for i in read.imports] == [
+        True, True, False, False]
+
+
+def test_handed_the_interpreter_s_standard_library_every_import_of_xarch_s_own_source_is_marked_by_its_first_step():
+    root = Path(__file__).parents[4] / "xarch"
+    tree = FsSourceTree(FileSystem())
+    imports = [i for f in tree.read(root, tree.paths(root, ".py"), standard=STANDARD) for i in f.imports
+               if not i.relative]
+    assert {i.standard for i in imports} == {True, False}
+    assert [i for i in imports if i.standard != (i.module[0] in STANDARD)] == []
 
 
 @pytest.mark.parametrize("text, error", [
@@ -939,7 +979,7 @@ def test_the_imports_are_recorded_in_terms_no_language_owns(text, imports):
     pytest.param("x = 1\n", None, id="a text that parses has none"),
 ])
 def test_a_text_in_no_file_is_parsed_as_a_file_is(text, error):
-    assert FsSourceTree(FileSystem()).parsed(text).error == error
+    assert FsSourceTree(FileSystem()).parsed(text, STANDARD).error == error
 
 
 PIECES = (
@@ -993,7 +1033,7 @@ def test_the_pieces_of_a_file_are_its_top_level_functions_and_classes_and_their_
 
 
 def test_a_text_in_no_file_has_its_pieces_too():
-    assert FsSourceTree(FileSystem()).parsed("def f():\n    pass\n").pieces == (Piece("function", "f", 1, 2),)
+    assert FsSourceTree(FileSystem()).parsed("def f():\n    pass\n", STANDARD).pieces == (Piece("function", "f", 1, 2),)
 
 
 @pytest.mark.parametrize("text, comments", [
@@ -1008,4 +1048,4 @@ def test_a_text_in_no_file_has_its_pieces_too():
 ])
 def test_each_comment_is_read_with_where_it_lies(tmp_path, text, comments):
     assert parsed(tmp_path, text).comments == comments
-    assert FsSourceTree(FileSystem()).parsed(text).comments == comments
+    assert FsSourceTree(FileSystem()).parsed(text, STANDARD).comments == comments
