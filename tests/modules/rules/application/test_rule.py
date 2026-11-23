@@ -15,7 +15,7 @@ TEXT = "names-services: reads class\n"
 
 @pytest.mark.parametrize("given, when, then", [
     pytest.param({"named": NAMED}, ExplainRule("parts.services.names", "named"),
-                 RuleShown("parts.services.names", "named", TEXT, 1, ("class",)),
+                 RuleShown("parts.services.names", "named", TEXT, 1, ("class", "public")),
                  id="a key of one part is its rule, as a check, with the facts it reads"),
     pytest.param({"named": NAMED}, ExplainRule("parts.path", "named"),
                  NoRuleShown("parts.path", "named", "it expands to no rule of the engine here: the profile does not "

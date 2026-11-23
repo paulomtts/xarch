@@ -17,7 +17,7 @@ from xarch.modules.rules.domain.parsed import Class, Function, Method, SourceFil
 ROOT = Path("/src/app")
 BASE = imp(1, "app.kernel.errors", "DomainError")
 PARSED = {
-    "functions": SourceFile("", (), (), functions=(Function(1, "validate"), Function(4, "_helper"))),
+    "functions": SourceFile("", (), (), functions=(Function(1, "validate"), Function(4, "_helper", public=False))),
     "classes": SourceFile("", (), (), classes=(Class(1, "Document", methods=(Method(2, "title", None),)),)),
     "errors": SourceFile("", (), (BASE,), classes=(Class(3, "NoDocument", (("app", "kernel", "errors", "DomainError"),)),)),
     "record": SourceFile("", (), (), classes=(Class(1, "Found"),),

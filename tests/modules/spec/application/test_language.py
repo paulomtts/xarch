@@ -71,7 +71,7 @@ def test_the_skeleton_names_the_language_and_the_words_the_runtime_reserves():
 
 
 TOY = PASCAL | {"supplies": {"file": "exact", "import": "exact", "import.relative": "exact",
-                             "class": {"partial": "a class defined in a branch is not read"}}}
+                             "class": {"partial": "a class defined in a branch is not read"}, "public": "exact"}}
 
 
 def test_a_key_whose_check_the_reader_of_its_language_cannot_feed_is_refused_and_one_it_feeds_partly_is_approximate():

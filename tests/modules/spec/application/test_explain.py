@@ -175,9 +175,11 @@ def test_a_fact_the_default_language_does_not_grade_is_said_to_be_absent():
     spec, _ = spec_controller(**BUNDLED, languages={"toy": toy})
     found = spec.explain(Explain("parts.names"))
     assert (found.needs, found.graded) == (
-        (Need("class", FACTS["class"], Supply("class", "partial", "nested classes are not read")),), True)
+        (Need("class", FACTS["class"], Supply("class", "partial", "nested classes are not read")),
+         Need("public", FACTS["public"])), True)
     assert (found.short, found.holder, found.name) == (
-        (Shortfall("parts.names", "class", "nested classes are not read"),), "part", "names")
+        (Shortfall("parts.names", "class", "nested classes are not read"), Shortfall("parts.names", "public", None)),
+        "part", "names")
     assert spec.explain(Explain("parts.no_callbacks")).needs == (Need("callback", FACTS["callback"]),)
 
 

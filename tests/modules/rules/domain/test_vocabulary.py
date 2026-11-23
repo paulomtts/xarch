@@ -48,3 +48,14 @@ def test_the_interface_of_a_class_needs_the_reader_to_mark_interfaces_and_says_n
     interface = next(word for word in FILTERS if word.name == "interface")
     assert (kind.field_needs["interface"], interface.meaning) == (
         ("class.interface",), "the class is an interface: the language marks it as one")
+
+
+def test_whether_a_name_is_public_is_a_field_of_the_kinds_whose_names_the_language_decides_and_needs_the_fact():
+    public = next(word for word in FILTERS if word.name == "public")
+    carrying = [kind for kind in KINDS if kind.carries("public")]
+    assert [kind.name for kind in carrying] == ["imported-name", "class", "function"]
+    assert [kind.field_needs["public"] for kind in carrying] == [("public",), ("public",), ("public",)]
+    assert [kind.name for kind in KINDS if public.applies_to(kind)] == ["imported-name", "class", "function"]
+    assert (public.reads, public.meaning, FIELDS["public"]) == (
+        ("public",), "the name the fact carries is public: the language's reader says it is for other files to use",
+        "whether the name is for other files to use, as the language decides it")

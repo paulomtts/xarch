@@ -35,9 +35,9 @@ def test_a_category_lists_its_words_and_a_word_is_explained_with_an_example_from
     assert category.exit_code == 0 and "  public " in category.output
     word = explain("filters.public")
     assert word.exit_code == 0, word.output
-    assert word.output.splitlines()[:4] == [
-        "filters.public", "  what: the name the fact carries is public in the language: it does not start as a private "
-                          "name", "    does", "  about: the fact"]
+    assert word.output.splitlines()[:3] == [
+        "filters.public", "  what: the name the fact carries is public: the language's reader says it is for other "
+                          "files to use", "  about: the fact"]
     assert "example: the rule parts.services.names of cli expands to" in word.output
 
 

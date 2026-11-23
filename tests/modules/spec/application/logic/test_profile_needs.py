@@ -15,7 +15,8 @@ from xarch.profile_values.capabilities import EXACT, FACTS, Shortfall, Supply
 TOY = replace(PYTHON, name="toy", checked=replace(
     PYTHON.checked, title="Toy",
     supplies=(Supply("file", EXACT), Supply("import", EXACT), Supply("import.relative", EXACT),
-              Supply("import.standard", EXACT), Supply("class", PARTIAL, "a class defined in a branch is not read"))))
+              Supply("import.standard", EXACT), Supply("class", PARTIAL, "a class defined in a branch is not read"),
+              Supply("public", EXACT))))
 LANGUAGES = {"toy": TOY}
 FLAT = replace(PYTHON, name="flat", checked=replace(
     PYTHON.checked, title="Flat", package_files=(),
@@ -212,3 +213,11 @@ def test_public_is_a_fact_after_comment_doc():
     assert facts[facts.index("comment.doc") + 1] == "public"
     assert FACTS["public"] == ("whether a name a file defines, or takes by an import, is for other files to use, as the "
                                "language decides it")
+
+
+def test_private_imports_is_refused_under_a_language_whose_reader_does_not_say_which_names_are_public():
+    unsaid = replace(TOY, checked=replace(TOY.checked, supplies=tuple(
+        supply for supply in TOY.checked.supplies if supply.fact != "public")))
+    document = layered(language="toy", guards={"private-imports": {}})
+    assert problems(document, languages={"toy": unsaid}) == [refusal("guards.private-imports", "public")]
+    assert parsed(document, languages=LANGUAGES).approximate == ()

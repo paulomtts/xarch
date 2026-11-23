@@ -1,9 +1,11 @@
 """The facts of a run, read once from hand-made parsed files: each file placed once, and what it says by kind, with
 the facts derived over the whole app (a construction of a class of the app, a reference to a function of the app);
 and, for the rules given, only the kinds they read."""
+from dataclasses import replace
+
 import pytest
 
-from tests.modules.rules.builders import PROFILE, imp, in_tests, source
+from tests.modules.rules.builders import BRACE, PROFILE, imp, in_tests, source
 from xarch.kernel.placement import Place
 from xarch.kernel.source import Unparsable
 from xarch.modules.rules.application.logic.facts import KINDS, facts_of
@@ -92,20 +94,21 @@ def test_a_method_call_on_what_the_object_holds_says_so():
 
 def test_a_class_carries_its_name_the_names_it_mentions_and_what_it_is():
     assert DOMAIN.facts["class"] == (
-        Fact("class", 1, ("Doc",), "Doc", names=frozenset({"Repo"})),
-        Fact("class", 9, ("Shown",), "Shown", frozenset({"record"})))
+        Fact("class", 1, ("Doc",), "Doc", frozenset({"public"}), names=frozenset({"Repo"})),
+        Fact("class", 9, ("Shown",), "Shown", frozenset({"record", "public"})))
 
 
 def test_a_class_the_reader_says_is_an_immutable_record_carries_it():
     classes = (Class(1, "Frozen", immutable=True), Class(2, "Loose"))
     read = facts_of([source("modules/docs/domain/a.py", classes=classes)], [], PROFILE, "app").files[0]
-    assert [fact.traits for fact in read.facts["class"]] == [frozenset({"immutable"}), frozenset()]
+    assert [fact.traits for fact in read.facts["class"]] == [frozenset({"immutable", "public"}), frozenset({"public"})]
 
 
 def test_a_function_says_whether_it_is_at_the_top_level_or_a_method_that_forwards():
     assert DOMAIN.facts["function"] == (
-        Fact("function", 4, ("make",), "make", frozenset({"top-level"})),
-        Fact("function", 6, ("Doc", "get"), "get", frozenset({"forwards"}), target=("name",), text="self.repo.get"))
+        Fact("function", 4, ("make",), "make", frozenset({"top-level", "public"})),
+        Fact("function", 6, ("Doc", "get"), "get", frozenset({"forwards", "public"}), target=("name",),
+             text="self.repo.get"))
 
 
 def test_a_callback_a_comment_the_names_of_a_file_and_the_file_as_a_whole_are_facts():
@@ -156,3 +159,17 @@ def _rule(**changes) -> Rule:
 def test_for_the_rules_given_a_file_holds_only_the_kinds_they_read(rule, kinds):
     facts = facts_of(APP_FILES, TEST_FILES, PROFILE, "app", "tests", (rule,))
     assert {"/".join(r.file.path): set(r.facts) for r in facts.files if r.facts} == kinds
+
+
+def test_a_class_a_function_and_a_name_an_import_takes_carry_public_exactly_when_the_reader_says_so():
+    file = source("modules/docs/domain/a.ts", imp(1, "app.kernel.ids", "shown", "hidden", withheld=("hidden",),
+                                                  language=BRACE), imp(2, "app.kernel.ids", language=BRACE),
+                  classes=(Class(3, "Kept", public=False), Class(4, "_Shown")),
+                  functions=(Function(5, "kept", public=False), Function(6, "_shown"),
+                             Function(7, "m", owner="Kept", public=False)), language=BRACE)
+    read = facts_of([file], [], replace(PROFILE, language=BRACE), "app").files[0]
+    assert [(f.name, "public" in f.traits) for f in read.facts["class"]] == [("Kept", False), ("_Shown", True)]
+    assert [(f.name, "public" in f.traits) for f in read.facts["function"]] == [
+        ("kept", False), ("_shown", True), ("m", False)]
+    assert [(f.name, "public" in f.traits) for f in read.facts["imported-name"]] == [
+        ("shown", True), ("hidden", False), (None, False)]

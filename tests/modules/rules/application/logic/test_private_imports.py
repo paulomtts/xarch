@@ -3,7 +3,7 @@ app or of its tests."""
 import pytest
 
 from tests.modules.rules.application.logic.checks import private_imports as violations
-from tests.modules.rules.builders import imp, in_tests, profile, source
+from tests.modules.rules.builders import BRACE, PERCENT, imp, in_tests, profile, source
 
 ON = profile(private_imports=True)
 
@@ -44,3 +44,15 @@ def test_what_is_read_and_what_is_not(imports, tests, expected):
 
 def test_it_is_off_without_the_guard():
     assert problems(imp(1, "app.kernel.ids", "_new"), checked=profile()) == []
+
+
+@pytest.mark.parametrize("language, ending", [
+    pytest.param(BRACE, "ts", id="the TypeScript-like language"),
+    pytest.param(PERCENT, "cls", id="the ObjectScript-like language"),
+])
+def test_under_a_language_with_no_private_prefix_the_import_says_which_names_it_withholds(language, ending):
+    checked = profile(private_imports=True, language=language)
+    file = source(f"kernel/x.{ending}", imp(1, "app.kernel.ids", "hidden", "_shown", withheld=("hidden",),
+                                            language=language), language=language)
+    assert [str(v) for v in violations([file], [], checked, "app", "tests")] == [
+        f"app/kernel/x.{ending}:1: imports the private name hidden from app.kernel.ids (private-imports)"]

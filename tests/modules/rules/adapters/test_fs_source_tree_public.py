@@ -16,8 +16,8 @@ from xarch.platform.filesystem import FileSystem
 
 PRIVATE = yaml.safe_load(resources.files("xarch").joinpath("architectures", "presets", "language", "python.yaml")
                          .read_text(encoding="utf-8"))["private"]
-SOURCE = Path(__file__).resolve().parents[4] / "xarch"
-CORPORA = Path(__file__).resolve().parents[3] / "bootstrap" / "corpora"
+SOURCE = Path(__file__).parents[4] / "xarch"
+CORPORA = Path(__file__).parents[3] / "bootstrap" / "corpora"
 ARCHIVES = ("df537ca", "7cc6111", "examples")
 
 

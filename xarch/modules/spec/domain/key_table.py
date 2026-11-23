@@ -196,10 +196,10 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "parts.<part>.may_import": _IMPORTS,
     "parts.<part>.must_import": (*_IMPORTS, "import.standard", "function.statements", "file", "file.package"),
     "parts.<part>.types_only": _TYPES_ONLY,
-    "parts.<part>.holds": ("class", "class.methods", "class.exception", "function", "function.returns"),
+    "parts.<part>.holds": ("class", "class.methods", "class.exception", "function", "function.returns", "public"),
     "parts.<part>.no_callbacks": ("callback",),
     "parts.<part>.immutable": ("class", "class.exception", "class.immutable"),
-    "parts.<part>.names": ("class",),
+    "parts.<part>.names": ("class", "public"),
     "parts.<part>.built_by": ("class", "call", "import.resolved"),
     "parts.<part>.shared": (*_IMPORTS, "import.mentioned", "use", "class", "class.named", "function", "function.named",
                             "module_functions", "constant", "import.resolved"),
@@ -231,10 +231,10 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "guards.dead-code": ("class", "class.interface", "named"),
     "guards.dead-code.untested": (*_IMPORTS, "function.statements", "class", "class.exception", "function", "file",
                                   "file.package"),
-    "guards.dead-code.tests_only": ("class", "class.exception", "function", "named"),
+    "guards.dead-code.tests_only": ("class", "class.exception", "function", "named", "public"),
     "guards.dead-code.known": ("class", "class.exception", "function", "function.named", "constant", "named", *_IMPORTS),
     "guards.pass-through": ("function", "function.forwards"),
-    "guards.private-imports": _IMPORTS,
+    "guards.private-imports": (*_IMPORTS, "public"),
 }
 """The facts of the source each key that configures a check needs, by its address."""
 

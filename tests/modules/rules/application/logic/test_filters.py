@@ -1,6 +1,8 @@
 """Every filter, on the facts of a small project: one row per filter, each the facts of one kind of one file it holds
 of, by their lines (a filter about the file holds of every fact of a file or of none), so that a filter the vocabulary
 publishes and the engine does not answer, or answers wrongly, fails here; a negated filter holds where it does not."""
+from dataclasses import replace
+
 import pytest
 
 from tests.modules.rules.application.logic.world import (
@@ -129,3 +131,12 @@ def test_the_standard_filter_holds_of_the_imports_marked_by_the_standard_modules
     read = built.files[0]
     assert [fact.line for fact in read.facts["import"]
             if question(condition("standard"))(Found(RULE, read, fact, None), built, PROFILE)] == [1]
+
+
+def test_the_public_filter_holds_of_the_names_the_reader_says_are_public_whatever_they_are_spelled():
+    file = source("modules/docs/domain/doc.ts", imp(1, "app.kernel.ids", "_shown", "hidden", withheld=("hidden",),
+                                                    language=BRACE), language=BRACE)
+    built = facts_of([file], [], replace(PROFILE, language=BRACE), "app", "tests")
+    read = built.files[0]
+    assert [fact.name for fact in read.facts["imported-name"]
+            if question(condition("public"))(Found(RULE, read, fact, None), built, PROFILE)] == ["_shown"]

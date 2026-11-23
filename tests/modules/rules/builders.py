@@ -16,7 +16,7 @@ from pathlib import Path
 
 import yaml
 
-from xarch.kernel.logic.names import outside_steps
+from xarch.kernel.logic.names import is_private_name, outside_steps
 from xarch.kernel.placement import EVERYTHING
 from xarch.kernel.source import Import
 from xarch.modules.rules.domain.parsed import SourceFile
@@ -155,21 +155,37 @@ def dotted(name: str) -> tuple[str, ...]:
     return tuple(name.split("."))
 
 
-def imp(line: int, module: str, *names: str, up: int | None = None, language: CheckedLanguage = PYTHON) -> Import:
+def imp(line: int, module: str, *names: str, up: int | None = None, language: CheckedLanguage = PYTHON,
+        withheld: tuple[str, ...] = ()) -> Import:
     """`import module` with no names, `from module import names` with some; up, for a relative import, how many
     folders above the importing file's own it climbs. It is marked standard, and written, as the reader marks it when
     handed the standard modules of language (Python unless given): absolute and its first step one of them; the
-    module with one dot more than up before it."""
+    module with one dot more than up before it. It withholds, as that reader would, each name that starts as a
+    private name of language does, and the names withheld lists besides."""
     steps = dotted(module) if module else ()
     relative = up is not None
+    hidden = frozenset(withheld) | frozenset(name for name in names if is_private_name(name, language.private))
     return Import(line, steps, names or None, relative, up or 0,
                   not relative and bool(steps) and steps[0] in language.standard_modules,
-                  "." * ((up or 0) + 1) + module if relative else module)
+                  "." * ((up or 0) + 1) + module if relative else module, withheld=hidden)
 
 
-def source(path: str, *imports: Import, root: str = APP, **fields) -> SourceFile:
-    """A file at path below root, shown as root/path, with its imports and any other field of a SourceFile."""
-    return SourceFile(f"{root}/{path}", steps(path), imports, **fields)
+def _public(name: str, given: bool, language: CheckedLanguage) -> bool:
+    return given and not is_private_name(name, language.private)
+
+
+def read_as(file: SourceFile, language: CheckedLanguage) -> SourceFile:
+    """The file with each class, function and constant whose name starts as a private name of language does made not
+    public, as its reader would say; one given as not public stays so."""
+    return replace(file, classes=tuple(replace(c, public=_public(c.name, c.public, language)) for c in file.classes),
+                   functions=tuple(replace(f, public=_public(f.name, f.public, language)) for f in file.functions),
+                   constants=tuple(replace(c, public=_public(c.name, c.public, language)) for c in file.constants))
+
+
+def source(path: str, *imports: Import, root: str = APP, language: CheckedLanguage = PYTHON, **fields) -> SourceFile:
+    """A file at path below root, shown as root/path, with its imports and any other field of a SourceFile, each of its
+    definitions public or not as the reader of language would say (Python unless given; see read_as)."""
+    return read_as(SourceFile(f"{root}/{path}", steps(path), imports, **fields), language)
 
 
 def in_tests(path: str, *imports: Import, **fields) -> SourceFile:

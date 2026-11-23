@@ -186,6 +186,7 @@ FIELDS: dict[str, str] = {
     "exceptions-only": "whether a file defines classes, every one an exception, and no top-level function",
     "unreadable": "whether a file could not be read as text at all",
     "doc": "whether a comment is a doc comment",
+    "public": "whether the name is for other files to use, as the language decides it",
 }
 """Every field a kind of fact may carry, and what it is."""
 
@@ -203,8 +204,9 @@ KINDS: tuple[Kind, ...] = (
          field_needs={"relative": ("import.relative",), "standard": ("import.standard",)}, verb="import"),
     Kind("imported-name", "each name an import takes, its path what the import names and the name (that alone for "
                           "an import of the whole)",
-         ("line", "path", "written", "relative", "standard"), {"name": "takes-a-name"}, needs=_IMPORT,
-         field_needs={"relative": ("import.relative",), "standard": ("import.standard",)}, verb="import"),
+         ("line", "path", "written", "relative", "standard", "public"), {"name": "takes-a-name"}, needs=_IMPORT,
+         field_needs={"relative": ("import.relative",), "standard": ("import.standard",), "public": ("public",)},
+         verb="import"),
     Kind("use", "each name read, called or not, as the dotted path the import binding its first name reaches",
          ("line", "path", "bound"), needs=("use", "import.resolved"), verb="use"),
     Kind("method-call", "each call of a method on something no import names (a variable, a parameter, an attribute)",
@@ -228,15 +230,16 @@ KINDS: tuple[Kind, ...] = (
     Kind("comment", "each comment, its text as written", ("line", "text", "marker", "doc"), needs=("comment",),
          field_needs={"doc": ("comment.doc",)}),
     Kind("class", "each class defined at the top level of a file", ("line", "name", "mentions", "exception", "record",
-                                                                    "interface", "immutable"),
+                                                                    "interface", "immutable", "public"),
          needs=("class",), field_needs={"mentions": ("class.named",), "exception": _CLASS_EXCEPTION,
                                         "record": ("class.methods", "function.returns"),
-                                        "interface": ("class.interface",), "immutable": ("class.immutable",)}),
+                                        "interface": ("class.interface",), "immutable": ("class.immutable",),
+                                        "public": ("public",)}),
     Kind("function", "each function defined at the top level, or as a method of a class of the top level",
-         ("line", "name", "top-level", "forwards"),
+         ("line", "name", "top-level", "forwards", "public"),
          {"forwarded": "forwards", "returned": "returns-an-attribute"}, needs=("function",),
          field_needs={"forwards": ("function.forwards",), "forwarded": ("function.forwards",),
-                      "returned": ("function.forwards",)}),
+                      "returned": ("function.forwards",), "public": ("public",)}),
     Kind("callback", "each call of a function's own parameter by its bare name",
          ("line", "function", "name", "receiver", "annotated-callable"), needs=("callback",), verb="call"),
 )
@@ -270,8 +273,8 @@ FILTERS: tuple[Filter, ...] = (
            ("name",)),
     Filter("on-own-object", "the method is called on the object itself or on something it holds; `not on-own-object` is "
                             "a call on anything else", FACT, ("on-own-object",)),
-    Filter("public", "the name the fact carries is public in the language: it does not start as a private name does",
-           FACT, ("name",)),
+    Filter("public", "the name the fact carries is public: the language's reader says it is for other files to use",
+           FACT, ("public",)),
     Filter("special", "the name the fact carries is one the language reserves for itself", FACT, ("name",)),
     Filter("named", "the name the fact carries matches the pattern, `*` standing for any text", FACT, ("name",),
            value=PATTERN),

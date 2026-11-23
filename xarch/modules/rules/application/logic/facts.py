@@ -14,7 +14,8 @@ turns its language's imports and names into such paths, and a fact into the app 
     names-mentioned     every name the file mentions, annotations included, by its last step alone
     import              each import as written: the module it names (path), relative, standard
     imported-name       each name an import takes, path the module and the name (the module alone for an import of
-                        a whole module), the name it takes (None for a whole module); its traits are the import's
+                        a whole module), the name it takes (None for a whole module); its traits are the import's,
+                        and public when the reader says the name it takes is public
     use                 each name read, path the dotted path it reaches, bound how many steps the binding import bound
     method-call         each call of an attribute no import binds, name the attribute; on-own-object when it is
                         on the object a method is called on
@@ -27,11 +28,12 @@ turns its language's imports and names into such paths, and a fact into the app 
                         root
     comment             each comment, text as written, name the marker it opens with; doc when it is a doc comment
     class               each class defined at the top level, name its name, names those its bases and body mention;
-                        exception, record, interface and immutable when it is one (below)
+                        exception, record, interface and immutable when it is one (below); public when the reader
+                        says it is public
     function            each function defined at the top level or in a class of the top level, name its name, path
-                        its class and its name; top-level when it is in no class; forwards when it is a method the
-                        reader says only forwards, text the callee it forwards to and target the attributes it
-                        returns of the call's result
+                        its class and its name; top-level when it is in no class; public when the reader says it is
+                        public; forwards when it is a method the reader says only forwards, text the callee it
+                        forwards to and target the attributes it returns of the call's result
     callback            each call of a function's own parameter by its bare name, path the function, name the
                         parameter; receiver when the parameter is the first of a method, annotated-callable when its
                         annotation says it is a callable
@@ -84,6 +86,7 @@ _TOP = frozenset({"top-level"})
 _RECEIVER, _ANNOTATED = "receiver", "annotated-callable"
 _FORWARDS = frozenset({"forwards"})
 _DOC = frozenset({"doc"})
+_PUBLIC = frozenset({"public"})
 
 
 def facts_of(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile, root: str,
@@ -242,16 +245,18 @@ def _class(cls: Class, file: SourceFile, read: Read, profile: Profile, defined: 
     record = all(profile.language.is_special(m.name) for m in cls.methods) and any(
         cls.name in f.returns_named for f in file.functions if not f.owner)
     return frozenset(n for n, on in (("exception", exception), ("record", record),
-                                     ("interface", ports.get(cls.name) is cls), ("immutable", cls.immutable)) if on)
+                                     ("interface", ports.get(cls.name) is cls), ("immutable", cls.immutable),
+                                     ("public", cls.public)) if on)
 
 
 def _function(function: Function) -> Fact:
     path = (function.owner, function.name) if function.owner else (function.name,)
+    public = _PUBLIC if function.public else frozenset()
     if not function.owner:
-        return Fact("function", function.line, path, function.name, _TOP)
+        return Fact("function", function.line, path, function.name, _TOP | public)
     if not function.forwards or function.sole_call is None:
-        return Fact("function", function.line, path, function.name)
-    return Fact("function", function.line, path, function.name, _FORWARDS, target=function.sole_call.then,
+        return Fact("function", function.line, path, function.name, public)
+    return Fact("function", function.line, path, function.name, _FORWARDS | public, target=function.sole_call.then,
                 text=function.forwards)
 
 
@@ -284,4 +289,5 @@ def _imported(file: SourceFile) -> Iterator[Fact]:
         if i.names is None:
             yield Fact("imported-name", i.line, i.module, traits=traits, text=i.written)
         else:
-            yield from (Fact("imported-name", i.line, (*i.module, name), name, traits, text=i.written) for name in i.names)
+            yield from (Fact("imported-name", i.line, (*i.module, name), name,
+                             traits if name in i.withheld else traits | _PUBLIC, text=i.written) for name in i.names)

@@ -247,3 +247,13 @@ def test_a_rule_names_every_filter_and_every_variable_it_is_written_with_in_slot
                 sayings=(*say("{package} in {line}", "drop {package}", "standard", once=("package",)), *say("{line}")))
     assert ([x.name for x in rule.conditions], rule.variables) == (
         ["placed", "relative", "standard", "standard"], ("package", "line", "package", "line", "package"))
+
+
+def test_the_public_filter_applies_only_to_the_kinds_whose_reader_says_whether_a_name_is_public():
+    with pytest.raises(RuleRefused) as refused:
+        made(facts=("method-call",), targets=EXISTING, keep=c("public"), sayings=say("{line}"))
+    assert list(refused.value.problems) == [
+        "keep: public does not apply to method-call: it reads public, which it does not carry; it applies to "
+        "imported-name, class and function"]
+    assert made(facts=("class",), targets=EXISTING, keep=c("public"), sayings=say("{name}")).needs == (
+        "class", "public")

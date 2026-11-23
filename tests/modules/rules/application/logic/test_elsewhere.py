@@ -11,7 +11,7 @@ from xarch.profile_values.checks import ANY
 
 HOLDS = profile(holds={"domain": "classes", "logic": "functions"})
 FUNCTIONS = SourceFile("", (), (), functions=(Function(1, "validate"),))
-PRIVATE = SourceFile("", (), (), functions=(Function(1, "_validate"),))
+PRIVATE = SourceFile("", (), (), functions=(Function(1, "_validate", public=False),))
 CLASSES = SourceFile("", (), (), classes=(Class(1, "Document"),))
 EXCEPTION = SourceFile("", (), (), classes=(Class(1, "Refused", exception=True),))
 DOMAIN, LOGIC, KERNEL = "modules/docs/domain/x.py", "modules/docs/application/logic/x.py", "kernel/x.py"

@@ -115,9 +115,11 @@ def test_a_word_says_what_its_category_has_besides_its_name_and_meaning(found, s
 def test_a_kind_says_its_fields_each_with_the_filter_it_carries_it_under_what_it_needs_and_its_verb():
     imported = word(KINDS, "imported-name")
     fields = tuple((name, FIELDS[name], when) for name, when in (
-        ("line", ""), ("path", ""), ("written", ""), ("relative", ""), ("standard", ""), ("name", "takes-a-name")))
+        ("line", ""), ("path", ""), ("written", ""), ("relative", ""), ("standard", ""), ("public", ""),
+        ("name", "takes-a-name")))
     assert facets(imported) == WordFacets(side=imported.side, fields=fields,
-                                          needs=("import", "import.relative", "import.standard"), verb=imported.verb)
+                                          needs=("import", "import.relative", "import.standard", "public"),
+                                          verb=imported.verb)
 
 
 @pytest.mark.parametrize("category, name, found", [

@@ -4,7 +4,7 @@ each one is listed as weak, never as a violation."""
 import pytest
 
 from tests.modules.rules.application.logic.checks import holds as weak
-from tests.modules.rules.builders import profile, source
+from tests.modules.rules.builders import BRACE, profile, source
 from xarch.modules.rules.domain.parsed import Class, Function, Method
 from xarch.modules.rules.domain.published import Weak
 
@@ -112,3 +112,15 @@ def test_a_package_file_and_a_part_that_does_not_ask_for_immutable_classes_are_n
     package = source("modules/docs/application/logic/__init__.py", classes=(loose,), functions=(returned,))
     assert listed(package, checked=IMMUTABLE) == []
     assert listed(source(LOGIC, classes=(loose,), functions=(returned,)), checked=profile(holds={"logic": "functions"})) == []
+
+
+@pytest.mark.parametrize("function, expected", [
+    pytest.param(Function(3, "helper", public=False), [], id="a function the reader says is not public"),
+    pytest.param(Function(3, "_helper"), ["_helper is a function at the top level, but domain/ of modules/docs holds "
+                                          "classes (parts.domain.holds)"],
+                 id="one it says is public, whatever its spelling"),
+])
+def test_under_a_language_with_no_private_prefix_the_reader_alone_says_which_functions_are_public(function, expected):
+    braced = profile(holds={"domain": "classes"}, language=BRACE)
+    file = source("modules/docs/domain/doc.ts", functions=(function,), language=BRACE)
+    assert [w.message for w in weak([file], braced, "app")] == expected
