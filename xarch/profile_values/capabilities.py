@@ -45,6 +45,7 @@ FACTS: dict[str, str] = {
     "public": "whether a name a file defines, or takes by an import, is for other files to use, as the language "
               "decides it",
     "class.record": "whether a class is a record, as the language writes one",
+    "function.top_level": "whether a function is defined at the top level of its file, in no class",
     "function": "the functions a file defines, at the top level and in its classes: name, owner, line",
     "function.statements": "how many statements a function's body holds, and how many of them do nothing",
     "function.shape": "a fingerprint of a function's code, the same for two functions that do the same",

@@ -221,6 +221,12 @@ def test_class_record_is_a_fact_after_public():
     assert FACTS["class.record"] == "whether a class is a record, as the language writes one"
 
 
+def test_function_top_level_is_a_fact_after_class_record():
+    facts = list(FACTS)
+    assert facts[facts.index("class.record") + 1] == "function.top_level"
+    assert FACTS["function.top_level"] == "whether a function is defined at the top level of its file, in no class"
+
+
 def test_private_imports_is_refused_under_a_language_whose_reader_does_not_say_which_names_are_public():
     unsaid = replace(TOY, checked=replace(TOY.checked, supplies=tuple(
         supply for supply in TOY.checked.supplies if supply.fact != "public")))
