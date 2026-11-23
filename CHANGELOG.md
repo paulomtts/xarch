@@ -7,6 +7,11 @@ All notable changes to this project are written here. The format follows
 
 ### Added
 
+- The fact `file.package`, that a file stands for the folder holding it, which a language supplies exactly when its
+  data file gives `package_files` and which is never written under `supplies` (`supplies: file.package follows
+  package_files: drop it from supplies`). `parts.<part>.package_only`, a part's `must_import` and
+  `guards.dead-code.untested` need it, and so does a check of your own whose filter `package-file` (or
+  `target-inside-part`) is written as is; `not package-file` needs nothing. Python supplies it.
 - A list of `never` may include another: an entry that is exactly the name of another list of the block puts that
   list's names in its place, in order, however deep, the list written above or below, as in
   `published: [pure, typing.Any]`. The bundled profiles and xarch's own now write `published` that way, with no
@@ -18,6 +23,13 @@ All notable changes to this project are written here. The format follows
 
 ### Changed
 
+- A language's data file says the endings of a source file as a list and its package files as an optional list:
+  `extension` and `package_file` became `extensions` (`[.py]` for Python, the first the one messages print) and
+  `package_files` (`[__init__.py]`), each package file ending in one of the extensions; a language may have none.
+  Every check decides what a source file is by all its endings, and `testing.files` takes a pattern of any of them.
+  The old keys are unknown keys. Refused: `extensions: must be a non-empty list of endings, each starting with a
+  dot`, `package_files: must be a list of file names, each ending in one of extensions`, and
+  `package_files: '<item>' ends in none of extensions`. No finding of a Python app changes.
 - A language's data file says its standard library as data, or where it is known from: `standard` is `interpreter`
   (the Python running xarch, as before) or a map of three lists, `{modules: [...], reserved: [...], builtins: [...]}`,
   the top-level modules of its standard library, its reserved words and its builtins, each module checked with the

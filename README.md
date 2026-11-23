@@ -136,10 +136,11 @@ profile names, since an entry of that name would name the list.
 
 `language` names the language of the app: `python`, which is the default and the only one xarch reads today. What is
 true of a language as a whole lives in a data file shipped beside the profiles, `xarch/architectures/presets/language/
-<name>.yaml`, the way `testing: pytest` resolves to `presets/testing/pytest.yaml`: the ending of a source file, the file
-that stands for a folder, what marks an interface (`interface`, a list of marks, each a base, `{base: typing.Protocol}`,
-or a keyword a declaration carries, `{keyword: interface}`), the namespace of the builtins, the callables that import by
-a computed name, the folder of compiled files, and where the standard library's top-level modules, the reserved words
+<name>.yaml`, the way `testing: pytest` resolves to `presets/testing/pytest.yaml`: the endings of a source file
+(`extensions`, a list; the first is the one messages print), the files that stand for a folder (`package_files`, a
+list, optional for a language where no file does), what marks an interface (`interface`, a list of marks, each a base,
+`{base: typing.Protocol}`, or a keyword a declaration carries, `{keyword: interface}`), the namespace of the builtins,
+the callables that import by a computed name, the folder of compiled files, and where the standard library's top-level modules, the reserved words
 and the builtins are known from (`standard`: `interpreter`, the Python running xarch, or three lists, `modules`,
 `reserved` and `builtins`, each item checked with the file's `package` or `name`);
 and the tokens of its code the checks and the docs need: what a name may be, what an import names from outside the app
@@ -163,7 +164,9 @@ The data file also says what its reader supplies, under `supplies`: each fact of
 fields its words read, as `xarch profile explain kinds.<kind>` shows). A profile that sets a key whose facts its language does not
 supply is refused when it loads, naming the key, the fact and what to do; a key whose facts are supplied only partly
 runs, and is listed under `approximate` in the enforcement section, which `--strict` fails on. Python's reader
-supplies every fact exactly.
+supplies every fact exactly. One fact is never written under `supplies`: `file.package`, that a file stands for the
+folder holding it, follows `package_files`, and the keys whose check reads it (`package_only`, a part's `must_import`,
+`guards.dead-code.untested`) are refused under a language that has none.
 
 The smallest valid profile is a name and one part (it runs `structure`, the import rules, `libraries` and `syntax`):
 
