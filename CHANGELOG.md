@@ -7,6 +7,19 @@ All notable changes to this project are written here. The format follows
 
 ### Added
 
+- The kinds `records` and `exceptions` of `holds`, narrower than `classes`: a record (`class.record`) or an exception
+  may be defined at the top level of a part that lists the kind, `records` with the settings `names` and `immutable`,
+  `exceptions` with `names`; `functions` takes `names` (`holds.functions.names`), which every public top-level
+  function, in no class, matches. A class is held to the settings of the narrowest kind listed that it fits, in the
+  order exceptions, records, classes, and to no other's: beside `exceptions: {names: "*Error"}`, an exception is named
+  `*Error` and not by `classes.names`, and is not held to `classes.built_by`. `records: {}` or `exceptions: {}` beside
+  `classes`, which already allows them, is refused (`says nothing beside classes ...: give it a setting, or drop it`).
+- A part's `holds` reads `function.top_level` only when the language supplies it: in a language that does not, a part
+  that does not list `functions` reads no functions, which `xarch profile explain parts.holds` and the enforcement
+  section of `check` (an `approximate` item at `parts.<part>.holds`) say: `holds reads no top-level functions: the
+  language <title> does not supply function.top_level`. A part listing `functions` or `records` there is refused with
+  the needs text at `parts.<part>.holds.functions` or `.records`.
+
 - The fact `function.top_level`, whether a function is defined at the top level of its file, in no class, which
   `parts.<part>.holds`, `guards.dead-code.tests_only` and a check of your own or an eval whose filter reads
   `top-level` (negated or not) need; a language that does not supply it is refused them with the needs text. Python
@@ -42,6 +55,31 @@ All notable changes to this project are written here. The format follows
   package ...: rename it`). A part naming a list of lists is told `a list may include others`.
 
 ### Changed
+
+- `holds` is a map of kinds, `{classes, functions, records, exceptions}`, each `{}` or its settings: a kind listed may
+  exist at the top level of a file of the part, one not listed may not, and no `holds` allows every kind. `names`,
+  `immutable` and `built_by` leave the part for the kinds: `holds: {classes: {names: "*Service", built_by:
+  [bootstrap]}}`, `holds: {functions: {}, records: {immutable: true}, exceptions: {}}`. `holds: classes` is
+  `holds: {classes: {}}` and `holds: functions` is `holds: {functions: {}, records: {}, exceptions: {}}`; written as
+  one word, `holds` is refused with that map (`parts.<part>.holds: 'functions': holds as one word was removed in
+  0.3.0: write holds: {functions: {}, records: {}, exceptions: {}}, which allows what holds: functions allowed`), and
+  so are the flat keys on a part (`unknown key 'names': moved in 0.3.0: write it under the kind it names, such as
+  holds: {classes: {names: "*Service"}}`, and the like for `immutable` and `built_by`) and a setting under a kind that
+  does not take it (`unknown key 'immutable': a setting of classes and records`), which `xarch profile explain
+  <old address>` also gives. Every bundled profile, xarch's own and the corpora profiles write the map.
+- Findings name the nested keys: `(parts.<part>.holds.classes.names)`, `(parts.<part>.holds.classes.built_by)`,
+  `(parts.<part>.holds.records.immutable)` and the like, in place of `(parts.<part>.names)`, `(parts.<part>.built_by)`
+  and `(parts.<part>.immutable)`; `xarch profile explain parts.holds.classes.names --rule` gives the rules. A class in
+  a part of functions, records and exceptions is said to be where the part `holds functions, records and exceptions`;
+  a definition a part does not allow is said as the narrowest kind it fits (`is a function at the top level`, `is a
+  class`, `is a record`, `is an exception`).
+- In a part of functions, `immutable` (now under `records`) reads its records only, and `names` its records and
+  exceptions, so a plain class there, already listed by `holds`, is no longer listed a second time; the generated
+  docs' `immutable` line says "every record of" those parts. `review` rules out the same parts for every file of a
+  bundled profile as before; a part is named once whichever of its rules a file breaks.
+- `evals.placement.alike` compares the kinds `holds` lists and the `immutable` of each, in place of `holds` and
+  `immutable` as part keys: the refusal says `write the same uses.never, and list the same kinds with the same
+  immutable under holds, for each, or drop the group`.
 
 - A profile's keys are held to the facts their checks read at any depth, in every scope a key opens and in each
   entry of a list (addressed by its index from 0, as `<list>.0.<key>`), by one walk of the key table in place of a

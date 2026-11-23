@@ -115,7 +115,9 @@ everything else is optional, and a key left out means off):
 name*  based_on  language  hints  excluded  reserved
 testing:  <preset> | {files*, functions*, skips, table, mocks}
 parts*:   {<part>: {path*, role*, litmus, may_import, must_import, libraries, uses: {never}, tests | untested,
-                    package_only, folders, holds, immutable, types_only, names, built_by, shared}}
+                    package_only, folders, types_only, shared,
+                    holds: {classes: {names, immutable, built_by}, functions: {names}, records: {names, immutable},
+                            exceptions: {names}}}}
 never:    {<list>: [<dotted name> | .<method>() | <list>, ...]}  layers: {<chain>: [<part>, ...]}
 tiers:    {<tier>: {proves, litmus, uses: {apply_never}, plain_tables, types_only, folder, may_import, may_also_import,
                     must_import, docs}}
@@ -156,9 +158,11 @@ encoding declaration, the keywords of the statements that branch and of the expr
 (`branching_expressions`), and what makes a class an immutable record (`immutable`: marks, each `{base}`,
 `{decorator, keywords}`, `{fields}` or `{type}`, such as `{decorator: dataclasses.dataclass, keywords: {frozen:
 "True"}}`). Whether a class is a record, a type that only holds data, the reader says: the fact `class.record` a
-reader supplies, which `holds` and the filter `record` read. Whether a function is defined at the top level of its
-file, in no class, is the fact `function.top_level` a reader supplies, which `holds`, `guards.dead-code.tests_only`
-and the filter `top-level` read.
+reader supplies, which `holds`, its kind `records` and the filter `record` read. Whether a function is defined at the
+top level of its file, in no class, is the fact `function.top_level` a reader supplies, which the kinds `functions` and
+`records` of `holds`, `guards.dead-code.tests_only` and the filter `top-level` read; `holds` itself reads it only when
+the language supplies it, so that in a language without it a part that does not list `functions` reads no functions,
+which `profile explain parts.holds` and the enforcement section say.
 The rest of what a check knows of the language is one adapter, the reader that turns source into facts
 (`modules/rules/adapters/fs_source_tree.py`), and the platform; spec reads the docs' examples through that reader too.
 `tests/architecture/test_language_seam.py` fails when any other file of xarch names the language or writes one of
@@ -270,7 +274,7 @@ The whole vocabulary, from the same table the engine reads, is the command:
 xarch profile explain checks               # how a check is written and read, with a whole one as an example
 xarch profile explain filters              # a category of words: kinds, quantifiers, targets, filters, variables
 xarch profile explain filters.public       # one word: what it means, what it applies to, an example
-xarch profile explain parts.names --rule   # the rules a key of your profile expands to, written as checks
+xarch profile explain parts.holds --rule   # the rules a key of your profile expands to, written as checks
 ```
 
 ## What check checks
@@ -305,11 +309,11 @@ that switches or configures each (`-` for none: the rule is always on):
 | `no-twins` | two public classes in parts of different names that declare the same fields in the same order: one type written twice; with `min_renamed`, also a copy that renamed a field, and with `min_subset`, one that kept at least half of the other's fields in its order; with `translated`, a pair is no twin when a file of a listed part builds one of the two through an import, imports the other (from the file defining it, or from one that takes it from there), and holds one function that names both; a class a file builds where it defines it is built through no import, and translates nothing; each pair so accepted is named in the enforcement section | `guards.no-twins` |
 | `dead-code` | a port no other file names, a fake no test uses; with `untested`, a file no test of its tier reaches, and with `tests_only`, a public class or top-level function no other file of the app names (only the tests, or nothing, use it), but those `known` accepts, which the enforcement section names instead, each listed as `weak` only; an entry of `known` whose file defines no such name, whose name another file of the app names, or that no test names in its code (a string of a test does not count), is listed as `weak` too | `guards.dead-code`, `fakes` |
 | `pass-through` | a method that only forwards its arguments to a collaborator, or returns an attribute of what that call answers; never a violation: listed as `weak`, and fails only `--strict` | `guards.pass-through` |
-| `holds` | a public function at the top level of a part that holds classes, or a class (whatever its name) in one that holds functions; listed as `weak`, and fails only `--strict` | `parts.holds` |
-| `immutable` | a class of a part that lists `immutable` that is no immutable record as the language's data file says one is made, an exception aside; listed as `weak`, and fails only `--strict` | `parts.immutable` |
+| `holds` | a public function at the top level of a part whose `holds` does not list `functions`, or a class (whatever its name) of one that does not list `classes`, but an exception or a record when it lists that kind, each said as the narrowest kind it fits; listed as `weak`, and fails only `--strict` | `parts.holds` |
+| `immutable` | a class a part holds to `classes`, or a record it holds to `records`, when that kind sets `immutable`, that is no immutable record as the language's data file says one is made, an exception aside; listed as `weak`, and fails only `--strict` | `parts.holds.classes.immutable`, `parts.holds.records.immutable` |
 | `no-callbacks` | a function of a part the guard lists that calls one of its own parameters annotated as a callable | `guards.no-callbacks` |
-| `names` | a public class of a part whose name matches none of the part's patterns | `parts.names` |
-| `built-by` | a call of the constructor of a part's class from a part it does not list | `parts.built_by` |
+| `names` | a public class, top-level function, record or exception of a part whose name matches none of the patterns of the kind it is held to, a class being held to the narrowest kind listed that it fits | `parts.holds.<kind>.names` |
+| `built-by` | a call of the constructor of a class a part holds to `classes` from a part their `built_by` does not list | `parts.holds.classes.built_by` |
 | `private-imports` | an import of a name another file of the app or its tests keeps private (for Python, one starting with `_`) | `guards.private-imports` |
 | `shared` | a public name of a part declared shared that fewer users use than it says (a user: an instance of a repeating folder, or a part outside them; tests not read) | `parts.shared` |
 
@@ -755,19 +759,20 @@ probability on each part as answered. `review calibrate` holds a group to its li
 own part is the group's sum, an example of one part reading at or above the line of another part of its group crosses
 nothing, and its report says of each part of a group that it was held with the others; changing the groups makes the
 record of placement stale. Each name must be a part, a group needs two parts or more, each named once, and a part is in
-one group at most; the parts of a group must have the same `uses.never`, `holds` and `immutable`, since parts `check`
-tells apart by rule are not alike. A group hides every doubt between its parts: name only parts one file truly cannot
-tell apart. `xarch profile explain evals.placement.alike` says it in full.
+one group at most; the parts of a group must have the same `uses.never`, and the same kinds with the same `immutable`
+under `holds`, since parts `check` tells apart by rule are not alike. A group hides every doubt between its parts:
+name only parts one file truly cannot tell apart. `xarch profile explain evals.placement.alike` says it in full.
 
 ### Parts a file cannot lie in: ruled out by `holds`
 
 The decision model judges a file by what it is about, and a part's rules say what may lie there: a file of plain
 functions that validates profile documents reads as the part holding profile values, though that part holds classes
-(`parts.<part>.holds: classes`) and the file could not lie there without breaking the rule. So each part whose `holds`
-the file would break were it to lie there is ruled out of its answer: the probability on it is dropped, and what
+(`parts.<part>.holds: {classes: {}}`) and the file could not lie there without breaking the rule: a file rules a part
+out when it defines at the top level a kind that part does not list. So each part whose `holds` the file would break
+were it to lie there is ruled out of its answer: the probability on it is dropped, and what
 remains is read as summing to 1 again. Whether the file would break a part's `holds` is decided by the very rule `check`
 runs in that part, on the file as `check` reads it with the rest of the app (an exception class and a record a
-function of the file returns are allowed in a part of functions, as there; a package file breaks none). The file's own
+function of the file returns are allowed in a part that lists them, as there; a package file breaks none). The file's own
 part is never ruled out (when the file breaks it, `check` says so); a part the answer puts nothing on is left as it is;
 and an answer that would leave nothing (its own part at 0, every other part ruled out) is read as it was answered.
 
