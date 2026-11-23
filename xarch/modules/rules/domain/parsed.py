@@ -247,9 +247,9 @@ class SourceFile:
     binds, so that what it names is a function, each public as that function is). named is every name the file
     mentions anywhere, annotations included, by its last step alone; callbacks are the calls of a function's own
     parameter; method_calls the calls of an attribute no import binds (see MethodCall). constants are the names it
-    binds at the top level by an assignment (see Constant). unmentioned holds, as (the line of the import, the name it takes), each name an import
-    takes from a module that nothing else in the file mentions, in code or an annotation: a name it only passes on
-    (listed as text for those who import it from here) or does not use. pieces are its functions and classes at the
+    binds at the top level by an assignment (see Constant). unmentioned holds, as (the line of the import, the name it
+    takes), each name an import takes from a module that nothing else in the file mentions, in code or an annotation: a
+    name it only passes on (listed as text for those who import it from here) or does not use. pieces are its functions and classes at the
     top level and the methods of those classes, in the order of their first line (see Piece). error is how it fails to
     parse, and then it holds nothing else."""
     name: str
