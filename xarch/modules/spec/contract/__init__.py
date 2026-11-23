@@ -99,15 +99,15 @@ class PartView:
     and for a part there to be shared, the fewest users each of its public names must have."""
     name: str
     pattern: tuple[str, ...]
-    may_import: tuple[Target, ...]
+    imports_may: tuple[Target, ...]
     role: str = ""
     litmus: str = ""
     shown: str = ""
     untested: str = ""
     uses_never: tuple[tuple[str, ...], ...] = ()
-    must_import: tuple[Target, ...] = ()
+    imports_must: tuple[Target, ...] = ()
     holds: tuple[Held, ...] = ()
-    types_only: tuple[Target, ...] = ()
+    imports_types_only: tuple[Target, ...] = ()
     shared: int | None = None
 
 
@@ -155,7 +155,7 @@ class ProfileView:
     parts: tuple[PartView, ...]
     folders: tuple[tuple[str, ...], ...] = ()
     tiers: tuple[CheckedTier, ...] = ()
-    libraries: dict[str, tuple[str, ...]] | None = None
+    imports_libraries: dict[str, tuple[str, ...]] | None = None
     repeats: tuple[Repeat, ...] = ()
     guards: GuardsView = GuardsView()
     fakes: Fakes | None = None

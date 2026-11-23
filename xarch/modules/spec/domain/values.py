@@ -77,12 +77,12 @@ class Part:
     role: one line; also the part's note in the docs' tree
     entry: the entry point, which drives the rest; at most one part is
     untested: why no tier tests it, e.g. "reached through the adapters that use it"
-    must_import: the targets each of its files must import one of (or an outside package); empty: no such rule
+    imports_must: the targets each of its files must import one of (or an outside package); empty: no such rule
     holds: the kinds its files may define at the top level, each with its settings (the patterns their names match,
         whether its classes are immutable records, as the language's data file says one is made, and the only parts
         whose code may build them), in the order of KINDS whatever the order written; empty: every kind
-    types_only: the targets of its imports.may marked types_only, in the order of may: its files may import
-                what they reach and use it as types, but never call it
+    imports_types_only: the targets of its imports.may marked types_only, in the order of may: its files may import
+                        what they reach and use it as types, but never call it
     shared: the fewest users each public name it defines must have, being there to be shared; None: not shared
     """
     name: str
@@ -91,9 +91,9 @@ class Part:
     litmus: str = ""
     entry: bool = False
     untested: str = ""
-    must_import: tuple[Target, ...] = ()
+    imports_must: tuple[Target, ...] = ()
     holds: tuple[Held, ...] = ()
-    types_only: tuple[Target, ...] = ()
+    imports_types_only: tuple[Target, ...] = ()
     shared: int | None = None
 
     @property
@@ -363,7 +363,7 @@ class Architecture:
     layers: named chains of parts, from the inside out
     placement: every part once: the order the litmus tests run in
     tiers: in the order their litmus tests run
-    libraries: the outside packages each part may import; None: unchecked
+    imports_libraries: the outside packages each part may import; None: unchecked
     guards: the pre-built checks in use
     fakes: where the test fakes live; None: no test may import them
     repeats: the repeating folders of the layout, in the order of the profile: each its word, as the docs show one
@@ -376,7 +376,7 @@ class Architecture:
     hints: the project's own advice for a rule id, shown after the built-in fix of a violation of that rule
     based_on: the bundled profile it says it was copied from; empty when it does not say
     language: the language of the app
-    reserved: the standard-library modules only the parts whose `libraries` list them may import, each with why
+    reserved: the standard-library modules only the parts whose `imports_libraries` list them may import, each with why
     approximate: the keys whose check reads a fact the language supplies only partly, with the reader's note
     checks: the checks the profile writes itself, by id, each as the format writes it (see written_checks): what the
         words in them mean is the rules module's
@@ -401,7 +401,7 @@ class Architecture:
     placement: tuple[str, ...] = ()
     naming: tuple[Naming, ...] = ()
     tiers: tuple[Tier, ...] = ()
-    libraries: dict[str, tuple[str, ...]] | None = None
+    imports_libraries: dict[str, tuple[str, ...]] | None = None
     guards: tuple[Guard, ...] = ()
     fakes: Fakes | None = None
     repeats: tuple[Repeat, ...] = ()

@@ -12,7 +12,7 @@ SPEC = controller(FakeArchitectureFiles({"cli": LAYERED, "broken": {"name": "bro
 
 @pytest.mark.parametrize("given, when, then", [
     pytest.param(SPEC, "cli", ProfileView((PartView("src", ("src",), (), "code", shown="src/"),), ((), ("src",)),
-                                          libraries={"src": ()}, language=PYTHON.checked),
+                                          imports_libraries={"src": ()}, language=PYTHON.checked),
                  id="a profile that loads is given as the checks read it"),
     pytest.param(SPEC, "broken", ProfileRefused("broken: missing `parts`"),
                  id="a profile that does not load is refused with why"),

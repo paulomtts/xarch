@@ -15,7 +15,7 @@ from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework, S
 ])
 def test_the_bundled_profiles_list_the_libraries_their_examples_use(name, expected):
     profile = build_controllers().spec.profile(name)
-    assert {part: packages for part, packages in (profile.libraries or {}).items() if packages} == expected
+    assert {part: packages for part, packages in (profile.imports_libraries or {}).items() if packages} == expected
 
 
 @pytest.mark.parametrize("name", ["cli", "web"])
@@ -154,5 +154,5 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
 @pytest.mark.parametrize("name", ["cli", "web"])
 def test_the_bundled_profiles_say_that_an_adapter_reaches_the_platform_or_wraps_another_module_s_contract(name):
     architecture = load_architecture(name)
-    assert {n: [(t.part, t.scope) for t in p.must_import] for n, p in architecture.parts.items() if p.must_import} == {
+    assert {n: [(t.part, t.scope) for t in p.imports_must] for n, p in architecture.parts.items() if p.imports_must} == {
         "adapters": [("platform", "none"), ("contract", "any")]}

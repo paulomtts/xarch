@@ -314,7 +314,7 @@ def brace_document(ambient=("node:fs#readFileSync", "globalThis#fetch", ".toISOS
 
 def test_outside_names_are_read_by_the_package_pattern_and_the_member_of_the_language():
     architecture = parsed(brace_document(), languages=BRACED)
-    assert (architecture.libraries["store"], architecture.uses_never) == (
+    assert (architecture.imports_libraries["store"], architecture.uses_never) == (
         ("lodash-es", "@scope/pkg"),
         {"service": (("node:fs", "readFileSync"), ("globalThis", "fetch"), ("", "toISOString()"))})
 

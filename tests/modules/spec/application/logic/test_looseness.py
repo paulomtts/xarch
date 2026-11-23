@@ -54,7 +54,7 @@ def test_the_bundled_profile_a_profile_says_it_is_based_on_wins_over_the_one_sha
 
 
 def test_a_profile_that_checks_no_outside_package_is_looser_than_one_that_does():
-    assert loosened(replace(parsed(layered()), libraries=None), parsed(layered())) == (
+    assert loosened(replace(parsed(layered()), imports_libraries=None), parsed(layered())) == (
         Loosened("imports.libraries", "", "", "outside packages are not checked"),)
 
 

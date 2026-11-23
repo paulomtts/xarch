@@ -404,9 +404,9 @@ def _guards(architecture: Architecture, _: str, _q: Texts, _t: Texts, _f: bool, 
     lines = [_structure_line(architecture),
              "`may-import`: every import between parts is one that the `imports.may` of the importing part allows "
              "(architecture.md, section 5)."]
-    if architecture.libraries is not None:
+    if architecture.imports_libraries is not None:
         listed = "; ".join(f"`{docs_name(architecture, architecture.parts[name])}`: {_packages(packages)}"
-                           for name, packages in architecture.libraries.items() if packages)
+                           for name, packages in architecture.imports_libraries.items() if packages)
         reserved = "; ".join(f"`{name}`: {reason}" for name, reason in architecture.reserved.items())
         but = f" but what `reserved` names ({reserved})" if reserved else ""
         lines.append(f"`libraries`: a part imports only the outside packages listed for it ({listed}); the standard "
@@ -438,7 +438,7 @@ def _guards(architecture: Architecture, _: str, _q: Texts, _t: Texts, _f: bool, 
         instances = _or([f"`{'/'.join(root)}/<name>/`" for root in roots])
         lines.append(f"`cycles`: no {instances} imports from another that imports, directly or through "
                      "others, from it; each cycle is reported once, with the imports that close it.")
-    lines += [_must_import_line(architecture, part) for part in architecture.parts.values() if part.must_import]
+    lines += [_must_import_line(architecture, part) for part in architecture.parts.values() if part.imports_must]
     lines += [_tier_must_import_line(architecture, tier) for tier in architecture.tiers if tier.imports_must]
     lines += _part_lines(architecture)
     lines += [_guard_line(architecture, guard) for guard in architecture.guards]
@@ -563,9 +563,9 @@ def _part_lines(architecture: Architecture) -> list[str]:
     parts = list(architecture.parts.values())
     lines: list[str] = []
     for part in parts:
-        if part.types_only:
+        if part.imports_types_only:
             lines.append(f"`types-only`: {shown([part.name])} uses "
-                         f"{shown(list(dict.fromkeys(t.part for t in part.types_only)))} only as a type: it "
+                         f"{shown(list(dict.fromkeys(t.part for t in part.imports_types_only)))} only as a type: it "
                          "imports it to annotate and never calls it.")
     groups: dict[tuple[str, ...], list[str]] = {_CLASSES: [], _FUNCTIONS: []}
     for part in parts:
@@ -631,7 +631,7 @@ def _named(held: Held, holds: tuple[Held, ...], part: str) -> str:
 
 
 def _must_import_line(architecture: Architecture, part: Part) -> str:
-    wanted = may_import(part.must_import, _folders(architecture), architecture.words()).replace(" and ", " or ")
+    wanted = may_import(part.imports_must, _folders(architecture), architecture.words()).replace(" and ", " or ")
     return (f"`must-import`: every file of `{docs_name(architecture, part)}` imports from {wanted}, or an outside "
             "package, or reaches one through a file of its own part; a package file and a file with no code of its own "
             "are exempt.")

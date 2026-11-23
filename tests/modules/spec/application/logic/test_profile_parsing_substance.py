@@ -21,14 +21,14 @@ def with_part(**keys) -> dict:
 def test_a_part_says_what_its_files_hold_and_how_its_classes_are_named_and_built():
     part = parsed(with_part(holds={"classes": {"names": "*Service", "built_by": ["api"]}},
                             imports={"may": [{"store": "types_only"}, "shared"]})).parts["service"]
-    assert (part.holds, part.types_only) == ((Held("classes", ("*Service",), built_by=("api",)),),
+    assert (part.holds, part.imports_types_only) == ((Held("classes", ("*Service",), built_by=("api",)),),
                                              (Target("store", "own"),))
     assert not any(hasattr(part, key) for key in ("no_callbacks", "names", "built_by", "immutable"))
 
 
 def test_the_keys_are_off_when_left_out():
     part = parsed(layered()).parts["service"]
-    assert (part.holds, part.types_only) == ((), ())
+    assert (part.holds, part.imports_types_only) == ((), ())
 
 
 def test_a_part_says_what_its_files_hold_each_kind_with_its_settings_in_the_order_of_the_kinds():

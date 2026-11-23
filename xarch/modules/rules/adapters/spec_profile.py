@@ -59,15 +59,15 @@ class SpecProfiles:
             case ProfileView() as view:
                 pass
         parts, guards = view.parts, view.guards
-        return Profile(parts={p.name: p.pattern for p in parts}, rules={p.name: p.may_import for p in parts},
+        return Profile(parts={p.name: p.pattern for p in parts}, rules={p.name: p.imports_may for p in parts},
                        folders=view.folders,
                        tiers=view.tiers,
-                       libraries=None if view.libraries is None else dict(view.libraries),
+                       libraries=None if view.imports_libraries is None else dict(view.imports_libraries),
                        fakes=view.fakes,
                        repeats=view.repeats, package_only=guards.package_only,
                        scenarios=guards.scenarios, no_comments=guards.no_comments, stand_ins=guards.stand_ins,
                        closed_tree=guards.closed_tree,
-                       must_import={p.name: p.must_import for p in parts if p.must_import},
+                       must_import={p.name: p.imports_must for p in parts if p.imports_must},
                        no_duplicates=guards.no_duplicates, no_twins=guards.no_twins,
                        no_twins_renamed=guards.no_twins_renamed, no_twins_subset=guards.no_twins_subset,
                        no_twins_translated=guards.no_twins_translated,
@@ -77,7 +77,7 @@ class SpecProfiles:
                        holds={p.name: tuple(h.kind for h in p.holds) for p in parts if p.holds},
                        immutable={p.name: tuple(h.kind for h in p.holds if h.immutable) for p in parts
                                   if any(h.immutable for h in p.holds)},
-                       types_only={p.name: p.types_only for p in parts if p.types_only},
+                       types_only={p.name: p.imports_types_only for p in parts if p.imports_types_only},
                        no_callbacks=guards.no_callbacks,
                        names={p.name: {h.kind: h.names for h in p.holds if h.names} for p in parts
                               if any(h.names for h in p.holds)},

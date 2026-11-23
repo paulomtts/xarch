@@ -193,8 +193,8 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     reserved = ck.reserved_modules(document["reserved"], problems, language) if "reserved" in document else {}
     libraries = {part: _libraries(imports[part], f"parts.{part}.imports.libraries", problems, language, reserved)
                  for part in parts}
-    parts = {part: replace(item, must_import=iw.must(imports[part], item, parts, declared, rules[part], problems),
-                           types_only=read[part][1]) for part, item in parts.items()}
+    parts = {part: replace(item, imports_must=iw.must(imports[part], item, parts, declared, rules[part], problems),
+                           imports_types_only=read[part][1]) for part, item in parts.items()}
     parts = {part: _substance(specs[part], item, declared, problems) for part, item in parts.items()}
     uses_never = _never_refs(specs, parts, never_lists, problems)
     layers = ck.layer_chains(document["layers"], parts, declared, rules, problems) if "layers" in document else {}

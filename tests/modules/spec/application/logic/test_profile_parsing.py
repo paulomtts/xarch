@@ -27,7 +27,7 @@ def test_the_smallest_profile_is_a_name_and_parts_and_checks_the_layout_and_the_
     assert architecture.name == "tiny"
     assert architecture.layout == {"core": {}, "cli": {}}
     assert architecture.rules == {"core": (), "cli": (Target("core"),)}
-    assert architecture.libraries == {"core": (), "cli": ("typer",)}
+    assert architecture.imports_libraries == {"core": (), "cli": ("typer",)}
     assert architecture.tiers == () and architecture.guards == () and architecture.framework is None
     assert architecture.repeats == ()
 
@@ -359,14 +359,14 @@ def test_a_bad_target_is_refused_saying_what_to_write(part, targets, expected):
 
 
 def test_libraries_are_strict_by_default_and_a_part_lists_what_it_may_import():
-    libraries = parsed(layered()).libraries
+    libraries = parsed(layered()).imports_libraries
     assert libraries == {"api": (), "service": (), "store": ("sqlmodel",), "shared": ()}
 
 
 def test_a_part_may_leave_libraries_unchecked_with_everything():
     document = layered()
     document["parts"]["shared"].setdefault("imports", {})["libraries"] = "everything"
-    assert parsed(document).libraries["shared"] == (Target("*").part,)
+    assert parsed(document).imports_libraries["shared"] == (Target("*").part,)
 
 
 @pytest.mark.parametrize("libraries, expected", [
@@ -455,9 +455,9 @@ def test_a_part_says_what_its_files_must_import_with_the_targets_of_may_import()
     document["parts"]["store"].setdefault("imports", {})["must"] = ["shared"]
     document["parts"]["api"].setdefault("imports", {})["must"] = ["service"]
     architecture = parsed(document)
-    assert architecture.parts["store"].must_import == (Target("shared"),)
-    assert architecture.parts["api"].must_import == (Target("service", "own"),)
-    assert architecture.parts["shared"].must_import == ()
+    assert architecture.parts["store"].imports_must == (Target("shared"),)
+    assert architecture.parts["api"].imports_must == (Target("service", "own"),)
+    assert architecture.parts["shared"].imports_must == ()
 
 
 @pytest.mark.parametrize("value, expected", [
@@ -482,4 +482,4 @@ def test_a_part_that_may_import_everything_may_be_asked_to_reach_any_part():
     document = layered()
     document["parts"]["store"].setdefault("imports", {})["may"] = "everything"
     document["parts"]["store"].setdefault("imports", {})["must"] = ["api"]
-    assert parsed(document).parts["store"].must_import == (Target("api", "own"),)
+    assert parsed(document).parts["store"].imports_must == (Target("api", "own"),)

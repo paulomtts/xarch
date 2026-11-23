@@ -19,7 +19,7 @@ FAKES = {"folder": "fakes", "for": ["store"]}
 def test_a_part_that_lists_no_package_may_import_none_and_says_so_with_an_empty_list():
     document = layered()
     document["parts"]["store"].setdefault("imports", {})["libraries"] = []
-    assert parsed(document).libraries == {"api": (), "service": (), "store": (), "shared": ()}
+    assert parsed(document).imports_libraries == {"api": (), "service": (), "store": (), "shared": ()}
 
 
 def test_a_library_name_with_a_dash_is_refused_since_it_is_no_import_name():
@@ -123,7 +123,7 @@ def reserving(reserved, libraries=None) -> dict:
 
 def test_a_reserved_module_of_the_standard_library_loads_with_its_reason_and_a_part_may_list_it():
     architecture = parsed(reserving({"ast": "the reader's", "tokenize": "the reader's"}, ["ast", "tokenize"]))
-    assert (architecture.reserved, architecture.libraries["store"]) == (
+    assert (architecture.reserved, architecture.imports_libraries["store"]) == (
         {"ast": "the reader's", "tokenize": "the reader's"}, ("ast", "tokenize"))
 
 

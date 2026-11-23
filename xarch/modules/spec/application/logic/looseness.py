@@ -64,21 +64,21 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
         found += [("imports.may", name, _shown(t)) for t in custom.rules.get(name, ())
                   if not any(_covers(b, t) for b in before)]
     for name in shared:
-        allows, marks = custom.rules.get(name, ()), custom.parts[name].types_only
-        found += [("imports.may.types_only", name, _shown(t)) for t in base.parts[name].types_only
+        allows, marks = custom.rules.get(name, ()), custom.parts[name].imports_types_only
+        found += [("imports.may.types_only", name, _shown(t)) for t in base.parts[name].imports_types_only
                   if any(_covers(c, t) for c in allows) and not any(_covers(c, t) for c in marks)]
-    if base.libraries is not None:
-        if custom.libraries is None:
+    if base.imports_libraries is not None:
+        if custom.imports_libraries is None:
             found.append(("imports.libraries", "", ""))
         else:
-            found += [("imports.libraries", name, package) for name in shared for package in custom.libraries.get(name, ())
-                      if package not in base.libraries.get(name, ())]
+            found += [("imports.libraries", name, package) for name in shared for package in custom.imports_libraries.get(name, ())
+                      if package not in base.imports_libraries.get(name, ())]
     for name in shared:
         kept = custom.uses_never.get(name, ())
         found += [("uses.never", name, outside_text(banned, member)) for banned in base.uses_never.get(name, ())
                   if not any(banned[:len(entry)] == entry for entry in kept)]
     for name in shared:
-        before, now = base.parts[name].must_import, custom.parts[name].must_import
+        before, now = base.parts[name].imports_must, custom.parts[name].imports_must
         if before and not now:
             found.append(("imports.must", name, ""))
         else:

@@ -20,8 +20,8 @@ def with_imports(part: str, imports) -> dict:
 def test_the_group_gives_what_the_old_keys_gave_for_the_same_lists():
     architecture = parsed(with_imports("store", {"may": ["shared"], "must": ["shared"], "libraries": ["sqlmodel"]}))
     assert architecture.rules["store"] == (Target("shared"),)
-    assert architecture.parts["store"].must_import == (Target("shared"),)
-    assert architecture.libraries["store"] == ("sqlmodel",)
+    assert architecture.parts["store"].imports_must == (Target("shared"),)
+    assert architecture.imports_libraries["store"] == ("sqlmodel",)
 
 
 @pytest.mark.parametrize("imports, rules", [
@@ -37,7 +37,7 @@ def test_a_part_with_no_imports_imports_only_itself_and_no_outside_package():
     document = layered()
     del document["parts"]["store"]["imports"]
     architecture = parsed(document)
-    assert architecture.rules["store"] == () and architecture.libraries["store"] == ()
+    assert architecture.rules["store"] == () and architecture.imports_libraries["store"] == ()
 
 
 @pytest.mark.parametrize("imports, problem", [
@@ -63,7 +63,7 @@ def test_the_group_is_refused_when_written_wrong(imports, problem):
 def test_a_marked_entry_is_a_target_of_may_and_a_marked_target():
     architecture = parsed(with_imports("service", {"may": ["store", {"shared": "types_only"}]}))
     assert architecture.rules["service"] == (Target("store", "own"), Target("shared"))
-    assert architecture.parts["service"].types_only == (Target("shared"),)
+    assert architecture.parts["service"].imports_types_only == (Target("shared"),)
 
 
 @pytest.mark.parametrize("entry, marked", [
@@ -72,17 +72,17 @@ def test_a_marked_entry_is_a_target_of_may_and_a_marked_target():
     pytest.param({"store/rules:*Id": "types_only"}, Target("store", "own", ("rules",), "*Id"), id="path and pattern"),
 ])
 def test_a_mark_keeps_the_scope_path_and_pattern_of_its_target(entry, marked):
-    assert parsed(with_imports("service", {"may": [entry]})).parts["service"].types_only == (marked,)
+    assert parsed(with_imports("service", {"may": [entry]})).parts["service"].imports_types_only == (marked,)
 
 
 def test_two_marks_keep_the_order_of_may():
     architecture = parsed(with_imports("service", {"may": [{"store": "types_only"}, "api", {"shared": "types_only"}]}))
-    assert architecture.parts["service"].types_only == (Target("store", "own"), Target("shared"))
+    assert architecture.parts["service"].imports_types_only == (Target("store", "own"), Target("shared"))
 
 
 def test_a_target_written_plain_and_marked_keeps_its_mark():
     architecture = parsed(with_imports("service", {"may": ["shared", {"shared": "types_only"}]}))
-    assert architecture.parts["service"].types_only == (Target("shared"),)
+    assert architecture.parts["service"].imports_types_only == (Target("shared"),)
 
 
 @pytest.mark.parametrize("entry, problem", [
@@ -119,7 +119,7 @@ def test_must_is_refused_when_written_wrong(must, problem):
 
 def test_a_must_entry_equal_to_a_marked_entry_of_may_passes():
     architecture = parsed(with_imports("store", {"may": [{"shared": "types_only"}], "must": ["shared"]}))
-    assert architecture.parts["store"].must_import == (Target("shared"),)
+    assert architecture.parts["store"].imports_must == (Target("shared"),)
 
 
 def test_must_without_may_is_refused_entry_by_entry():
