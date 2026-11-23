@@ -24,7 +24,7 @@ from xarch.modules.spec.application.logic.project_files import entries, project_
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
 from xarch.modules.spec.application.ports.example_reader import ExampleReader
 from xarch.modules.spec.application.ports.runtime import Runtime
-from xarch.modules.spec.domain.errors import InvalidArchitecture
+from xarch.modules.spec.domain.errors import AgainstUnloaded, InvalidArchitecture
 from xarch.modules.spec.domain.published import EXAMPLE_APP, DocFile, Origin, ProjectFile
 from xarch.modules.spec.domain.values import Architecture, ArchitectureSource, FileType, Language, StandardLists
 
@@ -111,12 +111,23 @@ class ArchitectureService:
                          for folder, names in listing.items() for name in names})
         return list(project_files(replace(architecture, files=kept), contents, app, source.location, listing))
 
-    def origin(self, location: str | Path) -> Origin:
-        """Where the architecture comes from, the guards it leaves off and, for a custom file, how it is looser than
-        the bundled architecture it resembles; raises InvalidArchitecture."""
+    def origin(self, location: str | Path, against: str | None = None) -> Origin:
+        """Where the architecture comes from, the guards it leaves off and how it is looser than the profile it is
+        compared with: the one against names, bundled or a file, for a bundled architecture too; else, for a custom
+        file, the bundled architecture it resembles. Raises InvalidArchitecture when the architecture does not load,
+        and, once it does, AgainstUnloaded when the one against names does not."""
         source, architecture = self._load(location)
+        if against is not None:
+            return origin_of(source.location, architecture, source.bundled, {against: self._against(against)}, against)
         others = {} if source.bundled else {name: self.load(name) for name in self._files.bundled()}
         return origin_of(source.location, architecture, source.bundled, others)
+
+    def _against(self, location: str) -> Architecture:
+        """The architecture --against names; raises AgainstUnloaded with every problem when it does not load."""
+        try:
+            return self.load(location)
+        except InvalidArchitecture as e:
+            raise AgainstUnloaded(e.problems) from e
 
     def _example_texts(self, source: ArchitectureSource, architecture: Architecture) -> dict[str, str]:
         return {name: self._files.read_text(source, example.file) for name, example in architecture.examples.items()}

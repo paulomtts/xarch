@@ -3,7 +3,7 @@ just as spec holds it, so there is nothing to reshape. Everything else spec hand
 
     Origin       where the profile in force comes from, the bundled profile it is compared with and how much the
                  two have in common, which the command line shows and the checking module reads the guards of;
-                 BASED_ON and CLOSEST why it is compared with that one
+                 BASED_ON, CLOSEST and AGAINST why it is compared with that one
     Loosened     one way a profile is looser than the bundled one it is compared with, held by Origin and shown as it
                  is
     LITMUS       the key of the Loosened that says a part lost its litmus, which the checking module fails
@@ -138,9 +138,9 @@ class Loosened:
     sentence: str = ""
 
 
-BASED_ON, CLOSEST = "based_on", "closest"
-"""Why a custom profile is compared with the bundled one it is (Origin.chosen_by): it says it is based on it, or that
-one has the highest match."""
+BASED_ON, CLOSEST, AGAINST = "based_on", "closest", "against"
+"""Why a profile is compared with the one it is (Origin.chosen_by): a custom one says it is based on it, or that one
+has the highest match; or, for this run, --against names it."""
 
 
 @dataclass(frozen=True)
@@ -149,11 +149,12 @@ class Origin:
 
     location: as selected, a bundled name or a path
     bundled: whether it is a bundled profile, its own baseline
-    compared: for a custom file, the bundled profile it is compared with; None when it is bundled or none is
+    compared: the profile it is compared with, as its location is given: for a custom file the bundled one, and for
+        either the one --against names; None when it is bundled and --against is not given, or none is
     guards_off: the guards xarch has that it leaves off, in xarch's order
     baseline_off: those the bundled profile it is, or is compared with, leaves off too
     looser: how it is looser than the profile it is compared with
-    chosen_by: why that one: BASED_ON or CLOSEST; None when nothing is compared
+    chosen_by: why that one: BASED_ON, CLOSEST or AGAINST; None when nothing is compared
     match: the share of what `check` reads under either profile that has a counterpart in the other, rounded to two
         decimals; None when nothing is compared
     low: the match is below the line of a low one, or no part pairs
@@ -162,7 +163,9 @@ class Origin:
         with none of the other's, each as "part <name>" or "tier <name>", by name
     elsewhere: each part the other profile has by the same name at another path, as "<name>: <its path there> there"
     higher: when it is compared with the profile it says it is based on, the bundled profile of higher match and that
-        match; None when there is none
+        match; None when there is none, and always with --against
+    based_on: with --against, the profile its own based_on names, which the command line says beside it; empty
+        otherwise
     """
     location: str = ""
     bundled: bool = True
@@ -178,6 +181,7 @@ class Origin:
     only_there: tuple[str, ...] = ()
     elsewhere: tuple[str, ...] = ()
     higher: tuple[str, float] | None = None
+    based_on: str = ""
 
 
 @dataclass(frozen=True)

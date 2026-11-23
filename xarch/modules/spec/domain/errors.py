@@ -37,6 +37,14 @@ class InvalidArchitecture(DomainError):
         super().__init__("\n".join(self.problems))
 
 
+class AgainstUnloaded(DomainError):
+    """The profile --against names does not load: every problem the loader found, each starting with where it is, on
+    one line."""
+
+    def __init__(self, problems: Iterable[str]):
+        super().__init__(f"--against does not load: {'; '.join(problems)}")
+
+
 class InvalidTemplate(DomainError):
     """A docs template that cannot be filled from its architecture; problems holds every problem, prefixed as above."""
 

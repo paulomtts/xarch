@@ -89,11 +89,12 @@ class SpecController:
         except DomainError as e:
             return ProfileRefused(e.reason)
 
-    def origin(self, location: str) -> OriginResult:
-        """Where the profile at a location callers got from select() comes from, and how it is looser than the
-        bundled profile it resembles; a profile that cannot be loaded is refused with why."""
+    def origin(self, location: str, against: str | None = None) -> OriginResult:
+        """Where the profile at a location callers got from select() comes from, and how it is looser than the profile
+        it is compared with: the one against names for this run, else the bundled profile it resembles; a profile that
+        cannot be loaded, or one against names that does not load, is refused with why."""
         try:
-            return self._architectures.origin(location)
+            return self._architectures.origin(location, against)
         except DomainError as e:
             return ProfileRefused(e.reason)
 

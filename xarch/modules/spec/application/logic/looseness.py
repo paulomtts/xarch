@@ -2,7 +2,9 @@
 match), the guards it leaves off, and every way it is looser than that one.
 
 A custom profile is compared with the bundled profile its `based_on` names, else with the one of highest match, the
-first by name on a tie; one no part pairs with is no candidate, and with none left nothing is compared. The match is
+first by name on a tie; one no part pairs with is no candidate, and with none left nothing is compared. For one run,
+`--against` names the profile compared with instead, bundled or a file, and then a bundled profile is compared too,
+even with one no part pairs with, and no other is said to match higher. The match is
 the share of the items of either profile, one per thing `check` reads, that have a counterpart in the other: each part;
 each key of a part that holds a value (imports.may, imports.libraries, imports.must, each target marked types_only,
 uses.never, each kind of holds and each setting it writes, untested, litmus, shared, entry, package_only); each tier,
@@ -51,7 +53,7 @@ from xarch.kernel.logic.placement import name_matches
 from xarch.kernel.placement import EVERYTHING
 from xarch.modules.spec.application.logic.holds_written import NARROWER
 from xarch.modules.spec.domain.guards import KEY, ORDER
-from xarch.modules.spec.domain.published import BASED_ON, CLOSEST, KINDS, LINE, LITMUS, Held, Loosened, Origin
+from xarch.modules.spec.domain.published import AGAINST, BASED_ON, CLOSEST, KINDS, LINE, LITMUS, Held, Loosened, Origin
 from xarch.modules.spec.domain.values import Architecture, DeadCode, NoTwins, PackageOnly, Part, Tier
 from xarch.profile_values.placement import Target
 
@@ -378,10 +380,14 @@ def _covers(wider: Target, target: Target) -> bool:
 
 
 def origin_of(location: str, architecture: Architecture, bundled: bool,
-              others: Mapping[str, Architecture]) -> Origin:
+              others: Mapping[str, Architecture], against: str | None = None) -> Origin:
     """Where the architecture at location comes from: a bundled one is its own baseline; a custom one is compared with
     the one of others, the bundled architectures by name, it says it is based on, else the one of highest match (the
-    first by name on a tie, one no part pairs with never), and is looser than it in the ways it says."""
+    first by name on a tie, one no part pairs with never), and is looser than it in the ways it says. With against,
+    the name others holds the one profile --against names by, either is compared with that one alone, even when no
+    part pairs, and no other is said to match higher."""
+    if against is not None:
+        return _compared(location, architecture, bundled, others[against], against, AGAINST, architecture.based_on)
     off = _guards_off(architecture)
     if bundled:
         return Origin(location, True, None, off, off, ())
@@ -395,18 +401,26 @@ def origin_of(location: str, architecture: Architecture, bundled: bool,
         name, chosen_by = highest, CLOSEST
     else:
         return Origin(location, False, None, off, (), ())
-    base = others[name]
+    share = _share(_counts(architecture, others[name]))
+    return replace(_compared(location, architecture, False, others[name], name, chosen_by),
+                   higher=(highest, round(float(best), 2)) if highest is not None and best > share else None)
+
+
+def _compared(location: str, architecture: Architecture, bundled: bool, base: Architecture, name: str,
+              chosen_by: str, based_on: str = "") -> Origin:
+    """The architecture at location compared with base, which is called name: the guards both leave off, how it is
+    looser, its match and its counts, and what pairs with nothing on either side."""
+    off = _guards_off(architecture)
     counts = _counts(architecture, base)
     share = _share(counts)
     parts = _paired_parts(architecture, base)
     tiers = _paired_tiers(architecture, base, parts)
     looser = tuple(Loosened(key, part, what, _sentence(key, part, what)) for key, part, what in _looser(architecture, base))
-    return Origin(location, False, name, off, tuple(g for g in off if g in _guards_off(base)), looser,
+    return Origin(location, bundled, name, off, tuple(g for g in off if g in _guards_off(base)), looser,
                   chosen_by=chosen_by, match=round(float(share), 2), low=share < LOW or not parts, counts=counts,
                   only_here=_unpaired(architecture, parts, tiers),
                   only_there=_unpaired(base, parts.values(), tiers.values()),
-                  elsewhere=_elsewhere(architecture, base),
-                  higher=(highest, round(float(best), 2)) if highest is not None and best > share else None)
+                  elsewhere=_elsewhere(architecture, base), based_on=based_on)
 
 
 def _sentence(key: str, part: str, what: str = "") -> str:

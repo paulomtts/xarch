@@ -1,4 +1,6 @@
 """Use case: where the profile in force comes from, and how it is looser than the bundled profile it resembles."""
+from dataclasses import replace
+
 import pytest
 
 from tests.fakes.architecture_files import FakeArchitectureFiles
@@ -108,3 +110,78 @@ def test_a_part_that_no_longer_has_to_import_or_may_meet_it_with_more_is_looser(
         Loosened("imports.must", "store", "edge", "store may also meet imports.must with edge (parts.store.imports.must)"),)
     assert spec.origin("same.yaml").looser == ()
     assert spec.origin("stricter.yaml").looser == ()
+
+
+THEIRS = {**BASE, "name": "theirs"}
+"""A copy of base at a path, for --against to name."""
+
+
+def against(custom: dict) -> SpecController:
+    """The controller over base and other, bundled, and mine.yaml (custom, as given), theirs.yaml (a copy of base) and
+    broken.yaml (a profile that does not load), at their paths."""
+    return spec_controller(FakeArchitectureFiles({"base": BASE, "other": OTHER},
+                                                 {"mine.yaml": custom, "theirs.yaml": THEIRS,
+                                                  "broken.yaml": {"name": "broken"}},
+                                                 {"guard.py": "check()\n"}))
+
+
+def test_against_a_bundled_profile_wins_over_the_one_based_on_names_and_keeps_based_on_to_say():
+    origin = against({**BASE, "based_on": "base"}).origin("mine.yaml", against="other")
+    assert (origin.bundled, origin.compared, origin.chosen_by, origin.based_on) == (False, "other", "against", "base")
+
+
+def test_against_a_path_compares_with_the_profile_file_there():
+    origin = against(BASE).origin("mine.yaml", against="theirs.yaml")
+    assert (origin.compared, origin.chosen_by, origin.match, origin.low, origin.looser) == (
+        "theirs.yaml", "against", 1.0, False, ())
+
+
+def test_against_the_profile_in_force_itself_matches_it_whole_and_finds_nothing_looser():
+    origin = against(BASE).origin("mine.yaml", against="mine.yaml")
+    assert (origin.compared, origin.chosen_by, origin.match, origin.low, origin.looser) == (
+        "mine.yaml", "against", 1.0, False, ())
+
+
+@pytest.mark.parametrize("given, reason", [
+    pytest.param("broken.yaml", "--against does not load: broken.yaml: missing `parts`",
+                 id="a profile file that does not load is refused with the loader's problem"),
+    pytest.param("gone.yaml", "--against does not load: gone.yaml: cannot read the file: no such file",
+                 id="a path that holds no file is refused"),
+    pytest.param("nosuch", "--against does not load: nosuch: no bundled architecture 'nosuch': use one of base, "
+                           "other, or a path to a .yaml or .json file",
+                 id="a name that is no bundled profile is refused with the ones that are"),
+])
+def test_against_a_profile_that_does_not_load_is_refused(given, reason):
+    assert against(BASE).origin("mine.yaml", against=given) == ProfileRefused(reason)
+
+
+def test_the_profile_in_force_is_loaded_before_against_is_read():
+    assert against({"name": "mine"}).origin("mine.yaml", against="nosuch") == ProfileRefused(
+        "mine.yaml: missing `parts`")
+
+
+def test_a_bundled_profile_with_against_is_compared_as_a_copy_of_it_would_be():
+    spec = against(BASE)
+    origin = spec.origin("base", against="other")
+    assert (origin.bundled, origin.compared, origin.chosen_by, origin.higher) == (True, "other", "against", None)
+    assert origin.match is not None
+    assert origin == replace(spec.origin("mine.yaml", against="other"), location="base", bundled=True)
+    assert spec.origin("base", against="theirs.yaml").match == 1.0
+
+
+def test_against_a_profile_no_part_pairs_with_is_still_compared_and_its_match_is_low():
+    origin = against({"name": "mine", "parts": {"x": {"path": "x", "role": "all"}}}).origin("mine.yaml", against="base")
+    assert (origin.compared, origin.chosen_by, origin.low) == ("base", "against", True)
+    assert origin.counts[0][:2] == ("parts", 0)
+
+
+def test_against_names_no_bundled_profile_of_higher_match():
+    spec = against(BASE)
+    assert spec.origin("mine.yaml").compared == "base"
+    origin = spec.origin("mine.yaml", against="other")
+    assert (origin.compared, origin.higher) == ("other", None)
+
+
+def test_without_against_based_on_is_not_carried():
+    origin = against({**BASE, "based_on": "base"}).origin("mine.yaml")
+    assert (origin.chosen_by, origin.based_on) == ("based_on", "")
