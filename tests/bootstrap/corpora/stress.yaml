@@ -6,8 +6,9 @@ parts:
   domain:
     path: modules/<module>/domain
     role: 'entities, values, errors: invariants only'
-    may_import:
-    - kernel
+    imports:
+      may:
+      - kernel
     uses: {never: pure}
     holds: {classes: {built_by: [bootstrap, adapters]}}
     tests: unit
@@ -15,9 +16,10 @@ parts:
   logic:
     path: modules/<module>/application/logic
     role: pure functions over the module's domain objects
-    may_import:
-    - domain
-    - kernel
+    imports:
+      may:
+      - domain
+      - kernel
     uses: {never: pure}
     holds: {functions: {}, records: {}, exceptions: {}}
     tests: unit
@@ -25,9 +27,10 @@ parts:
   ports:
     path: modules/<module>/application/ports
     role: Protocols for what the module needs from the outside
-    may_import:
-    - domain
-    - kernel
+    imports:
+      may:
+      - domain
+      - kernel
     uses: {never: pure}
     holds: {classes: {}}
     tests: integration
@@ -35,72 +38,73 @@ parts:
   services:
     path: modules/<module>/application/services
     role: 'use-case steps: load, check, act'
-    may_import:
-    - logic
-    - domain
-    - ports
-    - contract
-    - kernel
-    types_only:
-    - contract
+    imports:
+      may:
+      - logic
+      - domain
+      - ports
+      - {contract: types_only}
+      - kernel
+      must:
+      - ports
     holds: {classes: {names: '*Service', built_by: [bootstrap]}}
     uses: {never: ambient}
     tests: integration
-    must_import:
-    - ports
   controller:
     path: modules/<module>/application/controller.py
     role: maps failures to a Result
-    may_import:
-    - services
-    - logic
-    - domain
-    - ports
-    - contract
-    - kernel
+    imports:
+      may:
+      - services
+      - logic
+      - domain
+      - ports
+      - contract
+      - kernel
     holds: {classes: {names: '*Controller', built_by: [bootstrap]}}
     uses: {never: ambient}
     tests: integration
   adapters:
     path: modules/<module>/adapters
     role: implement the ports on the filesystem or another module's contract
-    may_import:
-    - ports
-    - domain
-    - kernel
-    - platform
-    - contract@any
-    must_import:
-    - platform
-    - contract@any
-    libraries:
-    - ast
-    - tokenize
+    imports:
+      may:
+      - ports
+      - {domain: types_only}
+      - kernel
+      - platform
+      - contract@any
+      must:
+      - platform
+      - contract@any
+      libraries:
+      - ast
+      - tokenize
     holds: {classes: {built_by: [bootstrap], names: Fs*}}
     tests: unit
-    types_only:
-    - domain
     uses: {never: pure}
   platform:
     path: platform
     role: the filesystem, the package data, the TOML and YAML readers and the YAML writer
-    may_import:
-    - kernel
-    libraries:
-    - yaml
+    imports:
+      may:
+      - kernel
+      libraries:
+      - yaml
     tests: unit
     holds: {functions: {}, records: {names: '*Reader'}, exceptions: {names: '*Reader'}}
   cli:
     path: cli
     role: the only place for commands and terminal output
-    may_import:
-    - reports
-    - controller@any
-    - contract@any
-    - kernel
-    libraries:
-    - typer
-    - json
+    imports:
+      may:
+      - reports
+      - controller@any
+      - contract@any
+      - kernel
+      libraries:
+      - typer
+      - json
     tests: wired
     folders:
     - commands
@@ -108,33 +112,37 @@ parts:
   reports:
     path: cli/reports
     role: formatting of Results into text and JSON
-    may_import:
-    - contract@any
-    - kernel
+    imports:
+      may:
+      - contract@any
+      - kernel
+      libraries: []
     uses: {never: pure}
     holds: {functions: {}, records: {}, exceptions: {}}
     tests: unit
-    libraries: []
   main:
     path: __main__.py
     role: '`python -m xarch`: starts the same app as the console script'
     litmus: Does it only hand control to the app bootstrap/ builds, so that `python -m xarch` runs it?
-    may_import:
-    - bootstrap
+    imports:
+      may:
+      - bootstrap
     untested: a two-line shim that runs the app bootstrap/ builds; no test runs `python -m xarch`, and the wired tests drive that same app
   bootstrap:
     path: bootstrap
     role: 'composition root: binds ports to adapters, hands controllers to cli/'
-    may_import: everything
+    imports:
+      may: everything
     tests: wired
     folders:
     - migrations
   contract:
     path: modules/<module>/contract
     role: 'the module''s published language: commands, Results'
-    may_import:
-    - domain/values:*Id
-    - kernel
+    imports:
+      may:
+      - domain/values:*Id
+      - kernel
     uses: {never: pure}
     tests: integration
     package_only: true

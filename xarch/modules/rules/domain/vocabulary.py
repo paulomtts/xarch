@@ -32,7 +32,7 @@ with `*` for any text, the name of a kind of fact, or a key of a part."""
 
 NAMES, PACKAGES, PATTERNS, PARTS, PLACES = "dotted names", "package names", "patterns", "parts", "places"
 """What the values of a kind of target are: dotted names (or `.<method>()`), top-level names of packages, patterns with
-`*` for any text, names of parts, or places written as `may_import` writes them."""
+`*` for any text, names of parts, or places written as an entry of `imports.may` writes a target."""
 
 HIT, KEY_OF_RULE, SCOPE_PART, VALUES = "hit", "key", "scope part", "values"
 """What a variable needs of its rule besides fields: a target matched (may_not), the key the rule expands from, a part
@@ -256,7 +256,7 @@ FILTERS: tuple[Filter, ...] = (
            facts=("file.package",)),
     Filter("mirrors-a-part", "the test's folder mirrors a part of the app, rather than lying in its tier's `folder`",
            FILE, side=TESTS_SIDE),
-    Filter("may-import-everything", "the file's part may import everything (`may_import: everything`)", FILE,
+    Filter("may-import-everything", "the file's part may import everything (`imports: {may: everything}`)", FILE,
            side=APP_SIDE),
     Filter("below", "the file lies below the folder, a path from the root its side starts at (the app folder, or the "
                     "tests folder for a test)", FILE, value=FOLDER),
@@ -264,7 +264,7 @@ FILTERS: tuple[Filter, ...] = (
     Filter("standard", "the import names the language's standard library", FACT,
            ("standard",)),
     Filter("reserved", "the top-level package the import names is one `reserved` lists", FACT, ("path",)),
-    Filter("listed-by-another-part", "the top-level package the import names is in the `libraries` of a part other "
+    Filter("listed-by-another-part", "the top-level package the import names is in the `imports.libraries` of a part other "
                                      "than the file's", FACT, ("path",), side=APP_SIDE),
     Filter("app-package", "the import names the app's own package by its root (an import written from the top)", FACT,
            ("path",)),
@@ -304,7 +304,7 @@ FILTERS: tuple[Filter, ...] = (
     Filter("reported-at-import", "the use is excused because its import line already carries the finding: the import "
                                  "names in full the target the use matched", FACT, ("bound",), needs=HIT),
     Filter("names-restricted", "the file's part may import what the import reaches only for certain names, those a "
-                               "pattern of its `may_import` allows", FACT, ("place",), side=APP_SIDE),
+                               "pattern of its `imports.may` allows", FACT, ("place",), side=APP_SIDE),
     Filter("of-kind", "the fact is of that kind", FACT, value=KIND),
     Filter("target-placed", "what the fact reaches lies in a part or in a folder of the layout", TARGET, ("place",)),
     Filter("target-inside-part", "what the fact reaches lies below its part's own folder: one of its files, not the "
@@ -331,7 +331,7 @@ TARGETS: tuple[TargetKind, ...] = (
     TargetKind("part", "what the fact reaches lies in one of the parts the values name, in any instance", ("place",),
                PARTS),
     TargetKind("place", "what the fact reaches is reached from the file's place by one of the values, written as "
-                        "`may_import` writes a target without a name pattern", ("place",), PLACES, APP_SIDE),
+                        "an entry of `imports.may` writes a target, with no name pattern and no mode", ("place",), PLACES, APP_SIDE),
     TargetKind("permitted", "the profile lets the file import what the fact reaches: for a file of the app what its "
                             "part may import (a name pattern narrowing it to the names it allows); for a test, of the "
                             "app, what the part its folder mirrors may import, and of the test code, a file of its "
@@ -371,7 +371,7 @@ VARIABLES: tuple[Variable, ...] = (
              side=TESTS_SIDE),
     Variable("mirrored_may_import", "the keys of what the parts a test mirrors may import, then, after `; `, the key "
                                     "of what its tier's tests may also import when the tier sets it: "
-                                    "parts.store.may_import; tiers.unit.may_also_import", side=TESTS_SIDE),
+                                    "parts.store.imports.may; tiers.unit.may_also_import", side=TESTS_SIDE),
     Variable("own_folder", "the folder a test may import test code from, from the tests folder: tests/units/docs",
              side=TESTS_SIDE),
     Variable("tests_folder", "the folder of the tests where a file of the app is tested: tests/units/docs/store",
@@ -389,7 +389,7 @@ VARIABLES: tuple[Variable, ...] = (
                                "class's name", kinds=("function", "class")),
     Variable("package", "the top-level package the fact names: yaml for yaml.safe_load", ("path",)),
     Variable("reserved_reason", "why `reserved` reserves the top-level package the fact names", ("path",)),
-    Variable("library_owners", "the other parts whose `libraries` list the top-level package, each as `<part>/`",
+    Variable("library_owners", "the other parts whose `imports.libraries` list the top-level package, each as `<part>/`",
              ("path",), side=APP_SIDE),
     Variable("first_library_owner", "the first of those parts, bare", ("path",), side=APP_SIDE),
     Variable("written", "what an import names, as the source writes it", ("written",)),
@@ -403,7 +403,7 @@ VARIABLES: tuple[Variable, ...] = (
     Variable("built_by", "the parts that may build what the part of what the fact reaches defines (its `built_by`), "
                          "each as `<part>/`, joined by `or`", ("place",)),
     Variable("allowed_names", "the names the file's part may import from what the import reaches, as the patterns of "
-                              "its `may_import`, joined by `or`", ("place",), side=APP_SIDE),
+                              "its `imports.may`, joined by `or`", ("place",), side=APP_SIDE),
     Variable("disallowed_name", "the name an import took that is not allowed: `not <name>`, or `not the file as a "
                                 "whole`", kinds=("import-into-app", "imported-name")),
     Variable("move_fix", "where the code that makes the import could go: a part that may import what it reaches",

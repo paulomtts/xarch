@@ -25,8 +25,9 @@ parts:
   cli:
     path: cli
     role: commands and output
-    may_import: [core]
-    libraries: [typer]
+    imports:
+      may: [core]
+      libraries: [typer]
     tests: unit
 tiers:
   unit: {}
@@ -73,8 +74,8 @@ def test_the_rules_of_a_profile_file_are_enforced(tmp_path):
 
 def test_libraries_are_strict_by_default(tmp_path):
     assert check(tmp_path, {"core/rules.py": "import typer\n", "cli/app.py": "import yaml\n"}) == [
-        "app/cli/app.py:1: cli/ may not import the outside package yaml (parts.cli.libraries)",
-        "app/core/rules.py:1: core/ may not import the outside package typer (parts.core.libraries)"]
+        "app/cli/app.py:1: cli/ may not import the outside package yaml (parts.cli.imports.libraries)",
+        "app/core/rules.py:1: core/ may not import the outside package typer (parts.core.imports.libraries)"]
 
 
 def test_the_names_a_part_forbids_are_enforced(tmp_path):

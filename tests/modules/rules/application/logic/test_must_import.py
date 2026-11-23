@@ -15,7 +15,7 @@ REQUIRED = profile(must_import={"adapters": (Target("platform"), Target("contrac
 CODE = (Function(3, "get", statements=2),)
 DIR = "modules/docs/adapters"
 MESSAGE = ("app/modules/docs/adapters/{name}.py: adapters/ of modules/docs imports nothing from platform/ or contract/ "
-           "and no outside package, though each of its files must (parts.adapters.must_import)")
+           "and no outside package, though each of its files must (parts.adapters.imports.must)")
 
 
 def problems(*files, checked=REQUIRED) -> list[str]:

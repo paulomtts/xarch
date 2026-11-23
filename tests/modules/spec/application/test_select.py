@@ -26,7 +26,7 @@ def controller(configured: Configured | None = None, error: Exception | None = N
 
 
 FILE = "/src/layered.yaml"
-BROKEN = {**LAYERED, "parts": {"api": {**LAYERED["parts"]["api"], "may_import": ["api@mine", "nowhere"]}}}
+BROKEN = {**LAYERED, "parts": {"api": {**LAYERED["parts"]["api"], "imports": {"may": ["api@mine", "nowhere"]}}}}
 
 
 @pytest.mark.parametrize("given, when, then", [
@@ -59,8 +59,8 @@ BROKEN = {**LAYERED, "parts": {"api": {**LAYERED["parts"]["api"], "may_import": 
                  id="a configured path is relative to the pyproject holding it"),
     pytest.param(dict(files={FILE: BROKEN}), SelectProfile(APP, FILE),
                  ProfileRefused(
-                     f"{FILE}: parts.api.may_import: 'api@mine' has an unknown scope '@mine': the only scope is "
-                     f"@any, any instance of the repeating folder\n{FILE}: parts.api.may_import: 'nowhere' names "
+                     f"{FILE}: parts.api.imports.may: 'api@mine' has an unknown scope '@mine': the only scope is "
+                     f"@any, any instance of the repeating folder\n{FILE}: parts.api.imports.may: 'nowhere' names "
                      "no part 'nowhere'"),
                  id="an invalid architecture file is refused with every problem"),
     pytest.param(dict(), SelectProfile(APP, "/src/none.yaml"),

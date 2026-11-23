@@ -10,7 +10,7 @@ from typer.testing import CliRunner
 from xarch.bootstrap.app import app
 
 runner = CliRunner()
-KEYS = {"may": "parts.may_import", "must": "parts.must_import", "libraries": "parts.libraries"}
+KEYS = {"may": "parts.imports.may", "must": "parts.imports.must", "libraries": "parts.imports.libraries"}
 """The address `profile explain` is asked for each key of the group."""
 PATHS = {"domain": "xarch/modules/spec/domain/x.py", "logic": "xarch/modules/spec/application/logic/x.py",
          "ports": "xarch/modules/spec/application/ports/x.py",

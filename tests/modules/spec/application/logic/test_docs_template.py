@@ -11,12 +11,12 @@ from xarch.modules.spec.domain.values import FileType
 
 PARTS = {
     "store": {"path": "src/<module>/store", "role": "database access", "litmus": "Does it touch the database?",
-              "may_import": ["shared/text"], "folders": {"sql": "the queries"}},
+              "imports": {"may": ["shared/text"]}, "folders": {"sql": "the queries"}},
     "service": {"path": "src/<module>/service", "role": "business logic", "litmus": "Does it decide?",
-                "may_import": ["store", "api@any", "shared"]},
+                "imports": {"may": ["store", "api@any", "shared"]}},
     "api": {"path": "src/<module>/api.py", "role": "HTTP handlers", "litmus": "Does it parse a request?",
-            "may_import": "everything"},
-    "shared": {"path": "shared", "role": "code every module uses", "litmus": "Is it shared?", "may_import": []},
+            "imports": {"may": "everything"}},
+    "shared": {"path": "shared", "role": "code every module uses", "litmus": "Is it shared?", "imports": {"may": []}},
 }
 NAMING = [{"kind": "service", "where": ["service/"], "pattern": "thing and `Service`",
            "example": ["BillingService", "TaxService"]}]
@@ -73,13 +73,13 @@ def test_the_rules_table_lists_each_part_in_order_without_itself():
 
 
 def test_a_part_naming_its_own_kind_in_any_module_shows_it():
-    table = filled("{{rules_table}}", parts=parts(store={"may_import": ["store@any"]}))
+    table = filled("{{rules_table}}", parts=parts(store={"imports": {"may": ["store@any"]}}))
     assert table.splitlines()[2] == "| `store/` | any module's `store/` |"
 
 
 def test_consecutive_targets_in_one_scope_share_their_phrase():
-    table = filled("{{rules_table}}", parts=parts(service={"may_import": ["store", "api", "shared", "store@any",
-                                                                          "api@any"]}))
+    table = filled("{{rules_table}}", parts=parts(service={"imports": {"may": ["store", "api", "shared", "store@any",
+                                                                                    "api@any"]}}))
     assert table.splitlines()[3] == (
         "| `service/` | its own module's `store/` and `api.py`, `shared/`, any module's `store/` and `api.py` |")
 
@@ -215,9 +215,9 @@ def test_the_instance_is_named_by_the_word_in_the_paths_not_by_xarch():
 
 TWO = {
     "service": {"path": "src/<module>/service", "role": "business logic", "litmus": "Does it decide?",
-                "may_import": ["hooks@any", "shared"]},
+                "imports": {"may": ["hooks@any", "shared"]}},
     "hooks": {"path": "ext/<plugin>/hooks", "role": "what a plugin runs", "litmus": "Does a plugin run it?",
-              "may_import": ["service@any", "manifest", "shared"], "libraries": ["yaml"]},
+              "imports": {"may": ["service@any", "manifest", "shared"], "libraries": ["yaml"]}},
     "manifest": {"path": "ext/<plugin>/manifest.py", "role": "what a plugin declares", "litmus": "Does it declare?"},
     "shared": {"path": "shared", "role": "code both use", "litmus": "Is it shared?"},
 }

@@ -35,7 +35,7 @@ OFF = ("package-only", "scenario-coverage", "no-comments", "stand-ins", "closed-
                  CheckProfile(APP, "mine.yaml"),
                  ProfileChecked("mine.yaml", (
                      Problem("examples", "example (core/rule.py): imports app.api which core may not import "
-                                         "(parts.core.may_import)"),), 3,
+                                         "(parts.core.imports.may)"),), 3,
                                 Origin("mine.yaml", False, "base", OFF, OFF, ())),
                  id="an example that imports what its part may not is a problem"),
     pytest.param(dict(files={}), CheckProfile(APP, "gone.yaml"),

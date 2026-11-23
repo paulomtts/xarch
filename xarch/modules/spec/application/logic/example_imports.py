@@ -3,7 +3,7 @@
 An example is one file of an example project of the docs, so it is checked as if it lived at its `path`: the
 importer's part is the part its path lies in, and each import of the app's own code is resolved to a part the same
 way, through the parts' path patterns (the repeating folder captures the instance, the deepest pattern wins, a path no
-part claims is structure). The import is allowed when a target in the importer's `may_import` reaches it: everything,
+part claims is structure). The import is allowed when a target in the importer's `imports.may` reaches it: everything,
 or the same part, in the importer's instance (a bare name), in any instance (@any) or outside the repeating folder,
 and below its /<path> if it names one. Structure is reached only by everything. Imports outside the app's root
 package (the standard library, third parties) are not the architecture's business and are ignored. The example
@@ -65,7 +65,7 @@ def _problems(architecture: Architecture, path: tuple[str, ...], read: Read, in_
     for target, steps, name in _targets(read, path[:-1], architecture):
         if not any(reaches(allowed, source, architecture.place_of(steps), name) for allowed in rule):
             problem = (f"{shown}: imports {'.'.join((EXAMPLE_APP, *target))} which {source.part} may not import "
-                       f"(parts.{source.part}.may_import)")
+                       f"(parts.{source.part}.imports.may)")
             if problem not in found:
                 found.append(problem)
     return found

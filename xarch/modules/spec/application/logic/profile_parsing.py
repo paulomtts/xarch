@@ -16,12 +16,12 @@ key_catalogue); the shape:
                                when its last step holds a dot; one step written `<word>` is the repeating folder, one
                                instance per name, and the word is what the docs call one instance. The layout is the
                                paths of the parts and their `folders` (each with an optional note), nothing else
-        may_import: [<part>, <part>@any, <part>/<path>] | everything
-                               what the part may import besides itself, which it always may: a bare name of a part in
-                               the repeating folder is the importer's own instance, `@any` any instance; everything
-        libraries: [<package>, ...] | everything
-                               the outside packages by top-level import name; a part that lists none may import none,
-                               and everything leaves the part unchecked
+        imports: {may, must, libraries}
+                               what the part may import besides itself, which it always may: each entry a target
+                               (a bare name of a part in the repeating folder is the importer's own instance, `@any`
+                               any instance, `/<path>` below it) or one marked {<target>: types_only}, or everything;
+                               the targets each file must import one of; the outside packages by top-level import
+                               name, none unless listed, everything leaving the part unchecked (see imports_written)
         uses: {never: <list>}  the name of a list under the top-level `never`, which the part never uses
         holds: {<kind>: {<setting>: <value>, ...}, ...}
                                the kinds its files may define at the top level, each with its settings (see
@@ -33,7 +33,7 @@ key_catalogue); the shape:
                                folders below the part that the layout shows
     never: {<list>: [<name> | <list>, ...]}    named lists of what a part never uses; an entry naming another
                                list includes it
-    reserved: {<module>: <reason>}             standard-library modules only the parts whose `libraries` list them
+    reserved: {<module>: <reason>}             standard-library modules only the parts whose `imports.libraries` list them
                                may import
     layers: {<name>: [<part>, ...]}            chains of parts from the inside out: none imports one after it
     tiers: {<tier>: {proves, litmus, uses, types_only, folder, may_import, may_also_import, docs}}
@@ -75,6 +75,7 @@ from typing import Any
 from xarch.kernel.logic.names import is_name, outside_text
 from xarch.kernel.logic.placement import root_of, stem
 from xarch.kernel.placement import EACH, EVERYTHING
+from xarch.modules.spec.application.logic import imports_written as iw
 from xarch.modules.spec.application.logic import never_lists as nl
 from xarch.modules.spec.application.logic import profile_checks as ck
 from xarch.modules.spec.application.logic import profile_examples as ex
@@ -124,7 +125,7 @@ from xarch.modules.spec.domain.values import (
     Tier,
     TierExample,
 )
-from xarch.profile_values.placement import Repeat, Target
+from xarch.profile_values.placement import Repeat
 from xarch.profile_values.testing import CaseTable, Fakes, Framework, ScenarioCoverage, StandIns
 
 _REPEATING = re.compile(r"<([A-Za-z_][A-Za-z0-9_-]*)>")
@@ -182,14 +183,16 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     built = _layout(specs, problems)
     parts = built.parts
     examples = ex.example_files(document.get("docs", {}), files, problems, language)
-    rules = {part: may_import(specs[part].get("may_import"), item, parts, declared, f"parts.{part}.may_import",
-                               problems, patterns=True) for part, item in parts.items()}
+    imports = {part: iw.group(specs[part], f"parts.{part}", problems) for part in parts}
+    read = {part: iw.may(imports[part].get("may"), item, parts, declared, f"parts.{part}.imports.may", problems)
+            for part, item in parts.items()}
+    rules = {part: allowed for part, (allowed, _) in read.items()}
     reserved = ck.reserved_modules(document["reserved"], problems, language) if "reserved" in document else {}
-    libraries = {part: _libraries(specs[part], f"parts.{part}.libraries", problems, language, reserved)
+    libraries = {part: _libraries(imports[part], f"parts.{part}.imports.libraries", problems, language, reserved)
                  for part in parts}
-    parts = {part: replace(item, must_import=_must_import(specs[part], item, parts, declared, rules[part], problems))
-             for part, item in parts.items()}
-    parts = {part: _substance(specs[part], item, declared, rules[part], problems) for part, item in parts.items()}
+    parts = {part: replace(item, must_import=iw.must(imports[part], item, parts, declared, rules[part], problems),
+                           types_only=read[part][1]) for part, item in parts.items()}
+    parts = {part: _substance(specs[part], item, declared, problems) for part, item in parts.items()}
     uses_never = _never_refs(specs, parts, never_lists, problems)
     layers = ck.layer_chains(document["layers"], parts, declared, rules, problems) if "layers" in document else {}
     testing = _testing(document["testing"], presets or {}, problems, language) if "testing" in document else None
@@ -441,13 +444,13 @@ def _add_folder(tree: Layout, path: tuple[str, ...]) -> bool:
     return True
 
 
-def _libraries(spec: Mapping[Any, Any], where: str, problems: list[str], language: Language,
+def _libraries(written: Mapping[Any, Any], where: str, problems: list[str], language: Language,
                reserved: Mapping[str, str]) -> tuple[str, ...]:
-    """The outside packages of a part, and the reserved modules it may import: none unless it lists them;
-    (EVERYTHING,) leaves them unchecked."""
-    if "libraries" not in spec:
+    """The outside packages the part's `imports` group lists, and the reserved modules it may import: none unless it
+    lists them; (EVERYTHING,) leaves them unchecked."""
+    if "libraries" not in written:
         return ()
-    value = spec["libraries"]
+    value = written["libraries"]
     if value == WORD:
         return (EVERYTHING,)
     if not isinstance(value, list):
@@ -457,14 +460,17 @@ def _libraries(spec: Mapping[Any, Any], where: str, problems: list[str], languag
 
 
 def _named_packages(document: Mapping[Any, Any], language: Language) -> dict[str, str]:
-    """Each package the profile names, by the key of the first place naming it: the parts' `libraries` in the order the
-    file writes them, then `reserved`. Read silently: each is said at its own place."""
+    """Each package the profile names, by the key of the first place naming it: the parts' `imports.libraries` in the
+    order the file writes them, then `reserved`. Read silently, and only from an `imports` that is a map: each is said
+    at its own place."""
     reserved = ck.reserved_modules(document["reserved"], [], language) if "reserved" in document else {}
     parts = document.get("parts")
     named: dict[str, str] = {}
     for part, spec in parts.items() if isinstance(parts, Mapping) else ():
-        found = _libraries(spec, f"parts.{part}.libraries", [], language, reserved) if isinstance(spec, Mapping) else ()
-        named |= {package: f"parts.{part}.libraries" for package in found
+        written = spec.get("imports") if isinstance(spec, Mapping) else None
+        found = (_libraries(written, f"parts.{part}.imports.libraries", [], language, reserved)
+                 if isinstance(written, Mapping) else ())
+        named |= {package: f"parts.{part}.imports.libraries" for package in found
                   if package != EVERYTHING and package not in named}
     named |= {module: "reserved" for module in reserved if module not in named}
     return named
@@ -847,26 +853,19 @@ def _known(value: Any, tests_only: bool, where: str, problems: list[str], langua
     return tuple(found)
 
 
-def _substance(spec: Any, part: Part, declared: set[str], may_import: tuple[Target, ...],
-               problems: list[str]) -> Part:
+def _substance(spec: Any, part: Part, declared: set[str], problems: list[str]) -> Part:
     """The keys of a part that say what its code holds and how it is used: holds, with the settings of each kind it
-    lists (see holds_written), types_only and shared."""
+    lists (see holds_written), and shared."""
     where = f"parts.{part.name}"
     if not isinstance(spec, Mapping):
         return part
     holds = held_kinds(spec["holds"], where, declared, problems) if "holds" in spec else ()
-    types_only = tuple(ck.part_names(spec["types_only"], declared, f"{where}.types_only", problems)) \
-        if "types_only" in spec else ()
-    for name in types_only:
-        if not any(t.part in (EVERYTHING, name) for t in may_import):
-            problems.append(f"{where}.types_only: {name!r} is not in `may_import`, so no file could import it to use as "
-                            "a type: add it there, or drop it")
     shared = spec.get("shared")
     if shared is not None and not _whole(shared, 2):
         problems.append(f"{where}.shared: must be a whole number of users, at least 2, such as 2; leave it out for a "
                         "part that is not there to be shared")
         shared = None
-    return replace(part, holds=holds, types_only=types_only, shared=shared)
+    return replace(part, holds=holds, shared=shared)
 
 
 def _no_duplicates(spec: Any, where: str, problems: list[str]) -> NoDuplicates:
@@ -928,27 +927,6 @@ def _listed_parts(spec: Any, declared: set[str], parts: dict[str, Part], where: 
     if len(problems) != count:
         return None
     return tuple(n for n in names if n in parts)
-
-
-def _must_import(spec: Any, owner: Part, parts: dict[str, Part], declared: set[str],
-                 allowed: tuple[Target, ...], problems: list[str]) -> tuple[Target, ...]:
-    """The targets a part's files must import one of: each one its `may_import` allows."""
-    where = f"parts.{owner.name}.must_import"
-    if not isinstance(spec, Mapping) or "must_import" not in spec:
-        return ()
-    value = spec["must_import"]
-    if not isinstance(value, list) or not value:
-        problems.append(f"{where}: must be a list of targets such as [<part>, <part>@any]")
-        return ()
-    count = len(problems)
-    found = may_import(value, owner, parts, declared, where, problems)
-    if len(problems) != count:
-        return ()
-    for item, target in zip(value, found):
-        if not any(t.part == EVERYTHING or t == target for t in allowed):
-            problems.append(f"{where}: {item!r} is not in `may_import`, so no file could import it: add it there, or "
-                            "name a part the part may import")
-    return found if len(problems) == count else ()
 
 
 def _needs_testing(document: Mapping[Any, Any]) -> list[str]:

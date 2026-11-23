@@ -59,8 +59,7 @@ def unit_uses(uses) -> dict:
     return document
 
 
-PART_USE = ("folders, holds, libraries, litmus, may_import, must_import, package_only, path, role, shared, tests, "
-            "types_only, untested, uses")
+PART_USE = ("folders, holds, imports, litmus, package_only, path, role, shared, tests, untested, uses")
 TIER_USE = "docs, folder, litmus, may_also_import, may_import, must_import, plain_tables, proves, types_only, uses"
 FILE_USE = ("based_on, checks, docs, evals, excluded, fakes, files, guards, hints, language, layers, name, never, parts, "
             "reserved, review, testing, tiers")
@@ -308,7 +307,7 @@ def brace_document(ambient=("node:fs#readFileSync", "globalThis#fetch", ".toISOS
     """The layered profile as an app in the brace language writes it: its store's outside packages by the language's
     package names, and a list of outside names under `never`, which its service part never uses."""
     document = layered(never={"ambient": list(ambient)})
-    document["parts"]["store"]["libraries"] = list(libraries)
+    document["parts"]["store"].setdefault("imports", {})["libraries"] = list(libraries)
     document["parts"]["service"]["uses"] = {"never": "ambient"}
     return document
 
@@ -324,8 +323,8 @@ def test_the_same_outside_names_are_refused_under_a_language_whose_patterns_do_n
     assert problems(brace_document()) == [
         f"layered.yaml: never.ambient: 'node:fs#readFileSync' {METHOD}",
         f"layered.yaml: never.ambient: 'globalThis#fetch' {METHOD}",
-        "layered.yaml: parts.store.libraries: 'lodash-es' is not a package name the language Python allows",
-        "layered.yaml: parts.store.libraries: '@scope/pkg' is not a package name the language Python allows"]
+        "layered.yaml: parts.store.imports.libraries: 'lodash-es' is not a package name the language Python allows",
+        "layered.yaml: parts.store.imports.libraries: '@scope/pkg' is not a package name the language Python allows"]
 
 
 def test_a_bare_builtin_is_told_to_be_written_in_the_namespace_with_the_member_of_the_language():
@@ -351,7 +350,7 @@ def test_an_outside_name_listed_twice_is_refused_once_under_a_member_that_is_not
 
 def test_a_package_is_never_the_namespace_of_the_language():
     assert problems(brace_document(libraries=["globalThis"]), languages=BRACED) == [
-        "layered.yaml: parts.store.libraries: 'globalThis' is not a package name the language Brace allows"]
+        "layered.yaml: parts.store.imports.libraries: 'globalThis' is not a package name the language Brace allows"]
 
 
 def test_the_guards_section_writes_an_outside_name_with_the_member_of_the_language():
@@ -472,10 +471,10 @@ def test_the_standard_library_a_list_may_not_be_named_from_is_the_language_s():
 
 def test_a_list_named_like_a_package_a_part_lists_is_refused_naming_the_first_part_that_lists_it():
     assert problems(covered(never={"sqlmodel": ["x.one"]})) == [
-        f"layered.yaml: {named('sqlmodel', 'parts.store.libraries')}"]
+        f"layered.yaml: {named('sqlmodel', 'parts.store.imports.libraries')}"]
     document = covered(never={"sqlmodel": ["x.one"]})
-    document["parts"]["service"]["libraries"] = ["sqlmodel"]
-    assert problems(document) == [f"layered.yaml: {named('sqlmodel', 'parts.service.libraries')}"]
+    document["parts"]["service"].setdefault("imports", {})["libraries"] = ["sqlmodel"]
+    assert problems(document) == [f"layered.yaml: {named('sqlmodel', 'parts.service.imports.libraries')}"]
 
 
 def test_a_list_named_like_a_reserved_module_is_refused_once_as_a_standard_package():
@@ -485,7 +484,7 @@ def test_a_list_named_like_a_reserved_module_is_refused_once_as_a_standard_packa
 
 def test_a_part_whose_libraries_are_everything_names_no_package():
     document = covered(never={"sqlmodel": ["x.one"]})
-    document["parts"]["store"]["libraries"] = "everything"
+    document["parts"]["store"].setdefault("imports", {})["libraries"] = "everything"
     assert parsed(document).uses_never == {}
 
 
@@ -503,8 +502,8 @@ def test_a_list_s_name_problem_comes_first_then_its_entries_then_its_includes():
 
 def test_never_reserved_and_libraries_are_said_once_each_in_their_own_place():
     document = covered(never={"pure": ["datetime..now"]}, reserved={"json": ""})
-    document["parts"]["store"]["libraries"] = ["2fast"]
+    document["parts"]["store"].setdefault("imports", {})["libraries"] = ["2fast"]
     assert problems(document) == [
         f"layered.yaml: never.pure: 'datetime..now' {METHOD}",
         "layered.yaml: reserved.json: must say in one line why it is reserved",
-        "layered.yaml: parts.store.libraries: '2fast' is not a package name the language Python allows"]
+        "layered.yaml: parts.store.imports.libraries: '2fast' is not a package name the language Python allows"]

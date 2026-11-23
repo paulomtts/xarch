@@ -30,6 +30,8 @@ from xarch.modules.spec.domain.profile_keys import (
     PART_HOLDS_EXCEPTIONS,
     PART_HOLDS_FUNCTIONS,
     PART_HOLDS_RECORDS,
+    PART_IMPORTS,
+    PART_IMPORTS_MAY,
     PART_USES,
     PASS_THROUGH,
     PLACEMENT,
@@ -48,8 +50,7 @@ from xarch.modules.spec.domain.profile_keys import (
 RENAMED = "renamed in 0.3.0: write tier"
 MOVED = "moved in 0.3.0: write uses: {never: <list>}"
 MISPLACED = "a key of uses: write uses: {never: <list>}"
-PART_USE = ("folders, holds, libraries, litmus, may_import, must_import, package_only, path, role, shared, tests, "
-            "types_only, untested, uses")
+PART_USE = ("folders, holds, imports, litmus, package_only, path, role, shared, tests, untested, uses")
 TIER_USE = "docs, folder, litmus, may_also_import, may_import, must_import, plain_tables, proves, types_only, uses"
 PROFILE_USE = ("based_on, checks, docs, evals, excluded, fakes, files, guards, hints, language, layers, name, never, "
                "parts, reserved, review, testing, tiers")
@@ -137,6 +138,18 @@ HOLDS_CLASSES = "holds as one word was removed in 0.3.0: write holds: {classes: 
     pytest.param(TIER, "tier", "", id="tier under a tier"),
     pytest.param(SCENARIO_COVERAGE, "tier", "", id="the tier of scenario-coverage"),
     pytest.param(PART, "tests", "", id="the part key tests"),
+    pytest.param(PART, "may_import", "moved in 0.3.0: write imports: {may: [...]}", id="the part key may_import"),
+    pytest.param(PART, "must_import", "moved in 0.3.0: write imports: {must: [...]}", id="the part key must_import"),
+    pytest.param(PART, "libraries", "moved in 0.3.0: write imports: {libraries: [...]}", id="the part key libraries"),
+    pytest.param(PART, "types_only", "moved in 0.3.0: write it as the mode of its entry in imports.may, such as "
+                 "[{ports: types_only}]", id="the part key types_only"),
+    pytest.param(PART_IMPORTS, "never", "a key of uses, beside imports: write uses: {never: <list>}",
+                 id="never in imports"),
+    pytest.param(PART_IMPORTS, "types_only", "write it as the mode of its entry in imports.may, such as "
+                 "[{ports: types_only}]", id="types_only in imports"),
+    pytest.param(TIER, "types_only", "", id="the tier key types_only, a key"),
+    pytest.param(TIER, "may_import", "", id="the tier key may_import, a key"),
+    pytest.param(PART_IMPORTS_MAY, "types_only", "", id="the mark, a key"),
 ])
 def test_the_shipped_table_answers_each_name_in_its_scope(scope, name, text):
     assert retired(scope, name) == text
@@ -166,6 +179,11 @@ def test_the_shipped_table_answers_each_name_in_its_scope(scope, name, text):
     pytest.param("tiers.uses.apply_never", "", id="tiers.uses.apply_never"),
     pytest.param("never", "", id="never"),
     pytest.param("review.never", "", id="review.never"),
+    pytest.param("parts.may_import", "moved in 0.3.0: write imports: {may: [...]}", id="parts.may_import"),
+    pytest.param("parts.<part>.types_only", "moved in 0.3.0: write it as the mode of its entry in imports.may, such "
+                 "as [{ports: types_only}]", id="parts.<part>.types_only"),
+    pytest.param("parts.imports.may.types_only", "", id="parts.imports.may.types_only"),
+    pytest.param("tiers.types_only", "", id="tiers.types_only"),
 ])
 def test_the_shipped_table_answers_each_address_profile_explain_is_typed_with(address, text):
     assert retired_at(address) == text

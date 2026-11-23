@@ -95,6 +95,15 @@ def test_a_key_expands_to_the_rules_of_that_key_or_of_any_part_in_its_place():
     assert keyed(rules, "guards.no-comments") == []
 
 
+def test_a_key_of_the_imports_group_lists_the_rules_of_its_own_address_alone():
+    may = Rule("may-import", Scope(part="store"), ("import",), MAY_NOT, EXISTING, (Saying("m", "f"),),
+               key="parts.store.imports.may")
+    mark = Rule("types-only", Scope(part="store"), ("call",), MAY_NOT, EXISTING, (Saying("m", "f"),),
+                key="parts.store.imports.may.types_only")
+    assert keyed([may, mark], "parts.imports.may") == [may]
+    assert keyed([may, mark], "parts.imports.may.types_only") == [mark]
+
+
 def word(table, name):
     return next(w for w in table if w.name == name)
 

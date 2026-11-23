@@ -1,12 +1,13 @@
 """What the keys a profile sets need of the language's reader: every key that configures a check needs the facts of
 the source that check reads (see capabilities and key_table). One walk of the key table finds those keys however deep
-they sit: from the file's keys into the scope each key opens, and from there as far down as the table's scopes go,
-into a mapping, each entry of a map of names (parts.<part>) and each entry of a list (docs.naming[]), which is
-addressed by its index from 0 (<list>.0.<key>). A key set to false or null configures nothing, but a guard, which its
-name alone configures. A key whose language does not supply one of its facts is a problem of the profile, naming the
+they sit: from the file's keys into the scope each key opens, and from there as far down as the table's scopes go, into
+a mapping, each entry of a map of names (parts.<part>) and each entry of a list (docs.naming[]), which is addressed by
+its index from 0 (<list>.0.<key>). A list of entries each a target or a map of one to its mode (imports.may) holds the
+scope of its modes: a mode an entry carries is set. A key set to false or null configures nothing, but a guard, which
+its name alone configures. A key whose language does not supply one of its facts is a problem of the profile, naming the
 key, the fact and what to do; one whose language supplies a fact partly is kept, and listed as approximate where the
-check is run. A fact a key's check reads only when the language supplies it (see Key.when_supplied) is no problem
-when it is not: the key is kept, its check reads less, and it is listed as approximate in a sentence that says so.
+check is run. A fact a key's check reads only when the language supplies it (see Key.when_supplied) is no problem when
+it is not: the key is kept, its check reads less, and it is listed as approximate in a sentence that says so.
 """
 from __future__ import annotations
 
@@ -55,8 +56,15 @@ def _held(value: Any, where: str, address: str) -> list[tuple[str, Mapping[Any, 
     elif _NAMED.search(where):
         entries = [(f"{address}.{name}", entry) for name, entry in value.items()] if isinstance(value, Mapping) else []
     else:
-        entries = [(address, value)]
+        entries = [(address, _modes(value) if isinstance(value, list) else value)]
     return [(found, entry) for found, entry in entries if isinstance(entry, Mapping)]
+
+
+def _modes(entries: list[Any]) -> dict[str, bool]:
+    """A list whose entries are each a value or a one-key map of a value to its mode (imports.may), as the map of the
+    modes its entries carry, each set: the keys of the scope it opens are its modes."""
+    return {mode: True for entry in entries if isinstance(entry, Mapping) for mode in entry.values()
+            if isinstance(mode, str)}
 
 
 def short(document: Mapping[Any, Any], presets: Mapping[str, Any], language: Language, *,

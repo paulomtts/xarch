@@ -10,8 +10,8 @@ _PLACEHOLDER = re.compile(r"\.?<[^>]*>|\[\]")
 
 
 def plain(address: str) -> str:
-    """The address as a person types it: without the placeholder steps and `[]`, parts.<part>.may_import being
-    parts.may_import."""
+    """The address as a person types it: without the placeholder steps and `[]`, parts.<part>.imports.may being
+    parts.imports.may."""
     return _PLACEHOLDER.sub("", address)
 
 

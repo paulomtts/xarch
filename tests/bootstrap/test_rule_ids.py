@@ -31,10 +31,10 @@ def found(tmp_path: Path, app: dict[str, str], tests: dict[str, str]) -> list[Vi
 
 CASES = [
     pytest.param({"kernel/x.py": "from app.platform import sql\n"}, {}, "may-import",
-                 "import only kernel/ in kernel/ (parts.kernel.may_import), or move this code to adapters/, which may import it",
+                 "import only kernel/ in kernel/ (parts.kernel.imports.may), or move this code to adapters/, which may import it",
                  id="may-import"),
     pytest.param({"kernel/x.py": "import requests\n"}, {}, "libraries",
-                 "use the standard library or a package listed in parts.kernel.libraries, since requests is listed for "
+                 "use the standard library or a package listed in parts.kernel.imports.libraries, since requests is listed for "
                  "no part", id="libraries"),
     pytest.param({"kernel/x.py": "import socket\n"}, {}, "never-use",
                  "do what needs socket outside kernel/, and hand kernel/ the result", id="never-use"),
@@ -201,11 +201,12 @@ def test_a_part_used_only_as_a_type_names_its_rule_and_its_fix(tmp_path):
     """No bundled profile holds a part to types_only now that services build their module's contract types, so the
     web profile is given one."""
     shutil.copytree(BUNDLED, tmp_path / "arch")
-    services = ('    may_import: [logic, domain, ports, contract, kernel, kernel-logic]\n'
+    services = ('    imports:\n      may: [logic, domain, ports, contract, kernel, kernel-logic]\n'
                 '    holds: {classes: {names: "*Service", built_by: [bootstrap]}}\n')
+    marked = services.replace("ports, contract,", "ports, {contract: types_only},")
     text = (BUNDLED / "web.yaml").read_text()
     assert text.count(services) == 1
-    (tmp_path / "arch/typed.yaml").write_text(text.replace(services, services + "    types_only: [contract]\n"))
+    (tmp_path / "arch/typed.yaml").write_text(text.replace(services, marked))
     app = write(tmp_path / "app", {**APP, "modules/docs/application/services/doc.py":
                                    "from app.modules.docs.contract import Published\n\n\nclass DocService:\n"
                                    "    def run(self):\n        return Published()\n"})
@@ -227,11 +228,12 @@ def test_a_class_built_through_a_relative_import_is_held_to_built_by(tmp_path, c
 def test_a_part_used_only_as_a_type_is_held_to_it_through_a_relative_import(tmp_path):
     """The web profile is given types_only on services, as in the test above, and the service imports relatively."""
     shutil.copytree(BUNDLED, tmp_path / "arch")
-    services = ('    may_import: [logic, domain, ports, contract, kernel, kernel-logic]\n'
+    services = ('    imports:\n      may: [logic, domain, ports, contract, kernel, kernel-logic]\n'
                 '    holds: {classes: {names: "*Service", built_by: [bootstrap]}}\n')
+    marked = services.replace("ports, contract,", "ports, {contract: types_only},")
     text = (BUNDLED / "web.yaml").read_text()
     assert text.count(services) == 1
-    (tmp_path / "arch/typed.yaml").write_text(text.replace(services, services + "    types_only: [contract]\n"))
+    (tmp_path / "arch/typed.yaml").write_text(text.replace(services, marked))
     app = write(tmp_path / "app", {**APP, "modules/docs/application/services/doc.py":
                                    "from ...contract import Published\n\n\nclass DocService:\n"
                                    "    def run(self):\n        return Published()\n"})

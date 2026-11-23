@@ -114,6 +114,7 @@ RULED_OUT = {
         "modules/spec/application/logic/explain.py",
         "modules/spec/application/logic/file_types.py",
         "modules/spec/application/logic/holds_written.py",
+        "modules/spec/application/logic/imports_written.py",
         "modules/spec/application/logic/key_catalogue.py",
         "modules/spec/application/logic/key_lookup.py",
         "modules/spec/application/logic/language_file.py",

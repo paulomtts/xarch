@@ -27,9 +27,9 @@ def loosened(custom: Architecture, base: Architecture) -> tuple[Loosened, ...]:
 ])
 def test_a_target_added_to_a_rule_is_shown_as_written(written, shown):
     custom = layered()
-    custom["parts"]["api"]["may_import"] = written
+    custom["parts"]["api"]["imports"] = {"may": written}
     stricter = layered()
-    stricter["parts"]["api"]["may_import"] = []
+    stricter["parts"]["api"]["imports"] = {"may": []}
     assert loosened(parsed(custom), parsed(stricter)) == (
         Loosened("may_import", "api", shown, f"api may also import {shown} (parts.api.may_import)"),)
 
@@ -41,7 +41,7 @@ def test_a_target_added_to_a_rule_is_shown_as_written(written, shown):
 ])
 def test_a_target_below_one_the_bundled_profile_allows_is_not_looser(target):
     custom = layered()
-    custom["parts"]["service"]["may_import"] = ["store", "shared", target]
+    custom["parts"]["service"]["imports"] = {"may": ["store", "shared", target]}
     assert loosened(parsed(custom), parsed(layered())) == ()
 
 
@@ -59,9 +59,9 @@ def test_a_profile_that_checks_no_outside_package_is_looser_than_one_that_does()
 
 
 def test_every_way_a_profile_is_looser_than_another_is_found_in_order():
-    parts = {**PARTS, "core": {**PARTS["core"], "may_import": ["store"], "libraries": ["yaml"]},
-             "store": {"path": "store", "role": "storage", "may_import": ["core"],
-                       "libraries": ["sqlmodel", "requests"], "untested": "trust me"}}
+    parts = {**PARTS, "core": {**PARTS["core"], "imports": {"may": ["store"], "libraries": ["yaml"]}},
+             "store": {"path": "store", "role": "storage",
+                       "imports": {"may": ["core"], "libraries": ["sqlmodel", "requests"]}, "untested": "trust me"}}
     custom = {**BASE, "parts": parts, "never": {"pure": ["socket"]},
               "tiers": {"unit": {key: value for key, value in TIER.items() if key != "types_only"}
                         | {"uses": {"apply_never": False}, "may_also_import": ["edge"]}},
@@ -162,8 +162,9 @@ def test_a_part_whose_line_is_below_the_one_the_base_gives_it_is_looser_and_a_hi
 def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
     """Each case of LOOSER is reached by one of these pairs (custom, base), and each key is said its own way."""
     store = {key: value for key, value in PARTS["store"].items() if key != "tests"}
-    every = {**BASE, "parts": {**PARTS, "store": store | {"untested": "trust me", "libraries": ["sqlmodel", "requests"]},
-                               "core": {**PARTS["core"], "may_import": ["store"]}},
+    every = {**BASE, "parts": {**PARTS, "store": store | {"untested": "trust me",
+                               "imports": {"may": ["core"], "libraries": ["sqlmodel", "requests"]}},
+                               "core": {**PARTS["core"], "imports": {"may": ["store"]}}},
              "never": {"pure": ["socket"]}, "testing": {**TESTING, "skips": ["pytest.mark.skip"]},
              "tiers": {"unit": {key: value for key, value in TIER.items() if key != "types_only"}
                        | {"uses": {"apply_never": False}, "may_also_import": ["edge"]}},
@@ -172,7 +173,7 @@ def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
     litmus["parts"]["api"]["litmus"] = "Does it answer a request?"
     pairs = [
         (parsed(every), parsed(BASE)),
-        (parsed(BASE), parsed({**BASE, "parts": part("store", must_import=["core"])})),
+        (parsed(BASE), parsed({**BASE, "parts": part("store", imports={"may": ["core"], "must": ["core"], "libraries": ["sqlmodel"]})})),
         (parsed(layered()), parsed(litmus)),
         (parsed(layered()), parsed(layered(reserved={"ast": "the reader's"}))),
         (parsed(covered(guards={"dead-code": {"tests_only": True, "known": ["shared/wiring.py:build"]}},

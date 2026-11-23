@@ -45,12 +45,12 @@ def test_a_profile_names_its_language_and_the_skeleton_says_the_file_that_stands
 
 
 def test_the_standard_library_and_the_builtins_a_profile_is_checked_against_come_from_the_runtime():
-    named = BASE | {"language": "pascal", "parts": {"core": {"path": "core", "role": "r", "libraries": ["strutils"]}}}
+    named = BASE | {"language": "pascal", "parts": {"core": {"path": "core", "role": "r", "imports": {"libraries": ["strutils"]}}}}
     spec, _ = spec_controller({"base": named}, languages={"pascal": PASCAL}, runtime=RUNTIME)
     checked = spec.check_profile(CheckProfile(APP, "base"))
     assert isinstance(checked, ProfileChecked)
     assert [problem.text for problem in checked.problems] == [
-        "base: parts.core.libraries: 'strutils' is in the standard library, which every part may import unless `reserved` names it"]
+        "base: parts.core.imports.libraries: 'strutils' is in the standard library, which every part may import unless `reserved` names it"]
 
 
 @pytest.mark.parametrize("languages, language", [
@@ -106,13 +106,13 @@ def test_the_bundled_language_gives_its_package_pattern_and_its_member_and_reads
 
 def test_a_language_that_lists_its_standard_library_is_checked_with_its_lists_and_only_another_asks_the_runtime():
     runtime = FakeRuntime(frozenset({"strutils"}), frozenset({"writeln"}), frozenset({"begin"}))
-    listing = BASE | {"parts": {"core": {"path": "core", "role": "r", "libraries": ["fs"]}}}
+    listing = BASE | {"parts": {"core": {"path": "core", "role": "r", "imports": {"libraries": ["fs"]}}}}
     spec, _ = spec_controller({"base": BASE, "listing": listing}, languages={"listed": LISTED, "pascal": PASCAL},
                               runtime=runtime)
     checked = spec.check_profile(CheckProfile(APP, "listing"))
     assert isinstance(checked, ProfileChecked)
     assert [problem.text for problem in checked.problems] == [
-        "listing: parts.core.libraries: 'fs' is in the standard library, which every part may import unless `reserved` "
+        "listing: parts.core.imports.libraries: 'fs' is in the standard library, which every part may import unless `reserved` "
         "names it"]
     assert (spec.profile("base").language.standard_modules, spec.skeleton("base").reserved) == (
         frozenset({"fs", "path"}), frozenset({"class"}))

@@ -41,9 +41,9 @@ def test_the_extension_of_the_language_is_what_a_test_file_pattern_ends_in():
 
 def test_the_standard_library_and_the_builtins_are_those_of_the_language():
     assert problems(layered(parts={**layered()["parts"], "shared": {"path": "shared", "role": "r",
-                                                                       "libraries": ["strutils"]}}),
+                                                                       "imports": {"libraries": ["strutils"]}}}),
                     languages=BOTH) == [
-        "layered.yaml: parts.shared.libraries: 'strutils' is in the standard library, which every part may import "
+        "layered.yaml: parts.shared.imports.libraries: 'strutils' is in the standard library, which every part may import "
         "unless `reserved` names it"]
     assert problems(layered(never={"pure": ["writeln"]}, parts={
         **layered()["parts"], "shared": {"path": "shared", "role": "r", "uses": {"never": "pure"}}}), languages=BOTH) == [

@@ -18,15 +18,15 @@ FAKES = {"folder": "fakes", "for": ["store"]}
 
 def test_a_part_that_lists_no_package_may_import_none_and_says_so_with_an_empty_list():
     document = layered()
-    document["parts"]["store"]["libraries"] = []
+    document["parts"]["store"].setdefault("imports", {})["libraries"] = []
     assert parsed(document).libraries == {"api": (), "service": (), "store": (), "shared": ()}
 
 
 def test_a_library_name_with_a_dash_is_refused_since_it_is_no_import_name():
     document = layered()
-    document["parts"]["store"]["libraries"] = ["sql-model"]
+    document["parts"]["store"].setdefault("imports", {})["libraries"] = ["sql-model"]
     assert problems(document) == [
-        "layered.yaml: parts.store.libraries: 'sql-model' is not a package name the language Python allows"]
+        "layered.yaml: parts.store.imports.libraries: 'sql-model' is not a package name the language Python allows"]
 
 
 def test_guards_name_the_pre_built_checks_in_use_with_their_parameters_and_package_only_is_a_part_s_fact():
@@ -117,7 +117,7 @@ def reserving(reserved, libraries=None) -> dict:
     """The layered profile reserving modules, with the store part's libraries when given."""
     document = layered(reserved=reserved)
     if libraries is not None:
-        document["parts"]["store"]["libraries"] = libraries
+        document["parts"]["store"].setdefault("imports", {})["libraries"] = libraries
     return document
 
 
@@ -131,12 +131,12 @@ def test_a_reserved_module_of_the_standard_library_loads_with_its_reason_and_a_p
     pytest.param(["ast"], None, "reserved: must be a mapping of standard-library names to why they are reserved, "
                                 "such as {ast: only the reader parses the language}", id="a list"),
     pytest.param({"yaml": "x"}, None, "reserved: 'yaml' is not in the Python standard library: an outside package "
-                                      "is imported only by the parts whose `libraries` list it already",
+                                      "is imported only by the parts whose `imports.libraries` list it already",
                  id="an outside package"),
     pytest.param({"os.path": "x"}, None, "reserved: 'os.path' is not a package name the language Python allows",
                  id="a module below a top-level one"),
     pytest.param({"ast": ""}, None, "reserved.ast: must say in one line why it is reserved", id="no reason"),
-    pytest.param({}, ["ast"], "parts.store.libraries: 'ast' is in the standard library, which every part may import "
+    pytest.param({}, ["ast"], "parts.store.imports.libraries: 'ast' is in the standard library, which every part may import "
                               "unless `reserved` names it", id="a standard module listed but not reserved"),
 ])
 def test_a_bad_reserved_module_is_refused_saying_what_to_write(reserved, libraries, problem):
@@ -148,11 +148,11 @@ def test_the_standard_library_a_profile_reserves_from_is_the_one_of_the_language
     assert parsed(reserving({"fs": "the runtime's"}), languages=braced).reserved == {"fs": "the runtime's"}
     assert problems(reserving({"fs": "the runtime's"})) == [
         "layered.yaml: reserved: 'fs' is not in the Python standard library: an outside package is imported only by the "
-        "parts whose `libraries` list it already"]
+        "parts whose `imports.libraries` list it already"]
     assert parsed(reserving({"pickle": "the runtime's"})).reserved == {"pickle": "the runtime's"}
     assert problems(reserving({"pickle": "the runtime's"}), languages=braced) == [
         "layered.yaml: reserved: 'pickle' is not in the Brace standard library: an outside package is imported only by "
-        "the parts whose `libraries` list it already"]
+        "the parts whose `imports.libraries` list it already"]
 
 
 def test_the_guards_section_says_which_parts_may_import_a_reserved_module():
@@ -168,6 +168,6 @@ def test_the_guards_section_says_which_parts_may_import_a_reserved_module():
 ])
 def test_a_library_the_package_pattern_of_the_language_refuses_is_refused_naming_the_language(library):
     document = layered()
-    document["parts"]["store"]["libraries"] = [library]
+    document["parts"]["store"].setdefault("imports", {})["libraries"] = [library]
     assert problems(document) == [
-        f"layered.yaml: parts.store.libraries: '{library}' is not a package name the language Python allows"]
+        f"layered.yaml: parts.store.imports.libraries: '{library}' is not a package name the language Python allows"]

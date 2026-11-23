@@ -19,11 +19,11 @@ BROKEN = {"bundled": {"base": {}}, "languages": {"python": "not a mapping"}}
 UNTOLD = {"bundled": {"base": {}}, "keys": {"fragments": {}, "smallest": "name: n\n", "symbols": []}}
 SAID = (
     Symbol("<word>", "in a path: a repeating folder, one per name, as in units/<unit>/store; there may be several"),
-    Symbol("store", "in may_import, a bare name: that part, in the importer's own instance of its repeating folder"),
+    Symbol("store", "in imports.may, a bare name: that part, in the importer's own instance of its repeating folder"),
     Symbol("store@any", "that part in any instance; the only way to name a part of another repeating folder"),
     Symbol("store/schema", "only what lies below that path of the part"),
-    Symbol("store:*Id", "in may_import, after `:`: only the names that match the pattern, `*` for any text"),
-    Symbol("everything", "in may_import or libraries: no limit"),
+    Symbol("store:*Id", "in imports.may, after `:`: only the names that match the pattern, `*` for any text"),
+    Symbol("everything", "in imports.may or imports.libraries: no limit"),
     Symbol("a path ending in .py", "a last path step with a dot: the part is one file, not a folder"),
 )
 """The symbols as the format says them for the default language, its extension in place of %extension%."""
@@ -51,12 +51,9 @@ SHAPE = (
     Shown('parts.path', 1, 'where the part lives below the app', True, True),
     Shown('parts.role', 1, 'what the part is for, in one line', True, False),
     Shown('parts.litmus', 1, 'the question that tells code belongs here', False, False),
-    Shown('parts.may_import', 1, 'what the part may import besides itself', False, True),
-    Shown('parts.must_import', 1, 'what each file of the part has to reach', False, True),
-    Shown('parts.types_only', 1, 'the parts its files may use only as types', False, True),
+    Shown('parts.imports', 1, 'what the part may and must import, and its outside packages', False, True),
     Shown('parts.holds', 1, 'what the files of the part define at the top level', False, True),
     Shown('parts.shared', 1, 'the part is there to be shared, by at least this many users', False, True),
-    Shown('parts.libraries', 1, 'the outside packages the part may import', False, True),
     Shown('parts.uses', 1, "what the part's code uses", False, True),
     Shown('parts.tests', 1, 'the tier whose tests cover the part', False, True),
     Shown('parts.untested', 1, 'why no tier tests the part', False, True),
@@ -120,7 +117,7 @@ may send and of how it reads what it asks are left to the explanation of `review
                               False, False, (), "based_on: base", ("base", "other"), (), name="based_on"),
                  id="a key that names a bundled profile offers the ones xarch ships"),
     pytest.param(BUNDLED, Explain("parts.may_imports"),
-                 UnknownKey("parts.may_imports", ("parts.may_import", "parts.must_import", "tiers.may_import")),
+                 UnknownKey("parts.may_imports", ("parts.imports", "tiers.may_import", "parts.imports.may")),
                  id="a key the format does not have is refused with the nearest keys"),
     pytest.param(BROKEN, Explain(), ProfileRefused("presets/language/python.yaml: must be a mapping of keys, such as title, "
                                                    "extensions and package_files"),
@@ -140,14 +137,15 @@ def test_the_whole_format_is_the_keys_of_the_file_their_symbols_and_the_smallest
     assert FORMAT.smallest == SMALLEST
     assert FORMAT.symbols == SAID
     assert FORMAT.shape[0] == Shown("name", 0, "what the profile is called", True, False)
-    assert Shown("parts.may_import", 1, "what the part may import besides itself", False, True) in FORMAT.shape
+    assert Shown("parts.imports", 1, "what the part may and must import, and its outside packages", False, True) in FORMAT.shape
 
 
 def test_a_key_says_what_it_accepts_whether_check_enforces_it_through_which_rule_and_what_it_holds():
-    key = explained("parts.may_import")
+    key = explained("parts.imports.may")
     assert (key.key, key.where, key.required, key.enforced, key.rules) == (
-        "parts.may_import", "parts.<part>", False, True, ("may-import",))
-    assert "@any" in key.accepts and "may_import: [core]" in key.example and key.keys == ()
+        "parts.imports.may", "parts.<part>.imports", False, True, ("may-import",))
+    assert "@any" in key.accepts and "may: [core]" in key.example
+    assert [held_key.key for held_key in key.keys] == ["parts.imports.may.types_only"]
     assert [(held_key.key, held_key.required) for held_key in explained("fakes").keys] == [
         ("fakes.folder", True), ("fakes.for", True), ("fakes.prefix", False)]
 
@@ -334,3 +332,14 @@ def test_holds_says_it_reads_no_top_level_functions_in_a_language_that_does_not_
                      True) in found.short
     assert [item for item in explained("parts.holds").short if item.unread] == []
     assert [item for item in spec.explain(Explain("parts.holds.functions")).short if item.unread] == []
+
+
+@pytest.mark.parametrize("address, key", [
+    pytest.param("parts.adapters.imports.may", "parts.imports.may", id="may on a part"),
+    pytest.param("parts.adapters.imports", "parts.imports", id="the group on a part"),
+    pytest.param("parts.services.imports.may.types_only", "parts.imports.may.types_only", id="the mark on a part"),
+    pytest.param("parts.imports.must", "parts.imports.must", id="must, plain"),
+    pytest.param("parts.uses.never", "parts.uses.never", id="a key whose second step is a key of the part"),
+])
+def test_a_key_is_explained_typed_plain_or_with_the_part_it_sits_on(address, key):
+    assert explained(address).key == key

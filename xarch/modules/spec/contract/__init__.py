@@ -95,7 +95,7 @@ class PartView:
     """One part of a profile as a check reads it: its name; its path as a pattern, `*` standing for the instance of a
     repeating folder; what it may import besides itself; its role, litmus test, how the docs name it (shown) and why no
     tier tests it; the names it may not use; what each of its files must import one of; the kinds its files may
-    define at the top level, each with its settings (holds; empty: every kind); the parts it may use as types only;
+    define at the top level, each with its settings (holds; empty: every kind); the targets it may use as types only;
     and for a part there to be shared, the fewest users each of its public names must have."""
     name: str
     pattern: tuple[str, ...]
@@ -107,7 +107,7 @@ class PartView:
     uses_never: tuple[tuple[str, ...], ...] = ()
     must_import: tuple[Target, ...] = ()
     holds: tuple[Held, ...] = ()
-    types_only: tuple[str, ...] = ()
+    types_only: tuple[Target, ...] = ()
     shared: int | None = None
 
 

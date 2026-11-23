@@ -8,7 +8,7 @@ from difflib import get_close_matches
 
 from xarch.kernel.logic.capabilities import shortfalls
 from xarch.kernel.logic.names import outside_text
-from xarch.modules.spec.application.logic.key_lookup import keys_of, of_an_entry, plain, shown
+from xarch.modules.spec.application.logic.key_lookup import keys_of, names_of, of_an_entry, plain, shown
 from xarch.modules.spec.application.logic.profile_needs import read_less
 from xarch.modules.spec.domain.key_table import KEYS, SLOTS
 from xarch.modules.spec.domain.profile_keys import HELD, PART, PROFILE, TIER, Key
@@ -97,12 +97,24 @@ def cleaned(address: str) -> str:
 
 
 def key_at(address: str) -> Key | None:
-    """The key at the address as typed: a key by its plain address, or a slot of an entry of a map of ids written with
-    any id in the id's step (evals.title-rule.ask) or with the placeholder itself (evals.<id>.ask)."""
+    """The key at the address as typed: a key by its plain address, or with the name of a part or a tier in its second
+    step (parts.adapters.imports.may), or a slot of an entry of a map of ids written with any id in the id's step
+    (evals.title-rule.ask) or with the placeholder itself (evals.<id>.ask)."""
     typed = cleaned(address)
     written = address.strip().strip(".")
     found = next((key for key in KEYS if plain(key.address) == typed), None)
+    found = found or next((key for key in KEYS if plain(key.address) == _unnamed(typed)), None)
     return found or next((slot for slot in SLOTS if written == slot.address or of_an_entry(typed, slot.scope, slot.name)), None)
+
+
+def _unnamed(typed: str) -> str:
+    """A typed address of a key of a part or a tier with the name of the one it sits on left out (parts.adapters.imports
+    as parts.imports); the address itself when its second step is a key of a part or a tier, or it has no third."""
+    steps = typed.split(".")
+    scope = {"parts": PART, "tiers": TIER}.get(steps[0])
+    if scope is None or len(steps) < 3 or steps[1] in names_of(scope):
+        return typed
+    return ".".join((steps[0], *steps[2:]))
 
 
 def held_by(key: Key) -> tuple[Key, ...]:

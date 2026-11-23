@@ -14,7 +14,8 @@ parts:
   main:
     path: __main__.py
     role: the python -m entry
-    may_import: [core]
+    imports:
+      may: [core]
     untested: a two-line shim
   core: {path: core, role: the code}
 guards:

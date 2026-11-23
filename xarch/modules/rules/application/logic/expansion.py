@@ -21,7 +21,7 @@ def _all(*texts: str) -> tuple[Condition, ...]:
 
 
 def _libraries(profile: Profile) -> tuple[Rule, ...]:
-    """A part imports only the outside packages its `libraries` list; the standard library and the app's own package
+    """A part imports only the outside packages its `imports.libraries` lists; the standard library and the app's own package
     are always allowed, and a relative import is the app's own, but a module of the standard library the profile
     reserves is an outside package; one finding per package and line. No rule when no part lists libraries, and none
     for a part whose list is everything."""
@@ -31,7 +31,7 @@ def _libraries(profile: Profile) -> tuple[Rule, ...]:
                 "{key})")
     outside = "{where} may not import the outside package {package} ({key})"
     owners = "move the code that needs {package} to {library_owners}, which may import it (parts.{first_library_owner}" \
-             ".libraries)"
+             ".imports.libraries)"
     once = ("line", "package")
     sayings = (Saying(reserved, owners, _all("reserved", "listed-by-another-part"), once),
                Saying(reserved, "list {package} in the libraries of the part it is reserved for, and keep the code "
@@ -40,7 +40,7 @@ def _libraries(profile: Profile) -> tuple[Rule, ...]:
                Saying(outside, "use the standard library or a package listed in {key}, since {package} is listed for "
                                "no part", once=once))
     return tuple(Rule("libraries", Scope(APP, part), ("import",), MAY_ONLY, (Match("package", words=allowed),),
-                      sayings, keep=keep, exempt=exempt, key=f"parts.{part}.libraries")
+                      sayings, keep=keep, exempt=exempt, key=f"parts.{part}.imports.libraries")
                  for part in profile.parts if EVERYTHING not in (allowed := profile.libraries.get(part, ()))
                  for keep, exempt in ((_all("not relative", "not reserved"), _all("app-package", "standard")),
                                       (_all("not relative", "reserved"), _all("app-package"))))
@@ -119,7 +119,7 @@ def _narrower(profile: Profile, part: str) -> tuple[str, ...]:
 
 def _rules(profile: Profile) -> tuple[Rule, ...]:
     """Every import between places the profile governs is allowed by the rules of the importing file's part: a part
-    may import itself and its `may_import` row, where a target with a name pattern allows only the names it matches;
+    may import itself and its `imports.may`, where a target with a name pattern allows only the names it matches;
     the structure may import nothing the profile governs."""
     narrowed = Saying("{where} may import only {allowed_names} from {target_part}, {disallowed_name} ({target_name})",
                       "import from {target_part} only names that match {allowed_names} ({key}), or move what "
@@ -127,7 +127,7 @@ def _rules(profile: Profile) -> tuple[Rule, ...]:
     plain = "{where} may not import {target_part} ({target})"
     found = [Rule("may-import", Scope(APP, part), ("import-into-app",), MAY_ONLY, (Match("permitted"),),
                   (narrowed, Saying(plain, "import only {importable_parts} in {where} ({key}), or {move_fix}")),
-                  keep=_all("target-placed"), key=f"parts.{part}.may_import") for part in profile.parts]
+                  keep=_all("target-placed"), key=f"parts.{part}.imports.may") for part in profile.parts]
     return (*found, Rule("may-import", Scope(APP, STRUCTURE), ("import-into-app",), MAY_ONLY, (Match("permitted"),),
                          (Saying(plain, "drop the import of {target_part}, or {move_fix}"),), keep=_all("target-placed")))
 
@@ -141,8 +141,8 @@ def _types_only_tiers(profile: Profile) -> tuple[Rule, ...]:
 
 
 def _types_only_parts(profile: Profile) -> tuple[Rule, ...]:
-    """A file of a part that names parts in its own `types_only` is held to the same rule."""
-    return tuple(_types_only(Scope(APP, part), "{where}", f"parts.{part}.types_only", parts, "{type_only_fix}")
+    """A file of a part whose `imports.may` marks entries types_only is held to the same rule."""
+    return tuple(_types_only(Scope(APP, part), "{where}", f"parts.{part}.imports.may.types_only", parts, "{type_only_fix}")
                  for part, parts in profile.types_only.items())
 
 
@@ -325,7 +325,7 @@ def _immutable(profile: Profile) -> tuple[Rule, ...]:
 
 
 def _must_import(profile: Profile) -> tuple[Rule, ...]:
-    """Each file of a part that lists `must_import` imports one of the targets or an outside package, itself or
+    """Each file of a part that lists `imports.must` imports one of the targets or an outside package, itself or
     through the files of its own part and instance it imports, however far; a package file and a file with no real
     statement are not said."""
     return tuple(Rule("must-import", Scope(APP, part), ("import", "import-into-app"), MUST_REACH,
@@ -334,7 +334,7 @@ def _must_import(profile: Profile) -> tuple[Rule, ...]:
                               "files must ({key})",
                               "import what it works with from {targets}, or an outside package, or move its code to a "
                               "part that need not"),),
-                      exempt=_all("package-file", "no-statements"), key=f"parts.{part}.must_import",
+                      exempt=_all("package-file", "no-statements"), key=f"parts.{part}.imports.must",
                       links=("import-into-app",), via=_all("target-in-own-part"))
                  for part, wanted in profile.must_import.items())
 
@@ -418,13 +418,13 @@ def _pass_through(profile: Profile) -> tuple[Rule, ...]:
                  for part in profile.pass_through)
 
 
-KEYS = ("parts.may_import", "parts.libraries", "parts.uses.never", "tiers.uses.apply_never", "tiers",
+KEYS = ("parts.imports.may", "parts.imports.libraries", "parts.uses.never", "tiers.uses.apply_never", "tiers",
         "tiers.may_also_import", "tiers.types_only",
-        "parts.package_only", "parts.types_only", "guards.no-callbacks", "parts.holds.classes.names",
+        "parts.package_only", "parts.imports.may.types_only", "guards.no-callbacks", "parts.holds.classes.names",
         "parts.holds.functions.names", "parts.holds.records.names", "parts.holds.exceptions.names",
         "parts.holds.classes.built_by", "guards.private-imports", "guards.no-comments", "guards.closed-tree",
         "parts.holds", "parts.holds.classes.immutable", "parts.holds.records.immutable",
-        "parts.must_import", "tiers.must_import", "guards.dead-code", "guards.dead-code.untested",
+        "parts.imports.must", "tiers.must_import", "guards.dead-code", "guards.dead-code.untested",
         "guards.dead-code.tests_only", "guards.pass-through")
 """The keys the rules of the book are keyed by, each with any part or tier left out (see explained.general), in the
 order of the book: a key the engine expands to rules when a profile sets it."""

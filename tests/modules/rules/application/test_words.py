@@ -47,14 +47,14 @@ WORKED = ("no-todo: reads comment\nno-todo.flagged: documents/notes: ' TODO: spl
     pytest.param(FakeProfiles({"named": NAMED}), ExplainWords("quantifiers.may_only", APP),
                  WordShown("quantifiers.may_only", "quantifiers", "may_only",
                            "a kept fact that matches none of the targets is a finding", applies_to=APPLIES,
-                           example_key="parts.kernel.may_import", example_profile="named",
+                           example_key="parts.kernel.imports.may", example_profile="named",
                            example="may-import: reads import-into-app\n"),
                  id="a word is explained in full, with a rule of the profile the project knows that uses it"),
     pytest.param(FakeProfiles({"bundled": profile(), "mine": NAMED}, known=Known("mine", ("bundled",))),
                  ExplainWords("quantifiers.may_only", APP),
                  WordShown("quantifiers.may_only", "quantifiers", "may_only",
                            "a kept fact that matches none of the targets is a finding", applies_to=APPLIES,
-                           example_key="parts.kernel.may_import", example_profile="mine",
+                           example_key="parts.kernel.imports.may", example_profile="mine",
                            example="may-import: reads import-into-app\n"),
                  id="the profile in force is searched for an example before the bundled ones"),
     pytest.param(FakeProfiles({}, known=ProfileUnusable(f"cannot read {APP.parent}/pyproject.toml: bad")),
@@ -111,4 +111,4 @@ def test_a_slot_of_a_check_is_explained_with_what_it_accepts_and_a_check_written
     assert explain(FakeProfiles({}))(ExplainWords("checks.kep")) == UnknownWords(
         "checks.kep", ("checks.keep", "checks.except", "checks.read"))
     found = explain(FakeProfiles({"any": profile()}))(ExplainWords("checks.may_only", APP))
-    assert found.example_key == "parts.kernel.may_import"
+    assert found.example_key == "parts.kernel.imports.may"

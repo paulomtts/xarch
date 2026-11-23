@@ -15,7 +15,7 @@ from xarch.kernel.source import CommentSpan, Import, Unparsable
 TESTING = {"files": ["test_*.py"], "functions": "test_*"}
 BASE = {"name": "base", "testing": TESTING,
         "parts": {"core": {"path": "core", "role": "the rules"},
-                  "api": {"path": "api", "role": "the handlers", "may_import": ["core"]}},
+                  "api": {"path": "api", "role": "the handlers", "imports": {"may": ["core"]}}},
         "docs": {"pages": {"a.md": {"from": "docs/a.md"}}}, "files": {"AGENTS.md": "agents.md"}}
 BASE_TEXT = "# the base\nname: base\ntesting: x\n"
 TEXTS = {"base.yaml": BASE_TEXT, "docs/a.md": "page\n", "agents.md": "agents\n"}

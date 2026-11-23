@@ -77,7 +77,8 @@ class SpecProfiles:
                        holds={p.name: tuple(h.kind for h in p.holds) for p in parts if p.holds},
                        immutable={p.name: tuple(h.kind for h in p.holds if h.immutable) for p in parts
                                   if any(h.immutable for h in p.holds)},
-                       types_only={p.name: p.types_only for p in parts if p.types_only},
+                       types_only={p.name: tuple(dict.fromkeys(t.part for t in p.types_only)) for p in parts
+                                   if p.types_only},
                        no_callbacks=guards.no_callbacks,
                        names={p.name: {h.kind: h.names for h in p.holds if h.names} for p in parts
                               if any(h.names for h in p.holds)},

@@ -17,13 +17,13 @@ parts:
   core:
     path: core
     role: the rules
-    may_import: [api]
-    libraries: [yaml]
+    imports:
+      may: [{api: types_only}]
+      must: [api]
+      libraries: [yaml]
     uses: {never: pure}
     package_only: true
     holds: {functions: {names: "*"}, records: {names: "*", immutable: true}, exceptions: {names: "*"}}
-    types_only: [api]
-    must_import: [api]
     tests: unit
   api:
     path: api

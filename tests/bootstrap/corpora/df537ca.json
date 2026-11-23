@@ -253,8 +253,8 @@
 "libraries",
 "xarch/modules/spec/application/logic/example_imports.py",
 17,
-"logic/ of modules/spec may not import ast, which the profile reserves: only the reader adapter parses the checked language, so that another language needs one new reader (reserved.ast; parts.logic.libraries)",
-"move the code that needs ast to adapters/, which may import it (parts.adapters.libraries)"
+"logic/ of modules/spec may not import ast, which the profile reserves: only the reader adapter parses the checked language, so that another language needs one new reader (reserved.ast; parts.logic.imports.libraries)",
+"move the code that needs ast to adapters/, which may import it (parts.adapters.imports.libraries)"
 ],
 [
 "V",

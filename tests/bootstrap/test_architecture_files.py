@@ -17,12 +17,14 @@ parts:
     path: "src/<module>/api"
     role: "HTTP handlers"
     litmus: "Does it parse a request and call a service?"
-    may_import: [service]
+    imports:
+      may: [service]
   service:
     path: "src/<module>/service"
     role: "business logic"
     litmus: "Does it decide what is allowed?"
-    may_import: [store]
+    imports:
+      may: [store]
   store:
     path: "src/<module>/store"
     role: "database access"
@@ -31,9 +33,11 @@ parts:
 LAYERED_DATA = {
     "name": "layered",
     "parts": {"api": {"path": "src/<module>/api", "role": "HTTP handlers",
-                      "litmus": "Does it parse a request and call a service?", "may_import": ["service"]},
+                      "litmus": "Does it parse a request and call a service?",
+                      "imports": {"may": ["service"]}},
               "service": {"path": "src/<module>/service", "role": "business logic",
-                          "litmus": "Does it decide what is allowed?", "may_import": ["store"]},
+                          "litmus": "Does it decide what is allowed?",
+                          "imports": {"may": ["store"]}},
               "store": {"path": "src/<module>/store", "role": "database access",
                         "litmus": "Does it touch the database?"}},
 }
@@ -126,7 +130,7 @@ def test_duplicate_part_names_are_rejected(tmp_path):
     path = write(tmp_path / "layered.yaml", text)
     with pytest.raises(InvalidArchitecture) as caught:
         load_architecture(path)
-    assert caught.value.problems == (f"{path}: line 13: duplicate key 'api'",)
+    assert caught.value.problems == (f"{path}: line 15: duplicate key 'api'",)
 
 
 def test_duplicate_keys_in_json_are_rejected(tmp_path):
@@ -177,9 +181,9 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
     pytest.param('name: n\nparts: {1: {path: a}, null: {}, yes: {path: b}}\n',
                  ["line 2: duplicate key 'True'"],
                  id='a key 1 and a key yes are one key, True'),
-    pytest.param('name: n\nparts: {a: {path: a, role: r, may_import: [a]}}\n',
-                 ["parts.a.may_import: 'a' is implied: a part may always import itself; remove it"],
-                 id='a may_import that only says a part may import itself'),
+    pytest.param('name: n\nparts: {a: {path: a, role: r, imports: {may: [a]}}}\n',
+                 ["parts.a.imports.may: 'a' is implied: a part may always import itself; remove it"],
+                 id='an imports.may that only says a part may import itself'),
     pytest.param('name: n\nparts: {a: {path: a, role: r, uses: {never: l}}}\nnever: {l: [open]}\n',
                  ["never.l: 'open' is a Python builtin, which a bare name does not ban: write builtins.open"],
                  id='a bare builtin in a never list'),
@@ -228,15 +232,13 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
                   'files.y: missing `from`, the template file'],
                  id='files of the wrong shape'),
     pytest.param('name: n\ntesting: pytest\ntiers: {unit: {}}\nparts: {a: {path: a, role: r, tier: secret-value}}\n',
-                 ["parts.a: unknown key 'tier': renamed in 0.3.0: write tests; use folders, holds, libraries, "
-                  "litmus, may_import, must_import, package_only, path, role, shared, tests, types_only, "
-                  "untested, uses",
+                 ["parts.a: unknown key 'tier': renamed in 0.3.0: write tests; use folders, holds, imports, "
+                  "litmus, package_only, path, role, shared, tests, untested, uses",
                   "parts.a: no tier tests it: give it `tests: <tier>`, or `untested: <reason>`"],
                  id='a part still writing tier'),
     pytest.param('name: n\nnever: {pure: [socket]}\nparts: {a: {path: a, role: r, forbidden: secret-list}}\n',
                  ["parts.a: unknown key 'forbidden': moved in 0.3.0: write uses: {never: <list>}; use folders, "
-                  "holds, libraries, litmus, may_import, must_import, package_only, path, role, shared, tests, "
-                  "types_only, untested, uses"],
+                  "holds, imports, litmus, package_only, path, role, shared, tests, untested, uses"],
                  id='a part still writing forbidden'),
     pytest.param('name: n\nparts: {a: {path: a, role: r}}\nxarch2: 1\nrules: {a: []}\n',
                  ["unknown keys 'rules', 'xarch2': use based_on, checks, docs, evals, excluded, fakes, files, guards, hints, "

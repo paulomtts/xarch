@@ -41,7 +41,7 @@ PROFILE = Profile({"kernel": ("kernel",), "platform": ("platform",)},
 BAD = {"kernel/x.py": [Import(1, ("pkg", "platform", "io"))], "platform/io.py": []}
 GOOD = {"kernel/x.py": [], "platform/io.py": [Import(1, ("pkg", "kernel", "x"))]}
 IMPORT = Violation("pkg/kernel/x.py", 1, "kernel/ may not import platform/ (pkg.platform.io)", "may-import",
-                   "import only kernel/ in kernel/ (parts.kernel.may_import), or move this code to a part that may "
+                   "import only kernel/ in kernel/ (parts.kernel.imports.may), or move this code to a part that may "
                    "import platform/")
 MISSING = Violation("pkg", 0, "missing kernel/logic/", "structure", "create pkg/kernel/logic/")
 
@@ -111,7 +111,7 @@ def checked(files, profiles: FakeProfiles = ENTERED, profile: str = "cli", root:
 def test_the_app_is_imported_as_the_package_its_folder_names():
     files = {"kernel/x.py": [Import(1, ("xarch", "platform"), names=("sql",))]}
     assert [str(v) for v in checked(files, root=Path("/src/app")).violations] == [
-        "app/kernel/x.py:1: kernel/ may not import the outside package xarch (parts.kernel.libraries)"]
+        "app/kernel/x.py:1: kernel/ may not import the outside package xarch (parts.kernel.imports.libraries)"]
     assert [str(v) for v in checked(files, root=Path("/src/xarch")).violations] == [
         "xarch/kernel/x.py:1: kernel/ may not import platform/ (xarch.platform)"]
 

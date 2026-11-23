@@ -41,7 +41,7 @@ KEY = 28
 NEED = 10
 """The width of the column that says whether a key is required."""
 NO_RULE = "yes (the loader, or the `enforcement` section of `check`, not a rule id)"
-DEEPER = ("xarch profile explain parts.may_import        one key in full: what it accepts, its rule, an example\n"
+DEEPER = ("xarch profile explain parts.imports.may       one key in full: what it accepts, its rule, an example\n"
           "xarch profile explain parts.holds --rule      the rules a key expands to, written as checks\n"
           "xarch profile explain checks                  how a check is written, and the words it is written in\n"
           "xarch profile explain --profile <name|path>   the folder tree and the imports of a profile")

@@ -564,7 +564,8 @@ def _part_lines(architecture: Architecture) -> list[str]:
     lines: list[str] = []
     for part in parts:
         if part.types_only:
-            lines.append(f"`types-only`: {shown([part.name])} uses {shown(list(part.types_only))} only as a type: it "
+            lines.append(f"`types-only`: {shown([part.name])} uses "
+                         f"{shown(list(dict.fromkeys(t.part for t in part.types_only)))} only as a type: it "
                          "imports it to annotate and never calls it.")
     groups: dict[tuple[str, ...], list[str]] = {_CLASSES: [], _FUNCTIONS: []}
     for part in parts:

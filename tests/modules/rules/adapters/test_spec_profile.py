@@ -46,7 +46,7 @@ VIEW = ProfileView(
     parts=(PartView("core", ("core",), (), "the rules", "Is it a rule?", "core/", uses_never=(("socket",),),
                     holds=(Held("functions"), Held("records", immutable=True), Held("exceptions")), shared=2),
            PartView("api", ("src", "*", "api"), (Target("core"),), "handlers", shown="api/ of src/<module>",
-                    untested="it only wires", must_import=(Target("core"),), types_only=("core",),
+                    untested="it only wires", must_import=(Target("core"),), types_only=(Target("core"),),
                     holds=(Held("classes", ("*Api",), built_by=("core",)),))),
     folders=((), ("core",), ("src",), ("src", "*"), ("src", "*", "api")),
     tiers=(CheckedTier("unit", (Target("core", "none"),), None, ("api",), True, "a rule", "nothing", "Does it?"),),

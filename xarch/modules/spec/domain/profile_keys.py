@@ -14,6 +14,8 @@ from dataclasses import dataclass, field
 PROFILE = "profile"
 PART = "part"
 PART_USES = "part.uses"
+PART_IMPORTS = "part.imports"
+PART_IMPORTS_MAY = "part.imports.may"
 PART_HOLDS = "part.holds"
 PART_HOLDS_CLASSES = "part.holds.classes"
 PART_HOLDS_FUNCTIONS = "part.holds.functions"
@@ -47,6 +49,8 @@ SCOPES = {
     PROFILE: "the file",
     PART: "parts.<part>",
     PART_USES: "parts.<part>.uses",
+    PART_IMPORTS: "parts.<part>.imports",
+    PART_IMPORTS_MAY: "parts.<part>.imports.may",
     PART_HOLDS: "parts.<part>.holds",
     PART_HOLDS_CLASSES: "parts.<part>.holds.classes",
     PART_HOLDS_FUNCTIONS: "parts.<part>.holds.functions",
@@ -199,6 +203,14 @@ RETIRED: tuple[Retired, ...] = (
     Retired(PART, "holds", "holds as one word was removed in 0.3.0: write holds: {functions: {}, records: {}, "
                            "exceptions: {}}, which allows what holds: functions allowed", "functions"),
     Retired(PART, "holds", "holds as one word was removed in 0.3.0: write holds: {classes: {}}", "classes"),
+    Retired(PART, "may_import", "moved in 0.3.0: write imports: {may: [...]}"),
+    Retired(PART, "must_import", "moved in 0.3.0: write imports: {must: [...]}"),
+    Retired(PART, "libraries", "moved in 0.3.0: write imports: {libraries: [...]}"),
+    Retired(PART, "types_only", "moved in 0.3.0: write it as the mode of its entry in imports.may, such as "
+                                "[{ports: types_only}]"),
+    Retired(PART_IMPORTS, "never", "a key of uses, beside imports: write uses: {never: <list>}"),
+    Retired(PART_IMPORTS, "types_only", "write it as the mode of its entry in imports.may, such as "
+                                        "[{ports: types_only}]"),
 )
 """Every key, guard and rule id xarch has retired, and every value a key it still has no longer takes: a profile
 writing one is refused with the entry's text."""

@@ -16,7 +16,8 @@ parts:
       `domain/published.py`, which `contract/` re-exports. If it is a pure rule that is not one entity's invariant,
       it belongs in `application/logic/`. If it must load or save anything, it is a service step. `xarch check` holds
       it to its `uses.never` list: no clock and no I/O by name.
-    may_import: [kernel, kernel-logic]
+    imports:
+      may: [kernel, kernel-logic]
     uses: {never: pure}
     holds: {classes: {}}
     tests: unit
@@ -29,7 +30,8 @@ parts:
       yes, it goes here, in a file named for the rule. If it holds one entity's invariant, it belongs in that entity
       in `domain/`. If another module needs it too, it belongs in `kernel/logic/`. If it must load or save anything,
       it is a service step. `xarch check` holds it to its `uses.never` list: no clock and no I/O by name.
-    may_import: [domain, kernel, kernel-logic]
+    imports:
+      may: [domain, kernel, kernel-logic]
     uses: {never: pure}
     holds: {functions: {}, records: {immutable: true}, exceptions: {}}
     tests: unit
@@ -43,7 +45,8 @@ parts:
       vendor terms? If yes, it goes here. If it is a generic primitive with no business meaning (such as `Clock`), it
       belongs in `kernel/`. If it has a body that talks to a real system, it belongs in `adapters/`. `xarch check`
       holds it to its `uses.never` list: no clock and no I/O by name.
-    may_import: [domain, kernel, kernel-logic]
+    imports:
+      may: [domain, kernel, kernel-logic]
     uses: {never: pure}
     holds: {classes: {}}
     tests: integration
@@ -58,7 +61,8 @@ parts:
       belongs in `domain/`. If it is a pure rule with no port, or a decision about what the DTO says (a condition, a
       default, a sentence), it belongs in `application/logic/`, and the service calls it. If it turns a failure into
       a `Result` variant, it belongs in the controller. If it touches a database, it belongs in `adapters/`.
-    may_import: [logic, domain, ports, contract, kernel, kernel-logic]
+    imports:
+      may: [logic, domain, ports, contract, kernel, kernel-logic]
     holds: {classes: {names: "*Service", built_by: [bootstrap]}}
     uses: {never: ambient}
     tests: integration
@@ -73,7 +77,8 @@ parts:
       the plain values the service returns. If it names argument parsing or terminal output, it belongs in `cli/`. If
       it handles a table row, or reads another module's `Result` to answer one of this module's ports, it belongs in
       `adapters/`.
-    may_import: [services, logic, domain, ports, contract, kernel, kernel-logic]
+    imports:
+      may: [services, logic, domain, ports, contract, kernel, kernel-logic]
     holds: {classes: {names: "*Controller", built_by: [bootstrap]}}
     uses: {never: ambient}
     tests: integration
@@ -88,9 +93,10 @@ parts:
       wraps? If yes, it goes here, and so does the private `Protocol` it declares for the little it calls of what it
       wraps. If it knows no module's types and is only a client or engine for a technology, it belongs in
       `platform/`. If it contains a business rule, it belongs in `domain/`.
-    may_import: [ports, domain, kernel, kernel-logic, platform, contract@any]
-    must_import: [platform, contract@any]
-    libraries: [sqlmodel]
+    imports:
+      may: [ports, domain, kernel, kernel-logic, platform, contract@any]
+      must: [platform, contract@any]
+      libraries: [sqlmodel]
     uses: {never: ambient}
     holds: {classes: {built_by: [bootstrap]}}
     tests: unit
@@ -105,8 +111,9 @@ parts:
       clock that reads the real time, SQL engine, table models) that knows none of the types of any one module? If
       yes, it goes here, named for the technology (a table model, for its table) and never for a module. If it
       translates a module's types for a port, it belongs in that module's `adapters/`.
-    may_import: [kernel, kernel-logic]
-    libraries: [sqlmodel]
+    imports:
+      may: [kernel, kernel-logic]
+      libraries: [sqlmodel]
     uses: {never: environment}
     untested: it wraps outside technology; adapters are tested against a stub of it
 
@@ -118,8 +125,9 @@ parts:
       from the context the command runs in, a controller that was built elsewhere? If yes, it goes here. If it builds
       anything or starts the program, it belongs in `bootstrap/`. If it reports a failure as a `Result`, it belongs
       in the controller. If it holds a business rule, it belongs in `domain/`.
-    may_import: [controller@any, contract@any, kernel, kernel-logic]
-    libraries: [typer]
+    imports:
+      may: [controller@any, contract@any, kernel, kernel-logic]
+      libraries: [typer]
     uses: {never: environment}
     tests: rendering
     folders:
@@ -134,8 +142,9 @@ parts:
       it)? If yes, it goes here, and nowhere else. If it builds nothing and only fetches, for a command, a controller
       that was built here, it belongs in `cli/`. If it only implements one module's port against a real system, it
       belongs in `adapters/`.
-    may_import: everything
-    libraries: [sqlmodel, typer]
+    imports:
+      may: everything
+      libraries: [sqlmodel, typer]
     untested: it wires the app and holds no rule; it has no test of its own
     folders:
       migrations: the schema and its history; the only place migrations live
@@ -150,7 +159,8 @@ parts:
       it is listed, on purpose, in `domain/published.py`, and re-exported here as an id is; everything else the
       module hands out is a type of its own here. If it is a `domain/` entity, a service type or a port, it stays
       where it is, and a DTO goes here instead.
-    may_import: ["domain/values:*Id", "domain/published", kernel, kernel-logic]
+    imports:
+      may: ["domain/values:*Id", "domain/published", kernel, kernel-logic]
     uses: {never: published}
     tests: integration
     package_only: true
@@ -164,7 +174,8 @@ parts:
       module's `application/logic/`. If it is a value or a type rather than a function, it belongs in `kernel/`. If it
       must load or save anything, it is a service step. `xarch check` holds it to its `uses.never` list: no clock and
       no I/O by name.
-    may_import: [kernel]
+    imports:
+      may: [kernel]
     uses: {never: pure}
     holds: {functions: {}, records: {immutable: true}, exceptions: {}}
     tests: unit

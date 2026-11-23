@@ -21,8 +21,9 @@ TEXT = "names-services: reads class\n"
                  NoRuleShown("parts.path", "named", "it expands to no rule of the engine here: the profile does not "
                                                     "set it, or it is checked by a check of its own"),
                  id="a key of no rule of the engine comes back with why"),
-    pytest.param({"named": NAMED}, ExplainRule("parts.types_only", "named"),
-                 KeyUnset("parts.types_only", "named", KeyFacts("parts:\n  a: {types_only: [b]}\n", "types_only", "part")),
+    pytest.param({"named": NAMED}, ExplainRule("parts.imports.may.types_only", "named"),
+                 KeyUnset("parts.imports.may.types_only", "named",
+                          KeyFacts("parts:\n  a: {imports: {may: [{b: types_only}]}}\n", "types_only", "part")),
                  id="a key the engine expands that the profile sets on no part comes back unset, as the format says it"),
     pytest.param({"named": NAMED}, ExplainRule("parts.services.holds", "named"),
                  KeyUnset("parts.services.holds", "named"), id="so does such a key of one part"),
@@ -31,8 +32,8 @@ TEXT = "names-services: reads class\n"
                  id="such a key whose format cannot be explained comes back with why"),
 ])
 def test_rule(given, when, then):
-    profiles = FakeProfiles(given, keys={"parts.types_only": KeyFacts("parts:\n  a: {types_only: [b]}\n", "types_only",
-                                                                      "part"),
+    profiles = FakeProfiles(given, keys={"parts.imports.may.types_only": KeyFacts("parts:\n  a: {imports: {may: [{b: types_only}]}}\n",
+                                                                  "types_only", "part"),
                                          "parts.holds.classes.immutable": ProfileUnusable(
                                              "python: cannot read the data file")})
     assert controller(FakeSourceTree(None, {}), profiles).explain_rule(when) == then

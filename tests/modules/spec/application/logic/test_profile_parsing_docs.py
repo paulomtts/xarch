@@ -151,7 +151,7 @@ def test_excluded_folders_and_hints_are_as_they_were():
 
 def test_the_guards_list_of_the_docs_says_in_words_that_a_part_may_import_any_outside_package():
     document = layered()
-    document["parts"]["store"]["libraries"] = ["sqlmodel"]
-    document["parts"]["shared"]["libraries"] = "everything"
+    document["parts"]["store"].setdefault("imports", {})["libraries"] = ["sqlmodel"]
+    document["parts"]["shared"].setdefault("imports", {})["libraries"] = "everything"
     text = fill("{{guards}}", parsed(document), "layered.md", file_types=FILE_TYPES)
     assert "`shared/`: any outside package" in text and "`shared/`: *" not in text

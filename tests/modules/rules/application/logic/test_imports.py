@@ -81,17 +81,17 @@ def test_a_violation_names_its_rule():
 
 @pytest.mark.parametrize("file, fix", [
     pytest.param(source("modules/docs/domain/values.py", imp(3, "app.platform", "sql")),
-                 "import only domain/, kernel/ in domain/ of modules/docs (parts.domain.may_import), or move this code to "
+                 "import only domain/, kernel/ in domain/ of modules/docs (parts.domain.imports.may), or move this code to "
                  "adapters/, which may import it", id="the parts the importer may import, and the ones that may import the target"),
     pytest.param(source("modules/docs/__init__.py", imp(1, "app.kernel", "ids")),
                  "drop the import of kernel/, or move this code to domain/, contract/, controller/ or another part that "
                  "may import it", id="a place that may import nothing, and more parts that may import the target "
                                      "than are named"),
     pytest.param(source("kernel/x.py", imp(1, "app.modules.docs.domain", "doc")),
-                 "import only kernel/ in kernel/ (parts.kernel.may_import), or move this code to contract/, controller/, services/ or "
+                 "import only kernel/ in kernel/ (parts.kernel.imports.may), or move this code to contract/, controller/, services/ or "
                  "another part that may import it", id="more parts that may import the target than are named"),
     pytest.param(source("modules/docs/domain/values.py", imp(1, "app.scripts.x"), imp(2, "app.modules.docs", "x")),
-                 "import only domain/, kernel/ in domain/ of modules/docs (parts.domain.may_import), or move this code to a "
+                 "import only domain/, kernel/ in domain/ of modules/docs (parts.domain.imports.may), or move this code to a "
                  "part that may import structure/", id="no part names the target's part"),
 ])
 def test_a_violation_says_what_to_do(file, fix):
@@ -124,7 +124,7 @@ def test_a_target_with_a_name_pattern_allows_only_the_names_it_matches(imports, 
     found = violations([source(CONTRACT, *imports), VALUES], NARROWED, "app")
     assert [str(v) for v in found] == expected
     assert {v.fix for v in found} <= {
-        "import from domain/ of modules/docs only names that match *Id (parts.contract.may_import), or move what needs "
+        "import from domain/ of modules/docs only names that match *Id (parts.contract.imports.may), or move what needs "
         "the rest to a part that may import it"}
 
 

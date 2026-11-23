@@ -1,6 +1,6 @@
 """A profile file: the keys that say what code of a part holds and how it may be used (holds, the kinds it lists with
-their settings names, immutable and built_by, and types_only), a name pattern on a target of may_import, what each
-test of a tier must reach, and the guards private-imports and dead-code's untested."""
+their settings names, immutable and built_by, and a types_only mark on an entry of imports.may), a name pattern
+on a target of imports.may, what each test of a tier must reach, and the guards private-imports and dead-code's untested."""
 import pytest
 
 from tests.modules.spec.languages import BRACE, PYTHON
@@ -20,8 +20,9 @@ def with_part(**keys) -> dict:
 
 def test_a_part_says_what_its_files_hold_and_how_its_classes_are_named_and_built():
     part = parsed(with_part(holds={"classes": {"names": "*Service", "built_by": ["api"]}},
-                            types_only=["store"])).parts["service"]
-    assert (part.holds, part.types_only) == ((Held("classes", ("*Service",), built_by=("api",)),), ("store",))
+                            imports={"may": [{"store": "types_only"}, "shared"]})).parts["service"]
+    assert (part.holds, part.types_only) == ((Held("classes", ("*Service",), built_by=("api",)),),
+                                             (Target("store", "own"),))
     assert not any(hasattr(part, key) for key in ("no_callbacks", "names", "built_by", "immutable"))
 
 
@@ -141,10 +142,6 @@ def test_a_part_there_to_be_shared_says_by_how_many_users_and_is_not_shared_when
 
 
 @pytest.mark.parametrize("keys, expected", [
-    pytest.param({"types_only": ["ghost"]}, "parts.service.types_only: no part named 'ghost'",
-                 id="types_only, no such part"),
-    pytest.param({"types_only": ["api"]}, "parts.service.types_only: 'api' is not in `may_import`, so no file could "
-                                          "import it to use as a type: add it there, or drop it", id="types_only, not importable"),
     pytest.param({"shared": 1}, "parts.service.shared: must be a whole number of users, at least 2, such as 2; leave it "
                                 "out for a part that is not there to be shared", id="shared, one user"),
     pytest.param({"shared": True}, "parts.service.shared: must be a whole number of users, at least 2, such as 2; leave "
@@ -154,15 +151,8 @@ def test_a_bad_key_of_a_part_is_refused(keys, expected):
     assert problems(with_part(**keys)) == [f"layered.yaml: {expected}"]
 
 
-def test_types_only_is_met_by_a_part_that_may_import_everything():
-    document = layered()
-    document["parts"]["api"]["may_import"] = "everything"
-    document["parts"]["api"]["types_only"] = ["store"]
-    assert parsed(document).parts["api"].types_only == ("store",)
-
-
-def test_a_target_of_may_import_may_narrow_what_is_imported_by_a_name_pattern():
-    document = with_part(may_import=["store:*Id", "shared/text:Word*"])
+def test_a_target_of_imports_may_may_narrow_what_is_imported_by_a_name_pattern():
+    document = with_part(imports={"may": ["store:*Id", "shared/text:Word*"]})
     assert parsed(document).rules["service"] == (Target("store", "own", (), "*Id"), Target("shared", "none", ("text",),
                                                                                            "Word*"))
 
@@ -173,13 +163,13 @@ def test_a_target_of_may_import_may_narrow_what_is_imported_by_a_name_pattern():
                               "`:`, `*` standing for any text", id="a pattern with a space"),
 ])
 def test_a_bad_name_pattern_is_refused(value, expected):
-    assert problems(with_part(may_import=[value])) == [f"layered.yaml: parts.service.may_import: {expected}"]
+    assert problems(with_part(imports={"may": [value]})) == [f"layered.yaml: parts.service.imports.may: {expected}"]
 
 
-def test_must_import_takes_no_name_pattern():
-    document = with_part(may_import=["store:*Id"], must_import=["store:*Id"])
+def test_imports_must_takes_no_name_pattern():
+    document = with_part(imports={"may": ["store:*Id"], "must": ["store:*Id"]})
     assert problems(document) == [
-        "layered.yaml: parts.service.must_import: 'store:*Id' has a name pattern, which this key does not take: drop "
+        "layered.yaml: parts.service.imports.must: 'store:*Id' has a name pattern, which this key does not take: drop "
         "':*Id'"]
 
 

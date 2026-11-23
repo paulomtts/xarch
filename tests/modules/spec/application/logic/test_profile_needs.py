@@ -117,7 +117,7 @@ def test_a_key_whose_check_reads_a_fact_supplied_partly_loads_and_is_kept_as_app
 
 
 def test_a_key_whose_facts_are_all_supplied_exactly_is_neither_refused_nor_approximate():
-    assert parsed(services(libraries=["sqlmodel"]), languages=LANGUAGES).approximate == ()
+    assert parsed(services(imports={"may": ["store", "shared"], "libraries": ["sqlmodel"]}), languages=LANGUAGES).approximate == ()
 
 
 def test_a_language_whose_data_file_says_nothing_of_its_reader_holds_no_key_to_it():
@@ -134,12 +134,12 @@ def test_the_keys_a_profile_sets_are_found_in_every_scope_and_through_a_testing_
     document, presets = everywhere()
     found = short(document, presets, PARTLY)
     configured = [("testing.skips", "testing.skips"), ("testing.table", "testing.table"),
-                  ("testing.mocks", "testing.mocks"), ("parts.api.may_import", "parts.<part>.may_import"),
-                  ("parts.service.may_import", "parts.<part>.may_import"), ("parts.service.holds", "parts.<part>.holds"),
+                  ("testing.mocks", "testing.mocks"), ("parts.api.imports.may", "parts.<part>.imports.may"),
+                  ("parts.service.imports.may", "parts.<part>.imports.may"), ("parts.service.holds", "parts.<part>.holds"),
                   ("parts.service.holds.classes", "parts.<part>.holds.classes"),
                   ("parts.service.uses.never", "parts.<part>.uses.never"),
-                  ("parts.store.may_import", "parts.<part>.may_import"),
-                  ("parts.store.libraries", "parts.<part>.libraries"), ("reserved", "reserved"), ("tiers", "tiers"),
+                  ("parts.store.imports.may", "parts.<part>.imports.may"),
+                  ("parts.store.imports.libraries", "parts.<part>.imports.libraries"), ("reserved", "reserved"), ("tiers", "tiers"),
                   ("tiers.unit.uses.apply_never", "tiers.<tier>.uses.apply_never"),
                   ("tiers.unit.must_import", "tiers.<tier>.must_import"),
                   ("guards.no-comments", "guards.no-comments"), ("guards.no-twins", "guards.no-twins"),
@@ -314,7 +314,8 @@ def unsupplied(address: str) -> str:
 
 @pytest.mark.parametrize("keys, address", [
     pytest.param({"package_only": True}, "parts.service.package_only", id="package_only"),
-    pytest.param({"must_import": ["store"]}, "parts.service.must_import", id="a part's must_import"),
+    pytest.param({"imports": {"may": ["store"], "must": ["store"]}}, "parts.service.imports.must",
+                 id="a part's imports.must"),
 ])
 def test_a_key_that_reads_the_package_file_as_written_is_refused_under_a_language_with_none(keys, address):
     assert problems(flat(**keys), languages=FLATS) == [unsupplied(address)]
@@ -337,7 +338,7 @@ def test_file_package_is_a_fact_after_class_interface_and_only_the_keys_that_rea
     assert facts[facts.index("class.interface") + 1] == "file.package"
     assert FACTS["file.package"] == "a file stands for the folder that holds it"
     needing = sorted(key.address for key in KEYS if "file.package" in key.needs)
-    assert needing == ["guards.dead-code.untested", "parts.<part>.must_import", "parts.<part>.package_only"]
+    assert needing == ["guards.dead-code.untested", "parts.<part>.imports.must", "parts.<part>.package_only"]
 
 
 def test_comment_doc_is_a_fact_after_file_package_and_comment_says_the_marker_it_opens_with():
@@ -500,3 +501,29 @@ def test_the_needs_refused_are_those_of_the_kinds_and_settings_listed_alone():
     found = short(held("untopped", {"classes": {"names": "*Service", "immutable": False}}), {}, UNTOPPED)
     assert [(item.address, item.fact, item.unread) for item in found] == [
         ("parts.service.holds", "function.top_level", True)]
+
+
+def test_a_mark_needs_what_types_only_reads_at_its_address():
+    document = services(imports={"may": ["store", {"shared": "types_only"}]})
+    assert [(item.address, item.fact) for item in short(document, {}, TOY)] == [
+        ("parts.service.imports.may.types_only", fact) for fact in ("call", "use", "module_functions",
+                                                                    "import.resolved")]
+
+
+@pytest.mark.parametrize("may", [
+    pytest.param(["store", "shared"], id="no mark"),
+    pytest.param("everything", id="everything"),
+    pytest.param(["store", {"shared": "types"}], id="a mode refused"),
+])
+def test_a_may_with_no_mark_needs_nothing_of_types_only(may):
+    assert short(services(imports={"may": may}), {}, TOY) == []
+
+
+def test_must_and_libraries_fall_short_at_their_new_addresses():
+    no_standard = replace(TOY, checked=replace(TOY.checked, supplies=tuple(
+        supply for supply in TOY.checked.supplies if supply.fact != "import.standard")))
+    document = layered(language="toy")
+    document["parts"]["store"]["imports"]["must"] = ["shared"]
+    found = {(item.address, item.fact) for item in short(document, {}, no_standard)}
+    assert {("parts.store.imports.must", "import.standard"),
+            ("parts.store.imports.libraries", "import.standard")} <= found

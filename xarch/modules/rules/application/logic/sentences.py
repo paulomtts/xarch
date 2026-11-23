@@ -144,7 +144,7 @@ def _holding(profile: Profile, kind: str) -> str:
 def _mirrored_may_import(found: Found, profile: Profile) -> str:
     """The keys of what the parts a test mirrors may import, then of what its tier's tests may also import, if set."""
     tier = next((t for t in profile.tiers if t.name == found.read.tier), None)
-    parts = ", ".join(f"parts.{p}.may_import" for p in found.read.mirrors)
+    parts = ", ".join(f"parts.{p}.imports.may" for p in found.read.mirrors)
     return f"{parts}; tiers.{tier.name}.may_also_import" if tier is not None and tier.may_also_import else parts
 
 

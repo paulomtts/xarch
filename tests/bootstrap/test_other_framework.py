@@ -17,7 +17,8 @@ parts:
   controller:
     path: modules/<module>/application/controller.py
     role: maps
-    may_import: [contract, ports]
+    imports:
+      may: [contract, ports]
     tests: integration
   ports:      {path: modules/<module>/application/ports, role: ports, tests: integration}
 tiers:

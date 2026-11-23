@@ -21,6 +21,7 @@ from xarch.modules.spec.domain.profile_keys import (
     CHOICE_LANGUAGES,
     CHOICE_PRESETS,
     GUARD,
+    PART_IMPORTS_MAY,
     PROFILE,
     SCOPES,
     Key,
@@ -68,6 +69,8 @@ def containers(node, steps: list[str]):
     if not steps:
         if isinstance(node, dict):
             yield node
+        elif isinstance(node, list):
+            yield from (item for item in node if isinstance(item, dict))
         return
     step, rest = steps[0], steps[1:]
     if not isinstance(node, dict):
@@ -97,7 +100,7 @@ def test_the_plain_address_of_every_key_is_unique_and_has_no_placeholder():
     plains = [plain(key.address) for key in KEYS]
     assert len(set(plains)) == len(plains)
     assert not [p for p in plains if "<" in p or "[" in p]
-    assert plain("parts.<part>.may_import") == "parts.may_import"
+    assert plain("parts.<part>.imports.may") == "parts.imports.may"
     assert plain("docs.naming[].kind") == "docs.naming.kind"
     assert plain("tiers.<tier>.docs.subject") == "tiers.docs.subject"
 
@@ -121,7 +124,8 @@ def test_the_guards_the_table_names_are_the_guards_the_loader_reads():
 @pytest.mark.parametrize("key", KEYS, ids=lambda key: plain(key.address))
 def test_the_example_of_a_key_uses_the_key_and_loads_in_the_smallest_profile_it_needs(key):
     document = document_of(key)
-    assert any(key.name in holder for holder in holders(key, document)), CATALOGUE.texts[key.address].example
+    assert any(key.name in holder or key.name in holder.values() for holder in holders(key, document)), \
+        CATALOGUE.texts[key.address].example
     load(document)
 
 
@@ -154,7 +158,7 @@ def test_the_smallest_profile_loads_and_every_symbol_is_explained():
     assert CATALOGUE.symbols and all(symbol and meaning for symbol, meaning in CATALOGUE.symbols)
 
 
-@pytest.mark.parametrize("scope", sorted(SCOPES))
+@pytest.mark.parametrize("scope", sorted(set(SCOPES) - {PART_IMPORTS_MAY}))
 def test_the_keys_the_loader_names_in_its_unknown_key_message_are_the_keys_of_the_table(scope):
     document = document_of(keys_of(scope)[0])
     holders(keys_of(scope)[0], document)[0]["zz_unknown"] = 1

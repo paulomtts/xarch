@@ -150,9 +150,9 @@ def part_problems(path: str = SERVICE, *calls: Call, checked=PARTS_ON, uses: tup
 def test_a_part_that_uses_a_part_only_as_a_type_may_not_call_it():
     assert part_problems(SERVICE, Call(4, RESULT), Call(5, (*RESULT, "of"))) == [
         f"app/{SERVICE}:4: services/ of modules/docs uses contract/ of modules/docs only as a type: it may not call "
-        "app.modules.docs.contract.Published (parts.services.types_only)",
+        "app.modules.docs.contract.Published (parts.services.imports.may.types_only)",
         f"app/{SERVICE}:5: services/ of modules/docs uses contract/ of modules/docs only as a type: it may not call "
-        "app.modules.docs.contract.Published.of (parts.services.types_only)"]
+        "app.modules.docs.contract.Published.of (parts.services.imports.may.types_only)"]
 
 
 def test_the_fix_names_the_parts_that_may_call_it():
@@ -165,7 +165,7 @@ def test_a_part_may_not_reference_a_function_of_a_types_only_part():
     use = Use(6, ("app", "modules", "docs", "contract", "results", "published"), 6)
     assert part_problems(SERVICE, uses=(use,)) == [
         f"app/{SERVICE}:6: services/ of modules/docs uses contract/ of modules/docs only as a type: it may not "
-        "reference app.modules.docs.contract.results.published, a function (parts.services.types_only)"]
+        "reference app.modules.docs.contract.results.published, a function (parts.services.imports.may.types_only)"]
 
 
 @pytest.mark.parametrize("path, call", [
