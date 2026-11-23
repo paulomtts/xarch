@@ -180,6 +180,7 @@ def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
         (parsed(holding()), parsed(holding(classes={"names": "*Service", "immutable": True, "built_by": ["api"]},
                                            functions={"names": "is_*"}, records={"names": "*Record", "immutable": True},
                                            exceptions={"names": "*Error"}))),
+        (parsed(layered()), parsed(given(layered(), "service", shared=3))),
     ]
     found = [item for custom, base in pairs for item in loosened(custom, base)]
     assert sorted({item.key for item in found}) == sorted(LOOSER)
@@ -419,6 +420,8 @@ def holding(**holds) -> dict:
     pytest.param(covered(guards={"no-twins": {"translated": ["api"]}}), id="the translations no-twins accepts"),
     pytest.param(marked(["store", {"api": "types_only"}]), id="a target naming it marked types_only"),
     pytest.param(given(layered(), "service", holds={"classes": {"built_by": ["api"]}}), id="a built_by naming it"),
+    pytest.param(given(layered(), "api", holds={"classes": {"names": "*Api", "built_by": ["service"]}}, shared=2),
+                 id="the kinds the part holds, their settings and how widely it is shared"),
 ])
 def test_each_key_of_a_part_renamed_in_place_is_compared_with_the_part_it_pairs_with(profile):
     """Each key is read from the part api pairs with, so a copy that only renames api is no looser."""
@@ -512,3 +515,25 @@ def test_a_kind_a_part_may_now_define_at_the_top_level_is_looser(base, custom, k
 def test_a_setting_of_a_kind_held_dropped_or_widened_is_looser(base, custom, found):
     assert loosened(parsed(custom), parsed(base)) == tuple(
         Loosened(key, "service", what, sentence) for key, what, sentence in found)
+
+
+@pytest.mark.parametrize("base, custom, found", [
+    pytest.param(given(layered(), "service", shared=3), layered(),
+                 [("", "service is no longer held to be shared (parts.service.shared)")], id="dropped"),
+    pytest.param(given(layered(), "service", shared=3), given(layered(), "service", shared=2),
+                 [("2", "the public names of service need only 2 users, fewer than the profile it is compared with asks "
+                        "(parts.service.shared)")], id="lowered"),
+    pytest.param(given(layered(), "service", shared=2), given(layered(), "service", shared=3), [], id="raised"),
+    pytest.param(given(layered(), "service", shared=3), given(layered(), "service", shared=3), [], id="kept"),
+    pytest.param(layered(), given(layered(), "service", shared=2), [], id="newly set"),
+])
+def test_a_part_held_to_fewer_users_of_its_public_names_is_looser(base, custom, found):
+    assert loosened(parsed(custom), parsed(base)) == tuple(
+        Loosened("shared", "service", what, sentence) for what, sentence in found)
+
+
+def test_a_part_that_pairs_with_none_is_compared_neither_on_what_it_holds_nor_on_how_widely_it_is_shared():
+    custom = renamed(layered(), "api", "routes")
+    custom["parts"]["routes"]["path"] = "src/<module>/routes"
+    base = given(layered(), "api", shared=3, holds={"classes": {"names": "*Api"}})
+    assert loosened(parsed(custom), parsed(base)) == ()

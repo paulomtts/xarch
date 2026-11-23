@@ -54,7 +54,7 @@ HELD = ("holds.classes.names", "holds.classes.immutable", "holds.classes.built_b
         "holds.records.names", "holds.records.immutable", "holds.exceptions.names")
 """The key of each setting of a kind of holds, a way it is looser listed under, kind by kind in the order of KINDS."""
 LOOSER = ("imports.may", "imports.may.types_only", "imports.libraries", "uses.never", "imports.must", "untested",
-          LITMUS, "holds", *HELD, "imports.types_only", "imports.also", "uses.apply_never", "testing.skips",
+          LITMUS, "holds", *HELD, "shared", "imports.types_only", "imports.also", "uses.apply_never", "testing.skips",
           "files.pinned", "reserved", "known", "translated", "review.never", "review.mask", "evals.placement.lines")
 """Every key a way a profile is looser is listed under, each said by a sentence of its own."""
 LOW = 0.75
@@ -262,6 +262,10 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
               if kind not in _allowed(base.parts[pairs[name]])]
     for name in shared:
         found += _settings_looser(custom.parts[name], base.parts[pairs[name]], pairs)
+    for name in shared:
+        before, now = base.parts[pairs[name]].shared, custom.parts[name].shared
+        if before is not None and (now is None or now < before):
+            found.append(("shared", name, "" if now is None else str(now)))
     paired = _paired_tiers(custom, base, pairs)
     tiers = {paired[tier.name]: tier for tier in custom.tiers if tier.name in paired}
     for tier in base.tiers:
@@ -418,6 +422,11 @@ def _sentence(key: str, part: str, what: str = "") -> str:
             return f"{part} may also define {what} at the top level (parts.{part}.holds)"
         case _ if key.startswith("holds."):
             return _held_sentence(key, part, what)
+        case "shared" if not what:
+            return f"{part} is no longer held to be shared (parts.{part}.shared)"
+        case "shared":
+            return (f"the public names of {part} need only {what} users, fewer than the profile it is compared with asks "
+                    f"(parts.{part}.shared)")
         case "imports.types_only":
             return f"the {part} tests may now call {what} (tiers.{part}.imports.types_only)"
         case "imports.also":
