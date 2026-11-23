@@ -457,7 +457,8 @@ def _never_lists(value: Any, problems: list[str],
         if not ck.text(name) or not ck.PART_NAME.fullmatch(name):
             problems.append(f"never: {name!r} is not a list name: use letters, digits, '_' and '-'")
         else:
-            never_lists[name] = ck.never_names(names, f"never.{name}", problems, language)
+            read = ck.never_names(names, f"never.{name}", problems, language)
+            never_lists[name] = None if read is None else tuple(steps for steps in read if steps is not None)
     return never_lists
 
 

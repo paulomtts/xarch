@@ -16,7 +16,15 @@ NOT_OUTSIDE = "is not an outside name such as <package>.<name>, nor a package, n
 def forbidding(item: str) -> tuple[tuple[tuple[str, ...], ...] | None, list[str]]:
     """What a `never` list of the one item comes to: the names it bans, and every problem."""
     problems: list[str] = []
-    return never_names([item], "at", problems, PYTHON), problems
+    read = never_names([item], "at", problems, PYTHON)
+    return (None if read is None else tuple(steps for steps in read if steps is not None)), problems
+
+
+def test_each_item_of_a_never_list_keeps_its_place_and_a_refused_one_holds_none():
+    problems: list[str] = []
+    assert never_names(["socket", "pkg..x", "socket", ".absolute()"], "at", problems, PYTHON) == (
+        ("socket",), None, None, ("", "absolute()"))
+    assert problems == [f"at: 'pkg..x' {NOT_OUTSIDE}", "at: 'socket' is listed twice"]
 
 
 @pytest.mark.parametrize("text, language, name", [

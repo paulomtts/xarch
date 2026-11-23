@@ -615,17 +615,20 @@ def package_names(value: Any, where: str, problems: list[str], language: Languag
 
 
 def never_names(value: Any, where: str, problems: list[str],
-                language: Language) -> tuple[tuple[str, ...], ...] | None:
-    """The names a part may not use: outside names, <package><member><name>, or packages alone, read by the language's
-    patterns; a builtin is written in the language's namespace for them, <namespace><member><name>. A method called on
-    anything is written `.<name>()` and kept as written, split at its dot: ("", "<name>()")."""
+                language: Language) -> tuple[tuple[str, ...] | None, ...] | None:
+    """The names a part may not use, one for each item in its place, None for an item refused: outside names,
+    <package><member><name>, or packages alone, read by the language's patterns; a builtin is written in the language's
+    namespace for them, <namespace><member><name>. A method called on anything is written `.<name>()` and kept as
+    written, split at its dot: ("", "<name>()")."""
     member = language.checked.member
     if not isinstance(value, list) or not value:
         problems.append(f"{where}: must be a non-empty list of outside names, packages or methods, such as "
                         f"[{_such(language)}, <package>, .<name>()]")
         return None
     found: list[tuple[str, ...]] = []
+    read: list[tuple[str, ...] | None] = []
     for item in value:
+        count = len(problems)
         method = _method_name(item, language) if isinstance(item, str) else None
         steps = (("", f"{method}{CALLED}") if method is not None
                  else _outside(item, language, language.namespace) if isinstance(item, str) else None)
@@ -644,7 +647,8 @@ def never_names(value: Any, where: str, problems: list[str],
             problems.append(f"{where}: {item!r} is listed twice")
         else:
             found.append(steps)
-    return tuple(found)
+        read.append(steps if len(problems) == count else None)
+    return tuple(read)
 
 
 def scenario_places(results: Any, tier: Any, suffix: Any, parts: dict[str, Part], declared: set[str],
