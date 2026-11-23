@@ -69,7 +69,7 @@ class Profile:
     alone may build the classes it holds to classes; shared, by part, the fewest users each public name of a part
     declared shared must have (see shared); private_imports switches the private-imports guard on. hints
     holds the profile's own advice, by rule id. language is the language of the app. reserved holds the
-    standard-library modules (by top-level name, each with why) a part imports only when its libraries list them.
+    standard-library modules (by top-level name, each with why) a part imports only when its imports_libraries list them.
     approximate holds the keys whose check reads a fact the language supplies only partly. written are the checks the
     profile writes itself, by id, as spec read them; checks are those checks made into rules, in the profile's order
     (none until they are made, see own_checks). default_tests is the folder the tests go in, from the folder holding
