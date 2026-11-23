@@ -215,6 +215,12 @@ def test_public_is_a_fact_after_comment_doc():
                                "language decides it")
 
 
+def test_class_record_is_a_fact_after_public():
+    facts = list(FACTS)
+    assert facts[facts.index("public") + 1] == "class.record"
+    assert FACTS["class.record"] == "whether a class is a record, as the language writes one"
+
+
 def test_private_imports_is_refused_under_a_language_whose_reader_does_not_say_which_names_are_public():
     unsaid = replace(TOY, checked=replace(TOY.checked, supplies=tuple(
         supply for supply in TOY.checked.supplies if supply.fact != "public")))

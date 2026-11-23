@@ -44,6 +44,7 @@ FACTS: dict[str, str] = {
     "comment.doc": "whether a comment is a doc comment",
     "public": "whether a name a file defines, or takes by an import, is for other files to use, as the language "
               "decides it",
+    "class.record": "whether a class is a record, as the language writes one",
     "function": "the functions a file defines, at the top level and in its classes: name, owner, line",
     "function.statements": "how many statements a function's body holds, and how many of them do nothing",
     "function.shape": "a fingerprint of a function's code, the same for two functions that do the same",

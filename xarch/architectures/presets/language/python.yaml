@@ -76,6 +76,7 @@ supplies:
   class.named: exact
   class.immutable: exact
   class.interface: exact
+  class.record: exact
   function: exact
   function.statements: exact
   function.shape: exact
