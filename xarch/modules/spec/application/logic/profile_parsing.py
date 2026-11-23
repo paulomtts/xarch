@@ -168,7 +168,8 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     shortfalls = needs.short(document, presets or {}, language)
     problems += needs.refused(shortfalls, language)
     based_on = _based_on(document["based_on"], bundled, problems) if "based_on" in document else ""
-    never_lists = nl.never_lists(document["never"], problems, language) if "never" in document else {}
+    never_lists = (nl.never_lists(document["never"], problems, language, _named_packages(document, language))
+                   if "never" in document else {})
     specs = _specs(document.get("parts", {}), problems)
     declared = set(specs)
     built = _layout(specs, problems)
@@ -445,6 +446,20 @@ def _libraries(spec: Mapping[Any, Any], where: str, problems: list[str], languag
         problems.append(f"{where}: must be a list of top-level import names such as [sqlmodel], or {WORD}")
         return ()
     return ck.package_names(value, where, problems, language, reserved) or ()
+
+
+def _named_packages(document: Mapping[Any, Any], language: Language) -> dict[str, str]:
+    """Each package the profile names, by the key of the first place naming it: the parts' `libraries` in the order the
+    file writes them, then `reserved`. Read silently: each is said at its own place."""
+    reserved = ck.reserved_modules(document["reserved"], [], language) if "reserved" in document else {}
+    parts = document.get("parts")
+    named: dict[str, str] = {}
+    for part, spec in parts.items() if isinstance(parts, Mapping) else ():
+        found = _libraries(spec, f"parts.{part}.libraries", [], language, reserved) if isinstance(spec, Mapping) else ()
+        named |= {package: f"parts.{part}.libraries" for package in found
+                  if package != EVERYTHING and package not in named}
+    named |= {module: "reserved" for module in reserved if module not in named}
+    return named
 
 
 def _never_refs(specs: dict[str, Any], parts: dict[str, Part],

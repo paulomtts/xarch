@@ -1,6 +1,8 @@
 """A part's `uses` group, `uses: {never: <list>}`, naming one of the top-level `never` lists of the calls and modules a
 part never uses, and a tier's, `uses: {apply_never: true}`, holding its tests to the list of the part they mirror: each
 refused at its address when it is written wrong, and the guards section of the docs saying what the lists hold."""
+from dataclasses import replace
+
 import pytest
 
 from tests.modules.spec.format_files import FILE_TYPES
@@ -32,6 +34,17 @@ def service_uses(uses) -> dict:
 EMPTY = ("must be a non-empty list of outside names, packages or methods, such as [<package>.<name>, <package>, "
          ".<name>()]")
 TIME_SOCKET = (("time", "time"), ("socket",))
+
+
+def standard(name: str, title: str = "Python") -> str:
+    """The refusal of a list named like a package of the language's standard library."""
+    return (f"never.{name}: a list may not take the name of a package of the {title} standard library, since an entry "
+            f"{name} would name the list: rename it")
+
+
+def named(name: str, key: str) -> str:
+    """The refusal of a list named like a package the profile names at key."""
+    return f"never.{name}: a list may not take the name of a package this profile names ({key}): rename it"
 
 
 def naming(never, uses) -> dict:
@@ -444,3 +457,56 @@ def test_a_chain_and_a_loop_of_many_lists_are_read_whole():
     assert len(found) == 1
     assert found[0].startswith("layered.yaml: never.l0: includes itself, through never.l1, never.l2, never.l3, ")
     assert found[0].endswith(f", never.l{count - 1}: drop one of the includes")
+
+
+def test_a_list_named_like_a_standard_package_is_refused_and_an_entry_of_that_name_still_includes_it():
+    assert problems(covered(never={"pure": ["socket"], "socket": ["time.time"]})) == [
+        f"layered.yaml: {standard('socket')}"]
+
+
+def test_the_standard_library_a_list_may_not_be_named_from_is_the_language_s():
+    document = layered(never={"fs": ["lodash"], "pure": ["fs"]})
+    document["parts"]["service"]["uses"] = {"never": "pure"}
+    assert problems(document, languages={"brace": replace(BRACE, standard_names=frozenset({"fs"}))}) == [
+        f"layered.yaml: {standard('fs', 'Brace')}"]
+    assert parsed(document).uses_never == {"service": (("lodash",),)}
+
+
+def test_a_list_named_like_a_package_a_part_lists_is_refused_naming_the_first_part_that_lists_it():
+    assert problems(covered(never={"sqlmodel": ["x.one"]})) == [
+        f"layered.yaml: {named('sqlmodel', 'parts.store.libraries')}"]
+    document = covered(never={"sqlmodel": ["x.one"]})
+    document["parts"]["service"]["libraries"] = ["sqlmodel"]
+    assert problems(document) == [f"layered.yaml: {named('sqlmodel', 'parts.service.libraries')}"]
+
+
+def test_a_list_named_like_a_reserved_module_is_refused_once_as_a_standard_package():
+    document = covered(never={"ast": ["x.one"]}, reserved={"ast": "only the reader parses the language"})
+    assert problems(document) == [f"layered.yaml: {standard('ast')}"]
+
+
+def test_a_part_whose_libraries_are_everything_names_no_package():
+    document = covered(never={"sqlmodel": ["x.one"]})
+    document["parts"]["store"]["libraries"] = "everything"
+    assert parsed(document).uses_never == {}
+
+
+def test_a_part_naming_a_list_refused_for_its_name_adds_no_problem_of_its_own():
+    assert problems(naming({"socket": ["time.time"]}, "socket")) == [f"layered.yaml: {standard('socket')}"]
+
+
+def test_a_list_s_name_problem_comes_first_then_its_entries_then_its_includes():
+    document = covered(never={"pure": ["os.environ"], "socket": ["pure", "os.environ", "2fast"]})
+    assert problems(document) == [
+        f"layered.yaml: {standard('socket')}",
+        f"layered.yaml: never.socket: '2fast' {METHOD}",
+        "layered.yaml: never.socket: 'os.environ' is listed in never.pure, which never.socket includes: drop it here"]
+
+
+def test_never_reserved_and_libraries_are_said_once_each_in_their_own_place():
+    document = covered(never={"pure": ["datetime..now"]}, reserved={"json": ""})
+    document["parts"]["store"]["libraries"] = ["2fast"]
+    assert problems(document) == [
+        f"layered.yaml: never.pure: 'datetime..now' {METHOD}",
+        "layered.yaml: reserved.json: must say in one line why it is reserved",
+        "layered.yaml: parts.store.libraries: '2fast' is not a package name the language Python allows"]
