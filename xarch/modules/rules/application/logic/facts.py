@@ -41,7 +41,8 @@ turns its language's imports and names into such paths, and a fact into the app 
 and the facts derived from them over the whole app:
 
     construction        a call of a class the app defines at the top level of a file, read through the import that
-                        binds the callee: path the callee, name the class, at where the class's file sits
+                        binds the callee: path the callee, name the class, at where the class's file sits; exception
+                        and record when the class it builds is one (below)
     function-reference  a use that reaches a function the app defines at the top level of a file (the first prefix,
                         from the one its import bound, whose last name the file binds to a function alone), other than
                         the callee of a call on its line, once for each such call: target that function below the
@@ -102,7 +103,8 @@ def facts_of(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Pr
     defined = Defined(root, {(root, *steps, c.name): _placed(profile, cache, steps) for f, steps in parsed
                              for c in f.classes},
                       {steps: frozenset(f.module_functions) for f, steps in parsed},
-                      frozenset(_exceptions(parsed, root)))
+                      frozenset(_exceptions(parsed, root)),
+                      frozenset((root, *steps, c.name) for f, steps in parsed for c in f.classes if c.record))
     covered = {s.part: tier.name for tier in reversed(profile.tiers) for s in tier.subject}
     placed = [_covered(Read(file, steps, package, False, _placed(profile, cache, steps)), covered)
               for file, steps, package in app]
@@ -197,7 +199,8 @@ def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: 
                               at=_placed(profile, cache, c.func[1:]) if c.func[:1] == (root,) else None)
                          for c in file.calls)
         case "construction":
-            return tuple(Fact("construction", c.line, c.func, c.func[-1], at=defined.classes[c.func])
+            return tuple(Fact("construction", c.line, c.func, c.func[-1], _built(c.func, defined),
+                              at=defined.classes[c.func])
                          for c in file.calls if c.func in defined.classes)
         case "function-reference":
             return tuple(_references(file, profile, cache, defined))
@@ -243,6 +246,13 @@ def _class(cls: Class, read: Read, defined: Defined, ports: dict[str, Class]) ->
     return frozenset(n for n, on in (("exception", exception), ("record", cls.record),
                                      ("interface", ports.get(cls.name) is cls), ("immutable", cls.immutable),
                                      ("public", cls.public)) if on)
+
+
+def _built(func: tuple[str, ...], defined: Defined) -> frozenset[str]:
+    """Of the traits a class has, those of the class a construction builds, by its dotted path: an exception, a
+    record."""
+    return frozenset(n for n, on in (("exception", (func[1:-1], func[-1]) in defined.exceptions),
+                                     ("record", func in defined.records)) if on)
 
 
 def _function(function: Function) -> Fact:

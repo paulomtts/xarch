@@ -214,8 +214,9 @@ KINDS: tuple[Kind, ...] = (
     Kind("call", "each call whose callee an import binds, as that dotted path", ("line", "path"),
          {"place": "target-placed"}, needs=("call", "import.resolved"), verb="call"),
     Kind("construction", "each call of a class the app defines at the top level of a file, read through the import "
-                         "that binds it", ("line", "path", "name", "place"), needs=("call", "class", "import.resolved"),
-         verb="build"),
+                         "that binds it", ("line", "path", "name", "place", "exception", "record"),
+         needs=("call", "class", "import.resolved"),
+         field_needs={"exception": _CLASS_EXCEPTION, "record": ("class.record",)}, verb="build"),
     Kind("function-reference", "each name read that is a function the app defines at the top level of a file, other "
                                "than as the callee of a call (passed on, stored)",
          ("line", "path", "reaches", "place"), needs=("use", "call", "module_functions", "import.resolved"),

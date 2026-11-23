@@ -159,6 +159,15 @@ def test_a_key_whose_check_reads_a_fact_partly_is_a_strict_finding_said_with_the
     assert detail(partly) == "parts.services.names reads class only partly: a class defined in a branch is not read"
 
 
+UNREAD = "holds reads no top-level functions: the language Toy does not supply function.top_level"
+
+
+def test_a_key_whose_check_reads_less_for_want_of_a_fact_is_a_strict_finding_said_by_its_note_alone():
+    unread = Shortfall("parts.domain.holds", "function.top_level", UNREAD, True)
+    assert strict_findings(Enforcement(approximate=(unread,))) == (Finding("approximate", unread),)
+    assert detail(unread) == UNREAD
+
+
 def test_a_check_of_the_profile_s_own_that_read_nothing_fails_strict_and_one_that_read_something_does_not():
     said = ("checks.no-todo reads nothing in the project, so it passes for want of anything to check: widen what it "
             "reads, or drop it")

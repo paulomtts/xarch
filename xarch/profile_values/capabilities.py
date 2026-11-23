@@ -82,7 +82,10 @@ class Supply:
 @dataclass(frozen=True)
 class Shortfall:
     """A key whose check needs a fact the language supplies partly or not at all: its address in the profile, the
-    fact, and the reader's note on it (None: the fact is not supplied)."""
+    fact, and the reader's note on it (None: the fact is not supplied). unread: the fact is one the check reads only
+    when the language supplies it, which it does not, so the check reads less and the note says what, in a sentence of
+    its own."""
     address: str
     fact: str
     note: str | None
+    unread: bool = False

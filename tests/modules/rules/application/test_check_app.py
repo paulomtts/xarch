@@ -195,6 +195,15 @@ def test_a_key_whose_check_reads_a_fact_partly_is_listed_as_approximate_and_fail
     assert result.enforcement.strict == (FindingView("approximate", said),)
 
 
+def test_a_part_that_reads_no_top_level_functions_for_want_of_the_fact_is_listed_as_approximate_by_its_sentence():
+    said = "holds reads no top-level functions: the language Toy does not supply function.top_level"
+    unread = Shortfall("parts.domain.holds", "function.top_level", said, True)
+    profiles = FakeProfiles({"cli": replace(entered("cli"), approximate=(unread,))})
+    result = checked({"kernel/x.py": []}, profiles)
+    assert result.enforcement.approximate == (ApproximateView("parts.domain.holds", "function.top_level", said, said),)
+    assert result.enforcement.strict == (FindingView("approximate", said),)
+
+
 def test_a_public_name_the_profile_accepts_as_only_the_tests_is_named_in_the_enforcement_and_an_entry_that_no_longer_holds_is_weak():
     rules = SourceFile("pkg/kernel/rules.py", ("kernel", "rules.py"), (), classes=(Class(3, "Rule"),),
                        functions=(Function(9, "decide"),))

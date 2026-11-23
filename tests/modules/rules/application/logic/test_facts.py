@@ -78,6 +78,30 @@ def test_a_call_of_a_class_of_the_app_is_a_construction_and_a_use_of_one_of_its_
                                                     Place("domain", "docs", ("doc", "make"))]
 
 
+ERRORS = ("app", "modules", "docs", "domain", "errors")
+
+
+def test_a_construction_says_whether_the_class_it_builds_is_an_exception_or_a_record():
+    defining = source("modules/docs/domain/errors.py", classes=(Class(1, "Refused", exception=True),
+                                                                Class(3, "Found", record=True), Class(5, "Plain")))
+    building = source("bootstrap/wiring.py", imp(1, "app.modules.docs.domain", "errors"),
+                      calls=tuple(Call(line, (*ERRORS, name)) for line, name in ((2, "Refused"), (3, "Found"),
+                                                                                  (4, "Plain"))))
+    built = facts_of([defining, building], [], PROFILE, "app").files[1].facts["construction"]
+    assert [(fact.name, fact.traits) for fact in built] == [
+        ("Refused", frozenset({"exception"})), ("Found", frozenset({"record"})), ("Plain", frozenset())]
+
+
+def test_a_construction_of_a_class_deriving_from_an_exception_of_another_file_says_it_is_an_exception():
+    base = source("kernel/errors.py", classes=(Class(1, "DomainError", exception=True),))
+    defining = source("modules/docs/domain/errors.py", imp(1, "app.kernel.errors", "DomainError"),
+                      classes=(Class(3, "Refused", (("app", "kernel", "errors", "DomainError"),)),))
+    building = source("bootstrap/wiring.py", imp(1, "app.modules.docs.domain", "errors"),
+                      calls=(Call(2, (*ERRORS, "Refused")),))
+    built = facts_of([base, defining, building], [], PROFILE, "app").files[2].facts["construction"]
+    assert [(fact.name, fact.traits) for fact in built] == [("Refused", frozenset({"exception"}))]
+
+
 def test_a_reference_is_a_use_of_a_function_of_the_app_but_the_callee_of_a_call_on_its_line():
     assert SERVICE.facts["function-reference"] == (
         Fact("function-reference", 8, (*MAKE, "cache"), target=("modules", "docs", "domain", "doc", "make"),
