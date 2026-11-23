@@ -820,8 +820,8 @@ keys:
   guards.no-comments:
     meaning: no `%comment%` comments in the app or its tests
     accepts: >-
-      {}: no `%comment%` comments in the app or its tests, whole-line or trailing; docstrings stay, and so do
-      %directives%, a shebang and an encoding line
+      {}: no comment of the language in the app or its tests, `%comment%` or any other form, whole-line or trailing;
+      docstrings and doc comments stay, and so do %directives%, a shebang and an encoding line
     example: |
       guards:
         no-comments: {}

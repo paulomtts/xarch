@@ -36,6 +36,7 @@ def python_comment(line: int, text: str) -> Comment:
     pytest.param(Comment(1, "# -*- coding: utf-8 -*-"), False, id="nor an encoding declaration, with no marker given"),
     pytest.param(Comment(5, "noqa", marker="#"), False,
                  id="a comment whose text does not start with its marker is no directive"),
+    pytest.param(Comment(5, "a doc", doc=True), True, id="a doc comment with no marker stays"),
 ])
 def test_allowed(comment, kept):
     assert allowed(comment, PYTHON) is kept
@@ -52,6 +53,7 @@ def test_allowed(comment, kept):
                  id="a directive not right after the marker is a comment"),
     pytest.param(Comment(5, "/** a note */", marker="/*"), False,
                  id="a block the reader says is no doc comment is reported, whatever its text starts with"),
+    pytest.param(Comment(5, "/** a doc */", marker="/**", doc=True), True, id="a doc comment stays"),
 ])
 def test_allowed_under_a_language_of_line_and_block_comments(comment, kept):
     assert allowed(comment, BRACE) is kept
@@ -62,6 +64,8 @@ def test_allowed_under_a_language_of_line_and_block_comments(comment, kept):
     pytest.param(Comment(5, "// a note", marker="//"), False, id="a comment of the first line marker is reported"),
     pytest.param(Comment(5, "/// a note", marker="//"), False,
                  id="a line comment whose text starts as a doc one is reported, the reader saying which it is"),
+    pytest.param(Comment(5, "/// a doc", marker="///", doc=True), True,
+                 id="a doc comment that runs to the end of its line stays"),
 ])
 def test_allowed_under_a_language_of_two_line_markers(comment, kept):
     assert allowed(comment, PERCENT) is kept

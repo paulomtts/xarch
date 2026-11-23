@@ -195,3 +195,13 @@ def test_comment_doc_is_a_fact_after_file_package_and_comment_says_the_marker_it
     assert FACTS["comment.doc"] == "whether a comment is a doc comment"
     assert FACTS["comment"] == ("each comment, its text, its line and where on it it starts and ends, and the marker it "
                                 "opens with, which review cuts before it sends a text")
+
+
+def test_no_comments_is_refused_under_a_language_that_does_not_say_which_comments_are_doc_comments():
+    commenting = replace(TOY, checked=replace(TOY.checked, supplies=(*TOY.checked.supplies, Supply("comment", EXACT))))
+    document = layered(language="toy", guards={"no-comments": {}})
+    assert problems(document, languages={"toy": commenting}) == [refusal("guards.no-comments", "comment.doc")]
+    both = replace(TOY, checked=replace(TOY.checked, supplies=(*commenting.checked.supplies,
+                                                                Supply("comment.doc", EXACT))))
+    assert parsed(document, languages={"toy": both}).approximate == ()
+    assert sorted(key.address for key in KEYS if "comment.doc" in key.needs) == ["guards.no-comments"]

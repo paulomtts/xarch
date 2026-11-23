@@ -206,7 +206,7 @@ _FACT: dict[str, Asked] = {
     "takes-a-name": _takes_a_name, "on-own-object": _on_own_object, "public": _public, "special": _special, "named": _named,
     **{name: _trait(name) for name in ("top-level", "forwards", "exception", "record", "interface", "immutable",
                                        "receiver", "annotated-callable", "no-statements", "exceptions-only",
-                                       "unreadable")},
+                                       "unreadable", "doc")},
     "returns-an-attribute": _returns_an_attribute, "directive": _directive, "reported-at-import": _reported_at_import,
     "names-restricted": _names_restricted, "of-kind": _of_kind, "target-placed": _target_placed,
     "target-inside-part": _target_inside_part, "target-in-own-part": _target_in_own_part,

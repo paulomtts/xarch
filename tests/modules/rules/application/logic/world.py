@@ -11,6 +11,7 @@ and variable can name a fact by its file and line: PROFILE's app (package `app`)
     app/bootstrap/wiring.py                   bootstrap, which may import everything
     app/modules/__init__.py                   the structure's package file
     app/modules/docs/domain/errors.py         a file of exceptions only
+    app/modules/docs/domain/notes.py          comments of several forms, the first a doc comment
     app/platform/latin.py                     a file that could not be read as text
     app/platform/broken.py                    a file that does not parse
     tests/modules/docs/domain/test_doc.py     a unit test of domain: imports of the app, a helper, a fake, a test
@@ -36,6 +37,7 @@ SERVICE = "app/modules/docs/application/services/publish.py"
 WIRING = "app/bootstrap/wiring.py"
 STRUCTURE = "app/modules/__init__.py"
 ERRORS = "app/modules/docs/domain/errors.py"
+NOTES = "app/modules/docs/domain/notes.py"
 TEST = "tests/modules/docs/domain/test_doc.py"
 HELPER = "tests/modules/docs/builders.py"
 FAKE = "tests/fakes/repo.py"
@@ -72,7 +74,9 @@ APP = [
     source("kernel/ids.py"), source("platform/db.py"),
     source("platform/latin.py", error=Unparsable(0, "not UTF-8 text", unreadable=True)),
     source("platform/broken.py", error=Unparsable(3, "invalid syntax")),
-    source("modules/docs/domain/errors.py", classes=(Class(1, "DocMissing", exception=True),))]
+    source("modules/docs/domain/errors.py", classes=(Class(1, "DocMissing", exception=True),)),
+    source("modules/docs/domain/notes.py",
+           comments=(Comment(1, "/** a doc */", marker="/**", doc=True), Comment(2, "// a note", marker="//")))]
 TESTS = [
     in_tests("modules/docs/domain/test_doc.py", imp(1, "app.modules.docs.domain", "doc"),
              imp(2, "tests.modules.docs", "builders"), imp(3, "tests.fakes", "repo"),

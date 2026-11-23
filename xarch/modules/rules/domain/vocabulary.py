@@ -185,6 +185,7 @@ FIELDS: dict[str, str] = {
     "no-statements": "whether no function or method of a file holds a real statement",
     "exceptions-only": "whether a file defines classes, every one an exception, and no top-level function",
     "unreadable": "whether a file could not be read as text at all",
+    "doc": "whether a comment is a doc comment",
 }
 """Every field a kind of fact may carry, and what it is."""
 
@@ -224,7 +225,8 @@ KINDS: tuple[Kind, ...] = (
          verb="import"),
     Kind("import-into-tests", "each import of a test file of a file of the tests, as the file or package it reaches",
          ("line", "reaches"), side=TESTS_SIDE, needs=("import", "import.relative"), verb="import"),
-    Kind("comment", "each comment, its text as written", ("line", "text", "marker"), needs=("comment",)),
+    Kind("comment", "each comment, its text as written", ("line", "text", "marker", "doc"), needs=("comment",),
+         field_needs={"doc": ("comment.doc",)}),
     Kind("class", "each class defined at the top level of a file", ("line", "name", "mentions", "exception", "record",
                                                                     "interface", "immutable"),
          needs=("class",), field_needs={"mentions": ("class.named",), "exception": _CLASS_EXCEPTION,
@@ -291,6 +293,7 @@ FILTERS: tuple[Filter, ...] = (
     Filter("unreadable", "the file could not be read as text at all, so it was never parsed", FACT, ("unreadable",)),
     Filter("directive", "the comment is one the language's tools read: a directive after the marker of the comment, "
                         "a shebang on line 1, an encoding declaration on line 1 or 2", FACT, ("text", "marker")),
+    Filter("doc", "the comment is a doc comment: one the language keeps its documentation in", FACT, ("doc",)),
     Filter("no-statements", "no function or method of the file holds a real statement: types, constants, interface "
                             "stubs", FACT, ("no-statements",)),
     Filter("exceptions-only", "the file defines classes, every one an exception, and no top-level function", FACT,

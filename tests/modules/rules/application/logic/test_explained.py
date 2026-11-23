@@ -60,7 +60,7 @@ def test_a_category_is_found_alone():
 @pytest.mark.parametrize("typed, near", [
     pytest.param("filters.publik", ("filters.public", "filters.below", "filters.placed"), id="a word misspelt"),
     pytest.param("publc", ("filters.public", "targets.place"), id="a name without its category"),
-    pytest.param("filtrs", ("filters", "filters.test", "filters.named"), id="a category misspelt"),
+    pytest.param("filtrs", ("filters", "filters.doc", "filters.test"), id="a category misspelt"),
     pytest.param("zzz", tuple(CATEGORIES), id="nothing alike: the categories"),
 ])
 def test_an_address_of_no_word_has_the_nearest_ones(typed, near):

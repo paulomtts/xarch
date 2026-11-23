@@ -121,6 +121,12 @@ def test_a_comment_carries_the_marker_it_opens_with_as_its_name():
     assert read.facts["comment"] == (Fact("comment", 2, name="//", text="// a note"),)
 
 
+def test_a_doc_comment_carries_the_doc_trait():
+    read = facts_of([source("modules/docs/domain/a.py", comments=(Comment(2, "/** a doc */", marker="/**", doc=True),))],
+                    [], PROFILE, "app").files[0]
+    assert read.facts["comment"] == (Fact("comment", 2, name="/**", traits=frozenset({"doc"}), text="/** a doc */"),)
+
+
 def test_a_file_that_does_not_parse_says_only_its_error():
     assert BROKEN.facts["syntax-error"] == (Fact("syntax-error", 2, text="invalid syntax"),)
     assert {kind for kind, found in BROKEN.facts.items() if found} == {"syntax-error"}

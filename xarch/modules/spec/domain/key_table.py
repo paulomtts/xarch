@@ -219,7 +219,7 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "testing.mocks": ("call", "parameter_call", "import.resolved"),
     "guards.scenario-coverage": ("union", "function.tables", "function.blocks", "function.expressions",
                                  "function.asserts", "function.mentions"),
-    "guards.no-comments": ("comment",),
+    "guards.no-comments": ("comment", "comment.doc"),
     "guards.stand-ins": ("class", "class.methods", "class.attributes", "class.interface", "call", "parameter_call",
                          "import.resolved"),
     "guards.closed-tree": ("file",),

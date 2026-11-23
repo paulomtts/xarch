@@ -16,7 +16,7 @@ from xarch.profile_values.placement import Target
 KINDS = {kind.name: kind for kind in VOCABULARY}
 
 TRAITS = ("relative", "standard", "on-own-object", "top-level", "forwards", "exception", "record", "interface",
-          "immutable", "receiver", "annotated-callable", "no-statements", "exceptions-only", "unreadable")
+          "immutable", "receiver", "annotated-callable", "no-statements", "exceptions-only", "unreadable", "doc")
 """The fields a fact carries as a trait, by its name."""
 STORED = {"line": "line", "path": "path", "method": "name", "name": "name", "written": "text", "text": "text",
           "marker": "name", "forwarded": "text", "mentions": "names", "reaches": "target", "returned": "target",

@@ -192,7 +192,8 @@ REACHED = {"quantifier": MUST_BE_REACHED, "targets": EXISTING, "facts": ("class"
                   "may-import-everything, below, relative, standard, reserved, "
                   "listed-by-another-part, app-package, own-code, takes-a-name, on-own-object, public, special, named, top-level, "
                   "forwards, returns-an-attribute, exception, record, interface, immutable, receiver, annotated-callable, unreadable, "
-                  "directive, no-statements, exceptions-only, reported-at-import, names-restricted, of-kind, target-placed, "
+                  "directive, doc, no-statements, exceptions-only, reported-at-import, names-restricted, of-kind, "
+                  "target-placed, "
                   "target-inside-part, target-in-own-part, target-in-own-tier, target-test, target-below, "
                   "target-allows-under",
                   "mode: is 'fial': write fail (a finding fails the check) or list (it is listed as weak and fails only "
@@ -233,6 +234,12 @@ def test_a_filter_about_the_package_file_needs_the_language_to_have_one_unless_i
     assert made(scope=Scope(APP, "store", where=c("not package-file"))).needs == ("import",)
     assert "file.package" in made(facts=("import-into-app",), targets=EXISTING, sayings=say("m"),
                                   keep=c("target-placed", "target-inside-part")).needs
+
+
+def test_a_check_of_comments_needs_comment_doc_only_when_it_reads_whether_one_is_a_doc_comment():
+    assert made(facts=("comment",), targets=EXISTING, exempt=c("directive", "doc"), sayings=say()).needs == (
+        "comment", "comment.doc")
+    assert made(facts=("comment",), targets=EXISTING, exempt=c("directive"), sayings=say()).needs == ("comment",)
 
 
 def test_a_rule_names_every_filter_and_every_variable_it_is_written_with_in_slot_order():
