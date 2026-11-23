@@ -1,6 +1,6 @@
 """How a profile writes a target, a place a part may import or a check names: `<part>`, `<part>@any`,
 `<part>/<path>` and, where a pattern is allowed, `<part>:<pattern>`; checked against the parts declared, each by its
-path, and the part that writes it, each problem said at its address. Spec reads a part's `may_import` with it, and
+path, and the part that writes it, each problem said at its address. Spec reads a part's `imports.may` with it, and
 rules the places a check of the profile's own names."""
 from __future__ import annotations
 
