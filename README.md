@@ -137,16 +137,18 @@ profile names, since an entry of that name would name the list.
 `language` names the language of the app: `python`, which is the default and the only one xarch reads today. What is
 true of a language as a whole lives in a data file shipped beside the profiles, `xarch/architectures/presets/language/
 <name>.yaml`, the way `testing: pytest` resolves to `presets/testing/pytest.yaml`: the ending of a source file, the file
-that stands for a folder, what marks an interface, the namespace of the builtins, the callables that import by a
-computed name, the folder of compiled files, and where the standard library's names are known from (`interpreter`);
+that stands for a folder, what marks an interface (`interface`, a list of marks, each a base, `{base: typing.Protocol}`,
+or a keyword a declaration carries, `{keyword: interface}`), the namespace of the builtins, the callables that import by
+a computed name, the folder of compiled files, and where the standard library's names are known from (`interpreter`);
 and the tokens of its code the checks and the docs need: what a name may be, what an import names from outside the app
 as one step (`package`) and the text that joins a package to a name in it in the profile's lists (`member`, `.` for
-Python), so that an outside name is written `<package><member><name>`, how a private name starts, what a special
-name starts and ends with, the special method calling an instance runs, the annotation of no value, the comment marker
-and the comments its tools read, the shebang, the encoding declaration, the keywords of the statements that branch and
-of the expressions that choose between values (`branching_expressions`), and what makes a class
-an immutable record (`immutable`: a base, or a decorator called with its keywords, such as
-`dataclasses.dataclass(frozen=True)`).
+Python), so that an outside name is written `<package><member><name>`, how a private name starts, the pattern of a
+special name (`special`, a regular expression the whole name matches), the special method calling an instance runs,
+the annotations of no value (`nothing`, a list: `[None]` for Python) and, optionally, that a method with no return
+annotation gives none (`unannotated: nothing`), the comment marker and the comments its tools read, the shebang, the
+encoding declaration, the keywords of the statements that branch and of the expressions that choose between values
+(`branching_expressions`), and what makes a class an immutable record (`immutable`: a base, or a decorator called with
+its keywords, such as `dataclasses.dataclass(frozen=True)`).
 The rest of what a check knows of the language is one adapter, the reader that turns source into facts
 (`modules/rules/adapters/fs_source_tree.py`), and the platform; spec reads the docs' examples through that reader too.
 `tests/architecture/test_language_seam.py` fails when any other file of xarch names the language or writes one of

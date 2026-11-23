@@ -18,6 +18,16 @@ All notable changes to this project are written here. The format follows
 
 ### Changed
 
+- The language's data file says as data what makes a class a port: `interface` is a list of marks, each
+  `{base: <outside name>}`, a name among a class's bases (`{base: typing.Protocol}`), or `{keyword: <word>}`, a keyword
+  a declaration carries; `nothing` is the list of return annotations that give no value (`nothing: [None]`); `special`
+  is a regular expression a special name matches in full (`'(?=__)\w*(?<=__)'` for Python); and a file may say
+  `unannotated: nothing`, that a method with no return annotation gives no value. The reader marks a class an
+  interface, and the stand-ins, the dead-code ports, the `interface` filter and no-twins read that mark instead of
+  comparing bases. The keys that read ports (`fakes`, `guards.stand-ins`, `guards.dead-code`) need the new fact
+  `class.interface`, which Python supplies `exact`. Refused: `interface: each mark is {base: <outside name>} or
+  {keyword: <word>}` (the old list of names among them), `nothing: must be a list of return annotations`,
+  `special: must be a regular expression`, and `unannotated: must be nothing`. No finding of a Python app changes.
 - The two archived corpora's profiles (`7cc6111`, `df537ca`) are plain yaml files beside their archives in
   `tests/bootstrap/corpora/`, so a change of format edits them as files; the recorded findings are unchanged.
 
