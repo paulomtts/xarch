@@ -98,3 +98,15 @@ def test_the_numbers_review_s_keys_say_are_filled_in_from_the_values_spec_holds(
         "accepts": "%line% when left out; at most %max_ask% characters; at least %fewest_examples% of each"}})))
     assert catalogue.texts["evals.placement.lines"].accepts == (
         "0.3 when left out; at most 400 characters; at least 2 of each")
+
+
+@pytest.mark.parametrize("address", [
+    pytest.param("parts.<part>.holds", id="holds"),
+    pytest.param("parts.<part>.names", id="names"),
+    pytest.param("guards.private-imports", id="private-imports"),
+])
+def test_the_texts_that_say_a_public_name_say_it_by_the_reader_and_never_by_the_prefix(address):
+    text = catalogue_of(KEYS_DOCUMENT).texts[address]
+    said = f"{text.meaning} {text.accepts}"
+    assert "%private%" not in said
+    assert "the language's reader says" in said

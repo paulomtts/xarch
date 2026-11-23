@@ -353,8 +353,9 @@ keys:
   parts.<part>.holds:
     meaning: what the files of the part define at the top level
     accepts: >-
-      classes or functions. classes: no file of the part defines a public function at the top level (a name that does
-      not start with `%private%`). functions: no file of the part defines a class at the top level, whatever its name, but for
+      classes or functions. classes: no file of the part defines a public function at the top level (one the
+      language's reader says other files may use). functions: no file of the part defines a class at the top level,
+      whatever its name, but for
       an exception class (one that derives from a builtin exception, directly or through classes of the app) and a
       record (a class with no method of its own, dunder methods aside) that a top-level function of the same file names
       in its return annotation. A package file (`%package_file%`) is exempt. Each one is listed as `weak` in the
@@ -388,8 +389,8 @@ keys:
   parts.<part>.names:
     meaning: how the classes of the part are named
     accepts: >-
-      a pattern, or a list of them, with `*` for any text: every public class (a name that does not start with `%private%`)
-      defined at the top level in a file of the part matches one of them
+      a pattern, or a list of them, with `*` for any text: every public class (one the language's reader says other
+      files may use) defined at the top level in a file of the part matches one of them
     example: |
       <<part>>
           names: "*Store"
@@ -913,9 +914,10 @@ keys:
         pass-through:
           parts: [documents]
   guards.private-imports:
-    meaning: no name starting with `%private%` is imported from another file
+    meaning: no name another file keeps private is imported from it
     accepts: >-
-      {}: no file of the app or its tests imports a name that starts with `%private%` (a dunder name aside) from a file of the
+      {}: no file of the app or its tests imports a name another file of them keeps private (one the language's reader
+      says is not for other files to use, a dunder name aside) from a file of the
       app or its tests, `from x import _y`; an import of a whole file, whatever its name, and an import from an outside
       package or the standard library are not read
     example: |

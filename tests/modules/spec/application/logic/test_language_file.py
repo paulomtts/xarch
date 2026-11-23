@@ -510,3 +510,9 @@ def test_python_supplies_public_exactly_right_after_comment_doc_and_keeps_its_pr
     assert supplies[supplies.index("comment.doc") + 1] == "public"
     assert Supply("public", EXACT) in PYTHON_LANGUAGE.checked.supplies
     assert PYTHON_LANGUAGE.checked.private == document["private"] == "_"
+
+
+@pytest.mark.parametrize("path", TEST_LANGUAGES, ids=lambda path: path.stem)
+def test_a_test_only_language_gives_no_private_prefix_its_reader_saying_which_names_are_public(path):
+    document = yaml.safe_load(path.read_text(encoding="utf-8"))
+    assert "private" not in document and language_of(path.stem, document).checked.private == ""

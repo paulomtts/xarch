@@ -41,6 +41,12 @@ And in the docstrings of the engine (ENGINE), a span quoted as code that writes 
 annotation of no value or a special name, an import as the language writes one (its data file's `importing`), or a
 name the testing preset builds a mock with or a fixture of its mocks.
 
+Privacy: how the language starts a private name (its data file's `private`) is read only by the reader, which decides
+by it whether each name is public and says so as the fact public, by the services that hand it to the reader, by
+scaffold and layout, which refuse a new private name and leave a private folder unmirrored, and by spec, which hands it
+to them and prints it. No other file of xarch's code reads an attribute `private` or names `is_private_name`; PRIVACY
+lists those that do, with why, and a stale entry fails.
+
 EXEMPT names every file or word that stays, with why; a stale entry fails the test. Nothing is exempt by pattern but
 the reader and the platform.
 """
@@ -488,3 +494,62 @@ def test_no_docstring_of_the_engine_writes_the_code_of_the_language_of_the_data_
 def test_the_guard_finds_the_code_of_the_language_quoted_in_a_docstring(tmp_path, text, found):
     (tmp_path / "engine.py").write_text(text)
     assert sorted(what for _, _, what in ticked_leaks(tmp_path, ("engine.py",), ticked_pattern())) == sorted(found)
+
+
+PRIVACY: dict[str, str] = {
+    "modules/rules/adapters/fs_source_tree.py": "the reader: it decides by the prefix whether each name is public",
+    "modules/rules/application/services/source_check.py": "hands the reader the prefix for the app and the tests",
+    "modules/rules/application/services/holding.py": "hands the reader the prefix for the files given and the app's",
+    "modules/rules/application/services/sources.py": "hands the reader the prefix for a file another module reads",
+    "modules/rules/application/services/asking.py": "hands the reader the prefix for an eval's files",
+    "modules/rules/application/services/examples.py": "hands the reader the prefix for the profile's own examples",
+    "modules/scaffold/application/logic/names.py": "scaffold refuses a new part or module of a private name",
+    "modules/scaffold/application/services/scaffolding.py": "scaffold says the prefix in that refusal",
+    "modules/scaffold/adapters/spec_skeleton.py": "hands scaffold the prefix spec publishes",
+    "modules/layout/application/logic/requirements.py": "layout requires no private file or folder",
+    "modules/layout/application/logic/unmirrored.py": "layout leaves a private folder unmirrored",
+    "modules/layout/adapters/spec_skeleton.py": "hands layout the prefix spec publishes",
+    "modules/spec/application/services/publishing.py": "publishes the prefix to scaffold and layout",
+    "modules/spec/application/logic/explain.py": "fills %private% in the texts of the format",
+    "modules/spec/application/logic/docs_template.py": "prints the prefix in the private-imports line when there is one",
+}
+"""Every file of xarch's code that reads how the language starts a private name, and why it may."""
+
+
+def privacy_reads(path: Path) -> bool:
+    """Whether the file reads how the language starts a private name: an attribute `private` read off anything, or
+    `is_private_name` imported, called or read off its module."""
+    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+        if isinstance(node, ast.Attribute) and node.attr in ("private", "is_private_name"):
+            return True
+        if (isinstance(node, ast.Name) and node.id == "is_private_name") or (
+                isinstance(node, ast.alias) and node.name.split(".")[-1] == "is_private_name"):
+            return True
+    return False
+
+
+def privacy_readers(root: Path = SRC) -> set[str]:
+    """The files below root, but the bundled profiles' example project, that read it."""
+    return {path.relative_to(root).as_posix() for path in root.rglob("*.py")
+            if not path.relative_to(root).as_posix().startswith("architectures/") and privacy_reads(path)}
+
+
+def test_only_the_reader_scaffold_layout_and_what_hands_them_the_prefix_read_how_a_private_name_starts():
+    assert sorted(privacy_readers() - set(PRIVACY)) == []
+
+
+def test_every_file_privacy_exempts_still_reads_it():
+    assert sorted(set(PRIVACY) - privacy_readers()) == []
+
+
+@pytest.mark.parametrize("code", [
+    pytest.param("def f(profile):\n    return profile.language.private\n", id="the prefix read off the language"),
+    pytest.param("from xarch.kernel.logic.names import is_private_name\n", id="the test of a private name imported"),
+    pytest.param("from xarch.kernel.logic import names\n\n\ndef f(x, p):\n    return names.is_private_name(x, p)\n",
+                 id="the test called through its module"),
+])
+def test_the_privacy_guard_finds_the_prefix_read_in_a_file_of_the_rules_logic(tmp_path, code):
+    folder = tmp_path / "modules" / "rules" / "application" / "logic"
+    folder.mkdir(parents=True)
+    (folder / "filters.py").write_text(code)
+    assert privacy_readers(tmp_path) == {"modules/rules/application/logic/filters.py"}

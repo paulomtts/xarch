@@ -510,8 +510,11 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
                     f"`{'/'.join((DEFAULT_TESTS, *fakes.folder))}/` by a test; the wiring and re-exports do not "
                     f"count.{reached}")
         case PrivateImports():
-            return ("`private-imports`: no file of the app or its tests imports a name that starts with "
-                    f"`{architecture.language.checked.private}` from another file of them.")
+            private = architecture.language.checked.private
+            if private:
+                return ("`private-imports`: no file of the app or its tests imports a name that starts with "
+                        f"`{private}` from another file of them.")
+            return "`private-imports`: no file of the app or its tests imports a name another file of them keeps private."
         case NoTwins(least, renamed, subset, translated):
             copies = [said for minimum, said in (
                 (renamed, f"renames some of its fields (from {renamed} fields: more than half of its names kept in "

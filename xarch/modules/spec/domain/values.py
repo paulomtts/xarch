@@ -289,7 +289,7 @@ class DeadCode:
 
 @dataclass(frozen=True)
 class PrivateImports:
-    """The guard private-imports: no name starting with `_` is imported from another file."""
+    """The guard private-imports: no name another file keeps private is imported from it."""
 
 
 @dataclass(frozen=True)

@@ -303,3 +303,21 @@ def test_the_no_comments_line_says_the_first_comment_marker_of_the_language_and_
     assert [line for line in filled_in.splitlines() if "`no-comments`" in line] == [
         "- `no-comments`: no `//` comments in the app or its tests; docstrings and tool directives "
         "(`// @ts-expect-error`, `// eslint-disable`) stay."]
+
+
+def test_the_private_imports_line_says_the_prefix_the_language_gives():
+    lines = [line for line in filled("{{guards}}", guards={"private-imports": {}}).splitlines()
+             if "`private-imports`" in line]
+    assert lines == ["- `private-imports`: no file of the app or its tests imports a name that starts with `_` from "
+                     "another file of them."]
+
+
+def test_the_private_imports_line_of_a_language_that_gives_no_prefix_says_the_rule_by_what_a_file_keeps_private():
+    view = "src/billing/api/view.tsx"
+    architecture = parsed(layered(docs=DOCS | {"example_notes": {}}, language="brace", guards={"private-imports": {}}),
+                          folders={"ex": (view,)}, languages={"python": PYTHON, "brace": BRACE})
+    filled_in = fill("{{guards}}", architecture, "layered.md", {view: "x\n"}, file_types=FILE_TYPES)
+    lines = [line for line in filled_in.splitlines() if "`private-imports`" in line]
+    assert lines == ["- `private-imports`: no file of the app or its tests imports a name another file of them keeps "
+                     "private."]
+    assert "``" not in lines[0]

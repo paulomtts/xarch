@@ -93,7 +93,7 @@ SHAPE = (
     Shown('guards.no-twins', 1, 'no two classes in different parts with the same fields', False, True),
     Shown('guards.dead-code', 1, 'no Protocol nothing names, no fake no test uses', False, True),
     Shown('guards.pass-through', 1, 'a method that only forwards is listed', False, True),
-    Shown('guards.private-imports', 1, 'no name starting with `_` is imported from another file', False, True),
+    Shown('guards.private-imports', 1, 'no name another file keeps private is imported from it', False, True),
     Shown('excluded', 0, 'folders below the app that are not its source', False, True),
     Shown('hints', 0, 'your own advice for a rule', False, False),
     Shown('checks', 0, 'checks of your own, beside the keys', False, True),
