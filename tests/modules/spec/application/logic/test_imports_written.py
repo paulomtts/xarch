@@ -42,13 +42,13 @@ def test_a_part_with_no_imports_imports_only_itself_and_no_outside_package():
 
 @pytest.mark.parametrize("imports, problem", [
     pytest.param({}, "parts.store.imports: says nothing: write may, must or libraries, or drop it", id="empty"),
-    pytest.param(["shared"], "parts.store.imports: must be a map of may, must and libraries, such as {may: [<part>]}",
+    pytest.param(["shared"], "parts.store.imports: must be a map of may, must and libraries, such as {may: [kernel]}",
                  id="a list"),
-    pytest.param(True, "parts.store.imports: must be a map of may, must and libraries, such as {may: [<part>]}",
+    pytest.param(True, "parts.store.imports: must be a map of may, must and libraries, such as {may: [kernel]}",
                  id="true"),
-    pytest.param("shared", "parts.store.imports: must be a map of may, must and libraries, such as {may: [<part>]}",
+    pytest.param("shared", "parts.store.imports: must be a map of may, must and libraries, such as {may: [kernel]}",
                  id="a string"),
-    pytest.param(None, "parts.store.imports: must be a map of may, must and libraries, such as {may: [<part>]}",
+    pytest.param(None, "parts.store.imports: must be a map of may, must and libraries, such as {may: [kernel]}",
                  id="null"),
     pytest.param({"never": "pure"}, "parts.store.imports: unknown key 'never': a key of uses, beside imports: write "
                  "uses: {never: <list>}; use libraries, may, must", id="never"),
@@ -168,4 +168,4 @@ def test_a_never_list_beside_imports_written_as_no_map_names_no_package_and_says
     document["never"] = {"pure": ["time.time"]}
     document["parts"]["service"]["uses"] = {"never": "pure"}
     assert problems(document) == [
-        "layered.yaml: parts.store.imports: must be a map of may, must and libraries, such as {may: [<part>]}"]
+        "layered.yaml: parts.store.imports: must be a map of may, must and libraries, such as {may: [kernel]}"]

@@ -33,7 +33,7 @@ def group(spec: Mapping[Any, Any], where: str, problems: list[str]) -> Mapping[A
         return {}
     value, at = spec["imports"], f"{where}.imports"
     if not isinstance(value, Mapping):
-        problems.append(f"{at}: must be a map of may, must and libraries, such as {{may: [<part>]}}")
+        problems.append(f"{at}: must be a map of may, must and libraries, such as {{may: [kernel]}}")
         return {}
     if not value:
         problems.append(f"{at}: says nothing: write may, must or libraries, or drop it")
