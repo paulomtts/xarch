@@ -1,11 +1,10 @@
 """The values spec hands out as they are, which its contract re-exports as it does an id: each is read outside spec
 just as spec holds it, so there is nothing to reshape. Everything else spec hands out is a type of the contract's own.
 
-    Origin       where the profile in force comes from, the bundled profile it is compared with and how much the
-                 two have in common, which the command line shows and the checking module reads the guards of;
+    Origin       where the profile in force comes from, the profile it is compared with and how much the two have
+                 in common, which the command line shows and the checking module reads the guards of;
                  BASED_ON, CLOSEST and AGAINST why it is compared with that one
-    Loosened     one way a profile is looser than the bundled one it is compared with, held by Origin and shown as it
-                 is
+    Loosened     one way a profile is looser than the profile it is compared with, held by Origin and shown as it is
     LITMUS       the key of the Loosened that says a part lost its litmus, which the checking module fails
                  `check --strict` on
     ProjectFile  a file `init` writes beside the app folder, which the module that scaffolds writes and the checking
@@ -152,7 +151,7 @@ class Origin:
     compared: the profile it is compared with, as its location is given: for a custom file the bundled one, and for
         either the one --against names; None when it is bundled and --against is not given, or none is
     guards_off: the guards xarch has that it leaves off, in xarch's order
-    baseline_off: those the bundled profile it is, or is compared with, leaves off too
+    baseline_off: those the profile it is, or is compared with, leaves off too
     looser: how it is looser than the profile it is compared with
     chosen_by: why that one: BASED_ON, CLOSEST or AGAINST; None when nothing is compared
     match: the share of what `check` reads under either profile that has a counterpart in the other, rounded to two
