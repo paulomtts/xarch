@@ -7,6 +7,15 @@ All notable changes to this project are written here. The format follows
 
 ### Added
 
+- The match of a custom profile with the bundled one it is compared with: the share of what `check` reads under
+  either profile (each part, each key a part, a tier or the profile writes, each setting of a kind of `holds` on its
+  own, each guard switched on, each check of the profile's own of an id both write) that has a counterpart in the
+  other. A match below 75% is low and says why. It is printed on every run that compares: `profile check` says
+  `match: 80% with cli (based_on): 12 of 15 parts, 72 of 91 part keys, ...`, the parts and tiers only one profile has,
+  the parts of the same name at another path, and the bundled profile that matches higher than the one `based_on`
+  names; `check`'s enforcement section names the match on its `profile:` line, `(custom; compared with cli, based_on;
+  match 80%)`, with a `match:` line under it when it is low. `compared_with` in the JSON of both gains `chosen_by`,
+  `match`, `low`, `counts`, `only_here`, `only_there`, `elsewhere` and `higher`.
 - The kinds `records` and `exceptions` of `holds`, narrower than `classes`: a record (`class.record`) or an exception
   may be defined at the top level of a part that lists the kind, `records` with the settings `names` and `immutable`,
   `exceptions` with `names`; `functions` takes `names` (`holds.functions.names`), which every public top-level
@@ -59,6 +68,13 @@ All notable changes to this project are written here. The format follows
 
 ### Changed
 
+- Without `based_on`, a custom profile is compared with the bundled profile of highest match (the first by name on a
+  tie, and one no part pairs with never), no longer the one sharing the most part names. Parts pair by name, then by
+  layout path, and tiers by name, then by subject, and the ways a profile is looser are compared on the parts and
+  tiers that pair, so a part renamed in place is still compared, under its own name. `profile check` heads a profile
+  `custom; based_on: cli` or `custom; closest bundled: cli, match 80%`.
+- `check --format json`: `enforcement.profile.closest` is now `enforcement.profile.compared_with`, the same object as
+  `profile check`'s `compared_with` (`null` when nothing is compared).
 - A part's `may_import`, `must_import` and `libraries` move into one group, `imports: {may, must, libraries}`, with
   the same meaning: `may` what the part may import besides itself (or `everything`), `must` the targets each of its
   files imports one of, each an entry of `may`, `libraries` its outside packages. A part's `types_only` becomes a mark
