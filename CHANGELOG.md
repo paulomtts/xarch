@@ -75,6 +75,15 @@ All notable changes to this project are written here. The format follows
   `custom; based_on: cli` or `custom; closest bundled: cli, match 80%`.
 - `check --format json`: `enforcement.profile.closest` is now `enforcement.profile.compared_with`, the same object as
   `profile check`'s `compared_with` (`null` when nothing is compared).
+- The looser lines cover every loosening of 0.3.0: `profile check` and `check`'s enforcement section now also list a
+  kind a part's `holds` allows that the other's does not (`holds`), a setting of a kind dropped or widened
+  (`holds.classes.names`, `holds.classes.immutable`, `holds.classes.built_by`, `holds.functions.names`,
+  `holds.records.names`, `holds.records.immutable`, `holds.exceptions.names`), a part's `shared` dropped or lowered
+  (`shared`), a tier's `imports.must` dropped or a part added to it (`tiers.imports.must`), a tier no longer
+  `plain_tables` (`plain_tables`), and `testing.beside` set where the other leaves it out (`testing.beside`), each by
+  a sentence ending in its address, such as
+  `the classes of service may also be named * (parts.service.holds.classes.names)`. Each is information, like the
+  others: `--strict` still fails only on a missing `litmus`.
 - A part's `may_import`, `must_import` and `libraries` move into one group, `imports: {may, must, libraries}`, with
   the same meaning: `may` what the part may import besides itself (or `everything`), `must` the targets each of its
   files imports one of, each an entry of `may`, `libraries` its outside packages. A part's `types_only` becomes a mark

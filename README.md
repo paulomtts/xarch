@@ -455,7 +455,11 @@ enforcement
   `pinned`, a target added to a part's `imports.must` or the key dropped, a part redefined without the `litmus` the
   other gives it, a public name `guards.dead-code.known` accepts that the other's does not, a part
   `guards.no-twins.translated` lists that the other's does not, a line under `evals.placement.lines` set below the
-  other's, an entry of `review.never` or `review.mask` the other holds and this one drops.
+  other's, an entry of `review.never` or `review.mask` the other holds and this one drops, a kind a part's `holds`
+  allows that the other's does not (`classes` allowing `records` and `exceptions` too), a setting of a kind it holds
+  dropped or widened (`names`, `immutable`, `built_by`, compared kind by kind on the settings the part holds each kind
+  to, for a kind either lists), a part's `shared` dropped or lowered, a tier's `imports.must` dropped or a part added
+  to it, a tier no longer `plain_tables`, and `testing.beside` set where the other leaves it out.
   Stricter differences, new parts, the layout and the guards' other parameters are not compared. This comparison is
   information: the profile defines the architecture, so how it differs from another is no finding for `--strict`, but
   for a litmus dropped, which leaves a part's code no question to be placed by.

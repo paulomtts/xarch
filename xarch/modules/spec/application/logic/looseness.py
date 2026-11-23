@@ -30,8 +30,15 @@ profile gives a `litmus` that the custom one redefines without one; a public nam
 only the tests' that the bundled profile's does not; a part `guards.no-twins.translated` lists that the bundled
 profile's does not; a path `review.never` holds back, or a text `review.mask` hides, in the bundled profile that the
 custom one does not write (each compared as written: it sends more); a part whose line under `evals.placement.lines`
-is below the one the bundled profile gives it (written, else LINE: it flags less). Anything stricter, and what is
-compared in no way above (the layout, new parts, the guards' other parameters, `fakes`), is not listed.
+is below the one the bundled profile gives it (written, else LINE: it flags less); a kind a part's `holds` allows that
+the bundled part's does not (no `holds` allows every kind, and `classes` allows `records` and `exceptions` too); a
+setting of a kind dropped or widened, compared for each kind either part lists and both allow, on the settings each
+holds the kind to (those written under it, else for `records` and `exceptions` those under `classes`, `immutable`
+never for an exception): `names` dropped, or a pattern added that no bundled pattern matches read as a name,
+`immutable` dropped, `built_by` dropped or a part added to it; a part's `shared` dropped or lowered; a tier's
+`imports.must` dropped, or a part added to it; a tier no longer `plain_tables`; `testing.beside` set where the bundled
+profile leaves it out. Anything stricter, and what is compared in no way above (the layout, new parts, the guards'
+other parameters, `fakes`), is not listed.
 """
 from __future__ import annotations
 
