@@ -24,6 +24,16 @@ All notable changes to this project are written here. The format follows
   of both says `"chosen_by": "against"` in `compared_with`. A value that does not load refuses the run (exit 2,
   `--against does not load: ...`), and `--strict` with `--against` is refused (exit 2), since `--strict` judges the
   profile against its baseline.
+- `based_on` takes the path of a profile file, read from the folder of the file that writes it (`based_on:
+  ../team.yaml`): `profile check` and `check` compare the profile with that file, as written, and follow its own
+  `based_on` in turn. A file of the chain that does not load refuses the profile (exit 2, `sub/mine.yaml: based_on:
+  ../team.yaml does not load: ...`), and so does a chain that comes back to a file of it (`mine.yaml: based_on: a.yaml
+  is based on this profile`). `--strict` rests on a bundled profile, the anchor: the bundled profile the chain ends on,
+  else the one closest to its last file, else none. A guard left off is excused only when the anchor and every file of
+  the chain leave it off too, and a part fails `litmus` when it lacks a litmus the path file or the anchor gives the
+  part it pairs with, so a file of one's own never loosens `--strict`. `profile check` heads it `(custom; based_on:
+  ../team.yaml, resting on cli)`, `check`'s `profile:` line says `(custom; compared with ../team.yaml, based_on; match
+  92%; --strict rests on cli)`, and `compared_with` gains `anchor` in the JSON of both.
 - The kinds `records` and `exceptions` of `holds`, narrower than `classes`: a record (`class.record`) or an exception
   may be defined at the top level of a part that lists the kind, `records` with the settings `names` and `immutable`,
   `exceptions` with `names`; `functions` takes `names` (`holds.functions.names`), which every public top-level
