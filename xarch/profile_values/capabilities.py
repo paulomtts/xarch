@@ -60,7 +60,7 @@ FACTS: dict[str, str] = {
     "function.asserts": "whether a function's body asserts",
     "function.mentions": "every name a function's body uses",
     "function.named": "every name a function's definition mentions, its decorators and signature included",
-    "function.tables": "the tables of cases decorating a test function",
+    "function.tables": "the tables of cases of a test function",
     "union": "a name bound at the top level of a file to names joined as alternatives",
     "module_functions": "the names a file binds at the top level to a function and nothing else",
     "constant": "the names a file binds at the top level by an assignment, each with the names its statement mentions",

@@ -155,10 +155,10 @@ class Constant:
 
 @dataclass(frozen=True)
 class Row:
-    """One element of the rows of a table, and the line it is on. written is whether it is a call of the table's row
-    (a bare tuple or anything else is not); id is its id keyword when that is a string literal, as written, else None;
-    cells holds the name that heads each positional value (the callee of a call, a bare name, the last name of an
-    attribute), None where a value has none."""
+    """One row of a table, and the line it is on. written is whether it is written the way the table's form writes a
+    row; id is its id when that is written as a literal text, as written, else None; cells holds, in column order, the
+    name that heads each value (the callee of a call, a bare name, the last name of a dotted one), None where a value
+    has none."""
     line: int
     written: bool
     id: str | None
@@ -167,10 +167,10 @@ class Row:
 
 @dataclass(frozen=True)
 class Table:
-    """One table decorating a test function (the decorator the profile names), and the line it is on: its parameter names, and its rows
-    (None when the rows are neither a list or tuple literal nor the name of one assigned at the top of the file); form, the
-    index from 0 of the form it was read by in the framework's list of forms; and runs, the line of the statement of the
-    test's own body that runs its rows, 0 when none does."""
+    """One table of cases of a test function, and the line it is on: its columns, the names of the values each row
+    gives, in order; its rows, None when they cannot be read; form, the index from 0 of the form it was read by in the
+    framework's list of forms; and runs, the line of the statement of the test's own body that runs its rows, 0 when
+    none does."""
     line: int
     columns: tuple[str, ...]
     rows: tuple[Row, ...] | None

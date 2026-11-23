@@ -86,6 +86,8 @@ All notable changes to this project are written here. The format follows
 
 ### Changed
 
+- The description of the fact `function.tables`, shown by `profile explain` and in a refusal of a fact the language
+  does not supply, reads "the tables of cases of a test function".
 - Without `based_on`, a custom profile is compared with the bundled profile of highest match (the first by name on a
   tie, and one no part pairs with never), no longer the one sharing the most part names. Parts pair by name, then by
   layout path, and tiers by name, then by subject, and the ways a profile is looser are compared on the parts and

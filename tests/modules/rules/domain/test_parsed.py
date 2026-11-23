@@ -6,6 +6,7 @@ import pytest
 
 from xarch.kernel.source import Import
 from xarch.modules.rules.domain.parsed import Class, Constant, Function, Row, Table
+from xarch.profile_values.capabilities import FACTS
 
 
 def test_a_function_s_real_statements_are_those_that_are_not_inert():
@@ -35,3 +36,19 @@ def test_a_table_says_its_line_its_columns_its_rows_its_form_and_the_line_that_r
 def test_a_table_built_without_its_form_and_the_line_that_runs_it_is_refused():
     with pytest.raises(TypeError):
         Table(1, ("a",), None)
+
+
+PYTHON_WORDS = ("decorat", "param", "keyword", "pytest", "tuple literal", "list literal")
+
+
+@pytest.mark.parametrize("text", [
+    pytest.param(Row.__doc__, id="the docstring of a row"),
+    pytest.param(Table.__doc__, id="the docstring of a table"),
+    pytest.param(FACTS["function.tables"], id="the text of the fact of tables"),
+])
+def test_what_a_table_and_its_rows_are_is_said_with_no_word_of_python(text):
+    assert [word for word in PYTHON_WORDS if word in text.lower()] == []
+
+
+def test_the_fact_of_tables_reads_the_tables_of_cases_of_a_test_function():
+    assert FACTS["function.tables"] == "the tables of cases of a test function"
