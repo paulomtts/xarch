@@ -7,6 +7,11 @@ All notable changes to this project are written here. The format follows
 
 ### Added
 
+- The fact `class.record`, whether a class is a record, as the language writes one, which `parts.<part>.holds` and a
+  check of your own whose filter is `record` need, in place of `class.methods` and `function.returns`; a language
+  that does not supply it is refused them with the needs text. The reader says it of each class (`Class.record`),
+  handed the language's `special`, and the checks no longer work it out. Python supplies it, computed as before: a
+  class whose methods are all special that a top-level function of its file names in its return annotation.
 - The fact `public`, whether a name a file defines, or takes by an import, is for other files to use, as the language
   decides it, which `parts.<part>.holds`, `parts.<part>.names`, `parts.<part>.shared`, `guards.private-imports`,
   `guards.dead-code.tests_only`, `guards.dead-code.known` and `guards.no-twins` (with `min_renamed` and `translated`)
@@ -34,6 +39,12 @@ All notable changes to this project are written here. The format follows
 
 ### Changed
 
+- A language's data file writes what makes a class an immutable record as marks, each a map of one of four forms,
+  as interface marks are: `{base: <outside name>}`, `{decorator: <outside name>, keywords: {<name>: <value>}}`
+  (keywords left out: the decorator however it is written), `{fields: <word>}` or `{type: <outside name>}`. Python
+  writes `[{base: typing.NamedTuple}, {decorator: dataclasses.dataclass, keywords: {frozen: "True"}}]`, and its reader
+  reads the first two forms. The string form is no longer read. Refused, once for the key: `immutable: each mark is
+  {base}, {decorator, keywords}, {fields} or {type}`. No finding of a Python app changes.
 - The filter `public` reads the fact `public`, never how a name is spelled, and applies to `class`, `function` and
   `imported-name` only: written on another kind in a check of your own, `profile check` refuses it (`public does not
   apply to <kind>`). `CheckedLanguage.is_public` is gone. Under a language that gives no `private`, the docs line of

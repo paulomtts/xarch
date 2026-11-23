@@ -153,8 +153,10 @@ Python) and, optionally, that a method with no return annotation gives none (`un
 comment is written in (`comments`, a list of `line`, `block` and `doc` forms, `[{line: "#"}]` for Python, a doc
 comment being one `no-comments` keeps) and the comments its tools read after the marker of any form, the shebang, the
 encoding declaration, the keywords of the statements that branch and of the expressions that choose between values
-(`branching_expressions`), and what makes a class an immutable record (`immutable`: a base, or a decorator called with
-its keywords, such as `dataclasses.dataclass(frozen=True)`).
+(`branching_expressions`), and what makes a class an immutable record (`immutable`: marks, each `{base}`,
+`{decorator, keywords}`, `{fields}` or `{type}`, such as `{decorator: dataclasses.dataclass, keywords: {frozen:
+"True"}}`). Whether a class is a record, a type that only holds data, the reader says: the fact `class.record` a
+reader supplies, which `holds` and the filter `record` read.
 The rest of what a check knows of the language is one adapter, the reader that turns source into facts
 (`modules/rules/adapters/fs_source_tree.py`), and the platform; spec reads the docs' examples through that reader too.
 `tests/architecture/test_language_seam.py` fails when any other file of xarch names the language or writes one of
