@@ -22,12 +22,13 @@ class SourceTree(Protocol):
 
     def read(self, root: Path, paths: list[tuple[str, ...]], table: CaseTable | None = None,
              immutable: tuple[RecordMark, ...] = (), interface: tuple[InterfaceMark, ...] = (), *,
-             standard: frozenset[str]) -> list[SourceFile]:
+             standard: frozenset[str], private: str) -> list[SourceFile]:
         """The files at paths below root, parsed; one that does not parse holds its error. A function holds the
         tables written in the form `table` names; with none, no table is recognised. A class is an immutable record
         when one of the marks `immutable` holds marks it so, and an interface when one of the marks `interface` holds
         marks it so. An absolute import is of the standard library when its first step is one of the modules
-        `standard` holds; a relative one never is."""
+        `standard` holds; a relative one never is. A name is public unless it starts with `private`, how the
+        language starts a private name ("": every name is public)."""
         ...
 
     def existing(self, paths: Iterable[Path]) -> frozenset[Path]:
@@ -38,10 +39,10 @@ class SourceTree(Protocol):
         """The text of any file at path, None when there is no file there."""
         ...
 
-    def parsed(self, text: str, standard: frozenset[str]) -> SourceFile:
+    def parsed(self, text: str, standard: frozenset[str], *, private: str) -> SourceFile:
         """A source text of the app's language that is in no file, parsed as a file of it is, an absolute import of
-        the standard library when its first step is one of the modules `standard` holds; one that does not parse
-        holds its error."""
+        the standard library when its first step is one of the modules `standard` holds, a name public unless it
+        starts with `private`; one that does not parse holds its error."""
         ...
 
     def resolved(self, folder: Path, path: Path) -> Path:

@@ -22,6 +22,11 @@ the nearest scope binding the name binds it as a parameter of its function and n
 parameter the body rebinds (an assignment, a loop, an import, a def, `global`) is not read, nor is a call of the
 parameter itself, a call deeper in a chain (`p.a.b()`) or a method of any other expression.
 
+A name is public unless the prefix of private names the reader is handed (the language's data file's `private`) is
+given and the name starts with it, a special name included: each class, each function (a method too), each name the
+top level binds by an assignment, and each name a `from` import takes as written, its name before any `as`, which the
+import withholds when it is not public. An empty prefix makes every name public.
+
 A file also lists the names it defines at module level as functions: a name one `def` (or `async def`) binds in the
 module's own scope, a branch of an `if` or `try` included, and nothing else binds (no second def, import,
 assignment, class or `global`), so that the name is a function and not a class or a value.
@@ -103,6 +108,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
+from xarch.kernel.logic.names import is_private_name
 from xarch.kernel.source import Import, Unparsable
 from xarch.modules.rules.domain.parsed import (
     Call,
@@ -141,7 +147,7 @@ class FsSourceTree:
 
     def read(self, root: Path, paths: list[tuple[str, ...]], table: CaseTable | None = None,
              immutable: tuple[RecordMark, ...] = (), interface: tuple[InterfaceMark, ...] = (), *,
-             standard: frozenset[str]) -> list[SourceFile]:
+             standard: frozenset[str], private: str) -> list[SourceFile]:
         """Each file below root, read as UTF-8 and parsed; one that is not UTF-8, or cannot be read, holds why as its
         error, as one that does not parse does."""
         found: list[SourceFile] = []
@@ -158,7 +164,7 @@ class FsSourceTree:
                 found.append(SourceFile(name, path, (), error=Unparsable(
                     0, f"cannot be read ({e.strerror or e})", unreadable=True)))
                 continue
-            found.append(_parsed(name, path, text, table, immutable, interface, standard,
+            found.append(_parsed(name, path, text, table, immutable, interface, standard, private,
                                  _Where((root.name, *path[:-1]), root, self._fs)))
         return found
 
@@ -168,8 +174,8 @@ class FsSourceTree:
     def text(self, path: Path) -> str | None:
         return self._fs.read_text(path) if self._fs.is_file(path) else None
 
-    def parsed(self, text: str, standard: frozenset[str]) -> SourceFile:
-        return _parsed("", (), text, None, (), (), standard)
+    def parsed(self, text: str, standard: frozenset[str], *, private: str) -> SourceFile:
+        return _parsed("", (), text, None, (), (), standard, private)
 
     def resolved(self, folder: Path, path: Path) -> Path:
         return self._fs.real(folder / path)
@@ -209,7 +215,8 @@ class _Relative(tuple):
 
 
 def _parsed(name: str, path: tuple[str, ...], text: str, form: CaseTable | None, marks: tuple[RecordMark, ...],
-            interface: tuple[InterfaceMark, ...], standard: frozenset[str], where: _Where | None = None) -> SourceFile:
+            interface: tuple[InterfaceMark, ...], standard: frozenset[str], private: str,
+            where: _Where | None = None) -> SourceFile:
     try:
         tree = ast.parse(text)
         comments = _comments(text)
@@ -219,11 +226,12 @@ def _parsed(name: str, path: tuple[str, ...], text: str, form: CaseTable | None,
         return SourceFile(name, path, (), error=Unparsable(0, str(e)))
     calls = _Calls(_BUILTINS if not _star_import(tree) else frozenset(), where)
     calls.visit(tree)
-    return SourceFile(name, path, tuple(_imports(tree, standard, where)), comments, _functions(tree, form, where),
-                      tuple(_unions(tree)), calls=tuple(calls.found), classes=tuple(_classes(tree, marks, interface, where)),
+    return SourceFile(name, path, tuple(_imports(tree, standard, private, where)), comments,
+                      _functions(tree, form, private, where), tuple(_unions(tree)), calls=tuple(calls.found),
+                      classes=tuple(_classes(tree, private, marks, interface, where)),
                       uses=tuple(calls.uses), parameter_calls=tuple(calls.parameter_calls),
                       module_functions=_module_functions(tree), named=_named(tree), callbacks=tuple(calls.callbacks),
-                      method_calls=tuple(calls.method_calls), constants=tuple(_constants(tree)),
+                      method_calls=tuple(calls.method_calls), constants=tuple(_constants(tree, private)),
                       unmentioned=_unmentioned(tree), pieces=_pieces(tree))
 
 
@@ -286,7 +294,7 @@ def _from(node: ast.ImportFrom, where: _Where | None) -> tuple[str, ...] | None:
     return _Relative(found) if found is not None else None
 
 
-def _imports(tree: ast.AST, standard: frozenset[str], where: _Where | None = None) -> list[Import]:
+def _imports(tree: ast.AST, standard: frozenset[str], private: str, where: _Where | None = None) -> list[Import]:
     found: list[Import] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -297,7 +305,8 @@ def _imports(tree: ast.AST, standard: frozenset[str], where: _Where | None = Non
             found.append(Import(node.lineno, module, tuple(a.name for a in node.names), node.level > 0,
                                 max(node.level - 1, 0), not node.level and bool(module) and module[0] in standard,
                                 "." * node.level + (node.module or ""), any(a.name == "*" for a in node.names),
-                                _last(node), _from(node, where) is None))
+                                _last(node), _from(node, where) is None,
+                                frozenset(a.name for a in node.names if is_private_name(a.name, private))))
     return found
 
 
@@ -324,21 +333,22 @@ _CHOICES = {ast.IfExp: "if"}
 """Each expression that chooses between values, by the keyword that writes the choice (`a if c else b`)."""
 
 
-def _functions(tree: ast.Module, form: CaseTable | None, where: _Where | None = None) -> tuple[Function, ...]:
+def _functions(tree: ast.Module, form: CaseTable | None, private: str,
+               where: _Where | None = None) -> tuple[Function, ...]:
     scope = [_scope(tree, where)]
     lists = _lists(tree)
     found: list[Function] = []
     for node in tree.body:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            found.append(_function(node, scope, lists, form))
+            found.append(_function(node, scope, lists, form, private))
         elif isinstance(node, ast.ClassDef):
-            found += [_function(n, scope, lists, form, node.name) for n in node.body
+            found += [_function(n, scope, lists, form, private, node.name) for n in node.body
                       if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
     return tuple(found)
 
 
 def _function(node: ast.FunctionDef | ast.AsyncFunctionDef, scope: list[Scope], lists: dict[str, ast.expr],
-              form: CaseTable | None, owner: str = "") -> Function:
+              form: CaseTable | None, private: str, owner: str = "") -> Function:
     inside = [n for statement in node.body for n in ast.walk(statement)]
     mentions = frozenset(n.id if isinstance(n, ast.Name) else n.attr for n in inside
                          if isinstance(n, (ast.Name, ast.Attribute)))
@@ -353,7 +363,7 @@ def _function(node: ast.FunctionDef | ast.AsyncFunctionDef, scope: list[Scope], 
     forwards = _forwards(node.name, bool(node.decorator_list), signature, sole_call) if owner else ""
     return Function(node.lineno, node.name, tables, mentions, blocks, asserts, owner, statements, shape,
                     bool(node.decorator_list), signature, sole_call, returns, inert, forwards, _mentioned(node),
-                    choices)
+                    choices, public=not is_private_name(node.name, private))
 
 
 def _mentioned(node: ast.AST) -> frozenset[str]:
@@ -379,7 +389,7 @@ def _annotations(node: ast.AST) -> list[ast.expr]:
     return found
 
 
-def _constants(tree: ast.Module) -> list[Constant]:
+def _constants(tree: ast.Module, private: str) -> list[Constant]:
     """The names the assignments of the top level bind, in order, each with what its statement mentions."""
     found: list[Constant] = []
     for node in _own(tree.body):
@@ -392,7 +402,8 @@ def _constants(tree: ast.Module) -> list[Constant]:
         else:
             continue
         named = _mentioned(node)
-        found += [Constant(node.lineno, name, named) for target in targets for name in _bound_names(target)]
+        found += [Constant(node.lineno, name, named, not is_private_name(name, private))
+                  for target in targets for name in _bound_names(target)]
     return found
 
 
@@ -901,8 +912,8 @@ class _Calls(ast.NodeVisitor):
             self.uses.append(Use(node.lineno, name, bound))
 
 
-def _classes(tree: ast.Module, marks: tuple[RecordMark, ...] = (), interface: tuple[InterfaceMark, ...] = (),
-             where: _Where | None = None) -> list[Class]:
+def _classes(tree: ast.Module, private: str, marks: tuple[RecordMark, ...] = (),
+             interface: tuple[InterfaceMark, ...] = (), where: _Where | None = None) -> list[Class]:
     scope = [_scope(tree, where)]
     builtin = frozenset() if _star_import(tree) else _EXCEPTIONS - set(scope[0])
     exceptions: set[str] = set()
@@ -919,7 +930,8 @@ def _classes(tree: ast.Module, marks: tuple[RecordMark, ...] = (), interface: tu
             found.append(Class(node.lineno, node.name, bases, methods, _attributes(node), _named(node) - {node.name},
                                exception, tuple(child.target.id for child in declared),
                                tuple(_annotation(child.annotation) or "" for child in declared),
-                               _immutable(node, bases, scope, marks), _interface(bases, interface)))
+                               _immutable(node, bases, scope, marks), _interface(bases, interface),
+                               not is_private_name(node.name, private)))
     return found
 
 

@@ -1,9 +1,11 @@
 """FsSourceTree on real files: the calls and classes a file holds, each name read through the import that binds it."""
 import sys
 from dataclasses import replace
+from importlib import resources
 from pathlib import Path
 
 import pytest
+import yaml
 
 from xarch.kernel.source import Import, Unparsable
 from xarch.modules.rules.adapters.fs_source_tree import FsSourceTree
@@ -32,11 +34,14 @@ PYTEST = CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id",
 STANDARD = frozenset(sys.stdlib_module_names)
 """The modules spec hands the reader for the language the tests' sources are written in: the interpreter's standard
 library."""
+PRIVATE = yaml.safe_load(resources.files("xarch").joinpath("architectures", "presets", "language", "python.yaml")
+                         .read_text(encoding="utf-8"))["private"]
+"""How the language the tests' sources are written in starts a private name, as its data file says it."""
 
 
 def parsed(tmp_path: Path, text: str, table: CaseTable | None = PYTEST) -> SourceFile:
     (tmp_path / "x.py").write_text(text)
-    return FsSourceTree(FileSystem()).read(tmp_path, [("x.py",)], table, standard=STANDARD)[0]
+    return FsSourceTree(FileSystem()).read(tmp_path, [("x.py",)], table, standard=STANDARD, private=PRIVATE)[0]
 
 
 def line_of(text: str, marker: str) -> int:
@@ -90,7 +95,7 @@ def read_at(tmp_path: Path, files: dict[str, str], path: str) -> SourceFile:
         (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / rel).write_text(body)
     root, *steps = path.split("/")
-    return FsSourceTree(FileSystem()).read(tmp_path / root, [tuple(steps)], standard=STANDARD)[0]
+    return FsSourceTree(FileSystem()).read(tmp_path / root, [tuple(steps)], standard=STANDARD, private=PRIVATE)[0]
 
 
 def test_a_relative_import_of_a_name_binds_the_place_it_names(tmp_path):
@@ -182,7 +187,7 @@ def test_a_relative_import_of_a_file_beside_binds_its_name(tmp_path):
 
 
 def test_a_text_read_with_no_file_follows_no_relative_import():
-    found = FsSourceTree(FileSystem()).parsed("from .order import Order\nimport os\n\nOrder()\nos.getcwd()\n", STANDARD)
+    found = FsSourceTree(FileSystem()).parsed("from .order import Order\nimport os\n\nOrder()\nos.getcwd()\n", STANDARD, private=PRIVATE)
     assert found.calls == (Call(5, ("os", "getcwd")),)
     assert [i.unresolved for i in found.imports] == [True, False]
 
@@ -210,7 +215,7 @@ def test_a_place_the_file_system_cannot_look_up_is_missing(tmp_path, monkeypatch
         (tmp_path / rel).write_text(body)
     monkeypatch.setattr(FileSystem, "is_dir", denied)
     monkeypatch.setattr(FileSystem, "is_file", denied)
-    found = FsSourceTree(FileSystem()).read(tmp_path / "app", [("domain", "services.py")], standard=STANDARD)[0]
+    found = FsSourceTree(FileSystem()).read(tmp_path / "app", [("domain", "services.py")], standard=STANDARD, private=PRIVATE)[0]
     assert (found.calls, [i.unresolved for i in found.imports]) == ((), [True])
 
 
@@ -247,7 +252,8 @@ MARKS = (RecordMark(("typing", "NamedTuple")), RecordMark(("dataclasses", "datac
 ])
 def test_a_class_is_an_immutable_record_when_a_mark_names_one_of_its_bases_or_its_decorators(tmp_path, text, immutable):
     (tmp_path / "a.py").write_text(text)
-    assert FsSourceTree(FileSystem()).read(tmp_path, [("a.py",)], immutable=MARKS, standard=STANDARD)[0].classes[0].immutable is immutable
+    read = FsSourceTree(FileSystem()).read(tmp_path, [("a.py",)], immutable=MARKS, standard=STANDARD, private=PRIVATE)[0]
+    assert read.classes[0].immutable is immutable
 
 
 def test_no_class_is_an_immutable_record_when_the_reader_is_given_no_mark(tmp_path):
@@ -273,7 +279,7 @@ INTERFACE = (InterfaceMark(("typing", "Protocol")), InterfaceMark(("typing_exten
 ])
 def test_a_class_is_an_interface_when_a_base_mark_names_one_of_its_bases(tmp_path, text, interface):
     (tmp_path / "a.py").write_text(text)
-    read = FsSourceTree(FileSystem()).read(tmp_path, [("a.py",)], interface=INTERFACE, standard=STANDARD)[0]
+    read = FsSourceTree(FileSystem()).read(tmp_path, [("a.py",)], interface=INTERFACE, standard=STANDARD, private=PRIVATE)[0]
     assert read.classes[-1].interface is interface
 
 
@@ -285,7 +291,8 @@ def test_no_class_is_an_interface_when_the_reader_is_given_no_mark(tmp_path):
                                      pytest.param("class", id="the keyword of a class")])
 def test_a_keyword_mark_marks_no_class_of_this_language(tmp_path, keyword):
     (tmp_path / "a.py").write_text("from typing import Protocol\nclass P(Protocol): ...\n")
-    read = FsSourceTree(FileSystem()).read(tmp_path, [("a.py",)], interface=(InterfaceMark(keyword=keyword),), standard=STANDARD)[0]
+    read = FsSourceTree(FileSystem()).read(tmp_path, [("a.py",)], interface=(InterfaceMark(keyword=keyword),),
+                                           standard=STANDARD, private=PRIVATE)[0]
     assert read.classes[0].interface is False
 
 
@@ -942,7 +949,7 @@ def test_a_path_is_resolved_from_the_folder_given_with_its_links_followed(tmp_pa
          id="an import over several lines says its last line"),
 ])
 def test_the_imports_are_recorded_in_terms_no_language_owns(text, imports):
-    assert FsSourceTree(FileSystem()).parsed(text, STANDARD).imports == imports
+    assert FsSourceTree(FileSystem()).parsed(text, STANDARD, private=PRIVATE).imports == imports
 
 
 @pytest.mark.parametrize("standard, marked", [
@@ -952,14 +959,14 @@ def test_the_imports_are_recorded_in_terms_no_language_owns(text, imports):
 ])
 def test_an_import_is_of_the_standard_library_by_the_modules_the_reader_is_handed(tmp_path, standard, marked):
     (tmp_path / "x.py").write_text("import fs\nimport fs.sub\nfrom fs.sub import x\nimport os\n")
-    read = FsSourceTree(FileSystem()).read(tmp_path, [("x.py",)], standard=standard)[0]
+    read = FsSourceTree(FileSystem()).read(tmp_path, [("x.py",)], standard=standard, private=PRIVATE)[0]
     assert [i.standard for i in read.imports] == marked
 
 
 def test_a_relative_import_is_never_of_the_standard_library_whatever_the_reader_is_handed(tmp_path):
     (tmp_path / "fs.py").write_text("")
     (tmp_path / "x.py").write_text("from . import fs\nfrom .fs import x\n")
-    read = FsSourceTree(FileSystem()).read(tmp_path, [("x.py",)], standard=frozenset({"fs"}))[0]
+    read = FsSourceTree(FileSystem()).read(tmp_path, [("x.py",)], standard=frozenset({"fs"}), private=PRIVATE)[0]
     assert [i.standard for i in read.imports] == [False, False]
 
 
@@ -967,15 +974,15 @@ def test_a_text_in_no_file_marks_its_imports_as_a_file_does(tmp_path):
     text = "import fs\nfrom fs.sub import x\nimport os\nfrom .fs import y\n"
     (tmp_path / "x.py").write_text(text)
     tree = FsSourceTree(FileSystem())
-    read = tree.read(tmp_path, [("x.py",)], standard=frozenset({"fs"}))[0]
-    assert [i.standard for i in tree.parsed(text, frozenset({"fs"})).imports] == [i.standard for i in read.imports] == [
+    read = tree.read(tmp_path, [("x.py",)], standard=frozenset({"fs"}), private=PRIVATE)[0]
+    assert [i.standard for i in tree.parsed(text, frozenset({"fs"}), private=PRIVATE).imports] == [i.standard for i in read.imports] == [
         True, True, False, False]
 
 
 def test_handed_the_interpreter_s_standard_library_every_import_of_xarch_s_own_source_is_marked_by_its_first_step():
     root = Path(__file__).parents[4] / "xarch"
     tree = FsSourceTree(FileSystem())
-    imports = [i for f in tree.read(root, tree.paths(root, (".py",)), standard=STANDARD) for i in f.imports
+    imports = [i for f in tree.read(root, tree.paths(root, (".py",)), standard=STANDARD, private=PRIVATE) for i in f.imports
                if not i.relative]
     assert {i.standard for i in imports} == {True, False}
     assert [i for i in imports if i.standard != (i.module[0] in STANDARD)] == []
@@ -986,7 +993,7 @@ def test_handed_the_interpreter_s_standard_library_every_import_of_xarch_s_own_s
     pytest.param("x = 1\n", None, id="a text that parses has none"),
 ])
 def test_a_text_in_no_file_is_parsed_as_a_file_is(text, error):
-    assert FsSourceTree(FileSystem()).parsed(text, STANDARD).error == error
+    assert FsSourceTree(FileSystem()).parsed(text, STANDARD, private=PRIVATE).error == error
 
 
 PIECES = (
@@ -1040,7 +1047,7 @@ def test_the_pieces_of_a_file_are_its_top_level_functions_and_classes_and_their_
 
 
 def test_a_text_in_no_file_has_its_pieces_too():
-    assert FsSourceTree(FileSystem()).parsed("def f():\n    pass\n", STANDARD).pieces == (Piece("function", "f", 1, 2),)
+    assert FsSourceTree(FileSystem()).parsed("def f():\n    pass\n", STANDARD, private=PRIVATE).pieces == (Piece("function", "f", 1, 2),)
 
 
 @pytest.mark.parametrize("text, comments", [
@@ -1058,5 +1065,46 @@ def test_a_text_in_no_file_has_its_pieces_too():
 ])
 def test_each_comment_is_read_with_where_it_lies(tmp_path, text, comments):
     assert parsed(tmp_path, text).comments == comments
-    assert FsSourceTree(FileSystem()).parsed(text, STANDARD).comments == comments
+    assert FsSourceTree(FileSystem()).parsed(text, STANDARD, private=PRIVATE).comments == comments
     assert all(comment.marker == "#" and comment.doc is False for comment in parsed(tmp_path, text).comments)
+
+
+PRIVACY = ("class A: ...\nclass _A: ...\nclass Kept:\n    def __init__(self): ...\n    def m(self): ...\n"
+           "    def _m(self): ...\ndef f(): ...\ndef _f(): ...\nX = 1\n_X = 1\n__all__ = ['A']\n"
+           "from m import a, _b\nfrom m import _c as c\nimport os\n")
+"""A class, a function, a method, a constant and an import of each sort, public and not, special names among them."""
+
+
+def flags(found: SourceFile) -> tuple:
+    """Whether each class, function and constant is public, by its name, and what each import takes and withholds."""
+    return ({c.name: c.public for c in found.classes}, {f.name: f.public for f in found.functions},
+            {c.name: c.public for c in found.constants}, [(i.names, i.withheld) for i in found.imports])
+
+
+def test_the_reader_says_a_name_is_public_unless_it_starts_with_the_private_prefix_it_is_handed(tmp_path):
+    assert flags(parsed(tmp_path, PRIVACY)) == (
+        {"A": True, "_A": False, "Kept": True},
+        {"__init__": False, "m": True, "_m": False, "f": True, "_f": False},
+        {"X": True, "_X": False, "__all__": False},
+        [(("a", "_b"), frozenset({"_b"})), (("_c",), frozenset({"_c"})), (None, frozenset())])
+
+
+def test_handed_no_prefix_the_reader_makes_every_name_public(tmp_path):
+    (tmp_path / "x.py").write_text(PRIVACY)
+    classes, functions, constants, imports = flags(
+        FsSourceTree(FileSystem()).read(tmp_path, [("x.py",)], standard=STANDARD, private="")[0])
+    assert {*classes.values(), *functions.values(), *constants.values()} == {True}
+    assert [withheld for _, withheld in imports] == [frozenset(), frozenset(), frozenset()]
+
+
+def test_a_text_in_no_file_is_told_public_as_a_file_is(tmp_path):
+    assert flags(FsSourceTree(FileSystem()).parsed(PRIVACY, STANDARD, private=PRIVATE)) == flags(
+        parsed(tmp_path, PRIVACY))
+
+
+def test_the_reader_must_be_handed_the_prefix(tmp_path):
+    tree = FsSourceTree(FileSystem())
+    with pytest.raises(TypeError):
+        tree.read(tmp_path, [], standard=STANDARD)
+    with pytest.raises(TypeError):
+        tree.parsed("x = 1\n", STANDARD)

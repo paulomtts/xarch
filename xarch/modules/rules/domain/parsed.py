@@ -124,7 +124,7 @@ class Class:
     order, those annotated as a class variable left out; types: the annotation of each of its fields, in the same order,
     as written (a string annotation by its text); immutable: it is an immutable record, as the reader was told one is
     marked (see RecordMark); interface: it is an interface, as the reader was told one is marked (see
-    InterfaceMark)."""
+    InterfaceMark); public: it is for other files to use, as the language's reader says."""
     line: int
     name: str
     bases: tuple[Ref, ...] = ()
@@ -136,16 +136,19 @@ class Class:
     types: tuple[str, ...] = ()
     immutable: bool = False
     interface: bool = False
+    public: bool = True
 
 
 @dataclass(frozen=True)
 class Constant:
     """A name a statement at the top level of a file binds by an assignment (one of several, in a branch too, or a type
     alias), the line it is on, and every name that statement mentions, by its last step: its annotation (a string
-    annotation read as the expression it holds) and its value, but no text of its value."""
+    annotation read as the expression it holds) and its value, but no text of its value; and whether it is for other
+    files to use, as the language's reader says (public)."""
     line: int
     name: str
     named: frozenset[str] = frozenset()
+    public: bool = True
 
 
 @dataclass(frozen=True)
@@ -208,7 +211,8 @@ class Function:
     language tells a method that does (see the reader), "" for one that does not. named is every name its definition
     mentions, by its last step: its decorators, its parameters' annotations and defaults, its return annotation and its
     body (a string annotation read as the expression it holds, no other text). expressions holds each expression of its
-    body that chooses between values, as (line, the keyword the reader records it by)."""
+    body that chooses between values, as (line, the keyword the reader records it by). public: it is for other files to
+    use, as the language's reader says."""
     line: int
     name: str
     tables: tuple[Table, ...] = ()
@@ -226,6 +230,7 @@ class Function:
     forwards: str = ""
     named: frozenset[str] = frozenset()
     expressions: tuple[tuple[int, str], ...] = ()
+    public: bool = True
 
     @property
     def real_statements(self) -> int:
@@ -239,8 +244,8 @@ class SourceFile:
     it imports, its comments, its functions (at module level and in its classes), its unions, its calls, its
     classes, the calls of the methods of its functions' parameters, the uses of the names it reads and the names it
     defines at module level as functions, in order (module_functions: a name that one `def` binds and nothing else
-    binds, so that what it names is a function). named is every name the file mentions anywhere, annotations
-    included, by its last step alone; callbacks are the calls of a function's own parameter; method_calls the calls
+    binds, so that what it names is a function, each public as that function is). named is every name the file
+    mentions anywhere, annotations included, by its last step alone; callbacks are the calls of a function's own parameter; method_calls the calls
     of an attribute no import binds (see MethodCall). constants are the names it binds at the top level by an
     assignment (see Constant). unmentioned holds, as (the line of the import, the name it takes), each name an import
     takes from a module that nothing else in the file mentions, in code or an annotation: a name it only passes on
