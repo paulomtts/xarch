@@ -1,7 +1,10 @@
 """Filling a docs template from a profile file: the prose is the author's, the file supplies the structure."""
+from dataclasses import replace
+
 import pytest
 
 from tests.modules.spec.format_files import FILE_TYPES
+from tests.modules.spec.languages import BRACE, PYTHON
 from tests.modules.spec.profiles import parsed
 from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.modules.spec.domain.errors import InvalidTemplate
@@ -283,3 +286,11 @@ def test_a_shared_part_is_said_in_the_guards():
     lines = [line for line in filled("{{guards}}", parts=parts(shared={"shared": 2})).splitlines() if "`shared`" in line]
     assert lines == ["- `shared`: every public name of `shared/` is used by at least 2 users (each instance of a repeating "
                      "folder, or each part outside them; tests not read), or it belongs to the one that uses it."]
+
+
+def test_a_quoted_file_of_any_ending_of_the_language_of_the_app_is_fenced_with_the_language_s_name():
+    view = "src/billing/api/view.tsx"
+    architecture = parsed(layered(docs=DOCS | {"example_notes": {}}, language="brace"), folders={"ex": (view,)},
+                          languages={"python": PYTHON, "brace": replace(BRACE, checked=replace(BRACE.checked, comment="//"))})
+    assert fill("{{example:" + view + "}}", architecture, "layered.md", {view: "x\n"}, file_types=FILE_TYPES) == (
+        "```brace\n// src/billing/api/view.tsx\nx\n```")
