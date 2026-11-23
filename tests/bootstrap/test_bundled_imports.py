@@ -1,6 +1,7 @@
-"""What a part of a bundled profile, or of xarch's own, may import, must import and may import from outside stays what
-it was before the part's import keys moved into one `imports` group: `where` says the same of a file of every part of
-xarch's own profile, and the rules the keys expand to are, as checks, the same text for each profile but for the key."""
+"""What a part, or a tier, of a bundled profile or of xarch's own may import, must import and may import from outside
+stays what it was before the import keys moved into `imports` groups: `where` says the same of a file of every part of
+xarch's own profile and of a test of each of its tiers, and the rules the keys expand to are, as checks, the same text
+for each profile but for the key."""
 import hashlib
 import json
 
@@ -54,10 +55,41 @@ RULES = {
 }
 """For each profile and key of the group: how many rules it expands to, and the first 16 hex digits of the SHA-256 of
 their checks text before the change."""
+TIER_KEYS = {"types_only": "tiers.types_only", "must": "tiers.must_import", "also": "tiers.may_also_import",
+             "tiers": "tiers"}
+"""The address `profile explain` is asked for each key of a tier's group that rules are keyed by, and for `tiers`,
+whose rule a tier's `also` keys too."""
+TIER_RULES = {
+    ("cli", "types_only"): (1, "29bdb75af0440d40"), ("cli", "must"): (0, "e3b0c44298fc1c14"),
+    ("cli", "also"): (0, "e3b0c44298fc1c14"), ("cli", "tiers"): (3, "07ebde882b66c963"),
+    ("web", "types_only"): (1, "29bdb75af0440d40"), ("web", "must"): (0, "e3b0c44298fc1c14"),
+    ("web", "also"): (0, "e3b0c44298fc1c14"), ("web", "tiers"): (3, "07ebde882b66c963"),
+    ("architecture.yaml", "types_only"): (2, "329ba93378533550"), ("architecture.yaml", "must"): (2, "0083c4a5a67770c5"),
+    ("architecture.yaml", "also"): (1, "297bcd04b21ab4d8"), ("architecture.yaml", "tiers"): (3, "07ebde882b66c963"),
+}
+"""For each profile and key of a tier: how many rules it expands to, and the first 16 hex digits of the SHA-256 of
+their checks text before the change."""
+TESTS = {"unit": "tests/modules/spec/domain/test_x.py", "integration": "tests/modules/spec/application/test_x.py",
+         "wired": "tests/bootstrap/test_x.py", "guard": "tests/architecture/test_x.py",
+         "wired, of cli": "tests/cli/test_x.py"}
+"""A test of each tier of xarch's own profile, the wired one twice: once below bootstrap/, once mirroring cli/."""
+TYPES = ["domain", "logic", "ports", "services", "controller", "adapters", "platform"]
+TIER_WHERE = {
+    "unit": ("unit", "its own module's `domain/`, `kernel/`, `kernel/logic/`, `profile_values/`", [], "5e0f441d9899ecd1"),
+    "integration": ("integration", "its own module's `application/controller.py`, `application/services/`, `contract/` "
+                    "and `domain/errors`, `kernel/`, `kernel/logic/`, `profile_values/`, its own module's "
+                    "`domain/values`, `domain/profile`, `domain/parsed` and `domain/outcomes`", [], "ae600445e22537b0"),
+    "wired": ("wired", "everything", TYPES, "2a05a9860791084b"),
+    "guard": ("guard", "everything", TYPES, "4f53cda18c2baa0c"),
+    "wired, of cli": ("wired", "`cli/`, `cli/reports/`, any module's `application/controller.py` and `contract/`, "
+                      "`kernel/`, `kernel/logic/`", TYPES, "46205533adc1e5b6"),
+}
+"""What `where` said of each test before the change: its tier, may_import_text, test.types_only, and the first 16 hex
+digits of the SHA-256 of its may_import list."""
 
 
-def explained(key: str, profile: str) -> tuple[int, str]:
-    found = json.loads(runner.invoke(app, ["profile", "explain", KEYS[key], "--rule", "--profile", profile,
+def explained(address: str, profile: str) -> tuple[int, str]:
+    found = json.loads(runner.invoke(app, ["profile", "explain", address, "--rule", "--profile", profile,
                                            "--format", "json"]).output)
     text = found["checks"].replace(".imports.libraries)", ".libraries)")
     return found["rules"], hashlib.sha256(text.encode()).hexdigest()[:16]
@@ -72,4 +104,16 @@ def test_where_says_what_each_part_of_xarch_may_import_as_before(part):
 
 @pytest.mark.parametrize("profile, key", list(RULES))
 def test_each_key_of_the_group_expands_to_the_rules_of_before(profile, key):
-    assert explained(key, profile) == RULES[profile, key]
+    assert explained(KEYS[key], profile) == RULES[profile, key]
+
+
+@pytest.mark.parametrize("test", list(TESTS))
+def test_where_says_what_a_test_of_each_tier_of_xarch_may_import_as_before(test):
+    found = json.loads(runner.invoke(app, ["where", TESTS[test], "--format", "json"]).output)
+    reached = hashlib.sha256(json.dumps(found["may_import"], sort_keys=True).encode()).hexdigest()[:16]
+    assert (found["tier"]["name"], found["may_import_text"], found["test"]["types_only"], reached) == TIER_WHERE[test]
+
+
+@pytest.mark.parametrize("profile, key", list(TIER_RULES))
+def test_each_key_of_a_tier_s_group_expands_to_the_rules_of_before(profile, key):
+    assert explained(TIER_KEYS[key], profile) == TIER_RULES[profile, key]
