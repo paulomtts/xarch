@@ -227,6 +227,20 @@ def closest(location: str, **changes) -> Origin:
     return replace(Origin(location, False, "web", chosen_by="closest", match=0.81, counts=COUNTS), **changes)
 
 
+def test_a_profile_compared_with_the_one_against_names_says_so_on_its_profile_line_bundled_or_custom():
+    bundled = Origin("web", True, "cli", chosen_by="against", match=0.89, counts=COUNTS)
+    assert lines(origin=bundled)[2:] == ["  profile:     web (bundled; compared with cli, --against; match 89%)"]
+    custom = closest("/src/mine.yaml", chosen_by="against", match=0.73, low=True)
+    assert lines(origin=custom)[2:] == [
+        "  profile:     mine.yaml (custom; compared with web, --against; match 73%)",
+        "    match:       73%, low: 27% of what check reads under either profile has nothing to compare with in the "
+        "other, so the list below says little about how check would do under web"]
+    profile = json.loads(json_document("web", bundled, AppChecked((), EnforcementView(), {}, True), False))[
+        "enforcement"]["profile"]
+    assert (profile["bundled"], profile["compared_with"]["profile"], profile["compared_with"]["chosen_by"]) == (
+        True, "cli", "against")
+
+
 def test_a_profile_file_below_the_working_folder_is_named_from_it():
     assert lines(origin=closest("/src/arch/mine.yaml"))[:3] == [
         "OK: no violations", "enforcement", "  profile:     arch/mine.yaml (custom; compared with web, closest; match 81%)"]

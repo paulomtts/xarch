@@ -110,6 +110,10 @@ def based_on_cli(**changes) -> Resemblance:
     return replace(Resemblance(False, "cli", (), "based_on", 0.8, False, COUNTS), **changes)
 
 
+AGAINST_WEB = based_on_cli(compared="web", chosen_by="against")
+"""A custom profile compared with web because --against names it, matching it at 80% with COUNTS."""
+
+
 def checked(resemblance: Resemblance) -> list[str]:
     """What `profile check` says of a valid profile that resembles the bundled ones as given, but its verdict."""
     return check_lines(ProfileHeld(Reviewed("mine.yaml", (), 1, resemblance), ChecksHeld((), 0)))[:-1]
@@ -127,6 +131,12 @@ def matched(resemblance: Resemblance) -> list[str]:
                  id="a custom one names the bundled profile of highest match, with the match"),
     pytest.param(Resemblance(False), "custom; no bundled profile resembles it",
                  id="a custom one that resembles none says so"),
+    pytest.param(replace(AGAINST_WEB, based_on="cli"), "custom; against web, given with --against; based_on: cli",
+                 id="a custom one compared with the profile against names says so, then what it is based on"),
+    pytest.param(AGAINST_WEB, "custom; against web, given with --against",
+                 id="a custom one based on nothing compared with the profile against names says so"),
+    pytest.param(replace(AGAINST_WEB, bundled=True), "bundled; against web, given with --against",
+                 id="a bundled one compared with the profile against names says so"),
 ])
 def test_profile_check_is_headed_with_where_the_profile_comes_from(resemblance, words):
     assert checked(resemblance)[0] == f"checking mine.yaml ({words})"
@@ -262,3 +272,14 @@ def test_an_address_xarch_retired_is_said_with_its_fixed_text_before_the_nearest
     assert json.loads(unknown_document(found)) == {
         "ok": False, "error": unknown_message(found), "key": "parts.tested_by", "nearest": ["parts.untested"],
         "words": [], "retired": "renamed in 0.3.0: write tier"}
+
+
+def test_a_profile_compared_with_the_one_against_names_says_so_in_its_match_and_a_bundled_one_is_compared_too():
+    said = MATCH.replace("with cli (based_on)", "with web (--against)")
+    assert matched(AGAINST_WEB) == [said]
+    bundled = replace(AGAINST_WEB, bundled=True)
+    assert matched(bundled) == [said]
+    assert checked(bundled)[-1] == "  compared: no looser than web"
+    compared = json.loads(check_document(ProfileHeld(Reviewed("cli", (), 1, bundled), ChecksHeld((), 0))))[
+        "compared_with"]
+    assert (compared["profile"], compared["chosen_by"], compared["higher"]) == ("web", "against", None)

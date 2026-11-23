@@ -11,7 +11,8 @@ check: {"ok", "profile", "problems", "files", "checks", "compared_with"}, files 
 points to and checks the number of checks it writes itself (made or not), both null for a profile that does not load,
 each problem {"check", "message"} (check: load, examples, or checks, for a check of the
 profile's own) and compared_with {"profile", "chosen_by", "match", "low", "counts", "only_here", "only_there",
-"elsewhere", "higher", "looser"} (null for a bundled profile or one that resembles none), counts {"parts",
+"elsewhere", "higher", "looser"} (null when nothing is compared: a bundled profile without --against, or one that
+resembles none), chosen_by "based_on", "closest" or "against", counts {"parts",
 "part_keys", "tiers", "guards", "profile"} each [comparable, all], higher null or {"profile", "match"}, each looser
 entry {"key", "part", "what", "sentence"}; `check`'s JSON holds the same compared_with under enforcement.profile.
 """
@@ -26,6 +27,7 @@ from xarch.cli.reports.document import document
 from xarch.cli.reports.shown import shown
 from xarch.modules.rules.contract import ProfileHeld, ProfileUnloaded, Resemblance
 from xarch.modules.spec.contract import (
+    AGAINST,
     CLOSEST,
     FilesTaken,
     FormatExplained,
@@ -190,11 +192,17 @@ NAMED = 5
 COUNTED = {"parts": "parts", "part_keys": "part keys", "tiers": "tier entries", "guards": "guards",
            "profile": "profile keys"}
 """How the match line says each kind of thing it counts, by the kind."""
+GIVEN = "--against"
+"""How the text says why a profile is compared with the one --against names."""
 
 
 def _origin_words(origin: Origin | Resemblance) -> str:
     """Where a profile comes from, in words, as `profile check` heads it: bundled, or custom and the profile it is
-    compared with and why (with the match, when it is the closest), if any."""
+    compared with and why (with the match, when it is the closest), if any; with --against, either and the profile it
+    names, then what the profile's own based_on names."""
+    if origin.chosen_by == AGAINST:
+        based_on = f"; based_on: {origin.based_on}" if origin.based_on else ""
+        return f"{_kind(origin)}; against {origin.compared}, given with {GIVEN}{based_on}"
     if origin.bundled:
         return "bundled"
     if origin.compared is None:
@@ -206,10 +214,21 @@ def _origin_words(origin: Origin | Resemblance) -> str:
 
 def compared_words(origin: Origin | Resemblance) -> str:
     """Where a profile comes from, in words, as the enforcement section of `check` says it: bundled, or custom and the
-    profile it is compared with, why, and the match, if any."""
-    if origin.bundled or origin.compared is None:
+    profile it is compared with, why, and the match, if any; a bundled one compared with the one --against names says
+    that too."""
+    if origin.compared is None:
         return _origin_words(origin)
-    return f"custom; compared with {origin.compared}, {origin.chosen_by}; match {percent(origin.match)}"
+    return f"{_kind(origin)}; compared with {origin.compared}, {_why(origin)}; match {percent(origin.match)}"
+
+
+def _kind(origin: Origin | Resemblance) -> str:
+    return "bundled" if origin.bundled else "custom"
+
+
+def _why(origin: Origin | Resemblance) -> str:
+    """Why the profile is compared with the one it is, as the text says it: --against for the one it names, else the
+    word of the JSON."""
+    return GIVEN if origin.chosen_by == AGAINST else str(origin.chosen_by)
 
 
 def percent(match: float | None) -> str:
@@ -228,10 +247,10 @@ def low_reason(origin: Origin | Resemblance) -> str:
 def _match_lines(resemblance: Resemblance) -> list[str]:
     """The match with the profile compared with, its counts, what pairs with nothing, the parts at another path, and
     whether it is low or another bundled profile matches higher; nothing when nothing is compared."""
-    if resemblance.bundled or resemblance.compared is None:
+    if resemblance.compared is None:
         return []
     counts = ", ".join(f"{comparable} of {every} {COUNTED[kind]}" for kind, comparable, every in resemblance.counts)
-    lines = [f"  match: {percent(resemblance.match)} with {resemblance.compared} ({resemblance.chosen_by}): {counts} "
+    lines = [f"  match: {percent(resemblance.match)} with {resemblance.compared} ({_why(resemblance)}): {counts} "
              "sit where both profiles have them"]
     sides = [f"{label}: {_unpaired(names)}" for label, names in (("only here", resemblance.only_here),
                                                                   (f"only in {resemblance.compared}", resemblance.only_there))
@@ -264,7 +283,7 @@ def _named(names: Sequence[str]) -> str:
 
 def compared_document(origin: Origin | Resemblance) -> dict[str, Any] | None:
     """The profile compared with, as both JSON documents hold it under compared_with; None when nothing is compared."""
-    if origin.bundled or origin.compared is None:
+    if origin.compared is None:
         return None
     return {"profile": origin.compared, "chosen_by": origin.chosen_by, "match": origin.match, "low": origin.low,
             "counts": {kind: [comparable, every] for kind, comparable, every in origin.counts},
@@ -318,7 +337,7 @@ def _verdict(problems: int) -> str:
 
 
 def _compared(resemblance: Resemblance) -> list[str]:
-    if resemblance.bundled or resemblance.compared is None:
+    if resemblance.compared is None:
         return []
     if not resemblance.looser:
         return [f"  compared: no looser than {resemblance.compared}"]
