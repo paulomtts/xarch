@@ -115,8 +115,9 @@ class Loosened:
         uses.never      part no longer forbids what
         untested        part is newly marked untested
         litmus          part has no litmus, though the bundled profile gives it one (LITMUS)
-        types_only      the tests of tier part may now call what
-        may_also_import the tests of tier part may also import what (a target as written)
+        imports.types_only
+                        the tests of tier part may now call what
+        imports.also    the tests of tier part may also import what (a target as written)
         uses.apply_never the tests of tier part are no longer held to their part's never list
         testing.skips   what is no longer counted as a skip
         files.pinned    the init file what is no longer pinned

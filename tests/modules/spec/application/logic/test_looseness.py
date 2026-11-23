@@ -73,8 +73,9 @@ def test_every_way_a_profile_is_looser_than_another_is_found_in_order():
         Loosened("imports.libraries", "store", "requests", "store may also import requests (parts.store.imports.libraries)"),
         Loosened("uses.never", "core", "time.time", "core no longer forbids time.time (parts.core.uses.never)"),
         Loosened("untested", "store", "", "store is newly marked untested (parts.store.untested)"),
-        Loosened("types_only", "unit", "store", "the unit tests may now call store (tiers.unit.types_only)"),
-        Loosened("may_also_import", "unit", "edge", "the unit tests may also import edge (tiers.unit.may_also_import)"),
+        Loosened("imports.types_only", "unit", "store",
+                 "the unit tests may now call store (tiers.unit.imports.types_only)"),
+        Loosened("imports.also", "unit", "edge", "the unit tests may also import edge (tiers.unit.imports.also)"),
         Loosened("uses.apply_never", "unit", "",
                  "the unit tests are no longer held to their part's never list (tiers.unit.uses.apply_never)"),
         Loosened("testing.skips", "", "pytest.mark.xfail",
@@ -85,10 +86,10 @@ def test_every_way_a_profile_is_looser_than_another_is_found_in_order():
 
 @pytest.mark.parametrize("bundled, custom, found", [
     pytest.param([], ["shared/text", "store@any"], (
-        Loosened("may_also_import", "unit", "shared/text",
-                 "the unit tests may also import shared/text (tiers.unit.may_also_import)"),
-        Loosened("may_also_import", "unit", "store@any",
-                 "the unit tests may also import store@any (tiers.unit.may_also_import)")),
+        Loosened("imports.also", "unit", "shared/text",
+                 "the unit tests may also import shared/text (tiers.unit.imports.also)"),
+        Loosened("imports.also", "unit", "store@any",
+                 "the unit tests may also import store@any (tiers.unit.imports.also)")),
                  id="each target the bundled tier does not give is looser, shown as written"),
     pytest.param(["shared", "store"], ["shared/text", "store"], (),
                  id="a target the bundled tier's covers is not looser"),
@@ -216,3 +217,8 @@ def marked(may) -> dict:
 def test_a_mark_dropped_while_its_target_stays_allowed_is_looser(base, custom, found):
     assert [(item.key, item.part, item.what, item.sentence)
             for item in loosened(parsed(marked(custom)), parsed(marked(base))) if item.key == MARK] == found
+
+
+def test_a_tier_s_looser_keys_are_those_of_its_group_and_the_old_words_are_gone():
+    assert LOOSER.index("imports.types_only") < LOOSER.index("imports.also") < LOOSER.index("uses.apply_never")
+    assert not {"types_only", "may_also_import"} & set(LOOSER)

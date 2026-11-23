@@ -11,7 +11,7 @@ the part still may import (some entry covers it) and no mark of its covers; an o
 `imports.libraries`, or `libraries` dropped as a whole; a target added to a part's `imports.must`, or the key dropped
 from a part that has it; a name the bundled
 `uses.never` list of a part holds that no entry of the custom list covers (`time` covers `time.time`); a part newly
-marked `untested`; a part dropped from a tier's `types_only`; a target added to a tier's `may_also_import` that no
+marked `untested`; a part dropped from a tier's `imports.types_only`; a target added to a tier's `imports.also` that no
 target of the bundled tier's covers; a tier no longer `uses.apply_never`; a name dropped from `testing.skips`; a `files`
 entry no longer `pinned`; a name the bundled profile `reserved` holds that the custom one does not; a part the bundled
 profile gives a `litmus` that the custom one redefines without one; a public name `guards.dead-code.known` accepts as
@@ -35,7 +35,7 @@ from xarch.profile_values.placement import Target
 Looser = tuple[str, str, str]
 """(key, part, what): one way a profile is looser, before it is said."""
 LOOSER = ("imports.may", "imports.may.types_only", "imports.libraries", "uses.never", "imports.must", "untested",
-          LITMUS, "types_only", "may_also_import", "uses.apply_never", "testing.skips", "files.pinned", "reserved",
+          LITMUS, "imports.types_only", "imports.also", "uses.apply_never", "testing.skips", "files.pinned", "reserved",
           "known", "translated", "review.never", "review.mask", "evals.placement.lines")
 """Every key a way a profile is looser is listed under, each said by a sentence of its own."""
 
@@ -89,8 +89,9 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
     for tier in base.tiers:
         mine = tiers.get(tier.name)
         if mine is not None:
-            found += [("types_only", tier.name, part) for part in tier.types_only if part not in mine.types_only]
-            found += [("may_also_import", tier.name, _shown(t)) for t in mine.may_also_import
+            found += [("imports.types_only", tier.name, part) for part in tier.types_only
+                      if part not in mine.types_only]
+            found += [("imports.also", tier.name, _shown(t)) for t in mine.may_also_import
                       if not any(_covers(b, t) for b in tier.may_also_import)]
     found += [("uses.apply_never", tier.name, "") for tier in base.tiers
               if tier.apply_never and tier.name in tiers and not tiers[tier.name].apply_never]
@@ -169,10 +170,10 @@ def _sentence(key: str, part: str, what: str = "") -> str:
             return f"{part} is newly marked untested (parts.{part}.untested)"
         case "litmus":
             return f"{part} has no litmus, though the profile it is compared with gives it one (parts.{part}.litmus)"
-        case "types_only":
-            return f"the {part} tests may now call {what} (tiers.{part}.types_only)"
-        case "may_also_import":
-            return f"the {part} tests may also import {what} (tiers.{part}.may_also_import)"
+        case "imports.types_only":
+            return f"the {part} tests may now call {what} (tiers.{part}.imports.types_only)"
+        case "imports.also":
+            return f"the {part} tests may also import {what} (tiers.{part}.imports.also)"
         case "uses.apply_never":
             return f"the {part} tests are no longer held to their part's never list (tiers.{part}.uses.apply_never)"
         case "testing.skips":
