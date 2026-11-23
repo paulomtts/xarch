@@ -114,7 +114,7 @@ def facets(word: Word) -> WordFacets:
         case Kind():
             return WordFacets(side=word.side, fields=_fields(word), needs=_needs(word), verb=word.verb)
         case Filter():
-            return WordFacets(about=word.about, side=word.side, value=word.value)
+            return WordFacets(about=word.about, side=word.side, value=word.value, needs=word.facts)
         case TargetKind():
             return WordFacets(side=word.side, value=word.values)
         case Variable():

@@ -75,7 +75,9 @@ class Kind:
 class Filter:
     """A filter: its name, what is true of what passes it, whether it asks about the file, the fact or what the fact
     reaches, the fields it reads (any one of them carried makes it apply; none: it applies to every kind), the side it
-    applies to, what its value is ("" for none), and whether it needs a target matched (HIT)."""
+    applies to, what its value is ("" for none), whether it needs a target matched (HIT), and the facts of the source
+    (FACTS of capabilities) it needs of the language when written as is: negated, it needs none, since under a
+    language without them every fact passes it."""
     name: str
     meaning: str
     about: str
@@ -83,6 +85,7 @@ class Filter:
     side: str = ""
     value: str = ""
     needs: str = ""
+    facts: tuple[str, ...] = ()
 
     def applies_to(self, kind: Kind) -> bool:
         return not self.reads or any(kind.carries(name) for name in self.reads)
@@ -242,7 +245,8 @@ FILTERS: tuple[Filter, ...] = (
     Filter("tiered", "the file has a tier: a test's own, or for a file of the app the tier whose tests cover its part",
            FILE),
     Filter("placed", "the file lies in a part or in a folder of the layout", FILE, side=APP_SIDE),
-    Filter("package-file", "the file is the language's package file, which stands for its folder", FILE),
+    Filter("package-file", "the file is the language's package file, which stands for its folder", FILE,
+           facts=("file.package",)),
     Filter("mirrors-a-part", "the test's folder mirrors a part of the app, rather than lying in its tier's `folder`",
            FILE, side=TESTS_SIDE),
     Filter("may-import-everything", "the file's part may import everything (`may_import: everything`)", FILE,
@@ -297,7 +301,7 @@ FILTERS: tuple[Filter, ...] = (
     Filter("of-kind", "the fact is of that kind", FACT, value=KIND),
     Filter("target-placed", "what the fact reaches lies in a part or in a folder of the layout", TARGET, ("place",)),
     Filter("target-inside-part", "what the fact reaches lies below its part's own folder: one of its files, not the "
-                                 "part as a whole", TARGET, ("place",)),
+                                 "part as a whole", TARGET, ("place",), facts=("file.package",)),
     Filter("target-in-own-part", "what the fact reaches lies in the file's own part, in the file's own instance of a "
                                  "repeating folder", TARGET, ("place",), side=APP_SIDE),
     Filter("target-in-own-tier", "what the fact reaches is a file of the app the file's own tier tests", TARGET,

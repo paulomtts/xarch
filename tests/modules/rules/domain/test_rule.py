@@ -228,6 +228,13 @@ def test_a_rule_needs_the_facts_of_its_kinds_and_of_the_fields_its_words_read():
         "class", "class.exception")
 
 
+def test_a_filter_about_the_package_file_needs_the_language_to_have_one_unless_it_is_negated():
+    assert made(exempt=c("package-file")).needs == ("import", "file.package")
+    assert made(scope=Scope(APP, "store", where=c("not package-file"))).needs == ("import",)
+    assert "file.package" in made(facts=("import-into-app",), targets=EXISTING, sayings=say("m"),
+                                  keep=c("target-placed", "target-inside-part")).needs
+
+
 def test_a_rule_names_every_filter_and_every_variable_it_is_written_with_in_slot_order():
     rule = made(scope=Scope(APP, "store", where=c("placed")), keep=c("not relative"), exempt=c("standard"),
                 sayings=(*say("{package} in {line}", "drop {package}", "standard", once=("package",)), *say("{line}")))

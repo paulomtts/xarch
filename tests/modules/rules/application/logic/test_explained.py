@@ -102,6 +102,8 @@ def word(table, name):
 @pytest.mark.parametrize("found, said", [
     pytest.param(word(FILTERS, "below"), WordFacets(about="file", value=word(FILTERS, "below").value),
                  id="a filter: what it asks about and its value"),
+    pytest.param(word(FILTERS, "package-file"), WordFacets(about="file", needs=("file.package",)),
+                 id="a filter that needs a fact: what it asks about and the fact"),
     pytest.param(word(TARGETS, "place"), WordFacets(side=word(TARGETS, "place").side, value=word(TARGETS, "place").values),
                  id="a target: its side and its values"),
     pytest.param(word(QUANTIFIERS, "may_not"), WordFacets(), id="a quantifier: nothing besides"),

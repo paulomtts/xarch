@@ -17,6 +17,12 @@ TOY = replace(PYTHON, name="toy", checked=replace(
     supplies=(Supply("file", EXACT), Supply("import", EXACT), Supply("import.relative", EXACT),
               Supply("import.standard", EXACT), Supply("class", PARTIAL, "a class defined in a branch is not read"))))
 LANGUAGES = {"toy": TOY}
+FLAT = replace(PYTHON, name="flat", checked=replace(
+    PYTHON.checked, title="Flat", package_files=(),
+    supplies=tuple(Supply(fact, EXACT) for fact in FACTS if fact != "file.package")))
+"""A language whose reader supplies every fact but file.package: it has no package file."""
+FLATS = {"flat": FLAT}
+FAKES = {"folder": "fakes", "for": ["store"], "prefix": "Fake"}
 
 
 def services(**keys) -> dict:
@@ -142,3 +148,42 @@ def test_fakes_are_refused_in_a_language_whose_reader_marks_no_interface():
     document = services()
     document["fakes"] = {"folder": "fakes", "for": ["store"], "prefix": "Fake"}
     assert refusal("fakes", "class.interface") in problems(document, languages=LANGUAGES)
+
+
+def flat(**keys) -> dict:
+    document = layered(language="flat")
+    document["parts"]["service"] |= keys
+    return document
+
+
+def unsupplied(address: str) -> str:
+    return (f"layered.yaml: {address}: its check reads file.package (a file stands for the folder that holds it), "
+            f"which the language flat does not supply: drop {address}, or check the app with a language whose reader "
+            "supplies file.package")
+
+
+@pytest.mark.parametrize("keys, address", [
+    pytest.param({"package_only": True}, "parts.service.package_only", id="package_only"),
+    pytest.param({"must_import": ["store"]}, "parts.service.must_import", id="a part's must_import"),
+])
+def test_a_key_that_reads_the_package_file_as_written_is_refused_under_a_language_with_none(keys, address):
+    assert problems(flat(**keys), languages=FLATS) == [unsupplied(address)]
+
+
+def test_dead_code_untested_is_refused_under_a_language_with_no_package_file():
+    document = covered(guards={"dead-code": {"untested": True}}, fakes=FAKES, language="flat")
+    assert problems(document, languages=FLATS) == [unsupplied("guards.dead-code.untested")]
+
+
+def test_the_keys_that_read_the_package_file_negated_load_under_a_language_with_none():
+    assert parsed(flat(holds="functions", immutable=True), languages=FLATS).approximate == ()
+    assert parsed(covered(guards={"dead-code": {}}, fakes=FAKES, language="flat"), languages=FLATS).approximate == ()
+    assert parsed(flat(), languages=FLATS).approximate == ()
+
+
+def test_file_package_is_a_fact_after_class_interface_and_only_the_keys_that_read_it_as_written_need_it():
+    facts = list(FACTS)
+    assert facts[facts.index("class.interface") + 1] == "file.package"
+    assert FACTS["file.package"] == "a file stands for the folder that holds it"
+    needing = sorted(key.address for key in KEYS if "file.package" in key.needs)
+    assert needing == ["guards.dead-code.untested", "parts.<part>.must_import", "parts.<part>.package_only"]

@@ -139,3 +139,15 @@ def test_a_path_target_is_split_at_the_member_of_the_language_and_a_method_stays
                                                             WrittenTarget("part", ("web",)))))
     (own,) = resolved(profile(language=replace(SUPPLIES, member="#"), written={"no-api": hashed})).checks
     assert own.rule.targets[0].names == (("node:fs", "readFileSync"), ("", "run()"))
+
+
+def test_an_own_check_that_reads_the_package_file_as_written_needs_the_language_to_have_one_and_negated_does_not():
+    exempting = WrittenCheck(("import",), Scope(), Quantified(MAY_NOT, (WrittenTarget("exist"),)), (Saying("m", "f"),),
+                             exempt=(Condition("package-file"),))
+    negated = replace(exempting, exempt=(Condition("package-file", negated=True),))
+    rule = Rule("negated", Scope(), ("import",), MAY_NOT, (Match("exist"),), (Saying("m", "f"),),
+                exempt=(Condition("package-file", negated=True),), key="checks.negated")
+    assert made({"exempting": exempting, "negated": negated}, PROFILE) == MadeChecks(
+        (OwnCheck(rule),),
+        ("checks.exempting: needs file.package (a file stands for the folder that holds it), which the reader of Toy "
+         "does not supply: read another kind of fact, or drop the check",))
