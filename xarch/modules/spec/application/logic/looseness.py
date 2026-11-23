@@ -41,10 +41,18 @@ never for an exception): `names` dropped, or a pattern added that no bundled pat
 `imports.must` dropped, or a part added to it; a tier no longer `plain_tables`; `testing.beside` set where the bundled
 profile leaves it out. Anything stricter, and what is compared in no way above (the layout, new parts, the guards'
 other parameters, `fakes`), is not listed.
+
+A custom profile whose `based_on` is the path of a profile file is compared with that file, called by its path as
+written, and is handed the files of its chain in order: that one, the one it names in turn, and so on; no file of the
+chain is a candidate for the bundled profile of higher match. `--strict` then rests on the anchor: the bundled profile
+the last file says it is based on, else the one of highest match with it, else none. A guard left off is excused only
+when the anchor and every file of the chain leave it off too, and a part with no litmus that pairs with a part the
+anchor gives one is listed under `litmus` too, after the ways it is looser than the file, unless that comparison lists
+it already.
 """
 from __future__ import annotations
 
-from collections.abc import Collection, Mapping
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import replace
 from fractions import Fraction
 
@@ -379,31 +387,64 @@ def _covers(wider: Target, target: Target) -> bool:
             and target.sub[:len(wider.sub)] == wider.sub and wider.names in ("", target.names))
 
 
-def origin_of(location: str, architecture: Architecture, bundled: bool,
-              others: Mapping[str, Architecture], against: str | None = None) -> Origin:
+def origin_of(location: str, architecture: Architecture, bundled: bool, others: Mapping[str, Architecture],
+              against: str | None = None, chain: Sequence[Architecture] = ()) -> Origin:
     """Where the architecture at location comes from: a bundled one is its own baseline; a custom one is compared with
     the one of others, the bundled architectures by name, it says it is based on, else the one of highest match (the
-    first by name on a tie, one no part pairs with never), and is looser than it in the ways it says. With against,
-    the name others holds the one profile --against names by, either is compared with that one alone, even when no
-    part pairs, and no other is said to match higher."""
+    first by name on a tie, one no part pairs with never), and is looser than it in the ways it says. With chain, the
+    profile files its based_on leads through when it is a path, in order, it is compared with the first, called by its
+    based_on as written, which is never said to match higher, and --strict rests on the anchor (see _resting). With
+    against, the name others holds the one profile --against names by, either is compared with that one alone, even
+    when no part pairs, and no other is said to match higher."""
     if against is not None:
         return _compared(location, architecture, bundled, others[against], against, AGAINST, architecture.based_on)
     off = _guards_off(architecture)
     if bundled:
         return Origin(location, True, None, off, off, ())
+    highest, best = _closest(architecture, others)
+    if chain:
+        name, chosen_by, base = architecture.based_on, BASED_ON, chain[0]
+    elif architecture.based_on in others:
+        name, chosen_by, base = architecture.based_on, BASED_ON, others[architecture.based_on]
+    elif highest is not None:
+        name, chosen_by, base = highest, CLOSEST, others[highest]
+    else:
+        return Origin(location, False, None, off, (), ())
+    share = _share(_counts(architecture, base))
+    origin = replace(_compared(location, architecture, False, base, name, chosen_by), anchor=name,
+                     higher=(highest, round(float(best), 2)) if highest is not None and best > share else None)
+    return _resting(origin, architecture, chain, others) if chain else origin
+
+
+def _closest(architecture: Architecture, others: Mapping[str, Architecture]) -> tuple[str | None, Fraction]:
+    """The one of others of highest match with the architecture, the first by name on a tie, one no part pairs with
+    never, and that match; None and no match when none is left."""
     shares = {name: _share(_counts(architecture, other)) for name, other in others.items()
               if _paired_parts(architecture, other)}
     best = max(shares.values(), default=Fraction(0))
-    highest = min((name for name, share in shares.items() if share == best), default=None)
-    if architecture.based_on in others:
-        name, chosen_by = architecture.based_on, BASED_ON
-    elif highest is not None:
-        name, chosen_by = highest, CLOSEST
-    else:
-        return Origin(location, False, None, off, (), ())
-    share = _share(_counts(architecture, others[name]))
-    return replace(_compared(location, architecture, False, others[name], name, chosen_by),
-                   higher=(highest, round(float(best), 2)) if highest is not None and best > share else None)
+    return min((name for name, share in shares.items() if share == best), default=None), best
+
+
+def _resting(origin: Origin, architecture: Architecture, chain: Sequence[Architecture],
+             bundled: Mapping[str, Architecture]) -> Origin:
+    """The origin of a profile compared with the profile file its based_on names, as --strict rests on its anchor:
+    the bundled profile the last file of the chain says it is based on, else the one of highest match with that file.
+    A guard left off is excused only when the anchor and every file of the chain leave it off too, none with no
+    anchor; each part with no litmus that pairs with a part the anchor gives one, and that the comparison with the file
+    does not list already, is listed after the ways it is looser than the file."""
+    last = chain[-1]
+    anchor = last.based_on if last.based_on in bundled else _closest(last, bundled)[0]
+    if anchor is None:
+        return replace(origin, baseline_off=(), anchor=None)
+    base = bundled[anchor]
+    excused = set(_guards_off(base)).intersection(*(_guards_off(file) for file in chain))
+    listed = {item.part for item in origin.looser if item.key == LITMUS}
+    pairs = _paired_parts(architecture, base)
+    demanded = tuple(Loosened(LITMUS, name, anchor, _sentence(LITMUS, name, anchor))
+                     for name, part in architecture.parts.items()
+                     if not part.litmus and name in pairs and base.parts[pairs[name]].litmus and name not in listed)
+    return replace(origin, baseline_off=tuple(g for g in origin.guards_off if g in excused),
+                   looser=origin.looser + demanded, anchor=anchor)
 
 
 def _compared(location: str, architecture: Architecture, bundled: bool, base: Architecture, name: str,
@@ -444,6 +485,9 @@ def _sentence(key: str, part: str, what: str = "") -> str:
             return f"{part} may also meet imports.must with {what} (parts.{part}.imports.must)"
         case "untested":
             return f"{part} is newly marked untested (parts.{part}.untested)"
+        case "litmus" if what:
+            return (f"{part} has no litmus, though {what}, which --strict rests on, gives the part it pairs with one "
+                    f"(parts.{part}.litmus)")
         case "litmus":
             return f"{part} has no litmus, though the profile it is compared with gives it one (parts.{part}.litmus)"
         case "holds":

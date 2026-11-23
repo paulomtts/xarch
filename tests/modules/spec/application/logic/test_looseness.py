@@ -10,6 +10,7 @@ import pytest
 from tests.modules.spec.application.origins import BASE, PARTS, TESTING, TIER, part
 from tests.modules.spec.profiles import covered, layered, parsed
 from xarch.modules.spec.application.logic.looseness import LOOSER, LOW, origin_of
+from xarch.modules.spec.domain.guards import ORDER
 from xarch.modules.spec.domain.published import Loosened, Origin
 from xarch.modules.spec.domain.values import Architecture
 
@@ -629,3 +630,52 @@ def test_a_key_of_holds_shared_or_a_tier_one_side_drops_is_comparable_and_listed
     origin = compared(parsed(custom), parsed(base))
     assert origin.match == 1.0
     assert [item.key for item in origin.looser] == [key]
+
+
+def test_a_profile_based_on_a_profile_file_excuses_only_the_guards_the_anchor_and_every_file_of_the_chain_leave_off():
+    mine = replace(parsed(layered(guards={"no-comments": {}})), based_on="team.yaml")
+    team = parsed(layered(based_on="cli", guards={"private-imports": {}}))
+    origin = origin_of("mine.yaml", mine, False, {"cli": parsed(layered(guards={"closed-tree": {}}))}, chain=(team,))
+    assert (origin.compared, origin.chosen_by, origin.anchor) == ("team.yaml", "based_on", "cli")
+    assert origin.baseline_off == tuple(g for g in ORDER if g not in {"no-comments", "closed-tree", "private-imports"})
+
+
+def test_a_chain_no_bundled_profile_pairs_with_rests_on_none_and_excuses_no_guard():
+    mine = replace(parsed(layered()), based_on="team.yaml")
+    origin = origin_of("mine.yaml", mine, False, {"cli": bare(web="web")}, chain=(bare(x="x"),))
+    assert (origin.compared, origin.chosen_by, origin.anchor, origin.baseline_off) == ("team.yaml", "based_on", None, ())
+    assert origin.low is True
+
+
+def test_a_part_the_anchor_gives_a_litmus_is_listed_once_after_the_ways_it_is_looser_than_the_file():
+    anchor = layered()
+    anchor["parts"]["api"]["litmus"] = "Does it answer a request?"
+    anchor["parts"]["service"]["litmus"] = "Does it decide?"
+    team = layered(based_on="cli")
+    team["parts"]["api"]["litmus"] = "Does it answer a request?"
+    mine = replace(parsed(layered()), based_on="team.yaml")
+    origin = origin_of("mine.yaml", mine, False, {"cli": parsed(anchor)}, chain=(parsed(team),))
+    assert origin.looser == (
+        Loosened("litmus", "api", "",
+                 "api has no litmus, though the profile it is compared with gives it one (parts.api.litmus)"),
+        Loosened("litmus", "service", "cli",
+                 "service has no litmus, though cli, which --strict rests on, gives the part it pairs with one "
+                 "(parts.service.litmus)"))
+
+
+def test_the_profile_file_based_on_names_is_never_said_to_match_higher_and_a_bundled_one_of_higher_match_is():
+    mine = replace(bare(a="a", b="b", c="c"), based_on="team.yaml")
+    low = origin_of("mine.yaml", mine, False, {"near": bare(a="a", b="b", c="c")}, chain=(bare(a="a"),))
+    assert (low.compared, low.higher) == ("team.yaml", ("near", 1.0))
+    high = origin_of("mine.yaml", mine, False, {"far": bare(a="a")}, chain=(bare(a="a", b="b", c="c"),))
+    assert (high.compared, high.match, high.higher) == ("team.yaml", 1.0, None)
+
+
+def test_a_profile_compared_with_a_bundled_one_rests_on_it_and_any_other_rests_on_none():
+    mine = bare(a="a", b="b", c="c")
+    bundled = {"alpha": bare(a="a", b="b", c="c"), "beta": bare(a="a")}
+    assert origin_of("mine.yaml", replace(mine, based_on="beta"), False, bundled).anchor == "beta"
+    assert origin_of("mine.yaml", mine, False, bundled).anchor == "alpha"
+    assert origin_of("mine.yaml", mine, False, {"other": bare(web="web")}).anchor is None
+    assert origin_of("alpha", mine, True, {}).anchor is None
+    assert origin_of("mine.yaml", mine, False, {"alpha": bare(a="a")}, against="alpha").anchor is None

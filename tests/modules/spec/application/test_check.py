@@ -20,7 +20,7 @@ OFF = ("package-only", "scenario-coverage", "no-comments", "stand-ins", "closed-
        "dead-code", "pass-through", "no-callbacks", "private-imports")
 SELF = (("parts", 2, 2), ("part_keys", 3, 3), ("tiers", 0, 0), ("guards", 0, 0), ("profile", 2, 2))
 """The counts of base against itself: everything check reads under it has a counterpart."""
-COPY = Origin("mine.yaml", False, "base", OFF, OFF, (), "based_on", 1.0, False, SELF)
+COPY = Origin("mine.yaml", False, "base", OFF, OFF, (), "based_on", 1.0, False, SELF, anchor="base")
 """The origin of a copy of base that says it is based on it."""
 
 

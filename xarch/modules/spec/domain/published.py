@@ -115,7 +115,8 @@ class Loosened:
         imports.must    part may also meet imports.must with the target what; with no what, it has none now
         uses.never      part no longer forbids what
         untested        part is newly marked untested
-        litmus          part has no litmus, though the bundled profile gives it one (LITMUS)
+        litmus          part has no litmus, though the bundled profile gives it one (LITMUS); with what, though
+                        what, the anchor --strict rests on, gives the part it pairs with one
         imports.types_only
                         the tests of tier part may now call what
         imports.also    the tests of tier part may also import what (a target as written)
@@ -148,10 +149,12 @@ class Origin:
 
     location: as selected, a bundled name or a path
     bundled: whether it is a bundled profile, its own baseline
-    compared: the profile it is compared with, as its location is given: for a custom file the bundled one, and for
-        either the one --against names; None when it is bundled and --against is not given, or none is
+    compared: the profile it is compared with, as its location is given: for a custom file the bundled one, or the
+        profile file its based_on names, as written there; for either the one --against names; None when it is
+        bundled and --against is not given, or none is
     guards_off: the guards xarch has that it leaves off, in xarch's order
-    baseline_off: those the profile it is, or is compared with, leaves off too
+    baseline_off: those the profile it is, or is compared with, leaves off too; for one based on a profile file, those
+        the anchor and every file of the chain leave off too, none when there is no anchor
     looser: how it is looser than the profile it is compared with
     chosen_by: why that one: BASED_ON, CLOSEST or AGAINST; None when nothing is compared
     match: the share of what `check` reads under either profile that has a counterpart in the other, rounded to two
@@ -165,6 +168,10 @@ class Origin:
         match; None when there is none, and always with --against
     based_on: with --against, the profile its own based_on names, which the command line says beside it; empty
         otherwise
+    anchor: the bundled profile --strict rests on: the one compared with when that one is bundled (so a profile file
+        is compared with exactly when chosen_by is BASED_ON and anchor is not compared); for one based on a profile
+        file, the bundled profile the chain of files ends on, else the bundled profile of highest match with its last
+        file; None for a bundled profile without --against, with --against, and when there is none
     """
     location: str = ""
     bundled: bool = True
@@ -181,6 +188,7 @@ class Origin:
     elsewhere: tuple[str, ...] = ()
     higher: tuple[str, float] | None = None
     based_on: str = ""
+    anchor: str | None = None
 
 
 @dataclass(frozen=True)
