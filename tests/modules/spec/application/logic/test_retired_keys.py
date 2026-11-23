@@ -7,7 +7,7 @@ import pytest
 from tests.modules.spec.profiles import covered, layered, parsed, problems
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic import key_lookup
-from xarch.modules.spec.application.logic.key_lookup import names_of, retired, retired_at
+from xarch.modules.spec.application.logic.key_lookup import names_of, retired, retired_at, retired_value
 from xarch.modules.spec.application.logic.profile_checks import rule_hints, unknown_keys
 from xarch.modules.spec.domain.profile_keys import (
     DEAD_CODE,
@@ -25,6 +25,11 @@ from xarch.modules.spec.domain.profile_keys import (
     NO_TWINS,
     PAGE,
     PART,
+    PART_HOLDS,
+    PART_HOLDS_CLASSES,
+    PART_HOLDS_EXCEPTIONS,
+    PART_HOLDS_FUNCTIONS,
+    PART_HOLDS_RECORDS,
     PART_USES,
     PASS_THROUGH,
     PLACEMENT,
@@ -43,8 +48,8 @@ from xarch.modules.spec.domain.profile_keys import (
 RENAMED = "renamed in 0.3.0: write tier"
 MOVED = "moved in 0.3.0: write uses: {never: <list>}"
 MISPLACED = "a key of uses: write uses: {never: <list>}"
-PART_USE = ("built_by, folders, holds, immutable, libraries, litmus, may_import, must_import, names, "
-            "package_only, path, role, shared, tests, types_only, untested, uses")
+PART_USE = ("folders, holds, libraries, litmus, may_import, must_import, package_only, path, role, shared, tests, "
+            "types_only, untested, uses")
 TIER_USE = "docs, folder, litmus, may_also_import, may_import, must_import, plain_tables, proves, types_only, uses"
 PROFILE_USE = ("based_on, checks, docs, evals, excluded, fakes, files, guards, hints, language, layers, name, never, "
                "parts, reserved, review, testing, tiers")
@@ -93,6 +98,14 @@ IMPORT_RULE = "renamed in 0.3.0: write may-import"
 LIST_OUTSIDE = "a key of uses: write uses: {never: <list>}"
 SWITCH_OUTSIDE = "a key of uses: write uses: {apply_never: true}"
 CALLBACKS_MOVED = "moved in 0.3.0: write guards: {no-callbacks: {parts: [<part>, ...]}}"
+IMMUTABLE_MOVED = "moved in 0.3.0: write it under the kind it applies to, such as holds: {records: {immutable: true}}"
+NAMES_MOVED = 'moved in 0.3.0: write it under the kind it names, such as holds: {classes: {names: "*Service"}}'
+BUILT_BY_MOVED = "moved in 0.3.0: write holds: {classes: {built_by: [<part>, ...]}}"
+OF_CLASSES_AND_RECORDS = "a setting of classes and records"
+OF_CLASSES = "a setting of classes"
+HOLDS_FUNCTIONS = ("holds as one word was removed in 0.3.0: write holds: {functions: {}, records: {}, exceptions: {}}, "
+                   "which allows what holds: functions allowed")
+HOLDS_CLASSES = "holds as one word was removed in 0.3.0: write holds: {classes: {}}"
 
 
 @pytest.mark.parametrize("scope, name, text", [
@@ -107,6 +120,18 @@ CALLBACKS_MOVED = "moved in 0.3.0: write guards: {no-callbacks: {parts: [<part>,
     pytest.param(TIER, "apply_never", SWITCH_OUTSIDE, id="apply_never on a tier"),
     pytest.param(PART, "no_callbacks", CALLBACKS_MOVED, id="the part key no_callbacks"),
     pytest.param(GUARD, "no-callbacks", "", id="the guard no-callbacks, which xarch has"),
+    pytest.param(PART, "immutable", IMMUTABLE_MOVED, id="the part key immutable"),
+    pytest.param(PART, "names", NAMES_MOVED, id="the part key names"),
+    pytest.param(PART, "built_by", BUILT_BY_MOVED, id="the part key built_by"),
+    pytest.param(PART_HOLDS_FUNCTIONS, "immutable", OF_CLASSES_AND_RECORDS, id="immutable under functions"),
+    pytest.param(PART_HOLDS_FUNCTIONS, "built_by", OF_CLASSES, id="built_by under functions"),
+    pytest.param(PART_HOLDS_RECORDS, "built_by", OF_CLASSES, id="built_by under records"),
+    pytest.param(PART_HOLDS_EXCEPTIONS, "immutable", OF_CLASSES_AND_RECORDS, id="immutable under exceptions"),
+    pytest.param(PART_HOLDS_EXCEPTIONS, "built_by", OF_CLASSES, id="built_by under exceptions"),
+    pytest.param(PART_HOLDS_CLASSES, "immutable", "", id="immutable under classes, a key"),
+    pytest.param(PART_HOLDS_RECORDS, "immutable", "", id="immutable under records, a key"),
+    pytest.param(PART, "holds", "", id="the part key holds, whose one-word values are retired, not the key"),
+    pytest.param(PART_HOLDS, "classes", "", id="the kind classes"),
     pytest.param(PART_USES, "never", "", id="never under a part's uses, a key"),
     pytest.param(TIER, "forbidden", "", id="forbidden under a tier, only unknown"),
     pytest.param(TIER, "tier", "", id="tier under a tier"),
@@ -130,6 +155,13 @@ def test_the_shipped_table_answers_each_name_in_its_scope(scope, name, text):
     pytest.param("parts.no_callbacks", CALLBACKS_MOVED, id="parts.no_callbacks"),
     pytest.param("parts.<part>.no_callbacks", CALLBACKS_MOVED, id="parts.<part>.no_callbacks"),
     pytest.param("guards.no-callbacks", "", id="guards.no-callbacks"),
+    pytest.param("parts.immutable", IMMUTABLE_MOVED, id="parts.immutable"),
+    pytest.param("parts.<part>.names", NAMES_MOVED, id="parts.<part>.names"),
+    pytest.param("parts.built_by", BUILT_BY_MOVED, id="parts.built_by"),
+    pytest.param("parts.holds.functions.immutable", OF_CLASSES_AND_RECORDS, id="parts.holds.functions.immutable"),
+    pytest.param("parts.<part>.holds.exceptions.built_by", OF_CLASSES, id="parts.<part>.holds.exceptions.built_by"),
+    pytest.param("parts.holds", "", id="parts.holds"),
+    pytest.param("parts.holds.records.immutable", "", id="parts.holds.records.immutable"),
     pytest.param("parts.uses.never", "", id="parts.uses.never"),
     pytest.param("tiers.uses.apply_never", "", id="tiers.uses.apply_never"),
     pytest.param("never", "", id="never"),
@@ -210,6 +242,45 @@ def test_a_part_writing_no_callbacks_is_refused_with_the_guard_that_replaces_it(
     document["parts"]["service"]["no_callbacks"] = value
     assert problems(document) == [
         f"layered.yaml: parts.service: unknown key 'no_callbacks': {CALLBACKS_MOVED}; use {PART_USE}"]
+
+
+@pytest.mark.parametrize("value, text", [
+    pytest.param("functions", HOLDS_FUNCTIONS, id="functions"),
+    pytest.param("classes", HOLDS_CLASSES, id="classes"),
+    pytest.param("records", "", id="a word that never was a value"),
+])
+def test_the_one_word_values_of_holds_have_entries_of_their_own(value, text):
+    assert retired_value(PART, "holds", value) == text
+
+
+@pytest.mark.parametrize("key, value, text", [
+    pytest.param("immutable", True, IMMUTABLE_MOVED, id="immutable"),
+    pytest.param("names", "*Service", NAMES_MOVED, id="names"),
+    pytest.param("built_by", ["api"], BUILT_BY_MOVED, id="built_by"),
+])
+def test_a_part_writing_a_setting_of_holds_as_its_own_key_is_refused_with_the_form_that_replaces_it(key, value, text):
+    document = layered()
+    document["parts"]["service"][key] = value
+    assert problems(document) == [f"layered.yaml: parts.service: unknown key '{key}': {text}; use {PART_USE}"]
+
+
+def test_a_part_writing_the_three_settings_as_its_own_keys_gets_one_problem_each_in_sorted_order():
+    document = layered()
+    document["parts"]["service"] |= {"names": "*Service", "immutable": True, "built_by": ["api"]}
+    assert problems(document) == [
+        f"layered.yaml: parts.service: unknown key 'built_by': {BUILT_BY_MOVED}; use {PART_USE}",
+        f"layered.yaml: parts.service: unknown key 'immutable': {IMMUTABLE_MOVED}; use {PART_USE}",
+        f"layered.yaml: parts.service: unknown key 'names': {NAMES_MOVED}; use {PART_USE}"]
+
+
+@pytest.mark.parametrize("value, text", [
+    pytest.param("functions", HOLDS_FUNCTIONS, id="functions"),
+    pytest.param("classes", HOLDS_CLASSES, id="classes"),
+])
+def test_holds_written_as_one_word_is_refused_with_the_map_that_allows_the_same(value, text):
+    document = layered()
+    document["parts"]["service"]["holds"] = value
+    assert problems(document) == [f"layered.yaml: parts.service.holds: '{value}': {text}"]
 
 
 def test_a_part_writing_no_callbacks_beside_the_guard_gets_only_the_retired_key_s_problem():

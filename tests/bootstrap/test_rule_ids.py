@@ -201,7 +201,8 @@ def test_a_part_used_only_as_a_type_names_its_rule_and_its_fix(tmp_path):
     """No bundled profile holds a part to types_only now that services build their module's contract types, so the
     web profile is given one."""
     shutil.copytree(BUNDLED, tmp_path / "arch")
-    services = "    may_import: [logic, domain, ports, contract, kernel, kernel-logic]\n    holds: classes\n"
+    services = ('    may_import: [logic, domain, ports, contract, kernel, kernel-logic]\n'
+                '    holds: {classes: {names: "*Service", built_by: [bootstrap]}}\n')
     text = (BUNDLED / "web.yaml").read_text()
     assert text.count(services) == 1
     (tmp_path / "arch/typed.yaml").write_text(text.replace(services, services + "    types_only: [contract]\n"))
@@ -226,7 +227,8 @@ def test_a_class_built_through_a_relative_import_is_held_to_built_by(tmp_path, c
 def test_a_part_used_only_as_a_type_is_held_to_it_through_a_relative_import(tmp_path):
     """The web profile is given types_only on services, as in the test above, and the service imports relatively."""
     shutil.copytree(BUNDLED, tmp_path / "arch")
-    services = "    may_import: [logic, domain, ports, contract, kernel, kernel-logic]\n    holds: classes\n"
+    services = ('    may_import: [logic, domain, ports, contract, kernel, kernel-logic]\n'
+                '    holds: {classes: {names: "*Service", built_by: [bootstrap]}}\n')
     text = (BUNDLED / "web.yaml").read_text()
     assert text.count(services) == 1
     (tmp_path / "arch/typed.yaml").write_text(text.replace(services, services + "    types_only: [contract]\n"))

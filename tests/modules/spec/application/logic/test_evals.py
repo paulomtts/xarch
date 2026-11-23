@@ -197,15 +197,24 @@ def test_the_groups_of_parts_read_alike_load_in_the_order_of_the_file_each_in_it
     assert parsed(alike(("store", "shared"), ("api", "service"))).alike == (("store", "shared"), ("api", "service"))
 
 
+LOGIC = {"functions": {}, "records": {"immutable": True}, "exceptions": {}}
+
+
 def test_parts_that_forbid_the_same_list_hold_the_same_and_are_alike_immutable_may_be_read_alike():
-    document = alike(("store", "shared"), store={"uses": {"never": "pure"}, "holds": "functions", "immutable": True},
-                     shared={"uses": {"never": "same"}, "holds": "functions", "immutable": True})
+    document = alike(("store", "shared"), store={"uses": {"never": "pure"}, "holds": LOGIC},
+                     shared={"uses": {"never": "same"}, "holds": LOGIC})
     document["never"] = {"pure": ["time.time"], "same": ["time.time"]}
     assert parsed(document).alike == (("store", "shared"),)
 
 
+def test_parts_that_list_the_same_kinds_with_the_same_immutable_are_alike_whatever_their_names():
+    document = alike(("store", "shared"), store={"holds": {"classes": {"names": "*Store"}}},
+                     shared={"holds": {"classes": {"names": "*Text", "built_by": ["api"]}}})
+    assert parsed(document).alike == (("store", "shared"),)
+
+
 NOT_ALIKE = ("check tells them apart by rule, so one file is not all that tells them apart: write the same uses.never, "
-             "holds and immutable for each, or drop the group")
+             "and list the same kinds with the same immutable under holds, for each, or drop the group")
 
 
 @pytest.mark.parametrize("given, problem", [
@@ -224,12 +233,18 @@ NOT_ALIKE = ("check tells them apart by rule, so one file is not all that tells 
     pytest.param(alike(("store", "shared"), ("api", "shared")),
                  "evals.placement.alike[1]: 'shared' is in evals.placement.alike[0] already: a part is in one group at "
                  "most; join the groups", id="a part in two groups"),
-    pytest.param(alike(("store", "shared"), store={"holds": "functions"}),
+    pytest.param(alike(("store", "shared"), store={"holds": {"functions": {}, "records": {}, "exceptions": {}}}),
                  f"evals.placement.alike[0]: store and shared differ in holds: {NOT_ALIKE}", id="holds differ"),
-    pytest.param(alike(("store", "shared"), shared={"immutable": True}),
-                 f"evals.placement.alike[0]: store and shared differ in immutable: {NOT_ALIKE}", id="immutable differs"),
-    pytest.param(alike(("api", "store", "shared"), store={"holds": "classes", "immutable": True}),
-                 f"evals.placement.alike[0]: api and store differ in holds and immutable: {NOT_ALIKE}",
+    pytest.param(alike(("store", "shared"), store={"holds": {"classes": {}}}, shared={"holds": {"classes": {},
+                                                                                              "functions": {}}}),
+                 f"evals.placement.alike[0]: store and shared differ in holds: {NOT_ALIKE}", id="another kind listed"),
+    pytest.param(alike(("store", "shared"), store={"holds": LOGIC},
+                       shared={"holds": {"functions": {}, "records": {}, "exceptions": {}}}),
+                 f"evals.placement.alike[0]: store and shared differ in holds: {NOT_ALIKE}",
+                 id="immutable differs on records"),
+    pytest.param(alike(("api", "store", "shared"), store={"uses": {"never": "pure"}, "holds": {"classes": {}}}) | {
+        "never": {"pure": ["time.time"]}},
+                 f"evals.placement.alike[0]: api and store differ in uses.never and holds: {NOT_ALIKE}",
                  id="each part of a group is held to the first, every key that differs said"),
 ])
 def test_alike_written_wrong_is_refused_at_its_address(given, problem):
@@ -237,7 +252,7 @@ def test_alike_written_wrong_is_refused_at_its_address(given, problem):
 
 
 def test_a_group_refused_leaves_every_group_unread_so_that_no_later_one_is_said_at_another_address():
-    found = problems(alike(("store", "nowhere"), ("api", "service"), api={"holds": "functions"}))
+    found = problems(alike(("store", "nowhere"), ("api", "service"), api={"holds": {"classes": {}}}))
     assert "layered.yaml: evals.placement.alike[0]: 'nowhere' is not a part of this profile: name a part under parts" in (
         found)
     assert not any("differ in" in problem for problem in found)

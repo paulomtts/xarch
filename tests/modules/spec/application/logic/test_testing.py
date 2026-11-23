@@ -298,13 +298,12 @@ def test_a_bad_skips_entry_is_refused(skips, expected):
 def test_a_tier_with_plain_tables_and_a_part_of_immutable_records_each_have_a_line_of_the_guards():
     document = covered(guards={"scenario-coverage": SCENARIOS, "stand-ins": {}}, fakes=FAKES)
     document["tiers"]["unit"]["plain_tables"] = True
-    document["parts"]["service"]["immutable"] = True
-    document["parts"]["service"]["holds"] = "functions"
+    document["parts"]["service"]["holds"] = {"functions": {}, "records": {"immutable": True}, "exceptions": {}}
     lines = fill("{{guards}}", parsed(document), "layered.md", file_types=FILE_TYPES).splitlines()
     assert ("- `plain tables`: no table test of the unit tests holds a branch in its body: no `if`, `match`, `try`, "
             "`for` or `while` statement and no `if` expression.") in lines
-    assert ("- `immutable`: every class of `service/` is an immutable record, as the Python data file marks one, or "
-            "an exception; listed in the enforcement section, and fails `check --strict` only.") in lines
+    assert ("- `immutable`: every record of `service/` is an immutable record, as the Python data file marks one; "
+            "listed in the enforcement section, and fails `check --strict` only.") in lines
 
 
 def test_dead_code_s_names_used_only_by_the_tests_are_said_when_they_are_listed():

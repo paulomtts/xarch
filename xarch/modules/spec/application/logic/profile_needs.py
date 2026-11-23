@@ -5,12 +5,14 @@ into a mapping, each entry of a map of names (parts.<part>) and each entry of a 
 addressed by its index from 0 (<list>.0.<key>). A key set to false or null configures nothing, but a guard, which its
 name alone configures. A key whose language does not supply one of its facts is a problem of the profile, naming the
 key, the fact and what to do; one whose language supplies a fact partly is kept, and listed as approximate where the
-check is run.
+check is run. A fact a key's check reads only when the language supplies it (see Key.when_supplied) is no problem
+when it is not: the key is kept, its check reads less, and it is listed as approximate in a sentence that says so.
 """
 from __future__ import annotations
 
 import re
 from collections.abc import Iterator, Mapping
+from dataclasses import replace
 from typing import Any
 
 from xarch.kernel.logic.capabilities import shortfalls
@@ -65,8 +67,17 @@ def short(document: Mapping[Any, Any], presets: Mapping[str, Any], language: Lan
     if language.checked.supplies is None:
         return []
     supplies = {supply.fact: supply for supply in language.checked.supplies}
-    return [found for address, key in _configured(document, PROFILE, "", presets, keys)
+    return [read_less(found, key, language) for address, key in _configured(document, PROFILE, "", presets, keys)
             for found in shortfalls(address, key.needs, supplies)]
+
+
+def read_less(found: Shortfall, key: Key, language: Language) -> Shortfall:
+    """The shortfall of a fact the key's check reads only when the language supplies it, which it does not, said as
+    what the check then reads less; any other as it is."""
+    if found.note is not None or found.fact not in key.when_supplied:
+        return found
+    return replace(found, note=f"{key.without}: the language {language.checked.title} does not supply {found.fact}",
+                   unread=True)
 
 
 def refused(found: list[Shortfall], language: Language) -> list[str]:

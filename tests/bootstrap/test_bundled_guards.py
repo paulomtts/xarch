@@ -111,8 +111,8 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
         "and `adapters/` defines classes, never a public function at the top level; a file of `application/logic/` "
         "and `kernel/logic/` defines functions, never a class (a private one too) but exceptions and the records its "
         "functions return; listed in the enforcement section, and fails `check --strict` only.",
-        "- `immutable`: every class of `application/logic/` and `kernel/logic/` is an immutable record, as the Python "
-        "data file marks one, or an exception; listed in the enforcement section, and fails `check --strict` only.",
+        "- `immutable`: every record of `application/logic/` and `kernel/logic/` is an immutable record, as the Python "
+        "data file marks one; listed in the enforcement section, and fails `check --strict` only.",
         "- `names`: every class of `application/services/` is named `*Service`.",
         "- `names`: every class of `application/controller.py` is named `*Controller`.",
         "- `built-by`: only code of `bootstrap/` builds a class of `application/services/`; tests are not read.",

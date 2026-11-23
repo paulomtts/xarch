@@ -122,4 +122,4 @@ def example_problems(location: str | Path) -> tuple[str, ...]:
 def retiring(monkeypatch: pytest.MonkeyPatch, scope: str, name: str, text: str) -> None:
     """The table of retired names holds one entry, (scope, name, text), for this test alone: a record with the fields
     the lookup reads, since a wired test builds no value of domain/ itself."""
-    monkeypatch.setattr(key_lookup, "RETIRED", (SimpleNamespace(scope=scope, name=name, text=text),))
+    monkeypatch.setattr(key_lookup, "RETIRED", (SimpleNamespace(scope=scope, name=name, text=text, value=""),))

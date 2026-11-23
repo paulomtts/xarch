@@ -55,9 +55,6 @@ SHAPE = (
     Shown('parts.must_import', 1, 'what each file of the part has to reach', False, True),
     Shown('parts.types_only', 1, 'the parts its files may use only as types', False, True),
     Shown('parts.holds', 1, 'what the files of the part define at the top level', False, True),
-    Shown('parts.immutable', 1, 'the classes of the part are immutable records', False, True),
-    Shown('parts.names', 1, 'how the classes of the part are named', False, True),
-    Shown('parts.built_by', 1, 'the only parts that may build its classes', False, True),
     Shown('parts.shared', 1, 'the part is there to be shared, by at least this many users', False, True),
     Shown('parts.libraries', 1, 'the outside packages the part may import', False, True),
     Shown('parts.uses', 1, "what the part's code uses", False, True),
@@ -173,13 +170,13 @@ def test_a_fact_the_default_language_does_not_grade_is_said_to_be_absent():
     toy = {"title": "Toy", "extensions": [".toy"], "package_files": ["pkg.toy"], "namespace": "core",
            "standard": "interpreter", "supplies": {"class": {"partial": "nested classes are not read"}}}
     spec, _ = spec_controller(**BUNDLED, languages={"toy": toy})
-    found = spec.explain(Explain("parts.names"))
+    found = spec.explain(Explain("parts.holds.classes.names"))
     assert (found.needs, found.graded) == (
         (Need("class", FACTS["class"], Supply("class", "partial", "nested classes are not read")),
          Need("public", FACTS["public"])), True)
     assert (found.short, found.holder, found.name) == (
-        (Shortfall("parts.names", "class", "nested classes are not read"), Shortfall("parts.names", "public", None)),
-        "part", "names")
+        (Shortfall("parts.holds.classes.names", "class", "nested classes are not read"),
+         Shortfall("parts.holds.classes.names", "public", None)), "", "names")
     assert spec.explain(Explain("guards.no-callbacks")).needs == (Need("callback", FACTS["callback"]),)
 
 
@@ -277,3 +274,63 @@ def test_the_keys_of_never_feed_the_rule_never_use():
 def test_an_old_or_misplaced_name_of_never_is_refused_with_its_fixed_text(address, key, text):
     found = explained(address)
     assert (type(found), found.key, found.retired) == (UnknownKey, key, text)
+
+
+TOY = {"title": "Toy", "extensions": [".toy"], "package_files": ["pkg.toy"], "namespace": "core",
+       "standard": "interpreter", "supplies": {"class": {"partial": "nested classes are not read"}}}
+"""A language whose reader supplies no top-level function, nor much else."""
+
+
+def test_holds_holds_the_kinds_each_holding_the_settings_it_takes():
+    holds = explained("parts.holds")
+    assert (holds.key, holds.where, holds.rules) == ("parts.holds", "parts.<part>", ("holds",))
+    assert [shown.key for shown in holds.keys] == [
+        "parts.holds.classes", "parts.holds.functions", "parts.holds.records", "parts.holds.exceptions"]
+    assert [shown.key for shown in explained("parts.holds.classes").keys] == [
+        "parts.holds.classes.names", "parts.holds.classes.immutable", "parts.holds.classes.built_by"]
+    assert [shown.key for shown in explained("parts.holds.functions").keys] == ["parts.holds.functions.names"]
+    assert [shown.key for shown in explained("parts.holds.records").keys] == [
+        "parts.holds.records.names", "parts.holds.records.immutable"]
+    assert [shown.key for shown in explained("parts.<part>.holds.exceptions").keys] == ["parts.holds.exceptions.names"]
+
+
+@pytest.mark.parametrize("address, where, rules", [
+    pytest.param("parts.holds.functions", "parts.<part>.holds", ("holds",), id="a kind"),
+    pytest.param("parts.holds.classes.names", "parts.<part>.holds.classes", ("names",), id="names of classes"),
+    pytest.param("parts.holds.classes.immutable", "parts.<part>.holds.classes", ("immutable",), id="immutable of classes"),
+    pytest.param("parts.holds.classes.built_by", "parts.<part>.holds.classes", ("built-by",), id="built_by of classes"),
+    pytest.param("parts.holds.functions.names", "parts.<part>.holds.functions", ("names",), id="names of functions"),
+    pytest.param("parts.holds.records.names", "parts.<part>.holds.records", ("names",), id="names of records"),
+    pytest.param("parts.holds.records.immutable", "parts.<part>.holds.records", ("immutable",), id="immutable of records"),
+    pytest.param("parts.holds.exceptions.names", "parts.<part>.holds.exceptions", ("names",), id="names of exceptions"),
+])
+def test_each_kind_and_setting_answers_from_the_catalogue(address, where, rules):
+    found = explained(address)
+    assert isinstance(found, KeyExplained)
+    assert (found.key, found.where, found.rules) == (address, where, rules)
+    assert found.meaning and found.accepts and "holds:" in found.example
+
+
+@pytest.mark.parametrize("address, text", [
+    pytest.param("parts.immutable", "moved in 0.3.0: write it under the kind it applies to, such as holds: {records: "
+                                    "{immutable: true}}", id="parts.immutable"),
+    pytest.param("parts.<part>.names", 'moved in 0.3.0: write it under the kind it names, such as holds: {classes: '
+                                       '{names: "*Service"}}', id="parts.<part>.names"),
+    pytest.param("parts.built_by", "moved in 0.3.0: write holds: {classes: {built_by: [<part>, ...]}}",
+                 id="parts.built_by"),
+    pytest.param("parts.holds.functions.immutable", "a setting of classes and records",
+                 id="parts.holds.functions.immutable"),
+])
+def test_a_setting_of_holds_written_where_it_no_longer_sits_is_answered_from_the_table_of_retired_names(address, text):
+    found = explained(address)
+    assert isinstance(found, UnknownKey) and found.retired == text
+
+
+def test_holds_says_it_reads_no_top_level_functions_in_a_language_that_does_not_supply_them():
+    spec, _ = spec_controller(**BUNDLED, languages={"toy": TOY})
+    found = spec.explain(Explain("parts.holds"))
+    assert Shortfall("parts.holds", "function.top_level",
+                     "holds reads no top-level functions: the language Toy does not supply function.top_level",
+                     True) in found.short
+    assert [item for item in explained("parts.holds").short if item.unread] == []
+    assert [item for item in spec.explain(Explain("parts.holds.functions")).short if item.unread] == []

@@ -59,7 +59,7 @@ from xarch.kernel.logic.names import outside_text
 from xarch.kernel.placement import EACH, EVERYTHING
 from xarch.modules.spec.application.logic.layout_walk import docs_name, is_file
 from xarch.modules.spec.domain.errors import InvalidTemplate
-from xarch.modules.spec.domain.published import DEFAULT_TESTS
+from xarch.modules.spec.domain.published import DEFAULT_TESTS, KINDS, Held
 from xarch.modules.spec.domain.values import (
     NAME,
     Architecture,
@@ -566,35 +566,67 @@ def _part_lines(architecture: Architecture) -> list[str]:
         if part.types_only:
             lines.append(f"`types-only`: {shown([part.name])} uses {shown(list(part.types_only))} only as a type: it "
                          "imports it to annotate and never calls it.")
-    holds = {kind: [p.name for p in parts if p.holds == kind] for kind in ("classes", "functions")}
-    if any(holds.values()):
-        said = []
-        if holds["classes"]:
-            said.append(f"a file of {shown(holds['classes'])} defines classes, never a public function at the top level")
-        if holds["functions"]:
-            said.append(f"a file of {shown(holds['functions'])} defines functions, never a class (a private one too) but "
-                        "exceptions and the records its functions return")
+    groups: dict[tuple[str, ...], list[str]] = {_CLASSES: [], _FUNCTIONS: []}
+    for part in parts:
+        if part.holds:
+            groups.setdefault(_allowed(part.holds), []).append(part.name)
+    said = [f"a file of {shown(names)} {_HELD.get(allowed) or _holding(allowed)}" for allowed, names in groups.items()
+            if names]
+    if said:
         lines.append(f"`holds`: {'; '.join(said)}; listed in the enforcement section, and fails `check --strict` "
                      "only.")
-    immutable = [p.name for p in parts if p.immutable]
-    if immutable:
-        lines.append(f"`immutable`: every class of {shown(immutable)} is an immutable record, as the "
-                     f"{architecture.language.checked.title} data file marks one, or an exception; listed in the "
-                     "enforcement section, and fails `check --strict` only.")
+    title = architecture.language.checked.title
+    for kind, said_of in (("classes", f"every class of {{parts}} is an immutable record, as the {title} data file marks "
+                                      "one, or an exception"),
+                          ("records", f"every record of {{parts}} is an immutable record, as the {title} data file "
+                                      "marks one")):
+        immutable = [p.name for p in parts if any(held.kind == kind and held.immutable for held in p.holds)]
+        if immutable:
+            lines.append(f"`immutable`: {said_of.format(parts=shown(immutable))}; listed in the enforcement section, "
+                         "and fails `check --strict` only.")
     for part in parts:
-        if part.names:
-            lines.append(f"`names`: every class of {shown([part.name])} is named "
-                         f"{_or([f'`{n}`' for n in part.names])}.")
+        lines += [f"`names`: {_named(held, part.holds, shown([part.name]))} is named "
+                  f"{_or([f'`{n}`' for n in held.names])}." for held in part.holds if held.names]
     for part in parts:
         if part.shared is not None:
             lines.append(f"`shared`: every public name of {shown([part.name])} is used by at least {part.shared} users "
                          "(each instance of a repeating folder, or each part outside them; tests not read), or it "
                          "belongs to the one that uses it.")
     for part in parts:
-        if part.built_by:
-            lines.append(f"`built-by`: only code of {shown(list(part.built_by))} builds a class of "
+        built_by = next((held.built_by for held in part.holds if held.kind == "classes"), ())
+        if built_by:
+            lines.append(f"`built-by`: only code of {shown(list(built_by))} builds a class of "
                          f"{shown([part.name])}; tests are not read.")
     return lines
+
+
+_CLASSES, _FUNCTIONS = ("classes",), ("functions", "records", "exceptions")
+_HELD = {_CLASSES: "defines classes, never a public function at the top level",
+         _FUNCTIONS: "defines functions, never a class (a private one too) but exceptions and the records its "
+                     "functions return"}
+"""How the docs say the two forms of `holds` the bundled profiles write: a part of classes, and one of functions."""
+_EVERY = {"classes": "every class", "functions": "every function", "records": "every record",
+          "exceptions": "every exception"}
+
+
+def _allowed(holds: tuple[Held, ...]) -> tuple[str, ...]:
+    """The kinds a part's `holds` allows at the top level, in the order of KINDS: classes covers records and
+    exceptions."""
+    kinds = [held.kind for held in holds]
+    return tuple(kind for kind in KINDS if kind in kinds and not ("classes" in kinds and kind in ("records",
+                                                                                                    "exceptions")))
+
+
+def _holding(allowed: tuple[str, ...]) -> str:
+    return f"holds {_and(list(allowed))} and no other kind at the top level"
+
+
+def _named(held: Held, holds: tuple[Held, ...], part: str) -> str:
+    """What the names of a kind of a part read, in words: classes, but the narrower kinds listed beside them."""
+    if held.kind == "functions":
+        return f"every function of {part} at the top level"
+    narrower = [h.kind for h in holds if h.kind in ("records", "exceptions")] if held.kind == "classes" else []
+    return f"{_EVERY[held.kind]} of {part}{f' but its {_and(narrower)}' if narrower else ''}"
 
 
 def _must_import_line(architecture: Architecture, part: Part) -> str:

@@ -165,7 +165,7 @@ A test builds the state it needs, so the reader sees all of it. No tier runs a s
 - `must-import`: every integration test imports from `application/controller.py`, directly or through test code that is no test file.
 - `must-import`: every wired test imports from `bootstrap/`, directly or through test code that is no test file.
 - `holds`: a file of `domain/`, `application/ports/`, `application/services/`, `application/controller.py`, `adapters/`, `profile_values/` and `kernel/` defines classes, never a public function at the top level; a file of `application/logic/`, `cli/reports/` and `kernel/logic/` defines functions, never a class (a private one too) but exceptions and the records its functions return; listed in the enforcement section, and fails `check --strict` only.
-- `immutable`: every class of `application/logic/`, `cli/reports/` and `kernel/logic/` is an immutable record, as the Python data file marks one, or an exception; listed in the enforcement section, and fails `check --strict` only.
+- `immutable`: every record of `application/logic/`, `cli/reports/` and `kernel/logic/` is an immutable record, as the Python data file marks one; listed in the enforcement section, and fails `check --strict` only.
 - `names`: every class of `application/services/` is named `*Service`.
 - `names`: every class of `application/controller.py` is named `*Controller`.
 - `shared`: every public name of `profile_values/` is used by at least 2 users (each instance of a repeating folder, or each part outside them; tests not read), or it belongs to the one that uses it.

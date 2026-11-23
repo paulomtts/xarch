@@ -13,6 +13,7 @@ from xarch.modules.spec.domain.published import (
     DEFAULT_APP,
     DEFAULT_TESTS,
     EXAMPLE_APP,
+    KINDS,
     LINE,
     LITMUS,
     READS,
@@ -21,6 +22,7 @@ from xarch.modules.spec.domain.published import (
     DocFile,
     Entry,
     Eval,
+    Held,
     Loosened,
     Origin,
     ProjectFile,
@@ -33,7 +35,7 @@ from xarch.profile_values.placement import Repeat, Target
 from xarch.profile_values.testing import Fakes, Framework, ScenarioCoverage, StandIns
 from xarch.profile_values.tiers import CheckedTier
 
-__all__ = ["CHOICE", "READS", "SCORE", "YES_NO", "Eval", "ExampleFile", "ExamplesRead", "ExamplesResult",
+__all__ = ["CHOICE", "READS", "SCORE", "YES_NO", "Eval", "Held", "KINDS", "ExampleFile", "ExamplesRead", "ExamplesResult",
            "DEFAULT_APP", "DEFAULT_TESTS", "EXAMPLE_APP", "LINE", "Entry", "Repeating", "Skeleton", "DocFile", "Docs",
            "ProjectFile", "ProjectFiles",
            "FilesResult", "SkeletonResult", "ProfileResult", "DocsResult", "OriginResult", "PartView",
@@ -92,10 +94,9 @@ class ProjectFiles:
 class PartView:
     """One part of a profile as a check reads it: its name; its path as a pattern, `*` standing for the instance of a
     repeating folder; what it may import besides itself; its role, litmus test, how the docs name it (shown) and why no
-    tier tests it; the names it may not use; what each of its files must import one of; what its files define
-    (holds); the parts it may use as types only; the patterns its public classes match; the parts that alone may
-    build its classes; for a part there to be shared, the fewest users each of its public names must have; and
-    whether every class it defines, but an exception, is an immutable record."""
+    tier tests it; the names it may not use; what each of its files must import one of; the kinds its files may
+    define at the top level, each with its settings (holds; empty: every kind); the parts it may use as types only;
+    and for a part there to be shared, the fewest users each of its public names must have."""
     name: str
     pattern: tuple[str, ...]
     may_import: tuple[Target, ...]
@@ -105,12 +106,9 @@ class PartView:
     untested: str = ""
     uses_never: tuple[tuple[str, ...], ...] = ()
     must_import: tuple[Target, ...] = ()
-    holds: str = ""
+    holds: tuple[Held, ...] = ()
     types_only: tuple[str, ...] = ()
-    names: tuple[str, ...] = ()
-    built_by: tuple[str, ...] = ()
     shared: int | None = None
-    immutable: bool = False
 
 
 @dataclass(frozen=True)

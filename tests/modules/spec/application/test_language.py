@@ -71,11 +71,15 @@ def test_the_skeleton_names_the_language_and_the_words_the_runtime_reserves():
 
 
 TOY = PASCAL | {"supplies": {"file": "exact", "import": "exact", "import.relative": "exact",
-                             "class": {"partial": "a class defined in a branch is not read"}, "public": "exact"}}
+                             "class": {"partial": "a class defined in a branch is not read"}, "public": "exact",
+                             "class.exception": "exact", "class.record": "exact", "function": "exact",
+                             "function.top_level": "exact"}}
+BRANCH = "a class defined in a branch is not read"
 
 
 def test_a_key_whose_check_the_reader_of_its_language_cannot_feed_is_refused_and_one_it_feeds_partly_is_approximate():
-    named = BASE | {"language": "toy", "parts": {"core": {"path": "core", "role": "r", "names": "*Rule"}},
+    named = BASE | {"language": "toy", "parts": {"core": {"path": "core", "role": "r",
+                                                          "holds": {"classes": {"names": "*Rule"}}}},
                     "guards": {"no-callbacks": {"parts": ["core"]}}}
     spec, _ = spec_controller({"base": named}, languages={"toy": TOY}, runtime=RUNTIME)
     checked = spec.check_profile(CheckProfile(APP, "base"))
@@ -86,7 +90,8 @@ def test_a_key_whose_check_the_reader_of_its_language_cannot_feed_is_refused_and
     spec, _ = spec_controller({"base": {key: value for key, value in named.items() if key != "guards"}},
                               languages={"toy": TOY}, runtime=RUNTIME)
     assert spec.profile("base").approximate == (
-        Shortfall("parts.core.names", "class", "a class defined in a branch is not read"),)
+        Shortfall("parts.core.holds", "class", BRANCH), Shortfall("parts.core.holds.classes", "class", BRANCH),
+        Shortfall("parts.core.holds.classes.names", "class", BRANCH))
 
 
 def test_the_bundled_language_gives_its_package_pattern_and_its_member_and_reads_its_lists_as_before():

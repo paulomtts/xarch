@@ -353,46 +353,117 @@ keys:
   parts.<part>.holds:
     meaning: what the files of the part define at the top level
     accepts: >-
-      classes or functions. classes: no file of the part defines a public function at the top level (one the
-      language's reader says other files may use). functions: no file of the part defines a class at the top level,
-      whatever its name, but for
-      an exception class (one that derives from a builtin exception, directly or through classes of the app) and a
-      record (a class with no method of its own, dunder methods aside) that a top-level function of the same file names
-      in its return annotation. A package file (`%package_file%`) is exempt. Each one is listed as `weak` in the
-      enforcement section, and fails `check --strict` only
+      a map of kinds, {classes, functions, records, exceptions}, each `{}` or its settings: a kind listed may exist at
+      the top level of a file of the part, a kind not listed may not; without `holds` the part may hold every kind.
+      `classes` covers every class, records and exceptions included; `records` and `exceptions` are narrower, and a
+      class is held to the settings of the narrowest kind listed that it fits, in the order exceptions, records,
+      classes, and to no other's. Beside `classes`, `records` or `exceptions` is written only with a setting. A
+      public function at the top level (one the language's reader says other files may use) is listed when
+      `functions` is not, and a class (a private one too) when `classes` is not and no narrower kind listed fits it. A package file (`%package_file%`) is exempt. Each one is
+      listed as `weak` in the enforcement section, and fails `check --strict` only. A kind the language does not
+      supply cannot be listed; in a language without `function.top_level`, a part that does not list `functions`
+      reads no functions, which `profile explain` and the enforcement section say
     example: |
       <<part>>
-          holds: classes
-  parts.<part>.immutable:
-    meaning: the classes of the part are immutable records
+          holds: {classes: {}}
+  parts.<part>.holds.classes:
+    meaning: every class defined at the top level of a file
     accepts: >-
-      true: every class a file of the part defines at the top level, whatever its name, is an immutable record, as the
-      language's data file says one is made (its `immutable`: a base, or a decorator called with its keywords), but for
-      an exception class. A package file (`%package_file%`) is exempt. Each other one is listed as `weak` in the
-      enforcement section, and fails `check --strict` only. Written beside `holds: functions`, it keeps the records a
-      part of functions returns from being changed by the code they are handed to
+      `{}` or its settings, {names, immutable, built_by}: a class of any name, records and exceptions included, may be
+      defined at the top level of a file of the part. With `records` or `exceptions` listed beside it, a class that is
+      one is held to that kind's settings, not to these
     example: |
       <<part>>
-          holds: functions
-          immutable: true
-  parts.<part>.names:
+          holds: {classes: {}}
+  parts.<part>.holds.classes.names:
     meaning: how the classes of the part are named
     accepts: >-
       a pattern, or a list of them, with `*` for any text: every public class (one the language's reader says other
-      files may use) defined at the top level in a file of the part matches one of them
+      files may use) defined at the top level in a file of the part, held to `classes`, matches one of them
     example: |
       <<part>>
-          names: "*Store"
-  parts.<part>.built_by:
+          holds: {classes: {names: "*Store"}}
+  parts.<part>.holds.classes.immutable:
+    meaning: the classes of the part are immutable records
+    accepts: >-
+      true: every class held to `classes` that a file of the part defines at the top level, whatever its name, is an
+      immutable record, as the language's data file says one is made (its `immutable`: a base, or a decorator called
+      with its keywords), but for an exception class. A package file (`%package_file%`) is exempt. Each other one is
+      listed as `weak` in the enforcement section, and fails `check --strict` only
+    example: |
+      <<part>>
+          holds: {classes: {immutable: true}}
+  parts.<part>.holds.classes.built_by:
     meaning: the only parts that may build its classes
     accepts: >-
-      [<part>, ...]: only code of those parts calls the constructor of a class defined at the top level in a file of
-      this part, `X(...)` or `m.X(...)`, read through every import, however written; code of this part counts as any
-      other, and tests are not read. Silent on a class reached through a package file that re-exports it, built in its
-      own file, or built through a variable or a parameter
+      [<part>, ...]: only code of those parts calls the constructor of a class held to `classes` defined at the top
+      level in a file of this part, `X(...)` or `m.X(...)`, read through every import, however written; code of this
+      part counts as any other, and tests are not read. Silent on a class reached through a package file that
+      re-exports it, built in its own file, or built through a variable or a parameter
     example: |
       <<two>>
-          built_by: [core]
+          holds: {classes: {built_by: [core]}}
+  parts.<part>.holds.functions:
+    meaning: every public function defined at the top level of a file
+    accepts: >-
+      `{}` or its settings, {names}: a public function defined at the top level of a file of the part, in no class,
+      may exist there; a method is not one (it belongs to its class), nor is the kind `function` of a check of your
+      own, which includes methods
+    example: |
+      <<part>>
+          holds: {functions: {}, records: {}, exceptions: {}}
+  parts.<part>.holds.functions.names:
+    meaning: how the functions of the part are named
+    accepts: >-
+      a pattern, or a list of them, with `*` for any text: every public function defined at the top level in a file of
+      the part, in no class, matches one of them
+    example: |
+      <<part>>
+          holds: {functions: {names: "is_*"}}
+  parts.<part>.holds.records:
+    meaning: a record, a class that holds values
+    accepts: >-
+      `{}` or its settings, {names, immutable}: a record may be defined at the top level of a file of the part: a class
+      with no method of its own, dunder methods aside, that a top-level function of the same file names in its return
+      annotation, as the language's reader reports it
+    example: |
+      <<part>>
+          holds: {functions: {}, records: {}, exceptions: {}}
+  parts.<part>.holds.records.names:
+    meaning: how the records of the part are named
+    accepts: >-
+      a pattern, or a list of them, with `*` for any text: every public record held to `records` defined at the top
+      level in a file of the part matches one of them
+    example: |
+      <<part>>
+          holds: {records: {names: "*Found"}}
+  parts.<part>.holds.records.immutable:
+    meaning: the records of the part are immutable records
+    accepts: >-
+      true: every record held to `records` that a file of the part defines at the top level is an immutable record, as
+      the language's data file says one is made (its `immutable`: a base, or a decorator called with its keywords). A
+      package file (`%package_file%`) is exempt. Each other one is listed as `weak` in the enforcement section, and
+      fails `check --strict` only. Beside `functions`, it keeps the records a part of functions returns from being
+      changed by the code they are handed to
+    example: |
+      <<part>>
+          holds: {functions: {}, records: {immutable: true}, exceptions: {}}
+  parts.<part>.holds.exceptions:
+    meaning: an exception class
+    accepts: >-
+      `{}` or its settings, {names}: an exception may be defined at the top level of a file of the part: a class that
+      derives from a builtin exception, directly or through classes of the app
+    example: |
+      <<part>>
+          holds: {functions: {}, records: {}, exceptions: {}}
+  parts.<part>.holds.exceptions.names:
+    meaning: how the exceptions of the part are named
+    accepts: >-
+      a pattern, or a list of them, with `*` for any text: every public exception defined at the top level in a file of
+      the part matches one of them
+    example: |
+      <<part>>
+          holds: {exceptions: {names: "*Error"}}
   parts.<part>.shared:
     meaning: the part is there to be shared, by at least this many users
     accepts: >-
@@ -1231,8 +1302,8 @@ keys:
       group's sum, an example of one part reading at or above the line of another part of its group crosses nothing,
       and an example of a part outside the group is held below a part's line on the group's sum; a record of
       placement held under other groups is stale. Refused: a name that is no part, a group of fewer than two parts or
-      naming a part twice, a part in two groups, and parts that differ in `uses.never`, `holds` or `immutable`
-      (`check` tells those apart by rule, so they are not alike). Name only parts that truly cannot be told apart
+      naming a part twice, a part in two groups, and parts that differ in `uses.never` or `holds` (the kinds it
+      lists and the `immutable` of each): `check` tells those apart by rule, so they are not alike. Name only parts that truly cannot be told apart
       from one file: a group hides every doubt between its parts
     example: |
       <<two>>

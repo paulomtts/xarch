@@ -18,6 +18,7 @@ from xarch.modules.spec.contract import (
     ExplainResult,
     FilesResult,
     GuardsView,
+    Held,
     KeyExplained,
     KnownProfiles,
     KnownResult,
@@ -43,10 +44,10 @@ from xarch.profile_values.tiers import CheckedTier
 TABLE = CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id")
 VIEW = ProfileView(
     parts=(PartView("core", ("core",), (), "the rules", "Is it a rule?", "core/", uses_never=(("socket",),),
-                    holds="functions", shared=2, immutable=True),
+                    holds=(Held("functions"), Held("records", immutable=True), Held("exceptions")), shared=2),
            PartView("api", ("src", "*", "api"), (Target("core"),), "handlers", shown="api/ of src/<module>",
-                    untested="it only wires", must_import=(Target("core"),), types_only=("core",), names=("*Api",),
-                    built_by=("core",))),
+                    untested="it only wires", must_import=(Target("core"),), types_only=("core",),
+                    holds=(Held("classes", ("*Api",), built_by=("core",)),))),
     folders=((), ("core",), ("src",), ("src", "*"), ("src", "*", "api")),
     tiers=(CheckedTier("unit", (Target("core", "none"),), None, ("api",), True, "a rule", "nothing", "Does it?"),),
     libraries={"core": (), "api": ("fastapi",)}, repeats=(Repeat("module", ("src",)),),
@@ -119,7 +120,7 @@ def test_the_profile_view_becomes_the_profile_the_checks_see():
         excluded=(Excluded(("vendor",), "not ours"),), must_import={"api": (Target("core"),)}, no_duplicates=4, no_twins=3,
         no_twins_renamed=4, no_twins_subset=3, no_twins_translated=("api",),
         dead_code=True, pass_through=("api",), untested=True, tests_only=True, tests_only_known=("api/x.py:run",),
-        holds={"core": "functions"}, immutable=("core",),
+        holds={"core": "functions", "api": "classes"}, immutable=("core",),
         types_only={"api": ("core",)}, no_callbacks=("core",), names={"api": ("*Api",)}, built_by={"api": ("core",)},
         shared={"core": 2}, private_imports=True, hints={"may-import": "ask first"}, written=VIEW.checks, default_tests="tests")
 

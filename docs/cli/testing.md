@@ -345,7 +345,7 @@ A fake is checked against its port twice. `xarch check` requires it to exist: ev
 - `cycles`: no `modules/<name>/` imports from another that imports, directly or through others, from it; each cycle is reported once, with the imports that close it.
 - `must-import`: every file of `adapters/` imports from `platform/`, any module's `contract/`, or an outside package, or reaches one through a file of its own part; a package file and a file with no code of its own are exempt.
 - `holds`: a file of `domain/`, `application/ports/`, `application/services/`, `application/controller.py` and `adapters/` defines classes, never a public function at the top level; a file of `application/logic/` and `kernel/logic/` defines functions, never a class (a private one too) but exceptions and the records its functions return; listed in the enforcement section, and fails `check --strict` only.
-- `immutable`: every class of `application/logic/` and `kernel/logic/` is an immutable record, as the Python data file marks one, or an exception; listed in the enforcement section, and fails `check --strict` only.
+- `immutable`: every record of `application/logic/` and `kernel/logic/` is an immutable record, as the Python data file marks one; listed in the enforcement section, and fails `check --strict` only.
 - `names`: every class of `application/services/` is named `*Service`.
 - `names`: every class of `application/controller.py` is named `*Controller`.
 - `built-by`: only code of `bootstrap/` builds a class of `application/services/`; tests are not read.

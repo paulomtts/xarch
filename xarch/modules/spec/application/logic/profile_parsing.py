@@ -23,6 +23,9 @@ key_catalogue); the shape:
                                the outside packages by top-level import name; a part that lists none may import none,
                                and everything leaves the part unchecked
         uses: {never: <list>}  the name of a list under the top-level `never`, which the part never uses
+        holds: {<kind>: {<setting>: <value>, ...}, ...}
+                               the kinds its files may define at the top level, each with its settings (see
+                               holds_written)
         tests: <tier> | untested: <reason>
                                one tier covers the part, or the reason none does; with `tiers`, one of the two
         package_only: true     the part is imported only as a package from outside it
@@ -71,7 +74,6 @@ from typing import Any
 
 from xarch.kernel.logic.names import is_name, outside_text
 from xarch.kernel.logic.placement import root_of, stem
-from xarch.kernel.logic.targets import NAME_PATTERN
 from xarch.kernel.placement import EACH, EVERYTHING
 from xarch.modules.spec.application.logic import never_lists as nl
 from xarch.modules.spec.application.logic import profile_checks as ck
@@ -79,6 +81,7 @@ from xarch.modules.spec.application.logic import profile_examples as ex
 from xarch.modules.spec.application.logic import profile_needs as needs
 from xarch.modules.spec.application.logic import written_checks as own_checks
 from xarch.modules.spec.application.logic.evals import evals, unlike, unplaced
+from xarch.modules.spec.application.logic.holds_written import holds as held_kinds
 from xarch.modules.spec.application.logic.key_lookup import keys_of, names_of, required_of
 from xarch.modules.spec.application.logic.language_file import first_language
 from xarch.modules.spec.application.logic.layout_walk import is_file
@@ -125,7 +128,6 @@ from xarch.profile_values.placement import Repeat, Target
 from xarch.profile_values.testing import CaseTable, Fakes, Framework, ScenarioCoverage, StandIns
 
 _REPEATING = re.compile(r"<([A-Za-z_][A-Za-z0-9_-]*)>")
-_HOLDS = ("classes", "functions")
 _TIER_TEXTS = ("subject", "may_touch", "one_file_per", "cases_from", "data")
 """The keys under a tier's `docs` that hold one line of text each."""
 _GUARDS = tuple(name for name in ORDER if name != KEY[PackageOnly])
@@ -209,7 +211,8 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     placement, placed, own_evals, alike = (evals(document["evals"], declared, language, problems) if "evals" in document
                                            else ({}, ((), ()), {}, ()))
     problems += unplaced(placed, {name: part.path for name, part in parts.items()}, language)
-    problems += unlike(alike, {name: (frozenset(uses_never.get(name, ())), part.holds, part.immutable)
+    problems += unlike(alike, {name: (frozenset(uses_never.get(name, ())),
+                                      tuple((held.kind, held.immutable) for held in part.holds))
                                for name, part in parts.items()})
     if problems:
         raise InvalidArchitecture(source, problems)
@@ -846,23 +849,12 @@ def _known(value: Any, tests_only: bool, where: str, problems: list[str], langua
 
 def _substance(spec: Any, part: Part, declared: set[str], may_import: tuple[Target, ...],
                problems: list[str]) -> Part:
-    """The keys of a part that say what its code holds and how it is used: holds, immutable, types_only, names,
-    built_by and shared."""
+    """The keys of a part that say what its code holds and how it is used: holds, with the settings of each kind it
+    lists (see holds_written), types_only and shared."""
     where = f"parts.{part.name}"
     if not isinstance(spec, Mapping):
         return part
-    holds = spec.get("holds", "")
-    if "holds" in spec and holds not in _HOLDS:
-        problems.append(f"{where}.holds: must be {' or '.join(_HOLDS)}")
-        holds = ""
-    immutable = spec.get("immutable", False)
-    if not isinstance(immutable, bool):
-        problems.append(f"{where}.immutable: must be true or false: whether every class the part defines, but an "
-                        "exception, is an immutable record")
-        immutable = False
-    names = _class_patterns(spec["names"], f"{where}.names", problems) if "names" in spec else ()
-    built_by = tuple(ck.part_names(spec["built_by"], declared, f"{where}.built_by", problems)) \
-        if "built_by" in spec else ()
+    holds = held_kinds(spec["holds"], where, declared, problems) if "holds" in spec else ()
     types_only = tuple(ck.part_names(spec["types_only"], declared, f"{where}.types_only", problems)) \
         if "types_only" in spec else ()
     for name in types_only:
@@ -874,20 +866,7 @@ def _substance(spec: Any, part: Part, declared: set[str], may_import: tuple[Targ
         problems.append(f"{where}.shared: must be a whole number of users, at least 2, such as 2; leave it out for a "
                         "part that is not there to be shared")
         shared = None
-    return replace(part, holds=holds, names=names, built_by=built_by, types_only=types_only, shared=shared,
-                   immutable=immutable)
-
-
-def _class_patterns(value: Any, where: str, problems: list[str]) -> tuple[str, ...]:
-    items = [value] if isinstance(value, str) else value
-    if not isinstance(items, list) or not items or items == [""]:
-        problems.append(f"{where}: must be a class name pattern with `*` for any text, such as *Store, or a list of "
-                        "them")
-        return ()
-    bad = [item for item in items if not isinstance(item, str) or not NAME_PATTERN.fullmatch(item)]
-    problems += [f"{where}: {item!r} is not a class name pattern: write it with no space, `@`, `/` or `:`, `*` "
-                 "standing for any text" for item in bad]
-    return () if bad else tuple(items)
+    return replace(part, holds=holds, types_only=types_only, shared=shared)
 
 
 def _no_duplicates(spec: Any, where: str, problems: list[str]) -> NoDuplicates:

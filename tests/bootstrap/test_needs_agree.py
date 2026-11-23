@@ -21,17 +21,14 @@ parts:
     libraries: [yaml]
     uses: {never: pure}
     package_only: true
-    holds: functions
-    immutable: true
+    holds: {functions: {names: "*"}, records: {names: "*", immutable: true}, exceptions: {names: "*"}}
     types_only: [api]
-    names: "*"
     must_import: [api]
     tests: unit
   api:
     path: api
     role: the api
-    built_by: [core]
-    holds: classes
+    holds: {classes: {names: "*", immutable: true, built_by: [core]}}
     tests: unit
 never:
   pure: [time.time]

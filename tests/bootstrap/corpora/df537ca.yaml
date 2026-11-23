@@ -10,7 +10,7 @@ parts:
     role: "entities, values, errors: invariants only"
     may_import: [kernel]
     uses: {never: pure}
-    holds: classes
+    holds: {classes: {}}
     tests: unit
 
   logic:
@@ -18,7 +18,7 @@ parts:
     role: pure functions over the module's domain objects
     may_import: [domain, kernel]
     uses: {never: pure}
-    holds: functions
+    holds: {functions: {}, records: {}, exceptions: {}}
     tests: unit
 
   ports:
@@ -26,7 +26,7 @@ parts:
     role: Protocols for what the module needs from the outside
     may_import: [domain, kernel]
     uses: {never: pure}
-    holds: classes
+    holds: {classes: {}}
     tests: integration
 
   services:
@@ -34,20 +34,16 @@ parts:
     role: "use-case steps: load, check, act"
     may_import: [logic, domain, ports, contract, kernel]
     types_only: [contract]
-    holds: classes
-    names: "*Service"
+    holds: {classes: {names: "*Service", built_by: [bootstrap]}}
     uses: {never: ambient}
-    built_by: [bootstrap]
     tests: integration
 
   controller:
     path: modules/<module>/application/controller.py
     role: maps failures to a Result
     may_import: [services, logic, domain, ports, contract, kernel]
-    holds: classes
-    names: "*Controller"
+    holds: {classes: {names: "*Controller", built_by: [bootstrap]}}
     uses: {never: ambient}
-    built_by: [bootstrap]
     tests: integration
 
   adapters:
@@ -56,8 +52,7 @@ parts:
     may_import: [ports, domain, kernel, platform, contract@any]
     must_import: [platform, contract@any]
     libraries: [ast, tokenize]
-    holds: classes
-    built_by: [bootstrap]
+    holds: {classes: {built_by: [bootstrap]}}
     tests: unit
 
   platform:
@@ -80,7 +75,7 @@ parts:
     role: formatting of Results into text and JSON
     may_import: [contract@any, kernel]
     uses: {never: pure}
-    holds: functions
+    holds: {functions: {}, records: {}, exceptions: {}}
     tests: unit
 
   main:

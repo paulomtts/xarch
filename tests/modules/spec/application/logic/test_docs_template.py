@@ -294,7 +294,7 @@ PRIVATE = ("- `private-imports`: no file of the app or its tests imports a name 
 
 
 def test_the_no_callbacks_line_is_a_guard_line_after_the_part_lines():
-    lines = filled("{{guards}}", parts=parts(service={"holds": "functions"}),
+    lines = filled("{{guards}}", parts=parts(service={"holds": {"functions": {}, "records": {}, "exceptions": {}}}),
                    guards={"no-callbacks": {"parts": ["store", "service"]}, "private-imports": {}}).splitlines()
     assert lines[-2:] == [CALLBACKS, PRIVATE]
     assert [line for line in lines if "`no-callbacks`" in line] == [CALLBACKS]
@@ -344,3 +344,55 @@ def test_the_private_imports_line_of_a_language_that_gives_no_prefix_says_the_ru
     assert lines == ["- `private-imports`: no file of the app or its tests imports a name another file of them keeps "
                      "private."]
     assert "``" not in lines[0]
+
+
+LOGIC = {"functions": {}, "records": {"immutable": True}, "exceptions": {}}
+ENFORCED = "listed in the enforcement section, and fails `check --strict` only."
+
+
+def keyed(key: str, **changes) -> list[str]:
+    """The lines of the guards the parts changed as given say for the key."""
+    return [line for line in filled("{{guards}}", parts=parts(**changes)).splitlines() if line.startswith(f"- `{key}`")]
+
+
+def test_the_holds_line_says_the_two_bundled_forms_as_it_always_has():
+    assert keyed("holds", store={"holds": {"classes": {}}}, service={"holds": LOGIC}, shared={"holds": {"classes": {}}}) == [
+        "- `holds`: a file of `store/` and `shared/` defines classes, never a public function at the top level; a file "
+        "of `service/` defines functions, never a class (a private one too) but exceptions and the records its "
+        f"functions return; {ENFORCED}"]
+
+
+def test_the_holds_line_says_any_other_group_by_the_kinds_it_allows_after_the_bundled_forms():
+    assert keyed("holds", store={"holds": {"functions": {}, "records": {}}}, service={"holds": {"classes": {}}},
+                 shared={"holds": {"classes": {}, "functions": {}}}) == [
+        "- `holds`: a file of `service/` defines classes, never a public function at the top level; a file of `store/` "
+        "holds functions and records and no other kind at the top level; a file of `shared/` holds classes and "
+        f"functions and no other kind at the top level; {ENFORCED}"]
+
+
+def test_the_immutable_lines_say_the_parts_of_immutable_classes_then_those_of_immutable_records():
+    assert keyed("immutable", store={"holds": {"classes": {"immutable": True}}}, service={"holds": LOGIC}) == [
+        "- `immutable`: every class of `store/` is an immutable record, as the Python data file marks one, or an "
+        f"exception; {ENFORCED}",
+        f"- `immutable`: every record of `service/` is an immutable record, as the Python data file marks one; {ENFORCED}"]
+
+
+def test_the_names_lines_say_each_kind_named_in_the_order_of_the_kinds():
+    holds = {"classes": {"names": "*Service"}, "functions": {"names": ["is_*", "has_*"]},
+             "exceptions": {"names": "*Error"}}
+    assert keyed("names", service={"holds": holds}, store={"holds": {"records": {"names": "*Row"}}}) == [
+        "- `names`: every record of `store/` is named `*Row`.",
+        "- `names`: every class of `service/` but its exceptions is named `*Service`.",
+        "- `names`: every function of `service/` at the top level is named `is_*` or `has_*`.",
+        "- `names`: every exception of `service/` is named `*Error`."]
+
+
+def test_the_names_line_of_classes_beside_records_and_exceptions_leaves_both_out():
+    holds = {"classes": {"names": "*Service"}, "records": {"immutable": True}, "exceptions": {"names": "*Error"}}
+    assert keyed("names", service={"holds": holds})[0] == (
+        "- `names`: every class of `service/` but its records and exceptions is named `*Service`.")
+
+
+def test_the_built_by_line_reads_the_built_by_of_classes():
+    assert keyed("built-by", service={"holds": {"classes": {"built_by": ["api"]}}}) == [
+        "- `built-by`: only code of `api.py` builds a class of `service/`; tests are not read."]

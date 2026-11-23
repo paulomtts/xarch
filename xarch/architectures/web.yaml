@@ -18,7 +18,7 @@ parts:
       it to its `uses.never` list: no clock and no I/O by name.
     may_import: [kernel, kernel-logic]
     uses: {never: pure}
-    holds: classes
+    holds: {classes: {}}
     tests: unit
 
   logic:
@@ -31,8 +31,7 @@ parts:
       it is a service step. `xarch check` holds it to its `uses.never` list: no clock and no I/O by name.
     may_import: [domain, kernel, kernel-logic]
     uses: {never: pure}
-    holds: functions
-    immutable: true
+    holds: {functions: {}, records: {immutable: true}, exceptions: {}}
     tests: unit
 
   ports:
@@ -46,7 +45,7 @@ parts:
       holds it to its `uses.never` list: no clock and no I/O by name.
     may_import: [domain, kernel, kernel-logic]
     uses: {never: pure}
-    holds: classes
+    holds: {classes: {}}
     tests: integration
 
   services:
@@ -60,10 +59,8 @@ parts:
       default, a sentence), it belongs in `application/logic/`, and the service calls it. If it turns a failure into
       a `Result` variant, it belongs in the controller. If it touches a database, it belongs in `adapters/`.
     may_import: [logic, domain, ports, contract, kernel, kernel-logic]
-    holds: classes
-    names: "*Service"
+    holds: {classes: {names: "*Service", built_by: [bootstrap]}}
     uses: {never: ambient}
-    built_by: [bootstrap]
     tests: integration
 
   controller:
@@ -77,10 +74,8 @@ parts:
       in `web/`. If it handles a table row, or reads another module's `Result` to answer one of this module's ports,
       it belongs in `adapters/`.
     may_import: [services, logic, domain, ports, contract, kernel, kernel-logic]
-    holds: classes
-    names: "*Controller"
+    holds: {classes: {names: "*Controller", built_by: [bootstrap]}}
     uses: {never: ambient}
-    built_by: [bootstrap]
     tests: integration
 
   adapters:
@@ -95,10 +90,9 @@ parts:
       `platform/`. If it contains a business rule, it belongs in `domain/`.
     may_import: [ports, domain, kernel, kernel-logic, platform, contract@any]
     must_import: [platform, contract@any]
-    built_by: [bootstrap]
     libraries: [sqlmodel]
     uses: {never: ambient}
-    holds: classes
+    holds: {classes: {built_by: [bootstrap]}}
     tests: unit
 
   platform:
@@ -174,8 +168,7 @@ parts:
       no I/O by name.
     may_import: [kernel]
     uses: {never: pure}
-    holds: functions
-    immutable: true
+    holds: {functions: {}, records: {immutable: true}, exceptions: {}}
     tests: unit
 
   kernel:

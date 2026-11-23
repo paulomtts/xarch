@@ -43,6 +43,13 @@ RANKED = tuple(replace(key, needs=("use",)) if key.address == "rows" else key fo
 """NESTED, its key rows needing use itself."""
 
 
+BRANCH = "a class defined in a branch is not read"
+CLASSY = {"toy": replace(TOY, checked=replace(TOY.checked, supplies=(
+    *TOY.checked.supplies, *(Supply(fact, EXACT) for fact in ("function", "function.top_level", "class.exception",
+                                                               "class.record")))))}
+"""Toy, its reader also supplying what holds reads but the class, which it supplies partly."""
+
+
 def services(**keys) -> dict:
     document = layered(language="toy")
     document["parts"]["service"] |= keys
@@ -76,7 +83,7 @@ def everywhere() -> tuple[dict, dict]:
     document = covered(guards={"dead-code": {"untested": True, "tests_only": True, "known": ["shared/wiring.py:build"]},
                                "no-comments": {}, "no-twins": {"translated": ["api"]}},
                        reserved={"json": "only io"})
-    document["parts"]["service"]["holds"] = "classes"
+    document["parts"]["service"]["holds"] = {"classes": {}}
     document["tiers"]["unit"]["must_import"] = ["service"]
     document["parts"]["service"]["uses"] = {"never": "pure"}
     document["tiers"]["unit"]["uses"] = {"apply_never": True}
@@ -99,12 +106,14 @@ def test_callback_is_needed_by_the_guard_no_callbacks_alone():
 
 
 def test_a_key_set_to_false_configures_no_check_and_needs_nothing():
-    assert parsed(services(immutable=False), languages=LANGUAGES).approximate == ()
+    assert parsed(services(holds={"classes": {"immutable": False}}), languages=CLASSY).approximate == (
+        Shortfall("parts.service.holds", "class", BRANCH), Shortfall("parts.service.holds.classes", "class", BRANCH))
 
 
 def test_a_key_whose_check_reads_a_fact_supplied_partly_loads_and_is_kept_as_approximate():
-    assert parsed(services(names="*Service"), languages=LANGUAGES).approximate == (
-        Shortfall("parts.service.names", "class", "a class defined in a branch is not read"),)
+    assert parsed(services(holds={"classes": {"names": "*Service"}}), languages=CLASSY).approximate == (
+        Shortfall("parts.service.holds", "class", BRANCH), Shortfall("parts.service.holds.classes", "class", BRANCH),
+        Shortfall("parts.service.holds.classes.names", "class", BRANCH))
 
 
 def test_a_key_whose_facts_are_all_supplied_exactly_is_neither_refused_nor_approximate():
@@ -127,6 +136,7 @@ def test_the_keys_a_profile_sets_are_found_in_every_scope_and_through_a_testing_
     configured = [("testing.skips", "testing.skips"), ("testing.table", "testing.table"),
                   ("testing.mocks", "testing.mocks"), ("parts.api.may_import", "parts.<part>.may_import"),
                   ("parts.service.may_import", "parts.<part>.may_import"), ("parts.service.holds", "parts.<part>.holds"),
+                  ("parts.service.holds.classes", "parts.<part>.holds.classes"),
                   ("parts.service.uses.never", "parts.<part>.uses.never"),
                   ("parts.store.may_import", "parts.<part>.may_import"),
                   ("parts.store.libraries", "parts.<part>.libraries"), ("reserved", "reserved"), ("tiers", "tiers"),
@@ -270,8 +280,9 @@ def test_a_testing_that_names_a_preset_is_walked_as_the_preset():
 def test_a_key_whose_check_reads_names_through_imports_needs_them_followed_however_written():
     """Toy is given calls, so the one fact built_by still lacks is that its imports are followed."""
     calling = replace(TOY, checked=replace(TOY.checked, supplies=(*TOY.checked.supplies, Supply("call", EXACT))))
-    assert problems(services(built_by=["api"]), languages={"toy": calling}) == [
-        refusal("parts.service.built_by", "import.resolved")]
+    found = short(services(holds={"classes": {"built_by": ["api"]}}), {}, calling)
+    assert [(item.fact, item.note) for item in found if item.address == "parts.service.holds.classes.built_by"] == [
+        ("class", "a class defined in a branch is not read"), ("import.resolved", None)]
 
 
 def test_whether_a_class_is_an_interface_is_a_fact_the_marks_of_the_data_file_say():
@@ -315,7 +326,8 @@ def test_dead_code_untested_is_refused_under_a_language_with_no_package_file():
 
 
 def test_the_keys_that_read_the_package_file_negated_load_under_a_language_with_none():
-    assert parsed(flat(holds="functions", immutable=True), languages=FLATS).approximate == ()
+    assert parsed(flat(holds={"functions": {}, "records": {"immutable": True}, "exceptions": {}}),
+                  languages=FLATS).approximate == ()
     assert parsed(covered(guards={"dead-code": {}}, fakes=FAKES, language="flat"), languages=FLATS).approximate == ()
     assert parsed(flat(), languages=FLATS).approximate == ()
 
@@ -389,8 +401,9 @@ def test_a_shared_part_is_refused_under_a_language_whose_reader_does_not_say_whi
     assert parsed(document, languages={"unsaid": said}).approximate == ()
     assert sorted(key.address for key in KEYS if "public" in key.needs) == [
         "guards.dead-code.known", "guards.dead-code.tests_only", "guards.no-twins", "guards.no-twins.min_renamed",
-        "guards.no-twins.translated", "guards.private-imports", "parts.<part>.holds", "parts.<part>.names",
-        "parts.<part>.shared"]
+        "guards.no-twins.translated", "guards.private-imports", "parts.<part>.holds", "parts.<part>.holds.classes",
+        "parts.<part>.holds.classes.names", "parts.<part>.holds.exceptions.names", "parts.<part>.holds.functions",
+        "parts.<part>.holds.functions.names", "parts.<part>.holds.records.names", "parts.<part>.shared"]
 
 
 UNRECORDED = replace(PYTHON, name="unrecorded", checked=replace(
@@ -400,14 +413,15 @@ UNRECORDED = replace(PYTHON, name="unrecorded", checked=replace(
 
 def test_a_part_that_holds_is_refused_under_a_language_whose_reader_does_not_say_which_classes_are_records():
     document = layered(language="unrecorded")
-    document["parts"]["service"] |= {"holds": "functions"}
+    document["parts"]["service"] |= {"holds": {"functions": {}, "records": {}, "exceptions": {}}}
     assert problems(document, languages={"unrecorded": UNRECORDED}) == [
-        "layered.yaml: parts.service.holds: its check reads class.record (whether a class is a record, as the language "
-        "writes one), which the language unrecorded does not supply: drop parts.service.holds, or check the app with a "
-        "language whose reader supplies class.record"]
+        not_supplied(address, "class.record", "unrecorded")
+        for address in ("parts.service.holds", "parts.service.holds.records")]
     said = replace(UNRECORDED, checked=replace(UNRECORDED.checked, supplies=PYTHON.checked.supplies))
     assert parsed(document, languages={"unrecorded": said}).approximate == ()
-    assert sorted(key.address for key in KEYS if "class.record" in key.needs) == ["parts.<part>.holds"]
+    assert sorted(key.address for key in KEYS if "class.record" in key.needs) == [
+        "parts.<part>.holds", "parts.<part>.holds.records", "parts.<part>.holds.records.immutable",
+        "parts.<part>.holds.records.names"]
 
 
 UNTOPPED = replace(PYTHON, name="untopped", checked=replace(
@@ -423,18 +437,16 @@ def untopped(address: str) -> str:
             "the app with a language whose reader supplies function.top_level")
 
 
-@pytest.mark.parametrize("holds", [
-    pytest.param("functions", id="a part of functions"),
-    pytest.param("classes", id="a part of classes, whose rule reads top-level"),
-])
-def test_a_part_that_holds_is_refused_under_a_language_whose_reader_does_not_say_which_functions_are_top_level(holds):
+def test_a_part_of_functions_is_refused_under_a_language_whose_reader_does_not_say_which_functions_are_top_level():
     document = layered(language="untopped")
-    document["parts"]["service"] |= {"holds": holds}
-    assert problems(document, languages={"untopped": UNTOPPED}) == [untopped("parts.service.holds")]
+    document["parts"]["service"] |= {"holds": {"functions": {}, "records": {}, "exceptions": {}}}
+    assert problems(document, languages={"untopped": UNTOPPED}) == [
+        untopped("parts.service.holds.functions"), untopped("parts.service.holds.records")]
     said = replace(UNTOPPED, checked=replace(UNTOPPED.checked, supplies=PYTHON.checked.supplies))
     assert parsed(document, languages={"untopped": said}).approximate == ()
     assert sorted(key.address for key in KEYS if "function.top_level" in key.needs) == [
-        "guards.dead-code.tests_only", "parts.<part>.holds"]
+        "guards.dead-code.tests_only", "parts.<part>.holds", "parts.<part>.holds.functions",
+        "parts.<part>.holds.functions.names", "parts.<part>.holds.records"]
 
 
 def test_dead_code_tests_only_is_refused_under_a_language_whose_reader_does_not_say_which_functions_are_top_level():
@@ -442,3 +454,49 @@ def test_dead_code_tests_only_is_refused_under_a_language_whose_reader_does_not_
     assert problems(document, languages={"untopped": UNTOPPED}) == [untopped("guards.dead-code.tests_only")]
     said = replace(UNTOPPED, checked=replace(UNTOPPED.checked, supplies=PYTHON.checked.supplies))
     assert parsed(document, languages={"untopped": said}).approximate == ()
+
+
+NO_EXCEPTION = replace(PYTHON, name="noexception", checked=replace(
+    PYTHON.checked, title="NoException", supplies=tuple(Supply(fact, EXACT) for fact in FACTS if fact != "class.exception")))
+"""A language whose reader supplies every fact but class.exception."""
+READS_LESS = "holds reads no top-level functions: the language Untopped does not supply function.top_level"
+
+
+def held(language: str, holds: dict) -> dict:
+    document = layered(language=language)
+    document["parts"]["service"]["holds"] = holds
+    return document
+
+
+def not_supplied(address: str, fact: str, language: str) -> str:
+    return (f"layered.yaml: {address}: its check reads {fact} ({FACTS[fact]}), which the language {language} does not "
+            f"supply: drop {address}, or check the app with a language whose reader supplies {fact}")
+
+
+@pytest.mark.parametrize("holds, address", [
+    pytest.param({"functions": {}}, "parts.service.holds.functions", id="functions"),
+    pytest.param({"records": {}}, "parts.service.holds.records", id="records"),
+])
+def test_a_kind_listed_that_the_language_has_no_top_level_function_for_is_refused_at_its_address(holds, address):
+    assert problems(held("untopped", holds), languages={"untopped": UNTOPPED}) == [untopped(address)]
+
+
+def test_a_part_of_classes_loads_in_a_language_with_no_top_level_function_and_says_its_holds_reads_less():
+    assert parsed(held("untopped", {"classes": {}}), languages={"untopped": UNTOPPED}).approximate == (
+        Shortfall("parts.service.holds", "function.top_level", READS_LESS, True),)
+
+
+def test_a_part_of_classes_reads_top_level_functions_in_a_language_whose_data_file_says_nothing_of_its_reader():
+    silent = replace(UNTOPPED, checked=replace(UNTOPPED.checked, supplies=None))
+    assert parsed(held("untopped", {"classes": {}}), languages={"untopped": silent}).approximate == ()
+
+
+def test_exceptions_listed_in_a_language_that_cannot_tell_an_exception_is_refused():
+    found = problems(held("noexception", {"functions": {}, "exceptions": {}}), languages={"noexception": NO_EXCEPTION})
+    assert not_supplied("parts.service.holds.exceptions", "class.exception", "noexception") in found
+
+
+def test_the_needs_refused_are_those_of_the_kinds_and_settings_listed_alone():
+    found = short(held("untopped", {"classes": {"names": "*Service", "immutable": False}}), {}, UNTOPPED)
+    assert [(item.address, item.fact, item.unread) for item in found] == [
+        ("parts.service.holds", "function.top_level", True)]

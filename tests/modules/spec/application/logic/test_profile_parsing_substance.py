@@ -1,10 +1,11 @@
-"""A profile file: the keys that say what code of a part holds and how it may be used (holds, immutable,
-types_only, names, built_by), a name pattern on a target of may_import, what each test of a tier must reach, and the
-guards private-imports and dead-code's untested."""
+"""A profile file: the keys that say what code of a part holds and how it may be used (holds, the kinds it lists with
+their settings names, immutable and built_by, and types_only), a name pattern on a target of may_import, what each
+test of a tier must reach, and the guards private-imports and dead-code's untested."""
 import pytest
 
 from tests.modules.spec.languages import BRACE, PYTHON
 from tests.modules.spec.profiles import covered, layered, parsed, problems
+from xarch.modules.spec.domain.published import Held
 from xarch.modules.spec.domain.values import DeadCode, PrivateImports
 from xarch.profile_values.placement import Target
 
@@ -18,14 +19,120 @@ def with_part(**keys) -> dict:
 
 
 def test_a_part_says_what_its_files_hold_and_how_its_classes_are_named_and_built():
-    part = parsed(with_part(holds="classes", names="*Service", built_by=["api"], types_only=["store"])).parts["service"]
-    assert (part.holds, part.names, part.built_by, part.types_only) == ("classes", ("*Service",), ("api",), ("store",))
-    assert not hasattr(part, "no_callbacks")
+    part = parsed(with_part(holds={"classes": {"names": "*Service", "built_by": ["api"]}},
+                            types_only=["store"])).parts["service"]
+    assert (part.holds, part.types_only) == ((Held("classes", ("*Service",), built_by=("api",)),), ("store",))
+    assert not any(hasattr(part, key) for key in ("no_callbacks", "names", "built_by", "immutable"))
 
 
 def test_the_keys_are_off_when_left_out():
     part = parsed(layered()).parts["service"]
-    assert (part.holds, part.names, part.built_by, part.types_only) == ("", (), (), ())
+    assert (part.holds, part.types_only) == ((), ())
+
+
+def test_a_part_says_what_its_files_hold_each_kind_with_its_settings_in_the_order_of_the_kinds():
+    holds = {"exceptions": {"names": "*Error"}, "records": {"immutable": True, "names": ["*Found", "*Shown"]},
+             "functions": {"names": "is_*"}}
+    assert parsed(with_part(holds=holds)).parts["service"].holds == (
+        Held("functions", ("is_*",)), Held("records", ("*Found", "*Shown"), True), Held("exceptions", ("*Error",)))
+
+
+@pytest.mark.parametrize("holds, expected", [
+    pytest.param({"classes": {}}, (Held("classes"),), id="classes, no setting"),
+    pytest.param({"functions": {}, "records": {"immutable": True}, "exceptions": {}},
+                 (Held("functions"), Held("records", immutable=True), Held("exceptions")), id="what logic holds"),
+    pytest.param({"classes": {"immutable": True}, "functions": {}}, (Held("classes", immutable=True), Held("functions")),
+                 id="classes and functions"),
+    pytest.param({"classes": {"names": "*Service"}, "exceptions": {"names": "*Error"}},
+                 (Held("classes", ("*Service",)), Held("exceptions", ("*Error",))), id="exceptions beside classes"),
+    pytest.param({"records": {"immutable": False}}, (Held("records"),), id="immutable false is no setting"),
+])
+def test_each_kind_listed_is_held_with_the_settings_it_writes(holds, expected):
+    assert parsed(with_part(holds=holds)).parts["service"].holds == expected
+
+
+def test_a_part_whose_classes_are_immutable_records_says_so_and_is_not_one_when_left_out():
+    assert parsed(with_part(holds={"classes": {"immutable": True}})).parts["service"].holds == (
+        Held("classes", immutable=True),)
+
+
+def test_names_may_be_a_list_of_patterns():
+    assert parsed(with_part(holds={"classes": {"names": ["*Service", "*Step"]}})).parts["service"].holds == (
+        Held("classes", ("*Service", "*Step")),)
+
+
+MAP = "must be a map of its settings, {} for none, such as"
+
+
+@pytest.mark.parametrize("holds, expected", [
+    pytest.param("types", "parts.service.holds: must be a map of kinds, such as {classes: {}}", id="another word"),
+    pytest.param(True, "parts.service.holds: must be a map of kinds, such as {classes: {}}", id="true"),
+    pytest.param(None, "parts.service.holds: must be a map of kinds, such as {classes: {}}", id="null"),
+    pytest.param(["classes"], "parts.service.holds: must be a map of kinds, such as {classes: {}}", id="a list"),
+    pytest.param(3, "parts.service.holds: must be a map of kinds, such as {classes: {}}", id="a number"),
+    pytest.param({}, "parts.service.holds: lists no kind: list the kinds the part may hold, or drop holds to allow every "
+                     "kind", id="an empty map"),
+    pytest.param({"function": {}}, "parts.service.holds: no kind 'function': use classes, exceptions, functions, records",
+                 id="a kind that is none"),
+    pytest.param({"functions": None}, f"parts.service.holds.functions: {MAP} {{names: \"is_*\"}}", id="functions, null"),
+    pytest.param({"functions": True}, f"parts.service.holds.functions: {MAP} {{names: \"is_*\"}}", id="functions, true"),
+    pytest.param({"classes": False}, f"parts.service.holds.classes: {MAP} {{names: \"*Service\"}}", id="classes, false"),
+    pytest.param({"classes": []}, f"parts.service.holds.classes: {MAP} {{names: \"*Service\"}}", id="classes, a list"),
+    pytest.param({"records": "yes"}, f"parts.service.holds.records: {MAP} {{immutable: true}}", id="records, a string"),
+    pytest.param({"exceptions": 1}, f"parts.service.holds.exceptions: {MAP} {{names: \"*Error\"}}",
+                 id="exceptions, a number"),
+    pytest.param({"functions": {"immutable": True}}, "parts.service.holds.functions: unknown key 'immutable': a setting "
+                                                     "of classes and records; use names", id="immutable under functions"),
+    pytest.param({"functions": {"built_by": ["api"]}}, "parts.service.holds.functions: unknown key 'built_by': a "
+                                                       "setting of classes; use names", id="built_by under functions"),
+    pytest.param({"records": {"built_by": ["api"]}}, "parts.service.holds.records: unknown key 'built_by': a setting "
+                                                     "of classes; use immutable, names", id="built_by under records"),
+    pytest.param({"exceptions": {"immutable": True}}, "parts.service.holds.exceptions: unknown key 'immutable': a "
+                                                      "setting of classes and records; use names",
+                 id="immutable under exceptions"),
+    pytest.param({"exceptions": {"built_by": ["api"]}}, "parts.service.holds.exceptions: unknown key 'built_by': a "
+                                                        "setting of classes; use names", id="built_by under exceptions"),
+    pytest.param({"functions": {"methods": "x"}}, "parts.service.holds.functions: unknown key 'methods': use names",
+                 id="a setting no kind takes"),
+    pytest.param({"classes": {}, "exceptions": {}}, "parts.service.holds.exceptions: says nothing beside classes, which "
+                                                    "already allows exceptions: give it a setting, or drop it",
+                 id="exceptions with no setting beside classes"),
+    pytest.param({"classes": {}, "records": {}}, "parts.service.holds.records: says nothing beside classes, which "
+                                                 "already allows records: give it a setting, or drop it",
+                 id="records with no setting beside classes"),
+    pytest.param({"classes": {"names": ""}}, "parts.service.holds.classes.names: must be a name pattern with `*` for any "
+                                             "text, such as *Service, or a list of them", id="names, empty"),
+    pytest.param({"functions": {"names": "Bad Name"}}, "parts.service.holds.functions.names: 'Bad Name' is not a name "
+                                                       "pattern: write it with no space, `@`, `/` or `:`, `*` standing "
+                                                       "for any text", id="names, a space"),
+    pytest.param({"records": {"names": [3]}}, "parts.service.holds.records.names: 3 is not a name pattern: write it with "
+                                              "no space, `@`, `/` or `:`, `*` standing for any text", id="names, a number"),
+    pytest.param({"classes": {"immutable": "yes"}}, "parts.service.holds.classes.immutable: must be true or false: "
+                                                    "whether every class of the part, but an exception, is an immutable "
+                                                    "record", id="classes, immutable no boolean"),
+    pytest.param({"records": {"immutable": 1}}, "parts.service.holds.records.immutable: must be true or false: whether "
+                                                "every record of the part is an immutable record",
+                 id="records, immutable no boolean"),
+    pytest.param({"classes": {"built_by": ["ghost"]}}, "parts.service.holds.classes.built_by: no part named 'ghost'",
+                 id="built_by, no such part"),
+    pytest.param({"classes": {"built_by": []}}, "parts.service.holds.classes.built_by: must be a list of part names",
+                 id="built_by, empty"),
+])
+def test_a_bad_holds_is_refused(holds, expected):
+    assert problems(with_part(holds=holds)) == [f"layered.yaml: {expected}"]
+
+
+def test_the_problems_of_holds_are_collected_together_with_the_others_of_the_part():
+    holds = {"function": {}, "classes": {"names": ""}, "records": {}, "exceptions": {"built_by": ["api"]}}
+    assert problems(with_part(holds=holds, shared=1)) == [
+        "layered.yaml: parts.service.holds: no kind 'function': use classes, exceptions, functions, records",
+        "layered.yaml: parts.service.holds.classes.names: must be a name pattern with `*` for any text, such as "
+        "*Service, or a list of them",
+        "layered.yaml: parts.service.holds.records: says nothing beside classes, which already allows records: give it "
+        "a setting, or drop it",
+        "layered.yaml: parts.service.holds.exceptions: unknown key 'built_by': a setting of classes; use names",
+        "layered.yaml: parts.service.shared: must be a whole number of users, at least 2, such as 2; leave it out for a "
+        "part that is not there to be shared"]
 
 
 def test_a_part_there_to_be_shared_says_by_how_many_users_and_is_not_shared_when_left_out():
@@ -33,28 +140,7 @@ def test_a_part_there_to_be_shared_says_by_how_many_users_and_is_not_shared_when
     assert parsed(layered()).parts["service"].shared is None
 
 
-def test_a_part_whose_classes_are_immutable_records_says_so_and_is_not_one_when_left_out():
-    assert parsed(with_part(holds="functions", immutable=True)).parts["service"].immutable is True
-    assert parsed(layered()).parts["service"].immutable is False
-
-
-def test_names_may_be_a_list_of_patterns():
-    assert parsed(with_part(names=["*Service", "*Step"])).parts["service"].names == ("*Service", "*Step")
-
-
 @pytest.mark.parametrize("keys, expected", [
-    pytest.param({"holds": "types"}, "parts.service.holds: must be classes or functions", id="holds, another word"),
-    pytest.param({"holds": True}, "parts.service.holds: must be classes or functions", id="holds, no word"),
-    pytest.param({"immutable": "yes"}, "parts.service.immutable: must be true or false: whether every class the part "
-                                       "defines, but an exception, is an immutable record", id="immutable, no boolean"),
-    pytest.param({"names": ""}, "parts.service.names: must be a class name pattern with `*` for any text, such as "
-                                "*Store, or a list of them", id="names, empty"),
-    pytest.param({"names": "Bad Name"}, "parts.service.names: 'Bad Name' is not a class name pattern: write it with no "
-                                        "space, `@`, `/` or `:`, `*` standing for any text", id="names, a space"),
-    pytest.param({"names": [3]}, "parts.service.names: 3 is not a class name pattern: write it with no space, `@`, `/` "
-                                 "or `:`, `*` standing for any text", id="names, a number"),
-    pytest.param({"built_by": ["ghost"]}, "parts.service.built_by: no part named 'ghost'", id="built_by, no such part"),
-    pytest.param({"built_by": []}, "parts.service.built_by: must be a list of part names", id="built_by, empty"),
     pytest.param({"types_only": ["ghost"]}, "parts.service.types_only: no part named 'ghost'",
                  id="types_only, no such part"),
     pytest.param({"types_only": ["api"]}, "parts.service.types_only: 'api' is not in `may_import`, so no file could "

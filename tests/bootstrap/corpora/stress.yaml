@@ -9,12 +9,9 @@ parts:
     may_import:
     - kernel
     uses: {never: pure}
-    holds: classes
+    holds: {classes: {built_by: [bootstrap, adapters]}}
     tests: unit
     package_only: true
-    built_by:
-    - bootstrap
-    - adapters
   logic:
     path: modules/<module>/application/logic
     role: pure functions over the module's domain objects
@@ -22,7 +19,7 @@ parts:
     - domain
     - kernel
     uses: {never: pure}
-    holds: functions
+    holds: {functions: {}, records: {}, exceptions: {}}
     tests: unit
     package_only: true
   ports:
@@ -32,7 +29,7 @@ parts:
     - domain
     - kernel
     uses: {never: pure}
-    holds: classes
+    holds: {classes: {}}
     tests: integration
     package_only: true
   services:
@@ -46,11 +43,8 @@ parts:
     - kernel
     types_only:
     - contract
-    holds: classes
-    names: '*Service'
+    holds: {classes: {names: '*Service', built_by: [bootstrap]}}
     uses: {never: ambient}
-    built_by:
-    - bootstrap
     tests: integration
     must_import:
     - ports
@@ -64,11 +58,8 @@ parts:
     - ports
     - contract
     - kernel
-    holds: classes
-    names: '*Controller'
+    holds: {classes: {names: '*Controller', built_by: [bootstrap]}}
     uses: {never: ambient}
-    built_by:
-    - bootstrap
     tests: integration
   adapters:
     path: modules/<module>/adapters
@@ -85,11 +76,8 @@ parts:
     libraries:
     - ast
     - tokenize
-    holds: classes
-    built_by:
-    - bootstrap
+    holds: {classes: {built_by: [bootstrap], names: Fs*}}
     tests: unit
-    names: Fs*
     types_only:
     - domain
     uses: {never: pure}
@@ -101,8 +89,7 @@ parts:
     libraries:
     - yaml
     tests: unit
-    names: '*Reader'
-    holds: functions
+    holds: {functions: {}, records: {names: '*Reader'}, exceptions: {names: '*Reader'}}
   cli:
     path: cli
     role: the only place for commands and terminal output
@@ -125,7 +112,7 @@ parts:
     - contract@any
     - kernel
     uses: {never: pure}
-    holds: functions
+    holds: {functions: {}, records: {}, exceptions: {}}
     tests: unit
     libraries: []
   main:
@@ -158,7 +145,7 @@ parts:
     tests: unit
     folders:
     - logic
-    holds: classes
+    holds: {classes: {}}
 never:
   pure:
   - datetime.datetime.now

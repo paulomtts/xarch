@@ -9,6 +9,7 @@ from difflib import get_close_matches
 from xarch.kernel.logic.capabilities import shortfalls
 from xarch.kernel.logic.names import outside_text
 from xarch.modules.spec.application.logic.key_lookup import keys_of, of_an_entry, plain, shown
+from xarch.modules.spec.application.logic.profile_needs import read_less
 from xarch.modules.spec.domain.key_table import KEYS, SLOTS
 from xarch.modules.spec.domain.profile_keys import HELD, PART, PROFILE, TIER, Key
 from xarch.modules.spec.domain.values import Language
@@ -67,10 +68,12 @@ def graded(key: Key, language: Language) -> bool:
 
 
 def short(key: Key, language: Language) -> tuple[Shortfall, ...]:
-    """The facts the key needs that the language supplies partly or not at all, when its data file grades them."""
+    """The facts the key needs that the language supplies partly or not at all, when its data file grades them; one its
+    check reads only when supplied said as what the check then reads less."""
     if not graded(key, language):
         return ()
-    return tuple(shortfalls(plain(key.address), key.needs, {s.fact: s for s in language.checked.supplies or ()}))
+    return tuple(read_less(found, key, language) for found in shortfalls(
+        plain(key.address), key.needs, {s.fact: s for s in language.checked.supplies or ()}))
 
 
 def supplied(fact: str, language: Language) -> Supply | None:

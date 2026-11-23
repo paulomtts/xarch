@@ -58,8 +58,7 @@ class PublishingService:
         patterns = architecture.patterns()
         parts = tuple(PartView(name, patterns[name], architecture.rules.get(name, ()), part.role, part.litmus,
                                docs_name(architecture, part), part.untested, architecture.uses_never.get(name, ()),
-                               part.must_import, part.holds, part.types_only, part.names, part.built_by, part.shared,
-                               part.immutable)
+                               part.must_import, part.holds, part.types_only, part.shared)
                       for name, part in architecture.parts.items())
         return ProfileView(
             parts=parts, folders=folders(architecture.layout),

@@ -7,7 +7,7 @@ from typing import Any
 
 from xarch.kernel.logic.placement import place_of, repeat_of, with_itself
 from xarch.kernel.placement import EACH, Place
-from xarch.modules.spec.domain.published import Eval
+from xarch.modules.spec.domain.published import Eval, Held
 from xarch.profile_values.capabilities import Shortfall
 from xarch.profile_values.checks import WrittenCheck
 from xarch.profile_values.excluded import Excluded
@@ -78,12 +78,10 @@ class Part:
     entry: the entry point, which drives the rest; at most one part is
     untested: why no tier tests it, e.g. "reached through the adapters that use it"
     must_import: the targets each of its files must import one of (or an outside package); empty: no such rule
-    holds: what its files define at module level, "classes" or "functions"; empty: either
+    holds: the kinds its files may define at the top level, each with its settings (the patterns their names match,
+        whether its classes are immutable records, as the language's data file says one is made, and the only parts
+        whose code may build them), in the order of KINDS whatever the order written; empty: every kind
     types_only: the parts its files may import and use as types, but never call
-    immutable: every class it defines at the top level, but an exception, is an immutable record, as the language's
-        data file says one is made
-    names: the patterns one of which every public class of it matches (`*` for any text); empty: any name
-    built_by: the only parts whose code may call the constructor of a class of it; empty: any part
     shared: the fewest users each public name it defines must have, being there to be shared; None: not shared
     """
     name: str
@@ -93,12 +91,9 @@ class Part:
     entry: bool = False
     untested: str = ""
     must_import: tuple[Target, ...] = ()
-    holds: str = ""
+    holds: tuple[Held, ...] = ()
     types_only: tuple[str, ...] = ()
-    names: tuple[str, ...] = ()
-    built_by: tuple[str, ...] = ()
     shared: int | None = None
-    immutable: bool = False
 
     @property
     def in_instance(self) -> bool:

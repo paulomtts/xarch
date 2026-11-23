@@ -152,5 +152,22 @@ def test_a_key_xarch_retired_fails_like_any_profile_that_does_not_load_with_its_
     edit(tmp_path, lambda d: d["parts"]["domain"].update(tested_by="unit"))
     result = runner.invoke(app, ["profile", "check", COPY])
     assert result.exit_code == 1
-    assert "parts.domain: unknown key 'tested_by': renamed in 0.3.0: write tier; use built_by, " in result.output
+    assert "parts.domain: unknown key 'tested_by': renamed in 0.3.0: write tier; use folders, " in result.output
     assert "examples: not checked" in result.output and "INVALID: 1 problem" in result.output
+
+
+def test_a_profile_writing_holds_as_one_word_or_names_on_a_part_fails_like_any_profile_that_does_not_load(tmp_path):
+    def old(document: dict) -> None:
+        document["parts"]["logic"]["holds"] = "functions"
+        document["parts"]["services"]["holds"] = {"classes": {}}
+        document["parts"]["services"]["names"] = "*Service"
+    edit(tmp_path, old)
+    result = runner.invoke(app, ["profile", "check", COPY])
+    assert result.exit_code == 1
+    assert ("parts.logic.holds: 'functions': holds as one word was removed in 0.3.0: write holds: {functions: {}, "
+            "records: {}, exceptions: {}}, which allows what holds: functions allowed") in result.output
+    assert ("parts.services: unknown key 'names': moved in 0.3.0: write it under the kind it names, such as holds: "
+            '{classes: {names: "*Service"}}; use folders, holds, ') in result.output
+    assert "examples: not checked: the profile does not load" in result.output
+    checked = runner.invoke(app, ["check", "--profile", COPY])
+    assert checked.exit_code == 2
