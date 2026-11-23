@@ -120,7 +120,7 @@ def test_json_gives_ok_the_problems_by_check_the_files_and_the_difference(tmp_pa
     assert good["compared_with"] == {
         "profile": "web", "chosen_by": "based_on", "match": 1.0, "low": False,
         "counts": {"parts": [12, 12], "part_keys": [69, 69], "tiers": [17, 17], "guards": [11, 11], "profile": [6, 6]},
-        "only_here": [], "only_there": [], "elsewhere": [], "higher": None, "looser": []}
+        "only_here": [], "only_there": [], "elsewhere": [], "higher": None, "anchor": "web", "looser": []}
     edit(tmp_path, lambda d: d.update(colour=1))
     bad = runner.invoke(app, ["profile", "check", COPY, "--format", "json"])
     assert bad.exit_code == 1

@@ -177,7 +177,7 @@ def test_a_profile_that_writes_no_check_of_its_own_has_no_checks_in_its_json_doc
 def test_a_part_without_the_litmus_its_base_gives_it_is_said_under_the_profile_and_again_under_strict():
     said = "cli has no litmus, though the profile it is compared with gives it one (parts.cli.litmus)"
     origin = Origin("mine.yaml", False, "cli", looser=(Loosened("litmus", "cli", "", said),), chosen_by="based_on",
-                    match=0.8)
+                    match=0.8, anchor="cli")
     assert lines(state=EnforcementView(strict=(FindingView("litmus", said),)), origin=origin, strict=True) == [
         "OK: no violations", "enforcement", "  profile:     mine.yaml (custom; compared with cli, based_on; match 80%)",
         f"    litmus:      {said}", "strict:      1 finding fails the check", f"    litmus: {said}"]
@@ -267,7 +267,7 @@ def test_the_json_document_holds_the_profile_compared_with_under_compared_with_a
     assert profile["compared_with"] == {
         "profile": "web", "chosen_by": "closest", "match": 0.81, "low": False,
         "counts": {"parts": [4, 5], "part_keys": [7, 7], "tiers": [0, 0], "guards": [1, 1], "profile": [1, 1]},
-        "only_here": ["part jobs"], "only_there": [], "elsewhere": [], "higher": None, "looser": []}
+        "only_here": ["part jobs"], "only_there": [], "elsewhere": [], "higher": None, "anchor": None, "looser": []}
     bundled = json.loads(json_document("web", Origin("web"), AppChecked((), EnforcementView(), {}, True), False))
     assert bundled["enforcement"]["profile"]["compared_with"] is None
     assert "closest" not in bundled["enforcement"]["profile"]
@@ -313,3 +313,24 @@ def test_an_import_the_reader_could_not_follow_is_listed_under_strict_by_its_sen
     assert lines(state=state, strict=True) == [
         *OK, f"  unresolved:  {LOST.sentence}", "strict:      1 finding fails the check",
         f"    unresolved: {LOST.sentence}"]
+
+
+def test_a_profile_based_on_a_profile_file_says_the_bundled_profile_strict_rests_on_on_its_profile_line():
+    based = Origin("/src/mine.yaml", False, "../team.yaml", chosen_by="based_on", match=0.92, counts=COUNTS,
+                   anchor="cli")
+    assert lines(origin=based)[2:] == [
+        "  profile:     mine.yaml (custom; compared with ../team.yaml, based_on; match 92%; --strict rests on cli)"]
+    assert lines(origin=replace(based, anchor=None))[2] == (
+        "  profile:     mine.yaml (custom; compared with ../team.yaml, based_on; match 92%; --strict rests on no "
+        "bundled profile)")
+    assert lines(origin=replace(based, compared="cli"))[2] == (
+        "  profile:     mine.yaml (custom; compared with cli, based_on; match 92%)")
+    assert lines(origin=closest("/src/mine.yaml", anchor="web"))[2] == (
+        "  profile:     mine.yaml (custom; compared with web, closest; match 81%)")
+    against = replace(based, compared="web", chosen_by="against", anchor=None, based_on="../team.yaml")
+    assert lines(origin=against)[2] == "  profile:     mine.yaml (custom; compared with web, --against; match 92%)"
+    profile = json.loads(json_document("mine.yaml", based, AppChecked((), EnforcementView(), {}, True), False))[
+        "enforcement"]["profile"]
+    assert profile["compared_with"]["anchor"] == "cli"
+    assert json.loads(json_document("mine.yaml", against, AppChecked((), EnforcementView(), {}, True), False))[
+        "enforcement"]["profile"]["compared_with"]["anchor"] is None

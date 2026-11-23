@@ -11,9 +11,10 @@ check: {"ok", "profile", "problems", "files", "checks", "compared_with"}, files 
 points to and checks the number of checks it writes itself (made or not), both null for a profile that does not load,
 each problem {"check", "message"} (check: load, examples, or checks, for a check of the
 profile's own) and compared_with {"profile", "chosen_by", "match", "low", "counts", "only_here", "only_there",
-"elsewhere", "higher", "looser"} (null when nothing is compared: a bundled profile without --against, or one that
-resembles none), chosen_by "based_on", "closest" or "against", counts {"parts",
-"part_keys", "tiers", "guards", "profile"} each [comparable, all], higher null or {"profile", "match"}, each looser
+"elsewhere", "higher", "anchor", "looser"} (null when nothing is compared: a bundled profile without --against, or one
+that resembles none), chosen_by "based_on", "closest" or "against", counts {"parts",
+"part_keys", "tiers", "guards", "profile"} each [comparable, all], higher null or {"profile", "match"}, anchor the
+bundled profile `--strict` rests on or null, each looser
 entry {"key", "part", "what", "sentence"}; `check`'s JSON holds the same compared_with under enforcement.profile.
 """
 from __future__ import annotations
@@ -28,6 +29,7 @@ from xarch.cli.reports.shown import shown
 from xarch.modules.rules.contract import ProfileHeld, ProfileUnloaded, Resemblance
 from xarch.modules.spec.contract import (
     AGAINST,
+    BASED_ON,
     CLOSEST,
     FilesTaken,
     FormatExplained,
@@ -198,8 +200,9 @@ GIVEN = "--against"
 
 def _origin_words(origin: Origin | Resemblance) -> str:
     """Where a profile comes from, in words, as `profile check` heads it: bundled, or custom and the profile it is
-    compared with and why (with the match, when it is the closest), if any; with --against, either and the profile it
-    names, then what the profile's own based_on names."""
+    compared with and why (with the match, when it is the closest; with the bundled profile --strict rests on, when it
+    is a profile file its based_on names), if any; with --against, either and the profile it names, then what the
+    profile's own based_on names."""
     if origin.chosen_by == AGAINST:
         based_on = f"; based_on: {origin.based_on}" if origin.based_on else ""
         return f"{_kind(origin)}; against {origin.compared}, given with {GIVEN}{based_on}"
@@ -209,16 +212,30 @@ def _origin_words(origin: Origin | Resemblance) -> str:
         return "custom; no bundled profile resembles it"
     if origin.chosen_by == CLOSEST:
         return f"custom; closest bundled: {origin.compared}, match {percent(origin.match)}"
+    rests = _rests(origin)
+    if rests is not None:
+        return f"custom; based_on: {origin.compared}, resting on {rests}"
     return f"custom; {origin.chosen_by}: {origin.compared}"
 
 
 def compared_words(origin: Origin | Resemblance) -> str:
     """Where a profile comes from, in words, as the enforcement section of `check` says it: bundled, or custom and the
-    profile it is compared with, why, and the match, if any; a bundled one compared with the one --against names says
-    that too."""
+    profile it is compared with, why, and the match, if any, then the bundled profile --strict rests on when it is
+    compared with a profile file its based_on names; a bundled one compared with the one --against names says that
+    too."""
     if origin.compared is None:
         return _origin_words(origin)
-    return f"{_kind(origin)}; compared with {origin.compared}, {_why(origin)}; match {percent(origin.match)}"
+    rests = _rests(origin)
+    resting = "" if rests is None else f"; --strict rests on {rests}"
+    return f"{_kind(origin)}; compared with {origin.compared}, {_why(origin)}; match {percent(origin.match)}{resting}"
+
+
+def _rests(origin: Origin | Resemblance) -> str | None:
+    """The bundled profile --strict rests on, in words, when the profile is compared with the profile file its
+    based_on names (its anchor is then not the profile compared); None for any other, which says nothing more."""
+    if origin.chosen_by != BASED_ON or origin.anchor == origin.compared:
+        return None
+    return origin.anchor or "no bundled profile"
 
 
 def _kind(origin: Origin | Resemblance) -> str:
@@ -290,6 +307,7 @@ def compared_document(origin: Origin | Resemblance) -> dict[str, Any] | None:
             "only_here": list(origin.only_here), "only_there": list(origin.only_there),
             "elsewhere": list(origin.elsewhere),
             "higher": None if origin.higher is None else {"profile": origin.higher[0], "match": origin.higher[1]},
+            "anchor": origin.anchor,
             "looser": [{"key": item.key, "part": item.part, "what": item.what, "sentence": item.sentence}
                        for item in origin.looser]}
 

@@ -106,12 +106,15 @@ MATCH = ("  match: 80% with cli (based_on): 12 of 15 parts, 72 of 91 part keys, 
 
 
 def based_on_cli(**changes) -> Resemblance:
-    """A custom profile based on cli, matching it at 80% with COUNTS and nothing unpaired; the fields given replaced."""
-    return replace(Resemblance(False, "cli", (), "based_on", 0.8, False, COUNTS), **changes)
+    """A custom profile based on cli, which --strict rests on, matching it at 80% with COUNTS and nothing unpaired; the
+    fields given replaced."""
+    return replace(Resemblance(False, "cli", (), "based_on", 0.8, False, COUNTS, anchor="cli"), **changes)
 
 
-AGAINST_WEB = based_on_cli(compared="web", chosen_by="against")
+AGAINST_WEB = based_on_cli(compared="web", chosen_by="against", anchor=None)
 """A custom profile compared with web because --against names it, matching it at 80% with COUNTS."""
+PATH_BASED = based_on_cli(compared="../team.yaml")
+"""A custom profile based on the profile file ../team.yaml, resting on cli."""
 
 
 def checked(resemblance: Resemblance) -> list[str]:
@@ -137,6 +140,13 @@ def matched(resemblance: Resemblance) -> list[str]:
                  id="a custom one based on nothing compared with the profile against names says so"),
     pytest.param(replace(AGAINST_WEB, bundled=True), "bundled; against web, given with --against",
                  id="a bundled one compared with the profile against names says so"),
+    pytest.param(PATH_BASED, "custom; based_on: ../team.yaml, resting on cli",
+                 id="a custom one based on a profile file names it and the bundled profile --strict rests on"),
+    pytest.param(replace(PATH_BASED, anchor=None), "custom; based_on: ../team.yaml, resting on no bundled profile",
+                 id="a custom one based on a profile file that rests on no bundled profile says so"),
+    pytest.param(replace(AGAINST_WEB, based_on="../team.yaml"),
+                 "custom; against web, given with --against; based_on: ../team.yaml",
+                 id="with --against a based_on path is said beside it as written, and no anchor"),
 ])
 def test_profile_check_is_headed_with_where_the_profile_comes_from(resemblance, words):
     assert checked(resemblance)[0] == f"checking mine.yaml ({words})"
@@ -203,7 +213,7 @@ def test_the_json_of_profile_check_holds_every_field_of_the_profile_compared_wit
         "profile": "cli", "chosen_by": "based_on", "match": 0.8, "low": False,
         "counts": {"parts": [12, 15], "part_keys": [72, 91], "tiers": [21, 31], "guards": [11, 11], "profile": [9, 9]},
         "only_here": ["part main", "tier wired"], "only_there": ["tier rendering"],
-        "elsewhere": ["store: src/*/store there"], "higher": {"profile": "web", "match": 0.88},
+        "elsewhere": ["store: src/*/store there"], "higher": {"profile": "web", "match": 0.88}, "anchor": "cli",
         "looser": [{"key": "untested", "part": "api", "what": "", "sentence": "api is newly marked untested (parts.api.untested)"}]}
     bundled = ProfileHeld(Reviewed("web", (), 1, Resemblance(True)), ChecksHeld((), 0))
     assert json.loads(check_document(bundled))["compared_with"] is None
@@ -283,3 +293,19 @@ def test_a_profile_compared_with_the_one_against_names_says_so_in_its_match_and_
     compared = json.loads(check_document(ProfileHeld(Reviewed("cli", (), 1, bundled), ChecksHeld((), 0))))[
         "compared_with"]
     assert (compared["profile"], compared["chosen_by"], compared["higher"]) == ("web", "against", None)
+
+
+def test_a_profile_based_on_a_profile_file_is_matched_and_compared_with_it_as_written():
+    assert matched(PATH_BASED) == [MATCH.replace("with cli (based_on)", "with ../team.yaml (based_on)")]
+    assert checked(PATH_BASED)[-1] == "  compared: no looser than ../team.yaml"
+
+
+def test_the_json_of_profile_check_names_the_bundled_profile_strict_rests_on():
+    def anchor(resemblance: Resemblance):
+        held = ProfileHeld(Reviewed("mine.yaml", (), 1, resemblance), ChecksHeld((), 0))
+        return json.loads(check_document(held))["compared_with"]["anchor"]
+
+    assert anchor(PATH_BASED) == "cli"
+    assert anchor(replace(PATH_BASED, anchor=None)) is None
+    assert anchor(based_on_cli()) == "cli"
+    assert anchor(AGAINST_WEB) is None

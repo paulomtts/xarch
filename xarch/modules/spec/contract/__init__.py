@@ -10,6 +10,7 @@ from pathlib import Path
 from xarch.kernel.source import CommentSpan, Import
 from xarch.modules.spec.domain.published import (
     AGAINST,
+    BASED_ON,
     CHOICE,
     CLOSEST,
     DEFAULT_APP,
@@ -43,7 +44,7 @@ __all__ = ["CHOICE", "READS", "SCORE", "YES_NO", "Eval", "Held", "KINDS", "Examp
            "FilesResult", "SkeletonResult", "ProfileResult", "DocsResult", "OriginResult", "PartView",
            "GuardsView", "ProfileView", "ChooseApp", "AppChosen", "ChooseAppResult",
            "SelectProfile", "ProfileSelected", "ProfileRefused",
-           "NoProfileChosen", "SelectResult", "Origin", "Loosened", "LITMUS", "CLOSEST", "AGAINST",
+           "NoProfileChosen", "SelectResult", "Origin", "Loosened", "LITMUS", "BASED_ON", "CLOSEST", "AGAINST",
            "FilesTaken", "Shown", "Symbol", "Explain", "FormatExplained", "KeyExplained", "UnknownKey",
            "ExplainResult", "Need", "ViewProfile", "ProfileViewed", "ViewResult", "CheckProfile", "LOAD", "EXAMPLES",
            "Problem", "ProfileChecked",
