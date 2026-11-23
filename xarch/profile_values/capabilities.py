@@ -15,10 +15,6 @@ from dataclasses import dataclass
 EXACT = "exact"
 """The grade of a fact a reader supplies in full; any other grade supplies it partly."""
 
-PACKAGE_FACT = "file.package"
-"""The fact a language supplies, exactly, when its data file gives package_files, and only then; never written under
-`supplies`."""
-
 FACTS: dict[str, str] = {
     "file": "the source files below the app and the tests, and where each sits",
     "syntax": "a file that does not parse, the line and the message",

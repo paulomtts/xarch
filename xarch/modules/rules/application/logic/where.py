@@ -23,7 +23,7 @@ from pathlib import Path
 
 from xarch.kernel.logic.imports import may_import, shown_target
 from xarch.kernel.logic.names import outside_text
-from xarch.kernel.logic.placement import repeat_of
+from xarch.kernel.logic.placement import repeat_of, stands_for_folder, stem
 from xarch.kernel.placement import EACH, Place
 from xarch.modules.rules.application.logic.places import excluded_by, matches, place, targets_of
 from xarch.modules.rules.application.logic.tier_of import NO_TIER, Tested, allowance, may_use_fakes, tested
@@ -113,17 +113,18 @@ def _mirror(profile: Profile, part: str, steps: tuple[str, ...]) -> tuple[tuple[
     source file) and the tier that tests it: the answer the tests' own mapping (tier_of) gives for that folder."""
     pattern = profile.framework.files[0] if profile.framework is not None and profile.framework.files else ""
     language = profile.language
-    is_source = bool(steps) and steps[-1].endswith(language.extension)
-    whole_file = profile.parts[part][-1].endswith(language.extension)
+    marks = language.marks
+    is_source = bool(steps) and stem(steps[-1], marks) is not None
+    whole_file = stem(profile.parts[part][-1], marks) is not None
     folder = steps[:-1] if is_source else steps
     sample = pattern.replace("*", SAMPLE) if pattern else f"{SAMPLE}{language.extension}"
     tier = tested(profile, (*folder, sample)).tier
-    if not pattern or not is_source or steps[-1] == language.package_file:
+    if not pattern or not is_source or stands_for_folder(steps, marks):
         return folder, "", tier
-    stem = steps[-1].removesuffix(language.extension)
+    name = stem(steps[-1], marks) or ""
     if whole_file:
-        stem = f"<{tier.one_file_per}>" if tier is not None and tier.one_file_per else STAND_IN
-    return folder, pattern.replace("*", stem), tier
+        name = f"<{tier.one_file_per}>" if tier is not None and tier.one_file_per else STAND_IN
+    return folder, pattern.replace("*", name), tier
 
 
 def _reaches(profile: Profile, targets: Iterable[Target], instance: str | None, app: str) -> tuple[PartAt, ...]:

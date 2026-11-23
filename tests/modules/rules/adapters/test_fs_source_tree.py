@@ -608,7 +608,7 @@ def test_the_names_a_file_defines_as_functions_at_module_level_are_listed(tmp_pa
 ])
 def test_only_files_are_listed_as_source(tmp_path, make, listed):
     make(tmp_path)
-    assert FsSourceTree(FileSystem()).paths(tmp_path, ".py") == listed
+    assert FsSourceTree(FileSystem()).paths(tmp_path, (".py",)) == listed
 
 
 def functions_of(tmp_path: Path, text: str):
@@ -629,7 +629,14 @@ def test_a_function_counts_its_real_statements_nested_ones_too_and_not_a_docstri
 def test_the_files_listed_are_those_whose_name_ends_in_the_extension_given(tmp_path):
     (tmp_path / "a.py").write_text("")
     (tmp_path / "b.pas").write_text("")
-    assert FsSourceTree(FileSystem()).paths(tmp_path, ".pas") == [("b.pas",)]
+    assert FsSourceTree(FileSystem()).paths(tmp_path, (".pas",)) == [("b.pas",)]
+
+
+def test_the_files_listed_are_those_whose_name_ends_in_one_of_the_endings_given_each_once(tmp_path):
+    (tmp_path / "b").mkdir()
+    for name in ("x.d.ts", "a.ts", "b/c.tsx", "d.js"):
+        (tmp_path / name).write_text("")
+    assert FsSourceTree(FileSystem()).paths(tmp_path, (".ts", ".tsx", ".d.ts")) == [("a.ts",), ("b", "c.tsx"), ("x.d.ts",)]
 
 
 def test_two_functions_have_one_shape_when_only_formatting_docstrings_and_local_names_differ(tmp_path):
@@ -968,7 +975,7 @@ def test_a_text_in_no_file_marks_its_imports_as_a_file_does(tmp_path):
 def test_handed_the_interpreter_s_standard_library_every_import_of_xarch_s_own_source_is_marked_by_its_first_step():
     root = Path(__file__).parents[4] / "xarch"
     tree = FsSourceTree(FileSystem())
-    imports = [i for f in tree.read(root, tree.paths(root, ".py"), standard=STANDARD) for i in f.imports
+    imports = [i for f in tree.read(root, tree.paths(root, (".py",)), standard=STANDARD) for i in f.imports
                if not i.relative]
     assert {i.standard for i in imports} == {True, False}
     assert [i for i in imports if i.standard != (i.module[0] in STANDARD)] == []

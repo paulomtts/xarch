@@ -32,7 +32,7 @@ class HoldingService:
 
     def _others(self, profile: Profile, root: Path, given: set[tuple[str, ...]]) -> tuple[SourceFile, ...]:
         """The files of the app below root that `check` reads, but those at the paths given."""
-        paths = [p for p in self._tree.paths(root, profile.language.extension)
+        paths = [p for p in self._tree.paths(root, profile.language.extensions)
                  if not governed.excluded(profile, p) and governed.governed(profile, p) and p not in given]
         return tuple(self._tree.read(root, paths, immutable=profile.language.immutable,
                                      interface=profile.language.interface, standard=profile.language.standard_modules))

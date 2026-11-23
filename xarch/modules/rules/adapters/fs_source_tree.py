@@ -1,5 +1,5 @@
-"""SourceTree on the local filesystem for Python, the one language xarch reads: lists the files of the extension it is
-given, and parses one as Python with ast and tokenize, never running it.
+"""SourceTree on the local filesystem for Python, the one language xarch reads: lists the files whose name ends in one
+of the endings it is given, and parses one as Python with ast and tokenize, never running it.
 
 A name in a call or a class base is read as Python scopes it: through the innermost function, lambda or
 comprehension that binds it (a class body only for its own statements), then the module. It is a Ref only when that
@@ -136,8 +136,8 @@ class FsSourceTree:
     def absent(self, roots: Iterable[Path]) -> list[Path]:
         return [root for root in roots if not self._fs.is_dir(root)]
 
-    def paths(self, root: Path, extension: str) -> list[tuple[str, ...]]:
-        return [f.relative_to(root).parts for f in self._fs.files(root, f"*{extension}")]
+    def paths(self, root: Path, extensions: tuple[str, ...]) -> list[tuple[str, ...]]:
+        return sorted({f.relative_to(root).parts for extension in extensions for f in self._fs.files(root, f"*{extension}")})
 
     def read(self, root: Path, paths: list[tuple[str, ...]], table: CaseTable | None = None,
              immutable: tuple[RecordMark, ...] = (), interface: tuple[InterfaceMark, ...] = (), *,

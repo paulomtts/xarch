@@ -40,7 +40,7 @@ class SourcesService:
     def _files(self, profile: Profile, where: Resolved) -> list[Resolved]:
         if not where.exists or self._tree.absent([where.path]):
             return [where]
-        return walked(profile, where, self._tree.paths(where.path, profile.language.extension))
+        return walked(profile, where, self._tree.paths(where.path, profile.language.extensions))
 
     def _read(self, profile: Profile, found: Resolved, app: Path) -> SourceRead:
         place = sited(profile, found)

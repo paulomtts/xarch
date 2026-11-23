@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from xarch.kernel.logic.placement import stem
 from xarch.modules.rules.application.logic.places import excluded_by, file_place
 from xarch.modules.rules.domain.places import Resolved, Sited
 from xarch.modules.rules.domain.profile import Profile
@@ -21,7 +22,7 @@ def sited(profile: Profile, found: Resolved) -> Sited:
     tests root, in the project outside the app, below a folder the profile excludes, in no part, else in its part."""
     if not found.exists:
         return Sited(NOT_THERE, "")
-    if not found.path.name.endswith(profile.language.extension):
+    if stem(found.path.name, profile.language.marks) is None:
         return Sited(NOT_SOURCE, "")
     if found.within != "app":
         return Sited(IN_TESTS if found.within == "tests" else IN_PROJECT, "")
@@ -42,7 +43,7 @@ def linked(profile: Profile, found: Resolved, real: Path, app: Path) -> str | No
     """The file of the app that a file in a part is once every link is followed, real being its path so and app the
     app folder so: shown below the folder holding the app, "" when it is the file itself; None when it is a link to
     a file outside the app, or to no source file of the app's language."""
-    if not real.is_relative_to(app) or not real.name.endswith(profile.language.extension):
+    if not real.is_relative_to(app) or stem(real.name, profile.language.marks) is None:
         return None
     steps = real.relative_to(app).parts
     return "" if steps == found.steps else "/".join((app.name, *steps))

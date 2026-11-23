@@ -7,6 +7,7 @@ import pytest
 from tests.fakes.filesystem import FakeSourceTree
 from tests.fakes.profiles import FakeProfiles
 from tests.modules.rules.application.helpers import controller
+from tests.modules.rules.builders import PYTHON
 from xarch.modules.rules.contract import (
     CheckRefused,
     ChecksCannotRun,
@@ -35,7 +36,7 @@ PROFILE = Profile(
     tiers=(Tier("unit", (Target("kernel"), Target("domain", "own")), None, (), False, "a rule", "nothing", "Does it?"),),
     libraries={"kernel": (), "domain": ()}, repeats=(Repeat("module", ("modules",)),),
     info={"kernel": PartInfo("primitives", "Is it a primitive?", "kernel/"),
-          "domain": PartInfo("invariants", "Is it an invariant?", "domain/")})
+          "domain": PartInfo("invariants", "Is it an invariant?", "domain/")}, language=PYTHON)
 KERNEL = InPart("app/kernel/ids.py", True, PartShown("kernel", "kernel/", "", "module", "primitives", "Is it a primitive?"),
               (ReachView("kernel", "none", "kernel/", "app/kernel/"),), "`kernel/`", (), (),
               CoveringTest(TierInfoView("unit", "a rule", "nothing", "Does it?"), "tests/kernel/", "", "tests/kernel/"))

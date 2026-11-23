@@ -2,7 +2,7 @@
 else from the file parts of its folder when they share a tier, else from a tier's folder; a fake has none."""
 import pytest
 
-from tests.modules.rules.builders import GUARD, INTEGRATION, PARTS, PROFILE, RENDERING, TWO, UNIT, profile, steps
+from tests.modules.rules.builders import BRACE, GUARD, INTEGRATION, PARTS, PROFILE, RENDERING, TWO, UNIT, profile, steps
 from xarch.kernel.placement import EACH, Place
 from xarch.modules.rules.application.logic import tier_of
 from xarch.modules.rules.application.logic.tier_of import as_place
@@ -116,3 +116,9 @@ def test_a_helper_of_an_instance_of_the_second_repeating_folder_is_its_own_folde
     where = tier_of.tested(TWO, steps("plugins/seo/other/builders.py"))
     assert (where.tier, where.instance, where.own, where.parts) == (None, "seo", ("plugins", "seo"), ())
 
+
+
+def test_a_file_part_of_any_ending_of_the_language_gives_the_tests_of_its_folder_its_tier():
+    braced = profile(parts={**PARTS, "controller": ("modules", "*", "application", "controller.tsx")}, language=BRACE)
+    found = tier_of.tested(braced, steps("modules/docs/application/publish.test.ts"))
+    assert (found.tier, found.parts) == (INTEGRATION, ("controller",))

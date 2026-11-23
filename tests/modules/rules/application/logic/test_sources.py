@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.modules.rules.builders import PYTHON
+from tests.modules.rules.builders import BRACE, PYTHON
 from xarch.modules.rules.application.logic.sources import below, linked, sited, walked
 from xarch.modules.rules.domain.places import Resolved, Sited
 from xarch.modules.rules.domain.profile import Profile
@@ -62,3 +62,10 @@ def test_a_folder_stands_for_its_files_but_those_below_an_excluded_folder():
 ])
 def test_the_file_of_the_app_a_file_is_once_its_links_are_followed(real, then):
     assert linked(PROFILE, found("app", "kernel/ids.py"), real, Path("/src/app")) == then
+
+
+def test_a_file_of_any_ending_of_the_language_is_a_source_file_and_one_of_another_is_not():
+    braced = replace(PROFILE, language=BRACE)
+    assert sited(braced, found("app", "kernel/ids.tsx")) == Sited(IN_PART, "kernel")
+    assert sited(braced, found("app", "kernel/ids.mts")) == Sited(IN_PART, "kernel")
+    assert sited(braced, found("app", "kernel/ids.js")) == Sited(NOT_SOURCE, "")

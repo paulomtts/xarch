@@ -62,7 +62,7 @@ from xarch.kernel.logic.names import is_name
 from xarch.modules.spec.application.logic.outside_name import outside_name
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import INTERPRETER, LANGUAGES, Language, StandardLists
-from xarch.profile_values.capabilities import EXACT, FACTS, PACKAGE_FACT, Supply
+from xarch.profile_values.capabilities import EXACT, FACTS, Supply
 from xarch.profile_values.language import NOTHING, CheckedLanguage, InterfaceMark, RecordMark
 
 KEYS = ("title", "extensions", "package_files", "interface", "dynamic", "namespace", "cache", "standard", "name",
@@ -72,6 +72,9 @@ REQUIRED = ("title", "extensions", "namespace", "standard")
 JOINED = ("name", "package", "member")
 """The keys that say how an outside name is written: given together or not at all."""
 _EXTENSION = re.compile(r"\.[A-Za-z0-9]+")
+PACKAGE_FACT = "file.package"
+"""The fact a language supplies, exactly, when its data file gives package_files, and only then; never written under
+`supplies`."""
 EXTENSIONS = "extensions: must be a non-empty list of endings, each starting with a dot"
 """What the loader says of a value of `extensions` that is not a list of endings, once for the key."""
 PACKAGE_FILES = "package_files: must be a list of file names, each ending in one of extensions"

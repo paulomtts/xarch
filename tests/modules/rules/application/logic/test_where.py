@@ -1,10 +1,11 @@
 """Where a path sits and what code there may do, on a hand-built profile: the path given in any of its forms, a place
 in a part, in the structure or in no part, and a test."""
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
-from tests.modules.rules.builders import PYTHON
+from tests.modules.rules.builders import BRACE, PYTHON
 from xarch.kernel.placement import EVERYTHING, Place
 from xarch.modules.rules.application.logic.where import describe, resolve
 from xarch.modules.rules.domain.places import FakePlace, PartAt, PartPlace, Resolved, StructurePlace, SuitePlace, UngovernedPlace
@@ -282,7 +283,7 @@ TWO_ROOTS = Profile(
                                      "Does it run a hook?"), *PROFILE.tiers[1:]),
     framework=PROFILE.framework, fakes=PROFILE.fakes,
     repeats=(Repeat("module", ("modules",)), Repeat("plugin", ("plugins",))),
-    info={**PROFILE.info, "hooks": PartInfo("what a plugin runs", "Does a plugin run it?", "hooks/")})
+    info={**PROFILE.info, "hooks": PartInfo("what a plugin runs", "Does a plugin run it?", "hooks/")}, language=PYTHON)
 
 
 def test_a_path_in_the_second_repeating_folder_is_told_by_its_own_word_and_what_it_may_import_by_each_words():
@@ -313,3 +314,14 @@ def test_a_part_outside_every_repeating_folder_has_no_word_when_there_are_severa
 def test_the_parts_near_a_path_in_the_second_repeating_folder_are_shown_with_its_word():
     here = describe(TWO_ROOTS, found("app", "plugins", "seo", "stray.py"), APP, TESTS)
     assert [(n.target.part, n.path) for n in here.nearest] == [("hooks", "app/plugins/seo/hooks/")]
+
+
+BRACED = replace(PROFILE, language=BRACE, framework=Framework(("*.test.ts",), "test*"))
+"""PROFILE in the TypeScript-like test-only language, its test files named `*.test.ts`."""
+
+
+def test_a_file_of_any_ending_of_the_language_has_its_test_file_and_a_package_file_has_none():
+    assert where("modules", "docs", "domain", "invoice.tsx", profile=BRACED).test_file == "invoice.test.ts"
+    assert where("modules", "docs", "domain", "index.mts", profile=BRACED).test_file == "index.test.ts"
+    assert where("modules", "docs", "domain", "index.tsx", profile=BRACED).test_file == ""
+    assert where("modules", "docs", "domain", "index.ts", profile=BRACED).test_file == ""
