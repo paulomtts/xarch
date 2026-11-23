@@ -1,6 +1,7 @@
 """The data file of a language (`presets/language/<name>.yaml`): what is true of the language as a whole and is needed
-outside the reader that turns source into facts. Read into a Language, with every problem listed; the names only the
-runtime knows are added to it by the service that holds the runtime.
+outside the reader that turns source into facts. Read into a Language, with every problem listed; the names of its
+standard library, its reserved words and the names it binds without an import are added to it by the service that
+holds the runtime, from the lists the file gives or from the runtime.
 
     title          how a message names the language
     extension      the ending of a source file's name: a dot and a name
@@ -11,7 +12,9 @@ runtime knows are added to it by the service that holds the runtime.
     namespace      the namespace of the names the language binds without an import: a name
     cache          the folder in which its tools keep what they compile, left out of the examples, of a copy of a
                    profile and of the files init writes; optional
-    standard       where the names of the standard library are known from
+    standard       where the standard library, the reserved words and the names bound without an import are known
+                   from: interpreter, the interpreter running xarch, or a map of three lists, {modules, reserved,
+                   builtins}, each item of modules a package by `package` and each of the others a name by `name`
 
 and, all optional, the tokens of its code the checks and the docs need (empty: the language has none):
 
@@ -49,12 +52,13 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable, Mapping
+from dataclasses import fields
 from typing import Any
 
 from xarch.kernel.logic.names import is_name
 from xarch.modules.spec.application.logic.outside_name import outside_name
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.values import LANGUAGES, Language
+from xarch.modules.spec.domain.values import INTERPRETER, LANGUAGES, Language, StandardLists
 from xarch.profile_values.capabilities import EXACT, FACTS, Supply
 from xarch.profile_values.language import NOTHING, CheckedLanguage, InterfaceMark, RecordMark
 
@@ -65,7 +69,6 @@ REQUIRED = ("title", "extension", "package_file", "namespace", "standard")
 JOINED = ("name", "package", "member")
 """The keys that say how an outside name is written: given together or not at all."""
 _EXTENSION = re.compile(r"\.[A-Za-z0-9]+")
-_WORD = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 PARTIAL = "partial"
 """How the data file grades a fact its reader supplies only partly, with what it misses."""
 _FOLDER = re.compile(r"[A-Za-z0-9_.-]+")
@@ -75,6 +78,11 @@ _CALLED = re.compile(r"(?P<path>[^()]+)(?:\((?P<keywords>[^()]*)\))?")
 _VALUE = re.compile(r"[^,()=]+")
 INTERFACE = "interface: each mark is {base: <outside name>} or {keyword: <word>}"
 """What the loader says of a value of `interface` that is not a list of marks, once for the key."""
+STANDARD_LISTS = tuple(field.name for field in fields(StandardLists))
+"""The keys of the map a data file's `standard` may be: the lists of StandardLists, in its order."""
+STANDARD = (f"standard: must be {INTERPRETER}, or a map of {', '.join(STANDARD_LISTS[:-1])} and {STANDARD_LISTS[-1]}, "
+            "each a list of names")
+"""What the loader says of a value of `standard` that is neither the word nor the three lists, once for the key."""
 
 
 def language_of(name: str, document: Any) -> Language:
@@ -101,7 +109,7 @@ def language_of(name: str, document: Any) -> Language:
         namespace = ""
     interface = _interface(document, problems, joins, namespace)
     dynamic = _outside(document, "dynamic", problems, joins, namespace)
-    standard = _text(document, "standard", "must be a name", problems, _WORD)
+    standard = _standard(document, problems, joins)
     cache = _text(document, "cache", "must be a folder name", problems, _FOLDER)
     tokens = {key: _text(document, key, "must be a non-empty string", problems)
               for key in ("private", "call", "comment", "shebang")}
@@ -192,6 +200,33 @@ def _interface_mark(item: Any, joins: tuple[str, str, str], namespace: str) -> I
     if key == "keyword" and _MEMBER.fullmatch(value) and is_name(value, names):
         return InterfaceMark(keyword=value)
     return None
+
+
+def _standard(document: Mapping[Any, Any], problems: list[str],
+              joins: tuple[str, str, str] | None) -> str | StandardLists:
+    """INTERPRETER, or the three lists, each item checked by the language's patterns (a module as a package, the
+    others as names) unless the keys that say how a name is written are refused already (joins None); "" when the
+    document gives neither, with one problem for the key."""
+    if "standard" not in document:
+        return ""
+    value = document["standard"]
+    if value == INTERPRETER:
+        return INTERPRETER
+    if not (isinstance(value, Mapping) and set(value) == set(STANDARD_LISTS)
+            and all(isinstance(value[key], list) and all(isinstance(item, str) and item for item in value[key])
+                    for key in STANDARD_LISTS)):
+        problems.append(STANDARD)
+        return ""
+    lists = StandardLists(*(tuple(value[key]) for key in STANDARD_LISTS))
+    if joins is None:
+        return lists
+    names, package, _ = joins
+    first, *rest = STANDARD_LISTS
+    problems += [f"standard.{first}: {item!r} is not a package name the language allows" for item in value[first]
+                 if not is_name(item, package)]
+    problems += [f"standard.{key}: {item!r} is not a name the language allows" for key in rest for item in value[key]
+                 if not is_name(item, names)]
+    return lists
 
 
 def _marks(document: Mapping[Any, Any], problems: list[str], joins: tuple[str, str, str] | None,

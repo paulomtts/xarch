@@ -1,12 +1,10 @@
-"""Spec's Runtime port answered by the interpreter running xarch."""
+"""Spec's Runtime port answered by the interpreter running xarch, for a language whose data file gives `standard:
+interpreter`."""
 from __future__ import annotations
 
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.values import LANGUAGES
+from xarch.modules.spec.domain.values import INTERPRETER, LANGUAGES
 from xarch.platform.interpreter import builtin_names, reserved_words, standard_library
-
-SOURCE = "interpreter"
-"""The one source of the standard library's names a language's data file may give."""
 
 
 class InterpreterRuntime:
@@ -27,6 +25,6 @@ class InterpreterRuntime:
 
 def _read(source: str) -> None:
     """Refuses a source of names other than the interpreter, the one this runtime reads."""
-    if source != SOURCE:
+    if source != INTERPRETER:
         raise InvalidArchitecture(LANGUAGES, [
-            f"standard: {source!r} is not a source of names xarch reads: use {SOURCE}"])
+            f"standard: {source!r} is not a source of names xarch reads: use {INTERPRETER}"])

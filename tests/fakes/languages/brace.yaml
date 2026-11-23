@@ -1,12 +1,14 @@
 # A test-only language that imitates a TypeScript-like one: no profile names it and no reader is written for it. Its
 # packages are named as a package manager names them (a scope, a dash, a dot) or as its runtime's own modules
-# (node:fs), and a name in one is joined to it by #. The tests load it to show that the profile and the checks read
-# outside names by a language's own patterns; later steps add their keys to it.
+# (node:fs), and a name in one is joined to it by #. It gives its standard library's top-level modules, its reserved
+# words and its builtins as lists, so that spec reads them from here and asks no runtime. The tests load it to show
+# that the profile and the checks read outside names by a language's own patterns; later steps add their keys to it.
 title: Brace
 extension: .ts
 package_file: index.ts
 namespace: globalThis
-standard: interpreter
+standard: {modules: [fs, path, "node:fs", "node:path"], reserved: [class, const, function, interface],
+           builtins: [globalThis, fetch]}
 name: '[A-Za-z_$][A-Za-z0-9_$]*'
 package: '(?:@[a-z0-9~-][a-z0-9._~-]*/)?[a-z0-9~-][a-z0-9._~-]*|node:[a-z_/]+'
 member: "#"

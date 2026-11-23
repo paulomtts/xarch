@@ -119,6 +119,13 @@ SEAM = ("modules/rules/adapters/fs_source_tree.py", "platform/")
 """The reader adapter and the platform: where the language and its interpreter are allowed to be named."""
 
 EXEMPT: dict[tuple[str, str], str] = {
+    ("modules/spec/domain/values.py", "builtins"): "the key of a data file's `standard` that lists the names a "
+                                                   "language binds without an import, a word of the format every "
+                                                   "language's file writes and not the namespace of one: a field "
+                                                   "of StandardLists",
+    ("modules/spec/application/logic/language_file.py", "builtins"): "the same key of the format, named where the "
+                                                                     "loader's docstring says the keys of a data "
+                                                                     "file",
     ("modules/rules/domain/parsed.py", "from"): "the records the reader fills say how it reads an import by an import "
                                                 "of the language it reads: the engine's Python-shaped bundles, left on "
                                                 "purpose (engine R3-2)",

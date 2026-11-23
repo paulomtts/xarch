@@ -7,7 +7,7 @@ import yaml
 
 from xarch.modules.spec.application.logic.language_file import PARTIAL, first_language, language_of
 from xarch.modules.spec.domain.errors import InvalidArchitecture
-from xarch.modules.spec.domain.values import Language
+from xarch.modules.spec.domain.values import Language, StandardLists
 from xarch.profile_values.capabilities import EXACT, Supply
 from xarch.profile_values.language import CheckedLanguage, InterfaceMark, RecordMark
 
@@ -24,6 +24,9 @@ PERCENT = {"name": "%?[A-Za-z][A-Za-z0-9]*", "package": "%?[A-Za-z][A-Za-z0-9]*"
            "immutable": ["%SerialObject", "%Lib.Rec(frozen=yes)"]}
 """The lists of a language whose names may start with a percent, under its own patterns."""
 INTERFACE = "interface: each mark is {base: <outside name>} or {keyword: <word>}"
+STANDARD = "standard: must be interpreter, or a map of modules, reserved and builtins, each a list of names"
+LISTS = {"modules": [], "reserved": [], "builtins": []}
+"""A standard that lists nothing, to which a test adds the lists it needs."""
 
 
 def test_a_language_is_read_from_the_document_of_its_preset_by_name():
@@ -285,3 +288,68 @@ def test_the_test_only_languages_say_their_annotations_of_no_value_or_their_word
     assert ((loaded["brace"].nothing, loaded["brace"].unannotated),
             (loaded["percent"].nothing, loaded["percent"].unannotated, loaded["percent"].special)) == (
         (("void", "Promise<void>"), ""), ((), "nothing", r"%\w+"))
+
+
+def test_a_language_that_lists_its_standard_library_reads_the_three_lists_in_the_order_written():
+    standard = {"modules": ["strutils", "sysutils"], "reserved": ["begin", "end"], "builtins": ["writeln"]}
+    assert (language_of("pascal", DOCUMENT | {"standard": standard}).standard,
+            language_of("pascal", DOCUMENT | {"standard": LISTS}).standard,
+            language_of("pascal", DOCUMENT).standard) == (
+        StandardLists(("strutils", "sysutils"), ("begin", "end"), ("writeln",)), StandardLists(), "interpreter")
+
+
+@pytest.mark.parametrize("standard", [
+    pytest.param("node", id="another word"),
+    pytest.param("", id="an empty string"),
+    pytest.param(None, id="left empty"),
+    pytest.param(3, id="a number"),
+    pytest.param(["fs"], id="a list"),
+    pytest.param({"modules": [], "reserved": []}, id="a map missing a list"),
+    pytest.param(LISTS | {"keywords": []}, id="a map with a key besides the three"),
+    pytest.param(LISTS | {"modules": "fs"}, id="a list that is no list"),
+    pytest.param(LISTS | {"modules": [3]}, id="an item that is no text"),
+    pytest.param(LISTS | {"reserved": [""]}, id="an empty item"),
+])
+def test_a_standard_that_is_neither_the_word_nor_the_three_lists_is_refused_once(standard):
+    with pytest.raises(InvalidArchitecture) as caught:
+        language_of("odd", DOCUMENT | {"standard": standard})
+    assert caught.value.problems == (f"presets/language/odd.yaml: {STANDARD}",)
+
+
+@pytest.mark.parametrize("lists, problems", [
+    pytest.param({"modules": ["x y"]}, ["standard.modules: 'x y' is not a package name the language allows"],
+                 id="a module the package pattern refuses"),
+    pytest.param({"modules": ["os.path"]}, ["standard.modules: 'os.path' is not a package name the language allows"],
+                 id="a module below a top-level one"),
+    pytest.param({"reserved": ["x y"]}, ["standard.reserved: 'x y' is not a name the language allows"],
+                 id="a reserved word the name pattern refuses"),
+    pytest.param({"builtins": ["1a"]}, ["standard.builtins: '1a' is not a name the language allows"],
+                 id="a builtin the name pattern refuses"),
+    pytest.param({"modules": ["x y", "fs", "2b"]}, ["standard.modules: 'x y' is not a package name the language allows",
+                                                    "standard.modules: '2b' is not a package name the language allows"],
+                 id="one problem for each item refused"),
+])
+def test_an_item_of_the_lists_is_checked_with_the_language_s_own_patterns(lists, problems):
+    with pytest.raises(InvalidArchitecture) as caught:
+        language_of("odd", DOCUMENT | {"standard": LISTS | lists})
+    assert [p.removeprefix("presets/language/odd.yaml: ") for p in caught.value.problems] == problems
+
+
+def test_with_no_name_package_and_member_any_text_is_an_item_of_the_lists():
+    standard = {"modules": ["x y", "os.path"], "reserved": ["1a"], "builtins": ["a b"]}
+    assert language_of("pascal", UNJOINED | {"standard": standard}).standard == StandardLists(
+        ("x y", "os.path"), ("1a",), ("a b",))
+
+
+def test_the_items_of_the_lists_are_not_checked_when_the_keys_that_say_how_a_name_is_written_are_refused():
+    with pytest.raises(InvalidArchitecture) as caught:
+        language_of("odd", DOCUMENT | {"name": "[a-", "standard": LISTS | {"modules": ["x y"], "reserved": ["1a"]}})
+    assert [p.removeprefix("presets/language/odd.yaml: ").split(":")[0] for p in caught.value.problems] == ["name"]
+
+
+def test_the_brace_test_only_language_lists_its_standard_library_and_the_percent_one_says_interpreter():
+    loaded = {path.stem: language_of(path.stem, yaml.safe_load(path.read_text(encoding="utf-8")))
+              for path in TEST_LANGUAGES}
+    assert (loaded["brace"].standard, loaded["percent"].standard) == (
+        StandardLists(("fs", "path", "node:fs", "node:path"), ("class", "const", "function", "interface"),
+                      ("globalThis", "fetch")), "interpreter")

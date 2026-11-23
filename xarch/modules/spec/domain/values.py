@@ -27,6 +27,9 @@ PROFILE_SUFFIX = ".yaml"
 """The suffix of every bundled profile file, and of each one xarch writes."""
 LANGUAGES = "presets/language"
 """Where the data files of the languages are, below the bundled folder: one YAML file each, named for the language."""
+INTERPRETER = "interpreter"
+"""The `standard` of a language's data file that says its standard library, its reserved words and the names it binds
+without an import are known from the interpreter running xarch, as its runtime says them."""
 FORMAT = "presets/format"
 """Where the data files of the profile format are, below the bundled folder."""
 FORMAT_KEYS = f"{FORMAT}/keys.yaml"
@@ -300,14 +303,24 @@ Guard = (PackageOnly | ScenarioCoverage | NoComments | StandIns | ClosedTree | N
 
 
 @dataclass(frozen=True)
+class StandardLists:
+    """What a language's data file lists as its `standard`, each in the order written: modules, the top-level modules
+    of its standard library; reserved, the words no name may be; builtins, the names it binds without an import."""
+    modules: tuple[str, ...] = ()
+    reserved: tuple[str, ...] = ()
+    builtins: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class Language:
     """What is true of the language of the app as a whole, read from the data file of its preset (and from the runtime
-    for the names only it knows).
+    for the names only it knows, when the data file says INTERPRETER).
 
     name: how a profile names it
     checked: the language as the checks read it, which spec builds and the checking module reads in full
     namespace: the namespace of the names bound without an import
-    standard: where the names of the standard library are known from
+    standard: where the names of the standard library are known from: INTERPRETER, the runtime, or the lists the data
+        file gives (StandardLists)
     cache: the folder in which its tools keep what they compile; empty: none
     names: a regular expression, what a name may be (empty: the language does not say)
     standard_names: the top-level names of the standard library
@@ -317,7 +330,7 @@ class Language:
     name: str = ""
     checked: CheckedLanguage = CheckedLanguage()
     namespace: str = ""
-    standard: str = ""
+    standard: str | StandardLists = ""
     cache: str = ""
     names: str = ""
     standard_names: frozenset[str] = frozenset()
