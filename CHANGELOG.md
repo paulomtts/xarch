@@ -7,6 +7,10 @@ All notable changes to this project are written here. The format follows
 
 ### Added
 
+- The fact `comment.doc`, whether a comment is a doc comment, which `guards.no-comments` needs beside `comment`. The
+  reader says of each comment the marker it opens with and whether it is a doc comment (`Comment.marker` and
+  `Comment.doc`), and a check of your own reads the doc ones with the filter `doc`. Python supplies it: no Python
+  comment is a doc comment.
 - The fact `file.package`, that a file stands for the folder holding it, which a language supplies exactly when its
   data file gives `package_files` and which is never written under `supplies` (`supplies: file.package follows
   package_files: drop it from supplies`). `parts.<part>.package_only`, a part's `must_import` and
@@ -23,6 +27,13 @@ All notable changes to this project are written here. The format follows
 
 ### Changed
 
+- A language's data file says how its comments are written as a list of forms: `comment` became `comments`, each
+  form `{line: <marker>}`, `{block: [<open>, <close>]}` or `{doc: [<open>, <close>]}` (a doc form's closing may be
+  `""`, the end of its line; `[{line: "#"}]` for Python); left out, the language has none. `%comment%` is the first
+  line form's marker, else the first block form's opening. A directive and an encoding declaration are matched after
+  the marker of the comment, whatever its form, and `no-comments` keeps doc comments. The old key is an unknown key.
+  Refused: `comments: each form is {line: <marker>}, {block: [<open>, <close>]} or {doc: [<open>, <close>]}` and
+  `comments: needs one form at least`. No finding of a Python app changes.
 - A language's data file says the endings of a source file as a list and its package files as an optional list:
   `extension` and `package_file` became `extensions` (`[.py]` for Python, the first the one messages print) and
   `package_files` (`[__init__.py]`), each package file ending in one of the extensions; a language may have none.

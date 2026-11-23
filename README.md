@@ -148,8 +148,10 @@ as one step (`package`) and the text that joins a package to a name in it in the
 Python), so that an outside name is written `<package><member><name>`, how a private name starts, the pattern of a
 special name (`special`, a regular expression the whole name matches), the special method calling an instance runs,
 the annotations of no value (`nothing`, a list: `[None]` for Python) and, optionally, that a method with no return
-annotation gives none (`unannotated: nothing`), the comment marker and the comments its tools read, the shebang, the
-encoding declaration, the keywords of the statements that branch and of the expressions that choose between values
+annotation gives none (`unannotated: nothing`), the forms a comment is written in (`comments`, a list of `line`,
+`block` and `doc` forms, `[{line: "#"}]` for Python, a doc comment being one `no-comments` keeps) and the comments
+its tools read after the marker of any form, the shebang, the encoding declaration, the keywords of the statements
+that branch and of the expressions that choose between values
 (`branching_expressions`), and what makes a class an immutable record (`immutable`: a base, or a decorator called with
 its keywords, such as `dataclasses.dataclass(frozen=True)`).
 The rest of what a check knows of the language is one adapter, the reader that turns source into facts
@@ -289,7 +291,7 @@ that switches or configures each (`-` for none: the rule is always on):
 | `package-only` | an import of a file of a part from outside it, where the part is imported as a package | `parts.package_only` |
 | `must-import` | a file of a part that never reaches any of the targets the part must reach, nor an outside package, or a test that never reaches what its tier must | `parts.must_import`, `tiers.must_import` |
 | `scenario-coverage` | a variant of a result union with no row in its use case's test table, or a branch (a statement of `branching`, an expression of `branching_expressions`) in a table test's body; with `plain_tables`, in any table test of that tier | `guards.scenario-coverage`, `tiers.plain_tables` |
-| `no-comments` | a `#` comment in the app or its tests | `guards.no-comments` |
+| `no-comments` | a comment of the language in the app or its tests (`#` for Python), but a doc comment and those its tools read | `guards.no-comments` |
 | `stand-ins` | a read port without a fake, or a mock without a spec or with a read port's | `guards.stand-ins`, `fakes` |
 | `closed-tree` | a Python file of the app that lies in no part | `guards.closed-tree` |
 | `no-duplicates` | two functions or methods of the app with the same code | `guards.no-duplicates` |
