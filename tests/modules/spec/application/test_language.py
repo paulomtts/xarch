@@ -13,9 +13,9 @@ from xarch.profile_values.capabilities import Shortfall
 from xarch.profile_values.language import CheckedLanguage, InterfaceMark, RecordMark
 
 JOINS = {"name": r"\w+", "package": r"\w+", "member": "."}
-PASCAL = {"title": "Pascal", "extension": ".pas", "package_file": "unit.pas", "interface": [{"base": "sys.Contract"}],
+PASCAL = {"title": "Pascal", "extensions": [".pas"], "package_files": ["unit.pas"], "interface": [{"base": "sys.Contract"}],
           "dynamic": ["sys.load"], "namespace": "system", "standard": "interpreter"} | JOINS
-PYTHON = {"title": "Python", "extension": ".py", "package_file": "__init__.py", "interface": [{"base": "typing.Protocol"}],
+PYTHON = {"title": "Python", "extensions": [".py"], "package_files": ["__init__.py"], "interface": [{"base": "typing.Protocol"}],
           "namespace": "builtins", "cache": "__pycache__", "standard": "interpreter"} | JOINS
 APP = Path("/p/app")
 BASE = {"name": "base", "parts": {"core": {"path": "core", "role": "the rules"}}}
@@ -31,14 +31,15 @@ def view(profile: dict, languages: dict) -> CheckedLanguage:
 
 def test_a_profile_without_a_language_has_the_first_language_by_name_as_the_checks_read_it():
     assert view(BASE, {"python": PYTHON, "pascal": PASCAL}) == CheckedLanguage(
-        "Pascal", ".pas", "unit.pas", (InterfaceMark(("sys", "Contract")),), (("sys", "load"),), names=r"\w+", package=r"\w+", member=".",
+        "Pascal", (".pas",), ("unit.pas",), (InterfaceMark(("sys", "Contract")),), (("sys", "load"),), names=r"\w+",
+        package=r"\w+", member=".",
         standard_modules=frozenset({"strutils"}))
 
 
 def test_a_profile_names_its_language_and_the_skeleton_says_the_file_that_stands_for_a_folder():
     spec, _ = spec_controller({"base": BASE | {"language": "python"}}, languages={"python": PYTHON, "pascal": PASCAL}, runtime=RUNTIME)
     assert spec.profile("base").language == CheckedLanguage(
-        "Python", ".py", "__init__.py", (InterfaceMark(("typing", "Protocol")),), (), names=r"\w+", package=r"\w+",
+        "Python", (".py",), ("__init__.py",), (InterfaceMark(("typing", "Protocol")),), (), names=r"\w+", package=r"\w+",
         member=".", standard_modules=frozenset({"strutils"}))
     assert spec.skeleton("base").package_file == "__init__.py"
 
@@ -54,7 +55,7 @@ def test_the_standard_library_and_the_builtins_a_profile_is_checked_against_come
 
 @pytest.mark.parametrize("languages, language", [
     pytest.param({}, CheckedLanguage(), id="with no language to choose from, the language is said by nothing"),
-    pytest.param({"python": PYTHON}, CheckedLanguage("Python", ".py", "__init__.py", (InterfaceMark(("typing", "Protocol")),),
+    pytest.param({"python": PYTHON}, CheckedLanguage("Python", (".py",), ("__init__.py",), (InterfaceMark(("typing", "Protocol")),),
                                                      names=r"\w+", package=r"\w+", member=".",
                                                      standard_modules=frozenset({"strutils"})),
                  id="with one, it is that one"),

@@ -1,10 +1,12 @@
 """The data file of a language: what is true of the language as a whole, read from a preset and validated like a profile."""
 import re
+from importlib import resources
 from pathlib import Path
 
 import pytest
 import yaml
 
+from tests.modules.spec.languages import PYTHON as PYTHON_LANGUAGE
 from xarch.kernel.placement import Marks
 from xarch.modules.spec.application.logic.language_file import PARTIAL, first_language, language_of
 from xarch.modules.spec.domain.errors import InvalidArchitecture
@@ -14,9 +16,9 @@ from xarch.profile_values.language import CheckedLanguage, InterfaceMark, Record
 
 NAME = r"[A-Za-z_]\w*"
 JOINS = {"name": NAME, "package": NAME, "member": "."}
-DOCUMENT = {"title": "Pascal", "extension": ".pas", "package_file": "unit.pas", "interface": [{"base": "sys.Contract"}],
-            "dynamic": ["sys.load", "sys.Contract.load"], "namespace": "system", "cache": ".objs",
-            "standard": "interpreter"} | JOINS
+DOCUMENT = {"title": "Pascal", "extensions": [".pas"], "package_files": ["unit.pas"],
+            "interface": [{"base": "sys.Contract"}], "dynamic": ["sys.load", "sys.Contract.load"], "namespace": "system",
+            "cache": ".objs", "standard": "interpreter"} | JOINS
 UNJOINED = {key: value for key, value in DOCUMENT.items() if key not in JOINS}
 """DOCUMENT with none of name, package and member."""
 TEST_LANGUAGES = tuple(sorted((Path(__file__).resolve().parents[4] / "fakes" / "languages").glob("*.yaml")))
@@ -28,11 +30,25 @@ INTERFACE = "interface: each mark is {base: <outside name>} or {keyword: <word>}
 STANDARD = "standard: must be interpreter, or a map of modules, reserved and builtins, each a list of names"
 LISTS = {"modules": [], "reserved": [], "builtins": []}
 """A standard that lists nothing, to which a test adds the lists it needs."""
+KEYS_USED = ("branching, branching_expressions, cache, call, comment, directives, dynamic, encoding, extensions, "
+             "immutable, importing, interface, member, name, namespace, nothing, package, package_files, private, "
+             "shebang, special, standard, supplies, title, unannotated")
+"""The keys of a data file, as the unknown-key text lists them."""
+EXTENSIONS = "extensions: must be a non-empty list of endings, each starting with a dot"
+PACKAGE_FILES = "package_files: must be a list of file names, each ending in one of extensions"
+UNLISTED = {key: value for key, value in DOCUMENT.items() if key != "package_files"}
+"""DOCUMENT with no file standing for a folder."""
+
+
+def refused(document) -> list[str]:
+    with pytest.raises(InvalidArchitecture) as caught:
+        language_of("odd", document)
+    return [problem.removeprefix("presets/language/odd.yaml: ") for problem in caught.value.problems]
 
 
 def test_a_language_is_read_from_the_document_of_its_preset_by_name():
     assert language_of("pascal", DOCUMENT) == Language(
-        "pascal", CheckedLanguage("Pascal", ".pas", "unit.pas",
+        "pascal", CheckedLanguage("Pascal", (".pas",), ("unit.pas",),
                                   (InterfaceMark(("sys", "Contract")),),
                                   (("sys", "load"), ("sys", "Contract", "load")), names=NAME, package=NAME, member="."),
         "system", "interpreter", ".objs", NAME)
@@ -43,19 +59,17 @@ def test_the_marks_of_a_language_are_its_extensions_and_its_package_files():
 
 
 def test_every_problem_of_a_document_is_listed_naming_the_preset():
-    broken = {"title": "", "extension": "pas", "package_file": 3, "interface": "x", "dynamic": ["", "a b"], "cache": "a/b",
-              "extra": 1} | JOINS
+    broken = {"title": "", "extensions": "pas", "package_files": 3, "interface": "x", "dynamic": ["", "a b"],
+              "cache": "a/b", "extra": 1} | JOINS
     with pytest.raises(InvalidArchitecture) as caught:
         language_of("odd", broken)
     assert caught.value.source == "presets/language/odd.yaml"
     assert [problem.removeprefix("presets/language/odd.yaml: ") for problem in caught.value.problems] == [
-        "unknown key 'extra': use branching, branching_expressions, cache, call, comment, directives, dynamic, encoding, extension, "
-        "immutable, importing, interface, member, name, namespace, nothing, package, package_file, private, shebang, special, "
-        "standard, supplies, title, unannotated",
+        f"unknown key 'extra': use {KEYS_USED}",
         "missing `namespace`", "missing `standard`",
         "title: must be a non-empty string",
-        "extension: must be a dot and a name, such as .pas",
-        "package_file: must be a file name ending in the extension",
+        EXTENSIONS,
+        PACKAGE_FILES,
         INTERFACE,
         "dynamic: '' is not an outside name such as <package>.<name>",
         "dynamic: 'a b' is not an outside name such as <package>.<name>",
@@ -66,7 +80,7 @@ def test_a_document_that_is_no_mapping_is_refused():
     with pytest.raises(InvalidArchitecture) as caught:
         language_of("odd", ["x"])
     assert caught.value.problems == (
-        "presets/language/odd.yaml: must be a mapping of keys, such as title, extension and package_file",)
+        "presets/language/odd.yaml: must be a mapping of keys, such as title, extensions and package_files",)
 
 
 def test_the_tokens_of_the_code_are_read_when_the_document_gives_them():
@@ -131,14 +145,16 @@ def test_how_a_file_imports_a_name_is_read_when_the_document_gives_it():
     assert language_of("pascal", DOCUMENT).checked.importing == ""
 
 
-def test_the_facts_its_reader_supplies_are_read_each_with_its_grade():
-    language = language_of("pascal", DOCUMENT | {"supplies": {"import": "exact",
-                                                              "class": {"partial": "nested classes are not read"}}})
-    assert language.checked.supplies == (Supply("import", EXACT), Supply("class", PARTIAL, "nested classes are not read"))
+def test_the_facts_its_reader_supplies_are_read_each_with_its_grade_and_file_package_follows_package_files():
+    supplies = {"supplies": {"import": "exact", "class": {"partial": "nested classes are not read"}}}
+    listed = (Supply("import", EXACT), Supply("class", PARTIAL, "nested classes are not read"))
+    assert language_of("pascal", DOCUMENT | supplies).checked.supplies == (*listed, Supply("file.package", EXACT))
+    assert language_of("pascal", UNLISTED | supplies).checked.supplies == listed
 
 
-def test_a_document_that_says_nothing_of_its_reader_supplies_no_grade():
-    assert language_of("pascal", DOCUMENT).checked.supplies is None
+def test_a_document_that_says_nothing_of_its_reader_supplies_no_grade_whatever_package_files_says():
+    assert (language_of("pascal", DOCUMENT).checked.supplies, language_of("pascal", UNLISTED).checked.supplies) == (
+        None, None)
 
 
 @pytest.mark.parametrize("supplies, problem", [
@@ -353,3 +369,76 @@ def test_the_brace_test_only_language_lists_its_standard_library_and_the_percent
     assert (loaded["brace"].standard, loaded["percent"].standard) == (
         StandardLists(("fs", "path", "node:fs", "node:path"), ("class", "const", "function", "interface"),
                       ("globalThis", "fetch")), "interpreter")
+
+
+def test_the_endings_and_the_package_files_are_read_in_the_order_written():
+    checked = language_of("pascal", DOCUMENT | {"extensions": [".ts", ".tsx"], "package_files": ["index.ts"]}).checked
+    assert (checked.extensions, checked.package_files) == ((".ts", ".tsx"), ("index.ts",))
+    assert (checked.extension, checked.package_file) == (".ts", "index.ts")
+
+
+def test_package_files_left_out_read_none_and_the_file_loads():
+    checked = language_of("pascal", UNLISTED).checked
+    assert (checked.package_files, checked.package_file, checked.marks) == ((), "", Marks((".pas",)))
+
+
+@pytest.mark.parametrize("value", [
+    pytest.param(".py", id="a string"),
+    pytest.param([], id="an empty list"),
+    pytest.param([3], id="a list holding a number"),
+    pytest.param(["py"], id="an ending with no dot"),
+    pytest.param([".py", ".py"], id="an ending listed twice"),
+    pytest.param([".p y"], id="an ending with a space"),
+])
+def test_extensions_that_are_not_a_list_of_endings_are_one_problem(value):
+    assert refused(UNLISTED | {"extensions": value}) == [EXTENSIONS]
+
+
+def test_extensions_are_required():
+    assert refused({key: value for key, value in UNLISTED.items() if key != "extensions"}) == ["missing `extensions`"]
+
+
+@pytest.mark.parametrize("value, problems", [
+    pytest.param(["index.js"], ["package_files: 'index.js' ends in none of extensions"], id="another ending"),
+    pytest.param(["index.js", "main.rb"], ["package_files: 'index.js' ends in none of extensions",
+                                          "package_files: 'main.rb' ends in none of extensions"], id="one problem each"),
+    pytest.param([".ts"], ["package_files: '.ts' ends in none of extensions"], id="only the ending"),
+    pytest.param("index.ts", [PACKAGE_FILES], id="no list"),
+    pytest.param([], [PACKAGE_FILES], id="an empty list"),
+    pytest.param(["index.ts", "index.ts"], [PACKAGE_FILES], id="a file listed twice"),
+    pytest.param([""], [PACKAGE_FILES], id="an empty name"),
+])
+def test_package_files_must_each_end_in_one_of_the_extensions(value, problems):
+    assert refused(DOCUMENT | {"extensions": [".ts"], "package_files": value}) == problems
+
+
+def test_package_files_are_not_checked_against_extensions_that_are_refused_already():
+    assert refused(DOCUMENT | {"extensions": "ts", "package_files": ["index.js"]}) == [EXTENSIONS]
+
+
+def test_the_old_keys_of_one_ending_and_one_package_file_are_unknown_keys():
+    old = {key: value for key, value in UNLISTED.items() if key != "extensions"} | {"extension": ".pas",
+                                                                                    "package_file": "unit.pas"}
+    assert refused(old) == [f"unknown keys 'extension', 'package_file': use {KEYS_USED}", "missing `extensions`"]
+
+
+@pytest.mark.parametrize("grade", [pytest.param("exact", id="exact"), pytest.param({"partial": "some"}, id="partial")])
+def test_file_package_is_never_written_under_supplies(grade):
+    assert refused(DOCUMENT | {"supplies": {"import": "exact", "file.package": grade}}) == [
+        "supplies: file.package follows package_files: drop it from supplies"]
+
+
+def test_python_reads_one_ending_and_one_package_file_and_supplies_file_package_though_its_file_does_not_list_it():
+    document = yaml.safe_load(resources.files("xarch").joinpath("architectures", "presets", "language", "python.yaml")
+                              .read_text(encoding="utf-8"))
+    checked = PYTHON_LANGUAGE.checked
+    assert (checked.extensions, checked.package_files) == ((".py",), ("__init__.py",))
+    assert "file.package" not in document["supplies"]
+    assert Supply("file.package", EXACT) in checked.supplies
+
+
+def test_the_test_only_languages_say_several_endings_and_brace_two_package_files_percent_none():
+    read = {path.stem: language_of(path.stem, yaml.safe_load(path.read_text(encoding="utf-8"))).checked
+            for path in TEST_LANGUAGES}
+    assert (read["brace"].extensions, read["brace"].package_files) == ((".ts", ".tsx", ".mts"), ("index.ts", "index.tsx"))
+    assert (read["percent"].extensions, read["percent"].package_files) == ((".cls", ".mac"), ())

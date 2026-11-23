@@ -126,7 +126,7 @@ may send and of how it reads what it asks are left to the explanation of `review
                  UnknownKey("parts.may_imports", ("parts.may_import", "parts.must_import", "tiers.may_import")),
                  id="a key the format does not have is refused with the nearest keys"),
     pytest.param(BROKEN, Explain(), ProfileRefused("presets/language/python.yaml: must be a mapping of keys, such as title, "
-                                                   "extension and package_file"),
+                                                   "extensions and package_files"),
                  id="the format is refused with why when the data file of a language does not load"),
     pytest.param(UNTOLD, Explain("based_on"), ProfileRefused("presets/format/keys.yaml: missing `keys`\n"
                                                              "presets/format/keys.yaml: missing `slots`\n"
@@ -170,7 +170,7 @@ def test_a_key_that_configures_a_check_names_the_facts_it_reads_as_the_default_l
 
 
 def test_a_fact_the_default_language_does_not_grade_is_said_to_be_absent():
-    toy = {"title": "Toy", "extension": ".toy", "package_file": "pkg.toy", "namespace": "core",
+    toy = {"title": "Toy", "extensions": [".toy"], "package_files": ["pkg.toy"], "namespace": "core",
            "standard": "interpreter", "supplies": {"class": {"partial": "nested classes are not read"}}}
     spec, _ = spec_controller(**BUNDLED, languages={"toy": toy})
     found = spec.explain(Explain("parts.names"))

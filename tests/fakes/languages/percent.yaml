@@ -1,9 +1,9 @@
 # A test-only language that imitates an ObjectScript-like one: no profile names it and no reader is written for it.
-# Its names and packages may start with %, and a name in a package is joined to it by a dot. The tests load it to show
-# that the profile and the checks read outside names by a language's own patterns; later steps add their keys to it.
+# Its names and packages may start with %, and a name in a package is joined to it by a dot. Its source files end in
+# .cls or .mac, and it has no package file: no file stands for the folder holding it. The tests load it to show that
+# the profile and the checks read outside names by a language's own patterns; later steps add their keys to it.
 title: Percent
-extension: .cls
-package_file: Package.cls
+extensions: [.cls, .mac]
 namespace: "%SYSTEM"
 standard: interpreter
 name: '%?[A-Za-z][A-Za-z0-9]*'

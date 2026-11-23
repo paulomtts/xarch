@@ -15,6 +15,10 @@ from dataclasses import dataclass
 EXACT = "exact"
 """The grade of a fact a reader supplies in full; any other grade supplies it partly."""
 
+PACKAGE_FACT = "file.package"
+"""The fact a language supplies, exactly, when its data file gives package_files, and only then; never written under
+`supplies`."""
+
 FACTS: dict[str, str] = {
     "file": "the source files below the app and the tests, and where each sits",
     "syntax": "a file that does not parse, the line and the message",
@@ -40,6 +44,7 @@ FACTS: dict[str, str] = {
     "class.named": "every name a class's bases and body mention",
     "class.immutable": "whether a class is an immutable record, by the marks of the language's data file",
     "class.interface": "whether a class is an interface, by the marks of the language's data file",
+    "file.package": "a file stands for the folder that holds it",
     "function": "the functions a file defines, at the top level and in its classes: name, owner, line",
     "function.statements": "how many statements a function's body holds, and how many of them do nothing",
     "function.shape": "a fingerprint of a function's code, the same for two functions that do the same",

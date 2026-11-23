@@ -4,8 +4,11 @@ standard library, its reserved words and the names it binds without an import ar
 holds the runtime, from the lists the file gives or from the runtime.
 
     title          how a message names the language
-    extension      the ending of a source file's name: a dot and a name
-    package_file   the name of the file that stands for the folder holding it, ending in the extension
+    extensions     the endings of a source file's name, each a dot and a name: a non-empty list, the first the one a
+                   message prints
+    package_files  the names of the files that stand for the folder holding them, each ending in one of the
+                   extensions: a non-empty list; optional, left out when no file does. The fact file.package follows
+                   it: supplied exactly when it is given, and never written under supplies
     interface      the marks of an interface, each {base: <outside name>}, an outside name (see below) among a
                    declaration's bases, or {keyword: <word>}, a keyword it is declared with or carries, a name
     dynamic        outside names of what imports by a name worked out when the code runs; optional
@@ -46,7 +49,7 @@ and the facts its reader supplies (see capabilities), each graded:
     supplies       {<fact>: exact | {partial: <what it misses>}}: a fact it does not list it does not supply, so a
                    key whose check needs one is refused; a partial one is listed as approximate where it is read.
                    Left out, the file does not say what a reader supplies (no reader is written for it yet), and
-                   no key is held to it
+                   no key is held to it; given, file.package is added to it when package_files is given
 """
 from __future__ import annotations
 
@@ -59,16 +62,20 @@ from xarch.kernel.logic.names import is_name
 from xarch.modules.spec.application.logic.outside_name import outside_name
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import INTERPRETER, LANGUAGES, Language, StandardLists
-from xarch.profile_values.capabilities import EXACT, FACTS, Supply
+from xarch.profile_values.capabilities import EXACT, FACTS, PACKAGE_FACT, Supply
 from xarch.profile_values.language import NOTHING, CheckedLanguage, InterfaceMark, RecordMark
 
-KEYS = ("title", "extension", "package_file", "interface", "dynamic", "namespace", "cache", "standard", "name", "package",
-        "member", "private", "special", "call", "nothing", "unannotated", "comment", "directives", "shebang", "encoding",
-        "branching", "importing", "supplies", "immutable", "branching_expressions")
-REQUIRED = ("title", "extension", "package_file", "namespace", "standard")
+KEYS = ("title", "extensions", "package_files", "interface", "dynamic", "namespace", "cache", "standard", "name",
+        "package", "member", "private", "special", "call", "nothing", "unannotated", "comment", "directives", "shebang",
+        "encoding", "branching", "importing", "supplies", "immutable", "branching_expressions")
+REQUIRED = ("title", "extensions", "namespace", "standard")
 JOINED = ("name", "package", "member")
 """The keys that say how an outside name is written: given together or not at all."""
 _EXTENSION = re.compile(r"\.[A-Za-z0-9]+")
+EXTENSIONS = "extensions: must be a non-empty list of endings, each starting with a dot"
+"""What the loader says of a value of `extensions` that is not a list of endings, once for the key."""
+PACKAGE_FILES = "package_files: must be a list of file names, each ending in one of extensions"
+"""What the loader says of a value of `package_files` that is not a list of file names, once for the key."""
 PARTIAL = "partial"
 """How the data file grades a fact its reader supplies only partly, with what it misses."""
 _FOLDER = re.compile(r"[A-Za-z0-9_.-]+")
@@ -89,7 +96,7 @@ def language_of(name: str, document: Any) -> Language:
     """The language the document of the preset called name describes; raises InvalidArchitecture."""
     source = f"{LANGUAGES}/{name}.yaml"
     if not isinstance(document, Mapping):
-        raise InvalidArchitecture(source, ["must be a mapping of keys, such as title, extension and package_file"])
+        raise InvalidArchitecture(source, ["must be a mapping of keys, such as title, extensions and package_files"])
     problems: list[str] = []
     unknown = sorted(str(key) for key in document if key not in KEYS)
     if unknown:
@@ -99,10 +106,8 @@ def language_of(name: str, document: Any) -> Language:
     joins = _joins(document, problems)
     names, package, member = joins or ("", "", "")
     title = _text(document, "title", "must be a non-empty string", problems)
-    extension = _text(document, "extension", "must be a dot and a name, such as .pas", problems, _EXTENSION)
-    package_file = _text(document, "package_file", "must be a file name ending in the extension", problems)
-    if package_file and not (extension and package_file.endswith(extension) and package_file != extension):
-        problems.append("package_file: must be a file name ending in the extension")
+    extensions = _extensions(document, problems)
+    package_files = _package_files(document, extensions, problems)
     namespace = _text(document, "namespace", "must be a name", problems)
     if namespace and not is_name(namespace, names):
         problems.append("namespace: must be a name")
@@ -122,16 +127,49 @@ def language_of(name: str, document: Any) -> Language:
     expressions = _words(document, "branching_expressions", problems)
     importing = _text(document, "importing", "must be a line holding {dotted} and {name}", problems, _IMPORTING)
     supplies = _supplies(document["supplies"], problems) if "supplies" in document else None
+    if supplies is not None and package_files:
+        supplies = (*supplies, Supply(PACKAGE_FACT, EXACT))
     immutable = _marks(document, problems, joins, namespace)
     if problems:
         raise InvalidArchitecture(source, problems)
-    checked = CheckedLanguage(title=title, extension=extension, package_file=package_file, interface=interface,
-                              dynamic=dynamic, private=tokens["private"], special=special, call=tokens["call"],
+    checked = CheckedLanguage(title=title, extensions=extensions or (), package_files=package_files,
+                              interface=interface, dynamic=dynamic, private=tokens["private"], special=special, call=tokens["call"],
                               nothing=nothing, comment=tokens["comment"], directives=directives,
                               shebang=tokens["shebang"], encoding=encoding, branching=branching, supplies=supplies,
                               importing=importing, immutable=immutable, branching_expressions=expressions,
                               names=names, package=package, member=member, unannotated=unannotated)
     return Language(name, checked, namespace, standard, cache, names)
+
+
+def _extensions(document: Mapping[Any, Any], problems: list[str]) -> tuple[str, ...] | None:
+    """The endings of a source file's name, in the order written; None when the key is missing, or refused with one
+    problem for it."""
+    if "extensions" not in document:
+        return None
+    value = document["extensions"]
+    if not (isinstance(value, list) and value and all(isinstance(item, str) and _EXTENSION.fullmatch(item) for item in value)
+            and len(set(value)) == len(value)):
+        problems.append(EXTENSIONS)
+        return None
+    return tuple(value)
+
+
+def _package_files(document: Mapping[Any, Any], extensions: tuple[str, ...] | None,
+                   problems: list[str]) -> tuple[str, ...]:
+    """The files that stand for the folder holding them, in the order written; none when the key is left out. Each
+    must end in one of extensions and be more than the ending, unless extensions are missing or refused already
+    (None)."""
+    if "package_files" not in document:
+        return ()
+    value = document["package_files"]
+    if not (isinstance(value, list) and value and all(isinstance(item, str) and item.strip() for item in value)
+            and len(set(value)) == len(value)):
+        problems.append(PACKAGE_FILES)
+        return ()
+    if extensions is not None:
+        problems += [f"package_files: {item!r} ends in none of extensions" for item in value
+                     if not any(item.endswith(extension) and item != extension for extension in extensions)]
+    return tuple(value)
 
 
 def _joins(document: Mapping[Any, Any], problems: list[str]) -> tuple[str, str, str] | None:
@@ -317,6 +355,8 @@ def _supplies(value: Any, problems: list[str]) -> tuple[Supply, ...]:
     for fact, grade in value.items():
         if fact not in FACTS:
             problems.append(f"supplies: {fact!r} is not a fact a check reads: use {', '.join(sorted(FACTS))}")
+        elif fact == PACKAGE_FACT:
+            problems.append(f"supplies: {PACKAGE_FACT} follows package_files: drop it from supplies")
         elif grade == EXACT:
             found[fact] = Supply(fact, EXACT)
         elif isinstance(grade, Mapping) and list(grade) == [PARTIAL] and isinstance(grade[PARTIAL], str) \

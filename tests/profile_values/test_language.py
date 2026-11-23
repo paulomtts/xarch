@@ -5,6 +5,7 @@ from importlib import resources
 import pytest
 import yaml
 
+from xarch.kernel.placement import Marks
 from xarch.profile_values.language import NOTHING, CheckedLanguage
 
 PYTHON_SPECIAL = yaml.safe_load(resources.files("xarch").joinpath("architectures", "presets", "language", "python.yaml")
@@ -61,3 +62,14 @@ def test_a_language_that_says_nothing_has_no_package_pattern_and_no_member():
 ])
 def test_a_method_gives_no_value_by_the_annotations_the_language_lists_or_its_word_on_none(language, returns, nothing):
     assert language.gives_nothing(returns) is nothing
+
+
+def test_a_message_prints_the_first_ending_and_the_first_package_file_and_nothing_when_there_is_none():
+    several = CheckedLanguage(extensions=(".ts", ".tsx"), package_files=("index.ts", "index.tsx"))
+    assert (several.extension, several.package_file) == (".ts", "index.ts")
+    assert (CheckedLanguage().extension, CheckedLanguage().package_file) == ("", "")
+
+
+def test_the_marks_of_a_language_are_its_endings_and_its_package_files_in_full():
+    several = CheckedLanguage(extensions=(".ts", ".tsx"), package_files=("index.ts", "index.tsx"))
+    assert several.marks == Marks((".ts", ".tsx"), ("index.ts", "index.tsx"))

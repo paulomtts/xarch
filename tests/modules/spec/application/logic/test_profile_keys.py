@@ -183,6 +183,11 @@ def test_a_word_of_the_table_is_what_the_language_says_for_it():
     assert said("a name that starts with `%private%`", PYTHON) == "a name that starts with `_`"
 
 
+def test_the_ending_and_the_package_file_a_text_says_are_the_language_s_first_and_nothing_when_it_has_none():
+    assert said("%extension% `%package_file%`", BRACE) == ".ts `index.ts`"
+    assert said("%extension% `%package_file%`", PERCENT) == ".cls ``"
+
+
 def test_the_path_of_an_interface_is_said_with_the_member_of_the_language():
     based = (InterfaceMark(("%Library", "RegisteredObject")),)
     hashed = replace(PERCENT, checked=replace(PERCENT.checked, member="#", interface=based))

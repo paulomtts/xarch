@@ -30,8 +30,9 @@ class InterfaceMark:
 
 @dataclass(frozen=True)
 class CheckedLanguage:
-    """The language of the app as a check reads it: how a message names it, the ending of a source file's name, the file
-    that stands for the folder holding it, the marks that make a class an interface (interface: an outside name
+    """The language of the app as a check reads it: how a message names it, the endings of a source file's name
+    (extensions, in the order written; a message prints the first), the files that stand for the folder holding them
+    (package_files; none: no file does), the marks that make a class an interface (interface: an outside name
     among its bases, or a keyword it is declared with or carries), the dotted names of what imports by a name worked
     out when the code runs; and the tokens of its code: what a private name starts with, the pattern of a special
     name (special: a regular expression the whole name matches), the special method calling an instance runs, the
@@ -50,8 +51,8 @@ class CheckedLanguage:
     modules of its standard library, which the reader is handed to mark an import of one: spec fills them from the
     data file's lists or from the runtime (empty: no module is standard)."""
     title: str = ""
-    extension: str = ""
-    package_file: str = ""
+    extensions: tuple[str, ...] = ()
+    package_files: tuple[str, ...] = ()
     interface: tuple[InterfaceMark, ...] = ()
     dynamic: tuple[tuple[str, ...], ...] = ()
     private: str = ""
@@ -75,7 +76,19 @@ class CheckedLanguage:
 
     @property
     def marks(self) -> Marks:
-        return Marks((self.extension,) if self.extension else (), (self.package_file,) if self.package_file else ())
+        return Marks(self.extensions, self.package_files)
+
+    @property
+    def extension(self) -> str:
+        """The first ending of a source file's name, the one a message prints; "" when the language gives none. Never
+        what decides whether a file is a source file: every ending does (see marks)."""
+        return self.extensions[0] if self.extensions else ""
+
+    @property
+    def package_file(self) -> str:
+        """The first file that stands for its folder, the one a message prints and init writes; "" when the language
+        has none."""
+        return self.package_files[0] if self.package_files else ""
 
     def is_special(self, name: str) -> bool:
         """Whether a name is one the language reserves for itself: special, a regular expression, matches the whole

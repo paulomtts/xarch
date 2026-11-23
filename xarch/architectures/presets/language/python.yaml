@@ -1,6 +1,7 @@
 # The language Python, as a profile names it with `language: python`: what is true of the language as a whole and is
-# needed outside the reader that turns source into facts. title is how a message says it; extension the ending of a
-# source file's name; package_file the file that stands for the folder holding it; interface the marks of a class that
+# needed outside the reader that turns source into facts. title is how a message says it; extensions the endings of a
+# source file's name, the first the one a message prints; package_files the files that stand for the folder holding
+# them, each ending in one of the extensions (optional: a language may have none); interface the marks of a class that
 # is an interface (a port), each {base: <outside name>}, a name among its bases, or {keyword: <word>}, a keyword its
 # declaration carries (Python declares none with one); dynamic the callables that import by a name worked out when the
 # code runs; namespace the namespace of the names the language binds without an import; cache the folder its tools
@@ -21,10 +22,11 @@
 # written; importing, how a file imports a name from another file of the app, {dotted} standing for that file's dotted
 # path and {name} for the name.
 # supplies: the facts its reader turns the source into, each exact or {partial: what it misses}; a key whose check
-# needs a fact not listed here is refused, and one that reads a partial fact is listed as approximate.
+# needs a fact not listed here is refused, and one that reads a partial fact is listed as approximate. file.package,
+# that a file stands for its folder, is never listed here: it follows package_files.
 title: Python
-extension: .py
-package_file: __init__.py
+extensions: [.py]
+package_files: [__init__.py]
 interface: [{base: typing.Protocol}, {base: typing_extensions.Protocol}]
 dynamic: [importlib.import_module, importlib.__import__, builtins.__import__]
 namespace: builtins

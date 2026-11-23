@@ -67,7 +67,7 @@ def test_rules_written_as_checks_each_take_an_id_of_their_own():
 def test_a_check_of_one_s_own_is_written_under_its_id_with_its_examples_filled_in():
     own = OwnCheck(Rule("no-todo", Scope(), ("comment",), MAY_NOT, EXISTING, SAID),
                    (("notes%extension%", "%comment% TODO\n"),), (("notes%extension%", "%comment% done\n"),))
-    (shown,) = written_own((own,), CheckedLanguage(extension=".py", comment="#")).values()
+    (shown,) = written_own((own,), CheckedLanguage(extensions=(".py",), comment="#")).values()
     assert (shown.flagged, shown.clean) == ((("notes.py", "# TODO\n"),), (("notes.py", "# done\n"),))
 
 
@@ -80,7 +80,7 @@ def test_a_check_of_one_s_own_is_written_under_its_id_with_its_examples_filled_i
 ])
 def test_the_tokens_of_the_language_are_filled_in(text, importing, written_out):
     rule = Rule("no-todo", Scope(), ("comment",), MAY_NOT, EXISTING, SAID)
-    language = CheckedLanguage(extension=".py", comment="#", importing=importing)
+    language = CheckedLanguage(extensions=(".py",), comment="#", importing=importing)
     assert written_own((OwnCheck(rule, (("notes%extension%", text),), ()),), language) == {
         "no-todo": check_of(rule, language.member, (("notes.py", written_out),), ())}
 

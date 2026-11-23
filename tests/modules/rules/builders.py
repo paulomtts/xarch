@@ -36,7 +36,7 @@ def marks_of(file: dict) -> tuple[InterfaceMark, ...]:
 
 PYTHON_FILE = yaml.safe_load(resources.files("xarch").joinpath("architectures", "presets", "language", "python.yaml")
                              .read_text(encoding="utf-8"))
-PYTHON = CheckedLanguage(title="Python", extension=".py", package_file="__init__.py",
+PYTHON = CheckedLanguage(title="Python", extensions=(".py",), package_files=("__init__.py",),
                          interface=marks_of(PYTHON_FILE),
                          dynamic=(("importlib", "import_module"), ("importlib", "__import__"), ("builtins", "__import__")),
                          private="_", special=PYTHON_FILE["special"], call="__call__",
@@ -50,17 +50,17 @@ PYTHON = CheckedLanguage(title="Python", extension=".py", package_file="__init__
 package, and the member that joins them, read from it; its standard modules the interpreter's, as spec hands them."""
 BRACE_FILE = yaml.safe_load((Path(__file__).resolve().parents[2] / "fakes" / "languages" / "brace.yaml")
                             .read_text(encoding="utf-8"))
-BRACE = CheckedLanguage(title=BRACE_FILE["title"], extension=BRACE_FILE["extension"],
-                        package_file=BRACE_FILE["package_file"], interface=marks_of(BRACE_FILE),
+BRACE = CheckedLanguage(title=BRACE_FILE["title"], extensions=tuple(BRACE_FILE["extensions"]),
+                        package_files=tuple(BRACE_FILE["package_files"]), interface=marks_of(BRACE_FILE),
                         dynamic=(("node:module", "createRequire"),), nothing=tuple(BRACE_FILE["nothing"]),
                         names=BRACE_FILE["name"], package=BRACE_FILE["package"], member=BRACE_FILE["member"],
                         standard_modules=frozenset(BRACE_FILE["standard"]["modules"]))
-"""The TypeScript-like test-only language as a check reads it, its patterns, member, interface marks, annotations of
-no value and standard modules read from its data file."""
+"""The TypeScript-like test-only language as a check reads it, its endings, package files, patterns, member, interface
+marks, annotations of no value and standard modules read from its data file."""
 PERCENT_FILE = yaml.safe_load((Path(__file__).resolve().parents[2] / "fakes" / "languages" / "percent.yaml")
                               .read_text(encoding="utf-8"))
-PERCENT = CheckedLanguage(title=PERCENT_FILE["title"], extension=PERCENT_FILE["extension"],
-                          package_file=PERCENT_FILE["package_file"], interface=marks_of(PERCENT_FILE),
+PERCENT = CheckedLanguage(title=PERCENT_FILE["title"], extensions=tuple(PERCENT_FILE["extensions"]),
+                          interface=marks_of(PERCENT_FILE),
                           special=PERCENT_FILE["special"], unannotated=PERCENT_FILE["unannotated"],
                           names=PERCENT_FILE["name"], package=PERCENT_FILE["package"], member=PERCENT_FILE["member"])
 """The ObjectScript-like test-only language as a check reads it: its interface marks, the pattern of a special name and

@@ -53,6 +53,8 @@ import yaml
 
 import xarch
 from xarch.kernel.logic.names import outside_steps
+from xarch.kernel.logic.placement import stem
+from xarch.kernel.placement import Marks
 from xarch.profile_values.language import CheckedLanguage
 
 SRC = Path(xarch.__file__).parent
@@ -151,12 +153,13 @@ def language_words(language: Path = LANGUAGE) -> tuple[re.Pattern[str], set[str]
     named = (*(mark["base"] for mark in marks if "base" in mark), *data.get("dynamic", ()))
     steps = {step for name in named for step in outside_steps(name, data.get("member", ""))} | {
         mark["keyword"] for mark in marks if "keyword" in mark}
-    words = {word for word in (data["namespace"], data.get("cache", ""), data["package_file"].removesuffix(data["extension"]),
-                               *steps, *WORDS_BESIDES) if word}
-    ending = re.escape(data["extension"])
+    marks = Marks(tuple(data["extensions"]), tuple(data.get("package_files", ())))
+    stems = (stem(name, marks) or "" for name in marks.package_files)
+    words = {word for word in (data["namespace"], data.get("cache", ""), *stems, *steps, *WORDS_BESIDES) if word}
+    ending = "|".join(re.escape(extension) for extension in marks.extensions)
     whole = "|".join(sorted((re.escape(word) for word in words), key=len, reverse=True))
     title = f"(?i:{re.escape(data['title'])})"
-    pattern = re.compile(rf"(?<![A-Za-z0-9_])(?:{title}|{whole})(?![A-Za-z0-9_])|{ending}(?![A-Za-z0-9_])")
+    pattern = re.compile(rf"(?<![A-Za-z0-9_])(?:{title}|{whole})(?![A-Za-z0-9_])|(?:{ending})(?![A-Za-z0-9_])")
     return pattern, {data["title"].lower(), data["namespace"], *{s.lower() for s in steps} - IDENTIFIER_FREE,
                      *WORDS_BESIDES, *NAMES_BESIDES}
 
@@ -423,7 +426,7 @@ def test_the_engine_holds_no_fact_of_the_language_but_what_its_data_file_says(fi
 @pytest.mark.parametrize("code, syntax, unsaid", [
     pytest.param("def f(function, profile):\n    return function.signature.star or profile.language.keywords\n",
                  {"signature", "star"}, {"keywords"}, id="how a function is written, and a word the data file lacks"),
-    pytest.param("def f(profile):\n    lang = profile.language\n    return lang.decorators, lang.extension\n",
+    pytest.param("def f(profile):\n    lang = profile.language\n    return lang.decorators, lang.extensions\n",
                  set(), {"decorators"}, id="a read through a local name bound to the language"),
     pytest.param("def f(language: CheckedLanguage):\n    return language.keywords, language.is_public('x')\n",
                  set(), {"keywords"}, id="a read of a parameter annotated as the language"),
