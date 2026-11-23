@@ -43,6 +43,13 @@ All notable changes to this project are written here. The format follows
 
 ### Changed
 
+- `no_callbacks` on a part is now the guard `no-callbacks: {parts: [<part>, ...]}`, which lists the parts whose
+  functions call none of their parameters annotated as callables, as `pass-through` lists its parts; it reads the same
+  code and still fails `check`. A part writing `no_callbacks` is refused at load: `parts.<part>: unknown key
+  'no_callbacks': moved in 0.3.0: write guards: {no-callbacks: {parts: [<part>, ...]}}`. Its findings name
+  `(guards.no-callbacks)` in place of `(parts.<part>.no_callbacks)`, `guards off` lists `no-callbacks` for a profile
+  that leaves it out, and its line in the generated docs sits among the guard lines, after `pass-through`'s in the
+  bundled profiles, which write `no-callbacks: {parts: [domain, logic]}`.
 - An eval of your own is now held to the facts it reads, as a check of your own is: one that reads a fact the
   language's reader does not supply is refused at its address, `evals.<name>: needs <fact> (<what it is>), which the
   reader of <language> does not supply: read another kind of fact, or drop the eval`, in `xarch profile check` and
