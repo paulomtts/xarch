@@ -453,7 +453,7 @@ def test_the_engine_holds_no_fact_of_the_language_but_what_its_data_file_says(fi
                  {"signature", "star"}, {"keywords"}, id="how a function is written, and a word the data file lacks"),
     pytest.param("def f(profile):\n    lang = profile.language\n    return lang.decorators, lang.extensions\n",
                  set(), {"decorators"}, id="a read through a local name bound to the language"),
-    pytest.param("def f(language: CheckedLanguage):\n    return language.keywords, language.is_public('x')\n",
+    pytest.param("def f(language: CheckedLanguage):\n    return language.keywords, language.extensions\n",
                  set(), {"keywords"}, id="a read of a parameter annotated as the language"),
     pytest.param("def f(profile):\n    return profile.language.call, profile.language.marks\n", set(), set(),
                  id="a field and a property of the language are said"),

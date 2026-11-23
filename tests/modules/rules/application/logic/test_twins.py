@@ -2,7 +2,7 @@
 the same order are one type written twice."""
 import pytest
 
-from tests.modules.rules.builders import APP, imp, profile, source
+from tests.modules.rules.builders import APP, BRACE, imp, profile, source
 from xarch.modules.rules.application.logic.twins import checked as twins
 from xarch.modules.rules.domain.outcomes import Twins
 from xarch.modules.rules.domain.parsed import Call, Class, Function
@@ -328,3 +328,14 @@ def test_a_translated_pair_is_no_renamed_copy_either_and_other_pairs_are_still_r
         "app/modules/billing/contract/__init__.py:3: Other declares the fields of Known at "
         "app/modules/docs/domain/values.py:5 in the same order (key, part, what): contract/ of modules/billing and "
         "domain/ of modules/docs hold one type written twice (no-twins)"]
+
+
+@pytest.mark.parametrize("first, reported", [
+    pytest.param(Class(5, "A", fields=FIELDS, public=False), False, id="a class the reader says is not public"),
+    pytest.param(Class(5, "_A", fields=FIELDS), True, id="one it says is public, whatever its spelling"),
+])
+def test_under_a_language_with_no_private_prefix_the_reader_alone_says_which_classes_count(first, reported):
+    braced = profile(no_twins=3, language=BRACE)
+    files = [source("modules/docs/domain/values.ts", classes=(first,), language=BRACE),
+             source("modules/docs/application/logic/rule.ts", classes=(Class(9, "B", fields=FIELDS),), language=BRACE)]
+    assert bool(problems(*files, checked=braced)) == reported

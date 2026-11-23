@@ -124,7 +124,3 @@ class CheckedLanguage:
         """Whether a method whose return annotation is returns, as the reader writes it (None: it has none), gives no
         value: its annotation is one nothing lists, or it has none and unannotated says so."""
         return returns in self.nothing if returns is not None else self.unannotated == NOTHING
-
-    def is_public(self, name: str) -> bool:
-        """Whether a name is for other files to use: it does not start as a private name does, which a special one may."""
-        return not (self.private and name.startswith(self.private))

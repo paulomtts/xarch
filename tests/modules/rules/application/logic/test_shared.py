@@ -2,7 +2,7 @@
 used by at least as many users as it says, a user being an instance of a repeating folder or a part outside them."""
 import pytest
 
-from tests.modules.rules.builders import imp, profile, source
+from tests.modules.rules.builders import BRACE, imp, profile, source
 from xarch.modules.rules.application.logic.shared import violations
 from xarch.modules.rules.domain.parsed import Class, Constant, Function, Use
 
@@ -131,3 +131,17 @@ def test_a_file_of_another_shared_part_is_no_user_but_passes_on_the_users_of_its
     users = [user(path, "report", module="app.web.report") for path in ("modules/rules/domain/values.py",
                                                                        "modules/spec/domain/values.py")]
     assert problems(helper, mentioning, *users, checked=both) == []
+
+
+@pytest.mark.parametrize("cls, expected", [
+    pytest.param(Class(40, "Kept", public=False), [], id="a class the reader says is not public is not read"),
+    pytest.param(Class(40, "_Kept"), ["app/kernel/ids.ts:40: the class _Kept is used by modules/rules alone, but "
+                                      "kernel/ holds only what at least 2 users share (parts.kernel.shared)"],
+                 id="one it says is public is, whatever its spelling"),
+])
+def test_under_a_language_with_no_private_prefix_the_reader_alone_says_which_names_are_public(cls, expected):
+    braced = profile(shared={"kernel": 2}, language=BRACE)
+    kernel = source("kernel/ids.ts", classes=(cls,), language=BRACE)
+    user = source("modules/rules/domain/values.ts", imp(1, "app.kernel.ids", cls.name, language=BRACE),
+                  language=BRACE)
+    assert problems(kernel, user, checked=braced) == expected

@@ -221,3 +221,23 @@ def test_private_imports_is_refused_under_a_language_whose_reader_does_not_say_w
     document = layered(language="toy", guards={"private-imports": {}})
     assert problems(document, languages={"toy": unsaid}) == [refusal("guards.private-imports", "public")]
     assert parsed(document, languages=LANGUAGES).approximate == ()
+
+
+UNSAID = replace(PYTHON, name="unsaid", checked=replace(
+    PYTHON.checked, title="Unsaid", supplies=tuple(Supply(fact, EXACT) for fact in FACTS if fact != "public")))
+"""A language whose reader supplies every fact but public: it does not say which names are for other files to use."""
+
+
+def test_a_shared_part_is_refused_under_a_language_whose_reader_does_not_say_which_names_are_public():
+    document = layered(language="unsaid")
+    document["parts"]["service"] |= {"shared": 2}
+    assert problems(document, languages={"unsaid": UNSAID}) == [
+        "layered.yaml: parts.service.shared: its check reads public (whether a name a file defines, or takes by an "
+        "import, is for other files to use, as the language decides it), which the language unsaid does not supply: "
+        "drop parts.service.shared, or check the app with a language whose reader supplies public"]
+    said = replace(UNSAID, checked=replace(UNSAID.checked, supplies=PYTHON.checked.supplies))
+    assert parsed(document, languages={"unsaid": said}).approximate == ()
+    assert sorted(key.address for key in KEYS if "public" in key.needs) == [
+        "guards.dead-code.known", "guards.dead-code.tests_only", "guards.no-twins", "guards.no-twins.min_renamed",
+        "guards.no-twins.translated", "guards.private-imports", "parts.<part>.holds", "parts.<part>.names",
+        "parts.<part>.shared"]

@@ -1,4 +1,5 @@
-"""The language as a check reads it: which names are public or special, by the tokens its data file gives."""
+"""The language as a check reads it: which names are special, by the pattern its data file gives. Whether a name is
+public is no question of the language's: its reader says it, as the fact public."""
 import itertools
 from importlib import resources
 
@@ -14,18 +15,18 @@ TOKENS = CheckedLanguage(private="_", special=PYTHON_SPECIAL)
 PERCENT = CheckedLanguage(special=r"%\w+")
 
 
-@pytest.mark.parametrize("name, public, special", [
-    pytest.param("load", True, False, id="a plain name is public"),
-    pytest.param("_load", False, False, id="a name that starts as a private one does is not public"),
-    pytest.param("__init__", False, True, id="a special name is special, and starts as a private one does"),
-    pytest.param("__load", False, False, id="one that only starts as a special name does is not special"),
-    pytest.param("load__", True, False, id="one that only ends as a special name does is not special"),
-    pytest.param("__", False, True, id="the affix alone is special"),
-    pytest.param("___", False, True, id="three underscores are special"),
-    pytest.param("_x", False, False, id="one underscore makes no special name"),
+@pytest.mark.parametrize("name, special", [
+    pytest.param("load", False, id="a plain name is not special"),
+    pytest.param("_load", False, id="a name that starts as a private one does is not special"),
+    pytest.param("__init__", True, id="a special name is special"),
+    pytest.param("__load", False, id="one that only starts as a special name does is not special"),
+    pytest.param("load__", False, id="one that only ends as a special name does is not special"),
+    pytest.param("__", True, id="the affix alone is special"),
+    pytest.param("___", True, id="three underscores are special"),
+    pytest.param("_x", False, id="one underscore makes no special name"),
 ])
-def test_a_name_is_told_by_the_tokens_of_the_language(name, public, special):
-    assert (TOKENS.is_public(name), TOKENS.is_special(name)) == (public, special)
+def test_a_name_is_told_special_by_the_pattern_of_the_language(name, special):
+    assert TOKENS.is_special(name) is special
 
 
 def test_python_s_pattern_tells_every_short_name_as_its_affix_did():
@@ -43,8 +44,9 @@ def test_a_special_name_is_one_the_language_s_pattern_matches_in_full(name, spec
     assert PERCENT.is_special(name) is special
 
 
-def test_a_language_that_gives_no_tokens_has_every_name_public():
-    assert (CheckedLanguage().is_public("_load"), CheckedLanguage().is_special("__init__")) == (True, False)
+def test_a_language_that_gives_no_tokens_has_no_special_name_and_never_says_whether_a_name_is_public():
+    assert CheckedLanguage().is_special("__init__") is False
+    assert not hasattr(CheckedLanguage(), "is_public")
 
 
 def test_a_language_that_says_nothing_has_no_package_pattern_and_no_member():

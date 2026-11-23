@@ -36,7 +36,7 @@ def accepting(listed: Iterable[Violation | Weak], facts: Facts, profile: Profile
     for entry in profile.tests_only_known:
         path, _, name = entry.rpartition(":")
         read = next((r for r in facts.files if not r.in_tests and "/".join(r.file.path) == path), None)
-        line = _declared(read, name, profile) if read is not None else None
+        line = _declared(read, name) if read is not None else None
         if read is None or line is None:
             stale.append(Weak(RULE, read.file.name if read is not None else f"{facts.root}/{path}", 0,
                               f"{path} defines no public class or top-level function {name}, which {KEY} lists "
@@ -56,13 +56,13 @@ def accepting(listed: Iterable[Violation | Weak], facts: Facts, profile: Profile
                       *stale), tuple(known))
 
 
-def _declared(read: Read, name: str, profile: Profile) -> int | None:
-    """The line of the public class, an exception aside, or the top-level function the file defines under name; None
-    when it defines none."""
-    if not profile.language.is_public(name):
-        return None
-    function = next((f.line for f in read.facts.get("function", ()) if f.name == name and "top-level" in f.traits), None)
-    return next((f.line for f in read.facts.get("class", ()) if f.name == name and "exception" not in f.traits), function)
+def _declared(read: Read, name: str) -> int | None:
+    """The line of the class the file defines under name, an exception aside, else of its top-level function, the one
+    found being public, as the language's reader says; None when the file defines neither so."""
+    function = next((f.line for f in read.facts.get("function", ()) if f.name == name and "top-level" in f.traits
+                     and "public" in f.traits), None)
+    return next((f.line for f in read.facts.get("class", ()) if f.name == name and "public" in f.traits
+                 and "exception" not in f.traits), function)
 
 
 def _named(file: SourceFile) -> frozenset[str]:
