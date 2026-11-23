@@ -18,6 +18,15 @@ All notable changes to this project are written here. The format follows
 
 ### Changed
 
+- A language's data file says its standard library as data, or where it is known from: `standard` is `interpreter`
+  (the Python running xarch, as before) or a map of three lists, `{modules: [...], reserved: [...], builtins: [...]}`,
+  the top-level modules of its standard library, its reserved words and its builtins, each module checked with the
+  file's `package` pattern and each other item with its `name` pattern. The reader is handed the standard modules
+  from the language instead of asking the interpreter itself, so the set a profile is checked with and the set an
+  import is marked by are one. Refused: `standard: must be interpreter, or a map of modules, reserved and builtins,
+  each a list of names`, `standard.modules: '<item>' is not a package name the language allows`, and
+  `standard.reserved: '<item>' is not a name the language allows` (`standard.builtins` the same). No finding of a
+  Python app changes.
 - The language's data file says as data what makes a class a port: `interface` is a list of marks, each
   `{base: <outside name>}`, a name among a class's bases (`{base: typing.Protocol}`), or `{keyword: <word>}`, a keyword
   a declaration carries; `nothing` is the list of return annotations that give no value (`nothing: [None]`); `special`
