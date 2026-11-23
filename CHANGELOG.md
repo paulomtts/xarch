@@ -86,6 +86,10 @@ All notable changes to this project are written here. The format follows
 
 ### Changed
 
+- The guard `scenario-coverage`'s `file` writes the case of the use case's name: `{name:snake}`, `{name:kebab}`,
+  `{name:camel}` or `{name:pascal}`, so `{name:kebab}.test.ts` looks for `http-check.test.ts`. The words are split as
+  before (HTTPCheck is http, check). A bare `{name}` is refused with "write {name:snake} for what {name} meant". The
+  bundled profiles write `test_{name:snake}.py`.
 - The description of the fact `function.tables`, shown by `profile explain` and in a refusal of a fact the language
   does not supply, reads "the tables of cases of a test function".
 - Without `based_on`, a custom profile is compared with the bundled profile of highest match (the first by name on a
