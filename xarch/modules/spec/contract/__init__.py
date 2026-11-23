@@ -363,9 +363,11 @@ ViewResult = ProfileViewed | NoProfileChosen | ProfileRefused
 
 @dataclass(frozen=True)
 class CheckProfile:
-    """Validate a profile without an app: target as for ViewProfile."""
+    """Validate a profile without an app: target as for ViewProfile; against, when given, the profile it is compared
+    with for this run, a bundled name or a path."""
     app: Path
     target: str | None = None
+    against: str | None = None
 
 
 LOAD, EXAMPLES = "load", "examples"

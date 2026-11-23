@@ -66,3 +66,30 @@ def test_a_bundled_profile_is_valid_and_is_compared_with_nothing():
     spec, _ = spec_controller()
     checked = spec.check_profile(CheckProfile(APP, "base"))
     assert isinstance(checked, ProfileChecked) and checked.ok and checked.origin.bundled
+
+
+THEIRS = {**BASE, "name": "theirs"}
+"""A copy of base at a path, for --against to name."""
+
+
+def test_with_against_the_profile_checked_is_compared_with_the_one_it_names():
+    spec, _ = spec_controller(files={"mine.yaml": MINE, "theirs.yaml": THEIRS})
+    checked = spec.check_profile(CheckProfile(APP, "mine.yaml", "theirs.yaml"))
+    assert isinstance(checked, ProfileChecked) and checked.origin is not None
+    assert (checked.problems, checked.origin.compared, checked.origin.chosen_by, checked.origin.based_on) == (
+        (), "theirs.yaml", "against", "base")
+
+
+def test_against_a_profile_with_several_problems_is_refused_with_all_of_them_on_one_line():
+    broken = {**MINE, "colour": 1, "parts": {"core": {"path": "core"}}}
+    spec, _ = spec_controller(files={"mine.yaml": MINE, "broken.yaml": broken})
+    assert spec.check_profile(CheckProfile(APP, "mine.yaml", "broken.yaml")) == ProfileRefused(
+        "--against does not load: broken.yaml: unknown key 'colour': use based_on, checks, docs, evals, excluded, "
+        "fakes, files, guards, hints, language, layers, name, never, parts, reserved, review, testing, tiers; "
+        "broken.yaml: parts.core: missing `role`")
+
+
+def test_against_is_not_read_when_the_profile_checked_does_not_load():
+    spec, _ = spec_controller(files={})
+    assert spec.check_profile(CheckProfile(APP, "gone.yaml", "nosuch")) == ProfileChecked(
+        "gone.yaml", (Problem("load", "gone.yaml: cannot read the file: no such file"),), 0, None)

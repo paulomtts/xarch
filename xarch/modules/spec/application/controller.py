@@ -144,10 +144,11 @@ class SpecController:
             return ProfileRefused(e.reason)
 
     def check_profile(self, cmd: CheckProfile) -> CheckResult:
-        """Validates a profile: its problems, all at once, with how it differs from the bundled one it is based on; one
-        that cannot be chosen is refused with why."""
+        """Validates a profile: its problems, all at once, with how it differs from the profile it is compared with,
+        the one cmd.against names when it is given; one that cannot be chosen, or an against that does not load, is
+        refused with why."""
         try:
-            return self._review.check(cmd.app, cmd.target)
+            return self._review.check(cmd.app, cmd.target, cmd.against)
         except NoProfile as e:
             return NoProfileChosen(e.known)
         except DomainError as e:

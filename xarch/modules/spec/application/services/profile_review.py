@@ -19,10 +19,11 @@ class ProfileReviewService:
                  files: ArchitectureFiles):
         self._selection, self._architectures, self._files = selection, architectures, files
 
-    def check(self, app: Path, target: str | None) -> ProfileChecked:
+    def check(self, app: Path, target: str | None, against: str | None = None) -> ProfileChecked:
         """What validating the profile found: every problem the loader found when it does not load, else what its
-        examples import that their part may not, with how many files it points to and where it comes from; raises
-        NoProfile or UnknownProfile."""
+        examples import that their part may not, with how many files it points to and where it comes from, compared
+        with the profile against names when it is given, which is read only once the profile loads; raises NoProfile,
+        UnknownProfile or AgainstUnloaded."""
         location = self._selection.location(app, target)
         try:
             self._architectures.load(location)
@@ -30,7 +31,7 @@ class ProfileReviewService:
             return ProfileChecked(location, tuple(Problem(LOAD, text) for text in e.problems), 0, None)
         files = self._architectures.pointed(location)
         problems = tuple(Problem(EXAMPLES, text) for text in self._architectures.check_examples(location))
-        return ProfileChecked(location, problems, len(files), self._architectures.origin(location))
+        return ProfileChecked(location, problems, len(files), self._architectures.origin(location, against))
 
     def view(self, app: Path, target: str | None) -> ProfileViewed:
         """The profile's folder tree and import table; raises NoProfile, UnknownProfile or InvalidArchitecture."""
