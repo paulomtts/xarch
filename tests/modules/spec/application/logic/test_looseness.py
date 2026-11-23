@@ -8,8 +8,8 @@ import pytest
 
 from tests.modules.spec.application.origins import BASE, PARTS, TESTING, TIER, part
 from tests.modules.spec.profiles import covered, layered, parsed
-from xarch.modules.spec.application.logic.looseness import LOOSER, origin_of
-from xarch.modules.spec.domain.published import Loosened
+from xarch.modules.spec.application.logic.looseness import LOOSER, LOW, origin_of
+from xarch.modules.spec.domain.published import Loosened, Origin
 from xarch.modules.spec.domain.values import Architecture
 
 
@@ -43,14 +43,6 @@ def test_a_target_below_one_the_bundled_profile_allows_is_not_looser(target):
     custom = layered()
     custom["parts"]["service"]["imports"] = {"may": ["store", "shared", target]}
     assert loosened(parsed(custom), parsed(layered())) == ()
-
-
-def test_the_bundled_profile_a_profile_says_it_is_based_on_wins_over_the_one_sharing_most_parts():
-    full = parsed(layered())
-    bundled = {"alpha": full, "beta": replace(full, parts={"api": full.parts["api"]})}
-    mine = replace(full, parts={name: full.parts[name] for name in ("api", "store")})
-    assert origin_of("mine.yaml", mine, False, bundled).compared == "alpha"
-    assert origin_of("mine.yaml", replace(mine, based_on="beta"), False, bundled).compared == "beta"
 
 
 def test_a_profile_that_checks_no_outside_package_is_looser_than_one_that_does():
@@ -222,3 +214,131 @@ def test_a_mark_dropped_while_its_target_stays_allowed_is_looser(base, custom, f
 def test_a_tier_s_looser_keys_are_those_of_its_group_and_the_old_words_are_gone():
     assert LOOSER.index("imports.types_only") < LOOSER.index("imports.also") < LOOSER.index("uses.apply_never")
     assert not {"types_only", "may_also_import"} & set(LOOSER)
+
+
+def bare(**paths: str) -> Architecture:
+    """A profile of the parts given, each at its path, checking no outside package: one item per part and no more."""
+    return replace(parsed({"name": "bare", "parts": {name: {"path": path, "role": "code"} for name, path in paths.items()}}),
+                   imports_libraries=None)
+
+
+def compared(custom: Architecture, base: Architecture) -> Origin:
+    """The origin of custom, based on base."""
+    return origin_of("mine.yaml", replace(custom, based_on="base"), False, {"base": base})
+
+
+def test_a_copy_of_a_profile_matches_it_at_100_percent():
+    origin = origin_of("mine.yaml", parsed(layered()), False, {"base": parsed(layered())})
+    assert (origin.compared, origin.chosen_by, origin.match, origin.low) == ("base", "closest", 1.0, False)
+    assert origin.only_here == origin.only_there == origin.elsewhere == ()
+    assert origin.higher is None
+
+
+def test_a_key_one_side_drops_on_a_paired_part_is_comparable_and_listed_looser():
+    base = layered()
+    base["parts"]["api"]["litmus"] = "Does it answer a request?"
+    origin = compared(parsed(layered()), parsed(base))
+    assert origin.match == 1.0
+    assert [item.key for item in origin.looser] == ["litmus"]
+
+
+def test_the_items_of_an_unpaired_part_are_not_comparable():
+    custom = layered()
+    custom["parts"]["jobs"] = {"path": "jobs", "role": "batch work", "litmus": "Does it run on a schedule?",
+                               "imports": {"may": ["shared"]}}
+    origin = compared(parsed(custom), parsed(layered()))
+    assert origin.counts[:2] == (("parts", 4, 5), ("part_keys", 7, 10))
+    assert (origin.only_here, origin.only_there) == (("part jobs",), ())
+    assert origin.match == round(12 / 16, 2)
+
+
+def test_guards_and_profile_keys_are_always_comparable():
+    origin = compared(parsed(layered(guards={"no-comments": {}, "closed-tree": {}}, reserved={"ast": "the reader's"})),
+                      parsed(layered()))
+    assert origin.counts[3:] == (("guards", 2, 2), ("profile", 2, 2))
+    assert origin.match == 1.0
+
+
+def test_each_setting_of_a_held_kind_is_an_item_of_its_own():
+    custom = layered()
+    custom["parts"]["service"]["holds"] = {"classes": {"names": ["*Service"], "immutable": True, "built_by": ["api"]}}
+    assert compared(parsed(custom), parsed(layered())).counts[1] == ("part_keys", 11, 11)
+
+
+def test_a_tier_folder_written_empty_is_an_item_and_no_folder_is_none():
+    architecture = parsed(covered())
+    unit = architecture.tiers[0]
+    empty = replace(architecture, tiers=(replace(unit, imports_may=()), *architecture.tiers[1:]))
+    assert unit.imports_may is None
+    assert compared(empty, architecture).counts[2] == ("tiers", 6, 6)
+    assert compared(architecture, architecture).counts[2] == ("tiers", 5, 5)
+
+
+OWN = {"read": "call", "may_not": {"path": ["builtins.print"]}, "message": "{where} prints", "fix": "log it",
+       "examples": {"flagged": {"src/billing/api/x.py": "print(1)\n"}, "clean": {"src/billing/api/y.py": "pass\n"}}}
+"""A check of the profile's own: no part of it prints."""
+
+
+def test_a_check_of_the_profile_s_own_is_comparable_only_with_the_same_id():
+    base = parsed(layered(checks={"no-print": OWN}))
+    assert compared(parsed(layered(checks={"no-print": OWN})), base).counts[4] == ("profile", 2, 2)
+    assert compared(parsed(layered(checks={"prints": OWN})), base).counts[4] == ("profile", 1, 3)
+
+
+def test_a_bundled_profile_no_part_pairs_with_is_no_candidate():
+    origin = origin_of("mine.yaml", parsed(layered()), False, {"other": bare(web="web")})
+    assert (origin.compared, origin.chosen_by, origin.match, origin.counts) == (None, None, None, ())
+
+
+def test_the_bundled_profile_of_highest_match_is_compared_the_lowest_name_on_a_tie():
+    mine = bare(a="a", b="b", c="c")
+    bundled = {"far": bare(a="a", x="x", y="y"), "near": bare(a="a", b="b", c="c", d="d"), "mid": bare(a="a", b="b")}
+    origin = origin_of("mine.yaml", mine, False, bundled)
+    assert (origin.compared, origin.chosen_by, origin.match) == ("near", "closest", 0.75)
+    tie = {"zeta": bare(a="a", b="b", c="c", d="d"), "beta": bare(a="a", b="b", c="c", e="e")}
+    assert origin_of("mine.yaml", mine, False, tie).compared == "beta"
+
+
+def test_the_bundled_profile_a_profile_says_it_is_based_on_wins_over_the_one_of_highest_match():
+    mine = bare(a="a", b="b", c="c")
+    bundled = {"alpha": bare(a="a", b="b", c="c"), "beta": bare(a="a")}
+    origin = origin_of("mine.yaml", replace(mine, based_on="beta"), False, bundled)
+    assert (origin.compared, origin.chosen_by, origin.match, origin.higher) == ("beta", "based_on", 0.33, ("alpha", 1.0))
+    assert origin_of("mine.yaml", mine, False, bundled).higher is None
+
+
+def test_based_on_a_bundled_profile_sharing_no_part_is_compared_low_with_no_part_in_common():
+    other = replace(bare(web="web"), reserved={"ast": "the reader's"})
+    origin = origin_of("mine.yaml", replace(parsed(layered()), based_on="other"), False, {"other": other})
+    assert (origin.compared, origin.chosen_by, origin.low) == ("other", "based_on", True)
+    assert origin.only_here == ("part api", "part service", "part shared", "part store")
+    assert origin.only_there == ("part web",)
+    assert origin.looser == (Loosened("reserved", "", "ast", "ast is no longer reserved (reserved.ast)"),)
+
+
+def test_a_match_of_exactly_75_percent_is_not_low_and_just_below_is():
+    base = bare(a="a", b="b", c="c", d="d")
+    exact = compared(bare(a="a", b="b", c="c"), base)
+    assert (LOW, exact.match, exact.low) == (0.75, 0.75, False)
+    litmus = replace(base, parts={**base.parts, "d": replace(base.parts["d"], litmus="Is it d?")})
+    below = compared(bare(a="a", b="b", c="c"), litmus)
+    assert (below.match, below.low) == (0.6, True)
+
+
+def test_a_match_that_rounds_to_75_percent_from_below_is_still_low():
+    origin = compared(bare(**{f"p{n}": f"p{n}" for n in range(50)}), bare(**{f"p{n}": f"p{n}" for n in range(67)}))
+    assert (origin.match, origin.low) == (0.75, True)
+
+
+def test_the_counts_are_by_kind_in_order():
+    counts = compared(parsed(covered()), parsed(layered())).counts
+    assert [kind for kind, _, _ in counts] == ["parts", "part_keys", "tiers", "guards", "profile"]
+    assert counts[2] == ("tiers", 0, 5)
+
+
+def test_a_pair_by_name_at_another_path_is_named_elsewhere():
+    custom = layered()
+    custom["parts"]["store"]["path"] = "src/<module>/db"
+    origin = compared(parsed(custom), parsed(layered()))
+    assert origin.elsewhere == ("store: src/*/store there",)
+    assert origin.match == 1.0

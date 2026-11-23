@@ -18,11 +18,15 @@ WITH_EXAMPLE_FILES = {"ex/core/rule.py": "from app.api import handler\n", "ex/ap
 WITH_EXAMPLE_READS = {"from app.api import handler\n": (Import(1, ("app", "api"), ("handler",)),)}
 OFF = ("package-only", "scenario-coverage", "no-comments", "stand-ins", "closed-tree", "no-duplicates", "no-twins",
        "dead-code", "pass-through", "no-callbacks", "private-imports")
+SELF = (("parts", 2, 2), ("part_keys", 3, 3), ("tiers", 0, 0), ("guards", 0, 0), ("profile", 2, 2))
+"""The counts of base against itself: everything check reads under it has a counterpart."""
+COPY = Origin("mine.yaml", False, "base", OFF, OFF, (), "based_on", 1.0, False, SELF)
+"""The origin of a copy of base that says it is based on it."""
 
 
 @pytest.mark.parametrize("given, when, then", [
     pytest.param(dict(files={"mine.yaml": MINE}), CheckProfile(APP, "mine.yaml"),
-                 ProfileChecked("mine.yaml", (), 2, Origin("mine.yaml", False, "base", OFF, OFF, ())),
+                 ProfileChecked("mine.yaml", (), 2, COPY),
                  id="a profile that loads and keeps to its rules is valid, with how many files it points to"),
     pytest.param(dict(files={"mine.yaml": {**MINE, "colour": 1, "parts": {"core": {"path": "core"}}}}),
                  CheckProfile(APP, "mine.yaml"),
@@ -35,8 +39,7 @@ OFF = ("package-only", "scenario-coverage", "no-comments", "stand-ins", "closed-
                  CheckProfile(APP, "mine.yaml"),
                  ProfileChecked("mine.yaml", (
                      Problem("examples", "example (core/rule.py): imports app.api which core may not import "
-                                         "(parts.core.imports.may)"),), 3,
-                                Origin("mine.yaml", False, "base", OFF, OFF, ())),
+                                         "(parts.core.imports.may)"),), 3, COPY),
                  id="an example that imports what its part may not is a problem"),
     pytest.param(dict(files={}), CheckProfile(APP, "gone.yaml"),
                  ProfileChecked("gone.yaml", (Problem("load", "gone.yaml: cannot read the file: no such file"),), 0, None),
