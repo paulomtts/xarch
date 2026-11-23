@@ -156,7 +156,9 @@ encoding declaration, the keywords of the statements that branch and of the expr
 (`branching_expressions`), and what makes a class an immutable record (`immutable`: marks, each `{base}`,
 `{decorator, keywords}`, `{fields}` or `{type}`, such as `{decorator: dataclasses.dataclass, keywords: {frozen:
 "True"}}`). Whether a class is a record, a type that only holds data, the reader says: the fact `class.record` a
-reader supplies, which `holds` and the filter `record` read.
+reader supplies, which `holds` and the filter `record` read. Whether a function is defined at the top level of its
+file, in no class, is the fact `function.top_level` a reader supplies, which `holds`, `guards.dead-code.tests_only`
+and the filter `top-level` read.
 The rest of what a check knows of the language is one adapter, the reader that turns source into facts
 (`modules/rules/adapters/fs_source_tree.py`), and the platform; spec reads the docs' examples through that reader too.
 `tests/architecture/test_language_seam.py` fails when any other file of xarch names the language or writes one of

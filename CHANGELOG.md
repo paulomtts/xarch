@@ -7,6 +7,10 @@ All notable changes to this project are written here. The format follows
 
 ### Added
 
+- The fact `function.top_level`, whether a function is defined at the top level of its file, in no class, which
+  `parts.<part>.holds`, `guards.dead-code.tests_only` and a check of your own or an eval whose filter reads
+  `top-level` (negated or not) need; a language that does not supply it is refused them with the needs text. Python
+  supplies it exactly.
 - The fact `class.record`, whether a class is a record, as the language writes one, which `parts.<part>.holds` and a
   check of your own whose filter is `record` need, in place of `class.methods` and `function.returns`; a language
   that does not supply it is refused them with the needs text. The reader says it of each class (`Class.record`),
@@ -39,6 +43,10 @@ All notable changes to this project are written here. The format follows
 
 ### Changed
 
+- An eval of your own is now held to the facts it reads, as a check of your own is: one that reads a fact the
+  language's reader does not supply is refused at its address, `evals.<name>: needs <fact> (<what it is>), which the
+  reader of <language> does not supply: read another kind of fact, or drop the eval`, in `xarch profile check` and
+  when its facts are kept, and its examples are not read.
 - A language's data file writes what makes a class an immutable record as marks, each a map of one of four forms,
   as interface marks are: `{base: <outside name>}`, `{decorator: <outside name>, keywords: {<name>: <value>}}`
   (keywords left out: the decorator however it is written), `{fields: <word>}` or `{type: <outside name>}`. Python
