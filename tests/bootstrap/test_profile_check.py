@@ -64,8 +64,6 @@ def test_xarch_s_own_profile_is_compared_with_cli_the_profile_it_is_based_on_and
         "higher": None}
 
 
-
-
 def test_an_unknown_key_fails_with_the_keys_that_exist(tmp_path):
     edit(tmp_path, lambda d: d.update(colour=1))
     result = runner.invoke(app, ["profile", "check", COPY])
