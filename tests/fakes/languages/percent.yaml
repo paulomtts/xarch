@@ -9,6 +9,7 @@ standard: interpreter
 name: '%?[A-Za-z][A-Za-z0-9]*'
 package: '%?[A-Za-z][A-Za-z0-9]*'
 member: "."
+special: '%\w+'
 interface: ["%Library.RegisteredObject"]
 dynamic: ["%SYSTEM.OBJ.Load"]
 immutable: ["%SerialObject"]

@@ -31,7 +31,7 @@ name: '(?!\d)\w+'
 package: '(?!\d)\w+'
 member: "."
 private: _
-special: __
+special: '(?=__)\w*(?<=__)'
 call: __call__
 nothing: None
 comment: "#"

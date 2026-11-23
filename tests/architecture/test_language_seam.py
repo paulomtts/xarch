@@ -147,24 +147,26 @@ def language_words(language: Path = LANGUAGE) -> tuple[re.Pattern[str], set[str]
                      *WORDS_BESIDES, *NAMES_BESIDES}
 
 
-TOKEN_KEYS = ("private", "special", "call", "nothing", "comment", "shebang")
-"""The keys of the data file whose value is a token of the language's code."""
+TOKEN_KEYS = ("private", "call", "nothing", "comment", "shebang")
+"""The keys of the data file whose value is a token of the language's code; `special` is the pattern of a special name,
+which a literal may not match in full."""
 
 
-def language_tokens(language: Path = LANGUAGE) -> tuple[set[str], re.Pattern[str]]:
-    """The tokens a literal may not be, and the pattern of the directive words and of the branching keywords quoted as
-    code."""
+def language_tokens(language: Path = LANGUAGE) -> tuple[set[str], re.Pattern[str], re.Pattern[str]]:
+    """The tokens a literal may not be, the pattern of a special name a literal may not match in full, and the pattern
+    of the directive words and of the branching keywords quoted as code."""
     data = yaml.safe_load(language.read_text(encoding="utf-8"))
     tokens = {data[key] for key in TOKEN_KEYS}
+    special = re.compile(data.get("special") or "(?!)")
     directives = "|".join(sorted((re.escape(word) for word in data["directives"]), key=len, reverse=True))
     branching = "|".join(re.escape(word) for word in data["branching"])
-    return tokens, re.compile(rf"(?<![A-Za-z0-9_])(?:{directives})(?![A-Za-z0-9_])|`(?:{branching})`")
+    return tokens, special, re.compile(rf"(?<![A-Za-z0-9_])(?:{directives})(?![A-Za-z0-9_])|`(?:{branching})`")
 
 
 def token_leaks(root: Path, language: Path = LANGUAGE) -> list[tuple[str, int, str]]:
     """(file below root, line, token) of every literal that is a token of the language, and every directive word or
     branching keyword quoted as code, outside the seam."""
-    tokens, words = language_tokens(language)
+    tokens, special, words = language_tokens(language)
     found: list[tuple[str, int, str]] = []
     for path in sorted(root.rglob("*.py")):
         relative = path.relative_to(root).as_posix()
@@ -172,7 +174,8 @@ def token_leaks(root: Path, language: Path = LANGUAGE) -> list[tuple[str, int, s
             continue
         for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
             if isinstance(node, ast.Constant) and isinstance(node.value, str):
-                found += [(relative, node.lineno, node.value)] if node.value in tokens else []
+                found += [(relative, node.lineno, node.value)] if node.value in tokens or special.fullmatch(node.value) \
+                    else []
                 found += [(relative, node.lineno, match[0]) for match in words.finditer(node.value)]
     return found
 
@@ -190,9 +193,9 @@ def ticked_pattern(language: Path = LANGUAGE, testing: Path = TESTING) -> re.Pat
              *(name for fixture in mocks["fixtures"].values() for key in ("calls", "autospec")
                for name in fixture.get(key, ()))}
     tokens = "|".join(re.escape(data[key]) for key in TOKEN_KEYS)
-    special, importing = re.escape(data["special"]), re.escape(data["importing"].split("{")[0].strip())
+    special, importing = data.get("special") or "(?!)", re.escape(data["importing"].split("{")[0].strip())
     words = "|".join(re.escape(name) for name in sorted({data["nothing"], *names}, key=len, reverse=True))
-    return re.compile(rf"^(?:{tokens})$|(?<!\w)(?:{words})(?!\w)|{special}\w+{special}|^{re.escape(data['private'])}\w"
+    return re.compile(rf"^(?:{tokens})$|(?<!\w)(?:{words})(?!\w)|(?<!\w)(?:{special})(?!\w)|^{re.escape(data['private'])}\w"
                       rf"|^{re.escape(data['comment'])}|^{importing}(?= )")
 
 
@@ -295,6 +298,8 @@ def test_every_exemption_is_one_some_language_still_needs():
 @pytest.mark.parametrize("text, found", [
     pytest.param('PRIVATE = "_"\nx = name.startswith(("_", "."))\n', ["_", "_"], id="a literal that is the private prefix"),
     pytest.param('x = name.startswith("__") and name.endswith("__")\n', ["__", "__"], id="the affix of a special name"),
+    pytest.param('A = "__init__"\nB = "x__"\nC = "__x"\n', ["__init__"],
+                 id="a literal the pattern of a special name matches in full"),
     pytest.param('A = "__call__"\nB = "None"\nC = "#"\nD = "#!"\n', ["__call__", "None", "#", "#!"],
                  id="the call method, no value, the comment marker and the shebang"),
     pytest.param('def f():\n    """Allowed: `# noqa` and `# type: ignore`; no `if` or `for`."""\n',
@@ -424,6 +429,8 @@ def test_no_docstring_of_the_engine_writes_the_code_of_the_language_of_the_data_
                  id="the annotation of no value quoted as code"),
     pytest.param('"""Its methods, dunder ones aside but `__call__`; a name not starting with `_`."""\n', ["__call__", "_"],
                  id="a special name, and the private prefix alone"),
+    pytest.param('"""Its `__init__`, a `a__b` and `__`."""\n', ["__init__", "__"],
+                 id="a special name by the pattern, as a whole word"),
     pytest.param('"""A spec, `from <module> import X`, or `mocker.Mock()`."""\n', ["from", "mocker", "Mock"],
                  id="an import as the language writes it and the names of the preset's mocks"),
     pytest.param('"""The key `parts.<part>.shared`, a `{target_part}`, `may_import`, and None in prose."""\n', [],

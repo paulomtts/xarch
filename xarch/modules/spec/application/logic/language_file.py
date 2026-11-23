@@ -21,7 +21,7 @@ and, all optional, the tokens of its code the checks and the docs need (empty: t
                    names after the first joined by `.`. Left out together, any text is a name and an outside name is
                    its whole text
     private        what a name private to its file or folder starts with
-    special        what a name the language reserves for itself starts and ends with
+    special        a regular expression: a name the language reserves for itself, matched against the whole name
     call           the special method that calling an instance runs
     nothing        the return annotation of a function that gives no value
     comment        the marker of a line comment
@@ -100,7 +100,8 @@ def language_of(name: str, document: Any) -> Language:
     standard = _text(document, "standard", "must be a name", problems, _WORD)
     cache = _text(document, "cache", "must be a folder name", problems, _FOLDER)
     tokens = {key: _text(document, key, "must be a non-empty string", problems)
-              for key in ("private", "special", "call", "nothing", "comment", "shebang")}
+              for key in ("private", "call", "nothing", "comment", "shebang")}
+    special = _pattern(document, "special", problems)
     encoding = _pattern(document, "encoding", problems)
     directives = _words(document, "directives", problems)
     branching = _words(document, "branching", problems)
@@ -110,9 +111,12 @@ def language_of(name: str, document: Any) -> Language:
     immutable = _marks(document, problems, joins, namespace)
     if problems:
         raise InvalidArchitecture(source, problems)
-    checked = CheckedLanguage(title, extension, package_file, interface, dynamic, tokens["private"], tokens["special"],
-                              tokens["call"], tokens["nothing"], tokens["comment"], directives, tokens["shebang"],
-                              encoding, branching, supplies, importing, immutable, expressions, names, package, member)
+    checked = CheckedLanguage(title=title, extension=extension, package_file=package_file, interface=interface,
+                              dynamic=dynamic, private=tokens["private"], special=special, call=tokens["call"],
+                              nothing=tokens["nothing"], comment=tokens["comment"], directives=directives,
+                              shebang=tokens["shebang"], encoding=encoding, branching=branching, supplies=supplies,
+                              importing=importing, immutable=immutable, branching_expressions=expressions,
+                              names=names, package=package, member=member)
     return Language(name, checked, namespace, standard, cache, names)
 
 

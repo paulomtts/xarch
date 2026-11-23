@@ -1,4 +1,5 @@
 """The data file of a language: what is true of the language as a whole, read from a preset and validated like a profile."""
+import re
 from pathlib import Path
 
 import pytest
@@ -64,14 +65,14 @@ def test_a_document_that_is_no_mapping_is_refused():
 
 
 def test_the_tokens_of_the_code_are_read_when_the_document_gives_them():
-    tokens = {"name": "[A-Za-z]+", "private": "_", "special": "__", "call": "__call__", "nothing": "None",
+    tokens = {"name": "[A-Za-z]+", "private": "_", "special": r"(?=__)\w*(?<=__)", "call": "__call__", "nothing": "None",
               "comment": "//", "directives": ["lint: off"], "shebang": "#!", "encoding": "utf-8",
               "branching": ["if", "case"], "branching_expressions": ["?"]}
     language = language_of("pascal", DOCUMENT | tokens)
     checked = language.checked
     assert (language.names, checked.private, checked.special, checked.call, checked.nothing, checked.comment,
             checked.directives, checked.shebang, checked.encoding, checked.branching, checked.branching_expressions) == (
-        "[A-Za-z]+", "_", "__", "__call__", "None", "//", ("lint: off",), "#!", "utf-8", ("if", "case"), ("?",))
+        "[A-Za-z]+", "_", r"(?=__)\w*(?<=__)", "__call__", "None", "//", ("lint: off",), "#!", "utf-8", ("if", "case"), ("?",))
 
 
 @pytest.mark.parametrize("given, problem", [
@@ -79,6 +80,8 @@ def test_the_tokens_of_the_code_are_read_when_the_document_gives_them():
     pytest.param({"directives": "noqa"}, "directives: must be a list of non-empty strings", id="directives not a list"),
     pytest.param({"branching": ["if", ""]}, "branching: must be a list of non-empty strings", id="an empty keyword"),
     pytest.param({"comment": ""}, "comment: must be a non-empty string", id="an empty comment marker"),
+    pytest.param({"special": 3}, "special: must be a regular expression", id="a special name that is no text"),
+    pytest.param({"special": ""}, "special: must be a regular expression", id="an empty special name"),
     pytest.param({"immutable": "pkg.Record"}, "immutable: must be a list of outside names",
                  id="marks of an immutable record not a list"),
     pytest.param({"immutable": ["pkg.record(frozen)"]}, "immutable: 'pkg.record(frozen)' is not an outside name",
@@ -101,6 +104,13 @@ def test_a_token_that_is_not_what_its_key_takes_is_a_problem(given, problem):
     assert [p.removeprefix("presets/language/odd.yaml: ").split(":")[0] for p in caught.value.problems] == [
         problem.split(":")[0]]
     assert caught.value.problems[0].removeprefix("presets/language/odd.yaml: ").startswith(problem)
+
+def test_a_special_name_that_is_no_regular_expression_says_why():
+    with pytest.raises(re.error) as error:
+        re.compile("(")
+    with pytest.raises(InvalidArchitecture) as caught:
+        language_of("odd", DOCUMENT | {"special": "("})
+    assert caught.value.problems == (f"presets/language/odd.yaml: special: must be a regular expression: {error.value}",)
 
 
 def test_what_makes_a_class_an_immutable_record_is_read_as_an_outside_name_and_the_keywords_a_decorator_is_called_with():

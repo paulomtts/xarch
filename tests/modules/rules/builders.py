@@ -27,14 +27,16 @@ from xarch.profile_values.tiers import CheckedTier
 
 PYTHON_FILE = yaml.safe_load(resources.files("xarch").joinpath("architectures", "presets", "language", "python.yaml")
                              .read_text(encoding="utf-8"))
-PYTHON = CheckedLanguage("Python", ".py", "__init__.py", (("typing", "Protocol"), ("typing_extensions", "Protocol")),
-                      (("importlib", "import_module"), ("importlib", "__import__"), ("builtins", "__import__")),
-                      "_", "__", "__call__", "None", "#", ("type: ignore", "noqa", "pragma:"), "#!",
-                      r"coding[:=][ \t]*[-\w.]+", ("if", "match", "try", "for", "while"),
-                      immutable=(RecordMark(("typing", "NamedTuple")),
-                                 RecordMark(("dataclasses", "dataclass"), (("frozen", "True"),))),
-                      branching_expressions=("if",), names=PYTHON_FILE["name"], package=PYTHON_FILE["package"],
-                      member=PYTHON_FILE["member"])
+PYTHON = CheckedLanguage(title="Python", extension=".py", package_file="__init__.py",
+                         interface=(("typing", "Protocol"), ("typing_extensions", "Protocol")),
+                         dynamic=(("importlib", "import_module"), ("importlib", "__import__"), ("builtins", "__import__")),
+                         private="_", special=PYTHON_FILE["special"], call="__call__", nothing="None", comment="#",
+                         directives=("type: ignore", "noqa", "pragma:"), shebang="#!",
+                         encoding=r"coding[:=][ \t]*[-\w.]+", branching=("if", "match", "try", "for", "while"),
+                         immutable=(RecordMark(("typing", "NamedTuple")),
+                                    RecordMark(("dataclasses", "dataclass"), (("frozen", "True"),))),
+                         branching_expressions=("if",), names=PYTHON_FILE["name"], package=PYTHON_FILE["package"],
+                         member=PYTHON_FILE["member"])
 """Python as its data file says it, for the checks that read the tokens of its code; the patterns of a name and of a
 package, and the member that joins them, read from it."""
 BRACE_FILE = yaml.safe_load((Path(__file__).resolve().parents[2] / "fakes" / "languages" / "brace.yaml")
