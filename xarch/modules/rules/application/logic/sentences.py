@@ -160,11 +160,11 @@ def _tier_fix(found: Found, profile: Profile) -> str:
 
 
 def _caller_fix(found: Found, profile: Profile) -> str:
-    """Use the part as a type only and leave the call to a part that may make it: one that may import it and does
-    not list it as a type only, named from the profile."""
+    """Use the part as a type only and leave the call to a part that may make it: one whose `imports.may` reaches it
+    by an entry with no mark, named from the profile."""
     src, dst = found.rule.scope.named_part, found.fact.at.part if found.fact.at is not None else None
     owners = [name for name, targets in profile.rules.items() if name not in (src, dst)
-              and any(t.part == dst for t in targets) and dst not in profile.types_only.get(name, ())]
+              and any(t.part == dst and t not in profile.types_only.get(name, ()) for t in targets)]
     shown = [f"{name}/" for name in owners[:OWNERS]]
     if not shown:
         return f"use {dst}/ here only as a type, and leave the call to code outside {src}/"

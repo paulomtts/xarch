@@ -17,7 +17,7 @@ ON = replace(PROFILE, private_imports=True, closed_tree=True, dead_code=True, un
              built_by={"services": ("bootstrap",)}, names={"services": {"classes": ("*Service",)}},
              no_callbacks=("domain",), holds={"domain": ("classes",), "logic": ("functions", "records", "exceptions")},
              must_import={"adapters": (Target("platform"),)},
-             pass_through=("services",), types_only={"services": ("contract",)},
+             pass_through=("services",), types_only={"services": (Target("contract"),)},
              tiers=tuple(replace(t, must_import=("domain",)) if t.name == "unit" else t for t in PROFILE.tiers))
 OFF = replace(PROFILE, libraries=None, uses_never={}, tiers=(), package_only=(), no_comments=False, dead_code=False)
 
@@ -49,7 +49,7 @@ def shape(rule: Rule) -> str:
     pytest.param("types-only tiers", ["types-only: tests/*/rendering read call, function-reference may_not part"],
                  id="types-only tiers"),
     pytest.param("package-only", ["package-only: all/* read import-into-app may_not part"], id="package-only"),
-    pytest.param("types-only parts", ["types-only: app/services read call, function-reference may_not part"],
+    pytest.param("types-only parts", ["types-only: app/services read call, function-reference may_not place"],
                  id="types-only parts"),
     pytest.param("no-callbacks", ["no-callbacks: app/domain read callback may_not exist"], id="no-callbacks"),
     pytest.param("names", ["names: app/services read class may_only name"], id="names"),

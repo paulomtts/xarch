@@ -62,8 +62,9 @@ class Profile:
     holds says, by part, the kinds its files may define at the top level
     (of "classes", "functions", "records" and "exceptions", in that order; a part it does not name may define every
     kind); immutable, by part, the kinds ("classes", "records") every class of which held to the kind, but an exception,
-    is an immutable record; types_only, by part, the parts it may use as types only; no_callbacks the parts the guard
-    no-callbacks lists, whose code calls none of its own parameters annotated as callables; names, by part and then by
+    is an immutable record; types_only, by part, the targets of its imports.may marked types_only, whose reach it may
+    use as types only; no_callbacks the parts the guard no-callbacks lists, whose code calls none of its own parameters
+    annotated as callables; names, by part and then by
     kind, the patterns every public definition held to the kind matches one of; built_by, by part, the parts that
     alone may build the classes it holds to classes; shared, by part, the fewest users each public name of a part
     declared shared must have (see shared); private_imports switches the private-imports guard on. hints
@@ -105,7 +106,7 @@ class Profile:
     tests_only_known: tuple[str, ...] = ()
     holds: dict[str, tuple[str, ...]] = field(default_factory=dict)
     immutable: dict[str, tuple[str, ...]] = field(default_factory=dict)
-    types_only: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    types_only: dict[str, tuple[Target, ...]] = field(default_factory=dict)
     no_callbacks: tuple[str, ...] = ()
     names: dict[str, dict[str, tuple[str, ...]]] = field(default_factory=dict)
     built_by: dict[str, tuple[str, ...]] = field(default_factory=dict)

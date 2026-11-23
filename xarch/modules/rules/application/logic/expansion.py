@@ -5,6 +5,8 @@ them so).
 """
 from __future__ import annotations
 
+from dataclasses import replace
+
 from xarch.kernel.logic.conditions import condition
 from xarch.kernel.placement import EVERYTHING
 from xarch.modules.rules.application.logic.tier_of import NO_TIER, NO_TIER_FIX
@@ -136,19 +138,22 @@ def _types_only_tiers(profile: Profile) -> tuple[Rule, ...]:
     """A test of a tier that names parts in `types_only` never calls what it imports from them, and never references
     one of their functions; a call is not said again as a reference."""
     return tuple(_types_only(Scope(TESTS, tier=tier.name), f"a {tier.name} test", f"tiers.{tier.name}.types_only",
-                             tier.types_only, "{tier_type_only_fix}")
+                             Match("part", words=tier.types_only), "{tier_type_only_fix}")
                  for tier in profile.tiers if tier.types_only)
 
 
 def _types_only_parts(profile: Profile) -> tuple[Rule, ...]:
-    """A file of a part whose `imports.may` marks entries types_only is held to the same rule."""
-    return tuple(_types_only(Scope(APP, part), "{where}", f"parts.{part}.imports.may.types_only", parts, "{type_only_fix}")
-                 for part, parts in profile.types_only.items())
+    """A file of a part whose `imports.may` marks entries types_only is held to the same rule on what those entries
+    reach: their part, instance scope and path, a name pattern aside, which narrows only what may be imported."""
+    return tuple(_types_only(Scope(APP, part), "{where}", f"parts.{part}.imports.may.types_only",
+                             Match("place", places=tuple(replace(target, names="") for target in targets)),
+                             "{type_only_fix}")
+                 for part, targets in profile.types_only.items())
 
 
-def _types_only(scope: Scope, who: str, key: str, parts: tuple[str, ...], fix: str) -> Rule:
+def _types_only(scope: Scope, who: str, key: str, match: Match, fix: str) -> Rule:
     said = f"{who} uses {{target_part}} only as a type: it may not "
-    return Rule("types-only", scope, ("call", "function-reference"), MAY_NOT, (Match("part", words=parts),),
+    return Rule("types-only", scope, ("call", "function-reference"), MAY_NOT, (match,),
                 (Saying(said + "call {path} ({key})", fix, _all("of-kind call")),
                  Saying(said + "reference {target}, a function ({key})", fix)),
                 keep=_all("target-placed"), key=key)
