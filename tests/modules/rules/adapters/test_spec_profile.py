@@ -1,6 +1,7 @@
 """Rules' Profiles read from spec's contract: the profile view becomes the profile as the checks see it (the checks it
 writes itself as spec read them), the origin keeps each looseness, the init files are compared as text, and spec's
 check of a profile becomes what rules reviews, or why it cannot."""
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -218,3 +219,13 @@ def test_against_is_sent_to_spec_s_check_its_word_and_based_on_are_kept_and_the_
     assert reviewed.resemblance == Resemblance(False, "web", (), "against", 0.73, True, based_on="cli")
     SpecProfiles(spec).standing("mine.yaml", "app")
     assert spec.origins == [("mine.yaml",)]
+
+
+def test_the_bundled_profile_strict_rests_on_is_kept_and_the_standing_keeps_what_it_excuses_and_demands():
+    said = "core has no litmus, though cli, which --strict rests on, gives the part it pairs with one (parts.core.litmus)"
+    origin = replace(ORIGIN, compared="../team.yaml", baseline_off=("dead-code",),
+                     looser=(Loosened("litmus", "core", "cli", said),), anchor="cli")
+    reviewed = SpecProfiles(Spec(checked=ProfileChecked("mine.yaml", (), 3, origin))).reviewed(Path("/p/app"), "mine.yaml")
+    assert (reviewed.resemblance.compared, reviewed.resemblance.anchor) == ("../team.yaml", "cli")
+    standing = SpecProfiles(Spec(origin=origin)).standing("mine.yaml", "app")
+    assert (standing.baseline_off, standing.looser) == (("dead-code",), (published.Loosened("litmus", "core", "cli", said),))

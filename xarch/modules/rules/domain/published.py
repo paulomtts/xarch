@@ -147,6 +147,9 @@ class Resemblance:
     higher: when it is compared with the profile it says it is based on, the bundled profile of higher match and that
         match; None when there is none
     based_on: with --against, the profile its own based_on names, said beside it; empty otherwise
+    anchor: the bundled profile --strict rests on, as the spec module's origin names it: the one compared with when
+        that one is bundled, so a profile file is compared with exactly when chosen_by is "based_on" and anchor is not
+        compared; None for a bundled profile without --against, with --against, and when there is none
     """
     bundled: bool
     compared: str | None = None
@@ -160,6 +163,7 @@ class Resemblance:
     elsewhere: tuple[str, ...] = ()
     higher: tuple[str, float] | None = None
     based_on: str = ""
+    anchor: str | None = None
 
 
 @dataclass(frozen=True)
