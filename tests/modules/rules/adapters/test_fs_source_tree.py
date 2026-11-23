@@ -24,7 +24,7 @@ from xarch.modules.rules.domain.parsed import (
     Use,
 )
 from xarch.platform.filesystem import FileSystem
-from xarch.profile_values.language import RecordMark
+from xarch.profile_values.language import InterfaceMark, RecordMark
 from xarch.profile_values.testing import CaseTable
 
 PYTEST = CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id", ("argnames", "argvalues"))
@@ -249,6 +249,40 @@ def test_a_class_is_an_immutable_record_when_a_mark_names_one_of_its_bases_or_it
 def test_no_class_is_an_immutable_record_when_the_reader_is_given_no_mark(tmp_path):
     text = "from typing import NamedTuple\nclass A(NamedTuple):\n    x: int\n"
     assert parsed(tmp_path, text).classes[0].immutable is False
+
+
+INTERFACE = (InterfaceMark(("typing", "Protocol")), InterfaceMark(("typing_extensions", "Protocol")))
+
+
+@pytest.mark.parametrize("text, interface", [
+    pytest.param("from typing import Protocol\nclass P(Protocol): ...\n", True, id="a base a mark names"),
+    pytest.param("import typing\nclass P(typing.Protocol): ...\n", True,
+                 id="the base read through the import that binds it"),
+    pytest.param("import typing_extensions\nclass P(typing_extensions.Protocol): ...\n", True, id="any of the marks"),
+    pytest.param("from typing import Protocol, TypeVar\nT = TypeVar('T')\nclass P(Protocol[T]): ...\n", True,
+                 id="a subscripted base names what it subscripts"),
+    pytest.param("from typing import Protocol as Port\nclass P(Port): ...\n", True, id="an alias reaches the path"),
+    pytest.param("class P: ...\n", False, id="a class with no base"),
+    pytest.param("from typing import NamedTuple\nclass P(NamedTuple): ...\n", False, id="a base no mark names"),
+    pytest.param("class Protocol: ...\nclass P(Protocol): ...\n", False,
+                 id="a class of the file's own named like a mark"),
+])
+def test_a_class_is_an_interface_when_a_base_mark_names_one_of_its_bases(tmp_path, text, interface):
+    (tmp_path / "a.py").write_text(text)
+    read = FsSourceTree(FileSystem()).read(tmp_path, [("a.py",)], interface=INTERFACE)[0]
+    assert read.classes[-1].interface is interface
+
+
+def test_no_class_is_an_interface_when_the_reader_is_given_no_mark(tmp_path):
+    assert parsed(tmp_path, "from typing import Protocol\nclass P(Protocol): ...\n").classes[0].interface is False
+
+
+@pytest.mark.parametrize("keyword", [pytest.param("Protocol", id="the name of a base"),
+                                     pytest.param("class", id="the keyword of a class")])
+def test_a_keyword_mark_marks_no_class_of_this_language(tmp_path, keyword):
+    (tmp_path / "a.py").write_text("from typing import Protocol\nclass P(Protocol): ...\n")
+    read = FsSourceTree(FileSystem()).read(tmp_path, [("a.py",)], interface=(InterfaceMark(keyword=keyword),))[0]
+    assert read.classes[0].interface is False
 
 
 def test_a_use_names_what_it_reaches_by_the_path_its_import_binds_and_how_many_steps_the_import_bound(tmp_path):

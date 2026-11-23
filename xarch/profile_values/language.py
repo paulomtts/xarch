@@ -18,6 +18,14 @@ class RecordMark:
 
 
 @dataclass(frozen=True)
+class InterfaceMark:
+    """What makes a class an interface in the language: an outside name among its bases (base, as its steps), or a
+    keyword it is declared with or carries (keyword); exactly one of the two is given."""
+    base: tuple[str, ...] = ()
+    keyword: str = ""
+
+
+@dataclass(frozen=True)
 class CheckedLanguage:
     """The language of the app as a check reads it: how a message names it, the ending of a source file's name, the file
     that stands for the folder holding it, the dotted names that mark a class as an interface, and those of what

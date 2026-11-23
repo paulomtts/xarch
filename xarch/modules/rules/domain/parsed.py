@@ -120,7 +120,8 @@ class Class:
     fields: the names a statement of its body itself declares with an annotation (`x: int`, with a default or not), in
     order, those annotated as a class variable left out; types: the annotation of each of its fields, in the same order,
     as written (a string annotation by its text); immutable: it is an immutable record, as the reader was told one is
-    marked (see RecordMark)."""
+    marked (see RecordMark); interface: it is an interface, as the reader was told one is marked (see
+    InterfaceMark)."""
     line: int
     name: str
     bases: tuple[Ref, ...] = ()
@@ -131,6 +132,7 @@ class Class:
     fields: tuple[str, ...] = ()
     types: tuple[str, ...] = ()
     immutable: bool = False
+    interface: bool = False
 
 
 @dataclass(frozen=True)

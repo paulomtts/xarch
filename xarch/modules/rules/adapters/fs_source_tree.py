@@ -69,6 +69,10 @@ A class is an immutable record when a mark it is given (the language's data file
 or one of its decorators, by the dotted path its name reaches (read as a call's callee is), called with each keyword
 the mark is written with, its value as written (`ast.unparse`); a mark written with keywords names no base.
 
+A class is an interface when a mark it is given (the language's data file's `interface`) is a base mark whose path is
+one of its bases, read as for an immutable record (a subscripted base, `Protocol[T]`, by what it subscripts; an alias
+by the path it reaches). A keyword mark marks no class: Python declares no class with a keyword.
+
 A class lists its fields: the names a statement of its own body annotates (`x: int`, `y: str = ""`), in order, but one
 annotated `ClassVar` (alone or subscripted, by its bare name or as an attribute, or as a string annotation); and the
 type of each, its annotation as written (`ast.unparse`, a string annotation by its text).
@@ -118,7 +122,7 @@ from xarch.modules.rules.domain.parsed import (
 )
 from xarch.modules.rules.domain.published import CLASS, FUNCTION, METHOD, Piece
 from xarch.platform.filesystem import FileSystem
-from xarch.profile_values.language import RecordMark
+from xarch.profile_values.language import InterfaceMark, RecordMark
 from xarch.profile_values.testing import CaseTable
 
 
@@ -133,7 +137,7 @@ class FsSourceTree:
         return [f.relative_to(root).parts for f in self._fs.files(root, f"*{extension}")]
 
     def read(self, root: Path, paths: list[tuple[str, ...]], table: CaseTable | None = None,
-             immutable: tuple[RecordMark, ...] = ()) -> list[SourceFile]:
+             immutable: tuple[RecordMark, ...] = (), interface: tuple[InterfaceMark, ...] = ()) -> list[SourceFile]:
         """Each file below root, read as UTF-8 and parsed; one that is not UTF-8, or cannot be read, holds why as its
         error, as one that does not parse does."""
         found: list[SourceFile] = []
@@ -150,7 +154,8 @@ class FsSourceTree:
                 found.append(SourceFile(name, path, (), error=Unparsable(
                     0, f"cannot be read ({e.strerror or e})", unreadable=True)))
                 continue
-            found.append(_parsed(name, path, text, table, immutable, _Where((root.name, *path[:-1]), root, self._fs)))
+            found.append(_parsed(name, path, text, table, immutable, interface,
+                                 _Where((root.name, *path[:-1]), root, self._fs)))
         return found
 
     def existing(self, paths: Iterable[Path]) -> frozenset[Path]:
@@ -200,7 +205,8 @@ class _Relative(tuple):
 
 
 def _parsed(name: str, path: tuple[str, ...], text: str, form: CaseTable | None,
-            marks: tuple[RecordMark, ...] = (), where: _Where | None = None) -> SourceFile:
+            marks: tuple[RecordMark, ...] = (), interface: tuple[InterfaceMark, ...] = (),
+            where: _Where | None = None) -> SourceFile:
     try:
         tree = ast.parse(text)
         comments = _comments(text)
@@ -211,7 +217,7 @@ def _parsed(name: str, path: tuple[str, ...], text: str, form: CaseTable | None,
     calls = _Calls(_BUILTINS if not _star_import(tree) else frozenset(), where)
     calls.visit(tree)
     return SourceFile(name, path, tuple(_imports(tree, where)), comments, _functions(tree, form, where),
-                      tuple(_unions(tree)), calls=tuple(calls.found), classes=tuple(_classes(tree, marks, where)),
+                      tuple(_unions(tree)), calls=tuple(calls.found), classes=tuple(_classes(tree, marks, interface, where)),
                       uses=tuple(calls.uses), parameter_calls=tuple(calls.parameter_calls),
                       module_functions=_module_functions(tree), named=_named(tree), callbacks=tuple(calls.callbacks),
                       method_calls=tuple(calls.method_calls), constants=tuple(_constants(tree)),
@@ -894,7 +900,8 @@ class _Calls(ast.NodeVisitor):
             self.uses.append(Use(node.lineno, name, bound))
 
 
-def _classes(tree: ast.Module, marks: tuple[RecordMark, ...] = (), where: _Where | None = None) -> list[Class]:
+def _classes(tree: ast.Module, marks: tuple[RecordMark, ...] = (), interface: tuple[InterfaceMark, ...] = (),
+             where: _Where | None = None) -> list[Class]:
     scope = [_scope(tree, where)]
     builtin = frozenset() if _star_import(tree) else _EXCEPTIONS - set(scope[0])
     exceptions: set[str] = set()
@@ -911,7 +918,7 @@ def _classes(tree: ast.Module, marks: tuple[RecordMark, ...] = (), where: _Where
             found.append(Class(node.lineno, node.name, bases, methods, _attributes(node), _named(node) - {node.name},
                                exception, tuple(child.target.id for child in declared),
                                tuple(_annotation(child.annotation) or "" for child in declared),
-                               _immutable(node, bases, scope, marks)))
+                               _immutable(node, bases, scope, marks), _interface(bases, interface)))
     return found
 
 
@@ -924,6 +931,12 @@ def _immutable(node: ast.ClassDef, bases: tuple[Ref, ...], scope: list[Scope], m
         if any(mark.path == path and set(mark.keywords) <= given for mark in marks):
             return True
     return any(mark.path in bases and not mark.keywords for mark in marks)
+
+
+def _interface(bases: tuple[Ref, ...], marks: tuple[InterfaceMark, ...]) -> bool:
+    """Whether a base mark names one of the class's bases; a keyword mark names none, since Python declares no class
+    with a keyword."""
+    return any(mark.base and mark.base in bases for mark in marks)
 
 
 def _declared(node: ast.ClassDef) -> list[ast.AnnAssign]:

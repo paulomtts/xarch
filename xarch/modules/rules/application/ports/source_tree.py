@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Protocol
 
 from xarch.modules.rules.domain.parsed import SourceFile
-from xarch.profile_values.language import RecordMark
+from xarch.profile_values.language import InterfaceMark, RecordMark
 from xarch.profile_values.testing import CaseTable
 
 
@@ -21,10 +21,11 @@ class SourceTree(Protocol):
         ...
 
     def read(self, root: Path, paths: list[tuple[str, ...]], table: CaseTable | None = None,
-             immutable: tuple[RecordMark, ...] = ()) -> list[SourceFile]:
+             immutable: tuple[RecordMark, ...] = (), interface: tuple[InterfaceMark, ...] = ()) -> list[SourceFile]:
         """The files at paths below root, parsed; one that does not parse holds its error. A function holds the
         tables written in the form `table` names; with none, no table is recognised. A class is an immutable record
-        when one of the marks `immutable` holds marks it so."""
+        when one of the marks `immutable` holds marks it so, and an interface when one of the marks `interface` holds
+        marks it so."""
         ...
 
     def existing(self, paths: Iterable[Path]) -> frozenset[Path]:

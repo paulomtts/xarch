@@ -10,7 +10,7 @@ from xarch.kernel.source import Import
 from xarch.modules.layout.domain.structure import Requirement
 from xarch.modules.rules.domain.parsed import SourceFile
 from xarch.modules.scaffold.domain.values import FILE, FOLDER
-from xarch.profile_values.language import RecordMark
+from xarch.profile_values.language import InterfaceMark, RecordMark
 from xarch.profile_values.testing import CaseTable
 
 
@@ -34,7 +34,7 @@ class FakeSourceTree:
         return [tuple(rel.split("/")) for rel in sorted(self._trees[root])]
 
     def read(self, root: Path, paths: list[tuple[str, ...]], table: CaseTable | None = None,
-             immutable: tuple[RecordMark, ...] = ()) -> list[SourceFile]:
+             immutable: tuple[RecordMark, ...] = (), interface: tuple[InterfaceMark, ...] = ()) -> list[SourceFile]:
         files = self._trees[root]
         return [_source(f"{root.name}/{'/'.join(path)}", path, files["/".join(path)]) for path in paths]
 
