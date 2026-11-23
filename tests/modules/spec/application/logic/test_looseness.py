@@ -227,6 +227,12 @@ def compared(custom: Architecture, base: Architecture) -> Origin:
     return origin_of("mine.yaml", replace(custom, based_on="base"), False, {"base": base})
 
 
+def renamed(document: dict, old: str, new: str) -> dict:
+    """The document with the part old named new, at the same place in the order and the same path."""
+    document["parts"] = {new if name == old else name: part for name, part in document["parts"].items()}
+    return document
+
+
 def test_a_copy_of_a_profile_matches_it_at_100_percent():
     origin = origin_of("mine.yaml", parsed(layered()), False, {"base": parsed(layered())})
     assert (origin.compared, origin.chosen_by, origin.match, origin.low) == ("base", "closest", 1.0, False)
@@ -342,3 +348,33 @@ def test_a_pair_by_name_at_another_path_is_named_elsewhere():
     origin = compared(parsed(custom), parsed(layered()))
     assert origin.elsewhere == ("store: src/*/store there",)
     assert origin.match == 1.0
+
+
+def test_a_part_renamed_in_place_pairs_by_its_path_and_is_compared_under_its_own_name():
+    custom = renamed(layered(), "api", "routes")
+    custom["parts"]["routes"]["imports"] = {"may": ["service", "store"]}
+    origin = compared(parsed(custom), parsed(layered()))
+    assert (origin.match, origin.only_here, origin.only_there) == (1.0, (), ())
+    assert origin.looser == (
+        Loosened("imports.may", "routes", "store", "routes may also import store (parts.routes.imports.may)"),)
+
+
+def test_a_target_naming_a_part_renamed_in_place_is_read_through_the_pairing():
+    base = layered()
+    base["parts"]["service"]["imports"] = {"may": ["store", "shared", "api"]}
+    custom = renamed(layered(), "api", "routes")
+    custom["parts"]["service"]["imports"] = {"may": ["store", "shared", "routes"]}
+    origin = compared(parsed(custom), parsed(base))
+    assert (origin.match, origin.looser) == (1.0, ())
+
+
+def test_a_tier_renamed_with_the_same_subject_pairs_by_subject():
+    base = covered()
+    base["tiers"]["unit"]["uses"] = {"apply_never": True}
+    custom = covered()
+    custom["tiers"] = {"logic" if name == "unit" else name: tier for name, tier in custom["tiers"].items()}
+    custom["parts"]["service"]["tests"] = "logic"
+    origin = compared(parsed(custom), parsed(base))
+    assert (origin.match, origin.only_here, origin.only_there) == (1.0, (), ())
+    assert origin.looser == (Loosened("uses.apply_never", "logic", "", "the logic tests are no longer held to their "
+                                                                       "part's never list (tiers.logic.uses.apply_never)"),)

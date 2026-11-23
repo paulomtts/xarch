@@ -1,9 +1,21 @@
-"""How a profile compares with the bundled ones: which it resembles, the guards it leaves off, and every way it is
-looser than the one it resembles.
+"""How a profile compares with the bundled ones: the one it is compared with, how much the two have in common (its
+match), the guards it leaves off, and every way it is looser than that one.
 
-The closest bundled profile is the one a profile says it is based on, else the one sharing the most part names, the
-first by name on a tie; one sharing none resembles no bundled profile. Looser is compared only where both have the
-same name (a part, a tier, a file), and only in these ways, each one entry: a target added to a part's `imports.may`
+A custom profile is compared with the bundled profile its `based_on` names, else with the one of highest match, the
+first by name on a tie; one no part pairs with is no candidate, and with none left nothing is compared. The match is
+the share of the items of either profile, one per thing `check` reads, that have a counterpart in the other: each part;
+each key of a part that holds a value (imports.may, imports.libraries, imports.must, each target marked types_only,
+uses.never, each kind of holds and each setting it writes, untested, litmus, shared, entry, package_only); each tier,
+each entry of its subject and each of its keys that holds a value; each guard switched on; and each key of the profile
+as a whole (libraries, testing.skips, each reserved module, files entry and excluded folder, fakes, each check of its
+own). Parts pair by name, then by the same layout path; tiers by name, then by the same subject, its parts read
+through the pairing; each at most once. An item has a counterpart when every part and tier holding it pairs (a check
+of the profile's own, when the other writes one of its id), so a key one side drops on a paired holder still has one.
+A match below LOW, or one with no part paired, is low.
+
+Looser is compared only on the parts and tiers that pair, the part of a target read through the pairing (a part
+renamed in place is compared, and said, under the custom profile's name), and on the files of the same path, and only
+in these ways, each one entry: a target added to a part's `imports.may`
 that no target of the bundled one covers (a target covers what lies below it: the same part and scope, its path a
 start of the added one's, and no name pattern or the same one; so a name pattern added to a target, or a folder below
 it, narrows it, and is not looser); a `types_only` mark dropped from an entry of a part's `imports.may` whose target
@@ -209,43 +221,49 @@ def _into(target: Target, parts: Mapping[str, str]) -> Target:
 
 def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
     member = custom.language.checked.member
-    shared = [name for name in custom.parts if name in base.parts]
+    pairs = _paired_parts(custom, base)
+    back = {theirs: name for name, theirs in pairs.items()}
+    shared = [name for name in custom.parts if name in pairs]
     found: list[Looser] = []
     for name in shared:
-        before = base.rules.get(name, ())
+        before = base.rules.get(pairs[name], ())
         found += [("imports.may", name, _shown(t)) for t in custom.rules.get(name, ())
-                  if not any(_covers(b, t) for b in before)]
+                  if not any(_covers(b, _into(t, pairs)) for b in before)]
     for name in shared:
-        allows, marks = custom.rules.get(name, ()), custom.parts[name].imports_types_only
-        found += [("imports.may.types_only", name, _shown(t)) for t in base.parts[name].imports_types_only
+        allows = [_into(c, pairs) for c in custom.rules.get(name, ())]
+        marks = [_into(c, pairs) for c in custom.parts[name].imports_types_only]
+        found += [("imports.may.types_only", name, _shown(_into(t, back))) for t in base.parts[pairs[name]].imports_types_only
                   if any(_covers(c, t) for c in allows) and not any(_covers(c, t) for c in marks)]
     if base.imports_libraries is not None:
         if custom.imports_libraries is None:
             found.append(("imports.libraries", "", ""))
         else:
             found += [("imports.libraries", name, package) for name in shared for package in custom.imports_libraries.get(name, ())
-                      if package not in base.imports_libraries.get(name, ())]
+                      if package not in base.imports_libraries.get(pairs[name], ())]
     for name in shared:
         kept = custom.uses_never.get(name, ())
-        found += [("uses.never", name, outside_text(banned, member)) for banned in base.uses_never.get(name, ())
+        found += [("uses.never", name, outside_text(banned, member)) for banned in base.uses_never.get(pairs[name], ())
                   if not any(banned[:len(entry)] == entry for entry in kept)]
     for name in shared:
-        before, now = base.parts[name].imports_must, custom.parts[name].imports_must
+        before, now = base.parts[pairs[name]].imports_must, custom.parts[name].imports_must
         if before and not now:
             found.append(("imports.must", name, ""))
         else:
-            found += [("imports.must", name, _shown(t)) for t in now if before and t not in before]
-    found += [("untested", name, "") for name in shared if custom.parts[name].untested and not base.parts[name].untested]
-    found += [(LITMUS, name, "") for name in shared if base.parts[name].litmus and not custom.parts[name].litmus]
-    tiers = {tier.name: tier for tier in custom.tiers}
+            found += [("imports.must", name, _shown(t)) for t in now if before and _into(t, pairs) not in before]
+    found += [("untested", name, "") for name in shared
+              if custom.parts[name].untested and not base.parts[pairs[name]].untested]
+    found += [(LITMUS, name, "") for name in shared if base.parts[pairs[name]].litmus and not custom.parts[name].litmus]
+    paired = _paired_tiers(custom, base, pairs)
+    tiers = {paired[tier.name]: tier for tier in custom.tiers if tier.name in paired}
     for tier in base.tiers:
         mine = tiers.get(tier.name)
         if mine is not None:
-            found += [("imports.types_only", tier.name, part) for part in tier.imports_types_only
-                      if part not in mine.imports_types_only]
-            found += [("imports.also", tier.name, _shown(t)) for t in mine.imports_also
-                      if not any(_covers(b, t) for b in tier.imports_also)]
-    found += [("uses.apply_never", tier.name, "") for tier in base.tiers
+            marked = {pairs.get(part, part) for part in mine.imports_types_only}
+            found += [("imports.types_only", mine.name, back.get(part, part)) for part in tier.imports_types_only
+                      if part not in marked]
+            found += [("imports.also", mine.name, _shown(t)) for t in mine.imports_also
+                      if not any(_covers(b, _into(t, pairs)) for b in tier.imports_also)]
+    found += [("uses.apply_never", tiers[tier.name].name, "") for tier in base.tiers
               if tier.apply_never and tier.name in tiers and not tiers[tier.name].apply_never]
     skips = custom.framework.skips if custom.framework is not None else ()
     if base.framework is not None:
@@ -257,11 +275,11 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
     accepted = _known(base)
     found += [("known", "", entry) for entry in _known(custom) if entry not in accepted]
     translators = _translators(base)
-    found += [("translated", part, "") for part in _translators(custom) if part not in translators]
+    found += [("translated", part, "") for part in _translators(custom) if pairs.get(part, part) not in translators]
     found += [("review.never", "", path) for path in base.never if path not in custom.never]
     found += [("review.mask", "", text) for text in base.mask if text not in custom.mask]
     found += [("evals.placement.lines", name, f"{custom.lines.get(name, LINE):.2f}") for name in shared
-              if custom.lines.get(name, LINE) < base.lines.get(name, LINE)]
+              if custom.lines.get(name, LINE) < base.lines.get(pairs[name], LINE)]
     return found
 
 
