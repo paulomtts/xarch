@@ -119,7 +119,7 @@ class KeyFacts:
 @dataclass(frozen=True)
 class Loosened:
     """One way a profile is looser than the bundled profile it is compared with: the key of the profile's format
-    that loosened (may_import, libraries, litmus and the others the spec module names), the part or tier, what it
+    that loosened (imports.may, imports.libraries, litmus and the others the spec module names), the part or tier, what it
     loosened to ("" for nothing more), and all of it in a sentence naming the key of the profile that does."""
     key: str
     part: str
