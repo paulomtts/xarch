@@ -91,3 +91,9 @@ def test_the_rules_that_read_whether_a_name_is_public_need_the_fact_and_those_of
         "private-imports": [True], "names": [True], "holds": [True, False], "tests-only": [True, True]}
     assert book["dead-code"] and book["untested"]
     assert not any("public" in rule.needs for rule in (*book["dead-code"], *book["untested"]))
+
+
+def test_the_rules_of_no_callbacks_are_keyed_by_the_guard_for_every_part():
+    rules = expansion.book(replace(ON, no_callbacks=("domain", "logic")))["no-callbacks"]
+    assert [(rule.scope.part, rule.key) for rule in rules] == [("domain", "guards.no-callbacks"),
+                                                               ("logic", "guards.no-callbacks")]

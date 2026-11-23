@@ -53,7 +53,7 @@
 "no-callbacks",
 "xarch/modules/rules/application/logic/where.py",
 55,
-"resolve calls its parameter exists: logic/ of modules/rules takes no callback (parts.logic.no_callbacks)",
+"resolve calls its parameter exists: logic/ of modules/rules takes no callback (guards.no-callbacks)",
 "have the caller call exists first and pass resolve the answer as a value"
 ],
 [
@@ -221,7 +221,7 @@
 "no-callbacks",
 "xarch/modules/spec/application/logic/migrate_examples.py",
 94,
-"gather calls its parameter has_file: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
+"gather calls its parameter has_file: logic/ of modules/spec takes no callback (guards.no-callbacks)",
 "have the caller call has_file first and pass gather the answer as a value"
 ],
 [
@@ -229,7 +229,7 @@
 "no-callbacks",
 "xarch/modules/spec/application/logic/migrate_examples.py",
 105,
-"gather calls its parameter folder_files: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
+"gather calls its parameter folder_files: logic/ of modules/spec takes no callback (guards.no-callbacks)",
 "have the caller call folder_files first and pass gather the answer as a value"
 ],
 [
@@ -237,7 +237,7 @@
 "no-callbacks",
 "xarch/modules/spec/application/logic/migrate_examples.py",
 110,
-"gather calls its parameter has_file: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
+"gather calls its parameter has_file: logic/ of modules/spec takes no callback (guards.no-callbacks)",
 "have the caller call has_file first and pass gather the answer as a value"
 ],
 [
@@ -245,7 +245,7 @@
 "no-callbacks",
 "xarch/modules/spec/application/logic/migrate_examples.py",
 153,
-"_items calls its parameter has_file: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
+"_items calls its parameter has_file: logic/ of modules/spec takes no callback (guards.no-callbacks)",
 "have the caller call has_file first and pass _items the answer as a value"
 ],
 [
@@ -253,7 +253,7 @@
 "no-callbacks",
 "xarch/modules/spec/application/logic/migrate_examples.py",
 171,
-"_sources calls its parameter has_file: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
+"_sources calls its parameter has_file: logic/ of modules/spec takes no callback (guards.no-callbacks)",
 "have the caller call has_file first and pass _sources the answer as a value"
 ],
 [
@@ -261,7 +261,7 @@
 "no-callbacks",
 "xarch/modules/spec/application/logic/migrate_examples.py",
 176,
-"_sources calls its parameter folder_files: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
+"_sources calls its parameter folder_files: logic/ of modules/spec takes no callback (guards.no-callbacks)",
 "have the caller call folder_files first and pass _sources the answer as a value"
 ],
 [
@@ -269,7 +269,7 @@
 "no-callbacks",
 "xarch/modules/spec/application/logic/migrate_examples.py",
 177,
-"_sources calls its parameter has_file: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
+"_sources calls its parameter has_file: logic/ of modules/spec takes no callback (guards.no-callbacks)",
 "have the caller call has_file first and pass _sources the answer as a value"
 ],
 [
@@ -277,7 +277,7 @@
 "no-callbacks",
 "xarch/modules/spec/application/logic/migrate_examples.py",
 202,
-"_examples calls its parameter copy: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
+"_examples calls its parameter copy: logic/ of modules/spec takes no callback (guards.no-callbacks)",
 "have the caller call copy first and pass _examples the answer as a value"
 ],
 [
@@ -285,7 +285,7 @@
 "no-callbacks",
 "xarch/modules/spec/application/logic/profile_files.py",
 16,
-"pointed_files calls its parameter folder_files: logic/ of modules/spec takes no callback (parts.logic.no_callbacks)",
+"pointed_files calls its parameter folder_files: logic/ of modules/spec takes no callback (guards.no-callbacks)",
 "have the caller call folder_files first and pass pointed_files the answer as a value"
 ],
 [
@@ -677,7 +677,7 @@
 "no-callbacks",
 "xarch/modules/spec/domain/profile_checks.py",
 217,
-"file_source calls its parameter has_file: domain/ of modules/spec takes no callback (parts.domain.no_callbacks)",
+"file_source calls its parameter has_file: domain/ of modules/spec takes no callback (guards.no-callbacks)",
 "have the caller call has_file first and pass file_source the answer as a value"
 ],
 [
@@ -685,7 +685,7 @@
 "no-callbacks",
 "xarch/modules/spec/domain/profile_checks.py",
 217,
-"file_source calls its parameter folder_files: domain/ of modules/spec takes no callback (parts.domain.no_callbacks)",
+"file_source calls its parameter folder_files: domain/ of modules/spec takes no callback (guards.no-callbacks)",
 "have the caller call folder_files first and pass file_source the answer as a value"
 ],
 [
@@ -693,7 +693,7 @@
 "no-callbacks",
 "xarch/modules/spec/domain/profile_checks.py",
 231,
-"folder_source calls its parameter folder_files: domain/ of modules/spec takes no callback (parts.domain.no_callbacks)",
+"folder_source calls its parameter folder_files: domain/ of modules/spec takes no callback (guards.no-callbacks)",
 "have the caller call folder_files first and pass folder_source the answer as a value"
 ],
 [
@@ -701,7 +701,7 @@
 "no-callbacks",
 "xarch/modules/spec/domain/profile_checks.py",
 232,
-"folder_source calls its parameter has_file: domain/ of modules/spec takes no callback (parts.domain.no_callbacks)",
+"folder_source calls its parameter has_file: domain/ of modules/spec takes no callback (guards.no-callbacks)",
 "have the caller call has_file first and pass folder_source the answer as a value"
 ],
 [
@@ -709,7 +709,7 @@
 "no-callbacks",
 "xarch/modules/spec/domain/profile_checks.py",
 253,
-"doc_source calls its parameter has_file: domain/ of modules/spec takes no callback (parts.domain.no_callbacks)",
+"doc_source calls its parameter has_file: domain/ of modules/spec takes no callback (guards.no-callbacks)",
 "have the caller call has_file first and pass doc_source the answer as a value"
 ],
 [
@@ -717,7 +717,7 @@
 "no-callbacks",
 "xarch/modules/spec/domain/profile_examples.py",
 51,
-"_roots calls its parameter folder_files: domain/ of modules/spec takes no callback (parts.domain.no_callbacks)",
+"_roots calls its parameter folder_files: domain/ of modules/spec takes no callback (guards.no-callbacks)",
 "have the caller call folder_files first and pass _roots the answer as a value"
 ],
 [

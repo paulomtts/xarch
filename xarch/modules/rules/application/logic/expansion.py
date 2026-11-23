@@ -194,12 +194,12 @@ def _names(profile: Profile) -> tuple[Rule, ...]:
 
 
 def _no_callbacks(profile: Profile) -> tuple[Rule, ...]:
-    """Code of a part that lists `no_callbacks` calls none of its own parameters annotated as callables; the first
+    """Code of a part the guard no-callbacks lists calls none of its own parameters annotated as callables; the first
     parameter of a method, the object it is called on, is no callback."""
     return tuple(Rule("no-callbacks", Scope(APP, part), ("callback",), MAY_NOT, EXISTING,
                       (Saying("{function} calls its parameter {name}: {where} takes no callback ({key})",
                               "have the caller call {name} first and pass {function} the answer as a value"),),
-                      keep=_all("annotated-callable"), exempt=_all("receiver"), key=f"parts.{part}.no_callbacks")
+                      keep=_all("annotated-callable"), exempt=_all("receiver"), key="guards.no-callbacks")
                  for part in profile.no_callbacks)
 
 
@@ -353,7 +353,7 @@ def _pass_through(profile: Profile) -> tuple[Rule, ...]:
 
 KEYS = ("parts.may_import", "parts.libraries", "parts.uses.never", "tiers.uses.apply_never", "tiers",
         "tiers.may_also_import", "tiers.types_only",
-        "parts.package_only", "parts.types_only", "parts.no_callbacks", "parts.names", "parts.built_by",
+        "parts.package_only", "parts.types_only", "guards.no-callbacks", "parts.names", "parts.built_by",
         "guards.private-imports", "guards.no-comments", "guards.closed-tree", "parts.holds", "parts.immutable",
         "parts.must_import", "tiers.must_import", "guards.dead-code", "guards.dead-code.untested",
         "guards.dead-code.tests_only", "guards.pass-through")
