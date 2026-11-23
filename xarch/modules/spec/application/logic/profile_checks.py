@@ -53,14 +53,27 @@ def _method_name(item: str, language: Language) -> str | None:
     return name if names.is_name(name, language.names) else None
 
 
+def _endings(language: Language) -> str:
+    """The endings of a source file of the language, as a refusal lists them: one alone, or all but the last joined by
+    commas and the last after `or`."""
+    *rest, last = language.checked.extensions or ("",)
+    return f"{', '.join(rest)} or {last}" if rest else last
+
+
+def _ending(language: Language) -> str:
+    """A regular expression any one of the language's endings matches."""
+    return "|".join(re.escape(extension) for extension in language.checked.extensions)
+
+
 def _file_pattern(language: Language) -> re.Pattern[str]:
-    """What a file name pattern is: letters, digits, `_`, `.`, `-` and `*`, ending in the language's extension."""
-    return re.compile(rf"[A-Za-z0-9_.*-]+{re.escape(language.checked.extension)}")
+    """What a file name pattern is: no `/`, at least one character, then one of the language's endings; `*` stands
+    for any text."""
+    return re.compile(rf"[^/]+(?:{_ending(language)})")
 
 
 def _file_name(language: Language) -> re.Pattern[str]:
-    """What a file name is: letters, digits, `_`, `.` and `-`, ending in the language's extension."""
-    return re.compile(rf"[A-Za-z0-9_.-]+{re.escape(language.checked.extension)}")
+    """What a file name is: no `/` and no `*`, at least one character, then one of the language's endings."""
+    return re.compile(rf"[^/*]+(?:{_ending(language)})")
 
 
 def layer_chains(value: Any, parts: dict[str, Part], declared: set[str], rules: dict[str, tuple[Target, ...]],
@@ -500,14 +513,14 @@ def framework_patterns(value: Any, problems: list[str], where: str, known: Colle
 
 def _file_patterns(value: Any, problems: list[str], where: str, language: Language) -> tuple[str, ...] | None:
     if not isinstance(value, list) or not value:
-        problems.append(f"{where}: must be a non-empty list of file name patterns, each a {language.checked.extension} name "
+        problems.append(f"{where}: must be a non-empty list of file name patterns, each a {_endings(language)} name "
                         "with `*` for any text")
         return None
     pattern = _file_pattern(language)
     found: list[str] = []
     for item in value:
         if not isinstance(item, str) or not pattern.fullmatch(item):
-            problems.append(f"{where}: {item!r} is not a file name pattern: a name ending in {language.checked.extension}, "
+            problems.append(f"{where}: {item!r} is not a file name pattern: a name ending in {_endings(language)}, "
                             "with `*` for any text")
         elif item in found:
             problems.append(f"{where}: {item!r} is listed twice")

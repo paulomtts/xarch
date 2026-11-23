@@ -5,6 +5,7 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.spec.format_files import FILE_TYPES
+from tests.modules.spec.languages import BRACE, PYTHON
 from tests.modules.spec.profiles import TESTING, covered, parsed, problems
 from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.profile_values.testing import Fixture
@@ -322,3 +323,31 @@ def test_dead_code_s_names_accepted_as_only_the_tests_are_said_by_their_entries(
     assert line.endswith("is listed in the enforcement section, and fails `check --strict` only. `shared/text.py:clean` "
                          "and `shared/wiring.py:build` are accepted as only the tests' (`guards.dead-code.known`) and "
                          "named in the enforcement section instead; an entry that no longer holds is listed.")
+
+
+BRACED = {"python": PYTHON, "brace": BRACE}
+
+
+def braced(files) -> dict:
+    return covered(testing={"files": files, "functions": "test*"}, language="brace")
+
+
+def test_under_several_endings_a_file_pattern_may_end_in_any_of_them():
+    assert parsed(braced(["*.test.tsx", "*.test.mts", "*.test.ts"]), languages=BRACED).framework.files == (
+        "*.test.tsx", "*.test.mts", "*.test.ts")
+
+
+@pytest.mark.parametrize("files, expected", [
+    pytest.param(["*.test.js"], "layered.yaml: testing.files: '*.test.js' is not a file name pattern: a name ending in "
+                                ".ts, .tsx or .mts, with `*` for any text", id="an ending the language does not have"),
+    pytest.param("*.test.ts", "layered.yaml: testing.files: must be a non-empty list of file name patterns, each a .ts, "
+                              ".tsx or .mts name with `*` for any text", id="no list"),
+])
+def test_under_several_endings_a_refusal_lists_every_ending(files, expected):
+    assert problems(braced(files), languages=BRACED) == [expected]
+
+
+def test_a_file_pattern_may_hold_any_character_but_a_slash():
+    assert parsed(covered(testing={"files": ["tést_*.py"], "functions": "test_*"})).framework.files == ("tést_*.py",)
+    assert problems(covered(testing={"files": [".py"], "functions": "test_*"})) == [
+        "layered.yaml: testing.files: '.py' is not a file name pattern: a name ending in .py, with `*` for any text"]

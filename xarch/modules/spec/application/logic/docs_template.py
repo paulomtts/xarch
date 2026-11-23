@@ -261,7 +261,7 @@ def _block(files: list[tuple[str, str, str]], in_fence: bool, language: Language
     body = "\n\n".join(f"{comment} {header}\n" + text.rstrip("\n") for header, _, text in files)
     if in_fence:
         return body
-    named = language.name if suffix == language.checked.extension else kind.fence or suffix.lstrip('.')
+    named = language.name if suffix in language.checked.extensions else kind.fence or suffix.lstrip('.')
     return f"```{named}\n{body}\n```"
 
 

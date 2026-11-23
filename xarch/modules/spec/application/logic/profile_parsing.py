@@ -70,7 +70,7 @@ from dataclasses import dataclass, replace
 from typing import Any
 
 from xarch.kernel.logic.names import is_name, outside_text
-from xarch.kernel.logic.placement import root_of
+from xarch.kernel.logic.placement import root_of, stem
 from xarch.kernel.logic.targets import NAME_PATTERN
 from xarch.kernel.placement import EACH, EVERYTHING
 from xarch.modules.spec.application.logic import never_lists as nl
@@ -829,7 +829,7 @@ def _known(value: Any, tests_only: bool, where: str, problems: list[str], langua
     found: list[str] = []
     for item in value:
         file, _, name = item.rpartition(":") if isinstance(item, str) else ("", "", "")
-        if not file or file.startswith("/") or not file.endswith(language.checked.extension) \
+        if not file or file.startswith("/") or stem(file.rsplit("/", 1)[-1], language.checked.marks) is None \
                 or not is_name(name, language.names):
             problems.append(f"{where}: {item!r} is not <file below the app>:<name>, such as {example}")
         elif item in found:

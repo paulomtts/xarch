@@ -5,6 +5,7 @@ or parts `check` tells apart by rule; the evals of the profile's own, each in it
 of writing either wrong refused at its address."""
 import pytest
 
+from tests.modules.spec.languages import BRACE, PYTHON
 from tests.modules.spec.profiles import layered, parsed, problems
 from xarch.modules.spec.domain.published import CHOICE, SCORE, YES_NO, Eval
 from xarch.profile_values.checks import Condition, Scope
@@ -250,3 +251,9 @@ def test_parts_that_forbid_different_things_are_not_alike():
     document["parts"]["shared"].pop("uses")
     assert f"layered.yaml: evals.placement.alike[0]: store and shared differ in uses.never: {NOT_ALIKE}" in problems(
         document)
+
+
+def test_an_eval_s_example_of_any_ending_of_the_language_is_read_and_a_refusal_prints_the_first():
+    braced = {"flagged": {"store/a.tsx": CODE, "store/b.mts": CODE}, "clean": {"store/c.ts": CODE, "store/d.js": CODE}}
+    assert problems(layered(evals=own(examples=braced), language="brace"), languages={"python": PYTHON, "brace": BRACE}) == [
+        "layered.yaml: evals.rule.examples.clean: 'store/d.js' is not a path of a source file below the app, ending in .ts"]

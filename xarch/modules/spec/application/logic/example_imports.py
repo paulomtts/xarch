@@ -20,7 +20,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Iterator, Mapping
 
 from xarch.kernel.logic.examples import is_test_example
-from xarch.kernel.logic.placement import reaches
+from xarch.kernel.logic.placement import reaches, stem
 from xarch.kernel.logic.source import imported_names
 from xarch.kernel.source import Import, Unparsable
 from xarch.modules.spec.domain.published import DEFAULT_TESTS, EXAMPLE_APP
@@ -31,9 +31,10 @@ Read = tuple[Import, ...] | Unparsable
 
 
 def checked_examples(architecture: Architecture) -> tuple[Example, ...]:
-    """The examples the check reads: those whose file is a source file of the app's language."""
+    """The examples the check reads: those whose file is a source file of the app's language, of any of its endings."""
+    marks = architecture.language.checked.marks
     return tuple(example for example in architecture.examples.values()
-                 if example.file.endswith(architecture.language.checked.extension))
+                 if stem(example.file.rsplit("/", 1)[-1], marks) is not None)
 
 
 def example_problems(architecture: Architecture, reads: Mapping[str, Read]) -> list[str]:
