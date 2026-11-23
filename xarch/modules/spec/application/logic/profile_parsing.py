@@ -28,7 +28,8 @@ key_catalogue); the shape:
         package_only: true     the part is imported only as a package from outside it
         folders: {<folder>: <note>} | [<folder>, ...]
                                folders below the part that the layout shows
-    never: {<list>: [<name>, ...]}             named lists of what a part never uses
+    never: {<list>: [<name> | <list>, ...]}    named lists of what a part never uses; an entry naming another
+                               list includes it
     reserved: {<module>: <reason>}             standard-library modules only the parts whose `libraries` list them
                                may import
     layers: {<name>: [<part>, ...]}            chains of parts from the inside out: none imports one after it
@@ -72,6 +73,7 @@ from xarch.kernel.logic.names import is_name, outside_text
 from xarch.kernel.logic.placement import root_of
 from xarch.kernel.logic.targets import NAME_PATTERN
 from xarch.kernel.placement import EACH, EVERYTHING
+from xarch.modules.spec.application.logic import never_lists as nl
 from xarch.modules.spec.application.logic import profile_checks as ck
 from xarch.modules.spec.application.logic import profile_examples as ex
 from xarch.modules.spec.application.logic import profile_needs as needs
@@ -166,7 +168,7 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     shortfalls = needs.short(document, presets or {}, language)
     problems += needs.refused(shortfalls, language)
     based_on = _based_on(document["based_on"], bundled, problems) if "based_on" in document else ""
-    never_lists = _never_lists(document["never"], problems, language) if "never" in document else {}
+    never_lists = nl.never_lists(document["never"], problems, language) if "never" in document else {}
     specs = _specs(document.get("parts", {}), problems)
     declared = set(specs)
     built = _layout(specs, problems)
@@ -445,23 +447,6 @@ def _libraries(spec: Mapping[Any, Any], where: str, problems: list[str], languag
     return ck.package_names(value, where, problems, language, reserved) or ()
 
 
-def _never_lists(value: Any, problems: list[str],
-                 language: Language) -> dict[str, tuple[tuple[str, ...], ...] | None] | None:
-    """The named lists of names a part never uses; a list already reported is None. None: `never` is no mapping."""
-    if not isinstance(value, Mapping):
-        problems.append("never: must be a mapping of list names to lists of dotted names, such as "
-                        "{pure: [datetime.datetime.now, socket]}")
-        return None
-    never_lists: dict[str, tuple[tuple[str, ...], ...] | None] = {}
-    for name, names in value.items():
-        if not ck.text(name) or not ck.PART_NAME.fullmatch(name):
-            problems.append(f"never: {name!r} is not a list name: use letters, digits, '_' and '-'")
-        else:
-            read = ck.never_names(names, f"never.{name}", problems, language)
-            never_lists[name] = None if read is None else tuple(steps for steps in read if steps is not None)
-    return never_lists
-
-
 def _never_refs(specs: dict[str, Any], parts: dict[str, Part],
                 never_lists: dict[str, tuple[tuple[str, ...], ...] | None] | None,
                 problems: list[str]) -> dict[str, tuple[tuple[str, ...], ...]]:
@@ -477,7 +462,8 @@ def _never_refs(specs: dict[str, Any], parts: dict[str, Part],
             continue
         ref, where = uses["never"], f"parts.{name}.uses.never"
         if isinstance(ref, list):
-            problems.append(f"{where}: names one list under never: write the name of a list, such as pure")
+            problems.append(f"{where}: names one list under never: write the name of a list, such as pure; a list may "
+                            "include others")
         elif not isinstance(ref, str):
             problems.append(f"{where}: must be the name of a list under `never`")
         elif ref not in never_lists:
