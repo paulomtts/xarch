@@ -80,7 +80,7 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
     section = testing.split("\n\n## 9. Guards\n\n", 1)[1].split("\n\n")[1]
     assert section == "\n".join([
         "- `structure`: every folder and file of the layout exists, in the app and in every `modules/<name>/`.",
-        "- `may-import`: every import between parts is one that the `may_import` of the importing part allows "
+        "- `may-import`: every import between parts is one that the `imports.may` of the importing part allows "
         "(architecture.md, section 5).",
         "- `libraries`: a part imports only the outside packages listed for it (`adapters/`: sqlmodel; "
         "`platform/`: sqlmodel; `web/`: fastapi; `bootstrap/`: sqlmodel, fastapi, uvicorn); the standard library "

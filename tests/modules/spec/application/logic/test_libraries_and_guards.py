@@ -104,7 +104,7 @@ def test_the_guards_placeholder_leaves_out_what_the_profile_does_not_check():
     text = fill("{{guards}}", parsed(layered()), "layered.md", file_types=FILE_TYPES)
     assert text.splitlines() == [
         "- `structure`: every folder and file of the layout exists, in the app and in every `src/<name>/`.",
-        "- `may-import`: every import between parts is one that the `may_import` of the importing part allows "
+        "- `may-import`: every import between parts is one that the `imports.may` of the importing part allows "
         "(architecture.md, section 5).",
         "- `libraries`: a part imports only the outside packages listed for it (`store/`: sqlmodel); the standard "
         "library is always allowed, and tests are not checked.",
