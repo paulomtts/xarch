@@ -32,7 +32,7 @@ architecture. Prose, diagrams and code examples stay as the author wrote them; o
                            note after it, in parentheses)
     {{guards}}             one line per check `xarch check` runs: the structure, the rules, the libraries (with
                            `libraries`), what each part may not use (with `uses.never`), the tiers (with `tiers`), types-only
-                           (one line per tier with `types_only`), the test tree and the cycles (with a repeating folder),
+                           (one line per tier with `imports.types_only`), the test tree and the cycles (with a repeating folder),
                            then each guard of `guards`, in order
     {{tier_examples}}      each tier's example test in one block, under its header line `# <tier>: <path>` (its note
                            after the path, in parentheses), as {{example:...}} writes them; a tier with no example

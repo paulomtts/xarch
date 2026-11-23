@@ -64,12 +64,21 @@ All notable changes to this project are written here. The format follows
   files imports one of, each an entry of `may`, `libraries` its outside packages. A part's `types_only` becomes a mark
   on its entry of `imports.may`, `{<target>: types_only}`, such as `may: [ports, {contract: types_only}]`, read on what
   the entry reaches (its part, instance and path; a name pattern narrows only what may be imported), not on the part
-  in any instance; a tier's `types_only` list stays. Findings name the new addresses (`parts.<part>.imports.may`,
+  in any instance. Findings name the new addresses (`parts.<part>.imports.may`,
   `.imports.must`, `.imports.libraries`, `.imports.may.types_only`), and so do `profile explain` and the `Loosened`
   keys of `profile check` (`imports.may`, `imports.libraries`, `imports.must`). The old keys are refused with the form
   that replaces them (`unknown key 'may_import': moved in 0.3.0: write imports: {may: [...]}`, and the same for
-  `must_import`, `libraries` and `types_only`); `profile explain parts.may_import` says the same. Rule ids, `where`'s
-  JSON fields and the tier keys do not change.
+  `must_import`, `libraries` and `types_only`); `profile explain parts.may_import` says the same. Rule ids and `where`'s
+  JSON fields do not change.
+- A tier's `may_import`, `may_also_import`, `must_import` and `types_only` move into one group, `imports: {may, also,
+  must, types_only}`, with the same meaning: `may` what the tests in the tier's `folder` may import (only for a tier
+  with a `folder`), `also` what its tests may import besides what the part they mirror may, `must` the parts one of
+  which each of its test files reaches, `types_only` the parts its tests may import only as types. Findings name the
+  new addresses (`tiers.<tier>.imports.types_only`, `tiers.<tier>.imports.must`, and `tiers.<tier>.imports.also` beside
+  `tiers`), and so do `profile explain` and the `Loosened` keys of `profile check` (`imports.types_only`,
+  `imports.also`). The old keys are refused with the form that replaces them (`unknown key 'may_also_import': moved in
+  0.3.0: write imports: {also: [...]}`, and the same for `may_import`, `must_import` and `types_only`); `profile
+  explain tiers.may_import` says the same. Rule ids and `where`'s JSON fields do not change.
 - `holds` is a map of kinds, `{classes, functions, records, exceptions}`, each `{}` or its settings: a kind listed may
   exist at the top level of a file of the part, one not listed may not, and no `holds` allows every kind. `names`,
   `immutable` and `built_by` leave the part for the kinds: `holds: {classes: {names: "*Service", built_by:
