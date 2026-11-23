@@ -8,8 +8,9 @@ import pytest
 from tests.modules.spec.languages import PYTHON
 from tests.modules.spec.profiles import covered, layered, parsed, problems
 from xarch.modules.spec.application.logic.language_file import PARTIAL
-from xarch.modules.spec.application.logic.profile_needs import short
-from xarch.modules.spec.domain.key_table import KEYS
+from xarch.modules.spec.application.logic.profile_needs import refused, short
+from xarch.modules.spec.domain.key_table import KEYS, SLOTS
+from xarch.modules.spec.domain.profile_keys import PROFILE, Key
 from xarch.profile_values.capabilities import EXACT, FACTS, Shortfall, Supply
 
 TOY = replace(PYTHON, name="toy", checked=replace(
@@ -24,6 +25,22 @@ FLAT = replace(PYTHON, name="flat", checked=replace(
 """A language whose reader supplies every fact but file.package: it has no package file."""
 FLATS = {"flat": FLAT}
 FAKES = {"folder": "fakes", "for": ["store"], "prefix": "Fake"}
+PARTLY = replace(PYTHON, checked=replace(PYTHON.checked, supplies=tuple(Supply(f, PARTIAL, "partly") for f in FACTS)))
+"""Python, its reader supplying every fact only partly: every key the walk finds gives one shortfall per fact."""
+OUTER, INNER, ROWS, ITEMS, CELLS = "outer", "outer.inner", "rows[]", "items.<item>", "items.<item>.cells[]"
+NESTED = (
+    Key(PROFILE, "outer", opens=OUTER), Key(PROFILE, "rows", opens=ROWS), Key(PROFILE, "items", opens=ITEMS),
+    Key(PROFILE, "flat", needs=("use",)),
+    Key(OUTER, "inner", opens=INNER), Key(OUTER, "own", needs=("call",)),
+    Key(INNER, "deep", needs=("call",)),
+    Key(ROWS, "form", needs=("call",)),
+    Key(ITEMS, "cells", opens=CELLS),
+    Key(CELLS, "kind", needs=("use",)),
+)
+"""A key table of the tests' own, its scopes named by their addresses (none is in SCOPES): a mapping in a mapping, a
+list, and a list in each entry of a map of names. Toy supplies neither call nor use."""
+RANKED = tuple(replace(key, needs=("use",)) if key.address == "rows" else key for key in NESTED)
+"""NESTED, its key rows needing use itself."""
 
 
 def services(**keys) -> dict:
@@ -43,6 +60,27 @@ def tiered(**keys) -> dict:
 def refusal(address: str, fact: str) -> str:
     return (f"layered.yaml: {address}: its check reads {fact} ({FACTS[fact]}), which the language toy does not "
             f"supply: drop {address}, or check the app with a language whose reader supplies {fact}")
+
+
+def walked(document: dict, keys: tuple[Key, ...] = NESTED) -> list[str]:
+    """The address of each shortfall of the document under the table in Toy, in the order found; each is refused (no
+    note), as Toy supplies neither call nor use."""
+    found = short(document, {}, TOY, keys=keys)
+    assert all(item.note is None for item in found)
+    return [item.address for item in found]
+
+
+def everywhere() -> tuple[dict, dict]:
+    """A profile setting keys that need facts in every scope, its testing written as the name of a preset, and the
+    presets."""
+    document = covered(guards={"dead-code": {"untested": True, "tests_only": True, "known": ["shared/wiring.py:build"]},
+                               "no-comments": {}, "no-twins": {"translated": ["api"]}},
+                       reserved={"json": "only io"})
+    document["parts"]["service"]["holds"] = "classes"
+    document["tiers"]["unit"]["must_import"] = ["service"]
+    document["parts"]["service"]["uses"] = {"never": "pure"}
+    document["tiers"]["unit"]["uses"] = {"apply_never": True}
+    return document | {"testing": "pytest"}, {"pytest": document["testing"]}
 
 
 def test_a_key_whose_check_reads_a_fact_the_language_does_not_supply_is_refused_naming_key_fact_and_what_to_do():
@@ -84,22 +122,16 @@ def test_python_supplies_every_fact_a_bundled_check_reads():
 
 
 def test_the_keys_a_profile_sets_are_found_in_every_scope_and_through_a_testing_preset_each_once():
-    document = covered(guards={"dead-code": {"untested": True, "tests_only": True, "known": ["shared/wiring.py:build"]},
-                               "no-comments": {}, "no-twins": {"translated": ["api"]}},
-                       reserved={"json": "only io"})
-    document["parts"]["service"]["holds"] = "classes"
-    document["tiers"]["unit"]["must_import"] = ["service"]
-    document["parts"]["service"]["uses"] = {"never": "pure"}
-    document["tiers"]["unit"]["uses"] = {"apply_never": True}
-    partly = replace(PYTHON, checked=replace(PYTHON.checked, supplies=tuple(Supply(f, PARTIAL, "partly") for f in FACTS)))
-    found = short(document | {"testing": "pytest"}, {"pytest": document["testing"]}, partly)
-    configured = [("reserved", "reserved"), ("tiers", "tiers"), ("parts.api.may_import", "parts.<part>.may_import"),
+    document, presets = everywhere()
+    found = short(document, presets, PARTLY)
+    configured = [("testing.skips", "testing.skips"), ("testing.table", "testing.table"),
+                  ("testing.mocks", "testing.mocks"), ("parts.api.may_import", "parts.<part>.may_import"),
                   ("parts.service.may_import", "parts.<part>.may_import"), ("parts.service.holds", "parts.<part>.holds"),
                   ("parts.service.uses.never", "parts.<part>.uses.never"),
                   ("parts.store.may_import", "parts.<part>.may_import"),
-                  ("parts.store.libraries", "parts.<part>.libraries"), ("tiers.unit.must_import", "tiers.<tier>.must_import"),
+                  ("parts.store.libraries", "parts.<part>.libraries"), ("reserved", "reserved"), ("tiers", "tiers"),
                   ("tiers.unit.uses.apply_never", "tiers.<tier>.uses.apply_never"),
-                  ("testing.skips", "testing.skips"), ("testing.table", "testing.table"), ("testing.mocks", "testing.mocks"),
+                  ("tiers.unit.must_import", "tiers.<tier>.must_import"),
                   ("guards.no-comments", "guards.no-comments"), ("guards.no-twins", "guards.no-twins"),
                   ("guards.no-twins.translated", "guards.no-twins.translated"), ("guards.dead-code", "guards.dead-code"),
                   ("guards.dead-code.untested", "guards.dead-code.untested"),
@@ -107,6 +139,11 @@ def test_the_keys_a_profile_sets_are_found_in_every_scope_and_through_a_testing_
                   ("guards.dead-code.known", "guards.dead-code.known")]
     needs = {key.address: key.needs for key in KEYS}
     assert found == [Shortfall(address, fact, "partly") for address, key in configured for fact in needs[key]]
+
+
+def test_the_table_walked_is_every_key_of_the_format_unless_another_is_given():
+    document, presets = everywhere()
+    assert short(document, presets, PARTLY) == short(document, presets, PARTLY, keys=(*KEYS, *SLOTS))
 
 
 @pytest.mark.parametrize("key", [key for key in KEYS if key.needs], ids=lambda key: key.address)
@@ -136,6 +173,98 @@ def test_apply_never_false_configures_nothing():
 def test_a_uses_that_is_no_mapping_configures_nothing_in_any_language(uses):
     document = services(uses=uses)
     assert short(document, {}, TOY) == []
+
+
+def test_a_key_three_scopes_down_is_held_to_its_facts_at_its_full_address():
+    assert short({"outer": {"inner": {"deep": "x"}}}, {}, TOY, keys=NESTED) == [
+        Shortfall("outer.inner.deep", "call", None)]
+
+
+def test_each_entry_of_a_list_is_held_to_its_facts_addressed_by_its_index_from_0():
+    assert walked({"rows": [{"form": "a"}, {"form": "b"}]}) == ["rows.0.form", "rows.1.form"]
+
+
+def test_the_index_of_a_list_entry_counts_every_entry_not_only_the_mappings():
+    assert walked({"rows": ["x", {"form": "a"}]}) == ["rows.1.form"]
+
+
+def test_a_list_inside_an_entry_of_a_map_of_names_is_addressed_by_the_entry_s_name_and_the_index():
+    assert short({"items": {"a": {"cells": [{"kind": "k"}]}}}, {}, TOY, keys=NESTED) == [
+        Shortfall("items.a.cells.0.kind", "use", None)]
+
+
+def test_the_walk_is_depth_first_and_takes_a_scope_s_keys_in_the_order_of_the_table():
+    assert walked({"flat": 1, "outer": {"own": 1, "inner": {"deep": 1}}}) == ["outer.inner.deep", "outer.own", "flat"]
+
+
+@pytest.mark.parametrize("document", [
+    pytest.param({"outer": {"inner": {"deep": False}}}, id="a nested key set to false"),
+    pytest.param({"outer": {"inner": {"deep": None}}}, id="a nested key set to null"),
+    pytest.param({"outer": False}, id="an opening key set to false"),
+    pytest.param({"outer": None}, id="an opening key set to null"),
+    pytest.param({"rows": ["x"]}, id="a list entry that is no mapping"),
+    pytest.param({"rows": [["x", {"form": "a"}]]}, id="a list entry that is a list"),
+    pytest.param({"rows": {"form": "a"}}, id="a list scope written as a mapping"),
+    pytest.param({"outer": [{"own": 1}]}, id="a mapping scope written as a list"),
+    pytest.param({"items": {"a": "x"}}, id="an entry of a map of names that is no mapping"),
+    pytest.param({"items": [{"cells": [{"kind": "k"}]}]}, id="a map of names written as a list"),
+    pytest.param({"outer": {"stray": 1}}, id="a key the table does not list"),
+])
+def test_what_configures_nothing_is_held_to_no_fact(document):
+    assert walked(document) == []
+
+
+@pytest.mark.parametrize("value", [pytest.param(0, id="zero"), pytest.param("", id="an empty string"),
+                                   pytest.param([], id="an empty list"), pytest.param({}, id="an empty mapping")])
+def test_any_value_but_false_and_null_configures_a_key(value):
+    assert walked({"outer": {"own": value}}) == ["outer.own"]
+
+
+def test_a_key_that_needs_facts_is_held_to_them_whatever_the_shape_of_its_value():
+    assert walked({"rows": "x"}, RANKED) == ["rows"]
+    assert walked({"rows": [{"form": "a"}]}, RANKED) == ["rows", "rows.0.form"]
+
+
+def test_an_entry_named_by_no_string_is_addressed_by_its_name_as_text():
+    assert walked({"items": {7: {"cells": [{"kind": "k"}]}, False: {"cells": [{"kind": "k"}]}}}) == [
+        "items.7.cells.0.kind", "items.False.cells.0.kind"]
+
+
+def test_a_document_nested_deeper_than_the_table_is_walked_no_deeper_than_the_table():
+    assert walked({"outer": {"inner": {"deep": {"inner": {"deep": 1}}}}}) == ["outer.inner.deep"]
+
+
+def test_a_list_entry_s_refusal_reads_as_every_refusal_does():
+    assert refused(short({"rows": [{"form": "a"}]}, {}, TOY, keys=NESTED), TOY) == [
+        f"rows.0.form: its check reads call ({FACTS['call']}), which the language toy does not supply: drop "
+        "rows.0.form, or check the app with a language whose reader supplies call"]
+
+
+@pytest.mark.parametrize("value", [pytest.param(False, id="false"), pytest.param(None, id="null")])
+def test_a_guard_is_configured_by_being_named_whatever_its_value(value):
+    assert short(layered(language="toy", guards={"no-callbacks": value}), {}, TOY) == [
+        Shortfall("guards.no-callbacks", "callback", None)]
+
+
+def test_a_key_of_a_part_written_with_no_value_configures_nothing():
+    assert short(services(holds=None), {}, TOY) == []
+
+
+def test_a_key_of_a_guard_written_with_no_value_configures_nothing():
+    found = short(layered(language="toy", guards={"no-twins": {"translated": None}}), {}, TOY)
+    assert {item.address for item in found} == {"guards.no-twins"}
+
+
+@pytest.mark.parametrize("testing", [pytest.param("nosuch", id="a name that is no preset"),
+                                     pytest.param(3, id="a number"), pytest.param(["pytest"], id="a list")])
+def test_a_testing_that_names_no_preset_and_is_no_mapping_walks_nothing(testing):
+    assert short(layered(language="toy", testing=testing), {"pytest": {"skips": ["x"]}}, TOY) == []
+
+
+def test_a_testing_that_names_a_preset_is_walked_as_the_preset():
+    found = short(layered(language="toy", testing="pytest"), {"pytest": {"skips": ["x"]}}, TOY)
+    assert [(item.address, item.fact) for item in found] == [("testing.skips", "use"),
+                                                             ("testing.skips", "import.resolved")]
 
 
 def test_a_key_whose_check_reads_names_through_imports_needs_them_followed_however_written():
