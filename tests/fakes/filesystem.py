@@ -19,8 +19,8 @@ class FakeSourceTree:
     as a whole SourceFile (whose name and path are filled in), by its path below the root; the text of any other
     file, by its path; what a text that is in no file parses to, by the text; and the links, each path that is one with
     the path it points to, given in full. It records the standard modules each read and each parse is handed
-    (handed), the prefix of private names each is handed (prefixes), and the endings each listing is handed (listed), in
-    call order; the imports it returns are those the
+    (handed), the prefix of private names each is handed (prefixes), the pattern of a special name each is handed
+    (specials), and the endings each listing is handed (listed), in call order; the imports it returns are those the
     test built."""
 
     def __init__(self, root: Path, files: dict[str, list[Import] | SourceFile],
@@ -31,6 +31,7 @@ class FakeSourceTree:
         self._texts, self._parsed, self._links = dict(texts or {}), dict(parsed or {}), dict(links or {})
         self.handed: list[frozenset[str]] = []
         self.prefixes: list[str] = []
+        self.specials: list[str] = []
         self.listed: list[tuple[str, ...]] = []
 
     def absent(self, roots: Iterable[Path]) -> list[Path]:
@@ -42,9 +43,10 @@ class FakeSourceTree:
 
     def read(self, root: Path, paths: list[tuple[str, ...]], table: CaseTable | None = None,
              immutable: tuple[RecordMark, ...] = (), interface: tuple[InterfaceMark, ...] = (), *,
-             standard: frozenset[str], private: str) -> list[SourceFile]:
+             standard: frozenset[str], private: str, special: str) -> list[SourceFile]:
         self.handed.append(standard)
         self.prefixes.append(private)
+        self.specials.append(special)
         files = self._trees[root]
         return [_source(f"{root.name}/{'/'.join(path)}", path, files["/".join(path)]) for path in paths]
 
@@ -62,9 +64,10 @@ class FakeSourceTree:
                 return target / whole.relative_to(link)
         return whole
 
-    def parsed(self, text: str, standard: frozenset[str], *, private: str) -> SourceFile:
+    def parsed(self, text: str, standard: frozenset[str], *, private: str, special: str) -> SourceFile:
         self.handed.append(standard)
         self.prefixes.append(private)
+        self.specials.append(special)
         return _source("", (), self._parsed[text])
 
 

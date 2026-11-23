@@ -16,6 +16,8 @@ from xarch.platform.filesystem import FileSystem
 
 PRIVATE = yaml.safe_load(resources.files("xarch").joinpath("architectures", "presets", "language", "python.yaml")
                          .read_text(encoding="utf-8"))["private"]
+SPECIAL = yaml.safe_load(resources.files("xarch").joinpath("architectures", "presets", "language", "python.yaml")
+                         .read_text(encoding="utf-8"))["special"]
 SOURCE = Path(__file__).parents[4] / "xarch"
 CORPORA = Path(__file__).parents[3] / "bootstrap" / "corpora"
 ARCHIVES = ("df537ca", "7cc6111", "examples")
@@ -24,8 +26,8 @@ ARCHIVES = ("df537ca", "7cc6111", "examples")
 def read(root: Path) -> list[SourceFile]:
     """Every file below root that parses, read as `check` reads it."""
     tree = FsSourceTree(FileSystem())
-    return [file for file in tree.read(root, tree.paths(root, (".py",)), standard=frozenset(), private=PRIVATE)
-            if file.error is None]
+    return [file for file in tree.read(root, tree.paths(root, (".py",)), standard=frozenset(), private=PRIVATE,
+                                       special=SPECIAL) if file.error is None]
 
 
 def unpacked(name: str, into: Path) -> Path:

@@ -124,7 +124,8 @@ class Class:
     order, those annotated as a class variable left out; types: the annotation of each of its fields, in the same order,
     as written (a string annotation by its text); immutable: it is an immutable record, as the reader was told one is
     marked (see RecordMark); interface: it is an interface, as the reader was told one is marked (see
-    InterfaceMark); public: it is for other files to use, as the language's reader says."""
+    InterfaceMark); public: it is for other files to use, as the language's reader says; record: it is a record, as the
+    language's reader says."""
     line: int
     name: str
     bases: tuple[Ref, ...] = ()
@@ -137,6 +138,7 @@ class Class:
     immutable: bool = False
     interface: bool = False
     public: bool = True
+    record: bool = False
 
 
 @dataclass(frozen=True)
