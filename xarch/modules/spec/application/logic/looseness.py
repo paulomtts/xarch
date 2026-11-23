@@ -41,16 +41,17 @@ from fractions import Fraction
 
 from xarch.kernel.logic.names import outside_text
 from xarch.kernel.placement import EVERYTHING
+from xarch.modules.spec.application.logic.holds_written import NARROWER
 from xarch.modules.spec.domain.guards import KEY, ORDER
-from xarch.modules.spec.domain.published import BASED_ON, CLOSEST, LINE, LITMUS, Loosened, Origin
+from xarch.modules.spec.domain.published import BASED_ON, CLOSEST, KINDS, LINE, LITMUS, Loosened, Origin
 from xarch.modules.spec.domain.values import Architecture, DeadCode, NoTwins, PackageOnly, Part, Tier
 from xarch.profile_values.placement import Target
 
 Looser = tuple[str, str, str]
 """(key, part, what): one way a profile is looser, before it is said."""
 LOOSER = ("imports.may", "imports.may.types_only", "imports.libraries", "uses.never", "imports.must", "untested",
-          LITMUS, "imports.types_only", "imports.also", "uses.apply_never", "testing.skips", "files.pinned", "reserved",
-          "known", "translated", "review.never", "review.mask", "evals.placement.lines")
+          LITMUS, "holds", "imports.types_only", "imports.also", "uses.apply_never", "testing.skips", "files.pinned",
+          "reserved", "known", "translated", "review.never", "review.mask", "evals.placement.lines")
 """Every key a way a profile is looser is listed under, each said by a sentence of its own."""
 LOW = 0.75
 """The match below which a comparison is low: less than three in four of the things `check` reads under either
@@ -253,6 +254,8 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
     found += [("untested", name, "") for name in shared
               if custom.parts[name].untested and not base.parts[pairs[name]].untested]
     found += [(LITMUS, name, "") for name in shared if base.parts[pairs[name]].litmus and not custom.parts[name].litmus]
+    found += [("holds", name, kind) for name in shared for kind in _allowed(custom.parts[name])
+              if kind not in _allowed(base.parts[pairs[name]])]
     paired = _paired_tiers(custom, base, pairs)
     tiers = {paired[tier.name]: tier for tier in custom.tiers if tier.name in paired}
     for tier in base.tiers:
@@ -281,6 +284,15 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
     found += [("evals.placement.lines", name, f"{custom.lines.get(name, LINE):.2f}") for name in shared
               if custom.lines.get(name, LINE) < base.lines.get(pairs[name], LINE)]
     return found
+
+
+def _allowed(part: Part) -> tuple[str, ...]:
+    """The kinds a part's holds allows, in the order of KINDS: every kind when it lists none, else those it lists and,
+    when it lists classes, the kinds every class covers too."""
+    listed = {held.kind for held in part.holds}
+    if not listed:
+        return KINDS
+    return tuple(kind for kind in KINDS if kind in listed or ("classes" in listed and kind in NARROWER))
 
 
 def _known(architecture: Architecture) -> tuple[str, ...]:
@@ -356,6 +368,8 @@ def _sentence(key: str, part: str, what: str = "") -> str:
             return f"{part} is newly marked untested (parts.{part}.untested)"
         case "litmus":
             return f"{part} has no litmus, though the profile it is compared with gives it one (parts.{part}.litmus)"
+        case "holds":
+            return f"{part} may also define {what} at the top level (parts.{part}.holds)"
         case "imports.types_only":
             return f"the {part} tests may now call {what} (tiers.{part}.imports.types_only)"
         case "imports.also":

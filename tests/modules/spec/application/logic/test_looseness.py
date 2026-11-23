@@ -176,6 +176,7 @@ def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
         (parsed(layered()), parsed(layered(review={"never": ["src/drafts"], "mask": ["Northwind"]}))),
         (parsed(layered(evals={"placement": {"lines": {"store": 0.2}}})), parsed(layered())),
         (parsed(marked(["store", "shared"])), parsed(marked(["store", {"shared": "types_only"}]))),
+        (parsed(holding()), parsed(holding(classes={}))),
     ]
     found = [item for custom, base in pairs for item in loosened(custom, base)]
     assert sorted({item.key for item in found}) == sorted(LOOSER)
@@ -397,6 +398,12 @@ def as_routes(value):
     return "routes" if value == "api" else value
 
 
+def holding(**holds) -> dict:
+    """layered(), its part service holding the kinds given, each with its settings; no holds, every kind, when none is
+    given."""
+    return given(layered(), "service", holds=holds) if holds else layered()
+
+
 @pytest.mark.parametrize("profile", [
     pytest.param(given(layered(), "api", imports={"may": ["service"], "libraries": ["fastapi"]}),
                  id="the outside packages of the part"),
@@ -423,3 +430,19 @@ def test_each_key_of_a_part_renamed_in_place_is_compared_with_the_part_it_pairs_
 ])
 def test_a_way_a_copy_renaming_a_part_in_place_is_looser_is_said_under_the_new_name(base, custom, key, part, what):
     assert [(item.key, item.part, item.what) for item in loosened(parsed(custom), parsed(base))] == [(key, part, what)]
+
+
+@pytest.mark.parametrize("base, custom, kinds", [
+    pytest.param(holding(functions={}), holding(functions={}, classes={}), ["classes", "records", "exceptions"],
+                 id="classes added allow records and exceptions too, each a kind of its own"),
+    pytest.param(holding(classes={}), holding(classes={}, records={"immutable": True}), [],
+                 id="records written beside classes were allowed already"),
+    pytest.param(holding(classes={}), holding(), ["functions"],
+                 id="holds dropped allows the kinds classes did not, records and exceptions coming through classes"),
+    pytest.param(holding(), holding(functions={}), [], id="a base with no holds allowed every kind"),
+    pytest.param(holding(functions={}, classes={}), holding(functions={}), [], id="a kind dropped is stricter"),
+])
+def test_a_kind_a_part_may_now_define_at_the_top_level_is_looser(base, custom, kinds):
+    assert [item for item in loosened(parsed(custom), parsed(base)) if item.key == "holds"] == [
+        Loosened("holds", "service", kind, f"service may also define {kind} at the top level (parts.service.holds)")
+        for kind in kinds]
