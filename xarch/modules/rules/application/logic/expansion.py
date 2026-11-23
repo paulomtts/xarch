@@ -135,9 +135,9 @@ def _rules(profile: Profile) -> tuple[Rule, ...]:
 
 
 def _types_only_tiers(profile: Profile) -> tuple[Rule, ...]:
-    """A test of a tier that names parts in `types_only` never calls what it imports from them, and never references
+    """A test of a tier that names parts in `imports.types_only` never calls what it imports from them, and never references
     one of their functions; a call is not said again as a reference."""
-    return tuple(_types_only(Scope(TESTS, tier=tier.name), f"a {tier.name} test", f"tiers.{tier.name}.types_only",
+    return tuple(_types_only(Scope(TESTS, tier=tier.name), f"a {tier.name} test", f"tiers.{tier.name}.imports.types_only",
                              Match("part", words=tier.types_only), "{tier_type_only_fix}")
                  for tier in profile.tiers if tier.types_only)
 
@@ -163,7 +163,7 @@ def _tiers(profile: Profile) -> tuple[Rule, ...]:
     """A test file lies in a tier; a file of a tier imports, of the app, what the part its folder mirrors may (or its
     tier's subject, for one placed by its tier's folder); and of the test code, the fakes only when its tier tests a
     part they stand in for, never another test file (once per line), and anything else only from its own folder. The
-    rule of what a tier's file imports of the app is keyed by each tier's may_also_import too, for a tier that sets
+    rule of what a tier's file imports of the app is keyed by each tier's imports.also too, for a tier that sets
     it."""
     if not profile.tiers:
         return ()
@@ -185,7 +185,7 @@ def _tiers(profile: Profile) -> tuple[Rule, ...]:
                   "and import it from there", _all("target-test"), ("line", "target"))
     elsewhere = Saying("a test may import test code only from its own folder {own_folder}/ ({target})",
                        "move what {target} holds into {own_folder}/, or drop the import")
-    also = "".join(f"; tiers.{tier.name}.may_also_import" for tier in profile.tiers if tier.may_also_import)
+    also = "".join(f"; tiers.{tier.name}.imports.also" for tier in profile.tiers if tier.may_also_import)
     return (Rule("tiers", Scope(TESTS, where=(_of("not tiered"), _of("test"), *not_fake)), ("file",), MAY_NOT,
                  EXISTING, (Saying(NO_TIER, NO_TIER_FIX),), key="tiers"),
             Rule("tiers", Scope(TESTS, where=_all("tiered")), ("import-into-app",), MAY_ONLY, (Match("permitted"),),
@@ -345,7 +345,7 @@ def _must_import(profile: Profile) -> tuple[Rule, ...]:
 
 
 def _must_import_tiers(profile: Profile) -> tuple[Rule, ...]:
-    """Each test file of a tier that lists `must_import` reaches one of the parts, in any instance, by an import into
+    """Each test file of a tier that lists `imports.must` reaches one of the parts, in any instance, by an import into
     the app or through test code it imports that is no test file, however far; one with no real statement is not
     said."""
     return tuple(Rule("must-import", Scope(TESTS, tier=tier.name, where=_all("test")), ("import-into-app",),
@@ -354,7 +354,7 @@ def _must_import_tiers(profile: Profile) -> tuple[Rule, ...]:
                               "({key})",
                               "drive what it proves through {targets}, or move it to the tier of the part it calls "
                               "directly"),),
-                      keep=_all("target-placed"), exempt=_all("no-statements"), key=f"tiers.{tier.name}.must_import",
+                      keep=_all("target-placed"), exempt=_all("no-statements"), key=f"tiers.{tier.name}.imports.must",
                       links=("import-into-tests",), via=_all("not target-test"))
                  for tier in profile.tiers if tier.must_import)
 
@@ -424,12 +424,12 @@ def _pass_through(profile: Profile) -> tuple[Rule, ...]:
 
 
 KEYS = ("parts.imports.may", "parts.imports.libraries", "parts.uses.never", "tiers.uses.apply_never", "tiers",
-        "tiers.may_also_import", "tiers.types_only",
+        "tiers.imports.also", "tiers.imports.types_only",
         "parts.package_only", "parts.imports.may.types_only", "guards.no-callbacks", "parts.holds.classes.names",
         "parts.holds.functions.names", "parts.holds.records.names", "parts.holds.exceptions.names",
         "parts.holds.classes.built_by", "guards.private-imports", "guards.no-comments", "guards.closed-tree",
         "parts.holds", "parts.holds.classes.immutable", "parts.holds.records.immutable",
-        "parts.imports.must", "tiers.must_import", "guards.dead-code", "guards.dead-code.untested",
+        "parts.imports.must", "tiers.imports.must", "guards.dead-code", "guards.dead-code.untested",
         "guards.dead-code.tests_only", "guards.pass-through")
 """The keys the rules of the book are keyed by, each with any part or tier left out (see explained.general), in the
 order of the book: a key the engine expands to rules when a profile sets it."""

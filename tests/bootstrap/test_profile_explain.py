@@ -304,3 +304,33 @@ def test_an_old_part_key_answers_with_the_form_that_replaces_it():
     found = runner.invoke(app, ["profile", "explain", "parts.may_import"])
     assert found.exit_code == 2
     assert "moved in 0.3.0: write imports: {may: [...]}" in found.output
+
+
+@pytest.mark.parametrize("address, key", [
+    pytest.param("tiers.imports.also", "tiers.imports.also", id="the plain address"),
+    pytest.param("tiers.<tier>.imports.must", "tiers.imports.must", id="with the placeholder"),
+    pytest.param("tiers.unit.imports.must", "tiers.imports.must", id="with a tier's name"),
+])
+def test_a_key_of_a_tier_s_group_is_explained_with_or_without_a_tier_name(address, key):
+    found = runner.invoke(app, ["profile", "explain", address, "--format", "json"])
+    assert found.exit_code == 0 and json.loads(found.output)["key"] == key
+
+
+def test_the_group_of_a_tier_lists_its_keys_and_the_rules_they_feed():
+    shown = json.loads(runner.invoke(app, ["profile", "explain", "tiers.imports", "--format", "json"]).output)
+    assert shown["rules"] == ["tiers", "must-import", "types-only"]
+    assert json.loads(runner.invoke(app, ["profile", "explain", "tiers.imports.types_only", "--format",
+                                          "json"]).output)["rules"] == ["types-only"]
+
+
+@pytest.mark.parametrize("address, text", [
+    pytest.param("tiers.may_import", "moved in 0.3.0: write imports: {may: [...]}", id="may_import"),
+    pytest.param("tiers.may_also_import", "moved in 0.3.0: write imports: {also: [...]}", id="may_also_import"),
+    pytest.param("tiers.must_import", "moved in 0.3.0: write imports: {must: [...]}", id="must_import"),
+    pytest.param("tiers.types_only", "moved in 0.3.0: write imports: {types_only: [<part>, ...]}", id="types_only"),
+])
+def test_an_old_tier_key_answers_with_the_form_that_replaces_it(address, text):
+    said = runner.invoke(app, ["profile", "explain", address])
+    assert said.exit_code == 2 and f"error: no key `{address}` in the format: {text}; the nearest are " in said.output
+    found = runner.invoke(app, ["profile", "explain", address, "--format", "json"])
+    assert found.exit_code == 2 and json.loads(found.output)["retired"] == text

@@ -63,8 +63,8 @@ def test_every_way_a_profile_is_looser_than_another_is_found_in_order():
              "store": {"path": "store", "role": "storage",
                        "imports": {"may": ["core"], "libraries": ["sqlmodel", "requests"]}, "untested": "trust me"}}
     custom = {**BASE, "parts": parts, "never": {"pure": ["socket"]},
-              "tiers": {"unit": {key: value for key, value in TIER.items() if key != "types_only"}
-                        | {"uses": {"apply_never": False}, "may_also_import": ["edge"]}},
+              "tiers": {"unit": {key: value for key, value in TIER.items() if key != "imports"}
+                        | {"uses": {"apply_never": False}, "imports": {"also": ["edge"]}}},
               "testing": {**TESTING, "skips": ["pytest.mark.skip"]}, "guards": {},
               "files": {"tests/test_rules.py": {"from": "guard.py"}}}
     assert loosened(parsed(custom), parsed(BASE)) == (
@@ -96,8 +96,8 @@ def test_every_way_a_profile_is_looser_than_another_is_found_in_order():
 ])
 def test_what_a_tiers_tests_may_also_import_beyond_the_bundled_tier_is_looser(bundled, custom, found):
     base, mine = covered(), covered()
-    base["tiers"]["unit"]["may_also_import"] = bundled
-    mine["tiers"]["unit"]["may_also_import"] = custom
+    base["tiers"]["unit"]["imports"] = {"also": bundled}
+    mine["tiers"]["unit"]["imports"] = {"also": custom}
     assert loosened(parsed(mine), parsed(base)) == found
 
 
@@ -166,8 +166,8 @@ def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
                                "imports": {"may": ["core"], "libraries": ["sqlmodel", "requests"]}},
                                "core": {**PARTS["core"], "imports": {"may": ["store"]}}},
              "never": {"pure": ["socket"]}, "testing": {**TESTING, "skips": ["pytest.mark.skip"]},
-             "tiers": {"unit": {key: value for key, value in TIER.items() if key != "types_only"}
-                       | {"uses": {"apply_never": False}, "may_also_import": ["edge"]}},
+             "tiers": {"unit": {key: value for key, value in TIER.items() if key != "imports"}
+                       | {"uses": {"apply_never": False}, "imports": {"also": ["edge"]}}},
              "files": {"tests/test_rules.py": {"from": "guard.py"}}}
     litmus = layered()
     litmus["parts"]["api"]["litmus"] = "Does it answer a request?"

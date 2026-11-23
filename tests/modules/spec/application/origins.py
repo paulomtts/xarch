@@ -1,7 +1,7 @@
 """The bundled profiles the origin of a custom one is found against: base, with three tiered parts, guards and a
 pinned init file, and other, with one part."""
 TESTING = {"files": ["test_*.py"], "functions": "test_*", "skips": ["pytest.mark.skip", "pytest.mark.xfail"]}
-TIER = {"proves": "a rule", "litmus": "Does it call a rule?", "uses": {"apply_never": True}, "types_only": ["store"]}
+TIER = {"proves": "a rule", "litmus": "Does it call a rule?", "uses": {"apply_never": True}, "imports": {"types_only": ["store"]}}
 PARTS = {"core": {"path": "core", "role": "rules", "imports": {"may": []}, "uses": {"never": "pure"}, "tests": "unit"},
          "store": {"path": "store", "role": "storage", "imports": {"may": ["core"], "libraries": ["sqlmodel"]},
                    "tests": "unit"},

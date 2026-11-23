@@ -168,7 +168,7 @@ def test_a_class_that_is_no_immutable_record_in_a_part_of_records_is_listed_as_w
 def test_a_test_that_reaches_nothing_its_tier_must_reach_names_its_rule_and_its_fix(tmp_path):
     shutil.copytree(BUNDLED, tmp_path / "arch")
     text = (BUNDLED / "web.yaml").read_text().replace(
-        "  integration:\n", "  integration:\n    must_import: [controller]\n", 1)
+        "  integration:\n", "  integration:\n    imports: {must: [controller]}\n", 1)
     (tmp_path / "arch/reach.yaml").write_text(text)
     tests = {**TESTS, "modules/docs/application/test_other.py": "def test_other():\n    assert 1\n"}
     result = source_check(write(tmp_path / "app", APP), str(tmp_path / "arch/reach.yaml"), write(tmp_path / "tests", tests))

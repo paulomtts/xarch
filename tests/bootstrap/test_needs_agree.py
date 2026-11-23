@@ -37,12 +37,14 @@ reserved:
 tiers:
   unit:
     uses: {apply_never: true}
-    types_only: [api]
-    must_import: [core]
-    may_also_import: [api]
+    imports:
+      also: [api]
+      must: [core]
+      types_only: [api]
   guard:
     folder: architecture
-    may_import: [core]
+    imports:
+      may: [core]
 fakes: {folder: fakes, for: [api], prefix: Fake}
 guards:
   no-comments: {}

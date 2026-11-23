@@ -216,49 +216,53 @@ tiers:
     uses: {apply_never: true}
     docs:
       may_touch: what the part it mirrors may import; an adapter, temporary folders
-    types_only:
-    - domain
-    must_import:
-    - domain
-    - logic
-    - kernel
+    imports:
+      must:
+      - domain
+      - logic
+      - kernel
+      types_only:
+      - domain
   integration:
     proves: a use case, through its controller around fakes
     litmus: Does it drive a controller around fakes and check the Result it returns?
-    must_import:
-    - controller
+    imports:
+      must:
+      - controller
     docs:
       may_touch: what the part it mirrors may import; `tests/fakes/`
     uses: {apply_never: true}
   wired:
     proves: a command, a check on real files, or what a bundled profile holds, through the app bootstrap/ wires
     litmus: Does it need the whole app, as bootstrap/ wires it, to mean anything?
-    types_only:
-    - domain
-    - logic
-    - ports
-    - services
-    - controller
-    - adapters
-    - platform
-    must_import:
-    - bootstrap
+    imports:
+      must:
+      - bootstrap
+      types_only:
+      - domain
+      - logic
+      - ports
+      - services
+      - controller
+      - adapters
+      - platform
     docs:
       may_touch: anything bootstrap/ wires; temporary folders
     uses: {apply_never: true}
   guard:
     proves: xarch follows the architecture it enforces
     litmus: Does it run the wired check on xarch's own source?
-    types_only:
-    - domain
-    - logic
-    - ports
-    - services
-    - controller
-    - adapters
-    - platform
+    imports:
+      may: everything
+      types_only:
+      - domain
+      - logic
+      - ports
+      - services
+      - controller
+      - adapters
+      - platform
     folder: architecture
-    may_import: everything
     docs:
       subject: xarch's own source tree
       may_touch: '`tests/architecture/`'

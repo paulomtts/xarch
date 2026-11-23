@@ -60,7 +60,7 @@ def unit_uses(uses) -> dict:
 
 
 PART_USE = ("folders, holds, imports, litmus, package_only, path, role, shared, tests, untested, uses")
-TIER_USE = "docs, folder, litmus, may_also_import, may_import, must_import, plain_tables, proves, types_only, uses"
+TIER_USE = "docs, folder, imports, litmus, plain_tables, proves, uses"
 FILE_USE = ("based_on, checks, docs, evals, excluded, fakes, files, guards, hints, language, layers, name, never, parts, "
             "reserved, review, testing, tiers")
 LIST_MOVED = "moved in 0.3.0: write uses: {never: <list>}"

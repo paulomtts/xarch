@@ -42,6 +42,7 @@ from xarch.modules.spec.domain.profile_keys import (
     TESTING,
     TIER,
     TIER_DOCS,
+    TIER_IMPORTS,
     TIER_USES,
     Key,
 )
@@ -115,11 +116,8 @@ _KEYS: tuple[Key, ...] = (
     Key(TIER, "litmus", False, False),
     Key(TIER, "uses", opens=TIER_USES),
     Key(TIER, "plain_tables", rules=("scenario-coverage",)),
-    Key(TIER, "types_only", rules=("types-only",)),
-    Key(TIER, "must_import", rules=("must-import",)),
     Key(TIER, "folder", rules=("tiers", "test-tree")),
-    Key(TIER, "may_import", rules=("tiers",)),
-    Key(TIER, "may_also_import", rules=("tiers",)),
+    Key(TIER, "imports", rules=("tiers", "must-import", "types-only"), opens=TIER_IMPORTS),
     Key(TIER, "docs", False, False, opens=TIER_DOCS),
 
     Key(TIER_DOCS, "subject", False, False),
@@ -131,6 +129,11 @@ _KEYS: tuple[Key, ...] = (
     Key(TIER_DOCS, "helpers", False, False),
 
     Key(TIER_USES, "apply_never", rules=("never-use",)),
+
+    Key(TIER_IMPORTS, "may", rules=("tiers",)),
+    Key(TIER_IMPORTS, "also", rules=("tiers",)),
+    Key(TIER_IMPORTS, "must", rules=("must-import",)),
+    Key(TIER_IMPORTS, "types_only", rules=("types-only",)),
 
     Key(TESTING, "files", True, rules=("tiers", "test-tree")),
     Key(TESTING, "functions", True, rules=("scenario-coverage", "stand-ins")),
@@ -243,11 +246,11 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "reserved": (*_IMPORTS, "import.standard"),
     "tiers": (*_IMPORTS, "file"),
     "tiers.<tier>.uses.apply_never": _NEVER_USE,
-    "tiers.<tier>.types_only": _TYPES_ONLY,
-    "tiers.<tier>.must_import": (*_IMPORTS, "function.statements", "file"),
+    "tiers.<tier>.imports.types_only": _TYPES_ONLY,
+    "tiers.<tier>.imports.must": (*_IMPORTS, "function.statements", "file"),
     "tiers.<tier>.plain_tables": ("function.tables", "function.blocks", "function.expressions"),
-    "tiers.<tier>.may_import": _IMPORTS,
-    "tiers.<tier>.may_also_import": _IMPORTS,
+    "tiers.<tier>.imports.may": _IMPORTS,
+    "tiers.<tier>.imports.also": _IMPORTS,
     "testing.skips": ("use", "import.resolved"),
     "testing.table": ("function.tables",),
     "testing.mocks": ("call", "parameter_call", "import.resolved"),

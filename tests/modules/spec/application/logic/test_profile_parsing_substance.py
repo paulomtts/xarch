@@ -175,15 +175,15 @@ def test_imports_must_takes_no_name_pattern():
 
 def test_a_tier_says_what_each_of_its_tests_must_reach():
     document = covered()
-    document["tiers"]["integration"]["must_import"] = ["api", "store"]
+    document["tiers"]["integration"]["imports"] = {"must": ["api", "store"]}
     tiers = {tier.name: tier for tier in parsed(document).tiers}
     assert (tiers["integration"].must_import, tiers["unit"].must_import) == (("api", "store"), ())
 
 
 def test_a_tier_must_import_names_parts():
     document = covered()
-    document["tiers"]["unit"]["must_import"] = ["ghost"]
-    assert problems(document) == ["layered.yaml: tiers.unit.must_import: no part named 'ghost'"]
+    document["tiers"]["unit"]["imports"] = {"must": ["ghost"]}
+    assert problems(document) == ["layered.yaml: tiers.unit.imports.must: no part named 'ghost'"]
 
 
 def test_dead_code_may_also_list_the_files_no_test_of_their_tier_reaches():

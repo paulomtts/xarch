@@ -53,7 +53,7 @@ ALSO = replace(PROFILE, tiers=tuple(replace(tier, may_also_import=(Target("web")
     pytest.param("mirrored_may_import", TEST, "file", RULE, PROFILE, None, ["parts.domain.imports.may"],
                  id="mirrored_may_import"),
     pytest.param("mirrored_may_import", TEST, "file", RULE, ALSO, None,
-                 ["parts.domain.imports.may; tiers.unit.may_also_import"],
+                 ["parts.domain.imports.may; tiers.unit.imports.also"],
                  id="mirrored_may_import: with what its tier's tests may also import"),
     pytest.param("own_folder", TEST, "file", RULE, PROFILE, None, ["tests/modules/docs"], id="own_folder"),
     pytest.param("tests_folder", DOMAIN, "file", RULE, PROFILE, None, ["tests/modules/docs/domain"], id="tests_folder"),

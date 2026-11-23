@@ -158,7 +158,7 @@ def test_what_a_tiers_tests_may_also_import_follows_what_the_part_they_mirror_ma
                  id="a test of the tier may import what its tier's tests may also import"),
     pytest.param("modules/docs/application/test_publish.py", [imp(1, "app.platform", "sql")],
                  ["1: a test of controller/ (integration tier) may not import platform/ (app.platform.sql): it imports "
-                  "only what controller/ may (parts.controller.imports.may; tiers.integration.may_also_import)"],
+                  "only what controller/ may (parts.controller.imports.may; tiers.integration.imports.also)"],
                  id="what it still may not import is said with the key of the tier too"),
     pytest.param(DOMAIN_TEST, [imp(1, "app.modules.docs.adapters", "db")],
                  ["1: a test of domain/ (unit tier) may not import adapters/ of modules/docs "

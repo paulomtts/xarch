@@ -277,9 +277,10 @@ tiers:
     litmus: Does it drive a controller around fakes and check the Result it returns?
     uses: {apply_never: true}
     plain_tables: true
-    must_import: [controller]
-    # the values the ports hand back, which a test of a controller builds its fakes' answers with
-    may_also_import: [domain/values, domain/profile, domain/parsed, domain/outcomes]
+    imports:
+      # the values the ports hand back, which a test of a controller builds its fakes' answers with
+      also: [domain/values, domain/profile, domain/parsed, domain/outcomes]
+      must: [controller]
     docs:
       may_touch: what the part it mirrors may import; `tests/fakes/`
       one_file_per: use case
@@ -289,8 +290,9 @@ tiers:
   wired:
     proves: a command, a check on real files, or what a bundled profile holds, through the app bootstrap/ wires
     litmus: Does it need the whole app, as bootstrap/ wires it, to mean anything?
-    types_only: [domain, logic, ports, services, controller, adapters, platform]
-    must_import: [bootstrap]
+    imports:
+      must: [bootstrap]
+      types_only: [domain, logic, ports, services, controller, adapters, platform]
     docs:
       may_touch: anything bootstrap/ wires; temporary folders
       one_file_per: command, or feature of the profile file
@@ -300,9 +302,10 @@ tiers:
   guard:
     proves: xarch follows the architecture it enforces
     litmus: Does it run the wired check on xarch's own source?
-    types_only: [domain, logic, ports, services, controller, adapters, platform]
+    imports:
+      may: everything
+      types_only: [domain, logic, ports, services, controller, adapters, platform]
     folder: architecture
-    may_import: everything
     docs:
       subject: xarch's own source tree
       may_touch: "`tests/architecture/`"

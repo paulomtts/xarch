@@ -55,8 +55,8 @@ RULES = {
 }
 """For each profile and key of the group: how many rules it expands to, and the first 16 hex digits of the SHA-256 of
 their checks text before the change."""
-TIER_KEYS = {"types_only": "tiers.types_only", "must": "tiers.must_import", "also": "tiers.may_also_import",
-             "tiers": "tiers"}
+TIER_KEYS = {"types_only": "tiers.imports.types_only", "must": "tiers.imports.must",
+             "also": "tiers.imports.also", "tiers": "tiers"}
 """The address `profile explain` is asked for each key of a tier's group that rules are keyed by, and for `tiers`,
 whose rule a tier's `also` keys too."""
 TIER_RULES = {

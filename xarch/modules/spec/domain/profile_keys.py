@@ -24,6 +24,7 @@ PART_HOLDS_EXCEPTIONS = "part.holds.exceptions"
 TIER = "tier"
 TIER_DOCS = "tier.docs"
 TIER_USES = "tier.uses"
+TIER_IMPORTS = "tier.imports"
 TESTING = "testing"
 TABLE = "testing.table"
 MOCKS = "testing.mocks"
@@ -59,6 +60,7 @@ SCOPES = {
     TIER: "tiers.<tier>",
     TIER_DOCS: "tiers.<tier>.docs",
     TIER_USES: "tiers.<tier>.uses",
+    TIER_IMPORTS: "tiers.<tier>.imports",
     TESTING: "testing",
     TABLE: "testing.table",
     MOCKS: "testing.mocks",
@@ -211,6 +213,10 @@ RETIRED: tuple[Retired, ...] = (
     Retired(PART_IMPORTS, "never", "a key of uses, beside imports: write uses: {never: <list>}"),
     Retired(PART_IMPORTS, "types_only", "write it as the mode of its entry in imports.may, such as "
                                         "[{ports: types_only}]"),
+    Retired(TIER, "may_import", "moved in 0.3.0: write imports: {may: [...]}"),
+    Retired(TIER, "may_also_import", "moved in 0.3.0: write imports: {also: [...]}"),
+    Retired(TIER, "must_import", "moved in 0.3.0: write imports: {must: [...]}"),
+    Retired(TIER, "types_only", "moved in 0.3.0: write imports: {types_only: [<part>, ...]}"),
 )
 """Every key, guard and rule id xarch has retired, and every value a key it still has no longer takes: a profile
 writing one is refused with the entry's text."""

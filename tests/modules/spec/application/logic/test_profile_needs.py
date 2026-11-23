@@ -84,7 +84,7 @@ def everywhere() -> tuple[dict, dict]:
                                "no-comments": {}, "no-twins": {"translated": ["api"]}},
                        reserved={"json": "only io"})
     document["parts"]["service"]["holds"] = {"classes": {}}
-    document["tiers"]["unit"]["must_import"] = ["service"]
+    document["tiers"]["unit"]["imports"] = {"must": ["service"]}
     document["parts"]["service"]["uses"] = {"never": "pure"}
     document["tiers"]["unit"]["uses"] = {"apply_never": True}
     return document | {"testing": "pytest"}, {"pytest": document["testing"]}
@@ -141,7 +141,7 @@ def test_the_keys_a_profile_sets_are_found_in_every_scope_and_through_a_testing_
                   ("parts.store.imports.may", "parts.<part>.imports.may"),
                   ("parts.store.imports.libraries", "parts.<part>.imports.libraries"), ("reserved", "reserved"), ("tiers", "tiers"),
                   ("tiers.unit.uses.apply_never", "tiers.<tier>.uses.apply_never"),
-                  ("tiers.unit.must_import", "tiers.<tier>.must_import"),
+                  ("tiers.unit.imports.must", "tiers.<tier>.imports.must"),
                   ("guards.no-comments", "guards.no-comments"), ("guards.no-twins", "guards.no-twins"),
                   ("guards.no-twins.translated", "guards.no-twins.translated"), ("guards.dead-code", "guards.dead-code"),
                   ("guards.dead-code.untested", "guards.dead-code.untested"),
@@ -173,6 +173,17 @@ def test_a_tier_that_applies_the_never_lists_needs_the_facts_their_check_reads()
     assert problems(tiered(uses={"apply_never": True}), languages=LANGUAGES) == [
         refusal("tiers.unit.uses.apply_never", "use"), refusal("tiers.unit.uses.apply_never", "method_call"),
         refusal("tiers.unit.uses.apply_never", "import.resolved")]
+
+
+def test_a_tier_s_imports_need_what_the_old_tier_keys_needed_at_their_new_addresses():
+    document = tiered(imports={"must": ["service"], "types_only": ["store"]})
+    assert [(item.address, item.fact) for item in short(document, {}, TOY)] == [
+        ("tiers.unit.imports.must", "function.statements"),
+        *(("tiers.unit.imports.types_only", fact) for fact in ("call", "use", "module_functions", "import.resolved"))]
+
+
+def test_a_tier_s_imports_that_is_no_map_needs_nothing():
+    assert short(tiered(imports=["store"]), {}, TOY) == []
 
 
 def test_apply_never_false_configures_nothing():

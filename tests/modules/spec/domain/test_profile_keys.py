@@ -21,6 +21,7 @@ from xarch.modules.spec.domain.profile_keys import (
     RULE_ID,
     SCOPES,
     TIER,
+    TIER_IMPORTS,
     Retired,
 )
 
@@ -78,7 +79,11 @@ def test_the_names_retired_are_tier_the_old_names_of_never_and_its_keys_written_
                                     "[{ports: types_only}]"),
         Retired(PART_IMPORTS, "never", "a key of uses, beside imports: write uses: {never: <list>}"),
         Retired(PART_IMPORTS, "types_only", "write it as the mode of its entry in imports.may, such as "
-                                            "[{ports: types_only}]"))
+                                            "[{ports: types_only}]"),
+        Retired(TIER, "may_import", "moved in 0.3.0: write imports: {may: [...]}"),
+        Retired(TIER, "may_also_import", "moved in 0.3.0: write imports: {also: [...]}"),
+        Retired(TIER, "must_import", "moved in 0.3.0: write imports: {must: [...]}"),
+        Retired(TIER, "types_only", "moved in 0.3.0: write imports: {types_only: [<part>, ...]}"))
 
 
 def test_holds_opens_a_scope_of_kinds_each_opening_a_scope_of_the_settings_it_takes():
@@ -138,7 +143,7 @@ def test_imports_opens_a_scope_of_may_must_and_libraries_and_may_opens_the_scope
     assert may.opens == PART_IMPORTS_MAY and names(PART_IMPORTS_MAY) == ["types_only"]
     assert SCOPES[PART_IMPORTS] == "parts.<part>.imports" and SCOPES[PART_IMPORTS_MAY] == "parts.<part>.imports.may"
     assert not {"may_import", "must_import", "libraries", "types_only"} & set(names(PART))
-    assert {"may_import", "must_import", "types_only", "may_also_import"} <= set(names(TIER))
+    assert not {"may_import", "must_import", "types_only", "may_also_import"} & set(names(TIER))
 
 
 def test_the_part_import_keys_need_what_the_keys_they_replace_needed():
@@ -151,3 +156,27 @@ def test_the_part_import_keys_need_what_the_keys_they_replace_needed():
     assert "parts.<part>.imports" not in NEEDS
     assert not [address for address in NEEDS if address.startswith("parts.<part>.") and address.count(".") == 2
                 and address.rsplit(".", 1)[1] in ("may_import", "must_import", "libraries", "types_only")]
+
+
+def test_a_tier_s_imports_opens_a_scope_of_may_also_must_and_types_only():
+    def held(scope):
+        return [(key.name, key.rules) for key in KEYS if key.scope == scope]
+
+    imports = next(key for key in KEYS if (key.scope, key.name) == (TIER, "imports"))
+    assert (imports.opens, imports.rules) == (TIER_IMPORTS, ("tiers", "must-import", "types-only"))
+    assert held(TIER_IMPORTS) == [("may", ("tiers",)), ("also", ("tiers",)), ("must", ("must-import",)),
+                                  ("types_only", ("types-only",))]
+    assert SCOPES[TIER_IMPORTS] == "tiers.<tier>.imports"
+    assert [key.name for key in KEYS if key.scope == TIER] == ["proves", "litmus", "uses", "plain_tables", "folder",
+                                                               "imports", "docs"]
+
+
+def test_the_tier_import_keys_need_what_the_keys_they_replace_needed():
+    imports = ("import", "import.relative")
+    assert {address: facts for address, facts in NEEDS.items() if address.startswith("tiers.<tier>.imports")} == {
+        "tiers.<tier>.imports.types_only": ("call", "use", "module_functions", "import.resolved"),
+        "tiers.<tier>.imports.must": (*imports, "function.statements", "file"),
+        "tiers.<tier>.imports.may": imports,
+        "tiers.<tier>.imports.also": imports}
+    assert not [address for address in NEEDS if address.startswith("tiers.<tier>.") and address.count(".") == 2
+                and address.rsplit(".", 1)[1] in ("may_import", "may_also_import", "must_import", "types_only")]

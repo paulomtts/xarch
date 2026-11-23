@@ -36,10 +36,12 @@ key_catalogue); the shape:
     reserved: {<module>: <reason>}             standard-library modules only the parts whose `imports.libraries` list them
                                may import
     layers: {<name>: [<part>, ...]}            chains of parts from the inside out: none imports one after it
-    tiers: {<tier>: {proves, litmus, uses, types_only, folder, may_import, may_also_import, docs}}
+    tiers: {<tier>: {proves, litmus, uses, plain_tables, folder, imports: {may, also, must, types_only}, docs}}
                                the kinds of test, in the order their litmus tests run. A tier with a `folder` below
-                               the tests folder says in `may_import` what the tests there may import; `may_also_import`
+                               the tests folder says in `imports.may` what the tests there may import; `imports.also`
                                what each of its tests may import beyond that or what the part it mirrors may;
+                               `imports.must` the parts one of which each of its test files reaches;
+                               `imports.types_only` the parts its tests may import only as types;
                                `uses: {apply_never: true}` holds its tests to the `uses.never` list of the part they
                                mirror; `docs` holds what only fills the generated docs
     fakes: {folder, for, prefix}               the folder of the test fakes below the tests folder, the parts they
@@ -106,6 +108,7 @@ from xarch.modules.spec.domain.profile_keys import (
     TESTING,
     TIER,
     TIER_DOCS,
+    TIER_IMPORTS,
     TIER_USES,
 )
 from xarch.modules.spec.domain.profile_keys import GUARD as GUARD_SCOPE
@@ -642,19 +645,19 @@ def _tier(name: str, spec: Any, subject: tuple[Subject, ...], parts: dict[str, P
     if not isinstance(plain, bool):
         problems.append(f"{where}.plain_tables: must be true or false: whether every table test of the tier holds no "
                         "branch in its body")
-    types_only = (ck.part_names(spec["types_only"], declared, f"{where}.types_only", problems)
-                  if "types_only" in spec else [])
+    imports = iw.group(spec, where, problems, TIER_IMPORTS, "{must: [<part>]}")
+    types_only = (ck.part_names(imports["types_only"], declared, f"{where}.imports.types_only", problems)
+                  if "types_only" in imports else [])
     folder = ck.tier_folder(spec["folder"], parts, f"{where}.folder", problems, language) if "folder" in spec else None
-    if "folder" not in spec and "may_import" in spec:
-        problems.append(f"{where}.may_import: only a tier with a `folder` has an allowance of its own: without one, its "
-                        "tests import what the part they mirror may")
-    allowance = (may_import(spec.get("may_import"), None, parts, declared, f"{where}.may_import", problems)
+    if "folder" not in spec and "may" in imports:
+        problems.append(f"{where}.imports.may: only a tier with a `folder` has an allowance of its own: without one, "
+                        "its tests import what the part they mirror may")
+    allowance = (may_import(imports.get("may"), None, parts, declared, f"{where}.imports.may", problems)
                  if "folder" in spec else None)
-    also = may_import(spec.get("may_also_import"), None, parts, declared, f"{where}.may_also_import", problems,
-                      mirrored=True)
+    also = may_import(imports.get("also"), None, parts, declared, f"{where}.imports.also", problems, mirrored=True)
     docs = _tier_docs(spec["docs"], folder, examples, f"{where}.docs", problems, language) if "docs" in spec else {}
-    reach = (ck.part_names(spec["must_import"], declared, f"{where}.must_import", problems)
-             if "must_import" in spec else [])
+    reach = (ck.part_names(imports["must"], declared, f"{where}.imports.must", problems)
+             if "must" in imports else [])
     if len(problems) != count:
         return None
     return Tier(name, subject, spec.get("proves", ""), docs.get("may_touch", ""), spec.get("litmus", "").strip("\n"),

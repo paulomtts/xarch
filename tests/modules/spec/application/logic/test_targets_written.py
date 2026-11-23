@@ -50,6 +50,6 @@ def test_a_target_that_cannot_be_read_is_refused_saying_why(value, problem):
 
 def test_a_tier_folder_s_may_import_refuses_a_marked_entry_as_any_entry_that_is_no_target():
     problems: list[str] = []
-    assert may_import([{"shared": "types_only"}], None, PARTS, {"shared"}, "tiers.guard.may_import", problems) == ()
-    assert problems == ["tiers.guard.may_import: {'shared': 'types_only'} is not a target: use <part>, <part>@any, "
+    assert may_import([{"shared": "types_only"}], None, PARTS, {"shared"}, "tiers.guard.imports.may", problems) == ()
+    assert problems == ["tiers.guard.imports.may: {'shared': 'types_only'} is not a target: use <part>, <part>@any, "
                         "optionally followed by /<path>"]

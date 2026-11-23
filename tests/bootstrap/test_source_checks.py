@@ -26,7 +26,7 @@ def test_a_project_following_every_check_passes(tmp_path):
                  id="tiers: a test in no tier's folder"),
     pytest.param({}, {"web/conftest.py": "from app.modules.docs.application.controller import C\n\nC()\n"},
                  ["tests/web/conftest.py:3: a rendering test uses controller/ of modules/docs only as a type: it "
-                  "may not call app.modules.docs.application.controller.C (tiers.rendering.types_only)"],
+                  "may not call app.modules.docs.application.controller.C (tiers.rendering.imports.types_only)"],
                  id="types-only: a rendering test calls the controller"),
     pytest.param({"platform/sql.py": "import requests\n"}, {},
                  ["app/platform/sql.py:1: platform/ may not import the outside package requests (parts.platform.imports.libraries)"],

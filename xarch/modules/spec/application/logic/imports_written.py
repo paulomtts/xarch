@@ -8,6 +8,9 @@ An entry of `may` is a target as the target grammar writes it (see kernel/logic/
 mode; the only mode is `types_only`, a target the part may import only to use as a type. A marked entry is an entry of
 `may` like any other, its mark read apart. `must` takes targets alone, each one an entry of `may`. The old keys of a
 part, and `never` and `types_only` written in the group, are refused from the table of retired names.
+
+A tier's `imports`, {may, also, must, types_only}, is checked as a group by the same `group`, under its own scope and
+with its own example; the tier parser reads its keys (see profile_parsing).
 """
 from __future__ import annotations
 
@@ -16,7 +19,7 @@ from typing import Any
 
 from xarch.kernel.placement import EVERYTHING
 from xarch.modules.spec.application.logic import profile_checks as ck
-from xarch.modules.spec.application.logic.key_lookup import names_of
+from xarch.modules.spec.application.logic.key_lookup import keys_of, names_of
 from xarch.modules.spec.application.logic.targets_written import WORD, may_import
 from xarch.modules.spec.domain.profile_keys import PART_IMPORTS
 from xarch.modules.spec.domain.values import Part
@@ -26,20 +29,28 @@ MODE = "types_only"
 """The one mode an entry of `may` takes."""
 
 
-def group(spec: Mapping[Any, Any], where: str, problems: list[str]) -> Mapping[Any, Any]:
-    """The `imports` of the part at where: {} when the part writes none, or when it is no map or says nothing, each
-    problem added; its unknown keys are refused under its own scope."""
+def group(spec: Mapping[Any, Any], where: str, problems: list[str], scope: str = PART_IMPORTS,
+          example: str = "{may: [<part>]}") -> Mapping[Any, Any]:
+    """The `imports` of the part or tier at where, its keys those of the scope: {} when it writes none, or when it is
+    no map or says nothing, each problem added, naming the keys in the order of the table and showing the example;
+    its unknown keys are refused under the scope."""
     if "imports" not in spec:
         return {}
     value, at = spec["imports"], f"{where}.imports"
+    names = [key.name for key in keys_of(scope)]
     if not isinstance(value, Mapping):
-        problems.append(f"{at}: must be a map of may, must and libraries, such as {{may: [<part>]}}")
+        problems.append(f"{at}: must be a map of {_joined(names, 'and')}, such as {example}")
         return {}
     if not value:
-        problems.append(f"{at}: says nothing: write may, must or libraries, or drop it")
+        problems.append(f"{at}: says nothing: write {_joined(names, 'or')}, or drop it")
         return {}
-    problems += ck.unknown_keys(value, names_of(PART_IMPORTS), at, PART_IMPORTS)
+    problems += ck.unknown_keys(value, names_of(scope), at, scope)
     return value
+
+
+def _joined(names: list[str], word: str) -> str:
+    """The names in order, the last after the word: may, must and libraries."""
+    return f"{', '.join(names[:-1])} {word} {names[-1]}"
 
 
 def may(value: Any, owner: Part, parts: dict[str, Part], declared: set[str], where: str,

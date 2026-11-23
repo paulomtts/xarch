@@ -2,6 +2,7 @@
 scope (files, part, tier, filters about the file), the kinds it reads, its quantifier and its kinds of target; a key
 left out expands to no rule. Every rule is made, so none names a word the vocabulary does not hold or that does not
 apply to what it reads."""
+import re
 from dataclasses import replace
 
 import pytest
@@ -98,3 +99,13 @@ def test_the_rules_of_no_callbacks_are_keyed_by_the_guard_for_every_part():
     rules = expansion.book(replace(ON, no_callbacks=("domain", "logic")))["no-callbacks"]
     assert [(rule.scope.part, rule.key) for rule in rules] == [("domain", "guards.no-callbacks"),
                                                                ("logic", "guards.no-callbacks")]
+
+
+def test_the_rules_of_a_tier_s_imports_are_keyed_by_their_addresses_in_the_group():
+    tiers = tuple(replace(t, must_import=("controller",), may_also_import=(Target("adapters", "own"),))
+                  if t.name == "integration" else t for t in PROFILE.tiers)
+    keys = [rule.key for rules in expansion.book(replace(PROFILE, tiers=tiers)).values() for rule in rules
+            if rule.id in ("types-only", "must-import", "tiers") and rule.key.startswith("tiers")]
+    assert "tiers.rendering.imports.types_only" in keys and "tiers.integration.imports.must" in keys
+    assert "tiers; tiers.integration.imports.also" in keys
+    assert not [key for key in keys if re.search(r"tiers\.[a-z]+\.(types_only|must_import|may_also_import)", key)]

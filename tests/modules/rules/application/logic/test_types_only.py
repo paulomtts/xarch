@@ -41,9 +41,9 @@ def test_a_call_of_anything_but_a_types_only_part_is_allowed(call):
 def test_a_call_of_a_types_only_part_is_reported():
     assert problems(RENDERING_TEST, Call(4, CONTROLLER), Call(7, (*CONTROLLER, "publish"))) == [
         "tests/web/test_docs.py:4: a rendering test uses controller/ of modules/docs only as a type: it may not call "
-        "app.modules.docs.application.controller.DocumentController (tiers.rendering.types_only)",
+        "app.modules.docs.application.controller.DocumentController (tiers.rendering.imports.types_only)",
         "tests/web/test_docs.py:7: a rendering test uses controller/ of modules/docs only as a type: it may not call "
-        "app.modules.docs.application.controller.DocumentController.publish (tiers.rendering.types_only)"]
+        "app.modules.docs.application.controller.DocumentController.publish (tiers.rendering.imports.types_only)"]
 
 
 @pytest.mark.parametrize("path, checked", [
@@ -78,7 +78,7 @@ def test_a_violation_says_what_to_do(path, checked, fix):
 
 def reported(line: int, name: str = "app.modules.docs.application.controller.make_controller") -> str:
     return (f"tests/web/test_docs.py:{line}: a rendering test uses controller/ of modules/docs only as a type: it may "
-            f"not reference {name}, a function (tiers.rendering.types_only)")
+            f"not reference {name}, a function (tiers.rendering.imports.types_only)")
 
 
 @pytest.mark.parametrize("uses, calls, expected", [
@@ -94,11 +94,11 @@ def reported(line: int, name: str = "app.modules.docs.application.controller.mak
                  id="an attribute of the function is a reference to the function"),
     pytest.param((Use(5, MAKE, 6),), (Call(5, MAKE),),
                  ["tests/web/test_docs.py:5: a rendering test uses controller/ of modules/docs only as a type: it may "
-                  "not call app.modules.docs.application.controller.make_controller (tiers.rendering.types_only)"],
+                  "not call app.modules.docs.application.controller.make_controller (tiers.rendering.imports.types_only)"],
                  id="a call is reported as a call, once, not again as a reference"),
     pytest.param((Use(5, MAKE, 6), Use(5, MAKE, 6)), (Call(5, MAKE),),
                  ["tests/web/test_docs.py:5: a rendering test uses controller/ of modules/docs only as a type: it may "
-                  "not call app.modules.docs.application.controller.make_controller (tiers.rendering.types_only)",
+                  "not call app.modules.docs.application.controller.make_controller (tiers.rendering.imports.types_only)",
                   reported(5)],
                  id="a reference beside the call on its line is still reported"),
     pytest.param((Use(5, (*CONTROLLER[:-1], "DocumentController"), 6),), (), [],

@@ -91,7 +91,7 @@ def test_the_violation_is_for_the_whole_file_and_says_what_to_do():
 WIRED = profile(tiers=(replace(INTEGRATION, must_import=("controller",)), RENDERING, GUARD))
 TEST = "modules/docs/application/test_publish.py"
 TEST_MESSAGE = ("tests/modules/docs/application/{name}: a test of the integration tier imports nothing from controller/, directly "
-                "or through test code it imports (tiers.integration.must_import)")
+                "or through test code it imports (tiers.integration.imports.must)")
 
 
 APP = [source("modules/docs/application/controller.py")]

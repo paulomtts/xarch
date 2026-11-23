@@ -39,8 +39,8 @@ def test_every_way_a_custom_profile_is_looser_than_the_bundled_one_it_resembles_
              "store": {"path": "store", "role": "storage",
                        "imports": {"may": ["core"], "libraries": ["sqlmodel", "requests"]}, "untested": "trust me"}}
     custom = {**BASE, "parts": parts, "never": {"pure": ["socket"]},
-              "tiers": {"unit": {key: value for key, value in TIER.items() if key != "types_only"}
-                        | {"uses": {"apply_never": False}, "may_also_import": ["edge"]}},
+              "tiers": {"unit": {key: value for key, value in TIER.items() if key != "imports"}
+                        | {"uses": {"apply_never": False}, "imports": {"also": ["edge"]}}},
               "testing": {**TESTING, "skips": ["pytest.mark.skip"]},
               "guards": {},
               "files": {"tests/test_rules.py": {"from": "guard.py"}}}

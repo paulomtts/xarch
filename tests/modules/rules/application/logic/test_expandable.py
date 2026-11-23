@@ -28,7 +28,7 @@ EVERY_KEY = Profile(
 @pytest.mark.parametrize("address, expected", [
     pytest.param("parts.imports.may.types_only", True, id="a key of every part the engine expands"),
     pytest.param("parts.services.imports.may.types_only", True, id="the same key of one part"),
-    pytest.param("tiers.unit.types_only", True, id="a key of a tier"),
+    pytest.param("tiers.unit.imports.types_only", True, id="a key of a tier"),
     pytest.param("guards.no-comments", True, id="a guard the engine runs"),
     pytest.param("guards.no-callbacks", True, id="the guard no-callbacks"),
     pytest.param("parts.no_callbacks", False, id="the part key no_callbacks, retired"),
@@ -68,6 +68,14 @@ def test_the_keys_of_the_group_are_expanded_and_the_old_part_keys_are_not():
                                         "parts.imports.may.types_only", "parts.services.imports.may.types_only"))
     assert not any(expands(key) for key in ("parts.may_import", "parts.must_import", "parts.libraries",
                                             "parts.types_only"))
-    assert expands("tiers.types_only") and expands("tiers.must_import")
+    assert expands("tiers.imports.types_only") and expands("tiers.imports.must")
     assert {"parts.imports.may", "parts.imports.libraries", "parts.imports.must", "parts.imports.may.types_only"} <= set(KEYS)
     assert not {"parts.may_import", "parts.libraries", "parts.must_import", "parts.types_only"} & set(KEYS)
+
+
+def test_the_keys_of_a_tier_s_group_are_expanded_and_the_old_tier_keys_are_not():
+    assert all(expands(key) for key in ("tiers.imports.also", "tiers.imports.types_only", "tiers.imports.must",
+                                        "tiers.unit.imports.must"))
+    assert not any(expands(key) for key in ("tiers.may_also_import", "tiers.types_only", "tiers.must_import"))
+    assert {"tiers.imports.also", "tiers.imports.types_only", "tiers.imports.must"} <= set(KEYS)
+    assert not {"tiers.may_also_import", "tiers.types_only", "tiers.must_import"} & set(KEYS)
