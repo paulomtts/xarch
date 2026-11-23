@@ -55,8 +55,8 @@ HELD = ("holds.classes.names", "holds.classes.immutable", "holds.classes.built_b
 """The key of each setting of a kind of holds, a way it is looser listed under, kind by kind in the order of KINDS."""
 LOOSER = ("imports.may", "imports.may.types_only", "imports.libraries", "uses.never", "imports.must", "untested",
           LITMUS, "holds", *HELD, "shared", "imports.types_only", "imports.also", "uses.apply_never",
-          "tiers.imports.must", "plain_tables", "testing.skips", "files.pinned", "reserved", "known", "translated",
-          "review.never", "review.mask", "evals.placement.lines")
+          "tiers.imports.must", "plain_tables", "testing.skips", "testing.beside", "files.pinned", "reserved", "known",
+          "translated", "review.never", "review.mask", "evals.placement.lines")
 """Every key a way a profile is looser is listed under, each said by a sentence of its own."""
 LOW = 0.75
 """The match below which a comparison is low: less than three in four of the things `check` reads under either
@@ -448,6 +448,8 @@ def _sentence(key: str, part: str, what: str = "") -> str:
             return f"the table tests of the {part} tests may now branch (tiers.{part}.plain_tables)"
         case "testing.skips":
             return f"{what} is no longer counted as a skip (testing.skips)"
+        case "testing.beside":
+            return "tests may sit beside the code: the mirrored tests tree is no longer checked (testing.beside)"
         case "files.pinned":
             return f"{what} is no longer pinned (files.{what}.pinned)"
         case "known":

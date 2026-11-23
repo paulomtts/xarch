@@ -184,10 +184,14 @@ def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
         (parsed(covered()), parsed(tight())),
     ]
     found = [item for custom, base in pairs for item in loosened(custom, base)]
-    assert sorted({item.key for item in found}) == sorted(LOOSER)
+    assert LATER <= set(LOOSER)
+    assert sorted({item.key for item in found}) == sorted(key for key in LOOSER if key not in LATER)
     assert [item.key for item in found if "is no longer reserved" in item.sentence] == ["reserved"]
 
 
+LATER = {"testing.beside"}
+"""The keys of LOOSER no pair reaches yet: testing.beside is said here, and its line is found and tested with the key
+itself (card 6.10), which empties this set."""
 MARK = "imports.may.types_only"
 """The key a types_only mark dropped from an entry of a part's imports.may is listed under."""
 
