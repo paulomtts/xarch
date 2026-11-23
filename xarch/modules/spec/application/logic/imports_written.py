@@ -20,7 +20,7 @@ from typing import Any
 from xarch.kernel.placement import EVERYTHING
 from xarch.modules.spec.application.logic import profile_checks as ck
 from xarch.modules.spec.application.logic.key_lookup import keys_of, names_of
-from xarch.modules.spec.application.logic.targets_written import WORD, may_import
+from xarch.modules.spec.application.logic.targets_written import WORD, allowed_targets
 from xarch.modules.spec.domain.profile_keys import PART_IMPORTS
 from xarch.modules.spec.domain.values import Part
 from xarch.profile_values.placement import Target
@@ -58,14 +58,14 @@ def may(value: Any, owner: Part, parts: dict[str, Part], declared: set[str], whe
     """What the part may import, every entry as its target, marked or not, in the order written; and the targets of
     its marked entries, in the same order. An entry refused adds its problem and is in neither."""
     if not isinstance(value, list):
-        return may_import(value, owner, parts, declared, where, problems, patterns=True), ()
+        return allowed_targets(value, owner, parts, declared, where, problems, patterns=True), ()
     allowed: list[Target] = []
     marked: list[Target] = []
     for entry in value:
         written = _marked(entry, where, problems) if isinstance(entry, Mapping) else entry
         if written is None:
             continue
-        found = may_import([written], owner, parts, declared, where, problems, patterns=True)
+        found = allowed_targets([written], owner, parts, declared, where, problems, patterns=True)
         allowed += found
         if isinstance(entry, Mapping):
             marked += found
@@ -85,7 +85,7 @@ def must(written: Mapping[Any, Any], owner: Part, parts: dict[str, Part], declar
     count = len(problems)
     problems += [f"{where}: {_shown(item)}: must takes references only, with no mode" for item in value
                  if isinstance(item, Mapping)]
-    found = may_import(value, owner, parts, declared, where, problems) if len(problems) == count else ()
+    found = allowed_targets(value, owner, parts, declared, where, problems) if len(problems) == count else ()
     if len(problems) != count:
         return ()
     for item, target in zip(value, found):

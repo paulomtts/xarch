@@ -1,7 +1,7 @@
 """How what a part may import is said in words: the phrase the docs' rules table and `xarch where` share."""
 import pytest
 
-from xarch.kernel.logic.imports import may_import
+from xarch.kernel.logic.imports import targets_phrase
 from xarch.kernel.placement import EVERYTHING
 from xarch.profile_values.placement import Target
 
@@ -27,4 +27,4 @@ WORDS = {"domain": "module", "contract": "module", "ports": "module", "hooks": "
                  id="neighbours of one scope in two repeating folders do not share their phrase"),
 ])
 def test_what_a_part_may_import_in_words(targets, expected):
-    assert may_import(targets, FOLDERS, WORDS) == expected
+    assert targets_phrase(targets, FOLDERS, WORDS) == expected

@@ -54,7 +54,7 @@ import bisect
 import re
 from collections.abc import Callable, Mapping
 
-from xarch.kernel.logic.imports import may_import, shown_target
+from xarch.kernel.logic.imports import shown_target, targets_phrase
 from xarch.kernel.logic.names import outside_text
 from xarch.kernel.placement import EACH, EVERYTHING
 from xarch.modules.spec.application.logic.layout_walk import docs_name, is_file
@@ -185,14 +185,14 @@ def _doc_lines(docs: tuple[Doc, ...], folder: tuple[str, ...], indent: str) -> l
 
 
 def _rules_table(architecture: Architecture, _: str, _q: Texts, _t: Texts, _f: bool, _k: FileTypes) -> str:
-    rows = [f"| `{docs_name(architecture, part)}` | {_may_import(architecture, part)} |"
+    rows = [f"| `{docs_name(architecture, part)}` | {_imports_may_phrase(architecture, part)} |"
             for part in architecture.parts.values()]
     return "\n".join(["| Part | May import |", "|---|---|", *rows])
 
 
-def _may_import(architecture: Architecture, part: Part) -> str:
+def _imports_may_phrase(architecture: Architecture, part: Part) -> str:
     """What a part may import besides itself, in the order of its rule."""
-    return may_import(architecture.rules.get(part.name, ()), _folders(architecture), architecture.words())
+    return targets_phrase(architecture.rules.get(part.name, ()), _folders(architecture), architecture.words())
 
 
 def _folders(architecture: Architecture) -> dict[str, str]:
@@ -631,7 +631,7 @@ def _named(held: Held, holds: tuple[Held, ...], part: str) -> str:
 
 
 def _must_import_line(architecture: Architecture, part: Part) -> str:
-    wanted = may_import(part.imports_must, _folders(architecture), architecture.words()).replace(" and ", " or ")
+    wanted = targets_phrase(part.imports_must, _folders(architecture), architecture.words()).replace(" and ", " or ")
     return (f"`must-import`: every file of `{docs_name(architecture, part)}` imports from {wanted}, or an outside "
             "package, or reaches one through a file of its own part; a package file and a file with no code of its own "
             "are exempt.")

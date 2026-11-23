@@ -89,7 +89,7 @@ from xarch.modules.spec.application.logic.key_lookup import keys_of, names_of, r
 from xarch.modules.spec.application.logic.language_file import first_language
 from xarch.modules.spec.application.logic.layout_walk import is_file
 from xarch.modules.spec.application.logic.sending import sending
-from xarch.modules.spec.application.logic.targets_written import WORD, may_import
+from xarch.modules.spec.application.logic.targets_written import WORD, allowed_targets
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.guards import GUARD, KEY, ORDER
 from xarch.modules.spec.domain.profile_keys import (
@@ -191,7 +191,7 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
             for part, item in parts.items()}
     rules = {part: allowed for part, (allowed, _) in read.items()}
     reserved = ck.reserved_modules(document["reserved"], problems, language) if "reserved" in document else {}
-    libraries = {part: _libraries(imports[part], f"parts.{part}.imports.libraries", problems, language, reserved)
+    libraries = {part: _imports_libraries(imports[part], f"parts.{part}.imports.libraries", problems, language, reserved)
                  for part in parts}
     parts = {part: replace(item, imports_must=iw.must(imports[part], item, parts, declared, rules[part], problems),
                            imports_types_only=read[part][1]) for part, item in parts.items()}
@@ -447,8 +447,8 @@ def _add_folder(tree: Layout, path: tuple[str, ...]) -> bool:
     return True
 
 
-def _libraries(written: Mapping[Any, Any], where: str, problems: list[str], language: Language,
-               reserved: Mapping[str, str]) -> tuple[str, ...]:
+def _imports_libraries(written: Mapping[Any, Any], where: str, problems: list[str], language: Language,
+                       reserved: Mapping[str, str]) -> tuple[str, ...]:
     """The outside packages the part's `imports` group lists, and the reserved modules it may import: none unless it
     lists them; (EVERYTHING,) leaves them unchecked."""
     if "libraries" not in written:
@@ -471,7 +471,7 @@ def _named_packages(document: Mapping[Any, Any], language: Language) -> dict[str
     named: dict[str, str] = {}
     for part, spec in parts.items() if isinstance(parts, Mapping) else ():
         written = spec.get("imports") if isinstance(spec, Mapping) else None
-        found = (_libraries(written, f"parts.{part}.imports.libraries", [], language, reserved)
+        found = (_imports_libraries(written, f"parts.{part}.imports.libraries", [], language, reserved)
                  if isinstance(written, Mapping) else ())
         named |= {package: f"parts.{part}.imports.libraries" for package in found
                   if package != EVERYTHING and package not in named}
@@ -652,9 +652,9 @@ def _tier(name: str, spec: Any, subject: tuple[Subject, ...], parts: dict[str, P
     if "folder" not in spec and "may" in imports:
         problems.append(f"{where}.imports.may: only a tier with a `folder` has an allowance of its own: without one, "
                         "its tests import what the part they mirror may")
-    allowance = (may_import(imports.get("may"), None, parts, declared, f"{where}.imports.may", problems)
+    allowance = (allowed_targets(imports.get("may"), None, parts, declared, f"{where}.imports.may", problems)
                  if "folder" in spec else None)
-    also = may_import(imports.get("also"), None, parts, declared, f"{where}.imports.also", problems, mirrored=True)
+    also = allowed_targets(imports.get("also"), None, parts, declared, f"{where}.imports.also", problems, mirrored=True)
     docs = _tier_docs(spec["docs"], folder, examples, f"{where}.docs", problems, language) if "docs" in spec else {}
     reach = (ck.part_names(imports["must"], declared, f"{where}.imports.must", problems)
              if "must" in imports else [])

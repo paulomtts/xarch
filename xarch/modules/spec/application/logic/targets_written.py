@@ -15,8 +15,8 @@ WORD = "everything"
 """How a file writes EVERYTHING: for what a part may import and for its libraries."""
 
 
-def may_import(value: Any, owner: Part | None, parts: dict[str, Part], declared: set[str], where: str,
-               problems: list[str], patterns: bool = False, mirrored: bool = False) -> tuple[Target, ...]:
+def allowed_targets(value: Any, owner: Part | None, parts: dict[str, Part], declared: set[str], where: str,
+                    problems: list[str], patterns: bool = False, mirrored: bool = False) -> tuple[Target, ...]:
     """What a part, or the tests in a tier's folder (no owner), may import, as targets; a name pattern only where
     patterns allows one; when mirrored, what a tier's tests may also import, read from the instance a test mirrors."""
     if value is None:
