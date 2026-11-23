@@ -273,3 +273,20 @@ def test_an_old_name_of_never_is_refused_with_its_text_exit_2_and_retired_in_jso
     assert f"error: no key `{address}` in the format: {text}; the nearest are " in said.output
     found = runner.invoke(app, ["profile", "explain", address, "--format", "json"])
     assert found.exit_code == 2 and json.loads(found.output)["retired"] == text
+
+
+def test_never_says_an_entry_naming_a_list_includes_it_and_a_list_may_not_take_a_name_an_entry_reads_as():
+    found = json.loads(runner.invoke(app, ["profile", "explain", "never", "--format", "json"]).output)
+    accepts = " ".join(found["accepts"].split())
+    for said in ("a map {<list>: [<dotted name> | <list>, ...]}",
+                 "An entry that is exactly the name of another list of `never` includes that list's names in its "
+                 "place, in order, however deep, and the list may be written below",
+                 "a list may not include itself, nor reach a name or a list twice",
+                 "A list may not take the name of a package of the Python standard library, nor of a package the "
+                 "profile names in a part's `libraries` or in `reserved`, since an entry of that name would name the "
+                 "list"):
+        assert said in accepts
+    assert "  published: [pure, json.dumps]\n" in found["example"]
+    assert "uses: {never: published}" in found["example"]
+    shown = runner.invoke(app, ["profile", "explain", "never"])
+    assert shown.exit_code == 0 and "published: [pure, json.dumps]" in shown.output

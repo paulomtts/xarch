@@ -208,7 +208,7 @@ def test_the_tier_of_scenario_coverage_is_still_a_key_of_the_format():
 def test_the_lists_a_part_never_uses_are_the_top_level_never_and_the_key_never_of_its_uses():
     block, group, held = (explained(address) for address in ("never", "parts.uses", "parts.<part>.uses.never"))
     assert (block.key, block.meaning) == ("never", "named lists of names a part never uses")
-    assert "`uses: {never: <list>}`" in block.accepts and block.example.endswith("    uses: {never: pure}\n")
+    assert "`uses: {never: <list>}`" in block.accepts and block.example.endswith("    uses: {never: published}\n")
     assert (group.key, group.where, [shown.key for shown in group.keys]) == (
         "parts.uses", "parts.<part>", ["parts.uses.never"])
     assert (held.key, held.where, held.meaning) == (

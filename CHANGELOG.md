@@ -5,6 +5,17 @@ All notable changes to this project are written here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- A list of `never` may include another: an entry that is exactly the name of another list of the block puts that
+  list's names in its place, in order, however deep, the list written above or below, as in
+  `published: [pure, typing.Any]`. The bundled profiles and xarch's own now write `published` that way, with no
+  part's names changed. Refused at the list: one that includes itself (`includes itself`, or `includes itself,
+  through never.<list>: drop one of the two`), one that reaches a list twice (`includes never.<list> twice`), one
+  that reaches a name twice (`'<name>' is listed in never.<list>, which never.<list> includes: drop it here`), and
+  one named like a package of the standard library or one the profile names (`a list may not take the name of a
+  package ...: rename it`). A part naming a list of lists is told `a list may include others`.
+
 ### Changed
 
 - The two archived corpora's profiles (`7cc6111`, `df537ca`) are plain yaml files beside their archives in

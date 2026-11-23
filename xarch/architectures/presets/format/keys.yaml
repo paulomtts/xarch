@@ -154,23 +154,28 @@ keys:
   never:
     meaning: named lists of names a part never uses
     accepts: >-
-      a map {<list>: [<dotted name>, ...]}; a part points to one list with `uses: {never: <list>}`. An entry is a dotted
-      name as an import binds it (`datetime.datetime.now`; a builtin as `%namespace%.open`, a bare `open` is
-      refused), a whole package (`socket`), or a method written with a leading dot and parentheses (`.absolute()`). A
-      file may not import a listed package or anything below it, nor use a listed name, called or not, as the file
-      writes it (through the import that binds it, or a builtin by its bare name where nothing shadows it), nor call a
-      listed method on anything no import names (a variable, a parameter, the result of a call), but on the method's own
+      a map {<list>: [<dotted name> | <list>, ...]}; a part points to one list with `uses: {never: <list>}`. An entry
+      is a dotted name as an import binds it (`datetime.datetime.now`; a builtin as `%namespace%.open`, a bare `open`
+      is refused), a whole package (`socket`), or a method written with a leading dot and parentheses (`.absolute()`).
+      An entry that is exactly the name of another list of `never` includes that list's names in its place, in order,
+      however deep, and the list may be written below; a list may not include itself, nor reach a name or a list
+      twice. A list may not take the name of a package of the %language% standard library, nor of a package the
+      profile names in a part's `libraries` or in `reserved`, since an entry of that name would name the list. A file
+      may not import a listed package or anything below it, nor use a listed name, called or not, as the file writes
+      it (through the import that binds it, or a builtin by its bare name where nothing shadows it), nor call a listed
+      method on anything no import names (a variable, a parameter, the result of a call), but on the method's own
       object and what it holds (`self.paths.resolve()`: a port's or its own). A method entry matches any object with a
       method of that name, so it belongs only in a list of parts that never call one legitimately. Silent on a name
       reached through a variable or `getattr`, a method of an object the list does not name, an annotation, and what a
-      helper in another file does: a ban list, not a proof of purity. Not `review.never`, the files review never sends,
-      which is another list
+      helper in another file does: a ban list, not a proof of purity. Not `review.never`, the files review never
+      sends, which is another list
     example: |
       never:
         pure: [time.time, socket]
+        published: [pure, json.dumps]
         ambient: [pathlib.Path.cwd, .absolute()]
       <<part>>
-          uses: {never: pure}
+          uses: {never: published}
   reserved:
     meaning: standard-library names only some parts may import
     accepts: >-

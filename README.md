@@ -116,7 +116,7 @@ name*  based_on  language  hints  excluded  reserved
 testing:  <preset> | {files*, functions*, skips, table, mocks}
 parts*:   {<part>: {path*, role*, litmus, may_import, must_import, libraries, uses: {never}, tests | untested,
                     package_only, folders, holds, immutable, types_only, no_callbacks, names, built_by, shared}}
-never:    {<list>: [<dotted name> | .<method>(), ...]}        layers: {<chain>: [<part>, ...]}
+never:    {<list>: [<dotted name> | .<method>() | <list>, ...]}  layers: {<chain>: [<part>, ...]}
 tiers:    {<tier>: {proves, litmus, uses: {apply_never}, plain_tables, types_only, folder, may_import, may_also_import,
                     must_import, docs}}
 fakes:    {folder*, for*, prefix}
@@ -129,6 +129,10 @@ review:   {never, mask}                                 what `xarch review` may 
 evals:    {placement: {lines, alike, examples}, <id>: {ask*, answer*, yes, no, reads*, in, keep, line, message*,
           fix*, examples*}}                             what `xarch review` asks; `check` never acts on it
 ```
+
+An entry of a `never` list that is the name of another list includes that list's names in its place, such as
+`published: [pure, typing.Any]`; a list may not take the name of a package of the standard library or of a package the
+profile names, since an entry of that name would name the list.
 
 `language` names the language of the app: `python`, which is the default and the only one xarch reads today. What is
 true of a language as a whole lives in a data file shipped beside the profiles, `xarch/architectures/presets/language/
