@@ -184,7 +184,7 @@ def uses(rule: Rule, category: str, name: str) -> bool:
 
 def keyed(rules: Iterable[Rule], address: str) -> list[Rule]:
     """The rules a key of the profile expands to: those whose key is that address, or matches it with any part or
-    tier in place of the one it names (parts.names for parts.<part>.names), each once."""
+    tier in place of the one it names (parts.holds for parts.<part>.holds), each once."""
     typed = address.strip().strip(".")
     found: list[Rule] = []
     for rule in rules:
@@ -195,7 +195,7 @@ def keyed(rules: Iterable[Rule], address: str) -> list[Rule]:
 
 
 def general(key: str) -> str:
-    """A key with the part or tier it names left out: parts.services.names as parts.names."""
+    """A key with the part or tier it names left out: parts.services.holds.classes.names as parts.holds.classes.names."""
     steps = key.split(".")
     return ".".join((steps[0], *steps[2:])) if steps[0] in ("parts", "tiers") and len(steps) > 2 else key
 
