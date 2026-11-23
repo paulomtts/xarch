@@ -9,7 +9,8 @@ from xarch.bootstrap.wiring import load_architecture
 
 PROFILE_NAMES = ["cli", "web"]
 OWN = Path(__file__).parent.parent.parent / "architecture.yaml"
-FILES = [OWN, *(Path(str(resources.files("xarch").joinpath("architectures", f"{name}.yaml"))) for name in PROFILE_NAMES)]
+FILES = [OWN, *(Path(str(resources.files("xarch").joinpath("architectures", f"{name}.yaml")))
+                for name in PROFILE_NAMES)]
 
 
 @pytest.fixture(params=PROFILE_NAMES)
