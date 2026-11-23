@@ -402,7 +402,7 @@ def _quoted(names: list[str]) -> str:
 
 def _guards(architecture: Architecture, _: str, _q: Texts, _t: Texts, _f: bool, _k: FileTypes) -> str:
     lines = [_structure_line(architecture),
-             "`may-import`: every import between parts is one that the `may_import` of the importing part allows "
+             "`may-import`: every import between parts is one that the `imports.may` of the importing part allows "
              "(architecture.md, section 5)."]
     if architecture.libraries is not None:
         listed = "; ".join(f"`{docs_name(architecture, architecture.parts[name])}`: {_packages(packages)}"

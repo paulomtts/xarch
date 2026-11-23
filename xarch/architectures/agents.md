@@ -25,7 +25,7 @@ folder is not `app/`.
 
 - Ask the maintainer first: the profile (`[tool.xarch]` names its file) is theirs to approve. To draft a change, run
   `xarch profile explain` for the whole format on one screen, then `xarch profile explain <key>` (for example
-  `parts.may_import`) for one key, and `xarch profile check` to validate the edited profile before you show it.
+  `parts.imports.may`) for one key, and `xarch profile check` to validate the edited profile before you show it.
 - A rule no key says can be written as a check of the profile's own, under `checks`. Every word it is written in is
   explained by the command: `xarch profile explain checks` for how a check reads, `xarch profile explain filters`
   (or `kinds`, `quantifiers`, `targets`, `variables`) for a category, `xarch profile explain filters.public` for one
@@ -55,7 +55,7 @@ maintainer's to run, not yours.
 ## What not to do to get a green check
 
 - Do not move code into a folder that no part covers, to escape a rule.
-- Do not switch a guard off, and do not loosen the profile, its `may_import`, `libraries` or `uses.never` entries.
+- Do not switch a guard off, and do not loosen the profile, its `imports.may`, `imports.libraries` or `uses.never` entries.
 - Do not edit or delete the guard test (`tests/architecture/test_rules.py`).
 - Do not skip a test or mark it as expected to fail.
 

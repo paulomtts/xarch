@@ -42,7 +42,7 @@ All notable changes to this project are written here. The format follows
   comment is a doc comment.
 - The fact `file.package`, that a file stands for the folder holding it, which a language supplies exactly when its
   data file gives `package_files` and which is never written under `supplies` (`supplies: file.package follows
-  package_files: drop it from supplies`). `parts.<part>.package_only`, a part's `must_import` and
+  package_files: drop it from supplies`). `parts.<part>.package_only`, a part's `imports.must` and
   `guards.dead-code.untested` need it, and so does a check of your own whose filter `package-file` (or
   `target-inside-part`) is written as is; `not package-file` needs nothing. Python supplies it.
 - A list of `never` may include another: an entry that is exactly the name of another list of the block puts that
@@ -53,9 +53,23 @@ All notable changes to this project are written here. The format follows
   that reaches a name twice (`'<name>' is listed in never.<list>, which never.<list> includes: drop it here`), and
   one named like a package of the standard library or one the profile names (`a list may not take the name of a
   package ...: rename it`). A part naming a list of lists is told `a list may include others`.
+- `profile check` lists a `types_only` mark dropped from an entry of a part's `imports.may`, whose target the part
+  still may import and no mark of the part covers, under the key `imports.may.types_only`: `<part> may now call
+  <target>, which it used only as a type (parts.<part>.imports.may.types_only)`.
 
 ### Changed
 
+- A part's `may_import`, `must_import` and `libraries` move into one group, `imports: {may, must, libraries}`, with
+  the same meaning: `may` what the part may import besides itself (or `everything`), `must` the targets each of its
+  files imports one of, each an entry of `may`, `libraries` its outside packages. A part's `types_only` becomes a mark
+  on its entry of `imports.may`, `{<target>: types_only}`, such as `may: [ports, {contract: types_only}]`, read on what
+  the entry reaches (its part, instance and path; a name pattern narrows only what may be imported), not on the part
+  in any instance; a tier's `types_only` list stays. Findings name the new addresses (`parts.<part>.imports.may`,
+  `.imports.must`, `.imports.libraries`, `.imports.may.types_only`), and so do `profile explain` and the `Loosened`
+  keys of `profile check` (`imports.may`, `imports.libraries`, `imports.must`). The old keys are refused with the form
+  that replaces them (`unknown key 'may_import': moved in 0.3.0: write imports: {may: [...]}`, and the same for
+  `must_import`, `libraries` and `types_only`); `profile explain parts.may_import` says the same. Rule ids, `where`'s
+  JSON fields and the tier keys do not change.
 - `holds` is a map of kinds, `{classes, functions, records, exceptions}`, each `{}` or its settings: a kind listed may
   exist at the top level of a file of the part, one not listed may not, and no `holds` allows every kind. `names`,
   `immutable` and `built_by` leave the part for the kinds: `holds: {classes: {names: "*Service", built_by:
