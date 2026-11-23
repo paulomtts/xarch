@@ -11,7 +11,6 @@ parts:
     may_import: [kernel]
     uses: {never: pure}
     holds: classes
-    no_callbacks: true
     tests: unit
 
   logic:
@@ -20,7 +19,6 @@ parts:
     may_import: [domain, kernel]
     uses: {never: pure}
     holds: functions
-    no_callbacks: true
     tests: unit
 
   ports:
@@ -162,6 +160,7 @@ guards:
   no-duplicates: {min_statements: 4}
   dead-code: {untested: true}
   pass-through: {parts: [services, controller, adapters]}
+  no-callbacks: {parts: [domain, logic]}
   private-imports: {}
 
 excluded:

@@ -56,7 +56,6 @@ SHAPE = (
     Shown('parts.types_only', 1, 'the parts its files may use only as types', False, True),
     Shown('parts.holds', 1, 'what the files of the part define at the top level', False, True),
     Shown('parts.immutable', 1, 'the classes of the part are immutable records', False, True),
-    Shown('parts.no_callbacks', 1, 'its code calls none of its own parameters', False, True),
     Shown('parts.names', 1, 'how the classes of the part are named', False, True),
     Shown('parts.built_by', 1, 'the only parts that may build its classes', False, True),
     Shown('parts.shared', 1, 'the part is there to be shared, by at least this many users', False, True),
@@ -93,6 +92,7 @@ SHAPE = (
     Shown('guards.no-twins', 1, 'no two classes in different parts with the same fields', False, True),
     Shown('guards.dead-code', 1, 'no Protocol nothing names, no fake no test uses', False, True),
     Shown('guards.pass-through', 1, 'a method that only forwards is listed', False, True),
+    Shown('guards.no-callbacks', 1, 'no function of the parts calls a parameter annotated as a callable', False, True),
     Shown('guards.private-imports', 1, 'no name another file keeps private is imported from it', False, True),
     Shown('excluded', 0, 'folders below the app that are not its source', False, True),
     Shown('hints', 0, 'your own advice for a rule', False, False),
@@ -163,7 +163,7 @@ def test_the_choices_are_the_bundled_profiles_the_testing_presets_and_the_langua
 
 
 def test_a_key_that_configures_a_check_names_the_facts_it_reads_as_the_default_language_supplies_them():
-    found = explained("parts.no_callbacks")
+    found = explained("guards.no-callbacks")
     assert (found.needs, found.language) == (
         (Need("callback", FACTS["callback"], Supply("callback", EXACT)),), "Python")
     assert (BASED_ON.needs, BASED_ON.language) == ((), "")
@@ -180,7 +180,7 @@ def test_a_fact_the_default_language_does_not_grade_is_said_to_be_absent():
     assert (found.short, found.holder, found.name) == (
         (Shortfall("parts.names", "class", "nested classes are not read"), Shortfall("parts.names", "public", None)),
         "part", "names")
-    assert spec.explain(Explain("parts.no_callbacks")).needs == (Need("callback", FACTS["callback"]),)
+    assert spec.explain(Explain("guards.no-callbacks")).needs == (Need("callback", FACTS["callback"]),)
 
 
 def test_the_part_key_of_the_tier_that_covers_it_is_tests_and_its_example_writes_it():
@@ -199,6 +199,29 @@ def test_the_part_key_xarch_renamed_is_refused_with_the_fixed_text_however_it_is
         found = spec.explain(Explain(address))
         assert isinstance(found, UnknownKey)
         assert (found.key, found.retired) == ("parts.tier", "renamed in 0.3.0: write tests")
+
+
+def test_the_guard_no_callbacks_and_its_parts_are_keys_of_the_format_and_the_guard_needs_callback():
+    guard, listed = explained("guards.no-callbacks"), explained("guards.no-callbacks.parts")
+    assert (guard.key, guard.where, guard.meaning, guard.required, guard.rules) == (
+        "guards.no-callbacks", "guards", "no function of the parts calls a parameter annotated as a callable", False,
+        ("no-callbacks",))
+    assert guard.needs == (Need("callback", FACTS["callback"], Supply("callback", EXACT)),)
+    assert [shown.key for shown in guard.keys] == ["guards.no-callbacks.parts"]
+    assert "parts: [documents]" in guard.example
+    assert (listed.key, listed.where, listed.required, listed.rules, listed.needs) == (
+        "guards.no-callbacks.parts", "guards.no-callbacks", True, ("no-callbacks",), ())
+
+
+def test_the_part_key_no_callbacks_is_refused_with_the_fixed_text_and_points_to_the_guard():
+    for address in ("parts.no_callbacks", "parts.<part>.no_callbacks"):
+        found = explained(address)
+        assert isinstance(found, UnknownKey)
+        assert (found.key, found.retired) == (
+            "parts.no_callbacks", "moved in 0.3.0: write guards: {no-callbacks: {parts: [<part>, ...]}}")
+        assert "guards.no-callbacks" in found.nearest
+    bare = explained("no_callbacks")
+    assert isinstance(bare, UnknownKey) and "guards.no-callbacks" in bare.nearest
 
 
 def test_the_tier_of_scenario_coverage_is_still_a_key_of_the_format():

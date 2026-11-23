@@ -31,4 +31,5 @@ def test_the_names_retired_are_tier_the_old_names_of_never_and_its_keys_written_
         Retired(RULE_ID, "forbidden", "renamed in 0.3.0: write never-use"),
         Retired(PART, "never", "a key of uses: write uses: {never: <list>}"),
         Retired(TIER, "apply_never", "a key of uses: write uses: {apply_never: true}"),
-        Retired(RULE_ID, "rules", "renamed in 0.3.0: write may-import"))
+        Retired(RULE_ID, "rules", "renamed in 0.3.0: write may-import"),
+        Retired(PART, "no_callbacks", "moved in 0.3.0: write guards: {no-callbacks: {parts: [<part>, ...]}}"))

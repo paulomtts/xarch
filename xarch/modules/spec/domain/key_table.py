@@ -19,6 +19,7 @@ from xarch.modules.spec.domain.profile_keys import (
     GUARD,
     MOCKS,
     NAMING,
+    NO_CALLBACKS,
     NO_DUPLICATES,
     NO_TWINS,
     PAGE,
@@ -39,7 +40,7 @@ from xarch.modules.spec.domain.profile_keys import (
 )
 
 _GUARD_SCOPES = {"scenario-coverage": SCENARIO_COVERAGE, "no-duplicates": NO_DUPLICATES, "no-twins": NO_TWINS,
-                 "dead-code": DEAD_CODE, "pass-through": PASS_THROUGH}
+                 "dead-code": DEAD_CODE, "pass-through": PASS_THROUGH, "no-callbacks": NO_CALLBACKS}
 
 
 def _guard(name: str) -> Key:
@@ -74,7 +75,6 @@ _KEYS: tuple[Key, ...] = (
     Key(PART, "types_only", rules=("types-only",)),
     Key(PART, "holds", rules=("holds",)),
     Key(PART, "immutable", rules=("immutable",)),
-    Key(PART, "no_callbacks", rules=("no-callbacks",)),
     Key(PART, "names", rules=("names",)),
     Key(PART, "built_by", rules=("built-by",)),
     Key(PART, "shared", rules=("shared",)),
@@ -140,6 +140,7 @@ _KEYS: tuple[Key, ...] = (
     _guard("no-twins"),
     _guard("dead-code"),
     _guard("pass-through"),
+    _guard("no-callbacks"),
     _guard("private-imports"),
 
     Key(SCENARIO_COVERAGE, "results", True, rules=("scenario-coverage",)),
@@ -160,6 +161,8 @@ _KEYS: tuple[Key, ...] = (
     Key(DEAD_CODE, "known", rules=("dead-code",)),
 
     Key(PASS_THROUGH, "parts", True, rules=("pass-through",)),
+
+    Key(NO_CALLBACKS, "parts", True, rules=("no-callbacks",)),
 
     Key(DOCS, "entry", False, False),
     Key(DOCS, "pages", False, False, opens=PAGE),
@@ -197,7 +200,6 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "parts.<part>.must_import": (*_IMPORTS, "import.standard", "function.statements", "file", "file.package"),
     "parts.<part>.types_only": _TYPES_ONLY,
     "parts.<part>.holds": ("class", "class.exception", "class.record", "function", "function.top_level", "public"),
-    "parts.<part>.no_callbacks": ("callback",),
     "parts.<part>.immutable": ("class", "class.exception", "class.immutable"),
     "parts.<part>.names": ("class", "public"),
     "parts.<part>.built_by": ("class", "call", "import.resolved"),
@@ -235,6 +237,7 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "guards.dead-code.known": ("class", "class.exception", "function", "function.named", "constant", "named", *_IMPORTS,
                                "public"),
     "guards.pass-through": ("function", "function.forwards"),
+    "guards.no-callbacks": ("callback",),
     "guards.private-imports": (*_IMPORTS, "public"),
 }
 """The facts of the source each key that configures a check needs, by its address."""

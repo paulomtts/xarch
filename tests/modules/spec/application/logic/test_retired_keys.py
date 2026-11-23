@@ -20,6 +20,7 @@ from xarch.modules.spec.domain.profile_keys import (
     HELD,
     MOCKS,
     NAMING,
+    NO_CALLBACKS,
     NO_DUPLICATES,
     NO_TWINS,
     PAGE,
@@ -42,13 +43,13 @@ from xarch.modules.spec.domain.profile_keys import (
 RENAMED = "renamed in 0.3.0: write tier"
 MOVED = "moved in 0.3.0: write uses: {never: <list>}"
 MISPLACED = "a key of uses: write uses: {never: <list>}"
-PART_USE = ("built_by, folders, holds, immutable, libraries, litmus, may_import, must_import, names, no_callbacks, "
+PART_USE = ("built_by, folders, holds, immutable, libraries, litmus, may_import, must_import, names, "
             "package_only, path, role, shared, tests, types_only, untested, uses")
 TIER_USE = "docs, folder, litmus, may_also_import, may_import, must_import, plain_tables, proves, types_only, uses"
 PROFILE_USE = ("based_on, checks, docs, evals, excluded, fakes, files, guards, hints, language, layers, name, never, "
                "parts, reserved, review, testing, tiers")
-GUARD_USE = ("closed-tree, dead-code, no-comments, no-duplicates, no-twins, pass-through, private-imports, "
-             "scenario-coverage, stand-ins")
+GUARD_USE = ("closed-tree, dead-code, no-callbacks, no-comments, no-duplicates, no-twins, pass-through, "
+             "private-imports, scenario-coverage, stand-ins")
 EVAL_USE = "answer, ask, examples, fix, in, keep, line, message, no, reads, yes"
 RULES_USE = ", ".join(sorted(RULES))
 CODE = "def run(doc):\n    return doc\n"
@@ -91,6 +92,7 @@ RULE = "renamed in 0.3.0: write never-use"
 IMPORT_RULE = "renamed in 0.3.0: write may-import"
 LIST_OUTSIDE = "a key of uses: write uses: {never: <list>}"
 SWITCH_OUTSIDE = "a key of uses: write uses: {apply_never: true}"
+CALLBACKS_MOVED = "moved in 0.3.0: write guards: {no-callbacks: {parts: [<part>, ...]}}"
 
 
 @pytest.mark.parametrize("scope, name, text", [
@@ -103,6 +105,8 @@ SWITCH_OUTSIDE = "a key of uses: write uses: {apply_never: true}"
     pytest.param(RULE_ID, "may-import", "", id="the rule id may-import, which xarch has"),
     pytest.param(PART, "never", LIST_OUTSIDE, id="never on a part"),
     pytest.param(TIER, "apply_never", SWITCH_OUTSIDE, id="apply_never on a tier"),
+    pytest.param(PART, "no_callbacks", CALLBACKS_MOVED, id="the part key no_callbacks"),
+    pytest.param(GUARD, "no-callbacks", "", id="the guard no-callbacks, which xarch has"),
     pytest.param(PART_USES, "never", "", id="never under a part's uses, a key"),
     pytest.param(TIER, "forbidden", "", id="forbidden under a tier, only unknown"),
     pytest.param(TIER, "tier", "", id="tier under a tier"),
@@ -123,6 +127,9 @@ def test_the_shipped_table_answers_each_name_in_its_scope(scope, name, text):
     pytest.param("tiers.<tier>.apply_forbidden", SWITCH_MOVED, id="tiers.<tier>.apply_forbidden"),
     pytest.param("parts.never", LIST_OUTSIDE, id="parts.never"),
     pytest.param("tiers.apply_never", SWITCH_OUTSIDE, id="tiers.apply_never"),
+    pytest.param("parts.no_callbacks", CALLBACKS_MOVED, id="parts.no_callbacks"),
+    pytest.param("parts.<part>.no_callbacks", CALLBACKS_MOVED, id="parts.<part>.no_callbacks"),
+    pytest.param("guards.no-callbacks", "", id="guards.no-callbacks"),
     pytest.param("parts.uses.never", "", id="parts.uses.never"),
     pytest.param("tiers.uses.apply_never", "", id="tiers.uses.apply_never"),
     pytest.param("never", "", id="never"),
@@ -195,6 +202,21 @@ def test_with_no_entry_for_its_keys_a_mapping_gets_todays_message(monkeypatch, e
 def test_the_shipped_table_changes_no_message():
     assert unknown_keys({"colour": 1}, names_of(PART), "parts.api", PART) == [
         f"parts.api: unknown key 'colour': use {PART_USE}"]
+
+
+@pytest.mark.parametrize("value", [True, False], ids=["true", "false"])
+def test_a_part_writing_no_callbacks_is_refused_with_the_guard_that_replaces_it(value):
+    document = layered()
+    document["parts"]["service"]["no_callbacks"] = value
+    assert problems(document) == [
+        f"layered.yaml: parts.service: unknown key 'no_callbacks': {CALLBACKS_MOVED}; use {PART_USE}"]
+
+
+def test_a_part_writing_no_callbacks_beside_the_guard_gets_only_the_retired_key_s_problem():
+    document = layered(guards={"no-callbacks": {"parts": ["service"]}})
+    document["parts"]["service"]["no_callbacks"] = True
+    assert problems(document) == [
+        f"layered.yaml: parts.service: unknown key 'no_callbacks': {CALLBACKS_MOVED}; use {PART_USE}"]
 
 
 def test_an_entry_under_another_scope_does_not_apply(monkeypatch):
@@ -309,6 +331,8 @@ def test_each_mapping_reads_the_entries_of_its_own_scope(monkeypatch, scope, doc
                  "guards.no-twins: unknown key 'banned'", id="no-twins"),
     pytest.param(PASS_THROUGH, writing(layered(guards={"pass-through": {"parts": ["api"]}}), "guards", "pass-through"),
                  "guards.pass-through: unknown key 'banned'", id="pass-through"),
+    pytest.param(NO_CALLBACKS, writing(layered(guards={"no-callbacks": {"parts": ["api"]}}), "guards", "no-callbacks"),
+                 "guards.no-callbacks: unknown key 'banned'", id="no-callbacks"),
     pytest.param(NAMING, layered(docs={"naming": [{"kind": "x", "where": "api", "pattern": "x", "example": "x",
                                                    "banned": "x"}]}),
                  "docs.naming[0]: unknown key 'banned'", id="a row of docs.naming"),

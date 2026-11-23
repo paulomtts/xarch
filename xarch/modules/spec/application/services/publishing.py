@@ -23,6 +23,7 @@ from xarch.modules.spec.domain.values import (
     ClosedTree,
     DeadCode,
     Guard,
+    NoCallbacks,
     NoComments,
     NoDuplicates,
     NoTwins,
@@ -57,8 +58,8 @@ class PublishingService:
         patterns = architecture.patterns()
         parts = tuple(PartView(name, patterns[name], architecture.rules.get(name, ()), part.role, part.litmus,
                                docs_name(architecture, part), part.untested, architecture.uses_never.get(name, ()),
-                               part.must_import, part.holds, part.types_only, part.no_callbacks, part.names,
-                               part.built_by, part.shared, part.immutable)
+                               part.must_import, part.holds, part.types_only, part.names, part.built_by, part.shared,
+                               part.immutable)
                       for name, part in architecture.parts.items())
         return ProfileView(
             parts=parts, folders=folders(architecture.layout),
@@ -106,4 +107,5 @@ def _guards_view(guards: tuple[Guard, ...]) -> GuardsView:
         tests_only=any(isinstance(g, DeadCode) and g.tests_only for g in guards),
         tests_only_known=next((g.known for g in guards if isinstance(g, DeadCode)), ()),
         pass_through=next((g.parts for g in guards if isinstance(g, PassThrough)), ()),
+        no_callbacks=next((g.parts for g in guards if isinstance(g, NoCallbacks)), ()),
         private_imports=any(isinstance(g, PrivateImports) for g in guards))

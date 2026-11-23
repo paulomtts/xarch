@@ -17,7 +17,7 @@ WITH_EXAMPLE = {**MINE, "docs": {"examples": ["ex"]}}
 WITH_EXAMPLE_FILES = {"ex/core/rule.py": "from app.api import handler\n", "ex/api/handler.py": "X = 1\n"}
 WITH_EXAMPLE_READS = {"from app.api import handler\n": (Import(1, ("app", "api"), ("handler",)),)}
 OFF = ("package-only", "scenario-coverage", "no-comments", "stand-ins", "closed-tree", "no-duplicates", "no-twins",
-       "dead-code", "pass-through", "private-imports")
+       "dead-code", "pass-through", "no-callbacks", "private-imports")
 
 
 @pytest.mark.parametrize("given, when, then", [

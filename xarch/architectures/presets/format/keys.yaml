@@ -375,17 +375,6 @@ keys:
       <<part>>
           holds: functions
           immutable: true
-  parts.<part>.no_callbacks:
-    meaning: its code calls none of its own parameters
-    accepts: >-
-      true: no function, method or nested function of the part calls, by its bare name, a parameter of a function it
-      lies in that is annotated as a callable type (alone, subscripted, in a union or as an optional), as in
-      `check(path)` for `check: Callable[[str], bool]`. Not read: the first parameter of a method (`self`, `cls`; a
-      staticmethod has none), a parameter with no such annotation, one passed on (`sorted(rows, key=key)`), one whose
-      method is called (`p.read()`), and one the body rebinds
-    example: |
-      <<part>>
-          no_callbacks: true
   parts.<part>.names:
     meaning: how the classes of the part are named
     accepts: >-
@@ -913,6 +902,20 @@ keys:
       guards:
         pass-through:
           parts: [documents]
+  guards.no-callbacks:
+    meaning: no function of the parts calls a parameter annotated as a callable
+    accepts: >-
+      {parts: [<part>, ...]}: no function, method or nested function of those parts calls, by its bare name, a
+      parameter of a function it lies in that is annotated as a callable type (alone, subscripted, in a union or as an
+      optional), as in `check(path)` for `check: Callable[[str], bool]`; each such call is a violation, and fails
+      `check`. Not read: the first parameter of a method (`self`, `cls`; a staticmethod has none), a parameter with no
+      such annotation, one passed on (`sorted(rows, key=key)`), one whose method is called (`p.read()`), and one the
+      body rebinds
+    example: |
+      <<part>>
+      guards:
+        no-callbacks:
+          parts: [documents]
   guards.private-imports:
     meaning: no name another file keeps private is imported from it
     accepts: >-
@@ -1045,6 +1048,14 @@ keys:
       <<two>>
       guards:
         pass-through:
+          parts: [documents]
+  guards.no-callbacks.parts:
+    meaning: the parts whose functions call no parameter annotated as a callable
+    accepts: "[<part>, ...]"
+    example: |
+      <<part>>
+      guards:
+        no-callbacks:
           parts: [documents]
   docs.entry:
     meaning: the part that is the entry point

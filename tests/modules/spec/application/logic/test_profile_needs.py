@@ -46,14 +46,22 @@ def refusal(address: str, fact: str) -> str:
 
 
 def test_a_key_whose_check_reads_a_fact_the_language_does_not_supply_is_refused_naming_key_fact_and_what_to_do():
-    assert problems(services(no_callbacks=True), languages=LANGUAGES) == [
-        "layered.yaml: parts.service.no_callbacks: its check reads callback (each call of a function's own parameter, "
+    assert problems(layered(language="toy", guards={"no-callbacks": {"parts": ["service"]}}), languages=LANGUAGES) == [
+        "layered.yaml: guards.no-callbacks: its check reads callback (each call of a function's own parameter, "
         "whether it is the receiver and whether it is annotated as a callable), which the language toy does not "
-        "supply: drop parts.service.no_callbacks, or check the app with a language whose reader supplies callback"]
+        "supply: drop guards.no-callbacks, or check the app with a language whose reader supplies callback"]
+
+
+def test_a_profile_without_the_guard_no_callbacks_needs_no_callback():
+    assert parsed(layered(language="toy"), languages=LANGUAGES).approximate == ()
+
+
+def test_callback_is_needed_by_the_guard_no_callbacks_alone():
+    assert [key.address for key in KEYS if "callback" in key.needs] == ["guards.no-callbacks"]
 
 
 def test_a_key_set_to_false_configures_no_check_and_needs_nothing():
-    assert parsed(services(no_callbacks=False), languages=LANGUAGES).approximate == ()
+    assert parsed(services(immutable=False), languages=LANGUAGES).approximate == ()
 
 
 def test_a_key_whose_check_reads_a_fact_supplied_partly_loads_and_is_kept_as_approximate():
@@ -67,7 +75,8 @@ def test_a_key_whose_facts_are_all_supplied_exactly_is_neither_refused_nor_appro
 
 def test_a_language_whose_data_file_says_nothing_of_its_reader_holds_no_key_to_it():
     silent = replace(TOY, checked=replace(TOY.checked, supplies=None))
-    assert parsed(services(no_callbacks=True), languages={"toy": silent}).approximate == ()
+    assert parsed(layered(language="toy", guards={"no-callbacks": {"parts": ["service"]}}),
+                  languages={"toy": silent}).approximate == ()
 
 
 def test_python_supplies_every_fact_a_bundled_check_reads():

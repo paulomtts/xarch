@@ -6,6 +6,7 @@ from tests.modules.spec.profiles import EX, PRESETS, TESTING, covered, layered, 
 from xarch.modules.spec.domain.values import (
     ClosedTree,
     DeadCode,
+    NoCallbacks,
     NoComments,
     NoDuplicates,
     NoTwins,
@@ -298,7 +299,7 @@ def test_a_part_that_is_not_a_text_for_its_tier_is_refused():
     assert problems(document) == ["layered.yaml: parts.api.tests: must be the name of a tier: use unit, integration"]
 
 
-PART_KEYS = ("built_by, folders, holds, immutable, libraries, litmus, may_import, must_import, names, no_callbacks, "
+PART_KEYS = ("built_by, folders, holds, immutable, libraries, litmus, may_import, must_import, names, "
              "package_only, path, role, shared, tests, types_only, untested, uses")
 RETIRED_TIER = f"unknown key 'tier': renamed in 0.3.0: write tests; use {PART_KEYS}"
 NO_TIER = "no tier tests it: give it `tests: <tier>`, or `untested: <reason>`"
@@ -462,7 +463,7 @@ def test_guards_are_off_unless_named_and_package_only_comes_first():
     pytest.param(3, ["layered.yaml: guards: must be a mapping of guard names to their parameters, such as "
                      "{no-comments: {}}"], id="not a mapping"),
     pytest.param({"colour": {}}, ["layered.yaml: guards: unknown guard 'colour': use closed-tree, dead-code, "
-                                  "no-comments, no-duplicates, no-twins, pass-through, private-imports, "
+                                  "no-callbacks, no-comments, no-duplicates, no-twins, pass-through, private-imports, "
                                   "scenario-coverage, stand-ins"],
                  id="an unknown guard"),
     pytest.param({"package-only": ["api"]}, ["layered.yaml: guards.package-only: a fact about a part: write "
@@ -488,6 +489,13 @@ def test_the_new_guards_take_their_parameters_and_dead_code_needs_fakes():
     assert parsed(covered(guards={"no-twins": {"min_renamed": 4, "min_subset": 3}})).guards == (NoTwins(3, 4, 3),)
     assert parsed(covered(guards={"no-twins": {"translated": ["store", "api"]}})).guards == (
         NoTwins(translated=("store", "api")),)
+
+
+def test_no_callbacks_takes_the_parts_it_reads_in_the_order_written():
+    assert parsed(covered(guards={"no-callbacks": {"parts": ["service", "api"]}})).guards == (
+        NoCallbacks(("service", "api")),)
+    assert parsed(covered(guards={"pass-through": {"parts": ["api"]}, "no-callbacks": {"parts": ["service"]}})).guards \
+        == (PassThrough(("api",)), NoCallbacks(("service",)))
 
 
 @pytest.mark.parametrize("guards, expected", [
@@ -531,6 +539,25 @@ def test_the_new_guards_take_their_parameters_and_dead_code_needs_fakes():
                  id="pass-through, no map"),
     pytest.param({"pass-through": {"parts": ["ghost"]}}, ["layered.yaml: guards.pass-through.parts: no part named "
                                                           "'ghost'"], id="pass-through, a part that is not there"),
+    pytest.param({"no-callbacks": []}, ["layered.yaml: guards.no-callbacks: must be a mapping {parts: [<part>, ...]}: "
+                                        "the parts whose functions call none of their parameters annotated as callables"],
+                 id="no-callbacks, no map"),
+    pytest.param({"no-callbacks": None}, ["layered.yaml: guards.no-callbacks: must be a mapping {parts: [<part>, ...]}: "
+                                          "the parts whose functions call none of their parameters annotated as "
+                                          "callables"],
+                 id="no-callbacks, no value"),
+    pytest.param({"no-callbacks": {}}, ["layered.yaml: guards.no-callbacks: missing `parts`"],
+                 id="no-callbacks, no parts"),
+    pytest.param({"no-callbacks": {"parts": []}}, ["layered.yaml: guards.no-callbacks.parts: must be a list of part "
+                                                   "names"], id="no-callbacks, an empty list"),
+    pytest.param({"no-callbacks": {"parts": "service"}}, ["layered.yaml: guards.no-callbacks.parts: must be a list of "
+                                                          "part names"], id="no-callbacks, a name and no list"),
+    pytest.param({"no-callbacks": {"parts": ["ghost"]}}, ["layered.yaml: guards.no-callbacks.parts: no part named "
+                                                          "'ghost'"], id="no-callbacks, a part that is not there"),
+    pytest.param({"no-callbacks": {"parts": ["service", "service"]}},
+                 ["layered.yaml: guards.no-callbacks.parts: 'service' is listed twice"], id="no-callbacks, a part twice"),
+    pytest.param({"no-callbacks": {"parts": ["service"], "also": 1}},
+                 ["layered.yaml: guards.no-callbacks: unknown key 'also': use parts"], id="no-callbacks, an unknown key"),
 ])
 def test_a_bad_new_guard_is_refused(guards, expected):
     assert problems(covered(guards=guards, fakes=FAKES)) == expected

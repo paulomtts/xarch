@@ -28,6 +28,7 @@ NO_DUPLICATES = "guard.no-duplicates"
 NO_TWINS = "guard.no-twins"
 DEAD_CODE = "guard.dead-code"
 PASS_THROUGH = "guard.pass-through"
+NO_CALLBACKS = "guard.no-callbacks"
 DOCS = "docs"
 PAGE = "docs.page"
 NAMING = "docs.naming"
@@ -55,6 +56,7 @@ SCOPES = {
     NO_TWINS: "guards.no-twins",
     DEAD_CODE: "guards.dead-code",
     PASS_THROUGH: "guards.pass-through",
+    NO_CALLBACKS: "guards.no-callbacks",
     DOCS: "docs",
     PAGE: "docs.pages.<path>",
     NAMING: "docs.naming[]",
@@ -164,5 +166,6 @@ RETIRED: tuple[Retired, ...] = (
     Retired(PART, "never", "a key of uses: write uses: {never: <list>}"),
     Retired(TIER, "apply_never", "a key of uses: write uses: {apply_never: true}"),
     Retired(RULE_ID, "rules", "renamed in 0.3.0: write may-import"),
+    Retired(PART, "no_callbacks", "moved in 0.3.0: write guards: {no-callbacks: {parts: [<part>, ...]}}"),
 )
 """Every key, guard and rule id xarch has retired: a profile writing one is refused with the entry's text."""

@@ -1,5 +1,5 @@
 """A profile file: the keys that say what code of a part holds and how it may be used (holds, immutable,
-types_only, no_callbacks, names, built_by), a name pattern on a target of may_import, what each test of a tier must reach, and the
+types_only, names, built_by), a name pattern on a target of may_import, what each test of a tier must reach, and the
 guards private-imports and dead-code's untested."""
 import pytest
 
@@ -18,15 +18,14 @@ def with_part(**keys) -> dict:
 
 
 def test_a_part_says_what_its_files_hold_and_how_its_classes_are_named_and_built():
-    part = parsed(with_part(holds="classes", names="*Service", built_by=["api"], no_callbacks=True,
-                            types_only=["store"])).parts["service"]
-    assert (part.holds, part.names, part.built_by, part.no_callbacks, part.types_only) == (
-        "classes", ("*Service",), ("api",), True, ("store",))
+    part = parsed(with_part(holds="classes", names="*Service", built_by=["api"], types_only=["store"])).parts["service"]
+    assert (part.holds, part.names, part.built_by, part.types_only) == ("classes", ("*Service",), ("api",), ("store",))
+    assert not hasattr(part, "no_callbacks")
 
 
 def test_the_keys_are_off_when_left_out():
     part = parsed(layered()).parts["service"]
-    assert (part.holds, part.names, part.built_by, part.no_callbacks, part.types_only) == ("", (), (), False, ())
+    assert (part.holds, part.names, part.built_by, part.types_only) == ("", (), (), ())
 
 
 def test_a_part_there_to_be_shared_says_by_how_many_users_and_is_not_shared_when_left_out():
@@ -46,8 +45,6 @@ def test_names_may_be_a_list_of_patterns():
 @pytest.mark.parametrize("keys, expected", [
     pytest.param({"holds": "types"}, "parts.service.holds: must be classes or functions", id="holds, another word"),
     pytest.param({"holds": True}, "parts.service.holds: must be classes or functions", id="holds, no word"),
-    pytest.param({"no_callbacks": "yes"}, "parts.service.no_callbacks: must be true or false",
-                 id="no_callbacks, no boolean"),
     pytest.param({"immutable": "yes"}, "parts.service.immutable: must be true or false: whether every class the part "
                                        "defines, but an exception, is an immutable record", id="immutable, no boolean"),
     pytest.param({"names": ""}, "parts.service.names: must be a class name pattern with `*` for any text, such as "

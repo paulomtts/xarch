@@ -76,7 +76,7 @@ class SpecProfiles:
                        pass_through=guards.pass_through, holds={p.name: p.holds for p in parts if p.holds},
                        immutable=tuple(p.name for p in parts if p.immutable),
                        types_only={p.name: p.types_only for p in parts if p.types_only},
-                       no_callbacks=tuple(p.name for p in parts if p.no_callbacks),
+                       no_callbacks=guards.no_callbacks,
                        names={p.name: p.names for p in parts if p.names},
                        built_by={p.name: p.built_by for p in parts if p.built_by},
                        shared={p.name: p.shared for p in parts if p.shared is not None},

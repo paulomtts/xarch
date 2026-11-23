@@ -93,10 +93,9 @@ class PartView:
     """One part of a profile as a check reads it: its name; its path as a pattern, `*` standing for the instance of a
     repeating folder; what it may import besides itself; its role, litmus test, how the docs name it (shown) and why no
     tier tests it; the names it may not use; what each of its files must import one of; what its files define
-    (holds); the parts it may use as types only; whether it calls none of its own parameters; the patterns its public
-    classes match; the parts that alone may build its classes; for a part there to be shared, the fewest users
-    each of its public names must have; and whether every class it defines, but an exception, is an immutable
-    record."""
+    (holds); the parts it may use as types only; the patterns its public classes match; the parts that alone may
+    build its classes; for a part there to be shared, the fewest users each of its public names must have; and
+    whether every class it defines, but an exception, is an immutable record."""
     name: str
     pattern: tuple[str, ...]
     may_import: tuple[Target, ...]
@@ -108,7 +107,6 @@ class PartView:
     must_import: tuple[Target, ...] = ()
     holds: str = ""
     types_only: tuple[str, ...] = ()
-    no_callbacks: bool = False
     names: tuple[str, ...] = ()
     built_by: tuple[str, ...] = ()
     shared: int | None = None
@@ -121,8 +119,8 @@ class GuardsView:
     comments, stand-ins, the closed tree, the fewest statements of a duplicate, the fewest fields of a twin (and of a
     renamed copy and of a partial one, and the parts whose files translate a pair, which is then no twin), dead code
     (and with it the files no test of their tier reaches, the public names only the tests use, and those of them the
-    profile accepts, each `<file below the app>:<name>`), the parts whose forwarding methods are listed, and private
-    imports."""
+    profile accepts, each `<file below the app>:<name>`), the parts whose forwarding methods are listed, the parts
+    whose functions call none of their parameters annotated as callables, and private imports."""
     package_only: tuple[str, ...] = ()
     scenarios: ScenarioCoverage | None = None
     no_comments: bool = False
@@ -138,6 +136,7 @@ class GuardsView:
     tests_only: bool = False
     tests_only_known: tuple[str, ...] = ()
     pass_through: tuple[str, ...] = ()
+    no_callbacks: tuple[str, ...] = ()
     private_imports: bool = False
 
 

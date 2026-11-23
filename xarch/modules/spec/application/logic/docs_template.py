@@ -70,6 +70,7 @@ from xarch.modules.spec.domain.values import (
     Guard,
     Language,
     Layout,
+    NoCallbacks,
     NoDuplicates,
     NoTwins,
     PackageOnly,
@@ -533,6 +534,10 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
             return (f"`pass-through`: a method of {shown} whose whole body forwards to one call on a collaborator, or "
                     "returns an attribute of what that call answers, is listed in the enforcement section, and fails "
                     "`check --strict` only.")
+        case NoCallbacks(parts):
+            shown = _and([f"`{docs_name(architecture, architecture.parts[p])}`" for p in parts])
+            return (f"`no-callbacks`: no function of {shown} calls a parameter annotated as a callable: it is handed "
+                    "values, never a way to fetch them.")
         case ClosedTree():
             language = architecture.language
             return (f"`closed-tree`: every {language.checked.title} file of the app lies in a part, or is the package file "
@@ -576,10 +581,6 @@ def _part_lines(architecture: Architecture) -> list[str]:
         lines.append(f"`immutable`: every class of {shown(immutable)} is an immutable record, as the "
                      f"{architecture.language.checked.title} data file marks one, or an exception; listed in the "
                      "enforcement section, and fails `check --strict` only.")
-    callbacks = [p.name for p in parts if p.no_callbacks]
-    if callbacks:
-        lines.append(f"`no-callbacks`: no function of {shown(callbacks)} calls a parameter annotated as a callable: it "
-                     "is handed values, never a way to fetch them.")
     for part in parts:
         if part.names:
             lines.append(f"`names`: every class of {shown([part.name])} is named "

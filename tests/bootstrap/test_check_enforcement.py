@@ -117,6 +117,23 @@ def test_a_custom_copy_of_a_bundled_profile_is_compared_with_it(tmp_path):
     assert strict.stdout.splitlines()[-2:] == ["strict:      1 finding fails the check", "    guards off: no-comments"]
 
 
+def test_a_copy_of_a_bundled_profile_that_leaves_no_callbacks_out_shows_it_off_and_fails_strict(tmp_path):
+    shutil.copytree(BUNDLED, tmp_path / "arch")
+    text = (BUNDLED / "web.yaml").read_text()
+    assert "  no-callbacks: {parts: [domain, logic]}\n" in text
+    (tmp_path / "arch/mine.yaml").write_text(text.replace("  no-callbacks: {parts: [domain, logic]}\n", ""))
+    result = check("--profile", "arch/mine.yaml")
+    assert result.exit_code == 0, result.stdout
+    assert result.stdout.splitlines()[2:4] == [
+        "  profile:     arch/mine.yaml (custom; closest bundled: web)",
+        "    guards off:  no-callbacks"]
+    strict = check("--profile", "arch/mine.yaml", "--strict")
+    assert strict.exit_code == 1
+    assert strict.stdout.splitlines()[-2:] == ["strict:      1 finding fails the check", "    guards off: no-callbacks"]
+    profile = json.loads(check("--profile", "arch/mine.yaml", "--format", "json").stdout)["enforcement"]["profile"]
+    assert (profile["guards_off"], profile["baseline_off"]) == (["no-callbacks"], [])
+
+
 def test_how_a_custom_profile_differs_from_the_closest_bundled_one_is_shown_and_never_fails_strict(tmp_path):
     shutil.copytree(BUNDLED, tmp_path / "arch")
     text = (BUNDLED / "web.yaml").read_text()

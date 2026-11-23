@@ -61,8 +61,9 @@ class Profile:
     of the app no other file of the app names, but those tests_only_known accepts, each `<file below the app>:<name>`.
     holds says, by part, what its files define
     ("classes" or "functions"); immutable the parts every class of which, but an exception, is an immutable record;
-    types_only, by part, the parts it may use as types only; no_callbacks the parts whose
-    code calls none of its own parameters; names, by part, the patterns its public classes match one of; built_by, by
+    types_only, by part, the parts it may use as types only; no_callbacks the parts the guard no-callbacks lists,
+    whose code calls none of its own parameters annotated as callables; names, by part, the patterns its public
+    classes match one of; built_by, by
     part, the parts that alone may build its classes; shared, by part, the fewest users each public name of a part
     declared shared must have (see shared); private_imports switches the private-imports guard on. hints
     holds the profile's own advice, by rule id. language is the language of the app. reserved holds the

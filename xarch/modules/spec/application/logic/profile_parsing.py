@@ -91,6 +91,7 @@ from xarch.modules.spec.domain.profile_keys import (
     DOCS,
     FAKES,
     MOCKS,
+    NO_CALLBACKS,
     NO_DUPLICATES,
     NO_TWINS,
     PART,
@@ -110,6 +111,7 @@ from xarch.modules.spec.domain.values import (
     Guard,
     Language,
     Layout,
+    NoCallbacks,
     NoDuplicates,
     NoTwins,
     PackageOnly,
@@ -128,6 +130,9 @@ _TIER_TEXTS = ("subject", "may_touch", "one_file_per", "cases_from", "data")
 """The keys under a tier's `docs` that hold one line of text each."""
 _GUARDS = tuple(name for name in ORDER if name != KEY[PackageOnly])
 _NEEDS_TESTING = (KEY[ScenarioCoverage], KEY[StandIns])
+_LISTED = {PassThrough: (PASS_THROUGH, "the parts whose methods are listed when they only forward"),
+           NoCallbacks: (NO_CALLBACKS, "the parts whose functions call none of their parameters annotated as callables")}
+"""The guards whose one key is the parts they read, each with the scope of its keys and what its parts are."""
 _PRESET_MAP = "{files, functions}"
 _TIER_INSTEAD = "`tests: <tier>`, or `untested: <reason>`"
 
@@ -732,10 +737,10 @@ def _guards(value: Any, specs: dict[str, Any], parts: dict[str, Part], declared:
             guards.append(_no_duplicates(spec, where, problems))
         elif kind is NoTwins:
             guards.append(_no_twins(spec, declared, parts, where, problems))
-        elif kind is PassThrough:
-            guard = _pass_through(spec, declared, parts, where, problems)
-            if guard is not None:
-                guards.append(guard)
+        elif kind in _LISTED:
+            listed = _listed_parts(spec, declared, parts, where, *_LISTED[kind], problems)
+            if listed is not None:
+                guards.append(kind(listed))
         elif kind is DeadCode:
             guard = _dead_code(spec, fakes, where, problems, language)
             if guard is not None:
@@ -841,8 +846,8 @@ def _known(value: Any, tests_only: bool, where: str, problems: list[str], langua
 
 def _substance(spec: Any, part: Part, declared: set[str], may_import: tuple[Target, ...],
                problems: list[str]) -> Part:
-    """The keys of a part that say what its code holds and how it is used: holds, immutable, types_only, no_callbacks,
-    names, built_by and shared."""
+    """The keys of a part that say what its code holds and how it is used: holds, immutable, types_only, names,
+    built_by and shared."""
     where = f"parts.{part.name}"
     if not isinstance(spec, Mapping):
         return part
@@ -850,10 +855,6 @@ def _substance(spec: Any, part: Part, declared: set[str], may_import: tuple[Targ
     if "holds" in spec and holds not in _HOLDS:
         problems.append(f"{where}.holds: must be {' or '.join(_HOLDS)}")
         holds = ""
-    no_callbacks = spec.get("no_callbacks", False)
-    if not isinstance(no_callbacks, bool):
-        problems.append(f"{where}.no_callbacks: must be true or false")
-        no_callbacks = False
     immutable = spec.get("immutable", False)
     if not isinstance(immutable, bool):
         problems.append(f"{where}.immutable: must be true or false: whether every class the part defines, but an "
@@ -873,8 +874,8 @@ def _substance(spec: Any, part: Part, declared: set[str], may_import: tuple[Targ
         problems.append(f"{where}.shared: must be a whole number of users, at least 2, such as 2; leave it out for a "
                         "part that is not there to be shared")
         shared = None
-    return replace(part, holds=holds, no_callbacks=no_callbacks, names=names, built_by=built_by, types_only=types_only,
-                   shared=shared, immutable=immutable)
+    return replace(part, holds=holds, names=names, built_by=built_by, types_only=types_only, shared=shared,
+                   immutable=immutable)
 
 
 def _class_patterns(value: Any, where: str, problems: list[str]) -> tuple[str, ...]:
@@ -934,19 +935,20 @@ def _whole(value: Any, least: int) -> bool:
     return isinstance(value, int) and not isinstance(value, bool) and value >= least
 
 
-def _pass_through(spec: Any, declared: set[str], parts: dict[str, Part], where: str,
-                  problems: list[str]) -> PassThrough | None:
+def _listed_parts(spec: Any, declared: set[str], parts: dict[str, Part], where: str, scope: str, said: str,
+                  problems: list[str]) -> tuple[str, ...] | None:
+    """The parts a guard whose one key is `parts` reads, in the order written; None, with its problems, when the
+    guard is written wrong. scope is the scope of the guard's keys; said, what its parts are, as its refusal says it."""
     if not isinstance(spec, Mapping):
-        problems.append(f"{where}: must be a mapping {{parts: [<part>, ...]}}: the parts whose methods are listed "
-                        "when they only forward")
+        problems.append(f"{where}: must be a mapping {{parts: [<part>, ...]}}: {said}")
         return None
     count = len(problems)
-    problems += ck.unknown_keys(spec, names_of(PASS_THROUGH), where, PASS_THROUGH)
-    problems += [f"{where}: missing `{key}`" for key in required_of(PASS_THROUGH) if key not in spec]
+    problems += ck.unknown_keys(spec, names_of(scope), where, scope)
+    problems += [f"{where}: missing `{key}`" for key in required_of(scope) if key not in spec]
     names = ck.part_names(spec["parts"], declared, f"{where}.parts", problems) if "parts" in spec else []
     if len(problems) != count:
         return None
-    return PassThrough(tuple(n for n in names if n in parts))
+    return tuple(n for n in names if n in parts)
 
 
 def _must_import(spec: Any, owner: Part, parts: dict[str, Part], declared: set[str],

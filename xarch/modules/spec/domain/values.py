@@ -80,7 +80,6 @@ class Part:
     must_import: the targets each of its files must import one of (or an outside package); empty: no such rule
     holds: what its files define at module level, "classes" or "functions"; empty: either
     types_only: the parts its files may import and use as types, but never call
-    no_callbacks: no function of it calls one of its own parameters
     immutable: every class it defines at the top level, but an exception, is an immutable record, as the language's
         data file says one is made
     names: the patterns one of which every public class of it matches (`*` for any text); empty: any name
@@ -96,7 +95,6 @@ class Part:
     must_import: tuple[Target, ...] = ()
     holds: str = ""
     types_only: tuple[str, ...] = ()
-    no_callbacks: bool = False
     names: tuple[str, ...] = ()
     built_by: tuple[str, ...] = ()
     shared: int | None = None
@@ -298,8 +296,14 @@ class PassThrough:
     parts: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class NoCallbacks:
+    """The guard no-callbacks: the parts whose functions call none of their own parameters annotated as callables."""
+    parts: tuple[str, ...]
+
+
 Guard = (PackageOnly | ScenarioCoverage | NoComments | StandIns | ClosedTree | NoDuplicates | NoTwins | DeadCode
-         | PassThrough | PrivateImports)
+         | PassThrough | NoCallbacks | PrivateImports)
 
 
 @dataclass(frozen=True)

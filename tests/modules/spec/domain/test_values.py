@@ -9,6 +9,7 @@ from xarch.modules.spec.domain.values import (
     ArchitectureSource,
     ClosedTree,
     DeadCode,
+    NoCallbacks,
     NoComments,
     NoDuplicates,
     NoTwins,
@@ -31,5 +32,5 @@ def test_a_location_names_a_file_when_it_is_a_path_or_has_a_folder_or_a_suffix(l
 
 def test_each_guard_is_switched_on_by_the_name_the_format_lists_it_under():
     guards = (PackageOnly, ScenarioCoverage, NoComments, StandIns, ClosedTree, NoDuplicates, NoTwins, DeadCode,
-              PassThrough, PrivateImports)
+              PassThrough, NoCallbacks, PrivateImports)
     assert sorted(KEY[guard] for guard in guards) == sorted(ORDER) == sorted(GUARD)

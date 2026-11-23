@@ -11,7 +11,7 @@ BASE = {"name": "base", "parts": PARTS, "never": {"pure": ["time.time", "socket"
         "testing": TESTING, "tiers": {"unit": TIER}, "guards": {"no-comments": {}},
         "files": {"tests/test_rules.py": {"from": "guard.py", "pinned": True}}}
 OFF = ("package-only", "scenario-coverage", "stand-ins", "closed-tree", "no-duplicates", "no-twins", "dead-code",
-       "pass-through", "private-imports")
+       "pass-through", "no-callbacks", "private-imports")
 OTHER = {"name": "other", "parts": {"web": {"path": "web", "role": "all"}}}
 
 

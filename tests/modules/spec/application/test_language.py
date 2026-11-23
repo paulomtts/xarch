@@ -75,15 +75,15 @@ TOY = PASCAL | {"supplies": {"file": "exact", "import": "exact", "import.relativ
 
 
 def test_a_key_whose_check_the_reader_of_its_language_cannot_feed_is_refused_and_one_it_feeds_partly_is_approximate():
-    named = BASE | {"language": "toy", "parts": {"core": {"path": "core", "role": "r", "names": "*Rule",
-                                                          "no_callbacks": True}}}
+    named = BASE | {"language": "toy", "parts": {"core": {"path": "core", "role": "r", "names": "*Rule"}},
+                    "guards": {"no-callbacks": {"parts": ["core"]}}}
     spec, _ = spec_controller({"base": named}, languages={"toy": TOY}, runtime=RUNTIME)
     checked = spec.check_profile(CheckProfile(APP, "base"))
     assert [problem.text for problem in checked.problems] == [
-        "base: parts.core.no_callbacks: its check reads callback (each call of a function's own parameter, whether it "
+        "base: guards.no-callbacks: its check reads callback (each call of a function's own parameter, whether it "
         "is the receiver and whether it is annotated as a callable), which the language toy does not supply: drop "
-        "parts.core.no_callbacks, or check the app with a language whose reader supplies callback"]
-    spec, _ = spec_controller({"base": named | {"parts": {"core": {"path": "core", "role": "r", "names": "*Rule"}}}},
+        "guards.no-callbacks, or check the app with a language whose reader supplies callback"]
+    spec, _ = spec_controller({"base": {key: value for key, value in named.items() if key != "guards"}},
                               languages={"toy": TOY}, runtime=RUNTIME)
     assert spec.profile("base").approximate == (
         Shortfall("parts.core.names", "class", "a class defined in a branch is not read"),)

@@ -346,7 +346,6 @@ A fake is checked against its port twice. `xarch check` requires it to exist: ev
 - `must-import`: every file of `adapters/` imports from `platform/`, any module's `contract/`, or an outside package, or reaches one through a file of its own part; a package file and a file with no code of its own are exempt.
 - `holds`: a file of `domain/`, `application/ports/`, `application/services/`, `application/controller.py` and `adapters/` defines classes, never a public function at the top level; a file of `application/logic/` and `kernel/logic/` defines functions, never a class (a private one too) but exceptions and the records its functions return; listed in the enforcement section, and fails `check --strict` only.
 - `immutable`: every class of `application/logic/` and `kernel/logic/` is an immutable record, as the Python data file marks one, or an exception; listed in the enforcement section, and fails `check --strict` only.
-- `no-callbacks`: no function of `domain/` and `application/logic/` calls a parameter annotated as a callable: it is handed values, never a way to fetch them.
 - `names`: every class of `application/services/` is named `*Service`.
 - `names`: every class of `application/controller.py` is named `*Controller`.
 - `built-by`: only code of `bootstrap/` builds a class of `application/services/`; tests are not read.
@@ -361,6 +360,7 @@ A fake is checked against its port twice. `xarch check` requires it to exist: ev
 - `no-twins`: no two public classes in parts of different names declare the same fields in the same order, when each declares at least 3; types and defaults aside, tests not read. Nor is one a copy of another that renames some of its fields (from 3 fields: more than half of its names kept in place, and each renamed field's type), or that keeps at least half of its fields in its order (from 3 fields).
 - `dead-code`: every `Protocol` in `application/ports/` is named by another file of the app, and every fake in `tests/fakes/` by a test; the wiring and re-exports do not count. A file of a part with a tier that no test of that tier reaches, directly or through files of parts of the same tier, is listed in the enforcement section, and fails `check --strict` only.
 - `pass-through`: a method of `application/services/`, `application/controller.py` and `adapters/` whose whole body forwards to one call on a collaborator, or returns an attribute of what that call answers, is listed in the enforcement section, and fails `check --strict` only.
+- `no-callbacks`: no function of `domain/` and `application/logic/` calls a parameter annotated as a callable: it is handed values, never a way to fetch them.
 - `private-imports`: no file of the app or its tests imports a name that starts with `_` from another file of them.
 
 One line per guard. A guard the project adds itself is a check of its own under `tests/architecture/`, written up from `artifacts/guards/_template.md`.

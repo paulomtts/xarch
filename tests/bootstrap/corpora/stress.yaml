@@ -10,7 +10,6 @@ parts:
     - kernel
     uses: {never: pure}
     holds: classes
-    no_callbacks: true
     tests: unit
     package_only: true
     built_by:
@@ -24,7 +23,6 @@ parts:
     - kernel
     uses: {never: pure}
     holds: functions
-    no_callbacks: true
     tests: unit
     package_only: true
   ports:
@@ -56,7 +54,6 @@ parts:
     tests: integration
     must_import:
     - ports
-    no_callbacks: true
   controller:
     path: modules/<module>/application/controller.py
     role: maps failures to a Result
@@ -73,7 +70,6 @@ parts:
     built_by:
     - bootstrap
     tests: integration
-    no_callbacks: true
   adapters:
     path: modules/<module>/adapters
     role: implement the ports on the filesystem or another module's contract
@@ -303,6 +299,7 @@ guards:
     - cli
     - reports
     - platform
+  no-callbacks: {parts: [domain, logic, services, controller]}
   private-imports: {}
 docs:
   entry: cli

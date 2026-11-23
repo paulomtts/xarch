@@ -287,6 +287,29 @@ def test_a_shared_part_is_said_in_the_guards():
                      "folder, or each part outside them; tests not read), or it belongs to the one that uses it."]
 
 
+CALLBACKS = ("- `no-callbacks`: no function of `store/` and `service/` calls a parameter annotated as a callable: it is "
+             "handed values, never a way to fetch them.")
+PRIVATE = ("- `private-imports`: no file of the app or its tests imports a name that starts with `_` from another file "
+           "of them.")
+
+
+def test_the_no_callbacks_line_is_a_guard_line_after_the_part_lines():
+    lines = filled("{{guards}}", parts=parts(service={"holds": "functions"}),
+                   guards={"no-callbacks": {"parts": ["store", "service"]}, "private-imports": {}}).splitlines()
+    assert lines[-2:] == [CALLBACKS, PRIVATE]
+    assert [line for line in lines if "`no-callbacks`" in line] == [CALLBACKS]
+
+
+def test_the_no_callbacks_line_follows_the_order_the_profile_writes_its_guards_in():
+    lines = filled("{{guards}}", guards={"no-callbacks": {"parts": ["store", "service"]},
+                                         "pass-through": {"parts": ["service"]}}).splitlines()
+    assert [line.split(":")[0] for line in lines[-2:]] == ["- `no-callbacks`", "- `pass-through`"]
+
+
+def test_a_profile_without_the_guard_has_no_no_callbacks_line():
+    assert "`no-callbacks`" not in filled("{{guards}}", guards={"private-imports": {}})
+
+
 def test_a_quoted_file_of_any_ending_of_the_language_of_the_app_is_fenced_with_the_language_s_name():
     view = "src/billing/api/view.tsx"
     architecture = parsed(layered(docs=DOCS | {"example_notes": {}}, language="brace"), folders={"ex": (view,)},

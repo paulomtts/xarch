@@ -24,7 +24,6 @@ parts:
     holds: functions
     immutable: true
     types_only: [api]
-    no_callbacks: true
     names: "*"
     must_import: [api]
     tests: unit
@@ -53,6 +52,7 @@ guards:
   closed-tree: {}
   dead-code: {untested: true, tests_only: true}
   pass-through: {parts: [core]}
+  no-callbacks: {parts: [core]}
   private-imports: {}
 """
 """A profile that sets every key the engine expands to rules, on a part, on a tier and as a guard."""

@@ -3,6 +3,7 @@ import pytest
 
 from xarch.bootstrap.wiring import build_controllers, load_architecture
 from xarch.modules.spec.contract import GuardsView
+from xarch.modules.spec.domain.values import NoCallbacks
 from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns
 
 
@@ -30,7 +31,7 @@ def test_the_bundled_profiles_use_every_guard_of_their_own(name):
         stand_ins=StandIns(tuple(("unittest", "mock", m) for m in mocks), (("unittest", "mock", "create_autospec"),),
                                ("spec", "spec_set"), (Fixture("mocker", mocks, ("create_autospec",)),), 0),
         no_duplicates=4, no_twins=3, no_twins_renamed=3, no_twins_subset=3, dead_code=True, untested=True,
-        pass_through=("services", "controller", "adapters"),
+        pass_through=("services", "controller", "adapters"), no_callbacks=("domain", "logic"),
         private_imports=True)
     skips = ("pytest.mark.skip", "pytest.mark.skipif", "pytest.mark.xfail", "pytest.skip", "pytest.xfail",
              "pytest.importorskip", "unittest.skip", "unittest.skipIf", "unittest.skipUnless", "unittest.expectedFailure")
@@ -39,6 +40,13 @@ def test_the_bundled_profiles_use_every_guard_of_their_own(name):
     assert [(file.path, file.pinned) for file in load_architecture(name).files] == [
         (("tests", "architecture", "test_rules.py"), True), (("AGENTS.md",), False), (("ruff.toml",), False)]
     assert profile.fakes == Fakes(("fakes",), ("ports",), "Fake")
+
+
+@pytest.mark.parametrize("name", ["cli", "web"])
+def test_the_bundled_profiles_write_no_callbacks_as_a_guard_of_domain_and_logic(name):
+    architecture = load_architecture(name)
+    assert [guard.parts for guard in architecture.guards if isinstance(guard, NoCallbacks)] == [("domain", "logic")]
+    assert not any(hasattr(part, "no_callbacks") for part in architecture.parts.values())
 
 
 PURE = ["datetime.datetime.now", "datetime.datetime.utcnow", "datetime.datetime.today", "datetime.date.today",
@@ -105,8 +113,6 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
         "functions return; listed in the enforcement section, and fails `check --strict` only.",
         "- `immutable`: every class of `application/logic/` and `kernel/logic/` is an immutable record, as the Python "
         "data file marks one, or an exception; listed in the enforcement section, and fails `check --strict` only.",
-        "- `no-callbacks`: no function of `domain/` and `application/logic/` calls a parameter annotated as a "
-        "callable: it is handed values, never a way to fetch them.",
         "- `names`: every class of `application/services/` is named `*Service`.",
         "- `names`: every class of `application/controller.py` is named `*Controller`.",
         "- `built-by`: only code of `bootstrap/` builds a class of `application/services/`; tests are not read.",
@@ -138,6 +144,8 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
         "- `pass-through`: a method of `application/services/`, `application/controller.py` and `adapters/` whose "
         "whole body forwards to one call on a collaborator, or returns an attribute of what that call answers, is "
         "listed in the enforcement section, and fails `check --strict` only.",
+        "- `no-callbacks`: no function of `domain/` and `application/logic/` calls a parameter annotated as a "
+        "callable: it is handed values, never a way to fetch them.",
         "- `private-imports`: no file of the app or its tests imports a name that starts with `_` from another file "
         "of them.",
     ])
