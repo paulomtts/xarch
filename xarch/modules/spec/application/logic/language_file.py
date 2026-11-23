@@ -24,7 +24,8 @@ and, all optional, the tokens of its code the checks and the docs need (empty: t
     private        what a name private to its file or folder starts with
     special        a regular expression: a name the language reserves for itself, matched against the whole name
     call           the special method that calling an instance runs
-    nothing        the return annotation of a function that gives no value
+    nothing        the return annotations, as its reader writes them, that say a function gives no value: a list
+    unannotated    `nothing`, its only value: a function with no return annotation gives no value
     comment        the marker of a line comment
     directives     the comments its tools read as instructions, each after the marker; a space stands for any spaces
     shebang        how line 1 names the program that runs the file
@@ -55,11 +56,11 @@ from xarch.modules.spec.application.logic.outside_name import outside_name
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import LANGUAGES, Language
 from xarch.profile_values.capabilities import EXACT, FACTS, Supply
-from xarch.profile_values.language import CheckedLanguage, InterfaceMark, RecordMark
+from xarch.profile_values.language import NOTHING, CheckedLanguage, InterfaceMark, RecordMark
 
 KEYS = ("title", "extension", "package_file", "interface", "dynamic", "namespace", "cache", "standard", "name", "package",
-        "member", "private", "special", "call", "nothing", "comment", "directives", "shebang", "encoding", "branching",
-        "importing", "supplies", "immutable", "branching_expressions")
+        "member", "private", "special", "call", "nothing", "unannotated", "comment", "directives", "shebang", "encoding",
+        "branching", "importing", "supplies", "immutable", "branching_expressions")
 REQUIRED = ("title", "extension", "package_file", "namespace", "standard")
 JOINED = ("name", "package", "member")
 """The keys that say how an outside name is written: given together or not at all."""
@@ -103,8 +104,10 @@ def language_of(name: str, document: Any) -> Language:
     standard = _text(document, "standard", "must be a name", problems, _WORD)
     cache = _text(document, "cache", "must be a folder name", problems, _FOLDER)
     tokens = {key: _text(document, key, "must be a non-empty string", problems)
-              for key in ("private", "call", "nothing", "comment", "shebang")}
+              for key in ("private", "call", "comment", "shebang")}
     special = _pattern(document, "special", problems)
+    nothing = _annotations(document, problems)
+    unannotated = _text(document, "unannotated", f"must be {NOTHING}", problems, re.compile(re.escape(NOTHING)))
     encoding = _pattern(document, "encoding", problems)
     directives = _words(document, "directives", problems)
     branching = _words(document, "branching", problems)
@@ -116,10 +119,10 @@ def language_of(name: str, document: Any) -> Language:
         raise InvalidArchitecture(source, problems)
     checked = CheckedLanguage(title=title, extension=extension, package_file=package_file, interface=interface,
                               dynamic=dynamic, private=tokens["private"], special=special, call=tokens["call"],
-                              nothing=tokens["nothing"], comment=tokens["comment"], directives=directives,
+                              nothing=nothing, comment=tokens["comment"], directives=directives,
                               shebang=tokens["shebang"], encoding=encoding, branching=branching, supplies=supplies,
                               importing=importing, immutable=immutable, branching_expressions=expressions,
-                              names=names, package=package, member=member)
+                              names=names, package=package, member=member, unannotated=unannotated)
     return Language(name, checked, namespace, standard, cache, names)
 
 
@@ -247,6 +250,18 @@ def _pattern(document: Mapping[Any, Any], key: str, problems: list[str]) -> str:
         problems.append(f"{key}: must be a regular expression: {e}")
         return ""
     return value
+
+
+def _annotations(document: Mapping[Any, Any], problems: list[str]) -> tuple[str, ...]:
+    """The return annotations that say a function gives no value, as the reader writes them: a non-empty list of
+    non-empty texts; none when the document does not say."""
+    if "nothing" not in document:
+        return ()
+    value = document["nothing"]
+    if not isinstance(value, list) or not value or not all(isinstance(item, str) and item.strip() for item in value):
+        problems.append("nothing: must be a list of return annotations")
+        return ()
+    return tuple(value)
 
 
 def _words(document: Mapping[Any, Any], key: str, problems: list[str]) -> tuple[str, ...]:

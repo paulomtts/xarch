@@ -150,16 +150,16 @@ def language_words(language: Path = LANGUAGE) -> tuple[re.Pattern[str], set[str]
                      *WORDS_BESIDES, *NAMES_BESIDES}
 
 
-TOKEN_KEYS = ("private", "call", "nothing", "comment", "shebang")
-"""The keys of the data file whose value is a token of the language's code; `special` is the pattern of a special name,
-which a literal may not match in full."""
+TOKEN_KEYS = ("private", "call", "comment", "shebang")
+"""The keys of the data file whose value is a token of the language's code; `nothing` lists several, each a token, and
+`special` is the pattern of a special name, which a literal may not match in full."""
 
 
 def language_tokens(language: Path = LANGUAGE) -> tuple[set[str], re.Pattern[str], re.Pattern[str]]:
     """The tokens a literal may not be, the pattern of a special name a literal may not match in full, and the pattern
     of the directive words and of the branching keywords quoted as code."""
     data = yaml.safe_load(language.read_text(encoding="utf-8"))
-    tokens = {data[key] for key in TOKEN_KEYS}
+    tokens = {data[key] for key in TOKEN_KEYS} | set(data.get("nothing", ()))
     special = re.compile(data.get("special") or "(?!)")
     directives = "|".join(sorted((re.escape(word) for word in data["directives"]), key=len, reverse=True))
     branching = "|".join(re.escape(word) for word in data["branching"])
@@ -195,9 +195,9 @@ def ticked_pattern(language: Path = LANGUAGE, testing: Path = TESTING) -> re.Pat
     names = {*mocks["fixtures"], *(name.split(".")[-1] for name in (*mocks["calls"], *mocks["autospec"])),
              *(name for fixture in mocks["fixtures"].values() for key in ("calls", "autospec")
                for name in fixture.get(key, ()))}
-    tokens = "|".join(re.escape(data[key]) for key in TOKEN_KEYS)
+    tokens = "|".join(re.escape(token) for token in (*(data[key] for key in TOKEN_KEYS), *data.get("nothing", ())))
     special, importing = data.get("special") or "(?!)", re.escape(data["importing"].split("{")[0].strip())
-    words = "|".join(re.escape(name) for name in sorted({data["nothing"], *names}, key=len, reverse=True))
+    words = "|".join(re.escape(name) for name in sorted({*data.get("nothing", ()), *names}, key=len, reverse=True))
     return re.compile(rf"^(?:{tokens})$|(?<!\w)(?:{words})(?!\w)|(?<!\w)(?:{special})(?!\w)|^{re.escape(data['private'])}\w"
                       rf"|^{re.escape(data['comment'])}|^{importing}(?= )")
 
@@ -285,6 +285,14 @@ def test_no_data_file_of_the_format_names_the_language_of_the_data_file(language
     pattern, _ = language_words(language)
     found = [(path.name, match[0]) for path in FORMAT for match in pattern.finditer(path.read_text(encoding="utf-8"))]
     assert FORMAT and found == []
+
+
+@pytest.mark.parametrize("language", LANGUAGES, ids=lambda path: path.stem)
+def test_no_data_file_of_the_format_writes_an_annotation_of_no_value_of_the_language_as_a_word(language):
+    nothing = yaml.safe_load(language.read_text(encoding="utf-8")).get("nothing", ())
+    pattern = re.compile(rf"(?<!\w)(?:{'|'.join(re.escape(entry) for entry in nothing)})(?!\w)")
+    found = [(path.name, match[0]) for path in FORMAT for match in pattern.finditer(path.read_text(encoding="utf-8"))]
+    assert FORMAT and nothing and found == []
 
 
 @pytest.mark.parametrize("language", LANGUAGES, ids=lambda path: path.stem)

@@ -11,4 +11,5 @@ name: '[A-Za-z_$][A-Za-z0-9_$]*'
 package: '(?:@[a-z0-9~-][a-z0-9._~-]*/)?[a-z0-9~-][a-z0-9._~-]*|node:[a-z_/]+'
 member: "#"
 interface: [{keyword: interface}]
+nothing: [void, "Promise<void>"]
 dynamic: ["node:module#createRequire"]

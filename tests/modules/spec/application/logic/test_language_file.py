@@ -48,7 +48,7 @@ def test_every_problem_of_a_document_is_listed_naming_the_preset():
     assert [problem.removeprefix("presets/language/odd.yaml: ") for problem in caught.value.problems] == [
         "unknown key 'extra': use branching, branching_expressions, cache, call, comment, directives, dynamic, encoding, extension, "
         "immutable, importing, interface, member, name, namespace, nothing, package, package_file, private, shebang, special, "
-        "standard, supplies, title",
+        "standard, supplies, title, unannotated",
         "missing `namespace`", "missing `standard`",
         "title: must be a non-empty string",
         "extension: must be a dot and a name, such as .pas",
@@ -67,14 +67,14 @@ def test_a_document_that_is_no_mapping_is_refused():
 
 
 def test_the_tokens_of_the_code_are_read_when_the_document_gives_them():
-    tokens = {"name": "[A-Za-z]+", "private": "_", "special": r"(?=__)\w*(?<=__)", "call": "__call__", "nothing": "None",
+    tokens = {"name": "[A-Za-z]+", "private": "_", "special": r"(?=__)\w*(?<=__)", "call": "__call__", "nothing": ["None"],
               "comment": "//", "directives": ["lint: off"], "shebang": "#!", "encoding": "utf-8",
               "branching": ["if", "case"], "branching_expressions": ["?"]}
     language = language_of("pascal", DOCUMENT | tokens)
     checked = language.checked
     assert (language.names, checked.private, checked.special, checked.call, checked.nothing, checked.comment,
             checked.directives, checked.shebang, checked.encoding, checked.branching, checked.branching_expressions) == (
-        "[A-Za-z]+", "_", r"(?=__)\w*(?<=__)", "__call__", "None", "//", ("lint: off",), "#!", "utf-8", ("if", "case"), ("?",))
+        "[A-Za-z]+", "_", r"(?=__)\w*(?<=__)", "__call__", ("None",), "//", ("lint: off",), "#!", "utf-8", ("if", "case"), ("?",))
 
 
 @pytest.mark.parametrize("given, problem", [
@@ -255,3 +255,32 @@ def test_the_marks_of_an_interface_are_not_read_when_the_keys_that_say_how_a_nam
     with pytest.raises(InvalidArchitecture) as caught:
         language_of("odd", DOCUMENT | {"package": "[a-", "interface": ["sys.Contract"]})
     assert [p.removeprefix("presets/language/odd.yaml: ").split(":")[0] for p in caught.value.problems] == ["package"]
+
+
+def test_the_annotations_of_no_value_and_the_word_on_none_are_read_when_the_document_gives_them():
+    checked = language_of("pascal", DOCUMENT | {"nothing": ["void", "Promise<void>"], "unannotated": "nothing"}).checked
+    left_out = language_of("pascal", DOCUMENT).checked
+    assert ((checked.nothing, checked.unannotated), (left_out.nothing, left_out.unannotated)) == (
+        (("void", "Promise<void>"), "nothing"), ((), ""))
+
+
+@pytest.mark.parametrize("given, problem", [
+    pytest.param({"nothing": "None"}, "nothing: must be a list of return annotations", id="the old shape, one text"),
+    pytest.param({"nothing": []}, "nothing: must be a list of return annotations", id="an empty list"),
+    pytest.param({"nothing": [""]}, "nothing: must be a list of return annotations", id="an empty annotation"),
+    pytest.param({"nothing": [1]}, "nothing: must be a list of return annotations", id="an annotation that is no text"),
+    pytest.param({"unannotated": "none"}, "unannotated: must be nothing", id="another word"),
+    pytest.param({"unannotated": True}, "unannotated: must be nothing", id="no text"),
+])
+def test_annotations_of_no_value_and_a_word_on_none_that_are_not_what_their_key_takes_are_refused(given, problem):
+    with pytest.raises(InvalidArchitecture) as caught:
+        language_of("odd", DOCUMENT | given)
+    assert caught.value.problems == (f"presets/language/odd.yaml: {problem}",)
+
+
+def test_the_test_only_languages_say_their_annotations_of_no_value_or_their_word_on_none():
+    loaded = {path.stem: language_of(path.stem, yaml.safe_load(path.read_text(encoding="utf-8"))).checked
+              for path in TEST_LANGUAGES}
+    assert ((loaded["brace"].nothing, loaded["brace"].unannotated),
+            (loaded["percent"].nothing, loaded["percent"].unannotated, loaded["percent"].special)) == (
+        (("void", "Promise<void>"), ""), ((), "nothing", r"%\w+"))

@@ -39,8 +39,8 @@ PYTHON_FILE = yaml.safe_load(resources.files("xarch").joinpath("architectures", 
 PYTHON = CheckedLanguage(title="Python", extension=".py", package_file="__init__.py",
                          interface=marks_of(PYTHON_FILE),
                          dynamic=(("importlib", "import_module"), ("importlib", "__import__"), ("builtins", "__import__")),
-                         private="_", special=PYTHON_FILE["special"], call="__call__", nothing="None", comment="#",
-                         directives=("type: ignore", "noqa", "pragma:"), shebang="#!",
+                         private="_", special=PYTHON_FILE["special"], call="__call__",
+                         nothing=tuple(PYTHON_FILE["nothing"]), comment="#", directives=("type: ignore", "noqa", "pragma:"), shebang="#!",
                          encoding=r"coding[:=][ \t]*[-\w.]+", branching=("if", "match", "try", "for", "while"),
                          immutable=(RecordMark(("typing", "NamedTuple")),
                                     RecordMark(("dataclasses", "dataclass"), (("frozen", "True"),))),
@@ -52,10 +52,18 @@ BRACE_FILE = yaml.safe_load((Path(__file__).resolve().parents[2] / "fakes" / "la
                             .read_text(encoding="utf-8"))
 BRACE = CheckedLanguage(title=BRACE_FILE["title"], extension=BRACE_FILE["extension"],
                         package_file=BRACE_FILE["package_file"], interface=marks_of(BRACE_FILE),
-                        dynamic=(("node:module", "createRequire"),), names=BRACE_FILE["name"],
-                        package=BRACE_FILE["package"], member=BRACE_FILE["member"])
-"""The TypeScript-like test-only language as a check reads it, its patterns, member and interface marks read from its
-data file."""
+                        dynamic=(("node:module", "createRequire"),), nothing=tuple(BRACE_FILE["nothing"]),
+                        names=BRACE_FILE["name"], package=BRACE_FILE["package"], member=BRACE_FILE["member"])
+"""The TypeScript-like test-only language as a check reads it, its patterns, member, interface marks and annotations of
+no value read from its data file."""
+PERCENT_FILE = yaml.safe_load((Path(__file__).resolve().parents[2] / "fakes" / "languages" / "percent.yaml")
+                              .read_text(encoding="utf-8"))
+PERCENT = CheckedLanguage(title=PERCENT_FILE["title"], extension=PERCENT_FILE["extension"],
+                          package_file=PERCENT_FILE["package_file"], interface=marks_of(PERCENT_FILE),
+                          special=PERCENT_FILE["special"], unannotated=PERCENT_FILE["unannotated"],
+                          names=PERCENT_FILE["name"], package=PERCENT_FILE["package"], member=PERCENT_FILE["member"])
+"""The ObjectScript-like test-only language as a check reads it: its interface marks, the pattern of a special name and
+its word on a method with no annotation read from its data file."""
 APP, TESTS = "app", "tests"
 MODULES = Repeat("module", ("modules",))
 EACH_PARTS = {"domain": ("domain",), "contract": ("contract",), "controller": ("application", "controller.py"),

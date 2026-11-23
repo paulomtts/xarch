@@ -197,3 +197,7 @@ def test_an_interface_is_called_by_the_last_step_of_its_first_base_or_by_its_key
 def test_the_path_of_an_interface_is_its_first_base_or_its_keyword():
     assert [said("`%interface_path%`", language) for language in (PYTHON, BRACE, PERCENT, Language())] == [
         "`typing.Protocol`", "`interface`", "`Abstract`", "``"]
+
+
+def test_the_annotations_of_no_value_are_said_each_as_written_joined_by_or():
+    assert [said("%nothing%", language) for language in (PYTHON, BRACE, PERCENT)] == ["None", "void or Promise<void>", ""]

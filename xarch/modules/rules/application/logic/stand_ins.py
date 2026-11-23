@@ -8,9 +8,11 @@ out but for the one calling an instance runs (its data file's `call`), the metho
 language marks as a property or as bound to the class counts as the method it is. By its methods' return annotations a
 port is:
 
-    read         any method returns something else than no value: the port is written and read back, so it has a fake
-    fire-only    every method returns no value, as the data file's `nothing` says it, written as code or as a string
-    unannotated  a method has no return annotation: a violation, since the kind follows from it
+    read         some method gives a value: the port is written and read back, so it has a fake
+    fire-only    every method gives no value: its annotation is one the data file's `nothing` lists, or it has none
+                 and the data file says `unannotated: nothing`
+    unannotated  a method has no return annotation, and the data file does not say `unannotated`: a violation, since
+                 the kind follows from it
 
 A port with no methods is neither, and no rule applies to it. A read port X has a fake: a module-level class named
 <prefix>X in a file below the fakes' folder (by name only: one fake serves ports of the same name in two instances).
@@ -122,14 +124,14 @@ def _ports(app: Iterable[SourceFile], profile: Profile) -> tuple[dict[tuple[tupl
 def _classified(file: SourceFile, cls: Class, profile: Profile) -> tuple[_Port, list[Violation]]:
     language = profile.language
     methods = [m for m in cls.methods if not language.is_special(m.name) or m.name == language.call]
-    bare = [m for m in methods if m.returns is None]
+    bare = [m for m in methods if m.returns is None and not language.gives_nothing(m.returns)]
     problems = [Violation(file.name, m.line, f"{cls.name}.{m.name} has no return annotation, and whether {cls.name} "
                                              f"is fire-only or read follows from it {GUARD}",
                           RULE, f"annotate what {cls.name}.{m.name} returns")
                 for m in bare]
     kind = None
     if not bare and methods:
-        kind = "read" if any(m.returns != language.nothing for m in methods) else "fire-only"
+        kind = "fire-only" if all(language.gives_nothing(m.returns) for m in methods) else "read"
     module = dotted(file.path, profile.language.marks)[0]
     return _Port(file.name, module, cls.line, cls.name, kind, tuple(m.name for m in methods)), problems
 

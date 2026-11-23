@@ -33,7 +33,7 @@ member: "."
 private: _
 special: '(?=__)\w*(?<=__)'
 call: __call__
-nothing: None
+nothing: [None]
 comment: "#"
 directives: ["type: ignore", noqa, "pragma:"]
 shebang: "#!"

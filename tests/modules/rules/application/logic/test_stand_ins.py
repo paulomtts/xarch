@@ -5,7 +5,7 @@ from dataclasses import replace
 
 import pytest
 
-from tests.modules.rules.builders import AUTOSPEC, MOCK, PROFILE, in_tests, profile, source
+from tests.modules.rules.builders import AUTOSPEC, BRACE, MOCK, PERCENT, PROFILE, in_tests, profile, source
 from xarch.modules.rules.application.logic.stand_ins import violations, weak
 from xarch.modules.rules.domain.parsed import Call, Class, Method, ParameterCall
 from xarch.modules.rules.domain.published import Weak
@@ -294,3 +294,31 @@ def test_one_fake_serves_read_ports_of_the_same_name_in_two_instances():
 ])
 def test_a_violation_names_its_rule_and_says_what_to_do(app, tests, fix):
     assert [(v.rule, v.fix) for v in violations(app, tests, PROFILE, "app", "tests")] == [("stand-ins", fix)]
+
+
+BRACE_PORT = "modules/docs/application/ports/repo.ts"
+PERCENT_PORT = "modules/docs/application/ports/Repo.cls"
+
+
+@pytest.mark.parametrize("methods, expected", [
+    pytest.param((Method(4, "send", "Promise<void>"), Method(5, "close", "void")), [],
+                 id="every method returns one of the annotations of no value: fire-only"),
+    pytest.param((Method(4, "get", "Promise<Order>"), Method(5, "close", "void")),
+                 [f"app/{BRACE_PORT}:3: Store is a read port with no fake (stand-ins)"],
+                 id="one method returns something else: read, and its fake is missing"),
+])
+def test_under_a_typescript_like_language_a_port_s_kind_follows_its_annotations_of_no_value(methods, expected):
+    store = Class(3, "Store", (), methods, interface=True)
+    assert problems([ported(store, path=BRACE_PORT)], checked=profile(language=BRACE)) == expected
+
+
+@pytest.mark.parametrize("methods, expected", [
+    pytest.param((Method(4, "%OnNew", "Order"), Method(5, "Send", None)), [],
+                 id="a method with no annotation gives no value, and a special one is left out"),
+    pytest.param((Method(4, "Send", None), Method(5, "Get", "Order")),
+                 [f"app/{PERCENT_PORT}:3: Store is a read port with no fake (stand-ins)"],
+                 id="an annotated method gives a value: read"),
+])
+def test_under_an_objectscript_like_language_a_method_with_no_annotation_gives_no_value(methods, expected):
+    store = Class(3, "Store", (), methods, interface=True)
+    assert problems([ported(store, path=PERCENT_PORT)], checked=profile(language=PERCENT)) == expected

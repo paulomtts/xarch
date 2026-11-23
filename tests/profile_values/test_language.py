@@ -5,7 +5,7 @@ from importlib import resources
 import pytest
 import yaml
 
-from xarch.profile_values.language import CheckedLanguage
+from xarch.profile_values.language import NOTHING, CheckedLanguage
 
 PYTHON_SPECIAL = yaml.safe_load(resources.files("xarch").joinpath("architectures", "presets", "language", "python.yaml")
                                 .read_text(encoding="utf-8"))["special"]
@@ -48,3 +48,16 @@ def test_a_language_that_gives_no_tokens_has_every_name_public():
 
 def test_a_language_that_says_nothing_has_no_package_pattern_and_no_member():
     assert (CheckedLanguage().package, CheckedLanguage().member) == ("", "")
+
+
+@pytest.mark.parametrize("language, returns, nothing", [
+    pytest.param(CheckedLanguage(nothing=("None",)), "None", True, id="an annotation nothing lists"),
+    pytest.param(CheckedLanguage(nothing=("void", "Promise<void>")), "Promise<void>", True, id="any one it lists"),
+    pytest.param(CheckedLanguage(nothing=("void",)), "Promise<Order>", False, id="another annotation gives a value"),
+    pytest.param(CheckedLanguage(nothing=("None",)), None, False, id="no annotation, and unannotated not said"),
+    pytest.param(CheckedLanguage(unannotated=NOTHING), None, True, id="no annotation, and unannotated says nothing"),
+    pytest.param(CheckedLanguage(unannotated=NOTHING), "Order", False, id="an annotation still gives a value"),
+    pytest.param(CheckedLanguage(), "None", False, id="a language that lists nothing has no annotation of no value"),
+])
+def test_a_method_gives_no_value_by_the_annotations_the_language_lists_or_its_word_on_none(language, returns, nothing):
+    assert language.gives_nothing(returns) is nothing

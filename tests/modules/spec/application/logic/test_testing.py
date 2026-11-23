@@ -1,5 +1,7 @@
 """How a profile file names what its test framework names: the `testing` key, and the framework's names the guards
 scenario-coverage and stand-ins read from it."""
+from dataclasses import replace
+
 import pytest
 
 from tests.modules.spec.format_files import FILE_TYPES
@@ -255,6 +257,15 @@ def test_the_guards_lines_say_the_names_of_the_framework_the_file_declares():
         "returns a value), each method annotated; every read port `<Port>` has a fake `Fake<Port>` in "
         "`tests/fakes/`; and every mock in the integration tests names what it stands in for, `Mock(spec=<Port>)` "
         "(or, from a fixture, `mocker.Mock(spec=<Port>)`), never a read port (section 6)."]
+
+
+def test_the_stand_ins_line_says_each_annotation_of_no_value_of_the_language():
+    architecture = parsed(covered(guards={"scenario-coverage": SCENARIOS, "stand-ins": {}}, fakes=FAKES))
+    checked = replace(architecture.language.checked, nothing=("void", "Promise<void>"))
+    brace = replace(architecture, language=replace(architecture.language, checked=checked))
+    lines = fill("{{guards}}", brace, "layered.md", file_types=FILE_TYPES).splitlines()
+    line = next(line for line in lines if line.startswith("- `stand-ins`"))
+    assert "is fire-only (every method returns `void` or `Promise<void>`) or read" in line
 
 
 def test_a_profile_naming_another_framework_gets_its_own_words_in_the_guards_lines():
