@@ -25,7 +25,7 @@ turns its language's imports and names into such paths, and a fact into the app 
                         the name it takes when that is no file; a test's relative imports are its own and none is one
     import-into-tests   each import of a test file into the tests' own package, the target it reaches below the tests
                         root
-    comment             each line comment, text as written
+    comment             each comment, text as written, name the marker it opens with
     class               each class defined at the top level, name its name, names those its bases and body mention;
                         exception, record, interface and immutable when it is one (below)
     function            each function defined at the top level or in a class of the top level, name its name, path
@@ -167,7 +167,7 @@ def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: 
         case "names-mentioned":
             return (Fact("names-mentioned", 0, names=file.named),)
         case "comment":
-            return tuple(Fact("comment", c.line, text=c.text) for c in file.comments)
+            return tuple(Fact("comment", c.line, name=c.marker or None, text=c.text) for c in file.comments)
         case "class":
             ports = {c.name: c for c in file.classes if c.interface}
             return tuple(Fact("class", c.line, (c.name,), c.name, _class(c, file, read, profile, defined, ports),

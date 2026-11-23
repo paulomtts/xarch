@@ -56,7 +56,7 @@ APP = [
                       Function(11, "get", owner="Doc", forwards="self.repo.get",
                                sole_call=SoleCall(("self", "repo", "get"), then=("name",))),
                       Function(12, "put", owner="Doc", forwards="self.repo.put", sole_call=SoleCall(("self", "repo", "put")))),
-           comments=(Comment(13, "# noqa: E501"), Comment(14, "# a note TODO")),
+           comments=(Comment(13, "# noqa: E501", marker="#"), Comment(14, "# a note TODO", marker="#")),
            callbacks=(Callback(15, "make", "check", annotated=True), Callback(16, "get", "self", receiver=True)),
            uses=(Use(17, ("datetime", "datetime", "now"), 2), Use(18, ("yaml", "load"), 1)),
            method_calls=(MethodCall(19, "resolve", held=True), MethodCall(20, "absolute")),

@@ -309,9 +309,11 @@ def _last(node: ast.Import | ast.ImportFrom) -> int:
 
 def _comments(text: str) -> tuple[Comment, ...]:
     """Each comment the tokens of the text hold, a `#` inside a string being none, its lines cut where the parser
-    cuts them (a carriage return alone ending one too), so that they are the lines an import or a piece is on."""
+    cuts them (a carriage return alone ending one too), so that they are the lines an import or a piece is on. Each
+    opens with `#`, Python's one marker, and none is a doc comment: Python keeps its documentation in docstrings."""
     tokens = tokenize.generate_tokens(io.StringIO(text, newline=None).readline)
-    return tuple(Comment(t.start[0], t.string, t.start[1], t.end[1], t.end[0] if t.end[0] != t.start[0] else 0)
+    return tuple(Comment(t.start[0], t.string, t.start[1], t.end[1], t.end[0] if t.end[0] != t.start[0] else 0,
+                         marker="#", doc=False)
                  for t in tokens if t.type == tokenize.COMMENT)
 
 

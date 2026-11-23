@@ -1044,15 +1044,19 @@ def test_a_text_in_no_file_has_its_pieces_too():
 
 
 @pytest.mark.parametrize("text, comments", [
-    pytest.param("x = 1  # one\n    # two\n", (Comment(1, "# one", 7, 12), Comment(2, "# two", 4, 9)),
+    pytest.param("x = 1  # one\n    # two\n",
+                 (Comment(1, "# one", 7, 12, marker="#"), Comment(2, "# two", 4, 9, marker="#")),
                  id="a comment after code and one on a line of its own, each where it lies on its line"),
-    pytest.param("x = '# not one'  # one\n", (Comment(1, "# one", 17, 22),), id="a # inside a string is no comment"),
+    pytest.param("x = '# not one'  # one\n", (Comment(1, "# one", 17, 22, marker="#"),),
+                 id="a # inside a string is no comment"),
     pytest.param('"""# no comment"""\ndef f():\n    """Nor # this."""\n', (),
                  id="a docstring is no comment, whatever it holds"),
     pytest.param("x = 1  # one\ry = 2  # two\r\nz = 3  # three\n",
-                 (Comment(1, "# one", 7, 12), Comment(2, "# two", 7, 12), Comment(3, "# three", 7, 14)),
+                 (Comment(1, "# one", 7, 12, marker="#"), Comment(2, "# two", 7, 12, marker="#"),
+                  Comment(3, "# three", 7, 14, marker="#")),
                  id="a line ended by a carriage return alone is a line of its own, as the parser counts it"),
 ])
 def test_each_comment_is_read_with_where_it_lies(tmp_path, text, comments):
     assert parsed(tmp_path, text).comments == comments
     assert FsSourceTree(FileSystem()).parsed(text, STANDARD).comments == comments
+    assert all(comment.marker == "#" and comment.doc is False for comment in parsed(tmp_path, text).comments)

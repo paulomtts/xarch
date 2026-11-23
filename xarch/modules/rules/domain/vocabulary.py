@@ -163,6 +163,7 @@ FIELDS: dict[str, str] = {
             "parameter",
     "written": "what an import names, as the source writes it",
     "text": "what it says: a comment's text, a syntax error's message",
+    "marker": "the marker a comment opens with, as its reader writes it",
     "mentions": "the names it mentions, by their last step",
     "reaches": "the file or package of the app or of the tests it leads to",
     "place": "where what it leads to sits: a part, or a folder of the layout",
@@ -223,7 +224,7 @@ KINDS: tuple[Kind, ...] = (
          verb="import"),
     Kind("import-into-tests", "each import of a test file of a file of the tests, as the file or package it reaches",
          ("line", "reaches"), side=TESTS_SIDE, needs=("import", "import.relative"), verb="import"),
-    Kind("comment", "each line comment, its text as written", ("line", "text"), needs=("comment",)),
+    Kind("comment", "each comment, its text as written", ("line", "text", "marker"), needs=("comment",)),
     Kind("class", "each class defined at the top level of a file", ("line", "name", "mentions", "exception", "record",
                                                                     "interface", "immutable"),
          needs=("class",), field_needs={"mentions": ("class.named",), "exception": _CLASS_EXCEPTION,
@@ -288,8 +289,8 @@ FILTERS: tuple[Filter, ...] = (
     Filter("receiver", "the parameter called is the object or class its method is called on", FACT, ("receiver",)),
     Filter("annotated-callable", "the parameter called is annotated as a callable", FACT, ("annotated-callable",)),
     Filter("unreadable", "the file could not be read as text at all, so it was never parsed", FACT, ("unreadable",)),
-    Filter("directive", "the comment is one the language's tools read: a directive after the comment marker, a "
-                        "shebang on line 1, an encoding declaration on line 1 or 2", FACT, ("text",)),
+    Filter("directive", "the comment is one the language's tools read: a directive after the marker of the comment, "
+                        "a shebang on line 1, an encoding declaration on line 1 or 2", FACT, ("text", "marker")),
     Filter("no-statements", "no function or method of the file holds a real statement: types, constants, interface "
                             "stubs", FACT, ("no-statements",)),
     Filter("exceptions-only", "the file defines classes, every one an exception, and no top-level function", FACT,

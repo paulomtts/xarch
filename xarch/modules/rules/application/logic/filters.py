@@ -144,14 +144,15 @@ def _returns_an_attribute(found: Found, facts: Facts, profile: Profile, value: s
 
 def _directive(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
     language, comment = profile.language, found.fact
-    marker = re.escape(language.comment)
+    marker = comment.name or ""
+    after = comment.text[len(marker):] if marker and comment.text.startswith(marker) else None
     words = "|".join(r"\s*".join(re.escape(part) for part in word.split(" ")) for word in language.directives)
-    if words and re.match(rf"{marker}\s*({words})", comment.text):
+    if after is not None and words and re.match(rf"\s*({words})", after):
         return True
     if comment.line == 1 and language.shebang and comment.text.startswith(language.shebang):
         return True
-    return comment.line <= 2 and bool(language.encoding) and bool(
-        re.match(rf"^[ \t\f]*{marker}.*?{language.encoding}", comment.text))
+    return after is not None and comment.line <= 2 and bool(language.encoding) and bool(
+        re.match(rf".*?{language.encoding}", after))
 
 
 def _reported_at_import(found: Found, facts: Facts, profile: Profile, value: str) -> bool:

@@ -9,14 +9,17 @@ from xarch.modules.rules.domain.published import Piece
 
 @dataclass(frozen=True)
 class Comment:
-    """A line comment as written, its marker included, and the line it is on; and where it lies there: from column
-    column to column end of line last (0: its own line), columns counted in characters from 0, end past its last
-    character."""
+    """A comment as written, its marker included (and a block's closing), and the line it is on; where it lies there:
+    from column column to column end of line last (0: its own line), columns counted in characters from 0, end past its
+    last character; the marker it opens with, as written ("" when the reader does not say); and whether it is a doc
+    comment, one the language keeps its documentation in."""
     line: int
     text: str
     column: int = 0
     end: int = 0
     last: int = 0
+    marker: str = ""
+    doc: bool = False
 
     @property
     def span(self) -> CommentSpan:

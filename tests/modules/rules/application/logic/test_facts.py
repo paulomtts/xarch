@@ -115,6 +115,12 @@ def test_a_callback_a_comment_the_names_of_a_file_and_the_file_as_a_whole_are_fa
     assert DOMAIN.facts["file"] == (Fact("file", 0, traits=frozenset({"no-statements"})),)
 
 
+def test_a_comment_carries_the_marker_it_opens_with_as_its_name():
+    read = facts_of([source("modules/docs/domain/a.py", comments=(Comment(2, "// a note", marker="//"),))], [],
+                    PROFILE, "app").files[0]
+    assert read.facts["comment"] == (Fact("comment", 2, name="//", text="// a note"),)
+
+
 def test_a_file_that_does_not_parse_says_only_its_error():
     assert BROKEN.facts["syntax-error"] == (Fact("syntax-error", 2, text="invalid syntax"),)
     assert {kind for kind, found in BROKEN.facts.items() if found} == {"syntax-error"}
