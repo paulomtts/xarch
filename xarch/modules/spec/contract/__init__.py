@@ -258,7 +258,7 @@ class FilesTaken:
 
 @dataclass(frozen=True)
 class Shown:
-    """One key of the format, as a line: key is its address as a person types it (parts.may_import), depth how far
+    """One key of the format, as a line: key is its address as a person types it (parts.imports.may), depth how far
     below the keys of the file it sits; read_by the command other than `check` that alone reads it ("" for none)."""
     key: str
     depth: int
@@ -276,7 +276,7 @@ class Symbol:
 
 @dataclass(frozen=True)
 class Explain:
-    """Explain the format of a profile: the whole of it, or the key at an address such as parts.may_import."""
+    """Explain the format of a profile: the whole of it, or the key at an address such as parts.imports.may."""
     key: str | None = None
 
 
