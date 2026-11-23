@@ -106,9 +106,12 @@ class Eval:
 class Loosened:
     """One way a profile is looser than the bundled profile it is compared with. key is what loosened:
 
-        may_import      part may also import what (a target as written)
-        libraries       part may also import the outside package what; with no part, outside packages are unchecked
-        must_import     part may also meet must_import with the target what; with no what, it has none now
+        imports.may     part may also import what (a target as written)
+        imports.may.types_only
+                        part may now call what, a target it used only as a type
+        imports.libraries
+                        part may also import the outside package what; with no part, outside packages are unchecked
+        imports.must    part may also meet imports.must with the target what; with no what, it has none now
         uses.never      part no longer forbids what
         untested        part is newly marked untested
         litmus          part has no litmus, though the bundled profile gives it one (LITMUS)

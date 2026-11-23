@@ -49,9 +49,9 @@ def test_every_way_a_custom_profile_is_looser_than_the_bundled_one_it_resembles_
     assert origin.guards_off == ("package-only", "scenario-coverage", "no-comments", *OFF[2:])
     assert origin.baseline_off == OFF
     assert origin.looser == (
-        Loosened("may_import", "core", "store", "core may also import store (parts.core.may_import)"),
-        Loosened("libraries", "core", "yaml", "core may also import yaml (parts.core.libraries)"),
-        Loosened("libraries", "store", "requests", "store may also import requests (parts.store.libraries)"),
+        Loosened("imports.may", "core", "store", "core may also import store (parts.core.imports.may)"),
+        Loosened("imports.libraries", "core", "yaml", "core may also import yaml (parts.core.imports.libraries)"),
+        Loosened("imports.libraries", "store", "requests", "store may also import requests (parts.store.imports.libraries)"),
         Loosened("uses.never", "core", "time.time", "core no longer forbids time.time (parts.core.uses.never)"),
         Loosened("untested", "store", "", "store is newly marked untested (parts.store.untested)"),
         Loosened("types_only", "unit", "store", "the unit tests may now call store (tiers.unit.types_only)"),
@@ -71,7 +71,7 @@ def test_a_stricter_custom_profile_lists_nothing_and_a_broader_ban_covers_a_narr
 def test_a_part_that_may_import_any_outside_package_is_looser_than_one_that_lists_them():
     custom = {**BASE, "parts": part("store", imports={"may": ["core"], "libraries": "everything"})}
     assert controller(custom).origin("mine.yaml").looser == (
-        Loosened("libraries", "store", "*", "store may import any outside package (parts.store.libraries)"),)
+        Loosened("imports.libraries", "store", "*", "store may import any outside package (parts.store.imports.libraries)"),)
 
 
 def test_a_custom_profile_sharing_no_part_resembles_no_bundled_profile_and_has_no_baseline():
@@ -100,8 +100,8 @@ def test_a_part_that_no_longer_has_to_import_or_may_meet_it_with_more_is_looser(
                                                    "stricter.yaml": stricter}, {"guard.py": "check()\n"})
     spec = spec_controller(files)
     assert spec.origin("dropped.yaml").looser == (
-        Loosened("must_import", "store", "", "store no longer has to import anything (parts.store.must_import)"),)
+        Loosened("imports.must", "store", "", "store no longer has to import anything (parts.store.imports.must)"),)
     assert spec.origin("wider.yaml").looser == (
-        Loosened("must_import", "store", "edge", "store may also meet must_import with edge (parts.store.must_import)"),)
+        Loosened("imports.must", "store", "edge", "store may also meet imports.must with edge (parts.store.imports.must)"),)
     assert spec.origin("same.yaml").looser == ()
     assert spec.origin("stricter.yaml").looser == ()

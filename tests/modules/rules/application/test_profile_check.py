@@ -48,8 +48,8 @@ FINDS_NOTHING = ("checks.no-managers.examples.flagged: the check finds nothing i
                  "is written to find, or correct the check")
 FINDS_ONE = ("checks.no-managers.examples.clean: the check finds 1 in it, the first app/modules/docs/domain/x.py:1: "
              "Manager: make the code clean, or correct the check")
-LOOSER = Reviewed("mine", ("example (core/rule.py): imports app.api which core may not import (parts.core.may_import)",),
-                  3, Resemblance(False, "cli", (Loosened("may_import", "core", "api", "core may also import api"),)))
+LOOSER = Reviewed("mine", ("example (core/rule.py): imports app.api which core may not import (parts.core.imports.may)",),
+                  3, Resemblance(False, "cli", (Loosened("imports.may", "core", "api", "core may also import api"),)))
 
 UNLOADED = ("mine: unknown key 'colour'", "mine: parts.core: missing `role`")
 
