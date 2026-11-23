@@ -45,7 +45,7 @@
 "names",
 "xarch/modules/layout/application/services/structure_check.py",
 11,
-"StructureCheck does not match *Service, as every class of services/ of modules/layout must (parts.services.names)",
+"StructureCheck does not match *Service, as every class of services/ of modules/layout must (parts.services.holds.classes.names)",
 "rename StructureCheck to match *Service, or move it to the part whose kind of class it is"
 ],
 [
@@ -61,7 +61,7 @@
 "names",
 "xarch/modules/rules/application/services/import_check.py",
 40,
-"ImportCheck does not match *Service, as every class of services/ of modules/rules must (parts.services.names)",
+"ImportCheck does not match *Service, as every class of services/ of modules/rules must (parts.services.holds.classes.names)",
 "rename ImportCheck to match *Service, or move it to the part whose kind of class it is"
 ],
 [
@@ -69,7 +69,7 @@
 "names",
 "xarch/modules/rules/application/services/locate.py",
 9,
-"Locator does not match *Service, as every class of services/ of modules/rules must (parts.services.names)",
+"Locator does not match *Service, as every class of services/ of modules/rules must (parts.services.holds.classes.names)",
 "rename Locator to match *Service, or move it to the part whose kind of class it is"
 ],
 [
@@ -189,7 +189,7 @@
 "names",
 "xarch/modules/scaffold/application/services/scaffolding.py",
 17,
-"Scaffolding does not match *Service, as every class of services/ of modules/scaffold must (parts.services.names)",
+"Scaffolding does not match *Service, as every class of services/ of modules/scaffold must (parts.services.holds.classes.names)",
 "rename Scaffolding to match *Service, or move it to the part whose kind of class it is"
 ],
 [
@@ -205,7 +205,7 @@
 "built-by",
 "xarch/modules/spec/application/controller.py",
 46,
-"controller/ of modules/spec builds ExplainService, a class of services/ of modules/spec, which only bootstrap/ may build (parts.services.built_by)",
+"controller/ of modules/spec builds ExplainService, a class of services/ of modules/spec, which only bootstrap/ may build (parts.services.holds.classes.built_by)",
 "take ExplainService as a parameter of the constructor, and build it in bootstrap/"
 ],
 [
@@ -213,7 +213,7 @@
 "built-by",
 "xarch/modules/spec/application/controller.py",
 46,
-"controller/ of modules/spec builds ProfileReview, a class of services/ of modules/spec, which only bootstrap/ may build (parts.services.built_by)",
+"controller/ of modules/spec builds ProfileReview, a class of services/ of modules/spec, which only bootstrap/ may build (parts.services.holds.classes.built_by)",
 "take ProfileReview as a parameter of the constructor, and build it in bootstrap/"
 ],
 [
@@ -389,7 +389,7 @@
 "built-by",
 "xarch/modules/spec/application/services/migration.py",
 26,
-"services/ of modules/spec builds ProfileWriter, a class of services/ of modules/spec, which only bootstrap/ may build (parts.services.built_by)",
+"services/ of modules/spec builds ProfileWriter, a class of services/ of modules/spec, which only bootstrap/ may build (parts.services.holds.classes.built_by)",
 "take ProfileWriter as a parameter of the constructor, and build it in bootstrap/"
 ],
 [
@@ -421,7 +421,7 @@
 "names",
 "xarch/modules/spec/application/services/profile_creation.py",
 19,
-"ProfileCreation does not match *Service, as every class of services/ of modules/spec must (parts.services.names)",
+"ProfileCreation does not match *Service, as every class of services/ of modules/spec must (parts.services.holds.classes.names)",
 "rename ProfileCreation to match *Service, or move it to the part whose kind of class it is"
 ],
 [
@@ -429,7 +429,7 @@
 "built-by",
 "xarch/modules/spec/application/services/profile_creation.py",
 25,
-"services/ of modules/spec builds ProfileWriter, a class of services/ of modules/spec, which only bootstrap/ may build (parts.services.built_by)",
+"services/ of modules/spec builds ProfileWriter, a class of services/ of modules/spec, which only bootstrap/ may build (parts.services.holds.classes.built_by)",
 "take ProfileWriter as a parameter of the constructor, and build it in bootstrap/"
 ],
 [
@@ -445,7 +445,7 @@
 "names",
 "xarch/modules/spec/application/services/profile_review.py",
 19,
-"ProfileReview does not match *Service, as every class of services/ of modules/spec must (parts.services.names)",
+"ProfileReview does not match *Service, as every class of services/ of modules/spec must (parts.services.holds.classes.names)",
 "rename ProfileReview to match *Service, or move it to the part whose kind of class it is"
 ],
 [
@@ -493,7 +493,7 @@
 "names",
 "xarch/modules/spec/application/services/profile_writer.py",
 11,
-"ProfileWriter does not match *Service, as every class of services/ of modules/spec must (parts.services.names)",
+"ProfileWriter does not match *Service, as every class of services/ of modules/spec must (parts.services.holds.classes.names)",
 "rename ProfileWriter to match *Service, or move it to the part whose kind of class it is"
 ],
 [
@@ -1085,7 +1085,7 @@
 "holds",
 "xarch/modules/spec/application/logic/migrate_examples.py",
 16,
-"Copy is a class, but logic/ of modules/spec holds functions (parts.logic.holds)",
+"Copy is a class, but logic/ of modules/spec holds functions, records and exceptions (parts.logic.holds)",
 "move Copy to a part that holds classes: domain/, ports/, services/, or make what it does functions"
 ],
 [
@@ -1093,7 +1093,7 @@
 "holds",
 "xarch/modules/spec/application/logic/profile_v1.py",
 35,
-"OldProfile is a class, but logic/ of modules/spec holds functions (parts.logic.holds)",
+"OldProfile is a class, but logic/ of modules/spec holds functions, records and exceptions (parts.logic.holds)",
 "move OldProfile to a part that holds classes: domain/, ports/, services/, or make what it does functions"
 ],
 [

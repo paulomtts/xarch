@@ -38,13 +38,13 @@ def test_a_category_lists_its_words_and_a_word_is_explained_with_an_example_from
     assert word.output.splitlines()[:3] == [
         "filters.public", "  what: the name the fact carries is public: the language's reader says it is for other "
                           "files to use", "  about: the fact"]
-    assert "example: the rule parts.services.names of cli expands to" in word.output
+    assert "example: the rule parts.services.holds.classes.names of cli expands to" in word.output
 
 
 def test_a_key_with_rule_shows_the_rules_it_expands_to_in_the_profile_given_as_checks():
-    result = explain("parts.names", "--rule", "--profile", "web")
+    result = explain("parts.holds.classes.names", "--rule", "--profile", "web")
     assert result.exit_code == 0, result.output
-    assert result.output.splitlines()[0] == "parts.names expands to 2 rules in web, written as checks:"
+    assert result.output.splitlines()[0] == "parts.holds.classes.names expands to 2 rules in web, written as checks:"
     assert "  names-services:" in result.output and "may_only: {name: [\"*Service\"]}" in result.output
     none = explain("parts.path", "--rule", "--profile", "web")
     assert none.exit_code == 2 and "parts.path in web: it expands to no rule of the engine here" in none.output
@@ -65,7 +65,7 @@ def test_json_gives_each_of_them_as_one_document():
     assert (word["name"], word["verb"], word["needs"]) == ("call", "call", ["call", "import.resolved"])
     assert {"name": "place", "meaning": "where what it leads to sits: a part, or a folder of the layout",
             "when": "target-placed"} in word["fields"]
-    rule = json.loads(explain("parts.names", "--rule", "--profile", "cli", "--format", "json").output)
+    rule = json.loads(explain("parts.holds.classes.names", "--rule", "--profile", "cli", "--format", "json").output)
     assert rule["ok"] is True and rule["rules"] == 2 and rule["checks"].startswith("checks:")
     refused = explain("filters.publik", "--format", "json")
     assert refused.exit_code == 2 and json.loads(refused.output)["nearest"][0] == "filters.public"

@@ -14,9 +14,12 @@ EVERY_KEY = Profile(
     libraries={"one": ("outside",)}, uses_never={"one": (("outside",),)},
     tiers=(CheckedTier("tier", (Target("one"),), ("tier",), types_only=("two",), apply_never=True,
                        may_import=(Target("two"),), must_import=("two",), may_also_import=(Target("two"),)),),
-    package_only=("two",), types_only={"one": ("two",)}, no_callbacks=("one",), names={"one": ("*",)},
-    built_by={"two": ("one",)}, private_imports=True, no_comments=True, closed_tree=True, holds={"one": "classes"},
-    immutable=("two",), must_import={"one": (Target("two"),)}, dead_code=True, untested=True, tests_only=True,
+    package_only=("two",), types_only={"one": ("two",)}, no_callbacks=("one",),
+    names={"one": {"classes": ("*",)}, "two": {"functions": ("*",), "records": ("*",), "exceptions": ("*",)}},
+    built_by={"two": ("one",)}, private_imports=True, no_comments=True, closed_tree=True,
+    holds={"one": ("classes",), "two": ("functions", "records", "exceptions")},
+    immutable={"one": ("classes",), "two": ("records",)}, must_import={"one": (Target("two"),)}, dead_code=True,
+    untested=True, tests_only=True,
     pass_through=("one",), fakes=Fakes(("fakes",), ("two",)), framework=Framework(("*",), "*"),
     info={"one": PartInfo(), "two": PartInfo()})
 """A profile of two parts and a tier that sets every key the engine expands."""
@@ -29,6 +32,15 @@ EVERY_KEY = Profile(
     pytest.param("guards.no-comments", True, id="a guard the engine runs"),
     pytest.param("guards.no-callbacks", True, id="the guard no-callbacks"),
     pytest.param("parts.no_callbacks", False, id="the part key no_callbacks, retired"),
+    pytest.param("parts.holds", True, id="holds"),
+    pytest.param("parts.services.holds.classes.names", True, id="the names of the classes of one part"),
+    pytest.param("parts.holds.functions.names", True, id="the names of functions"),
+    pytest.param("parts.holds.records.immutable", True, id="immutable of records"),
+    pytest.param("parts.holds.classes.built_by", True, id="built_by of classes"),
+    pytest.param("parts.holds.classes", False, id="a kind, which presence reads through holds"),
+    pytest.param("parts.names", False, id="the part key names, retired"),
+    pytest.param("parts.immutable", False, id="the part key immutable, retired"),
+    pytest.param("parts.built_by", False, id="the part key built_by, retired"),
     pytest.param("guards.no-twins", False, id="a guard a check of xarch's own runs"),
     pytest.param("parts.path", False, id="a key of the layout"),
     pytest.param("docs", False, id="a key of the docs"),
@@ -41,3 +53,11 @@ def test_the_keys_the_engine_expands_are_those_the_rules_of_a_profile_setting_th
     keys = [general(key.strip()) for rules in book(EVERY_KEY).values() for rule in rules for key in rule.key.split(";")
             if rule.key]
     assert tuple(dict.fromkeys(keys)) == KEYS
+
+
+def test_the_keys_of_the_kinds_of_holds_are_in_the_order_of_the_book():
+    assert [key for key in KEYS if key.startswith("parts.holds")] == [
+        "parts.holds.classes.names", "parts.holds.functions.names", "parts.holds.records.names",
+        "parts.holds.exceptions.names", "parts.holds.classes.built_by", "parts.holds", "parts.holds.classes.immutable",
+        "parts.holds.records.immutable"]
+    assert general("parts.services.holds.classes.names") == "parts.holds.classes.names"

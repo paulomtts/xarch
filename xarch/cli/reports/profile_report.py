@@ -42,7 +42,7 @@ NEED = 10
 """The width of the column that says whether a key is required."""
 NO_RULE = "yes (the loader, or the `enforcement` section of `check`, not a rule id)"
 DEEPER = ("xarch profile explain parts.may_import        one key in full: what it accepts, its rule, an example\n"
-          "xarch profile explain parts.names --rule      the rules a key expands to, written as checks\n"
+          "xarch profile explain parts.holds --rule      the rules a key expands to, written as checks\n"
           "xarch profile explain checks                  how a check is written, and the words it is written in\n"
           "xarch profile explain --profile <name|path>   the folder tree and the imports of a profile")
 """How to go deeper than the overview of the format."""
@@ -92,6 +92,7 @@ def key_lines(found: KeyExplained) -> list[str]:
     lines.append(f"  enforced: {_enforced(found)}")
     if found.needs:
         lines += _wrapped("needs", _needs(found))
+        lines += [f"  {item.note}" for item in found.short if item.unread]
     lines += ["  example:", *(f"    {line}" for line in found.example.splitlines())]
     if found.keys:
         lines.append("  keys:")
@@ -114,11 +115,12 @@ def _enforced(found: KeyExplained) -> str:
 
 
 def _needs(found: KeyExplained) -> str:
-    """The facts a key's check reads, then how the default language's reader supplies them."""
+    """The facts a key's check reads, then how the default language's reader supplies them; one its check reads only
+    when supplied, which is not, is said as not supplied, and what the check then reads less on a line of its own."""
     facts = ", ".join(need.fact for need in found.needs)
     if not found.language or not found.graded:
         return f"{facts}: the facts of the source its check reads"
-    short = [f"{item.fact} partly ({item.note})" if item.note is not None else f"not {item.fact}"
+    short = [f"{item.fact} partly ({item.note})" if item.note is not None and not item.unread else f"not {item.fact}"
              for item in found.short]
     if not short:
         return f"{facts}: the facts of the source its check reads, which {found.language} supplies exactly"

@@ -120,8 +120,9 @@ def test_the_profile_view_becomes_the_profile_the_checks_see():
         excluded=(Excluded(("vendor",), "not ours"),), must_import={"api": (Target("core"),)}, no_duplicates=4, no_twins=3,
         no_twins_renamed=4, no_twins_subset=3, no_twins_translated=("api",),
         dead_code=True, pass_through=("api",), untested=True, tests_only=True, tests_only_known=("api/x.py:run",),
-        holds={"core": "functions", "api": "classes"}, immutable=("core",),
-        types_only={"api": ("core",)}, no_callbacks=("core",), names={"api": ("*Api",)}, built_by={"api": ("core",)},
+        holds={"core": ("functions", "records", "exceptions"), "api": ("classes",)}, immutable={"core": ("records",)},
+        types_only={"api": ("core",)}, no_callbacks=("core",), names={"api": {"classes": ("*Api",)}},
+        built_by={"api": ("core",)},
         shared={"core": 2}, private_imports=True, hints={"may-import": "ask first"}, written=VIEW.checks, default_tests="tests")
 
 

@@ -6,7 +6,7 @@ with its profile beside the archive as plain yaml (`corpora/<commit>.yaml`).
 
     7cc6111   its own profile: 90 violations and 111 weak findings
     df537ca   its own profile: 48 violations and 6 weak findings
-    7cc6111 + corpora/stress.yaml, xarch's profile with most keys tightened and nothing excluded: 1735 findings
+    7cc6111 + corpora/stress.yaml, xarch's profile with most keys tightened and nothing excluded: 1734 findings
     examples  the example projects the bundled profiles ship, frozen as they were recorded (`corpora/examples.tar.xz`):
               the shared one with each entry's (cli, web) put together as an app and its tests, checked against that
               bundled profile

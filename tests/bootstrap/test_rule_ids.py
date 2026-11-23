@@ -221,7 +221,7 @@ def test_a_class_built_through_a_relative_import_is_held_to_built_by(tmp_path, c
     assert problems(tmp_path, app={"modules/docs/application/services/doc.py": "class DocService: ...\n",
                                    "modules/docs/application/controller.py": controller}) == [
         "app/modules/docs/application/controller.py:3: controller/ of modules/docs builds DocService, a class of "
-        "services/ of modules/docs, which only bootstrap/ may build (parts.services.built_by)"]
+        "services/ of modules/docs, which only bootstrap/ may build (parts.services.holds.classes.built_by)"]
 
 
 def test_a_part_used_only_as_a_type_is_held_to_it_through_a_relative_import(tmp_path):

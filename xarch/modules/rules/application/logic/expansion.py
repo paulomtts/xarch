@@ -92,15 +92,29 @@ def _private_imports(profile: Profile) -> tuple[Rule, ...]:
 
 
 def _built_by(profile: Profile) -> tuple[Rule, ...]:
-    """Only the parts a part lists in `built_by` build a class it defines at the top level of a file; the tests are
-    not read."""
-    if not profile.built_by:
-        return ()
-    return (Rule("built-by", Scope(APP), ("construction",), MAY_NOT, (Match("part", words=tuple(profile.built_by)),),
-                 (Saying("{where} builds {name}, a class of {target_part}, which only {built_by} may build "
-                         "(parts.{target_part_name}.built_by)",
-                         "take {name} as a parameter of the constructor, and build it in {built_by}"),),
-                 exempt=_all("target-allows-under built_by"), key="parts.<part>.built_by"),)
+    """Only the parts the classes of a part's `holds` list in `built_by` build a class it defines at the top level of a
+    file and holds to classes: one rule for the parts that list no narrower kind beside classes, and one of its own for
+    each part that does, which a class held to that kind does not break; the tests are not read."""
+    plain = tuple(part for part in profile.built_by if not _narrower(profile, part))
+    said = (Saying("{where} builds {name}, a class of {target_part}, which only {built_by} may build "
+                   "(parts.{target_part_name}.holds.classes.built_by)",
+                   "take {name} as a parameter of the constructor, and build it in {built_by}"),)
+    groups = [(plain, ())] if plain else []
+    groups += [((part,), _narrower(profile, part)) for part in profile.built_by if _narrower(profile, part)]
+    return tuple(Rule("built-by", Scope(APP), ("construction",), MAY_NOT, (Match("part", words=parts),), said,
+                      exempt=_all("target-allows-under built_by", *exempt), key="parts.<part>.holds.classes.built_by")
+                 for parts, exempt in groups)
+
+
+_NARROWER = (("exceptions", "exception"), ("records", "record"))
+"""The kinds narrower than classes, narrowest first, each with the filter of the class that fits it."""
+
+
+def _narrower(profile: Profile, part: str) -> tuple[str, ...]:
+    """The filters of the kinds narrower than classes that the part's `holds` lists, narrowest first: a class that
+    fits one is held to that kind's settings, never to those of classes."""
+    kinds = profile.holds.get(part, ())
+    return tuple(trait for kind, trait in _NARROWER if kind in kinds)
 
 
 def _rules(profile: Profile) -> tuple[Rule, ...]:
@@ -185,12 +199,31 @@ def _syntax(profile: Profile) -> tuple[Rule, ...]:
 
 
 def _names(profile: Profile) -> tuple[Rule, ...]:
-    """Every public class of a part that lists `names` matches one of its patterns, `*` standing for any text."""
-    return tuple(Rule("names", Scope(APP, part), ("class",), MAY_ONLY, (Match("name", words=patterns),),
-                      (Saying("{name} does not match {targets}, as every class of {where} must ({key})",
-                              "rename {name} to match {targets}, or move it to the part whose kind of class it is"),),
-                      keep=_all("public"), key=f"parts.{part}.names")
-                 for part, patterns in profile.names.items())
+    """Every public definition a part holds to a kind whose `names` it gives matches one of its patterns, `*` standing
+    for any text: a class held to classes (not one a narrower kind listed beside them holds), a top-level function, a
+    record held to records (not an exception, when exceptions are listed) and an exception."""
+    return tuple(_named(profile, part, kind, patterns) for part, kinds in profile.names.items()
+                 for kind in _KINDS if (patterns := kinds.get(kind)))
+
+
+_KINDS = ("classes", "functions", "records", "exceptions")
+"""The kinds a part's `holds` lists, in the order they are read."""
+_NAMED = {"classes": ("class", (), "class"), "functions": ("function", ("top-level",), "function"),
+          "records": ("class", ("record",), "record"), "exceptions": ("class", ("exception",), "exception")}
+"""What the names of each kind read: the kind of fact, the filters that keep the definitions of the kind, and what
+the finding calls one."""
+
+
+def _named(profile: Profile, part: str, kind: str, patterns: tuple[str, ...]) -> Rule:
+    fact, kept, called = _NAMED[kind]
+    if kind == "classes":
+        exempt = _narrower(profile, part)
+    else:
+        exempt = ("exception",) if kind == "records" and "exceptions" in profile.holds.get(part, ()) else ()
+    return Rule("names", Scope(APP, part), (fact,), MAY_ONLY, (Match("name", words=patterns),),
+                (Saying(f"{{name}} does not match {{targets}}, as every {called} of {{where}} must ({{key}})",
+                        f"rename {{name}} to match {{targets}}, or move it to the part whose kind of {fact} it is"),),
+                keep=_all(*kept, "public"), exempt=_all(*exempt), key=f"parts.{part}.holds.{kind}.names")
 
 
 def _no_callbacks(profile: Profile) -> tuple[Rule, ...]:
@@ -224,37 +257,71 @@ def _closed_tree(profile: Profile) -> tuple[Rule, ...]:
 
 
 def _holds(profile: Profile) -> tuple[Rule, ...]:
-    """A file of a part that lists `holds` defines at the top level what the part holds, listed without failing:
-    no public function in a part of classes; no class in a part of functions but an exception or a record. A package
-    file only gathers what its package holds and is not read."""
+    """A file of a part that lists `holds` defines at the top level only the kinds it lists, listed without failing:
+    no public function when it does not list functions; no class (a private one too) when it does not list classes,
+    but one a narrower kind it lists fits, an exception or a record, each said as the narrowest kind it fits. In a
+    language whose reader does not supply whether a function is at the top level, no part is held to its functions. A
+    package file only gathers what its package holds and is not read."""
     found = []
-    for part, kind in profile.holds.items():
-        key = f"parts.{part}.holds"
-        if kind == "classes":
-            found.append(Rule("holds", Scope(APP, part, where=_all("not package-file")), ("function",), MAY_NOT,
-                              EXISTING,
-                              (Saying("{name} is a function at the top level, but {where} holds classes ({key})",
+    for part, kinds in profile.holds.items():
+        key, held, within = f"parts.{part}.holds", _listed(kinds), Scope(APP, part, where=_all("not package-file"))
+        if "functions" not in kinds and _top_level(profile):
+            found.append(Rule("holds", within, ("function",), MAY_NOT, EXISTING,
+                              (Saying(f"{{name}} is a function at the top level, but {{where}} holds {held} ({{key}})",
                                       "make {name} a method of the class whose rule it is, or move it to "
                                       "{parts_holding_functions}"),),
                               keep=_all("top-level", "public"), mode=LIST, key=key))
-        else:
-            found.append(Rule("holds", Scope(APP, part, where=_all("not package-file")), ("class",), MAY_NOT, EXISTING,
-                              (Saying("{name} is a class, but {where} holds functions ({key})",
-                                      "move {name} to {parts_holding_classes}, or make what it does functions"),),
-                              exempt=_all("exception", "record"), mode=LIST, key=key))
+        if "classes" not in kinds:
+            fix = "move {name} to {parts_holding_classes}, or make what it does functions"
+            sayings = tuple(Saying(f"{{name}} is {called}, but {{where}} holds {held} ({{key}})", fix, _all(trait))
+                            for kind, trait, called in _UNLISTED if kind not in kinds)
+            found.append(Rule("holds", within, ("class",), MAY_NOT, EXISTING,
+                              (*sayings, Saying(f"{{name}} is a class, but {{where}} holds {held} ({{key}})", fix)),
+                              exempt=_all(*(trait for kind, trait in _NARROWER if kind in kinds)), mode=LIST, key=key))
     return tuple(found)
 
 
+_UNLISTED = (("exceptions", "exception", "an exception"), ("records", "record", "a record"))
+"""How the class a part's `holds` does not allow is said when it is of a narrower kind the part does not list,
+narrowest first."""
+
+
+def _listed(kinds: tuple[str, ...]) -> str:
+    """The kinds a part's `holds` lists, joined as the docs join names."""
+    return kinds[0] if len(kinds) == 1 else f"{', '.join(kinds[:-1])} and {kinds[-1]}"
+
+
+def _top_level(profile: Profile) -> bool:
+    """Whether the language's reader says which functions are at the top level: a data file that does not grade the
+    facts it supplies is read as supplying it."""
+    supplies = profile.language.supplies
+    return supplies is None or any(supply.fact == "function.top_level" for supply in supplies)
+
+
 def _immutable(profile: Profile) -> tuple[Rule, ...]:
-    """Every class a file of a part that lists `immutable` defines at the top level is an immutable record, as the
-    language's data file says one is made, but an exception; listed without failing. A package file only gathers what
-    its package holds and is not read."""
-    return tuple(Rule("immutable", Scope(APP, part, where=_all("not package-file")), ("class",), MAY_NOT, EXISTING,
-                      (Saying("{name} is a class that is no immutable record, but every class of {where} is one ({key})",
-                              "make {name} an immutable record (the {language} data file's `immutable` says how), or "
-                              "move it to {parts_holding_classes}"),),
-                      exempt=_all("exception", "immutable"), mode=LIST, key=f"parts.{part}.immutable")
-                 for part in profile.immutable)
+    """Every class a file of a part defines at the top level and holds to a kind whose `immutable` it sets is an
+    immutable record, as the language's data file says one is made, listed without failing: for classes, every class
+    but an exception and one a narrower kind listed beside them holds; for records, every record but an exception,
+    when exceptions are listed. A package file only gathers what its package holds and is not read."""
+    found = []
+    for part, kinds in profile.immutable.items():
+        within = Scope(APP, part, where=_all("not package-file"))
+        fix = ("make {name} an immutable record (the {language} data file's `immutable` says how), or move it to "
+               "{parts_holding_classes}")
+        if "classes" in kinds:
+            exempt = ("exception", *(trait for trait in _narrower(profile, part) if trait != "exception"), "immutable")
+            found.append(Rule("immutable", within, ("class",), MAY_NOT, EXISTING,
+                              (Saying("{name} is a class that is no immutable record, but every class of {where} is "
+                                      "one ({key})", fix),),
+                              exempt=_all(*exempt), mode=LIST, key=f"parts.{part}.holds.classes.immutable"))
+        if "records" in kinds:
+            exempt = ("exception",) if "exceptions" in profile.holds.get(part, ()) else ()
+            found.append(Rule("immutable", within, ("class",), MAY_NOT, EXISTING,
+                              (Saying("{name} is a record that is not immutable, but every record of {where} is one "
+                                      "({key})", fix),),
+                              keep=_all("record"), exempt=_all(*exempt, "immutable"), mode=LIST,
+                              key=f"parts.{part}.holds.records.immutable"))
+    return tuple(found)
 
 
 def _must_import(profile: Profile) -> tuple[Rule, ...]:
@@ -353,8 +420,10 @@ def _pass_through(profile: Profile) -> tuple[Rule, ...]:
 
 KEYS = ("parts.may_import", "parts.libraries", "parts.uses.never", "tiers.uses.apply_never", "tiers",
         "tiers.may_also_import", "tiers.types_only",
-        "parts.package_only", "parts.types_only", "guards.no-callbacks", "parts.names", "parts.built_by",
-        "guards.private-imports", "guards.no-comments", "guards.closed-tree", "parts.holds", "parts.immutable",
+        "parts.package_only", "parts.types_only", "guards.no-callbacks", "parts.holds.classes.names",
+        "parts.holds.functions.names", "parts.holds.records.names", "parts.holds.exceptions.names",
+        "parts.holds.classes.built_by", "guards.private-imports", "guards.no-comments", "guards.closed-tree",
+        "parts.holds", "parts.holds.classes.immutable", "parts.holds.records.immutable",
         "parts.must_import", "tiers.must_import", "guards.dead-code", "guards.dead-code.untested",
         "guards.dead-code.tests_only", "guards.pass-through")
 """The keys the rules of the book are keyed by, each with any part or tier left out (see explained.general), in the

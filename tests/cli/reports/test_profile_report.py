@@ -77,6 +77,17 @@ def test_a_key_says_the_facts_its_check_reads_and_how_the_language_supplies_them
         {"fact": "class", "meaning": "the classes", "grade": "partial", "note": "nested ones are not read"}]
 
 
+READS_LESS = "holds reads no top-level functions: the language Toy does not supply function.top_level"
+
+
+def test_a_fact_a_key_reads_only_when_supplied_is_said_absent_and_what_its_check_reads_less_on_a_line_of_its_own():
+    absent = Need("function.top_level", "whether a function is at the top level")
+    lines = key_lines(explained(absent, short=(Shortfall("parts.holds", "function.top_level", READS_LESS, True),)))
+    assert lines[6:9] == [
+        "  needs: function.top_level: the facts of the source its check reads; Toy supplies not",
+        "    function.top_level", f"  {READS_LESS}"]
+
+
 def test_a_key_another_command_reads_is_said_to_be_read_by_it_and_never_by_check():
     held = KeyExplained("review.never", "review", "the files review never sends", "a list of paths", False, False,
                         (), "review:\n  never: [a]", (), (), read_by="review")

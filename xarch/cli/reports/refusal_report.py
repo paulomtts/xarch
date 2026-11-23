@@ -43,7 +43,7 @@ def not_a_directory(root: Path, cwd: Path) -> str:
 
 def rule_needs_key() -> str:
     """Why `profile explain --rule` is refused without a key, or with --configured."""
-    return "--rule shows the rules of a key: give a key, such as parts.names, and --profile or a configured profile"
+    return "--rule shows the rules of a key: give a key, such as parts.holds, and --profile or a configured profile"
 
 
 def key_or_profile() -> str:

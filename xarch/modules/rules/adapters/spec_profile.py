@@ -74,13 +74,13 @@ class SpecProfiles:
                        dead_code=guards.dead_code, untested=guards.untested, tests_only=guards.tests_only,
                        tests_only_known=guards.tests_only_known,
                        pass_through=guards.pass_through,
-                       holds={p.name: "classes" if any(h.kind == "classes" for h in p.holds) else "functions"
-                              for p in parts if p.holds},
-                       immutable=tuple(p.name for p in parts if any(h.immutable for h in p.holds)),
+                       holds={p.name: tuple(h.kind for h in p.holds) for p in parts if p.holds},
+                       immutable={p.name: tuple(h.kind for h in p.holds if h.immutable) for p in parts
+                                  if any(h.immutable for h in p.holds)},
                        types_only={p.name: p.types_only for p in parts if p.types_only},
                        no_callbacks=guards.no_callbacks,
-                       names={p.name: names for p in parts
-                              if (names := next((h.names for h in p.holds if h.names), ()))},
+                       names={p.name: {h.kind: h.names for h in p.holds if h.names} for p in parts
+                              if any(h.names for h in p.holds)},
                        built_by={p.name: h.built_by for p in parts for h in p.holds if h.built_by},
                        shared={p.name: p.shared for p in parts if p.shared is not None},
                        private_imports=guards.private_imports,

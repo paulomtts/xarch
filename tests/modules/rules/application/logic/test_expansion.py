@@ -13,9 +13,10 @@ from xarch.profile_values.checks import Condition
 from xarch.profile_values.placement import Target
 
 ON = replace(PROFILE, private_imports=True, closed_tree=True, dead_code=True, untested=True, tests_only=True,
-             immutable=("logic",),
-             built_by={"services": ("bootstrap",)}, names={"services": ("*Service",)}, no_callbacks=("domain",),
-             holds={"domain": "classes", "logic": "functions"}, must_import={"adapters": (Target("platform"),)},
+             immutable={"logic": ("records",)},
+             built_by={"services": ("bootstrap",)}, names={"services": {"classes": ("*Service",)}},
+             no_callbacks=("domain",), holds={"domain": ("classes",), "logic": ("functions", "records", "exceptions")},
+             must_import={"adapters": (Target("platform"),)},
              pass_through=("services",), types_only={"services": ("contract",)},
              tiers=tuple(replace(t, must_import=("domain",)) if t.name == "unit" else t for t in PROFILE.tiers))
 OFF = replace(PROFILE, libraries=None, uses_never={}, tiers=(), package_only=(), no_comments=False, dead_code=False)

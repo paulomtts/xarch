@@ -22,7 +22,7 @@ from xarch.modules.rules.domain.errors import ProfileUnusable
 from xarch.modules.rules.domain.outcomes import Known
 
 APP = Path("/src/app")
-NAMED = profile(names={"services": ("*Service",)})
+NAMED = profile(names={"services": {"classes": ("*Service",)}})
 
 
 def explain(given: FakeProfiles):
@@ -78,7 +78,7 @@ def test_a_category_is_its_words_each_in_a_line():
 
 def test_a_word_s_example_is_the_first_rule_of_the_first_profile_written_with_it():
     found = explain(FakeProfiles({"none": profile(), "named": NAMED}))(ExplainWords("filters.public", APP))
-    assert (found.example_key, found.example_profile) == ("parts.services.names", "named")
+    assert (found.example_key, found.example_profile) == ("parts.services.holds.classes.names", "named")
     assert found.example.splitlines() == ["names: reads class"]
 
 

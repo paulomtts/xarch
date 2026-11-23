@@ -59,12 +59,13 @@ class Profile:
     check on; pass_through lists the parts whose methods that only forward are listed (empty: off). untested lists,
     with dead_code, the files of a tiered part no test of its tier reaches; tests_only, with dead_code, the public names
     of the app no other file of the app names, but those tests_only_known accepts, each `<file below the app>:<name>`.
-    holds says, by part, what its files define
-    ("classes" or "functions"); immutable the parts every class of which, but an exception, is an immutable record;
-    types_only, by part, the parts it may use as types only; no_callbacks the parts the guard no-callbacks lists,
-    whose code calls none of its own parameters annotated as callables; names, by part, the patterns its public
-    classes match one of; built_by, by
-    part, the parts that alone may build its classes; shared, by part, the fewest users each public name of a part
+    holds says, by part, the kinds its files may define at the top level
+    (of "classes", "functions", "records" and "exceptions", in that order; a part it does not name may define every
+    kind); immutable, by part, the kinds ("classes", "records") every class of which held to the kind, but an exception,
+    is an immutable record; types_only, by part, the parts it may use as types only; no_callbacks the parts the guard
+    no-callbacks lists, whose code calls none of its own parameters annotated as callables; names, by part and then by
+    kind, the patterns every public definition held to the kind matches one of; built_by, by part, the parts that
+    alone may build the classes it holds to classes; shared, by part, the fewest users each public name of a part
     declared shared must have (see shared); private_imports switches the private-imports guard on. hints
     holds the profile's own advice, by rule id. language is the language of the app. reserved holds the
     standard-library modules (by top-level name, each with why) a part imports only when its libraries list them.
@@ -102,11 +103,11 @@ class Profile:
     untested: bool = False
     tests_only: bool = False
     tests_only_known: tuple[str, ...] = ()
-    holds: dict[str, str] = field(default_factory=dict)
-    immutable: tuple[str, ...] = ()
+    holds: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    immutable: dict[str, tuple[str, ...]] = field(default_factory=dict)
     types_only: dict[str, tuple[str, ...]] = field(default_factory=dict)
     no_callbacks: tuple[str, ...] = ()
-    names: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    names: dict[str, dict[str, tuple[str, ...]]] = field(default_factory=dict)
     built_by: dict[str, tuple[str, ...]] = field(default_factory=dict)
     shared: dict[str, int] = field(default_factory=dict)
     private_imports: bool = False

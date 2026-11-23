@@ -136,8 +136,8 @@ def _package(found: Found, facts: Facts) -> str:
 
 
 def _holding(profile: Profile, kind: str) -> str:
-    """A part that holds the kind, naming the first SHOWN of those the profile has."""
-    parts = [f"{name}/" for name, holds in profile.holds.items() if holds == kind][:SHOWN]
+    """A part that holds the kind, naming the first SHOWN of those whose `holds` lists it."""
+    parts = [f"{name}/" for name, kinds in profile.holds.items() if kind in kinds][:SHOWN]
     return f"a part that holds {kind}: {', '.join(parts)}" if parts else f"a part that holds {kind}"
 
 

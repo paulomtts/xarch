@@ -379,8 +379,10 @@ VARIABLES: tuple[Variable, ...] = (
     Variable("language", "how a message names the language of the app (`source` when it has no name)"),
     Variable("importable_parts", "the parts the file's part may import, each as `<part>/`", side=APP_SIDE),
     Variable("faked_parts", "the parts the fakes stand in for (`fakes.for`)"),
-    Variable("parts_holding_functions", "a part that holds functions, naming the first of those the profile has"),
-    Variable("parts_holding_classes", "a part that holds classes, naming the first of those the profile has"),
+    Variable("parts_holding_functions", "a part that holds functions, naming the first of those whose `holds` "
+                                        "lists functions"),
+    Variable("parts_holding_classes", "a part that holds classes, naming the first of those whose `holds` lists "
+                                      "classes"),
     Variable("name", "the name the fact carries", ("name",)),
     Variable("path", "the dotted name the fact names: what it imports, reads or calls", ("path",)),
     Variable("qualified_name", "a function's name after its class's and a dot when it is a method (Store.get); a "
