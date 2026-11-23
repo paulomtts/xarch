@@ -14,10 +14,15 @@ NOTHING = "nothing"
 
 @dataclass(frozen=True)
 class RecordMark:
-    """What makes a class an immutable record in the language: an outside name among its bases or its decorators, and,
-    for a decorator, the keywords it is called with, each with its value as written (none: any call, or none)."""
-    path: tuple[str, ...]
+    """What makes a class an immutable record in the language, in one of four forms, exactly one of base, decorator,
+    fields and type given: an outside name among its bases (base, as its steps); a decorator (decorator, as its steps)
+    called with each keyword of keywords, each (name, value as written) (none: however it is written, bare or called);
+    a keyword that marks every field (fields); or a wrapper type (type, as its steps)."""
+    base: tuple[str, ...] = ()
+    decorator: tuple[str, ...] = ()
     keywords: tuple[tuple[str, str], ...] = ()
+    fields: str = ""
+    type: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

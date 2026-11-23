@@ -7,6 +7,7 @@ from tests.modules.rules.application.logic.checks import holds as weak
 from tests.modules.rules.builders import BRACE, profile, source
 from xarch.modules.rules.domain.parsed import Class, Function, Method
 from xarch.modules.rules.domain.published import Weak
+from xarch.profile_values.language import RecordMark
 
 ON = profile(holds={"domain": "classes", "logic": "functions"})
 DOMAIN = "modules/docs/domain/doc.py"
@@ -141,6 +142,7 @@ def test_under_brace_the_reader_alone_says_which_classes_are_records(record, exp
     pytest.param(False, ["immutable"], id="one it says is not"),
 ])
 def test_under_brace_the_reader_alone_says_which_classes_are_immutable_records(immutable, expected):
+    assert BRACE.immutable == (RecordMark(fields="readonly"),)
     braced = profile(immutable=("logic",), language=BRACE)
     file = source("modules/docs/application/logic/point.ts", classes=(Class(3, "Point", immutable=immutable),),
                   language=BRACE)

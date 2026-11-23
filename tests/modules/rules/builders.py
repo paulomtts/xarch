@@ -41,6 +41,23 @@ def forms_of(file: dict) -> tuple[CommentForm, ...]:
                  for form in file.get("comments", ()) for kind, value in form.items())
 
 
+def records_of(file: dict) -> tuple[RecordMark, ...]:
+    """The marks of an immutable record a language's data file writes, as its loader reads them: a base, a decorator
+    or a type split at the file's member, a decorator's keywords in the order written, a fields word whole."""
+    return tuple(_record_mark(mark, file["member"]) for mark in file.get("immutable", ()))
+
+
+def _record_mark(mark: dict, member: str) -> RecordMark:
+    if "base" in mark:
+        return RecordMark(base=outside_steps(mark["base"], member))
+    if "decorator" in mark:
+        return RecordMark(decorator=outside_steps(mark["decorator"], member),
+                          keywords=tuple(mark.get("keywords", {}).items()))
+    if "type" in mark:
+        return RecordMark(type=outside_steps(mark["type"], member))
+    return RecordMark(fields=mark["fields"])
+
+
 PYTHON_FILE = yaml.safe_load(resources.files("xarch").joinpath("architectures", "presets", "language", "python.yaml")
                              .read_text(encoding="utf-8"))
 PYTHON = CheckedLanguage(title="Python", extensions=(".py",), package_files=("__init__.py",),
@@ -50,8 +67,8 @@ PYTHON = CheckedLanguage(title="Python", extensions=(".py",), package_files=("__
                          nothing=tuple(PYTHON_FILE["nothing"]), comments=forms_of(PYTHON_FILE),
                          directives=("type: ignore", "noqa", "pragma:"), shebang="#!",
                          encoding=r"coding[:=][ \t]*[-\w.]+", branching=("if", "match", "try", "for", "while"),
-                         immutable=(RecordMark(("typing", "NamedTuple")),
-                                    RecordMark(("dataclasses", "dataclass"), (("frozen", "True"),))),
+                         immutable=(RecordMark(base=("typing", "NamedTuple")),
+                                    RecordMark(decorator=("dataclasses", "dataclass"), keywords=(("frozen", "True"),))),
                          branching_expressions=("if",), names=PYTHON_FILE["name"], package=PYTHON_FILE["package"],
                          member=PYTHON_FILE["member"], standard_modules=frozenset(sys.stdlib_module_names))
 """Python as its data file says it, for the checks that read the tokens of its code; the patterns of a name and of a
@@ -60,12 +77,14 @@ BRACE_FILE = yaml.safe_load((Path(__file__).resolve().parents[2] / "fakes" / "la
                             .read_text(encoding="utf-8"))
 BRACE = CheckedLanguage(title=BRACE_FILE["title"], extensions=tuple(BRACE_FILE["extensions"]),
                         package_files=tuple(BRACE_FILE["package_files"]), interface=marks_of(BRACE_FILE),
+                        immutable=records_of(BRACE_FILE),
                         dynamic=(("node:module", "createRequire"),), nothing=tuple(BRACE_FILE["nothing"]),
                         comments=forms_of(BRACE_FILE), directives=tuple(BRACE_FILE["directives"]),
                         names=BRACE_FILE["name"], package=BRACE_FILE["package"], member=BRACE_FILE["member"],
                         standard_modules=frozenset(BRACE_FILE["standard"]["modules"]))
 """The TypeScript-like test-only language as a check reads it, its endings, package files, patterns, member, interface
-marks, annotations of no value, comment forms, directives and standard modules read from its data file."""
+marks, marks of an immutable record, annotations of no value, comment forms, directives and standard modules read from
+its data file."""
 PERCENT_FILE = yaml.safe_load((Path(__file__).resolve().parents[2] / "fakes" / "languages" / "percent.yaml")
                               .read_text(encoding="utf-8"))
 PERCENT = CheckedLanguage(title=PERCENT_FILE["title"], extensions=tuple(PERCENT_FILE["extensions"]),

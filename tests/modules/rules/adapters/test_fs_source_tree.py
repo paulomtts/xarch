@@ -237,7 +237,15 @@ def test_a_class_lists_its_bases_as_paths_and_its_methods_with_their_return_anno
         Class(10, "Typed", (("typing", "Protocol"), None), ()))
 
 
-MARKS = (RecordMark(("typing", "NamedTuple")), RecordMark(("dataclasses", "dataclass"), (("frozen", "True"),)))
+MARKS = (RecordMark(base=("typing", "NamedTuple")),
+         RecordMark(decorator=("dataclasses", "dataclass"), keywords=(("frozen", "True"),)))
+"""The marks of an immutable record the language's data file writes, as its loader reads them."""
+
+
+def immutable_of(tmp_path: Path, text: str, marks: tuple[RecordMark, ...]) -> bool:
+    (tmp_path / "a.py").write_text(text)
+    return FsSourceTree(FileSystem()).read(tmp_path, [("a.py",)], immutable=marks, standard=STANDARD,
+                                           **HANDED)[0].classes[0].immutable
 
 
 @pytest.mark.parametrize("text, immutable", [
@@ -245,20 +253,45 @@ MARKS = (RecordMark(("typing", "NamedTuple")), RecordMark(("dataclasses", "datac
                  id="a decorator a mark names, called with its keyword among others"),
     pytest.param("import dataclasses\n@dataclasses.dataclass(frozen=True)\nclass A:\n    x: int\n", True,
                  id="the decorator read through the import that binds it"),
+    pytest.param("import dataclasses\n@dataclasses.dataclass(frozen=True, slots=True)\nclass A:\n    x: int\n", True,
+                 id="through the module, with another keyword"),
     pytest.param("from dataclasses import dataclass\n@dataclass\nclass A:\n    x: int\n", False,
+                 id="the decorator of a mark, bare"),
+    pytest.param("from dataclasses import dataclass\n@dataclass()\nclass A:\n    x: int\n", False,
                  id="the decorator of a mark, called without its keyword"),
     pytest.param("from dataclasses import dataclass\n@dataclass(frozen=False)\nclass A:\n    x: int\n", False,
                  id="its keyword with another value"),
     pytest.param("from typing import NamedTuple\nclass A(NamedTuple):\n    x: int\n", True, id="a base a mark names"),
+    pytest.param("import typing\nclass A(typing.NamedTuple):\n    x: int\n", True, id="the base read through the module"),
+    pytest.param("from typing import NamedTuple\n@NamedTuple\nclass A:\n    x: int\n", False,
+                 id="a decorator a base mark names"),
     pytest.param("from dataclasses import dataclass\nclass A(dataclass):\n    x: int\n", False,
-                 id="a base a mark names only with keywords"),
+                 id="a base a decorator mark names"),
     pytest.param("def dataclass(**k): ...\n@dataclass(frozen=True)\nclass A:\n    x: int\n", False,
                  id="a decorator no import binds"),
 ])
-def test_a_class_is_an_immutable_record_when_a_mark_names_one_of_its_bases_or_its_decorators(tmp_path, text, immutable):
-    (tmp_path / "a.py").write_text(text)
-    read = FsSourceTree(FileSystem()).read(tmp_path, [("a.py",)], immutable=MARKS, standard=STANDARD, **HANDED)[0]
-    assert read.classes[0].immutable is immutable
+def test_a_class_is_an_immutable_record_when_a_base_mark_names_a_base_or_a_decorator_mark_a_decorator(tmp_path, text,
+                                                                                                    immutable):
+    assert immutable_of(tmp_path, text, MARKS) is immutable
+
+
+@pytest.mark.parametrize("text, immutable", [
+    pytest.param("from dataclasses import dataclass\n@dataclass\nclass A:\n    x: int\n", True, id="the decorator bare"),
+    pytest.param("from dataclasses import dataclass\n@dataclass()\nclass A:\n    x: int\n", True, id="the decorator called"),
+    pytest.param("from dataclasses import dataclass\n@dataclass(frozen=True)\nclass A:\n    x: int\n", True,
+                 id="the decorator called with keywords"),
+    pytest.param("from dataclasses import dataclass\nclass A(dataclass):\n    x: int\n", False, id="a base of that name"),
+])
+def test_a_decorator_mark_with_no_keywords_marks_the_decorator_however_it_is_written_and_no_base(tmp_path, text, immutable):
+    assert immutable_of(tmp_path, text, (RecordMark(decorator=("dataclasses", "dataclass")),)) is immutable
+
+
+@pytest.mark.parametrize("text", [
+    pytest.param("from typing import Final\nclass A(Final):\n    readonly: int\n", id="a base named as a type mark"),
+    pytest.param("from typing import Final\n@Final\nclass A:\n    readonly: int\n", id="a decorator named as a type mark"),
+])
+def test_a_fields_or_a_type_mark_marks_no_class_of_this_language(tmp_path, text):
+    assert immutable_of(tmp_path, text, (RecordMark(fields="readonly"), RecordMark(type=("typing", "Final")))) is False
 
 
 def test_no_class_is_an_immutable_record_when_the_reader_is_given_no_mark(tmp_path):

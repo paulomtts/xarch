@@ -74,9 +74,11 @@ A call whose callee is an attribute of an expression, `<expr>.<name>(...)`, and 
 the attribute's name, marked held when the expression is the first parameter of the method the call lies in (not a
 staticmethod's; also inside a function nested in that method) or a chain of attributes on it.
 
-A class is an immutable record when a mark it is given (the language's data file's `immutable`) names one of its bases,
-or one of its decorators, by the dotted path its name reaches (read as a call's callee is), called with each keyword
-the mark is written with, its value as written (`ast.unparse`); a mark written with keywords names no base.
+A class is an immutable record when a mark it is given (the language's data file's `immutable`) is a base mark whose
+path is one of its bases (a subscripted base by what it subscripts, an alias by the path it reaches), or a decorator
+mark whose path is that of one of its decorators (read as a call's callee is), called with each keyword the mark
+gives, its value as written (`ast.unparse`); a decorator mark with no keywords marks the decorator bare or called. A
+fields or a type mark marks no class: Python marks none by a keyword on its fields or by a wrapper type.
 
 A class is a record when the name of every method of its body matches in full the pattern of a special name the
 reader is handed (the language's data file's `special`; an empty one makes no name special), and a function of the
@@ -952,14 +954,15 @@ def _record(name: str, methods: tuple[Method, ...], functions: tuple[Function, .
 
 
 def _immutable(node: ast.ClassDef, bases: tuple[Ref, ...], scope: list[Scope], marks: tuple[RecordMark, ...]) -> bool:
-    """Whether a mark names one of the class's bases, or one of its decorators called with each keyword of the mark."""
+    """Whether a base mark names one of the class's bases, or a decorator mark one of its decorators called with each
+    keyword of the mark; a fields or a type mark names neither, since Python marks no class so."""
     for decorator in node.decorator_list:
         called = isinstance(decorator, ast.Call)
         path = _ref(decorator.func if called else decorator, scope)
         given = {(k.arg, ast.unparse(k.value)) for k in decorator.keywords if k.arg} if called else set()
-        if any(mark.path == path and set(mark.keywords) <= given for mark in marks):
+        if any(mark.decorator and mark.decorator == path and set(mark.keywords) <= given for mark in marks):
             return True
-    return any(mark.path in bases and not mark.keywords for mark in marks)
+    return any(mark.base and mark.base in bases for mark in marks)
 
 
 def _interface(bases: tuple[Ref, ...], marks: tuple[InterfaceMark, ...]) -> bool:

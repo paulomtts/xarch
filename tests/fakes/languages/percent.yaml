@@ -16,5 +16,5 @@ special: '%\w+'
 unannotated: nothing
 interface: [{keyword: Abstract}]
 dynamic: ["%SYSTEM.OBJ.Load"]
-immutable: ["%SerialObject"]
+immutable: [{base: "%SerialObject"}]
 comments: [{line: "//"}, {line: ";"}, {block: ["/*", "*/"]}, {doc: ["///", ""]}]

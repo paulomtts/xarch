@@ -22,9 +22,12 @@
 # line 1 names the program that runs the file; encoding, how line 1 or 2 declares the file's encoding (a regular
 # expression, after the marker of a comment of any form); branching, the keywords of the statements that branch;
 # branching_expressions, the keywords of the expressions that choose between values, as its reader records them;
-# immutable, what makes a class an immutable record: a dotted name among its bases or its decorators, a decorator
-# called with each keyword written after it, as written; importing, how a file imports a name from another file of the
-# app, {dotted} standing for that file's dotted path and {name} for the name.
+# immutable, the marks of an immutable record, each in one of four forms: {base: <outside name>}, a name among its
+# bases; {decorator: <outside name>, keywords: {<name>: <value>}}, a decorator called with each keyword given, its
+# value as written and quoted so that it stays text (keywords left out: however it is written); {fields: <word>}, a
+# keyword that marks every field; or {type: <outside name>}, a wrapper type. Python writes the first two. importing,
+# how a file imports a name from another file of the app, {dotted} standing for that file's dotted path and {name} for
+# the name.
 # supplies: the facts its reader turns the source into, each exact or {partial: what it misses}; a key whose check
 # needs a fact not listed here is refused, and one that reads a partial fact is listed as approximate. file.package,
 # that a file stands for its folder, is never listed here: it follows package_files.
@@ -49,7 +52,7 @@ shebang: "#!"
 encoding: 'coding[:=][ \t]*[-\w.]+'
 branching: [if, match, try, for, while]
 branching_expressions: [if]
-immutable: [typing.NamedTuple, "dataclasses.dataclass(frozen=True)"]
+immutable: [{base: typing.NamedTuple}, {decorator: dataclasses.dataclass, keywords: {frozen: "True"}}]
 importing: "from {dotted} import {name}"
 supplies:
   file: exact

@@ -24,9 +24,10 @@ UNJOINED = {key: value for key, value in DOCUMENT.items() if key not in JOINS}
 TEST_LANGUAGES = tuple(sorted((Path(__file__).resolve().parents[4] / "fakes" / "languages").glob("*.yaml")))
 PERCENT = {"name": "%?[A-Za-z][A-Za-z0-9]*", "package": "%?[A-Za-z][A-Za-z0-9]*", "member": ".", "namespace": "%SYSTEM",
            "interface": [{"base": "%RegisteredObject"}], "dynamic": ["%SYSTEM.OBJ.Load"],
-           "immutable": ["%SerialObject", "%Lib.Rec(frozen=yes)"]}
+           "immutable": [{"base": "%SerialObject"}, {"decorator": "%Lib.Rec", "keywords": {"frozen": "yes"}}]}
 """The lists of a language whose names may start with a percent, under its own patterns."""
 INTERFACE = "interface: each mark is {base: <outside name>} or {keyword: <word>}"
+IMMUTABLE = "immutable: each mark is {base}, {decorator, keywords}, {fields} or {type}"
 STANDARD = "standard: must be interpreter, or a map of modules, reserved and builtins, each a list of names"
 LISTS = {"modules": [], "reserved": [], "builtins": []}
 """A standard that lists nothing, to which a test adds the lists it needs."""
@@ -101,12 +102,6 @@ def test_the_tokens_of_the_code_are_read_when_the_document_gives_them():
     pytest.param({"branching": ["if", ""]}, "branching: must be a list of non-empty strings", id="an empty keyword"),
     pytest.param({"special": 3}, "special: must be a regular expression", id="a special name that is no text"),
     pytest.param({"special": ""}, "special: must be a regular expression", id="an empty special name"),
-    pytest.param({"immutable": "pkg.Record"}, "immutable: must be a list of outside names",
-                 id="marks of an immutable record not a list"),
-    pytest.param({"immutable": ["pkg.record(frozen)"]}, "immutable: 'pkg.record(frozen)' is not an outside name",
-                 id="a keyword with no value"),
-    pytest.param({"immutable": ["pkg.record(2x=yes)"]}, "immutable: 'pkg.record(2x=yes)' is not an outside name",
-                 id="a keyword that is no name of the language"),
     pytest.param({"package": "[a-"}, "package: must be a regular expression: ",
                  id="a package that is no regular expression, and no list checked after it"),
     pytest.param({"member": "a b"}, "member: must be a non-empty string with no space", id="a member with a space"),
@@ -133,11 +128,43 @@ def test_a_special_name_that_is_no_regular_expression_says_why():
     assert caught.value.problems == (f"presets/language/odd.yaml: special: must be a regular expression: {error.value}",)
 
 
-def test_what_makes_a_class_an_immutable_record_is_read_as_an_outside_name_and_the_keywords_a_decorator_is_called_with():
-    marks = ["pkg.Record", "pkg.record(frozen=yes, slots=no)"]
+def test_what_makes_a_class_an_immutable_record_is_read_as_marks_of_four_forms_in_the_order_written():
+    marks = [{"base": "pkg.Record"}, {"decorator": "pkg.record", "keywords": {"frozen": "yes", "slots": "no"}},
+             {"decorator": "pkg.record"}, {"fields": "readonly"}, {"type": "pkg.Frozen"}]
     assert language_of("pascal", DOCUMENT | {"immutable": marks}).checked.immutable == (
-        RecordMark(("pkg", "Record")), RecordMark(("pkg", "record"), (("frozen", "yes"), ("slots", "no"))))
+        RecordMark(base=("pkg", "Record")),
+        RecordMark(decorator=("pkg", "record"), keywords=(("frozen", "yes"), ("slots", "no"))),
+        RecordMark(decorator=("pkg", "record")), RecordMark(fields="readonly"), RecordMark(type=("pkg", "Frozen")))
     assert language_of("pascal", DOCUMENT).checked.immutable == ()
+
+
+@pytest.mark.parametrize("immutable", [
+    pytest.param({"base": "pkg.Record"}, id="no list"),
+    pytest.param(["pkg.Record"], id="the old shape, an outside name as a string"),
+    pytest.param(["pkg.record(frozen=yes)"], id="the old shape, a decorator and its keywords as a string"),
+    pytest.param([{"base": "pkg.Record", "type": "pkg.Frozen"}], id="two forms"),
+    pytest.param([{"base": "pkg.Record", "keywords": {"frozen": "yes"}}], id="keywords beside a base"),
+    pytest.param([{"keywords": {"frozen": "yes"}}], id="keywords alone"),
+    pytest.param([{"kind": "pkg.Record"}], id="an unknown key"),
+    pytest.param([{"decorator": "pkg.record", "frozen": "yes"}], id="an unknown key beside a form"),
+    pytest.param([{"decorator": "pkg.record", "keywords": {}}], id="empty keywords"),
+    pytest.param([{"decorator": "pkg.record", "keywords": ["frozen"]}], id="keywords that are no map"),
+    pytest.param([{"decorator": "pkg.record", "keywords": {"frozen": True}}],
+                 id="a keyword value that is no string, as YAML reads True unquoted"),
+    pytest.param([{"decorator": "pkg.record", "keywords": {"frozen": ""}}], id="an empty keyword value"),
+    pytest.param([{"decorator": "pkg.record", "keywords": {"2x": "yes"}}], id="a keyword that is no name of the language"),
+    pytest.param([{"base": "not a name!"}], id="a base that is no outside name"),
+    pytest.param([{"type": 3}], id="a type that is no text"),
+    pytest.param([{"fields": "pkg.readonly"}], id="a fields word holding the member"),
+    pytest.param([{"fields": "two words"}], id="a fields word with a space"),
+    pytest.param([{"base": "pkg.Record"}, "pkg.Other", {"kind": "x"}], id="said once however many marks are wrong"),
+])
+def test_a_mark_of_an_immutable_record_of_no_form_is_refused_once(immutable):
+    assert refused(DOCUMENT | {"immutable": immutable}) == [IMMUTABLE]
+
+
+def test_the_marks_of_an_immutable_record_are_not_read_when_the_keys_that_say_how_a_name_is_written_are_refused():
+    assert [p.split(":")[0] for p in refused(DOCUMENT | {"package": "[a-", "immutable": ["pkg.Record"]})] == ["package"]
 
 
 def test_how_a_file_imports_a_name_is_read_when_the_document_gives_it():
@@ -195,7 +222,7 @@ def test_the_lists_of_a_language_are_read_by_its_own_patterns():
     language = language_of("percent", DOCUMENT | PERCENT)
     assert (language.namespace, language.checked.interface, language.checked.dynamic, language.checked.immutable) == (
         "%SYSTEM", (InterfaceMark(("%RegisteredObject",)),), (("%SYSTEM", "OBJ", "Load"),),
-        (RecordMark(("%SerialObject",)), RecordMark(("%Lib", "Rec"), (("frozen", "yes"),))))
+        (RecordMark(base=("%SerialObject",)), RecordMark(decorator=("%Lib", "Rec"), keywords=(("frozen", "yes"),))))
 
 
 def test_the_same_lists_are_refused_under_patterns_that_do_not_allow_them():
@@ -204,12 +231,7 @@ def test_the_same_lists_are_refused_under_patterns_that_do_not_allow_them():
     with pytest.raises(InvalidArchitecture) as caught:
         language_of("odd", DOCUMENT | lists | python)
     assert [p.removeprefix("presets/language/odd.yaml: ") for p in caught.value.problems] == [
-        INTERFACE,
-        "dynamic: '%SYSTEM.OBJ.Load' is not an outside name such as <package>.<name>",
-        "immutable: '%SerialObject' is not an outside name such as <package>.<name>, or one called with keywords such as "
-        "<package>.<name>(<name>=<value>)",
-        "immutable: '%Lib.Rec(frozen=yes)' is not an outside name such as <package>.<name>, or one called with keywords "
-        "such as <package>.<name>(<name>=<value>)"]
+        INTERFACE, "dynamic: '%SYSTEM.OBJ.Load' is not an outside name such as <package>.<name>", IMMUTABLE]
 
 
 def test_a_document_that_gives_none_of_name_package_and_member_reads_an_outside_name_as_its_whole_text():
@@ -232,13 +254,19 @@ def test_the_percent_test_only_language_reads_its_lists_by_its_own_patterns():
     path = next(path for path in TEST_LANGUAGES if path.stem == "percent")
     checked = language_of("percent", yaml.safe_load(path.read_text(encoding="utf-8"))).checked
     assert (checked.interface, checked.dynamic, checked.immutable) == (
-        (InterfaceMark(keyword="Abstract"),), (("%SYSTEM", "OBJ", "Load"),), (RecordMark(("%SerialObject",)),))
+        (InterfaceMark(keyword="Abstract"),), (("%SYSTEM", "OBJ", "Load"),), (RecordMark(base=("%SerialObject",)),))
 
 
 def test_the_brace_test_only_language_marks_an_interface_by_its_keyword():
     path = next(path for path in TEST_LANGUAGES if path.stem == "brace")
     checked = language_of("brace", yaml.safe_load(path.read_text(encoding="utf-8"))).checked
     assert checked.interface == (InterfaceMark(keyword="interface"),)
+
+
+def test_the_brace_test_only_language_marks_an_immutable_record_by_a_keyword_on_every_field():
+    path = next(path for path in TEST_LANGUAGES if path.stem == "brace")
+    checked = language_of("brace", yaml.safe_load(path.read_text(encoding="utf-8"))).checked
+    assert checked.immutable == (RecordMark(fields="readonly"),)
 
 
 def test_what_makes_a_class_an_interface_is_read_as_marks_in_the_order_written():

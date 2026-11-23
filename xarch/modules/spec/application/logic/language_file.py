@@ -46,8 +46,11 @@ and, all optional, the tokens of its code the checks and the docs need (empty: t
     branching      the keywords of the statements that branch
     branching_expressions
                    the keywords of the expressions that choose between values, as its reader records them
-    immutable      what makes a class an immutable record: each an outside name among its bases or its decorators,
-                   a decorator's written with the keywords it must be called with, `name(key=value, ...)`
+    immutable      the marks of an immutable record, each {base: <outside name>}, an outside name among a class's
+                   bases; {decorator: <outside name>, keywords: {<name>: <value>, ...}}, a decorator called with each
+                   keyword given, its value as written, a non-empty string (keywords left out: however it is
+                   written); {fields: <word>}, a keyword that marks every field, a name; or {type: <outside name>},
+                   a wrapper type
     importing      how a file imports a name from another file of the app: {dotted} stands for that file's dotted
                    path, {name} for the name
 
@@ -98,10 +101,12 @@ PARTIAL = "partial"
 _FOLDER = re.compile(r"[A-Za-z0-9_.-]+")
 _IMPORTING = re.compile(r"(?=[^\n]*\{dotted\})(?=[^\n]*\{name\})[^\n]+")
 _MEMBER = re.compile(r"\S+")
-_CALLED = re.compile(r"(?P<path>[^()]+)(?:\((?P<keywords>[^()]*)\))?")
-_VALUE = re.compile(r"[^,()=]+")
 INTERFACE = "interface: each mark is {base: <outside name>} or {keyword: <word>}"
 """What the loader says of a value of `interface` that is not a list of marks, once for the key."""
+IMMUTABLE = "immutable: each mark is {base}, {decorator, keywords}, {fields} or {type}"
+"""What the loader says of a value of `immutable` that is not a list of marks, once for the key."""
+RECORD_FORMS = ("base", "decorator", "fields", "type")
+"""The keys of a mark of an immutable record, exactly one of them in each; `keywords` may stand beside `decorator`."""
 STANDARD_LISTS = tuple(field.name for field in fields(StandardLists))
 """The keys of the map a data file's `standard` may be: the lists of StandardLists, in its order."""
 STANDARD = (f"standard: must be {INTERPRETER}, or a map of {', '.join(STANDARD_LISTS[:-1])} and {STANDARD_LISTS[-1]}, "
@@ -318,39 +323,50 @@ def _standard(document: Mapping[Any, Any], problems: list[str],
 
 def _marks(document: Mapping[Any, Any], problems: list[str], joins: tuple[str, str, str] | None,
            namespace: str) -> tuple[RecordMark, ...]:
+    """The marks of an immutable record, in the order written; one problem for the key when it is no list or any item
+    is no mark; none read when the keys that say how an outside name is written are refused already (joins None)."""
     if "immutable" not in document or joins is None:
         return ()
-    such = f"<package>{joins[2]}<name>"
     value = document["immutable"]
-    if not isinstance(value, list):
-        problems.append(f"immutable: must be a list of outside names, each perhaps called with keywords, such as "
-                        f"[{such}, \"{such}(<name>=<value>)\"]")
+    items = value if isinstance(value, list) else None
+    found = tuple(mark for mark in (_record_mark(item, joins, namespace) for item in items or ()) if mark is not None)
+    if items is None or len(found) != len(items):
+        problems.append(IMMUTABLE)
         return ()
-    found: list[RecordMark] = []
-    for item in value:
-        mark = _mark(item, joins, namespace) if isinstance(item, str) else None
-        if mark is None:
-            problems.append(f"immutable: {item!r} is not an outside name such as {such}, or one called with keywords "
-                            f"such as {such}(<name>=<value>)")
-        else:
-            found.append(mark)
-    return tuple(found)
+    return found
 
 
-def _mark(item: str, joins: tuple[str, str, str], namespace: str) -> RecordMark | None:
-    """One mark of an immutable record: an outside name, perhaps called with keywords, `name(key=value, ...)`, each key a
-    name of the language and each value plain text; None when the text is none."""
+def _record_mark(item: Any, joins: tuple[str, str, str], namespace: str) -> RecordMark | None:
+    """One mark: a map of exactly one of RECORD_FORMS, `keywords` beside `decorator` alone; base, decorator and type
+    an outside name, fields a name of the language holding no space, each keyword a name of the language with a
+    non-empty string; None when the item is none of them."""
+    if not isinstance(item, Mapping):
+        return None
+    forms = [key for key in item if key in RECORD_FORMS]
+    if len(forms) != 1 or set(item) - {*forms, *(("keywords",) if forms == ["decorator"] else ())}:
+        return None
+    (form,) = forms
+    value = item[form]
+    if not isinstance(value, str):
+        return None
     names, package, member = joins
-    called = _CALLED.fullmatch(item)
-    path = outside_name(called["path"], names, package, member, namespace) if called is not None else None
-    if called is None or path is None:
+    if form == "fields":
+        return RecordMark(fields=value) if _MEMBER.fullmatch(value) and is_name(value, names) else None
+    path = outside_name(value, names, package, member, namespace)
+    if path is None:
         return None
-    if called["keywords"] is None:
-        return RecordMark(path)
-    pairs = [pair.partition("=") for pair in called["keywords"].split(",")]
-    if not all(sep and is_name(key.strip(), names) and _VALUE.fullmatch(value.strip()) for key, sep, value in pairs):
+    if form == "base":
+        return RecordMark(base=path)
+    if form == "type":
+        return RecordMark(type=path)
+    if "keywords" not in item:
+        return RecordMark(decorator=path)
+    keywords = item["keywords"]
+    if not (isinstance(keywords, Mapping) and keywords and all(
+            isinstance(key, str) and is_name(key, names) and isinstance(word, str) and word.strip()
+            for key, word in keywords.items())):
         return None
-    return RecordMark(path, tuple((key.strip(), value.strip()) for key, _, value in pairs))
+    return RecordMark(decorator=path, keywords=tuple(keywords.items()))
 
 
 def _text(document: Mapping[Any, Any], key: str, said: str, problems: list[str],

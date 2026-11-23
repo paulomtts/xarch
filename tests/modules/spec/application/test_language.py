@@ -94,7 +94,8 @@ def test_the_bundled_language_gives_its_package_pattern_and_its_member_and_reads
     assert (checked.package, checked.member, checked.interface, checked.dynamic, checked.immutable, BUNDLED.namespace) == (
         r"(?!\d)\w+", ".", (InterfaceMark(("typing", "Protocol")), InterfaceMark(("typing_extensions", "Protocol"))),
         (("importlib", "import_module"), ("importlib", "__import__"), ("builtins", "__import__")),
-        (RecordMark(("typing", "NamedTuple")), RecordMark(("dataclasses", "dataclass"), (("frozen", "True"),))),
+        (RecordMark(base=("typing", "NamedTuple")),
+         RecordMark(decorator=("dataclasses", "dataclass"), keywords=(("frozen", "True"),))),
         "builtins")
 
 
