@@ -529,7 +529,7 @@ ROWS = ("import pytest\nimport other\n\n@pytest.mark.parametrize('a', [other.par
 
 
 def test_only_a_call_of_the_forms_row_is_a_row(tmp_path):
-    assert [r.param for r in parsed(tmp_path, ROWS).functions[0].tables[0].rows] == [False, False, True]
+    assert [r.written for r in parsed(tmp_path, ROWS).functions[0].tables[0].rows] == [False, False, True]
 
 
 @pytest.mark.parametrize("body, blocks", [

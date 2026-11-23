@@ -196,11 +196,11 @@ def _rows(table: Table, union: str, variants: tuple[str, ...], guard: ScenarioCo
         return [(table.line, "the rows of the table cannot be read", fix)]
     problems: list[Problem] = []
     for row in table.rows:
-        if not row.param:
+        if not row.written:
             problems.append((row.line, f"row is not a {written}(...)", case))
         elif _given_id(row) is None:
             problems.append((row.line, "row has no id", case))
-        if row.param or row.cells:
+        if row.written or row.cells:
             problems += _result(row, table.columns.index(result), union, variants, result, covered)
     return problems
 

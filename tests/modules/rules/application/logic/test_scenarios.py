@@ -13,8 +13,8 @@ COLUMNS = ("given", "when", "then")
 RESULTS = source("modules/docs/contract/results.py", unions=(Union(4, "PublishResult", ("Published", "Missing")),))
 
 
-def row(then: str | None, line: int = 10, id: str | None = "an outcome", param: bool = True) -> Row:
-    return Row(line, param, id, (None, "PublishDocument", then))
+def row(then: str | None, line: int = 10, id: str | None = "an outcome", written: bool = True) -> Row:
+    return Row(line, written, id, (None, "PublishDocument", then))
 
 
 def table(*rows: Row, columns=COLUMNS, line: int = 9) -> Table:
@@ -70,7 +70,7 @@ FILE = "tests/modules/docs/application/test_publish.py"
     pytest.param([Function(8, "test_publish", (Table(9, COLUMNS, None),))],
                  [f"{FILE}:9: the rows of the table cannot be read (scenario-coverage)"],
                  id="rows that cannot be read are reported, and no variant is then missing"),
-    pytest.param([Function(8, "test_publish", (table(row("Published", param=False, id=None), row("Missing", 11)),))],
+    pytest.param([Function(8, "test_publish", (table(row("Published", written=False, id=None), row("Missing", 11)),))],
                  [f"{FILE}:10: row is not a pytest.param(...) (scenario-coverage)"],
                  id="a bare tuple is reported, and still covers the variant it names"),
     pytest.param([Function(8, "test_publish", (table(row("Published", id=None), row("Missing", 11)),))],
@@ -199,7 +199,7 @@ ARRANGE_FIX = "arrange from given, act with when, assert == then, and give the o
     pytest.param([Function(8, "test_publish", (Table(9, COLUMNS, None),))],
                  ["write them as a list, or as the name of a list assigned at the top of the file"],
                  id="rows that cannot be read"),
-    pytest.param([Function(8, "test_publish", (table(row("Published", param=False, id=None), row("Missing", 11)),))],
+    pytest.param([Function(8, "test_publish", (table(row("Published", written=False, id=None), row("Missing", 11)),))],
                  [PUBLISH_FIX], id="a bare tuple"),
     pytest.param([Function(8, "test_publish", (table(row("Published", id=None), row("Missing", 11)),))],
                  [PUBLISH_FIX], id="a row without an id"),

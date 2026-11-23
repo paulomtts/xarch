@@ -155,12 +155,12 @@ class Constant:
 
 @dataclass(frozen=True)
 class Row:
-    """One element of the rows of a table, and the line it is on. param is whether it is a call of the table's row
+    """One element of the rows of a table, and the line it is on. written is whether it is a call of the table's row
     (a bare tuple or anything else is not); id is its id keyword when that is a string literal, as written, else None;
     cells holds the name that heads each positional value (the callee of a call, a bare name, the last name of an
     attribute), None where a value has none."""
     line: int
-    param: bool
+    written: bool
     id: str | None
     cells: tuple[str | None, ...]
 
