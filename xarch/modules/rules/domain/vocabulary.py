@@ -238,8 +238,8 @@ KINDS: tuple[Kind, ...] = (
     Kind("function", "each function defined at the top level, or as a method of a class of the top level",
          ("line", "name", "top-level", "forwards", "public"),
          {"forwarded": "forwards", "returned": "returns-an-attribute"}, needs=("function",),
-         field_needs={"forwards": ("function.forwards",), "forwarded": ("function.forwards",),
-                      "returned": ("function.forwards",), "public": ("public",)}),
+         field_needs={"top-level": ("function.top_level",), "forwards": ("function.forwards",),
+                      "forwarded": ("function.forwards",), "returned": ("function.forwards",), "public": ("public",)}),
     Kind("callback", "each call of a function's own parameter by its bare name",
          ("line", "function", "name", "receiver", "annotated-callable"), needs=("callback",), verb="call"),
 )

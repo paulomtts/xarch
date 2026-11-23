@@ -270,3 +270,37 @@ def test_a_part_that_holds_is_refused_under_a_language_whose_reader_does_not_say
     said = replace(UNRECORDED, checked=replace(UNRECORDED.checked, supplies=PYTHON.checked.supplies))
     assert parsed(document, languages={"unrecorded": said}).approximate == ()
     assert sorted(key.address for key in KEYS if "class.record" in key.needs) == ["parts.<part>.holds"]
+
+
+UNTOPPED = replace(PYTHON, name="untopped", checked=replace(
+    PYTHON.checked, title="Untopped",
+    supplies=tuple(Supply(fact, EXACT) for fact in FACTS if fact != "function.top_level")))
+"""A language whose reader supplies every fact but function.top_level: it does not say which functions are defined at
+the top level of their file."""
+
+
+def untopped(address: str) -> str:
+    return (f"layered.yaml: {address}: its check reads function.top_level (whether a function is defined at the top "
+            f"level of its file, in no class), which the language untopped does not supply: drop {address}, or check "
+            "the app with a language whose reader supplies function.top_level")
+
+
+@pytest.mark.parametrize("holds", [
+    pytest.param("functions", id="a part of functions"),
+    pytest.param("classes", id="a part of classes, whose rule reads top-level"),
+])
+def test_a_part_that_holds_is_refused_under_a_language_whose_reader_does_not_say_which_functions_are_top_level(holds):
+    document = layered(language="untopped")
+    document["parts"]["service"] |= {"holds": holds}
+    assert problems(document, languages={"untopped": UNTOPPED}) == [untopped("parts.service.holds")]
+    said = replace(UNTOPPED, checked=replace(UNTOPPED.checked, supplies=PYTHON.checked.supplies))
+    assert parsed(document, languages={"untopped": said}).approximate == ()
+    assert sorted(key.address for key in KEYS if "function.top_level" in key.needs) == [
+        "guards.dead-code.tests_only", "parts.<part>.holds"]
+
+
+def test_dead_code_tests_only_is_refused_under_a_language_whose_reader_does_not_say_which_functions_are_top_level():
+    document = covered(guards={"dead-code": {"tests_only": True}}, fakes=FAKES, language="untopped")
+    assert problems(document, languages={"untopped": UNTOPPED}) == [untopped("guards.dead-code.tests_only")]
+    said = replace(UNTOPPED, checked=replace(UNTOPPED.checked, supplies=PYTHON.checked.supplies))
+    assert parsed(document, languages={"untopped": said}).approximate == ()

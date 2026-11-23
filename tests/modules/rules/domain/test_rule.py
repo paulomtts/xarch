@@ -242,6 +242,20 @@ def test_a_check_of_comments_needs_comment_doc_only_when_it_reads_whether_one_is
     assert made(facts=("comment",), targets=EXISTING, exempt=c("directive"), sayings=say()).needs == ("comment",)
 
 
+@pytest.mark.parametrize("words", [
+    pytest.param({"keep": c("top-level")}, id="kept"),
+    pytest.param({"keep": c("not top-level")}, id="negated: it still reads the field"),
+    pytest.param({"exempt": c("top-level")}, id="exempted"),
+])
+def test_a_rule_of_functions_that_reads_whether_one_is_at_the_top_level_needs_function_top_level(words):
+    assert made(facts=("function",), targets=EXISTING, sayings=say("{name}"), **words).needs == (
+        "function", "function.top_level")
+
+
+def test_a_rule_of_functions_that_does_not_read_the_top_level_does_not_need_function_top_level():
+    assert made(facts=("function",), targets=EXISTING, sayings=say("{name}")).needs == ("function",)
+
+
 def test_a_rule_names_every_filter_and_every_variable_it_is_written_with_in_slot_order():
     rule = made(scope=Scope(APP, "store", where=c("placed")), keep=c("not relative"), exempt=c("standard"),
                 sayings=(*say("{package} in {line}", "drop {package}", "standard", once=("package",)), *say("{line}")))
