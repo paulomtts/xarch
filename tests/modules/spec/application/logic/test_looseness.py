@@ -529,6 +529,10 @@ def test_a_kind_a_part_may_now_define_at_the_top_level_is_looser(base, custom, k
                  id="classes no longer immutable"),
     pytest.param(holding(classes={"immutable": True}), holding(classes={"immutable": True}, exceptions={"names": "*Error"}),
                  [], id="exceptions are never held to immutable"),
+    pytest.param(holding(classes={"immutable": True}), holding(classes={"immutable": True}, records={"names": "*Record"}),
+                 [("holds.records.immutable", "", "the records of service need no longer be immutable records "
+                                                  "(parts.service.holds.records.immutable)")],
+                 id="records held to immutable through classes, now listed without it"),
     pytest.param(holding(classes={"built_by": ["api"]}), holding(classes={}),
                  [("holds.classes.built_by", "", "the classes of service may be built by any part "
                                                  "(parts.service.holds.classes.built_by)")],
