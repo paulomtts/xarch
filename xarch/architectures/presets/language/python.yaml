@@ -22,7 +22,7 @@
 title: Python
 extension: .py
 package_file: __init__.py
-interface: [typing.Protocol, typing_extensions.Protocol]
+interface: [{base: typing.Protocol}, {base: typing_extensions.Protocol}]
 dynamic: [importlib.import_module, importlib.__import__, builtins.__import__]
 namespace: builtins
 cache: __pycache__

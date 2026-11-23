@@ -9,8 +9,8 @@ from xarch.modules.rules.domain.published import Weak
 
 PROTOCOL = ("typing", "Protocol")
 PORT_FILE = "modules/docs/application/ports/repo.py"
-REPO = Class(3, "Repo", (PROTOCOL,), (Method(4, "get", "int"),))
-NOTIFIER = Class(8, "Notifier", (PROTOCOL,), (Method(9, "send", "None"),))
+REPO = Class(3, "Repo", (PROTOCOL,), (Method(4, "get", "int"),), interface=True)
+NOTIFIER = Class(8, "Notifier", (PROTOCOL,), (Method(9, "send", "None"),), interface=True)
 ON = profile(dead_code=True)
 PORTS = source(PORT_FILE, classes=(REPO, NOTIFIER), named=frozenset({"Repo", "Notifier", "Protocol"}))
 SERVICE = "modules/docs/application/services/doc.py"

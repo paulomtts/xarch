@@ -16,19 +16,28 @@ from pathlib import Path
 
 import yaml
 
+from xarch.kernel.logic.names import outside_steps
 from xarch.kernel.placement import EVERYTHING
 from xarch.kernel.source import Import
 from xarch.modules.rules.domain.parsed import SourceFile
 from xarch.modules.rules.domain.profile import Profile
-from xarch.profile_values.language import CheckedLanguage, RecordMark
+from xarch.profile_values.language import CheckedLanguage, InterfaceMark, RecordMark
 from xarch.profile_values.placement import Repeat, Target
 from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns
 from xarch.profile_values.tiers import CheckedTier
 
+
+def marks_of(file: dict) -> tuple[InterfaceMark, ...]:
+    """The interface marks a language's data file writes, as its loader reads them: a base split at the file's member,
+    a keyword whole."""
+    return tuple(InterfaceMark(outside_steps(mark["base"], file["member"])) if "base" in mark
+                 else InterfaceMark(keyword=mark["keyword"]) for mark in file.get("interface", ()))
+
+
 PYTHON_FILE = yaml.safe_load(resources.files("xarch").joinpath("architectures", "presets", "language", "python.yaml")
                              .read_text(encoding="utf-8"))
 PYTHON = CheckedLanguage(title="Python", extension=".py", package_file="__init__.py",
-                         interface=(("typing", "Protocol"), ("typing_extensions", "Protocol")),
+                         interface=marks_of(PYTHON_FILE),
                          dynamic=(("importlib", "import_module"), ("importlib", "__import__"), ("builtins", "__import__")),
                          private="_", special=PYTHON_FILE["special"], call="__call__", nothing="None", comment="#",
                          directives=("type: ignore", "noqa", "pragma:"), shebang="#!",
@@ -41,10 +50,12 @@ PYTHON = CheckedLanguage(title="Python", extension=".py", package_file="__init__
 package, and the member that joins them, read from it."""
 BRACE_FILE = yaml.safe_load((Path(__file__).resolve().parents[2] / "fakes" / "languages" / "brace.yaml")
                             .read_text(encoding="utf-8"))
-BRACE = CheckedLanguage(BRACE_FILE["title"], BRACE_FILE["extension"], BRACE_FILE["package_file"], (),
-                        (("node:module", "createRequire"),), names=BRACE_FILE["name"], package=BRACE_FILE["package"],
-                        member=BRACE_FILE["member"])
-"""The TypeScript-like test-only language as a check reads it, its patterns and member read from its data file."""
+BRACE = CheckedLanguage(title=BRACE_FILE["title"], extension=BRACE_FILE["extension"],
+                        package_file=BRACE_FILE["package_file"], interface=marks_of(BRACE_FILE),
+                        dynamic=(("node:module", "createRequire"),), names=BRACE_FILE["name"],
+                        package=BRACE_FILE["package"], member=BRACE_FILE["member"])
+"""The TypeScript-like test-only language as a check reads it, its patterns, member and interface marks read from its
+data file."""
 APP, TESTS = "app", "tests"
 MODULES = Repeat("module", ("modules",))
 EACH_PARTS = {"domain": ("domain",), "contract": ("contract",), "controller": ("application", "controller.py"),

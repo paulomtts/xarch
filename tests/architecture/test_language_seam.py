@@ -13,9 +13,9 @@ examples) and is allowed everywhere. Nor is importlib.metadata, which reads what
 Naming the language: no file of xarch's own code, but the reader and the platform (technology: the interpreter, the
 package data), carries a word that encodes what is true of the language. The words are read from the data file of
 the language the bundled profiles name: its title, the ending of a source file's name, the file that stands for a
-folder (and its stem), every step of the names that mark an interface and of those that import by a computed name, split at the data file's
-member, the namespace of the builtins and the folder of compiled files; and WORDS_BESIDES, the words the data file cannot hold
-because it has no key for them. They are looked for in:
+folder (and its stem), every step of the bases and every keyword that mark an interface and of the names that import
+by a computed name, split at the data file's member, the namespace of the builtins and the folder of compiled files; and
+WORDS_BESIDES, the words the data file cannot hold because it has no key for them. They are looked for in:
 
     every string literal  the text of an f-string included, whole words (an ending is a word that ends a name)
     every docstring       prose too: a docstring that describes the mechanism says it in the words of any language
@@ -133,10 +133,13 @@ EXEMPT: dict[tuple[str, str], str] = {
 
 
 def language_words(language: Path = LANGUAGE) -> tuple[re.Pattern[str], set[str]]:
-    """The pattern of the words the data file gives, as literal text, and the lowercase words of an identifier."""
+    """The pattern of the words the data file gives, as literal text (each step of an interface mark's base and of a
+    dynamic name, and each keyword of a mark), and the lowercase words of an identifier."""
     data = yaml.safe_load(language.read_text(encoding="utf-8"))
-    steps = {step for name in (*data.get("interface", ()), *data.get("dynamic", ()))
-             for step in outside_steps(name, data.get("member", ""))}
+    marks = data.get("interface", ())
+    named = (*(mark["base"] for mark in marks if "base" in mark), *data.get("dynamic", ()))
+    steps = {step for name in named for step in outside_steps(name, data.get("member", ""))} | {
+        mark["keyword"] for mark in marks if "keyword" in mark}
     words = {word for word in (data["namespace"], data.get("cache", ""), data["package_file"].removesuffix(data["extension"]),
                                *steps, *WORDS_BESIDES) if word}
     ending = re.escape(data["extension"])
@@ -255,13 +258,12 @@ def test_the_test_only_languages_are_the_brace_and_the_percent_ones():
     assert [path.stem for path in TEST_LANGUAGES] == ["brace", "percent"]
 
 
-@pytest.mark.parametrize("language", TEST_LANGUAGES, ids=lambda path: path.stem)
-def test_the_guard_reads_the_words_of_a_test_only_language(language):
-    data = yaml.safe_load(language.read_text(encoding="utf-8"))
-    steps = {step for name in (*data.get("interface", ()), *data.get("dynamic", ()))
-             for step in outside_steps(name, data["member"])}
-    expected = {data["title"], data["namespace"], *steps}
-    pattern, _ = language_words(language)
+@pytest.mark.parametrize("stem, expected", [
+    pytest.param("brace", {"Brace", "globalThis", "node:module", "createRequire", "interface"}, id="brace"),
+    pytest.param("percent", {"Percent", "%SYSTEM", "OBJ", "Load", "Abstract"}, id="percent"),
+])
+def test_the_guard_reads_the_words_of_a_test_only_language(stem, expected):
+    pattern, _ = language_words(next(path for path in TEST_LANGUAGES if path.stem == stem))
     assert {match[0] for match in pattern.finditer(" ".join(sorted(expected)))} == expected
 
 

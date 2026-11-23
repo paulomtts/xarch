@@ -9,25 +9,27 @@ from xarch.modules.spec.application.logic.language_file import PARTIAL, first_la
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import Language
 from xarch.profile_values.capabilities import EXACT, Supply
-from xarch.profile_values.language import CheckedLanguage, RecordMark
+from xarch.profile_values.language import CheckedLanguage, InterfaceMark, RecordMark
 
 NAME = r"[A-Za-z_]\w*"
 JOINS = {"name": NAME, "package": NAME, "member": "."}
-DOCUMENT = {"title": "Pascal", "extension": ".pas", "package_file": "unit.pas", "interface": ["sys.Contract"],
+DOCUMENT = {"title": "Pascal", "extension": ".pas", "package_file": "unit.pas", "interface": [{"base": "sys.Contract"}],
             "dynamic": ["sys.load", "sys.Contract.load"], "namespace": "system", "cache": ".objs",
             "standard": "interpreter"} | JOINS
 UNJOINED = {key: value for key, value in DOCUMENT.items() if key not in JOINS}
 """DOCUMENT with none of name, package and member."""
 TEST_LANGUAGES = tuple(sorted((Path(__file__).resolve().parents[4] / "fakes" / "languages").glob("*.yaml")))
 PERCENT = {"name": "%?[A-Za-z][A-Za-z0-9]*", "package": "%?[A-Za-z][A-Za-z0-9]*", "member": ".", "namespace": "%SYSTEM",
-           "interface": ["%RegisteredObject"], "dynamic": ["%SYSTEM.OBJ.Load"],
+           "interface": [{"base": "%RegisteredObject"}], "dynamic": ["%SYSTEM.OBJ.Load"],
            "immutable": ["%SerialObject", "%Lib.Rec(frozen=yes)"]}
 """The lists of a language whose names may start with a percent, under its own patterns."""
+INTERFACE = "interface: each mark is {base: <outside name>} or {keyword: <word>}"
 
 
 def test_a_language_is_read_from_the_document_of_its_preset_by_name():
     assert language_of("pascal", DOCUMENT) == Language(
-        "pascal", CheckedLanguage("Pascal", ".pas", "unit.pas", (("sys", "Contract"),),
+        "pascal", CheckedLanguage("Pascal", ".pas", "unit.pas",
+                                  (InterfaceMark(("sys", "Contract")),),
                                   (("sys", "load"), ("sys", "Contract", "load")), names=NAME, package=NAME, member="."),
         "system", "interpreter", ".objs", NAME)
 
@@ -51,7 +53,7 @@ def test_every_problem_of_a_document_is_listed_naming_the_preset():
         "title: must be a non-empty string",
         "extension: must be a dot and a name, such as .pas",
         "package_file: must be a file name ending in the extension",
-        "interface: must be a list of outside names, such as [<package>.<name>]",
+        INTERFACE,
         "dynamic: '' is not an outside name such as <package>.<name>",
         "dynamic: 'a b' is not an outside name such as <package>.<name>",
         "cache: must be a folder name"]
@@ -172,7 +174,7 @@ def test_name_package_and_member_are_given_together(given):
 def test_the_lists_of_a_language_are_read_by_its_own_patterns():
     language = language_of("percent", DOCUMENT | PERCENT)
     assert (language.namespace, language.checked.interface, language.checked.dynamic, language.checked.immutable) == (
-        "%SYSTEM", (("%RegisteredObject",),), (("%SYSTEM", "OBJ", "Load"),),
+        "%SYSTEM", (InterfaceMark(("%RegisteredObject",)),), (("%SYSTEM", "OBJ", "Load"),),
         (RecordMark(("%SerialObject",)), RecordMark(("%Lib", "Rec"), (("frozen", "yes"),))))
 
 
@@ -182,7 +184,7 @@ def test_the_same_lists_are_refused_under_patterns_that_do_not_allow_them():
     with pytest.raises(InvalidArchitecture) as caught:
         language_of("odd", DOCUMENT | lists | python)
     assert [p.removeprefix("presets/language/odd.yaml: ") for p in caught.value.problems] == [
-        "interface: '%RegisteredObject' is not an outside name such as <package>.<name>",
+        INTERFACE,
         "dynamic: '%SYSTEM.OBJ.Load' is not an outside name such as <package>.<name>",
         "immutable: '%SerialObject' is not an outside name such as <package>.<name>, or one called with keywords such as "
         "<package>.<name>(<name>=<value>)",
@@ -191,7 +193,7 @@ def test_the_same_lists_are_refused_under_patterns_that_do_not_allow_them():
 
 
 def test_a_document_that_gives_none_of_name_package_and_member_reads_an_outside_name_as_its_whole_text():
-    assert language_of("pascal", UNJOINED).checked.interface == (("sys.Contract",),)
+    assert language_of("pascal", UNJOINED).checked.interface == (InterfaceMark(("sys.Contract",)),)
 
 
 def test_a_namespace_is_a_name_the_language_allows():
@@ -210,4 +212,46 @@ def test_the_percent_test_only_language_reads_its_lists_by_its_own_patterns():
     path = next(path for path in TEST_LANGUAGES if path.stem == "percent")
     checked = language_of("percent", yaml.safe_load(path.read_text(encoding="utf-8"))).checked
     assert (checked.interface, checked.dynamic, checked.immutable) == (
-        (("%Library", "RegisteredObject"),), (("%SYSTEM", "OBJ", "Load"),), (RecordMark(("%SerialObject",)),))
+        (InterfaceMark(keyword="Abstract"),), (("%SYSTEM", "OBJ", "Load"),), (RecordMark(("%SerialObject",)),))
+
+
+def test_the_brace_test_only_language_marks_an_interface_by_its_keyword():
+    path = next(path for path in TEST_LANGUAGES if path.stem == "brace")
+    checked = language_of("brace", yaml.safe_load(path.read_text(encoding="utf-8"))).checked
+    assert checked.interface == (InterfaceMark(keyword="interface"),)
+
+
+def test_what_makes_a_class_an_interface_is_read_as_marks_in_the_order_written():
+    marks = [{"keyword": "interface"}, {"base": "sys.Contract"}, {"base": "sys"}]
+    assert language_of("pascal", DOCUMENT | {"interface": marks}).checked.interface == (
+        InterfaceMark(keyword="interface"), InterfaceMark(("sys", "Contract")), InterfaceMark(("sys",)))
+
+
+def test_a_language_that_marks_no_interface_has_none():
+    left_out = {key: value for key, value in DOCUMENT.items() if key != "interface"}
+    assert (language_of("pascal", DOCUMENT | {"interface": []}).checked.interface,
+            language_of("pascal", left_out).checked.interface) == ((), ())
+
+
+@pytest.mark.parametrize("interface", [
+    pytest.param("sys.Contract", id="no list"),
+    pytest.param(["sys.Contract"], id="the old shape, a list of outside names"),
+    pytest.param([{"base": "sys.Contract", "keyword": "interface"}], id="a mark of two keys"),
+    pytest.param([{"kind": "sys.Contract"}], id="a key that is neither"),
+    pytest.param([{"base": "not a name!"}], id="a base that is no outside name"),
+    pytest.param([{"base": 3}], id="a base that is no text"),
+    pytest.param([{"keyword": "two words"}], id="a keyword with a space"),
+    pytest.param([{"keyword": "2x"}], id="a keyword that is no name of the language"),
+    pytest.param([{"keyword": ""}], id="an empty keyword"),
+    pytest.param([{"base": "sys.Contract"}, "sys.Other", {"kind": "x"}], id="said once however many marks are wrong"),
+])
+def test_a_mark_of_an_interface_that_is_neither_a_base_nor_a_keyword_is_refused_once(interface):
+    with pytest.raises(InvalidArchitecture) as caught:
+        language_of("odd", DOCUMENT | {"interface": interface})
+    assert caught.value.problems == (f"presets/language/odd.yaml: {INTERFACE}",)
+
+
+def test_the_marks_of_an_interface_are_not_read_when_the_keys_that_say_how_a_name_is_written_are_refused():
+    with pytest.raises(InvalidArchitecture) as caught:
+        language_of("odd", DOCUMENT | {"package": "[a-", "interface": ["sys.Contract"]})
+    assert [p.removeprefix("presets/language/odd.yaml: ").split(":")[0] for p in caught.value.problems] == ["package"]

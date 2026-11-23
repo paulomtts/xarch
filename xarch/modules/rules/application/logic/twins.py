@@ -127,7 +127,7 @@ def _counted(app: Iterable[SourceFile], profile: Profile) -> list[Counted]:
             continue
         found += [(file, cls, where) for cls in sorted(file.classes, key=lambda c: c.line)
                   if cls.fields and profile.language.is_public(cls.name)
-                  and not any(base in profile.language.interface for base in cls.bases)]
+                  and not cls.interface]
     return found
 
 

@@ -10,6 +10,6 @@ name: '%?[A-Za-z][A-Za-z0-9]*'
 package: '%?[A-Za-z][A-Za-z0-9]*'
 member: "."
 special: '%\w+'
-interface: ["%Library.RegisteredObject"]
+interface: [{keyword: Abstract}]
 dynamic: ["%SYSTEM.OBJ.Load"]
 immutable: ["%SerialObject"]

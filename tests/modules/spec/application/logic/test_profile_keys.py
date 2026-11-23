@@ -8,7 +8,7 @@ import pytest
 import yaml
 
 from tests.modules.spec.format_files import CATALOGUE
-from tests.modules.spec.languages import PERCENT, PYTHON
+from tests.modules.spec.languages import BRACE, PERCENT, PYTHON
 from tests.modules.spec.profiles import PRESETS, parsed, problems
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic.explain import said
@@ -26,6 +26,7 @@ from xarch.modules.spec.domain.profile_keys import (
     Key,
 )
 from xarch.modules.spec.domain.values import Language
+from xarch.profile_values.language import InterfaceMark
 
 BASE = {"name": "example", "parts": {"documents": {"path": "documents", "role": "the documents"}}}
 LISTING = ("src/documents.py", "tests/documents/check_documents.py", "tests/documents/builders.py")
@@ -183,5 +184,16 @@ def test_a_word_of_the_table_is_what_the_language_says_for_it():
 
 
 def test_the_path_of_an_interface_is_said_with_the_member_of_the_language():
-    hashed = replace(PERCENT, checked=replace(PERCENT.checked, member="#"))
+    based = (InterfaceMark(("%Library", "RegisteredObject")),)
+    hashed = replace(PERCENT, checked=replace(PERCENT.checked, member="#", interface=based))
     assert said("`%interface_path%`", hashed) == "`%Library#RegisteredObject`"
+
+
+def test_an_interface_is_called_by_the_last_step_of_its_first_base_or_by_its_keyword():
+    assert (PYTHON.interface_name, BRACE.interface_name, PERCENT.interface_name, Language().interface_name) == (
+        "Protocol", "interface", "Abstract", "")
+
+
+def test_the_path_of_an_interface_is_its_first_base_or_its_keyword():
+    assert [said("`%interface_path%`", language) for language in (PYTHON, BRACE, PERCENT, Language())] == [
+        "`typing.Protocol`", "`interface`", "`Abstract`", "``"]

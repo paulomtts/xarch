@@ -10,12 +10,12 @@ from tests.modules.spec.application.builders import spec_controller
 from tests.modules.spec.languages import PYTHON as BUNDLED
 from xarch.modules.spec.contract import CheckProfile, ProfileChecked
 from xarch.profile_values.capabilities import Shortfall
-from xarch.profile_values.language import CheckedLanguage, RecordMark
+from xarch.profile_values.language import CheckedLanguage, InterfaceMark, RecordMark
 
 JOINS = {"name": r"\w+", "package": r"\w+", "member": "."}
-PASCAL = {"title": "Pascal", "extension": ".pas", "package_file": "unit.pas", "interface": ["sys.Contract"],
+PASCAL = {"title": "Pascal", "extension": ".pas", "package_file": "unit.pas", "interface": [{"base": "sys.Contract"}],
           "dynamic": ["sys.load"], "namespace": "system", "standard": "interpreter"} | JOINS
-PYTHON = {"title": "Python", "extension": ".py", "package_file": "__init__.py", "interface": ["typing.Protocol"],
+PYTHON = {"title": "Python", "extension": ".py", "package_file": "__init__.py", "interface": [{"base": "typing.Protocol"}],
           "namespace": "builtins", "cache": "__pycache__", "standard": "interpreter"} | JOINS
 APP = Path("/p/app")
 BASE = {"name": "base", "parts": {"core": {"path": "core", "role": "the rules"}}}
@@ -29,13 +29,15 @@ def view(profile: dict, languages: dict) -> CheckedLanguage:
 
 def test_a_profile_without_a_language_has_the_first_language_by_name_as_the_checks_read_it():
     assert view(BASE, {"python": PYTHON, "pascal": PASCAL}) == CheckedLanguage(
-        "Pascal", ".pas", "unit.pas", (("sys", "Contract"),), (("sys", "load"),), names=r"\w+", package=r"\w+", member=".")
+        "Pascal", ".pas", "unit.pas", (InterfaceMark(("sys", "Contract")),), (("sys", "load"),), names=r"\w+", package=r"\w+",
+        member=".")
 
 
 def test_a_profile_names_its_language_and_the_skeleton_says_the_file_that_stands_for_a_folder():
     spec, _ = spec_controller({"base": BASE | {"language": "python"}}, languages={"python": PYTHON, "pascal": PASCAL}, runtime=RUNTIME)
-    assert spec.profile("base").language == CheckedLanguage("Python", ".py", "__init__.py", (("typing", "Protocol"),), (),
-                                                            names=r"\w+", package=r"\w+", member=".")
+    assert spec.profile("base").language == CheckedLanguage(
+        "Python", ".py", "__init__.py", (InterfaceMark(("typing", "Protocol")),), (), names=r"\w+", package=r"\w+",
+        member=".")
     assert spec.skeleton("base").package_file == "__init__.py"
 
 
@@ -50,7 +52,7 @@ def test_the_standard_library_and_the_builtins_a_profile_is_checked_against_come
 
 @pytest.mark.parametrize("languages, language", [
     pytest.param({}, CheckedLanguage(), id="with no language to choose from, the language is said by nothing"),
-    pytest.param({"python": PYTHON}, CheckedLanguage("Python", ".py", "__init__.py", (("typing", "Protocol"),),
+    pytest.param({"python": PYTHON}, CheckedLanguage("Python", ".py", "__init__.py", (InterfaceMark(("typing", "Protocol")),),
                                                      names=r"\w+", package=r"\w+", member="."),
                  id="with one, it is that one"),
 ])
@@ -86,7 +88,7 @@ def test_a_key_whose_check_the_reader_of_its_language_cannot_feed_is_refused_and
 def test_the_bundled_language_gives_its_package_pattern_and_its_member_and_reads_its_lists_as_before():
     checked = BUNDLED.checked
     assert (checked.package, checked.member, checked.interface, checked.dynamic, checked.immutable, BUNDLED.namespace) == (
-        r"(?!\d)\w+", ".", (("typing", "Protocol"), ("typing_extensions", "Protocol")),
+        r"(?!\d)\w+", ".", (InterfaceMark(("typing", "Protocol")), InterfaceMark(("typing_extensions", "Protocol"))),
         (("importlib", "import_module"), ("importlib", "__import__"), ("builtins", "__import__")),
         (RecordMark(("typing", "NamedTuple")), RecordMark(("dataclasses", "dataclass"), (("frozen", "True"),))),
         "builtins")

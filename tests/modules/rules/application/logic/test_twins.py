@@ -38,8 +38,10 @@ def test_a_twin_in_another_part_is_reported_naming_both_places_with_what_to_do()
     pytest.param(Class(5, "A", fields=FIELDS[:2]), Class(9, "B", fields=FIELDS[:2]), False,
                  id="fewer fields than the minimum"),
     pytest.param(Class(5, "_A", fields=FIELDS), Class(9, "B", fields=FIELDS), False, id="a private class"),
-    pytest.param(Class(5, "A", (("typing", "Protocol"),), fields=FIELDS), Class(9, "B", fields=FIELDS), False,
+    pytest.param(Class(5, "A", fields=FIELDS, interface=True), Class(9, "B", fields=FIELDS), False,
                  id="an interface, whose fields are a requirement"),
+    pytest.param(Class(5, "A", (("typing", "Protocol"),), fields=FIELDS), Class(9, "B", fields=FIELDS), True,
+                 id="a class with a Protocol base the reader does not mark is no interface"),
     pytest.param(Class(5, "A", fields=FIELDS), Class(9, "B", fields=FIELDS), True, id="the same names in order"),
 ])
 def test_only_classes_with_the_same_fields_in_order_and_at_least_the_minimum_are_twins(first, second, reported):

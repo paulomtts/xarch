@@ -62,7 +62,7 @@ APP = [
            method_calls=(MethodCall(19, "resolve", held=True), MethodCall(20, "absolute")),
            module_functions=("make",), named=frozenset({"Doc", "make", "Repo"})),
     source("modules/docs/application/ports/repo.py", imp(1, "typing", "Protocol"),
-           classes=(Class(2, "Repo", bases=(("typing", "Protocol"),)),)),
+           classes=(Class(2, "Repo", bases=(("typing", "Protocol"),), interface=True),)),
     source("modules/docs/application/services/publish.py", imp(1, "app.modules.docs.domain", "doc"),
            imp(2, "app.modules.docs.domain.doc", "Doc"), imp(3, "app.platform", "db"),
            calls=(Call(4, DOC), Call(5, MAKE), Call(6, ("yaml", "dump"))), uses=(Use(5, MAKE, 2), Use(7, MAKE, 2)),

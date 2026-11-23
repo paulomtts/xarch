@@ -5,7 +5,8 @@ runtime knows are added to it by the service that holds the runtime.
     title          how a message names the language
     extension      the ending of a source file's name: a dot and a name
     package_file   the name of the file that stands for the folder holding it, ending in the extension
-    interface      outside names (see below), any of which among a class's bases marks it as an interface
+    interface      the marks of an interface, each {base: <outside name>}, an outside name (see below) among a
+                   declaration's bases, or {keyword: <word>}, a keyword it is declared with or carries, a name
     dynamic        outside names of what imports by a name worked out when the code runs; optional
     namespace      the namespace of the names the language binds without an import: a name
     cache          the folder in which its tools keep what they compile, left out of the examples, of a copy of a
@@ -54,7 +55,7 @@ from xarch.modules.spec.application.logic.outside_name import outside_name
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import LANGUAGES, Language
 from xarch.profile_values.capabilities import EXACT, FACTS, Supply
-from xarch.profile_values.language import CheckedLanguage, RecordMark
+from xarch.profile_values.language import CheckedLanguage, InterfaceMark, RecordMark
 
 KEYS = ("title", "extension", "package_file", "interface", "dynamic", "namespace", "cache", "standard", "name", "package",
         "member", "private", "special", "call", "nothing", "comment", "directives", "shebang", "encoding", "branching",
@@ -71,6 +72,8 @@ _IMPORTING = re.compile(r"(?=[^\n]*\{dotted\})(?=[^\n]*\{name\})[^\n]+")
 _MEMBER = re.compile(r"\S+")
 _CALLED = re.compile(r"(?P<path>[^()]+)(?:\((?P<keywords>[^()]*)\))?")
 _VALUE = re.compile(r"[^,()=]+")
+INTERFACE = "interface: each mark is {base: <outside name>} or {keyword: <word>}"
+"""What the loader says of a value of `interface` that is not a list of marks, once for the key."""
 
 
 def language_of(name: str, document: Any) -> Language:
@@ -95,7 +98,7 @@ def language_of(name: str, document: Any) -> Language:
     if namespace and not is_name(namespace, names):
         problems.append("namespace: must be a name")
         namespace = ""
-    interface = _outside(document, "interface", problems, joins, namespace)
+    interface = _interface(document, problems, joins, namespace)
     dynamic = _outside(document, "dynamic", problems, joins, namespace)
     standard = _text(document, "standard", "must be a name", problems, _WORD)
     cache = _text(document, "cache", "must be a folder name", problems, _FOLDER)
@@ -153,6 +156,39 @@ def _outside(document: Mapping[Any, Any], key: str, problems: list[str], joins: 
         else:
             found.append(steps)
     return tuple(found)
+
+
+def _interface(document: Mapping[Any, Any], problems: list[str], joins: tuple[str, str, str] | None,
+               namespace: str) -> tuple[InterfaceMark, ...]:
+    """The marks of an interface, in the order written; one problem for the key when it is no list or any item is
+    no mark; none read when the keys that say how an outside name is written are refused already (joins None)."""
+    if "interface" not in document or joins is None:
+        return ()
+    value = document["interface"]
+    items = value if isinstance(value, list) else None
+    marks = (_interface_mark(item, joins, namespace) for item in items or ())
+    found = tuple(mark for mark in marks if mark is not None)
+    if items is None or len(found) != len(items):
+        problems.append(INTERFACE)
+        return ()
+    return found
+
+
+def _interface_mark(item: Any, joins: tuple[str, str, str], namespace: str) -> InterfaceMark | None:
+    """One mark: a map of one key, `base` with an outside name or `keyword` with a name of the language holding no
+    space; None when the item is neither."""
+    if not (isinstance(item, Mapping) and len(item) == 1):
+        return None
+    ((key, value),) = item.items()
+    if not isinstance(value, str):
+        return None
+    names, package, member = joins
+    if key == "base":
+        path = outside_name(value, names, package, member, namespace)
+        return InterfaceMark(path) if path is not None else None
+    if key == "keyword" and _MEMBER.fullmatch(value) and is_name(value, names):
+        return InterfaceMark(keyword=value)
+    return None
 
 
 def _marks(document: Mapping[Any, Any], problems: list[str], joins: tuple[str, str, str] | None,

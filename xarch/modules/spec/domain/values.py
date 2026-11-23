@@ -326,8 +326,12 @@ class Language:
 
     @property
     def interface_name(self) -> str:
-        """What an interface is called in the language: the last step of the first name that marks one."""
-        return self.checked.interface[0][-1] if self.checked.interface else ""
+        """What an interface is called in the language: the last step of the first mark's base, or its keyword; ""
+        when nothing marks one."""
+        if not self.checked.interface:
+            return ""
+        first = self.checked.interface[0]
+        return first.base[-1] if first.base else first.keyword
 
     def compiled(self, path: str) -> bool:
         """Whether a path, written with `/`, lies in the folder in which the language's tools keep what they compile."""

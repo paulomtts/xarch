@@ -49,8 +49,8 @@ and the facts derived from them over the whole app:
                         import that binds it)
     record              a class with no method but the language's special methods (its data file says how they are
                         named) that a top-level function of its file names in its return annotation
-    interface           a class with one of the names the language's data file marks interfaces with among its bases,
-                        the last of its name in its file
+    interface           a class the reader says is an interface, by the marks of the language's data file, the last
+                        of its name in its file
     immutable           a class the reader says is an immutable record, by the marks of the language's data file
 """
 from __future__ import annotations
@@ -169,7 +169,7 @@ def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: 
         case "comment":
             return tuple(Fact("comment", c.line, text=c.text) for c in file.comments)
         case "class":
-            ports = {c.name: c for c in file.classes if any(base in profile.language.interface for base in c.bases)}
+            ports = {c.name: c for c in file.classes if c.interface}
             return tuple(Fact("class", c.line, (c.name,), c.name, _class(c, file, read, profile, defined, ports),
                               names=c.named) for c in file.classes)
         case "function":

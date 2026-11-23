@@ -25,13 +25,14 @@ _WORD = re.compile(r"%(\w+)%")
 
 def words(language: Language) -> dict[str, str]:
     """What the language says for each `%word%` a text of the format may write: the title, the extension, the package
-    file, the name of an interface and its dotted path, the namespace of the names bound without an import, the marker
-    of a line comment and the comments its tools read, each quoted after the marker, and the prefix of a private name."""
+    file, the name of an interface and its path (the first mark's base as an outside name, or its keyword), the
+    namespace of the names bound without an import, the marker of a line comment and the comments its tools read, each
+    quoted after the marker, and the prefix of a private name."""
     checked = language.checked
+    first = checked.interface[0] if checked.interface else None
+    path = "" if first is None else outside_text(first.base, checked.member) if first.base else first.keyword
     return {"language": checked.title, "extension": checked.extension, "package_file": checked.package_file,
-            "private": checked.private,
-            "interface": language.interface_name,
-            "interface_path": outside_text(checked.interface[0], checked.member) if checked.interface else "",
+            "private": checked.private, "interface": language.interface_name, "interface_path": path,
             "namespace": language.namespace, "comment": checked.comment,
             "directives": ", ".join(f"`{checked.comment} {word}`" for word in checked.directives)}
 

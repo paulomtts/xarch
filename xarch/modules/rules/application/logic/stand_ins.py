@@ -1,8 +1,8 @@
 """The stand-ins guard: a port is fire-only or read by its signatures, every read port has a fake, and a mock in a
 test that may use the fakes names a fire-only port.
 
-A port is a module-level class, in a file of a part the fakes stand in for, with one of the language's interface
-names (its data file's `interface`, generic forms too) among its bases; any other class there is not a port. Its
+A port is a module-level class, in a file of a part the fakes stand in for, that the reader marks as an interface (by
+the marks of its data file's `interface`); any other class there is not a port. Its
 methods are the functions of its own body (inherited ones are not followed), the language's special methods left
 out but for the one calling an instance runs (its data file's `call`), the method a callable port is; a method the
 language marks as a property or as bound to the class counts as the method it is. By its methods' return annotations a
@@ -112,7 +112,7 @@ def _ports(app: Iterable[SourceFile], profile: Profile) -> tuple[dict[tuple[tupl
         if where is None or where.part not in profile.fakes.stand_in_for:
             continue
         for cls in file.classes:
-            if any(base in profile.language.interface for base in cls.bases):
+            if cls.interface:
                 port, problems = _classified(file, cls, profile)
                 ports[(port.module, port.name)] = port
                 found += problems

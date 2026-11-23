@@ -34,4 +34,5 @@ class HoldingService:
         """The files of the app below root that `check` reads, but those at the paths given."""
         paths = [p for p in self._tree.paths(root, profile.language.extension)
                  if not governed.excluded(profile, p) and governed.governed(profile, p) and p not in given]
-        return tuple(self._tree.read(root, paths, immutable=profile.language.immutable))
+        return tuple(self._tree.read(root, paths, immutable=profile.language.immutable,
+                                     interface=profile.language.interface))

@@ -17,6 +17,7 @@ from tests.modules.rules.application.logic.world import (
     PORTS,
     PROFILE,
     RESERVED,
+    RULE,
     SERVICE,
     STRUCTURE,
     TEST,
@@ -24,9 +25,13 @@ from tests.modules.rules.application.logic.world import (
     WIRING,
     found,
 )
+from tests.modules.rules.builders import source
 from xarch.kernel.logic.conditions import condition
 from xarch.modules.rules.application.logic import filters
+from xarch.modules.rules.application.logic.facts import facts_of
 from xarch.modules.rules.application.logic.filters import question
+from xarch.modules.rules.domain.parsed import Class
+from xarch.modules.rules.domain.rule import Found
 from xarch.modules.rules.domain.vocabulary import FILTERS
 
 
@@ -104,3 +109,12 @@ def test_a_negated_filter_holds_where_the_filter_does_not():
 def test_every_filter_the_vocabulary_publishes_has_a_row_and_the_engine_answers_it():
     rows = {param.values[0].split(" ")[0] for param in test_a_filter_holds_of_the_facts_it_says.pytestmark[0].args[1]}
     assert rows == {word.name for word in FILTERS} == set(filters.NAMES)
+
+
+def test_the_interface_filter_holds_of_the_classes_the_reader_marks_whatever_their_bases():
+    ports = source("modules/docs/application/ports/store.py",
+                   classes=(Class(2, "Store", interface=True), Class(4, "Based", (("typing", "Protocol"),))))
+    built = facts_of([ports], [], PROFILE, "app", "tests")
+    read = built.files[0]
+    assert [fact.line for fact in read.facts["class"]
+            if question(condition("interface"))(Found(RULE, read, fact, None), built, PROFILE)] == [2]
