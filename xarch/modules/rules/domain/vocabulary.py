@@ -225,7 +225,7 @@ KINDS: tuple[Kind, ...] = (
                                                                     "interface", "immutable"),
          needs=("class",), field_needs={"mentions": ("class.named",), "exception": _CLASS_EXCEPTION,
                                         "record": ("class.methods", "function.returns"),
-                                        "immutable": ("class.immutable",)}),
+                                        "interface": ("class.interface",), "immutable": ("class.immutable",)}),
     Kind("function", "each function defined at the top level, or as a method of a class of the top level",
          ("line", "name", "top-level", "forwards"),
          {"forwarded": "forwards", "returned": "returns-an-attribute"}, needs=("function",),
@@ -277,8 +277,7 @@ FILTERS: tuple[Filter, ...] = (
                         "of the app that is one, however far", FACT, ("exception",)),
     Filter("record", "the class is a record: no method but the language's special ones, and a top-level function of "
                      "its file names it in its return annotation", FACT, ("record",)),
-    Filter("interface", "the class is an interface: one of its bases is a name the language marks interfaces with",
-           FACT, ("interface",)),
+    Filter("interface", "the class is an interface: the language marks it as one", FACT, ("interface",)),
     Filter("immutable", "the class is an immutable record: one of its bases, or one of its decorators called with the "
                         "keywords written beside it, is a name the language marks immutable records with", FACT,
            ("immutable",)),

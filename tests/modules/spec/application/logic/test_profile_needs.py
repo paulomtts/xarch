@@ -127,3 +127,18 @@ def test_a_key_whose_check_reads_names_through_imports_needs_them_followed_howev
     calling = replace(TOY, checked=replace(TOY.checked, supplies=(*TOY.checked.supplies, Supply("call", EXACT))))
     assert problems(services(built_by=["api"]), languages={"toy": calling}) == [
         refusal("parts.service.built_by", "import.resolved")]
+
+
+def test_whether_a_class_is_an_interface_is_a_fact_the_marks_of_the_data_file_say():
+    assert FACTS["class.interface"] == "whether a class is an interface, by the marks of the language's data file"
+
+
+@pytest.mark.parametrize("address", ["guards.stand-ins", "guards.dead-code", "fakes"])
+def test_a_key_that_reads_ports_needs_the_reader_to_mark_interfaces(address):
+    assert "class.interface" in {key.address: key.needs for key in KEYS}[address]
+
+
+def test_fakes_are_refused_in_a_language_whose_reader_marks_no_interface():
+    document = services()
+    document["fakes"] = {"folder": "fakes", "for": ["store"], "prefix": "Fake"}
+    assert refusal("fakes", "class.interface") in problems(document, languages=LANGUAGES)

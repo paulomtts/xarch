@@ -41,3 +41,10 @@ def test_every_word_applies_to_some_kind_of_fact(word):
 def test_the_variable_key_is_shown_with_a_key_of_the_profile_as_a_profile_writes_it_now():
     key = next(variable for variable in VARIABLES if variable.name == "key")
     assert key.meaning == "the key of the profile the check comes from: parts.store.uses.never, checks.<id>"
+
+
+def test_the_interface_of_a_class_needs_the_reader_to_mark_interfaces_and_says_no_word_of_bases():
+    kind = next(kind for kind in KINDS if kind.name == "class")
+    interface = next(word for word in FILTERS if word.name == "interface")
+    assert (kind.field_needs["interface"], interface.meaning) == (
+        ("class.interface",), "the class is an interface: the language marks it as one")

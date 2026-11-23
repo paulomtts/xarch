@@ -64,6 +64,7 @@ supplies:
   class.exception: exact
   class.named: exact
   class.immutable: exact
+  class.interface: exact
   function: exact
   function.statements: exact
   function.shape: exact

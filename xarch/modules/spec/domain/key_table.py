@@ -192,6 +192,7 @@ _IMPORTS = ("import", "import.relative")
 _NEVER_USE = (*_IMPORTS, "use", "method_call", "import.resolved")
 _TYPES_ONLY = ("call", "use", "module_functions", "import.resolved")
 NEEDS: dict[str, tuple[str, ...]] = {
+    "fakes": ("class", "class.interface"),
     "parts.<part>.may_import": _IMPORTS,
     "parts.<part>.must_import": (*_IMPORTS, "import.standard", "function.statements", "file"),
     "parts.<part>.types_only": _TYPES_ONLY,
@@ -219,7 +220,7 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "guards.scenario-coverage": ("union", "function.tables", "function.blocks", "function.expressions",
                                  "function.asserts", "function.mentions"),
     "guards.no-comments": ("comment",),
-    "guards.stand-ins": ("class", "class.methods", "class.attributes", "call", "parameter_call",
+    "guards.stand-ins": ("class", "class.methods", "class.attributes", "class.interface", "call", "parameter_call",
                          "import.resolved"),
     "guards.closed-tree": ("file",),
     "guards.no-duplicates": ("function", "function.statements", "function.shape"),
@@ -227,7 +228,7 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "guards.no-twins.min_renamed": ("class", "class.fields", "class.types"),
     "guards.no-twins.translated": ("class", "class.fields", "call", "function", "function.named", *_IMPORTS,
                                    "import.resolved"),
-    "guards.dead-code": ("class", "named"),
+    "guards.dead-code": ("class", "class.interface", "named"),
     "guards.dead-code.untested": (*_IMPORTS, "function.statements", "class", "class.exception", "function", "file"),
     "guards.dead-code.tests_only": ("class", "class.exception", "function", "named"),
     "guards.dead-code.known": ("class", "class.exception", "function", "function.named", "constant", "named", *_IMPORTS),
