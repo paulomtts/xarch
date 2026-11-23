@@ -25,7 +25,7 @@ def test_the_bundled_profiles_use_every_guard_of_their_own(name):
     profile = build_controllers().spec.profile(name)
     assert profile.guards == GuardsView(
         package_only=("contract",),
-        scenarios=ScenarioCoverage("contract", "integration", "Result", ("given", "when", "then"), table, "test_{name}.py"),
+        scenarios=ScenarioCoverage("contract", "integration", "Result", ("given", "when", "then"), table, "test_{name:snake}.py"),
         no_comments=True,
         closed_tree=True,
         stand_ins=StandIns(tuple(("unittest", "mock", m) for m in mocks), (("unittest", "mock", "create_autospec"),),

@@ -32,16 +32,21 @@ def problems(*tests, app=(RESULTS,), checked=PROFILE) -> list[str]:
     return [str(v) for v in violations(list(app), list(tests), checked)]
 
 
-@pytest.mark.parametrize("use_case, file", [
-    pytest.param("Publish", "test_publish.py", id="one word"),
-    pytest.param("PublishDocument", "test_publish_document.py", id="two words"),
-    pytest.param("HTTPCheck", "test_http_check.py", id="a run of capitals is one word"),
-    pytest.param("MarkRead2", "test_mark_read2.py", id="a digit stays with its word"),
+@pytest.mark.parametrize("use_case, written, file", [
+    pytest.param("Publish", "test_{name:snake}.py", "test_publish.py", id="one word"),
+    pytest.param("PublishDocument", "test_{name:snake}.py", "test_publish_document.py", id="two words"),
+    pytest.param("HTTPCheck", "test_{name:snake}.py", "test_http_check.py", id="a run of capitals is one word"),
+    pytest.param("MarkRead2", "test_{name:snake}.py", "test_mark_read2.py", id="a digit stays with its word"),
+    pytest.param("HTTPCheck", "{name:kebab}.test.py", "http-check.test.py", id="kebab joins the words with a hyphen"),
+    pytest.param("HTTPCheck", "{name:camel}.test.py", "httpCheck.test.py", id="camel capitalises each word but the first"),
+    pytest.param("HTTPCheck", "{name:pascal}.test.py", "HttpCheck.test.py", id="pascal capitalises every word"),
 ])
-def test_the_test_file_of_a_use_case_is_its_name_in_snake_case(use_case, file):
+def test_the_test_file_of_a_use_case_is_its_name_in_its_case(use_case, written, file):
     results = source("modules/docs/contract/results.py", unions=(Union(4, f"{use_case}Result", ("Done", "Failed")),))
-    assert problems(app=(results,)) == [f"app/modules/docs/contract/results.py:4: {use_case}Result has no test file "
-                                        f"{file} among the integration tests of docs (scenario-coverage)"]
+    checked = profile(scenarios=replace(PROFILE.scenarios, file=written))
+    assert problems(app=(results,), checked=checked) == [f"app/modules/docs/contract/results.py:4: {use_case}Result has "
+                                                         f"no test file {file} among the integration tests of docs "
+                                                         "(scenario-coverage)"]
 
 
 FILE = "tests/modules/docs/application/test_publish.py"
@@ -158,7 +163,7 @@ def test_without_the_guard_or_a_test_framework_nothing_is_checked():
 
 
 def test_the_test_file_follows_the_guards_file_pattern():
-    checked = profile(scenarios=replace(PROFILE.scenarios, file="{name}_test.py"))
+    checked = profile(scenarios=replace(PROFILE.scenarios, file="{name:snake}_test.py"))
     covered = publish_tests(Function(8, "test_publish", (TABLE,)), path="modules/docs/application/publish_test.py")
     assert problems(covered, checked=checked) == []
 

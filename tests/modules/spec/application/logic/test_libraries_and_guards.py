@@ -10,7 +10,7 @@ from xarch.modules.spec.domain.guards import ORDER
 from xarch.modules.spec.domain.values import ClosedTree, NoComments, PackageOnly
 from xarch.profile_values.testing import CaseTable, ScenarioCoverage
 
-FILE = "test_{name}.py"
+FILE = "test_{name:snake}.py"
 SCENARIOS = {"results": "api", "tier": "integration", "suffix": "Result", "columns": ["given", "when", "then"],
              "file": FILE}
 FAKES = {"folder": "fakes", "for": ["store"]}

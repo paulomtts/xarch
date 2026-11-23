@@ -2,10 +2,10 @@
 
 A use case is a module-level union `<Name><suffix> = A | B | ...` of plain names in a file of the results part, in
 an instance of a repeating folder: <Name> is the use case and A, B, ... its variants. Its test file is the guard's
-`file` with `{name}` replaced by <Name> in snake_case (PublishDocument: publish_document), among the files of the
-table tier in the same instance (see tier_of). That file must hold a table, read from its syntax tree; the
-decorator, the row and the keyword of a row's id are the names the guard is given (see CaseTable), a test function
-is one whose name matches the profile's pattern:
+`file` with `{name:<case>}` replaced by <Name> in that case (PublishDocument with `{name:snake}`: publish_document),
+among the files of the table tier in the same instance (see tier_of). That file must hold a table, read from its
+syntax tree; the decorator, the row and the keyword of a row's id are the names the guard is given (see CaseTable), a
+test function is one whose name matches the profile's pattern:
 
     a test function decorated `<decorator>(<names>, <rows>)`, whose names include the three columns the guard is
     given (state, command, result), as one comma-separated string or a list or tuple of strings;
@@ -29,10 +29,10 @@ of the file that name it, none of which holds an `assert` statement in its body.
 """
 from __future__ import annotations
 
-import re
 from collections.abc import Iterable, Iterator
 from fnmatch import fnmatchcase
 
+from xarch.kernel.logic.cases import filled
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.places import file_place
 from xarch.modules.rules.application.logic.tier_of import tested
@@ -42,15 +42,8 @@ from xarch.modules.rules.domain.published import Weak
 from xarch.profile_values.testing import ScenarioCoverage
 
 RULE = "scenario-coverage"
-NAME = "{name}"
-"""Stands, in the file name the scenario-coverage guard expects, for the use case's name in snake_case."""
 Problem = tuple[int, str, str]
 """A problem of a test file: its line, what is wrong, and how to fix it."""
-
-
-def _snake_name(name: str) -> str:
-    """CamelCase to snake_case: MarkRead is mark_read, HTTPCheck is http_check."""
-    return re.sub(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])", "_", name).lower()
 
 
 def violations(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile) -> list[Violation]:
@@ -122,8 +115,9 @@ def _use_cases(file: SourceFile, guard: ScenarioCoverage) -> list[Union]:
 
 
 def _test_file(union: Union, guard: ScenarioCoverage) -> str:
-    """The name of the test file the guard expects for the use case a union holds the results of."""
-    return guard.file.replace(NAME, _snake_name(union.name.removesuffix(guard.suffix)))
+    """The name of the test file the guard expects for the use case a union holds the results of: the guard's file,
+    the use case's name written in the case its placeholder asks for."""
+    return filled(guard.file, union.name.removesuffix(guard.suffix))
 
 
 def _given_id(row: Row) -> str | None:

@@ -140,7 +140,7 @@ PROFILE = Profile(
     imports_libraries={"platform": ("sqlmodel",), "adapters": ("sqlmodel",), "web": ("fastapi",),
                        "bootstrap": ("sqlmodel", "fastapi")},
     fakes=Fakes(("fakes",), ("ports",), "Fake"), repeats=(MODULES,), package_only=("contract",),
-    scenarios=ScenarioCoverage("contract", "integration", "Result", ("given", "when", "then"), TABLE, "test_{name}.py"),
+    scenarios=ScenarioCoverage("contract", "integration", "Result", ("given", "when", "then"), TABLE, "test_{name:snake}.py"),
     no_comments=True,
     stand_ins=StandIns((MOCK, ("unittest", "mock", "MagicMock")), (AUTOSPEC,), ("spec", "spec_set"),
                        (Fixture("mocker", ("Mock", "MagicMock"), ("create_autospec",)),), 0),

@@ -30,7 +30,7 @@ guards:
     tier: integration
     suffix: Result
     columns: [given, when, then]
-    file: "{name}_spec.py"
+    file: "{name:snake}_spec.py"
   stand-ins: {}
 """
 

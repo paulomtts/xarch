@@ -4,8 +4,10 @@ the bundled profiles spell out."""
 from pathlib import Path
 
 import pytest
+from typer.testing import CliRunner
 
 from tests.bootstrap.project import app_check, bundled_profiles
+from xarch.bootstrap.app import app
 from xarch.bootstrap.wiring import load_architecture
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.profile_values.testing import ScenarioCoverage, StandIns
@@ -43,7 +45,7 @@ tiers:
 fakes: {folder: fakes, for: [ports], prefix: Fake}
 guards:
   stand-ins: {}
-  scenario-coverage: {results: results, tier: unit, suffix: Result, columns: [given, when, then], file: "test_{name}.py"}
+  scenario-coverage: {results: results, tier: unit, suffix: Result, columns: [given, when, then], file: "test_{name:snake}.py"}
 """
 APP = {"__init__.py": "", "core/__init__.py": "", "cli/__init__.py": "", "core/rules.py": "X = 1\n",
        "cli/app.py": "import typer\nfrom app.core import rules\n"}
@@ -127,3 +129,16 @@ def test_xarch_s_own_profile_spells_out_the_same_as_the_preset(tmp_path):
     assert [g for g in preset.guards if isinstance(g, StandIns)] == [g for g in spelled.guards if isinstance(g, StandIns)]
     assert [g.table for g in preset.guards if isinstance(g, ScenarioCoverage)] == [
         g.table for g in spelled.guards if isinstance(g, ScenarioCoverage)]
+
+
+BARE = ("guards.scenario-coverage.file: 'test_{name}.py': {name} with no case was removed in 0.3.0: write "
+        "{name:snake} for what {name} meant")
+
+
+def test_a_bare_name_in_the_file_of_the_scenario_guard_is_refused_with_its_hint(tmp_path):
+    path = profile_in(tmp_path, PRESET_PROFILE.replace("test_{name:snake}.py", "test_{name}.py"))
+    with pytest.raises(InvalidArchitecture) as caught:
+        load_architecture(path)
+    checked = CliRunner().invoke(app, ["profile", "check", str(path)])
+    assert (caught.value.problems, checked.exit_code) == ((f"{path}: {BARE}",), 1)
+    assert f"    {path}: {BARE}" in checked.output.splitlines()

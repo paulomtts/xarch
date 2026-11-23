@@ -66,7 +66,7 @@ fragments:
         tier: integration
         suffix: Result
         columns: [given, when, then]
-        file: check_{name}%extension%
+        file: check_{name:snake}%extension%
   check: |
     checks:
       no-todo:
@@ -916,9 +916,9 @@ keys:
     accepts: >-
       {results: <part>, tier: <tier>, suffix: <text>, columns: [<state>, <command>, <result>], file: <name>}: every
       variant of a union named <Name><suffix> in a results part is the result column of a row of the table in its use
-      case's test file <file> (`{name}` is <Name> in snake_case) of that tier, or is named by a standalone test of it;
-      every row is a `testing.table.row` call with a `testing.table.id`, and a table test has no branching; read from
-      the syntax tree, never run
+      case's test file <file> (`{name:<case>}` is <Name> in that case: snake, kebab, camel or pascal) of that tier, or
+      is named by a standalone test of it; every row is a `testing.table.row` call with a `testing.table.id`, and a
+      table test has no branching; read from the syntax tree, never run
     example: |
       <<coverage-guard>>
   guards.no-comments:
@@ -1062,7 +1062,7 @@ keys:
       <<coverage-guard>>
   guards.scenario-coverage.file:
     meaning: the name of a use case's test file
-    accepts: a name holding {name} once, for the use case
+    accepts: a name holding {name:<case>} once, <case> one of snake, kebab, camel, pascal, for the use case
     example: |
       <<coverage-guard>>
   guards.no-duplicates.min_statements:

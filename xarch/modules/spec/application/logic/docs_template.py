@@ -54,6 +54,7 @@ import bisect
 import re
 from collections.abc import Callable, Mapping
 
+from xarch.kernel.logic.cases import CASED
 from xarch.kernel.logic.imports import shown_target, targets_phrase
 from xarch.kernel.logic.names import outside_text
 from xarch.kernel.placement import EACH, EVERYTHING
@@ -61,7 +62,6 @@ from xarch.modules.spec.application.logic.layout_walk import docs_name, is_file
 from xarch.modules.spec.domain.errors import InvalidTemplate
 from xarch.modules.spec.domain.published import DEFAULT_TESTS, KINDS, Held
 from xarch.modules.spec.domain.values import (
-    NAME,
     Architecture,
     ClosedTree,
     DeadCode,
@@ -483,7 +483,7 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
             shown = ", ".join(f"`{c}`" for c in columns)
             return (f"`scenario-coverage`: every variant of a union named `<Name>{suffix}` in "
                     f"`{docs_name(architecture, architecture.parts[results])}` is the `{columns[-1]}` of a row of the "
-                    f"table (columns {shown}) in `{file.replace(NAME, '<name>')}` among the {tier} tests (section 5.2), "
+                    f"table (columns {shown}) in `{_uncased(file)}` among the {tier} tests (section 5.2), "
                     f"or is named by a standalone test of that file; every row is a `{'.'.join(table.row)}` with "
                     f"an `{table.id}`, and a table test has no {_branches(architecture)}.")
         case StandIns(mocks, _, spec, fixtures):
@@ -547,6 +547,13 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
             directives = ", ".join(f"`{comment} {word}`" for word in architecture.language.checked.directives)
             return (f"`no-comments`: no `{comment}` comments in the app or its tests; docstrings and tool directives "
                     f"({directives}) stay.")
+
+
+def _uncased(file: str) -> str:
+    """The file a guard expects as the docs show it: its {name:<case>}, whatever the case, as <name>."""
+    for cased in CASED:
+        file = file.replace(cased, "<name>")
+    return file
 
 
 def _tier_must_import_line(architecture: Architecture, tier: Tier) -> str:

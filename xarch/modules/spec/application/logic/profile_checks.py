@@ -10,6 +10,7 @@ from fnmatch import fnmatchcase
 from typing import Any
 
 from xarch.kernel.logic import names
+from xarch.kernel.logic.cases import CASED, CASES, filled
 from xarch.kernel.logic.placement import place_of
 from xarch.kernel.placement import EACH
 from xarch.kernel.violations import RULES
@@ -402,12 +403,17 @@ def case_table(value: Any, where: str, problems: list[str], language: Language) 
 
 def use_case_file(value: Any, framework: Framework | None, where: str, problems: list[str], language: Language,
                   files_key: str = "testing.files") -> str | None:
-    if not isinstance(value, str) or value.count(NAME) != 1:
-        problems.append(f"{where}: must hold `{NAME}` once, such as a_{NAME}{language.checked.extension}")
+    such = f"such as a_{CASED[0]}{language.checked.extension}"
+    if isinstance(value, str) and NAME in value:
+        problems.append(f"{where}: {value!r}: {NAME} with no case was removed in 0.3.0: write {CASED[0]} for what "
+                        f"{NAME} meant")
         return None
-    name = value.replace(NAME, "x")
+    if not isinstance(value, str) or sum(value.count(cased) for cased in CASED) != 1:
+        problems.append(f"{where}: must hold `{{name:<case>}}` once, <case> one of {', '.join(CASES)}, {such}")
+        return None
+    name = filled(value, "x")
     if not _file_name(language).fullmatch(name):
-        problems.append(f"{where}: must be a file name below the test folders, such as a_{NAME}{language.checked.extension}")
+        problems.append(f"{where}: must be a file name below the test folders, {such}")
         return None
     if framework is not None and not any(fnmatchcase(name, pattern) for pattern in framework.files):
         problems.append(f"{where}: {value!r} is not a name `{files_key}` recognises as a test file")

@@ -7,8 +7,9 @@ from typer.testing import CliRunner
 
 from tests.bootstrap.project import bundled_profiles, retiring
 from xarch.bootstrap.app import app
-from xarch.bootstrap.wiring import build_controllers
+from xarch.bootstrap.wiring import build_controllers, load_architecture
 from xarch.modules.spec.domain.profile_keys import PART
+from xarch.profile_values.testing import ScenarioCoverage
 
 runner = CliRunner()
 
@@ -349,3 +350,14 @@ def test_based_on_is_explained_as_a_bundled_name_or_a_profile_file_and_its_choic
     assert tuple(explained["choices"]) == bundled_profiles()
     text = runner.invoke(app, ["profile", "explain", "based_on"])
     assert text.exit_code == 0 and "the path of a profile file from this file's folder" in " ".join(text.output.split())
+
+
+def test_the_file_of_the_scenario_guard_is_explained_with_its_cases_and_its_example_loads(tmp_path):
+    key = json.loads(runner.invoke(app, ["profile", "explain", "guards.scenario-coverage.file", "--format", "json"]).output)
+    guard = json.loads(runner.invoke(app, ["profile", "explain", "guards.scenario-coverage", "--format", "json"]).output)
+    (tmp_path / "example.yaml").write_text("name: documents-app\n" + key["example"])
+    loaded = load_architecture(tmp_path / "example.yaml")
+    assert key["accepts"] == ("a name holding {name:<case>} once, <case> one of snake, kebab, camel, pascal, for the "
+                              "use case")
+    assert "(`{name:<case>}` is <Name> in that case: snake, kebab, camel or pascal)" in guard["accepts"]
+    assert [g.file for g in loaded.guards if isinstance(g, ScenarioCoverage)] == ["check_{name:snake}.py"]

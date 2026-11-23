@@ -432,7 +432,7 @@ def test_bad_fakes_are_refused(fakes, expected):
 
 GUARDS = {
     "scenario-coverage": {"results": "api", "tier": "integration", "suffix": "Result",
-                          "columns": ["given", "when", "then"], "file": "test_{name}.py"},
+                          "columns": ["given", "when", "then"], "file": "test_{name:snake}.py"},
     "stand-ins": {}, "no-comments": {}, "closed-tree": {},
 }
 FAKES = {"folder": "fakes", "for": ["store"], "prefix": "Fake"}
@@ -443,7 +443,7 @@ def test_the_guards_in_use_are_those_named_with_the_framework_s_words_taken_from
     assert architecture.guards == (
         ScenarioCoverage("api", "integration", "Result", ("given", "when", "then"),
                          CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id",
-                                   ("argnames", "argvalues")), "test_{name}.py"),
+                                   ("argnames", "argvalues")), "test_{name:snake}.py"),
         StandIns((("unittest", "mock", "Mock"), ("unittest", "mock", "MagicMock")),
                  (("unittest", "mock", "create_autospec"),), ("spec", "spec_set"),
                  (Fixture("mocker", ("Mock", "MagicMock"), ("create_autospec",)),), 0),
@@ -587,11 +587,16 @@ SCENARIOS = "layered.yaml: guards.scenario-coverage"
     pytest.param({"tier": "unit"}, [f"{SCENARIOS}.tier: tier 'unit' does not test part 'api'"]),
     pytest.param({"suffix": "a b"}, [f"{SCENARIOS}.suffix: must be the end of a name, such as Result"]),
     pytest.param({"columns": ["a", "a", "b"]}, [f"{SCENARIOS}.columns: 'a' is listed twice"]),
-    pytest.param({"file": "test.py"}, [f"{SCENARIOS}.file: must hold `{{name}}` once, such as a_{{name}}.py"]),
-    pytest.param({"file": "{name}.rb"}, [
-        f"{SCENARIOS}.file: must be a file name below the test folders, such as a_{{name}}.py"]),
-    pytest.param({"file": "{name}.py"}, [
-        f"{SCENARIOS}.file: '{{name}}.py' is not a name `testing.files` recognises as a test file"]),
+    pytest.param({"file": "test.py"}, [
+        f"{SCENARIOS}.file: must hold `{{name:<case>}}` once, <case> one of snake, kebab, camel, pascal, such as "
+        "a_{name:snake}.py"]),
+    pytest.param({"file": "{name:snake}.rb"}, [
+        f"{SCENARIOS}.file: must be a file name below the test folders, such as a_{{name:snake}}.py"]),
+    pytest.param({"file": "{name:snake}.py"}, [
+        f"{SCENARIOS}.file: '{{name:snake}}.py' is not a name `testing.files` recognises as a test file"]),
+    pytest.param({"file": "test_{name}.py"}, [
+        f"{SCENARIOS}.file: 'test_{{name}}.py': {{name}} with no case was removed in 0.3.0: write {{name:snake}} for "
+        "what {name} meant"]),
     pytest.param({"colour": 1}, [f"{SCENARIOS}: unknown key 'colour': use columns, file, results, suffix, tier"]),
 ])
 def test_a_bad_scenario_coverage_is_refused(change, expected):

@@ -9,13 +9,13 @@ from tests.modules.spec.languages import BRACE, PYTHON
 from tests.modules.spec.profiles import TESTING, covered, parsed, problems
 from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.modules.spec.application.logic.profile_checks import use_case_file
-from xarch.profile_values.testing import Fixture
+from xarch.profile_values.testing import Fixture, ScenarioCoverage
 
 FILES = {"files": ["test_*.py"], "functions": "test_*"}
 TABLE_OK = TESTING["table"]
 MOCKS_OK = TESTING["mocks"]
 SCENARIOS = {"results": "api", "tier": "integration", "suffix": "Result", "columns": ["given", "when", "then"],
-             "file": "test_{name}.py"}
+             "file": "test_{name:snake}.py"}
 FAKES = {"folder": "fakes", "for": ["store"], "prefix": "Fake"}
 PATTERN = ("layered.yaml: testing.files: must be a non-empty list of file name patterns, each a .py name with `*` for "
            "any text")
@@ -37,6 +37,8 @@ POSITION = ("layered.yaml: testing.mocks.spec_position: must be a whole number, 
 DOTTED = "must be a list of outside names such as <package>.<name>"
 METHODS = "must be a list of method names such as [build]"
 WRITE = "write testing: <preset>, or testing: {files: [<pattern>, ...], functions: <pattern>}"
+BARE = "{name} with no case was removed in 0.3.0: write {name:snake} for what {name} meant"
+ONCE = "must hold `{name:<case>}` once, <case> one of snake, kebab, camel, pascal, such as a_{name:snake}"
 
 
 def with_testing(**changes) -> dict:
@@ -224,17 +226,16 @@ def test_a_guard_that_reads_test_files_needs_testing(guards, needs):
 
 
 def test_the_file_of_the_scenario_guard_is_checked_against_the_testing_patterns_only_when_both_are_valid():
-    document = covered(guards={"scenario-coverage": SCENARIOS | {"file": "spec_{name}.py"}},
+    document = covered(guards={"scenario-coverage": SCENARIOS | {"file": "spec_{name:snake}.py"}},
                        testing={"files": [], "functions": "test_*"})
     assert problems(document) == [PATTERN]
 
 
 @pytest.mark.parametrize("file, expected", [
-    pytest.param("{name}_{name}.py", "must hold `{name}` once, such as a_{name}.py",
-                 id="a file holding the name twice is refused"),
-    pytest.param("a/{name}.py", "must be a file name below the test folders, such as a_{name}.py",
+    pytest.param("{name:snake}_{name:snake}.py", f"{ONCE}.py", id="a file holding the name twice is refused"),
+    pytest.param("a/{name:snake}.py", "must be a file name below the test folders, such as a_{name:snake}.py",
                  id="a file with a folder is refused"),
-    pytest.param("spec_{name}.py", "'spec_{name}.py' is not a name `testing.files` recognises as a test file",
+    pytest.param("spec_{name:snake}.py", "'spec_{name:snake}.py' is not a name `testing.files` recognises as a test file",
                  id="a file the framework does not recognise as a test file is refused"),
 ])
 def test_a_bad_scenario_file_is_refused(file, expected):
@@ -274,7 +275,7 @@ def test_a_profile_naming_another_framework_gets_its_own_words_in_the_guards_lin
     testing = {"files": ["*_spec.py"], "functions": "it_*",
                "table": {"decorator": "cases.table", "row": "cases.row", "id": "name"},
                "mocks": {"calls": ["doubles.Double"], "spec_keywords": ["of"]}}
-    lines = guard_lines(testing=testing, guards={"scenario-coverage": SCENARIOS | {"file": "{name}_spec.py"}})
+    lines = guard_lines(testing=testing, guards={"scenario-coverage": SCENARIOS | {"file": "{name:snake}_spec.py"}})
     assert "in `<name>_spec.py`" in lines[0]
     assert "every row is a `cases.row` with an `name`" in lines[0]
     assert "`Double(of=<Port>)`" in lines[1]
@@ -354,11 +355,71 @@ def test_a_file_pattern_may_hold_any_character_but_a_slash():
 
 
 @pytest.mark.parametrize("file, kept, expected", [
-    pytest.param("{name}.test.tsx", "{name}.test.tsx", [], id="a file of the second ending"),
-    pytest.param("{name}.test.mts", "{name}.test.mts", [], id="a file of the third ending"),
-    pytest.param("{name}.test.js", None, ["scenarios: must be a file name below the test folders, such as a_{name}.ts"],
+    pytest.param("{name:snake}.test.tsx", "{name:snake}.test.tsx", [], id="a file of the second ending"),
+    pytest.param("{name:snake}.test.mts", "{name:snake}.test.mts", [], id="a file of the third ending"),
+    pytest.param("{name:snake}.test.js", None,
+                 ["scenarios: must be a file name below the test folders, such as a_{name:snake}.ts"],
                  id="an ending the language does not have, the refusal printing the first"),
 ])
 def test_under_several_endings_the_scenario_file_may_end_in_any_of_them(file, kept, expected):
     found: list[str] = []
     assert (use_case_file(file, None, "scenarios", found, BRACE), found) == (kept, expected)
+
+
+@pytest.mark.parametrize("file", [
+    pytest.param("test_{name}.py", id="a bare name"),
+    pytest.param("test_{name}_{name:snake}.py", id="a bare name beside a cased one gets the one refusal"),
+])
+def test_a_bare_name_is_refused_with_its_hint(file):
+    found: list[str] = []
+    assert (use_case_file(file, None, "guards.scenario-coverage.file", found, PYTHON), found) == (
+        None, [f"guards.scenario-coverage.file: {file!r}: {BARE}"])
+
+
+@pytest.mark.parametrize("file", [
+    pytest.param("a_{name:snake}.py", id="snake"),
+    pytest.param("a_{name:kebab}.py", id="kebab"),
+    pytest.param("a_{name:camel}.py", id="camel"),
+    pytest.param("a_{name:pascal}.py", id="pascal"),
+])
+def test_each_case_is_accepted(file):
+    found: list[str] = []
+    assert (use_case_file(file, None, "scenarios", found, PYTHON), found) == (file, [])
+
+
+@pytest.mark.parametrize("file", [
+    pytest.param("a_x.py", id="no placeholder"),
+    pytest.param("{name:snake}_{name:snake}.py", id="two of one case"),
+    pytest.param("{name:snake}_{name:kebab}.py", id="two of two cases"),
+    pytest.param("a_{name:upper}.py", id="a case that does not exist"),
+    pytest.param("a_{name:Snake}.py", id="a case written with a capital"),
+    pytest.param("a_{name:}.py", id="no case after the colon"),
+    pytest.param("a_{name: snake}.py", id="a blank before the case"),
+    pytest.param(3, id="not a string"),
+])
+def test_a_file_without_one_case_is_refused(file):
+    found: list[str] = []
+    assert (use_case_file(file, None, "scenarios", found, PYTHON), found) == (None, [f"scenarios: {ONCE}.py"])
+
+
+@pytest.mark.parametrize("file", [
+    pytest.param("test_{name:snake}.py", id="snake"),
+    pytest.param("test_{name:kebab}.py", id="kebab"),
+    pytest.param("test_{name:camel}.py", id="camel"),
+    pytest.param("test_{name:pascal}.py", id="pascal, its name filled with a capital"),
+])
+def test_a_file_in_any_case_is_checked_against_the_testing_patterns(file):
+    kept = parsed(covered(guards={"scenario-coverage": SCENARIOS | {"file": file}})).guards
+    assert tuple(guard.file for guard in kept if isinstance(guard, ScenarioCoverage)) == (file,)
+
+
+@pytest.mark.parametrize("case", [
+    pytest.param("snake", id="snake"),
+    pytest.param("kebab", id="kebab"),
+    pytest.param("camel", id="camel"),
+    pytest.param("pascal", id="pascal"),
+])
+def test_the_guard_line_shows_the_name_as_name_whatever_its_case(case):
+    testing = {"files": ["*_spec.py"], "functions": "it_*"}
+    lines = guard_lines(testing=testing, guards={"scenario-coverage": SCENARIOS | {"file": f"{{name:{case}}}_spec.py"}})
+    assert "in `<name>_spec.py`" in lines[0]

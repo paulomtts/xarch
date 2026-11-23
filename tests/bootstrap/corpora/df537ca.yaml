@@ -181,7 +181,7 @@ guards:
     tier: integration
     suffix: Result
     columns: [given, when, then]
-    file: test_{name}.py
+    file: test_{name:snake}.py
   no-comments: {}
   closed-tree: {}
   stand-ins: {}

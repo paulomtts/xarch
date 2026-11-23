@@ -240,7 +240,8 @@ class PackageOnly:
 
 
 NAME = "{name}"
-"""Stands, in the file name a guard expects, for the name of the use case in snake_case."""
+"""A name with no case, which the file a guard expects may no longer hold: refused since 0.3.0, the case written in
+its place ({name:snake} for what it meant)."""
 
 
 @dataclass(frozen=True)
