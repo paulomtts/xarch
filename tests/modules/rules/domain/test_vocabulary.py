@@ -50,6 +50,13 @@ def test_the_interface_of_a_class_needs_the_reader_to_mark_interfaces_and_says_n
         ("class.interface",), "the class is an interface: the language marks it as one")
 
 
+def test_whether_a_class_is_a_record_needs_the_reader_to_say_it():
+    kind = next(kind for kind in KINDS if kind.name == "class")
+    record = next(word for word in FILTERS if word.name == "record")
+    assert (kind.field_needs["record"], record.meaning) == (
+        ("class.record",), "the class is a record, as the language's reader decides")
+
+
 def test_whether_a_name_is_public_is_a_field_of_the_kinds_whose_names_the_language_decides_and_needs_the_fact():
     public = next(word for word in FILTERS if word.name == "public")
     carrying = [kind for kind in KINDS if kind.carries("public")]

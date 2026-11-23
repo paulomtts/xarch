@@ -124,3 +124,24 @@ def test_under_a_language_with_no_private_prefix_the_reader_alone_says_which_fun
     braced = profile(holds={"domain": "classes"}, language=BRACE)
     file = source("modules/docs/domain/doc.ts", functions=(function,), language=BRACE)
     assert [w.message for w in weak([file], braced, "app")] == expected
+
+
+@pytest.mark.parametrize("record, expected", [
+    pytest.param(True, [], id="a class the reader says is a record"),
+    pytest.param(False, ["Point"], id="the same class, said to be none"),
+])
+def test_under_brace_the_reader_alone_says_which_classes_are_records(record, expected):
+    braced = profile(holds={"logic": "functions"}, language=BRACE)
+    file = source("modules/docs/application/logic/point.ts", classes=(Class(3, "Point", record=record),), language=BRACE)
+    assert [w.message.split(" ")[0] for w in weak([file], braced, "app")] == expected
+
+
+@pytest.mark.parametrize("immutable, expected", [
+    pytest.param(True, [], id="a class the reader says is an immutable record"),
+    pytest.param(False, ["immutable"], id="one it says is not"),
+])
+def test_under_brace_the_reader_alone_says_which_classes_are_immutable_records(immutable, expected):
+    braced = profile(immutable=("logic",), language=BRACE)
+    file = source("modules/docs/application/logic/point.ts", classes=(Class(3, "Point", immutable=immutable),),
+                  language=BRACE)
+    assert [w.rule for w in weak([file], braced, "app")] == expected

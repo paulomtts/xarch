@@ -49,8 +49,7 @@ and the facts derived from them over the whole app:
     exception           a class that derives from one of the language's builtin exceptions, as the reader says, or from
                         a class of the app that is an exception, however far that goes (a base read through the
                         import that binds it)
-    record              a class with no method but the language's special methods (its data file says how they are
-                        named) that a top-level function of its file names in its return annotation
+    record              a class the language's reader says is a record
     interface           a class the reader says is an interface, by the marks of the language's data file, the last
                         of its name in its file
     immutable           a class the reader says is an immutable record, by the marks of the language's data file
@@ -175,7 +174,7 @@ def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: 
                               text=c.text) for c in file.comments)
         case "class":
             ports = {c.name: c for c in file.classes if c.interface}
-            return tuple(Fact("class", c.line, (c.name,), c.name, _class(c, file, read, profile, defined, ports),
+            return tuple(Fact("class", c.line, (c.name,), c.name, _class(c, read, defined, ports),
                               names=c.named) for c in file.classes)
         case "function":
             return tuple(_function(f) for f in file.functions)
@@ -239,12 +238,9 @@ def _placed(profile: Profile, cache: Placements, path: tuple[str, ...]) -> Place
     return cache[path]
 
 
-def _class(cls: Class, file: SourceFile, read: Read, profile: Profile, defined: Defined,
-           ports: dict[str, Class]) -> frozenset[str]:
+def _class(cls: Class, read: Read, defined: Defined, ports: dict[str, Class]) -> frozenset[str]:
     exception = (read.steps, cls.name) in defined.exceptions and not read.in_tests
-    record = all(profile.language.is_special(m.name) for m in cls.methods) and any(
-        cls.name in f.returns_named for f in file.functions if not f.owner)
-    return frozenset(n for n, on in (("exception", exception), ("record", record),
+    return frozenset(n for n, on in (("exception", exception), ("record", cls.record),
                                      ("interface", ports.get(cls.name) is cls), ("immutable", cls.immutable),
                                      ("public", cls.public)) if on)
 

@@ -19,7 +19,7 @@ import yaml
 from xarch.kernel.logic.names import is_private_name, outside_steps
 from xarch.kernel.placement import EVERYTHING
 from xarch.kernel.source import Import
-from xarch.modules.rules.domain.parsed import SourceFile
+from xarch.modules.rules.domain.parsed import Class, SourceFile
 from xarch.modules.rules.domain.profile import Profile
 from xarch.profile_values.language import LINE, CheckedLanguage, CommentForm, InterfaceMark, RecordMark
 from xarch.profile_values.placement import Repeat, Target
@@ -174,10 +174,19 @@ def _public(name: str, given: bool, language: CheckedLanguage) -> bool:
     return given and not is_private_name(name, language.private)
 
 
+def _record(cls: Class, file: SourceFile, language: CheckedLanguage) -> bool:
+    return cls.record or (language.title == PYTHON.title and all(language.is_special(m.name) for m in cls.methods)
+                          and any(cls.name in f.returns_named for f in file.functions if not f.owner))
+
+
 def read_as(file: SourceFile, language: CheckedLanguage) -> SourceFile:
     """The file with each class, function and constant whose name starts as a private name of language does made not
-    public, as its reader would say; one given as not public stays so."""
-    return replace(file, classes=tuple(replace(c, public=_public(c.name, c.public, language)) for c in file.classes),
+    public, as its reader would say, one given as not public staying so; and, under Python, each class its reader would
+    call a record made one (every method special by language's pattern, and a function of the file's top level naming
+    it in its return annotation), one given as a record staying so. Under another language a class is a record only as
+    given."""
+    return replace(file, classes=tuple(replace(c, public=_public(c.name, c.public, language),
+                                               record=_record(c, file, language)) for c in file.classes),
                    functions=tuple(replace(f, public=_public(f.name, f.public, language)) for f in file.functions),
                    constants=tuple(replace(c, public=_public(c.name, c.public, language)) for c in file.constants))
 

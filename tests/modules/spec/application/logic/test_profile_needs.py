@@ -247,3 +247,20 @@ def test_a_shared_part_is_refused_under_a_language_whose_reader_does_not_say_whi
         "guards.dead-code.known", "guards.dead-code.tests_only", "guards.no-twins", "guards.no-twins.min_renamed",
         "guards.no-twins.translated", "guards.private-imports", "parts.<part>.holds", "parts.<part>.names",
         "parts.<part>.shared"]
+
+
+UNRECORDED = replace(PYTHON, name="unrecorded", checked=replace(
+    PYTHON.checked, title="Unrecorded", supplies=tuple(Supply(fact, EXACT) for fact in FACTS if fact != "class.record")))
+"""A language whose reader supplies every fact but class.record: it does not say which classes are records."""
+
+
+def test_a_part_that_holds_is_refused_under_a_language_whose_reader_does_not_say_which_classes_are_records():
+    document = layered(language="unrecorded")
+    document["parts"]["service"] |= {"holds": "functions"}
+    assert problems(document, languages={"unrecorded": UNRECORDED}) == [
+        "layered.yaml: parts.service.holds: its check reads class.record (whether a class is a record, as the language "
+        "writes one), which the language unrecorded does not supply: drop parts.service.holds, or check the app with a "
+        "language whose reader supplies class.record"]
+    said = replace(UNRECORDED, checked=replace(UNRECORDED.checked, supplies=PYTHON.checked.supplies))
+    assert parsed(document, languages={"unrecorded": said}).approximate == ()
+    assert sorted(key.address for key in KEYS if "class.record" in key.needs) == ["parts.<part>.holds"]

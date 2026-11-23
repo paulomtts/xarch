@@ -5,7 +5,7 @@ from dataclasses import replace
 
 import pytest
 
-from tests.modules.rules.builders import BRACE, PROFILE, imp, in_tests, source
+from tests.modules.rules.builders import BRACE, PERCENT, PROFILE, imp, in_tests, profile, source
 from xarch.kernel.placement import Place
 from xarch.kernel.source import Unparsable
 from xarch.modules.rules.application.logic.facts import KINDS, facts_of
@@ -102,6 +102,44 @@ def test_a_class_the_reader_says_is_an_immutable_record_carries_it():
     classes = (Class(1, "Frozen", immutable=True), Class(2, "Loose"))
     read = facts_of([source("modules/docs/domain/a.py", classes=classes)], [], PROFILE, "app").files[0]
     assert [fact.traits for fact in read.facts["class"]] == [frozenset({"immutable", "public"}), frozenset({"public"})]
+
+
+def test_the_trait_record_follows_what_the_reader_says_alone():
+    classes = (Class(1, "Said", methods=(Method(2, "size", None),), record=True),
+               Class(4, "Unsaid", methods=(Method(5, "__repr__", "str"),)))
+    file = SourceFile("app/modules/docs/domain/a.py", ("modules", "docs", "domain", "a.py"), (), classes=classes,
+                      functions=(Function(8, "make", returns_named=frozenset({"Unsaid"})),))
+    read = facts_of([file], [], PROFILE, "app").files[0]
+    assert [fact.traits for fact in read.facts["class"]] == [frozenset({"record", "public"}), frozenset({"public"})]
+
+
+def test_under_brace_a_class_the_reader_says_is_a_record_is_one_with_no_method_list_and_no_function_naming_it():
+    file = source("modules/docs/domain/point.ts", classes=(Class(1, "Point", record=True), Class(2, "Shape")),
+                  language=BRACE)
+    read = facts_of([file], [], profile(language=BRACE), "app").files[0]
+    assert [fact.traits for fact in read.facts["class"]] == [frozenset({"record", "public"}), frozenset({"public"})]
+
+
+def test_under_percent_a_class_of_special_methods_a_top_level_function_returns_is_no_record_unless_the_reader_says():
+    file = source("modules/docs/domain/point.cls", classes=(Class(1, "Point", methods=(Method(2, "%OnNew", None),)),),
+                  functions=(Function(4, "Make", returns_named=frozenset({"Point"})),), language=PERCENT)
+    read = facts_of([file], [], profile(language=PERCENT), "app").files[0]
+    assert [fact.traits for fact in read.facts["class"]] == [frozenset({"public"})]
+
+
+def test_a_file_built_under_python_has_its_records_read_as_python_s_reader_would_and_one_given_stays_one():
+    file = source("modules/docs/domain/a.py", classes=(Class(1, "Shown", methods=(Method(2, "__repr__", "str"),)),
+                                                       Class(4, "Loose"),
+                                                       Class(5, "Given", methods=(Method(6, "size", None),), record=True)),
+                  functions=(Function(8, "make", returns_named=frozenset({"Shown"})),
+                             Function(9, "build", owner="Given", returns_named=frozenset({"Loose"}))))
+    assert [c.record for c in file.classes] == [True, False, True]
+
+
+def test_a_file_built_under_another_language_keeps_its_records_as_given():
+    file = source("modules/docs/domain/a.ts", classes=(Class(1, "Shown"), Class(2, "Given", record=True)),
+                  functions=(Function(8, "make", returns_named=frozenset({"Shown"})),), language=BRACE)
+    assert [c.record for c in file.classes] == [False, True]
 
 
 def test_a_function_says_whether_it_is_at_the_top_level_or_a_method_that_forwards():

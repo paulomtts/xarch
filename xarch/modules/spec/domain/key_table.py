@@ -196,7 +196,7 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "parts.<part>.may_import": _IMPORTS,
     "parts.<part>.must_import": (*_IMPORTS, "import.standard", "function.statements", "file", "file.package"),
     "parts.<part>.types_only": _TYPES_ONLY,
-    "parts.<part>.holds": ("class", "class.methods", "class.exception", "function", "function.returns", "public"),
+    "parts.<part>.holds": ("class", "class.exception", "class.record", "function", "public"),
     "parts.<part>.no_callbacks": ("callback",),
     "parts.<part>.immutable": ("class", "class.exception", "class.immutable"),
     "parts.<part>.names": ("class", "public"),
