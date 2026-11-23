@@ -177,6 +177,9 @@ def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
         (parsed(layered(evals={"placement": {"lines": {"store": 0.2}}})), parsed(layered())),
         (parsed(marked(["store", "shared"])), parsed(marked(["store", {"shared": "types_only"}]))),
         (parsed(holding()), parsed(holding(classes={}))),
+        (parsed(holding()), parsed(holding(classes={"names": "*Service", "immutable": True, "built_by": ["api"]},
+                                           functions={"names": "is_*"}, records={"names": "*Record", "immutable": True},
+                                           exceptions={"names": "*Error"}))),
     ]
     found = [item for custom, base in pairs for item in loosened(custom, base)]
     assert sorted({item.key for item in found}) == sorted(LOOSER)
@@ -415,6 +418,7 @@ def holding(**holds) -> dict:
     pytest.param(layered(evals={"placement": {"lines": {"api": 0.2}}}), id="the line of the part"),
     pytest.param(covered(guards={"no-twins": {"translated": ["api"]}}), id="the translations no-twins accepts"),
     pytest.param(marked(["store", {"api": "types_only"}]), id="a target naming it marked types_only"),
+    pytest.param(given(layered(), "service", holds={"classes": {"built_by": ["api"]}}), id="a built_by naming it"),
 ])
 def test_each_key_of_a_part_renamed_in_place_is_compared_with_the_part_it_pairs_with(profile):
     """Each key is read from the part api pairs with, so a copy that only renames api is no looser."""
@@ -427,6 +431,12 @@ def test_each_key_of_a_part_renamed_in_place_is_compared_with_the_part_it_pairs_
                  id="a never list dropped"),
     pytest.param(marked(["store", {"api": "types_only"}]), as_routes(marked(["store", "api"])), MARK, "service",
                  "routes", id="a types_only mark dropped from a target naming it"),
+    pytest.param(given(layered(), "api", holds={"classes": {"built_by": ["service"]}}),
+                 as_routes(given(layered(), "api", holds={"classes": {}})), "holds.classes.built_by", "routes", "",
+                 id="a built_by dropped from it"),
+    pytest.param(given(layered(), "service", holds={"classes": {"built_by": ["api"]}}),
+                 as_routes(given(layered(), "service", holds={"classes": {"built_by": ["api", "store"]}})),
+                 "holds.classes.built_by", "service", "store", id="a built_by naming it widened, it read as itself"),
 ])
 def test_a_way_a_copy_renaming_a_part_in_place_is_looser_is_said_under_the_new_name(base, custom, key, part, what):
     assert [(item.key, item.part, item.what) for item in loosened(parsed(custom), parsed(base))] == [(key, part, what)]
@@ -446,3 +456,59 @@ def test_a_kind_a_part_may_now_define_at_the_top_level_is_looser(base, custom, k
     assert [item for item in loosened(parsed(custom), parsed(base)) if item.key == "holds"] == [
         Loosened("holds", "service", kind, f"service may also define {kind} at the top level (parts.service.holds)")
         for kind in kinds]
+
+
+@pytest.mark.parametrize("base, custom, found", [
+    pytest.param(holding(classes={"names": "*Service"}), holding(classes={}),
+                 [("holds.classes.names", "", "the classes of service may be named anything "
+                                              "(parts.service.holds.classes.names)")],
+                 id="names dropped"),
+    pytest.param(holding(classes={"names": "*Service"}), holding(classes={"names": ["*Service", "*"]}),
+                 [("holds.classes.names", "*", "the classes of service may also be named * "
+                                               "(parts.service.holds.classes.names)")],
+                 id="a pattern no pattern of the base covers"),
+    pytest.param(holding(classes={"names": "*Service"}), holding(classes={"names": "FooService"}), [],
+                 id="a pattern a pattern of the base covers"),
+    pytest.param(holding(classes={"names": ["*Service", "*Store"]}), holding(classes={"names": "*Service"}), [],
+                 id="a pattern dropped from a list that keeps others is stricter"),
+    pytest.param(holding(functions={"names": "is_*"}), holding(functions={}),
+                 [("holds.functions.names", "", "the functions of service may be named anything "
+                                                "(parts.service.holds.functions.names)")],
+                 id="the names of functions dropped"),
+    pytest.param(holding(classes={"names": "*Service"}), holding(classes={"names": "*Service"}, records={"immutable": True}),
+                 [("holds.records.names", "", "the records of service may be named anything "
+                                              "(parts.service.holds.records.names)")],
+                 id="records held to the names of classes, now listed with none"),
+    pytest.param(holding(classes={"names": "*Service"}), holding(classes={"names": "*Service"}), [],
+                 id="records neither lists are not compared"),
+    pytest.param(holding(classes={"names": "*Service"}), holding(exceptions={}),
+                 [("holds.exceptions.names", "", "the exceptions of service may be named anything "
+                                                 "(parts.service.holds.exceptions.names)")],
+                 id="exceptions listed alone, held to the names of classes before"),
+    pytest.param(holding(classes={"names": "*"}), holding(classes={"names": ["*Service", "Odd"]}), [],
+                 id="a pattern of the base of * covers every pattern"),
+    pytest.param(holding(records={"immutable": True}), holding(records={}),
+                 [("holds.records.immutable", "", "the records of service need no longer be immutable records "
+                                                  "(parts.service.holds.records.immutable)")],
+                 id="records no longer immutable"),
+    pytest.param(holding(classes={"immutable": True}), holding(classes={}),
+                 [("holds.classes.immutable", "", "the classes of service need no longer be immutable records "
+                                                  "(parts.service.holds.classes.immutable)")],
+                 id="classes no longer immutable"),
+    pytest.param(holding(classes={"immutable": True}), holding(classes={"immutable": True}, exceptions={"names": "*Error"}),
+                 [], id="exceptions are never held to immutable"),
+    pytest.param(holding(classes={"built_by": ["api"]}), holding(classes={}),
+                 [("holds.classes.built_by", "", "the classes of service may be built by any part "
+                                                 "(parts.service.holds.classes.built_by)")],
+                 id="built_by dropped"),
+    pytest.param(holding(classes={"built_by": ["api"]}), holding(classes={"built_by": ["api", "store"]}),
+                 [("holds.classes.built_by", "store", "the classes of service may also be built by store "
+                                                      "(parts.service.holds.classes.built_by)")],
+                 id="a part added to built_by"),
+    pytest.param(holding(classes={"built_by": ["api"]}), holding(classes={"built_by": ["api"]}), [],
+                 id="built_by kept"),
+    pytest.param(holding(classes={}), holding(classes={"built_by": ["api"]}), [], id="built_by newly written"),
+])
+def test_a_setting_of_a_kind_held_dropped_or_widened_is_looser(base, custom, found):
+    assert loosened(parsed(custom), parsed(base)) == tuple(
+        Loosened(key, "service", what, sentence) for key, what, sentence in found)

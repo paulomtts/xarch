@@ -40,18 +40,22 @@ from dataclasses import replace
 from fractions import Fraction
 
 from xarch.kernel.logic.names import outside_text
+from xarch.kernel.logic.placement import name_matches
 from xarch.kernel.placement import EVERYTHING
 from xarch.modules.spec.application.logic.holds_written import NARROWER
 from xarch.modules.spec.domain.guards import KEY, ORDER
-from xarch.modules.spec.domain.published import BASED_ON, CLOSEST, KINDS, LINE, LITMUS, Loosened, Origin
+from xarch.modules.spec.domain.published import BASED_ON, CLOSEST, KINDS, LINE, LITMUS, Held, Loosened, Origin
 from xarch.modules.spec.domain.values import Architecture, DeadCode, NoTwins, PackageOnly, Part, Tier
 from xarch.profile_values.placement import Target
 
 Looser = tuple[str, str, str]
 """(key, part, what): one way a profile is looser, before it is said."""
+HELD = ("holds.classes.names", "holds.classes.immutable", "holds.classes.built_by", "holds.functions.names",
+        "holds.records.names", "holds.records.immutable", "holds.exceptions.names")
+"""The key of each setting of a kind of holds, a way it is looser listed under, kind by kind in the order of KINDS."""
 LOOSER = ("imports.may", "imports.may.types_only", "imports.libraries", "uses.never", "imports.must", "untested",
-          LITMUS, "holds", "imports.types_only", "imports.also", "uses.apply_never", "testing.skips", "files.pinned",
-          "reserved", "known", "translated", "review.never", "review.mask", "evals.placement.lines")
+          LITMUS, "holds", *HELD, "imports.types_only", "imports.also", "uses.apply_never", "testing.skips",
+          "files.pinned", "reserved", "known", "translated", "review.never", "review.mask", "evals.placement.lines")
 """Every key a way a profile is looser is listed under, each said by a sentence of its own."""
 LOW = 0.75
 """The match below which a comparison is low: less than three in four of the things `check` reads under either
@@ -256,6 +260,8 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
     found += [(LITMUS, name, "") for name in shared if base.parts[pairs[name]].litmus and not custom.parts[name].litmus]
     found += [("holds", name, kind) for name in shared for kind in _allowed(custom.parts[name])
               if kind not in _allowed(base.parts[pairs[name]])]
+    for name in shared:
+        found += _settings_looser(custom.parts[name], base.parts[pairs[name]], pairs)
     paired = _paired_tiers(custom, base, pairs)
     tiers = {paired[tier.name]: tier for tier in custom.tiers if tier.name in paired}
     for tier in base.tiers:
@@ -293,6 +299,46 @@ def _allowed(part: Part) -> tuple[str, ...]:
     if not listed:
         return KINDS
     return tuple(kind for kind in KINDS if kind in listed or ("classes" in listed and kind in NARROWER))
+
+
+def _held_to(part: Part, kind: str) -> Held:
+    """The settings a part holds a kind to: those written under it when the part lists it; else, for a kind every
+    class covers, those written under classes when it lists classes (immutable never for an exception); else none."""
+    held = {item.kind: item for item in part.holds}
+    if kind in held:
+        return held[kind]
+    if kind in NARROWER and "classes" in held:
+        wider = held["classes"]
+        return Held(kind, wider.names, wider.immutable and kind != "exceptions")
+    return Held(kind)
+
+
+def _settings_looser(custom: Part, base: Part, pairs: Mapping[str, str]) -> list[Looser]:
+    """Each setting of a kind the custom part drops or widens, against the base part it pairs with: compared for each
+    kind either lists that both allow, on the settings each holds the kind to."""
+    listed = {held.kind for held in (*custom.holds, *base.holds)}
+    found: list[Looser] = []
+    for kind in KINDS:
+        if kind in listed and kind in _allowed(custom) and kind in _allowed(base):
+            before, now = _held_to(base, kind), _held_to(custom, kind)
+            if before.names and not now.names:
+                found.append((f"holds.{kind}.names", custom.name, ""))
+            elif before.names:
+                found += [(f"holds.{kind}.names", custom.name, pattern) for pattern in now.names
+                          if not any(name_matches(wider, pattern) for wider in before.names)]
+            if before.immutable and not now.immutable:
+                found.append((f"holds.{kind}.immutable", custom.name, ""))
+            if before.built_by:
+                found += _added(f"holds.{kind}.built_by", custom.name, before.built_by, now.built_by, pairs)
+    return found
+
+
+def _added(key: str, holder: str, before: tuple[str, ...], now: tuple[str, ...], pairs: Mapping[str, str]) -> list[Looser]:
+    """A list of parts the base holder names, against the custom holder's: dropped, one entry; else each custom part,
+    read through the pairing, the base does not name, said as written."""
+    if not now:
+        return [(key, holder, "")]
+    return [(key, holder, name) for name in now if pairs.get(name, name) not in before]
 
 
 def _known(architecture: Architecture) -> tuple[str, ...]:
@@ -370,6 +416,8 @@ def _sentence(key: str, part: str, what: str = "") -> str:
             return f"{part} has no litmus, though the profile it is compared with gives it one (parts.{part}.litmus)"
         case "holds":
             return f"{part} may also define {what} at the top level (parts.{part}.holds)"
+        case _ if key.startswith("holds."):
+            return _held_sentence(key, part, what)
         case "imports.types_only":
             return f"the {part} tests may now call {what} (tiers.{part}.imports.types_only)"
         case "imports.also":
@@ -393,6 +441,24 @@ def _sentence(key: str, part: str, what: str = "") -> str:
         case "evals.placement.lines":
             return (f"{part} reads as doubtful only below {what}, a lower line than the profile it is compared with "
                     "gives it (evals.placement.lines)")
+    raise ValueError(f"no sentence says how a profile is looser under {key!r}")
+
+
+def _held_sentence(key: str, part: str, what: str) -> str:
+    """How a setting of a kind of holds dropped or widened is said, at the address of the kind compared."""
+    _, kind, setting = key.split(".")
+    at = f"(parts.{part}.{key})"
+    match setting:
+        case "names" if not what:
+            return f"the {kind} of {part} may be named anything {at}"
+        case "names":
+            return f"the {kind} of {part} may also be named {what} {at}"
+        case "immutable":
+            return f"the {kind} of {part} need no longer be immutable records {at}"
+        case "built_by" if not what:
+            return f"the {kind} of {part} may be built by any part {at}"
+        case "built_by":
+            return f"the {kind} of {part} may also be built by {what} {at}"
     raise ValueError(f"no sentence says how a profile is looser under {key!r}")
 
 
