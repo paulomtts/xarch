@@ -125,8 +125,11 @@ keys:
     accepts: a non-empty string
     example: "name: documents-app"
   based_on:
-    meaning: the bundled profile this was copied from
-    accepts: "the name of a bundled profile: `profile check` reports how this one is looser than it"
+    meaning: "the profile this one is based on: a bundled one, or a profile file"
+    accepts: >-
+      the name of a bundled profile, or the path of a profile file from this file's folder: `profile check` and
+      `check` compare this one with it, unless `--against` names another for the run; `--strict` rests on a bundled
+      profile: the chain's bundled root, else the bundled profile closest to its last file
     example: "based_on: <bundled>"
   language:
     meaning: the language of the app

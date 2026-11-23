@@ -39,7 +39,8 @@ BASED_ON = explained("based_on")
 FORMAT = spec_controller(**BUNDLED)[0].explain(Explain())
 SHAPE = (
     Shown('name', 0, 'what the profile is called', True, False),
-    Shown('based_on', 0, 'the bundled profile this was copied from', False, False),
+    Shown('based_on', 0, 'the profile this one is based on: a bundled one, or a profile file',
+          False, False),
     Shown('language', 0, 'the language of the app', False, True),
     Shown('testing', 0, 'how the test framework names things', False, True),
     Shown('testing.files', 1, "patterns of a test file's name", True, True),
@@ -109,8 +110,12 @@ may send and of how it reads what it asks are left to the explanation of `review
     pytest.param(BUNDLED, Explain(), FormatExplained(SHAPE, SAID, SMALLEST),
                  id="with no key the whole format is explained"),
     pytest.param(BUNDLED, Explain("based_on"),
-                 KeyExplained("based_on", "the file", "the bundled profile this was copied from",
-                              "the name of a bundled profile: `profile check` reports how this one is looser than it",
+                 KeyExplained("based_on", "the file",
+                              "the profile this one is based on: a bundled one, or a profile file",
+                              "the name of a bundled profile, or the path of a profile file from this file's folder: "
+                              "`profile check` and `check` compare this one with it, unless `--against` names another "
+                              "for the run; `--strict` rests on a bundled profile: the chain's bundled root, else the "
+                              "bundled profile closest to its last file",
                               False, False, (), "based_on: base", ("base", "other"), (), name="based_on"),
                  id="a key that names a bundled profile offers the ones xarch ships"),
     pytest.param(BUNDLED, Explain("parts.may_imports"),
