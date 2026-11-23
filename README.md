@@ -145,15 +145,16 @@ and the builtins are known from (`standard`: `interpreter`, the Python running x
 `reserved` and `builtins`, each item checked with the file's `package` or `name`);
 and the tokens of its code the checks and the docs need: what a name may be, what an import names from outside the app
 as one step (`package`) and the text that joins a package to a name in it in the profile's lists (`member`, `.` for
-Python), so that an outside name is written `<package><member><name>`, how a private name starts, the pattern of a
-special name (`special`, a regular expression the whole name matches), the special method calling an instance runs,
-the annotations of no value (`nothing`, a list: `[None]` for Python) and, optionally, that a method with no return
-annotation gives none (`unannotated: nothing`), the forms a comment is written in (`comments`, a list of `line`,
-`block` and `doc` forms, `[{line: "#"}]` for Python, a doc comment being one `no-comments` keeps) and the comments its
-tools read after the marker of any form, the shebang, the encoding declaration, the keywords of the statements that
-branch and of the expressions that choose between values (`branching_expressions`), and what makes a class an
-immutable record (`immutable`: a base, or a decorator called with its keywords, such as
-`dataclasses.dataclass(frozen=True)`).
+Python), so that an outside name is written `<package><member><name>`, how a private name starts (`private`, by which
+the Python reader decides whether a name is public, the fact `public` a reader supplies, and by which scaffold and
+layout refuse and skip a private name), the pattern of a special name (`special`, a regular expression the whole name
+matches), the special method calling an instance runs, the annotations of no value (`nothing`, a list: `[None]` for
+Python) and, optionally, that a method with no return annotation gives none (`unannotated: nothing`), the forms a
+comment is written in (`comments`, a list of `line`, `block` and `doc` forms, `[{line: "#"}]` for Python, a doc
+comment being one `no-comments` keeps) and the comments its tools read after the marker of any form, the shebang, the
+encoding declaration, the keywords of the statements that branch and of the expressions that choose between values
+(`branching_expressions`), and what makes a class an immutable record (`immutable`: a base, or a decorator called with
+its keywords, such as `dataclasses.dataclass(frozen=True)`).
 The rest of what a check knows of the language is one adapter, the reader that turns source into facts
 (`modules/rules/adapters/fs_source_tree.py`), and the platform; spec reads the docs' examples through that reader too.
 `tests/architecture/test_language_seam.py` fails when any other file of xarch names the language or writes one of
@@ -303,7 +304,7 @@ that switches or configures each (`-` for none: the rule is always on):
 | `no-callbacks` | a function of a part that calls one of its own parameters annotated as a callable | `parts.no_callbacks` |
 | `names` | a public class of a part whose name matches none of the part's patterns | `parts.names` |
 | `built-by` | a call of the constructor of a part's class from a part it does not list | `parts.built_by` |
-| `private-imports` | an import of a name starting with `_` from another file of the app or its tests | `guards.private-imports` |
+| `private-imports` | an import of a name another file of the app or its tests keeps private (for Python, one starting with `_`) | `guards.private-imports` |
 | `shared` | a public name of a part declared shared that fewer users use than it says (a user: an instance of a repeating folder, or a part outside them; tests not read) | `parts.shared` |
 
 A key left out means its check is off. For what a key means, accepts and exactly checks, run

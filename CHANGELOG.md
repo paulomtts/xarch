@@ -7,6 +7,13 @@ All notable changes to this project are written here. The format follows
 
 ### Added
 
+- The fact `public`, whether a name a file defines, or takes by an import, is for other files to use, as the language
+  decides it, which `parts.<part>.holds`, `parts.<part>.names`, `parts.<part>.shared`, `guards.private-imports`,
+  `guards.dead-code.tests_only`, `guards.dead-code.known` and `guards.no-twins` (with `min_renamed` and `translated`)
+  need; a language that does not supply it is refused those keys with the needs text. The reader says it of each
+  class, function, constant and name an import takes (`Class.public`, `Function.public`, `Constant.public`, and
+  `Import.withheld`, the names an import takes that are not public), handed the language's `private` to decide it.
+  Python supplies it, computed from `private` as before.
 - The fact `comment.doc`, whether a comment is a doc comment, which `guards.no-comments` needs beside `comment`. The
   reader says of each comment the marker it opens with and whether it is a doc comment (`Comment.marker` and
   `Comment.doc`), and a check of your own reads the doc ones with the filter `doc`. Python supplies it: no Python
@@ -27,6 +34,10 @@ All notable changes to this project are written here. The format follows
 
 ### Changed
 
+- The filter `public` reads the fact `public`, never how a name is spelled, and applies to `class`, `function` and
+  `imported-name` only: written on another kind in a check of your own, `profile check` refuses it (`public does not
+  apply to <kind>`). `CheckedLanguage.is_public` is gone. Under a language that gives no `private`, the docs line of
+  `private-imports` says "a name another file of them keeps private". No finding of a Python app changes.
 - A language's data file says how its comments are written as a list of forms: `comment` became `comments`, each
   form `{line: <marker>}`, `{block: [<open>, <close>]}` or `{doc: [<open>, <close>]}` (a doc form's closing may be
   `""`, the end of its line; `[{line: "#"}]` for Python); left out, the language has none. `%comment%` is the first
