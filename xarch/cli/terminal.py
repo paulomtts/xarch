@@ -1,5 +1,5 @@
-"""What every command shares: the --app, --profile, --tests and --format options, choosing the app folder and the
-profile, how its help is wrapped, and how a refusal reaches the terminal, as text or as JSON."""
+"""What every command shares: the --app, --profile, --against, --tests and --format options, choosing the app folder
+and the profile, how its help is wrapped, and how a refusal reaches the terminal, as text or as JSON."""
 import os
 import re
 import sys
@@ -27,6 +27,11 @@ AppPath = Annotated[Path | None, typer.Option(
 ProfileName = Annotated[str | None, typer.Option(
     "--profile", help="The profile: the name of a bundled profile, or a path to a profile file (.yaml or .json). "
                       "Default: \\[tool.xarch] profile in pyproject.toml; with neither, the command fails.")]
+AgainstName = Annotated[str | None, typer.Option(
+    "--against", help="The profile it is compared with, for this run: the name of a bundled profile, or a path to a "
+                      "profile file (.yaml or .json) read from the working folder. Default: the one the profile's "
+                      "based_on names, else the bundled profile of highest match; a bundled profile is its own. "
+                      "Refused with --strict.")]
 TestsPath = Annotated[Path | None, typer.Option(
     "--tests", help="The tests folder to check. Default: \\[tool.xarch] tests in pyproject.toml, else tests/ beside "
                     "the app folder, if there is one.")]

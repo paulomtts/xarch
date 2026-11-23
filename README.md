@@ -34,7 +34,7 @@ xarch init [--app PATH] [--profile NAME|FILE]                 # create the top-l
                                                              # app folder, if not app/) in pyproject.toml, write the
                                                              # project docs and files; never overwrites
 xarch new WORD NAME [--app PATH] [--profile NAME|FILE]       # create one instance of a repeating folder, with its skeleton
-xarch check [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json] [--strict]
+xarch check [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json] [--strict] [--against NAME|FILE]
                                                              # report every violation in the app and its tests, each
                                                              # with its fix, then the state of the check's own enforcement
 xarch where PATH [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json]
@@ -45,7 +45,7 @@ xarch profile explain [KEY] [--profile NAME|FILE | --configured] [--rule] [--app
                                                              # key expands to
 xarch profile new NAME --from BUNDLED [--out FOLDER] [--app PATH]
                                                              # copy a bundled profile into the project, with its files
-xarch profile check [NAME|FILE] [--app PATH] [--format text|json]
+xarch profile check [NAME|FILE] [--against NAME|FILE] [--app PATH] [--format text|json]
                                                              # validate a profile without an app
 xarch review [PATH ... | calibrate [--eval ID ...] | accept PATH ... (--why TEXT | --remove)] [--files-from FILE|-] [--all] [--pieces] [--context none|imports] [--dry-run | --offline] [--cache DIR] [--max-files N] [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json]
                                                              # experimental, advisory: a decision model's reading of where each file

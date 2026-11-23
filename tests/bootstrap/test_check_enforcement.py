@@ -236,3 +236,57 @@ def test_the_help_of_strict_names_the_imports_the_reader_could_not_follow():
     command = typer.main.get_command(app).commands["check"]
     strict = next(param for param in command.params if "--strict" in param.opts)
     assert "dynamic imports, imports the reader could not follow, checks met to the letter" in strict.help
+
+
+STRICT_AGAINST = ("--against shows a comparison and --strict fails on one: run `check --strict` without --against, "
+                  "and it judges the profile against its baseline")
+
+
+def test_against_compares_the_profile_in_force_for_the_run_and_leaves_the_exit_code_as_it_is(tmp_path):
+    bundled = check("--against", "cli")
+    assert bundled.exit_code == 0
+    assert bundled.stdout.splitlines()[2] == "  profile:     web (bundled; compared with cli, --against; match 89%)"
+    plant(tmp_path)
+    custom = check("--profile", "arch/open.yaml", "--against", "cli")
+    assert custom.exit_code == check("--profile", "arch/open.yaml").exit_code == 0
+    assert custom.stdout.splitlines()[2] == (
+        "  profile:     arch/open.yaml (custom; compared with cli, --against; match 89%)")
+
+
+def test_against_changes_only_the_comparison_of_the_json_document(tmp_path):
+    plant(tmp_path)
+    plain = json.loads(check("--profile", "arch/open.yaml", "--format", "json").stdout)
+    against = json.loads(check("--profile", "arch/open.yaml", "--against", "cli", "--format", "json").stdout)
+    compared = against["enforcement"]["profile"]["compared_with"]
+    assert (compared["profile"], compared["chosen_by"], compared["higher"]) == ("cli", "against", None)
+    assert plain["enforcement"]["strict_failures"]
+    assert (against["ok"], against["violations"], against["enforcement"]["strict_failures"]) == (
+        plain["ok"], plain["violations"], plain["enforcement"]["strict_failures"])
+
+
+def test_strict_with_against_is_refused_before_anything_is_checked():
+    text = check("--strict", "--against", "cli")
+    assert text.exit_code == 2 and f"error: {STRICT_AGAINST}" in text.output
+    missing = check("--app", "missing", "--strict", "--against", "cli")
+    assert missing.exit_code == 2 and f"error: {STRICT_AGAINST}" in missing.output
+    document = json.loads(check("--strict", "--against", "cli", "--format", "json").stdout)
+    assert document == {"ok": False, "error": STRICT_AGAINST}
+
+
+def test_check_against_a_profile_that_does_not_load_is_refused():
+    result = check("--against", "nosuch")
+    assert result.exit_code == 2
+    assert ("error: --against does not load: nosuch: no bundled architecture 'nosuch': use one of cli, web, or a "
+            "path to a .yaml or .json file") in result.output
+
+
+@pytest.mark.parametrize("command", ["check", "profile check"])
+def test_check_and_profile_check_take_against_the_profile_it_is_compared_with(command):
+    found = typer.main.get_command(app)
+    for name in command.split():
+        found = found.commands[name]
+    option = next(param for param in found.params if "--against" in param.opts)
+    assert option.help == (
+        "The profile it is compared with, for this run: the name of a bundled profile, or a path to a profile file "
+        "(.yaml or .json) read from the working folder. Default: the one the profile's based_on names, else the "
+        "bundled profile of highest match; a bundled profile is its own. Refused with --strict.")

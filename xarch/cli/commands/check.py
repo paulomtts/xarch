@@ -7,6 +7,7 @@ import typer
 from xarch.cli.reports.refusal_report import cannot_run, not_a_directory
 from xarch.cli.reports.report import check_lines, json_document
 from xarch.cli.terminal import (
+    AgainstName,
     AppPath,
     Format,
     FormatOption,
@@ -38,13 +39,13 @@ def register(app: typer.Typer, rules: RulesController, spec: SpecController) -> 
     @app.command()
     @rewrapped
     def check(app_path: AppPath = None, profile: ProfileName = None, tests: TestsPath = None,
-              output: FormatOption = Format.text, strict: StrictOption = False) -> None:
+              output: FormatOption = Format.text, strict: StrictOption = False, against: AgainstName = None) -> None:
         """Report every violation of the architecture in the app and its tests."""
         refuse = refusal(output)
         cwd = in_full(Path())
         app_path = app_for(spec, cwd, app_path, refuse)
         chosen, tests_root = selection(spec, app_path, profile, tests, refuse)
-        match rules.check_app(CheckApp(app_path, chosen, cwd, tests_root, strict)):
+        match rules.check_app(CheckApp(app_path, chosen, cwd, tests_root, strict, against)):
             case NotADirectory(root):
                 raise refuse(not_a_directory(root, cwd))
             case ChecksCannotRun(problems):
@@ -52,16 +53,18 @@ def register(app: typer.Typer, rules: RulesController, spec: SpecController) -> 
             case CheckRefused(reason):
                 raise refuse(reason)
             case AppChecked() as checked:
-                origin = _origin(spec, chosen, refuse)
+                origin = _origin(spec, chosen, against, refuse)
                 echo([json_document(chosen, origin, checked, strict)] if output is Format.json
                      else check_lines(origin, checked, strict, cwd))
                 if not checked.ok:
                     raise typer.Exit(1)
 
 
-def _origin(spec: SpecController, chosen: str, refuse) -> Origin:
-    """Where the profile in force comes from, which spec works out and the enforcement section shows first."""
-    match spec.origin(chosen):
+def _origin(spec: SpecController, chosen: str, against: str | None, refuse) -> Origin:
+    """Where the profile in force comes from and the profile it is compared with, the one against names for this run
+    when it is given, which spec works out and the enforcement section shows first; what --strict fails on never reads
+    it."""
+    match spec.origin(chosen, against):
         case Origin() as origin:
             return origin
         case ProfileRefused(reason):

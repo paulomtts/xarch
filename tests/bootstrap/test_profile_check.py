@@ -201,3 +201,60 @@ def test_a_profile_writing_holds_as_one_word_or_names_on_a_part_fails_like_any_p
     assert "examples: not checked: the profile does not load" in result.output
     checked = runner.invoke(app, ["check", "--profile", COPY])
     assert checked.exit_code == 2
+
+
+AGAINST_WEB = ("  match: 73% with web (--against): 11 of 16 parts, 67 of 96 part keys, 21 of 31 tier entries, 11 of 11 "
+               "guards, 9 of 9 profile keys sit where both profiles have them")
+"""The match of xarch's own profile with web, computed on the 0.3.0 profiles."""
+
+
+def test_xarch_s_own_profile_against_web_is_compared_with_web_for_the_run_and_its_match_is_low():
+    result = runner.invoke(app, ["profile", "check", str(XARCH), "--against", "web"])
+    assert result.exit_code == 0, result.output
+    lines = result.output.splitlines()
+    assert lines[0] == f"checking {XARCH} (custom; against web, given with --against; based_on: cli)"
+    assert lines[4:7] == [
+        AGAINST_WEB,
+        "    only here: parts cli, main, profile-values, reports; tier wired. only in web: part web; tier rendering",
+        "    low: 27% of what check reads under either profile has nothing to compare with in the other, so the list "
+        "below says little about how check would do under web"]
+    assert lines[7].startswith("  compared: looser than web")
+    document = json.loads(runner.invoke(app, ["profile", "check", str(XARCH), "--against", "web", "--format",
+                                              "json"]).output)
+    assert {key: document["compared_with"][key] for key in ("profile", "chosen_by", "match", "low", "higher")} == {
+        "profile": "web", "chosen_by": "against", "match": 0.73, "low": True, "higher": None}
+
+
+def test_a_bundled_profile_against_another_is_compared_with_it():
+    result = runner.invoke(app, ["profile", "check", "cli", "--against", "web"])
+    assert result.exit_code == 0, result.output
+    lines = result.output.splitlines()
+    assert lines[0] == "checking cli (bundled; against web, given with --against)"
+    assert lines[4] == ("  match: 89% with web (--against): 11 of 13 parts, 64 of 74 part keys, 16 of 18 tier entries, "
+                        "11 of 11 guards, 6 of 6 profile keys sit where both profiles have them")
+    document = json.loads(runner.invoke(app, ["profile", "check", "cli", "--against", "web", "--format", "json"]).output)
+    assert (document["compared_with"]["profile"], document["compared_with"]["chosen_by"]) == ("web", "against")
+
+
+def test_against_a_path_is_read_from_the_working_folder():
+    result = runner.invoke(app, ["profile", "check", "cli", "--against", COPY])
+    assert result.exit_code == 0, result.output
+    lines = result.output.splitlines()
+    assert lines[0] == f"checking cli (bundled; against {COPY}, given with --against)"
+    assert lines[4].startswith(f"  match: 89% with {COPY} (--against): 11 of 13 parts")
+
+
+def test_against_a_profile_that_does_not_load_refuses_the_run(tmp_path):
+    (tmp_path / "bad.yaml").write_text("name: x\n")
+    text = runner.invoke(app, ["profile", "check", "--against", "bad.yaml"])
+    assert text.exit_code == 2
+    assert "error: --against does not load: bad.yaml: missing `parts`" in text.output
+    document = json.loads(runner.invoke(app, ["profile", "check", "--against", "bad.yaml", "--format", "json"]).stdout)
+    assert document == {"ok": False, "error": "--against does not load: bad.yaml: missing `parts`"}
+
+
+def test_a_profile_that_does_not_load_is_reported_as_it_is_and_against_is_not_read(tmp_path):
+    (tmp_path / "bad.yaml").write_text("name: x\n")
+    result = runner.invoke(app, ["profile", "check", "bad.yaml", "--against", "nosuch"])
+    assert result.exit_code == 1
+    assert "missing `parts`" in result.output and "--against" not in result.output
