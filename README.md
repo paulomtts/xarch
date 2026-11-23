@@ -233,19 +233,26 @@ and the ones that exist are named. `pyproject.toml` is never edited: it prints t
 
 `check` loads the profile (every problem at once, which includes every file it points to existing), runs the
 example-import check (the examples' imports obey the profile's own rules), holds each check the profile writes itself
-to its examples, and shows how it differs from the bundled profile it is compared with, as information (but for a part
-left without the litmus the bundled profile gives it, which fails `check --strict`). Before that comparison a `match:`
+to its examples, and shows how it differs from the profile it is compared with, as information (but for a part left
+without the litmus that profile gives it, which fails `check --strict`). That profile is the one `--against NAME|FILE`
+names for the run (a bundled name, or a path to a profile file read from the working folder; one that does not load
+refuses the run, exit 2), else the one its `based_on` names, else the bundled one of highest match; a bundled profile
+is its own baseline and is compared only with `--against`, which the heading says: `checking cli (bundled; against
+web, given with --against)`, and for a custom one `(custom; against web, given with --against; based_on: cli)`, its
+match line reading `match: 73% with web (--against): ...`. Before that comparison a `match:`
 line says how much the two profiles have in common: `match: 80% with cli (based_on): 12 of 15 parts, 72 of 91 part
 keys, 21 of 31 tier entries, 11 of 11 guards, 9 of 9 profile keys sit where both profiles have them`, then the parts
 and tiers only one of them has, each part the other has by the same name at another path, `low: ...` when the match
 is below 75%, and the bundled profile that matches higher than the one `based_on` names. With no argument it checks
-the project's configured profile. Exit 0 when valid, 1 when it has problems, 2 when no profile can be chosen;
+the project's configured profile. Exit 0 when valid, 1 when it has problems, 2 when no profile can be chosen or
+`--against` names one that does not load;
 `--format json` gives `{"ok", "profile", "problems": [{"check", "message"}], "files", "checks", "compared_with"}`,
 `check` being `load`, `examples`, `checks` (a check of the profile's own) or `evals` (an eval of its own), `files`
 being how many files the profile points to and `checks` how many checks it writes itself, made or not; both are
-`null` for a profile that does not load. `compared_with` is `null` for a bundled profile or one no bundled profile
-resembles, else `{"profile", "chosen_by", "match", "low", "counts", "only_here", "only_there", "elsewhere", "higher",
-"looser"}`: `chosen_by` `based_on` or `closest`, `match` the share to two decimals (`0.8`), `counts` `{"parts",
+`null` for a profile that does not load. `compared_with` is `null` for a bundled profile checked without `--against`
+or one no bundled profile resembles, else `{"profile", "chosen_by", "match", "low", "counts", "only_here",
+"only_there", "elsewhere", "higher", "looser"}`: `chosen_by` `based_on`, `against` or `closest`, `match` the share to
+two decimals (`0.8`), `counts` `{"parts",
 "part_keys", "tiers", "guards", "profile"}` each `[comparable, all]`, and `higher` `null` or `{"profile", "match"}`.
 
 ### Checks of your own
@@ -439,14 +446,18 @@ enforcement
       fix: have the caller use self.repo.get, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`
 ```
 
-- `profile`: the bundled name, or the custom file's path, the bundled profile it is compared with, why (`based_on`,
-  the one its `based_on` names, else `closest`, the one of highest match, the first by name on a tie) and the match:
+- `profile`: the bundled name, or the custom file's path, the profile it is compared with, why (`--against`, the one
+  `--against` names for the run, which compares a bundled profile too: `web (bundled; compared with cli, --against;
+  match 89%)`; else `based_on`, the one its `based_on` names, else `closest`, the one of highest match, the first by
+  name on a tie) and the match:
   the share of what `check` reads under either profile (each part, each key a part, a tier or the profile writes, each
   guard switched on) that has a counterpart in the other. Parts pair by name, then by layout path, and tiers by name,
   then by subject; a part or tier that pairs with none has no counterpart, nor does any key it holds. A match below
   75% is low and says so on a `match:` line under this one, with why; `profile check` shows the counts. One no part
   pairs with is no candidate, and with none left nothing is compared. In JSON, `enforcement.profile.compared_with`
-  holds the same object as `profile check`'s (`null` when nothing is compared). `guards off` lists every guard xarch has that the profile does not switch on, for a bundled profile
+  holds the same object as `profile check`'s (`null` when nothing is compared). `--strict` with `--against` is
+  refused (exit 2): `--strict` judges the profile against its baseline, which `--against` leaves as it is, so the
+  violations and `strict_failures` are the same with it and without it. `guards off` lists every guard xarch has that the profile does not switch on, for a bundled profile
   too; one of them, `package-only`, is switched on by a part's `package_only: true` rather than under `guards`, and the
   line names that key. For a custom file, each way it is looser than the one it is compared with, compared only on
   the parts and tiers that pair (a part renamed in place is still compared, under its own name): a target added to a part's `imports.may`, a `types_only` mark dropped from an entry of it, an outside package

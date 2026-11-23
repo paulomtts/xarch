@@ -17,7 +17,7 @@ leaves off (with no profile to compare with, every guard left off), the ungovern
 changed, the skips, the dynamic imports, the imports the reader could not follow, the weak checks, the keys whose
 check reads a fact the language supplies only partly (approximate), the checks of the profile's own that read
 nothing (vacuous) and each part a custom profile
-redefines without the litmus the bundled profile it is compared with gives it (litmus), which leaves its code no
+redefines without the litmus the profile it is compared with gives it (litmus), which leaves its code no
 question to be placed by. Every other way a custom profile differs from the profile it is compared with (`origin.looser`) is
 information in the enforcement section and no finding: the profile defines the architecture.
 
@@ -80,8 +80,8 @@ def drift(files: Sequence[InitFile], found: Sequence[str | None]) -> list[Drift]
 
 
 def unplaced(looser: Iterable[Loosened]) -> tuple[str, ...]:
-    """Each way a profile is looser that `--strict` fails on, as said: a part redefined without the litmus the bundled
-    profile it is compared with gives it, whose key is the key of its section of the enforcement."""
+    """Each way a profile is looser that `--strict` fails on, as said: a part redefined without the litmus the profile
+    it is compared with gives it, whose key is the key of its section of the enforcement."""
     return tuple(item.sentence for item in looser if item.key == UNPLACED)
 
 

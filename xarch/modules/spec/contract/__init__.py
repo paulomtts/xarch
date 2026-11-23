@@ -386,7 +386,7 @@ class Problem:
 @dataclass(frozen=True)
 class ProfileChecked:
     """What validating a profile found, its own checks aside: its problems (none: valid), how many files it points to
-    (when it loads), and, when it loads, its origin: how it differs from the bundled profile it is based on, as
+    (when it loads), and, when it loads, its origin: how it differs from the profile it is compared with, as
     information."""
     location: str
     problems: tuple[Problem, ...]

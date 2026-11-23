@@ -16,6 +16,14 @@ All notable changes to this project are written here. The format follows
   names; `check`'s enforcement section names the match on its `profile:` line, `(custom; compared with cli, based_on;
   match 80%)`, with a `match:` line under it when it is low. `compared_with` in the JSON of both gains `chosen_by`,
   `match`, `low`, `counts`, `only_here`, `only_there`, `elsewhere` and `higher`.
+- `--against NAME|FILE` on `check` and `profile check`: for that run, the profile in force is compared with the one it
+  names, a bundled name or a path to a profile file read from the working folder, instead of the one its `based_on`
+  names or the bundled one of highest match, and a bundled profile, its own baseline without the flag, is compared
+  too. `profile check` heads it `(custom; against web, given with --against; based_on: cli)` and says `match: 73% with
+  web (--against): ...`; `check`'s `profile:` line says `(custom; compared with web, --against; match 73%)`; the JSON
+  of both says `"chosen_by": "against"` in `compared_with`. A value that does not load refuses the run (exit 2,
+  `--against does not load: ...`), and `--strict` with `--against` is refused (exit 2), since `--strict` judges the
+  profile against its baseline.
 - The kinds `records` and `exceptions` of `holds`, narrower than `classes`: a record (`class.record`) or an exception
   may be defined at the top level of a part that lists the kind, `records` with the settings `names` and `immutable`,
   `exceptions` with `names`; `functions` takes `names` (`holds.functions.names`), which every public top-level

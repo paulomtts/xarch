@@ -12,8 +12,8 @@ contract's own.
     Slot  a slot of a check as a profile writes it, which `profile explain checks` shows
     Drift an init file as it stands against what `init` would write, which the enforcement section lists
     KeyFacts what the format says of a key the profile sets nowhere, which the command line shows
-    Loosened one way a profile is looser than the bundled one it is compared with, which the command line shows
-    Resemblance whether a profile is bundled, the bundled one it is compared with, how much the two have in common
+    Loosened one way a profile is looser than the profile it is compared with, which the command line shows
+    Resemblance whether a profile is bundled, the profile it is compared with, how much the two have in common
           and how it is looser, which the command line shows
     Reviewed what checking a profile that loads found before its own checks are held, which the command line shows
     Piece one piece of a source file as the reader cuts it, which SourcesRead hands out
@@ -118,7 +118,7 @@ class KeyFacts:
 
 @dataclass(frozen=True)
 class Loosened:
-    """One way a profile is looser than the bundled profile it is compared with: the key of the profile's format
+    """One way a profile is looser than the profile it is compared with: the key of the profile's format
     that loosened (imports.may, imports.libraries, litmus and the others the spec module names), the part or tier, what it
     loosened to ("" for nothing more), and all of it in a sentence naming the key of the profile that does."""
     key: str

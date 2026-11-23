@@ -290,3 +290,11 @@ def test_check_and_profile_check_take_against_the_profile_it_is_compared_with(co
         "The profile it is compared with, for this run: the name of a bundled profile, or a path to a profile file "
         "(.yaml or .json) read from the working folder. Default: the one the profile's based_on names, else the "
         "bundled profile of highest match; a bundled profile is its own. Refused with --strict.")
+
+
+def test_the_help_of_strict_names_the_profile_it_is_compared_with():
+    command = typer.main.get_command(app).commands["check"]
+    strict = next(param for param in command.params if "--strict" in param.opts)
+    assert "guards left off that the profile it is compared with switches on (every guard, when none is compared)" in (
+        strict.help)
+    assert "compared bundled profile" not in strict.help
