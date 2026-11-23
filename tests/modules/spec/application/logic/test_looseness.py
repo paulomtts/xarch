@@ -2,6 +2,7 @@
 it: a rule's target is shown as the file writes it, and each way is said naming the key that says it. The sentence of
 each way a profile is looser is asserted here or in tests/modules/spec/application/test_origin.py (a package added to
 `imports.libraries`, a part that may import any outside package, an `imports.must` target added or the key dropped)."""
+from copy import deepcopy
 from dataclasses import replace
 
 import pytest
@@ -378,3 +379,47 @@ def test_a_tier_renamed_with_the_same_subject_pairs_by_subject():
     assert (origin.match, origin.only_here, origin.only_there) == (1.0, (), ())
     assert origin.looser == (Loosened("uses.apply_never", "logic", "", "the logic tests are no longer held to their "
                                                                        "part's never list (tiers.logic.uses.apply_never)"),)
+
+
+
+def given(document: dict, name: str, **keys) -> dict:
+    """The document with its part name given the keys given besides its own."""
+    document["parts"][name] |= keys
+    return document
+
+
+def as_routes(value):
+    """value with every "api" in it, as a key or an entry, read as "routes": api renamed in place."""
+    if isinstance(value, dict):
+        return {("routes" if key == "api" else key): as_routes(entry) for key, entry in value.items()}
+    if isinstance(value, list):
+        return [as_routes(entry) for entry in value]
+    return "routes" if value == "api" else value
+
+
+@pytest.mark.parametrize("profile", [
+    pytest.param(given(layered(), "api", imports={"may": ["service"], "libraries": ["fastapi"]}),
+                 id="the outside packages of the part"),
+    pytest.param(given(layered(never={"pure": ["socket"]}), "api", uses={"never": "pure"}),
+                 id="the never list of the part"),
+    pytest.param(given(layered(), "service", imports={"may": ["store", "shared", "api"], "must": ["api"]}),
+                 id="a target naming it that a part must import"),
+    pytest.param(given(layered(), "api", untested="reached through the service"), id="the part left untested"),
+    pytest.param(layered(evals={"placement": {"lines": {"api": 0.2}}}), id="the line of the part"),
+    pytest.param(covered(guards={"no-twins": {"translated": ["api"]}}), id="the translations no-twins accepts"),
+    pytest.param(marked(["store", {"api": "types_only"}]), id="a target naming it marked types_only"),
+])
+def test_each_key_of_a_part_renamed_in_place_is_compared_with_the_part_it_pairs_with(profile):
+    """Each key is read from the part api pairs with, so a copy that only renames api is no looser."""
+    assert loosened(parsed(as_routes(deepcopy(profile))), parsed(profile)) == ()
+
+
+@pytest.mark.parametrize("base, custom, key, part, what", [
+    pytest.param(given(layered(never={"pure": ["socket"]}), "api", uses={"never": "pure"}),
+                 as_routes(layered(never={"pure": ["socket"]})), "uses.never", "routes", "socket",
+                 id="a never list dropped"),
+    pytest.param(marked(["store", {"api": "types_only"}]), as_routes(marked(["store", "api"])), MARK, "service",
+                 "routes", id="a types_only mark dropped from a target naming it"),
+])
+def test_a_way_a_copy_renaming_a_part_in_place_is_looser_is_said_under_the_new_name(base, custom, key, part, what):
+    assert [(item.key, item.part, item.what) for item in loosened(parsed(custom), parsed(base))] == [(key, part, what)]
