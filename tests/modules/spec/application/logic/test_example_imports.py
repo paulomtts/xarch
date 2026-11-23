@@ -1,11 +1,12 @@
 """The example check: the imports of an architecture's examples obey that architecture's own rules; a tier's example
 test under tests/ is only read, one in a part obeys its rules. Each example is given as the reader of the app's
 language reads it: its imports, or where it does not parse."""
+from tests.modules.spec.languages import BRACE, PYTHON
 from tests.modules.spec.profiles import covered, parsed
 from tests.modules.spec.profiles import layered as layered_v2
 from tests.modules.spec.profiles import parsed as v2
 from xarch.kernel.source import Import, Unparsable
-from xarch.modules.spec.application.logic.example_imports import Read, example_problems
+from xarch.modules.spec.application.logic.example_imports import Read, checked_examples, example_problems
 
 
 def frm(module: str, *names: str, up: int | None = None) -> Import:
@@ -134,3 +135,10 @@ def test_a_tier_example_under_tests_is_only_parsed_and_one_in_a_part_obeys_its_r
         "example (tests/src/billing/service/test_rules.py): is not valid Python: invalid syntax (line 1)",
         "example (src/billing/service/test_api.py): imports app.src.tax.store which service may not import "
         "(parts.service.may_import)"]
+
+
+def test_the_examples_read_are_those_of_any_ending_of_the_language_of_the_app():
+    files = ("src/billing/api/a.tsx", "src/billing/service/b.ts", "src/billing/store/c.mts", "src/billing/store/d.js")
+    architecture = v2(layered_v2(language="brace", docs={"examples": ["ex"]}), folders={"ex": files},
+                      languages={"python": PYTHON, "brace": BRACE})
+    assert sorted(example.file for example in checked_examples(architecture)) == [f"ex/{file}" for file in files[:3]]
