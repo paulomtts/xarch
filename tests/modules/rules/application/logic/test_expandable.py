@@ -12,8 +12,8 @@ from xarch.profile_values.tiers import CheckedTier
 EVERY_KEY = Profile(
     parts={"one": ("one",), "two": ("two",)}, rules={"one": (Target("two"),), "two": ()},
     libraries={"one": ("outside",)}, uses_never={"one": (("outside",),)},
-    tiers=(CheckedTier("tier", (Target("one"),), ("tier",), types_only=("two",), apply_never=True,
-                       may_import=(Target("two"),), must_import=("two",), may_also_import=(Target("two"),)),),
+    tiers=(CheckedTier("tier", (Target("one"),), ("tier",), imports_types_only=("two",), apply_never=True,
+                       imports_may=(Target("two"),), imports_must=("two",), imports_also=(Target("two"),)),),
     package_only=("two",), types_only={"one": (Target("two"),)}, no_callbacks=("one",),
     names={"one": {"classes": ("*",)}, "two": {"functions": ("*",), "records": ("*",), "exceptions": ("*",)}},
     built_by={"two": ("one",)}, private_imports=True, no_comments=True, closed_tree=True,

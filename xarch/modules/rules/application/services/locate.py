@@ -62,7 +62,7 @@ def _where(found: Placed) -> WhereAnswer:
             mirrors = (_part(found.place, found.info, found.singular)
                        if found.place is not None and found.info is not None else None)
             return kind(found.found.shown, found.found.exists, mirrors, _reaches(found.reaches),
-                        found.may_import_text, tier.types_only if tier is not None else (), found.uses_never,
+                        found.may_import_text, tier.imports_types_only if tier is not None else (), found.uses_never,
                         _tier(tier) if tier is not None else None, found.may_use_fakes, found.fakes_path,
                         found.test_code_from, found.note)
         case FakePlace():

@@ -67,7 +67,7 @@ def test_a_violation_names_its_rule():
     pytest.param(RENDERING_TEST, profile(tiers=(replace(RENDERING, may_touch="a fake controller, injected"),)),
                  "use controller/ here only as a type, and drive what you test through web/ (rendering tests may "
                  "touch: a fake controller, injected)", id="the tier's own words for what it may touch"),
-    pytest.param("architecture/test_rules.py", profile(tiers=(replace(GUARD, types_only=("controller",)),)),
+    pytest.param("architecture/test_rules.py", profile(tiers=(replace(GUARD, imports_types_only=("controller",)),)),
                  "use controller/ here only as a type, and test what it does from a tier that may call it",
                  id="a tier with no subject to drive"),
 ])

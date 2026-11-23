@@ -138,8 +138,8 @@ def _types_only_tiers(profile: Profile) -> tuple[Rule, ...]:
     """A test of a tier that names parts in `imports.types_only` never calls what it imports from them, and never references
     one of their functions; a call is not said again as a reference."""
     return tuple(_types_only(Scope(TESTS, tier=tier.name), f"a {tier.name} test", f"tiers.{tier.name}.imports.types_only",
-                             Match("part", words=tier.types_only), "{tier_type_only_fix}")
-                 for tier in profile.tiers if tier.types_only)
+                             Match("part", words=tier.imports_types_only), "{tier_type_only_fix}")
+                 for tier in profile.tiers if tier.imports_types_only)
 
 
 def _types_only_parts(profile: Profile) -> tuple[Rule, ...]:
@@ -185,7 +185,7 @@ def _tiers(profile: Profile) -> tuple[Rule, ...]:
                   "and import it from there", _all("target-test"), ("line", "target"))
     elsewhere = Saying("a test may import test code only from its own folder {own_folder}/ ({target})",
                        "move what {target} holds into {own_folder}/, or drop the import")
-    also = "".join(f"; tiers.{tier.name}.imports.also" for tier in profile.tiers if tier.may_also_import)
+    also = "".join(f"; tiers.{tier.name}.imports.also" for tier in profile.tiers if tier.imports_also)
     return (Rule("tiers", Scope(TESTS, where=(_of("not tiered"), _of("test"), *not_fake)), ("file",), MAY_NOT,
                  EXISTING, (Saying(NO_TIER, NO_TIER_FIX),), key="tiers"),
             Rule("tiers", Scope(TESTS, where=_all("tiered")), ("import-into-app",), MAY_ONLY, (Match("permitted"),),
@@ -349,14 +349,14 @@ def _must_import_tiers(profile: Profile) -> tuple[Rule, ...]:
     the app or through test code it imports that is no test file, however far; one with no real statement is not
     said."""
     return tuple(Rule("must-import", Scope(TESTS, tier=tier.name, where=_all("test")), ("import-into-app",),
-                      MUST_REACH, (Match("part", words=tier.must_import),),
+                      MUST_REACH, (Match("part", words=tier.imports_must),),
                       (Saying("a test of the {tier} tier imports nothing from {targets}, directly or through test code it imports "
                               "({key})",
                               "drive what it proves through {targets}, or move it to the tier of the part it calls "
                               "directly"),),
                       keep=_all("target-placed"), exempt=_all("no-statements"), key=f"tiers.{tier.name}.imports.must",
                       links=("import-into-tests",), via=_all("not target-test"))
-                 for tier in profile.tiers if tier.must_import)
+                 for tier in profile.tiers if tier.imports_must)
 
 
 def _dead_code(profile: Profile) -> tuple[Rule, ...]:

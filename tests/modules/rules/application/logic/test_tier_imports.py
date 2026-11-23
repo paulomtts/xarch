@@ -144,7 +144,7 @@ def test_allowance(path, expected):
     assert allowance(PROFILE, tier_of.tested(PROFILE, tuple(path.split("/")))) == expected
 
 
-ALSO = profile(tiers=(UNIT, replace(INTEGRATION, may_also_import=(Target("adapters", "own"),)), GUARD))
+ALSO = profile(tiers=(UNIT, replace(INTEGRATION, imports_also=(Target("adapters", "own"),)), GUARD))
 """PROFILE, whose integration tests may also import adapters/ of the instance they mirror."""
 
 
@@ -180,14 +180,14 @@ def test_a_tiers_allowance_is_its_subject_and_what_each_part_may_import():
 
 
 def test_a_tiers_own_allowance_replaces_what_its_subject_would_give():
-    guard = Tier("guard", (Target("kernel"),), ("architecture",), may_import=(Target("platform"),))
+    guard = Tier("guard", (Target("kernel"),), ("architecture",), imports_may=(Target("platform"),))
     assert allowance(PROFILE, in_folder(guard)) == (Target("platform"),)
 
 
 @pytest.mark.parametrize("tier, expected", [
-    pytest.param(Tier("pair", (Target("kernel"),), may_also_import=(Target("web"),)),
+    pytest.param(Tier("pair", (Target("kernel"),), imports_also=(Target("web"),)),
                  (Target("kernel"), Target("kernel"), Target("web")), id="after its subject and what it may import"),
-    pytest.param(Tier("guard", (), ("architecture",), may_import=(Target("platform"),), may_also_import=(Target("web"),)),
+    pytest.param(Tier("guard", (), ("architecture",), imports_may=(Target("platform"),), imports_also=(Target("web"),)),
                  (Target("platform"), Target("web")), id="after the tier's own allowance"),
 ])
 def test_what_a_tiers_tests_may_also_import_is_added_to_its_allowance(tier, expected):
@@ -195,7 +195,7 @@ def test_what_a_tiers_tests_may_also_import_is_added_to_its_allowance(tier, expe
 
 
 def test_a_test_in_a_tiers_folder_imports_only_what_the_tier_allows():
-    guard = Tier("guard", (), ("architecture",), may_import=(Target("kernel"),))
+    guard = Tier("guard", (), ("architecture",), imports_may=(Target("kernel"),))
     checked = profile(tiers=(guard,))
     assert problems("architecture/test_rules.py", imp(1, "app.kernel", "ids"), imp(2, "app.platform", "sql"),
                     checked=checked) == [

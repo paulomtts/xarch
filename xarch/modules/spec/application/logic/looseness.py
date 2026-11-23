@@ -89,10 +89,10 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
     for tier in base.tiers:
         mine = tiers.get(tier.name)
         if mine is not None:
-            found += [("imports.types_only", tier.name, part) for part in tier.types_only
-                      if part not in mine.types_only]
-            found += [("imports.also", tier.name, _shown(t)) for t in mine.may_also_import
-                      if not any(_covers(b, t) for b in tier.may_also_import)]
+            found += [("imports.types_only", tier.name, part) for part in tier.imports_types_only
+                      if part not in mine.imports_types_only]
+            found += [("imports.also", tier.name, _shown(t)) for t in mine.imports_also
+                      if not any(_covers(b, t) for b in tier.imports_also)]
     found += [("uses.apply_never", tier.name, "") for tier in base.tiers
               if tier.apply_never and tier.name in tiers and not tiers[tier.name].apply_never]
     skips = custom.framework.skips if custom.framework is not None else ()

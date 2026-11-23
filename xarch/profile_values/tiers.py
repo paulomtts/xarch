@@ -18,13 +18,13 @@ class CheckedTier:
     name: str
     subject: tuple[Target, ...]
     folder: tuple[str, ...] | None = None
-    types_only: tuple[str, ...] = ()
+    imports_types_only: tuple[str, ...] = ()
     apply_never: bool = False
     proves: str = ""
     may_touch: str = ""
     litmus: str = ""
     one_file_per: str = ""
-    may_import: tuple[Target, ...] | None = None
-    must_import: tuple[str, ...] = ()
+    imports_may: tuple[Target, ...] | None = None
+    imports_must: tuple[str, ...] = ()
     plain_tables: bool = False
-    may_also_import: tuple[Target, ...] = ()
+    imports_also: tuple[Target, ...] = ()

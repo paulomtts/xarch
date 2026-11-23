@@ -177,7 +177,7 @@ def test_a_tier_says_what_each_of_its_tests_must_reach():
     document = covered()
     document["tiers"]["integration"]["imports"] = {"must": ["api", "store"]}
     tiers = {tier.name: tier for tier in parsed(document).tiers}
-    assert (tiers["integration"].must_import, tiers["unit"].must_import) == (("api", "store"), ())
+    assert (tiers["integration"].imports_must, tiers["unit"].imports_must) == (("api", "store"), ())
 
 
 def test_a_tier_must_import_names_parts():

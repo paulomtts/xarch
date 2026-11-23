@@ -96,7 +96,7 @@ def test_a_bad_types_only_entry_is_refused(types_only, expected):
 
 
 def test_a_tier_with_no_types_only_has_none():
-    assert [tier.types_only for tier in parsed(covered()).tiers] == [(), ()]
+    assert [tier.imports_types_only for tier in parsed(covered()).tiers] == [(), ()]
 
 
 def test_a_litmus_of_blanks_is_refused():
@@ -339,7 +339,7 @@ def test_the_folders_of_tiers_overlap_neither_the_fakes_nor_each_other(first, se
 
 
 def test_a_tier_with_no_folder_has_no_allowance_of_its_own():
-    assert [tier.may_import for tier in parsed(covered()).tiers] == [None, None]
+    assert [tier.imports_may for tier in parsed(covered()).tiers] == [None, None]
 
 
 def test_the_group_gives_the_values_the_old_keys_gave_for_the_same_lists():
@@ -348,13 +348,13 @@ def test_the_group_gives_the_values_the_old_keys_gave_for_the_same_lists():
                                                    "types_only": ["service", "store"]}
     tiers = {tier.name: tier for tier in parsed(document).tiers}
     integration = tiers["integration"]
-    assert (integration.may_import, integration.may_also_import, integration.must_import, integration.types_only) == (
+    assert (integration.imports_may, integration.imports_also, integration.imports_must, integration.imports_types_only) == (
         None, (Target("service", "own"), Target("shared")), ("api", "store"), ("service", "store"))
-    assert tiers["guard"].may_import == (Target("shared"), Target("api", "any"))
+    assert tiers["guard"].imports_may == (Target("shared"), Target("api", "any"))
 
 
 def test_a_tier_with_no_imports_has_what_leaving_the_old_keys_out_gave():
-    assert [(t.may_import, t.may_also_import, t.must_import, t.types_only) for t in parsed(covered()).tiers] == [
+    assert [(t.imports_may, t.imports_also, t.imports_must, t.imports_types_only) for t in parsed(covered()).tiers] == [
         (None, (), (), ()), (None, (), (), ())]
 
 
@@ -362,7 +362,7 @@ def test_the_order_of_the_keys_of_the_group_does_not_matter_and_the_order_of_ent
     first = parsed(with_imports({"types_only": ["store", "service"], "must": ["store", "api"]})).tiers[1]
     second = parsed(with_imports({"must": ["store", "api"], "types_only": ["store", "service"]})).tiers[1]
     assert first == second
-    assert (first.must_import, first.types_only) == (("store", "api"), ("store", "service"))
+    assert (first.imports_must, first.imports_types_only) == (("store", "api"), ("store", "service"))
 
 
 @pytest.mark.parametrize("imports, problem", [
@@ -429,16 +429,16 @@ def test_may_in_a_tier_with_no_folder_is_refused_at_its_address():
     pytest.param("everything", (Target("*"),), id="everything"),
 ])
 def test_may_in_a_tier_with_a_folder_loads(may, allowed):
-    assert parsed(with_guard({"may": may})).tiers[2].may_import == allowed
+    assert parsed(with_guard({"may": may})).tiers[2].imports_may == allowed
 
 
 def test_a_folder_tier_may_write_may_and_also_together():
     guard = parsed(with_guard({"may": ["shared"], "also": ["store@any"]})).tiers[2]
-    assert (guard.may_import, guard.may_also_import) == ((Target("shared"),), (Target("store", "any"),))
+    assert (guard.imports_may, guard.imports_also) == ((Target("shared"),), (Target("store", "any"),))
 
 
 def test_an_empty_also_loads_and_adds_nothing():
-    assert parsed(with_imports({"also": []})).tiers[1].may_also_import == ()
+    assert parsed(with_imports({"also": []})).tiers[1].imports_also == ()
 
 
 @pytest.mark.parametrize("imports, problem", [

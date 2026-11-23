@@ -227,7 +227,7 @@ def test_a_test_of_a_tier_not_held_to_the_lists_never_uses_none_and_a_tier_s_typ
     rendering = Tier("rendering", (Target("entry"),), None, ("controller",))
     checked = Profile(**{**vars(PROFILE), "tiers": (*PROFILE.tiers, rendering)})
     here = describe(checked, found("tests", "front", "test_page.py"), APP, TESTS)
-    assert (here.tier.name, here.uses_never, here.tier.types_only) == ("rendering", (), ("controller",))
+    assert (here.tier.name, here.uses_never, here.tier.imports_types_only) == ("rendering", (), ("controller",))
 
 
 def test_without_a_known_tests_folder_the_tests_are_shown_in_the_default_one_when_none_is_given():

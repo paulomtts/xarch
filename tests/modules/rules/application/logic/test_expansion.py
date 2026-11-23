@@ -19,7 +19,7 @@ ON = replace(PROFILE, private_imports=True, closed_tree=True, dead_code=True, un
              no_callbacks=("domain",), holds={"domain": ("classes",), "logic": ("functions", "records", "exceptions")},
              must_import={"adapters": (Target("platform"),)},
              pass_through=("services",), types_only={"services": (Target("contract"),)},
-             tiers=tuple(replace(t, must_import=("domain",)) if t.name == "unit" else t for t in PROFILE.tiers))
+             tiers=tuple(replace(t, imports_must=("domain",)) if t.name == "unit" else t for t in PROFILE.tiers))
 OFF = replace(PROFILE, libraries=None, uses_never={}, tiers=(), package_only=(), no_comments=False, dead_code=False)
 
 
@@ -102,7 +102,7 @@ def test_the_rules_of_no_callbacks_are_keyed_by_the_guard_for_every_part():
 
 
 def test_the_rules_of_a_tier_s_imports_are_keyed_by_their_addresses_in_the_group():
-    tiers = tuple(replace(t, must_import=("controller",), may_also_import=(Target("adapters", "own"),))
+    tiers = tuple(replace(t, imports_must=("controller",), imports_also=(Target("adapters", "own"),))
                   if t.name == "integration" else t for t in PROFILE.tiers)
     keys = [rule.key for rules in expansion.book(replace(PROFILE, tiers=tiers)).values() for rule in rules
             if rule.id in ("types-only", "must-import", "tiers") and rule.key.startswith("tiers")]

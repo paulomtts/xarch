@@ -201,16 +201,16 @@ class Tier:
     subject_text: the Subject cell as written, in place of the subject's parts
     data: where its test data comes from
     helpers: files its tests share (builders, a fixture), shown with {{tier_helpers}}
-    types_only: parts its tests may import and use as types, but never call
+    imports_types_only: parts its tests may import and use as types, but never call
     apply_never: its tests are held to the `uses.never` list of the part they mirror
     folder: the folder below the tests folder where its tests live when they mirror no part, e.g. ("architecture",);
         the example only shows a place, it never decides one
-    may_import: what the tests in its own folder may import of the app, as targets; None for a tier with no folder,
+    imports_may: what the tests in its own folder may import of the app, as targets; None for a tier with no folder,
         whose tests import what the part their folder mirrors may
-    must_import: the parts one of which each of its test files reaches, directly or through test code that is no
+    imports_must: the parts one of which each of its test files reaches, directly or through test code that is no
         test; empty: no such rule
     plain_tables: every table test of it holds no branch in its body
-    may_also_import: what each of its tests may import of the app besides what the part it mirrors may (or its own
+    imports_also: what each of its tests may import of the app besides what the part it mirrors may (or its own
         folder's allowance), as targets; a bare name of a part in the repeating folder is the instance the test mirrors
     """
     name: str
@@ -224,13 +224,13 @@ class Tier:
     data: str = ""
     example: TierExample | None = None
     helpers: tuple[TierExample, ...] = ()
-    types_only: tuple[str, ...] = ()
+    imports_types_only: tuple[str, ...] = ()
     apply_never: bool = False
     folder: tuple[str, ...] | None = None
-    may_import: tuple[Target, ...] | None = None
-    must_import: tuple[str, ...] = ()
+    imports_may: tuple[Target, ...] | None = None
+    imports_must: tuple[str, ...] = ()
     plain_tables: bool = False
-    may_also_import: tuple[Target, ...] = ()
+    imports_also: tuple[Target, ...] = ()
 
 
 @dataclass(frozen=True)

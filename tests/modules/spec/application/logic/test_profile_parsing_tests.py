@@ -131,29 +131,29 @@ def test_the_tests_of_a_tier_are_held_to_forbidden_and_may_use_parts_as_types_on
     document["tiers"]["unit"]["uses"] = {"apply_never": True}
     document["tiers"]["integration"]["imports"] = {"types_only": ["service", "store"]}
     tiers = parsed(document).tiers
-    assert [(t.apply_never, t.types_only) for t in tiers] == [(True, ()), (False, ("service", "store"))]
+    assert [(t.apply_never, t.imports_types_only) for t in tiers] == [(True, ()), (False, ("service", "store"))]
 
 
 def test_a_tier_with_a_folder_of_its_own_says_what_its_tests_may_import_there():
     document = covered()
     document["tiers"]["guard"] = {"folder": "architecture", "imports": {"may": ["shared", "api@any"]}}
     tier = parsed(document).tiers[2]
-    assert (tier.folder, tier.subject, tier.may_import) == (("architecture",), (), (Target("shared"), Target("api", "any")))
+    assert (tier.folder, tier.subject, tier.imports_may) == (("architecture",), (), (Target("shared"), Target("api", "any")))
 
 
 def test_what_the_tests_of_a_tier_may_also_import_are_targets_a_bare_name_in_the_repeating_folder_the_mirrored_one():
     document = covered()
     document["tiers"]["integration"]["imports"] = {"also": ["service", "shared", "api@any"]}
     tiers = parsed(document).tiers
-    assert [t.may_also_import for t in tiers] == [(), (Target("service", "own"), Target("shared"), Target("api", "any"))]
+    assert [t.imports_also for t in tiers] == [(), (Target("service", "own"), Target("shared"), Target("api", "any"))]
 
 
 def test_a_tier_with_a_folder_and_no_may_import_may_import_nothing_and_everything_is_allowed_too():
     document = covered()
     document["tiers"]["guard"] = {"folder": "architecture"}
-    assert parsed(document).tiers[2].may_import == ()
+    assert parsed(document).tiers[2].imports_may == ()
     document["tiers"]["guard"]["imports"] = {"may": "everything"}
-    assert parsed(document).tiers[2].may_import == (Target("*"),)
+    assert parsed(document).tiers[2].imports_may == (Target("*"),)
 
 
 def test_tiers_that_is_no_mapping_is_refused_and_the_parts_are_not_blamed_for_it():

@@ -33,7 +33,7 @@ TARGETED = replace(RULE, facts=("import", "import-into-app"), targets=(Match("pl
                                   Match("outside")))
 NAMED = replace(RULE, facts=("class",), targets=(Match("name", words=("*Repo", "*Store")),))
 SERVICES = replace(RULE, scope=Scope(part="services"))
-ALSO = replace(PROFILE, tiers=tuple(replace(tier, may_also_import=(Target("web"),)) for tier in PROFILE.tiers))
+ALSO = replace(PROFILE, tiers=tuple(replace(tier, imports_also=(Target("web"),)) for tier in PROFILE.tiers))
 
 
 @pytest.mark.parametrize("name, file, kind, rule, profile, hit, printed", [

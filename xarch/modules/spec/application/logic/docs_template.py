@@ -423,8 +423,8 @@ def _guards(architecture: Architecture, _: str, _q: Texts, _t: Texts, _f: bool, 
                      "part and what it may import (a test in a folder that mirrors no part, its tier's subject and "
                      f"what that may import){fakes}; it imports no other test file.")
         for tier in architecture.tiers:
-            if tier.types_only:
-                shown = _and([f"`{docs_name(architecture, architecture.parts[p])}`" for p in tier.types_only])
+            if tier.imports_types_only:
+                shown = _and([f"`{docs_name(architecture, architecture.parts[p])}`" for p in tier.imports_types_only])
                 lines.append(f"`types-only`: a {tier.name} test uses {shown} only as a type: it may import it and "
                              "annotate with it, and never calls it.")
         plain = [tier.name for tier in architecture.tiers if tier.plain_tables]
@@ -439,7 +439,7 @@ def _guards(architecture: Architecture, _: str, _q: Texts, _t: Texts, _f: bool, 
         lines.append(f"`cycles`: no {instances} imports from another that imports, directly or through "
                      "others, from it; each cycle is reported once, with the imports that close it.")
     lines += [_must_import_line(architecture, part) for part in architecture.parts.values() if part.must_import]
-    lines += [_tier_must_import_line(architecture, tier) for tier in architecture.tiers if tier.must_import]
+    lines += [_tier_must_import_line(architecture, tier) for tier in architecture.tiers if tier.imports_must]
     lines += _part_lines(architecture)
     lines += [_guard_line(architecture, guard) for guard in architecture.guards]
     return "\n".join(f"- {line}" for line in lines)
@@ -550,7 +550,7 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
 
 
 def _tier_must_import_line(architecture: Architecture, tier: Tier) -> str:
-    wanted = _or([f"`{docs_name(architecture, architecture.parts[p])}`" for p in tier.must_import])
+    wanted = _or([f"`{docs_name(architecture, architecture.parts[p])}`" for p in tier.imports_must])
     return (f"`must-import`: every {tier.name} test imports from {wanted}, directly or through test code that is no "
             "test file.")
 
