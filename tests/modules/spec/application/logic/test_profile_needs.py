@@ -205,3 +205,10 @@ def test_no_comments_is_refused_under_a_language_that_does_not_say_which_comment
                                                                 Supply("comment.doc", EXACT))))
     assert parsed(document, languages={"toy": both}).approximate == ()
     assert sorted(key.address for key in KEYS if "comment.doc" in key.needs) == ["guards.no-comments"]
+
+
+def test_public_is_a_fact_after_comment_doc():
+    facts = list(FACTS)
+    assert facts[facts.index("comment.doc") + 1] == "public"
+    assert FACTS["public"] == ("whether a name a file defines, or takes by an import, is for other files to use, as the "
+                               "language decides it")

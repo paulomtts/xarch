@@ -9,10 +9,11 @@
 # standard library are known from (interpreter: the one running xarch). The tokens of its code that the checks and the
 # docs need: name, what a name may be (a regular expression); package, what an import names from outside the app as
 # one step (a regular expression); member, the text that joins a package to a name in it in a profile's lists (name,
-# package and member are given together); private, how a name starts that is private to its file or folder; special,
-# the pattern of a name the language reserves for itself (a regular expression the whole name matches); call, the
-# special method that calling an instance runs; nothing, the return annotations that say a function gives no value,
-# as the reader writes them (a list); unannotated, left out here, would say with its one value, nothing, that a
+# package and member are given together); private, how a name starts that is private to its file or folder, by which
+# the reader decides that a name is not public (the fact public) and scaffold and layout refuse or skip a private
+# name; special, the pattern of a name the language reserves for itself (a regular expression the whole name matches);
+# call, the special method that calling an instance runs; nothing, the return annotations that say a function gives no
+# value, as the reader writes them (a list); unannotated, left out here, would say with its one value, nothing, that a
 # function with no return annotation gives none; comments, the forms a comment is written in, each {line: <marker>},
 # to the end of its line, {block: [<open>, <close>]}, or {doc: [<open>, <close>]}, a comment that holds documentation
 # (its closing may be "" for the end of its line; Python writes line comments only, its documentation being in
@@ -60,6 +61,7 @@ supplies:
   import.mentioned: exact
   comment: exact
   comment.doc: exact
+  public: exact
   use: exact
   call: exact
   method_call: exact

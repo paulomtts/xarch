@@ -42,6 +42,8 @@ FACTS: dict[str, str] = {
     "class.interface": "whether a class is an interface, by the marks of the language's data file",
     "file.package": "a file stands for the folder that holds it",
     "comment.doc": "whether a comment is a doc comment",
+    "public": "whether a name a file defines, or takes by an import, is for other files to use, as the language "
+              "decides it",
     "function": "the functions a file defines, at the top level and in its classes: name, owner, line",
     "function.statements": "how many statements a function's body holds, and how many of them do nothing",
     "function.shape": "a fingerprint of a function's code, the same for two functions that do the same",

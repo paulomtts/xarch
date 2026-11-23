@@ -501,3 +501,12 @@ def test_python_writes_one_line_form_and_supplies_comment_doc_exactly():
     assert (checked.comments, checked.comment) == ((CommentForm(LINE, "#"),), "#")
     assert list(document["supplies"])[list(document["supplies"]).index("comment") + 1] == "comment.doc"
     assert Supply("comment.doc", EXACT) in checked.supplies
+
+
+def test_python_supplies_public_exactly_right_after_comment_doc_and_keeps_its_private_prefix():
+    document = yaml.safe_load(resources.files("xarch").joinpath("architectures", "presets", "language", "python.yaml")
+                              .read_text(encoding="utf-8"))
+    supplies = list(document["supplies"])
+    assert supplies[supplies.index("comment.doc") + 1] == "public"
+    assert Supply("public", EXACT) in PYTHON_LANGUAGE.checked.supplies
+    assert PYTHON_LANGUAGE.checked.private == document["private"] == "_"

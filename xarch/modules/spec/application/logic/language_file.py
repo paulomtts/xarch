@@ -27,7 +27,8 @@ and, all optional, the tokens of its code the checks and the docs need (empty: t
                    are given together, and an outside name is written <package> or <package><member><name>, more
                    names after the first joined by `.`. Left out together, any text is a name and an outside name is
                    its whole text
-    private        what a name private to its file or folder starts with
+    private        what a name private to its file or folder starts with: a reader may decide by it whether a name
+                   is public (the fact public), and scaffold and layout refuse or skip a private name by it
     special        a regular expression: a name the language reserves for itself, matched against the whole name
     call           the special method that calling an instance runs
     nothing        the return annotations, as its reader writes them, that say a function gives no value: a list
