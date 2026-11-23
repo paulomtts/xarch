@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 import xarch
-from tests.bootstrap.project import problems
+from tests.bootstrap.project import PURE, problems
 
 BUNDLED = Path(xarch.__file__).parent / "architectures"
 DOMAIN = "modules/docs/domain/document.py"
@@ -57,3 +57,20 @@ def test_a_name_of_the_app_on_a_never_list_is_found_however_it_is_imported(tmp_p
     body = f"{imported}\n\ndef stamp():\n    return now()\n"
     assert problems(tmp_path, app={"kernel/clock.py": "def now(): ...\n", DOMAIN: body},
                     profile=str(tmp_path / "arch/clocked.yaml")) == [problem]
+
+
+def test_a_contract_file_is_found_the_same_whether_published_includes_pure_or_writes_its_names_out(tmp_path):
+    shutil.copytree(BUNDLED, tmp_path / "arch")
+    text = (BUNDLED / "web.yaml").read_text()
+    included = "\n  published: [pure, typing.Any]\n"
+    assert text.count(included) == 1
+    written = tmp_path / "arch/written.yaml"
+    written.write_text(text.replace(included, f"\n  published: [{', '.join((*PURE, 'typing.Any'))}]\n"))
+    body = "from typing import Any\nimport datetime\n\nSTAMP = datetime.datetime.now()\n"
+    contract = "modules/docs/contract/commands.py"
+    found = problems(tmp_path / "included", app={contract: body})
+    assert found == problems(tmp_path / "written", app={contract: body}, profile=str(written))
+    assert found == [
+        f"app/{contract}:1: contract/ of modules/docs may not import typing.Any (parts.contract.uses.never)",
+        f"app/{contract}:4: contract/ of modules/docs may not use datetime.datetime.now (parts.contract.uses.never)"]
+    assert not any("pure" in line or "published" in line for line in found)

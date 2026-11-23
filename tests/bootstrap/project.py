@@ -58,6 +58,15 @@ TESTS = {
 }
 
 
+PURE = ("datetime.datetime.now", "datetime.datetime.utcnow", "datetime.datetime.today", "datetime.date.today",
+        "time.time", "time.time_ns", "time.monotonic", "time.perf_counter", "builtins.open", "builtins.print",
+        "builtins.input", "sys.stdin", "sys.stdout", "sys.stderr", "os.environ", "os.getenv", "socket", "subprocess",
+        "sqlite3", "urllib", "http", "shutil", "pathlib.Path.cwd", "pathlib.Path.absolute", "os.getcwd",
+        "os.path.abspath", "os.path.realpath", "pathlib.Path.resolve", "pathlib.Path.home", "pathlib.Path.expanduser",
+        "os.path.expanduser", "os.getcwdb", "os.chdir")
+"""The names the bundled profiles' list `pure` holds, in the order it writes them."""
+
+
 def write(root: Path, files: dict[str, str]) -> Path:
     for rel, body in files.items():
         (root / rel).parent.mkdir(parents=True, exist_ok=True)
