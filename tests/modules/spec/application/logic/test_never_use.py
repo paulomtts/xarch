@@ -1,8 +1,6 @@
 """A part's `uses` group, `uses: {never: <list>}`, naming one of the top-level `never` lists of the calls and modules a
 part never uses, and a tier's, `uses: {apply_never: true}`, holding its tests to the list of the part they mirror: each
 refused at its address when it is written wrong, and the guards section of the docs saying what the lists hold."""
-from dataclasses import replace
-
 import pytest
 
 from tests.modules.spec.format_files import FILE_TYPES
@@ -467,7 +465,7 @@ def test_a_list_named_like_a_standard_package_is_refused_and_an_entry_of_that_na
 def test_the_standard_library_a_list_may_not_be_named_from_is_the_language_s():
     document = layered(never={"fs": ["lodash"], "pure": ["fs"]})
     document["parts"]["service"]["uses"] = {"never": "pure"}
-    assert problems(document, languages={"brace": replace(BRACE, standard_names=frozenset({"fs"}))}) == [
+    assert problems(document, languages={"brace": BRACE}) == [
         f"layered.yaml: {standard('fs', 'Brace')}"]
     assert parsed(document).uses_never == {"service": (("lodash",),)}
 

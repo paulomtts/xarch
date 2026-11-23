@@ -26,7 +26,7 @@ from xarch.modules.spec.application.ports.example_reader import ExampleReader
 from xarch.modules.spec.application.ports.runtime import Runtime
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.published import EXAMPLE_APP, DocFile, Origin, ProjectFile
-from xarch.modules.spec.domain.values import Architecture, ArchitectureSource, FileType, Language
+from xarch.modules.spec.domain.values import Architecture, ArchitectureSource, FileType, Language, StandardLists
 
 
 class ArchitectureService:
@@ -151,15 +151,26 @@ class ArchitectureService:
         return found.get(first_language(found), Language())
 
     def _language_presets(self) -> dict[str, Language]:
-        """The languages xarch ships, read once, each with the names only the runtime knows."""
+        """The languages xarch ships, read once, each with the names of its standard library, its reserved words and the
+        names it binds without an import (see _named)."""
         if self._languages is None:
-            self._languages = {
-                name: replace(language, standard_names=self._runtime.standard_library(language.standard),
-                              builtin_names=self._runtime.builtin_names(language.standard),
-                              reserved_names=self._runtime.reserved_words(language.standard))
-                for name, document in self._files.language_presets().items()
-                for language in [language_of(name, document)]}
+            self._languages = {name: self._named(language_of(name, document))
+                               for name, document in self._files.language_presets().items()}
         return self._languages
+
+    def _named(self, language: Language) -> Language:
+        """The language with the names its data file lists, or, for INTERPRETER, the runtime's, the runtime asked then
+        and only then; the standard modules the reader is handed are the very set of its standard names."""
+        if isinstance(language.standard, StandardLists):
+            standard = frozenset(language.standard.modules)
+            reserved = frozenset(language.standard.reserved)
+            bound = frozenset(language.standard.builtins)
+        else:
+            standard = self._runtime.standard_library(language.standard)
+            reserved = self._runtime.reserved_words(language.standard)
+            bound = self._runtime.builtin_names(language.standard)
+        return replace(language, checked=replace(language.checked, standard_modules=standard), standard_names=standard,
+                       reserved_names=reserved, builtin_names=bound)
 
     def _load(self, location: str | Path) -> tuple[ArchitectureSource, Architecture]:
         """The source and its architecture; a bundled one is read once, since it cannot change while xarch runs."""

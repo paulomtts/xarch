@@ -3,6 +3,7 @@ outside, which pre-built checks are in use and where the fakes live."""
 import pytest
 
 from tests.modules.spec.format_files import CATALOGUE, FILE_TYPES
+from tests.modules.spec.languages import BRACE
 from tests.modules.spec.profiles import covered, layered, parsed, problems
 from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.modules.spec.domain.guards import ORDER
@@ -140,6 +141,18 @@ def test_a_reserved_module_of_the_standard_library_loads_with_its_reason_and_a_p
 ])
 def test_a_bad_reserved_module_is_refused_saying_what_to_write(reserved, libraries, problem):
     assert problems(reserving(reserved, libraries)) == [f"layered.yaml: {problem}"]
+
+
+def test_the_standard_library_a_profile_reserves_from_is_the_one_of_the_language_of_the_app():
+    braced = {"brace": BRACE}
+    assert parsed(reserving({"fs": "the runtime's"}), languages=braced).reserved == {"fs": "the runtime's"}
+    assert problems(reserving({"fs": "the runtime's"})) == [
+        "layered.yaml: reserved: 'fs' is not in the Python standard library: an outside package is imported only by the "
+        "parts whose `libraries` list it already"]
+    assert parsed(reserving({"pickle": "the runtime's"})).reserved == {"pickle": "the runtime's"}
+    assert problems(reserving({"pickle": "the runtime's"}), languages=braced) == [
+        "layered.yaml: reserved: 'pickle' is not in the Brace standard library: an outside package is imported only by "
+        "the parts whose `libraries` list it already"]
 
 
 def test_the_guards_section_says_which_parts_may_import_a_reserved_module():

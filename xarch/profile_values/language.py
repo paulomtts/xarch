@@ -46,7 +46,9 @@ class CheckedLanguage:
     {name} for the name (empty: its data file does not say); names is the pattern of a name the language allows, a
     regular expression (empty: its data file gives none); package is the pattern of what an import names from
     outside the app as one step, and member the text that joins a package to a name in it in a profile's lists (both
-    empty: its data file does not say, and an outside name is then its whole text)."""
+    empty: its data file does not say, and an outside name is then its whole text); standard_modules are the top-level
+    modules of its standard library, which the reader is handed to mark an import of one: spec fills them from the
+    data file's lists or from the runtime (empty: no module is standard)."""
     title: str = ""
     extension: str = ""
     package_file: str = ""
@@ -69,6 +71,7 @@ class CheckedLanguage:
     package: str = ""
     member: str = ""
     unannotated: str = ""
+    standard_modules: frozenset[str] = frozenset()
 
     @property
     def marks(self) -> Marks:

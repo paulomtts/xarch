@@ -126,6 +126,9 @@ EXEMPT: dict[tuple[str, str], str] = {
     ("modules/spec/application/logic/language_file.py", "builtins"): "the same key of the format, named where the "
                                                                      "loader's docstring says the keys of a data "
                                                                      "file",
+    ("modules/spec/application/services/architecture.py", "builtins"): "the same key of the format, read from "
+                                                                        "StandardLists to fill the names a language "
+                                                                        "binds without an import",
     ("modules/rules/domain/parsed.py", "from"): "the records the reader fills say how it reads an import by an import "
                                                 "of the language it reads: the engine's Python-shaped bundles, left on "
                                                 "purpose (engine R3-2)",
