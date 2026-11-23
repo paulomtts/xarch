@@ -1,6 +1,7 @@
 """`xarch profile check` through the real app: a profile is validated without an app, every problem at once, and the way
 it differs from the profile it is based on is shown as information."""
 import json
+from pathlib import Path
 
 import pytest
 import yaml
@@ -21,6 +22,8 @@ def in_tmp(tmp_path, monkeypatch):
 
 
 COPY = "architecture/mine/mine.yaml"
+XARCH = Path(__file__).parents[2] / "architecture.yaml"
+"""xarch's own profile, based on cli."""
 
 
 def edit(tmp_path, change):
@@ -39,9 +42,28 @@ def test_a_bundled_profile_and_the_configured_one_are_valid():
 def test_a_valid_copy_says_what_was_checked_and_that_it_is_no_looser_than_the_profile_it_is_based_on():
     result = runner.invoke(app, ["profile", "check", COPY])
     assert result.exit_code == 0, result.output
-    assert result.output.splitlines()[0] == f"checking {COPY} (custom; closest bundled: web)"
+    assert result.output.splitlines()[0] == f"checking {COPY} (custom; based_on: web)"
     for expected in ("loads: ok", "files: all", "examples: ok", "no looser than web", "OK: the profile is valid"):
         assert expected in result.output
+
+
+def test_xarch_s_own_profile_is_compared_with_cli_the_profile_it_is_based_on_and_matches_it_at_80_percent():
+    result = runner.invoke(app, ["profile", "check", str(XARCH)])
+    assert result.exit_code == 0, result.output
+    lines = result.output.splitlines()
+    assert lines[0] == f"checking {XARCH} (custom; based_on: cli)"
+    assert lines[4:6] == [
+        "  match: 80% with cli (based_on): 12 of 15 parts, 72 of 91 part keys, 21 of 31 tier entries, 11 of 11 guards, "
+        "9 of 9 profile keys sit where both profiles have them",
+        "    only here: parts main, profile-values, reports; tier wired. only in cli: tier rendering"]
+    assert lines[6].startswith("  compared: looser than cli")
+    compared = json.loads(runner.invoke(app, ["profile", "check", str(XARCH), "--format", "json"]).output)["compared_with"]
+    assert {key: compared[key] for key in ("profile", "chosen_by", "match", "low", "counts", "higher")} == {
+        "profile": "cli", "chosen_by": "based_on", "match": 0.8, "low": False,
+        "counts": {"parts": [12, 15], "part_keys": [72, 91], "tiers": [21, 31], "guards": [11, 11], "profile": [9, 9]},
+        "higher": None}
+
+
 
 
 def test_an_unknown_key_fails_with_the_keys_that_exist(tmp_path):
@@ -87,15 +109,20 @@ def test_each_public_name_a_copy_accepts_as_only_the_tests_is_a_way_it_is_looser
     edit(tmp_path, lambda d: d["guards"]["dead-code"].update(tests_only=True, known=["kernel/ids.py:make"]))
     result = runner.invoke(app, ["profile", "check", COPY, "--format", "json"])
     assert result.exit_code == 0, result.output
-    assert json.loads(result.output)["compared_with"] == {"profile": "web", "looser": [
+    compared = json.loads(result.output)["compared_with"]
+    assert (compared["profile"], compared["chosen_by"], compared["match"]) == ("web", "based_on", 1.0)
+    assert compared["looser"] == [
         {"key": "known", "part": "", "what": "kernel/ids.py:make",
-         "sentence": "the tests-only check accepts kernel/ids.py:make as a name only the tests use (guards.dead-code.known)"}]}
+         "sentence": "the tests-only check accepts kernel/ids.py:make as a name only the tests use (guards.dead-code.known)"}]
 
 
 def test_json_gives_ok_the_problems_by_check_the_files_and_the_difference(tmp_path):
     good = json.loads(runner.invoke(app, ["profile", "check", COPY, "--format", "json"]).output)
     assert good["ok"] is True and good["profile"] == COPY and good["problems"] == [] and good["files"] > 10
-    assert good["compared_with"] == {"profile": "web", "looser": []}
+    assert good["compared_with"] == {
+        "profile": "web", "chosen_by": "based_on", "match": 1.0, "low": False,
+        "counts": {"parts": [12, 12], "part_keys": [69, 69], "tiers": [17, 17], "guards": [11, 11], "profile": [6, 6]},
+        "only_here": [], "only_there": [], "elsewhere": [], "higher": None, "looser": []}
     edit(tmp_path, lambda d: d.update(colour=1))
     bad = runner.invoke(app, ["profile", "check", COPY, "--format", "json"])
     assert bad.exit_code == 1

@@ -36,7 +36,7 @@ def test_the_json_enforcement_always_holds_every_key():
     document = json.loads(check("--format", "json").stdout)
     assert document["strict"] is False
     assert document["enforcement"] == {
-        "profile": {"location": "web", "bundled": True, "closest": None, "guards_off": [], "baseline_off": [],
+        "profile": {"location": "web", "bundled": True, "compared_with": None, "guards_off": [], "baseline_off": [],
                     "looser": []},
         "ungoverned": {"count": 0, "folders": [], "files": []},
         "excluded": [],
@@ -76,7 +76,7 @@ def test_every_finding_is_listed_after_the_summary_and_does_not_change_the_exit_
     assert result.exit_code == 0
     assert result.stdout.splitlines() == [
         "OK: no violations", "enforcement",
-        "  profile:     arch/open.yaml (custom; closest bundled: web)",
+        "  profile:     arch/open.yaml (custom; compared with web, closest; match 100%)",
         "    guards off:  closed-tree",
         "  ungoverned:  1 Python file outside every part (app/scripts/)",
         "  init files:  tests/architecture/test_rules.py is changed",
@@ -109,12 +109,17 @@ def test_a_custom_copy_of_a_bundled_profile_is_compared_with_it(tmp_path):
     result = check("--profile", "arch/mine.yaml")
     assert result.exit_code == 0, result.stdout
     assert result.stdout.splitlines()[2:5] == [
-        "  profile:     arch/mine.yaml (custom; closest bundled: web)",
+        "  profile:     arch/mine.yaml (custom; compared with web, closest; match 100%)",
         "    guards off:  no-comments",
         "    imports.may: kernel may also import platform (parts.kernel.imports.may)"]
     strict = check("--profile", "arch/mine.yaml", "--strict")
     assert strict.exit_code == 1
     assert strict.stdout.splitlines()[-2:] == ["strict:      1 finding fails the check", "    guards off: no-comments"]
+    profile = json.loads(check("--profile", "arch/mine.yaml", "--format", "json").stdout)["enforcement"]["profile"]
+    assert "closest" not in profile
+    compared = profile["compared_with"]
+    assert (compared["profile"], compared["chosen_by"], compared["match"], compared["low"]) == ("web", "closest", 1.0, False)
+    assert compared["looser"] == profile["looser"]
 
 
 def test_a_copy_of_a_bundled_profile_that_leaves_no_callbacks_out_shows_it_off_and_fails_strict(tmp_path):
@@ -125,7 +130,7 @@ def test_a_copy_of_a_bundled_profile_that_leaves_no_callbacks_out_shows_it_off_a
     result = check("--profile", "arch/mine.yaml")
     assert result.exit_code == 0, result.stdout
     assert result.stdout.splitlines()[2:4] == [
-        "  profile:     arch/mine.yaml (custom; closest bundled: web)",
+        "  profile:     arch/mine.yaml (custom; compared with web, closest; match 100%)",
         "    guards off:  no-callbacks"]
     strict = check("--profile", "arch/mine.yaml", "--strict")
     assert strict.exit_code == 1
@@ -170,7 +175,7 @@ def test_an_excluded_folder_is_never_read_is_listed_and_does_not_fail_strict(tmp
     assert result.exit_code == 0, result.stdout
     assert result.stdout.splitlines() == [
         "OK: no violations", "enforcement",
-        "  profile:     arch/mine.yaml (custom; closest bundled: web)",
+        "  profile:     arch/mine.yaml (custom; compared with web, closest; match 100%)",
         "  excluded:    app/scripts/ (example scripts the docs show)"]
     document = json.loads(check("--profile", "arch/mine.yaml", "--format", "json").stdout)
     assert document["enforcement"]["excluded"] == [{"folder": "app/scripts", "reason": "example scripts the docs show"}]
@@ -193,7 +198,7 @@ def test_a_public_name_the_profile_accepts_as_only_the_tests_is_named_and_an_ent
     assert result.exit_code == 1
     assert result.stdout.splitlines() == [
         "OK: no violations", "enforcement",
-        "  profile:     arch/mine.yaml (custom; closest bundled: web)",
+        "  profile:     arch/mine.yaml (custom; compared with web, closest; match 100%)",
         "    known:       the tests-only check accepts kernel/ids.py:make as a name only the tests use "
         "(guards.dead-code.known)",
         "    known:       the tests-only check accepts kernel/ids.py:gone as a name only the tests use "

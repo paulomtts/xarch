@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from xarch.cli.reports.document import document
-from xarch.cli.reports.profile_report import origin_words
+from xarch.cli.reports.profile_report import compared_document, compared_words, low_reason, percent
 from xarch.cli.reports.shown import shown
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.contract import (
@@ -78,7 +78,9 @@ def _enforcement_lines(origin: Origin, state: EnforcementView, strict: bool, cwd
     """The enforcement section: where the profile comes from and how loose it is, then the state of the check's
     enforcement; with strict, the findings it fails on after it. A weak check that has a fix shows it under its line,
     then the profile's hint for its rule when there is one."""
-    lines = ["enforcement", _line("profile", f"{shown(Path(origin.location), cwd)} ({origin_words(origin)})", 2)]
+    lines = ["enforcement", _line("profile", f"{shown(Path(origin.location), cwd)} ({compared_words(origin)})", 2)]
+    if origin.low:
+        lines.append(_line("match", f"{percent(origin.match)}, low: {low_reason(origin)}", 4))
     if origin.guards_off:
         lines.append(_line(LABELS[GUARDS_OFF], ", ".join(_guard(name) for name in origin.guards_off), 4))
     lines += [_line(item.key, item.sentence, 4) for item in origin.looser]
@@ -142,7 +144,7 @@ def _violation_document(violation: Violation, hints: Mapping[str, str] | None = 
 
 def _enforcement_document(origin: Origin, state: EnforcementView) -> dict[str, Any]:
     return {
-        "profile": {"location": origin.location, "bundled": origin.bundled, "closest": origin.compared,
+        "profile": {"location": origin.location, "bundled": origin.bundled, "compared_with": compared_document(origin),
                     "guards_off": list(origin.guards_off), "baseline_off": list(origin.baseline_off),
                     "looser": [{"key": item.key, "part": item.part, "what": item.what, "sentence": item.sentence}
                                for item in origin.looser]},
