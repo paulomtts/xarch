@@ -181,6 +181,7 @@ def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
                                            functions={"names": "is_*"}, records={"names": "*Record", "immutable": True},
                                            exceptions={"names": "*Error"}))),
         (parsed(layered()), parsed(given(layered(), "service", shared=3))),
+        (parsed(covered()), parsed(tight())),
     ]
     found = [item for custom, base in pairs for item in loosened(custom, base)]
     assert sorted({item.key for item in found}) == sorted(LOOSER)
@@ -408,6 +409,27 @@ def holding(**holds) -> dict:
     return given(layered(), "service", holds=holds) if holds else layered()
 
 
+def reaching(*parts: str) -> dict:
+    """covered(), each test of its integration tier reaching one of the parts given."""
+    document = covered()
+    document["tiers"]["integration"]["imports"] = {"must": list(parts)}
+    return document
+
+
+def plain() -> dict:
+    """covered(), its unit tier plain_tables."""
+    document = covered()
+    document["tiers"]["unit"]["plain_tables"] = True
+    return document
+
+
+def tight() -> dict:
+    """covered(), its unit tier plain_tables and each of its tests reaching service."""
+    document = covered()
+    document["tiers"]["unit"] |= {"plain_tables": True, "imports": {"must": ["service"]}}
+    return document
+
+
 @pytest.mark.parametrize("profile", [
     pytest.param(given(layered(), "api", imports={"may": ["service"], "libraries": ["fastapi"]}),
                  id="the outside packages of the part"),
@@ -422,6 +444,7 @@ def holding(**holds) -> dict:
     pytest.param(given(layered(), "service", holds={"classes": {"built_by": ["api"]}}), id="a built_by naming it"),
     pytest.param(given(layered(), "api", holds={"classes": {"names": "*Api", "built_by": ["service"]}}, shared=2),
                  id="the kinds the part holds, their settings and how widely it is shared"),
+    pytest.param(reaching("api"), id="a tier's imports.must naming it"),
 ])
 def test_each_key_of_a_part_renamed_in_place_is_compared_with_the_part_it_pairs_with(profile):
     """Each key is read from the part api pairs with, so a copy that only renames api is no looser."""
@@ -440,6 +463,8 @@ def test_each_key_of_a_part_renamed_in_place_is_compared_with_the_part_it_pairs_
     pytest.param(given(layered(), "service", holds={"classes": {"built_by": ["api"]}}),
                  as_routes(given(layered(), "service", holds={"classes": {"built_by": ["api", "store"]}})),
                  "holds.classes.built_by", "service", "store", id="a built_by naming it widened, it read as itself"),
+    pytest.param(reaching("api"), as_routes(reaching("api", "store")), "tiers.imports.must", "integration", "store",
+                 id="a tier's imports.must naming it widened, it read as itself"),
 ])
 def test_a_way_a_copy_renaming_a_part_in_place_is_looser_is_said_under_the_new_name(base, custom, key, part, what):
     assert [(item.key, item.part, item.what) for item in loosened(parsed(custom), parsed(base))] == [(key, part, what)]
@@ -537,3 +562,62 @@ def test_a_part_that_pairs_with_none_is_compared_neither_on_what_it_holds_nor_on
     custom["parts"]["routes"]["path"] = "src/<module>/routes"
     base = given(layered(), "api", shared=3, holds={"classes": {"names": "*Api"}})
     assert loosened(parsed(custom), parsed(base)) == ()
+
+
+def tiered(**imports) -> dict:
+    """BASE, its tier unit given the imports given besides its types_only."""
+    return {**BASE, "tiers": {"unit": {**TIER, "imports": {"types_only": ["store"], **imports}}}}
+
+
+@pytest.mark.parametrize("base, custom, found", [
+    pytest.param(tiered(must=["core"]), tiered(),
+                 [("", "the unit tests no longer have to reach any part (tiers.unit.imports.must)")], id="dropped"),
+    pytest.param(tiered(must=["core"]), tiered(must=["core", "store"]),
+                 [("store", "the unit tests may also meet imports.must by reaching store (tiers.unit.imports.must)")],
+                 id="a part added"),
+    pytest.param(tiered(must=["core"]), tiered(must=["core"]), [], id="kept"),
+    pytest.param(tiered(), tiered(must=["core"]), [], id="newly written"),
+])
+def test_a_tier_whose_tests_may_reach_more_parts_to_meet_imports_must_is_looser(base, custom, found):
+    assert loosened(parsed(custom), parsed(base)) == tuple(
+        Loosened("tiers.imports.must", "unit", what, sentence) for what, sentence in found)
+
+
+def test_a_tier_no_longer_plain_tables_is_looser_and_one_newly_plain_tables_is_not():
+    assert loosened(parsed(covered()), parsed(plain())) == (
+        Loosened("plain_tables", "unit", "", "the table tests of the unit tests may now branch (tiers.unit.plain_tables)"),)
+    assert loosened(parsed(plain()), parsed(covered())) == ()
+
+
+def test_a_tier_renamed_in_place_no_longer_plain_tables_is_said_under_its_new_name():
+    base = plain()
+    custom = covered()
+    custom["tiers"] = {"logic" if name == "unit" else name: tier for name, tier in custom["tiers"].items()}
+    custom["parts"]["service"]["tests"] = "logic"
+    assert loosened(parsed(custom), parsed(base)) == (
+        Loosened("plain_tables", "logic", "", "the table tests of the logic tests may now branch (tiers.logic.plain_tables)"),)
+
+
+def test_the_ways_a_part_holds_and_a_tier_reaches_are_listed_after_the_other_ways_of_each():
+    base = tight()
+    base["parts"]["api"]["litmus"] = "Does it answer a request?"
+    base["parts"]["service"] |= {"holds": {"classes": {"names": "*Service"}}, "shared": 3}
+    base["tiers"]["unit"]["uses"] = {"apply_never": True}
+    assert [(item.key, item.part, item.what) for item in loosened(parsed(covered()), parsed(base))] == [
+        ("litmus", "api", ""), ("holds", "service", "functions"), ("holds.classes.names", "service", ""),
+        ("shared", "service", ""), ("uses.apply_never", "unit", ""), ("tiers.imports.must", "unit", ""),
+        ("plain_tables", "unit", "")]
+
+
+@pytest.mark.parametrize("base, custom, key", [
+    pytest.param(holding(classes={}), holding(), "holds", id="holds dropped as a whole"),
+    pytest.param(holding(classes={"names": "*Service"}), holding(classes={}), "holds.classes.names",
+                 id="a names setting dropped"),
+    pytest.param(given(layered(), "service", shared=3), layered(), "shared", id="shared dropped"),
+    pytest.param(reaching("api"), covered(), "tiers.imports.must", id="a tier's imports.must dropped"),
+    pytest.param(plain(), covered(), "plain_tables", id="a tier's plain_tables dropped"),
+])
+def test_a_key_of_holds_shared_or_a_tier_one_side_drops_is_comparable_and_listed_looser(base, custom, key):
+    origin = compared(parsed(custom), parsed(base))
+    assert origin.match == 1.0
+    assert [item.key for item in origin.looser] == [key]

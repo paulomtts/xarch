@@ -54,8 +54,9 @@ HELD = ("holds.classes.names", "holds.classes.immutable", "holds.classes.built_b
         "holds.records.names", "holds.records.immutable", "holds.exceptions.names")
 """The key of each setting of a kind of holds, a way it is looser listed under, kind by kind in the order of KINDS."""
 LOOSER = ("imports.may", "imports.may.types_only", "imports.libraries", "uses.never", "imports.must", "untested",
-          LITMUS, "holds", *HELD, "shared", "imports.types_only", "imports.also", "uses.apply_never", "testing.skips",
-          "files.pinned", "reserved", "known", "translated", "review.never", "review.mask", "evals.placement.lines")
+          LITMUS, "holds", *HELD, "shared", "imports.types_only", "imports.also", "uses.apply_never",
+          "tiers.imports.must", "plain_tables", "testing.skips", "files.pinned", "reserved", "known", "translated",
+          "review.never", "review.mask", "evals.placement.lines")
 """Every key a way a profile is looser is listed under, each said by a sentence of its own."""
 LOW = 0.75
 """The match below which a comparison is low: less than three in four of the things `check` reads under either
@@ -278,6 +279,12 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
                       if not any(_covers(b, _into(t, pairs)) for b in tier.imports_also)]
     found += [("uses.apply_never", tiers[tier.name].name, "") for tier in base.tiers
               if tier.apply_never and tier.name in tiers and not tiers[tier.name].apply_never]
+    for tier in base.tiers:
+        mine = tiers.get(tier.name)
+        if mine is not None and tier.imports_must:
+            found += _added("tiers.imports.must", mine.name, tier.imports_must, mine.imports_must, pairs)
+    found += [("plain_tables", tiers[tier.name].name, "") for tier in base.tiers
+              if tier.plain_tables and tier.name in tiers and not tiers[tier.name].plain_tables]
     skips = custom.framework.skips if custom.framework is not None else ()
     if base.framework is not None:
         found += [("testing.skips", "", outside_text(name, member)) for name in base.framework.skips if name not in skips]
@@ -433,6 +440,12 @@ def _sentence(key: str, part: str, what: str = "") -> str:
             return f"the {part} tests may also import {what} (tiers.{part}.imports.also)"
         case "uses.apply_never":
             return f"the {part} tests are no longer held to their part's never list (tiers.{part}.uses.apply_never)"
+        case "tiers.imports.must" if not what:
+            return f"the {part} tests no longer have to reach any part (tiers.{part}.imports.must)"
+        case "tiers.imports.must":
+            return f"the {part} tests may also meet imports.must by reaching {what} (tiers.{part}.imports.must)"
+        case "plain_tables":
+            return f"the table tests of the {part} tests may now branch (tiers.{part}.plain_tables)"
         case "testing.skips":
             return f"{what} is no longer counted as a skip (testing.skips)"
         case "files.pinned":
