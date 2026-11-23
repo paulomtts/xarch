@@ -43,6 +43,11 @@ All notable changes to this project are written here. The format follows
 
 ### Changed
 
+- A profile's keys are held to the facts their checks read at any depth, in every scope a key opens and in each
+  entry of a list (addressed by its index from 0, as `<list>.0.<key>`), by one walk of the key table in place of a
+  walk of the file's scopes one by one; a key written with no value configures nothing, as one set to `false` does.
+  The refusals of a profile with several keys short of facts are now listed in the order the key table lists the
+  keys, each key before those of the scope it opens.
 - `no_callbacks` on a part is now the guard `no-callbacks: {parts: [<part>, ...]}`, which lists the parts whose
   functions call none of their parameters annotated as callables, as `pass-through` lists its parts; it reads the same
   code and still fails `check`. A part writing `no_callbacks` is refused at load: `parts.<part>: unknown key

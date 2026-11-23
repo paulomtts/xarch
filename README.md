@@ -168,7 +168,9 @@ The data file also says what its reader supplies, under `supplies`: each fact of
 `class.fields`, `callback`, ...; `xarch/profile_values/capabilities.py` lists them), graded
 `exact` or `{partial: <what it misses>}`. Every key that configures a check needs the facts that check reads, which
 `xarch profile explain <key>` shows under `needs:` (a check of your own needs those of its kinds of fact and of the
-fields its words read, as `xarch profile explain kinds.<kind>` shows). A profile that sets a key whose facts its language does not
+fields its words read, as `xarch profile explain kinds.<kind>` shows). A key is held to its facts wherever it sits: in
+a scope any key opens, however deep, and in each entry of a list, which a problem names by its index from 0
+(`<list>.0.<key>`). A profile that sets a key whose facts its language does not
 supply is refused when it loads, naming the key, the fact and what to do; a key whose facts are supplied only partly
 runs, and is listed under `approximate` in the enforcement section, which `--strict` fails on. Python's reader
 supplies every fact exactly. One fact is never written under `supplies`: `file.package`, that a file stands for the
