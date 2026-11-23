@@ -122,6 +122,7 @@ RULED_OUT = {
         "modules/spec/application/logic/looseness.py",
         "modules/spec/application/logic/never_lists.py",
         "modules/spec/application/logic/outside_name.py",
+        "modules/spec/application/logic/profile_chain.py",
         "modules/spec/application/logic/profile_checks.py",
         "modules/spec/application/logic/profile_copy.py",
         "modules/spec/application/logic/profile_examples.py",
