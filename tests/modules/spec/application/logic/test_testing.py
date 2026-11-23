@@ -8,6 +8,7 @@ from tests.modules.spec.format_files import FILE_TYPES
 from tests.modules.spec.languages import BRACE, PYTHON
 from tests.modules.spec.profiles import TESTING, covered, parsed, problems
 from xarch.modules.spec.application.logic.docs_template import fill
+from xarch.modules.spec.application.logic.profile_checks import use_case_file
 from xarch.profile_values.testing import Fixture
 
 FILES = {"files": ["test_*.py"], "functions": "test_*"}
@@ -351,3 +352,14 @@ def test_a_file_pattern_may_hold_any_character_but_a_slash():
     assert parsed(covered(testing={"files": ["tést_*.py"], "functions": "test_*"})).framework.files == ("tést_*.py",)
     assert problems(covered(testing={"files": [".py"], "functions": "test_*"})) == [
         "layered.yaml: testing.files: '.py' is not a file name pattern: a name ending in .py, with `*` for any text"]
+
+
+@pytest.mark.parametrize("file, kept, expected", [
+    pytest.param("{name}.test.tsx", "{name}.test.tsx", [], id="a file of the second ending"),
+    pytest.param("{name}.test.mts", "{name}.test.mts", [], id="a file of the third ending"),
+    pytest.param("{name}.test.js", None, ["scenarios: must be a file name below the test folders, such as a_{name}.ts"],
+                 id="an ending the language does not have, the refusal printing the first"),
+])
+def test_under_several_endings_the_scenario_file_may_end_in_any_of_them(file, kept, expected):
+    found: list[str] = []
+    assert (use_case_file(file, None, "scenarios", found, BRACE), found) == (kept, expected)
