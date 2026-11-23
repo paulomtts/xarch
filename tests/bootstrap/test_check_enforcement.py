@@ -298,3 +298,37 @@ def test_the_help_of_strict_names_the_profile_it_is_compared_with():
     assert "guards left off that the profile it is compared with switches on (every guard, when none is compared)" in (
         strict.help)
     assert "compared bundled profile" not in strict.help
+
+
+def chained(root: Path) -> None:
+    """arch/team.yaml, a copy of web based on web that leaves no-comments off, and arch/mine.yaml, a copy of web based
+    on team.yaml, read from its own folder, that leaves it off too, beside the bundled profiles' files."""
+    shutil.copytree(BUNDLED, root / "arch")
+    lax = (BUNDLED / "web.yaml").read_text().replace("  no-comments: {}\n", "")
+    (root / "arch/team.yaml").write_text(lax.replace("\nname: web\n", "\nname: team\nbased_on: web\n", 1))
+    (root / "arch/mine.yaml").write_text(lax.replace("\nname: web\n", "\nname: mine\nbased_on: team.yaml\n", 1))
+
+
+def test_a_profile_based_on_a_file_of_its_own_says_what_strict_rests_on_and_the_file_excuses_no_guard(tmp_path):
+    chained(tmp_path)
+    result = check("--profile", "arch/mine.yaml")
+    assert result.exit_code == 0, result.stdout
+    assert result.stdout.splitlines()[2:4] == [
+        "  profile:     arch/mine.yaml (custom; compared with team.yaml, based_on; match 100%; --strict rests on web)",
+        "    guards off:  no-comments"]
+    strict = check("--profile", "arch/mine.yaml", "--strict")
+    assert strict.exit_code == 1
+    assert strict.stdout.splitlines()[-2:] == ["strict:      1 finding fails the check", "    guards off: no-comments"]
+    profile = json.loads(check("--profile", "arch/mine.yaml", "--format", "json").stdout)["enforcement"]["profile"]
+    assert (profile["compared_with"]["anchor"], profile["guards_off"], profile["baseline_off"]) == (
+        "web", ["no-comments"], [])
+
+
+def test_check_refuses_a_profile_whose_based_on_file_does_not_load(tmp_path):
+    shutil.copytree(BUNDLED, tmp_path / "arch")
+    (tmp_path / "arch/mine.yaml").write_text(
+        (BUNDLED / "web.yaml").read_text().replace("\nname: web\n", "\nname: mine\nbased_on: gone.yaml\n", 1))
+    result = check("--profile", "arch/mine.yaml")
+    assert result.exit_code == 2
+    assert "arch/mine.yaml: based_on: gone.yaml does not load: " in result.output
+    assert "arch/gone.yaml: cannot read the file" in result.output

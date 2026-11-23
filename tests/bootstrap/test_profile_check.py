@@ -258,3 +258,41 @@ def test_a_profile_that_does_not_load_is_reported_as_it_is_and_against_is_not_re
     result = runner.invoke(app, ["profile", "check", "bad.yaml", "--against", "nosuch"])
     assert result.exit_code == 1
     assert "missing `parts`" in result.output and "--against" not in result.output
+
+
+TEAM = "architecture/team/team.yaml"
+"""A copy of cli beside the copy of web, for the copy of web to be based on by its path."""
+
+
+def based_on_team(tmp_path):
+    """The copy of web based on a copy of cli by the path ../team/team.yaml, from the copy's own folder."""
+    assert runner.invoke(app, ["profile", "new", "team", "--from", "cli"]).exit_code == 0
+    edit(tmp_path, lambda d: d.update(based_on="../team/team.yaml"))
+
+
+def test_a_copy_based_on_a_profile_file_is_compared_with_it_and_rests_on_the_bundled_profile_that_file_is_based_on(
+        tmp_path):
+    based_on_team(tmp_path)
+    result = runner.invoke(app, ["profile", "check", COPY])
+    assert result.exit_code == 0, result.output
+    assert result.output.splitlines()[0] == f"checking {COPY} (custom; based_on: ../team/team.yaml, resting on cli)"
+    assert "with ../team/team.yaml (based_on): " in result.output
+    compared = json.loads(runner.invoke(app, ["profile", "check", COPY, "--format", "json"]).output)["compared_with"]
+    assert (compared["profile"], compared["chosen_by"], compared["anchor"]) == ("../team/team.yaml", "based_on", "cli")
+
+
+def test_a_based_on_path_is_read_from_the_profile_s_folder_whatever_the_working_folder(tmp_path, monkeypatch):
+    based_on_team(tmp_path)
+    (tmp_path / "elsewhere").mkdir()
+    monkeypatch.chdir(tmp_path / "elsewhere")
+    result = runner.invoke(app, ["profile", "check", str(tmp_path / COPY)])
+    assert result.exit_code == 0, result.output
+    assert result.output.splitlines()[0] == (
+        f"checking {tmp_path / COPY} (custom; based_on: ../team/team.yaml, resting on cli)")
+
+
+def test_a_based_on_path_that_names_no_file_refuses_the_profile(tmp_path):
+    edit(tmp_path, lambda d: d.update(based_on="../team/team.yaml"))
+    result = runner.invoke(app, ["profile", "check", COPY])
+    assert result.exit_code == 2
+    assert f"error: {COPY}: based_on: ../team/team.yaml does not load: {TEAM}: cannot read the file" in result.output
