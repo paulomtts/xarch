@@ -103,7 +103,7 @@ def _reserved(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
 
 def _listed_by_another_part(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
     top, own = _top(found), found.read.place.part if found.read.place is not None else None
-    return any(top in packages and part != own for part, packages in (profile.libraries or {}).items())
+    return any(top in packages and part != own for part, packages in (profile.imports_libraries or {}).items())
 
 
 def _app_package(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
@@ -192,7 +192,7 @@ def _target_below(found: Found, facts: Facts, profile: Profile, value: str) -> b
 
 def _target_allows_under(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
     src, at = found.read.place, found.fact.at
-    listed = {"built_by": profile.built_by}.get(value, {})
+    listed = {"built_by": profile.holds_built_by}.get(value, {})
     return src is not None and at is not None and src.part in listed.get(at.part or "", ())
 
 

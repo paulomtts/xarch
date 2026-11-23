@@ -35,7 +35,7 @@ PROFILE = Profile(
            Tier("integration", (Target("controller", "own"), Target("ports", "own")), None, (), False,
                 "a use case", "real controllers; fakes", "Does it drive a controller?", "use case"),
            Tier("guard", (), ("architecture",), (), False, "a rule holds", "the source tree")),
-    libraries={"kernel": (), "domain": (), "platform": ("yaml",), "entry": ("typer",)}, default_tests="tests",
+    imports_libraries={"kernel": (), "domain": (), "platform": ("yaml",), "entry": ("typer",)}, default_tests="tests",
     fakes=Fakes(("fakes",), ("ports",), "Fake"), repeats=(Repeat("module", ("modules",)),),
     framework=Framework(("test_*.py",), "test_*"),
     uses_never={"domain": (NOW, ("builtins", "open"))},

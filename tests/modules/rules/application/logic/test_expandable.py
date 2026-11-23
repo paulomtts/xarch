@@ -11,14 +11,14 @@ from xarch.profile_values.tiers import CheckedTier
 
 EVERY_KEY = Profile(
     parts={"one": ("one",), "two": ("two",)}, rules={"one": (Target("two"),), "two": ()},
-    libraries={"one": ("outside",)}, uses_never={"one": (("outside",),)},
+    imports_libraries={"one": ("outside",)}, uses_never={"one": (("outside",),)},
     tiers=(CheckedTier("tier", (Target("one"),), ("tier",), imports_types_only=("two",), apply_never=True,
                        imports_may=(Target("two"),), imports_must=("two",), imports_also=(Target("two"),)),),
-    package_only=("two",), types_only={"one": (Target("two"),)}, no_callbacks=("one",),
-    names={"one": {"classes": ("*",)}, "two": {"functions": ("*",), "records": ("*",), "exceptions": ("*",)}},
-    built_by={"two": ("one",)}, private_imports=True, no_comments=True, closed_tree=True,
+    package_only=("two",), imports_types_only={"one": (Target("two"),)}, no_callbacks=("one",),
+    holds_names={"one": {"classes": ("*",)}, "two": {"functions": ("*",), "records": ("*",), "exceptions": ("*",)}},
+    holds_built_by={"two": ("one",)}, private_imports=True, no_comments=True, closed_tree=True,
     holds={"one": ("classes",), "two": ("functions", "records", "exceptions")},
-    immutable={"one": ("classes",), "two": ("records",)}, must_import={"one": (Target("two"),)}, dead_code=True,
+    holds_immutable={"one": ("classes",), "two": ("records",)}, imports_must={"one": (Target("two"),)}, dead_code=True,
     untested=True, tests_only=True,
     pass_through=("one",), fakes=Fakes(("fakes",), ("two",)), framework=Framework(("*",), "*"),
     info={"one": PartInfo(), "two": PartInfo()})

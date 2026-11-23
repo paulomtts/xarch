@@ -7,7 +7,7 @@ from tests.modules.rules.application.logic.checks import names as violations
 from tests.modules.rules.builders import BRACE, profile, source
 from xarch.modules.rules.domain.parsed import Class, Function, Method
 
-ON = profile(holds={"services": ("classes",)}, names={"services": {"classes": ("*Service", "*Step")}})
+ON = profile(holds={"services": ("classes",)}, holds_names={"services": {"classes": ("*Service", "*Step")}})
 SERVICES = "modules/docs/application/services/doc.py"
 
 
@@ -50,7 +50,7 @@ BRACED = "modules/docs/application/services/doc.ts"
                  id="one it says is public, spelled as a private name of another language"),
 ])
 def test_under_a_language_with_no_private_prefix_the_reader_alone_says_which_classes_are_public(cls, expected):
-    braced = profile(holds={"services": ("classes",)}, names={"services": {"classes": ("*Service",)}}, language=BRACE)
+    braced = profile(holds={"services": ("classes",)}, holds_names={"services": {"classes": ("*Service",)}}, language=BRACE)
     assert [str(v) for v in violations([source(BRACED, classes=(cls,), language=BRACE)], braced)] == expected
 
 
@@ -64,7 +64,7 @@ top-level functions, a private one and a method."""
 
 def named(holds: dict[str, tuple[str, ...]], file=FILE) -> list[str]:
     """What the names check says of the file in a part whose holds lists the kinds given, each held to `X*`."""
-    checked = profile(holds={"services": tuple(holds)}, names={"services": {kind: ("X*",) for kind in holds}})
+    checked = profile(holds={"services": tuple(holds)}, holds_names={"services": {kind: ("X*",) for kind in holds}})
     return [str(v).split(": ", 1)[1] for v in violations([file], checked)]
 
 
@@ -76,7 +76,7 @@ def test_names_of_classes_reads_every_public_class_records_and_exceptions_too_wh
 
 def test_beside_exceptions_an_exception_is_held_to_their_names_alone_and_every_other_class_to_those_of_classes():
     checked = profile(holds={"services": ("classes", "exceptions")},
-                      names={"services": {"classes": ("*Service",), "exceptions": ("*Error",)}})
+                      holds_names={"services": {"classes": ("*Service",), "exceptions": ("*Error",)}})
     assert [str(v).split(": ", 1)[1] for v in violations([FILE], checked)] == [
         "Checker does not match *Service, as every class of services/ of modules/docs must "
         "(parts.services.holds.classes.names)",
@@ -87,7 +87,7 @@ def test_beside_exceptions_an_exception_is_held_to_their_names_alone_and_every_o
 
 
 def test_names_of_functions_reads_every_public_top_level_function_and_no_method_nor_private_one():
-    found = violations([FILE], profile(holds={"services": ("functions",)}, names={"services": {"functions": ("is_*",)}}))
+    found = violations([FILE], profile(holds={"services": ("functions",)}, holds_names={"services": {"functions": ("is_*",)}}))
     assert [(str(v).split(": ", 1)[1], v.fix) for v in found] == [
         (f"{name} does not match is_*, as every function of services/ of modules/docs must "
          "(parts.services.holds.functions.names)",

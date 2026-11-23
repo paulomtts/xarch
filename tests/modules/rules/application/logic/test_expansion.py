@@ -14,13 +14,13 @@ from xarch.profile_values.checks import Condition
 from xarch.profile_values.placement import Target
 
 ON = replace(PROFILE, private_imports=True, closed_tree=True, dead_code=True, untested=True, tests_only=True,
-             immutable={"logic": ("records",)},
-             built_by={"services": ("bootstrap",)}, names={"services": {"classes": ("*Service",)}},
+             holds_immutable={"logic": ("records",)},
+             holds_built_by={"services": ("bootstrap",)}, holds_names={"services": {"classes": ("*Service",)}},
              no_callbacks=("domain",), holds={"domain": ("classes",), "logic": ("functions", "records", "exceptions")},
-             must_import={"adapters": (Target("platform"),)},
-             pass_through=("services",), types_only={"services": (Target("contract"),)},
+             imports_must={"adapters": (Target("platform"),)},
+             pass_through=("services",), imports_types_only={"services": (Target("contract"),)},
              tiers=tuple(replace(t, imports_must=("domain",)) if t.name == "unit" else t for t in PROFILE.tiers))
-OFF = replace(PROFILE, libraries=None, uses_never={}, tiers=(), package_only=(), no_comments=False, dead_code=False)
+OFF = replace(PROFILE, imports_libraries=None, uses_never={}, tiers=(), package_only=(), no_comments=False, dead_code=False)
 
 
 def written(condition: Condition) -> str:

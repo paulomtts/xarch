@@ -102,7 +102,7 @@ def _app(profile: Profile, found: Resolved, app: str, tests: str) -> Placed:
     return PartPlace(
         found, where, info or PartInfo(), _singular(profile, part), _reaches(profile, targets, where.instance, app),
         may_import(targets, folders, profile.words()),
-        None if profile.libraries is None else profile.libraries.get(part, ()),
+        None if profile.imports_libraries is None else profile.imports_libraries.get(part, ()),
         tuple(outside_text(n, profile.language.member) for n in profile.uses_never.get(part, ())), tier,
         f"{tests}/{'/'.join(folder)}/".replace("//", "/") if tier else "", name if tier else "",
         info.untested if info and tier is None else "")

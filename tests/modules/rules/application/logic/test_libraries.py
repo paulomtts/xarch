@@ -16,7 +16,7 @@ def message(path: str, line: int, label: str, part: str, package: str) -> str:
 
 
 def test_a_part_listed_as_everything_may_import_any_outside_package_while_another_part_still_may_not():
-    checked = profile(libraries={**PROFILE.libraries, "bootstrap": (EVERYTHING,)})
+    checked = profile(imports_libraries={**PROFILE.imports_libraries, "bootstrap": (EVERYTHING,)})
     assert problems("bootstrap/app.py", imp(1, "anything", "x"), imp(2, "fastapi"), checked=checked) == []
     assert problems("platform/sql.py", imp(1, "anything", "x"), checked=checked) == [
         message("platform/sql.py", 1, "platform/", "platform", "anything")]
@@ -55,7 +55,7 @@ def test_libraries(path, imports, expected):
 
 
 def test_without_libraries_in_the_profile_nothing_is_checked():
-    assert problems("kernel/ids.py", imp(1, "yaml"), checked=profile(libraries=None)) == []
+    assert problems("kernel/ids.py", imp(1, "yaml"), checked=profile(imports_libraries=None)) == []
 
 
 def test_the_apps_package_is_the_root_it_is_given():
@@ -82,7 +82,7 @@ def test_a_violation_says_what_to_do(path, imports, fix):
     assert [(v.rule, v.fix) for v in violations([source(path, *imports)], PROFILE, "app")] == [("libraries", fix)]
 
 
-RESERVING = profile(libraries={**PROFILE.libraries, "adapters": ("sqlmodel", "ast")},
+RESERVING = profile(imports_libraries={**PROFILE.imports_libraries, "adapters": ("sqlmodel", "ast")},
                     reserved={"ast": "only the reader parses the language", "tokenize": "the reader's"})
 
 

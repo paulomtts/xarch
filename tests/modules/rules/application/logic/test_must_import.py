@@ -11,7 +11,7 @@ from tests.modules.rules.builders import GUARD, INTEGRATION, RENDERING, imp, in_
 from xarch.modules.rules.domain.parsed import Function
 from xarch.profile_values.placement import Target
 
-REQUIRED = profile(must_import={"adapters": (Target("platform"), Target("contract", "any"))})
+REQUIRED = profile(imports_must={"adapters": (Target("platform"), Target("contract", "any"))})
 CODE = (Function(3, "get", statements=2),)
 DIR = "modules/docs/adapters"
 MESSAGE = ("app/modules/docs/adapters/{name}.py: adapters/ of modules/docs imports nothing from platform/ or contract/ "

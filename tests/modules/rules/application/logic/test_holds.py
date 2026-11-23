@@ -131,7 +131,7 @@ def test_in_a_language_that_does_not_supply_top_level_functions_no_part_is_held_
     assert len(listed(FILE, checked=profile(holds={"logic": ("classes",)}, language=SAYS_NOTHING))) == 2
 
 
-IMMUTABLE = profile(holds={"logic": FUNCTIONS}, immutable={"logic": ("records",)})
+IMMUTABLE = profile(holds={"logic": FUNCTIONS}, holds_immutable={"logic": ("records",)})
 
 
 def test_a_record_of_a_part_whose_records_are_immutable_that_is_not_one_is_listed_with_what_to_do():
@@ -150,7 +150,7 @@ def test_immutable_on_records_reads_no_plain_class_which_holds_lists_once():
 
 
 def test_immutable_on_classes_reads_every_class_but_an_exception():
-    classes = profile(holds={"domain": ("classes",)}, immutable={"domain": ("classes",)})
+    classes = profile(holds={"domain": ("classes",)}, holds_immutable={"domain": ("classes",)})
     file = source(DOMAIN, classes=(Class(3, "Doc"), Class(5, "Refused", exception=True), Class(7, "Kept", immutable=True)))
     assert weak([file], classes, "app") == [Weak(
         "immutable", f"app/{DOMAIN}", 3, "Doc is a class that is no immutable record, but every class of domain/ of "
@@ -160,7 +160,7 @@ def test_immutable_on_classes_reads_every_class_but_an_exception():
 
 
 def test_immutable_on_classes_beside_records_reads_no_record_which_its_own_kind_holds():
-    both = profile(holds={"domain": ("classes", "records")}, immutable={"domain": ("classes",)})
+    both = profile(holds={"domain": ("classes", "records")}, holds_immutable={"domain": ("classes",)})
     file = source(DOMAIN, classes=(Class(3, "Doc"), Class(5, "Found")),
                   functions=(Function(8, "_find", returns_named=frozenset({"Found"})),))
     assert [w.message.split(" ")[0] for w in weak([file], both, "app")] == ["Doc"]
@@ -211,7 +211,7 @@ def test_under_brace_the_reader_alone_says_which_classes_are_records(record, exp
 ])
 def test_under_brace_the_reader_alone_says_which_classes_are_immutable_records(immutable, expected):
     assert BRACE.immutable == (RecordMark(fields="readonly"),)
-    braced = profile(holds={"logic": ("classes",)}, immutable={"logic": ("classes",)}, language=BRACE)
+    braced = profile(holds={"logic": ("classes",)}, holds_immutable={"logic": ("classes",)}, language=BRACE)
     file = source("modules/docs/application/logic/point.ts", classes=(Class(3, "Point", immutable=immutable),),
                   language=BRACE)
     assert [w.rule for w in weak([file], braced, "app")] == expected

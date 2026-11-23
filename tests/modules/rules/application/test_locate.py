@@ -34,7 +34,7 @@ PROFILE = Profile(
     rules={"kernel": (), "domain": (Target("kernel"),)},
     folders=((), ("kernel",), ("modules",), ("modules", "*"), ("modules", "*", "domain")),
     tiers=(Tier("unit", (Target("kernel"), Target("domain", "own")), None, (), False, "a rule", "nothing", "Does it?"),),
-    libraries={"kernel": (), "domain": ()}, repeats=(Repeat("module", ("modules",)),),
+    imports_libraries={"kernel": (), "domain": ()}, repeats=(Repeat("module", ("modules",)),),
     info={"kernel": PartInfo("primitives", "Is it a primitive?", "kernel/"),
           "domain": PartInfo("invariants", "Is it an invariant?", "domain/")}, language=PYTHON)
 KERNEL = InPart("app/kernel/ids.py", True, PartShown("kernel", "kernel/", "", "module", "primitives", "Is it a primitive?"),

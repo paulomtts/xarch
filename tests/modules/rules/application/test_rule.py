@@ -9,7 +9,7 @@ from tests.modules.rules.builders import profile
 from xarch.modules.rules.contract import ExplainRule, KeyFacts, KeyUnset, NoRuleShown, RuleShown
 from xarch.modules.rules.domain.errors import ProfileUnusable
 
-NAMED = profile(names={"services": {"classes": ("*Service",)}, "controller": {"classes": ("*Controller",)}})
+NAMED = profile(holds_names={"services": {"classes": ("*Service",)}, "controller": {"classes": ("*Controller",)}})
 TEXT = "names-services: reads class\n"
 
 

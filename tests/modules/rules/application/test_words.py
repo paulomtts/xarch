@@ -22,7 +22,7 @@ from xarch.modules.rules.domain.errors import ProfileUnusable
 from xarch.modules.rules.domain.outcomes import Known
 
 APP = Path("/src/app")
-NAMED = profile(names={"services": {"classes": ("*Service",)}})
+NAMED = profile(holds_names={"services": {"classes": ("*Service",)}})
 
 
 def explain(given: FakeProfiles):

@@ -27,7 +27,7 @@ def _libraries(profile: Profile) -> tuple[Rule, ...]:
     are always allowed, and a relative import is the app's own, but a module of the standard library the profile
     reserves is an outside package; one finding per package and line. No rule when no part lists libraries, and none
     for a part whose list is everything."""
-    if profile.libraries is None:
+    if profile.imports_libraries is None:
         return ()
     reserved = ("{where} may not import {package}, which the profile reserves: {reserved_reason} (reserved.{package}; "
                 "{key})")
@@ -43,7 +43,7 @@ def _libraries(profile: Profile) -> tuple[Rule, ...]:
                                "no part", once=once))
     return tuple(Rule("libraries", Scope(APP, part), ("import",), MAY_ONLY, (Match("package", words=allowed),),
                       sayings, keep=keep, exempt=exempt, key=f"parts.{part}.imports.libraries")
-                 for part in profile.parts if EVERYTHING not in (allowed := profile.libraries.get(part, ()))
+                 for part in profile.parts if EVERYTHING not in (allowed := profile.imports_libraries.get(part, ()))
                  for keep, exempt in ((_all("not relative", "not reserved"), _all("app-package", "standard")),
                                       (_all("not relative", "reserved"), _all("app-package"))))
 
@@ -97,12 +97,12 @@ def _built_by(profile: Profile) -> tuple[Rule, ...]:
     """Only the parts the classes of a part's `holds` list in `built_by` build a class it defines at the top level of a
     file and holds to classes: one rule for the parts that list no narrower kind beside classes, and one of its own for
     each part that does, which a class held to that kind does not break; the tests are not read."""
-    plain = tuple(part for part in profile.built_by if not _narrower(profile, part))
+    plain = tuple(part for part in profile.holds_built_by if not _narrower(profile, part))
     said = (Saying("{where} builds {name}, a class of {target_part}, which only {built_by} may build "
                    "(parts.{target_part_name}.holds.classes.built_by)",
                    "take {name} as a parameter of the constructor, and build it in {built_by}"),)
     groups = [(plain, ())] if plain else []
-    groups += [((part,), _narrower(profile, part)) for part in profile.built_by if _narrower(profile, part)]
+    groups += [((part,), _narrower(profile, part)) for part in profile.holds_built_by if _narrower(profile, part)]
     return tuple(Rule("built-by", Scope(APP), ("construction",), MAY_NOT, (Match("part", words=parts),), said,
                       exempt=_all("target-allows-under built_by", *exempt), key="parts.<part>.holds.classes.built_by")
                  for parts, exempt in groups)
@@ -148,7 +148,7 @@ def _types_only_parts(profile: Profile) -> tuple[Rule, ...]:
     return tuple(_types_only(Scope(APP, part), "{where}", f"parts.{part}.imports.may.types_only",
                              Match("place", places=tuple(replace(target, names="") for target in targets)),
                              "{type_only_fix}")
-                 for part, targets in profile.types_only.items())
+                 for part, targets in profile.imports_types_only.items())
 
 
 def _types_only(scope: Scope, who: str, key: str, match: Match, fix: str) -> Rule:
@@ -207,7 +207,7 @@ def _names(profile: Profile) -> tuple[Rule, ...]:
     """Every public definition a part holds to a kind whose `names` it gives matches one of its patterns, `*` standing
     for any text: a class held to classes (not one a narrower kind listed beside them holds), a top-level function, a
     record held to records (not an exception, when exceptions are listed) and an exception."""
-    return tuple(_named(profile, part, kind, patterns) for part, kinds in profile.names.items()
+    return tuple(_named(profile, part, kind, patterns) for part, kinds in profile.holds_names.items()
                  for kind in _KINDS if (patterns := kinds.get(kind)))
 
 
@@ -309,7 +309,7 @@ def _immutable(profile: Profile) -> tuple[Rule, ...]:
     but an exception and one a narrower kind listed beside them holds; for records, every record but an exception,
     when exceptions are listed. A package file only gathers what its package holds and is not read."""
     found = []
-    for part, kinds in profile.immutable.items():
+    for part, kinds in profile.holds_immutable.items():
         within = Scope(APP, part, where=_all("not package-file"))
         fix = ("make {name} an immutable record (the {language} data file's `immutable` says how), or move it to "
                "{parts_holding_classes}")
@@ -341,7 +341,7 @@ def _must_import(profile: Profile) -> tuple[Rule, ...]:
                               "part that need not"),),
                       exempt=_all("package-file", "no-statements"), key=f"parts.{part}.imports.must",
                       links=("import-into-app",), via=_all("target-in-own-part"))
-                 for part, wanted in profile.must_import.items())
+                 for part, wanted in profile.imports_must.items())
 
 
 def _must_import_tiers(profile: Profile) -> tuple[Rule, ...]:

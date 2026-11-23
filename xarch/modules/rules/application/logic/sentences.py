@@ -109,7 +109,7 @@ _VALUES: dict[str, Callable[[Found, Facts, Profile], str]] = {
     "target_part_name": lambda found, facts, profile: _target_part_name(found),
     "target_package": lambda found, facts, profile: _package(found, facts),
     "built_by": lambda found, facts, profile: " or ".join(
-        f"{p}/" for p in profile.built_by.get(_target_part_name(found), ())),
+        f"{p}/" for p in profile.holds_built_by.get(_target_part_name(found), ())),
     "allowed_names": lambda found, facts, profile: " or ".join(
         narrowed(found.read.place, found.fact.at, profile)),
     "disallowed_name": lambda found, facts, profile: _disallowed_name(found),
@@ -164,7 +164,7 @@ def _caller_fix(found: Found, profile: Profile) -> str:
     by an entry with no mark, named from the profile."""
     src, dst = found.rule.scope.named_part, found.fact.at.part if found.fact.at is not None else None
     owners = [name for name, targets in profile.rules.items() if name not in (src, dst)
-              and any(t.part == dst and t not in profile.types_only.get(name, ()) for t in targets)]
+              and any(t.part == dst and t not in profile.imports_types_only.get(name, ()) for t in targets)]
     shown = [f"{name}/" for name in owners[:OWNERS]]
     if not shown:
         return f"use {dst}/ here only as a type, and leave the call to code outside {src}/"
@@ -176,7 +176,7 @@ def _caller_fix(found: Found, profile: Profile) -> str:
 def _owners(found: Found, profile: Profile) -> list[str]:
     top = _top(found)
     own = found.read.place.part if found.read.place is not None else None
-    return [name for name, packages in (profile.libraries or {}).items() if top in packages and name != own]
+    return [name for name, packages in (profile.imports_libraries or {}).items() if top in packages and name != own]
 
 
 def _permitted(found: Found, profile: Profile) -> list[str]:

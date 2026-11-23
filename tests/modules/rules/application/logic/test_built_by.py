@@ -7,7 +7,7 @@ from tests.modules.rules.application.logic.checks import built_by as violations
 from tests.modules.rules.builders import profile, source
 from xarch.modules.rules.domain.parsed import Call, Class
 
-ON = profile(holds={"services": ("classes",)}, built_by={"services": ("bootstrap",)})
+ON = profile(holds={"services": ("classes",)}, holds_built_by={"services": ("bootstrap",)})
 SERVICE_FILE = source("modules/docs/application/services/doc.py", classes=(Class(3, "DocService"),))
 DOC_SERVICE = ("app", "modules", "docs", "application", "services", "doc", "DocService")
 
@@ -57,7 +57,7 @@ def test_a_class_held_to_a_narrower_kind_beside_classes_is_not_held_to_their_bui
                     classes=(Class(1, "Refused", exception=True), Class(3, "Plain")))
     building = source("modules/docs/application/controller.py",
                       calls=(Call(5, (*ERRORS, "Refused")), Call(6, (*ERRORS, "Plain"))))
-    both = profile(holds={"services": ("classes", "exceptions")}, built_by={"services": ("bootstrap",)})
+    both = profile(holds={"services": ("classes", "exceptions")}, holds_built_by={"services": ("bootstrap",)})
     assert [str(v) for v in violations([building, errors], both, "app")] == [
         "app/modules/docs/application/controller.py:6: controller/ of modules/docs builds Plain, a class of services/ "
         "of modules/docs, which only bootstrap/ may build (parts.services.holds.classes.built_by)"]

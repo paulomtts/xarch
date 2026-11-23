@@ -108,7 +108,7 @@ def test_the_profile_view_becomes_the_profile_the_checks_see():
         parts={"core": ("core",), "api": ("src", "*", "api")}, rules={"core": (), "api": (Target("core"),)},
         folders=((), ("core",), ("src",), ("src", "*"), ("src", "*", "api")),
         tiers=(CheckedTier("unit", (Target("core", "none"),), None, ("api",), True, "a rule", "nothing", "Does it?"),),
-        libraries={"core": (), "api": ("fastapi",)}, fakes=Fakes(("fakes",), ("api",), "Fake"),
+        imports_libraries={"core": (), "api": ("fastapi",)}, fakes=Fakes(("fakes",), ("api",), "Fake"),
         repeats=(Repeat("module", ("src",)),), package_only=("api",),
         scenarios=ScenarioCoverage("api", "unit", "Result", ("a", "b", "c"),
                             CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id"), "test_{name}.py"),
@@ -117,12 +117,12 @@ def test_the_profile_view_becomes_the_profile_the_checks_see():
         uses_never={"core": (("socket",),)},
         info={"core": PartInfo("the rules", "Is it a rule?", "core/"),
               "api": PartInfo("handlers", "", "api/ of src/<module>", "it only wires")},
-        excluded=(Excluded(("vendor",), "not ours"),), must_import={"api": (Target("core"),)}, no_duplicates=4, no_twins=3,
+        excluded=(Excluded(("vendor",), "not ours"),), imports_must={"api": (Target("core"),)}, no_duplicates=4, no_twins=3,
         no_twins_renamed=4, no_twins_subset=3, no_twins_translated=("api",),
         dead_code=True, pass_through=("api",), untested=True, tests_only=True, tests_only_known=("api/x.py:run",),
-        holds={"core": ("functions", "records", "exceptions"), "api": ("classes",)}, immutable={"core": ("records",)},
-        types_only={"api": (Target("core"),)}, no_callbacks=("core",), names={"api": {"classes": ("*Api",)}},
-        built_by={"api": ("core",)},
+        holds={"core": ("functions", "records", "exceptions"), "api": ("classes",)}, holds_immutable={"core": ("records",)},
+        imports_types_only={"api": (Target("core"),)}, no_callbacks=("core",), holds_names={"api": {"classes": ("*Api",)}},
+        holds_built_by={"api": ("core",)},
         shared={"core": 2}, private_imports=True, hints={"may-import": "ask first"}, written=VIEW.checks, default_tests="tests")
 
 

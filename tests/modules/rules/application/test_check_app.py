@@ -37,7 +37,7 @@ from xarch.profile_values.placement import Repeat, Target
 ROOT = Path("/src/pkg")
 PROFILE = Profile({"kernel": ("kernel",), "platform": ("platform",)},
                   {"kernel": (), "platform": (Target("kernel"),)}, ((), ("kernel",), ("platform",)),
-                  libraries={"kernel": (), "platform": ()}, hints={"may-import": "ask first"})
+                  imports_libraries={"kernel": (), "platform": ()}, hints={"may-import": "ask first"})
 BAD = {"kernel/x.py": [Import(1, ("pkg", "platform", "io"))], "platform/io.py": []}
 GOOD = {"kernel/x.py": [], "platform/io.py": [Import(1, ("pkg", "kernel", "x"))]}
 IMPORT = Violation("pkg/kernel/x.py", 1, "kernel/ may not import platform/ (pkg.platform.io)", "may-import",
@@ -94,7 +94,7 @@ def entered(entry: str) -> Profile:
              entry: (Target(entry), Target("kernel"))}
     folders = ((), ("kernel",), ("platform",), ("modules",), ("modules", "*"), ("modules", "*", "domain"),
                ("modules", "*", "application"), ("modules", "*", "application", "services"), (entry,))
-    return Profile(parts, rules, folders, libraries={name: () for name in parts}, repeats=(Repeat("module", ("modules",)),))
+    return Profile(parts, rules, folders, imports_libraries={name: () for name in parts}, repeats=(Repeat("module", ("modules",)),))
 
 
 ENTERED = FakeProfiles({"cli": entered("cli"), "web": entered("web")})

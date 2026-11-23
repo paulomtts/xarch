@@ -87,9 +87,9 @@ TESTS = [
 
 FACTS = facts_of(APP, TESTS, PROFILE, "app", "tests")
 RESERVED = replace(PROFILE, reserved={"json": "only io reads files"})
-LISTED = replace(PROFILE, libraries={"platform": ("yaml",), "domain": ("yaml",)})
+LISTED = replace(PROFILE, imports_libraries={"platform": ("yaml",), "domain": ("yaml",)})
 NARROWED = replace(PROFILE, rules={**RULES, "services": (Target("domain", "own", (), "*Id"), Target("kernel"))})
-BUILT = replace(PROFILE, built_by={"domain": ("bootstrap",)})
+BUILT = replace(PROFILE, holds_built_by={"domain": ("bootstrap",)})
 """PROFILE reserving json, listing yaml in two parts' libraries, narrowing what services may import of domain to the
 names a pattern matches, and letting only bootstrap build domain's classes."""
 RULE = Rule("mine", Scope(), ("import",), "may_not", (Match("exist"),), (Saying("m", "f"),))
