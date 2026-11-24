@@ -18,7 +18,7 @@ def with_imports(part: str, imports) -> dict:
 
 
 def test_the_group_gives_what_the_old_keys_gave_for_the_same_lists():
-    architecture = parsed(with_imports("store", {"may": ["shared"], "must": ["shared"], "libraries": ["sqlmodel"]}))
+    architecture = parsed(with_imports("store", {"may": ["parts.shared"], "must": ["parts.shared"], "libraries": ["sqlmodel"]}))
     assert architecture.rules["store"] == (Target("shared"),)
     assert architecture.parts["store"].imports_must == (Target("shared"),)
     assert architecture.imports_libraries["store"] == ("sqlmodel",)
@@ -61,37 +61,37 @@ def test_the_group_is_refused_when_written_wrong(imports, problem):
 
 
 def test_a_marked_entry_is_a_target_of_may_and_a_marked_target():
-    architecture = parsed(with_imports("service", {"may": ["store", {"shared": "types_only"}]}))
+    architecture = parsed(with_imports("service", {"may": ["module.store", {"parts.shared": "types_only"}]}))
     assert architecture.rules["service"] == (Target("store", "own"), Target("shared"))
     assert architecture.parts["service"].imports_types_only == (Target("shared"),)
 
 
 @pytest.mark.parametrize("entry, marked", [
-    pytest.param({"store": "types_only"}, Target("store", "own"), id="own instance"),
-    pytest.param({"store@any": "types_only"}, Target("store", "any"), id="any instance"),
-    pytest.param({"store/rules:*Id": "types_only"}, Target("store", "own", ("rules",), "*Id"), id="path and pattern"),
+    pytest.param({"module.store": "types_only"}, Target("store", "own"), id="own instance"),
+    pytest.param({"parts.store": "types_only"}, Target("store", "any"), id="any instance"),
+    pytest.param({"module.store/rules:*Id": "types_only"}, Target("store", "own", ("rules",), "*Id"), id="path and pattern"),
 ])
 def test_a_mark_keeps_the_scope_path_and_pattern_of_its_target(entry, marked):
     assert parsed(with_imports("service", {"may": [entry]})).parts["service"].imports_types_only == (marked,)
 
 
 def test_two_marks_keep_the_order_of_may():
-    architecture = parsed(with_imports("service", {"may": [{"store": "types_only"}, "api", {"shared": "types_only"}]}))
+    architecture = parsed(with_imports("service", {"may": [{"module.store": "types_only"}, "module.api", {"parts.shared": "types_only"}]}))
     assert architecture.parts["service"].imports_types_only == (Target("store", "own"), Target("shared"))
 
 
 def test_a_target_written_plain_and_marked_keeps_its_mark():
-    architecture = parsed(with_imports("service", {"may": ["shared", {"shared": "types_only"}]}))
+    architecture = parsed(with_imports("service", {"may": ["parts.shared", {"parts.shared": "types_only"}]}))
     assert architecture.parts["service"].imports_types_only == (Target("shared"),)
 
 
 @pytest.mark.parametrize("entry, problem", [
-    pytest.param({"store": "types"}, "{store: types}: no mode 'types': write types_only, or the reference alone",
+    pytest.param({"module.store": "types"}, "{module.store: types}: no mode 'types': write types_only, or the reference alone",
                  id="another word"),
-    pytest.param({"store": True}, "{store: true}: no mode True: write types_only, or the reference alone",
+    pytest.param({"module.store": True}, "{module.store: true}: no mode True: write types_only, or the reference alone",
                  id="true"),
-    pytest.param({"store": "types_only", "shared": "types_only"},
-                 "{store: types_only, shared: types_only}: one reference per entry: write each in its own {...}",
+    pytest.param({"module.store": "types_only", "parts.shared": "types_only"},
+                 "{module.store: types_only, parts.shared: types_only}: one reference per entry: write each in its own {...}",
                  id="two targets"),
     pytest.param({}, "{}: one reference per entry: write each in its own {...}", id="an empty map"),
     pytest.param({"everything": "types_only"}, "everything takes no mode: list the entries to give one a mode",
@@ -107,24 +107,24 @@ def test_a_mark_written_wrong_is_refused_at_may(entry, problem):
 @pytest.mark.parametrize("must, problem", [
     pytest.param([], "must be a list of targets such as [parts.<part>, <word>.<part>]", id="empty"),
     pytest.param("shared", "must be a list of targets such as [parts.<part>, <word>.<part>]", id="no list"),
-    pytest.param([{"shared": "types_only"}], "{shared: types_only}: must takes references only, with no mode",
+    pytest.param([{"parts.shared": "types_only"}], "{parts.shared: types_only}: must takes references only, with no mode",
                  id="a mode"),
     pytest.param(["api"], "'api' is not in imports.may, so no file could import it: add it there, or name a part the "
                  "part may import", id="not in may"),
 ])
 def test_must_is_refused_when_written_wrong(must, problem):
-    document = with_imports("store", {"may": ["shared"], "must": must})
+    document = with_imports("store", {"may": ["parts.shared"], "must": must})
     assert problems(document) == [f"layered.yaml: parts.store.imports.must: {problem}"]
 
 
 def test_a_must_entry_equal_to_a_marked_entry_of_may_passes():
-    architecture = parsed(with_imports("store", {"may": [{"shared": "types_only"}], "must": ["shared"]}))
+    architecture = parsed(with_imports("store", {"may": [{"parts.shared": "types_only"}], "must": ["parts.shared"]}))
     assert architecture.parts["store"].imports_must == (Target("shared"),)
 
 
 def test_must_without_may_is_refused_entry_by_entry():
-    assert problems(with_imports("store", {"must": ["shared"]})) == [
-        "layered.yaml: parts.store.imports.must: 'shared' is not in imports.may, so no file could import it: add it "
+    assert problems(with_imports("store", {"must": ["parts.shared"]})) == [
+        "layered.yaml: parts.store.imports.must: 'parts.shared' is not in imports.may, so no file could import it: add it "
         "there, or name a part the part may import"]
 
 
@@ -157,7 +157,7 @@ def test_a_retired_key_beside_the_group_is_its_own_problem_and_the_group_is_stil
 
 
 def test_a_standard_library_name_in_libraries_is_refused_at_imports_libraries():
-    document = with_imports("store", {"may": ["shared"], "libraries": ["json"]})
+    document = with_imports("store", {"may": ["parts.shared"], "libraries": ["json"]})
     assert problems(document) == [
         "layered.yaml: parts.store.imports.libraries: 'json' is in the standard library, which every part may import "
         "unless `reserved` names it"]

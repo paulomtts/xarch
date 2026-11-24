@@ -25,7 +25,7 @@ def test_a_document_that_is_no_mapping_is_refused():
 def test_the_smallest_profile_is_a_name_and_parts_and_checks_the_layout_and_the_imports():
     architecture = parsed({"name": "tiny", "parts": {
         "core/": {"role": "the rules"},
-        "cli/": {"role": "commands and output", "imports": {"may": ["core"], "libraries": ["typer"]}}}})
+        "cli/": {"role": "commands and output", "imports": {"may": ["parts.core"], "libraries": ["typer"]}}}})
     assert architecture.name == "tiny"
     assert architecture.layout == {"core": {}, "cli": {}}
     assert architecture.rules == {"core": (), "cli": (Target("core"),)}
@@ -99,11 +99,11 @@ def test_the_layout_is_derived_from_the_paths_of_the_parts_and_a_repeating_step_
 
 
 def test_a_nested_tree_and_the_same_tree_joined_parse_to_one_architecture():
-    nested = layered(parts={"src/": {"<module>/": {"api/": {"role": "HTTP handlers", "imports": {"may": ["service"]}},
+    nested = layered(parts={"src/": {"<module>/": {"api/": {"role": "HTTP handlers", "imports": {"may": ["module.service"]}},
                                                    "service/": {"role": "business logic",
-                                                                "imports": {"may": ["store", "shared"]}},
+                                                                "imports": {"may": ["module.store", "parts.shared"]}},
                                                    "store/": {"role": "database access",
-                                                              "imports": {"may": ["shared"],
+                                                              "imports": {"may": ["parts.shared"],
                                                                           "libraries": ["sqlmodel"]}}}},
                             "shared/": {"role": "shared code"}})
     one, other = parsed(layered()), parsed(nested)
@@ -235,7 +235,7 @@ def test_a_part_in_another_repeating_folder_may_not_be_said_as_own():
 
 def test_a_must_import_names_a_part_of_another_repeating_folder_with_any_as_well():
     document = two_folders()
-    part_of(document, "hooks").setdefault("imports", {})["may"] = ["service@any"]
+    part_of(document, "hooks").setdefault("imports", {})["may"] = ["parts.service"]
     part_of(document, "hooks").setdefault("imports", {})["must"] = ["service"]
     assert problems(document) == [
         "layered.yaml: parts.hooks.imports.must: 'service' lies in another repeating folder than part 'hooks', which "
@@ -406,8 +406,8 @@ def test_every_problem_of_a_profile_is_reported_at_once():
 
 def test_a_part_says_what_its_files_must_import_with_the_targets_of_may_import():
     document = layered()
-    part_of(document, "store").setdefault("imports", {})["must"] = ["shared"]
-    part_of(document, "api").setdefault("imports", {})["must"] = ["service"]
+    part_of(document, "store").setdefault("imports", {})["must"] = ["parts.shared"]
+    part_of(document, "api").setdefault("imports", {})["must"] = ["module.service"]
     architecture = parsed(document)
     assert architecture.parts["store"].imports_must == (Target("shared"),)
     assert architecture.parts["api"].imports_must == (Target("service", "own"),)
@@ -435,7 +435,7 @@ def test_a_bad_must_import_is_refused(value, expected):
 def test_a_part_that_may_import_everything_may_be_asked_to_reach_any_part():
     document = layered()
     part_of(document, "store").setdefault("imports", {})["may"] = "everything"
-    part_of(document, "store").setdefault("imports", {})["must"] = ["api"]
+    part_of(document, "store").setdefault("imports", {})["must"] = ["module.api"]
     assert parsed(document).parts["store"].imports_must == (Target("api", "own"),)
 
 

@@ -81,9 +81,9 @@ def with_guard(imports) -> dict:
 
 
 @pytest.mark.parametrize("types_only, expected", [
-    pytest.param(["repo", "service"], ["layered.yaml: tiers.integration.imports.types_only: no part named 'repo'"],
+    pytest.param(["parts.repo", "parts.service"], ["layered.yaml: tiers.integration.imports.types_only: no part named 'repo'"],
                  id="a part that does not exist is refused"),
-    pytest.param(["service", "service"],
+    pytest.param(["parts.service", "parts.service"],
                  ["layered.yaml: tiers.integration.imports.types_only: 'service' is listed twice"],
                  id="a part listed twice is refused"),
     pytest.param("service", ["layered.yaml: tiers.integration.imports.types_only: must be a list of part names"],
@@ -387,9 +387,9 @@ def test_a_tier_with_no_folder_has_no_allowance_of_its_own():
 
 
 def test_the_group_gives_the_values_the_old_keys_gave_for_the_same_lists():
-    document = with_guard({"may": ["shared", "api@any"]})
-    document["tiers"]["integration"]["imports"] = {"also": ["service", "shared"], "must": ["api", "store"],
-                                                   "types_only": ["service", "store"]}
+    document = with_guard({"may": ["parts.shared", "parts.api"]})
+    document["tiers"]["integration"]["imports"] = {"also": ["module.service", "parts.shared"], "must": ["parts.api", "parts.store"],
+                                                   "types_only": ["parts.service", "parts.store"]}
     tiers = {tier.name: tier for tier in parsed(document).tiers}
     integration = tiers["integration"]
     assert (integration.imports_may, integration.imports_also, integration.imports_must, integration.imports_types_only) == (
@@ -403,8 +403,8 @@ def test_a_tier_with_no_imports_has_what_leaving_the_old_keys_out_gave():
 
 
 def test_the_order_of_the_keys_of_the_group_does_not_matter_and_the_order_of_entries_is_kept():
-    first = parsed(with_imports({"types_only": ["store", "service"], "must": ["store", "api"]})).tiers[1]
-    second = parsed(with_imports({"must": ["store", "api"], "types_only": ["store", "service"]})).tiers[1]
+    first = parsed(with_imports({"types_only": ["parts.store", "parts.service"], "must": ["parts.store", "parts.api"]})).tiers[1]
+    second = parsed(with_imports({"must": ["parts.store", "parts.api"], "types_only": ["parts.store", "parts.service"]})).tiers[1]
     assert first == second
     assert (first.imports_must, first.imports_types_only) == (("store", "api"), ("store", "service"))
 
@@ -454,7 +454,7 @@ def test_a_tier_writing_the_four_old_keys_gets_one_problem_for_each_in_sorted_or
 
 
 def test_a_retired_key_beside_the_group_is_its_own_problem_and_the_group_is_still_read():
-    document = with_imports({"must": ["ghost"]})
+    document = with_imports({"must": ["parts.ghost"]})
     document["tiers"]["integration"]["must_import"] = ["store"]
     assert problems(document) == [
         f"layered.yaml: tiers.integration: unknown key 'must_import': moved in 0.3.0: write imports: "
@@ -463,7 +463,7 @@ def test_a_retired_key_beside_the_group_is_its_own_problem_and_the_group_is_stil
 
 
 def test_may_in_a_tier_with_no_folder_is_refused_at_its_address():
-    assert problems(with_imports({"may": ["shared"]})) == [
+    assert problems(with_imports({"may": ["parts.shared"]})) == [
         "layered.yaml: tiers.integration.imports.may: only a tier with a `folder` has an allowance of its own: "
         "without one, its tests import what the part they mirror may"]
 
@@ -477,7 +477,7 @@ def test_may_in_a_tier_with_a_folder_loads(may, allowed):
 
 
 def test_a_folder_tier_may_write_may_and_also_together():
-    guard = parsed(with_guard({"may": ["shared"], "also": ["store@any"]})).tiers[2]
+    guard = parsed(with_guard({"may": ["parts.shared"], "also": ["parts.store"]})).tiers[2]
     assert (guard.imports_may, guard.imports_also) == ((Target("shared"),), (Target("store", "any"),))
 
 
@@ -489,16 +489,16 @@ def test_an_empty_also_loads_and_adds_nothing():
     pytest.param({"also": "everything"}, "tiers.integration.imports.also: must be a list of targets such as "
                  "[parts.core, unit.store/schema]: `everything` is not taken, name each target the tests may also "
                  "import", id="also everything"),
-    pytest.param({"also": ["shared", "everything"]}, "tiers.integration.imports.also: `everything` is not taken, "
+    pytest.param({"also": ["parts.shared", "everything"]}, "tiers.integration.imports.also: `everything` is not taken, "
                  "name each target the tests may also import", id="everything in a list of also"),
-    pytest.param({"also": [{"store": "types_only"}]}, "tiers.integration.imports.also: {'store': 'types_only'} is not "
+    pytest.param({"also": [{"parts.store": "types_only"}]}, "tiers.integration.imports.also: {'parts.store': 'types_only'} is not "
                  "a target: use <part>, <part>@any, optionally followed by /<path>", id="a mark in also"),
     pytest.param({"must": "store"}, "tiers.integration.imports.must: must be a list of part names",
                  id="must not a list"),
     pytest.param({"must": []}, "tiers.integration.imports.must: must be a list of part names", id="must empty"),
-    pytest.param({"must": ["nowhere"]}, "tiers.integration.imports.must: no part named 'nowhere'",
+    pytest.param({"must": ["parts.nowhere"]}, "tiers.integration.imports.must: no part named 'nowhere'",
                  id="must of no part"),
-    pytest.param({"must": ["store", "store"]}, "tiers.integration.imports.must: 'store' is listed twice",
+    pytest.param({"must": ["parts.store", "parts.store"]}, "tiers.integration.imports.must: 'store' is listed twice",
                  id="must twice"),
 ])
 def test_each_key_of_the_group_is_refused_with_today_s_text_at_its_new_address(imports, problem):
@@ -506,6 +506,6 @@ def test_each_key_of_the_group_is_refused_with_today_s_text_at_its_new_address(i
 
 
 def test_a_mark_in_a_folder_tier_s_may_is_refused_as_any_entry_that_is_no_target():
-    assert problems(with_guard({"may": [{"store": "types_only"}]})) == [
-        "layered.yaml: tiers.guard.imports.may: {'store': 'types_only'} is not a target: use <part>, <part>@any, "
+    assert problems(with_guard({"may": [{"parts.store": "types_only"}]})) == [
+        "layered.yaml: tiers.guard.imports.may: {'parts.store': 'types_only'} is not a target: use <part>, <part>@any, "
         "optionally followed by /<path>"]

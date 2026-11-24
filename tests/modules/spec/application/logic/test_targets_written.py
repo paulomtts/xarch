@@ -32,8 +32,8 @@ def test_a_target_is_read_as_written(value, targets):
 
 
 def test_a_name_pattern_is_read_only_where_it_is_allowed():
-    assert written(["shared:*Id"], patterns=True) == ((Target("shared", "none", (), "*Id"),), [])
-    assert written(["shared:*Id"])[1] == ["parts.api.imports.may: 'shared:*Id' has a name pattern, which this key does "
+    assert written(["parts.shared:*Id"], patterns=True) == ((Target("shared", "none", (), "*Id"),), [])
+    assert written(["parts.shared:*Id"])[1] == ["parts.api.imports.may: 'parts.shared:*Id' has a name pattern, which this key does "
                                           "not take: drop ':*Id'"]
 
 
@@ -52,9 +52,9 @@ def test_a_target_that_cannot_be_read_is_refused_saying_why(value, problem):
 
 def test_a_tier_folder_s_may_import_refuses_a_marked_entry_as_any_entry_that_is_no_target():
     problems: list[str] = []
-    assert allowed_targets([{"shared": "types_only"}], None, PARTS, {"shared"}, "tiers.guard.imports.may", problems,
+    assert allowed_targets([{"parts.shared": "types_only"}], None, PARTS, {"shared"}, "tiers.guard.imports.may", problems,
                            repeats=REPEATS) == ()
-    assert problems == ["tiers.guard.imports.may: {'shared': 'types_only'} is not a target: use <part>, <part>@any, "
+    assert problems == ["tiers.guard.imports.may: {'parts.shared': 'types_only'} is not a target: use <part>, <part>@any, "
                         "optionally followed by /<path>"]
 
 

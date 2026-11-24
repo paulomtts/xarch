@@ -20,7 +20,7 @@ def with_part(**keys) -> dict:
 
 def test_a_part_says_what_its_files_hold_and_how_its_classes_are_named_and_built():
     part = parsed(with_part(holds={"classes": {"names": "*Service", "built_by": ["api"]}},
-                            imports={"may": [{"store": "types_only"}, "shared"]})).parts["service"]
+                            imports={"may": [{"module.store": "types_only"}, "parts.shared"]})).parts["service"]
     assert (part.holds, part.imports_types_only) == ((Held("classes", ("*Service",), built_by=("api",)),),
                                              (Target("store", "own"),))
     assert not any(hasattr(part, key) for key in ("no_callbacks", "names", "built_by", "immutable"))
@@ -152,37 +152,37 @@ def test_a_bad_key_of_a_part_is_refused(keys, expected):
 
 
 def test_a_target_of_imports_may_may_narrow_what_is_imported_by_a_name_pattern():
-    document = with_part(imports={"may": ["store:*Id", "shared/text:Word*"]})
+    document = with_part(imports={"may": ["module.store:*Id", "parts.shared/text:Word*"]})
     assert parsed(document).rules["service"] == (Target("store", "own", (), "*Id"), Target("shared", "none", ("text",),
                                                                                            "Word*"))
 
 
 @pytest.mark.parametrize("value, expected", [
-    pytest.param("store:", "'store:' has an empty name pattern after `:`", id="an empty pattern"),
-    pytest.param("store:a b", "'store:a b' has a name pattern that is not one: write it with no space, `@`, `/` or "
-                              "`:`, `*` standing for any text", id="a pattern with a space"),
+    pytest.param("module.store:", "'module.store:' has an empty name pattern after `:`", id="an empty pattern"),
+    pytest.param("module.store:a b", "'module.store:a b' has a name pattern that is not one: write it with no space, "
+                                     "`@`, `/` or `:`, `*` standing for any text", id="a pattern with a space"),
 ])
 def test_a_bad_name_pattern_is_refused(value, expected):
     assert problems(with_part(imports={"may": [value]})) == [f"layered.yaml: parts.service.imports.may: {expected}"]
 
 
 def test_imports_must_takes_no_name_pattern():
-    document = with_part(imports={"may": ["store:*Id"], "must": ["store:*Id"]})
+    document = with_part(imports={"may": ["module.store:*Id"], "must": ["module.store:*Id"]})
     assert problems(document) == [
-        "layered.yaml: parts.service.imports.must: 'store:*Id' has a name pattern, which this key does not take: drop "
+        "layered.yaml: parts.service.imports.must: 'module.store:*Id' has a name pattern, which this key does not take: drop "
         "':*Id'"]
 
 
 def test_a_tier_says_what_each_of_its_tests_must_reach():
     document = covered()
-    document["tiers"]["integration"]["imports"] = {"must": ["api", "store"]}
+    document["tiers"]["integration"]["imports"] = {"must": ["parts.api", "parts.store"]}
     tiers = {tier.name: tier for tier in parsed(document).tiers}
     assert (tiers["integration"].imports_must, tiers["unit"].imports_must) == (("api", "store"), ())
 
 
 def test_a_tier_must_import_names_parts():
     document = covered()
-    document["tiers"]["unit"]["imports"] = {"must": ["ghost"]}
+    document["tiers"]["unit"]["imports"] = {"must": ["parts.ghost"]}
     assert problems(document) == ["layered.yaml: tiers.unit.imports.must: no part named 'ghost'"]
 
 
