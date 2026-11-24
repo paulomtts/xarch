@@ -121,8 +121,8 @@ All notable changes to this project are written here. The format follows
   or `lies in no part`. A preset may not say `beside`; `profile check` lists `testing.beside` as looser; `xarch
   profile explain testing.beside` explains it, and the "use ..." list of `testing` gains `beside`.
 - A table `call` form's callees must each be listed under a `call` form of `testing.declared`, for a framework written
-  out or named as a preset: one that is not is refused at its entry (`testing.tables.0.call: `it.each` declares no
-  test: list it under a `call` form of `testing.declared``), unless the language's reader is known not to read that
+  out or named as a preset: one that is not is refused at its entry (`` testing.tables.0.call: `it.each` declares no
+  test: list it under a `call` form of `testing.declared` ``), unless the language's reader is known not to read that
   form, which refuses the entry already. `xarch profile explain testing.tables.call` says so.
 
 ### Changed
