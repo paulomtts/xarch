@@ -231,7 +231,8 @@ The symbols:
   may import only to use as a type. A part may always import itself. A target may also be written as a reference:
   `parts.store` is the part in every instance (or, outside a repeating folder, the part itself), and `<word>.store`,
   such as `module.store`, the part in the importer's own instance of the `<word>` folder, each optionally followed by
-  `/<path>` and `:<pattern>`; the forms above stay the bundled spelling.
+  `/<path>` and `:<pattern>`; the forms above stay the bundled spelling. `profile explain --rule` and the looser lines
+  of `profile check` and `check` write a target as a reference, `parts.<part>` or `<word>.<part>`.
 
 This is the whole format on one screen. The reference for each key (what it means, what it accepts, whether `check`
 enforces it and through which rule, an example that loads, the keys it holds) is the command, which reads the same

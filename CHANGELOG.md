@@ -357,6 +357,12 @@ All notable changes to this project are written here. The format follows
   0}]`: a call giving both a keyword and a first argument now names its spec by the keyword, and a read port named by
   `spec_set=` is shown with `spec_set=`. A `type_argument` entry needs `call.type_arguments`, and an entry of a form the
   language's `writing.specs` does not write is refused at its index.
+- `profile explain <key> --rule` and the example of `profile explain <word>` write a check's `place` as a reference,
+  and the looser lines of `profile check` and `check` (and their JSON `what` and `sentence`) write a target so:
+  `parts.<part>` for a part in every instance of its repeating folder or in none, `<word>.<part>` for the importer's
+  own instance, the word that of the folder the part lies in, then `/<path>` and `:<pattern>` as before (`domain may
+  also import parts.platform`, `targets: [{place: [parts.platform, parts.contract]}, outside]`). `everything` is
+  still written `everything`, and the JSON's shape does not change.
 
 ## [0.2.0] - 2026-11-18
 
