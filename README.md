@@ -227,9 +227,10 @@ The symbols:
 - Every list of parts under `imports` writes each target as a reference: `parts.store` is that part in every
   instance of its repeating folder (or, outside one, the part itself), and `<word>.store`, such as `unit.store`, the
   part in the importer's own instance of the `<word>` folder, which the importer lies in too (in a tier's
-  `imports.also`, the instance the test mirrors); either is optionally followed by `/<path>`, only that path below
-  the part (`parts.store/schema`), and, in `imports.may`, `:<pattern>`, only the names that match the pattern,
-  imported by name (`parts.store:*Id`). `everything` is no limit (also for `imports.libraries`); an entry written
+  `imports.also`, the instance the test mirrors, so a part the tier tests must lie in that folder); either is
+  optionally followed by `/<path>`, only that path below the part (`parts.store/schema`), and, in `imports.may`,
+  `:<pattern>`, only the names that match the pattern, imported by name (`parts.store:*Id`). `everything` is no
+  limit (also for `imports.libraries`); an entry written
   `{parts.store: types_only}` is a target the part may import only to use as a type. A tier's `imports.must` and
   `imports.types_only` name whole parts, `parts.<part>`, for a tier's tests lie in no instance. A part may always
   import itself. `profile explain --rule` and the looser lines of `profile check` and `check` write a target the

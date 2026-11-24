@@ -733,9 +733,10 @@ keys:
   tiers.<tier>.imports.also:
     meaning: what its tests may also import of the app
     accepts: >-
-      references, as a part's `imports.may`, `<word>.<part>` the instance a test mirrors, and added to what each
-      test of the tier may import of the app, such as the values a test builds its fakes' answers with; not
-      `everything`. A target the bundled profile's tier does not give is listed by `profile check` as looser
+      references, as a part's `imports.may`, `<word>.<part>` the instance a test mirrors, refused when no part the
+      tier tests lies in a `<word>` folder (write `parts.<part>`), and added to what each test of the tier may
+      import of the app, such as the values a test builds its fakes' answers with; not `everything`. A target the
+      bundled profile's tier does not give is listed by `profile check` as looser
     example: |
       <<testing>>
       tiers:

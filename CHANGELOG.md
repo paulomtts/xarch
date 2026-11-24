@@ -19,7 +19,9 @@ All notable changes to this project are written here. The format follows
   word in brackets (`write the word without brackets: module.services`), a prefix that is no word of the profile
   (`'orders' is neither parts nor a word of this profile (module): a profile names no instance; write module.services
   or parts.services`, and for a check's `place` the hint that a dotted name of code goes under `path`), `@` anywhere
-  before the pattern, and a part's own instance of itself.
+  before the pattern, and a part's own instance of itself. In a tier's `imports.also`, a word none of the parts the
+  tier tests lies in is refused too (`'module.store': no part the tier tests lies in a <module> folder, so its tests
+  mirror no module: write parts.store`), and `<part>@own` or a bare name there is then told `parts.<part>`.
 - The match of a custom profile with the bundled one it is compared with: the share of what `check` reads under
   either profile (each part, each key a part, a tier or the profile writes, each setting of a kind of `holds` on its
   own, each guard switched on, each check of the profile's own of an id both write) that has a counterpart in the
