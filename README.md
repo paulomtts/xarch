@@ -113,7 +113,7 @@ everything else is optional, and a key left out means off):
 
 ```
 name*  based_on  language  hints  excluded  reserved
-testing:  <preset> | {files*, functions*, skips, tables, mocks}
+testing:  <preset> | {files*, declared*, globals, skips, tables, mocks}
 parts*:   {<part>: {path*, role*, litmus, imports: {may, must, libraries}, uses: {never}, tests | untested,
                     package_only, folders, shared,
                     holds: {classes: {names, immutable, built_by}, functions: {names}, records: {names, immutable},
@@ -177,11 +177,14 @@ a scope any key opens, however deep, and in each entry of a list, which a proble
 (`<list>.0.<key>`). A profile that sets a key whose facts its language does not
 supply is refused when it loads, naming the key, the fact and what to do; a key whose facts are supplied only partly
 runs, and is listed under `approximate` in the enforcement section, which `--strict` fails on. Python's reader
-supplies every fact exactly but `function.tables.call`, so a framework that writes a `call` form under Python is
-refused at that entry (`testing.tables.0.call`). That the table forms are neutral to a language is proved without a
-TypeScript reader: a test-only framework (`tests/fakes/frameworks/stub.yaml`, a loop form and a call form with literal
-rows) is checked on hand-built facts and worded by the `writing` of the test-only language `brace.yaml`, beside a
-framework that writes no form and the loop form read by Python's reader. One fact is never written under
+supplies every fact exactly but `function.tables.call` and `test.call`, so a framework that writes a `call` form under
+Python is refused at that entry (`testing.tables.0.call`, `testing.declared.0.call`). A framework declares its tests
+with `testing.declared`, a list of forms: a `function` form, a function whose name matches a pattern, or a `call` form,
+a call whose arguments hold the test's `title` and its `body`; `testing.globals` names what it binds without an import.
+That the table forms and the call form are neutral to a language is proved without a TypeScript reader: a test-only
+framework (`tests/fakes/frameworks/stub.yaml`, a function form and a call form of a test, a loop form and a call form of
+a table with literal rows) is checked on hand-built facts and worded by the `writing` of the test-only language
+`brace.yaml`, beside a framework that writes no form and the loop form read by Python's reader. One fact is never written under
 `supplies`: `file.package`, that a file stands for the
 folder holding it, follows `package_files`, and the keys whose check reads it (`package_only`, a part's `imports.must`,
 `guards.dead-code.untested`) are refused under a language that has none.

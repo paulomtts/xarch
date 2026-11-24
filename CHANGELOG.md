@@ -92,9 +92,23 @@ All notable changes to this project are written here. The format follows
 - The table forms are proved neutral to a language by tests alone: a test-only framework (a loop form and a call form
   with literal rows) is loaded under a test-only TypeScript-like language and checked on hand-built facts, each finding
   worded from that language's `writing`. Behaviour is unchanged.
+- A framework declares its tests with `testing.declared`, a list of forms, each a `function` form, a function whose
+  name matches a pattern (`declared: [{function: "test_*"}]`), or a `call` form, a call of one of its callees whose
+  arguments hold the test's `title` and its `body` (`{call: [it, test], title: {position: 0}, body: {position: 1}}`);
+  an entry's problem names it by its index (`testing.declared.0.call`). `testing.globals` lists the names the framework
+  binds without an import (`[it, expect]`): a use or a call of one that the file does not bind is read as that name,
+  never as a builtin. The reader turns the forms into the tests of a file (`SourceFile.tests`, each a `Test` with its
+  line, its name, the index of its form, whether the name is a title, and its body), and scenario-coverage,
+  `plain_tables` and `weak` read those alone. Two facts come with it: `test.function`, which Python supplies, and
+  `test.call`, which no reader supplies yet, so a call form under Python is refused at its entry; the call form is
+  proved on hand-built facts. A test declared by a title is named in double quotes (`"places an order" has an \`if\`
+  in its body`), one declared by its function by its bare name, as before.
 
 ### Changed
 
+- `testing.functions` is replaced by `testing.declared`: a profile or a preset writing it is refused with `unknown key
+  'functions': moved in 0.3.0: write declared: [{function: "<pattern>"}]`. The bundled `pytest` preset writes
+  `declared: [{function: "test_*"}]`; the same functions are tests as before, and findings and docs read as before.
 - A framework says how a table of cases is written with `testing.tables`, a list of table forms, each with one of
   `decorator`, `call` or `loop` and the slots `columns_from`, `rows`, `row` and `id`; an entry's problem names it by
   its index, `testing.tables.0.id`. `testing.table` is refused with "moved in 0.3.0: write tables, a list of forms
