@@ -279,7 +279,9 @@ def test_a_key_of_a_guard_written_with_no_value_configures_nothing():
 
 
 @pytest.mark.parametrize("testing", [pytest.param("nosuch", id="a name that is no preset"),
-                                     pytest.param(3, id="a number"), pytest.param(["pytest"], id="a list")])
+                                     pytest.param(3, id="a number"), pytest.param(["pytest"], id="a list"),
+                                     pytest.param({"preset": "nosuch"}, id="a map naming no preset"),
+                                     pytest.param({"preset": 3}, id="a map whose preset is no name")])
 def test_a_testing_that_names_no_preset_and_is_no_mapping_walks_nothing(testing):
     assert short(layered(language="toy", testing=testing), {"pytest": {"skips": ["x"]}}, TOY) == []
 
@@ -288,6 +290,16 @@ def test_a_testing_that_names_a_preset_is_walked_as_the_preset():
     found = short(layered(language="toy", testing="pytest"), {"pytest": {"skips": ["x"]}}, TOY)
     assert [(item.address, item.fact) for item in found] == [("testing.skips", "use"),
                                                              ("testing.skips", "import.resolved")]
+
+
+def test_a_testing_map_that_names_a_preset_is_walked_as_the_preset():
+    found = short(layered(language="toy", testing={"preset": "pytest"}), {"pytest": {"skips": ["x"]}}, TOY)
+    assert [(item.address, item.fact) for item in found] == [("testing.skips", "use"),
+                                                             ("testing.skips", "import.resolved")]
+
+
+def test_a_key_written_beside_a_preset_is_not_walked():
+    assert short(layered(language="toy", testing={"preset": "pytest", "skips": ["x"]}), {"pytest": {}}, TOY) == []
 
 
 def test_a_key_whose_check_reads_names_through_imports_needs_them_followed_however_written():

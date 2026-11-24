@@ -31,8 +31,8 @@ def _configured(mapping: Mapping[Any, Any], scope: str, at: str, presets: Mappin
     """Each key of the table that the mapping of the scope sets and that needs facts, with its address in the file (at
     is the mapping's address and a dot, "" for the file), in the order of the table, each followed by those of the
     scope it opens: depth first. A key the mapping does not hold, or holds as false or null, configures nothing, and
-    nothing below it is walked; a guard is configured by its name alone. The file's testing, written as the name of a
-    preset, is walked as the preset's mapping."""
+    nothing below it is walked; a guard is configured by its name alone. The file's testing, naming a preset
+    by its name or under preset, is walked as the preset's mapping."""
     for key in (key for key in keys if key.scope == scope):
         value = mapping.get(key.name)
         if key.name not in mapping or (scope != GUARD and (value is None or value is False)):
@@ -40,10 +40,19 @@ def _configured(mapping: Mapping[Any, Any], scope: str, at: str, presets: Mappin
         address = f"{at}{key.name}"
         if key.needs:
             yield address, key
-        if scope == PROFILE and key.name == "testing" and isinstance(value, str):
-            value = presets.get(value)
+        if scope == PROFILE and key.name == "testing":
+            value = _framework(value, presets)
         for where, held in _held(value, SCOPES.get(key.opens, key.opens), address) if key.opens else ():
             yield from _configured(held, key.opens, f"{where}.", presets, keys)
+
+
+def _framework(testing: Any, presets: Mapping[str, Any]) -> Any:
+    """The mapping the file's testing stands for: the preset's when it names one, by its name or under `preset`; None
+    when what it names is no preset or no name; else the mapping written."""
+    if isinstance(testing, Mapping) and "preset" in testing:
+        testing = testing["preset"]
+        return presets.get(testing) if isinstance(testing, str) else None
+    return presets.get(testing) if isinstance(testing, str) else testing
 
 
 def _held(value: Any, where: str, address: str) -> list[tuple[str, Mapping[Any, Any]]]:
