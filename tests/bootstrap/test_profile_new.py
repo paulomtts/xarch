@@ -89,3 +89,11 @@ def test_an_unknown_bundled_profile_and_a_bad_name_are_refused(tmp_path):
     assert runner.invoke(app, ["profile", "new", "a b", "--from", "cli"]).exit_code == 2
     assert not (tmp_path / "architecture").exists()
     assert runner.invoke(app, ["profile", "new", "mine"]).exit_code == 2
+
+
+def test_the_copy_of_web_writes_its_parts_as_the_folder_tree_and_loads(tmp_path):
+    assert runner.invoke(app, ["profile", "new", "mine", "--from", "web"]).exit_code == 0
+    copy = tmp_path / "architecture" / "mine" / "mine.yaml"
+    parts = yaml.safe_load(copy.read_text(encoding="utf-8"))["parts"]
+    assert list(parts) == ["modules/<module>/", "platform/", "web/", "bootstrap/", "kernel/"]
+    assert load_architecture(copy).placement[-2:] == ("kernel", "kernel-logic")

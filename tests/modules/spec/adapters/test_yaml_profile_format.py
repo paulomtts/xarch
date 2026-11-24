@@ -3,6 +3,9 @@ named for the copy and based on what it was copied from. The checks of a profile
 `checks`: each slot as the format writes it, a default left out, a word quoted only where the format would read it
 otherwise, the sayings but the last as cases, a target as it was written (its kind alone, or a map of its values), and
 the examples when a check has any."""
+import json
+from pathlib import Path
+
 import pytest
 import yaml
 
@@ -21,6 +24,7 @@ from xarch.profile_values.checks import (
 )
 
 FORMAT = YamlProfileFormat(YamlWriter())
+ROOT = Path(__file__).resolve().parents[4]
 
 
 def test_a_profile_is_written_as_yaml_in_utf_8():
@@ -147,3 +151,14 @@ def test_a_lone_folder_holding_one_file_is_joined_with_it():
 def test_the_rest_of_the_document_is_written_as_before():
     document = {"name": "x", "parts": {"core/": {"role": "r"}}, "layers": {"a": ["core"]}}
     assert yaml.safe_load(FORMAT.written(document)) == document
+
+
+@pytest.mark.parametrize("path", ["xarch/architectures/web.yaml", "xarch/architectures/cli.yaml", "architecture.yaml",
+                                  "tests/bootstrap/corpora/7cc6111.yaml", "tests/bootstrap/corpora/df537ca.yaml",
+                                  "tests/bootstrap/corpora/stress.yaml"])
+def test_each_profile_shipped_or_archived_is_its_tree_as_the_writer_writes_it(path):
+    document = yaml.safe_load((ROOT / path).read_text(encoding="utf-8"))
+    written = yaml.safe_load(FORMAT.written(document))["parts"]
+    assert written == document["parts"]
+    assert json.dumps(written) == json.dumps(document["parts"])
+    assert all(key.endswith("/") or "." in key for key in document["parts"])

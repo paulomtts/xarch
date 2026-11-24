@@ -5,120 +5,142 @@ language: python
 testing: pytest
 
 parts:
-  domain:
-    path: modules/<module>/domain
-    role: "entities, values, errors: invariants only; in published.py, the values handed out as they are"
-    litmus: >-
-      Is it an invariant of one of this module's values or records (a validation that refuses to build a wrong one),
-      or an error the module raises (a class of its own, whatever base error it subclasses), that runs with no file
-      read and no clock? If yes, it goes here, on that value. A value the module works out as it runs (what it saw in
-      a source file, a rule as it applies it) is this module's own. If
-      it is a value the module hands out as it is, with nothing to reshape, it goes in `domain/published.py`, which
-      `contract/` re-exports. If it is a record of what a profile file writes under a key (a tier, the fakes, a
-      guard's settings) or of what its language's data file lists, which spec builds and rules reads in full too, it
-      belongs in `profile_values/`, with its invariants. If it is a pure rule that is not one value's invariant, it
-      belongs in `application/logic/`. If it must read anything, it is a service step through a port.
-    imports:
-      may: [kernel, kernel-logic, profile-values]
-    uses: {never: pure}
-    holds: {classes: {}}
-    tests: unit
-
-  logic:
-    path: modules/<module>/application/logic
-    role: pure functions over the module's domain objects
-    litmus: >-
-      Is it a pure function over this module's domain values that decides one rule, with no port and no file read? If
-      yes, it goes here, in a file named for what it decides, and every record it returns is immutable. If it is one
-      value's invariant, it belongs on that value in `domain/`. If another module needs the same rule, it belongs in
-      `kernel/logic/`. If it must read or write anything, it is a service step through a port.
-    imports:
-      may: [domain, kernel, kernel-logic, profile-values]
-    uses: {never: pure}
-    holds: {functions: {}, records: {immutable: true}, exceptions: {}}
-    tests: unit
-
-  ports:
-    path: modules/<module>/application/ports
-    role: Protocols for what the module needs from the outside
-    litmus: >-
-      Is it something a use case of this module needs from outside it (files on disk, the source a reader parses,
-      another module's answer), declared as a `Protocol` in this module's own words, with no body? If yes, it goes
-      here. If it has a body that reads a file or calls another module, it belongs in `adapters/`. A value the port
-      hands back belongs in `domain/`, unless it is already a value of `profile_values/` or `kernel/` that the port
-      hands back as it is.
-    imports:
-      may: [domain, kernel, kernel-logic, profile-values]
-    uses: {never: pure}
-    holds: {classes: {}}
-    tests: integration
-
-  services:
-    path: modules/<module>/application/services
-    role: "use-case steps: load, check, act; they assemble what the use case hands out"
-    litmus: >-
-      Does it run one use case as steps (load through a port, check, act), calling ports, logic and domain values, and
-      assemble what the use case hands out on success from what they return? If yes, it goes here. If it decides what
-      is valid, or what the Result says (a condition, a default, a sentence), it belongs in `application/logic/`, and
-      the service calls it. If it turns a failure into a Result variant, it belongs in the controller. If it reads a
-      file or another module, it does so through a port.
-    imports:
-      may: [logic, domain, ports, contract, kernel, kernel-logic, profile-values]
-    holds: {classes: {names: "*Service", built_by: [bootstrap]}}
-    uses: {never: ambient}
-    tests: integration
-
-  controller:
-    path: modules/<module>/application/controller.py
-    role: maps failures to Result variants
-    litmus: >-
-      Does it turn each error a service raises into the Result variant that says it, and return what the service
-      assembled, deciding nothing else? If yes, it goes here, and no error of the module leaves it past here. A use
-      case that cannot fail has its method here too, handing the service the fields of its command and returning what
-      the service assembled; a method that only passes its own parameters on adds nothing, and `pass-through` lists
-      it. If it builds a Result from logic or domain values itself, that assembly belongs in a service. If it parses
-      arguments or prints, it belongs in `cli/`.
-    imports:
-      may: [services, contract, domain/errors, kernel, kernel-logic, profile-values]
-    holds: {classes: {names: "*Controller", built_by: [bootstrap]}}
-    uses: {never: ambient}
-    tests: integration
-
-  adapters:
-    path: modules/<module>/adapters
-    role: implement the ports on the filesystem or another module's contract
-    litmus: >-
-      Does it implement one of this module's ports against something outside the module (a technology, through a
-      client or reader of `platform/`; the checked language's source; or another module's controller), translating
-      between that and the module's own types, and naming no other module but the `contract/` of the one whose
-      controller it wraps? If yes, it goes here. If it decides a rule of the module (what a check finds, whether a
-      fact is supplied), that rule belongs in `application/logic/`, and the adapter hands it the translated values. If
-      it knows no module's types and only wraps a technology, it belongs in `platform/`.
-    imports:
-      may: [ports, domain, kernel, kernel-logic, profile-values, platform, contract@any]
-      must: [platform, contract@any]
-      libraries: [ast, tokenize]
-    uses: {never: ambient}
-    holds: {classes: {built_by: [bootstrap]}}
-    tests: unit
-
-  platform:
-    path: platform
+  modules/<module>/:
+    domain/:
+      role: "entities, values, errors: invariants only; in published.py, the values handed out as they are"
+      litmus: >-
+        Is it an invariant of one of this module's values or records (a validation that refuses to build a wrong one),
+        or an error the module raises (a class of its own, whatever base error it subclasses), that runs with no file
+        read and no clock? If yes, it goes here, on that value. A value the module works out as it runs (what it saw
+        in a source file, a rule as it applies it) is this module's own. If it is a value the module hands out as it
+        is, with nothing to reshape, it goes in `domain/published.py`, which `contract/` re-exports. If it is a record
+        of what a profile file writes under a key (a tier, the fakes, a guard's settings) or of what its language's
+        data file lists, which spec builds and rules reads in full too, it belongs in `profile_values/`, with its
+        invariants. If it is a pure rule that is not one value's invariant, it belongs in `application/logic/`. If it
+        must read anything, it is a service step through a port.
+      imports:
+        may: [kernel, kernel-logic, profile-values]
+      uses:
+        never: pure
+      holds:
+        classes: {}
+      tests: unit
+    application/:
+      logic/:
+        role: pure functions over the module's domain objects
+        litmus: >-
+          Is it a pure function over this module's domain values that decides one rule, with no port and no file read?
+          If yes, it goes here, in a file named for what it decides, and every record it returns is immutable. If it
+          is one value's invariant, it belongs on that value in `domain/`. If another module needs the same rule, it
+          belongs in `kernel/logic/`. If it must read or write anything, it is a service step through a port.
+        imports:
+          may: [domain, kernel, kernel-logic, profile-values]
+        uses:
+          never: pure
+        holds:
+          functions: {}
+          records:
+            immutable: true
+          exceptions: {}
+        tests: unit
+      ports/:
+        role: Protocols for what the module needs from the outside
+        litmus: >-
+          Is it something a use case of this module needs from outside it (files on disk, the source a reader parses,
+          another module's answer), declared as a `Protocol` in this module's own words, with no body? If yes, it goes
+          here. If it has a body that reads a file or calls another module, it belongs in `adapters/`. A value the
+          port hands back belongs in `domain/`, unless it is already a value of `profile_values/` or `kernel/` that
+          the port hands back as it is.
+        imports:
+          may: [domain, kernel, kernel-logic, profile-values]
+        uses:
+          never: pure
+        holds:
+          classes: {}
+        tests: integration
+      services/:
+        role: "use-case steps: load, check, act; they assemble what the use case hands out"
+        litmus: >-
+          Does it run one use case as steps (load through a port, check, act), calling ports, logic and domain values,
+          and assemble what the use case hands out on success from what they return? If yes, it goes here. If it
+          decides what is valid, or what the Result says (a condition, a default, a sentence), it belongs in
+          `application/logic/`, and the service calls it. If it turns a failure into a Result variant, it belongs in
+          the controller. If it reads a file or another module, it does so through a port.
+        imports:
+          may: [logic, domain, ports, contract, kernel, kernel-logic, profile-values]
+        uses:
+          never: ambient
+        holds:
+          classes:
+            names: "*Service"
+            built_by: [bootstrap]
+        tests: integration
+      controller.py:
+        role: maps failures to Result variants
+        litmus: >-
+          Does it turn each error a service raises into the Result variant that says it, and return what the service
+          assembled, deciding nothing else? If yes, it goes here, and no error of the module leaves it past here. A
+          use case that cannot fail has its method here too, handing the service the fields of its command and
+          returning what the service assembled; a method that only passes its own parameters on adds nothing, and
+          `pass-through` lists it. If it builds a Result from logic or domain values itself, that assembly belongs in
+          a service. If it parses arguments or prints, it belongs in `cli/`.
+        imports:
+          may: [services, contract, domain/errors, kernel, kernel-logic, profile-values]
+        uses:
+          never: ambient
+        holds:
+          classes:
+            names: "*Controller"
+            built_by: [bootstrap]
+        tests: integration
+    adapters/:
+      role: implement the ports on the filesystem or another module's contract
+      litmus: >-
+        Does it implement one of this module's ports against something outside the module (a technology, through a
+        client or reader of `platform/`; the checked language's source; or another module's controller), translating
+        between that and the module's own types, and naming no other module but the `contract/` of the one whose
+        controller it wraps? If yes, it goes here. If it decides a rule of the module (what a check finds, whether a
+        fact is supplied), that rule belongs in `application/logic/`, and the adapter hands it the translated values.
+        If it knows no module's types and only wraps a technology, it belongs in `platform/`.
+      imports:
+        may: [ports, domain, kernel, kernel-logic, profile-values, platform, contract@any]
+        must: [platform, contract@any]
+        libraries: [ast, tokenize]
+      uses:
+        never: ambient
+      holds:
+        classes:
+          built_by: [bootstrap]
+      tests: unit
+    contract/:
+      role: "the module's published language: commands, Results"
+      litmus: >-
+        Is it part of what the module promises callers outside it: a command a caller sends, a Result that comes back,
+        or an id? If yes, it goes here, typed in full, with no field of an opaque type. A value with nothing to
+        reshape is listed in `domain/published.py`, or is a value of `profile_values/`, and is re-exported here;
+        everything else the module hands out is a type of its own here. If it is a domain value, a service type or a
+        port, it stays where it is, and a type of the contract goes here instead.
+      imports:
+        may: ["domain/values:*Id", domain/published, kernel, kernel-logic, profile-values]
+      uses:
+        never: published
+      package_only: true
+      tests: integration
+  platform/:
     role: "the clients and readers of the technologies xarch uses, knowing no module"
     litmus: >-
       Is it a client or reader of one technology xarch uses, wherever that technology lives (on the machine, in the
       interpreter running xarch, or as a service across the network), that knows none of any module's types? If yes,
-      it goes here, named for the technology. If it translates a module's types for a port, it belongs in that module's `adapters/`. Which folder
-      a relative path is read from is its caller's to say: a method that makes a path whole or walks the folders above
-      it refuses a path not given in full.
+      it goes here, named for the technology. If it translates a module's types for a port, it belongs in that
+      module's `adapters/`. Which folder a relative path is read from is its caller's to say: a method that makes a
+      path whole or walks the folders above it refuses a path not given in full.
     imports:
       may: [kernel, kernel-logic]
       libraries: [yaml]
-    uses: {never: environment}
+    uses:
+      never: environment
     tests: unit
-
-  cli:
-    path: cli
+  cli/:
     role: the only place for commands and terminal output
     litmus: >-
       Does it parse arguments, call controllers, and print what `reports/` words, whichever module's data it shows? If
@@ -129,35 +151,37 @@ parts:
     imports:
       may: [reports, controller@any, contract@any, kernel, kernel-logic]
       libraries: [typer]
-    uses: {never: environment}
+    uses:
+      never: environment
     tests: wired
-    folders: [commands]
-
-  reports:
-    path: cli/reports
-    role: formatting of Results into text and JSON
-    litmus: >-
-      Does it only put into text or JSON what a Result already says, choosing the words, the counts and the layout,
-      and deciding nothing the Result does not hold?
-    imports:
-      may: [contract@any, kernel, kernel-logic]
-    uses: {never: pure}
-    holds: {functions: {}, records: {immutable: true}, exceptions: {}}
-    tests: unit
-
-  main:
-    path: __main__.py
+    commands/: {}
+    reports/:
+      role: formatting of Results into text and JSON
+      litmus: >-
+        Does it only put into text or JSON what a Result already says, choosing the words, the counts and the layout,
+        and deciding nothing the Result does not hold?
+      imports:
+        may: [contract@any, kernel, kernel-logic]
+      uses:
+        never: pure
+      holds:
+        functions: {}
+        records:
+          immutable: true
+        exceptions: {}
+      tests: unit
+  __main__.py:
+    name: main
     role: "`python -m xarch`: starts the same app as the console script"
-    litmus: Does it only hand control to the app bootstrap/ builds, so that `python -m xarch` runs it?
+    litmus: "Does it only hand control to the app bootstrap/ builds, so that `python -m xarch` runs it?"
     imports:
       may: [bootstrap]
-    uses: {never: environment}
+    uses:
+      never: environment
     untested: >-
       a two-line shim that runs the app bootstrap/ builds; no test runs `python -m xarch`, and the wired tests drive
       that same app
-
-  bootstrap:
-    path: bootstrap
+  bootstrap/:
     role: "composition root: binds ports to adapters, hands controllers to cli/"
     litmus: >-
       Does it choose which adapter fills which port, build the services and controllers around them, and hand one
@@ -167,79 +191,72 @@ parts:
     imports:
       may: everything
     tests: wired
-    folders: [migrations]
-
-  contract:
-    path: modules/<module>/contract
-    role: "the module's published language: commands, Results"
-    litmus: >-
-      Is it part of what the module promises callers outside it: a command a caller sends, a Result that comes back,
-      or an id? If yes, it goes here, typed in full, with no field of an opaque type. A value with nothing to reshape
-      is listed in `domain/published.py`, or is a value of `profile_values/`, and is re-exported here; everything else
-      the module hands out is a type of its own here. If it is a domain value, a service type or a port, it stays where it is, and a type of the contract
-      goes here instead.
-    imports:
-      may: ["domain/values:*Id", "domain/published", kernel, kernel-logic, profile-values]
-    uses: {never: published}
-    tests: integration
-    package_only: true
-
-  profile-values:
-    path: profile_values
-    role: the values a profile and the data file of the language it names say, which spec builds and rules reads in full
+    migrations/: {}
+  profile_values/:
+    name: profile-values
+    role: >-
+      the values a profile and the data file of the language it names say, which spec builds and rules reads in full
     litmus: >-
       Is it a record of what a profile file writes under one of its keys (the tiers, the fakes, a guard's settings),
       or of what the data file of the language it names lists (its file extension, the facts it supplies), which spec
       builds and rules reads in full, field by field? If yes, it goes here, as a record with no rule beyond its own
       invariants. A value no profile writes, worked out from an app's source (an import seen, an edge between two
-      parts), is not one: it belongs in the `domain/` of the module that works it out. What a rule of
-      `kernel/logic/` grades of such values (a key's shortfall of the facts a language supplies), which spec and rules
-      both read in full, goes here too. If it is what a use case of one module found, it is that module's Result, in
-      its `contract/`. If rules reads less than all of it, spec hands it out in its contract and rules holds a smaller
+      parts), is not one: it belongs in the `domain/` of the module that works it out. What a rule of `kernel/logic/`
+      grades of such values (a key's shortfall of the facts a language supplies), which spec and rules both read in
+      full, goes here too. If it is what a use case of one module found, it is that module's Result, in its
+      `contract/`. If rules reads less than all of it, spec hands it out in its contract and rules holds a smaller
       value of its own. If only one module needs it, it belongs in that module's `domain/`. If it has no business
       meaning, one that could be lifted unchanged into an unrelated system, it belongs in `kernel/`.
     imports:
       may: [kernel]
+    uses:
+      never: pure
+    holds:
+      classes: {}
     shared: 2
-    holds: {classes: {}}
-    uses: {never: pure}
     tests: unit
-
-  kernel-logic:
-    path: kernel/logic
-    role: "pure functions that modules share, including a rule two modules need, over the values of kernel/ and
-      profile_values/: no type of its own"
-    litmus: >-
-      Is it a pure function with no port and no I/O, over `kernel/` primitives and `profile_values/` values, deciding
-      a rule that two or more modules need (where a path sits, what a target reaches, which facts fall short)? If yes,
-      it goes here, in a file named for the rule, and every record it returns is immutable. If only one module needs
-      it, it belongs in that module's `application/logic/`. If it is a value or a type rather than a function, it
-      belongs in `kernel/`, or in `profile_values/` when it has business meaning.
-    imports:
-      may: [kernel, profile-values]
-    shared: 2
-    uses: {never: pure}
-    holds: {functions: {}, records: {immutable: true}, exceptions: {}}
-    tests: unit
-
-  kernel:
-    path: kernel
-    role: "pure primitives that modules share, with no business meaning; and xarch's catalogue of check ids, which a
-      violation names"
+  kernel/:
+    role: >-
+      pure primitives that modules share, with no business meaning; and xarch's catalogue of check ids, which a
+      violation names
     litmus: >-
       Is it a primitive with no business meaning, one that could be lifted unchanged into an unrelated system, such as
       the base error or a finding at a place in a file tree? If yes, it goes here. An error one module raises, which
       subclasses the base error, is that module's own, in its `domain/`. A function that works a result out of its
       arguments is not a primitive, however general it reads: it goes in `kernel/logic/`, or in the one module that
-      needs it. One exception, named on purpose:
-      `RULES` and `OWN_ID`, xarch's catalogue of check ids and how a profile writes its own, stay here beside the
-      `Violation` that validates them, because spec and rules both need them and spec cannot import rules. If it is a
-      value of the profile or of the language a check reads, it belongs in `profile_values/`. If it is a pure function
-      two modules need, it goes in `kernel/logic/`. If one module needs it, it belongs in that module.
+      needs it. One exception, named on purpose: `RULES` and `OWN_ID`, xarch's catalogue of check ids and how a
+      profile writes its own, stay here beside the `Violation` that validates them, because spec and rules both need
+      them and spec cannot import rules. If it is a value of the profile or of the language a check reads, it belongs
+      in `profile_values/`. If it is a pure function two modules need, it goes in `kernel/logic/`. If one module needs
+      it, it belongs in that module.
+    uses:
+      never: pure
+    holds:
+      classes: {}
     shared: 2
-    uses: {never: pure}
-    holds: {classes: {}}
     tests: unit
+    logic/:
+      name: kernel-logic
+      role: >-
+        pure functions that modules share, including a rule two modules need, over the values of kernel/ and
+        profile_values/: no type of its own
+      litmus: >-
+        Is it a pure function with no port and no I/O, over `kernel/` primitives and `profile_values/` values,
+        deciding a rule that two or more modules need (where a path sits, what a target reaches, which facts fall
+        short)? If yes, it goes here, in a file named for the rule, and every record it returns is immutable. If only
+        one module needs it, it belongs in that module's `application/logic/`. If it is a value or a type rather than
+        a function, it belongs in `kernel/`, or in `profile_values/` when it has business meaning.
+      imports:
+        may: [kernel, profile-values]
+      uses:
+        never: pure
+      holds:
+        functions: {}
+        records:
+          immutable: true
+        exceptions: {}
+      shared: 2
+      tests: unit
 
 never:
   pure: [datetime.datetime.now, datetime.datetime.utcnow, datetime.datetime.today, datetime.date.today, time.time,

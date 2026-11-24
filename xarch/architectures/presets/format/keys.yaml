@@ -111,7 +111,7 @@ smallest: |
       role: the documents
 symbols:
   "<folder>/": "under parts, a key ending in /: a folder, holding the folders, files and keys of what lies in it"
-  "<word>/": "under parts, a folder key written <word>/: a repeating folder, one per name, as in units/<unit>/; there may be several"
+  "<word>/": "under parts, a folder key: a repeating folder, one per name, as in units/<unit>/; there may be several"
   store: "in imports.may, a bare name: that part, in the importer's own instance of its repeating folder"
   store@any: that part in any instance; the only way to name a part of another repeating folder
   store/schema: only what lies below that path of the part
