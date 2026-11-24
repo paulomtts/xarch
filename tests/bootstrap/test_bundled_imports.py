@@ -1,16 +1,20 @@
 """What a part, or a tier, of a bundled profile or of xarch's own may import, must import and may import from outside
 stays what it was before the import keys moved into `imports` groups: `where` says the same of a file of every part of
 xarch's own profile and of a test of each of its tiers, and the rules the keys expand to are, as checks, the same text
-for each profile but for the key."""
+for each profile but for the key; and every list of parts under imports of each is written in references, which no other key is."""
 import hashlib
 import json
+import re
+from pathlib import Path
 
 import pytest
+import yaml
 from typer.testing import CliRunner
 
 from xarch.bootstrap.app import app
 
 runner = CliRunner()
+ROOT = Path(__file__).parents[2]
 KEYS = {"may": "parts.imports.may", "must": "parts.imports.must", "libraries": "parts.imports.libraries"}
 """The address `profile explain` is asked for each key of the group."""
 PATHS = {"domain": "xarch/modules/spec/domain/x.py", "logic": "xarch/modules/spec/application/logic/x.py",
@@ -128,3 +132,39 @@ def test_where_says_what_a_test_of_each_tier_of_xarch_may_import_as_before(test)
 @pytest.mark.parametrize("profile, key", list(TIER_RULES))
 def test_each_key_of_a_tier_s_group_expands_to_the_rules_of_before(profile, key):
     assert explained(TIER_KEYS[key], profile) == TIER_RULES[profile, key]
+
+
+SHIPPED = {"cli": ROOT / "xarch" / "architectures" / "cli.yaml", "web": ROOT / "xarch" / "architectures" / "web.yaml",
+           "architecture.yaml": ROOT / "architecture.yaml"}
+"""Each profile the rules above are asked of, by the name they are asked for, as a file."""
+LISTS = ("may", "must", "also", "types_only")
+"""The lists of parts under an `imports` group, a part's or a tier's, which take references."""
+
+
+def nodes(node, path=()):
+    """Every value of a document, each with the keys and indexes that lead to it."""
+    yield path, node
+    children = node.items() if isinstance(node, dict) else enumerate(node) if isinstance(node, list) else ()
+    for key, value in children:
+        yield from nodes(value, (*path, key))
+
+
+def entries(document) -> list:
+    """Every entry of a list of parts under an `imports` group, a marked one by the reference it marks."""
+    return [next(iter(entry)) if isinstance(entry, dict) else entry for path, value in nodes(document)
+            if path[-2:-1] == ("imports",) and path[-1] in LISTS and isinstance(value, list) for entry in value]
+
+
+def texts(document) -> list[str]:
+    """Every text a document writes, as a value or as a key."""
+    return [text for _, value in nodes(document)
+            for text in (value if isinstance(value, dict) else [value]) if isinstance(text, str)]
+
+
+@pytest.mark.parametrize("profile", list(SHIPPED))
+def test_every_list_of_parts_under_imports_is_written_in_references_and_no_other_key_is(profile):
+    document = yaml.safe_load(SHIPPED[profile].read_text(encoding="utf-8"))
+    listed = entries(document)
+    assert listed
+    assert [entry for entry in listed if entry != "everything" and "." not in re.split("[/:]", entry, maxsplit=1)[0]] == []
+    assert sum(entry.startswith("parts.") for entry in listed) == sum(text.startswith("parts.") for text in texts(document))
