@@ -37,12 +37,16 @@ def test_a_check_the_profile_writes_becomes_a_rule_with_its_examples_and_its_key
         OwnCheck(rule, (("kernel/a.py", "x()\n"),), (("kernel/b.py", "\n"),)),)
 
 
-def test_a_place_is_read_by_the_target_grammar_from_the_part_the_scope_names():
+def test_a_place_in_an_old_form_is_refused_with_the_reference_the_part_the_scope_names_would_write():
     placed = WrittenCheck(("import-into-app",), Scope(APP, "services"),
-                          Quantified(MAY_NOT, (WrittenTarget("place", ("domain/values", "kernel")),)),
+                          Quantified(MAY_NOT, (WrittenTarget("place", ("domain/values", "kernel@any")),)),
                           (Saying("m", "f"),))
-    (check,) = resolved(profile(written={"placed": placed})).checks
-    assert check.rule.targets == (Match("place", places=(Target("domain", "own", ("values",)), Target("kernel"))),)
+    with pytest.raises(ChecksRefused) as refused:
+        resolved(profile(written={"placed": placed}))
+    assert refused.value.problems == (
+        "checks.placed.may_not.place: 'domain/values': a bare part name was removed in 0.3.0: write "
+        "module.domain/values (this module's) or parts.domain/values (any module's)",
+        "checks.placed.may_not.place: 'kernel@any': @any was removed in 0.3.0: write parts.kernel")
 
 
 def test_a_place_reads_a_reference_with_the_words_of_the_profile_s_repeating_folders():

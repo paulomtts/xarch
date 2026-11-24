@@ -7,6 +7,9 @@ from tests.modules.spec.profiles import layered, parsed, part_of, problems
 from xarch.kernel.placement import EVERYTHING
 from xarch.profile_values.placement import Target
 
+NOT_A_REFERENCE = ("is not a reference: write parts.<part> or <word>.<part>, optionally followed by /<path> and "
+                   ":<pattern>")
+
 USE = "use holds, imports, litmus, name, package_only, role, shared, tests, untested, uses"
 """What every unknown-key problem of a part ends with."""
 
@@ -97,8 +100,7 @@ def test_a_target_written_plain_and_marked_keeps_its_mark():
     pytest.param({"everything": "types_only"}, "everything takes no mode: list the entries to give one a mode",
                  id="everything"),
     pytest.param({"repo": "types_only"}, "'repo' names no part 'repo'", id="an undeclared part"),
-    pytest.param({3: "types_only"}, "3 is not a target: use <part>, <part>@any, optionally followed by /<path>",
-                 id="no target"),
+    pytest.param({3: "types_only"}, f"3 {NOT_A_REFERENCE}", id="no target"),
 ])
 def test_a_mark_written_wrong_is_refused_at_may(entry, problem):
     assert problems(with_imports("service", {"may": [entry]})) == [f"layered.yaml: parts.service.imports.may: {problem}"]
@@ -109,8 +111,8 @@ def test_a_mark_written_wrong_is_refused_at_may(entry, problem):
     pytest.param("shared", "must be a list of targets such as [parts.<part>, <word>.<part>]", id="no list"),
     pytest.param([{"parts.shared": "types_only"}], "{parts.shared: types_only}: must takes references only, with no mode",
                  id="a mode"),
-    pytest.param(["api"], "'api' is not in imports.may, so no file could import it: add it there, or name a part the "
-                 "part may import", id="not in may"),
+    pytest.param(["module.api"], "'module.api' is not in imports.may, so no file could import it: add it there, or "
+                 "name a part the part may import", id="not in may"),
 ])
 def test_must_is_refused_when_written_wrong(must, problem):
     document = with_imports("store", {"may": ["parts.shared"], "must": must})

@@ -11,7 +11,7 @@ part, and `never` and `types_only` written in the group, are refused from the ta
 
 A tier's `imports`, {may, also, must, types_only}, is checked as a group by the same `group`, under its own scope and
 with its own example; the tier parser reads its keys (see profile_parsing), its `must` and `types_only` through
-tier_parts: whole parts, `parts.<part>`, for a tier's tests lie in no instance.
+tier_parts: whole parts, `parts.<part>` alone, for a tier's tests lie in no instance.
 """
 from __future__ import annotations
 
@@ -19,6 +19,7 @@ import re
 from collections.abc import Collection, Mapping
 from typing import Any
 
+from xarch.kernel.logic.targets import BARE, old_form, removed
 from xarch.kernel.placement import EVERYTHING
 from xarch.modules.spec.application.logic import profile_checks as ck
 from xarch.modules.spec.application.logic.key_lookup import keys_of, names_of
@@ -57,14 +58,14 @@ def _joined(names: list[str], word: str) -> str:
 
 def tier_parts(value: Any, declared: set[str], where: str, problems: list[str]) -> list[str]:
     """The parts a tier's `imports.must` or `imports.types_only` names, by name, in the order written: each entry
-    `parts.<part>`, or the plain name of a part declared. An entry that names no whole part declared, or a part
-    named twice in either spelling, adds its one problem, and the other entries are still read."""
+    `parts.<part>`, a part declared. An entry that names no whole part declared, one in an old form, or a part named
+    twice, adds its one problem, and the other entries are still read."""
     if not isinstance(value, list) or not value:
         problems.append(f"{where}: must be a list of part names")
         return []
     found: list[str] = []
     for item in value:
-        name = _tier_part(item, where, problems)
+        name = _tier_part(item, declared, where, problems)
         if name is None:
             continue
         if name not in declared:
@@ -76,16 +77,21 @@ def tier_parts(value: Any, declared: set[str], where: str, problems: list[str]) 
     return found
 
 
-def _tier_part(item: Any, where: str, problems: list[str]) -> str | None:
-    """The part an entry of a tier's `must` or `types_only` names: the entry itself when it is no reference (the text
-    before its first `/` or `:` holds no dot), the name after `parts.` when it is one; None, with its problem, for an
-    entry that is no text, for `<word>.<part>`, which names an instance, and for a reference that goes on to a path or
-    a pattern."""
+def _tier_part(item: Any, declared: set[str], where: str, problems: list[str]) -> str | None:
+    """The part an entry of a tier's `must` or `types_only` names, the name after `parts.`; None, with its problem, for
+    an entry that is no text, for one in an old form (the text before its first `/` or `:` holds no dot), told
+    `parts.<part>` when it names a part declared, for `<word>.<part>`, which names an instance, and for a reference
+    that goes on to a path or a pattern."""
     if not isinstance(item, str):
         problems.append(f"{where}: no part named {item!r}")
         return None
     if "." not in re.split("[/:]", item, maxsplit=1)[0]:
-        return item
+        old = old_form(item)
+        if old is None or old[0] not in declared:
+            problems.append(f"{where}: no part named {item!r}")
+        else:
+            problems.append(f"{where}: {removed(item, BARE if old[1] is None else f'@{old[1]}', f'parts.{old[0]}')}")
+        return None
     prefix, _, rest = item.partition(".")
     name = re.split("[/:]", rest, maxsplit=1)[0]
     if prefix != "parts":

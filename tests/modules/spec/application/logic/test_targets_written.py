@@ -1,5 +1,6 @@
-"""How a profile writes what may be imported, on hand-made parts: a bare part, @any, a path below it, a pattern where
-one is allowed, `everything`, the references parts.<part> and <word>.<part>, and each target refused with why."""
+"""How a profile writes what may be imported, on hand-made parts: the references parts.<part> and <word>.<part>, a path
+below the part, a pattern where one is allowed, `everything`, and each target refused with why, an old form (a bare
+part, @any, @own) with the reference to write."""
 import pytest
 
 from xarch.kernel.placement import EVERYTHING
@@ -12,6 +13,8 @@ SERVICE = Part("service", ("src", "*", "service"), "logic")
 SHARED = Part("shared", ("shared",), "shared code")
 PARTS = {part.name: part for part in (API, SERVICE, SHARED)}
 REPEATS = (Repeat("module", ("src",)),)
+NOT_A_REFERENCE = ("is not a reference: write parts.<part> or <word>.<part>, optionally followed by /<path> and "
+                   ":<pattern>")
 
 
 def written(value, owner=API, patterns=False):
@@ -21,9 +24,10 @@ def written(value, owner=API, patterns=False):
 
 
 @pytest.mark.parametrize("value, targets", [
-    pytest.param(["service"], (Target("service", "own"),), id="a part of its own repeating folder is its own instance"),
-    pytest.param(["service@any"], (Target("service", "any"),), id="any instance"),
-    pytest.param(["shared/text"], (Target("shared", "none", ("text",)),), id="a path below a part"),
+    pytest.param(["module.service"], (Target("service", "own"),),
+                 id="a part of its own repeating folder by its word is its own instance"),
+    pytest.param(["parts.service"], (Target("service", "any"),), id="any instance"),
+    pytest.param(["parts.shared/text"], (Target("shared", "none", ("text",)),), id="a path below a part"),
     pytest.param("everything", (Target(EVERYTHING),), id="everything, written alone"),
     pytest.param(None, (), id="nothing written is nothing more"),
 ])
@@ -39,10 +43,11 @@ def test_a_name_pattern_is_read_only_where_it_is_allowed():
 
 @pytest.mark.parametrize("value, problem", [
     pytest.param(["nope"], "'nope' names no part 'nope'", id="a part not declared"),
-    pytest.param(["shared@any"], "'shared@any' does not lie in the repeating folder: drop '@any'",
+    pytest.param(["shared@any"], "'shared@any': @any was removed in 0.3.0: write parts.shared",
                  id="a scope on a part outside the repeating folder"),
-    pytest.param(["api"], "'api' is implied: a part may always import itself, its own instance of the repeating "
-                          "folder; remove it (api@any, another instance's too, stays allowed)", id="itself"),
+    pytest.param(["module.api"], "'module.api' is implied: a part may always import itself, its own instance of the "
+                                 "repeating folder; remove it (parts.api, another instance's too, stays allowed)",
+                 id="itself"),
     pytest.param(["everything"], "'everything' stands alone: write `everything` in place of the list",
                  id="everything in a list"),
 ])
@@ -54,8 +59,15 @@ def test_a_tier_folder_s_may_import_refuses_a_marked_entry_as_any_entry_that_is_
     problems: list[str] = []
     assert allowed_targets([{"parts.shared": "types_only"}], None, PARTS, {"shared"}, "tiers.guard.imports.may", problems,
                            repeats=REPEATS) == ()
-    assert problems == ["tiers.guard.imports.may: {'parts.shared': 'types_only'} is not a target: use <part>, <part>@any, "
-                        "optionally followed by /<path>"]
+    assert problems == ["tiers.guard.imports.may: {'parts.shared': 'types_only'} " + NOT_A_REFERENCE]
+
+
+def test_each_old_form_of_a_list_is_its_own_problem_and_the_references_beside_them_are_read():
+    assert written(["service", "parts.shared", "service@any", "shared/text"]) == ((Target("shared"),), [
+        "parts.api.imports.may: 'service': a bare part name was removed in 0.3.0: write module.service (this "
+        "module's) or parts.service (any module's)",
+        "parts.api.imports.may: 'service@any': @any was removed in 0.3.0: write parts.service",
+        "parts.api.imports.may: 'shared/text': a bare part name was removed in 0.3.0: write parts.shared/text"])
 
 
 def test_references_are_read_with_the_profile_s_words_in_the_order_written():

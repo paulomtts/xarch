@@ -63,6 +63,7 @@ def with_docs(**docs) -> dict:
 
 TIER_USE = "use docs, folder, imports, litmus, plain_tables, proves, uses"
 """What every unknown-key problem of a tier ends with."""
+REMOVED = "was removed in 0.3.0: write"
 NO_MAP = "must be a map of may, also, must and types_only, such as {must: [parts.<part>]}"
 
 
@@ -107,8 +108,6 @@ def test_a_tier_with_no_types_only_has_none():
     pytest.param(["parts.store"], ("store",), id="a reference to a part of the repeating folder"),
     pytest.param(["parts.shared"], ("shared",), id="a reference to a part in no repeating folder"),
     pytest.param(["parts.store", "parts.api"], ("store", "api"), id="references in the order written"),
-    pytest.param(["store"], ("store",), id="a plain name still reads"),
-    pytest.param(["parts.store", "api"], ("store", "api"), id="a reference beside a plain name"),
 ])
 def test_a_tier_s_must_and_types_only_read_parts_references_as_the_part_names(key, field, written, read):
     assert getattr(parsed(with_imports({key: written})).tiers[1], field) == read
@@ -116,7 +115,16 @@ def test_a_tier_s_must_and_types_only_read_parts_references_as_the_part_names(ke
 
 @pytest.mark.parametrize("key", ["must", "types_only"])
 @pytest.mark.parametrize("written, problem", [
-    pytest.param(["parts.store", "store"], "'store' is listed twice", id="the same part in both spellings"),
+    pytest.param(["store"], f"'store': a bare part name {REMOVED} parts.store", id="a bare name"),
+    pytest.param(["store@any"], f"'store@any': @any {REMOVED} parts.store", id="@any"),
+    pytest.param(["store@own"], f"'store@own': @own {REMOVED} parts.store", id="@own"),
+    pytest.param(["store/sql"], f"'store/sql': a bare part name {REMOVED} parts.store", id="a bare name and a path"),
+    pytest.param(["store:*Id"], f"'store:*Id': a bare part name {REMOVED} parts.store",
+                 id="a bare name and a pattern"),
+    pytest.param(["parts.store", "store"], f"'store': a bare part name {REMOVED} parts.store",
+                 id="a bare name beside its reference is the removal alone"),
+    pytest.param(["nope"], "no part named 'nope'", id="a bare name of no part"),
+    pytest.param(["store@foo"], "no part named 'store@foo'", id="an unknown scope"),
     pytest.param(["parts.store", "parts.store"], "'store' is listed twice", id="the same reference twice"),
     pytest.param(["parts.nope"], "no part named 'nope'", id="a reference to no part"),
     pytest.param(["module.store"], "'module.store': a tier's tests lie in no instance: write parts.store",
@@ -133,6 +141,11 @@ def test_a_tier_s_must_and_types_only_read_parts_references_as_the_part_names(ke
 ])
 def test_a_tier_s_must_and_types_only_refuse_what_names_no_whole_part(key, written, problem):
     assert problems(with_imports({key: written})) == [f"layered.yaml: tiers.integration.imports.{key}: {problem}"]
+
+
+def test_a_bare_name_written_twice_in_a_tier_s_must_is_refused_twice_and_not_listed_twice():
+    assert problems(with_imports({"must": ["store", "store"]})) == [
+        f"layered.yaml: tiers.integration.imports.must: 'store': a bare part name {REMOVED} parts.store"] * 2
 
 
 def test_each_bad_entry_of_a_tier_s_must_is_its_own_problem():
@@ -492,7 +505,8 @@ def test_an_empty_also_loads_and_adds_nothing():
     pytest.param({"also": ["parts.shared", "everything"]}, "tiers.integration.imports.also: `everything` is not taken, "
                  "name each target the tests may also import", id="everything in a list of also"),
     pytest.param({"also": [{"parts.store": "types_only"}]}, "tiers.integration.imports.also: {'parts.store': 'types_only'} is not "
-                 "a target: use <part>, <part>@any, optionally followed by /<path>", id="a mark in also"),
+                 "a reference: write parts.<part> or <word>.<part>, optionally followed by /<path> and :<pattern>",
+                 id="a mark in also"),
     pytest.param({"must": "store"}, "tiers.integration.imports.must: must be a list of part names",
                  id="must not a list"),
     pytest.param({"must": []}, "tiers.integration.imports.must: must be a list of part names", id="must empty"),
@@ -507,5 +521,5 @@ def test_each_key_of_the_group_is_refused_with_today_s_text_at_its_new_address(i
 
 def test_a_mark_in_a_folder_tier_s_may_is_refused_as_any_entry_that_is_no_target():
     assert problems(with_guard({"may": [{"parts.store": "types_only"}]})) == [
-        "layered.yaml: tiers.guard.imports.may: {'parts.store': 'types_only'} is not a target: use <part>, <part>@any, "
-        "optionally followed by /<path>"]
+        "layered.yaml: tiers.guard.imports.may: {'parts.store': 'types_only'} is not a reference: write parts.<part> or "
+        "<word>.<part>, optionally followed by /<path> and :<pattern>"]

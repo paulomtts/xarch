@@ -202,54 +202,50 @@ def test_a_part_is_shown_below_its_own_repeating_folder():
         "api/", "hooks/", "manifest.py", "shared/"]
 
 
-def test_a_part_names_a_part_of_its_own_repeating_folder_bare_and_one_of_another_with_any():
+def test_a_part_names_a_part_of_its_own_repeating_folder_by_its_word_and_one_of_another_with_parts():
     document = two_folders()
-    part_of(document, "hooks").setdefault("imports", {})["may"] = ["manifest", "service@any", "shared"]
-    part_of(document, "service").setdefault("imports", {})["may"] = ["store", "shared", "hooks@any"]
+    part_of(document, "hooks").setdefault("imports", {})["may"] = ["plugin.manifest", "parts.service", "parts.shared"]
+    part_of(document, "service").setdefault("imports", {})["may"] = ["module.store", "parts.shared", "parts.hooks"]
     rules = parsed(document).rules
     assert rules["hooks"] == (Target("manifest", "own"), Target("service", "any"), Target("shared"))
     assert rules["service"] == (Target("store", "own"), Target("shared"), Target("hooks", "any"))
 
 
+REMOVED = "was removed in 0.3.0: write"
+NOT_A_REFERENCE = ("is not a reference: write parts.<part> or <word>.<part>, optionally followed by /<path> and "
+                   ":<pattern>")
+
+
 @pytest.mark.parametrize("importer, name, expected", [
-    pytest.param("hooks", "service", "layered.yaml: parts.hooks.imports.may: 'service' lies in another repeating "
-                                     "folder than part 'hooks', which has no own instance of it: write service@any",
-                 id="a plugin part names a module part bare"),
-    pytest.param("service", "hooks", "layered.yaml: parts.service.imports.may: 'hooks' lies in another repeating "
-                                     "folder than part 'service', which has no own instance of it: write hooks@any",
-                 id="a module part names a plugin part bare"),
+    pytest.param("hooks", "service", f"layered.yaml: parts.hooks.imports.may: 'service': a bare part name {REMOVED} "
+                                     "parts.service", id="a plugin part names a module part bare"),
+    pytest.param("service", "hooks", f"layered.yaml: parts.service.imports.may: 'hooks': a bare part name {REMOVED} "
+                                     "parts.hooks", id="a module part names a plugin part bare"),
+    pytest.param("hooks", "service@own", f"layered.yaml: parts.hooks.imports.may: 'service@own': @own {REMOVED} "
+                                         "parts.service", id="a plugin part names a module part as its own"),
 ])
-def test_a_part_in_another_repeating_folder_has_no_own_instance_so_a_bare_name_is_refused(importer, name, expected):
+def test_a_part_in_another_repeating_folder_has_no_own_instance_so_an_old_form_is_told_parts(importer, name, expected):
     document = two_folders()
     part_of(document, importer).setdefault("imports", {})["may"] = [name]
     assert problems(document) == [expected]
 
 
-def test_a_part_in_another_repeating_folder_may_not_be_said_as_own():
-    document = two_folders()
-    part_of(document, "hooks").setdefault("imports", {})["may"] = ["service@own"]
-    assert problems(document) == [
-        "layered.yaml: parts.hooks.imports.may: 'service@own' lies in another repeating folder than part 'hooks', "
-        "which has no own instance of it: write service@any"]
-
-
-def test_a_must_import_names_a_part_of_another_repeating_folder_with_any_as_well():
+def test_a_must_import_in_an_old_form_is_refused_once_with_its_reference():
     document = two_folders()
     part_of(document, "hooks").setdefault("imports", {})["may"] = ["parts.service"]
     part_of(document, "hooks").setdefault("imports", {})["must"] = ["service"]
     assert problems(document) == [
-        "layered.yaml: parts.hooks.imports.must: 'service' lies in another repeating folder than part 'hooks', which "
-        "has no own instance of it: write service@any"]
+        f"layered.yaml: parts.hooks.imports.must: 'service': a bare part name {REMOVED} parts.service"]
 
 
 @pytest.mark.parametrize("targets, rules", [
-    pytest.param(["service"], (Target("service", "own"),), id="a part of the repeating folder, by its bare name, is the importer's own"),
-    pytest.param(["service@any"], (Target("service", "any"),), id="@any is any instance"),
-    pytest.param(["shared"], (Target("shared"),), id="a part outside the repeating folder"),
-    pytest.param(["shared/text", "service/rules"], (Target("shared", "none", ("text",)),
-                                                    Target("service", "own", ("rules",))),
+    pytest.param(["module.service"], (Target("service", "own"),), id="a part of the repeating folder by its word is the importer's own"),
+    pytest.param(["parts.service"], (Target("service", "any"),), id="parts is any instance"),
+    pytest.param(["parts.shared"], (Target("shared"),), id="a part outside the repeating folder"),
+    pytest.param(["parts.shared/text", "module.service/rules"], (Target("shared", "none", ("text",)),
+                                                                 Target("service", "own", ("rules",))),
                  id="only a path below the part"),
-    pytest.param(["api@any"], (Target("api", "any"),), id="another instance of the part itself is allowed"),
+    pytest.param(["parts.api"], (Target("api", "any"),), id="another instance of the part itself is allowed"),
     pytest.param([], (), id="nothing"),
 ])
 def test_what_a_part_of_the_repeating_folder_may_import(targets, rules):
@@ -258,9 +254,9 @@ def test_what_a_part_of_the_repeating_folder_may_import(targets, rules):
     assert parsed(document).rules["store"] == rules
 
 
-def test_a_part_outside_the_repeating_folder_reaches_into_it_with_any():
+def test_a_part_outside_the_repeating_folder_reaches_into_it_with_parts():
     document = layered()
-    part_of(document, "shared").setdefault("imports", {})["may"] = ["api@any", "service@any/rules"]
+    part_of(document, "shared").setdefault("imports", {})["may"] = ["parts.api", "parts.service/rules"]
     assert parsed(document).rules["shared"] == (Target("api", "any"), Target("service", "any", ("rules",)))
 
 
@@ -279,28 +275,28 @@ def test_everything_is_a_part_that_may_import_everything_and_the_rest_a_part_wit
     pytest.param("store", "all", "layered.yaml: parts.store.imports.may: must be a list of targets such as [parts.core, "
                                  "unit.store/schema], or everything", id="a string that is not everything"),
     pytest.param("store", ["repo"], "layered.yaml: parts.store.imports.may: 'repo' names no part 'repo'", id="no such part"),
-    pytest.param("store", [3], "layered.yaml: parts.store.imports.may: 3 is not a target: use <part>, <part>@any, "
-                               "optionally followed by /<path>", id="not text"),
-    pytest.param("store", [""], "layered.yaml: parts.store.imports.may: '' is not a target: use <part>, <part>@any, "
-                                "optionally followed by /<path>", id="empty"),
-    pytest.param("store", ["service@own"], "layered.yaml: parts.store.imports.may: 'service@own' says what a bare name "
-                                           "already says: write service", id="@own is the default"),
-    pytest.param("shared", ["api@own"], "layered.yaml: parts.shared.imports.may: 'api@own' lies in the repeating "
-                                        "folder, which shared is not in: say api@any", id="@own from outside"),
-    pytest.param("store", ["service@all"], "layered.yaml: parts.store.imports.may: 'service@all' has an unknown scope "
-                                           "'@all': the only scope is @any, any instance of the repeating folder",
+    pytest.param("store", [3], f"layered.yaml: parts.store.imports.may: 3 {NOT_A_REFERENCE}", id="not text"),
+    pytest.param("store", [""], f"layered.yaml: parts.store.imports.may: '' {NOT_A_REFERENCE}", id="empty"),
+    pytest.param("store", ["service@own"], f"layered.yaml: parts.store.imports.may: 'service@own': @own {REMOVED} "
+                                           "module.service", id="@own"),
+    pytest.param("shared", ["api@own"], f"layered.yaml: parts.shared.imports.may: 'api@own': @own {REMOVED} parts.api",
+                 id="@own from outside"),
+    pytest.param("store", ["service@all"], f"layered.yaml: parts.store.imports.may: 'service@all' {NOT_A_REFERENCE}",
                  id="an unknown scope"),
-    pytest.param("store", ["shared@any"], "layered.yaml: parts.store.imports.may: 'shared@any' does not lie in the "
-                                          "repeating folder: drop '@any'", id="@any on a part outside"),
-    pytest.param("shared", ["api"], "layered.yaml: parts.shared.imports.may: 'api' lies in the repeating folder, which "
-                                    "shared is not in: say api@any", id="a bare part inside, from outside"),
-    pytest.param("store", ["shared/../x"], "layered.yaml: parts.store.imports.may: 'shared/../x' has an invalid path "
-                                           "after the part", id="a climbing path"),
-    pytest.param("store", ["shared/"], "layered.yaml: parts.store.imports.may: 'shared/' has an invalid path after the "
-                                       "part", id="a trailing slash"),
+    pytest.param("store", ["shared@any"], f"layered.yaml: parts.store.imports.may: 'shared@any': @any {REMOVED} "
+                                          "parts.shared", id="@any on a part outside"),
+    pytest.param("shared", ["api"], f"layered.yaml: parts.shared.imports.may: 'api': a bare part name {REMOVED} "
+                                    "parts.api", id="a bare part inside, from outside"),
+    pytest.param("store", ["service"], f"layered.yaml: parts.store.imports.may: 'service': a bare part name {REMOVED} "
+                                       "module.service (this module's) or parts.service (any module's)",
+                 id="a bare part inside, from inside"),
+    pytest.param("store", ["parts.shared/../x"], "layered.yaml: parts.store.imports.may: 'parts.shared/../x' has an "
+                                                 "invalid path after the part", id="a climbing path"),
+    pytest.param("store", ["parts.shared/"], "layered.yaml: parts.store.imports.may: 'parts.shared/' has an invalid "
+                                             "path after the part", id="a trailing slash"),
     pytest.param("store", ["store"], "layered.yaml: parts.store.imports.may: 'store' is implied: a part may always "
-                                     "import itself, its own instance of the repeating folder; remove it (store@any, "
-                                     "another instance's too, stays allowed)", id="itself in an instance"),
+                                     "import itself, its own instance of the repeating folder; remove it "
+                                     "(parts.store, another instance's too, stays allowed)", id="itself in an instance"),
     pytest.param("shared", ["shared"], "layered.yaml: parts.shared.imports.may: 'shared' is implied: a part may always "
                                        "import itself; remove it", id="itself outside the instances"),
     pytest.param("store", ["everything"], "layered.yaml: parts.store.imports.may: 'everything' stands alone: write "
@@ -420,11 +416,14 @@ def test_a_part_says_what_its_files_must_import_with_the_targets_of_may_import()
     pytest.param([], "layered.yaml: parts.store.imports.must: must be a list of targets such as [parts.<part>, <word>.<part>]",
                  id="an empty list"),
     pytest.param(["ghost"], "layered.yaml: parts.store.imports.must: 'ghost' names no part 'ghost'", id="no such part"),
-    pytest.param(["api"], "layered.yaml: parts.store.imports.must: 'api' is not in imports.may, so no file could "
-                          "import it: add it there, or name a part the part may import", id="a part it may not import"),
-    pytest.param(["store"], "layered.yaml: parts.store.imports.must: 'store' is implied: a part may always import "
-                            "itself, its own instance of the repeating folder; remove it (store@any, another "
-                            "instance's too, stays allowed)", id="the part itself"),
+    pytest.param(["module.api"], "layered.yaml: parts.store.imports.must: 'module.api' is not in imports.may, so no "
+                                 "file could import it: add it there, or name a part the part may import",
+                 id="a part it may not import"),
+    pytest.param(["module.store"], "layered.yaml: parts.store.imports.must: 'module.store' is implied: a part may "
+                                   "always import itself, its own instance of the repeating folder; remove it "
+                                   "(parts.store, another instance's too, stays allowed)", id="the part itself"),
+    pytest.param(["api"], f"layered.yaml: parts.store.imports.must: 'api': a bare part name {REMOVED} module.api (this "
+                          "module's) or parts.api (any module's)", id="an old form, refused once"),
 ])
 def test_a_bad_must_import_is_refused(value, expected):
     document = layered()
@@ -450,20 +449,26 @@ def referencing(services: dict, guard: dict) -> dict:
         "tiers": {"guard": {"folder": "architecture"} | guard}}
 
 
-def test_references_reach_every_target_spec_reads_and_mean_what_the_old_forms_mean():
+def test_references_reach_every_target_spec_reads_and_the_old_forms_are_each_refused_with_one():
     new = parsed(referencing({"may": ["module.domain", "parts.kernel", {"parts.domain": "types_only"}],
                               "must": ["parts.kernel"]},
                              {"imports": {"may": ["parts.kernel"], "also": ["module.domain/values"]}}))
-    old = parsed(referencing({"may": ["domain", "kernel", {"domain@any": "types_only"}], "must": ["kernel"]},
+    old = (referencing({"may": ["domain", "kernel", {"domain@any": "types_only"}], "must": ["kernel"]},
                              {"imports": {"may": ["kernel"], "also": ["domain/values"]}}))
     services, (guard,) = new.parts["services"], new.tiers
     assert (new.rules["services"], services.imports_must, services.imports_types_only) == (
         (Target("domain", "own"), Target("kernel"), Target("domain", "any")), (Target("kernel"),),
         (Target("domain", "any"),))
     assert (guard.imports_may, guard.imports_also) == ((Target("kernel"),), (Target("domain", "own", ("values",)),))
-    assert (new.rules, services.imports_must, services.imports_types_only, guard.imports_may, guard.imports_also) == (
-        old.rules, old.parts["services"].imports_must, old.parts["services"].imports_types_only,
-        old.tiers[0].imports_may, old.tiers[0].imports_also)
+    own = f"a bare part name {REMOVED} module.domain (this module's) or parts.domain (any module's)"
+    assert problems(old) == [
+        f"layered.yaml: parts.services.imports.may: 'domain': {own}",
+        f"layered.yaml: parts.services.imports.may: 'kernel': a bare part name {REMOVED} parts.kernel",
+        f"layered.yaml: parts.services.imports.may: 'domain@any': @any {REMOVED} parts.domain",
+        f"layered.yaml: parts.services.imports.must: 'kernel': a bare part name {REMOVED} parts.kernel",
+        f"layered.yaml: tiers.guard.imports.may: 'kernel': a bare part name {REMOVED} parts.kernel",
+        f"layered.yaml: tiers.guard.imports.also: 'domain/values': a bare part name {REMOVED} module.domain/values "
+        "(this module's) or parts.domain/values (any module's)"]
 
 
 @pytest.mark.parametrize("services, guard, problem", [

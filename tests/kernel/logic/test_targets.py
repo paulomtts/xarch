@@ -1,6 +1,6 @@
 """How a profile writes a target, read against the parts by their paths, the part that writes it and the profile's
-repeating folders: the old forms (a bare name, @any, /<path>, :<pattern>) as before, and the references parts.<part>
-and <word>.<part>, each read or refused with its one problem."""
+repeating folders: the references parts.<part> and <word>.<part>, each read or refused with its one problem, and the
+old forms (a bare name, @any, @own), each refused with the reference to write."""
 import pytest
 
 from xarch.kernel.logic.targets import target
@@ -25,51 +25,85 @@ def read(written, owner, parts=PARTS, repeats=REPEATS, patterns=True, mirrored=F
     return found, problems
 
 
-READ = [
-    pytest.param("domain", SERVICES, Target("domain", "own"), id="a bare name in the importer's repeating folder is its own instance"),
-    pytest.param("domain@any/values", SERVICES, Target("domain", "any", ("values",)), id="any instance, and a path below"),
-    pytest.param("kernel:*Id", SERVICES, Target("kernel", "none", (), "*Id"), id="a part outside, narrowed by a name pattern"),
-    pytest.param("domain@any", None, Target("domain", "any"), id="a scope of no part reaches an instance only by @any"),
-]
+REMOVED = "was removed in 0.3.0: write"
+BARE = "a bare part name was removed in 0.3.0: write"
+OWN_MODULE = "module.domain (this module's) or parts.domain (any module's)"
 
 
-@pytest.mark.parametrize("written, owner, found", READ)
-def test_a_target_is_read_from_its_written_form(written, owner, found):
-    problems: list[str] = []
-    assert (target(written, owner, PARTS, PARTS, "at", problems, patterns=True, alone="a tier's folder",
-                   repeats=REPEATS), problems) == (found, [])
-
-
-@pytest.mark.parametrize("written, owner, problem", [
-    pytest.param("nowhere", SERVICES, "at: 'nowhere' names no part 'nowhere'", id="a part the profile has not"),
-    pytest.param("domain", None, "at: 'domain' lies in the repeating folder, which a tier's folder is not in: say "
-                                 "domain@any", id="an instance asked for from outside the repeating folder"),
-    pytest.param("services", SERVICES, "at: 'services' is implied: a part may always import itself, its own instance "
-                                       "of the repeating folder; remove it (services@any, another instance's too, stays "
-                                       "allowed)", id="the part itself"),
-    pytest.param("kernel:*Id", SERVICES, "at: 'kernel:*Id' has a name pattern, which this key does not take: drop "
-                                         "':*Id'", id="a name pattern where none is allowed"),
-    pytest.param("everything", SERVICES, "at: 'everything' names no part 'everything'",
+@pytest.mark.parametrize("written, owner, options, problem", [
+    pytest.param("domain@any", SERVICES, {}, f"at: 'domain@any': @any {REMOVED} parts.domain", id="@any"),
+    pytest.param("domain@any/published", CLI, {}, f"at: 'domain@any/published': @any {REMOVED} parts.domain/published",
+                 id="@any and a path"),
+    pytest.param("domain/published@any", CLI, {}, f"at: 'domain/published@any': @any {REMOVED} parts.domain/published",
+                 id="@any after the path"),
+    pytest.param("domain@any:*Id", SERVICES, {}, f"at: 'domain@any:*Id': @any {REMOVED} parts.domain:*Id",
+                 id="@any and a pattern"),
+    pytest.param("domain@any", None, {}, f"at: 'domain@any': @any {REMOVED} parts.domain", id="@any from a tier"),
+    pytest.param("domain@own", SERVICES, {}, f"at: 'domain@own': @own {REMOVED} module.domain",
+                 id="@own where the word is accepted"),
+    pytest.param("store@own", LEDGER, {}, f"at: 'store@own': @own {REMOVED} unit.store", id="@own, a second word"),
+    pytest.param("domain@own", CLI, {}, f"at: 'domain@own': @own {REMOVED} parts.domain",
+                 id="@own from an importer outside the folder"),
+    pytest.param("store@own", SERVICES, {}, f"at: 'store@own': @own {REMOVED} parts.store",
+                 id="@own from another word's folder"),
+    pytest.param("kernel@own", SERVICES, {}, f"at: 'kernel@own': @own {REMOVED} parts.kernel",
+                 id="@own for a part in no repeating folder"),
+    pytest.param("domain", SERVICES, {}, f"at: 'domain': {BARE} {OWN_MODULE}", id="a bare name, the word accepted"),
+    pytest.param("store", LEDGER, {}, f"at: 'store': {BARE} unit.store (this unit's) or parts.store (any unit's)",
+                 id="a bare name, the second word in place of module"),
+    pytest.param("domain", CLI, {}, f"at: 'domain': {BARE} parts.domain", id="a bare name from outside the folder"),
+    pytest.param("domain", None, {}, f"at: 'domain': {BARE} parts.domain", id="a bare name from a tier's folder"),
+    pytest.param("domain", None, {"mirrored": True}, f"at: 'domain': {BARE} {OWN_MODULE}",
+                 id="a bare name a test mirrors"),
+    pytest.param("domain@own", None, {"mirrored": True}, f"at: 'domain@own': @own {REMOVED} module.domain",
+                 id="@own a test mirrors"),
+    pytest.param("domain", None, {"place": True, "alone": "a check that names no part"},
+                 f"at: 'domain': {BARE} parts.domain", id="a bare name in the place of a check that names no part"),
+    pytest.param("domain", SERVICES, {"place": True}, f"at: 'domain': {BARE} {OWN_MODULE}",
+                 id="a bare name in the place of a check in the folder"),
+    pytest.param("kernel", SERVICES, {}, f"at: 'kernel': {BARE} parts.kernel", id="a bare name in no repeating folder"),
+    pytest.param("domain/values:*Id", SERVICES, {},
+                 f"at: 'domain/values:*Id': {BARE} module.domain/values:*Id (this module's) or "
+                 "parts.domain/values:*Id (any module's)", id="the tail follows each reference"),
+    pytest.param("kernel:*Id", SERVICES, {"patterns": False}, f"at: 'kernel:*Id': {BARE} parts.kernel:*Id",
+                 id="a pattern where the key takes none: the old form first"),
+    pytest.param("kernel:a b", SERVICES, {}, f"at: 'kernel:a b': {BARE} parts.kernel:a b",
+                 id="a bad pattern: the old form first"),
+    pytest.param("nope", SERVICES, {}, "at: 'nope' names no part 'nope'", id="a part the profile has not"),
+    pytest.param("nope@any", SERVICES, {}, "at: 'nope@any' names no part 'nope'", id="@any of a part it has not"),
+    pytest.param("everything", SERVICES, {}, "at: 'everything' names no part 'everything'",
                  id="everything is no part: the key that takes it alone says so"),
+    pytest.param("services", SERVICES, {},
+                 "at: 'services' is implied: a part may always import itself, its own instance of the repeating "
+                 "folder; remove it (parts.services, another instance's too, stays allowed)", id="the part itself"),
+    pytest.param("services@own", SERVICES, {},
+                 "at: 'services@own' is implied: a part may always import itself, its own instance of the repeating "
+                 "folder; remove it (parts.services, another instance's too, stays allowed)", id="its own instance"),
+    pytest.param("services@any", SERVICES, {}, f"at: 'services@any': @any {REMOVED} parts.services",
+                 id="itself in every instance"),
+    pytest.param("kernel", KERNEL, {}, "at: 'kernel' is implied: a part may always import itself; remove it",
+                 id="itself, outside a repeating folder"),
+    pytest.param("kernel@any", KERNEL, {}, "at: 'kernel@any' is implied: a part may always import itself; remove it",
+                 id="@any of itself outside a repeating folder: never a hint refused again"),
+    pytest.param("domain@foo", SERVICES, {}, f"at: 'domain@foo' {NOT_A_REFERENCE}", id="an unknown scope"),
+    pytest.param("@any", SERVICES, {}, f"at: '@any' {NOT_A_REFERENCE}", id="a scope of no part"),
+    pytest.param("domain@", SERVICES, {}, f"at: 'domain@' {NOT_A_REFERENCE}", id="an empty scope"),
+    pytest.param("domain@any@own", SERVICES, {}, f"at: 'domain@any@own' {NOT_A_REFERENCE}", id="two scopes"),
+    pytest.param("", SERVICES, {}, f"at: '' {NOT_A_REFERENCE}", id="empty text"),
+    pytest.param(1, SERVICES, {}, f"at: 1 {NOT_A_REFERENCE}", id="no text"),
+    pytest.param(["domain"], SERVICES, {}, f"at: ['domain'] {NOT_A_REFERENCE}", id="a list"),
 ])
-def test_a_target_that_is_not_one_is_none_with_its_problem(written, owner, problem):
-    problems: list[str] = []
-    assert (target(written, owner, PARTS, PARTS, "at", problems, alone="a tier's folder", repeats=REPEATS),
-            problems) == (None, [problem])
+def test_an_old_form_is_refused_with_the_reference_to_write(written, owner, options, problem):
+    assert read(written, owner, **options) == (None, [problem])
 
 
-@pytest.mark.parametrize("written, found, problem", [
-    pytest.param("domain/values", Target("domain", "own", ("values",)), [],
-                 id="a bare name in the repeating folder is the instance the test mirrors"),
-    pytest.param("domain@any", Target("domain", "any"), [], id="any instance stays any"),
-    pytest.param("kernel", Target("kernel"), [], id="a part outside the repeating folder is in no instance"),
-    pytest.param("domain@own", None, ["at: 'domain@own' says what a bare name already says: write domain"],
-                 id="the mirrored instance written out is refused"),
-])
-def test_a_target_a_test_reads_is_read_from_the_instance_it_mirrors(written, found, problem):
-    problems: list[str] = []
-    assert (target(written, None, PARTS, PARTS, "at", problems, mirrored=True, alone="a tier's folder", repeats=REPEATS),
-            problems) == (found, problem)
+def test_an_old_form_of_a_part_named_everything_is_told_parts_everything():
+    assert read("everything", CLI, parts={"everything": ("everything",), "cli": ("cli",)}) == (
+        None, [f"at: 'everything': {BARE} parts.everything"])
+
+
+def test_an_old_form_of_a_part_declared_but_not_placed_is_none_with_no_problem():
+    assert read("ghost@any", SERVICES, declared={*PARTS, "ghost"}) == (None, [])
 
 
 @pytest.mark.parametrize("pattern", [
@@ -79,24 +113,20 @@ def test_a_target_a_test_reads_is_read_from_the_instance_it_mirrors(written, fou
     pytest.param("Détail*", id="a letter that is not ascii"),
 ])
 def test_a_name_pattern_is_any_text_but_whitespace_and_the_separators_of_a_target(pattern):
-    assert target(f"kernel:{pattern}", SERVICES, PARTS, PARTS, "at", [], patterns=True, alone="a tier's folder",
-                  repeats=REPEATS) == Target("kernel", "none", (), pattern)
+    assert read(f"parts.kernel:{pattern}", SERVICES) == (Target("kernel", "none", (), pattern), [])
 
 
-@pytest.mark.parametrize("written", ["kernel:a b", "kernel:a@b", "kernel:a:b"])
+@pytest.mark.parametrize("written", ["parts.kernel:a b", "parts.kernel:a@b", "parts.kernel:a:b"])
 def test_a_name_pattern_with_whitespace_or_a_separator_is_refused(written):
-    problems: list[str] = []
-    assert (target(written, SERVICES, PARTS, PARTS, "at", problems, patterns=True, alone="a tier's folder",
-                   repeats=REPEATS), problems) == (
+    assert read(written, SERVICES) == (
         None, [f"at: {written!r} has a name pattern that is not one: write it with no space, `@`, `/` or `:`, `*` "
                "standing for any text"])
 
 
 def test_what_names_no_part_is_named_in_the_callers_words():
-    problems: list[str] = []
-    target("domain", None, PARTS, PARTS, "at", problems, alone="a check that names no part", repeats=REPEATS)
-    assert problems == ["at: 'domain' lies in the repeating folder, which a check that names no part is not in: say "
-                        "domain@any"]
+    assert read("module.domain", None, alone="a check that names no part") == (
+        None, ["at: 'module.domain': a check that names no part lies in no <module> folder, so it has no own module: "
+               "write parts.domain"])
 
 
 @pytest.mark.parametrize("written, owner, found", [
@@ -221,13 +251,16 @@ def test_a_reference_to_a_part_declared_but_not_placed_is_none_with_no_problem()
     assert read("parts.ghost", SERVICES, declared={*PARTS, "ghost"}) == (None, [])
 
 
-@pytest.mark.parametrize("written, found, problem", [
-    pytest.param("kernel/x.py", Target("kernel", "none", ("x.py",)), [], id="a dot in the path"),
-    pytest.param("kernel:a.b", Target("kernel", "none", (), "a.b"), [], id="a dot in the pattern"),
-    pytest.param(3, None, ["at: 3 is not a target: use <part>, <part>@any, optionally followed by /<path>"],
-                 id="no text"),
-    pytest.param("", None, ["at: '' is not a target: use <part>, <part>@any, optionally followed by /<path>"],
-                 id="empty text"),
+@pytest.mark.parametrize("written, found", [
+    pytest.param("parts.kernel/x.py", Target("kernel", "none", ("x.py",)), id="a dot in the path"),
+    pytest.param("parts.kernel:a.b", Target("kernel", "none", (), "a.b"), id="a dot in the pattern"),
 ])
-def test_a_value_whose_head_holds_no_dot_is_read_in_the_old_forms(written, found, problem):
-    assert read(written, SERVICES) == (found, problem)
+def test_a_dot_after_the_head_is_no_prefix(written, found):
+    assert read(written, SERVICES) == (found, [])
+
+
+def test_a_concrete_instance_name_is_refused_also_when_a_part_bears_that_name():
+    parts = {**PARTS, "orders": ("orders",)}
+    assert read("orders.services", DOMAIN, parts=parts) == (
+        None, ["at: 'orders.services': 'orders' is neither parts nor a word of this profile (module, unit): a profile "
+               "names no instance; write module.services or parts.services"])

@@ -5,24 +5,27 @@ a part's `imports` and a tier's with it, and rules the places a check of the pro
 A value whose head (the text before its first `/` or `:`) holds a dot is a reference: `parts.<part>`, the part in every
 instance of its repeating folder or, outside one, the part itself; or `<word>.<part>`, the part in the importer's own
 instance of the folder the word repeats, a word of the profile's repeating folders; each optionally followed by
-`/<path>` and, where the key takes one, `:<pattern>`. Any other value is read in the old forms: `<part>`, `<part>@any`,
-`<part>/<path>` and `<part>:<pattern>`. A target is written back as a reference (see written_target), which reads
-back as itself."""
+`/<path>` and, where the key takes one, `:<pattern>`. The old forms, `<part>@any`, `<part>@own` and the bare name of a
+part, were removed in 0.3.0: each is refused with the reference to write, computed from the profile. A target is
+written back as a reference (see written_target), which reads back as itself."""
 from __future__ import annotations
 
 import re
 from collections.abc import Collection, Mapping
 from typing import Any
 
-from xarch.kernel.logic.placement import repeat_of, root_of
+from xarch.kernel.logic.placement import repeat_of
 from xarch.kernel.placement import EACH
 from xarch.profile_values.placement import Repeat, Target
 
-TARGET = re.compile(r"(?P<part>[^@/:]*)(?:@(?P<scope>[^/:]*))?(?:/(?P<sub>[^:]*))?(?::(?P<names>.*))?")
 NAME_PATTERN = re.compile(r"[^\s@/:]+")
 """A name pattern: any text but whitespace and the separators of a target, `*` standing for any text."""
 _HEAD = re.compile(r"[^/:]*")
 _REFERENCE = re.compile(r"(?P<part>[^/:]*)(?:/(?P<sub>[^:]*))?(?::(?P<names>.*))?", re.DOTALL)
+_NOT_A_REFERENCE = ("is not a reference: write parts.<part> or <word>.<part>, optionally followed by /<path> and "
+                    ":<pattern>")
+BARE = "a bare part name"
+"""How a removal names the old form that writes a part by its name alone."""
 
 
 def target(value: Any, owner: tuple[str, tuple[str, ...]] | None, parts: Mapping[str, tuple[str, ...]],
@@ -32,54 +35,63 @@ def target(value: Any, owner: tuple[str, tuple[str, ...]] | None, parts: Mapping
     the caller words as alone, such as "a tier's folder"), each part by its path, repeats the profile's repeating
     folders, whose words a reference names; None, with the problem said at where, when it is not one. A target that
     names a part declared but not placed is None, with no problem of its own. When mirrored, the reader is a test, whose
-    own instance of the repeating folder is the one it mirrors: a bare name, or `<word>.<part>`, there is that
-    instance. place says the value is a check's `place`, where a prefix that is no word may be a dotted name of code."""
+    own instance of the repeating folder is the one it mirrors: `<word>.<part>` there is that instance. place says the
+    value is a check's `place`, where a prefix that is no word may be a dotted name of code. A value in an old form
+    (see old_form) is None, refused with the reference to write: `parts.<part>` for `@any`; for `@own` and a bare name,
+    `<word>.<part>` where that reference is accepted, else `parts.<part>`; or, when the reference would be the part
+    itself, as implied."""
     if isinstance(value, str) and "." in _HEAD.match(value)[0]:
         return _reference(value, owner, parts, declared, where, problems, patterns, mirrored, alone, repeats, place)
-    match = TARGET.fullmatch(value) if isinstance(value, str) else None
-    if match is None or not match["part"]:
-        problems.append(f"{where}: {value!r} is not a target: use <part>, <part>@any, optionally followed by /<path>")
+    old = old_form(value)
+    if old is None:
+        problems.append(f"{where}: {value!r} {_NOT_A_REFERENCE}")
         return None
-    name, scope, sub, names = match["part"], match["scope"], match["sub"], match["names"]
-    problem = _pattern_problem(value, names, patterns)
-    if problem is not None:
-        problems.append(f"{where}: {problem}")
-        return None
+    name, scope, tail = old
     path = parts.get(name)
     if path is None:
         if name not in declared:
             problems.append(f"{where}: {value!r} names no part {name!r}")
         return None
-    in_instance = EACH in path
-    owned = owner is not None and EACH in owner[1]
-    if scope is not None and scope not in ("own", "any"):
-        problems.append(f"{where}: {value!r} has an unknown scope '@{scope}': the only scope is @any, any instance of "
-                        "the repeating folder")
+    held = repeat_of(repeats, path)
+    own = (scope != "any" and held is not None
+           and _word_problem(value, held.word, name, (name, path), owner, repeats, mirrored, alone) is None)
+    if owner is not None and name == owner[0] and (own or EACH not in path):
+        problems.append(_implied(where, value, owner, f"parts.{name}"))
         return None
-    inside = mirrored or (owner is not None and owned and root_of(owner[1]) == root_of(path))
-    if in_instance and scope == "own" and inside:
-        problems.append(f"{where}: {value!r} says what a bare name already says: write {name}")
+    everywhere = f"parts.{name}{tail}"
+    if held is None or not own:
+        instead = everywhere
+    elif scope == "own":
+        instead = f"{held.word}.{name}{tail}"
+    else:
+        instead = f"{held.word}.{name}{tail} (this {held.word}'s) or {everywhere} (any {held.word}'s)"
+    problems.append(f"{where}: {removed(value, BARE if scope is None else f'@{scope}', instead)}")
+    return None
+
+
+def old_form(value: Any) -> tuple[str, str | None, str] | None:
+    """What a value whose head holds no dot writes in the old forms: the name of the part, the scope (`any`, `own`,
+    None for a bare name) and the tail, `/<path>` and `:<pattern>` as written, the scope taken out wherever it stands
+    before the pattern; None when it writes none of them."""
+    if not isinstance(value, str):
         return None
-    if in_instance and not inside and scope != "any":
-        if owner is not None and owned:
-            problems.append(f"{where}: {value!r} lies in another repeating folder than part '{owner[0]}', which has "
-                            f"no own instance of it: write {name}@any")
+    before, colon, pattern = value.partition(":")
+    body, at, after = before.partition("@")
+    scope = None
+    if at:
+        scope, slash, below = after.partition("/")
+        body += slash + below
+        if scope not in ("any", "own"):
             return None
-        importer = f"{owner[0]} is" if owner is not None else f"{alone} is"
-        problems.append(f"{where}: {value!r} lies in the repeating folder, which {importer} not in: say {name}@any")
+    name = body.partition("/")[0]
+    if not name or "@" in body:
         return None
-    if not in_instance and scope is not None:
-        problems.append(f"{where}: {value!r} does not lie in the repeating folder: drop '@{scope}'")
-        return None
-    steps = _steps(sub)
-    if steps is None:
-        problems.append(f"{where}: {value!r} has an invalid path after the part")
-        return None
-    chosen = "any" if scope == "any" else ("own" if in_instance else "none")
-    if owner is not None and name == owner[0] and chosen != "any":
-        problems.append(_implied(where, value, owner, f"{name}@any"))
-        return None
-    return Target(name, chosen, steps, names or "")
+    return name, scope, body[len(name):] + colon + pattern
+
+
+def removed(value: Any, form: str, instead: str) -> str:
+    """The one wording of a value refused for a form 0.3.0 removed: the value, the form and what to write instead."""
+    return f"{value!r}: {form} was removed in 0.3.0: write {instead}"
 
 
 def written_target(made: Target, words: Mapping[str, str]) -> str:
@@ -102,8 +114,7 @@ def _reference(value: str, owner: tuple[str, tuple[str, ...]] | None, parts: Map
     prefix, _, rest = value.partition(".")
     match = _REFERENCE.fullmatch(rest)
     if not prefix or match is None or not match["part"] or "." in match["part"] or "@" in value.partition(":")[0]:
-        problems.append(f"{where}: {value!r} is not a reference: write parts.<part> or <word>.<part>, optionally followed "
-                        "by /<path> and :<pattern>")
+        problems.append(f"{where}: {value!r} {_NOT_A_REFERENCE}")
         return None
     name, names = match["part"], match["names"]
     path = parts.get(name)

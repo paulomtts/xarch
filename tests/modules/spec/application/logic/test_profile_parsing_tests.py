@@ -296,9 +296,9 @@ def test_a_tier_with_a_folder_of_its_own_says_what_its_tests_may_import_there():
     assert (tier.folder, tier.subject, tier.imports_may) == (("architecture",), (), (Target("shared"), Target("api", "any")))
 
 
-def test_what_the_tests_of_a_tier_may_also_import_are_targets_a_bare_name_in_the_repeating_folder_the_mirrored_one():
+def test_what_the_tests_of_a_tier_may_also_import_are_targets_a_word_naming_the_mirrored_instance():
     document = covered()
-    document["tiers"]["integration"]["imports"] = {"also": ["service", "shared", "api@any"]}
+    document["tiers"]["integration"]["imports"] = {"also": ["module.service", "parts.shared", "parts.api"]}
     tiers = parsed(document).tiers
     assert [t.imports_also for t in tiers] == [(), (Target("service", "own"), Target("shared"), Target("api", "any"))]
 
@@ -351,9 +351,12 @@ def test_a_tier_name_is_one_line_of_text_and_a_tier_is_a_mapping():
                  id="everything in a list of also"),
     pytest.param({"imports": {"also": ["repo"]}}, "layered.yaml: tiers.unit.imports.also: 'repo' names no part "
                                                   "'repo'", id="also of no part"),
-    pytest.param({"imports": {"also": ["service@own"]}}, "layered.yaml: tiers.unit.imports.also: 'service@own' says "
-                                                         "what a bare name already says: write service",
+    pytest.param({"imports": {"also": ["service@own"]}}, "layered.yaml: tiers.unit.imports.also: 'service@own': @own "
+                                                         "was removed in 0.3.0: write module.service",
                  id="also of the mirrored instance written out"),
+    pytest.param({"imports": {"also": ["service"]}}, "layered.yaml: tiers.unit.imports.also: 'service': a bare part "
+                                                     "name was removed in 0.3.0: write module.service (this module's) "
+                                                     "or parts.service (any module's)", id="also of a bare name"),
 ])
 def test_a_bad_tier_is_refused(tier, expected):
     document = covered()
@@ -363,16 +366,15 @@ def test_a_bad_tier_is_refused(tier, expected):
 
 def test_a_tier_folder_follows_the_rules_it_had_and_its_allowance_is_a_part_s_may_import():
     document = covered()
-    document["tiers"]["guard"] = {"folder": "src/billing/api", "imports": {"may": ["api", "service@own", "repo", "shared/"]}}
+    document["tiers"]["guard"] = {"folder": "src/billing/api",
+                                  "imports": {"may": ["api", "service@own", "repo", "parts.shared/"]}}
     assert problems(document) == [
         "layered.yaml: tiers.guard.folder: 'src/billing/api' is the folder of part 'api', which places its tests: give "
         "`folder` only to a folder that mirrors no part",
-        "layered.yaml: tiers.guard.imports.may: 'api' lies in the repeating folder, which a tier's folder is not in: "
-        "say api@any",
-        "layered.yaml: tiers.guard.imports.may: 'service@own' lies in the repeating folder, which a tier's folder is "
-        "not in: say service@any",
+        "layered.yaml: tiers.guard.imports.may: 'api': a bare part name was removed in 0.3.0: write parts.api",
+        "layered.yaml: tiers.guard.imports.may: 'service@own': @own was removed in 0.3.0: write parts.service",
         "layered.yaml: tiers.guard.imports.may: 'repo' names no part 'repo'",
-        "layered.yaml: tiers.guard.imports.may: 'shared/' has an invalid path after the part"]
+        "layered.yaml: tiers.guard.imports.may: 'parts.shared/' has an invalid path after the part"]
 
 
 def test_the_folders_of_two_tiers_or_a_tier_and_the_fakes_may_not_overlap():
