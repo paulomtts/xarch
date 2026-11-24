@@ -594,3 +594,25 @@ def test_a_test_a_call_declares_is_among_the_tests_alone_and_still_credits_a_var
     found = brace_tests(table_test, tests=(*found_by_form((table_test,), STUB), missing))
     assert [function.name for function in found.functions] == ["testPublish"]
     assert (stubbed(found), weak([RESULTS], [found], STUB_PROFILE)) == ([], [])
+
+
+def beside_test(path: str, *functions: Function):
+    """A test file beside the code at path below the app root, holding functions."""
+    return replace(declaring(path, *functions), name=f"app/{path}", beside=True)
+
+
+def test_a_use_case_s_table_test_beside_the_code_covers_its_union():
+    assert problems(beside_test("modules/docs/application/test_publish.py", Function(8, "test_publish", (TABLE,)))) == []
+
+
+def test_a_table_test_beside_the_code_is_reported_by_its_app_path():
+    assert problems(beside_test("modules/docs/application/test_publish.py",
+                                Function(8, "test_publish", (table(row("Published")),)))) == [
+        "app/modules/docs/application/test_publish.py:9: PublishResult variant Missing has no row in the table and no "
+        "standalone test naming it (scenario-coverage)"]
+
+
+def test_a_table_test_beside_another_part_s_code_is_of_that_part_s_tier_and_does_not_cover_the_union():
+    assert problems(beside_test("modules/docs/domain/test_publish.py", Function(8, "test_publish", (TABLE,)))) == [
+        "app/modules/docs/contract/results.py:4: PublishResult has no test file test_publish.py among the integration "
+        "tests of docs (scenario-coverage)"]

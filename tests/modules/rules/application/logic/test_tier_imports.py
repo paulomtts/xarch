@@ -251,3 +251,38 @@ def test_a_test_imports_no_test_file(imports, expected):
     assert [str(v).removeprefix(f"tests/{DOMAIN_TEST}:").lstrip() for v in found] == expected
     assert {v.fix for v in found} <= {"move what tests.modules.docs.domain.test_values holds that this test needs "
                                       "into test code of its folder that is no test file, and import it from there"}
+
+
+NEAR = replace(PROFILE, framework=replace(PROFILE.framework, beside=True))
+"""PROFILE, its tests beside the code."""
+
+
+def beside_problems(path: str, *imports, checked=NEAR) -> list[str]:
+    beside = replace(source(path, *imports), beside=True)
+    return [f"{v}; fix: {v.fix}" for v in violations([beside, *HELPERS], APP, checked, "app", "tests")]
+
+
+@pytest.mark.parametrize("path, expected", [
+    pytest.param("platform/test_sql.py",
+                 ["app/platform/test_sql.py: lies in no tier: its part is untested; fix: test the part with a tier, or "
+                  "move the test"], id="in a part no tier tests"),
+    pytest.param("scripts/test_seed.py",
+                 ["app/scripts/test_seed.py: lies in no part; fix: test the part with a tier, or move the test"],
+                 id="in no part"),
+    pytest.param("modules/docs/domain/test_doc.py", [], id="in a tested part"),
+])
+def test_a_test_beside_the_code_with_no_tier_says_why(path, expected):
+    assert beside_problems(path) == expected
+
+
+def test_a_test_beside_the_code_imports_what_its_part_may_and_is_named_by_its_app_path():
+    assert beside_problems("modules/docs/domain/test_doc.py", imp(1, "app.modules.docs.domain", "doc"),
+                           imp(3, "app.platform.sql")) == [
+        "app/modules/docs/domain/test_doc.py:3: a test of domain/ (unit tier) may not import platform/ "
+        "(app.platform.sql): it imports only what domain/ may (parts.domain.imports.may); fix: import here only what "
+        "domain/ may; test platform/ from the folder that mirrors it"]
+
+
+def test_a_mirrored_test_with_no_tier_keeps_its_text_under_beside():
+    found = [str(v) for v in violations([in_tests("scripts/test_x.py"), *HELPERS], APP, NEAR, "app", "tests")]
+    assert found == [f"tests/scripts/test_x.py: {NO_TIER}"]

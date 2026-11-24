@@ -90,7 +90,7 @@ def weak(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profil
     ports, _ = _ports(app, profile)
     found: list[Weak] = []
     for test in tests:
-        if test.path[:len(folder)] != folder:
+        if test.beside or test.path[:len(folder)] != folder:
             continue
         for cls in test.classes:
             defined = {m.name for m in cls.methods} | set(cls.attributes)
@@ -140,7 +140,7 @@ def _missing_fakes(ports: Iterable[_Port], tests: list[SourceFile], profile: Pro
                    tests_root: str) -> list[Violation]:
     assert profile.fakes is not None
     folder = profile.fakes.folder
-    fakes = {cls.name for t in tests if t.path[:len(folder)] == folder for cls in t.classes}
+    fakes = {cls.name for t in tests if not t.beside and t.path[:len(folder)] == folder for cls in t.classes}
     shown = "/".join((tests_root, *folder)) + "/"
     return [Violation(p.file, p.line, f"{p.name} is a read port with no fake {GUARD}", RULE,
                       f"write {profile.fakes.prefix}{p.name} under {shown}")

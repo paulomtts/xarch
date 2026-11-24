@@ -322,3 +322,11 @@ def test_under_a_typescript_like_language_a_port_s_kind_follows_its_annotations_
 def test_under_an_objectscript_like_language_a_method_with_no_annotation_gives_no_value(methods, expected):
     store = Class(3, "Store", (), methods, interface=True)
     assert problems([ported(store, path=PERCENT_PORT)], checked=profile(language=PERCENT)) == expected
+
+
+def test_a_class_beside_the_code_in_a_folder_named_like_the_fakes_is_no_fake():
+    beside = replace(source("fakes/test_repo.py", classes=(Class(1, "FakeRepo", (), (Method(2, "get", None),
+                                                                                   Method(3, "save", None))),)),
+                     beside=True)
+    assert problems([PORTS], [beside]) == [f"app/{PORT_FILE}:3: Repo is a read port with no fake (stand-ins)"]
+    assert weak([PORTS], [beside], PROFILE) == []
