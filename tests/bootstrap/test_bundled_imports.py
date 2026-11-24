@@ -1,7 +1,8 @@
 """What a part, or a tier, of a bundled profile or of xarch's own may import, must import and may import from outside
 stays what it was before the import keys moved into `imports` groups: `where` says the same of a file of every part of
 xarch's own profile and of a test of each of its tiers, and the rules the keys expand to are, as checks, the same text
-for each profile but for the key; and every list of parts under imports of each is written in references, which no other key is."""
+for each profile but for the key; every list of parts under imports of each is written in references, which no other
+key is; and each, written in the old forms, is refused with one problem per entry, naming the reference it held."""
 import hashlib
 import json
 import re
@@ -168,3 +169,96 @@ def test_every_list_of_parts_under_imports_is_written_in_references_and_no_other
     assert listed
     assert [entry for entry in listed if entry != "everything" and "." not in re.split("[/:]", entry, maxsplit=1)[0]] == []
     assert sum(entry.startswith("parts.") for entry in listed) == sum(text.startswith("parts.") for text in texts(document))
+
+
+REPEATING = re.compile(r"<[^>]+>")
+"""A step of a folder key that repeats, `<word>`."""
+
+
+def repeating_parts(node, repeats=False, found=None) -> dict[str, bool]:
+    """Each part of a `parts` tree, by its name (its `name`, else its last step before the first dot), and whether its
+    path holds a repeating step."""
+    found = {} if found is None else found
+    for key, value in node.items() if isinstance(node, dict) else ():
+        if not isinstance(key, str) or not ("/" in key or "." in key):
+            continue
+        steps = key.rstrip("/").split("/")
+        inside = repeats or any(REPEATING.fullmatch(step) for step in steps)
+        if isinstance(value, dict) and any(isinstance(k, str) and "/" not in k and "." not in k for k in value):
+            found[value.get("name") or steps[-1].split(".")[0]] = inside
+        repeating_parts(value, inside, found)
+    return found
+
+
+def old_form(reference: str, whole: bool, repeats: dict[str, bool]) -> str:
+    """The form a reference was written in before 0.3.0: `parts.X` as `X@any` when X repeats, else `X`; `<word>.X` as
+    `X`; whole, for a tier's must and types_only, the part's name alone."""
+    prefix, _, rest = reference.partition(".")
+    name = re.split("[/:]", rest, maxsplit=1)[0]
+    if whole:
+        return name
+    return f"{name}@any{rest[len(name):]}" if prefix == "parts" and repeats[name] else rest
+
+
+def inverted(document) -> list[str]:
+    """Writes every entry of a list of parts under an `imports` group in its old form, in place; the references it
+    held, in the order of the document."""
+    repeats = repeating_parts(document["parts"])
+    found: list[str] = []
+    for path, value in list(nodes(document)):
+        if path[-2:-1] != ("imports",) or path[-1] not in LISTS or not isinstance(value, list):
+            continue
+        whole = path[0] == "tiers" and path[-1] in ("must", "types_only")
+        for i, entry in enumerate(value):
+            marked = isinstance(entry, dict)
+            reference = next(iter(entry)) if marked else entry
+            if reference == "everything":
+                continue
+            found.append(reference)
+            old = old_form(reference, whole, repeats)
+            value[i] = {old: entry[reference]} if marked else old
+    return found
+
+
+def written_instead(problem: str) -> str:
+    """The first reference a problem of a removed form says to write; any other problem as it is said."""
+    _, removed, instead = problem.partition("was removed in 0.3.0: write ")
+    return instead.split(" (")[0] if removed else problem
+
+
+def beside(source: Path, folder: Path, text: str) -> Path:
+    """The file text as if it sat where source does: folder holds a link to every other file next to source."""
+    for item in source.parent.iterdir():
+        if item.name != source.name:
+            (folder / item.name).symlink_to(item)
+    written = folder / source.name
+    written.write_text(text, encoding="utf-8")
+    return written
+
+
+@pytest.mark.parametrize("profile", list(SHIPPED))
+def test_each_profile_written_in_the_old_forms_is_refused_one_problem_per_entry_each_naming_its_reference(profile,
+                                                                                                         tmp_path):
+    document = yaml.safe_load(SHIPPED[profile].read_text(encoding="utf-8"))
+    references = inverted(document)
+    written = beside(SHIPPED[profile], tmp_path, yaml.safe_dump(document, sort_keys=False))
+    result = runner.invoke(app, ["profile", "check", str(written)])
+    said = [line.strip() for line in result.output.splitlines() if line.strip().startswith(f"{written}:")]
+    assert result.exit_code != 0
+    assert references
+    assert sorted(written_instead(problem) for problem in said) == sorted(references)
+
+
+def test_an_inline_profile_with_several_old_forms_says_one_problem_per_line(tmp_path):
+    written = tmp_path / "tiny.yaml"
+    written.write_text("name: tiny\nparts:\n  modules/<module>/:\n    domain/: {role: the rules}\n    services/:\n"
+                       "      role: the use cases\n      imports:\n        may:\n          - domain\n"
+                       "          - kernel@any\n          - domain@own\n  kernel/: {role: shared code}\n",
+                       encoding="utf-8")
+    result = runner.invoke(app, ["profile", "check", str(written)])
+    assert result.exit_code != 0
+    assert [line.strip() for line in result.output.splitlines() if line.strip().startswith(f"{written}:")] == [
+        f"{written}: parts.services.imports.may: 'domain': a bare part name was removed in 0.3.0: write module.domain "
+        "(this module's) or parts.domain (any module's)",
+        f"{written}: parts.services.imports.may: 'kernel@any': @any was removed in 0.3.0: write parts.kernel",
+        f"{written}: parts.services.imports.may: 'domain@own': @own was removed in 0.3.0: write module.domain"]

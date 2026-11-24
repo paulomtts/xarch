@@ -224,8 +224,9 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
                  if tier.plain_tables and testing is not None and not testing.framework.tables]
     fakes = _fakes(document["fakes"], parts, declared, problems, language, words) if "fakes" in document else None
     problems += ck.folder_clashes(tiers, fakes)
+    written_tiers = _tier_names(document["tiers"]) if isinstance(document.get("tiers"), Mapping) else []
     guards = _guards(document.get("guards", {}), specs, parts, declared, tiers, fakes, testing, problems, language,
-                     words)
+                     words, written_tiers)
     problems += _needs_testing(document)
     entry, pages, naming = _docs(document.get("docs", {}), declared, files, problems, words)
     parts = {part: replace(item, entry=True) if part == entry else item for part, item in parts.items()}
@@ -742,7 +743,7 @@ def _fakes(value: Any, parts: dict[str, Part], declared: set[str], problems: lis
 
 def _guards(value: Any, specs: dict[str, Any], parts: dict[str, Part], declared: set[str], tiers: tuple[Tier, ...],
             fakes: Fakes | None, testing: _Testing | None, problems: list[str],
-            language: Language, words: Collection[str]) -> tuple[Guard, ...]:
+            language: Language, words: Collection[str], written_tiers: Collection[str]) -> tuple[Guard, ...]:
     guards: list[Guard] = []
     package_only = tuple(name for name in parts if specs[name].get("package_only") is True)
     if package_only:
@@ -758,7 +759,8 @@ def _guards(value: Any, specs: dict[str, Any], parts: dict[str, Part], declared:
         elif name not in _GUARDS:
             problems.append(f"guards: unknown guard {name!r}: {ck.advice(GUARD_SCOPE, str(name), _GUARDS)}")
         elif kind is ScenarioCoverage:
-            guard = _scenario_coverage(spec, parts, declared, tiers, testing, where, problems, language, words)
+            guard = _scenario_coverage(spec, parts, declared, tiers, testing, where, problems, language, words,
+                                       written_tiers)
             if guard is not None:
                 guards.append(guard)
         elif kind is StandIns:
@@ -786,7 +788,8 @@ def _guards(value: Any, specs: dict[str, Any], parts: dict[str, Part], declared:
 
 def _scenario_coverage(spec: Any, parts: dict[str, Part], declared: set[str], tiers: tuple[Tier, ...],
                        testing: _Testing | None, where: str, problems: list[str],
-                       language: Language, words: Collection[str]) -> ScenarioCoverage | None:
+                       language: Language, words: Collection[str],
+                       written_tiers: Collection[str]) -> ScenarioCoverage | None:
     if not isinstance(spec, Mapping):
         problems.append(f"{where}: must be a mapping {{results, tier, suffix, columns, file}}: the part holding the "
                         "result unions, the tier whose test files hold their tables, how a union's name ends, the "
@@ -804,7 +807,7 @@ def _scenario_coverage(spec: Any, parts: dict[str, Part], declared: set[str], ti
     if len(problems) != count:
         return None
     ck.scenario_places(spec["results"], spec["tier"], spec["suffix"], parts, declared, tiers, where, problems,
-                       language, words=words)
+                       language, words=words, written=written_tiers)
     columns = ck.column_names(spec["columns"], f"{where}.columns", problems, language) if forms else ()
     framework = testing.framework if testing is not None else None
     file = ck.use_case_file(spec["file"], framework, f"{where}.file", problems, language, "testing.files")

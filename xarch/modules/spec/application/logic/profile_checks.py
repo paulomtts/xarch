@@ -910,9 +910,10 @@ def never_names(value: Any, where: str, problems: list[str],
 
 def scenario_places(results: Any, tier: Any, suffix: Any, parts: dict[str, Part], declared: set[str],
                     tiers: tuple[Tier, ...], where: str, problems: list[str], language: Language, *,
-                    words: Collection[str]) -> None:
+                    words: Collection[str], written: Collection[str]) -> None:
     """The part holding the result unions lies in a repeating folder, the tier is declared and tests that part, and the
-    suffix is the end of a name."""
+    suffix is the end of a name. A tier written (written, the names of the tiers the file writes) but refused has said
+    its own problems, so it adds none here."""
     part = parts.get(results) if isinstance(results, str) else None
     if part is None:
         if (prefixed := outside_imports(results, declared, words)) is not None:
@@ -924,7 +925,8 @@ def scenario_places(results: Any, tier: Any, suffix: Any, parts: dict[str, Part]
                         "matched to the tests of the same folder")
     found = next((t for t in tiers if t.name == tier), None)
     if found is None:
-        problems.append(f"{where}.tier: no tier named {tier!r}")
+        if not (isinstance(tier, str) and tier in written):
+            problems.append(f"{where}.tier: no tier named {tier!r}")
     elif part is not None and not any(item.part == results for item in found.subject):
         problems.append(f"{where}.tier: tier '{tier}' does not test part '{results}'")
     if not isinstance(suffix, str) or not names.is_name(suffix, language.names):

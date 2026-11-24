@@ -811,6 +811,13 @@ def test_a_bad_scenario_coverage_is_refused(change, expected):
     assert problems(covered(guards={"scenario-coverage": guard})) == expected
 
 
+def test_scenario_coverage_of_a_tier_written_but_refused_leaves_the_refusal_to_the_tier():
+    document = covered(guards={"scenario-coverage": GUARDS["scenario-coverage"]})
+    document["tiers"]["integration"]["imports"] = {"must": ["store"]}
+    assert problems(document) == ["layered.yaml: tiers.integration.imports.must: 'store': a bare part name was removed "
+                                  "in 0.3.0: write parts.store"]
+
+
 def test_scenario_coverage_needs_all_its_keys():
     assert problems(covered(guards={"scenario-coverage": {}})) == [
         "layered.yaml: guards.scenario-coverage: missing `columns`",
