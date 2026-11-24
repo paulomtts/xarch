@@ -116,9 +116,10 @@ def _match(written: WrittenTarget, owner: tuple[str, tuple[str, ...]] | None, pr
         return Match(kind, places=places) if len(problems) == count else None
     if form == PARTS:
         words = [repeat.word for repeat in profile.repeats]
-        prefixed = [said for v in values if (said := outside_imports(v, profile.parts, words)) is not None]
+        told = [(v, outside_imports(v, profile.parts, words)) for v in values]
+        prefixed = [said for _, said in told if said is not None]
         problems += [f"{where}.part: {said}" for said in prefixed]
-        missing = [v for v in values if v not in profile.parts and outside_imports(v, profile.parts, words) is None]
+        missing = [v for v, said in told if v not in profile.parts and said is None]
         if missing:
             problems.append(f"{where}.part: no part named {', '.join(map(repr, missing))}")
         if prefixed or missing:
