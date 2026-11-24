@@ -11,6 +11,8 @@ testing:
   files: ["*_spec.py"]
   functions: "it_*"
   table: {decorator: cases.table, row: cases.row, id: name}
+  tables: [{decorator: cases.table, columns_from: {position: 0}, rows: {position: 1}, row: cases.row,
+            id: {keyword: name}}]
   mocks: {calls: [doubles.Double], spec_keywords: [of]}
 parts:
   contract:   {path: modules/<module>/contract, role: results, tests: integration}

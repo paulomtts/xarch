@@ -6,6 +6,12 @@ functions: "test_*"
 skips: [pytest.mark.skip, pytest.mark.skipif, pytest.mark.xfail, pytest.skip, pytest.xfail, pytest.importorskip,
         unittest.skip, unittest.skipIf, unittest.skipUnless, unittest.expectedFailure]
 table: {decorator: pytest.mark.parametrize, row: pytest.param, id: id, keywords: [argnames, argvalues]}
+tables:
+  - decorator: pytest.mark.parametrize
+    columns_from: {position: 0, keyword: argnames}
+    rows: {position: 1, keyword: argvalues}
+    row: pytest.param
+    id: {keyword: id}
 mocks:
   calls: [unittest.mock.Mock, unittest.mock.MagicMock, unittest.mock.AsyncMock, unittest.mock.NonCallableMock,
           unittest.mock.NonCallableMagicMock]

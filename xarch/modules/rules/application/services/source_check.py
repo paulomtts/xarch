@@ -76,9 +76,8 @@ class SourceCheckService:
         private, special = rules.language.private, rules.language.special
         app = self._tree.read(root, [p for p in paths if governed.governed(rules, p)], immutable=marks,
                               interface=interface, standard=standard, private=private, special=special)
-        table = rules.scenarios.table if rules.scenarios is not None else \
-            rules.framework.table if rules.framework is not None else None
-        test_files = self._tree.read(tests, self._tree.paths(tests, extensions), table, marks, interface,
+        tables = rules.framework.tables if rules.framework is not None else ()
+        test_files = self._tree.read(tests, self._tree.paths(tests, extensions), tables, marks, interface,
                                      standard=standard, private=private, special=special) if tests is not None else []
         tests_root = tests.name if tests is not None else None
         shown = root.name

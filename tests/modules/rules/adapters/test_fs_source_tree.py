@@ -28,9 +28,10 @@ from xarch.modules.rules.domain.parsed import (
 )
 from xarch.platform.filesystem import FileSystem
 from xarch.profile_values.language import InterfaceMark, RecordMark
-from xarch.profile_values.testing import CaseTable
+from xarch.profile_values.testing import Place, RowId, TableForm
 
-PYTEST = CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id", ("argnames", "argvalues"))
+PYTEST = TableForm(Place(0, "argnames"), Place(1, "argvalues"), ("pytest", "param"), RowId(keyword="id"),
+                   decorator=("pytest", "mark", "parametrize"))
 STANDARD = frozenset(sys.stdlib_module_names)
 """The modules spec hands the reader for the language the tests' sources are written in: the interpreter's standard
 library."""
@@ -44,9 +45,9 @@ HANDED = {"private": PRIVATE, "special": SPECIAL}
 """What the reader is handed of the language's tokens, as `check` hands it."""
 
 
-def parsed(tmp_path: Path, text: str, table: CaseTable | None = PYTEST) -> SourceFile:
+def parsed(tmp_path: Path, text: str, tables: tuple[TableForm, ...] = (PYTEST,)) -> SourceFile:
     (tmp_path / "x.py").write_text(text)
-    return FsSourceTree(FileSystem()).read(tmp_path, [("x.py",)], table, standard=STANDARD, **HANDED)[0]
+    return FsSourceTree(FileSystem()).read(tmp_path, [("x.py",)], tables, standard=STANDARD, **HANDED)[0]
 
 
 def line_of(text: str, marker: str) -> int:
@@ -451,7 +452,8 @@ def test_the_functions_of_a_class_are_listed_in_source_order(tmp_path):
     assert [f.name for f in parsed(tmp_path, text).functions] == ["a", "b", "c"]
 
 
-OTHER = CaseTable(("cases", "table"), ("cases", "row"), "name", ("names", "rows"))
+OTHER = TableForm(Place(0, "names"), Place(1, "rows"), ("cases", "row"), RowId(keyword="name"),
+                  decorator=("cases", "table"))
 OTHER_TEXT = ("import cases\nfrom cases import row\nimport pytest\n\n"
               "@cases.table('a, b', [row(1, 2, name='x'), cases.row(3, 4, id='y')])\ndef it_a(): ...\n\n"
               "@pytest.mark.parametrize('a', [1])\ndef it_b(): ...\n\n"
@@ -459,7 +461,7 @@ OTHER_TEXT = ("import cases\nfrom cases import row\nimport pytest\n\n"
 
 
 def test_a_table_is_read_in_the_names_the_form_gives(tmp_path):
-    functions = parsed(tmp_path, OTHER_TEXT, OTHER).functions
+    functions = parsed(tmp_path, OTHER_TEXT, (OTHER,)).functions
     a, c = line_of(OTHER_TEXT, "@cases.table('a, b'"), line_of(OTHER_TEXT, "@cases.table(names=")
     assert [(f.name, f.tables) for f in functions] == [
         ("it_a", (Table(a, ("a", "b"), (Row(a, True, "x", (None, None)), Row(a, True, None, (None, None))), form=0, runs=0),)),
@@ -469,13 +471,43 @@ def test_a_table_is_read_in_the_names_the_form_gives(tmp_path):
 
 
 def test_without_keywords_only_positional_arguments_are_read(tmp_path):
-    form = CaseTable(("cases", "table"), ("cases", "row"), "name")
-    functions = parsed(tmp_path, OTHER_TEXT, form).functions
+    form = TableForm(Place(0), Place(1), ("cases", "row"), RowId(keyword="name"), decorator=("cases", "table"))
+    functions = parsed(tmp_path, OTHER_TEXT, (form,)).functions
     assert [len(f.tables) for f in functions] == [1, 0, 0]
 
 
+def test_under_a_place_with_a_keyword_alone_only_the_keyword_is_read(tmp_path):
+    form = TableForm(Place(keyword="names"), Place(keyword="rows"), ("cases", "row"), RowId(keyword="name"),
+                     decorator=("cases", "table"))
+    functions = parsed(tmp_path, OTHER_TEXT, (form,)).functions
+    assert [len(f.tables) for f in functions] == [0, 0, 1]
+
+
 def test_without_a_form_no_table_is_recognised(tmp_path):
-    assert [f.tables for f in parsed(tmp_path, OTHER_TEXT, None).functions] == [(), (), ()]
+    assert [f.tables for f in parsed(tmp_path, OTHER_TEXT, ()).functions] == [(), (), ()]
+
+
+def test_each_table_is_tagged_with_the_index_of_the_form_that_read_it(tmp_path):
+    functions = parsed(tmp_path, OTHER_TEXT, (OTHER, PYTEST)).functions
+    assert [[t.form for t in f.tables] for f in functions] == [[0], [1], [0]]
+
+
+def test_a_table_read_by_the_second_form_is_tagged_with_its_index_and_read_the_same(tmp_path):
+    first = parsed(tmp_path, TABLE).functions[0].tables[0]
+    second = parsed(tmp_path, TABLE, (replace(PYTEST, decorator=("a", "cases")), PYTEST)).functions[0].tables[0]
+    assert second == replace(first, form=1)
+
+
+@pytest.mark.parametrize("skipped", [
+    pytest.param(replace(PYTEST, row=()), id="a form whose rows are literals"),
+    pytest.param(replace(PYTEST, id=RowId(position=0)), id="a form whose id is a position"),
+    pytest.param(replace(PYTEST, columns_from="fields"), id="a form whose columns are the fields of each row"),
+    pytest.param(replace(PYTEST, decorator=(), call=(("pytest", "mark", "parametrize"),)), id="a call form"),
+    pytest.param(TableForm("fields", None, (), RowId(position=0), loop=True), id="a loop form"),
+])
+def test_a_form_the_reader_cannot_read_reads_no_table_and_the_next_form_still_does(tmp_path, skipped):
+    assert parsed(tmp_path, TABLE, (skipped,)).functions[0].tables == ()
+    assert [t.form for t in parsed(tmp_path, TABLE, (skipped, PYTEST)).functions[0].tables] == [1]
 
 
 def test_a_function_says_whether_its_body_holds_an_assert(tmp_path):

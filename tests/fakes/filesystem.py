@@ -11,7 +11,7 @@ from xarch.modules.layout.domain.structure import Requirement
 from xarch.modules.rules.domain.parsed import SourceFile
 from xarch.modules.scaffold.domain.values import FILE, FOLDER
 from xarch.profile_values.language import InterfaceMark, RecordMark
-from xarch.profile_values.testing import CaseTable
+from xarch.profile_values.testing import TableForm
 
 
 class FakeSourceTree:
@@ -41,7 +41,7 @@ class FakeSourceTree:
         self.listed.append(extensions)
         return [tuple(rel.split("/")) for rel in sorted(self._trees[root])]
 
-    def read(self, root: Path, paths: list[tuple[str, ...]], table: CaseTable | None = None,
+    def read(self, root: Path, paths: list[tuple[str, ...]], tables: tuple[TableForm, ...] = (),
              immutable: tuple[RecordMark, ...] = (), interface: tuple[InterfaceMark, ...] = (), *,
              standard: frozenset[str], private: str, special: str) -> list[SourceFile]:
         self.handed.append(standard)
