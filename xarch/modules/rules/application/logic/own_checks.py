@@ -111,7 +111,8 @@ def _match(written: WrittenTarget, owner: tuple[str, tuple[str, ...]] | None, pr
         count = len(problems)
         places = tuple(t for v in values
                        if (t := target(v, owner, profile.parts, profile.parts, f"{where}.place", problems,
-                                       alone="a check that names no part", repeats=())) is not None)
+                                       alone="a check that names no part", repeats=profile.repeats,
+                                       place=True)) is not None)
         return Match(kind, places=places) if len(problems) == count else None
     if form == PARTS:
         missing = [v for v in values if v not in profile.parts]
