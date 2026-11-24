@@ -213,9 +213,9 @@ keys:
       needs `testing`.
       Tests mirror the app: tests/<path> for the app's <path>, and a test file has the tier of the part its folder
       mirrors (a folder that mirrors no part belongs to the tier whose `folder` holds it). A test imports only the part
-      its folder mirrors and what that may import, a `<word>.<part>` reference meaning the instance it mirrors, then what its tier's
-      `imports.also` adds, and other test code only from its own folder; a test in no tier is a violation. Every folder below tests/<a repeating folder>/ mirrors a
-      folder of the app
+      its folder mirrors and what that may import, a `<word>.<part>` reference meaning the instance it mirrors, then
+      what its tier's `imports.also` adds, and other test code only from its own folder; a test in no tier is a
+      violation. Every folder below tests/<a repeating folder>/ mirrors a folder of the app
     example: |
       <<testing>>
       tiers:
