@@ -102,6 +102,10 @@ All notable changes to this project are written here. The format follows
   and is refused at its index when the language does not supply it (`testing.tables.0.call: its check reads
   function.tables.call ...`). Python supplies `function.tables.decorator` and `function.tables.loop`, and not
   `call`. A language data file that writes `function.tables` under `supplies` is refused as an unknown fact.
+- Python's reader reads a table from the first `for` of a test's own body over a list literal of the file (`for
+  given, when, then in CASES:`), its columns the names the loop binds. Its rows are calls of the form's `row` with a
+  keyword id, or tuple or list literals with an id at a position. That `for` is not reported as a branch by
+  scenario-coverage or `plain_tables`.
 - Without `based_on`, a custom profile is compared with the bundled profile of highest match (the first by name on a
   tie, and one no part pairs with never), no longer the one sharing the most part names. Parts pair by name, then by
   layout path, and tiers by name, then by subject, and the ways a profile is looser are compared on the parts and

@@ -16,11 +16,13 @@ function being one whose name matches the profile's pattern:
     union; every variant heads the result of at least one row, or is named in the body of a standalone test
     function (one with no table) of the same file, for a case that does not fit a row.
     the body of a table test holds no statement that branches (one of the language's `branching` keywords), and no
-    expression that chooses between values (one of its `branching_expressions`): the odd case is its own test.
+    expression that chooses between values (one of its `branching_expressions`): the odd case is its own test. The
+    statement that runs a table's rows, at the line the reader gives as the table's runs, is the table and no branch
+    of its test.
 
 plain holds every table test of a tier that says `plain_tables` to the same rule as a use case's: no statement that
-branches and no expression that chooses between values in its body, said once where scenario-coverage already says
-it of a use case's table.
+branches and no expression that chooses between values in its body, but the statement that runs a table's rows, said
+once where scenario-coverage already says it of a use case's table.
 
 weak lists, without failing, a variant met to the letter only: one no row covers, credited only to standalone tests
 of the file that name it, none of which holds an `assert` statement in its body.
@@ -62,8 +64,8 @@ def violations(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: 
 
 
 def plain(tests: Iterable[SourceFile], profile: Profile, said: Iterable[Violation] = ()) -> list[Violation]:
-    """The branches in the body of each table test of a tier whose tables are plain, but where said already holds a
-    violation of the rule at that file and line."""
+    """The branches in the body of each table test of a tier whose tables are plain, the statement that runs a table's
+    rows being none, but where said already holds a violation of the rule at that file and line."""
     plain_tiers = {tier.name for tier in profile.tiers if tier.plain_tables}
     if not plain_tiers or profile.framework is None:
         return []
@@ -172,9 +174,13 @@ def _covered(test: SourceFile, union: str, variants: tuple[str, ...], guard: Sce
 
 
 def _branches(function: Function, profile: Profile) -> list[Problem]:
+    """Each block and each expression of the function's body that branches, in line order, but the loop at the line
+    that runs the rows of one of its tables (its runs; 0 is no line)."""
     fix = "arrange from given, act with when, assert == then, and give the odd case its own test"
     language = profile.language
-    found = [(line, keyword, "") for line, keyword in function.blocks if keyword in language.branching]
+    runs = {(table.runs, "for") for table in function.tables if table.runs}
+    found = [(line, keyword, "") for line, keyword in function.blocks
+             if keyword in language.branching and (line, keyword) not in runs]
     found += [(line, keyword, " expression") for line, keyword in function.expressions
               if keyword in language.branching_expressions]
     return [(line, f"{function.name} has {'an' if keyword[:1] in 'aeiou' else 'a'} `{keyword}`{what} in its body", fix)

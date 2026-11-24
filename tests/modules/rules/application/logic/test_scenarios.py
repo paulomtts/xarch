@@ -280,3 +280,41 @@ def test_a_row_is_worded_as_the_form_at_its_index_writes_one_in_the_words_of_the
     bare = replace(table(row("Published", written=False, id=None), row("Missing", 11)), form=1)
     found = violations([RESULTS], [publish_tests(Function(8, "test_publish", (bare,)))], checked)
     assert [(str(v), v.fix) for v in found] == [(f"{FILE}:10: {problem} (scenario-coverage)", fix)]
+
+
+RUN = replace(TABLE, runs=15)
+"""TABLE, its rows run by the statement on line 15 of its test's body."""
+
+
+@pytest.mark.parametrize("tables, blocks, expected", [
+    pytest.param((RUN,), ((14, "if"), (15, "for"), (16, "for")), [14, 16],
+                 id="the loop that runs the rows is no branch, and every other block still is"),
+    pytest.param((TABLE,), ((14, "if"), (15, "for"), (16, "for")), [14, 15, 16],
+                 id="a table no statement runs drops nothing"),
+    pytest.param((RUN,), ((15, "while"),), [15], id="only a loop at the line that runs the rows is dropped"),
+])
+def test_the_statement_that_runs_a_table_s_rows_is_no_branch_of_its_test(tables, blocks, expected):
+    found = violations([RESULTS], [publish_tests(Function(8, "test_publish", tables, blocks=blocks))], PROFILE)
+    assert [v.line for v in found] == expected
+
+
+def test_a_table_test_of_a_plain_tier_holds_no_branch_but_the_statement_that_runs_its_rows():
+    ran = replace(BRANCHED, tables=(replace(BRANCHED.tables[0], runs=12),))
+    assert [str(v) for v in plain([in_tests(UNIT_TEST, functions=(ran,))], PLAIN)] == [
+        "tests/modules/docs/domain/test_doc.py:11: test_doc has an `if` expression in its body, and a table test of "
+        "the unit tier holds no branch (tiers.unit.plain_tables; scenario-coverage)"]
+
+
+LOOP = TableForm("bound", None, (), RowId(position=0), loop=True)
+"""A form whose rows a loop of the test's body runs, each a literal whose id is its first value."""
+
+
+def test_a_table_a_loop_runs_is_checked_as_any_table_by_its_form_s_slots():
+    checked = profile(framework=replace(PROFILE.framework, tables=(PYTEST_FORM, LOOP)))
+    looped = Table(9, COLUMNS, (row("Published", written=False, id=None),), form=1, runs=9)
+    found = violations([RESULTS], [publish_tests(Function(8, "test_publish", (looped,), blocks=((9, "for"),)))], checked)
+    assert [(str(v), v.fix) for v in found] == [
+        (f"{FILE}:10: row is not a literal (scenario-coverage)",
+         "write the row's id, a sentence stating the outcome, as its value at position 0"),
+        (f"{FILE}:9: PublishResult variant Missing has no row in the table and no standalone test naming it "
+         "(scenario-coverage)", "add a row whose then is Missing, or a standalone test naming it")]
