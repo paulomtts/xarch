@@ -230,13 +230,13 @@ The symbols:
   `imports.also`, the instance the test mirrors, so a part the tier tests must lie in that folder); either is
   optionally followed by `/<path>`, only that path below the part (`parts.store/schema`), and, in `imports.may`,
   `:<pattern>`, only the names that match the pattern, imported by name (`parts.store:*Id`). `everything` is no
-  limit (also for `imports.libraries`); an entry written
-  `{parts.store: types_only}` is a target the part may import only to use as a type. A tier's `imports.must` and
-  `imports.types_only` name whole parts, `parts.<part>`, for a tier's tests lie in no instance. A part may always
-  import itself. `profile explain --rule` and the looser lines of `profile check` and `check` write a target the
-  same way. The forms before 0.3.0, `store@any`, `store@own` and the bare `store`, are refused with the reference to
-  write (`'store@any': @any was removed in 0.3.0: write parts.store`). Every other key that names a part, outside
-  `imports`, takes its plain name (`fakes.for: [store]`), and a repeating folder cannot be written `<parts>`.
+  limit (also for `imports.libraries`); an entry written `{parts.store: types_only}` is a target the part may
+  import only to use as a type. A tier's `imports.must` and `imports.types_only` name whole parts, `parts.<part>`,
+  for a tier's tests lie in no instance. A part may always import itself. `profile explain --rule` and the looser
+  lines of `profile check` and `check` write a target the same way. The forms before 0.3.0, `store@any`, `store@own`
+  and the bare `store`, are refused with the reference to write (`'store@any': @any was removed in 0.3.0: write
+  parts.store`). Every other key that names a part, outside `imports`, takes its plain name (`fakes.for: [store]`),
+  and a repeating folder cannot be written `<parts>`.
 
 This is the whole format on one screen. The reference for each key (what it means, what it accepts, whether `check`
 enforces it and through which rule, an example that loads, the keys it holds) is the command, which reads the same
