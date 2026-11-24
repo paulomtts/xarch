@@ -100,8 +100,8 @@ All notable changes to this project are written here. The format follows
 - The fact `function.tables` is now three facts, one per form a table is written in: `function.tables.decorator`,
   `function.tables.call` and `function.tables.loop`. Each holder of an entry of `testing.tables` needs its own fact,
   and is refused at its index when the language does not supply it (`testing.tables.0.call: its check reads
-  function.tables.call ...`). Python supplies `function.tables.decorator`, and not `call` or `loop`. A language data
-  file that writes `function.tables` under `supplies` is refused as an unknown fact.
+  function.tables.call ...`). Python supplies `function.tables.decorator` and `function.tables.loop`, and not
+  `call`. A language data file that writes `function.tables` under `supplies` is refused as an unknown fact.
 - Without `based_on`, a custom profile is compared with the bundled profile of highest match (the first by name on a
   tie, and one no part pairs with never), no longer the one sharing the most part names. Parts pair by name, then by
   layout path, and tiers by name, then by subject, and the ways a profile is looser are compared on the parts and

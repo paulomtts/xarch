@@ -126,9 +126,9 @@ def test_a_language_whose_data_file_says_nothing_of_its_reader_holds_no_key_to_i
                   languages={"toy": silent}).approximate == ()
 
 
-def test_python_supplies_every_fact_a_bundled_check_reads_but_the_tables_of_a_call_and_of_a_loop():
+def test_python_supplies_every_fact_a_bundled_check_reads_but_the_tables_of_a_call():
     assert {supply.fact: supply.grade for supply in PYTHON.checked.supplies} == {
-        fact: EXACT for fact in FACTS if fact not in ("function.tables.call", "function.tables.loop")}
+        fact: EXACT for fact in FACTS if fact != "function.tables.call"}
 
 
 def test_the_keys_a_profile_sets_are_found_in_every_scope_and_through_a_testing_preset_each_once():
@@ -603,8 +603,12 @@ def test_a_decorator_form_under_python_loads():
     assert parsed(framed(PYTEST_TABLE)).approximate == ()
 
 
-def test_a_loop_form_under_python_is_refused_at_its_index_for_the_tables_of_cases_a_loop_runs():
-    assert problems(framed(LOOP_FORM)) == [unread(0, "loop")]
+def test_a_loop_form_under_python_loads():
+    assert parsed(framed(LOOP_FORM)).approximate == ()
+
+
+def test_a_loop_form_written_after_a_call_form_loads_and_the_call_form_is_still_refused_at_its_own_index():
+    assert problems(framed(CALL_FORM, LOOP_FORM)) == [unread(0, "call")]
 
 
 def test_a_call_form_written_after_the_decorator_form_is_refused_at_its_own_index_and_the_decorator_form_is_not():

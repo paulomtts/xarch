@@ -387,3 +387,12 @@ def test_the_list_of_table_forms_needs_no_fact_of_its_own():
     assert json.loads(found.output)["needs"] == []
     text = runner.invoke(app, ["profile", "explain", "testing.tables"]).output
     assert not any(line.startswith("  needs:") for line in text.splitlines())
+
+
+def test_the_loop_holder_of_a_table_form_says_python_supplies_its_fact_exactly():
+    loop = json.loads(runner.invoke(app, ["profile", "explain", "testing.tables.loop", "--format", "json"]).output)
+    assert loop["needs"] == [{"fact": "function.tables.loop", "meaning": FACTS["function.tables.loop"], "grade": "exact",
+                              "note": None}]
+    text = " ".join(runner.invoke(app, ["profile", "explain", "testing.tables.loop"]).output.split())
+    assert ("needs: function.tables.loop: the facts of the source its check reads, which Python supplies "
+            "exactly") in text

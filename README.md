@@ -177,8 +177,8 @@ a scope any key opens, however deep, and in each entry of a list, which a proble
 (`<list>.0.<key>`). A profile that sets a key whose facts its language does not
 supply is refused when it loads, naming the key, the fact and what to do; a key whose facts are supplied only partly
 runs, and is listed under `approximate` in the enforcement section, which `--strict` fails on. Python's reader
-supplies every fact exactly but `function.tables.call` and `function.tables.loop`, so a framework that writes a `call`
-or `loop` form under Python is refused at that entry (`testing.tables.0.call`). One fact is never written under
+supplies every fact exactly but `function.tables.call`, so a framework that writes a `call` form under Python is
+refused at that entry (`testing.tables.0.call`). One fact is never written under
 `supplies`: `file.package`, that a file stands for the
 folder holding it, follows `package_files`, and the keys whose check reads it (`package_only`, a part's `imports.must`,
 `guards.dead-code.untested`) are refused under a language that has none.
@@ -508,8 +508,8 @@ enforcement
 - `approximate`: each key the profile sets whose check reads a fact the language's reader supplies only partly, as
   its data file grades it (`supplies`), with what the reader misses: the check runs, and may miss what it looks for.
   A key whose check reads a fact the language does not supply at all is refused when the profile loads, naming the
-  key and the fact. Python's reader supplies every fact exactly but `function.tables.call` and
-  `function.tables.loop`, and none partly, so a Python project never sees this line.
+  key and the fact. Python's reader supplies every fact exactly but `function.tables.call`, and none partly, so a
+  Python project never sees this line.
 
 Without `--strict` the section never changes the exit code. `--strict` fails (exit 1) on every finding listed in
 `strict_failures`: what the profile in force leaves unenforced or unseen: each guard left off that the bundled profile
