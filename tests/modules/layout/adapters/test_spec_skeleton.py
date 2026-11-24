@@ -1,7 +1,9 @@
 """Layout's Skeleton read from spec's contract: the folders and files of the top level apart, and what every instance
 of a repeating folder holds, as its leaves; and how the language names a folder."""
+from dataclasses import replace
+
 from xarch.modules.layout.adapters.spec_skeleton import SpecSkeleton
-from xarch.modules.layout.domain.structure import Naming
+from xarch.modules.layout.domain.structure import Beside, Naming
 from xarch.modules.spec.contract import Entry, Repeating, Skeleton
 
 SKELETON = Skeleton(
@@ -32,3 +34,14 @@ def test_each_repeating_folder_is_named_by_its_root_and_holds_its_leaves():
 
 def test_the_naming_is_what_a_name_may_be_and_how_a_private_one_starts():
     assert SpecSkeleton(Spec()).naming("cli") == Naming(r"\w+", "_")
+
+
+def test_without_beside_there_is_no_beside_and_with_it_the_test_files_and_the_kept_folders():
+    assert SpecSkeleton(Spec()).beside("cli") is None
+    near = replace(SKELETON, beside=True, test_files=("test_*.py",), kept=(("architecture",), ("fakes",)))
+
+    class Near:
+        def skeleton(self, profile: str) -> Skeleton:
+            return near
+
+    assert SpecSkeleton(Near()).beside("cli") == Beside(("test_*.py",), (("architecture",), ("fakes",)))

@@ -101,6 +101,9 @@ class FakeDisk:
         base = root.joinpath(*each)
         return sorted(d.relative_to(base).parts for d in self._dirs if d != base and d.is_relative_to(base))
 
+    def files(self, root: Path) -> list[tuple[str, ...]]:
+        return sorted(f.relative_to(root).parts for f in self._files if f.is_relative_to(root))
+
 
 class FakeFiles:
     """Satisfies scaffold's Files: the files that exist (the folders above them exist too), the folders that exist

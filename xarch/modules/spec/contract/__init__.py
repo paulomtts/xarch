@@ -67,7 +67,10 @@ class Skeleton:
     repeating folders in the order of the profile; and what the layout and the scaffold read of the language of the
     app: how a message names it (title), the file it has stand for each folder, which a folder of the layout holds
     (package_file), how a name private to its folder starts (private), the words no name may be (reserved) and what a
-    name may be in it (names, a regular expression); "" for any of them: the language does not say."""
+    name may be in it (names, a regular expression); "" for any of them: the language does not say; and whether
+    every test of a part sits beside the code it tests (beside, testing.beside), the patterns of a test file's name
+    (test_files), and the folders below the tests root whose tests stay there under beside (kept: each tier's folder,
+    then the fakes' folder)."""
     top_level: tuple[Entry, ...]
     repeating: tuple[Repeating, ...]
     title: str = ""
@@ -75,6 +78,9 @@ class Skeleton:
     private: str = ""
     reserved: frozenset[str] = frozenset()
     names: str = ""
+    beside: bool = False
+    test_files: tuple[str, ...] = ()
+    kept: tuple[tuple[str, ...], ...] = ()
 
 
 @dataclass(frozen=True)

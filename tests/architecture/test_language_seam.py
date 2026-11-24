@@ -505,6 +505,7 @@ PRIVACY: dict[str, str] = {
     "modules/scaffold/adapters/spec_skeleton.py": "hands scaffold the prefix spec publishes",
     "modules/layout/application/logic/requirements.py": "layout requires no private file or folder",
     "modules/layout/application/logic/unmirrored.py": "layout leaves a private folder unmirrored",
+    "modules/layout/application/logic/beside.py": "layout leaves a test in a private folder unreported",
     "modules/layout/adapters/spec_skeleton.py": "hands layout the prefix spec publishes",
     "modules/spec/application/services/publishing.py": "publishes the prefix to scaffold and layout",
     "modules/spec/application/logic/explain.py": "fills %private% in the texts of the format",

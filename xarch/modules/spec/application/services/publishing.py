@@ -49,9 +49,14 @@ class PublishingService:
         repeating = tuple(Repeating(repeat.word, repeat.root, tuple(walk(architecture.instance_tree(repeat))))
                           for repeat in architecture.repeats)
         checked = language.checked
+        framework = architecture.framework
+        kept = (*(tier.folder for tier in architecture.tiers if tier.folder),
+                *((architecture.fakes.folder,) if architecture.fakes is not None else ()))
         return Skeleton(top_level=tuple(walk(architecture.top_level_tree())), repeating=repeating,
                         title=checked.title, package_file=checked.package_file, private=checked.private,
-                        reserved=language.reserved_names, names=language.names)
+                        reserved=language.reserved_names, names=language.names,
+                        beside=framework is not None and framework.beside,
+                        test_files=framework.files if framework is not None else (), kept=kept)
 
     def profile(self, location: str) -> ProfileView:
         architecture = self._architectures.load(location)

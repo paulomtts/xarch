@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from xarch.modules.layout.domain.errors import ProfileUnusable
-from xarch.modules.layout.domain.structure import Naming
+from xarch.modules.layout.domain.structure import Beside, Naming
 from xarch.modules.spec.contract import ProfileRefused, Skeleton, SkeletonResult
 
 
@@ -36,6 +36,10 @@ class SpecSkeleton:
     def each_parts(self, profile: str, root: tuple[str, ...]) -> list[tuple[tuple[str, ...], bool]]:
         repeating = next(r for r in self._skeleton(profile).repeating if r.root == root)
         return [(e.path, e.is_dir) for e in repeating.entries if e.leaf]
+
+    def beside(self, profile: str) -> Beside | None:
+        skeleton = self._skeleton(profile)
+        return Beside(skeleton.test_files, skeleton.kept) if skeleton.beside else None
 
     def _skeleton(self, profile: str) -> Skeleton:
         """Raises ProfileUnusable, with spec's reason, for a profile spec refuses."""

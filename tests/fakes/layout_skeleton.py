@@ -2,20 +2,22 @@
 from __future__ import annotations
 
 from xarch.modules.layout.domain.errors import ProfileUnusable
-from xarch.modules.layout.domain.structure import Naming
+from xarch.modules.layout.domain.structure import Beside, Naming
 
 
 class FakeSkeleton:
     """Satisfies layout's Skeleton: the same top-level folders and repeating folders under every profile; repeats
     holds, by the folder of each repeating folder, the parts every instance of it holds; and how the language names
-    a folder (the language says nothing unless given); a profile refused raises ProfileUnusable with its reason."""
+    a folder (the language says nothing unless given); where the tests sit under testing.beside (None: they mirror the
+    app); a profile refused raises ProfileUnusable with its reason."""
 
     def __init__(self, top_level: list[tuple[str, ...]],
                  repeats: dict[tuple[str, ...], list[tuple[tuple[str, ...], bool]]] | None = None,
                  top_files: list[tuple[str, ...]] | None = None, naming: Naming = Naming(),
-                 refused: dict[str, str] | None = None):
+                 refused: dict[str, str] | None = None, beside: Beside | None = None):
         self._top, self._repeats = list(top_level), dict(repeats or {})
         self._files, self._naming, self._refused = list(top_files or []), naming, dict(refused or {})
+        self._beside = beside
 
     def naming(self, profile: str) -> Naming:
         return self._naming
@@ -33,3 +35,6 @@ class FakeSkeleton:
 
     def each_parts(self, profile: str, root: tuple[str, ...]) -> list[tuple[tuple[str, ...], bool]]:
         return list(self._repeats[root])
+
+    def beside(self, profile: str) -> Beside | None:
+        return self._beside

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from xarch.modules.layout.domain.structure import Naming
+from xarch.modules.layout.domain.structure import Beside, Naming
 
 
 class Skeleton(Protocol):
@@ -27,4 +27,9 @@ class Skeleton(Protocol):
     def each_parts(self, profile: str, root: tuple[str, ...]) -> list[tuple[tuple[str, ...], bool]]:
         """(path below an instance, is_dir) for every part that must exist in each instance of the repeating folder
         in root."""
+        ...
+
+    def beside(self, profile: str) -> Beside | None:
+        """Where the tests sit when every test of a part sits beside the code it tests; None when the profile keeps
+        them in the mirrored tests tree."""
         ...

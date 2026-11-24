@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from xarch.modules.layout.domain.structure import Requirement
-from xarch.platform.filesystem import FileSystem
+from xarch.platform.filesystem import HIDDEN, FileSystem
 
 
 class FsDisk:
@@ -26,3 +26,7 @@ class FsDisk:
 
     def below(self, root: Path, each: tuple[str, ...]) -> list[tuple[str, ...]]:
         return self._fs.folders(root.joinpath(*each))
+
+    def files(self, root: Path) -> list[tuple[str, ...]]:
+        below = (tuple(path.split("/")) for path in self._fs.files_below(root))
+        return [steps for steps in below if not any(step.startswith(HIDDEN) for step in steps)]
