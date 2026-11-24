@@ -75,8 +75,43 @@ def test_references_are_read_with_the_profile_s_words_in_the_order_written():
         (Target("shared"), Target("service", "own"), Target("service", "any", ("rules",))), [])
 
 
-def test_what_a_tier_s_tests_also_import_reads_a_word_as_the_instance_a_test_mirrors():
-    problems: list[str] = []
-    assert allowed_targets(["module.service/rules"], None, PARTS, set(PARTS), "tiers.unit.imports.also", problems,
-                           mirrored=True, repeats=REPEATS) == (Target("service", "own", ("rules",)),)
-    assert problems == []
+NO_MODULE = "no part the tier tests lies in a <module> folder, so its tests mirror no module"
+
+
+@pytest.mark.parametrize("tested, targets, problems", [
+    pytest.param((SERVICE.path,), (Target("service", "own", ("rules",)),), [], id="a tested part in the word's folder"),
+    pytest.param((SHARED.path,), (), [f"tiers.unit.imports.also: 'module.service/rules': {NO_MODULE}: write "
+                                      "parts.service/rules"], id="the tested parts outside it"),
+])
+def test_what_a_tier_s_tests_also_import_reads_a_word_as_the_instance_a_test_mirrors(tested, targets, problems):
+    said: list[str] = []
+    assert allowed_targets(["module.service/rules"], None, PARTS, set(PARTS), "tiers.unit.imports.also", said,
+                           mirrored=tested, repeats=REPEATS) == targets
+    assert said == problems
+
+
+def test_several_words_in_one_list_are_each_judged_by_the_same_tested_parts():
+    said: list[str] = []
+    assert allowed_targets(["module.service", "module.api/routes"], None, PARTS, set(PARTS),
+                           "tiers.unit.imports.also", said, mirrored=(SERVICE.path,), repeats=REPEATS) == (
+        Target("service", "own"), Target("api", "own", ("routes",)))
+    assert said == []
+    assert allowed_targets(["module.service", "module.api"], None, PARTS, set(PARTS), "tiers.unit.imports.also",
+                           said, mirrored=(SHARED.path,), repeats=REPEATS) == ()
+    assert said == [f"tiers.unit.imports.also: 'module.service': {NO_MODULE}: write parts.service",
+                    f"tiers.unit.imports.also: 'module.api': {NO_MODULE}: write parts.api"]
+
+
+@pytest.mark.parametrize("value, targets, problem", [
+    pytest.param("everything", (), "tiers.guard.imports.also: must be a list of targets such as [parts.core, "
+                                   "unit.store/schema]: `everything` is not taken, name each target the tests may also "
+                                   "import", id="everything alone"),
+    pytest.param(["parts.shared", "everything"], (Target("shared"),),
+                 "tiers.guard.imports.also: `everything` is not taken, name each target the tests may also import",
+                 id="everything in the list"),
+])
+def test_a_tier_that_tests_no_part_still_refuses_everything_in_what_its_tests_also_import(value, targets, problem):
+    said: list[str] = []
+    assert allowed_targets(value, None, PARTS, set(PARTS), "tiers.guard.imports.also", said, mirrored=(),
+                           repeats=REPEATS) == targets
+    assert said == [problem]

@@ -441,12 +441,13 @@ def test_a_part_that_may_import_everything_may_be_asked_to_reach_any_part():
 
 
 def referencing(services: dict, guard: dict) -> dict:
-    """A profile of modules/<module>/ (domain, services) and kernel/, every part untested, and a tier guard in the
-    folder architecture: services writes the imports given, and the guard the keys given beside its folder."""
+    """A profile of modules/<module>/ (domain, services) and kernel/, services tested by a tier guard in the folder
+    architecture and the other parts untested: services writes the imports given, and the guard the keys given beside
+    its folder."""
     return {"name": "refs", "testing": deepcopy(TESTING), "parts": {
         "modules/<module>/": {
             "domain/": {"role": "the rules", "untested": "read through services"},
-            "services/": {"role": "the use cases", "untested": "read through the guard", "imports": services}},
+            "services/": {"role": "the use cases", "tests": "guard", "imports": services}},
         "kernel/": {"role": "shared code", "untested": "too small to test"}},
         "tiers": {"guard": {"folder": "architecture"} | guard}}
 

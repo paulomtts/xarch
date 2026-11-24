@@ -675,8 +675,8 @@ def _tier(name: str, spec: Any, subject: tuple[Subject, ...], parts: dict[str, P
                         "its tests import what the part they mirror may")
     allowance = (allowed_targets(imports.get("may"), None, parts, declared, f"{where}.imports.may", problems,
                                  repeats=repeats) if "folder" in spec else None)
-    also = allowed_targets(imports.get("also"), None, parts, declared, f"{where}.imports.also", problems, mirrored=True,
-                           repeats=repeats)
+    also = allowed_targets(imports.get("also"), None, parts, declared, f"{where}.imports.also", problems,
+                           mirrored=tuple(parts[tested.part].path for tested in subject), repeats=repeats)
     docs = _tier_docs(spec["docs"], folder, examples, f"{where}.docs", problems, language) if "docs" in spec else {}
     reach = (iw.tier_parts(imports["must"], declared, f"{where}.imports.must", problems)
              if "must" in imports else [])

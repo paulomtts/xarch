@@ -30,16 +30,17 @@ BARE = "a bare part name"
 
 def target(value: Any, owner: tuple[str, tuple[str, ...]] | None, parts: Mapping[str, tuple[str, ...]],
            declared: Collection[str], where: str, problems: list[str], patterns: bool = False,
-           mirrored: bool = False, *, alone: str, repeats: Collection[Repeat], place: bool = False) -> Target | None:
+           mirrored: Collection[tuple[str, ...]] | None = None, *, alone: str, repeats: Collection[Repeat],
+           place: bool = False) -> Target | None:
     """The target a profile writes as value, for the part owner (its name and path; None for what names no part, which
     the caller words as alone, such as "a tier's folder"), each part by its path, repeats the profile's repeating
     folders, whose words a reference names; None, with the problem said at where, when it is not one. A target that
-    names a part declared but not placed is None, with no problem of its own. When mirrored, the reader is a test, whose
-    own instance of the repeating folder is the one it mirrors: `<word>.<part>` there is that instance. place says the
-    value is a check's `place`, where a prefix that is no word may be a dotted name of code. A value in an old form
-    (see old_form) is None, refused with the reference to write: `parts.<part>` for `@any`; for `@own` and a bare name,
-    `<word>.<part>` where that reference is accepted, else `parts.<part>`; or, when the reference would be the part
-    itself, as implied."""
+    names a part declared but not placed is None, with no problem of its own. mirrored, None but for a test, holds the
+    paths of the parts the test's tier tests, () for none: `<word>.<part>` there is the instance a test mirrors,
+    refused when none of those parts lies in a `<word>` folder. place says the value is a check's `place`, where a
+    prefix that is no word may be a dotted name of code. A value in an old form (see old_form) is None, refused with
+    the reference to write: `parts.<part>` for `@any`; for `@own` and a bare name, `<word>.<part>` where that
+    reference is accepted, else `parts.<part>`; or, when the reference would be the part itself, as implied."""
     if isinstance(value, str) and "." in _HEAD.match(value)[0]:
         return _reference(value, owner, parts, declared, where, problems, patterns, mirrored, alone, repeats, place)
     old = old_form(value)
@@ -107,8 +108,9 @@ def written_target(made: Target, words: Mapping[str, str]) -> str:
 
 
 def _reference(value: str, owner: tuple[str, tuple[str, ...]] | None, parts: Mapping[str, tuple[str, ...]],
-               declared: Collection[str], where: str, problems: list[str], patterns: bool, mirrored: bool, alone: str,
-               repeats: Collection[Repeat], place: bool) -> Target | None:
+               declared: Collection[str], where: str, problems: list[str], patterns: bool,
+               mirrored: Collection[tuple[str, ...]] | None, alone: str, repeats: Collection[Repeat],
+               place: bool) -> Target | None:
     """The target a reference writes (see target); None with its one problem, that of the first of its checks that
     fails: the shape, the prefix, the pattern, the part, the path, the instance, the part itself."""
     prefix, _, rest = value.partition(".")
@@ -164,18 +166,21 @@ def _prefix_problem(value: str, prefix: str, rest: str, path: tuple[str, ...] | 
 
 
 def _word_problem(value: str, prefix: str, rest: str, part: tuple[str, tuple[str, ...]],
-                  owner: tuple[str, tuple[str, ...]] | None, repeats: Collection[Repeat], mirrored: bool,
-                  alone: str) -> str | None:
-    """What is wrong with `<word>.<part>`: the part (its name and path) must lie in the word's folder and, but for the
-    instance a test mirrors, so must the importer, owner, or what the caller words as alone; None when both do."""
+                  owner: tuple[str, tuple[str, ...]] | None, repeats: Collection[Repeat],
+                  mirrored: Collection[tuple[str, ...]] | None, alone: str) -> str | None:
+    """What is wrong with `<word>.<part>`: the part (its name and path) must lie in the word's folder, and so must the
+    importer, owner, or what the caller words as alone; for a test, whose tier tests the parts at the paths mirrored,
+    one of those parts must instead, the instance a test mirrors; None when both do."""
     instead = f"write parts.{rest}"
     held = repeat_of(repeats, part[1])
     if held is None:
         return f"{value!r}: part {part[0]!r} lies in no <{prefix}> folder: {instead}"
     if held.word != prefix:
         return f"{value!r}: part {part[0]!r} lies in the <{held.word}> folder, not <{prefix}>: {instead}"
-    if mirrored:
-        return None
+    if mirrored is not None:
+        words = {each.word for path in mirrored if (each := repeat_of(repeats, path)) is not None}
+        return None if prefix in words else (f"{value!r}: no part the tier tests lies in a <{prefix}> folder, so its "
+                                             f"tests mirror no {prefix}: {instead}")
     importer = alone if owner is None else f"part {owner[0]!r}"
     mine = None if owner is None else repeat_of(repeats, owner[1])
     if mine is None:

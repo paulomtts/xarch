@@ -364,6 +364,46 @@ def test_a_bad_tier_is_refused(tier, expected):
     assert problems(document) == [expected]
 
 
+ALSO = "layered.yaml: tiers.unit.imports.also"
+NO_MODULE = "no part the tier tests lies in a <module> folder, so its tests mirror no module"
+
+
+def unit_tier_of_shared(also: list) -> dict:
+    """covered(), its unit tier testing only shared, a part outside the repeating folder (service moves to the
+    integration tier), its tests also importing also."""
+    document = covered()
+    part_of(document, "service")["tests"] = "integration"
+    shared = part_of(document, "shared")
+    del shared["untested"]
+    shared["tests"] = "unit"
+    document["tiers"]["unit"]["imports"] = {"also": also}
+    return document
+
+
+@pytest.mark.parametrize("also, expected", [
+    pytest.param(["module.store"], f"{ALSO}: 'module.store': {NO_MODULE}: write parts.store", id="a word"),
+    pytest.param(["service@own"], f"{ALSO}: 'service@own': @own was removed in 0.3.0: write parts.service",
+                 id="@own told parts"),
+    pytest.param(["service"], f"{ALSO}: 'service': a bare part name was removed in 0.3.0: write parts.service",
+                 id="a bare name told parts"),
+])
+def test_a_tier_whose_parts_lie_in_no_word_s_folder_refuses_that_word_in_what_its_tests_also_import(also, expected):
+    assert problems(unit_tier_of_shared(also)) == [expected]
+
+
+def test_each_tier_s_word_in_what_its_tests_also_import_is_judged_by_the_parts_that_tier_tests():
+    document = unit_tier_of_shared(["module.store"])
+    document["tiers"]["integration"]["imports"] = {"also": ["module.service"]}
+    assert problems(document) == [f"{ALSO}: 'module.store': {NO_MODULE}: write parts.store"]
+
+
+def test_a_tier_with_only_a_folder_tests_no_part_and_refuses_a_word_in_what_its_tests_also_import():
+    document = covered()
+    document["tiers"]["guard"] = {"folder": "architecture", "imports": {"also": ["module.service"]}}
+    assert problems(document) == [
+        f"layered.yaml: tiers.guard.imports.also: 'module.service': {NO_MODULE}: write parts.service"]
+
+
 def test_a_tier_folder_follows_the_rules_it_had_and_its_allowance_is_a_part_s_may_import():
     document = covered()
     document["tiers"]["guard"] = {"folder": "src/billing/api",

@@ -17,7 +17,12 @@ LEDGER = ("ledger", ("units", "*", "ledger"))
 NOT_A_REFERENCE = "is not a reference: write parts.<part> or <word>.<part>, optionally followed by /<path> and :<pattern>"
 
 
-def read(written, owner, parts=PARTS, repeats=REPEATS, patterns=True, mirrored=False, place=False,
+def mirroring(*names):
+    """The paths of the parts a tier tests, by name, as the reader of its tests' imports.also is given them."""
+    return tuple(PARTS[name] for name in names)
+
+
+def read(written, owner, parts=PARTS, repeats=REPEATS, patterns=True, mirrored=None, place=False,
          alone="a tier's folder", declared=None):
     problems: list[str] = []
     found = target(written, owner, parts, parts if declared is None else declared, "at", problems, patterns, mirrored,
@@ -53,10 +58,10 @@ OWN_MODULE = "module.domain (this module's) or parts.domain (any module's)"
                  id="a bare name, the second word in place of module"),
     pytest.param("domain", CLI, {}, f"at: 'domain': {BARE} parts.domain", id="a bare name from outside the folder"),
     pytest.param("domain", None, {}, f"at: 'domain': {BARE} parts.domain", id="a bare name from a tier's folder"),
-    pytest.param("domain", None, {"mirrored": True}, f"at: 'domain': {BARE} {OWN_MODULE}",
+    pytest.param("domain", None, {"mirrored": mirroring("services")}, f"at: 'domain': {BARE} {OWN_MODULE}",
                  id="a bare name a test mirrors"),
-    pytest.param("domain@own", None, {"mirrored": True}, f"at: 'domain@own': @own {REMOVED} module.domain",
-                 id="@own a test mirrors"),
+    pytest.param("domain@own", None, {"mirrored": mirroring("services")},
+                 f"at: 'domain@own': @own {REMOVED} module.domain", id="@own a test mirrors"),
     pytest.param("domain", None, {"place": True, "alone": "a check that names no part"},
                  f"at: 'domain': {BARE} parts.domain", id="a bare name in the place of a check that names no part"),
     pytest.param("domain", SERVICES, {"place": True}, f"at: 'domain': {BARE} {OWN_MODULE}",
@@ -206,7 +211,7 @@ def test_a_reference_written_wrong_is_none_with_its_one_problem(written, owner, 
                                          "parts.kernel"], id="a word for a part in no repeating folder"),
 ])
 def test_a_test_reads_a_reference_from_the_instance_it_mirrors(written, found, problem):
-    assert read(written, None, mirrored=True) == (found, problem)
+    assert read(written, None, mirrored=mirroring("services")) == (found, problem)
 
 
 def test_a_check_s_place_whose_prefix_is_no_word_is_told_a_dotted_name_goes_under_path():
@@ -282,3 +287,63 @@ def test_a_concrete_instance_name_is_refused_also_when_a_part_bears_that_name():
 ])
 def test_a_key_outside_imports_is_told_the_plain_name_of_a_prefixed_part(written, problem):
     assert outside_imports(written, PARTS, ("module", "unit")) == problem
+
+
+NO_MODULE = "no part the tier tests lies in a <module> folder, so its tests mirror no module"
+
+
+@pytest.mark.parametrize("written, tested, found, problem", [
+    pytest.param("module.domain/values", mirroring("services"), Target("domain", "own", ("values",)), [],
+                 id="a word a tested part lies in"),
+    pytest.param("module.domain", mirroring("services", "kernel"), Target("domain", "own"), [],
+                 id="one tested part in the folder is enough"),
+    pytest.param("module.domain", (("modules", "*", "services", "logic"),), Target("domain", "own"), [],
+                 id="a tested part deeper in the folder"),
+    pytest.param("module.domain", (("modules", "*", "main.py"),), Target("domain", "own"), [],
+                 id="a tested file part in the folder"),
+    pytest.param("module.domain", mirroring("kernel", "cli"), None, [f"at: 'module.domain': {NO_MODULE}: write "
+                                                                     "parts.domain"],
+                 id="no tested part in the folder"),
+    pytest.param("module.domain", mirroring("store"), None, [f"at: 'module.domain': {NO_MODULE}: write parts.domain"],
+                 id="the tested parts in another word's folder"),
+    pytest.param("module.domain", (), None, [f"at: 'module.domain': {NO_MODULE}: write parts.domain"],
+                 id="a tier that tests no part"),
+    pytest.param("module.domain/values:*Id", mirroring("kernel"), None,
+                 [f"at: 'module.domain/values:*Id': {NO_MODULE}: write parts.domain/values:*Id"],
+                 id="the path and pattern kept in the reference to write"),
+    pytest.param("unit.store", mirroring("services"), None,
+                 ["at: 'unit.store': no part the tier tests lies in a <unit> folder, so its tests mirror no unit: "
+                  "write parts.store"], id="each word judged on its own"),
+    pytest.param("unit.store", mirroring("services", "store"), Target("store", "own"), [],
+                 id="a tier testing parts of both words"),
+    pytest.param("module.kernel", (), None,
+                 ["at: 'module.kernel': part 'kernel' lies in no <module> folder: write parts.kernel"],
+                 id="the target part's folder is checked first"),
+    pytest.param("module.store", (), None,
+                 ["at: 'module.store': part 'store' lies in the <unit> folder, not <module>: write parts.store"],
+                 id="the target part in another word's folder is checked first"),
+    pytest.param("parts.domain", (), Target("domain", "any"), [], id="parts is never refused for it"),
+])
+def test_a_test_reads_a_word_only_where_a_part_its_tier_tests_lies_in_that_word_s_folder(written, tested, found,
+                                                                                          problem):
+    assert read(written, None, mirrored=tested) == (found, problem)
+
+
+@pytest.mark.parametrize("written, tested, problem", [
+    pytest.param("domain@own", mirroring("services"), f"at: 'domain@own': @own {REMOVED} module.domain",
+                 id="@own, a tested part in the folder"),
+    pytest.param("domain@own", mirroring("kernel"), f"at: 'domain@own': @own {REMOVED} parts.domain",
+                 id="@own, no tested part in the folder"),
+    pytest.param("domain@own", (), f"at: 'domain@own': @own {REMOVED} parts.domain",
+                 id="@own, a tier that tests no part"),
+    pytest.param("domain", mirroring("services"), f"at: 'domain': {BARE} {OWN_MODULE}",
+                 id="a bare name, a tested part in the folder"),
+    pytest.param("domain", mirroring("kernel"), f"at: 'domain': {BARE} parts.domain",
+                 id="a bare name, no tested part in the folder"),
+    pytest.param("domain", (), f"at: 'domain': {BARE} parts.domain", id="a bare name, a tier that tests no part"),
+    pytest.param("store", mirroring("services"), f"at: 'store': {BARE} parts.store",
+                 id="a bare name, the tested parts in another word's folder"),
+    pytest.param("domain@any", (), f"at: 'domain@any': @any {REMOVED} parts.domain", id="@any told parts as ever"),
+])
+def test_an_old_form_a_test_reads_names_the_word_only_where_its_tier_could_write_it(written, tested, problem):
+    assert read(written, None, mirrored=tested) == (None, [problem])
