@@ -97,8 +97,11 @@ All notable changes to this project are written here. The format follows
   `{name:camel}` or `{name:pascal}`, so `{name:kebab}.test.ts` looks for `http-check.test.ts`. The words are split as
   before (HTTPCheck is http, check). A bare `{name}` is refused with "write {name:snake} for what {name} meant". The
   bundled profiles write `test_{name:snake}.py`.
-- The description of the fact `function.tables`, shown by `profile explain` and in a refusal of a fact the language
-  does not supply, reads "the tables of cases of a test function".
+- The fact `function.tables` is now three facts, one per form a table is written in: `function.tables.decorator`,
+  `function.tables.call` and `function.tables.loop`. Each holder of an entry of `testing.tables` needs its own fact,
+  and is refused at its index when the language does not supply it (`testing.tables.0.call: its check reads
+  function.tables.call ...`). Python supplies `function.tables.decorator`, and not `call` or `loop`. A language data
+  file that writes `function.tables` under `supplies` is refused as an unknown fact.
 - Without `based_on`, a custom profile is compared with the bundled profile of highest match (the first by name on a
   tie, and one no part pairs with never), no longer the one sharing the most part names. Parts pair by name, then by
   layout path, and tiers by name, then by subject, and the ways a profile is looser are compared on the parts and
