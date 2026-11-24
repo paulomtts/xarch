@@ -53,6 +53,11 @@ and, all optional, the tokens of its code the checks and the docs need (empty: t
                    a wrapper type
     importing      how a file imports a name from another file of the app: {dotted} stands for that file's dotted
                    path, {name} for the name
+    writing        how a row of a table of cases is written, a map of one-line templates, each optional: call, a
+                   row that is a call, {callee} standing for what it calls; keyword, a row call whose id a keyword
+                   gives, {callee}, {keyword} and {text}; field, a literal row whose id a field gives, {field} and
+                   {text}. Left out, the language writes no template, and a profile whose table forms need one is
+                   refused
 
 and the facts its reader supplies (see capabilities), each graded:
 
@@ -73,11 +78,20 @@ from xarch.modules.spec.application.logic.outside_name import outside_name
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import INTERPRETER, LANGUAGES, Language, StandardLists
 from xarch.profile_values.capabilities import EXACT, FACTS, Supply
-from xarch.profile_values.language import BLOCK, LINE, NOTHING, CheckedLanguage, CommentForm, InterfaceMark, RecordMark
+from xarch.profile_values.language import (
+    BLOCK,
+    LINE,
+    NOTHING,
+    CheckedLanguage,
+    CommentForm,
+    InterfaceMark,
+    RecordMark,
+    Writing,
+)
 
 KEYS = ("title", "extensions", "package_files", "interface", "dynamic", "namespace", "cache", "standard", "name",
         "package", "member", "private", "special", "call", "nothing", "unannotated", "comments", "directives", "shebang",
-        "encoding", "branching", "importing", "supplies", "immutable", "branching_expressions")
+        "encoding", "branching", "importing", "supplies", "immutable", "branching_expressions", "writing")
 REQUIRED = ("title", "extensions", "namespace", "standard")
 JOINED = ("name", "package", "member")
 """The keys that say how an outside name is written: given together or not at all."""
@@ -112,6 +126,12 @@ STANDARD_LISTS = tuple(field.name for field in fields(StandardLists))
 STANDARD = (f"standard: must be {INTERPRETER}, or a map of {', '.join(STANDARD_LISTS[:-1])} and {STANDARD_LISTS[-1]}, "
             "each a list of names")
 """What the loader says of a value of `standard` that is neither the word nor the three lists, once for the key."""
+WRITING = "writing: must be a mapping {call, keyword, field}: how a row of a table of cases is written"
+"""What the loader says of a value of `writing` that is not a mapping, once for the key."""
+_TEMPLATES = {"call": ("{callee}",), "keyword": ("{callee}", "{keyword}", "{text}"), "field": ("{field}", "{text}")}
+"""The templates of `writing`, in the order a problem lists them, each with the placeholders it must hold."""
+_HOLDING = {"call": "{callee}", "keyword": "{callee}, {keyword} and {text}", "field": "{field} and {text}"}
+"""What a problem says each template must hold."""
 
 
 def language_of(name: str, document: Any) -> Language:
@@ -153,6 +173,7 @@ def language_of(name: str, document: Any) -> Language:
     if supplies is not None and package_files:
         supplies = (*supplies, Supply(PACKAGE_FACT, EXACT))
     immutable = _marks(document, problems, joins, namespace)
+    writing = _writing(document, problems)
     if problems:
         raise InvalidArchitecture(source, problems)
     checked = CheckedLanguage(title=title, extensions=extensions or (), package_files=package_files,
@@ -160,7 +181,8 @@ def language_of(name: str, document: Any) -> Language:
                               nothing=nothing, comments=comments, directives=directives,
                               shebang=tokens["shebang"], encoding=encoding, branching=branching, supplies=supplies,
                               importing=importing, immutable=immutable, branching_expressions=expressions,
-                              names=names, package=package, member=member, unannotated=unannotated)
+                              names=names, package=package, member=member, unannotated=unannotated,
+                              writing=writing)
     return Language(name, checked, namespace, standard, cache, names)
 
 
@@ -436,3 +458,26 @@ def first_language(languages: Iterable[str]) -> str:
     """The language of an app whose profile names none: the first of the languages xarch reads, by name; "" when it
     reads none."""
     return min(languages, default="")
+
+
+def _writing(document: Mapping[Any, Any], problems: list[str]) -> Writing:
+    """How a row of a table of cases is written; empty templates when the key is left out or refused. Each template
+    is a one-line text holding every placeholder of its own."""
+    if "writing" not in document:
+        return Writing()
+    value = document["writing"]
+    if not isinstance(value, Mapping):
+        problems.append(WRITING)
+        return Writing()
+    unknown = sorted(str(key) for key in value if key not in _TEMPLATES)
+    if unknown:
+        problems.append(f"writing: unknown key{'s' if len(unknown) > 1 else ''} "
+                        f"{', '.join(f'{key!r}' for key in unknown)}: use {', '.join(_TEMPLATES)}")
+    found: dict[str, str] = {}
+    for key, held in _TEMPLATES.items():
+        line = value.get(key)
+        if key in value and isinstance(line, str) and line.strip() and "\n" not in line and all(h in line for h in held):
+            found[key] = line
+        elif key in value:
+            problems.append(f"writing.{key}: must be a line holding {_HOLDING[key]}")
+    return Writing(**found)

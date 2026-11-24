@@ -12,7 +12,7 @@ from xarch.modules.spec.application.logic.language_file import DOC, PARTIAL, fir
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import Language, StandardLists
 from xarch.profile_values.capabilities import EXACT, Supply
-from xarch.profile_values.language import BLOCK, LINE, CheckedLanguage, CommentForm, InterfaceMark, RecordMark
+from xarch.profile_values.language import BLOCK, LINE, CheckedLanguage, CommentForm, InterfaceMark, RecordMark, Writing
 
 NAME = r"[A-Za-z_]\w*"
 JOINS = {"name": NAME, "package": NAME, "member": "."}
@@ -33,7 +33,7 @@ LISTS = {"modules": [], "reserved": [], "builtins": []}
 """A standard that lists nothing, to which a test adds the lists it needs."""
 KEYS_USED = ("branching, branching_expressions, cache, call, comments, directives, dynamic, encoding, extensions, "
              "immutable, importing, interface, member, name, namespace, nothing, package, package_files, private, "
-             "shebang, special, standard, supplies, title, unannotated")
+             "shebang, special, standard, supplies, title, unannotated, writing")
 """The keys of a data file, as the unknown-key text lists them."""
 COMMENTS = "comments: each form is {line: <marker>}, {block: [<open>, <close>]} or {doc: [<open>, <close>]}"
 EXTENSIONS = "extensions: must be a non-empty list of endings, each starting with a dot"
@@ -544,3 +544,37 @@ def test_python_supplies_public_exactly_right_after_comment_doc_and_keeps_its_pr
 def test_a_test_only_language_gives_no_private_prefix_its_reader_saying_which_names_are_public(path):
     document = yaml.safe_load(path.read_text(encoding="utf-8"))
     assert "private" not in document and language_of(path.stem, document).checked.private == ""
+
+
+MAPPING = "writing: must be a mapping {call, keyword, field}: how a row of a table of cases is written"
+CALL = "writing.call: must be a line holding {callee}"
+KEYWORD = "writing.keyword: must be a line holding {callee}, {keyword} and {text}"
+FIELD = "writing.field: must be a line holding {field} and {text}"
+
+
+def test_python_writes_how_a_row_call_and_a_row_id_given_by_a_keyword_are_written():
+    assert PYTHON_LANGUAGE.checked.writing == Writing(call="{callee}(...)", keyword='{callee}(..., {keyword}="{text}")')
+
+
+def test_a_language_whose_file_writes_no_templates_loads_with_empty_ones():
+    assert language_of("pascal", DOCUMENT).checked.writing == Writing()
+
+
+def test_the_templates_a_data_file_writes_are_read_braces_and_all():
+    field = '{..., {field}: "{text}"}'
+    assert language_of("pascal", DOCUMENT | {"writing": {"field": field}}).checked.writing == Writing(field=field)
+
+
+@pytest.mark.parametrize("writing, expected", [
+    pytest.param("{callee}(...)", [MAPPING], id="a text is no mapping"),
+    pytest.param({"row": "x"}, ["writing: unknown key 'row': use call, keyword, field"], id="an unknown key"),
+    pytest.param({"row": "x", "cell": "y"}, ["writing: unknown keys 'cell', 'row': use call, keyword, field"],
+                 id="two unknown keys are said together"),
+    pytest.param({"call": "call()"}, [CALL], id="a call template without its callee"),
+    pytest.param({"call": "{callee}\n(...)"}, [CALL], id="a call template over two lines"),
+    pytest.param({"call": 3}, [CALL], id="a call template that is no text"),
+    pytest.param({"keyword": "{callee}(..., {keyword}=x)"}, [KEYWORD], id="a keyword template without its text"),
+    pytest.param({"field": "{text}"}, [FIELD], id="a field template without its field"),
+])
+def test_a_bad_writing_is_refused(writing, expected):
+    assert refused(DOCUMENT | {"writing": writing}) == expected

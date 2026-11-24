@@ -21,7 +21,7 @@ from xarch.kernel.placement import EVERYTHING
 from xarch.kernel.source import Import
 from xarch.modules.rules.domain.parsed import Class, SourceFile
 from xarch.modules.rules.domain.profile import Profile
-from xarch.profile_values.language import LINE, CheckedLanguage, CommentForm, InterfaceMark, RecordMark
+from xarch.profile_values.language import LINE, CheckedLanguage, CommentForm, InterfaceMark, RecordMark, Writing
 from xarch.profile_values.placement import Repeat, Target
 from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns
 from xarch.profile_values.tiers import CheckedTier
@@ -70,9 +70,11 @@ PYTHON = CheckedLanguage(title="Python", extensions=(".py",), package_files=("__
                          immutable=(RecordMark(base=("typing", "NamedTuple")),
                                     RecordMark(decorator=("dataclasses", "dataclass"), keywords=(("frozen", "True"),))),
                          branching_expressions=("if",), names=PYTHON_FILE["name"], package=PYTHON_FILE["package"],
-                         member=PYTHON_FILE["member"], standard_modules=frozenset(sys.stdlib_module_names))
+                         member=PYTHON_FILE["member"], writing=Writing(**PYTHON_FILE["writing"]),
+                         standard_modules=frozenset(sys.stdlib_module_names))
 """Python as its data file says it, for the checks that read the tokens of its code; the patterns of a name and of a
-package, and the member that joins them, read from it; its standard modules the interpreter's, as spec hands them."""
+package, and the member that joins them, read from it; its standard modules the interpreter's, as spec hands them;
+how it writes a row of a table, read from it."""
 BRACE_FILE = yaml.safe_load((Path(__file__).resolve().parents[2] / "fakes" / "languages" / "brace.yaml")
                             .read_text(encoding="utf-8"))
 BRACE = CheckedLanguage(title=BRACE_FILE["title"], extensions=tuple(BRACE_FILE["extensions"]),
