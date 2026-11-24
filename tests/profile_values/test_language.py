@@ -7,7 +7,7 @@ import pytest
 import yaml
 
 from xarch.kernel.placement import Marks
-from xarch.profile_values.language import NOTHING, CheckedLanguage
+from xarch.profile_values.language import NOTHING, CheckedLanguage, SpecWriting, Writing
 
 PYTHON_SPECIAL = yaml.safe_load(resources.files("xarch").joinpath("architectures", "presets", "language", "python.yaml")
                                 .read_text(encoding="utf-8"))["special"]
@@ -75,3 +75,31 @@ def test_a_message_prints_the_first_ending_and_the_first_package_file_and_nothin
 def test_the_marks_of_a_language_are_its_endings_and_its_package_files_in_full():
     several = CheckedLanguage(extensions=(".ts", ".tsx"), package_files=("index.ts", "index.tsx"))
     assert several.marks == Marks((".ts", ".tsx"), ("index.ts", "index.tsx"))
+
+
+SPECS = Writing(specs=SpecWriting(keyword="{callee}({keyword}={value})", position="{callee}({before}{value})",
+                                  type_argument="{callee}<{before}{value}>()"))
+"""A language writing each way a call names its spec: the keyword and position forms as Python's file writes them, a
+type argument as the TypeScript-like test-only language does."""
+
+
+@pytest.mark.parametrize("form, keyword, place, written", [
+    pytest.param("keyword", "spec_set", 0, "Mock(spec_set=Port)", id="a keyword fills the callee, the keyword and the value"),
+    pytest.param("position", "", 0, "Mock(Port)", id="a position at 0 has nothing before it"),
+    pytest.param("position", "", 2, "Mock(..., ..., Port)", id="each place before the spec is written once"),
+    pytest.param("type_argument", "", 0, "Mock<Port>()", id="a type argument at 0"),
+    pytest.param("type_argument", "", 1, "Mock<..., Port>()", id="a type argument past 0 is shown at its place"),
+])
+def test_a_spec_template_fills_each_placeholder_of_its_form(form, keyword, place, written):
+    assert SPECS.spec(form, "Mock", "Port", keyword, place) == written
+
+
+def test_a_value_holding_a_placeholder_is_not_filled_again():
+    assert SPECS.spec("keyword", "{value}", "{keyword}", "{before}") == "{value}({before}={keyword})"
+    assert SPECS.spec("position", "{before}", "{value}", place=1) == "{before}(..., {value})"
+
+
+def test_a_language_writes_a_spec_form_only_when_its_file_gives_the_template():
+    assert [form for form in ("keyword", "position", "type_argument") if SPECS.writes_spec(form)] == [
+        "keyword", "position", "type_argument"]
+    assert [form for form in ("keyword", "position", "type_argument") if Writing().writes_spec(form)] == []

@@ -6,7 +6,8 @@
 # comments come in three forms, a line one (//), a block one (/* */) and a doc one (/** */), and its tools read two
 # directives after the marker of any of them. It gives no private: its names are public or not as its reader says, by
 # an export, never by a prefix. Its immutable records are marked by a keyword on every field, readonly. It writes a
-# row's id by a field and branches with if, switch, try, for and while. The tests load it to show that the profile and
+# row's id by a field and branches with if, switch, try, for and while. A call that builds a mock names its spec by a
+# type argument, written between angle brackets after what it calls. The tests load it to show that the profile and
 # the checks read outside names and comments by a language's own patterns; later steps add their keys to it.
 title: Brace
 extensions: [.ts, .tsx, .mts]
@@ -24,4 +25,4 @@ dynamic: ["node:module#createRequire"]
 comments: [{line: "//"}, {block: ["/*", "*/"]}, {doc: ["/**", "*/"]}]
 directives: ["@ts-expect-error", eslint-disable]
 branching: [if, switch, try, for, while]
-writing: {call: "{callee}(...)", field: '{..., {field}: "{text}"}'}
+writing: {call: "{callee}(...)", field: '{..., {field}: "{text}"}', specs: {type_argument: "{callee}<{before}{value}>()"}}

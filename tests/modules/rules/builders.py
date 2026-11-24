@@ -22,7 +22,7 @@ from xarch.kernel.placement import EVERYTHING
 from xarch.kernel.source import Import
 from xarch.modules.rules.domain.parsed import Class, Function, SourceFile, Test
 from xarch.modules.rules.domain.profile import Profile
-from xarch.profile_values.language import LINE, CheckedLanguage, CommentForm, InterfaceMark, RecordMark, Writing
+from xarch.profile_values.language import LINE, CheckedLanguage, CommentForm, InterfaceMark, RecordMark, SpecWriting, Writing
 from xarch.profile_values.placement import Repeat, Target
 from xarch.profile_values.testing import Fakes, Fixture, Framework, Place, RowId, ScenarioCoverage, StandIns, TableForm, TestForm
 from xarch.profile_values.tiers import CheckedTier
@@ -46,6 +46,14 @@ def records_of(file: dict) -> tuple[RecordMark, ...]:
     """The marks of an immutable record a language's data file writes, as its loader reads them: a base, a decorator
     or a type split at the file's member, a decorator's keywords in the order written, a fields word whole."""
     return tuple(_record_mark(mark, file["member"]) for mark in file.get("immutable", ()))
+
+
+def writing_of(file: dict) -> Writing:
+    """How a language's data file writes a row of a table and a call that builds a mock, as its loader reads it: the
+    row templates, and those of a mock's spec under specs."""
+    written = dict(file.get("writing", {}))
+    return Writing(**{key: line for key, line in written.items() if key != "specs"},
+                   specs=SpecWriting(**written.get("specs", {})))
 
 
 def _record_mark(mark: dict, member: str) -> RecordMark:
@@ -100,7 +108,7 @@ PYTHON = CheckedLanguage(title="Python", extensions=(".py",), package_files=("__
                          immutable=(RecordMark(base=("typing", "NamedTuple")),
                                     RecordMark(decorator=("dataclasses", "dataclass"), keywords=(("frozen", "True"),))),
                          branching_expressions=("if",), names=PYTHON_FILE["name"], package=PYTHON_FILE["package"],
-                         member=PYTHON_FILE["member"], writing=Writing(**PYTHON_FILE["writing"]),
+                         member=PYTHON_FILE["member"], writing=writing_of(PYTHON_FILE),
                          standard_modules=frozenset(sys.stdlib_module_names))
 """Python as its data file says it, for the checks that read the tokens of its code; the patterns of a name and of a
 package, and the member that joins them, read from it; its standard modules the interpreter's, as spec hands them;
@@ -113,7 +121,7 @@ BRACE = CheckedLanguage(title=BRACE_FILE["title"], extensions=tuple(BRACE_FILE["
                         dynamic=(("node:module", "createRequire"),), nothing=tuple(BRACE_FILE["nothing"]),
                         comments=forms_of(BRACE_FILE), directives=tuple(BRACE_FILE["directives"]),
                         names=BRACE_FILE["name"], package=BRACE_FILE["package"], member=BRACE_FILE["member"],
-                        branching=tuple(BRACE_FILE["branching"]), writing=Writing(**BRACE_FILE["writing"]),
+                        branching=tuple(BRACE_FILE["branching"]), writing=writing_of(BRACE_FILE),
                         standard_modules=frozenset(BRACE_FILE["standard"]["modules"]))
 """The TypeScript-like test-only language as a check reads it, its endings, package files, patterns, member, interface
 marks, marks of an immutable record, annotations of no value, comment forms, directives, the keywords that branch, how

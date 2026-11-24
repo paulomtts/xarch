@@ -48,17 +48,36 @@ class CommentForm:
     closing: str = ""
 
 
+SPEC_FORMS = ("keyword", "position", "type_argument")
+"""The ways a call that builds a mock names its spec, in the order a problem lists them: a keyword argument, the
+positional argument at a place, the type argument at a place. They are the keys of an entry of a profile's
+`testing.mocks.specs` and of the data file's `writing.specs`."""
+
+
+@dataclass(frozen=True)
+class SpecWriting:
+    """How the language writes a call that builds a mock and names its spec, one one-line template per way of naming it
+    (empty: the file does not write it): keyword, {callee}, {keyword} and {value} standing for what is called, the
+    keyword and the spec; position and type_argument, {callee}, {before} and {value} standing for what is called, the
+    places before the spec's own and the spec."""
+    keyword: str = ""
+    position: str = ""
+    type_argument: str = ""
+
+
 @dataclass(frozen=True)
 class Writing:
-    """How the language writes a row of a table of cases, as its data file's `writing` says it, each template one
-    line (empty: the file does not write it): call, a row that is a call, {callee} standing for what it calls; keyword,
-    a row call whose id a keyword gives, {callee}, {keyword} and {text} standing for what it calls, the keyword and
-    the id's text; field, a literal row whose id a field gives, {field} and {text} standing for the field and the
-    id's text. A template is filled by `row_call`, `keyword_id` and `field_id`: each placeholder replaced in one pass,
-    any other text, braces included, kept as it is."""
+    """How the language writes a row of a table of cases, and a call that builds a mock, as its data file's `writing`
+    says it, each template one line (empty: the file does not write it): call, a row that is a call, {callee} standing
+    for what it calls; keyword, a row call whose id a keyword gives, {callee}, {keyword} and {text} standing for what
+    it calls, the keyword and the id's text; field, a literal row whose id a field gives, {field} and {text} standing
+    for the field and the id's text; specs, how a call that builds a mock names its spec (see SpecWriting). A template
+    is filled by `row_call`, `keyword_id`, `field_id` and `spec`: each placeholder replaced in one pass, any other
+    text, braces included, kept as it is."""
     call: str = ""
     keyword: str = ""
     field: str = ""
+    specs: SpecWriting = SpecWriting()
 
     def row_call(self, callee: str) -> str:
         """The `call` template for a row that calls callee."""
@@ -71,6 +90,16 @@ class Writing:
     def field_id(self, field: str, text: str) -> str:
         """The `field` template for a literal row, its id given by field with the value text."""
         return self._fill(self.field, field=field, text=text)
+
+    def writes_spec(self, form: str) -> bool:
+        """Whether the language writes how a call names its spec in form, one of SPEC_FORMS."""
+        return bool(getattr(self.specs, form))
+
+    def spec(self, form: str, callee: str, value: str, keyword: str = "", place: int = 0) -> str:
+        """The `specs` template of form, one of SPEC_FORMS, for a call of callee whose spec is value: given by keyword
+        for a keyword form, else at place, from 0, each place before it written `..., `."""
+        held = {"keyword": keyword} if form == SPEC_FORMS[0] else {"before": "..., " * place}
+        return self._fill(getattr(self.specs, form), callee=callee, value=value, **held)
 
     @staticmethod
     def _fill(template: str, **values: str) -> str:

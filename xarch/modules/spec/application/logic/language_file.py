@@ -56,8 +56,11 @@ and, all optional, the tokens of its code the checks and the docs need (empty: t
     writing        how a row of a table of cases is written, a map of one-line templates, each optional: call, a
                    row that is a call, {callee} standing for what it calls; keyword, a row call whose id a keyword
                    gives, {callee}, {keyword} and {text}; field, a literal row whose id a field gives, {field} and
-                   {text}. Left out, the language writes no template, and a profile whose table forms need one is
-                   refused
+                   {text}; specs, how a call that builds a mock names its spec, a map of one-line templates, each
+                   optional: keyword, by a keyword argument, {callee}, {keyword} and {value}; position, by the
+                   positional argument at a place, and type_argument, by the type argument at a place, each
+                   {callee}, {before} and {value}. Left out, the language writes no template, and a profile whose
+                   table forms or mock specs need one is refused
 
 and the facts its reader supplies (see capabilities), each graded:
 
@@ -86,6 +89,7 @@ from xarch.profile_values.language import (
     CommentForm,
     InterfaceMark,
     RecordMark,
+    SpecWriting,
     Writing,
 )
 
@@ -126,12 +130,22 @@ STANDARD_LISTS = tuple(field.name for field in fields(StandardLists))
 STANDARD = (f"standard: must be {INTERPRETER}, or a map of {', '.join(STANDARD_LISTS[:-1])} and {STANDARD_LISTS[-1]}, "
             "each a list of names")
 """What the loader says of a value of `standard` that is neither the word nor the three lists, once for the key."""
-WRITING = "writing: must be a mapping {call, keyword, field}: how a row of a table of cases is written"
+WRITING = ("writing: must be a mapping {call, keyword, field, specs}: how a row of a table of cases is written, and "
+           "how a call that builds a mock names its spec")
 """What the loader says of a value of `writing` that is not a mapping, once for the key."""
 _TEMPLATES = {"call": ("{callee}",), "keyword": ("{callee}", "{keyword}", "{text}"), "field": ("{field}", "{text}")}
 """The templates of `writing`, in the order a problem lists them, each with the placeholders it must hold."""
 _HOLDING = {"call": "{callee}", "keyword": "{callee}, {keyword} and {text}", "field": "{field} and {text}"}
 """What a problem says each template must hold."""
+SPECS = ("writing.specs: must be a mapping {keyword, position, type_argument}: how a call that builds a mock names "
+         "its spec")
+"""What the loader says of a value of `writing.specs` that is not a mapping, once for the key."""
+_SPEC_TEMPLATES = {"keyword": ("{callee}", "{keyword}", "{value}"), "position": ("{callee}", "{before}", "{value}"),
+                   "type_argument": ("{callee}", "{before}", "{value}")}
+"""The templates of `writing.specs`, in the order a problem lists them, each with the placeholders it must hold."""
+_SPEC_HOLDING = {"keyword": "{callee}, {keyword} and {value}", "position": "{callee}, {before} and {value}",
+                 "type_argument": "{callee}, {before} and {value}"}
+"""What a problem says each template of `writing.specs` must hold."""
 
 
 def language_of(name: str, document: Any) -> Language:
@@ -461,23 +475,41 @@ def first_language(languages: Iterable[str]) -> str:
 
 
 def _writing(document: Mapping[Any, Any], problems: list[str]) -> Writing:
-    """How a row of a table of cases is written; empty templates when the key is left out or refused. Each template
-    is a one-line text holding every placeholder of its own."""
+    """How a row of a table of cases is written, and how a call that builds a mock names its spec (specs); empty
+    templates when the key is left out or refused. Each template is a one-line text holding every placeholder of its
+    own."""
     if "writing" not in document:
         return Writing()
     value = document["writing"]
     if not isinstance(value, Mapping):
         problems.append(WRITING)
         return Writing()
-    unknown = sorted(str(key) for key in value if key not in _TEMPLATES)
+    found = _templates(value, "writing", _TEMPLATES, _HOLDING, ("specs",), problems)
+    specs = _spec_templates(value["specs"], problems) if "specs" in value else SpecWriting()
+    return Writing(**found, specs=specs)
+
+
+def _spec_templates(value: Any, problems: list[str]) -> SpecWriting:
+    """How a call that builds a mock names its spec, each way its own template; empty ones when refused."""
+    if not isinstance(value, Mapping):
+        problems.append(SPECS)
+        return SpecWriting()
+    return SpecWriting(**_templates(value, "writing.specs", _SPEC_TEMPLATES, _SPEC_HOLDING, (), problems))
+
+
+def _templates(value: Mapping[Any, Any], where: str, templates: Mapping[str, tuple[str, ...]],
+               holding: Mapping[str, str], more: tuple[str, ...], problems: list[str]) -> dict[str, str]:
+    """The templates the mapping at where writes, by key, each a one-line text holding every placeholder of its own;
+    a key that is neither a template nor one of more is refused, all such keys in one problem."""
+    unknown = sorted(str(key) for key in value if key not in templates and key not in more)
     if unknown:
-        problems.append(f"writing: unknown key{'s' if len(unknown) > 1 else ''} "
-                        f"{', '.join(f'{key!r}' for key in unknown)}: use {', '.join(_TEMPLATES)}")
+        problems.append(f"{where}: unknown key{'s' if len(unknown) > 1 else ''} "
+                        f"{', '.join(f'{key!r}' for key in unknown)}: use {', '.join((*templates, *more))}")
     found: dict[str, str] = {}
-    for key, held in _TEMPLATES.items():
+    for key, held in templates.items():
         line = value.get(key)
         if key in value and isinstance(line, str) and line.strip() and "\n" not in line and all(h in line for h in held):
             found[key] = line
         elif key in value:
-            problems.append(f"writing.{key}: must be a line holding {_HOLDING[key]}")
-    return Writing(**found)
+            problems.append(f"{where}.{key}: must be a line holding {holding[key]}")
+    return found
