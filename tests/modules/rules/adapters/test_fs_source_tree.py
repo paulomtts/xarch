@@ -32,6 +32,10 @@ from xarch.profile_values.testing import Place, RowId, TableForm
 
 PYTEST = TableForm(Place(0, "argnames"), Place(1, "argvalues"), ("pytest", "param"), RowId(keyword="id"),
                    decorator=("pytest", "mark", "parametrize"))
+LOOP = TableForm("bound", None, (), RowId(position=0), loop=True)
+"""A form whose rows a loop of the test's body runs, each a tuple or list literal whose id is its first value."""
+LOOP_CALL = TableForm("bound", None, ("app", "cases", "case"), RowId(keyword="name"), loop=True)
+"""A form whose rows a loop of the test's body runs, each a call of app.cases.case whose id is its keyword name."""
 STANDARD = frozenset(sys.stdlib_module_names)
 """The modules spec hands the reader for the language the tests' sources are written in: the interpreter's standard
 library."""
@@ -385,6 +389,10 @@ def test_go(given, when, then):
 '''
 
 
+LOOPED_TABLE = TABLE.replace("    if given:\n        pass\n", "    for each in CASES:\n        pass\n")
+"""TABLE, the body of its test a loop over the list CASES of the file."""
+
+
 def test_a_parametrized_function_lists_its_rows_with_their_ids_and_the_names_heading_their_values(tmp_path):
     function = parsed(tmp_path, TABLE).functions[0]
     assert (function.name, function.line) == ("test_go", line_of(TABLE, "def test_go"))
@@ -503,11 +511,21 @@ def test_a_table_read_by_the_second_form_is_tagged_with_its_index_and_read_the_s
     pytest.param(replace(PYTEST, id=RowId(position=0)), id="a form whose id is a position"),
     pytest.param(replace(PYTEST, columns_from="fields"), id="a form whose columns are the fields of each row"),
     pytest.param(replace(PYTEST, decorator=(), call=(("pytest", "mark", "parametrize"),)), id="a call form"),
-    pytest.param(TableForm("fields", None, (), RowId(position=0), loop=True), id="a loop form"),
+    pytest.param(TableForm("fields", None, (), RowId(position=0), loop=True),
+                 id="a loop form whose columns are the fields of each row"),
+    pytest.param(TableForm("bound", None, ("pytest", "param"), RowId(position=0), loop=True),
+                 id="a loop form whose call row has an id by position"),
+    pytest.param(TableForm("bound", None, (), RowId(field="name"), loop=True),
+                 id="a loop form whose literal row has an id by field"),
 ])
 def test_a_form_the_reader_cannot_read_reads_no_table_and_the_next_form_still_does(tmp_path, skipped):
-    assert parsed(tmp_path, TABLE, (skipped,)).functions[0].tables == ()
-    assert [t.form for t in parsed(tmp_path, TABLE, (skipped, PYTEST)).functions[0].tables] == [1]
+    assert parsed(tmp_path, LOOPED_TABLE, (skipped,)).functions[0].tables == ()
+    assert [t.form for t in parsed(tmp_path, LOOPED_TABLE, (skipped, PYTEST)).functions[0].tables] == [1]
+
+
+def test_the_text_the_forms_the_reader_cannot_read_are_tried_on_is_read_by_the_forms_it_reads(tmp_path):
+    tables = parsed(tmp_path, LOOPED_TABLE, (PYTEST, LOOP)).functions[0].tables
+    assert [(t.form, t.runs) for t in tables] == [(0, 0), (1, line_of(LOOPED_TABLE, "for each in CASES"))]
 
 
 def test_a_function_says_whether_its_body_holds_an_assert(tmp_path):
@@ -1231,3 +1249,181 @@ def test_the_reader_must_be_handed_the_pattern_of_a_special_name(tmp_path):
         tree.read(tmp_path, [], standard=STANDARD, private=PRIVATE)
     with pytest.raises(TypeError):
         tree.parsed("x = 1\n", STANDARD, private=PRIVATE)
+
+
+LOOPED = '''from app.results import Gone, Go, Published
+
+CASES = [
+    ("a document is published", Go(1), Published),
+    ("gone", Go(2), Gone),
+]
+
+
+def test_go(subtests):
+    """Each case."""
+    for name, when, then in CASES:
+        assert run(when) == then
+'''
+
+
+def test_a_loop_of_a_test_s_own_body_over_a_list_of_the_file_is_its_table_run_by_that_loop(tmp_path):
+    loop = line_of(LOOPED, "for name, when, then")
+    assert parsed(tmp_path, LOOPED, (LOOP,)).functions[0].tables == (Table(loop, ("name", "when", "then"), (
+        Row(line_of(LOOPED, "Go(1)"), True, "a document is published", (None, "Go", "Published")),
+        Row(line_of(LOOPED, "Go(2)"), True, "gone", (None, "Go", "Gone"))), form=0, runs=loop),)
+
+
+def looping(iterable: str = "CASES", head: str = "CASES = [('x', 1)]\n", signature: str = "subtests",
+            body: str = "    for a, b in {iterable}:\n        assert a == b\n") -> str:
+    """A file whose top level is head, then a test of that signature whose body is body, over the iterable."""
+    return f"{head}\n\ndef test_a({signature}):\n{body.format(iterable=iterable)}"
+
+
+@pytest.mark.parametrize("text", [
+    pytest.param(looping(), id="a name assigned once at the top of the file"),
+    pytest.param(looping("[('x', 1)]"), id="a list literal written in the loop"),
+    pytest.param(looping("(('x', 1),)"), id="a tuple literal written in the loop"),
+    pytest.param(looping(head="CASES: list = [('x', 1)]\n"), id="a name annotated and assigned once"),
+])
+def test_the_rows_of_a_loop_are_read_from_a_literal_or_the_name_of_a_module_level_one(tmp_path, text):
+    rows = parsed(tmp_path, text, (LOOP,)).functions[0].tables[0].rows
+    assert [(row.written, row.id, row.cells) for row in rows] == [(True, "x", (None, None))]
+
+
+@pytest.mark.parametrize("text", [
+    pytest.param(looping(head="CASES = [('x', 1)]\nCASES = [('y', 2)]\n"), id="a name assigned twice"),
+    pytest.param(looping(head="CASES = load()\n"), id="a name assigned to a call"),
+    pytest.param(looping(head="from app.cases import CASES\n"), id="an imported name"),
+    pytest.param(looping("[*MORE]"), id="a list literal holding a starred value"),
+    pytest.param(looping(head="CASES = [*MORE]\n"), id="a name assigned to a list holding a starred value"),
+])
+def test_a_loop_over_a_name_of_the_file_whose_rows_are_no_literal_holds_a_table_whose_rows_cannot_be_read(tmp_path,
+                                                                                                        text):
+    tables = parsed(tmp_path, text, (LOOP,)).functions[0].tables
+    assert [(table.columns, table.rows, table.runs) for table in tables] == [(("a", "b"), None, line_of(text, "for a"))]
+
+
+@pytest.mark.parametrize("text", [
+    pytest.param(looping(body="    for i, (a, b) in enumerate(CASES):\n        assert a\n"), id="a nested target"),
+    pytest.param(looping(body="    for a, (b, c) in CASES:\n        assert a\n"), id="a target holding a tuple"),
+    pytest.param(looping(body="    for a, *b in CASES:\n        assert a\n"), id="a target holding a starred name"),
+    pytest.param(looping(body="    for a.b in CASES:\n        assert a\n"), id="a target that is an attribute"),
+    pytest.param(looping("range(3)"), id="a loop over a call"),
+    pytest.param(looping("load()"), id="a loop over a call of the file's"),
+    pytest.param(looping("result.items"), id="a loop over an attribute"),
+    pytest.param(looping("CASES + MORE"), id="a loop over an expression"),
+    pytest.param(looping("[x for x in CASES]"), id="a loop over a comprehension"),
+    pytest.param(looping("cases", signature="cases"), id="a loop over a parameter"),
+    pytest.param(looping("CASES", signature="CASES"), id="a loop over a parameter named as the file's list"),
+    pytest.param(looping(body="    cases = [('x', 1)]\n    for a, b in cases:\n        assert a\n"),
+                 id="a loop over a name the body assigns"),
+    pytest.param(looping(body="    CASES = [('y', 2)]\n    for a, b in CASES:\n        assert a\n"),
+                 id="a loop over a name the body rebinds"),
+    pytest.param(looping("MISSING"), id="a loop over a name the file does not bind"),
+    pytest.param(looping(body="    if True:\n        for a, b in CASES:\n            assert a\n"),
+                 id="a loop nested in an if"),
+    pytest.param(looping(body="    with x:\n        for a, b in CASES:\n            assert a\n"),
+                 id="a loop nested in a with"),
+    pytest.param(looping(body="    def inner():\n        for a, b in CASES:\n            assert a\n"),
+                 id="a loop of a function nested in the test"),
+    pytest.param(looping(body="    async for a, b in CASES:\n        assert a\n"), id="an async for"),
+    pytest.param(looping(body="    assert CASES\n"), id="a body with no loop"),
+    pytest.param(looping(body="    while CASES:\n        assert CASES\n"), id="a body with a while"),
+    pytest.param(looping(body="    for x in range(3):\n        assert x\n    for a, b in CASES:\n        assert a\n"),
+                 id="a first loop that holds no table, and a later one is not tried"),
+])
+def test_a_loop_that_binds_no_plain_names_or_runs_over_no_list_of_the_file_holds_no_table(tmp_path, text):
+    assert parsed(tmp_path, text, (LOOP,)).functions[0].tables == ()
+
+
+@pytest.mark.parametrize("body, columns", [
+    pytest.param("    for a in CASES:\n        assert a\n", ("a",), id="one name"),
+    pytest.param("    for a, b in CASES:\n        assert a\n", ("a", "b"), id="a tuple of names"),
+    pytest.param("    for (a, b) in CASES:\n        assert a\n", ("a", "b"), id="a tuple of names in brackets"),
+    pytest.param("    for [b, a] in CASES:\n        assert a\n", ("b", "a"), id="a list of names, in its order"),
+])
+def test_the_columns_of_a_loop_are_the_names_it_binds_in_order(tmp_path, body, columns):
+    assert parsed(tmp_path, looping(body=body), (LOOP,)).functions[0].tables[0].columns == columns
+
+
+@pytest.mark.parametrize("body", [
+    pytest.param("    \"\"\"Each case.\"\"\"\n    x = 1\n    for a, b in CASES:\n        assert a\n",
+                 id="a docstring and a statement before the loop"),
+    pytest.param("    for a, b in CASES:\n        assert a\n    else:\n        assert CASES\n",
+                 id="a loop with an else"),
+    pytest.param("    for a, b in CASES:\n        for c in a:\n            assert c\n    for a, b in CASES:\n"
+                 "        assert b\n", id="a second loop over the same list, nested and after"),
+])
+def test_the_first_loop_of_the_body_s_own_statements_is_the_table_and_only_it(tmp_path, body):
+    text = looping(body=body)
+    first = line_of(text, "for a, b in CASES")
+    assert [(t.line, t.runs) for t in parsed(tmp_path, text, (LOOP,)).functions[0].tables] == [(first, first)]
+
+
+@pytest.mark.parametrize("row, written, id, cells", [
+    pytest.param("('an outcome', Go(1), Published)", True, "an outcome", (None, "Go", "Published"), id="a tuple"),
+    pytest.param("['an outcome', Go(1), results.Published]", True, "an outcome", (None, "Go", "Published"),
+                 id="a list"),
+    pytest.param("(1, Go(1), Published)", True, None, (None, "Go", "Published"), id="a tuple whose first value is no text"),
+    pytest.param("()", True, None, (), id="a tuple shorter than the id's position"),
+    pytest.param("Published", False, None, (), id="a bare name"),
+    pytest.param("case('an outcome', Go(1), Published)", False, None, (), id="a call"),
+    pytest.param("{'id': 'an outcome'}", False, None, (), id="a dict"),
+    pytest.param("(*BASE, Published)", False, None, (), id="a tuple holding a starred value"),
+])
+def test_a_literal_row_of_a_loop_is_written_when_it_is_a_tuple_or_list_its_id_the_text_at_the_position(
+        tmp_path, row, written, id, cells):
+    text = looping(head=f"CASES = [\n    {row},\n]\n", body="    for a, b, c in CASES:\n        assert a\n")
+    assert parsed(tmp_path, text, (LOOP,)).functions[0].tables[0].rows == (Row(2, written, id, cells),)
+
+
+def test_an_id_by_position_reads_the_text_at_that_position(tmp_path):
+    text = looping(head="CASES = [(Go(1), 'an outcome', Published)]\n")
+    second = replace(LOOP, id=RowId(position=1))
+    assert [row.id for row in parsed(tmp_path, text, (second,)).functions[0].tables[0].rows] == ["an outcome"]
+
+
+def test_a_call_row_of_a_loop_is_read_as_a_decorator_s_row_is(tmp_path):
+    text = looping(head="from app.cases import case\n\nCASES = [\n    case('a', Go(1), Published, name='x'),\n"
+                        "    ('b', Go(2), Gone),\n]\n", body="    for a, b, c in CASES:\n        assert a\n")
+    assert parsed(tmp_path, text, (LOOP_CALL,)).functions[0].tables[0].rows == (
+        Row(4, True, "x", (None, "Go", "Published")), Row(5, False, None, (None, "Go", "Gone")))
+
+
+def test_a_call_row_of_a_loop_is_its_form_s_row_by_the_import_that_binds_it(tmp_path):
+    text = looping(head="from other import case\n\nCASES = [case('a', name='x')]\n",
+                   body="    for a in CASES:\n        assert a\n")
+    assert [row.written for row in parsed(tmp_path, text, (LOOP_CALL,)).functions[0].tables[0].rows] == [False]
+
+
+MIXED = '''import pytest
+
+CASES = [("a", 1)]
+
+
+@pytest.mark.parametrize("x", [pytest.param(1, id="one")])
+def test_a(x):
+    for a, b in CASES:
+        assert a == x
+'''
+
+
+def test_a_function_holds_its_decorator_s_tables_first_then_its_loop_s_each_by_its_own_form(tmp_path):
+    tables = parsed(tmp_path, MIXED, (PYTEST, LOOP)).functions[0].tables
+    assert [(t.form, t.line, t.runs) for t in tables] == [
+        (0, line_of(MIXED, "@pytest"), 0), (1, line_of(MIXED, "for a, b"), line_of(MIXED, "for a, b"))]
+
+
+@pytest.mark.parametrize("forms, index", [
+    pytest.param((LOOP, LOOP_CALL), 0, id="the first of two loop forms"),
+    pytest.param((replace(LOOP, columns_from="fields", id=RowId(field="name")), LOOP), 1,
+                 id="a loop form the reader cannot read, written first, is skipped"),
+    pytest.param((PYTEST, LOOP), 1, id="a decorator form before it"),
+])
+def test_a_loop_is_read_by_the_first_loop_form_the_reader_reads_and_tagged_with_its_index(tmp_path, forms, index):
+    assert [t.form for t in parsed(tmp_path, looping(), forms).functions[0].tables] == [index]
+
+
+def test_a_method_s_loop_is_read_too(tmp_path):
+    text = "CASES = [('x', 1)]\n\nclass TestA:\n    def test_a(self):\n        for a, b in CASES:\n            assert a\n"
+    assert [(f.name, len(f.tables)) for f in parsed(tmp_path, text, (LOOP,)).functions] == [("test_a", 1)]

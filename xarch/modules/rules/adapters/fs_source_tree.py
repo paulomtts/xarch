@@ -108,9 +108,24 @@ A test function holds the tables of cases its decorators hold, each read in the 
 the form's `columns_from` (by its position when the call has an argument there, else by its keyword), one
 comma-separated string or a list or tuple of strings; its rows the argument at its `rows`, a list or tuple literal or
 the name of one assigned once at the top of the file (any other form leaves the rows unread); and a row is written
-when it is a call of the form's `row`, its id the string literal the form's keyword gives. Only the forms whose
-holder is a decorator, whose columns and rows are places, whose row is a call and whose id a keyword are read; any
-other form reads no table.
+when it is a call of the form's `row`, its id the string literal the form's keyword gives. A decorator's form is read
+when its columns and rows are places, its row a call and its id a keyword; no statement of the body runs the rows of
+its table (runs 0).
+
+After those, a test function holds the table of the first `for` among its body's own statements, one not nested in
+another block, function or class (an `async for` is none), read in the first loop form of the list the reader reads
+and tagged with that form's index. That `for` holds a table when it binds plain names, one name or a tuple or list of
+names with none nested or starred, which are the column names in order; and when it runs over a list or tuple literal
+written in it, or over a bare name the file binds at its top level and the function does not bind. The table's line,
+and the line of the statement that runs its rows, are the `for`'s. Its rows are that literal's values, or those of
+the literal the name is assigned once at the top of the file (any other value, or a starred one among them, leaves
+the rows unread). A loop form is read when its columns are `bound` and either its row is a call of a dotted name and
+its id a keyword, each row read as a decorator's is, or its row is a literal and its id a position: a tuple or list
+with no starred value is written, its cells the names heading its values and its id the string literal at that
+position; any other value is not written, and has no id and no cells. A `for` that binds other names or runs over
+anything else holds no table, and no later `for` is tried.
+
+Any other form reads no table, and the next form of the list is still tried.
 """
 from __future__ import annotations
 
@@ -373,6 +388,8 @@ def _function(node: ast.FunctionDef | ast.AsyncFunctionDef, scope: list[Scope], 
     blocks = tuple(sorted((n.lineno, _BLOCKS[type(n)]) for n in inside if type(n) in _BLOCKS))
     choices = tuple(sorted((n.lineno, _CHOICES[type(n)]) for n in inside if type(n) in _CHOICES))
     tables = tuple(table for d in node.decorator_list if (table := _table(d, scope, lists, forms)) is not None)
+    loop = _loop(node, scope, lists, forms)
+    tables += (loop,) if loop is not None else ()
     asserts = any(isinstance(n, ast.Assert) for n in inside)
     statements, inert, shape = _shape(node)
     returns = _named(node.returns) if node.returns is not None else frozenset()
@@ -644,6 +661,64 @@ def _reads(form: TableForm) -> bool:
     place among its arguments, a row a call of a dotted name and its id a keyword of that call."""
     return (bool(form.decorator) and isinstance(form.columns_from, Place) and form.rows is not None and bool(form.row)
             and bool(form.id.keyword))
+
+
+def _loop(node: ast.FunctionDef | ast.AsyncFunctionDef, scope: list[Scope], lists: dict[str, ast.expr],
+          forms: tuple[TableForm, ...]) -> Table | None:
+    """The table the first `for` of the function's own body holds, read in the first loop form the reader reads and
+    tagged with that form's index, its line and the line that runs its rows that of the `for`; None when no such form
+    is in the list, the body holds no `for` of its own, or that `for` binds no plain names or runs over no list of the
+    file's."""
+    index = next((i for i, form in enumerate(forms) if _reads_loop(form)), None)
+    statement = next((s for s in node.body if isinstance(s, ast.For)), None)
+    if index is None or statement is None:
+        return None
+    columns = _loop_columns(statement.target)
+    values: ast.expr | None = statement.iter
+    own = _scope(node)
+    if columns is None:
+        return None
+    if isinstance(values, ast.Name):
+        if values.id in own or values.id not in scope[0]:
+            return None
+        values, chain = lists.get(values.id), scope
+    elif isinstance(values, (ast.List, ast.Tuple)):
+        chain = [own, *scope]
+    else:
+        return None
+    form = forms[index]
+    rows = None
+    if isinstance(values, (ast.List, ast.Tuple)) and not any(isinstance(v, ast.Starred) for v in values.elts):
+        rows = tuple(_row(v, chain, form) if form.row else _literal(v, form.id.position) for v in values.elts)
+    return Table(statement.lineno, columns, rows, form=index, runs=statement.lineno)
+
+
+def _reads_loop(form: TableForm) -> bool:
+    """Whether the reader reads tables in the form: a loop of the test's body, its column names the names the loop
+    binds, a row either a call of a dotted name with its id a keyword of that call, or a literal with its id at a
+    position."""
+    return (form.loop and form.columns_from == "bound"
+            and ((bool(form.row) and bool(form.id.keyword)) or (not form.row and form.id.position is not None)))
+
+
+def _loop_columns(target: ast.expr) -> tuple[str, ...] | None:
+    """The names a loop binds, in order: one name, or a tuple or list of names with none nested or starred; None for
+    any other target."""
+    if isinstance(target, ast.Name):
+        return (target.id,)
+    if isinstance(target, (ast.Tuple, ast.List)) and target.elts and all(isinstance(e, ast.Name) for e in target.elts):
+        return tuple(e.id for e in target.elts if isinstance(e, ast.Name))
+    return None
+
+
+def _literal(node: ast.expr, position: int | None) -> Row:
+    """A literal row: a tuple or list with no starred value is written, its cells the names heading its values and
+    its id the string literal at position; any other value is not written, and has no id and no cells."""
+    if not isinstance(node, (ast.Tuple, ast.List)) or any(isinstance(e, ast.Starred) for e in node.elts):
+        return Row(node.lineno, False, None, ())
+    at = node.elts[position] if position is not None and position < len(node.elts) else None
+    given = at.value if isinstance(at, ast.Constant) and isinstance(at.value, str) else None
+    return Row(node.lineno, True, given, tuple(_head(e) for e in node.elts))
 
 
 def _argument(call: ast.Call, place: Place | str | None) -> ast.expr | None:
