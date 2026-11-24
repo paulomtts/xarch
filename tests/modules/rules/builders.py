@@ -23,7 +23,7 @@ from xarch.modules.rules.domain.parsed import Class, SourceFile
 from xarch.modules.rules.domain.profile import Profile
 from xarch.profile_values.language import LINE, CheckedLanguage, CommentForm, InterfaceMark, RecordMark, Writing
 from xarch.profile_values.placement import Repeat, Target
-from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns
+from xarch.profile_values.testing import Fakes, Fixture, Framework, Place, RowId, ScenarioCoverage, StandIns, TableForm
 from xarch.profile_values.tiers import CheckedTier
 
 
@@ -136,17 +136,19 @@ GUARD = CheckedTier("guard", (), ("architecture",))
 NOW = ("datetime", "datetime", "now")
 MOCK = ("unittest", "mock", "Mock")
 AUTOSPEC = ("unittest", "mock", "create_autospec")
-TABLE = CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id", ("argnames", "argvalues"))
+PYTEST_FORM = TableForm(Place(0, "argnames"), Place(1, "argvalues"), ("pytest", "param"), RowId(keyword="id"),
+                        decorator=("pytest", "mark", "parametrize"))
+"""The one form pytest writes a table of cases in, as its preset says it."""
 PROFILE = Profile(
     parts=PARTS, rules=RULES, folders=FOLDERS, tiers=(UNIT, INTEGRATION, RENDERING, GUARD),
     imports_libraries={"platform": ("sqlmodel",), "adapters": ("sqlmodel",), "web": ("fastapi",),
                        "bootstrap": ("sqlmodel", "fastapi")},
     fakes=Fakes(("fakes",), ("ports",), "Fake"), repeats=(MODULES,), package_only=("contract",),
-    scenarios=ScenarioCoverage("contract", "integration", "Result", ("given", "when", "then"), TABLE, "test_{name:snake}.py"),
+    scenarios=ScenarioCoverage("contract", "integration", "Result", ("given", "when", "then"), "test_{name:snake}.py"),
     no_comments=True,
     stand_ins=StandIns((MOCK, ("unittest", "mock", "MagicMock")), (AUTOSPEC,), ("spec", "spec_set"),
                        (Fixture("mocker", ("Mock", "MagicMock"), ("create_autospec",)),), 0),
-    framework=Framework(("test_*.py", "*_test.py"), "test_*"),
+    framework=Framework(("test_*.py", "*_test.py"), "test_*", tables=(PYTEST_FORM,)),
     uses_never={"domain": (NOW, ("builtins", "open"), ("socket",))}, language=PYTHON, default_tests="tests")
 
 

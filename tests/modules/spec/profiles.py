@@ -23,8 +23,7 @@ PYTEST_FORM = TableForm(Place(0, "argnames"), Place(1, "argvalues"), ("pytest", 
                         decorator=("pytest", "mark", "parametrize"))
 """PYTEST_TABLE as the loader reads it."""
 TESTING = {"files": ["test_*.py", "*_test.py"], "functions": "test_*", "skips": ["pytest.mark.skip", "pytest.skip"],
-           "table": {"decorator": "pytest.mark.parametrize", "row": "pytest.param", "id": "id",
-                     "keywords": ["argnames", "argvalues"]},
+           "tables": [PYTEST_TABLE],
            "mocks": {"calls": ["unittest.mock.Mock", "unittest.mock.MagicMock"],
                      "autospec": ["unittest.mock.create_autospec"], "spec_keywords": ["spec", "spec_set"],
                      "spec_position": 0, "fixtures": {"mocker": {"calls": ["Mock", "MagicMock"], "autospec": ["create_autospec"]}}}}

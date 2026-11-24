@@ -4,7 +4,7 @@ import pytest
 from xarch.bootstrap.wiring import build_controllers, load_architecture
 from xarch.modules.spec.contract import GuardsView
 from xarch.modules.spec.domain.values import NoCallbacks
-from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework, Place, RowId, ScenarioCoverage, StandIns, TableForm
+from xarch.profile_values.testing import Fakes, Fixture, Framework, Place, RowId, ScenarioCoverage, StandIns, TableForm
 
 
 @pytest.mark.parametrize("name, expected", [
@@ -23,11 +23,10 @@ def test_the_bundled_profiles_use_every_guard_of_their_own(name):
     mocks = ("Mock", "MagicMock", "AsyncMock", "NonCallableMock", "NonCallableMagicMock")
     form = TableForm(Place(0, "argnames"), Place(1, "argvalues"), ("pytest", "param"), RowId(keyword="id"),
                      decorator=("pytest", "mark", "parametrize"))
-    table = CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id", ("argnames", "argvalues"))
     profile = build_controllers().spec.profile(name)
     assert profile.guards == GuardsView(
         package_only=("contract",),
-        scenarios=ScenarioCoverage("contract", "integration", "Result", ("given", "when", "then"), table, "test_{name:snake}.py"),
+        scenarios=ScenarioCoverage("contract", "integration", "Result", ("given", "when", "then"), "test_{name:snake}.py"),
         no_comments=True,
         closed_tree=True,
         stand_ins=StandIns(tuple(("unittest", "mock", m) for m in mocks), (("unittest", "mock", "create_autospec"),),
@@ -38,7 +37,7 @@ def test_the_bundled_profiles_use_every_guard_of_their_own(name):
     skips = ("pytest.mark.skip", "pytest.mark.skipif", "pytest.mark.xfail", "pytest.skip", "pytest.xfail",
              "pytest.importorskip", "unittest.skip", "unittest.skipIf", "unittest.skipUnless", "unittest.expectedFailure")
     assert profile.framework == Framework(("test_*.py", "*_test.py"), "test_*",
-                                              tuple(tuple(s.split(".")) for s in skips), table, (form,))
+                                              tuple(tuple(s.split(".")) for s in skips), (form,))
     assert [(file.path, file.pinned) for file in load_architecture(name).files] == [
         (("tests", "architecture", "test_rules.py"), True), (("AGENTS.md",), False), (("ruff.toml",), False)]
     assert profile.fakes == Fakes(("fakes",), ("ports",), "Fake")

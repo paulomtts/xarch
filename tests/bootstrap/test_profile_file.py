@@ -113,13 +113,13 @@ def test_a_bundled_profile_may_not_be_a_preset():
 
 @pytest.mark.parametrize("name", ["cli", "web"])
 def test_the_preset_holds_exactly_what_the_bundled_profiles_spell_out(name, tmp_path):
-    """tests, and the table and the mocks of the guards scenario-coverage and stand-ins."""
+    """tests, the forms of a table, and the guards scenario-coverage and stand-ins."""
     spelled = load_architecture(name)
     preset = load_architecture(profile_in(tmp_path, PRESET_PROFILE))
     assert preset.framework == spelled.framework
     assert [g for g in preset.guards if isinstance(g, StandIns)] == [g for g in spelled.guards if isinstance(g, StandIns)]
-    assert [g.table for g in preset.guards if isinstance(g, ScenarioCoverage)] == [
-        g.table for g in spelled.guards if isinstance(g, ScenarioCoverage)]
+    assert [g.file for g in preset.guards if isinstance(g, ScenarioCoverage)] == [
+        g.file for g in spelled.guards if isinstance(g, ScenarioCoverage)]
 
 
 def test_xarch_s_own_profile_spells_out_the_same_as_the_preset(tmp_path):
@@ -127,8 +127,8 @@ def test_xarch_s_own_profile_spells_out_the_same_as_the_preset(tmp_path):
     preset = load_architecture(profile_in(tmp_path, PRESET_PROFILE))
     assert preset.framework == spelled.framework
     assert [g for g in preset.guards if isinstance(g, StandIns)] == [g for g in spelled.guards if isinstance(g, StandIns)]
-    assert [g.table for g in preset.guards if isinstance(g, ScenarioCoverage)] == [
-        g.table for g in spelled.guards if isinstance(g, ScenarioCoverage)]
+    assert [g.file for g in preset.guards if isinstance(g, ScenarioCoverage)] == [
+        g.file for g in spelled.guards if isinstance(g, ScenarioCoverage)]
 
 
 BARE = ("guards.scenario-coverage.file: 'test_{name}.py': {name} with no case was removed in 0.3.0: write "
@@ -142,3 +142,16 @@ def test_a_bare_name_in_the_file_of_the_scenario_guard_is_refused_with_its_hint(
     checked = CliRunner().invoke(app, ["profile", "check", str(path)])
     assert (caught.value.problems, checked.exit_code) == ((f"{path}: {BARE}",), 1)
     assert f"    {path}: {BARE}" in checked.output.splitlines()
+
+
+OLD_TABLE_PROFILE = PRESET_PROFILE.replace("testing: pytest\n", 'testing:\n  files: ["test_*.py"]\n  functions: "test_*"\n'
+                                           "  table: {decorator: pytest.mark.parametrize, row: pytest.param, id: id}\n")
+RETIRED_TABLE = ("testing: unknown key 'table': moved in 0.3.0: write tables, a list of forms (xarch profile explain "
+                 "testing.tables); use files, functions, mocks, skips, tables")
+
+
+def test_a_profile_writing_the_table_of_testing_is_refused_with_its_hint(tmp_path):
+    path = profile_in(tmp_path, OLD_TABLE_PROFILE)
+    checked = CliRunner().invoke(app, ["profile", "check", str(path)])
+    assert checked.exit_code == 1
+    assert f"    {path}: {RETIRED_TABLE}" in checked.output.splitlines()

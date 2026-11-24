@@ -130,7 +130,7 @@ from xarch.modules.spec.domain.values import (
     TierExample,
 )
 from xarch.profile_values.placement import Repeat
-from xarch.profile_values.testing import CaseTable, Fakes, Framework, ScenarioCoverage, StandIns
+from xarch.profile_values.testing import Fakes, Framework, ScenarioCoverage, StandIns
 
 _REPEATING = re.compile(r"<([A-Za-z_][A-Za-z0-9_-]*)>")
 _TIER_TEXTS = ("subject", "may_touch", "one_file_per", "cases_from", "data")
@@ -146,10 +146,9 @@ _TIER_INSTEAD = "`tests: <tier>`, or `untested: <reason>`"
 
 @dataclass(frozen=True)
 class _Testing:
-    """What `testing` says: how test files and functions are named, and, when written, how a table of cases is held
-    and how a mock is built."""
+    """What `testing` says: how test files and functions are named and the table forms the framework writes, and,
+    when written, how a mock is built."""
     framework: Framework
-    table: CaseTable | None
     mocks: StandIns | None
 
 
@@ -201,8 +200,9 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     layers = ck.layer_chains(document["layers"], parts, declared, rules, problems) if "layers" in document else {}
     testing = _testing(document["testing"], presets or {}, problems, language) if "testing" in document else None
     tiers = _tiers(document, specs, parts, declared, examples, problems, language)
-    problems += [f"tiers.{tier.name}.plain_tables: needs `testing.table`, how a table of cases is written, to know a "
-                 "table test" for tier in tiers if tier.plain_tables and (testing is None or testing.table is None)]
+    problems += [f"tiers.{tier.name}.plain_tables: needs `testing.tables`, the forms a table of cases is written in, "
+                 "to know a table test" for tier in tiers
+                 if tier.plain_tables and (testing is None or not testing.framework.tables)]
     fakes = _fakes(document["fakes"], parts, declared, problems, language) if "fakes" in document else None
     problems += ck.folder_clashes(tiers, fakes)
     guards = _guards(document.get("guards", {}), specs, parts, declared, tiers, fakes, testing, problems, language)
@@ -539,12 +539,11 @@ def _testing(value: Any, presets: Mapping[str, Any], problems: list[str], langua
         return None
     count = len(problems)
     framework = ck.framework_patterns(value, problems, "testing", names_of(TESTING), language, TESTING)
-    table = ck.case_table(value["table"], "testing.table", problems, language) if "table" in value else None
     tables = ck.table_forms(value["tables"], "testing.tables", problems, language) if "tables" in value else ()
     mocks = _mocks(value["mocks"], problems, language) if "mocks" in value else None
     if len(problems) != count or framework is None or tables is None:
         return None
-    return _Testing(replace(framework, table=table, tables=tables), table, mocks)
+    return _Testing(replace(framework, tables=tables), mocks)
 
 
 def _mocks(value: Any, problems: list[str], language: Language) -> StandIns | None:
@@ -782,9 +781,9 @@ def _scenario_coverage(spec: Any, parts: dict[str, Part], declared: set[str], ti
     count = len(problems)
     problems += ck.unknown_keys(spec, names_of(SCENARIO_COVERAGE), where, SCENARIO_COVERAGE)
     problems += [f"{where}: missing `{key}`" for key in sorted(required_of(SCENARIO_COVERAGE)) if key not in spec]
-    if testing is not None and testing.table is None:
-        problems.append(f"{where}: needs `testing.table`: how a table of cases is written, such as "
-                        "{decorator, row, id}")
+    if testing is not None and not testing.framework.tables:
+        problems.append(f"{where}: needs `testing.tables`: the forms a table of cases is written in, such as "
+                        "[{decorator, columns_from, rows, row, id}]")
     if len(problems) != count:
         return None
     ck.scenario_places(spec["results"], spec["tier"], spec["suffix"], parts, declared, tiers, where, problems,
@@ -792,9 +791,9 @@ def _scenario_coverage(spec: Any, parts: dict[str, Part], declared: set[str], ti
     columns = ck.column_names(spec["columns"], f"{where}.columns", problems, language)
     framework = testing.framework if testing is not None else None
     file = ck.use_case_file(spec["file"], framework, f"{where}.file", problems, language, "testing.files")
-    if len(problems) != count or columns is None or file is None or testing is None or testing.table is None:
+    if len(problems) != count or columns is None or file is None or testing is None or not testing.framework.tables:
         return None
-    return ScenarioCoverage(spec["results"], spec["tier"], spec["suffix"], columns, testing.table, file)
+    return ScenarioCoverage(spec["results"], spec["tier"], spec["suffix"], columns, file)
 
 
 def _stand_ins(spec: Any, fakes: Fakes | None, testing: _Testing | None, where: str,

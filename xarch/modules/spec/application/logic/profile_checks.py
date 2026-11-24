@@ -20,12 +20,11 @@ from xarch.modules.spec.application.logic.layout_walk import lies_in
 from xarch.modules.spec.application.logic.outside_name import outside_name
 from xarch.modules.spec.application.logic.profile_listing import listing_in
 from xarch.modules.spec.application.logic.project_files import APP_PLACEHOLDER
-from xarch.modules.spec.domain.profile_keys import FILE, FIXTURE, NAMING, PAGE, RULE_ID, TABLE, TABLES
+from xarch.modules.spec.domain.profile_keys import FILE, FIXTURE, NAMING, PAGE, RULE_ID, TABLES
 from xarch.modules.spec.domain.values import NAME, Doc, FileEntry, Language, Layout, Naming, Part, Tier
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.placement import Target
 from xarch.profile_values.testing import (
-    CaseTable,
     Fakes,
     Fixture,
     Framework,
@@ -396,29 +395,6 @@ def part_names(value: Any, declared: set[str], where: str, problems: list[str]) 
         else:
             found.append(name)
     return found
-
-
-def case_table(value: Any, where: str, problems: list[str], language: Language) -> CaseTable | None:
-    if not isinstance(value, Mapping):
-        problems.append(f"{where}: must be a mapping {{decorator, row, id}}, and optionally keywords: the dotted names "
-                        "of the table's decorator and of its row, the keyword of a row's id, and the keywords the "
-                        "decorator's two arguments may be given by")
-        return None
-    count = len(problems)
-    problems += unknown_keys(value, names_of(TABLE), where, TABLE)
-    problems += [f"{where}: missing `{key}`" for key in required_of(TABLE) if key not in value]
-    decorator = _outside_name_at(value["decorator"], f"{where}.decorator", problems, language) if "decorator" in value else None
-    row = _outside_name_at(value["row"], f"{where}.row", problems, language) if "row" in value else None
-    if "id" in value and not (isinstance(value["id"], str) and names.is_name(value["id"], language.names)):
-        problems.append(f"{where}.id: must be a keyword name")
-    keywords = value.get("keywords")
-    if "keywords" in value and not (isinstance(keywords, list) and len(keywords) == 2 and len(set(keywords)) == 2
-                                    and all(isinstance(k, str) and names.is_name(k, language.names) for k in keywords)):
-        problems.append(f"{where}.keywords: must be two keyword names, the decorator's names and its rows, "
-                        "such as [names, rows]")
-    if len(problems) != count or decorator is None or row is None:
-        return None
-    return CaseTable(decorator, row, value["id"], (keywords[0], keywords[1]) if keywords else None)
 
 
 def use_case_file(value: Any, framework: Framework | None, where: str, problems: list[str], language: Language,

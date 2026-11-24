@@ -4,16 +4,14 @@ A use case is a module-level union `<Name><suffix> = A | B | ...` of plain names
 an instance of a repeating folder: <Name> is the use case and A, B, ... its variants. Its test file is the guard's
 `file` with `{name:<case>}` replaced by <Name> in that case (PublishDocument with `{name:snake}`: publish_document),
 among the files of the table tier in the same instance (see tier_of). That file must hold a table, read from its
-syntax tree; the decorator, the row and the keyword of a row's id are the names the guard is given (see CaseTable), a
-test function is one whose name matches the profile's pattern:
+syntax tree in one of the forms the framework writes (`testing.tables`; the reader says how each is read), a test
+function being one whose name matches the profile's pattern:
 
-    a test function decorated `<decorator>(<names>, <rows>)`, whose names include the three columns the guard is
-    given (state, command, result), as one comma-separated string or a list or tuple of strings;
-    <rows> is a list or tuple literal, or the name of one assigned once at the top of the file; any other form
-    (a call, a concatenation, a comprehension, a starred element) is a violation, since a table that cannot be read
-    cannot be checked.
-    every row is `<row>(..., <id>="<a sentence>")`, with a non-empty string literal as its id: a bare tuple,
-    a row without an id or one whose id is not a literal is a violation.
+    a test function holding a table whose columns include the three the guard is given (state, command, result);
+    rows the reader cannot read are a violation, since a table that cannot be read cannot be checked.
+    every row is written as its form writes one, with a non-empty string literal as its id: a row written otherwise,
+    a row without an id or one whose id is not a literal is a violation, said and fixed in the words of the language
+    (its data file's `writing`), as the form of the row's table writes a row.
     the head of each row's result value (the callee of `Rejected("why")`, or a bare name) is a variant of the
     union; every variant heads the result of at least one row, or is named in the body of a standalone test
     function (one with no table) of the same file, for a case that does not fit a row.
@@ -44,6 +42,8 @@ from xarch.profile_values.testing import ScenarioCoverage
 RULE = "scenario-coverage"
 Problem = tuple[int, str, str]
 """A problem of a test file: its line, what is wrong, and how to fix it."""
+_OUTCOME = "<a sentence stating the outcome>"
+"""What the fix of a row writes as its id's text."""
 
 
 def violations(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile) -> list[Violation]:
@@ -89,7 +89,7 @@ def weak(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profil
     found: list[Weak] = []
     for _, union, _, _, files in _cases(app, tests, profile, guard):
         for test in files:
-            found += _credited(test, union.name, union.members, guard, profile.framework.functions)
+            found += _credited(test, union.name, union.members, guard, profile)
     return found
 
 
@@ -126,13 +126,14 @@ def _given_id(row: Row) -> str | None:
 
 
 def _credited(test: SourceFile, union: str, variants: tuple[str, ...], guard: ScenarioCoverage,
-              pattern: str) -> list[Weak]:
-    functions = [f for f in test.functions if fnmatchcase(f.name, pattern)]
+              profile: Profile) -> list[Weak]:
+    assert profile.framework is not None
+    functions = [f for f in test.functions if fnmatchcase(f.name, profile.framework.functions)]
     covered: set[str] = set()
     for function in functions:
         for table in function.tables:
             if set(guard.columns) <= set(table.columns):
-                _rows(table, union, variants, guard, covered)
+                _rows(table, union, variants, guard, profile, covered)
     found: list[Weak] = []
     for variant in variants:
         credit = [f for f in functions if not f.tables and variant in f.mentions]
@@ -160,7 +161,7 @@ def _covered(test: SourceFile, union: str, variants: tuple[str, ...], guard: Sce
     problems: list[Problem] = []
     covered: set[str] = set()
     for function, table in tables:
-        problems += _branches(function, profile) + _rows(table, union, variants, guard, covered)
+        problems += _branches(function, profile) + _rows(table, union, variants, guard, profile, covered)
     standalone = set().union(*(f.mentions for f in functions if not f.tables))
     line = tables[0][1].line
     if all(table.rows is not None for _, table in tables):
@@ -180,18 +181,24 @@ def _branches(function: Function, profile: Profile) -> list[Problem]:
             for line, keyword, what in sorted(found)]
 
 
-def _rows(table: Table, union: str, variants: tuple[str, ...], guard: ScenarioCoverage,
+def _rows(table: Table, union: str, variants: tuple[str, ...], guard: ScenarioCoverage, profile: Profile,
           covered: set[str]) -> list[Problem]:
+    assert profile.framework is not None
+    form = profile.framework.tables[table.form]
+    writing = profile.language.writing
+    callee = profile.language.member.join(form.row)
     result = guard.columns[-1]
-    written = ".".join(guard.table.row)
-    case = f'write {written}(..., {guard.table.id}="<a sentence stating the outcome>")'
+    given = form.id.written(writing, callee, _OUTCOME)
+    case = (f"write {given}" if given else
+            f"write the row's id, a sentence stating the outcome, as its value at position {form.id.position}")
+    shape = writing.row_call(callee) if form.row else "literal"
     if table.rows is None:
         fix = "write them as a list, or as the name of a list assigned at the top of the file"
         return [(table.line, "the rows of the table cannot be read", fix)]
     problems: list[Problem] = []
     for row in table.rows:
         if not row.written:
-            problems.append((row.line, f"row is not a {written}(...)", case))
+            problems.append((row.line, f"row is not a {shape}", case))
         elif _given_id(row) is None:
             problems.append((row.line, "row has no id", case))
         if row.written or row.cells:

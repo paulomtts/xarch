@@ -361,3 +361,9 @@ def test_the_file_of_the_scenario_guard_is_explained_with_its_cases_and_its_exam
                               "use case")
     assert "(`{name:<case>}` is <Name> in that case: snake, kebab, camel or pascal)" in guard["accepts"]
     assert [g.file for g in loaded.guards if isinstance(g, ScenarioCoverage)] == ["check_{name:snake}.py"]
+
+
+def test_the_table_of_testing_is_answered_from_the_table_of_retired_names():
+    found = runner.invoke(app, ["profile", "explain", "testing.table", "--format", "json"])
+    assert (found.exit_code, json.loads(found.output)["retired"]) == (
+        2, "moved in 0.3.0: write tables, a list of forms (xarch profile explain testing.tables)")

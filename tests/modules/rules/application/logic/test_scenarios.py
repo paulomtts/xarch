@@ -4,10 +4,12 @@ from dataclasses import replace
 
 import pytest
 
-from tests.modules.rules.builders import PROFILE, in_tests, profile, source
+from tests.modules.rules.builders import PROFILE, PYTEST_FORM, PYTHON, in_tests, profile, source
 from xarch.modules.rules.application.logic.scenarios import plain, violations, weak
 from xarch.modules.rules.domain.parsed import Function, Row, Table, Union
 from xarch.modules.rules.domain.published import Weak
+from xarch.profile_values.language import Writing
+from xarch.profile_values.testing import Place, RowId, TableForm
 
 COLUMNS = ("given", "when", "then")
 RESULTS = source("modules/docs/contract/results.py", unions=(Union(4, "PublishResult", ("Published", "Missing")),))
@@ -248,3 +250,33 @@ def test_a_branch_of_a_use_case_s_table_already_said_is_not_said_again():
     said = violations([RESULTS], tests, PLAIN)
     assert [str(v) for v in said] == [f"{FILE}:14: test_publish has an `if` in its body (scenario-coverage)"]
     assert plain(tests, PLAIN, said) == []
+
+
+NAMED = TableForm(Place(0), Place(1), ("x", "case"), RowId(keyword="name"), decorator=("x", "cases"))
+"""A form ahead of pytest's in the framework's list: its row x.case, its id the keyword name."""
+LITERAL = TableForm("fields", Place(0), (), RowId(field="name"), decorator=("x", "cases"))
+"""A form of literal rows whose id is the field name."""
+FIRST = TableForm(Place(0), Place(1), ("x", "case"), RowId(position=0), decorator=("x", "cases"))
+"""A form of x.case rows whose id is their first value."""
+BRACKETS = Writing(call="{callee}(...)", keyword="{callee}[{keyword}: {text}]", field='{..., {field}: "{text}"}')
+"""A language's templates other than Python's, the field one holding braces of its own."""
+
+
+@pytest.mark.parametrize("form, writing, problem, fix", [
+    pytest.param(PYTEST_FORM, PYTHON.writing, "row is not a pytest.param(...)",
+                 'write pytest.param(..., id="<a sentence stating the outcome>")',
+                 id="pytest's form in Python's words reads as before"),
+    pytest.param(PYTEST_FORM, BRACKETS, "row is not a pytest.param(...)",
+                 "write pytest.param[id: <a sentence stating the outcome>]", id="the keyword template of the language"),
+    pytest.param(LITERAL, BRACKETS, "row is not a literal", 'write {..., name: "<a sentence stating the outcome>"}',
+                 id="a literal row whose id is a field"),
+    pytest.param(FIRST, PYTHON.writing, "row is not a x.case(...)",
+                 "write the row's id, a sentence stating the outcome, as its value at position 0",
+                 id="an id by position needs no template"),
+])
+def test_a_row_is_worded_as_the_form_at_its_index_writes_one_in_the_words_of_the_language(form, writing, problem, fix):
+    checked = profile(framework=replace(PROFILE.framework, tables=(NAMED, form)),
+                      language=replace(PYTHON, writing=writing))
+    bare = replace(table(row("Published", written=False, id=None), row("Missing", 11)), form=1)
+    found = violations([RESULTS], [publish_tests(Function(8, "test_publish", (bare,)))], checked)
+    assert [(str(v), v.fix) for v in found] == [(f"{FILE}:10: {problem} (scenario-coverage)", fix)]

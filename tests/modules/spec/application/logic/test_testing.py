@@ -13,7 +13,6 @@ from xarch.profile_values.language import Writing
 from xarch.profile_values.testing import Fixture, Place, RowId, ScenarioCoverage, TableForm
 
 FILES = {"files": ["test_*.py"], "functions": "test_*"}
-TABLE_OK = TESTING["table"]
 MOCKS_OK = TESTING["mocks"]
 SCENARIOS = {"results": "api", "tier": "integration", "suffix": "Result", "columns": ["given", "when", "then"],
              "file": "test_{name:snake}.py"}
@@ -24,11 +23,6 @@ FUNCTION = "layered.yaml: testing.functions: must be a function name pattern: a 
 FIXTURES = ("layered.yaml: testing.mocks.fixtures: must be a mapping of parameter names to {calls}, and optionally "
             "autospec: the names of the methods that build a mock, and of those that build one from a spec given as "
             "an argument")
-TABLE = ("layered.yaml: testing.table: must be a mapping {decorator, row, id}, and optionally keywords: the dotted "
-         "names of the table's decorator and of its row, the keyword of a row's id, and the keywords the decorator's "
-         "two arguments may be given by")
-KEYWORDS = ("layered.yaml: testing.table.keywords: must be two keyword names, the decorator's names and its rows, "
-            "such as [names, rows]")
 MOCKS = ("layered.yaml: testing.mocks: must be a mapping {calls, spec_keywords}, and optionally autospec, "
          "spec_position and fixtures: the dotted names of the calls that build a mock, the keywords a mock is given "
          "its spec by, the position of the argument that names it, and the parameters of a test function whose "
@@ -44,10 +38,6 @@ ONCE = "must hold `{name:<case>}` once, <case> one of snake, kebab, camel, pasca
 
 def with_testing(**changes) -> dict:
     return covered(testing=TESTING | changes)
-
-
-def with_table(table) -> dict:
-    return with_testing(table=table)
 
 
 def with_mocks(mocks) -> dict:
@@ -72,35 +62,6 @@ def with_fixtures(fixtures) -> dict:
 ])
 def test_a_bad_framework_pattern_is_refused(testing, expected):
     assert problems(covered(testing=testing)) == [expected]
-
-
-def test_the_keywords_of_the_table_decorator_are_optional():
-    table = {key: value for key, value in TABLE_OK.items() if key != "keywords"}
-    architecture = parsed(with_table(table) | {"guards": {"scenario-coverage": SCENARIOS}})
-    assert architecture.guards[0].table.keywords is None
-
-
-@pytest.mark.parametrize("table, expected", [
-    pytest.param([], TABLE, id="a table that is no mapping is refused"),
-    pytest.param({key: value for key, value in TABLE_OK.items() if key != "row"},
-                 "layered.yaml: testing.table: missing `row`", id="a table with no row is refused"),
-    pytest.param(TABLE_OK | {"x": 1}, "layered.yaml: testing.table: unknown key 'x': use decorator, id, keywords, row",
-                 id="an unknown key is refused"),
-    pytest.param(TABLE_OK | {"id": "a b"}, "layered.yaml: testing.table.id: must be a keyword name",
-                 id="an id that is no keyword name is refused"),
-    pytest.param(TABLE_OK | {"decorator": "parametrize"},
-                 "layered.yaml: testing.table.decorator: 'parametrize' is not an outside name such as <package>.<name>",
-                 id="a decorator that is not dotted is refused"),
-    pytest.param(TABLE_OK | {"row": "pytest..param"},
-                 "layered.yaml: testing.table.row: 'pytest..param' is not an outside name such as <package>.<name>",
-                 id="a row with an empty step is refused"),
-    pytest.param(TABLE_OK | {"row": 3}, "layered.yaml: testing.table.row: 3 is not an outside name such as <package>.<name>",
-                 id="a row that is no text is refused"),
-    pytest.param(TABLE_OK | {"keywords": ["argnames"]}, KEYWORDS, id="one keyword is refused"),
-    pytest.param(TABLE_OK | {"keywords": ["a", "a"]}, KEYWORDS, id="the same keyword twice is refused"),
-])
-def test_a_bad_table_entry_is_refused(table, expected):
-    assert problems(with_table(table)) == [expected]
 
 
 def test_the_autospec_names_of_the_mocks_are_optional():
@@ -274,7 +235,8 @@ def test_the_stand_ins_line_says_each_annotation_of_no_value_of_the_language():
 
 def test_a_profile_naming_another_framework_gets_its_own_words_in_the_guards_lines():
     testing = {"files": ["*_spec.py"], "functions": "it_*",
-               "table": {"decorator": "cases.table", "row": "cases.row", "id": "name"},
+               "tables": [{"decorator": "cases.table", "columns_from": {"position": 0}, "rows": {"position": 1},
+                          "row": "cases.row", "id": {"keyword": "name"}}],
                "mocks": {"calls": ["doubles.Double"], "spec_keywords": ["of"]}}
     lines = guard_lines(testing=testing, guards={"scenario-coverage": SCENARIOS | {"file": "{name:snake}_spec.py"}})
     assert "in `<name>_spec.py`" in lines[0]
@@ -537,3 +499,20 @@ def test_an_id_by_position_needs_no_template():
     assert parsed(with_tables([POSITIONED, LOOP]), languages={"python": TOY}).framework.tables == (
         TableForm(Place(0), Place(1), (), RowId(position=0), decorator=("checks", "cases")),
         TableForm("bound", None, (), RowId(position=0), loop=True))
+
+
+OTHER_FORM = {"decorator": "checks.cases", "columns_from": {"position": 0}, "rows": {"position": 1},
+              "row": "checks.case", "id": {"keyword": "name"}}
+
+
+@pytest.mark.parametrize("tables, clause", [
+    pytest.param([POSITIONED], "every row is a literal with its id at position 0, and a table test",
+                 id="a literal row whose id is its first value"),
+    pytest.param([OTHER_FORM | {"id": {"position": 2}}], "every row is a `checks.case` with its id at position 2, and",
+                 id="a row call whose id is its third value"),
+    pytest.param([PYTEST_TABLE, OTHER_FORM],
+                 "every row is a `pytest.param` with an `id` or a `checks.case` with an `name`, and",
+                 id="two forms, said in the order written"),
+])
+def test_the_guard_line_says_a_row_as_each_form_writes_one(tables, clause):
+    assert clause in guard_lines(testing={"tables": tables})[0]

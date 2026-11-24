@@ -39,10 +39,9 @@ from xarch.modules.spec.contract import (
 from xarch.profile_values.checks import Quantified, Saying, Scope, WrittenCheck, WrittenTarget
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.placement import Repeat, Target
-from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns
+from xarch.profile_values.testing import Fakes, Fixture, Framework, ScenarioCoverage, StandIns
 from xarch.profile_values.tiers import CheckedTier
 
-TABLE = CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id")
 VIEW = ProfileView(
     parts=(PartView("core", ("core",), (), "the rules", "Is it a rule?", "core/", uses_never=(("socket",),),
                     holds=(Held("functions"), Held("records", immutable=True), Held("exceptions")), shared=2),
@@ -52,7 +51,7 @@ VIEW = ProfileView(
     folders=((), ("core",), ("src",), ("src", "*"), ("src", "*", "api")),
     tiers=(CheckedTier("unit", (Target("core", "none"),), None, ("api",), True, "a rule", "nothing", "Does it?"),),
     imports_libraries={"core": (), "api": ("fastapi",)}, repeats=(Repeat("module", ("src",)),),
-    guards=GuardsView(package_only=("api",), scenarios=ScenarioCoverage("api", "unit", "Result", ("a", "b", "c"), TABLE,
+    guards=GuardsView(package_only=("api",), scenarios=ScenarioCoverage("api", "unit", "Result", ("a", "b", "c"),
                                                                      "test_{name:snake}.py"),
                       no_comments=True,
                       stand_ins=StandIns((("m", "Mock"),), (), ("spec",), (Fixture("mocker", ("Mock",)),)),
@@ -118,7 +117,7 @@ def test_the_profile_view_becomes_the_profile_the_checks_see():
         imports_libraries={"core": (), "api": ("fastapi",)}, fakes=Fakes(("fakes",), ("api",), "Fake"),
         repeats=(Repeat("module", ("src",)),), package_only=("api",),
         scenarios=ScenarioCoverage("api", "unit", "Result", ("a", "b", "c"),
-                            CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id"), "test_{name:snake}.py"),
+                            "test_{name:snake}.py"),
         no_comments=True, stand_ins=StandIns((("m", "Mock"),), (), ("spec",), (Fixture("mocker", ("Mock",)),)),
         closed_tree=True, framework=Framework(("test_*.py",), "test_*", (("skip",),)),
         uses_never={"core": (("socket",),)},

@@ -1,21 +1,21 @@
-"""How a project's tests are named and placed, as the profile says it: the test framework's names, how a table of
-cases is written, the scenario-coverage and stand-ins guards, and where the fakes live."""
+"""How a project's tests are named and placed, as the profile says it: the test framework's names, the
+table forms it writes, the scenario-coverage and stand-ins guards, and where the fakes live."""
 from __future__ import annotations
 
 from dataclasses import dataclass
+
+from xarch.profile_values.language import Writing
 
 
 @dataclass(frozen=True)
 class Framework:
     """How the project's test framework names things: the patterns of a test file's name (matched against the file
     name alone, `*` for any text) and of a test function's, and the dotted names of what skips a test or expects it
-    to fail (a marker or a call; empty: none is counted); and how a test function holds a table of cases (None: the
-    profile does not say); and the table forms it
-    writes (tables; none: it writes none)."""
+    to fail (a marker or a call; empty: none is counted); and the table forms it
+    writes (tables; none: it writes none, and no table is read)."""
     files: tuple[str, ...]
     functions: str
     skips: tuple[tuple[str, ...], ...] = ()
-    table: CaseTable | None = None
     tables: tuple[TableForm, ...] = ()
 
 
@@ -36,6 +36,18 @@ class RowId:
     field: str = ""
     position: int | None = None
 
+    @property
+    def name(self) -> str:
+        """The keyword or the field that gives the id; "" for an id by position."""
+        return self.keyword or self.field
+
+    def written(self, writing: Writing, callee: str, text: str) -> str:
+        """The id as the language writes it, text its value: writing's keyword template, callee being what the row
+        calls, or its field template; "" for an id by position, which no template writes."""
+        if self.keyword:
+            return writing.keyword_id(callee, self.keyword, text)
+        return writing.field_id(self.field, text) if self.field else ""
+
 
 @dataclass(frozen=True)
 class TableForm:
@@ -55,27 +67,14 @@ class TableForm:
 
 
 @dataclass(frozen=True)
-class CaseTable:
-    """How a test function holds a table of cases: the dotted name of its decorator and of its row, the keyword that
-    gives a row its id, and (None: positional only) the keywords its two arguments, the parameter names and the rows,
-    may be given by."""
-    decorator: tuple[str, ...]
-    row: tuple[str, ...]
-    id: str
-    keywords: tuple[str, str] | None = None
-
-
-@dataclass(frozen=True)
 class ScenarioCoverage:
     """The guard scenario-coverage: the part holding the result unions, the tier holding their tables, how a union's
     name ends, the names of the three parameters of a table (its state, its command and its result, in that order),
-    how the table is written, and the name of a use case's test file, `{name:<case>}` standing for the use case in
-    the case it writes."""
+    and the name of a use case's test file, `{name:<case>}` standing for the use case in the case it writes."""
     results: str
     tier: str
     suffix: str
     columns: tuple[str, str, str]
-    table: CaseTable
     file: str
 
 

@@ -27,7 +27,7 @@ from pathlib import Path
 
 import xarch
 from xarch.bootstrap.wiring import load_architecture
-from xarch.profile_values.testing import ScenarioCoverage, StandIns
+from xarch.profile_values.testing import Place, ScenarioCoverage, StandIns
 
 SRC = Path(xarch.__file__).parent
 BUNDLED = SRC / "architectures"
@@ -78,7 +78,10 @@ def framework_names() -> tuple[set[str], set[str]]:
         for guard in architecture.guards:
             dotted: tuple[tuple[str, ...], ...] = ()
             if isinstance(guard, ScenarioCoverage):
-                dotted = (guard.table.decorator, guard.table.row, tuple(guard.table.keywords or ()))
+                forms = architecture.framework.tables
+                dotted = (*(form.decorator for form in forms), *(form.row for form in forms),
+                          *(tuple(place.keyword for place in (form.columns_from, form.rows)
+                                  if isinstance(place, Place) and place.keyword) for form in forms))
             elif isinstance(guard, StandIns):
                 dotted = (*guard.mocks, *guard.autospec, guard.spec)
             words |= {word for name in dotted for word in name}

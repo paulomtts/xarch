@@ -81,7 +81,7 @@ from xarch.modules.spec.domain.values import (
     Tier,
 )
 from xarch.profile_values.placement import Repeat, Target
-from xarch.profile_values.testing import ScenarioCoverage, StandIns
+from xarch.profile_values.testing import ScenarioCoverage, StandIns, TableForm
 
 Texts = Mapping[str, str]
 """Texts a profile's docs quote from its files, by what names them: each example's file by the example's name, each
@@ -479,13 +479,16 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
             shown = _and([f"`{docs_name(architecture, architecture.parts[p])}`" for p in parts])
             return (f"`package-only`: {shown} {'is' if len(parts) == 1 else 'are'} imported as a package, never by "
                     "its files, from outside it.")
-        case ScenarioCoverage(results, tier, suffix, columns, table, file):
+        case ScenarioCoverage(results, tier, suffix, columns, file):
+            assert architecture.framework is not None
             shown = ", ".join(f"`{c}`" for c in columns)
+            member = architecture.language.checked.member
+            rows = " or ".join(_row_phrase(form, member) for form in architecture.framework.tables)
             return (f"`scenario-coverage`: every variant of a union named `<Name>{suffix}` in "
                     f"`{docs_name(architecture, architecture.parts[results])}` is the `{columns[-1]}` of a row of the "
                     f"table (columns {shown}) in `{_uncased(file)}` among the {tier} tests (section 5.2), "
-                    f"or is named by a standalone test of that file; every row is a `{'.'.join(table.row)}` with "
-                    f"an `{table.id}`, and a table test has no {_branches(architecture)}.")
+                    f"or is named by a standalone test of that file; every row is {rows}, and a table test has no "
+                    f"{_branches(architecture)}.")
         case StandIns(mocks, _, spec, fixtures):
             built = f"{fixtures[0].name}.{fixtures[0].mocks[0]}" if fixtures else ""
             return _stand_ins_line(architecture, mocks[0][-1], spec[0], built)
@@ -547,6 +550,14 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
             directives = ", ".join(f"`{comment} {word}`" for word in architecture.language.checked.directives)
             return (f"`no-comments`: no `{comment}` comments in the app or its tests; docstrings and tool directives "
                     f"({directives}) stay.")
+
+
+def _row_phrase(form: TableForm, member: str) -> str:
+    """How the guard line says a row of a form: a `<row>` it calls, or a literal, with an `<id>` or with its id at a
+    position."""
+    what = f"a `{member.join(form.row)}`" if form.row else "a literal"
+    given = f"an `{form.id.name}`" if form.id.name else f"its id at position {form.id.position}"
+    return f"{what} with {given}"
 
 
 def _uncased(file: str) -> str:

@@ -2,7 +2,7 @@
 fakes, and the guards."""
 import pytest
 
-from tests.modules.spec.profiles import EX, PRESETS, TESTING, covered, layered, parsed, problems
+from tests.modules.spec.profiles import EX, PRESETS, PYTEST_FORM, TESTING, covered, layered, parsed, problems
 from xarch.modules.spec.domain.values import (
     ClosedTree,
     DeadCode,
@@ -17,7 +17,7 @@ from xarch.modules.spec.domain.values import (
     TierExample,
 )
 from xarch.profile_values.placement import Target
-from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns
+from xarch.profile_values.testing import Fakes, Fixture, Framework, ScenarioCoverage, StandIns
 
 PRESET_PROBLEM = ("layered.yaml: testing: must be a preset name or a mapping {files, functions}: the patterns of a "
                   "test file's name and of a test function's")
@@ -28,7 +28,7 @@ def test_the_framework_is_a_preset_by_name_or_the_map_written_out():
     written = parsed(covered())
     assert named.framework == written.framework == Framework(
         ("test_*.py", "*_test.py"), "test_*", (("pytest", "mark", "skip"), ("pytest", "skip")),
-        CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id", ("argnames", "argvalues")))
+        (PYTEST_FORM,))
 
 
 def test_a_preset_is_the_same_map_validated_like_one_written_in_the_file():
@@ -46,7 +46,7 @@ def test_a_preset_is_the_same_map_validated_like_one_written_in_the_file():
     pytest.param({"functions": "test_*"}, PRESETS, ["layered.yaml: testing: missing `files`"], id="no files"),
     pytest.param({"files": ["test_*.py"]}, PRESETS, ["layered.yaml: testing: missing `functions`"], id="no functions"),
     pytest.param({"files": ["test_*.py"], "functions": "test_*", "colour": 1}, PRESETS,
-                 ["layered.yaml: testing: unknown key 'colour': use files, functions, mocks, skips, table, tables"],
+                 ["layered.yaml: testing: unknown key 'colour': use files, functions, mocks, skips, tables"],
                  id="an unknown key"),
     pytest.param({"files": ["x"], "functions": "test_*"}, PRESETS,
                  ["layered.yaml: testing.files: 'x' is not a file name pattern: a name ending in .py, with `*` for any "
@@ -68,11 +68,12 @@ def test_a_bad_testing_key_is_refused(testing, presets, expected):
 
 def test_the_table_of_cases_and_the_mocks_are_checked_with_the_framework_whether_or_not_a_guard_uses_them():
     document = covered()
-    document["testing"]["table"] = {"decorator": "x", "row": "y.z"}
+    document["testing"]["tables"] = [{"decorator": "x", "row": "y.z", "columns_from": {"position": 0},
+                                      "rows": {"position": 1}}]
     document["testing"]["mocks"] = {"calls": [], "autospec": ["a.b"], "spec_keywords": [], "fixtures": {}, "colour": 1}
     assert problems(document) == [
-        "layered.yaml: testing.table: missing `id`",
-        "layered.yaml: testing.table.decorator: 'x' is not an outside name such as <package>.<name>",
+        "layered.yaml: testing.tables.0: missing `id`",
+        "layered.yaml: testing.tables.0.decorator: 'x' is not an outside name such as <package>.<name>",
         "layered.yaml: testing.mocks: unknown key 'colour': use autospec, calls, fixtures, spec_keywords, spec_position",
         "layered.yaml: testing.mocks.calls: must be a list of outside names such as <package>.<name>",
         "layered.yaml: testing.mocks.spec_keywords: must be a list of keyword names such as [spec]",
@@ -441,9 +442,7 @@ FAKES = {"folder": "fakes", "for": ["store"], "prefix": "Fake"}
 def test_the_guards_in_use_are_those_named_with_the_framework_s_words_taken_from_testing():
     architecture = parsed(covered(guards=GUARDS, fakes=FAKES))
     assert architecture.guards == (
-        ScenarioCoverage("api", "integration", "Result", ("given", "when", "then"),
-                         CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id",
-                                   ("argnames", "argvalues")), "test_{name:snake}.py"),
+        ScenarioCoverage("api", "integration", "Result", ("given", "when", "then"), "test_{name:snake}.py"),
         StandIns((("unittest", "mock", "Mock"), ("unittest", "mock", "MagicMock")),
                  (("unittest", "mock", "create_autospec"),), ("spec", "spec_set"),
                  (Fixture("mocker", ("Mock", "MagicMock"), ("create_autospec",)),), 0),
@@ -567,11 +566,16 @@ def test_dead_code_without_fakes_is_refused():
         "classes in `fakes.folder`"]
 
 
-def test_scenario_coverage_reads_its_table_from_the_framework_and_says_so_when_there_is_none():
+NO_FORMS = ("layered.yaml: guards.scenario-coverage: needs `testing.tables`: the forms a table of cases is written in, "
+            "such as [{decorator, columns_from, rows, row, id}]")
+
+
+def test_scenario_coverage_reads_its_forms_from_the_framework_and_says_so_when_there_is_none():
     document = covered(guards={"scenario-coverage": GUARDS["scenario-coverage"]})
-    del document["testing"]["table"]
-    assert problems(document) == ["layered.yaml: guards.scenario-coverage: needs `testing.table`: how a table of cases "
-                                  "is written, such as {decorator, row, id}"]
+    del document["testing"]["tables"]
+    assert problems(document) == [NO_FORMS]
+    document["testing"]["tables"] = []
+    assert problems(document) == [NO_FORMS]
 
 
 SCENARIOS = "layered.yaml: guards.scenario-coverage"
@@ -632,10 +636,15 @@ def test_a_guard_that_reads_tests_needs_the_framework_even_without_tiers():
 
 
 
+PLAIN_NEEDS = ("layered.yaml: tiers.unit.plain_tables: needs `testing.tables`, the forms a table of cases is written in, "
+               "to know a table test")
+
+
 def test_a_tier_whose_table_tests_are_plain_says_so_and_needs_the_form_of_a_table():
     document = covered()
     document["tiers"]["unit"]["plain_tables"] = True
     assert [tier.plain_tables for tier in parsed(document).tiers] == [True, False]
-    document["testing"] = {key: value for key, value in TESTING.items() if key != "table"}
-    assert problems(document) == ["layered.yaml: tiers.unit.plain_tables: needs `testing.table`, how a table of cases "
-                                  "is written, to know a table test"]
+    document["testing"] = {key: value for key, value in TESTING.items() if key != "tables"}
+    assert problems(document) == [PLAIN_NEEDS]
+    document["testing"] = TESTING | {"tables": []}
+    assert problems(document) == [PLAIN_NEEDS]

@@ -31,11 +31,6 @@ fragments:
       files: [check_*%extension%]
       functions: "check_*"
   table: |2
-      table:
-        decorator: checks.cases
-        row: checks.case
-        id: id
-  tables: |2
       tables:
         - decorator: checks.cases
           columns_from: {position: 0, keyword: names}
@@ -147,7 +142,7 @@ keys:
   testing:
     meaning: how the test framework names things
     accepts: >-
-      a preset name, or a map {files, functions, skips, table, mocks}; needed with `tiers` and the guards
+      a preset name, or a map {files, functions, skips, tables, mocks}; needed with `tiers` and the guards
       scenario-coverage and stand-ins. Dotted names are what an import binds; what stays %language% is
       `%interface_path%` as the mark of a port, `%package_file%`, the syntax tree, import resolution and the standard
       library's names
@@ -593,10 +588,10 @@ keys:
   tiers.<tier>.plain_tables:
     meaning: its table tests hold no branch
     accepts: >-
-      true: no test function of the tier that holds a table of cases (as `testing.table` writes one) holds, in its body,
+      true: no test function of the tier that holds a table of cases (as `testing.tables` writes one) holds, in its body,
       a statement that branches (the language's `branching`) or an expression that chooses between values (its
       `branching_expressions`), as scenario-coverage holds the tables of a use case: the odd case is a test of its own;
-      needs `testing.table`
+      needs `testing.tables`
     example: |
       <<testing>>
       <<table>>
@@ -800,12 +795,6 @@ keys:
     example: |
       <<testing>>
         skips: [checks.skip, checks.expect_fail]
-  testing.table:
-    meaning: how a test function holds a table of cases
-    accepts: a map {decorator, row, id, keywords}
-    example: |
-      <<testing>>
-      <<table>>
   testing.mocks:
     meaning: how a mock is built
     accepts: a map {calls, autospec, spec_keywords, spec_position, fixtures}
@@ -813,31 +802,6 @@ keys:
       <<testing>>
         mocks:
       <<mocks>>
-  testing.table.decorator:
-    meaning: the decorator that holds the rows
-    accepts: a dotted name
-    example: |
-      <<testing>>
-      <<table>>
-  testing.table.row:
-    meaning: a row of the table
-    accepts: a dotted name
-    example: |
-      <<testing>>
-      <<table>>
-  testing.table.id:
-    meaning: the keyword that gives a row its id
-    accepts: a keyword name
-    example: |
-      <<testing>>
-      <<table>>
-  testing.table.keywords:
-    meaning: the two keywords of the decorator's arguments
-    accepts: "[<cases name>, <rows name>]"
-    example: |
-      <<testing>>
-      <<table>>
-          keywords: [names, rows]
   testing.tables:
     meaning: the forms a table of cases is written in
     accepts: >-
@@ -845,13 +809,13 @@ keys:
       the framework writes no table
     example: |
       <<testing>>
-      <<tables>>
+      <<table>>
   testing.tables[].decorator:
     meaning: the decorator that holds the table
     accepts: a dotted name, a decorator of the test whose arguments hold the column names and the rows
     example: |
       <<testing>>
-      <<tables>>
+      <<table>>
   testing.tables[].call:
     meaning: the calls that hold the table
     accepts: a list of dotted names, each a call that makes or wraps the test and whose arguments hold the rows
@@ -881,7 +845,7 @@ keys:
       fields of each row
     example: |
       <<testing>>
-      <<tables>>
+      <<table>>
   testing.tables[].rows:
     meaning: where the rows are
     accepts: >-
@@ -889,13 +853,13 @@ keys:
       call, refused with loop
     example: |
       <<testing>>
-      <<tables>>
+      <<table>>
   testing.tables[].row:
     meaning: how a row is written
     accepts: "a dotted name, a row being a call of it; or literal, a row being a list or object literal"
     example: |
       <<testing>>
-      <<tables>>
+      <<table>>
   testing.tables[].id:
     meaning: what gives a row its id
     accepts: >-
@@ -903,7 +867,7 @@ keys:
       value at that position
     example: |
       <<testing>>
-      <<tables>>
+      <<table>>
   testing.mocks.calls:
     meaning: the calls that build a mock
     accepts: a list of dotted names
@@ -990,8 +954,8 @@ keys:
       {results: <part>, tier: <tier>, suffix: <text>, columns: [<state>, <command>, <result>], file: <name>}: every
       variant of a union named <Name><suffix> in a results part is the result column of a row of the table in its use
       case's test file <file> (`{name:<case>}` is <Name> in that case: snake, kebab, camel or pascal) of that tier, or
-      is named by a standalone test of it; every row is a `testing.table.row` call with a `testing.table.id`, and a
-      table test has no branching; read from the syntax tree, never run
+      is named by a standalone test of it; every row is written as its form in `testing.tables` writes one, with a literal id,
+      and a table test has no branching; read from the syntax tree, never run
     example: |
       <<coverage-guard>>
   guards.no-comments:

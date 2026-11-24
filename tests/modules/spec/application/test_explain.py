@@ -46,7 +46,6 @@ SHAPE = (
     Shown('testing.files', 1, "patterns of a test file's name", True, True),
     Shown('testing.functions', 1, "the pattern of a test function's name", True, True),
     Shown('testing.skips', 1, 'what skips a test or expects it to fail', False, True),
-    Shown('testing.table', 1, 'how a test function holds a table of cases', False, True),
     Shown('testing.tables', 1, 'the forms a table of cases is written in', False, True),
     Shown('testing.mocks', 1, 'how a mock is built', False, True),
     Shown('parts', 0, 'where code sits, in the order their litmus tests run', True, True),

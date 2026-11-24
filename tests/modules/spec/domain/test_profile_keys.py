@@ -20,6 +20,7 @@ from xarch.modules.spec.domain.profile_keys import (
     RETIRED,
     RULE_ID,
     SCOPES,
+    TESTING,
     TIER,
     TIER_IMPORTS,
     Retired,
@@ -83,7 +84,8 @@ def test_the_names_retired_are_tier_the_old_names_of_never_and_its_keys_written_
         Retired(TIER, "may_import", "moved in 0.3.0: write imports: {may: [...]}"),
         Retired(TIER, "may_also_import", "moved in 0.3.0: write imports: {also: [...]}"),
         Retired(TIER, "must_import", "moved in 0.3.0: write imports: {must: [...]}"),
-        Retired(TIER, "types_only", "moved in 0.3.0: write imports: {types_only: [<part>, ...]}"))
+        Retired(TIER, "types_only", "moved in 0.3.0: write imports: {types_only: [<part>, ...]}"),
+        Retired(TESTING, "table", "moved in 0.3.0: write tables, a list of forms (xarch profile explain testing.tables)"))
 
 
 def test_holds_opens_a_scope_of_kinds_each_opening_a_scope_of_the_settings_it_takes():

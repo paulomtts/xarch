@@ -133,7 +133,7 @@ def test_python_supplies_every_fact_a_bundled_check_reads():
 def test_the_keys_a_profile_sets_are_found_in_every_scope_and_through_a_testing_preset_each_once():
     document, presets = everywhere()
     found = short(document, presets, PARTLY)
-    configured = [("testing.skips", "testing.skips"), ("testing.table", "testing.table"),
+    configured = [("testing.skips", "testing.skips"), ("testing.tables", "testing.tables"),
                   ("testing.mocks", "testing.mocks"), ("parts.api.imports.may", "parts.<part>.imports.may"),
                   ("parts.service.imports.may", "parts.<part>.imports.may"), ("parts.service.holds", "parts.<part>.holds"),
                   ("parts.service.holds.classes", "parts.<part>.holds.classes"),
