@@ -163,7 +163,8 @@ def _nested(node: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _put(nested: dict[str, Any], key: str, value: Any) -> None:
-    """The folder or file a key writes, put in nested one step to a level."""
+    """The folder or file a key writes, put in nested one step to a level; a folder given twice holds what both give,
+    its own keys first."""
     first, slash, rest = key.partition("/")
     if rest:
         held = nested.get(f"{first}/")
@@ -171,10 +172,16 @@ def _put(nested: dict[str, Any], key: str, value: Any) -> None:
             held = nested[f"{first}/"] = {}
         _put(held, rest, value)
         return
-    below = _nested(value) if isinstance(value, Mapping) else value
     step = f"{first}{slash}"
     held = nested.get(step)
-    nested[step] = {**held, **below} if isinstance(held, dict) and isinstance(below, dict) else below
+    if not isinstance(held, dict) or not isinstance(value, Mapping):
+        nested[step] = _nested(value) if isinstance(value, Mapping) else value
+        return
+    merged = {**held, **{key: item for key, item in value.items() if not _below(key)}}
+    for key, item in value.items():
+        if _below(key):
+            _put(merged, key, item)
+    nested[step] = _nested(merged)
 
 
 def _joined(nested: dict[str, Any]) -> dict[str, Any]:

@@ -162,3 +162,8 @@ def test_each_profile_shipped_or_archived_is_its_tree_as_the_writer_writes_it(pa
     assert written == document["parts"]
     assert json.dumps(written) == json.dumps(document["parts"])
     assert all(key.endswith("/") or "." in key for key in document["parts"])
+
+
+def test_a_folder_given_twice_is_written_once_with_all_it_holds_its_own_keys_first():
+    assert parts_written({"a/b/c/": {"role": "c"}, "a/": {"b/": {"role": "b"}, "role": "a"}}) == (
+        "  a/:\n    role: a\n    b/:\n      role: b\n      c/:\n        role: c\n")
