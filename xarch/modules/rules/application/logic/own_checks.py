@@ -15,7 +15,7 @@ from dataclasses import replace
 from xarch.kernel.logic.capabilities import shortfalls
 from xarch.kernel.logic.examples import is_test_example
 from xarch.kernel.logic.names import outside_steps
-from xarch.kernel.logic.targets import target
+from xarch.kernel.logic.targets import outside_imports, target
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.domain.errors import ChecksRefused, RuleRefused
 from xarch.modules.rules.domain.profile import Profile
@@ -115,9 +115,13 @@ def _match(written: WrittenTarget, owner: tuple[str, tuple[str, ...]] | None, pr
                                        place=True)) is not None)
         return Match(kind, places=places) if len(problems) == count else None
     if form == PARTS:
-        missing = [v for v in values if v not in profile.parts]
+        words = [repeat.word for repeat in profile.repeats]
+        prefixed = [said for v in values if (said := outside_imports(v, profile.parts, words)) is not None]
+        problems += [f"{where}.part: {said}" for said in prefixed]
+        missing = [v for v in values if v not in profile.parts and outside_imports(v, profile.parts, words) is None]
         if missing:
             problems.append(f"{where}.part: no part named {', '.join(map(repr, missing))}")
+        if prefixed or missing:
             return None
     if form == NAMES:
         return Match(kind, names=tuple(("", value[1:]) if value.startswith(".") else outside_steps(value, profile.language.member)

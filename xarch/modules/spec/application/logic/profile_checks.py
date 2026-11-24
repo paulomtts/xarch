@@ -12,6 +12,7 @@ from typing import Any
 from xarch.kernel.logic import names
 from xarch.kernel.logic.cases import CASED, CASES, filled
 from xarch.kernel.logic.placement import place_of
+from xarch.kernel.logic.targets import outside_imports
 from xarch.kernel.placement import EACH
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic.docs_files import DOCS_ROOT
@@ -104,7 +105,7 @@ def _file_name(language: Language) -> re.Pattern[str]:
 
 
 def layer_chains(value: Any, parts: dict[str, Part], declared: set[str], rules: dict[str, tuple[Target, ...]],
-            problems: list[str]) -> dict[str, tuple[str, ...]]:
+                 problems: list[str], *, words: Collection[str]) -> dict[str, tuple[str, ...]]:
     if not isinstance(value, Mapping):
         problems.append("layers: must be a mapping of names to lists of parts, from the inside out")
         return {}
@@ -120,7 +121,10 @@ def layer_chains(value: Any, parts: dict[str, Part], declared: set[str], rules: 
             continue
         ok = True
         for part in chain:
-            if not isinstance(part, str) or part not in declared:
+            if (prefixed := outside_imports(part, declared, words)) is not None:
+                problems.append(f"{where}: {prefixed}")
+                ok = False
+            elif not isinstance(part, str) or part not in declared:
                 problems.append(f"{where}: no part named {part!r}")
                 ok = False
             elif part in seen:
@@ -389,13 +393,18 @@ def rule_hints(value: Any, problems: list[str], own: Collection[str] = ()) -> di
     return found
 
 
-def part_names(value: Any, declared: set[str], where: str, problems: list[str]) -> list[str]:
+def part_names(value: Any, declared: Collection[str], where: str, problems: list[str], *,
+               words: Collection[str]) -> list[str]:
+    """The parts a key outside `imports` names, by their plain names, in the order written; a name that is no part
+    declared, one written as a reference (its prefix `parts` or one of words), or one listed twice adds its problem."""
     if not isinstance(value, list) or not value:
         problems.append(f"{where}: must be a list of part names")
         return []
     found: list[str] = []
     for name in value:
-        if not isinstance(name, str) or name not in declared:
+        if (prefixed := outside_imports(name, declared, words)) is not None:
+            problems.append(f"{where}: {prefixed}")
+        elif not isinstance(name, str) or name not in declared:
             problems.append(f"{where}: no part named {name!r}")
         elif name in found:
             problems.append(f"{where}: {name!r} is listed twice")
@@ -900,12 +909,15 @@ def never_names(value: Any, where: str, problems: list[str],
 
 
 def scenario_places(results: Any, tier: Any, suffix: Any, parts: dict[str, Part], declared: set[str],
-                    tiers: tuple[Tier, ...], where: str, problems: list[str], language: Language) -> None:
+                    tiers: tuple[Tier, ...], where: str, problems: list[str], language: Language, *,
+                    words: Collection[str]) -> None:
     """The part holding the result unions lies in a repeating folder, the tier is declared and tests that part, and the
     suffix is the end of a name."""
     part = parts.get(results) if isinstance(results, str) else None
     if part is None:
-        if not isinstance(results, str) or results not in declared:
+        if (prefixed := outside_imports(results, declared, words)) is not None:
+            problems.append(f"{where}.results: {prefixed}")
+        elif not isinstance(results, str) or results not in declared:
             problems.append(f"{where}.results: no part named {results!r}")
     elif not part.in_instance:
         problems.append(f"{where}.results: part '{results}' does not lie in the repeating folder: its unions are "

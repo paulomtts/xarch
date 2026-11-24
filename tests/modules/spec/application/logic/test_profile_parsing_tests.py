@@ -784,6 +784,8 @@ SCENARIOS = "layered.yaml: guards.scenario-coverage"
 
 @pytest.mark.parametrize("change, expected", [
     pytest.param({"results": "repo"}, [f"{SCENARIOS}.results: no part named 'repo'"]),
+    pytest.param({"results": "parts.api"}, [f"{SCENARIOS}.results: 'parts.api': names a part outside imports: write api"],
+                 id="a prefixed name"),
     pytest.param({"results": "shared"}, [
         f"{SCENARIOS}.results: part 'shared' does not lie in the repeating folder: its unions are matched to the tests "
         "of the same folder",

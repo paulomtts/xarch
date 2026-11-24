@@ -49,6 +49,22 @@ def test_a_place_in_an_old_form_is_refused_with_the_reference_the_part_the_scope
         "checks.placed.may_not.place: 'kernel@any': @any was removed in 0.3.0: write parts.kernel")
 
 
+def test_a_part_target_written_as_a_reference_is_told_the_plain_name_and_a_place_still_takes_one():
+    named = WrittenCheck(("import-into-app",), Scope(APP, "services"),
+                         Quantified(MAY_NOT, (WrittenTarget("part", ("parts.kernel", "module.domain", "ghost")),)),
+                         (Saying("m", "f"),))
+    with pytest.raises(ChecksRefused) as refused:
+        resolved(profile(written={"named": named}))
+    assert refused.value.problems == (
+        "checks.named.may_not.part: 'parts.kernel': names a part outside imports: write kernel",
+        "checks.named.may_not.part: 'module.domain': names a part outside imports: write domain",
+        "checks.named.may_not.part: no part named 'ghost'")
+    placed = WrittenCheck(("import-into-app",), Scope(APP, "services"),
+                          Quantified(MAY_NOT, (WrittenTarget("place", ("parts.kernel",)),)), (Saying("m", "f"),))
+    (check,) = resolved(profile(written={"placed": placed})).checks
+    assert check.rule.targets == (Match("place", places=(Target("kernel"),)),)
+
+
 def test_a_place_reads_a_reference_with_the_words_of_the_profile_s_repeating_folders():
     placed = WrittenCheck(("import-into-app",), Scope(APP, "services"),
                           Quantified(MAY_NOT, (WrittenTarget("place", ("parts.kernel", "module.domain/values")),)),

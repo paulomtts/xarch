@@ -212,3 +212,16 @@ def _implied(where: str, value: str, part: tuple[str, tuple[str, ...]], again: s
         return f"{where}: {value!r} is implied: a part may always import itself; remove it"
     return (f"{where}: {value!r} is implied: a part may always import itself, its own instance of the repeating "
             f"folder; remove it ({again}, another instance's too, stays allowed)")
+
+
+def outside_imports(value: Any, declared: Collection[str], words: Collection[str]) -> str | None:
+    """What is wrong with a value of a key outside `imports` that names a part by its plain name, written as a
+    reference: its prefix `parts` or one of words, the profile's, and its part declared, told the plain name to write;
+    None for any other value, which the key's reader words."""
+    if not isinstance(value, str):
+        return None
+    prefix, dot, rest = value.partition(".")
+    name = re.split("[/:]", rest, maxsplit=1)[0]
+    if not dot or (prefix != "parts" and prefix not in words) or name not in declared:
+        return None
+    return f"{value!r}: names a part outside imports: write {name}"

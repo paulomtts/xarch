@@ -3,7 +3,7 @@ repeating folders: the references parts.<part> and <word>.<part>, each read or r
 old forms (a bare name, @any, @own), each refused with the reference to write."""
 import pytest
 
-from xarch.kernel.logic.targets import target
+from xarch.kernel.logic.targets import outside_imports, target
 from xarch.profile_values.placement import Repeat, Target
 
 PARTS = {"domain": ("modules", "*", "domain"), "services": ("modules", "*", "services"), "kernel": ("kernel",),
@@ -264,3 +264,21 @@ def test_a_concrete_instance_name_is_refused_also_when_a_part_bears_that_name():
     assert read("orders.services", DOMAIN, parts=parts) == (
         None, ["at: 'orders.services': 'orders' is neither parts nor a word of this profile (module, unit): a profile "
                "names no instance; write module.services or parts.services"])
+
+
+@pytest.mark.parametrize("written, problem", [
+    pytest.param("parts.kernel", "'parts.kernel': names a part outside imports: write kernel", id="parts"),
+    pytest.param("module.domain", "'module.domain': names a part outside imports: write domain", id="a word"),
+    pytest.param("unit.store", "'unit.store': names a part outside imports: write store", id="a second word"),
+    pytest.param("module.domain/values", "'module.domain/values': names a part outside imports: write domain",
+                 id="a path dropped"),
+    pytest.param("parts.kernel:*Id", "'parts.kernel:*Id': names a part outside imports: write kernel",
+                 id="a pattern dropped"),
+    pytest.param("os.environ", None, id="a prefix that is no word"),
+    pytest.param("orders.domain", None, id="an instance named"),
+    pytest.param("parts.nope", None, id="a part not declared"),
+    pytest.param("kernel", None, id="a plain name"),
+    pytest.param(3, None, id="no text"),
+])
+def test_a_key_outside_imports_is_told_the_plain_name_of_a_prefixed_part(written, problem):
+    assert outside_imports(written, PARTS, ("module", "unit")) == problem

@@ -489,7 +489,33 @@ def test_a_reference_written_wrong_is_refused_at_its_address(services, guard, pr
     assert problems(referencing(services, guard)) == [problem]
 
 
-def test_a_reference_outside_imports_is_still_no_part_name():
-    """Only the lists under `imports` take references: `fakes.for` reads plain part names, as before."""
-    assert problems(covered(fakes={"folder": "fakes", "for": ["parts.store"]})) == [
-        "layered.yaml: fakes.for: no part named 'parts.store'"]
+def built_by(names: list) -> dict:
+    document = layered()
+    part_of(document, "service")["holds"] = {"classes": {"built_by": names}}
+    return document
+
+
+OUTSIDE = "names a part outside imports: write"
+
+
+@pytest.mark.parametrize("document, problem", [
+    pytest.param(built_by(["parts.store"]), f"parts.service.holds.classes.built_by: 'parts.store': {OUTSIDE} store",
+                 id="holds.classes.built_by"),
+    pytest.param(covered(fakes={"folder": "fakes", "for": ["parts.store"]}), f"fakes.for: 'parts.store': {OUTSIDE} store",
+                 id="fakes.for"),
+    pytest.param(covered(guards={"no-twins": {"translated": ["module.store"]}}),
+                 f"guards.no-twins.translated: 'module.store': {OUTSIDE} store", id="guards.no-twins.translated"),
+    pytest.param(covered(guards={"pass-through": {"parts": ["parts.service"]}}),
+                 f"guards.pass-through.parts: 'parts.service': {OUTSIDE} service", id="guards.pass-through.parts"),
+    pytest.param(covered(guards={"no-callbacks": {"parts": ["module.service/x"]}}),
+                 f"guards.no-callbacks.parts: 'module.service/x': {OUTSIDE} service", id="a path dropped"),
+    pytest.param(layered(layers={"app": ["parts.store", "api"]}), f"layers.app: 'parts.store': {OUTSIDE} store",
+                 id="layers"),
+    pytest.param(layered(docs={"entry": "module.api"}), f"docs.entry: 'module.api': {OUTSIDE} api", id="docs.entry"),
+    pytest.param(layered(docs={"entry": "orders.api"}), "docs.entry: no part named 'orders.api'",
+                 id="a prefix that is no word keeps the reader's text"),
+    pytest.param(covered(fakes={"folder": "fakes", "for": ["parts.nope"]}), "fakes.for: no part named 'parts.nope'",
+                 id="a part not declared keeps the reader's text"),
+])
+def test_a_key_outside_imports_refuses_a_prefixed_name_with_the_plain_one(document, problem):
+    assert problems(document) == [f"layered.yaml: {problem}"]

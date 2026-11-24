@@ -27,7 +27,7 @@ SMALL = {"read": "call", "may_not": {"path": ["builtins.print"]}, "message": "{w
 
 def read(value) -> tuple[dict, list[str]]:
     problems: list[str] = []
-    found = checks(value, set(ARCHITECTURE.parts), ARCHITECTURE.tiers, PYTHON, problems)
+    found = checks(value, set(ARCHITECTURE.parts), ARCHITECTURE.tiers, PYTHON, problems, words=("module",))
     return found, problems
 
 
@@ -91,6 +91,15 @@ def test_a_reach_from_roots_reads_its_roots_as_a_scope():
     pytest.param({"x": {**SMALL, "in": {"part": "web", "tier": "unit"}}},
                  ["checks.x.in.part: no part named 'web': write one of api, service, shared, store, or structure",
                   "checks.x.in.tier: no tier named 'unit': the profile has no tiers"], id="a part and a tier not declared"),
+    pytest.param({"x": {**SMALL, "in": {"part": "parts.api"}}},
+                 ["checks.x.in.part: 'parts.api': names a part outside imports: write api"], id="a part by a reference"),
+    pytest.param({"x": {**SMALL, "in": {"part": "orders.api"}}},
+                 ["checks.x.in.part: no part named 'orders.api': write one of api, service, shared, store, or structure"],
+                 id="a prefix that is no word keeps the reader's text"),
+    pytest.param({"x": {**{k: v for k, v in SMALL.items() if k != "may_not"}, "read": "class",
+                        "must_be_reached": {"from": {"part": "module.api"}, "through": "names-mentioned"}}},
+                 ["checks.x.must_be_reached.from.part: 'module.api': names a part outside imports: write api"],
+                 id="a part reached from, by a reference"),
     pytest.param({"x": {**SMALL, "keep": [{"named": "a", "x": "b"}, 3]}},
                  ["checks.x.keep: {'named': 'a', 'x': 'b'} is not a filter: write a name, `not <name>`, or "
                   "{<name>: <value>}", "checks.x.keep: 3 is not a filter: write a name, `not <name>`, or "
@@ -138,6 +147,6 @@ def test_an_example_of_any_ending_of_the_language_is_read_and_a_refusal_prints_t
     problems: list[str] = []
     braced = {"x": {**SMALL, "examples": {"flagged": {"src/billing/api/x.tsx": "a\n"},
                                           "clean": {"src/billing/api/y.js": "b\n"}}}}
-    assert checks(braced, set(ARCHITECTURE.parts), ARCHITECTURE.tiers, BRACE, problems) == {}
+    assert checks(braced, set(ARCHITECTURE.parts), ARCHITECTURE.tiers, BRACE, problems, words=("module",)) == {}
     assert problems == ["checks.x.examples.clean: 'src/billing/api/y.js' is not a path of a source file below the app "
                         "(or tests/...), ending in .ts"]

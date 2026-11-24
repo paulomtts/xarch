@@ -27,6 +27,7 @@ from collections.abc import Collection, Mapping
 from typing import Any
 
 from xarch.kernel.logic.placement import place_of, stem
+from xarch.kernel.logic.targets import outside_imports
 from xarch.kernel.violations import OWN_ID
 from xarch.modules.spec.application.logic import profile_checks as ck
 from xarch.modules.spec.application.logic.key_lookup import names_of
@@ -63,11 +64,11 @@ _RULED = ("uses.never", "holds")
 """The keys of a part by which `check` tells parts apart, so that parts that differ in one are not alike."""
 
 
-def evals(value: Any, declared: Collection[str], language: Language,
-          problems: list[str]) -> tuple[dict[str, float], tuple[Examples, Examples], dict[str, Eval], Groups]:
+def evals(value: Any, declared: Collection[str], language: Language, problems: list[str], *,
+          words: Collection[str]) -> tuple[dict[str, float], tuple[Examples, Examples], dict[str, Eval], Groups]:
     """The line of each part the profile writes one for, by part; placement's own flagged and clean examples; every
     eval of the profile's own, by id; and the groups of parts placement reads alike; each in the order of the file, an
-    eval or a group with a problem left out."""
+    eval or a group with a problem left out. words are the profile's, which a part these name never takes."""
     if not isinstance(value, Mapping):
         problems.append("evals: must be a mapping of the evals review asks, by id, such as "
                         "{placement: {lines: {documents: 0.2}}}")
@@ -81,15 +82,15 @@ def evals(value: Any, declared: Collection[str], language: Language,
                             "rule-outside-entity, nor a key of evals: use placement")
             continue
         count = len(problems)
-        found = _own(body, f"evals.{name}", declared, language, problems)
+        found = _own(body, f"evals.{name}", declared, language, problems, words)
         if found is not None and len(problems) == count:
             own[name] = found
-    lines, examples, alike = _placement(value.get(BUILT_IN), declared, language, problems)
+    lines, examples, alike = _placement(value.get(BUILT_IN), declared, language, problems, words)
     return lines, examples, own, alike
 
 
-def _placement(placement: Any, declared: Collection[str], language: Language,
-               problems: list[str]) -> tuple[dict[str, float], tuple[Examples, Examples], Groups]:
+def _placement(placement: Any, declared: Collection[str], language: Language, problems: list[str],
+               words: Collection[str]) -> tuple[dict[str, float], tuple[Examples, Examples], Groups]:
     if placement is None:
         return {}, ((), ()), ()
     if not isinstance(placement, Mapping):
@@ -99,14 +100,14 @@ def _placement(placement: Any, declared: Collection[str], language: Language,
         return {}, ((), ()), ()
     written = {_SIDES.get(key, key) if isinstance(key, bool) else key: value for key, value in placement.items()}
     problems += ck.unknown_keys(written, names_of(PLACEMENT), "evals.placement", PLACEMENT)
-    lines = _lines(placement["lines"], declared, problems) if "lines" in placement else {}
-    alike = _alike(placement["alike"], declared, problems) if "alike" in placement else ()
+    lines = _lines(placement["lines"], declared, problems, words) if "lines" in placement else {}
+    alike = _alike(placement["alike"], declared, problems, words) if "alike" in placement else ()
     if "examples" not in placement:
         return lines, ((), ()), alike
     return lines, _examples(placement["examples"], "evals.placement.examples", language, problems, needed=0), alike
 
 
-def _alike(value: Any, declared: Collection[str], problems: list[str]) -> Groups:
+def _alike(value: Any, declared: Collection[str], problems: list[str], words: Collection[str]) -> Groups:
     """The groups written, each refused at its address: one that is no list of names, names a part twice, names
     fewer than two or a name that is no part, or names a part an earlier group holds; none when one is refused, so
     that each group kept stands at its own address."""
@@ -124,7 +125,8 @@ def _alike(value: Any, declared: Collection[str], problems: list[str]) -> Groups
             problems.append(f"{at}: must be a list of two parts or more that one file cannot tell apart, such as "
                             "[drafts, documents]")
             continue
-        problems += [f"{at}: {name!r} is not a part of this profile: name a part under parts" for name in group
+        problems += [f"{at}: {prefixed}" if (prefixed := outside_imports(name, declared, words)) is not None
+                     else f"{at}: {name!r} is not a part of this profile: name a part under parts" for name in group
                      if name not in declared]
         problems += [f"{at}: names {name!r} twice: name each part once" for name in dict.fromkeys(group)
                      if group.count(name) > 1]
@@ -159,14 +161,16 @@ def _and(words: list[str]) -> str:
     return words[0] if len(words) == 1 else f"{', '.join(words[:-1])} and {words[-1]}"
 
 
-def _lines(value: Any, declared: Collection[str], problems: list[str]) -> dict[str, float]:
+def _lines(value: Any, declared: Collection[str], problems: list[str], words: Collection[str]) -> dict[str, float]:
     where = "evals.placement.lines"
     if not isinstance(value, Mapping):
         problems.append(f"{where}: must be a mapping of parts to their line, such as {{documents: 0.2}}")
         return {}
     found: dict[str, float] = {}
     for part, line in value.items():
-        if part not in declared:
+        if (prefixed := outside_imports(part, declared, words)) is not None:
+            problems.append(f"{where}: {prefixed}")
+        elif part not in declared:
             problems.append(f"{where}: {part!r} is not a part of this profile: name a part under parts")
         elif not _line(line):
             problems.append(f"{where}.{part}: {line!r} is not a line: write a number above 0 and below 1, such as 0.2")
@@ -179,7 +183,8 @@ def _line(value: Any) -> bool:
     return isinstance(value, int | float) and not isinstance(value, bool) and 0 < value < 1
 
 
-def _own(body: Any, where: str, declared: Collection[str], language: Language, problems: list[str]) -> Eval | None:
+def _own(body: Any, where: str, declared: Collection[str], language: Language, problems: list[str],
+         words: Collection[str]) -> Eval | None:
     slots = names_of(EVAL)
     if not isinstance(body, Mapping):
         problems.append(f"{where}: must be a map of slots: {', '.join(sorted(slots))}")
@@ -190,7 +195,7 @@ def _own(body: Any, where: str, declared: Collection[str], language: Language, p
     ask = _ask(body.get("ask"), f"{where}.ask", problems) if "ask" in body else ""
     form, options, flagged = _answer(body.get("answer"), body, where, problems)
     reads = _reads(body.get("reads"), f"{where}.reads", language, problems)
-    within = _within(body.get("in", {}), f"{where}.in", declared, problems)
+    within = _within(body.get("in", {}), f"{where}.in", declared, problems, words)
     keep = filters(body.get("keep", []), f"{where}.keep", problems)
     line = body.get("line")
     if line is not None and not _line(line):
@@ -272,11 +277,11 @@ def _reads(value: Any, where: str, language: Language, problems: list[str]) -> s
     return value
 
 
-def _within(value: Any, where: str, declared: Collection[str], problems: list[str]) -> Scope:
+def _within(value: Any, where: str, declared: Collection[str], problems: list[str], words: Collection[str]) -> Scope:
     if isinstance(value, Mapping) and ({"files", "tier"} & set(value)):
         problems.append(f"{where}: review reads the app's files only: write part and where")
         return Scope()
-    found = scope(value, where, set(declared), set(), problems)
+    found = scope(value, where, set(declared), set(), problems, words=words)
     if found.part == STRUCTURE:
         problems.append(f"{where}.part: review reads the files of a part only: name a part")
     return found
