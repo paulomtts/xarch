@@ -8,7 +8,7 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.spec.application.origins import BASE, PARTS, TESTING, TIER, part
-from tests.modules.spec.profiles import covered, layered, parsed
+from tests.modules.spec.profiles import covered, layered, parsed, part_of
 from xarch.modules.spec.application.logic.looseness import LOOSER, LOW, origin_of
 from xarch.modules.spec.domain.guards import ORDER
 from xarch.modules.spec.domain.published import Loosened, Origin
@@ -29,9 +29,9 @@ def loosened(custom: Architecture, base: Architecture) -> tuple[Loosened, ...]:
 ])
 def test_a_target_added_to_a_rule_is_shown_as_written(written, shown):
     custom = layered()
-    custom["parts"]["api"]["imports"] = {"may": written}
+    part_of(custom, "api")["imports"] = {"may": written}
     stricter = layered()
-    stricter["parts"]["api"]["imports"] = {"may": []}
+    part_of(stricter, "api")["imports"] = {"may": []}
     assert loosened(parsed(custom), parsed(stricter)) == (
         Loosened("imports.may", "api", shown, f"api may also import {shown} (parts.api.imports.may)"),)
 
@@ -43,7 +43,7 @@ def test_a_target_added_to_a_rule_is_shown_as_written(written, shown):
 ])
 def test_a_target_below_one_the_bundled_profile_allows_is_not_looser(target):
     custom = layered()
-    custom["parts"]["service"]["imports"] = {"may": ["store", "shared", target]}
+    part_of(custom, "service")["imports"] = {"may": ["store", "shared", target]}
     assert loosened(parsed(custom), parsed(layered())) == ()
 
 
@@ -53,8 +53,8 @@ def test_a_profile_that_checks_no_outside_package_is_looser_than_one_that_does()
 
 
 def test_every_way_a_profile_is_looser_than_another_is_found_in_order():
-    parts = {**PARTS, "core": {**PARTS["core"], "imports": {"may": ["store"], "libraries": ["yaml"]}},
-             "store": {"path": "store", "role": "storage",
+    parts = {**PARTS, "core/": {**PARTS["core/"], "imports": {"may": ["store"], "libraries": ["yaml"]}},
+             "store/": {"role": "storage",
                        "imports": {"may": ["core"], "libraries": ["sqlmodel", "requests"]}, "untested": "trust me"}}
     custom = {**BASE, "parts": parts, "never": {"pure": ["socket"]},
               "tiers": {"unit": {key: value for key, value in TIER.items() if key != "imports"}
@@ -105,9 +105,9 @@ def test_a_name_the_base_reserves_and_the_custom_profile_does_not_is_looser():
 
 def test_a_part_redefined_without_the_litmus_the_base_gives_it_is_looser_and_one_the_base_gives_none_is_not():
     base = layered()
-    base["parts"]["api"]["litmus"] = "Does it answer a request?"
+    part_of(base, "api")["litmus"] = "Does it answer a request?"
     custom = layered()
-    custom["parts"]["store"]["litmus"] = "Does it keep a record?"
+    part_of(custom, "store")["litmus"] = "Does it keep a record?"
     assert loosened(parsed(custom), parsed(base)) == (
         Loosened("litmus", "api", "",
                  "api has no litmus, though the profile it is compared with gives it one (parts.api.litmus)"),)
@@ -156,16 +156,16 @@ def test_a_part_whose_line_is_below_the_one_the_base_gives_it_is_looser_and_a_hi
 
 def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
     """Each case of LOOSER is reached by one of these pairs (custom, base), and each key is said its own way."""
-    store = {key: value for key, value in PARTS["store"].items() if key != "tests"}
-    every = {**BASE, "parts": {**PARTS, "store": store | {"untested": "trust me",
+    store = {key: value for key, value in PARTS["store/"].items() if key != "tests"}
+    every = {**BASE, "parts": {**PARTS, "store/": store | {"untested": "trust me",
                                "imports": {"may": ["core"], "libraries": ["sqlmodel", "requests"]}},
-                               "core": {**PARTS["core"], "imports": {"may": ["store"]}}},
+                               "core/": {**PARTS["core/"], "imports": {"may": ["store"]}}},
              "never": {"pure": ["socket"]}, "testing": {**TESTING, "skips": ["pytest.mark.skip"]},
              "tiers": {"unit": {key: value for key, value in TIER.items() if key != "imports"}
                        | {"uses": {"apply_never": False}, "imports": {"also": ["edge"]}}},
              "files": {"tests/test_rules.py": {"from": "guard.py"}}}
     litmus = layered()
-    litmus["parts"]["api"]["litmus"] = "Does it answer a request?"
+    part_of(litmus, "api")["litmus"] = "Does it answer a request?"
     pairs = [
         (parsed(every), parsed(BASE)),
         (parsed(BASE), parsed({**BASE, "parts": part("store", imports={"may": ["core"], "must": ["core"], "libraries": ["sqlmodel"]})})),
@@ -197,7 +197,7 @@ MARK = "imports.may.types_only"
 def marked(may) -> dict:
     """layered(), its part service allowed may."""
     document = layered()
-    document["parts"]["service"]["imports"]["may"] = may
+    part_of(document, "service")["imports"]["may"] = may
     return document
 
 
@@ -227,7 +227,7 @@ def test_a_tier_s_looser_keys_are_those_of_its_group_and_the_old_words_are_gone(
 
 def bare(**paths: str) -> Architecture:
     """A profile of the parts given, each at its path, checking no outside package: one item per part and no more."""
-    return replace(parsed({"name": "bare", "parts": {name: {"path": path, "role": "code"} for name, path in paths.items()}}),
+    return replace(parsed({"name": "bare", "parts": {f"{path}/": {"role": "code"} for path in paths.values()}}),
                    imports_libraries=None)
 
 
@@ -238,7 +238,25 @@ def compared(custom: Architecture, base: Architecture) -> Origin:
 
 def renamed(document: dict, old: str, new: str) -> dict:
     """The document with the part old named new, at the same place in the order and the same path."""
-    document["parts"] = {new if name == old else name: part for name, part in document["parts"].items()}
+    part_of(document, old)["name"] = new
+    return document
+
+
+def moved(document: dict, name: str, folder: str) -> dict:
+    """The document with the part name at another folder, in the same folder of its parent and the same place in the
+    order, still named name."""
+    def walk(node: dict) -> bool:
+        for key, value in node.items():
+            if value is part_of(document, name):
+                value["name"] = name
+                items = [(folder if entry == key else entry, kept) for entry, kept in node.items()]
+                node.clear()
+                node.update(items)
+                return True
+            if isinstance(value, dict) and walk(value):
+                return True
+        return False
+    assert walk(document["parts"])
     return document
 
 
@@ -251,7 +269,7 @@ def test_a_copy_of_a_profile_matches_it_at_100_percent():
 
 def test_a_key_one_side_drops_on_a_paired_part_is_comparable_and_listed_looser():
     base = layered()
-    base["parts"]["api"]["litmus"] = "Does it answer a request?"
+    part_of(base, "api")["litmus"] = "Does it answer a request?"
     origin = compared(parsed(layered()), parsed(base))
     assert origin.match == 1.0
     assert [item.key for item in origin.looser] == ["litmus"]
@@ -259,7 +277,7 @@ def test_a_key_one_side_drops_on_a_paired_part_is_comparable_and_listed_looser()
 
 def test_the_items_of_an_unpaired_part_are_not_comparable():
     custom = layered()
-    custom["parts"]["jobs"] = {"path": "jobs", "role": "batch work", "litmus": "Does it run on a schedule?",
+    custom["parts"]["jobs/"] = {"role": "batch work", "litmus": "Does it run on a schedule?",
                                "imports": {"may": ["shared"]}}
     origin = compared(parsed(custom), parsed(layered()))
     assert origin.counts[:2] == (("parts", 4, 5), ("part_keys", 7, 10))
@@ -276,7 +294,7 @@ def test_guards_and_profile_keys_are_always_comparable():
 
 def test_each_setting_of_a_held_kind_is_an_item_of_its_own():
     custom = layered()
-    custom["parts"]["service"]["holds"] = {"classes": {"names": ["*Service"], "immutable": True, "built_by": ["api"]}}
+    part_of(custom, "service")["holds"] = {"classes": {"names": ["*Service"], "immutable": True, "built_by": ["api"]}}
     assert compared(parsed(custom), parsed(layered())).counts[1] == ("part_keys", 11, 11)
 
 
@@ -353,7 +371,7 @@ def test_the_counts_are_by_kind_in_order():
 
 def test_a_pair_by_name_at_another_path_is_named_elsewhere():
     custom = layered()
-    custom["parts"]["store"]["path"] = "src/<module>/db"
+    moved(custom, "store", "db/")
     origin = compared(parsed(custom), parsed(layered()))
     assert origin.elsewhere == ("store: src/*/store there",)
     assert origin.match == 1.0
@@ -361,7 +379,7 @@ def test_a_pair_by_name_at_another_path_is_named_elsewhere():
 
 def test_a_part_renamed_in_place_pairs_by_its_path_and_is_compared_under_its_own_name():
     custom = renamed(layered(), "api", "routes")
-    custom["parts"]["routes"]["imports"] = {"may": ["service", "store"]}
+    part_of(custom, "routes")["imports"] = {"may": ["service", "store"]}
     origin = compared(parsed(custom), parsed(layered()))
     assert (origin.match, origin.only_here, origin.only_there) == (1.0, (), ())
     assert origin.looser == (
@@ -370,9 +388,9 @@ def test_a_part_renamed_in_place_pairs_by_its_path_and_is_compared_under_its_own
 
 def test_a_target_naming_a_part_renamed_in_place_is_read_through_the_pairing():
     base = layered()
-    base["parts"]["service"]["imports"] = {"may": ["store", "shared", "api"]}
+    part_of(base, "service")["imports"] = {"may": ["store", "shared", "api"]}
     custom = renamed(layered(), "api", "routes")
-    custom["parts"]["service"]["imports"] = {"may": ["store", "shared", "routes"]}
+    part_of(custom, "service")["imports"] = {"may": ["store", "shared", "routes"]}
     origin = compared(parsed(custom), parsed(base))
     assert (origin.match, origin.looser) == (1.0, ())
 
@@ -382,7 +400,7 @@ def test_a_tier_renamed_with_the_same_subject_pairs_by_subject():
     base["tiers"]["unit"]["uses"] = {"apply_never": True}
     custom = covered()
     custom["tiers"] = {"logic" if name == "unit" else name: tier for name, tier in custom["tiers"].items()}
-    custom["parts"]["service"]["tests"] = "logic"
+    part_of(custom, "service")["tests"] = "logic"
     origin = compared(parsed(custom), parsed(base))
     assert (origin.match, origin.only_here, origin.only_there) == (1.0, (), ())
     assert origin.looser == (Loosened("uses.apply_never", "logic", "", "the logic tests are no longer held to their "
@@ -392,14 +410,15 @@ def test_a_tier_renamed_with_the_same_subject_pairs_by_subject():
 
 def given(document: dict, name: str, **keys) -> dict:
     """The document with its part name given the keys given besides its own."""
-    document["parts"][name] |= keys
+    part_of(document, name).update(keys)
     return document
 
 
 def as_routes(value):
-    """value with every "api" in it, as a key or an entry, read as "routes": api renamed in place."""
+    """value with every "api" in it, as a key or an entry, read as "routes": the folder api/ named routes in place."""
     if isinstance(value, dict):
-        return {("routes" if key == "api" else key): as_routes(entry) for key, entry in value.items()}
+        read = {("routes" if key == "api" else key): as_routes(entry) for key, entry in value.items()}
+        return read | {"api/": {**read["api/"], "name": "routes"}} if "api/" in read else read
     if isinstance(value, list):
         return [as_routes(entry) for entry in value]
     return "routes" if value == "api" else value
@@ -565,7 +584,7 @@ def test_a_part_held_to_fewer_users_of_its_public_names_is_looser(base, custom, 
 
 def test_a_part_that_pairs_with_none_is_compared_neither_on_what_it_holds_nor_on_how_widely_it_is_shared():
     custom = renamed(layered(), "api", "routes")
-    custom["parts"]["routes"]["path"] = "src/<module>/routes"
+    moved(custom, "routes", "routes/")
     base = given(layered(), "api", shared=3, holds={"classes": {"names": "*Api"}})
     assert loosened(parsed(custom), parsed(base)) == ()
 
@@ -599,15 +618,15 @@ def test_a_tier_renamed_in_place_no_longer_plain_tables_is_said_under_its_new_na
     base = plain()
     custom = covered()
     custom["tiers"] = {"logic" if name == "unit" else name: tier for name, tier in custom["tiers"].items()}
-    custom["parts"]["service"]["tests"] = "logic"
+    part_of(custom, "service")["tests"] = "logic"
     assert loosened(parsed(custom), parsed(base)) == (
         Loosened("plain_tables", "logic", "", "the table tests of the logic tests may now branch (tiers.logic.plain_tables)"),)
 
 
 def test_the_ways_a_part_holds_and_a_tier_reaches_are_listed_after_the_other_ways_of_each():
     base = tight()
-    base["parts"]["api"]["litmus"] = "Does it answer a request?"
-    base["parts"]["service"] |= {"holds": {"classes": {"names": "*Service"}}, "shared": 3}
+    part_of(base, "api")["litmus"] = "Does it answer a request?"
+    part_of(base, "service").update({"holds": {"classes": {"names": "*Service"}}, "shared": 3})
     base["tiers"]["unit"]["uses"] = {"apply_never": True}
     assert [(item.key, item.part, item.what) for item in loosened(parsed(covered()), parsed(base))] == [
         ("litmus", "api", ""), ("holds", "service", "functions"), ("holds.classes.names", "service", ""),
@@ -646,10 +665,10 @@ def test_a_chain_no_bundled_profile_pairs_with_rests_on_none_and_excuses_no_guar
 
 def test_a_part_the_anchor_gives_a_litmus_is_listed_once_after_the_ways_it_is_looser_than_the_file():
     anchor = layered()
-    anchor["parts"]["api"]["litmus"] = "Does it answer a request?"
-    anchor["parts"]["service"]["litmus"] = "Does it decide?"
+    part_of(anchor, "api")["litmus"] = "Does it answer a request?"
+    part_of(anchor, "service")["litmus"] = "Does it decide?"
     team = layered(based_on="cli")
-    team["parts"]["api"]["litmus"] = "Does it answer a request?"
+    part_of(team, "api")["litmus"] = "Does it answer a request?"
     mine = replace(parsed(layered()), based_on="team.yaml")
     origin = origin_of("mine.yaml", mine, False, {"cli": parsed(anchor)}, chain=(parsed(team),))
     assert origin.looser == (

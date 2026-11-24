@@ -16,7 +16,7 @@ IMPORTS = "| Part | May import |\n|---|---|\n| `core/` | nothing |\n| `api/` | `
                  id="a profile is shown as its folder tree with roles and the table of what each part may import"),
     pytest.param(dict(), ViewProfile(APP, "nope"), ProfileRefused("unknown profile 'nope': use one of base"),
                  id="a profile that is not bundled is refused with the ones that are"),
-    pytest.param(dict(files={"mine.yaml": {**BASE, "parts": {"core": {"path": "core"}}}}), ViewProfile(APP, "mine.yaml"),
+    pytest.param(dict(files={"mine.yaml": {**BASE, "parts": {"core/": {"litmus": "q"}}}}), ViewProfile(APP, "mine.yaml"),
                  ProfileRefused("mine.yaml: parts.core: missing `role`"),
                  id="a profile that does not load is refused with its problems"),
     pytest.param(dict(), ViewProfile(APP, None), NoProfileChosen(("base",)),

@@ -5,7 +5,7 @@ import pytest
 
 from tests.modules.spec.format_files import FILE_TYPES
 from tests.modules.spec.languages import BRACE
-from tests.modules.spec.profiles import covered, layered, parsed, problems
+from tests.modules.spec.profiles import covered, layered, parsed, part_of, problems
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic.docs_template import fill
 
@@ -18,14 +18,14 @@ ONE_LIST = "names one list under never: write the name of a list, such as pure; 
 def with_list(names, **changes) -> dict:
     """The covered profile with a list `pure` of the names, which the service part names under `uses`."""
     document = covered(never={"pure": names}, **changes)
-    document["parts"]["service"]["uses"] = {"never": "pure"}
+    part_of(document, "service")["uses"] = {"never": "pure"}
     return document
 
 
 def service_uses(uses) -> dict:
     """The covered profile with the lists pure and ambient under `never`, its service part writing `uses` as given."""
     document = covered(never=LISTS)
-    document["parts"]["service"]["uses"] = uses
+    part_of(document, "service")["uses"] = uses
     return document
 
 
@@ -48,7 +48,7 @@ def named(name: str, key: str) -> str:
 def naming(never, uses) -> dict:
     """The covered profile with the lists given under `never`, its service part naming the list uses."""
     document = covered(never=never)
-    document["parts"]["service"]["uses"] = {"never": uses}
+    part_of(document, "service")["uses"] = {"never": uses}
     return document
 
 
@@ -59,7 +59,7 @@ def unit_uses(uses) -> dict:
     return document
 
 
-PART_USE = ("folders, holds, imports, litmus, package_only, path, role, shared, tests, untested, uses")
+PART_USE = ("holds, imports, litmus, name, package_only, role, shared, tests, untested, uses")
 TIER_USE = "docs, folder, imports, litmus, plain_tables, proves, uses"
 FILE_USE = ("based_on, checks, docs, evals, excluded, fakes, files, guards, hints, language, layers, name, never, parts, "
             "reserved, review, testing, tiers")
@@ -73,7 +73,7 @@ NO_TIER = "no tier tests it: give it `tests: <tier>`, or `untested: <reason>`"
 def service_writing(**keys) -> dict:
     """The covered profile with the lists pure and ambient under `never`, its service part writing the keys given."""
     document = covered(never=LISTS)
-    document["parts"]["service"] |= keys
+    part_of(document, "service").update(keys)
     return document
 
 
@@ -157,7 +157,7 @@ def test_a_part_s_uses_written_wrong_is_refused_at_its_address(uses, problem):
 ])
 def test_a_part_naming_a_list_the_file_does_not_hold_is_told_to_write_it_under_never(changes):
     document = layered(**changes)
-    document["parts"]["service"]["uses"] = {"never": "pure"}
+    part_of(document, "service")["uses"] = {"never": "pure"}
     assert problems(document) == ["layered.yaml: parts.service.uses.never: no list named 'pure': write it under "
                                   "`never`"]
 
@@ -210,9 +210,9 @@ def test_the_guards_section_shows_a_method_as_written_and_says_what_it_does_not_
 
 def test_the_guards_section_lists_the_names_each_part_never_uses_and_says_what_it_does_not_see():
     document = covered(never={"clock": ["time.time", "socket"], "printing": ["builtins.print"]})
-    document["parts"]["service"]["uses"] = {"never": "clock"}
-    document["parts"]["store"]["uses"] = {"never": "clock"}
-    document["parts"]["api"]["uses"] = {"never": "printing"}
+    part_of(document, "service")["uses"] = {"never": "clock"}
+    part_of(document, "store")["uses"] = {"never": "clock"}
+    part_of(document, "api")["uses"] = {"never": "printing"}
     document["tiers"]["unit"]["uses"] = {"apply_never": True}
     lines = fill("{{guards}}", parsed(document), "layered.md", file_types=FILE_TYPES).splitlines()
     assert lines[3] == (
@@ -245,7 +245,7 @@ def test_apply_never_under_a_part_s_uses_is_only_unknown_there():
 
 def test_a_part_of_an_old_profile_writing_forbidden_and_tier_gets_both_in_sorted_order_then_no_tier_tests_it():
     document = service_writing(forbidden="pure", tier="unit")
-    document["parts"]["service"].pop("tests")
+    part_of(document, "service").pop("tests")
     assert problems(document) == [
         f"layered.yaml: parts.service: unknown key 'forbidden': {LIST_MOVED}; use {PART_USE}",
         f"layered.yaml: parts.service: unknown key 'tier': renamed in 0.3.0: write tests; use {PART_USE}",
@@ -274,8 +274,8 @@ def test_a_tier_writing_apply_never_outside_uses_is_told_it_is_a_key_of_uses():
 
 def test_a_file_writing_the_block_forbidden_is_told_it_is_renamed_never_and_its_parts_once_each():
     document = covered(forbidden=LISTS)
-    document["parts"]["service"]["forbidden"] = "pure"
-    document["parts"]["store"]["forbidden"] = "pure"
+    part_of(document, "service")["forbidden"] = "pure"
+    part_of(document, "store")["forbidden"] = "pure"
     assert problems(document) == [
         f"layered.yaml: unknown key 'forbidden': renamed in 0.3.0: write never; use {FILE_USE}",
         f"layered.yaml: parts.service: unknown key 'forbidden': {LIST_MOVED}; use {PART_USE}",
@@ -307,8 +307,8 @@ def brace_document(ambient=("node:fs#readFileSync", "globalThis#fetch", ".toISOS
     """The layered profile as an app in the brace language writes it: its store's outside packages by the language's
     package names, and a list of outside names under `never`, which its service part never uses."""
     document = layered(never={"ambient": list(ambient)})
-    document["parts"]["store"].setdefault("imports", {})["libraries"] = list(libraries)
-    document["parts"]["service"]["uses"] = {"never": "ambient"}
+    part_of(document, "store").setdefault("imports", {})["libraries"] = list(libraries)
+    part_of(document, "service")["uses"] = {"never": "ambient"}
     return document
 
 
@@ -463,7 +463,7 @@ def test_a_list_named_like_a_standard_package_is_refused_and_an_entry_of_that_na
 
 def test_the_standard_library_a_list_may_not_be_named_from_is_the_language_s():
     document = layered(never={"fs": ["lodash"], "pure": ["fs"]})
-    document["parts"]["service"]["uses"] = {"never": "pure"}
+    part_of(document, "service")["uses"] = {"never": "pure"}
     assert problems(document, languages={"brace": BRACE}) == [
         f"layered.yaml: {standard('fs', 'Brace')}"]
     assert parsed(document).uses_never == {"service": (("lodash",),)}
@@ -473,7 +473,7 @@ def test_a_list_named_like_a_package_a_part_lists_is_refused_naming_the_first_pa
     assert problems(covered(never={"sqlmodel": ["x.one"]})) == [
         f"layered.yaml: {named('sqlmodel', 'parts.store.imports.libraries')}"]
     document = covered(never={"sqlmodel": ["x.one"]})
-    document["parts"]["service"].setdefault("imports", {})["libraries"] = ["sqlmodel"]
+    part_of(document, "service").setdefault("imports", {})["libraries"] = ["sqlmodel"]
     assert problems(document) == [f"layered.yaml: {named('sqlmodel', 'parts.service.imports.libraries')}"]
 
 
@@ -484,7 +484,7 @@ def test_a_list_named_like_a_reserved_module_is_refused_once_as_a_standard_packa
 
 def test_a_part_whose_libraries_are_everything_names_no_package():
     document = covered(never={"sqlmodel": ["x.one"]})
-    document["parts"]["store"].setdefault("imports", {})["libraries"] = "everything"
+    part_of(document, "store").setdefault("imports", {})["libraries"] = "everything"
     assert parsed(document).uses_never == {}
 
 
@@ -502,7 +502,7 @@ def test_a_list_s_name_problem_comes_first_then_its_entries_then_its_includes():
 
 def test_never_reserved_and_libraries_are_said_once_each_in_their_own_place():
     document = covered(never={"pure": ["datetime..now"]}, reserved={"json": ""})
-    document["parts"]["store"].setdefault("imports", {})["libraries"] = ["2fast"]
+    part_of(document, "store").setdefault("imports", {})["libraries"] = ["2fast"]
     assert problems(document) == [
         f"layered.yaml: never.pure: 'datetime..now' {METHOD}",
         "layered.yaml: reserved.json: must say in one line why it is reserved",

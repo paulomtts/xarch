@@ -75,9 +75,14 @@ def parts_tree(value: Any, language: Language) -> PartsTree:
     old = tuple(_old(str(key), spec) for key, spec in value.items() if _own(key) and _holds_path(spec))
     if old:
         return PartsTree(old=old)
-    found = _Found([], [], [], {}, [], language)
+    found = _begun(language)
     _walk(value, (), found)
     return PartsTree(tuple(found.parts), tuple(found.folders), (), tuple(found.problems))
+
+
+def _begun(language: Language) -> _Found:
+    """What the walk has found before it starts: nothing."""
+    return _Found([], [], [], {}, [], language)
 
 
 def _own(key: Any) -> bool:
@@ -169,10 +174,10 @@ def _folder(path: tuple[str, ...], value: Any, found: _Found) -> None:
     if isinstance(value, Mapping):
         own = {key: item for key, item in value.items() if _own(key)}
         if not _part(path, f"{'/'.join(path)}/", False, own, found):
-            found.folders.append(TreeFolder(_placed(path), ""))
+            found.folders.append(_folder_of(path, ""))
         _walk(value, path, found)
     elif value is None or (isinstance(value, str) and "\n" not in value):
-        found.folders.append(TreeFolder(_placed(path), value or ""))
+        found.folders.append(_folder_of(path, value or ""))
     else:
         found.problems.append(f"parts: '{'/'.join(path)}/': a folder is a map, one line of text (its note), or "
                               "nothing")
@@ -220,9 +225,19 @@ def _part(path: tuple[str, ...], shown: str, file: bool, own: Mapping[Any, Any],
                               "<part name> on one of them")
         return True
     found.named[name] = shown
-    words = tuple(match.group(1) for match in map(_REPEATING.fullmatch, path) if match)
-    found.parts.append(TreePart(name, _placed(path), words, len(found.parts), dict(own), shown, file))
+    found.parts.append(_part_of(name, path, len(found.parts), own, shown, file))
     return True
+
+
+def _part_of(name: str, path: tuple[str, ...], order: int, own: Mapping[Any, Any], shown: str, file: bool) -> TreePart:
+    """The part named name at path, the order-th met, with its own keys."""
+    words = tuple(match.group(1) for match in map(_REPEATING.fullmatch, path) if match)
+    return TreePart(name, _placed(path), words, order, dict(own), shown, file)
+
+
+def _folder_of(path: tuple[str, ...], note: str) -> TreeFolder:
+    """The folder at path that is no part, with its note."""
+    return TreeFolder(_placed(path), note)
 
 
 def _placed(path: tuple[str, ...]) -> tuple[str, ...]:

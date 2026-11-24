@@ -11,13 +11,13 @@ from xarch.bootstrap.wiring import build_controllers
 runner = CliRunner()
 PROFILE = """name: shim
 parts:
-  main:
-    path: __main__.py
+  __main__.py:
+    name: main
     role: the python -m entry
     imports:
       may: [core]
     untested: a two-line shim
-  core: {path: core, role: the code}
+  core/: {role: the code}
 guards:
   closed-tree: {}
 docs:

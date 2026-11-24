@@ -18,7 +18,7 @@ PASCAL = {"title": "Pascal", "extensions": [".pas"], "package_files": ["unit.pas
 PYTHON = {"title": "Python", "extensions": [".py"], "package_files": ["__init__.py"], "interface": [{"base": "typing.Protocol"}],
           "namespace": "builtins", "cache": "__pycache__", "standard": "interpreter"} | JOINS
 APP = Path("/p/app")
-BASE = {"name": "base", "parts": {"core": {"path": "core", "role": "the rules"}}}
+BASE = {"name": "base", "parts": {"core/": {"role": "the rules"}}}
 RUNTIME = FakeRuntime(frozenset({"strutils"}), frozenset({"writeln"}), frozenset({"begin"}))
 LISTED = PASCAL | {"standard": {"modules": ["fs", "path"], "reserved": ["class"], "builtins": ["fetch"]}}
 """Pascal giving its standard library, its reserved words and its builtins as lists, none of them the runtime's."""
@@ -45,7 +45,7 @@ def test_a_profile_names_its_language_and_the_skeleton_says_the_file_that_stands
 
 
 def test_the_standard_library_and_the_builtins_a_profile_is_checked_against_come_from_the_runtime():
-    named = BASE | {"language": "pascal", "parts": {"core": {"path": "core", "role": "r", "imports": {"libraries": ["strutils"]}}}}
+    named = BASE | {"language": "pascal", "parts": {"core/": {"role": "r", "imports": {"libraries": ["strutils"]}}}}
     spec, _ = spec_controller({"base": named}, languages={"pascal": PASCAL}, runtime=RUNTIME)
     checked = spec.check_profile(CheckProfile(APP, "base"))
     assert isinstance(checked, ProfileChecked)
@@ -78,7 +78,7 @@ BRANCH = "a class defined in a branch is not read"
 
 
 def test_a_key_whose_check_the_reader_of_its_language_cannot_feed_is_refused_and_one_it_feeds_partly_is_approximate():
-    named = BASE | {"language": "toy", "parts": {"core": {"path": "core", "role": "r",
+    named = BASE | {"language": "toy", "parts": {"core/": {"role": "r",
                                                           "holds": {"classes": {"names": "*Rule"}}}},
                     "guards": {"no-callbacks": {"parts": ["core"]}}}
     spec, _ = spec_controller({"base": named}, languages={"toy": TOY}, runtime=RUNTIME)
@@ -106,7 +106,7 @@ def test_the_bundled_language_gives_its_package_pattern_and_its_member_and_reads
 
 def test_a_language_that_lists_its_standard_library_is_checked_with_its_lists_and_only_another_asks_the_runtime():
     runtime = FakeRuntime(frozenset({"strutils"}), frozenset({"writeln"}), frozenset({"begin"}))
-    listing = BASE | {"parts": {"core": {"path": "core", "role": "r", "imports": {"libraries": ["fs"]}}}}
+    listing = BASE | {"parts": {"core/": {"role": "r", "imports": {"libraries": ["fs"]}}}}
     spec, _ = spec_controller({"base": BASE, "listing": listing}, languages={"listed": LISTED, "pascal": PASCAL},
                               runtime=runtime)
     checked = spec.check_profile(CheckProfile(APP, "listing"))
@@ -121,7 +121,7 @@ def test_a_language_that_lists_its_standard_library_is_checked_with_its_lists_an
 
 def test_a_bare_name_a_language_lists_among_its_builtins_is_told_to_be_written_in_its_namespace():
     banned = BASE | {"never": {"ambient": ["fetch"]},
-                     "parts": {"core": {"path": "core", "role": "r", "uses": {"never": "ambient"}}}}
+                     "parts": {"core/": {"role": "r", "uses": {"never": "ambient"}}}}
     spec, _ = spec_controller({"base": banned}, languages={"listed": LISTED}, runtime=RUNTIME)
     checked = spec.check_profile(CheckProfile(APP, "base"))
     assert isinstance(checked, ProfileChecked)

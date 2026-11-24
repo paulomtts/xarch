@@ -117,6 +117,12 @@ def holders(key: Key, document: dict) -> list[dict]:
     return list(containers(document, steps))
 
 
+def beside_another_key(key: Key, holder: dict) -> None:
+    """A part holds a key besides `role` where it is a part: without one it is only a folder."""
+    if key.scope == PART:
+        holder.setdefault("litmus", "a question")
+
+
 def test_every_key_says_what_it_means_what_it_accepts_and_shows_an_example():
     assert list(CATALOGUE.texts) == [key.address for key in KEYS]
     assert [address for address, text in CATALOGUE.texts.items()
@@ -175,8 +181,7 @@ def test_a_slot_an_eval_needs_is_missing_in_the_loader_when_left_out(slot):
 @pytest.mark.parametrize("key", [key for key in KEYS if key.required], ids=lambda key: plain(key.address))
 def test_a_required_key_is_missing_in_the_loader_when_left_out(key):
     document = document_of(key)
-    if key.scope == PART:
-        holders(key, document)[0].setdefault("litmus", "a question")
+    beside_another_key(key, holders(key, document)[0])
     del holders(key, document)[0][key.name]
     assert any(f"missing `{key.name}`" in problem for problem in problems(document, bundled=BUNDLED,
                                                                          folders=every_folder(document)))

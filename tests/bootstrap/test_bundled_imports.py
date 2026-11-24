@@ -46,15 +46,17 @@ WHERE = {
 }
 """What `where` said of each part before the change: may_import_text and libraries."""
 RULES = {
-    ("cli", "may"): (12, "56c3045d340f9998"), ("cli", "must"): (1, "3a6fe3a7e4628850"),
-    ("cli", "libraries"): (24, "530c3c0c9fe79616"),
-    ("web", "may"): (12, "0f4747306974eadd"), ("web", "must"): (1, "3a6fe3a7e4628850"),
-    ("web", "libraries"): (24, "482cc8c560189bf3"),
-    ("architecture.yaml", "may"): (15, "55bbcc7bd4a5acdd"), ("architecture.yaml", "must"): (1, "3a6fe3a7e4628850"),
-    ("architecture.yaml", "libraries"): (30, "5a45f6bcb3e80741"),
+    ("cli", "may"): (12, "b5fb19f749264287"), ("cli", "must"): (1, "3a6fe3a7e4628850"),
+    ("cli", "libraries"): (24, "ae1fba4a77503d1a"),
+    ("web", "may"): (12, "f06766b1dbdc51b7"), ("web", "must"): (1, "3a6fe3a7e4628850"),
+    ("web", "libraries"): (24, "058402903c045a47"),
+    ("architecture.yaml", "may"): (15, "0d94a54e9f44405d"), ("architecture.yaml", "must"): (1, "3a6fe3a7e4628850"),
+    ("architecture.yaml", "libraries"): (30, "27ee07b82ce0c6a6"),
 }
 """For each profile and key of the group: how many rules it expands to, and the first 16 hex digits of the SHA-256 of
-their checks text before the change."""
+their checks text before the change. The rules come in the order of the parts, which became the folder tree's reading
+order in 0.3.0 (`contract` after `adapters`, `kernel` before `kernel-logic`): the lines of `may` and `libraries` are the
+same as before, and only their order, so only their digests, moved."""
 TIER_KEYS = {"types_only": "tiers.imports.types_only", "must": "tiers.imports.must",
              "also": "tiers.imports.also", "tiers": "tiers"}
 """The address `profile explain` is asked for each key of a tier's group that rules are keyed by, and for `tiers`,

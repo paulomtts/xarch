@@ -11,7 +11,7 @@ PROFILE = """\
 name: min
 testing: pytest
 parts:
-  sub: {{path: sub, role: "the only part", tests: unit}}
+  sub/: {{role: "the only part", tests: unit}}
 tiers:
   unit:
     proves: a rule

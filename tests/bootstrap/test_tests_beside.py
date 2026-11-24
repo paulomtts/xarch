@@ -10,23 +10,20 @@ PROFILE = """\
 name: near
 testing: TESTING
 parts:
-  domain:
-    path: modules/<module>/domain
-    role: the rules of a module
-    tests: unit
-  contract:
-    path: modules/<module>/contract
-    role: the results of the use cases
-    imports: {may: [domain]}
-    tests: unit
-  application:
-    path: modules/<module>/application
-    role: the use cases
-    imports: {may: [domain, contract]}
-    holds: {classes: {names: "*Controller"}, functions: {names: "build_*"}}
-    tests: unit
-  scripts:
-    path: scripts
+  modules/<module>/:
+    domain/:
+      role: the rules of a module
+      tests: unit
+    contract/:
+      role: the results of the use cases
+      imports: {may: [domain]}
+      tests: unit
+    application/:
+      role: the use cases
+      imports: {may: [domain, contract]}
+      holds: {classes: {names: "*Controller"}, functions: {names: "build_*"}}
+      tests: unit
+  scripts/:
     role: one-off scripts
     untested: run by hand
 tiers:

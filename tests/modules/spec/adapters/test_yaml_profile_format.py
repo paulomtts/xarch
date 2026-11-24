@@ -24,7 +24,7 @@ from xarch.profile_values.checks import (
 )
 
 FORMAT = YamlProfileFormat(YamlWriter())
-ROOT = Path(__file__).resolve().parents[4]
+ROOT = Path(__file__).parents[4]
 
 
 def test_a_profile_is_written_as_yaml_in_utf_8():

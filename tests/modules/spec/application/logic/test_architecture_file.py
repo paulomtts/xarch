@@ -2,7 +2,7 @@
 the way a part is shown, and every problem reported with the file's name, never a traceback."""
 import pytest
 
-from tests.modules.spec.profiles import layered, parsed, problems
+from tests.modules.spec.profiles import layered, parsed, part_of, problems
 from xarch.modules.spec.application.logic.layout_walk import docs_name
 from xarch.modules.spec.domain.values import Doc, FileEntry
 
@@ -31,7 +31,7 @@ def test_a_bad_layer_is_refused(layers, expected):
 
 def test_the_example_of_a_part_nested_in_another_part_belongs_to_the_nested_part():
     document = layered(docs={"examples": ["ex"]})
-    document["parts"]["sql"] = {"path": "src/<module>/store/sql", "role": "queries"}
+    part_of(document, "store")["sql/"] = {"role": "queries"}
     files = {"ex": ("src/b/store/sql/q.py", "src/b/store/repo.py")}
     examples = parsed(document, folders=files).examples
     assert {path: example.part for path, example in examples.items()} == {
@@ -201,8 +201,8 @@ def test_a_file_may_not_collide_with_a_docs_page(path):
 def test_a_part_is_shown_as_the_docs_show_it_below_its_instance_and_ending_in_a_slash_for_a_folder():
     document = layered()
     document["parts"] = {
-        "core": {"path": "src/<feature>/core", "role": "r"}, "main": {"path": "src/<feature>/main.py", "role": "r"},
-        "src": {"path": "src", "role": "r"}, "entry": {"path": "__main__.py", "role": "r"}}
+        "src/": {"role": "r", "<feature>/": {"core/": {"role": "r"}, "main.py": {"role": "r"}}},
+        "__main__.py": {"name": "entry", "role": "r"}}
     architecture = parsed(document)
     assert {name: docs_name(architecture, part) for name, part in architecture.parts.items()} == {
         "core": "core/", "main": "main.py", "src": "src/", "entry": "__main__.py"}

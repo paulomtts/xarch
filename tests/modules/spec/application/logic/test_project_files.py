@@ -7,7 +7,7 @@ from xarch.modules.spec.application.logic.project_files import project_files, wi
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.published import ProjectFile
 
-PARTS = {"src": {"path": "src", "role": "code"}}
+PARTS = {"src/": {"role": "code"}}
 """A profile of one part, the folder src."""
 
 
@@ -16,7 +16,7 @@ def architecture(files: dict, parts: dict | None = None):
     return parsed(document, missing={"preset"}, folders={"preset": ("x",)})
 
 
-FILE_IN_SRC = PARTS | {"a": {"path": "src/a.py", "role": "code"}}
+FILE_IN_SRC = {"src/": {"role": "code", "a.py": {"role": "code"}}}
 
 
 def written(declared, contents, app="shop", folders=None):
@@ -63,7 +63,7 @@ def test_a_file_the_skeleton_writes_is_refused(key, problem):
 
 def test_a_file_in_an_instance_folder_may_not_replace_what_a_new_instance_gets():
     declared = architecture({"{{app}}/mods/x/domain/__init__.py": {"from": "a.tpl"}},
-                            {"domain": {"path": "mods/<mod>/domain", "role": "code"}})
+                            {"mods/<mod>/domain/": {"role": "code"}})
     with pytest.raises(InvalidArchitecture) as caught:
         written(declared, {"a.tpl": ""})
     assert "is the package file the skeleton writes" in caught.value.problems[0]

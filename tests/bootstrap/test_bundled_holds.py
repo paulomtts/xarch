@@ -37,7 +37,7 @@ IMMUTABLE = ('  immutable-{part}:\n    read: class\n    in: {{part: {part}, wher
 BUNDLED = "domain C logic F ports C services C controller C adapters C kernel-logic F"
 PARTS = {"cli": BUNDLED, "web": BUNDLED,
          "architecture.yaml": "domain C logic F ports C services C controller C adapters C reports F profile-values C "
-                              "kernel-logic F kernel C"}
+                              "kernel C kernel-logic F"}
 """Each part a profile writes `holds` for, in its order, with the one word it wrote: C classes, F functions."""
 
 

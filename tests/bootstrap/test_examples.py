@@ -47,8 +47,9 @@ def test_trailing_comments(text, lines):
 CUSTOM = """\
 name: layered
 parts:
-  api:   {path: "src/<module>/api", role: handlers, imports: {may: [store]}}
-  store: {path: "src/<module>/store", role: database access}
+  src/<module>/:
+    api/: {role: handlers, imports: {may: [store]}}
+    store/: {role: database access}
 docs:
   entry: api
   pages:

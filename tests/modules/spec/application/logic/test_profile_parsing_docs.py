@@ -3,7 +3,7 @@ hints, each with the address it has in the file."""
 import pytest
 
 from tests.modules.spec.format_files import FILE_TYPES
-from tests.modules.spec.profiles import layered, parsed, problems
+from tests.modules.spec.profiles import layered, parsed, part_of, problems
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.modules.spec.domain.values import Doc, Example, FileEntry, Naming
@@ -151,7 +151,7 @@ def test_excluded_folders_and_hints_are_as_they_were():
 
 def test_the_guards_list_of_the_docs_says_in_words_that_a_part_may_import_any_outside_package():
     document = layered()
-    document["parts"]["store"].setdefault("imports", {})["libraries"] = ["sqlmodel"]
-    document["parts"]["shared"].setdefault("imports", {})["libraries"] = "everything"
+    part_of(document, "store").setdefault("imports", {})["libraries"] = ["sqlmodel"]
+    part_of(document, "shared").setdefault("imports", {})["libraries"] = "everything"
     text = fill("{{guards}}", parsed(document), "layered.md", file_types=FILE_TYPES)
     assert "`shared/`: any outside package" in text and "`shared/`: *" not in text

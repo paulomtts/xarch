@@ -18,13 +18,13 @@ testing:
     - function: "Test*"
   tables: []
 parts:
-  contract:   {path: modules/<module>/contract, role: results, tests: integration}
-  controller:
-    path: modules/<module>/application/controller.py
-    role: maps
-    imports:
-      may: [contract]
-    tests: integration
+  modules/<module>/:
+    contract/: {role: results, tests: integration}
+    application/controller.py:
+      role: maps
+      imports:
+        may: [contract]
+      tests: integration
 tiers:
   integration:
     proves: a use case

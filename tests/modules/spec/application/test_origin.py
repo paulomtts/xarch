@@ -38,8 +38,8 @@ def test_a_copy_of_a_bundled_profile_is_compared_with_it_and_found_no_looser():
 
 
 def test_every_way_a_custom_profile_is_looser_than_the_bundled_one_it_resembles_is_listed():
-    parts = {**PARTS, "core": {**PARTS["core"], "imports": {"may": ["store"], "libraries": ["yaml"]}},
-             "store": {"path": "store", "role": "storage",
+    parts = {**PARTS, "core/": {**PARTS["core/"], "imports": {"may": ["store"], "libraries": ["yaml"]}},
+             "store/": {"role": "storage",
                        "imports": {"may": ["core"], "libraries": ["sqlmodel", "requests"]}, "untested": "trust me"}}
     custom = {**BASE, "parts": parts, "never": {"pure": ["socket"]},
               "tiers": {"unit": {key: value for key, value in TIER.items() if key != "imports"}
@@ -81,15 +81,15 @@ def test_a_part_that_may_import_any_outside_package_is_looser_than_one_that_list
 
 
 def test_a_custom_profile_sharing_no_part_resembles_no_bundled_profile_and_has_no_baseline():
-    custom = {"name": "mine", "parts": {"x": {"path": "x", "role": "all"}}}
+    custom = {"name": "mine", "parts": {"x/": {"role": "all"}}}
     origin = controller(custom).origin("mine.yaml")
     assert (origin.compared, origin.match, origin.baseline_off, origin.looser) == (None, None, (), ())
     assert origin.guards_off == ("package-only", "scenario-coverage", "no-comments", *OFF[2:])
 
 
 def test_the_closest_bundled_profile_is_the_one_of_highest_match_the_first_by_name_on_a_tie():
-    custom = {**OTHER, "parts": {**OTHER["parts"], "core": {"path": "core", "role": "x"},
-                                 "store": {"path": "store", "role": "y"}}}
+    custom = {**OTHER, "parts": {**OTHER["parts"], "core/": {"role": "x"},
+                                 "store/": {"role": "y"}}}
     origin = controller(custom).origin("mine.yaml")
     assert (origin.compared, origin.chosen_by, origin.match, origin.low) == ("base", "closest", 0.48, True)
     assert controller(OTHER).origin("mine.yaml").compared == "other"
@@ -172,7 +172,7 @@ def test_a_bundled_profile_with_against_is_compared_as_a_copy_of_it_would_be():
 
 
 def test_against_a_profile_no_part_pairs_with_is_still_compared_and_its_match_is_low():
-    origin = against({"name": "mine", "parts": {"x": {"path": "x", "role": "all"}}}).origin("mine.yaml", against="base")
+    origin = against({"name": "mine", "parts": {"x/": {"role": "all"}}}).origin("mine.yaml", against="base")
     assert (origin.compared, origin.chosen_by, origin.low) == ("base", "against", True)
     assert origin.counts[0][:2] == ("parts", 0)
 
@@ -191,8 +191,8 @@ def test_without_against_based_on_is_not_carried():
 
 TEAM = {**BASE, "name": "team", "based_on": "base", "guards": {"no-comments": {}, "closed-tree": {}}}
 """A profile file based on base that switches closed-tree on too."""
-LIT = {**BASE, "name": "lit", "parts": {**PARTS, "core": {**PARTS["core"], "litmus": "Does it decide?"},
-                                       "store": {**PARTS["store"], "litmus": "Does it keep?"}}}
+LIT = {**BASE, "name": "lit", "parts": {**PARTS, "core/": {**PARTS["core/"], "litmus": "Does it decide?"},
+                                       "store/": {**PARTS["store/"], "litmus": "Does it keep?"}}}
 """A bundled profile that gives core and store a litmus."""
 
 
@@ -263,7 +263,7 @@ def test_the_anchor_is_the_bundled_profile_the_chain_ends_on_else_the_one_closes
     closest = chained({"mine.yaml": {**OTHER, "name": "mine", "based_on": "team.yaml"},
                        "team.yaml": {**BASE, "name": "team"}}).origin("mine.yaml")
     assert (closest.anchor, closest.higher[0]) == ("base", "other")
-    alone = {"name": "alone", "parts": {"y": {"path": "y", "role": "all"}}}
+    alone = {"name": "alone", "parts": {"y/": {"role": "all"}}}
     none = chained({"mine.yaml": {**alone, "name": "mine", "based_on": "team.yaml"}, "team.yaml": alone}).origin(
         "mine.yaml")
     assert (none.anchor, none.baseline_off) == (None, ())

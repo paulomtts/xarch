@@ -293,14 +293,8 @@ def _layout(tree: pt.PartsTree, problems: list[str]) -> _Layout:
     repeats: list[Repeat] = []
     owners: dict[tuple[str, ...], str] = {}
     for entry in sorted(tree.parts, key=lambda part: part.order):
-        where, spec = f"parts.{entry.name}", entry.keys
-        for key in ("role", "litmus"):
-            if key in spec and not isinstance(spec[key], str):
-                problems.append(f"{where}.{key}: must be a string")
-        if "untested" in spec and not ck.line(spec["untested"]):
-            problems.append(f"{where}.untested: must be one line of text: why no tier tests the part")
-        if "package_only" in spec and not isinstance(spec["package_only"], bool):
-            problems.append(f"{where}.package_only: must be true or false")
+        where = f"parts.{entry.name}"
+        problems += _own_problems(entry)
         if len(entry.words) > 1:
             problems.append(f"{where}: '{entry.shown}' has two repeating steps, <{entry.words[0]}> and "
                             f"<{entry.words[1]}>: a repeating folder cannot sit inside another, so give each its own "
@@ -310,13 +304,25 @@ def _layout(tree: pt.PartsTree, problems: list[str]) -> _Layout:
         if not _repeats_alike(entry.name, entry.steps, word, repeats, owners, f"{where}: '{entry.shown}'", problems):
             continue
         _insert(layout, entry.steps, entry.file, entry.name, owners)
-        parts[entry.name] = Part(entry.name, entry.steps, ck.string(spec.get("role")), ck.string(spec.get("litmus")),
-                                 False, spec["untested"] if ck.line(spec.get("untested")) else "")
+        parts[entry.name] = Part(entry.name, entry.steps, ck.string(entry.keys.get("role")),
+                                 ck.string(entry.keys.get("litmus")), False,
+                                 entry.keys["untested"] if ck.line(entry.keys.get("untested")) else "")
     for folder in tree.folders:
-        _add_folder(layout, folder.steps)
-        if folder.note:
-            notes[folder.steps] = folder.note
+        _add_folder(layout, notes, folder)
     return _Layout(parts, layout, notes, tuple(repeats))
+
+
+def _own_problems(entry: pt.TreePart) -> list[str]:
+    """What is wrong with the values of the part's own keys that the layout reads."""
+    where, spec, problems = f"parts.{entry.name}", entry.keys, []
+    for key in ("role", "litmus"):
+        if key in spec and not isinstance(spec[key], str):
+            problems.append(f"{where}.{key}: must be a string")
+    if "untested" in spec and not ck.line(spec["untested"]):
+        problems.append(f"{where}.untested: must be one line of text: why no tier tests the part")
+    if "package_only" in spec and not isinstance(spec["package_only"], bool):
+        problems.append(f"{where}.package_only: must be true or false")
+    return problems
 
 
 def _repeats_alike(name: str, steps: tuple[str, ...], word: str, repeats: list[Repeat],
@@ -356,10 +362,13 @@ def _insert(tree: Layout, steps: tuple[str, ...], file: bool, name: str, owners:
         owners.setdefault(steps[:i], name)
 
 
-def _add_folder(tree: Layout, path: tuple[str, ...]) -> None:
+def _add_folder(tree: Layout, notes: dict[tuple[str, ...], str], folder: pt.TreeFolder) -> None:
+    """The folder that is no part in the layout, and its note, if it has one, in the notes."""
     here = tree
-    for step in path:
+    for step in folder.steps:
         here = here.setdefault(step, {})
+    if folder.note:
+        notes[folder.steps] = folder.note
 
 
 def _imports_libraries(written: Mapping[Any, Any], where: str, problems: list[str], language: Language,

@@ -18,16 +18,17 @@ BUNDLED = {"bundled": {"base": {}, "other": {}}}
 BROKEN = {"bundled": {"base": {}}, "languages": {"python": "not a mapping"}}
 UNTOLD = {"bundled": {"base": {}}, "keys": {"fragments": {}, "smallest": "name: n\n", "symbols": []}}
 SAID = (
-    Symbol("<word>", "in a path: a repeating folder, one per name, as in units/<unit>/store; there may be several"),
+    Symbol("<folder>/", "under parts, a key ending in /: a folder, holding the folders, files and keys of what lies in it"),
+    Symbol("<word>/", "under parts, a folder key: a repeating folder, one per name, as in units/<unit>/; there may be several"),
     Symbol("store", "in imports.may, a bare name: that part, in the importer's own instance of its repeating folder"),
     Symbol("store@any", "that part in any instance; the only way to name a part of another repeating folder"),
     Symbol("store/schema", "only what lies below that path of the part"),
     Symbol("store:*Id", "in imports.may, after `:`: only the names that match the pattern, `*` for any text"),
     Symbol("everything", "in imports.may or imports.libraries: no limit"),
-    Symbol("a path ending in .py", "a last path step with a dot: the part is one file, not a folder"),
+    Symbol("<file>.py", "under parts, a key holding a dot: a file, always a part"),
 )
 """The symbols as the format says them for the default language, its extension in place of %extension%."""
-SMALLEST = "name: documents-app\nparts:\n  documents:\n    path: documents\n    role: the documents\n"
+SMALLEST = "name: documents-app\nparts:\n  documents/:\n    role: the documents\n"
 """The smallest valid profile, as the format shows it."""
 
 
@@ -51,8 +52,8 @@ SHAPE = (
     Shown('testing.skips', 1, 'what skips a test or expects it to fail', False, True),
     Shown('testing.tables', 1, 'the forms a table of cases is written in', False, True),
     Shown('testing.mocks', 1, 'how a mock is built', False, True),
-    Shown('parts', 0, 'where code sits, in the order their litmus tests run', True, True),
-    Shown('parts.path', 1, 'where the part lives below the app', True, True),
+    Shown('parts', 0, 'the folder tree of the app, and its parts', True, True),
+    Shown('parts.name', 1, "the part's name, when its folder or file does not give it", False, True),
     Shown('parts.role', 1, 'what the part is for, in one line', True, False),
     Shown('parts.litmus', 1, 'the question that tells code belongs here', False, False),
     Shown('parts.imports', 1, 'what the part may and must import, and its outside packages', False, True),
@@ -62,7 +63,6 @@ SHAPE = (
     Shown('parts.tests', 1, 'the tier whose tests cover the part', False, True),
     Shown('parts.untested', 1, 'why no tier tests the part', False, True),
     Shown('parts.package_only', 1, 'the part is imported only as a package', False, True),
-    Shown('parts.folders', 1, 'the folders below the part that the layout shows', False, True),
     Shown('never', 0, 'named lists of names a part never uses', False, True),
     Shown('reserved', 0, 'standard-library names only some parts may import', False, True),
     Shown('layers', 0, 'chains of parts from the inside out', False, True),

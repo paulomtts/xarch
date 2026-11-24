@@ -124,6 +124,7 @@ RULED_OUT = {
         "modules/spec/application/logic/looseness.py",
         "modules/spec/application/logic/never_lists.py",
         "modules/spec/application/logic/outside_name.py",
+        "modules/spec/application/logic/parts_tree.py",
         "modules/spec/application/logic/profile_chain.py",
         "modules/spec/application/logic/profile_checks.py",
         "modules/spec/application/logic/profile_copy.py",
@@ -258,7 +259,7 @@ RULED_OUT = {
         "profile_values/testing.py",
         "profile_values/tiers.py",
     ),
-    ('domain', 'logic', 'ports', 'services', 'controller', 'adapters', 'reports', 'profile-values', 'kernel-logic', 'kernel'): (
+    ('domain', 'logic', 'ports', 'services', 'controller', 'adapters', 'reports', 'profile-values', 'kernel', 'kernel-logic'): (
         "cli/commands/review.py",
         "cli/terminal.py",
         "platform/typesafe.py",

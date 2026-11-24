@@ -4,7 +4,7 @@ import pytest
 
 from tests.modules.spec.format_files import CATALOGUE, FILE_TYPES
 from tests.modules.spec.languages import BRACE
-from tests.modules.spec.profiles import covered, layered, parsed, problems
+from tests.modules.spec.profiles import covered, layered, parsed, part_of, problems
 from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.modules.spec.domain.guards import ORDER
 from xarch.modules.spec.domain.values import ClosedTree, NoComments, PackageOnly
@@ -18,13 +18,13 @@ FAKES = {"folder": "fakes", "for": ["store"]}
 
 def test_a_part_that_lists_no_package_may_import_none_and_says_so_with_an_empty_list():
     document = layered()
-    document["parts"]["store"].setdefault("imports", {})["libraries"] = []
+    part_of(document, "store").setdefault("imports", {})["libraries"] = []
     assert parsed(document).imports_libraries == {"api": (), "service": (), "store": (), "shared": ()}
 
 
 def test_a_library_name_with_a_dash_is_refused_since_it_is_no_import_name():
     document = layered()
-    document["parts"]["store"].setdefault("imports", {})["libraries"] = ["sql-model"]
+    part_of(document, "store").setdefault("imports", {})["libraries"] = ["sql-model"]
     assert problems(document) == [
         "layered.yaml: parts.store.imports.libraries: 'sql-model' is not a package name the language Python allows"]
 
@@ -32,7 +32,7 @@ def test_a_library_name_with_a_dash_is_refused_since_it_is_no_import_name():
 def test_guards_name_the_pre_built_checks_in_use_with_their_parameters_and_package_only_is_a_part_s_fact():
     scenarios = SCENARIOS | {"suffix": "Outcome", "columns": ["state", "command", "outcome"]}
     document = covered(guards={"no-comments": {}, "scenario-coverage": scenarios})
-    document["parts"]["api"]["package_only"] = True
+    part_of(document, "api")["package_only"] = True
     assert parsed(document).guards == (
         PackageOnly(("api",)), NoComments(),
         ScenarioCoverage("api", "integration", "Outcome", ("state", "command", "outcome"), FILE))
@@ -115,7 +115,7 @@ def reserving(reserved, libraries=None) -> dict:
     """The layered profile reserving modules, with the store part's libraries when given."""
     document = layered(reserved=reserved)
     if libraries is not None:
-        document["parts"]["store"].setdefault("imports", {})["libraries"] = libraries
+        part_of(document, "store").setdefault("imports", {})["libraries"] = libraries
     return document
 
 
@@ -166,6 +166,6 @@ def test_the_guards_section_says_which_parts_may_import_a_reserved_module():
 ])
 def test_a_library_the_package_pattern_of_the_language_refuses_is_refused_naming_the_language(library):
     document = layered()
-    document["parts"]["store"].setdefault("imports", {})["libraries"] = [library]
+    part_of(document, "store").setdefault("imports", {})["libraries"] = [library]
     assert problems(document) == [
         f"layered.yaml: parts.store.imports.libraries: '{library}' is not a package name the language Python allows"]

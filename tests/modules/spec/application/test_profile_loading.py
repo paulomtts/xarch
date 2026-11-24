@@ -11,9 +11,9 @@ from xarch.modules.spec.contract import CheckProfile, Loosened, Problem, Profile
 APP = Path("/p/app")
 PRESET = {"files": ["test_*.py"], "declared": [{"function": "test_*"}]}
 MINE = {"name": "mine", "testing": "kit", "parts": {
-    "core": {"path": "core", "role": "rules", "uses": {"never": "pure"}},
-    "store": {"path": "store", "role": "storage", "imports": {"may": ["core"], "libraries": ["sqlmodel", "requests"]}},
-    "edge": {"path": "edge", "role": "entry", "imports": {"may": "everything", "libraries": "everything"}}},
+    "core/": {"role": "rules", "uses": {"never": "pure"}},
+    "store/": {"role": "storage", "imports": {"may": ["core"], "libraries": ["sqlmodel", "requests"]}},
+    "edge/": {"role": "entry", "imports": {"may": "everything", "libraries": "everything"}}},
     "never": {"pure": ["socket"]}}
 
 
