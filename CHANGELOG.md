@@ -7,6 +7,19 @@ All notable changes to this project are written here. The format follows
 
 ### Added
 
+- References beside the old forms of a target: a part's `imports.may` and `imports.must`, a tier's `imports.may` and
+  `imports.also`, and a check's `place` read `parts.<part>` and `<word>.<part>`, each optionally followed by `/<path>`
+  and, where the key takes one, `:<pattern>`. `parts.<part>` is the part in every instance of its repeating folder
+  (as `<part>@any`), or the part itself when it lies in none; `<word>.<part>` is the part in the importer's own
+  instance of the `<word>` folder, the word one of the profile's repeating folders, and in a tier's `imports.also` the
+  instance the test mirrors; `parts.everything` names a part called `everything`. A value is a reference when the
+  text before its first `/` or `:` holds a dot. A reference written wrong is refused saying what to write: a word for
+  a part in no `<word>` folder or in another word's (`'module.kernel': part 'kernel' lies in no <module> folder: write
+  parts.kernel`), a word from an importer outside its folder (`... so it has no own module: write parts.domain`), a
+  word in brackets (`write the word without brackets: module.services`), a prefix that is no word of the profile
+  (`'orders' is neither parts nor a word of this profile (module): a profile names no instance; write module.services
+  or parts.services`, and for a check's `place` the hint that a dotted name of code goes under `path`), `@` anywhere
+  before the pattern, and a part's own instance of itself. No old form is refused yet.
 - The match of a custom profile with the bundled one it is compared with: the share of what `check` reads under
   either profile (each part, each key a part, a tier or the profile writes, each setting of a kind of `holds` on its
   own, each guard switched on, each check of the profile's own of an id both write) that has a counterpart in the

@@ -228,7 +228,10 @@ The symbols:
   instance, and the only way to name a part of another repeating folder, which has no own instance; `store/schema`
   only that path below the part; `store:*Id` only the names that match the pattern, imported by name;
   `everything` no limit (also for `imports.libraries`); an entry written `{store: types_only}` is a target the part
-  may import only to use as a type. A part may always import itself.
+  may import only to use as a type. A part may always import itself. A target may also be written as a reference:
+  `parts.store` is the part in every instance (or, outside a repeating folder, the part itself), and `<word>.store`,
+  such as `module.store`, the part in the importer's own instance of the `<word>` folder, each optionally followed by
+  `/<path>` and `:<pattern>`; the forms above stay the bundled spelling.
 
 This is the whole format on one screen. The reference for each key (what it means, what it accepts, whether `check`
 enforces it and through which rule, an example that loads, the keys it holds) is the command, which reads the same
