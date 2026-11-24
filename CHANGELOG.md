@@ -124,6 +124,10 @@ All notable changes to this project are written here. The format follows
   out or named as a preset: one that is not is refused at its entry (`` testing.tables.0.call: `it.each` declares no
   test: list it under a `call` form of `testing.declared` ``), unless the language's reader is known not to read that
   form, which refuses the entry already. `xarch profile explain testing.tables.call` says so.
+- The fact `call.type_arguments`, the type arguments a call is given, which Python's reader does not supply; and the
+  language data file's `writing.specs`, one template per way a call that builds a mock names its spec (`keyword`,
+  `position`, `type_argument`), from which the stand-ins fixes and the docs write a mock. Python writes `keyword` and
+  `position`, so its texts read as before.
 
 ### Changed
 
@@ -322,6 +326,14 @@ All notable changes to this project are written here. The format follows
   `'<value>' is not an outside name such as <package>.<name>` under the testing names; and under a `never` list
   `'<entry>' is not an outside name such as <package>.<name>, nor a package, nor a method such as .<name>()` and
   `'<entry>' is neither an outside name nor a method: write <entry>() for a method called on anything`.
+- `testing.mocks.specs` replaces `testing.mocks.spec_keywords` and `testing.mocks.spec_position`: a list, in order, of
+  the ways a call that builds a mock names its spec, each `{keyword: <name>}`, `{position: <n>}` or
+  `{type_argument: <n>}`, an entry's problem naming it by its index (`testing.mocks.specs.1.keyword`). A profile or a
+  preset writing either old key is refused with `unknown key 'spec_keywords': moved in 0.3.0: write specs: [{keyword:
+  spec}, {position: 0}]`. The bundled `pytest` preset writes `specs: [{keyword: spec}, {keyword: spec_set}, {position:
+  0}]`: a call giving both a keyword and a first argument now names its spec by the keyword, and a read port named by
+  `spec_set=` is shown with `spec_set=`. A `type_argument` entry needs `call.type_arguments`, and an entry of a form the
+  language's `writing.specs` does not write is refused at its index.
 
 ## [0.2.0] - 2026-11-18
 

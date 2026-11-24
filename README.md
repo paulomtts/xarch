@@ -177,13 +177,20 @@ a scope any key opens, however deep, and in each entry of a list, which a proble
 (`<list>.0.<key>`). A profile that sets a key whose facts its language does not
 supply is refused when it loads, naming the key, the fact and what to do; a key whose facts are supplied only partly
 runs, and is listed under `approximate` in the enforcement section, which `--strict` fails on. Python's reader
-supplies every fact exactly but `function.tables.call` and `test.call`, so a framework that writes a `call` form under
-Python is refused at that entry (`testing.tables.0.call`, `testing.declared.0.call`). A framework declares its tests
+supplies every fact exactly but `function.tables.call`, `test.call` and `call.type_arguments`, so a framework that
+writes a `call` form under Python is refused at that entry (`testing.tables.0.call`, `testing.declared.0.call`), and so
+is a mock spec by a type argument (`testing.mocks.specs.0.type_argument`). A framework declares its tests
 with `testing.declared`, a list of forms: a `function` form, a function whose name matches a pattern, or a `call` form,
 a call whose arguments hold the test's `title` and its `body`; `testing.globals` names what it binds without an import.
 A table `call` form's callees must each be listed under a `call` form of `testing.declared`, the call that declares
 the test it makes or wraps; one that is not is refused at its entry (`` testing.tables.0.call: `it.each` declares no
 test: list it under a `call` form of `testing.declared` ``).
+`testing.mocks.specs` lists, in order, the ways a call that builds a mock names its spec, each `{keyword: <name>}`,
+`{position: <n>}` or `{type_argument: <n>}`: a call names it by the first entry it gives, the fix of a mock with no
+spec writes the first entry by the language's `writing.specs`, and an autospec call reads only the first `keyword`
+entry. It replaces `spec_keywords` and `spec_position`, each refused with what to write (`unknown key 'spec_keywords':
+moved in 0.3.0: write specs: [{keyword: spec}, {position: 0}]`). A `type_argument` entry needs `call.type_arguments`,
+which Python's reader does not supply.
 `testing: {preset: pytest}` names a preset as a map, and every framework key then comes from it: one written beside
 it is refused (`testing.files: the preset pytest gives files: drop it, or drop preset and write the whole map`), never
 merged, and a project with its own `files` writes the whole map instead; `testing: pytest` is its short form.
