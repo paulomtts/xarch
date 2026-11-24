@@ -23,7 +23,8 @@ turns its language's imports and names into such paths, and a fact into the app 
                         the app's
     import-into-app     each import into the app's own package, the target the file or package it reaches below the
                         root and at where that sits (None when no part and no folder of the layout governs it), name
-                        the name it takes when that is no file; a test's relative imports are its own and none is one
+                        the name it takes when that is no file; a test's relative imports are its own and none is one,
+                        but a test beside the code reads them from its own package in the app
     import-into-tests   each import of a test file into the tests' own package, the target it reaches below the tests
                         root
     comment             each comment, text as written, name the marker it opens with; doc when it is a doc comment
@@ -207,8 +208,10 @@ def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: 
             return tuple(_references(file, profile, cache, defined))
         case "import-into-app" if read.in_tests:
             return tuple(Fact("import-into-app", line, target=target, at=_placed(profile, cache, target))
-                         for line, target in targets((i for i in file.imports if not i.relative), (),
-                                                     facts.known | facts.beside, root) if target not in facts.beside)
+                         for line, target in targets(file.imports if file.beside else
+                                                     (i for i in file.imports if not i.relative),
+                                                     package if file.beside else (), facts.known | facts.beside, root)
+                         if target not in facts.beside)
         case "import-into-app":
             return tuple(Fact("import-into-app", line, name=name, target=target, at=_placed(profile, cache, target))
                          for line, target, name in named_targets(file.imports, package, facts.known, root))

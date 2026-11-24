@@ -179,3 +179,9 @@ def test_without_a_tests_folder_the_tests_beside_the_code_are_still_checked(tmp_
 
 def test_a_test_in_an_excluded_folder_is_not_read(tmp_path):
     assert [v for v in check(tmp_path) if v.file.startswith("app/vendor")] == []
+
+
+def test_a_test_beside_the_code_importing_the_app_relatively_is_held_to_its_tier(tmp_path):
+    found = check(tmp_path, app={"modules/docs/application/test_publish.py": "from ....scripts.seed import run\n" + TABLE})
+    assert [(rule, message.split(":")[0]) for rule, message, _ in of(found, NEAR)] == [
+        ("tiers", "a test of application/ (unit tier) may not import scripts/ (app.scripts.seed)")]

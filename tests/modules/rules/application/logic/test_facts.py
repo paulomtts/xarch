@@ -285,3 +285,12 @@ def test_a_test_beside_the_code_importing_the_fakes_below_the_tests_root_reads_t
     read = next(r for r in built.files if r.file is beside)
     assert [f.target for f in read.facts["import-into-tests"]] == [("fakes", "repo")]
     assert [f.target for f in read.facts["import-into-app"]] == [("modules", "docs", "domain", "doc")]
+
+
+def test_a_test_beside_the_code_reaches_the_app_by_a_relative_import_read_from_its_own_package():
+    beside = near("modules/docs/domain/test_doc.py", imp(1, "", "doc", up=0), imp(2, "", "test_other", up=0))
+    other = near("modules/docs/domain/test_other.py", functions=(Function(1, "test_other"),))
+    built = facts_of([DOC_FILE], [beside, other], PROFILE, "app", "tests")
+    read = next(r for r in built.files if r.file is beside)
+    assert [f.target for f in read.facts["import-into-app"]] == [("modules", "docs", "domain", "doc")]
+    assert [f.target for f in read.facts["import-into-tests"]] == [("modules", "docs", "domain", "test_other")]
