@@ -47,8 +47,13 @@ def _target_part_name(found: Found) -> str:
 
 
 def _target(found: Found, facts: Facts) -> str:
-    root = facts.tests_root if found.fact.kind == "import-into-tests" else facts.root
-    return ".".join((root, *found.fact.target))
+    test_code = found.fact.kind == "import-into-tests" and found.fact.target not in facts.beside
+    return ".".join((facts.tests_root if test_code else facts.root, *found.fact.target))
+
+
+def _side(found: Found, facts: Facts) -> str:
+    """The root a test's own folders are shown below: the app's for a test beside the code, else the tests'."""
+    return facts.root if found.read.file.beside else facts.tests_root
 
 
 def _top(found: Found) -> str:
@@ -86,8 +91,8 @@ _VALUES: dict[str, Callable[[Found, Facts, Profile], str]] = {
     "tier": lambda found, facts, profile: found.read.tier,
     "mirrored_parts": lambda found, facts, profile: " and ".join(f"{p}/" for p in found.read.mirrors),
     "mirrored_may_import": lambda found, facts, profile: _mirrored_may_import(found, profile),
-    "own_folder": lambda found, facts, profile: "/".join((facts.tests_root, *found.read.own)),
-    "tests_folder": lambda found, facts, profile: "/".join((facts.tests_root, *found.read.file.path[:-1])),
+    "own_folder": lambda found, facts, profile: "/".join((_side(found, facts), *found.read.own)),
+    "tests_folder": lambda found, facts, profile: "/".join((_side(found, facts), *found.read.file.path[:-1])),
     "language": lambda found, facts, profile: profile.language.title or "source",
     "importable_parts": lambda found, facts, profile: ", ".join(f"{part}/" for part in _permitted(found, profile)),
     "faked_parts": lambda found, facts, profile: ", ".join(profile.fakes.stand_in_for) if profile.fakes else "",

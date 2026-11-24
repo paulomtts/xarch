@@ -141,7 +141,7 @@ def test_without_tiers_nothing_is_checked():
                  id="the file part of its folder"),
 ])
 def test_allowance(path, expected):
-    assert allowance(PROFILE, tier_of.tested(PROFILE, tuple(path.split("/")))) == expected
+    assert allowance(PROFILE, tier_of.tested(PROFILE, tuple(path.split("/")), False)) == expected
 
 
 ALSO = profile(tiers=(UNIT, replace(INTEGRATION, imports_also=(Target("adapters", "own"),)), GUARD))
@@ -149,7 +149,7 @@ ALSO = profile(tiers=(UNIT, replace(INTEGRATION, imports_also=(Target("adapters"
 
 
 def test_what_a_tiers_tests_may_also_import_follows_what_the_part_they_mirror_may():
-    assert allowance(ALSO, tier_of.tested(ALSO, ("modules", "docs", "application", "test_publish.py"))) == (
+    assert allowance(ALSO, tier_of.tested(ALSO, ("modules", "docs", "application", "test_publish.py"), False)) == (
         Target("controller", "own"), Target("controller", "own"), *PROFILE.rules["controller"], Target("adapters", "own"))
 
 

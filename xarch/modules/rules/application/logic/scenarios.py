@@ -81,7 +81,7 @@ def plain(tests: Iterable[SourceFile], profile: Profile, said: Iterable[Violatio
     known = {(v.file, v.line) for v in said if v.rule == RULE}
     found: list[Violation] = []
     for test in tests:
-        where = tested(profile, test.path)
+        where = tested(profile, test.path, test.beside)
         if where.tier is None or where.tier.name not in plain_tiers:
             continue
         key = f"tiers.{where.tier.name}.plain_tables"
@@ -171,7 +171,7 @@ def _credited(test: SourceFile, union: str, variants: tuple[str, ...], guard: Sc
 
 
 def _in(profile: Profile, test: SourceFile, tier: str, instance: str) -> bool:
-    where = tested(profile, test.path)
+    where = tested(profile, test.path, test.beside)
     return where.tier is not None and where.tier.name == tier and where.instance == instance
 
 

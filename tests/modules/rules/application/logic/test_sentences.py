@@ -21,9 +21,11 @@ from tests.modules.rules.application.logic.world import (
     WIRING,
     found,
 )
+from tests.modules.rules.builders import imp, source
 from xarch.modules.rules.application.logic import sentences
+from xarch.modules.rules.application.logic.facts import facts_of
 from xarch.modules.rules.application.logic.sentences import said, value
-from xarch.modules.rules.domain.rule import Match
+from xarch.modules.rules.domain.rule import Found, Match
 from xarch.modules.rules.domain.vocabulary import VARIABLES
 from xarch.profile_values.checks import Scope
 from xarch.profile_values.placement import Target
@@ -135,3 +137,15 @@ def test_a_sentence_is_said_with_each_variable_filled_in():
 def test_every_variable_the_vocabulary_publishes_has_a_row_and_the_engine_says_it():
     rows = {param.values[0] for param in test_a_variable_prints_what_it_says_of_each_finding.pytestmark[0].args[1]}
     assert rows == {variable.name for variable in VARIABLES} == set(sentences.NAMES)
+
+
+def test_the_folders_of_a_test_beside_the_code_are_shown_below_the_app_root():
+    other = replace(source("modules/docs/domain/test_other.py"), beside=True)
+    beside = replace(source("modules/docs/domain/test_doc.py", imp(1, "app.modules.docs.domain.test_other", "x")),
+                     beside=True)
+    built = facts_of([], [beside, other], PROFILE, "app", "tests")
+    read = built.files[0]
+    found = Found(RULE, read, read.facts["import-into-tests"][0], None)
+    assert value("own_folder", found, built, PROFILE) == "app/modules/docs"
+    assert value("tests_folder", found, built, PROFILE) == "app/modules/docs/domain"
+    assert value("target", found, built, PROFILE) == "app.modules.docs.domain.test_other"

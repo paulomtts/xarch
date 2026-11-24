@@ -473,11 +473,12 @@ class Fact(NamedTuple):
 @dataclass(frozen=True)
 class Read:
     """A file as the rules read it: the file as parsed; its steps below its root as the language names it, and
-    whether it is the file that stands for its folder; in_tests, whether it lies below the tests root rather than the
-    app's; where it sits (place: in the app, None when it is below the tests root or ungoverned); its tier (a test's
-    own, or for a file of the app the tier whose tests cover its part, "" for none); for a file below the tests root,
-    its instance, own folder and the parts it mirrors, is_test, whether its name is a test file's, and whether it is a
-    fake; and its facts by kind, each in the order the file says them."""
+    whether it is the file that stands for its folder; in_tests, whether it is a test file (below the tests root,
+    or a test beside the code below the app's) rather than a file of the app; where it sits (place: in the app, None
+    when it is below the tests root or ungoverned); its tier (a test's own, or for a file of the app the tier whose
+    tests cover its part, "" for none); for a file below the tests root, its instance, own folder and the parts it
+    mirrors, is_test, whether its name is a test file's, and whether it is a fake; and its facts by kind, each in the
+    order the file says them."""
     file: SourceFile
     steps: tuple[str, ...]
     package: bool
@@ -497,7 +498,9 @@ class Facts:
     """The facts of a run, read once: every file read, the app's first, then the tests'; the root package of the app
     and of the tests; the steps of every file of each, so that an import of a name that is a file is read as the
     file; those of the test files (the files below the tests root whose name the profile's test files match); and the
-    tier whose tests cover each file of the app, by its steps (a file of a part no tier tests is not held)."""
+    tier whose tests cover each file of the app, by its steps (a file of a part no tier tests is not held); and the
+    steps below the app's root of the tests beside the code (beside), which are among the test files and are read in
+    the app's namespace."""
     files: tuple[Read, ...]
     root: str
     tests_root: str = ""
@@ -505,6 +508,7 @@ class Facts:
     known_tests: frozenset[tuple[str, ...]] = frozenset()
     test_files: frozenset[tuple[str, ...]] = frozenset()
     tested_by: dict[tuple[str, ...], str] = field(default_factory=dict)
+    beside: frozenset[tuple[str, ...]] = frozenset()
 
 
 @dataclass(frozen=True)

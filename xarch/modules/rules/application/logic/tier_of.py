@@ -1,5 +1,4 @@
-"""Where a file below the tests root sits: tests mirror the app, so a file's tier follows from the app part its
-folder mirrors.
+"""Where a test file sits: tests mirror the app, so a file's tier follows from the app part its folder mirrors.
 
 A file at tests/<path> mirrors the app's <path>. Its tier is, in order:
 1. the first tier whose subject holds the part that claims <path> (below the subject's sub-path, if it names one);
@@ -8,11 +7,15 @@ A file at tests/<path> mirrors the app's <path>. Its tier is, in order:
 3. else, the first tier whose `folder` holds it: the file lies in that folder or below it.
 A file under the fakes' folder is a fake, which no tier holds. A file in none of these has no tier.
 
+A test beside the code (testing.beside) lies at <path> below the app root and is placed by 1. and 2. alone: a tier's
+`folder` is a folder below the tests root and never places it, and it is never a fake.
+
 Its subject is the part its folder mirrors (1.), or the file parts of its folder (2.); a file placed by its tier's
 folder (3.) mirrors no part and has none.
 
 Its own folder is the instance of the repeating folder it mirrors (tests/<its root>/<name>/), else the top folder below
-the tests root: the folder whose helpers it may import.
+the tests root: the folder whose helpers it may import; for a test beside the code, the same folders below the app
+root.
 """
 from __future__ import annotations
 
@@ -28,13 +31,16 @@ from xarch.profile_values.tiers import CheckedTier
 
 NO_TIER = "lies in no tier: no part's folder and no tier's `folder` is mirrored here"
 NO_TIER_FIX = "move it to the folder that mirrors its subject's path in the app, or into a tier's `folder`"
+BESIDE_UNTESTED = "lies in no tier: its part is untested"
+BESIDE_NO_PART = "lies in no part"
+BESIDE_FIX = "test the part with a tier, or move the test"
 
 
 @dataclass(frozen=True)
 class Tested:
-    """A file below the tests root: its tier (None if none), the instance of the repeating folder it is in, its own
-    folder, whether it is a test (a name the profile's test files match) or a fake, and the parts it mirrors (its
-    subject; empty when its tier was found by its tier's folder)."""
+    """A test file or a file below the tests root: its tier (None if none), the instance of the repeating folder it is
+    in, its own folder, whether it is a test (a name the profile's test files match) or a fake, and the parts it
+    mirrors (its subject; empty when its tier was found by its tier's folder)."""
     tier: CheckedTier | None
     instance: str | None
     own: tuple[str, ...]
@@ -43,19 +49,23 @@ class Tested:
     parts: tuple[str, ...] = ()
 
 
-def _is_test(profile: Profile, path: tuple[str, ...]) -> bool:
+def is_test_file(profile: Profile, path: tuple[str, ...]) -> bool:
     """Whether the file name matches one of the profile's test file patterns; no file is a test when it names none."""
     return bool(path) and profile.framework is not None and any(fnmatchcase(path[-1], pattern)
                                                                 for pattern in profile.framework.files)
 
 
-def tested(profile: Profile, path: tuple[str, ...]) -> Tested:
-    fake = profile.fakes is not None and path[:len(profile.fakes.folder)] == profile.fakes.folder
-    tier, instance, parts = (None, None, ()) if fake else _tier(profile, path)
-    return Tested(tier, instance or _instance(profile, path), _own(profile, path), _is_test(profile, path), fake, parts)
+def tested(profile: Profile, path: tuple[str, ...], beside: bool) -> Tested:
+    """Where the file at path sits: below the tests root, or, beside, a test beside the code at path below the app
+    root."""
+    fake = not beside and profile.fakes is not None and path[:len(profile.fakes.folder)] == profile.fakes.folder
+    tier, instance, parts = (None, None, ()) if fake else _tier(profile, path, beside)
+    return Tested(tier, instance or _instance(profile, path), _own(profile, path), is_test_file(profile, path), fake,
+                  parts)
 
 
-def _tier(profile: Profile, path: tuple[str, ...]) -> tuple[CheckedTier | None, str | None, tuple[str, ...]]:
+def _tier(profile: Profile, path: tuple[str, ...],
+          beside: bool) -> tuple[CheckedTier | None, str | None, tuple[str, ...]]:
     where = place_of(profile.parts, path, profile.language.marks)
     if where.part is not None:
         tier = _first(profile, lambda t: any(s.part == where.part and where.sub[:len(s.sub)] == s.sub
@@ -69,6 +79,8 @@ def _tier(profile: Profile, path: tuple[str, ...]) -> tuple[CheckedTier | None, 
     if len(tiers) == 1:
         instance = place_of({"": profile.parts[file_parts[0]][:-1]}, folder, profile.language.marks).instance
         return next(iter(tiers.values())), instance, tuple(file_parts)
+    if beside:
+        return None, None, ()
     return _first(profile, lambda t: bool(t.folder) and folder[:len(t.folder)] == t.folder), None, ()
 
 

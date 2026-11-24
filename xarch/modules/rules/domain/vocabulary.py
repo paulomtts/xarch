@@ -260,6 +260,8 @@ FILTERS: tuple[Filter, ...] = (
            side=APP_SIDE),
     Filter("below", "the file lies below the folder, a path from the root its side starts at (the app folder, or the "
                     "tests folder for a test)", FILE, value=FOLDER),
+    Filter("beside", "the test sits beside the code it tests, below the app folder (testing.beside), and lies below "
+                     "no folder of the tests", FILE, side=TESTS_SIDE),
     Filter("relative", "the import is named from the importing file's own folder", FACT, ("relative",)),
     Filter("standard", "the import names the language's standard library", FACT,
            ("standard",)),

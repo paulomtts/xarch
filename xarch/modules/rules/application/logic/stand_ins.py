@@ -152,7 +152,7 @@ def _mocks(tests: list[SourceFile], ports: dict[tuple[tuple[str, ...], str], _Po
     assert profile.fakes is not None and profile.stand_ins is not None
     found: list[Violation] = []
     for file in tests:
-        tier = tested(profile, file.path).tier
+        tier = tested(profile, file.path, file.beside).tier
         if tier is None or not may_use_fakes(profile, tier):
             continue
         for mock in _built(file, profile.stand_ins):
