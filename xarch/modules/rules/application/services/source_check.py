@@ -19,6 +19,7 @@ from xarch.modules.rules.application.logic import (
 from xarch.modules.rules.application.logic.engine import read, run
 from xarch.modules.rules.application.logic.facts import facts_of
 from xarch.modules.rules.application.logic.own_checks import resolved
+from xarch.modules.rules.application.logic.tier_of import is_test_file
 from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.application.ports.source_tree import SourceTree
 from xarch.modules.rules.contract import (
@@ -65,7 +66,9 @@ class SourceCheckService:
         folder of the layout (such as reference code kept as data) is never read, and is listed as ungoverned; a file
         below a folder the profile excludes is not looked at at all, and the folder is named in the enforcement. Every
         file below tests is read, with the framework's forms of a table and of a test and its globals, the app's with
-        none, so an app file holds no test. The init files are looked for in the folder holding root, where `init` writes them.
+        none, so an app file holds no test; under testing.beside, a governed file of the app whose name the test files
+        match is a test beside the code, read as a test with its path below the app root, and no file of the app. The
+        init files are looked for in the folder holding root, where `init` writes them.
         """
         absent = self._tree.absent(folder for folder in (root, tests) if folder is not None)
         if absent:
@@ -75,15 +78,20 @@ class SourceCheckService:
         paths = [p for p in self._tree.paths(root, extensions) if not governed.excluded(rules, p)]
         marks, interface, standard = rules.language.immutable, rules.language.interface, rules.language.standard_modules
         private, special = rules.language.private, rules.language.special
-        app = self._tree.read(root, [p for p in paths if governed.governed(rules, p)], immutable=marks,
-                              interface=interface, standard=standard, private=private, special=special)
         framework = rules.framework
         tables = framework.tables if framework is not None else ()
         declared = framework.declared if framework is not None else ()
         bound = framework.globals if framework is not None else ()
-        test_files = self._tree.read(tests, self._tree.paths(tests, extensions), tables, marks, interface,
-                                     standard=standard, private=private, special=special, declared=declared,
-                                     globals=bound) if tests is not None else []
+        code = [p for p in paths if governed.governed(rules, p)]
+        near = {p for p in code if framework is not None and framework.beside and is_test_file(rules, p)}
+        app = self._tree.read(root, [p for p in code if p not in near], immutable=marks,
+                              interface=interface, standard=standard, private=private, special=special)
+        beside = [replace(f, beside=True) for f in self._tree.read(root, sorted(near), tables, marks, interface,
+                                                                   standard=standard, private=private, special=special,
+                                                                   declared=declared, globals=bound)] if near else []
+        test_files = [*beside, *(self._tree.read(tests, self._tree.paths(tests, extensions), tables, marks, interface,
+                                                 standard=standard, private=private, special=special,
+                                                 declared=declared, globals=bound) if tests is not None else [])]
         tests_root = tests.name if tests is not None else None
         shown = root.name
         unread = governed.unread(paths, rules, shown)

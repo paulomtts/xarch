@@ -59,6 +59,7 @@ RULED_OUT = {
         "kernel/logic/placement.py",
         "kernel/logic/source.py",
         "kernel/logic/targets.py",
+        "modules/layout/application/logic/beside.py",
         "modules/layout/application/logic/requirements.py",
         "modules/layout/application/logic/unmirrored.py",
         "modules/review/application/logic/accepting.py",
