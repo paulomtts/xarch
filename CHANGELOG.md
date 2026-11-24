@@ -89,6 +89,9 @@ All notable changes to this project are written here. The format follows
   guard's `columns` is refused for such a framework (`drop \`columns\`: the framework writes no table, so each result
   is its own test`), and `tiers.<tier>.plain_tables` says `needs a table form: the framework <framework> writes none
   in \`testing.tables\``.
+- The table forms are proved neutral to a language by tests alone: a test-only framework (a loop form and a call form
+  with literal rows) is loaded under a test-only TypeScript-like language and checked on hand-built facts, each finding
+  worded from that language's `writing`. Behaviour is unchanged.
 
 ### Changed
 
