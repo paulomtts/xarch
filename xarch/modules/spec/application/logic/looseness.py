@@ -305,6 +305,9 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
     skips = custom.framework.skips if custom.framework is not None else ()
     if base.framework is not None:
         found += [("testing.skips", "", outside_text(name, member)) for name in base.framework.skips if name not in skips]
+    if custom.framework is not None and custom.framework.beside and not (base.framework is not None
+                                                                         and base.framework.beside):
+        found.append(("testing.beside", "", ""))
     files = {file.path: file for file in custom.files}
     found += [("files.pinned", "", "/".join(file.path)) for file in base.files
               if file.pinned and file.path in files and not files[file.path].pinned]

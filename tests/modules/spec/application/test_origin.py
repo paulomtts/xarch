@@ -44,7 +44,7 @@ def test_every_way_a_custom_profile_is_looser_than_the_bundled_one_it_resembles_
     custom = {**BASE, "parts": parts, "never": {"pure": ["socket"]},
               "tiers": {"unit": {key: value for key, value in TIER.items() if key != "imports"}
                         | {"uses": {"apply_never": False}, "imports": {"also": ["edge"]}}},
-              "testing": {**TESTING, "skips": ["pytest.mark.skip"]},
+              "testing": {**TESTING, "skips": ["pytest.mark.skip"], "beside": True},
               "guards": {},
               "files": {"tests/test_rules.py": {"from": "guard.py"}}}
     origin = controller(custom).origin("mine.yaml")
@@ -63,6 +63,8 @@ def test_every_way_a_custom_profile_is_looser_than_the_bundled_one_it_resembles_
         Loosened("uses.apply_never", "unit", "",
                  "the unit tests are no longer held to their part's never list (tiers.unit.uses.apply_never)"),
         Loosened("testing.skips", "", "pytest.mark.xfail", "pytest.mark.xfail is no longer counted as a skip (testing.skips)"),
+        Loosened("testing.beside", "", "",
+                 "tests may sit beside the code: the mirrored tests tree is no longer checked (testing.beside)"),
         Loosened("files.pinned", "", "tests/test_rules.py", "tests/test_rules.py is no longer pinned (files.tests/test_rules.py.pinned)"))
 
 
