@@ -149,3 +149,12 @@ def test_the_folders_of_a_test_beside_the_code_are_shown_below_the_app_root():
     assert value("own_folder", found, built, PROFILE) == "app/modules/docs"
     assert value("tests_folder", found, built, PROFILE) == "app/modules/docs/domain"
     assert value("target", found, built, PROFILE) == "app.modules.docs.domain.test_other"
+
+
+def test_under_beside_the_folder_where_a_file_of_the_app_is_tested_is_its_own_folder_in_the_app():
+    near = replace(PROFILE, framework=replace(PROFILE.framework, beside=True))
+    built = facts_of([source("modules/docs/domain/doc.py")], [], near, "app", "tests")
+    read = built.files[0]
+    found = Found(RULE, read, read.facts["file"][0], None)
+    assert value("tests_folder", found, built, near) == "app/modules/docs/domain"
+    assert value("tests_folder", found, built, PROFILE) == "tests/modules/docs/domain"
