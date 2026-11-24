@@ -4,7 +4,7 @@ from dataclasses import replace
 
 import pytest
 
-from tests.modules.rules.builders import PROFILE, PYTEST_FORM, PYTHON, in_tests, profile, source
+from tests.modules.rules.builders import BRACE, PROFILE, PYTEST_FORM, PYTHON, STUB, TESTS, in_tests, profile, source
 from xarch.modules.rules.application.logic.scenarios import plain, violations, weak
 from xarch.modules.rules.domain.parsed import Function, Row, Table, Union
 from xarch.modules.rules.domain.published import Weak
@@ -388,3 +388,135 @@ def test_each_test_file_of_a_use_case_names_every_variant_on_its_own():
 ])
 def test_weak_under_a_framework_with_no_table_form(functions, expected):
     assert weak([RESULTS], [publish_tests(*functions)], NO_FORM) == expected
+
+
+STUB_PROFILE = profile(language=BRACE, framework=STUB, scenarios=replace(PROFILE.scenarios, file="{name:kebab}.test.ts"))
+"""The profile of a test-only framework that writes a loop form (index 0) and a call form (index 1), under a language
+that is not Python: nothing here is worded by pytest or Python."""
+TS = "tests/modules/docs/application/publish.test.ts"
+BRACE_PLAIN = replace(STUB_PROFILE, tiers=tuple(replace(t, plain_tables=t.name in ("unit", "integration"))
+                                                for t in STUB_PROFILE.tiers))
+CALL_FIX = 'write {..., name: "<a sentence stating the outcome>"}'
+LOOP_FIX = "write the row's id, a sentence stating the outcome, as its value at position 0"
+VARIANT_FIX = "add a row whose then is Missing, or a standalone test naming it"
+
+
+def written(*rows: Row, form: int = 1, line: int = 9, runs: int = 0) -> Table:
+    return Table(line, COLUMNS, rows, form, runs)
+
+
+def brace_tests(*functions: Function, path: str = "modules/docs/application/publish.test.ts"):
+    return source(path, root=TESTS, language=BRACE, functions=functions)
+
+
+def stubbed(*tests, checked=STUB_PROFILE) -> list[tuple[str, str]]:
+    return [(str(v), v.fix) for v in violations([RESULTS], list(tests), checked)]
+
+
+def missing_row(file: str = TS) -> tuple[str, str]:
+    return (f"{file}:9: PublishResult variant Missing has no row in the table and no standalone test naming it "
+            "(scenario-coverage)", VARIANT_FIX)
+
+
+BOTH = (row("Published"), row("Missing", 11))
+
+
+@pytest.mark.parametrize("function, expected", [
+    pytest.param(Function(8, "testPublish", (written(*BOTH),)), [], id="a row per variant, written, each with an id"),
+    pytest.param(Function(8, "testPublish", (written(row("Published", written=False, id=None), row("Missing", 11)),)),
+                 [(f"{TS}:10: row is not a literal (scenario-coverage)", CALL_FIX)],
+                 id="a row not written is worded by the language's field template"),
+    pytest.param(Function(8, "testPublish", (written(row("Published", id=None), row("Missing", 11)),)),
+                 [(f"{TS}:10: row has no id (scenario-coverage)", CALL_FIX)], id="a row with no id"),
+    pytest.param(Function(8, "testPublish", (written(row("Published", id="  "), row("Missing", 11)),)),
+                 [(f"{TS}:10: row has no id (scenario-coverage)", CALL_FIX)], id="an id of blanks alone is no id"),
+    pytest.param(Function(8, "testPublish", (written(row("Published")),)), [missing_row()],
+                 id="a variant with no row"),
+    pytest.param(Function(8, "testPublish", (written(*BOTH, row("Gone", 12)),)),
+                 [(f"{TS}:12: row 'an outcome' has Gone in its then column, which is not a variant of PublishResult "
+                   "(scenario-coverage)",
+                   "use one of Published, Missing")], id="a row whose result is not a variant"),
+    pytest.param(Function(8, "testPublish", (Table(9, COLUMNS, None, 1, 0),)),
+                 [(f"{TS}:9: the rows of the table cannot be read (scenario-coverage)",
+                   "write them as a list, or as the name of a list assigned at the top of the file")],
+                 id="rows that cannot be read"),
+    pytest.param(Function(8, "testPublish", (written(*BOTH),), blocks=((14, "if"),)),
+                 [(f"{TS}:14: testPublish has an `if` in its body (scenario-coverage)", ARRANGE_FIX)],
+                 id="an if is a branch"),
+    pytest.param(Function(8, "testPublish", (written(*BOTH),), blocks=((14, "switch"),)),
+                 [(f"{TS}:14: testPublish has a `switch` in its body (scenario-coverage)", ARRANGE_FIX)],
+                 id="a switch is a branch, Brace listing it"),
+    pytest.param(Function(8, "testPublish", (written(*BOTH),), blocks=((14, "match"),)), [],
+                 id="a match is no branch, Brace not listing it"),
+])
+def test_scenario_coverage_under_the_call_form_in_the_words_of_the_language(function, expected):
+    assert stubbed(brace_tests(function)) == expected
+
+
+@pytest.mark.parametrize("table_, blocks, expected", [
+    pytest.param(written(*BOTH, form=0, runs=9), ((9, "for"), (12, "if")),
+                 [(f"{TS}:12: testPublish has an `if` in its body (scenario-coverage)", ARRANGE_FIX)],
+                 id="the loop that runs the rows is no branch, another block is"),
+    pytest.param(written(row("Published", written=False, id=None), row("Missing", 11), form=0, runs=9), ((9, "for"),),
+                 [(f"{TS}:10: row is not a literal (scenario-coverage)", LOOP_FIX)],
+                 id="a row of a loop is worded by its form, its id a position"),
+])
+def test_scenario_coverage_under_the_loop_form(table_, blocks, expected):
+    assert stubbed(brace_tests(Function(8, "testPublish", (table_,), blocks=blocks))) == expected
+
+
+def test_a_file_holding_a_call_form_table_and_a_loop_form_table_covers_the_union_of_both():
+    published = Function(8, "testPublished", (written(row("Published")),))
+    missing = Function(20, "testMissing", (written(row("Missing", 22), form=0, line=21, runs=21),), blocks=((21, "for"),))
+    assert stubbed(brace_tests(published, missing)) == []
+
+
+def test_a_variant_credited_by_name_only_is_weak_under_the_call_form_in_the_framework_s_file():
+    functions = (Function(8, "testPublish", (written(row("Published")),)),
+                 Function(20, "testMissing", mentions=frozenset({"Missing"})))
+    assert weak([RESULTS], [brace_tests(*functions)], STUB_PROFILE) == [
+        Weak("scenario-coverage", TS, 20, "PublishResult variant Missing is credited to testMissing by name only: "
+                                          "no assert in their bodies")]
+    assert violations([RESULTS], [brace_tests(*functions)], STUB_PROFILE) == []
+
+
+def test_a_variant_a_row_covers_is_not_weak_for_a_standalone_test_that_names_it_without_asserting():
+    functions = (Function(8, "testPublish", (written(*BOTH),)), Function(20, "testMissing", mentions=frozenset({"Missing"})))
+    assert weak([RESULTS], [brace_tests(*functions)], STUB_PROFILE) == []
+
+
+def test_a_test_file_of_another_tier_does_not_cover_the_use_case_and_the_file_is_named_as_the_pattern_writes_it():
+    elsewhere = brace_tests(Function(8, "testPublish", (written(*BOTH),)), path="modules/docs/domain/publish.test.ts")
+    assert stubbed(elsewhere) == [
+        ("app/modules/docs/contract/results.py:4: PublishResult has no test file publish.test.ts among the integration "
+         "tests of docs (scenario-coverage)", "write publish.test.ts among the integration tests of docs")]
+
+
+DOC_TS = "tests/modules/docs/domain/doc.test.ts"
+UNIT_BRANCHES = ((12, "for"), (14, "if"))
+
+
+def doc_tests(form: int, runs: int = 0, path: str = "modules/docs/domain/doc.test.ts"):
+    held = Table(9, ("a", "b"), (row("x"),), form, runs)
+    return brace_tests(Function(8, "testDoc", (held,), blocks=UNIT_BRANCHES), path=path)
+
+
+def said(*tests, checked=BRACE_PLAIN) -> list[str]:
+    return [str(v) for v in plain(list(tests), checked)]
+
+
+def branch(line: int, word: str) -> str:
+    return (f"{DOC_TS}:{line}: testDoc has {word} in its body, and a table test of the unit tier holds no branch "
+            "(tiers.unit.plain_tables; scenario-coverage)")
+
+
+def test_a_table_test_of_a_plain_tier_holds_no_branch_under_the_call_form():
+    assert said(doc_tests(1)) == [branch(12, "a `for`"), branch(14, "an `if`")]
+
+
+def test_a_table_test_of_a_plain_tier_holds_no_branch_but_the_loop_that_runs_the_rows_under_the_loop_form():
+    assert said(doc_tests(0, runs=12)) == [branch(14, "an `if`")]
+
+
+def test_a_table_test_of_a_tier_that_is_not_plain_may_branch_under_the_call_form():
+    assert said(doc_tests(1), checked=STUB_PROFILE) == []

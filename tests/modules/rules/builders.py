@@ -58,6 +58,27 @@ def _record_mark(mark: dict, member: str) -> RecordMark:
     return RecordMark(fields=mark["fields"])
 
 
+def tables_of(file: dict, member: str) -> tuple[TableForm, ...]:
+    """The forms of a table a framework's data file writes, as its loader reads them: a holder (a decorator, the calls
+    of a call, a loop), where the columns come from, the rows' place, the dotted name of a row (empty for a literal) and
+    what gives a row its id, each dotted name split at the language's member."""
+    return tuple(_table_form(form, member) for form in file.get("tables", ()))
+
+
+def _place(value: dict | None) -> Place | None:
+    return None if value is None else Place(value["position"], value.get("keyword", ""))
+
+
+def _table_form(form: dict, member: str) -> TableForm:
+    columns = form["columns_from"]
+    return TableForm(_place(columns) if isinstance(columns, dict) else columns, _place(form.get("rows")),
+                     outside_steps(form["row"], member) if form["row"] != "literal" else (),
+                     RowId(**form["id"]),
+                     decorator=outside_steps(form["decorator"], member) if "decorator" in form else (),
+                     call=tuple(outside_steps(name, member) for name in form.get("call", ())),
+                     loop=form.get("loop", False))
+
+
 PYTHON_FILE = yaml.safe_load(resources.files("xarch").joinpath("architectures", "presets", "language", "python.yaml")
                              .read_text(encoding="utf-8"))
 PYTHON = CheckedLanguage(title="Python", extensions=(".py",), package_files=("__init__.py",),
@@ -83,10 +104,15 @@ BRACE = CheckedLanguage(title=BRACE_FILE["title"], extensions=tuple(BRACE_FILE["
                         dynamic=(("node:module", "createRequire"),), nothing=tuple(BRACE_FILE["nothing"]),
                         comments=forms_of(BRACE_FILE), directives=tuple(BRACE_FILE["directives"]),
                         names=BRACE_FILE["name"], package=BRACE_FILE["package"], member=BRACE_FILE["member"],
+                        branching=tuple(BRACE_FILE["branching"]), writing=Writing(**BRACE_FILE["writing"]),
                         standard_modules=frozenset(BRACE_FILE["standard"]["modules"]))
 """The TypeScript-like test-only language as a check reads it, its endings, package files, patterns, member, interface
-marks, marks of an immutable record, annotations of no value, comment forms, directives and standard modules read from
-its data file."""
+marks, marks of an immutable record, annotations of no value, comment forms, directives, the keywords that branch, how
+it writes a row of a table and standard modules read from its data file."""
+STUB_FILE = yaml.safe_load((Path(__file__).resolve().parents[2] / "fakes" / "frameworks" / "stub.yaml")
+                           .read_text(encoding="utf-8"))
+STUB = Framework(tuple(STUB_FILE["files"]), STUB_FILE["functions"], tables=tables_of(STUB_FILE, BRACE_FILE["member"]))
+"""The test-only framework as a check reads it: a loop form and a call form with literal rows, read from its data file."""
 PERCENT_FILE = yaml.safe_load((Path(__file__).resolve().parents[2] / "fakes" / "languages" / "percent.yaml")
                               .read_text(encoding="utf-8"))
 PERCENT = CheckedLanguage(title=PERCENT_FILE["title"], extensions=tuple(PERCENT_FILE["extensions"]),

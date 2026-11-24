@@ -486,7 +486,7 @@ def test_an_empty_list_of_forms_and_a_framework_that_writes_none_have_no_form():
                  id="a decorator that is not dotted"),
     pytest.param([CALL | {"call": []}], f"{AT}.call: must be a list of outside names such as <package>.<name>",
                  id="an empty list of calls"),
-    pytest.param([PYTEST_TABLE | {"id": "id"}], ROW_ID, id="an id written as a bare keyword, as testing.table wrote it"),
+    pytest.param([PYTEST_TABLE | {"id": "id"}], ROW_ID, id="an id written as a bare keyword, as the old table map wrote it"),
     pytest.param([PYTEST_TABLE | {"id": {"keyword": "id", "field": "id"}}], ROW_ID, id="an id of two kinds"),
     pytest.param([PYTEST_TABLE | {"id": {"position": -1}}], ROW_ID, id="an id at a negative position"),
     pytest.param([PYTEST_TABLE | {"row": "literal"}],
