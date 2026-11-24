@@ -86,6 +86,13 @@ All notable changes to this project are written here. The format follows
 
 ### Changed
 
+- A framework says how a table of cases is written with `testing.tables`, a list of table forms, each with one of
+  `decorator`, `call` or `loop` and the slots `columns_from`, `rows`, `row` and `id`; an entry's problem names it by
+  its index, `testing.tables.0.id`. `testing.table` is refused with "moved in 0.3.0: write tables, a list of forms
+  (xarch profile explain testing.tables)", and the bundled `pytest` preset writes its one form in the new shape. The
+  guard `scenario-coverage` keeps no copy of the table: it reads the framework's forms. A language data file says how
+  a row is written with `writing: {call, keyword, field}`; Python writes `call` and `keyword`. Findings and docs read
+  as before.
 - The guard `scenario-coverage`'s `file` writes the case of the use case's name: `{name:snake}`, `{name:kebab}`,
   `{name:camel}` or `{name:pascal}`, so `{name:kebab}.test.ts` looks for `http-check.test.ts`. The words are split as
   before (HTTPCheck is http, check). A bare `{name}` is refused with "write {name:snake} for what {name} meant". The

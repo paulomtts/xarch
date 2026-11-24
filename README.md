@@ -113,7 +113,7 @@ everything else is optional, and a key left out means off):
 
 ```
 name*  based_on  language  hints  excluded  reserved
-testing:  <preset> | {files*, functions*, skips, table, mocks}
+testing:  <preset> | {files*, functions*, skips, tables, mocks}
 parts*:   {<part>: {path*, role*, litmus, imports: {may, must, libraries}, uses: {never}, tests | untested,
                     package_only, folders, shared,
                     holds: {classes: {names, immutable, built_by}, functions: {names}, records: {names, immutable},
