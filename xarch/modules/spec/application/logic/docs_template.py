@@ -481,11 +481,16 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
                     "its files, from outside it.")
         case ScenarioCoverage(results, tier, suffix, columns, file):
             assert architecture.framework is not None
+            part = docs_name(architecture, architecture.parts[results])
+            if not architecture.framework.tables:
+                return (f"`scenario-coverage`: every variant of a union named `<Name>{suffix}` in `{part}` is named "
+                        f"by a test of `{_uncased(file)}` among the {tier} tests (section 5.2); the framework writes "
+                        "no table, so each result is its own test.")
             shown = ", ".join(f"`{c}`" for c in columns)
             member = architecture.language.checked.member
             rows = " or ".join(_row_phrase(form, member) for form in architecture.framework.tables)
             return (f"`scenario-coverage`: every variant of a union named `<Name>{suffix}` in "
-                    f"`{docs_name(architecture, architecture.parts[results])}` is the `{columns[-1]}` of a row of the "
+                    f"`{part}` is the `{columns[-1]}` of a row of the "
                     f"table (columns {shown}) in `{_uncased(file)}` among the {tier} tests (section 5.2), "
                     f"or is named by a standalone test of that file; every row is {rows}, and a table test has no "
                     f"{_branches(architecture)}.")

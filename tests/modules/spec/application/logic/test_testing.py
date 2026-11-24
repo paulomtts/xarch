@@ -224,6 +224,14 @@ def test_the_guards_lines_say_the_names_of_the_framework_the_file_declares():
         "(or, from a fixture, `mocker.Mock(spec=<Port>)`), never a read port (section 6)."]
 
 
+def test_the_scenario_coverage_line_of_a_framework_with_no_table_form_says_each_result_is_its_own_test():
+    guard = {key: value for key, value in SCENARIOS.items() if key != "columns"}
+    assert guard_lines(testing={"tables": []}, guards={"scenario-coverage": guard})[0] == (
+        "- `scenario-coverage`: every variant of a union named `<Name>Result` in `api/` is named by a test of "
+        "`test_<name>.py` among the integration tests (section 5.2); the framework writes no table, so each result "
+        "is its own test.")
+
+
 def test_the_stand_ins_line_says_each_annotation_of_no_value_of_the_language():
     architecture = parsed(covered(guards={"scenario-coverage": SCENARIOS, "stand-ins": {}}, fakes=FAKES))
     checked = replace(architecture.language.checked, nothing=("void", "Promise<void>"))
