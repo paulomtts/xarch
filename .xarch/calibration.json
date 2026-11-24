@@ -1,6 +1,6 @@
 {
   "placement": {
-    "hash": "737aa96f1922310b7a28c53866a55d1b6729e0b08acb99f5c797017dbc898a4f",
+    "hash": "4f0358d691ef3d1b1ee53641c0711094cee6bf43f684901990744d8e28f18306",
     "model": "jev-1.14.0",
     "answered_by": "jev-1.14.0",
     "parts": {
@@ -40,6 +40,11 @@
         "crossed": "",
         "examples": 1
       },
+      "contract": {
+        "verdict": "passed",
+        "crossed": "",
+        "examples": 1
+      },
       "platform": {
         "verdict": "passed",
         "crossed": "",
@@ -65,11 +70,6 @@
         "crossed": "",
         "examples": 1
       },
-      "contract": {
-        "verdict": "passed",
-        "crossed": "",
-        "examples": 1
-      },
       "profile-values": {
         "verdict": "passed",
         "crossed": "",
@@ -78,6 +78,11 @@
           "domain"
         ]
       },
+      "kernel": {
+        "verdict": "passed",
+        "crossed": "",
+        "examples": 1
+      },
       "kernel-logic": {
         "verdict": "passed",
         "crossed": "",
@@ -85,11 +90,6 @@
         "alike": [
           "logic"
         ]
-      },
-      "kernel": {
-        "verdict": "passed",
-        "crossed": "",
-        "examples": 1
       }
     }
   }
