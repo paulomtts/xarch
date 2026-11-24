@@ -5,8 +5,10 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.rules.builders import BRACE, PROFILE, PYTEST_FORM, PYTHON, STUB, declaring, in_tests, profile, source
+from tests.modules.rules.builders import tests_of as found_by_form
 from xarch.modules.rules.application.logic.scenarios import plain, violations, weak
 from xarch.modules.rules.domain.parsed import Function, Row, Table, Union
+from xarch.modules.rules.domain.parsed import Test as DeclaredTest
 from xarch.modules.rules.domain.published import Weak
 from xarch.profile_values.language import Writing
 from xarch.profile_values.testing import Framework, Place, RowId, TableForm
@@ -532,3 +534,63 @@ def test_a_table_test_of_a_plain_tier_holds_no_branch_but_the_loop_that_runs_the
 
 def test_a_table_test_of_a_tier_that_is_not_plain_may_branch_under_the_call_form():
     assert said(doc_tests(1), checked=STUB_PROFILE) == []
+
+
+def titled(line: int, title: str, body: Function) -> DeclaredTest:
+    """A test the call form of the test-only framework declares (index 1), named by its title."""
+    return DeclaredTest(line, title, 1, True, body)
+
+
+def test_a_test_a_call_declares_covers_the_union_by_the_rows_of_its_body_s_table():
+    assert stubbed(brace_tests(tests=(titled(8, "places an order", Function(8, "", (written(*BOTH),))),))) == []
+
+
+def test_a_row_of_a_titled_test_s_table_is_worded_in_the_language_s_words():
+    bare = written(row("Published", written=False, id=None), row("Missing", 11))
+    assert stubbed(brace_tests(tests=(titled(8, "places an order", Function(8, "", (bare,))),))) == [
+        (f"{TS}:10: row is not a literal (scenario-coverage)", CALL_FIX)]
+
+
+def test_a_branch_of_a_titled_test_is_said_by_its_title_in_double_quotes():
+    branched = titled(8, "places an order", Function(8, "", (written(*BOTH),), blocks=((14, "if"),)))
+    assert stubbed(brace_tests(tests=(branched,))) == [
+        (f'{TS}:14: "places an order" has an `if` in its body (scenario-coverage)', ARRANGE_FIX)]
+
+
+def test_a_titled_table_test_of_a_plain_tier_is_said_by_its_title_in_double_quotes():
+    held = titled(8, "places an order", Function(8, "", (Table(9, ("a", "b"), (row("x"),), 1, 0),), blocks=((14, "if"),)))
+    assert said(brace_tests(tests=(held,), path="modules/docs/domain/doc.test.ts")) == [
+        f'{DOC_TS}:14: "places an order" has an `if` in its body, and a table test of the unit tier holds no branch '
+        "(tiers.unit.plain_tables; scenario-coverage)"]
+
+
+@pytest.mark.parametrize("name, form, titled_, function, printed", [
+    pytest.param("rejects when out of stock", 1, True, "", '"rejects when out of stock"', id="a title in double quotes"),
+    pytest.param("testMissing", 0, False, "testMissing", "testMissing", id="a function's name bare"),
+    pytest.param("", 1, True, "", '""', id="a title that is no plain literal still counts"),
+])
+def test_weak_names_a_titled_test_in_double_quotes_and_a_function_bare(name, form, titled_, function, printed):
+    table_test = Function(8, "testPublish", (written(row("Published")),))
+    standalone = DeclaredTest(20, name, form, titled_, Function(20, function, mentions=frozenset({"Missing"})))
+    found = brace_tests(table_test, tests=(*found_by_form((table_test,), STUB), standalone))
+    assert weak([RESULTS], [found], STUB_PROFILE) == [
+        Weak("scenario-coverage", TS, 20, f"PublishResult variant Missing is credited to {printed} by name only: no "
+                                          "assert in their bodies")]
+
+
+def test_weak_joins_the_names_of_every_test_it_credits_each_named_as_it_is_declared():
+    table_test = Function(8, "testPublish", (written(row("Published")),))
+    first = titled(20, "rejects when out of stock", Function(20, "", mentions=frozenset({"Missing"})))
+    second = DeclaredTest(30, "testMissing", 0, False, Function(30, "testMissing", mentions=frozenset({"Missing"})))
+    found = brace_tests(table_test, tests=(*found_by_form((table_test,), STUB), first, second))
+    assert weak([RESULTS], [found], STUB_PROFILE) == [
+        Weak("scenario-coverage", TS, 20, 'PublishResult variant Missing is credited to "rejects when out of stock", '
+                                          "testMissing by name only: no assert in their bodies")]
+
+
+def test_a_test_a_call_declares_is_among_the_tests_alone_and_still_credits_a_variant():
+    table_test = Function(8, "testPublish", (written(row("Published")),))
+    missing = titled(20, "rejects when missing", Function(20, "", mentions=frozenset({"Missing"}), asserts=True))
+    found = brace_tests(table_test, tests=(*found_by_form((table_test,), STUB), missing))
+    assert [function.name for function in found.functions] == ["testPublish"]
+    assert (stubbed(found), weak([RESULTS], [found], STUB_PROFILE)) == ([], [])

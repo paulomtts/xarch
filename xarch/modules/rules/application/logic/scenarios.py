@@ -32,6 +32,9 @@ once where scenario-coverage already says it of a use case's table.
 weak lists, without failing, a variant met to the letter only: one no row covers, credited only to standalone tests
 of the file that name it (to any test of the file that names it, for a framework that writes no table form),
 none of which holds an `assert` statement in its body.
+
+A finding names a test as it is declared: by its title in double quotes when the framework declares it by a call's
+title (`"places an order" has a branch in its body`), by its function's name, bare, otherwise.
 """
 from __future__ import annotations
 
@@ -133,6 +136,11 @@ def _given_id(row: Row) -> str | None:
     return row.id if row.id is not None and row.id.strip() else None
 
 
+def _printed(declared: Test) -> str:
+    """How a finding names a test: a title in double quotes, a function's name bare."""
+    return f'"{declared.name}"' if declared.titled else declared.name
+
+
 def _named(test: SourceFile, union: str, variants: tuple[str, ...]) -> list[Violation]:
     """Each variant no test of the file names in its body, for a framework that writes no table form, in the union's
     order, at the top of the file."""
@@ -156,7 +164,7 @@ def _credited(test: SourceFile, union: str, variants: tuple[str, ...], guard: Sc
     for variant in variants:
         credit = [declared for declared in standalone if variant in declared.body.mentions]
         if variant not in covered and credit and not any(declared.body.asserts for declared in credit):
-            names = ", ".join(declared.name for declared in credit)
+            names = ", ".join(_printed(declared) for declared in credit)
             found.append(Weak(RULE, test.name, credit[0].line, f"{union} variant {variant} is credited to {names} by "
                                                                "name only: no assert in their bodies"))
     return found
@@ -199,7 +207,7 @@ def _branches(declared: Test, profile: Profile) -> list[Problem]:
              if keyword in language.branching and (line, keyword) not in runs]
     found += [(line, keyword, " expression") for line, keyword in body.expressions
               if keyword in language.branching_expressions]
-    return [(line, f"{declared.name} has {'an' if keyword[:1] in 'aeiou' else 'a'} `{keyword}`{what} in its body", fix)
+    return [(line, f"{_printed(declared)} has {'an' if keyword[:1] in 'aeiou' else 'a'} `{keyword}`{what} in its body", fix)
             for line, keyword, what in sorted(found)]
 
 
