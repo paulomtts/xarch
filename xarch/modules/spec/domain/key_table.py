@@ -265,6 +265,8 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "testing.tables[].decorator": ("function.tables.decorator",),
     "testing.tables[].call": ("function.tables.call",),
     "testing.tables[].loop": ("function.tables.loop",),
+    "testing.declared[].function": ("test.function",),
+    "testing.declared[].call": ("test.call",),
     "testing.mocks": ("call", "parameter_call", "import.resolved"),
     "guards.scenario-coverage": ("union", "function.blocks", "function.expressions", "function.asserts",
                                  "function.mentions"),

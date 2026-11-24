@@ -101,6 +101,7 @@ supplies:
   function.named: exact
   function.tables.decorator: exact
   function.tables.loop: exact
+  test.function: exact
   union: exact
   module_functions: exact
   constant: exact

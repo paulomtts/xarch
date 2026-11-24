@@ -63,6 +63,8 @@ FACTS: dict[str, str] = {
     "function.tables.decorator": "the tables of cases a mark on a test function's definition holds",
     "function.tables.call": "the tables of cases a call that makes or wraps a test function holds",
     "function.tables.loop": "the tables of cases a test function's body runs through in a loop",
+    "test.function": "the tests a function declares by a name that matches a pattern",
+    "test.call": "the tests a call with a title declares",
     "union": "a name bound at the top level of a file to names joined as alternatives",
     "module_functions": "the names a file binds at the top level to a function and nothing else",
     "constant": "the names a file binds at the top level by an assignment, each with the names its statement mentions",

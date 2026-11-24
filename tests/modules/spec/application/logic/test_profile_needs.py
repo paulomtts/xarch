@@ -17,7 +17,7 @@ TOY = replace(PYTHON, name="toy", checked=replace(
     PYTHON.checked, title="Toy",
     supplies=(Supply("file", EXACT), Supply("import", EXACT), Supply("import.relative", EXACT),
               Supply("import.standard", EXACT), Supply("class", PARTIAL, "a class defined in a branch is not read"),
-              Supply("public", EXACT))))
+              Supply("public", EXACT), Supply("test.function", EXACT))))
 LANGUAGES = {"toy": TOY}
 FLAT = replace(PYTHON, name="flat", checked=replace(
     PYTHON.checked, title="Flat", package_files=(),
@@ -126,15 +126,16 @@ def test_a_language_whose_data_file_says_nothing_of_its_reader_holds_no_key_to_i
                   languages={"toy": silent}).approximate == ()
 
 
-def test_python_supplies_every_fact_a_bundled_check_reads_but_the_tables_of_a_call():
+def test_python_supplies_every_fact_a_bundled_check_reads_but_the_tables_of_a_call_and_the_tests_a_call_declares():
     assert {supply.fact: supply.grade for supply in PYTHON.checked.supplies} == {
-        fact: EXACT for fact in FACTS if fact != "function.tables.call"}
+        fact: EXACT for fact in FACTS if fact not in ("function.tables.call", "test.call")}
 
 
 def test_the_keys_a_profile_sets_are_found_in_every_scope_and_through_a_testing_preset_each_once():
     document, presets = everywhere()
     found = short(document, presets, PARTLY)
-    configured = [("testing.skips", "testing.skips"), ("testing.tables.0.decorator", "testing.tables[].decorator"),
+    configured = [("testing.declared.0.function", "testing.declared[].function"),
+                  ("testing.skips", "testing.skips"), ("testing.tables.0.decorator", "testing.tables[].decorator"),
                   ("testing.mocks", "testing.mocks"), ("parts.api.imports.may", "parts.<part>.imports.may"),
                   ("parts.service.imports.may", "parts.<part>.imports.may"), ("parts.service.holds", "parts.<part>.holds"),
                   ("parts.service.holds.classes", "parts.<part>.holds.classes"),
@@ -651,3 +652,33 @@ def test_a_framework_that_writes_no_form_needs_no_table_fact(testing):
 def test_a_holder_written_as_null_adds_no_table_fact_problem():
     found = problems(framed(PYTEST_TABLE | {"call": None}))
     assert found and [problem for problem in found if "function.tables" in problem] == []
+
+
+def test_each_form_that_declares_a_test_needs_its_own_fact_and_declared_globals_and_the_slots_need_none():
+    needs = {key.address: key.needs for key in KEYS}
+    assert {address: needs[address] for address in (
+        "testing.declared", "testing.declared[].function", "testing.declared[].call", "testing.declared[].title",
+        "testing.declared[].body", "testing.globals")} == {
+        "testing.declared": (), "testing.declared[].function": ("test.function",),
+        "testing.declared[].call": ("test.call",), "testing.declared[].title": (), "testing.declared[].body": (),
+        "testing.globals": ()}
+
+
+DECLARED_CALL = {"call": ["it"], "title": {"position": 0}, "body": {"position": 1}}
+"""A form that declares a test by a call of it, its title and its body the call's first two arguments."""
+CALL_REFUSED = ("layered.yaml: testing.declared.0.call: its check reads test.call (the tests a call with a title "
+                "declares), which the language python does not supply: drop testing.declared.0.call, or check the app "
+                "with a language whose reader supplies test.call")
+
+
+def test_a_call_form_that_declares_a_test_under_python_is_refused_at_its_index():
+    assert problems(layered(testing={"files": ["test_*.py"], "declared": [DECLARED_CALL]})) == [CALL_REFUSED]
+
+
+def test_a_call_form_in_a_testing_preset_is_refused_at_its_index():
+    presets = {"each": {"files": ["test_*.py"], "declared": [DECLARED_CALL]}}
+    assert problems(layered(testing="each"), presets=presets) == [CALL_REFUSED]
+
+
+def test_a_function_form_that_declares_a_test_under_python_loads():
+    assert parsed(layered(testing=FILES)).approximate == ()

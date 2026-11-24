@@ -54,6 +54,8 @@ TABLE_FACTS = {
     pytest.param(Row.__doc__, id="the docstring of a row"),
     pytest.param(Table.__doc__, id="the docstring of a table"),
     pytest.param(DeclaredTest.__doc__, id="the docstring of a test"),
+    pytest.param(FACTS["test.function"], id="the text of the fact test.function"),
+    pytest.param(FACTS["test.call"], id="the text of the fact test.call"),
     *(pytest.param(FACTS[fact], id=f"the text of the fact {fact}") for fact in TABLE_FACTS),
 ])
 def test_what_a_table_and_its_rows_are_is_said_with_no_word_of_python(text):
