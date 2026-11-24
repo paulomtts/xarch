@@ -469,13 +469,13 @@ def _counted(value: Any) -> bool:
 
 
 def _place(value: Any, where: str, problems: list[str], language: Language) -> Place | None:
-    """A place among the holder's arguments: {position, keyword}, at least one of them given."""
+    """A place among the holder's arguments: {position, keyword}, at least one of them given, and each one given a
+    value of its own (null is none)."""
     position = value.get("position") if isinstance(value, Mapping) else None
     keyword = value.get("keyword") if isinstance(value, Mapping) else None
-    if not (isinstance(value, Mapping) and set(value) <= {"position", "keyword"}
-            and (position is not None or keyword is not None)
-            and (position is None or _counted(position))
-            and (keyword is None or (isinstance(keyword, str) and names.is_name(keyword, language.names)))):
+    if not (isinstance(value, Mapping) and set(value) <= {"position", "keyword"} and value
+            and ("position" not in value or _counted(position))
+            and ("keyword" not in value or (isinstance(keyword, str) and names.is_name(keyword, language.names)))):
         problems.append(f"{where}: {PLACE}")
         return None
     return Place(position, keyword or "")
