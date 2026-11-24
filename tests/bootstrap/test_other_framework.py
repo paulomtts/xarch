@@ -12,7 +12,7 @@ testing:
   declared: [{function: "it_*"}]
   tables: [{decorator: cases.table, columns_from: {position: 0}, rows: {position: 1}, row: cases.row,
             id: {keyword: name}}]
-  mocks: {calls: [doubles.Double], spec_keywords: [of]}
+  mocks: {calls: [doubles.Double], specs: [{keyword: of}]}
 parts:
   contract:   {path: modules/<module>/contract, role: results, tests: integration}
   controller:

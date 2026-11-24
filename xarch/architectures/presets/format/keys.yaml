@@ -40,7 +40,7 @@ fragments:
           id: {keyword: id}
   mocks: |2
         calls: [doubles.make]
-        spec_keywords: [spec]
+        specs: [{keyword: spec}]
   fakes: |
     fakes:
       folder: fakes
@@ -871,7 +871,7 @@ keys:
         skips: [checks.skip, checks.expect_fail]
   testing.mocks:
     meaning: how a mock is built
-    accepts: a map {calls, autospec, spec_keywords, spec_position, fixtures}
+    accepts: a map {calls, autospec, specs, fixtures}
     example: |
       <<testing>>
         mocks:
@@ -965,22 +965,41 @@ keys:
         mocks:
       <<mocks>>
           autospec: [doubles.make_from]
-  testing.mocks.spec_keywords:
-    meaning: the keywords a mock is given its spec by
-    accepts: a list of keyword names
+  testing.mocks.specs:
+    meaning: the ways a call that builds a mock names its spec, in order
+    accepts: >-
+      a non-empty list of entries, each one of {keyword: <name>}, {position: <n>} or {type_argument: <n>}: a call names
+      its spec by the first entry it gives, a fix writes the first entry, and an autospec call reads only the first
+      keyword entry
     example: |
       <<testing>>
         mocks:
       <<mocks>>
-  testing.mocks.spec_position:
-    meaning: where a call that builds a mock takes its spec
-    accepts: "a whole number, the position of the argument that names the spec; left out: only a keyword of
-      `spec_keywords` names it"
+  testing.mocks.specs[].keyword:
+    meaning: a keyword argument names the spec
+    accepts: a keyword name
     example: |
       <<testing>>
         mocks:
       <<mocks>>
-          spec_position: 0
+  testing.mocks.specs[].position:
+    meaning: the positional argument at a place names the spec
+    accepts: "a whole number from 0: the place of the argument"
+    example: |
+      <<testing>>
+        mocks:
+          calls: [doubles.make]
+          specs: [{keyword: spec}, {position: 0}]
+  testing.mocks.specs[].type_argument:
+    meaning: the type argument at a place names the spec
+    accepts: >-
+      a whole number from 0: the place of the type argument; needs call.type_arguments, which a language's reader may
+      not supply
+    example: |
+      <<testing>>
+        mocks:
+          calls: [doubles.make]
+          specs: [{type_argument: 0}]
   testing.mocks.fixtures:
     meaning: test parameters whose methods build mocks
     accepts: "a map {<parameter>: {calls, autospec}}"

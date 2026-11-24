@@ -18,11 +18,12 @@ A port with no methods is neither, and no rule applies to it. A read port X has 
 <prefix>X in a file below the fakes' folder (by name only: one fake serves ports of the same name in two instances).
 
 In a test whose tier may import the fakes (see tier_imports), every call of one of the profile's mocks names its
-spec, as its argument at the profile's spec_position (when the profile gives one) or by one of the profile's spec
-keywords, and every call of one of its autospec functions as that argument or by the first spec keyword; one that
-names none is a violation. A spec that is a class
+spec by the first of the profile's specs it gives, in their order: a keyword argument, the positional argument at a
+place, or the type argument at a place; every call of one of its autospec functions the same, reading of the keyword
+entries only the first. One that names none is a violation, whose fix writes the first entry by the language's
+template of its form (its data file's `writing.specs`). A spec that is a class
 of the app, a name X taken from a module or read as an attribute of a module imported whole, whose module is a port's
-file and X a read port there, is a violation that points to its fake.
+file and X a read port there, is a violation that points to its fake, written as the entry that named it.
 
 A mock may also come from a fixture: a parameter of a function, named in the profile's `fixtures`, whose methods build
 mocks. A call of `<parameter>.<method>` for a method the fixture lists under `mocks` follows exactly the rules of the
@@ -50,10 +51,10 @@ from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.imports import dotted
 from xarch.modules.rules.application.logic.places import file_place
 from xarch.modules.rules.application.logic.tier_of import may_use_fakes, tested
-from xarch.modules.rules.domain.parsed import Call, Class, ParameterCall, SourceFile
+from xarch.modules.rules.domain.parsed import Call, Class, ParameterCall, Ref, SourceFile
 from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.published import Weak
-from xarch.profile_values.testing import StandIns
+from xarch.profile_values.testing import SpecEntry, StandIns
 
 RULE = "stand-ins"
 GUARD = f"({RULE})"
@@ -164,8 +165,7 @@ def _mocks(tests: list[SourceFile], ports: dict[tuple[tuple[str, ...], str], _Po
 class _Built:
     """A call that builds a mock: the call as the source tree read it (of an imported name, or of a fixture's method),
     how it is shown (the name called, or for a fixture's the parameter and the method joined by a dot), and whether it
-    is an autospec, which takes its spec by
-    the argument at the profile's position or by the first spec keyword only."""
+    is an autospec, which reads of the profile's specs the keyword entries but the first."""
     made: Call | ParameterCall
     shown: str
     autospec: bool
@@ -185,35 +185,40 @@ def _built(file: SourceFile, names: StandIns) -> list[_Built]:
 def _mock(file: SourceFile, mock: _Built, ports: dict[tuple[tuple[str, ...], str], _Port], profile: Profile,
           root: str) -> list[Violation]:
     assert profile.fakes is not None and profile.stand_ins is not None
-    names = profile.stand_ins
+    names, writing = profile.stand_ins, profile.language.writing
     prefix = mock.shown.rpartition(".")[0]
     constructor = f"{prefix}." if prefix else ""
-    suggested = f"{constructor}{names.mocks[0][-1]}({names.spec[0]}=<port>)"
-    named, spec, placed = _spec(mock, names.spec[:1] if mock.autospec else names.spec, names.spec_position)
+    suggested = names.specs[0].written(writing, f"{constructor}{names.mocks[0][-1]}", "<port>")
+    named, spec, entry = _spec(mock, _read(names.specs, mock.autospec))
     if not named:
         return [Violation(file.name, mock.made.line, f"{mock.shown}() names nothing it stands in for {GUARD}", RULE,
                           f"give it a spec, such as {suggested}")]
-    if spec is not None and spec[:1] == (root,):
+    if spec is not None and entry is not None and spec[:1] == (root,):
         port = ports.get((spec[1:-1], spec[-1]))
         if port is not None and port.kind == "read":
-            before = "..., " * (names.spec_position or 0)
-            written = f"{mock.shown}({before}{port.name})" if placed else \
-                f"{mock.shown}({names.spec[0]}={port.name})"
+            written = entry.written(writing, mock.shown, port.name)
             return [Violation(file.name, mock.made.line, f"{written} stands in for {port.name}, a read port {GUARD}", RULE,
                               f"use its fake {profile.fakes.prefix}{port.name}")]
     return []
 
 
-def _spec(call: _Built, names: tuple[str, ...], position: int | None) -> tuple[bool, tuple[str, ...] | None, bool]:
-    """Whether the call names a spec (or may, when it unpacks arguments), by its argument at position (None: by no
-    argument) or one of the keywords names; the spec when it is a name; and whether the argument at position names it."""
+def _read(specs: tuple[SpecEntry, ...], autospec: bool) -> tuple[SpecEntry, ...]:
+    """The entries a call reads, in their order: every one; for an autospec, the keyword entries but the first left
+    out."""
+    first = next((entry for entry in specs if entry.keyword), None)
+    return tuple(entry for entry in specs if not autospec or not entry.keyword or entry == first)
+
+
+def _spec(call: _Built, specs: tuple[SpecEntry, ...]) -> tuple[bool, Ref, SpecEntry | None]:
+    """Whether the call names a spec (or may, when it unpacks arguments), by the first of specs it gives: a keyword it
+    is given, or a positional argument it has at the entry's place; the spec (a Ref) and the entry that named it, None
+    and None when none did."""
     made = call.made
     keywords = dict(made.keywords)
-    if position is not None and len(made.args) > position:
-        return True, made.args[position], True
-    for name in names:
-        if name in keywords:
-            return True, keywords[name], False
-    return made.unpacked, None, False
-
-
+    for entry in specs:
+        if entry.keyword and entry.keyword in keywords:
+            return True, keywords[entry.keyword], entry
+        given = made.args if entry.position is not None else ()
+        if len(given) > entry.place:
+            return True, given[entry.place], entry
+    return made.unpacked, None, None

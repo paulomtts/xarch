@@ -29,6 +29,7 @@ TESTING = "testing"
 TABLES = "testing.tables"
 DECLARED = "testing.declared"
 MOCKS = "testing.mocks"
+MOCK_SPECS = "testing.mocks.specs"
 FIXTURE = "testing.fixture"
 FAKES = "fakes"
 GUARD = "guard"
@@ -66,6 +67,7 @@ SCOPES = {
     TABLES: "testing.tables[]",
     DECLARED: "testing.declared[]",
     MOCKS: "testing.mocks",
+    MOCK_SPECS: "testing.mocks.specs[]",
     FIXTURE: "testing.mocks.fixtures.<parameter>",
     FAKES: "fakes",
     GUARD: "guards",
@@ -221,6 +223,8 @@ RETIRED: tuple[Retired, ...] = (
     Retired(TIER, "types_only", "moved in 0.3.0: write imports: {types_only: [<part>, ...]}"),
     Retired(TESTING, "table", "moved in 0.3.0: write tables, a list of forms (xarch profile explain testing.tables)"),
     Retired(TESTING, "functions", 'moved in 0.3.0: write declared: [{function: "<pattern>"}]'),
+    Retired(MOCKS, "spec_keywords", "moved in 0.3.0: write specs: [{keyword: spec}, {position: 0}]"),
+    Retired(MOCKS, "spec_position", "moved in 0.3.0: write specs: [{keyword: spec}, {position: 0}]"),
 )
 """Every key, guard and rule id xarch has retired, and every value a key it still has no longer takes: a profile
 writing one is refused with the entry's text."""

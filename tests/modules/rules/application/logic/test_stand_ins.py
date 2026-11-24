@@ -1,6 +1,7 @@
 """The stand-ins guard on hand-made source files: a port is read or fire-only by its return annotations, a read port
-has a fake, a mock in a test that may use the fakes names a spec that is not a read port (by a keyword, or by the
-argument at the position the profile gives), and a fake that does not define every method of its port is weak."""
+has a fake, a mock in a test that may use the fakes names a spec that is not a read port (by the first of the
+profile's specs it gives: a keyword, the argument at a place, or the type argument at a place), and a fake that does
+not define every method of its port is weak."""
 from dataclasses import replace
 
 import pytest
@@ -9,6 +10,7 @@ from tests.modules.rules.builders import AUTOSPEC, BRACE, MOCK, PERCENT, PROFILE
 from xarch.modules.rules.application.logic.stand_ins import violations, weak
 from xarch.modules.rules.domain.parsed import Call, Class, Method, ParameterCall
 from xarch.modules.rules.domain.published import Weak
+from xarch.profile_values.testing import SpecEntry
 
 PROTOCOL = ("typing", "Protocol")
 PORT_FILE = "modules/docs/application/ports/repo.py"
@@ -138,9 +140,15 @@ def test_mocks_in_a_test_that_may_use_the_fakes(call, expected):
     assert problems([PORTS], [FAKE, in_tests(INTEGRATION_TEST, calls=(call,))]) == expected
 
 
+KEYWORDS = (SpecEntry(keyword="spec"), SpecEntry(keyword="spec_set"))
+"""The keyword entries of pytest's specs, with no position."""
+
+
 def placed(position: int | None):
+    """PROFILE, its specs the keyword entries and, unless position is None, an entry of the argument at position."""
     assert PROFILE.stand_ins is not None
-    return replace(PROFILE, stand_ins=replace(PROFILE.stand_ins, spec_position=position))
+    specs = KEYWORDS if position is None else (*KEYWORDS, SpecEntry(position=position))
+    return replace(PROFILE, stand_ins=replace(PROFILE.stand_ins, specs=specs))
 
 
 @pytest.mark.parametrize("position, call, expected", [
@@ -160,6 +168,36 @@ def placed(position: int | None):
 ])
 def test_a_mock_names_its_spec_by_the_argument_at_the_position_the_profile_gives(position, call, expected):
     assert problems([PORTS], [FAKE, in_tests(INTEGRATION_TEST, calls=(call,))], placed(position)) == expected
+
+
+def specified(*specs: SpecEntry):
+    """PROFILE, its specs the entries given, in order."""
+    assert PROFILE.stand_ins is not None
+    return replace(PROFILE, stand_ins=replace(PROFILE.stand_ins, specs=specs))
+
+
+@pytest.mark.parametrize("checked, expected", [
+    pytest.param(PROFILE, [], id="pytest lists the keywords first: spec= names the fire-only port"),
+    pytest.param(specified(SpecEntry(position=0), *KEYWORDS),
+                 [f"tests/{INTEGRATION_TEST}:5: Mock(Repo) stands in for Repo, a read port (stand-ins)"],
+                 id="a position listed first: the first argument names the read port"),
+])
+def test_a_call_giving_two_entries_names_its_spec_by_the_first_the_profile_lists(checked, expected):
+    call = Call(5, MOCK, (REPO,), keywords=(("spec", NOTIFIER),))
+    assert problems([PORTS], [FAKE, in_tests(INTEGRATION_TEST, calls=(call,))], checked) == expected
+
+
+def test_a_read_port_named_by_a_later_keyword_is_written_with_that_keyword():
+    call = Call(5, MOCK, keywords=(("spec_set", REPO),))
+    assert problems([PORTS], [FAKE, in_tests(INTEGRATION_TEST, calls=(call,))]) == [
+        f"tests/{INTEGRATION_TEST}:5: Mock(spec_set=Repo) stands in for Repo, a read port (stand-ins)"]
+
+
+def test_an_autospec_reads_the_position_after_the_first_keyword_but_no_later_keyword():
+    checked = specified(SpecEntry(keyword="spec"), SpecEntry(keyword="spec_set"), SpecEntry(position=1))
+    calls = (Call(5, AUTOSPEC, (None, NOTIFIER)), Call(6, AUTOSPEC, keywords=(("spec_set", NOTIFIER),)))
+    assert problems([PORTS], [FAKE, in_tests(INTEGRATION_TEST, calls=calls)], checked) == [
+        f"tests/{INTEGRATION_TEST}:6: create_autospec() names nothing it stands in for (stand-ins)"]
 
 
 NO_SPEC_FIXTURE = (f"tests/{INTEGRATION_TEST}:5: mocker.Mock() names nothing it stands in for (stand-ins)")

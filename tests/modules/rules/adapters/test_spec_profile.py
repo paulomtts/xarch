@@ -39,7 +39,7 @@ from xarch.modules.spec.contract import (
 from xarch.profile_values.checks import Quantified, Saying, Scope, WrittenCheck, WrittenTarget
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.placement import Repeat, Target
-from xarch.profile_values.testing import Fakes, Fixture, Framework, ScenarioCoverage, StandIns
+from xarch.profile_values.testing import Fakes, Fixture, Framework, ScenarioCoverage, SpecEntry, StandIns
 from xarch.profile_values.testing import TestForm as DeclaredForm
 from xarch.profile_values.tiers import CheckedTier
 
@@ -55,7 +55,7 @@ VIEW = ProfileView(
     guards=GuardsView(package_only=("api",), scenarios=ScenarioCoverage("api", "unit", "Result", ("a", "b", "c"),
                                                                      "test_{name:snake}.py"),
                       no_comments=True,
-                      stand_ins=StandIns((("m", "Mock"),), (), ("spec",), (Fixture("mocker", ("Mock",)),)),
+                      stand_ins=StandIns((("m", "Mock"),), (), (SpecEntry(keyword="spec"),), (Fixture("mocker", ("Mock",)),)),
                       closed_tree=True, no_duplicates=4, no_twins=3, no_twins_renamed=4, no_twins_subset=3,
                       no_twins_translated=("api",), dead_code=True, untested=True, tests_only=True,
                       tests_only_known=("api/x.py:run",), pass_through=("api",), no_callbacks=("core",),
@@ -119,7 +119,7 @@ def test_the_profile_view_becomes_the_profile_the_checks_see():
         repeats=(Repeat("module", ("src",)),), package_only=("api",),
         scenarios=ScenarioCoverage("api", "unit", "Result", ("a", "b", "c"),
                             "test_{name:snake}.py"),
-        no_comments=True, stand_ins=StandIns((("m", "Mock"),), (), ("spec",), (Fixture("mocker", ("Mock",)),)),
+        no_comments=True, stand_ins=StandIns((("m", "Mock"),), (), (SpecEntry(keyword="spec"),), (Fixture("mocker", ("Mock",)),)),
         closed_tree=True, framework=Framework(("test_*.py",), (DeclaredForm(function="test_*"),), (("skip",),)),
         uses_never={"core": (("socket",),)},
         info={"core": PartInfo("the rules", "Is it a rule?", "core/"),

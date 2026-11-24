@@ -21,13 +21,14 @@ from xarch.modules.spec.domain.profile_keys import (
     CHOICE_LANGUAGES,
     CHOICE_PRESETS,
     GUARD,
+    MOCK_SPECS,
     PART_IMPORTS_MAY,
     PROFILE,
     SCOPES,
     Key,
 )
 from xarch.modules.spec.domain.values import Language
-from xarch.profile_values.language import InterfaceMark
+from xarch.profile_values.language import InterfaceMark, SpecWriting
 
 BASE = {"name": "example", "parts": {"documents": {"path": "documents", "role": "the documents"}}}
 LISTING = ("src/documents.py", "tests/documents/check_documents.py", "tests/documents/builders.py")
@@ -60,10 +61,18 @@ def every_folder(document: dict) -> dict[str, tuple[str, ...]]:
     return dict.fromkeys(referenced(document)[1], LISTING)
 
 
+EVERY_SPEC = replace(READS_EVERY_FACT, checked=replace(READS_EVERY_FACT.checked, writing=replace(
+    READS_EVERY_FACT.checked.writing, specs=SpecWriting(**{**vars(READS_EVERY_FACT.checked.writing.specs),
+                                                            "type_argument": "{callee}<{before}{value}>()"}))))
+"""Python, its reader supplying every fact, and writing a mock's spec by a type argument as well, as the TypeScript-like
+test-only language does."""
+
+
 def load(document: dict):
-    """The document parsed under Python, its reader read as supplying every fact: an example shows its key loading,
-    whatever Python's own reader reads."""
-    return parsed(document, bundled=BUNDLED, folders=every_folder(document), languages={"python": READS_EVERY_FACT})
+    """The document parsed under Python, its reader read as supplying every fact and its data file writing every way a
+    mock names its spec: an example shows its key loading, whatever Python's own reader reads and its own file
+    writes."""
+    return parsed(document, bundled=BUNDLED, folders=every_folder(document), languages={"python": EVERY_SPEC})
 
 
 def containers(node, steps: list[str]):
@@ -160,7 +169,7 @@ def test_the_smallest_profile_loads_and_every_symbol_is_explained():
     assert CATALOGUE.symbols and all(symbol and meaning for symbol, meaning in CATALOGUE.symbols)
 
 
-@pytest.mark.parametrize("scope", sorted(set(SCOPES) - {PART_IMPORTS_MAY}))
+@pytest.mark.parametrize("scope", sorted(set(SCOPES) - {PART_IMPORTS_MAY, MOCK_SPECS}))
 def test_the_keys_the_loader_names_in_its_unknown_key_message_are_the_keys_of_the_table(scope):
     document = document_of(keys_of(scope)[0])
     holders(keys_of(scope)[0], document)[0]["zz_unknown"] = 1
@@ -212,3 +221,10 @@ def test_the_path_of_an_interface_is_its_first_base_or_its_keyword():
 
 def test_the_annotations_of_no_value_are_said_each_as_written_joined_by_or():
     assert [said("%nothing%", language) for language in (PYTHON, BRACE, PERCENT)] == ["None", "void or Promise<void>", ""]
+
+
+def test_an_entry_of_the_mock_specs_with_a_key_besides_its_own_is_told_each_key_of_the_scope():
+    document = document_of(keys_of(MOCK_SPECS)[0])
+    holders(keys_of(MOCK_SPECS)[0], document)[0]["zz_unknown"] = 1
+    found = [p for p in problems(document, bundled=BUNDLED, folders=every_folder(document)) if "specs.0:" in p]
+    assert found and [key.name for key in keys_of(MOCK_SPECS) if f"{{{key.name}: <" not in found[0]] == []

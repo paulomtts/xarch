@@ -568,7 +568,7 @@ def _testing(value: Any, presets: Mapping[str, Any], problems: list[str], langua
     tables = ck.table_forms(value["tables"], "testing.tables", problems, language) if "tables" in value else ()
     if len(problems) == count and framework is not None and tables is not None:
         problems += _undeclared(framework, tables, unread, language)
-    mocks = _mocks(value["mocks"], problems, language) if "mocks" in value else None
+    mocks = _mocks(value["mocks"], problems, language, unread) if "mocks" in value else None
     if len(problems) != count or framework is None or tables is None:
         return None
     return _Testing(replace(framework, tables=tables), mocks, preset)
@@ -649,13 +649,15 @@ def _framework_named(testing: _Testing) -> str:
     return f"`{testing.preset}`" if testing.preset else "of `testing`"
 
 
-def _mocks(value: Any, problems: list[str], language: Language) -> StandIns | None:
+def _mocks(value: Any, problems: list[str], language: Language,
+           unread: Collection[str] = frozenset()) -> StandIns | None:
+    """How a mock is built, and the ways a call that builds one names its spec; an entry of specs the language does not
+    write is refused, unless the needs of the profile refuse it already (unread)."""
     where = "testing.mocks"
     if not isinstance(value, Mapping):
-        problems.append(f"{where}: must be a mapping {{calls, spec_keywords}}, and optionally autospec, spec_position "
-                        "and fixtures: the dotted names of the calls that build a mock, the keywords a mock is given "
-                        "its spec by, the position of the argument that names it, and the parameters of a test "
-                        "function whose methods build one")
+        problems.append(f"{where}: must be a mapping {{calls, specs}}, and optionally autospec and fixtures: the dotted "
+                        "names of the calls that build a mock, the ways a mock is given its spec, in order, and the "
+                        "parameters of a test function whose methods build one")
         return None
     count = len(problems)
     problems += ck.unknown_keys(value, names_of(MOCKS), where, MOCKS)
@@ -664,17 +666,13 @@ def _mocks(value: Any, problems: list[str], language: Language) -> StandIns | No
     autospec = ck.outside_names(value["autospec"], f"{where}.autospec", problems, language) if "autospec" in value else ()
     problems += [f"{where}.autospec: {outside_text(name, language.checked.member)!r} is also listed in calls"
                  for name in autospec or () if calls and name in calls]
-    keywords = (ck.identifiers(value["spec_keywords"], f"{where}.spec_keywords", problems, "keyword", "[spec]",
-                               language) if "spec_keywords" in value else None)
+    specs = ck.spec_entries(value["specs"], f"{where}.specs", problems, language) if "specs" in value else None
+    problems += ck.unwritten_specs(specs, f"{where}.specs", unread, language) if specs is not None else []
     fixtures = (ck.fixtures(value["fixtures"], f"{where}.fixtures", problems, language, "calls")
                 if "fixtures" in value else ())
-    position = value.get("spec_position")
-    if position is not None and not _whole(position, 0):
-        problems.append(f"{where}.spec_position: must be a whole number, at least 0, such as 0: the position of the "
-                        "argument that names the spec; leave it out when only a keyword names it")
-    if len(problems) != count or calls is None or autospec is None or keywords is None or fixtures is None:
+    if len(problems) != count or calls is None or autospec is None or specs is None or fixtures is None:
         return None
-    return StandIns(calls, autospec, keywords, fixtures, position)
+    return StandIns(calls, autospec, specs, fixtures)
 
 
 def _tiers(document: Mapping[Any, Any], specs: dict[str, Any], parts: dict[str, Part], declared: set[str],

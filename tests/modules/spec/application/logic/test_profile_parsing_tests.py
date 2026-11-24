@@ -23,9 +23,22 @@ from xarch.modules.spec.domain.values import (
 )
 from xarch.profile_values.language import Writing
 from xarch.profile_values.placement import Target
-from xarch.profile_values.testing import Fakes, Fixture, Framework, Place, RowId, ScenarioCoverage, StandIns, TableForm
+from xarch.profile_values.testing import (
+    Fakes,
+    Fixture,
+    Framework,
+    Place,
+    RowId,
+    ScenarioCoverage,
+    SpecEntry,
+    StandIns,
+    TableForm,
+)
 from xarch.profile_values.testing import TestForm as DeclaredForm
 
+SPECS = ("must be a list of {keyword}, {position} or {type_argument}: the ways a call that builds a mock names its spec, "
+         "in order, such as [{keyword: spec}]")
+"""What the loader says of a `testing.mocks.specs` that is no list of entries."""
 PRESET_PROBLEM = ("layered.yaml: testing: must be a preset name or a mapping {files, declared}: the patterns of a "
                   "test file's name and the forms that declare a test")
 BY_NAME = [{"function": "test_*"}]
@@ -107,7 +120,7 @@ CHECK_FILES = ["check_*.py"]
     pytest.param({"preset": "pytest", "declared": [{"function": "check_*"}]}, PRESETS,
                  [f"layered.yaml: testing.declared: the preset pytest gives declared: {BESIDE}"],
                  id="declared beside it"),
-    pytest.param({"preset": "pytest", "mocks": {"calls": ["unittest.mock.Mock"], "spec_keywords": ["spec"]}}, PRESETS,
+    pytest.param({"preset": "pytest", "mocks": {"calls": ["unittest.mock.Mock"], "specs": [{"keyword": "spec"}]}}, PRESETS,
                  [f"layered.yaml: testing.mocks: the preset pytest gives mocks: {BESIDE}"], id="mocks beside it"),
     pytest.param({"preset": "pytest", "skips": None}, PRESETS,
                  [f"layered.yaml: testing.skips: the preset pytest gives skips: {BESIDE}"],
@@ -208,13 +221,13 @@ def test_the_table_of_cases_and_the_mocks_are_checked_with_the_framework_whether
     document = covered()
     document["testing"]["tables"] = [{"decorator": "x", "row": "y.z", "columns_from": {"position": 0},
                                       "rows": {"position": 1}}]
-    document["testing"]["mocks"] = {"calls": [], "autospec": ["a.b"], "spec_keywords": [], "fixtures": {}, "colour": 1}
+    document["testing"]["mocks"] = {"calls": [], "autospec": ["a.b"], "specs": [], "fixtures": {}, "colour": 1}
     assert problems(document) == [
         "layered.yaml: testing.tables.0: missing `id`",
         "layered.yaml: testing.tables.0.decorator: 'x' is not an outside name such as <package>.<name>",
-        "layered.yaml: testing.mocks: unknown key 'colour': use autospec, calls, fixtures, spec_keywords, spec_position",
+        "layered.yaml: testing.mocks: unknown key 'colour': use autospec, calls, fixtures, specs",
         "layered.yaml: testing.mocks.calls: must be a list of outside names such as <package>.<name>",
-        "layered.yaml: testing.mocks.spec_keywords: must be a list of keyword names such as [spec]",
+        f"layered.yaml: testing.mocks.specs: {SPECS}",
         "layered.yaml: testing.mocks.fixtures: must be a mapping of parameter names to {calls}, and optionally "
         "autospec: the names of the methods that build a mock, and of those that build one from a spec given as an "
         "argument"]
@@ -582,8 +595,9 @@ def test_the_guards_in_use_are_those_named_with_the_framework_s_words_taken_from
     assert architecture.guards == (
         ScenarioCoverage("api", "integration", "Result", ("given", "when", "then"), "test_{name:snake}.py"),
         StandIns((("unittest", "mock", "Mock"), ("unittest", "mock", "MagicMock")),
-                 (("unittest", "mock", "create_autospec"),), ("spec", "spec_set"),
-                 (Fixture("mocker", ("Mock", "MagicMock"), ("create_autospec",)),), 0),
+                 (("unittest", "mock", "create_autospec"),),
+                 (SpecEntry(keyword="spec"), SpecEntry(keyword="spec_set"), SpecEntry(position=0)),
+                 (Fixture("mocker", ("Mock", "MagicMock"), ("create_autospec",)),)),
         NoComments(), ClosedTree())
 
 
@@ -1071,8 +1085,39 @@ def test_a_problem_of_another_table_form_is_given_alone_and_the_callees_are_not_
 
 def test_a_problem_of_the_mocks_does_not_stop_the_callees_being_checked():
     document = tabled([BY_TEST], EACH)
-    document["testing"]["mocks"] = {"calls": ["vitest#vi.fn"], "spec_keywords": [], "colour": 1}
+    document["testing"]["mocks"] = {"calls": ["vitest#vi.fn"], "specs": [], "colour": 1}
     assert problems(document, languages=BRACED) == [
         undeclared(0, "vitest#it.each"),
-        "layered.yaml: testing.mocks: unknown key 'colour': use autospec, calls, fixtures, spec_keywords, spec_position",
-        "layered.yaml: testing.mocks.spec_keywords: must be a list of keyword names such as [spec]"]
+        "layered.yaml: testing.mocks: unknown key 'colour': use autospec, calls, fixtures, specs",
+        f"layered.yaml: testing.mocks.specs: {SPECS}"]
+
+
+def mocked(*specs: dict) -> dict:
+    """declaring() with a function form, its mocks built by vitest#vi.fn and naming their spec by the specs given, and
+    the guard stand-ins on."""
+    return declaring([BY_TEST], mocks={"calls": ["vitest#vi.fn"], "specs": list(specs)}) | {
+        "guards": {"stand-ins": {}}, "fakes": FAKES}
+
+
+def test_under_brace_a_mock_may_name_its_spec_by_a_type_argument():
+    stand_ins = next(guard for guard in parsed(mocked({"type_argument": 0}, {"type_argument": 1}),
+                                               languages=BRACED).guards if isinstance(guard, StandIns))
+    assert stand_ins.specs == (SpecEntry(type_argument=0), SpecEntry(type_argument=1))
+
+
+@pytest.mark.parametrize("specs, said", [
+    pytest.param([{"keyword": "of"}], ["0: the language Brace does not write `writing.specs.keyword`, how a mock is given "
+                                       "its spec by a keyword"], id="a keyword"),
+    pytest.param([{"type_argument": 0}, {"position": 0}],
+                 ["1: the language Brace does not write `writing.specs.position`, how a mock is given its spec by a "
+                  "position"], id="a position, at its index"),
+])
+def test_under_brace_a_spec_form_it_does_not_write_is_refused_at_its_entry(specs, said):
+    assert problems(mocked(*specs), languages=BRACED) == [f"layered.yaml: testing.mocks.specs.{text}" for text in said]
+
+
+def test_under_python_a_type_argument_is_refused_as_written_by_no_template():
+    assert problems(covered(testing=TESTING | {"mocks": TESTING["mocks"] | {"specs": [{"type_argument": 0}]}}),
+                    languages={"python": replace(PYTHON, checked=replace(PYTHON.checked, supplies=None))}) == [
+        "layered.yaml: testing.mocks.specs.0: the language Python does not write `writing.specs.type_argument`, how a "
+        "mock is given its spec by a type argument"]

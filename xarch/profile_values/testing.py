@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from xarch.profile_values.language import Writing
+from xarch.profile_values.language import SPEC_FORMS, Writing
 
 
 @dataclass(frozen=True)
@@ -105,17 +105,43 @@ class Fixture:
 
 
 @dataclass(frozen=True)
+class SpecEntry:
+    """One way a call that builds a mock names its spec, as an entry of the framework's `testing.mocks.specs` says it,
+    exactly one of three: a keyword argument (keyword, its name), the positional argument at a place from 0
+    (position), or the type argument at a place from 0 (type_argument)."""
+    keyword: str = ""
+    position: int | None = None
+    type_argument: int | None = None
+
+    @property
+    def form(self) -> str:
+        """The key the entry is written with, one of SPEC_FORMS."""
+        if self.keyword:
+            return SPEC_FORMS[0]
+        return SPEC_FORMS[1] if self.position is not None else SPEC_FORMS[2]
+
+    @property
+    def place(self) -> int:
+        """The place, from 0, of the argument that names the spec; 0 for a keyword entry."""
+        return self.position if self.position is not None else self.type_argument or 0
+
+    def written(self, writing: Writing, callee: str, value: str) -> str:
+        """The call of callee naming the spec value as the language writes it, by writing's `specs` template of the
+        entry's form."""
+        return writing.spec(self.form, callee, value, self.keyword, self.place)
+
+
+@dataclass(frozen=True)
 class StandIns:
     """The guard stand-ins: the dotted names of the calls that build a mock, of those that build a mock from a spec
-    given as an argument (autospec), and the keywords a mock is given its spec by; the first keyword is the one an
-    autospec call takes; the fixtures, whose methods build mocks the same way; and the position of the argument that
-    names the spec of a call that builds a mock (spec_position, from 0; None: only a keyword names it). The other
-    parameters are those of `fakes`."""
+    given as an argument (autospec), and the ways a call that builds one names its spec (specs, in the order written:
+    a call names it by the first entry it gives, and a fix writes the first entry; an autospec call reads only the
+    first keyword entry of them); and the fixtures, whose methods build mocks the same way. The other parameters are
+    those of `fakes`."""
     mocks: tuple[tuple[str, ...], ...]
     autospec: tuple[tuple[str, ...], ...]
-    spec: tuple[str, ...]
+    specs: tuple[SpecEntry, ...]
     fixtures: tuple[Fixture, ...] = ()
-    spec_position: int | None = None
 
 
 @dataclass(frozen=True)

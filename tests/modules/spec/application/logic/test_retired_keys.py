@@ -99,6 +99,7 @@ IMPORT_RULE = "renamed in 0.3.0: write may-import"
 TABLE_MOVED = "moved in 0.3.0: write tables, a list of forms (xarch profile explain testing.tables)"
 FUNCTIONS_MOVED = 'moved in 0.3.0: write declared: [{function: "<pattern>"}]'
 """The hint of testing.functions, which testing.declared replaced in 0.3.0."""
+SPECS_MOVED = "moved in 0.3.0: write specs: [{keyword: spec}, {position: 0}]"
 OLD_TABLE = {"decorator": "pytest.mark.parametrize", "row": "pytest.param", "id": "id",
              "keywords": ["argnames", "argvalues"]}
 """testing.table as profiles wrote it before 0.3.0."""
@@ -163,6 +164,9 @@ HOLDS_CLASSES = "holds as one word was removed in 0.3.0: write holds: {classes: 
     pytest.param(TIER_IMPORTS, "libraries", "", id="libraries in a tier's imports, only unknown"),
     pytest.param(PART_IMPORTS_MAY, "types_only", "", id="the mark, a key"),
     pytest.param(TESTING, "table", TABLE_MOVED, id="the testing key table"),
+    pytest.param(MOCKS, "spec_keywords", SPECS_MOVED, id="the mocks key spec_keywords"),
+    pytest.param(MOCKS, "spec_position", SPECS_MOVED, id="the mocks key spec_position"),
+    pytest.param(MOCKS, "specs", "", id="the mocks key specs"),
 ])
 def test_the_shipped_table_answers_each_name_in_its_scope(scope, name, text):
     assert retired(scope, name) == text
@@ -203,6 +207,8 @@ def test_the_shipped_table_answers_each_name_in_its_scope(scope, name, text):
     pytest.param("tiers.imports.types_only", "", id="tiers.imports.types_only"),
     pytest.param("testing.table", TABLE_MOVED, id="testing.table"),
     pytest.param("testing.functions", FUNCTIONS_MOVED, id="testing.functions"),
+    pytest.param("testing.mocks.spec_keywords", SPECS_MOVED, id="testing.mocks.spec_keywords"),
+    pytest.param("testing.mocks.spec_position", SPECS_MOVED, id="testing.mocks.spec_position"),
 ])
 def test_the_shipped_table_answers_each_address_profile_explain_is_typed_with(address, text):
     assert retired_at(address) == text

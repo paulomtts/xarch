@@ -4,7 +4,7 @@ import pytest
 from xarch.bootstrap.wiring import build_controllers, load_architecture
 from xarch.modules.spec.contract import GuardsView
 from xarch.modules.spec.domain.values import NoCallbacks
-from xarch.profile_values.testing import Fakes, Fixture, Framework, Place, RowId, ScenarioCoverage, StandIns, TableForm
+from xarch.profile_values.testing import Fakes, Fixture, Framework, Place, RowId, ScenarioCoverage, SpecEntry, StandIns, TableForm
 from xarch.profile_values.testing import TestForm as DeclaredForm
 
 
@@ -31,7 +31,8 @@ def test_the_bundled_profiles_use_every_guard_of_their_own(name):
         no_comments=True,
         closed_tree=True,
         stand_ins=StandIns(tuple(("unittest", "mock", m) for m in mocks), (("unittest", "mock", "create_autospec"),),
-                               ("spec", "spec_set"), (Fixture("mocker", mocks, ("create_autospec",)),), 0),
+                           (SpecEntry(keyword="spec"), SpecEntry(keyword="spec_set"), SpecEntry(position=0)),
+                           (Fixture("mocker", mocks, ("create_autospec",)),)),
         no_duplicates=4, no_twins=3, no_twins_renamed=3, no_twins_subset=3, dead_code=True, untested=True,
         pass_through=("services", "controller", "adapters"), no_callbacks=("domain", "logic"),
         private_imports=True)

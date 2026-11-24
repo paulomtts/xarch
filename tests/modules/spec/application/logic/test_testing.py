@@ -9,8 +9,8 @@ from tests.modules.spec.languages import BRACE, PYTHON, READS_EVERY_FACT
 from tests.modules.spec.profiles import PYTEST_FORM, PYTEST_TABLE, TESTING, covered, parsed, problems
 from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.modules.spec.application.logic.profile_checks import use_case_file
-from xarch.profile_values.language import Writing
-from xarch.profile_values.testing import Fixture, Place, RowId, ScenarioCoverage, TableForm
+from xarch.profile_values.language import SpecWriting, Writing
+from xarch.profile_values.testing import Fixture, Place, RowId, ScenarioCoverage, SpecEntry, StandIns, TableForm
 
 FILES = {"files": ["test_*.py"], "declared": [{"function": "test_*"}]}
 MOCKS_OK = TESTING["mocks"]
@@ -23,12 +23,16 @@ FUNCTION = "layered.yaml: testing.declared.0.function: must be a function name p
 FIXTURES = ("layered.yaml: testing.mocks.fixtures: must be a mapping of parameter names to {calls}, and optionally "
             "autospec: the names of the methods that build a mock, and of those that build one from a spec given as "
             "an argument")
-MOCKS = ("layered.yaml: testing.mocks: must be a mapping {calls, spec_keywords}, and optionally autospec, "
-         "spec_position and fixtures: the dotted names of the calls that build a mock, the keywords a mock is given "
-         "its spec by, the position of the argument that names it, and the parameters of a test function whose "
-         "methods build one")
-POSITION = ("layered.yaml: testing.mocks.spec_position: must be a whole number, at least 0, such as 0: the position of "
-            "the argument that names the spec; leave it out when only a keyword names it")
+MOCKS = ("layered.yaml: testing.mocks: must be a mapping {calls, specs}, and optionally autospec and fixtures: the "
+         "dotted names of the calls that build a mock, the ways a mock is given its spec, in order, and the parameters "
+         "of a test function whose methods build one")
+SPECS = ("layered.yaml: testing.mocks.specs: must be a list of {keyword}, {position} or {type_argument}: the ways a "
+         "call that builds a mock names its spec, in order, such as [{keyword: spec}]")
+SPEC_ENTRY = ("layered.yaml: testing.mocks.specs.{index}: must be one of {{keyword: <name>}}, {{position: <n>}} or "
+              "{{type_argument: <n>}}")
+WHOLE = "layered.yaml: testing.mocks.specs.{index}.{key}: must be a whole number, at least 0, such as 0"
+RETIRED = ("layered.yaml: testing.mocks: unknown key '{key}': moved in 0.3.0: write specs: [{{keyword: spec}}, "
+           "{{position: 0}}]; use autospec, calls, fixtures, specs")
 DOTTED = "must be a list of outside names such as <package>.<name>"
 METHODS = "must be a list of method names such as [build]"
 WRITE = "write testing: <preset>, or testing: {files: [<pattern>, ...], declared: [{function: <pattern>}]}"
@@ -78,15 +82,13 @@ def test_the_mocks_load_the_fixtures_whose_methods_build_mocks():
                                                    Fixture("factory", ("build",)))
 
 
-@pytest.mark.parametrize("written, position", [
-    pytest.param({"spec_position": 0}, 0, id="the first argument"),
-    pytest.param({"spec_position": 2}, 2, id="a later argument"),
-    pytest.param({}, None, id="left out: no argument names the spec"),
-])
-def test_the_mocks_load_the_position_of_the_argument_that_names_the_spec(written, position):
-    mocks = {key: value for key, value in MOCKS_OK.items() if key != "spec_position"} | written
-    document = with_mocks(mocks) | {"guards": {"stand-ins": {}}, "fakes": FAKES}
-    assert parsed(document).guards[0].spec_position == position
+def test_the_mocks_load_the_ways_a_call_names_its_spec_in_the_order_written():
+    document = with_mocks(MOCKS_OK) | {"guards": {"stand-ins": {}}, "fakes": FAKES}
+    assert parsed(document).guards[0].specs == (SpecEntry(keyword="spec"), SpecEntry(keyword="spec_set"),
+                                                SpecEntry(position=0))
+    document = with_mocks(MOCKS_OK | {"specs": [{"position": 2}, {"keyword": "spec"}]}) | {
+        "guards": {"stand-ins": {}}, "fakes": FAKES}
+    assert parsed(document).guards[0].specs == (SpecEntry(position=2), SpecEntry(keyword="spec"))
 
 
 def test_the_fixtures_of_the_mocks_are_optional():
@@ -131,10 +133,10 @@ def test_a_bad_fixtures_entry_is_refused(fixtures, expected):
 
 @pytest.mark.parametrize("mocks, expected", [
     pytest.param([], MOCKS, id="mocks that are no mapping are refused"),
-    pytest.param({"spec_keywords": ["spec"]}, "layered.yaml: testing.mocks: missing `calls`",
+    pytest.param({"specs": [{"keyword": "spec"}]}, "layered.yaml: testing.mocks: missing `calls`",
                  id="mocks with no calls are refused"),
-    pytest.param({"calls": [MOCKS_OK["calls"][0]]}, "layered.yaml: testing.mocks: missing `spec_keywords`",
-                 id="mocks with no spec keywords are refused"),
+    pytest.param({"calls": [MOCKS_OK["calls"][0]]}, "layered.yaml: testing.mocks: missing `specs`",
+                 id="mocks with no specs are refused, none being filled in"),
     pytest.param(MOCKS_OK | {"calls": "unittest.mock.Mock"}, f"layered.yaml: testing.mocks.calls: {DOTTED}",
                  id="calls given as one text are refused"),
     pytest.param(MOCKS_OK | {"calls": ["Mock"]},
@@ -147,23 +149,66 @@ def test_a_bad_fixtures_entry_is_refused(fixtures, expected):
     pytest.param(MOCKS_OK | {"autospec": ["unittest.mock.Mock"]},
                  "layered.yaml: testing.mocks.autospec: 'unittest.mock.Mock' is also listed in calls",
                  id="an autospec that is also a call is refused"),
-    pytest.param(MOCKS_OK | {"spec_keywords": ["spec", "spec"]},
-                 "layered.yaml: testing.mocks.spec_keywords: 'spec' is listed twice",
-                 id="a spec keyword listed twice is refused"),
-    pytest.param(MOCKS_OK | {"spec_keywords": ["a b"]},
-                 "layered.yaml: testing.mocks.spec_keywords: 'a b' is not a keyword name",
-                 id="a spec keyword that is no keyword name is refused"),
-    pytest.param(MOCKS_OK | {"spec_position": -1}, POSITION, id="a spec position below 0 is refused"),
-    pytest.param(MOCKS_OK | {"spec_position": "0"}, POSITION, id="a spec position that is text is refused"),
-    pytest.param(MOCKS_OK | {"spec_position": True}, POSITION, id="a spec position that is true is refused"),
+    pytest.param(MOCKS_OK | {"specs": []}, SPECS, id="an empty list of specs is refused"),
+    pytest.param(MOCKS_OK | {"specs": "spec"}, SPECS, id="specs that are no list are refused"),
+    pytest.param(MOCKS_OK | {"specs": {"keyword": "spec"}}, SPECS, id="one entry written as a map, not a list"),
+    pytest.param(MOCKS_OK | {"specs": [{"keyword": "spec"}, {"keyword": "spec", "position": 0}]},
+                 SPEC_ENTRY.format(index=1), id="an entry with two keys, at its index"),
+    pytest.param(MOCKS_OK | {"specs": [{"keyword": "spec"}, {}]}, SPEC_ENTRY.format(index=1),
+                 id="an entry with no key"),
+    pytest.param(MOCKS_OK | {"specs": [{"keyword": "spec"}, {"generic": 0}]}, SPEC_ENTRY.format(index=1),
+                 id="an entry whose key is none of the three"),
+    pytest.param(MOCKS_OK | {"specs": [{"keyword": "spec"}, "spec_set"]}, SPEC_ENTRY.format(index=1),
+                 id="an entry that is no mapping"),
+    pytest.param(MOCKS_OK | {"specs": [{"keyword": "a b"}]},
+                 "layered.yaml: testing.mocks.specs.0.keyword: 'a b' is not a keyword name",
+                 id="a keyword that is no keyword name is refused"),
+    pytest.param(MOCKS_OK | {"specs": [{"keyword": 3}]},
+                 "layered.yaml: testing.mocks.specs.0.keyword: 3 is not a keyword name",
+                 id="a keyword that is no text is refused"),
+    pytest.param(MOCKS_OK | {"specs": [{"position": -1}]}, WHOLE.format(index=0, key="position"),
+                 id="a position below 0 is refused"),
+    pytest.param(MOCKS_OK | {"specs": [{"position": "0"}]}, WHOLE.format(index=0, key="position"),
+                 id="a position that is text is refused"),
+    pytest.param(MOCKS_OK | {"specs": [{"position": True}]}, WHOLE.format(index=0, key="position"),
+                 id="a position that is true is refused"),
+    pytest.param(MOCKS_OK | {"specs": [{"keyword": "spec"}, {"position": 0}, {"keyword": "spec"}]},
+                 "layered.yaml: testing.mocks.specs.2: {keyword: spec} is listed twice",
+                 id="a keyword entry listed twice is refused at its second index"),
+    pytest.param(MOCKS_OK | {"specs": [{"position": 0}, {"position": 0}]},
+                 "layered.yaml: testing.mocks.specs.1: {position: 0} is listed twice",
+                 id="a position entry listed twice is refused"),
+    pytest.param(MOCKS_OK | {"spec_keywords": ["spec"]}, RETIRED.format(key="spec_keywords"),
+                 id="spec_keywords is retired with what to write"),
+    pytest.param(MOCKS_OK | {"spec_position": 0}, RETIRED.format(key="spec_position"),
+                 id="spec_position is retired with what to write"),
+    pytest.param(MOCKS_OK | {"colour": 1},
+                 "layered.yaml: testing.mocks: unknown key 'colour': use autospec, calls, fixtures, specs",
+                 id="an unknown key is told the keys of mocks"),
 ])
 def test_a_bad_mocks_entry_is_refused(mocks, expected):
     assert problems(with_mocks(mocks)) == [expected]
 
 
-def test_mocks_with_neither_calls_nor_spec_keywords_report_each_one_missing():
+def test_a_type_argument_place_that_is_no_whole_number_is_refused():
+    assert problems(with_mocks(MOCKS_OK | {"specs": [{"type_argument": 1.5}]}),
+                    languages={"python": READS_EVERY_FACT}) == [WHOLE.format(index=0, key="type_argument")]
+
+
+def test_mocks_with_neither_calls_nor_specs_report_each_one_missing():
     assert problems(with_mocks({"autospec": ["unittest.mock.create_autospec"]})) == [
-        "layered.yaml: testing.mocks: missing `calls`", "layered.yaml: testing.mocks: missing `spec_keywords`"]
+        "layered.yaml: testing.mocks: missing `calls`", "layered.yaml: testing.mocks: missing `specs`"]
+
+
+def test_both_retired_keys_written_give_one_problem_each_in_sorted_order():
+    assert problems(with_mocks(MOCKS_OK | {"spec_position": 0, "spec_keywords": ["spec"]})) == [
+        RETIRED.format(key="spec_keywords"), RETIRED.format(key="spec_position")]
+
+
+def test_the_retired_keys_written_in_place_of_specs_are_refused_beside_the_missing_specs():
+    mocks = {"calls": MOCKS_OK["calls"], "spec_keywords": ["spec", "spec_set"], "spec_position": 0}
+    assert problems(with_mocks(mocks)) == [RETIRED.format(key="spec_keywords"), RETIRED.format(key="spec_position"),
+                                           "layered.yaml: testing.mocks: missing `specs`"]
 
 
 def test_stand_ins_with_fakes_that_name_no_prefix_is_refused():
@@ -241,11 +286,23 @@ def test_the_stand_ins_line_says_each_annotation_of_no_value_of_the_language():
     assert "is fire-only (every method returns `void` or `Promise<void>`) or read" in line
 
 
+def test_the_stand_ins_line_writes_a_mock_by_the_language_s_template_of_the_first_spec_form():
+    architecture = parsed(covered(guards={"scenario-coverage": SCENARIOS, "stand-ins": {}}, fakes=FAKES))
+    guards = tuple(replace(guard, specs=(SpecEntry(type_argument=0), SpecEntry(keyword="spec")))
+                   if isinstance(guard, StandIns) else guard for guard in architecture.guards)
+    writing = Writing(specs=SpecWriting(type_argument="{callee}<{before}{value}>()"))
+    typed = replace(architecture, guards=guards, language=replace(
+        architecture.language, checked=replace(architecture.language.checked, writing=writing)))
+    lines = fill("{{guards}}", typed, "layered.md", file_types=FILE_TYPES).splitlines()
+    line = next(line for line in lines if line.startswith("- `stand-ins`"))
+    assert "names what it stands in for, `Mock<<Port>>()` (or, from a fixture, `mocker.Mock<<Port>>()`)" in line
+
+
 def test_a_profile_naming_another_framework_gets_its_own_words_in_the_guards_lines():
     testing = {"files": ["*_spec.py"], "declared": [{"function": "it_*"}],
                "tables": [{"decorator": "cases.table", "columns_from": {"position": 0}, "rows": {"position": 1},
                           "row": "cases.row", "id": {"keyword": "name"}}],
-               "mocks": {"calls": ["doubles.Double"], "spec_keywords": ["of"]}}
+               "mocks": {"calls": ["doubles.Double"], "specs": [{"keyword": "of"}]}}
     lines = guard_lines(testing=testing, guards={"scenario-coverage": SCENARIOS | {"file": "{name:snake}_spec.py"}})
     assert "in `<name>_spec.py`" in lines[0]
     assert "every row is a `cases.row` with an `name`" in lines[0]
@@ -419,8 +476,10 @@ ROW_ID = f"{AT}.id: must be one of {{keyword: <name>}}, {{field: <name>}} or {{p
 SLOTS = "use call, columns_from, decorator, id, loop, row, rows"
 EVERY_FORM = {"python": READS_EVERY_FACT}
 """The languages of a profile whose forms the loader is tested on, Python's reader read as supplying every form."""
-TOY = replace(READS_EVERY_FACT, checked=replace(READS_EVERY_FACT.checked, title="Toy", writing=Writing()))
-"""Python, reading every form, as a language whose data file writes no template: it cannot say a row."""
+TOY = replace(READS_EVERY_FACT, checked=replace(READS_EVERY_FACT.checked, title="Toy",
+                                                  writing=Writing(specs=READS_EVERY_FACT.checked.writing.specs)))
+"""Python, reading every form, as a language whose data file writes no template of a row: it cannot say a row; it
+writes a mock's spec as Python does."""
 
 
 def with_tables(tables) -> dict:

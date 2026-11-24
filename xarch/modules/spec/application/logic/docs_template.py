@@ -81,7 +81,7 @@ from xarch.modules.spec.domain.values import (
     Tier,
 )
 from xarch.profile_values.placement import Repeat, Target
-from xarch.profile_values.testing import ScenarioCoverage, StandIns, TableForm
+from xarch.profile_values.testing import ScenarioCoverage, SpecEntry, StandIns, TableForm
 
 Texts = Mapping[str, str]
 """Texts a profile's docs quote from its files, by what names them: each example's file by the example's name, each
@@ -494,9 +494,9 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
                     f"table (columns {shown}) in `{_uncased(file)}` among the {tier} tests (section 5.2), "
                     f"or is named by a standalone test of that file; every row is {rows}, and a table test has no "
                     f"{_branches(architecture)}.")
-        case StandIns(mocks, _, spec, fixtures):
+        case StandIns(mocks, _, specs, fixtures):
             built = f"{fixtures[0].name}.{fixtures[0].mocks[0]}" if fixtures else ""
-            return _stand_ins_line(architecture, mocks[0][-1], spec[0], built)
+            return _stand_ins_line(architecture, mocks[0][-1], specs[0], built)
         case NoDuplicates(least):
             return (f"`no-duplicates`: no two functions of the app have the same code, names and formatting aside, "
                     f"when each holds at least {least} statements; tests are not compared.")
@@ -669,14 +669,17 @@ def _branches(architecture: Architecture) -> str:
     return " and no ".join(said) or "branch"
 
 
-def _stand_ins_line(architecture: Architecture, mock: str, spec: str, built: str = "") -> str:
+def _stand_ins_line(architecture: Architecture, mock: str, spec: SpecEntry, built: str = "") -> str:
+    """The line of the guard stand-ins; a mock is written as the first of the profile's specs, by the language's
+    template of its form."""
     fakes = architecture.fakes
     assert fakes is not None
+    writing = architecture.language.checked.writing
     parts = _and([f"`{docs_name(architecture, architecture.parts[p])}`" for p in fakes.stand_in_for])
     tiers = _and([t.name for t in architecture.tiers if any(s.part in fakes.stand_in_for for s in t.subject)])
-    fixture = f" (or, from a fixture, `{built}({spec}=<Port>)`)" if built else ""
-    mocks = (f"; and every mock in the {tiers} tests names what it stands in for, `{mock}({spec}=<Port>)`{fixture}, "
-             "never a read port") if tiers else ""
+    fixture = f" (or, from a fixture, `{spec.written(writing, built, '<Port>')}`)" if built else ""
+    mocks = (f"; and every mock in the {tiers} tests names what it stands in for, "
+             f"`{spec.written(writing, mock, '<Port>')}`{fixture}, never a read port") if tiers else ""
     interface = architecture.language.interface_name
     nothing = " or ".join(f"`{annotation}`" for annotation in architecture.language.checked.nothing)
     return (f"`stand-ins`: every `{interface}` in {parts} is fire-only (every method returns "

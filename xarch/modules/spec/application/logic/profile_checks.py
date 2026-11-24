@@ -23,6 +23,7 @@ from xarch.modules.spec.application.logic.project_files import APP_PLACEHOLDER
 from xarch.modules.spec.domain.profile_keys import DECLARED, FILE, FIXTURE, NAMING, PAGE, RULE_ID, TABLES
 from xarch.modules.spec.domain.values import NAME, Doc, FileEntry, Language, Layout, Naming, Part, Tier
 from xarch.profile_values.excluded import Excluded
+from xarch.profile_values.language import SPEC_FORMS
 from xarch.profile_values.placement import Target
 from xarch.profile_values.testing import (
     Fakes,
@@ -30,6 +31,7 @@ from xarch.profile_values.testing import (
     Framework,
     Place,
     RowId,
+    SpecEntry,
     TableForm,
     TestForm,
 )
@@ -549,6 +551,55 @@ def _unwritten(row: tuple[str, ...], given: RowId, where: str, language: Languag
     return found
 
 
+SPECS = ("must be a list of {keyword}, {position} or {type_argument}: the ways a call that builds a mock names its "
+         "spec, in order, such as [{keyword: spec}]")
+"""What the loader says of a value of `testing.mocks.specs` that is no list of entries, or an empty one."""
+_SPEC_SAID = {"keyword": "a keyword", "position": "a position", "type_argument": "a type argument"}
+"""How a problem says each way a call names its spec."""
+
+
+def spec_entries(value: Any, where: str, problems: list[str], language: Language) -> tuple[SpecEntry, ...] | None:
+    """The ways a call that builds a mock names its spec, at least one, in the order written, each entry addressed
+    `<where>.<i>`, i from 0, every entry counted, and each once; None when the list or any entry has a problem."""
+    if not isinstance(value, list) or not value:
+        problems.append(f"{where}: {SPECS}")
+        return None
+    count = len(problems)
+    found: list[SpecEntry] = []
+    for index, entry in enumerate(value):
+        read = _spec_entry(entry, f"{where}.{index}", problems, language)
+        if read is not None and read in found:
+            problems.append(f"{where}.{index}: {{{read.form}: {read.keyword or read.place}}} is listed twice")
+        elif read is not None:
+            found.append(read)
+    return tuple(found) if len(problems) == count else None
+
+
+def _spec_entry(entry: Any, where: str, problems: list[str], language: Language) -> SpecEntry | None:
+    """One way a call names its spec: exactly one of {keyword: <name>}, {position: <n>} and {type_argument: <n>}."""
+    form, item = next(iter(entry.items())) if isinstance(entry, Mapping) and len(entry) == 1 else ("", None)
+    if form not in SPEC_FORMS:
+        problems.append(f"{where}: must be one of {{keyword: <name>}}, {{position: <n>}} or {{type_argument: <n>}}")
+        return None
+    if form == "keyword" and not (isinstance(item, str) and names.is_name(item, language.names)):
+        problems.append(f"{where}.keyword: {item!r} is not a keyword name")
+        return None
+    if form != "keyword" and not _counted(item):
+        problems.append(f"{where}.{form}: must be a whole number, at least 0, such as 0")
+        return None
+    return SpecEntry(**{form: item})
+
+
+def unwritten_specs(specs: tuple[SpecEntry, ...], where: str, unread: Collection[str], language: Language) -> list[str]:
+    """A problem for each entry of the list at where whose way of naming a spec the language does not write (its data
+    file's `writing.specs`), in the order of the list; none for an entry the needs of the profile refuse already
+    (unread)."""
+    writing, title = language.checked.writing, language.checked.title
+    return [f"{where}.{index}: the language {title} does not write `writing.specs.{entry.form}`, how a mock is given its "
+            f"spec by {_SPEC_SAID[entry.form]}" for index, entry in enumerate(specs)
+            if not writing.writes_spec(entry.form) and f"{where}.{index}.{entry.form}" not in unread]
+
+
 def _outside_name_at(value: Any, where: str, problems: list[str], language: Language,
                      least: int = 2) -> tuple[str, ...] | None:
     """An outside name of at least `least` steps: two by default, <package><member><name>, the path an import binds;
@@ -598,8 +649,8 @@ def fixtures(value: Any, where: str, problems: list[str], language: Language,
         before = len(problems)
         problems += unknown_keys(spec, {calls, "autospec"}, at, FIXTURE)
         problems += [f"{at}: missing `{calls}`"] if calls not in spec else []
-        mocks = identifiers(spec[calls], f"{at}.{calls}", problems, "method", "[build]", language) if calls in spec else None
-        autospec = (identifiers(spec["autospec"], f"{at}.autospec", problems, "method", "[build]", language)
+        mocks = _identifiers(spec[calls], f"{at}.{calls}", problems, "method", "[build]", language) if calls in spec else None
+        autospec = (_identifiers(spec["autospec"], f"{at}.autospec", problems, "method", "[build]", language)
                     if "autospec" in spec else ())
         problems += [f"{at}.autospec: {method!r} is also listed in {calls}" for method in autospec or ()
                      if mocks and method in mocks]
@@ -608,9 +659,9 @@ def fixtures(value: Any, where: str, problems: list[str], language: Language,
     return tuple(found) if len(problems) == count else None
 
 
-def identifiers(value: Any, where: str, problems: list[str], noun: str, example: str,
-                language: Language) -> tuple[str, ...] | None:
-    """A non-empty list of names, each once, each a plain identifier: the keywords of a call, the methods of an object."""
+def _identifiers(value: Any, where: str, problems: list[str], noun: str, example: str,
+                 language: Language) -> tuple[str, ...] | None:
+    """A non-empty list of names, each once, each a plain identifier: the methods of an object."""
     if not isinstance(value, list) or not value:
         problems.append(f"{where}: must be a list of {noun} names such as {example}")
         return None

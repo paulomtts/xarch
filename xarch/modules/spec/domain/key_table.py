@@ -18,6 +18,7 @@ from xarch.modules.spec.domain.profile_keys import (
     FILE,
     FIXTURE,
     GUARD,
+    MOCK_SPECS,
     MOCKS,
     NAMING,
     NO_CALLBACKS,
@@ -160,8 +161,10 @@ _KEYS: tuple[Key, ...] = (
 
     Key(MOCKS, "calls", True, rules=("stand-ins",)),
     Key(MOCKS, "autospec", rules=("stand-ins",)),
-    Key(MOCKS, "spec_keywords", True, rules=("stand-ins",)),
-    Key(MOCKS, "spec_position", rules=("stand-ins",)),
+    Key(MOCKS, "specs", True, rules=("stand-ins",), opens=MOCK_SPECS),
+    Key(MOCK_SPECS, "keyword", rules=("stand-ins",)),
+    Key(MOCK_SPECS, "position", rules=("stand-ins",)),
+    Key(MOCK_SPECS, "type_argument", rules=("stand-ins",)),
     Key(MOCKS, "fixtures", rules=("stand-ins",), opens=FIXTURE),
 
     Key(FIXTURE, "calls", True, rules=("stand-ins",)),

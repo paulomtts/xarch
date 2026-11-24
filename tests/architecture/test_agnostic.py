@@ -84,7 +84,7 @@ def framework_names() -> tuple[set[str], set[str]]:
                           *(tuple(place.keyword for place in (form.columns_from, form.rows)
                                   if isinstance(place, Place) and place.keyword) for form in forms))
             elif isinstance(guard, StandIns):
-                dotted = (*guard.mocks, *guard.autospec, guard.spec)
+                dotted = (*guard.mocks, *guard.autospec, tuple(spec.keyword for spec in guard.specs if spec.keyword))
             words |= {word for name in dotted for word in name}
     return words - EXEMPT, stems
 
