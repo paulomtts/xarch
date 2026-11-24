@@ -52,14 +52,14 @@ def test_every_way_a_custom_profile_is_looser_than_the_bundled_one_it_resembles_
     assert origin.guards_off == ("package-only", "scenario-coverage", "no-comments", *OFF[2:])
     assert origin.baseline_off == OFF
     assert origin.looser == (
-        Loosened("imports.may", "core", "store", "core may also import store (parts.core.imports.may)"),
+        Loosened("imports.may", "core", "parts.store", "core may also import parts.store (parts.core.imports.may)"),
         Loosened("imports.libraries", "core", "yaml", "core may also import yaml (parts.core.imports.libraries)"),
         Loosened("imports.libraries", "store", "requests", "store may also import requests (parts.store.imports.libraries)"),
         Loosened("uses.never", "core", "time.time", "core no longer forbids time.time (parts.core.uses.never)"),
         Loosened("untested", "store", "", "store is newly marked untested (parts.store.untested)"),
         Loosened("imports.types_only", "unit", "store",
                  "the unit tests may now call store (tiers.unit.imports.types_only)"),
-        Loosened("imports.also", "unit", "edge", "the unit tests may also import edge (tiers.unit.imports.also)"),
+        Loosened("imports.also", "unit", "parts.edge", "the unit tests may also import parts.edge (tiers.unit.imports.also)"),
         Loosened("uses.apply_never", "unit", "",
                  "the unit tests are no longer held to their part's never list (tiers.unit.uses.apply_never)"),
         Loosened("testing.skips", "", "pytest.mark.xfail", "pytest.mark.xfail is no longer counted as a skip (testing.skips)"),
@@ -109,7 +109,7 @@ def test_a_part_that_no_longer_has_to_import_or_may_meet_it_with_more_is_looser(
     assert spec.origin("dropped.yaml").looser == (
         Loosened("imports.must", "store", "", "store no longer has to import anything (parts.store.imports.must)"),)
     assert spec.origin("wider.yaml").looser == (
-        Loosened("imports.must", "store", "edge", "store may also meet imports.must with edge (parts.store.imports.must)"),)
+        Loosened("imports.must", "store", "parts.edge", "store may also meet imports.must with parts.edge (parts.store.imports.must)"),)
     assert spec.origin("same.yaml").looser == ()
     assert spec.origin("stricter.yaml").looser == ()
 

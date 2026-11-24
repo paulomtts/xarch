@@ -104,11 +104,11 @@ def test_a_looser_copy_is_still_valid_and_the_difference_is_information(tmp_path
     result = runner.invoke(app, ["profile", "check", COPY])
     assert result.exit_code == 0, result.output
     assert "looser than web" in result.output
-    assert "domain may also import platform (parts.domain.imports.may)" in result.output
+    assert "domain may also import parts.platform (parts.domain.imports.may)" in result.output
     shown = json.loads(runner.invoke(app, ["profile", "check", COPY, "--format", "json"]).output)
     assert shown["compared_with"]["looser"] == [
-        {"key": "imports.may", "part": "domain", "what": "platform",
-         "sentence": "domain may also import platform (parts.domain.imports.may)"}]
+        {"key": "imports.may", "part": "domain", "what": "parts.platform",
+         "sentence": "domain may also import parts.platform (parts.domain.imports.may)"}]
 
 
 def test_each_public_name_a_copy_accepts_as_only_the_tests_is_a_way_it_is_looser(tmp_path):

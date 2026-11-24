@@ -1,14 +1,15 @@
 """How a custom profile is looser than a bundled one, on hand-made architectures, as the origin of the custom one says
-it: a rule's target is shown as the file writes it, and each way is said naming the key that says it. The sentence of
-each way a profile is looser is asserted here or in tests/modules/spec/application/test_origin.py (a package added to
-`imports.libraries`, a part that may import any outside package, an `imports.must` target added or the key dropped)."""
+it: a rule's target is shown as a reference (parts.<part> or <word>.<part>), and each way is said naming the key that
+says it. The sentence of each way a profile is looser is asserted here or in
+tests/modules/spec/application/test_origin.py (a package added to `imports.libraries`, a part that may import any
+outside package, an `imports.must` target added or the key dropped)."""
 from copy import deepcopy
 from dataclasses import replace
 
 import pytest
 
 from tests.modules.spec.application.origins import BASE, PARTS, TESTING, TIER, part
-from tests.modules.spec.profiles import covered, layered, parsed, part_of
+from tests.modules.spec.profiles import covered, layered, parsed, part_of, two_folders
 from xarch.modules.spec.application.logic.looseness import LOOSER, LOW, origin_of
 from xarch.modules.spec.domain.guards import ORDER
 from xarch.modules.spec.domain.published import Loosened, Origin
@@ -21,11 +22,11 @@ def loosened(custom: Architecture, base: Architecture) -> tuple[Loosened, ...]:
 
 
 @pytest.mark.parametrize("written, shown", [
-    pytest.param(["service"], "service", id="a part in the repeating folder is shown by its bare name, which means its own instance"),
-    pytest.param(["store@any/sql"], "store@any/sql", id="a scope and a sub path are both shown"),
-    pytest.param(["shared/text"], "shared/text", id="a part outside the repeating folder has no scope"),
+    pytest.param(["service"], "module.service", id="an own-instance part is shown by its word"),
+    pytest.param(["store@any/sql"], "parts.store/sql", id="any instance and a sub path"),
+    pytest.param(["shared/text"], "parts.shared/text", id="a part outside the repeating folder is shown with parts."),
     pytest.param("everything", "everything", id="everything is shown as the word"),
-    pytest.param(["api@any"], "api@any", id="another instance of the part itself is looser than its own, which is implied"),
+    pytest.param(["api@any"], "parts.api", id="another instance of the part itself is looser than its own, which is implied"),
 ])
 def test_a_target_added_to_a_rule_is_shown_as_written(written, shown):
     custom = layered()
@@ -34,6 +35,18 @@ def test_a_target_added_to_a_rule_is_shown_as_written(written, shown):
     part_of(stricter, "api")["imports"] = {"may": []}
     assert loosened(parsed(custom), parsed(stricter)) == (
         Loosened("imports.may", "api", shown, f"api may also import {shown} (parts.api.imports.may)"),)
+
+
+@pytest.mark.parametrize("may, shown", [
+    pytest.param(["hooks"], "plugin.hooks", id="the own instance is named by the word of its part's own folder"),
+    pytest.param(["hooks@any"], "parts.hooks", id="any instance of a part of the second folder is named with parts."),
+])
+def test_the_word_a_target_is_shown_with_is_that_of_its_part_s_own_repeating_folder(may, shown):
+    base, custom = two_folders(), two_folders()
+    part_of(base, "manifest")["imports"] = {"may": []}
+    part_of(custom, "manifest")["imports"] = {"may": may}
+    assert loosened(parsed(custom), parsed(base)) == (
+        Loosened("imports.may", "manifest", shown, f"manifest may also import {shown} (parts.manifest.imports.may)"),)
 
 
 @pytest.mark.parametrize("target", [
@@ -62,14 +75,14 @@ def test_every_way_a_profile_is_looser_than_another_is_found_in_order():
               "testing": {**TESTING, "skips": ["pytest.mark.skip"]}, "guards": {},
               "files": {"tests/test_rules.py": {"from": "guard.py"}}}
     assert loosened(parsed(custom), parsed(BASE)) == (
-        Loosened("imports.may", "core", "store", "core may also import store (parts.core.imports.may)"),
+        Loosened("imports.may", "core", "parts.store", "core may also import parts.store (parts.core.imports.may)"),
         Loosened("imports.libraries", "core", "yaml", "core may also import yaml (parts.core.imports.libraries)"),
         Loosened("imports.libraries", "store", "requests", "store may also import requests (parts.store.imports.libraries)"),
         Loosened("uses.never", "core", "time.time", "core no longer forbids time.time (parts.core.uses.never)"),
         Loosened("untested", "store", "", "store is newly marked untested (parts.store.untested)"),
         Loosened("imports.types_only", "unit", "store",
                  "the unit tests may now call store (tiers.unit.imports.types_only)"),
-        Loosened("imports.also", "unit", "edge", "the unit tests may also import edge (tiers.unit.imports.also)"),
+        Loosened("imports.also", "unit", "parts.edge", "the unit tests may also import parts.edge (tiers.unit.imports.also)"),
         Loosened("uses.apply_never", "unit", "",
                  "the unit tests are no longer held to their part's never list (tiers.unit.uses.apply_never)"),
         Loosened("testing.skips", "", "pytest.mark.xfail",
@@ -80,11 +93,11 @@ def test_every_way_a_profile_is_looser_than_another_is_found_in_order():
 
 @pytest.mark.parametrize("bundled, custom, found", [
     pytest.param([], ["shared/text", "store@any"], (
-        Loosened("imports.also", "unit", "shared/text",
-                 "the unit tests may also import shared/text (tiers.unit.imports.also)"),
-        Loosened("imports.also", "unit", "store@any",
-                 "the unit tests may also import store@any (tiers.unit.imports.also)")),
-                 id="each target the bundled tier does not give is looser, shown as written"),
+        Loosened("imports.also", "unit", "parts.shared/text",
+                 "the unit tests may also import parts.shared/text (tiers.unit.imports.also)"),
+        Loosened("imports.also", "unit", "parts.store",
+                 "the unit tests may also import parts.store (tiers.unit.imports.also)")),
+                 id="each target the bundled tier does not give is looser, shown as a reference"),
     pytest.param(["shared", "store"], ["shared/text", "store"], (),
                  id="a target the bundled tier's covers is not looser"),
     pytest.param(["shared"], [], (), id="a target dropped is stricter, and not listed"),
@@ -203,16 +216,20 @@ def marked(may) -> dict:
 
 @pytest.mark.parametrize("base, custom, found", [
     pytest.param(["store", {"shared": "types_only"}], ["store", "shared"],
-                 [(MARK, "service", "shared", "service may now call shared, which it used only as a type "
-                                             "(parts.service.imports.may.types_only)")],
+                 [(MARK, "service", "parts.shared", "service may now call parts.shared, which it used only as a type "
+                                                    "(parts.service.imports.may.types_only)")],
                  id="a mark dropped from an entry that stays"),
+    pytest.param([{"store": "types_only"}, "shared"], ["store", "shared"],
+                 [(MARK, "service", "module.store", "service may now call module.store, which it used only as a type "
+                                                    "(parts.service.imports.may.types_only)")],
+                 id="a mark dropped from an own-instance entry, shown by its word"),
     pytest.param(["store", {"shared": "types_only"}], ["store"], [], id="the entry dropped with its mark"),
     pytest.param(["store", {"shared": "types_only"}], ["store", {"shared": "types_only"}], [], id="the mark kept"),
     pytest.param(["store", {"shared/x": "types_only"}], ["store", {"shared": "types_only"}], [],
                  id="a wider mark covers it"),
     pytest.param(["store", {"shared": "types_only"}], "everything",
-                 [(MARK, "service", "shared", "service may now call shared, which it used only as a type "
-                                             "(parts.service.imports.may.types_only)")],
+                 [(MARK, "service", "parts.shared", "service may now call parts.shared, which it used only as a type "
+                                                    "(parts.service.imports.may.types_only)")],
                  id="everything over a mark"),
 ])
 def test_a_mark_dropped_while_its_target_stays_allowed_is_looser(base, custom, found):
@@ -383,7 +400,7 @@ def test_a_part_renamed_in_place_pairs_by_its_path_and_is_compared_under_its_own
     origin = compared(parsed(custom), parsed(layered()))
     assert (origin.match, origin.only_here, origin.only_there) == (1.0, (), ())
     assert origin.looser == (
-        Loosened("imports.may", "routes", "store", "routes may also import store (parts.routes.imports.may)"),)
+        Loosened("imports.may", "routes", "module.store", "routes may also import module.store (parts.routes.imports.may)"),)
 
 
 def test_a_target_naming_a_part_renamed_in_place_is_read_through_the_pairing():
@@ -477,7 +494,7 @@ def test_each_key_of_a_part_renamed_in_place_is_compared_with_the_part_it_pairs_
                  as_routes(layered(never={"pure": ["socket"]})), "uses.never", "routes", "socket",
                  id="a never list dropped"),
     pytest.param(marked(["store", {"api": "types_only"}]), as_routes(marked(["store", "api"])), MARK, "service",
-                 "routes", id="a types_only mark dropped from a target naming it"),
+                 "module.routes", id="a types_only mark dropped from a target naming it"),
     pytest.param(given(layered(), "api", holds={"classes": {"built_by": ["service"]}}),
                  as_routes(given(layered(), "api", holds={"classes": {}})), "holds.classes.built_by", "routes", "",
                  id="a built_by dropped from it"),

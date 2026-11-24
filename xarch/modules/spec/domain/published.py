@@ -107,7 +107,7 @@ class Eval:
 class Loosened:
     """One way a profile is looser than the bundled profile it is compared with. key is what loosened:
 
-        imports.may     part may also import what (a target as written)
+        imports.may     part may also import what (a target as a reference: parts.<part> or <word>.<part>)
         imports.may.types_only
                         part may now call what, a target it used only as a type
         imports.libraries
@@ -119,7 +119,7 @@ class Loosened:
                         what, the anchor --strict rests on, gives the part it pairs with one
         imports.types_only
                         the tests of tier part may now call what
-        imports.also    the tests of tier part may also import what (a target as written)
+        imports.also    the tests of tier part may also import what (a target as a reference: parts.<part> or <word>.<part>)
         uses.apply_never the tests of tier part are no longer held to their part's never list
         testing.skips   what is no longer counted as a skip
         testing.beside  the tests of a part may sit beside its code, which the compared profile does not allow

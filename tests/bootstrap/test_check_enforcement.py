@@ -111,7 +111,7 @@ def test_a_custom_copy_of_a_bundled_profile_is_compared_with_it(tmp_path):
     assert result.stdout.splitlines()[2:5] == [
         "  profile:     arch/mine.yaml (custom; compared with web, closest; match 100%)",
         "    guards off:  no-comments",
-        "    imports.may: kernel may also import platform (parts.kernel.imports.may)"]
+        "    imports.may: kernel may also import parts.platform (parts.kernel.imports.may)"]
     strict = check("--profile", "arch/mine.yaml", "--strict")
     assert strict.exit_code == 1
     assert strict.stdout.splitlines()[-2:] == ["strict:      1 finding fails the check", "    guards off: no-comments"]
@@ -145,13 +145,13 @@ def test_how_a_custom_profile_differs_from_the_closest_bundled_one_is_shown_and_
     (tmp_path / "arch/mine.yaml").write_text(text.replace("  kernel/:\n", "  kernel/:\n    imports:\n      may: [platform]\n"))
     strict = check("--profile", "arch/mine.yaml", "--strict")
     assert strict.exit_code == 0, strict.stdout
-    assert "    imports.may: kernel may also import platform (parts.kernel.imports.may)" in strict.stdout.splitlines()
+    assert "    imports.may: kernel may also import parts.platform (parts.kernel.imports.may)" in strict.stdout.splitlines()
     assert "strict" not in strict.stdout
     document = json.loads(check("--profile", "arch/mine.yaml", "--strict", "--format", "json").stdout)
     assert document["ok"] is True and document["enforcement"]["strict_failures"] == []
     assert document["enforcement"]["profile"]["looser"] == [
-        {"key": "imports.may", "part": "kernel", "what": "platform",
-         "sentence": "kernel may also import platform (parts.kernel.imports.may)"}]
+        {"key": "imports.may", "part": "kernel", "what": "parts.platform",
+         "sentence": "kernel may also import parts.platform (parts.kernel.imports.may)"}]
 
 
 def test_a_custom_profile_whose_tier_no_longer_applies_the_never_lists_is_looser_under_uses_apply_never(tmp_path):
