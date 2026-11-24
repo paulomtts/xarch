@@ -44,6 +44,7 @@ SHAPE = (
     Shown('language', 0, 'the language of the app', False, True),
     Shown('testing', 0, 'how the test framework names things', False, True),
     Shown('testing.preset', 1, 'the preset the framework is read from', False, True),
+    Shown('testing.beside', 1, 'whether every test of a part sits beside the code it tests', False, True),
     Shown('testing.files', 1, "patterns of a test file's name", True, True),
     Shown('testing.declared', 1, 'the forms a test is declared in', True, True),
     Shown('testing.globals', 1, 'the names the framework binds without an import', False, True),

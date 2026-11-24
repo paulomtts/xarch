@@ -55,7 +55,7 @@ def test_a_preset_is_the_same_map_validated_like_one_written_in_the_file():
     pytest.param({"declared": BY_NAME}, PRESETS, ["layered.yaml: testing: missing `files`"], id="no files"),
     pytest.param({"files": ["test_*.py"]}, PRESETS, ["layered.yaml: testing: missing `declared`"], id="no declared"),
     pytest.param({"files": ["test_*.py"], "declared": BY_NAME, "colour": 1}, PRESETS,
-                 ["layered.yaml: testing: unknown key 'colour': use declared, files, globals, mocks, preset, skips, "
+                 ["layered.yaml: testing: unknown key 'colour': use beside, declared, files, globals, mocks, preset, skips, "
                   "tables"],
                  id="an unknown key"),
     pytest.param({"files": ["x"], "declared": BY_NAME}, PRESETS,
@@ -85,7 +85,7 @@ def test_a_map_that_names_a_preset_is_the_preset_by_name():
 BESIDE = "drop it, or drop preset and write the whole map"
 NO_RSPEC = "layered.yaml: testing.preset: no preset 'rspec': use pytest, or write the map {files, declared}"
 NOT_A_NAME = "layered.yaml: testing.preset: must be a preset name: use pytest, or write the map {files, declared}"
-UNKNOWN_COLOUR = "layered.yaml: testing: unknown key 'colour': use declared, files, globals, mocks, preset, skips, tables"
+UNKNOWN_COLOUR = "layered.yaml: testing: unknown key 'colour': use beside, declared, files, globals, mocks, preset, skips, tables"
 CHECK_FILES = ["check_*.py"]
 
 
@@ -885,3 +885,105 @@ def test_the_test_only_framework_is_refused_under_a_brace_that_does_not_write_a_
                     languages={"python": PYTHON, "brace": unwritten}) == [
         "layered.yaml: testing.tables.1.id: the language Brace does not write `writing.field`, how a row's id is "
         "given by a field"]
+
+
+BESIDE_TYPE = ("layered.yaml: testing.beside: must be true or false: whether every test of a part sits beside the code "
+               "it tests")
+FOLDER_TIER = {"proves": "the architecture", "litmus": "Does it read the source?", "folder": "architecture"}
+
+
+def beside(**testing) -> dict:
+    """covered(), its testing the preset pytest with the keys given beside it."""
+    return covered(testing={"preset": "pytest", **testing})
+
+
+def guarded(testing: dict, *parts: str) -> dict:
+    """covered() with testing as given, a tier guard whose tests live in tests/architecture, and the parts given
+    tested by guard."""
+    document = covered(testing=testing)
+    document["tiers"]["guard"] = dict(FOLDER_TIER)
+    for name in parts:
+        document["parts"][name]["tests"] = "guard"
+    return document
+
+
+def test_beside_beside_a_preset_is_the_preset_s_framework_with_its_tests_beside_the_code():
+    framework = parsed(beside(beside=True)).framework
+    assert framework == replace(parsed(covered(testing="pytest")).framework, beside=True)
+    assert framework.beside is True
+
+
+def test_beside_in_a_whole_framework_keeps_the_framework_written():
+    framework = parsed(covered(testing={"files": ["test_*.py"], "declared": BY_NAME, "beside": True})).framework
+    assert (framework.files, framework.beside) == (("test_*.py",), True)
+
+
+def test_beside_false_and_no_beside_mean_the_same_as_the_short_form():
+    short = parsed(covered(testing="pytest"))
+    assert parsed(beside()) == short
+    assert parsed(beside(beside=False)) == short
+    assert short.framework.beside is False
+
+
+@pytest.mark.parametrize("value", [
+    pytest.param("yes", id="a word"), pytest.param(1, id="a number"), pytest.param(None, id="null"),
+    pytest.param([], id="a list"), pytest.param("true", id="the word true, quoted"),
+])
+def test_beside_that_is_no_bool_is_refused(value):
+    assert problems(beside(beside=value)) == [BESIDE_TYPE]
+
+
+def test_beside_with_no_tiers_is_refused():
+    assert problems(layered(testing={"preset": "pytest", "beside": True})) == [
+        "layered.yaml: testing.beside: the profile has no `tiers`: add them, or drop the key"]
+
+
+def test_a_part_naming_a_tier_with_a_folder_is_refused_under_beside_and_loads_without_it():
+    assert problems(guarded({"preset": "pytest", "beside": True}, "service")) == [
+        "layered.yaml: tiers.guard: parts.service says tests: guard, and guard keeps its tests in tests/architecture: "
+        "under testing.beside a part's tests sit beside its code; give the part a tier with no folder"]
+    loaded = parsed(guarded({"preset": "pytest"}, "service"))
+    assert [s.part for t in loaded.tiers if t.name == "guard" for s in t.subject] == ["service"]
+
+
+def test_each_part_naming_a_tier_with_a_folder_is_refused_in_the_order_of_parts():
+    assert problems(guarded({"preset": "pytest", "beside": True}, "service", "api")) == [
+        f"layered.yaml: tiers.guard: parts.{name} says tests: guard, and guard keeps its tests in tests/architecture: "
+        "under testing.beside a part's tests sit beside its code; give the part a tier with no folder"
+        for name in ("api", "service")]
+
+
+def test_a_tier_with_a_folder_no_part_names_is_kept_under_beside():
+    assert parsed(guarded({"preset": "pytest", "beside": True})).framework.beside is True
+
+
+def test_beside_is_no_key_of_the_framework_written_beside_preset_but_files_still_is():
+    assert problems(beside(beside=True, files=["check_*.py"])) == [
+        "layered.yaml: testing.files: the preset pytest gives files: drop it, or drop preset and write the whole map"]
+
+
+def test_a_broken_framework_and_a_broken_beside_are_both_reported_beside_last():
+    assert problems(covered(testing={"files": "broken", "declared": BY_NAME, "beside": "yes"})) == [
+        "layered.yaml: testing.files: must be a non-empty list of file name patterns, each a .py name with `*` for "
+        "any text", BESIDE_TYPE]
+
+
+def test_an_unknown_key_beside_preset_lists_beside_among_the_keys():
+    assert problems(beside(beside=True, colour=1)) == [
+        "layered.yaml: testing: unknown key 'colour': use beside, declared, files, globals, mocks, preset, skips, tables"]
+
+
+def test_a_preset_may_not_say_beside_whichever_form_names_it():
+    presets = {"near": {"files": ["test_*.py"], "declared": BY_NAME, "beside": True}} | PRESETS
+    expected = ["layered.yaml: testing.beside: the preset near says beside: a preset writes the framework; write "
+                "beside in the profile, beside preset"]
+    assert problems(covered(testing="near"), presets=presets) == expected
+    assert problems(covered(testing={"preset": "near"}), presets=presets) == expected
+
+
+def test_beside_under_a_tier_is_an_unknown_key_with_no_hint():
+    document = covered()
+    document["tiers"]["unit"]["beside"] = True
+    found = problems(document)
+    assert len(found) == 1 and found[0].startswith("layered.yaml: tiers.unit: unknown key 'beside': use ")
+    assert "moved" not in found[0]

@@ -13,13 +13,15 @@ class Framework:
     name alone, `*` for any text); the forms a test is declared in (declared, at least one: a function whose name
     matches a pattern, or a call whose arguments hold the test's title and its body), a test being of the first form
     it matches; the dotted names of what skips a test or expects it to fail (a marker or a call; empty: none is
-    counted); the table forms it writes (tables; none: it writes none, and no table is read); and the names it binds
-    without an import (globals), which are not the language's predefined names."""
+    counted); the table forms it writes (tables; none: it writes none, and no table is read); the names it binds
+    without an import (globals), which are not the language's predefined names; and whether every test of a part sits
+    beside the code it tests rather than in the mirrored tests tree (beside, the project's `testing.beside`)."""
     files: tuple[str, ...]
     declared: tuple[TestForm, ...]
     skips: tuple[tuple[str, ...], ...] = ()
     tables: tuple[TableForm, ...] = ()
     globals: tuple[tuple[str, ...], ...] = ()
+    beside: bool = False
 
 
 @dataclass(frozen=True)

@@ -386,6 +386,15 @@ def test_the_preset_of_testing_is_explained_and_names_the_presets_xarch_ships():
     assert "    testing: {preset: pytest}" in lines
 
 
+def test_beside_of_testing_is_explained_with_an_example_that_writes_it():
+    result = runner.invoke(app, ["profile", "explain", "testing.beside"])
+    assert result.exit_code == 0, result.output
+    lines = result.output.splitlines()
+    assert lines[0] == "testing.beside"
+    assert "  what: whether every test of a part sits beside the code it tests" in lines
+    assert "      beside: true" in lines
+
+
 def test_a_holder_of_a_table_form_says_the_fact_of_its_form_and_whether_python_supplies_it():
     call = json.loads(runner.invoke(app, ["profile", "explain", "testing.tables.call", "--format", "json"]).output)
     assert call["needs"] == [{"fact": "function.tables.call", "meaning": FACTS["function.tables.call"], "grade": "absent",

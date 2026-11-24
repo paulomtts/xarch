@@ -694,3 +694,10 @@ def test_a_call_form_in_a_testing_preset_is_refused_at_its_index():
 
 def test_a_function_form_that_declares_a_test_under_python_loads():
     assert parsed(layered(testing=FILES)).approximate == ()
+
+
+def test_beside_written_beside_a_preset_needs_nothing_and_the_preset_is_walked():
+    found = short(layered(language="toy", testing={"preset": "pytest", "beside": True}), {"pytest": {"skips": ["x"]}},
+                  TOY)
+    assert [(item.address, item.fact) for item in found] == [("testing.skips", "use"),
+                                                             ("testing.skips", "import.resolved")]

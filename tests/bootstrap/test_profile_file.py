@@ -178,7 +178,7 @@ def test_a_bare_name_in_the_file_of_the_scenario_guard_is_refused_with_its_hint(
 OLD_TABLE_PROFILE = PRESET_PROFILE.replace("testing: pytest\n", 'testing:\n  files: ["test_*.py"]\n  declared: [{function: "test_*"}]\n'
                                            "  table: {decorator: pytest.mark.parametrize, row: pytest.param, id: id}\n")
 RETIRED_TABLE = ("testing: unknown key 'table': moved in 0.3.0: write tables, a list of forms (xarch profile explain "
-                 "testing.tables); use declared, files, globals, mocks, preset, skips, tables")
+                 "testing.tables); use beside, declared, files, globals, mocks, preset, skips, tables")
 
 
 def test_a_profile_writing_the_table_of_testing_is_refused_with_its_hint(tmp_path):
@@ -196,4 +196,31 @@ def test_a_profile_writing_the_functions_of_testing_is_refused_with_its_hint(tmp
     checked = CliRunner().invoke(app, ["profile", "check", str(path)])
     assert checked.exit_code == 1
     assert (f"    {path}: testing: unknown key 'functions': moved in 0.3.0: write declared: [{{function: \"<pattern>\"}}]; "
-            "use declared, files, globals, mocks, preset, skips, tables") in checked.output.splitlines()
+            "use beside, declared, files, globals, mocks, preset, skips, tables") in checked.output.splitlines()
+
+
+def test_beside_that_is_no_bool_is_refused_naming_the_file(tmp_path):
+    path = profile_in(tmp_path, PROFILE.replace("testing: pytest", "testing: {preset: pytest, beside: sometimes}"))
+    with pytest.raises(InvalidArchitecture) as caught:
+        load_architecture(path)
+    assert caught.value.problems == (
+        f"{path}: testing.beside: must be true or false: whether every test of a part sits beside the code it tests",)
+
+
+def test_a_part_naming_a_tier_with_a_folder_is_refused_under_beside_naming_the_file(tmp_path):
+    text = (PROFILE.replace("testing: pytest", "testing: {preset: pytest, beside: true}")
+            .replace("    tests: unit\n  cli:", "    tests: guard\n  cli:")
+            .replace("tiers:\n  unit: {}\n", "tiers:\n  unit: {}\n  guard: {folder: architecture}\n"))
+    path = profile_in(tmp_path, text)
+    with pytest.raises(InvalidArchitecture) as caught:
+        load_architecture(path)
+    assert caught.value.problems == (
+        f"{path}: tiers.guard: parts.core says tests: guard, and guard keeps its tests in tests/architecture: under "
+        "testing.beside a part's tests sit beside its code; give the part a tier with no folder",)
+
+
+def test_beside_true_loads_with_the_preset_s_framework(tmp_path):
+    path = profile_in(tmp_path, PROFILE.replace("testing: pytest", "testing: {preset: pytest, beside: true}"))
+    loaded = load_architecture(path)
+    assert loaded.framework.beside is True
+    assert loaded.framework.files == load_architecture(profile_in(tmp_path, PROFILE)).framework.files

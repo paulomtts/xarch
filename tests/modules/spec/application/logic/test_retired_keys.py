@@ -401,7 +401,7 @@ def test_a_file_whose_only_unknown_keys_are_retired_gives_no_joined_problem(monk
     pytest.param(TIER, writing(covered(), "tiers", "unit"),
                  f"tiers.unit: unknown key 'banned': {RENAMED}; use {TIER_USE}", id="a tier"),
     pytest.param(TESTING, writing(covered(), "testing"),
-                 f"testing: unknown key 'banned': {RENAMED}; use declared, files, globals, mocks, preset, skips, "
+                 f"testing: unknown key 'banned': {RENAMED}; use beside, declared, files, globals, mocks, preset, skips, "
                  "tables",
                  id="testing, through framework_patterns"),
     pytest.param(FIXTURE, writing(covered(), "testing", "mocks", "fixtures", "mocker"),
@@ -474,7 +474,7 @@ def test_the_examples_of_an_eval_have_no_scope_and_read_no_entry(monkeypatch):
 ])
 def test_the_table_of_testing_is_refused_with_the_list_of_forms_that_replaces_it(testing, presets):
     assert problems(layered(testing=testing), presets=presets) == [
-        f"layered.yaml: testing: unknown key 'table': {TABLE_MOVED}; use declared, files, globals, mocks, preset, "
+        f"layered.yaml: testing: unknown key 'table': {TABLE_MOVED}; use beside, declared, files, globals, mocks, preset, "
         "skips, tables"]
 
 
@@ -487,17 +487,17 @@ def test_the_table_of_testing_is_refused_with_the_list_of_forms_that_replaces_it
 def test_the_functions_of_testing_are_refused_with_the_forms_that_declare_a_test(testing, presets):
     assert problems(layered(testing=testing), presets=presets) == [
         "layered.yaml: testing: unknown key 'functions': moved in 0.3.0: write declared: [{function: \"<pattern>\"}]; "
-        "use declared, files, globals, mocks, preset, skips, tables"]
+        "use beside, declared, files, globals, mocks, preset, skips, tables"]
 
 
 def test_functions_written_in_place_of_declared_is_refused_with_its_hint_and_declared_is_missing():
     assert problems(layered(testing={"files": ["test_*.py"], "functions": "test_*"})) == [
         "layered.yaml: testing: unknown key 'functions': moved in 0.3.0: write declared: [{function: \"<pattern>\"}]; "
-        "use declared, files, globals, mocks, preset, skips, tables",
+        "use beside, declared, files, globals, mocks, preset, skips, tables",
         "layered.yaml: testing: missing `declared`"]
 
 
 def test_functions_beside_a_preset_is_refused_with_its_hint_alone():
     assert problems(layered(testing={"preset": "pytest", "functions": "test_*"})) == [
         "layered.yaml: testing: unknown key 'functions': moved in 0.3.0: write declared: [{function: \"<pattern>\"}]; "
-        "use declared, files, globals, mocks, preset, skips, tables"]
+        "use beside, declared, files, globals, mocks, preset, skips, tables"]

@@ -8,9 +8,11 @@ key_catalogue); the shape:
     based_on: <bundled name>   optional; the bundled profile this one was copied from, which a report compares with
     language: <language>       optional; the language of the app: the name of a language xarch ships (the first by name
                                when left out), read from its data file
-    testing: <preset> | {preset} | {files, declared, globals, skips, tables, mocks}
+    testing: <preset> | {preset, beside} | {files, declared, globals, skips, tables, mocks, beside}
                                how the test framework names things; a preset is a name, alone or under preset, read
-                               from data shipped with xarch, and a key of the framework beside it is refused.
+                               from data shipped with xarch, and a key of the framework beside it is refused; beside,
+                               whether every test of a part sits beside the code it tests (a tier with a `folder`
+                               keeps its tests below the tests folder, and no part may name it then).
                                Required with `tiers` and with the guards scenario-coverage and stand-ins
     parts: {<part>: {path, role, ...}}
                                in the order their litmus tests run. A part's path is a folder below the app, or a file
@@ -113,6 +115,7 @@ from xarch.modules.spec.domain.profile_keys import (
     TIER_USES,
 )
 from xarch.modules.spec.domain.profile_keys import GUARD as GUARD_SCOPE
+from xarch.modules.spec.domain.published import DEFAULT_TESTS
 from xarch.modules.spec.domain.values import (
     Architecture,
     ArchitectureSource,
@@ -143,6 +146,8 @@ _LISTED = {PassThrough: (PASS_THROUGH, "the parts whose methods are listed when 
 """The guards whose one key is the parts they read, each with the scope of its keys and what its parts are."""
 _PRESET_MAP = "{files, declared}"
 _TIER_INSTEAD = "`tests: <tier>`, or `untested: <reason>`"
+_SETTINGS = ("preset", "beside")
+"""The keys of `testing` that are the project's settings, not the framework's: written beside preset, never refused."""
 
 
 @dataclass(frozen=True)
@@ -203,6 +208,7 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     layers = ck.layer_chains(document["layers"], parts, declared, rules, problems) if "layers" in document else {}
     testing = _testing(document["testing"], presets or {}, problems, language) if "testing" in document else None
     tiers = _tiers(document, specs, parts, declared, examples, problems, language)
+    beside = _tests_beside(document, specs, tiers, problems)
     problems += [f"tiers.{tier.name}.plain_tables: needs a table form: the framework {_framework_named(testing)} "
                  "writes none in `testing.tables`" for tier in tiers
                  if tier.plain_tables and testing is not None and not testing.framework.tables]
@@ -227,10 +233,10 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     if problems:
         raise InvalidArchitecture(source, problems)
     shown = ex.examples_of(examples, built.tree, parts, language)
+    framework = replace(testing.framework, beside=beside) if testing else None
     return Architecture(name, built.tree, parts, rules, pages, shown, built.notes, layers, tuple(parts), naming, tiers,
-                        libraries, guards, fakes, built.repeats, written, testing.framework if testing else None, uses_never,
-                        excluded, hints, based_on, language, reserved, needs.approximate(shortfalls), own, never, mask,
-                        placement, own_evals, placed, alike)
+                        libraries, guards, fakes, built.repeats, written, framework, uses_never, excluded, hints, based_on, language,
+                        reserved, needs.approximate(shortfalls), own, never, mask, placement, own_evals, placed, alike)
 
 
 def _keys(document: Mapping[Any, Any]) -> list[str]:
@@ -530,7 +536,7 @@ def _group(value: Any, scope: str, example: str, where: str, problems: list[str]
 
 def _testing(value: Any, presets: Mapping[str, Any], problems: list[str], language: Language) -> _Testing | None:
     """How the test framework names things: the map in the file, or the one a preset holds, named by its name or under
-    `preset`, validated the same; a preset's map that names a preset in turn is refused."""
+    `preset`, validated the same; a preset's map that names a preset in turn, or says beside, is refused."""
     preset = ""
     if isinstance(value, Mapping) and "preset" in value:
         preset = _preset_of(value, presets, problems)
@@ -548,6 +554,10 @@ def _testing(value: Any, presets: Mapping[str, Any], problems: list[str], langua
         return None
     if preset and isinstance(value, Mapping) and "preset" in value:
         problems.append(f"testing.preset: the preset {preset} names a preset: a preset writes the whole framework")
+        return None
+    if preset and isinstance(value, Mapping) and "beside" in value:
+        problems.append(f"testing.beside: the preset {preset} says beside: a preset writes the framework; write beside "
+                        "in the profile, beside preset")
         return None
     count = len(problems)
     framework = ck.framework_patterns(value, problems, "testing", names_of(TESTING), language, TESTING)
@@ -576,7 +586,7 @@ def _preset_of(value: Mapping[Any, Any], presets: Mapping[str, Any], problems: l
         problems.append(f"testing.preset: no preset {name!r}: {_instead(presets)}")
     named = name if isinstance(name, str) and name in presets else ""
     problems += [_beside(key.name, named, presets) for key in keys_of(TESTING)
-                 if key.name != "preset" and key.name in value]
+                 if key.name not in _SETTINGS and key.name in value]
     return named if len(problems) == count else ""
 
 
@@ -587,6 +597,34 @@ def _beside(key: str, preset: str, presets: Mapping[str, Any]) -> str:
         return f"testing.{key}: written beside preset: {instead}"
     gives = "gives" if isinstance(presets[preset], Mapping) and key in presets[preset] else "writes no"
     return f"testing.{key}: the preset {preset} {gives} {key}: {instead}"
+
+
+def _tests_beside(document: Mapping[Any, Any], specs: dict[str, Any], tiers: tuple[Tier, ...],
+                  problems: list[str]) -> bool:
+    """Whether every test of a part sits beside the code it tests, as the map `testing` writes it (`beside`); false
+    when it does not say. A value that is no bool, beside with no `tiers`, and each part, in the order of the file,
+    that names in `tests` a tier with a `folder` are refused."""
+    written = document.get("testing")
+    if not isinstance(written, Mapping) or "beside" not in written:
+        return False
+    beside = written["beside"]
+    if not isinstance(beside, bool):
+        problems.append("testing.beside: must be true or false: whether every test of a part sits beside the code it "
+                        "tests")
+        return False
+    if not beside:
+        return False
+    if "tiers" not in document:
+        problems.append("testing.beside: the profile has no `tiers`: add them, or drop the key")
+        return False
+    folders = {tier.name: tier.folder for tier in tiers if tier.folder is not None}
+    for name, spec in specs.items():
+        tier = spec.get("tests") if isinstance(spec, Mapping) else None
+        if isinstance(tier, str) and tier in folders:
+            problems.append(f"tiers.{tier}: parts.{name} says tests: {tier}, and {tier} keeps its tests in "
+                            f"{'/'.join((DEFAULT_TESTS, *folders[tier]))}: under testing.beside a part's tests sit "
+                            "beside its code; give the part a tier with no folder")
+    return True
 
 
 def _framework_named(testing: _Testing) -> str:

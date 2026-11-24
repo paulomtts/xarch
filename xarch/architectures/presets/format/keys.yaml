@@ -143,10 +143,10 @@ keys:
   testing:
     meaning: how the test framework names things
     accepts: >-
-      a preset name, a map {preset} naming one, or a map {files, declared, globals, skips, tables, mocks}; needed with
-      `tiers` and the guards scenario-coverage and stand-ins. Dotted names are what an import binds; what stays
-      %language% is `%interface_path%` as the mark of a port, `%package_file%`, the syntax tree, import resolution
-      and the standard library's names
+      a preset name, a map {preset, beside} naming one, or a map {files, declared, globals, skips, tables, mocks,
+      beside}; needed with `tiers` and the guards scenario-coverage and stand-ins. Dotted names are what an import
+      binds; what stays %language% is `%interface_path%` as the mark of a port, `%package_file%`, the syntax tree,
+      import resolution and the standard library's names
     example: |-
       testing:
         files: [check_*%extension%]
@@ -787,6 +787,19 @@ keys:
       the name of a preset xarch ships: every key of the framework then comes from it, and one written beside it is
       refused; `testing: <preset>` is its short form
     example: "testing: {preset: <preset>}"
+  testing.beside:
+    meaning: whether every test of a part sits beside the code it tests
+    accepts: >-
+      `true` or `false` (default false); under true, a file of the app whose name `files` matches is a test of the
+      tier its part names, a tier with a `folder` keeps its tests below the tests root, and a part may not name such a
+      tier; it is written beside `preset`, or in the whole map, never in a preset
+    example: |
+      <<testing>>
+        beside: true
+      tiers:
+        unit:
+          proves: a rule
+      <<tiered-part>>
   testing.files:
     meaning: patterns of a test file's name
     accepts: a list of %extension% names with `*` for any text; required unless `preset` is written
