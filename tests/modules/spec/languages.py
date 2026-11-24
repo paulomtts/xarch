@@ -15,6 +15,7 @@ import yaml
 from tests.fakes.runtime import FakeRuntime
 from xarch.modules.spec.application.logic.language_file import language_of
 from xarch.modules.spec.domain.values import Language
+from xarch.profile_values.capabilities import EXACT, FACTS, Supply
 
 
 def named(language: Language, standard: frozenset[str], bound: frozenset[str], reserved: frozenset[str]) -> Language:
@@ -37,3 +38,6 @@ BRACE = named(language_of("brace", BRACE_DOCUMENT),
 """The TypeScript-like test-only language, the lists its data file gives filled in as spec's service fills them."""
 PERCENT = language_of("percent", yaml.safe_load((TEST_LANGUAGES / "percent.yaml").read_text(encoding="utf-8")))
 """The ObjectScript-like test-only language."""
+READS_EVERY_FACT = replace(PYTHON, checked=replace(PYTHON.checked, supplies=tuple(Supply(fact, EXACT) for fact in FACTS)))
+"""Python, its reader supplying every fact exactly, the forms of a table its own reader does not read included: for the
+tests of what the loader reads of a profile, not of what the language's reader reads."""

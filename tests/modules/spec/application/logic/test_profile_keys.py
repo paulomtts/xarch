@@ -8,7 +8,7 @@ import pytest
 import yaml
 
 from tests.modules.spec.format_files import CATALOGUE
-from tests.modules.spec.languages import BRACE, PERCENT, PYTHON
+from tests.modules.spec.languages import BRACE, PERCENT, PYTHON, READS_EVERY_FACT
 from tests.modules.spec.profiles import PRESETS, parsed, problems
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic.explain import said
@@ -61,7 +61,9 @@ def every_folder(document: dict) -> dict[str, tuple[str, ...]]:
 
 
 def load(document: dict):
-    return parsed(document, bundled=BUNDLED, folders=every_folder(document))
+    """The document parsed under Python, its reader read as supplying every fact: an example shows its key loading,
+    whatever Python's own reader reads."""
+    return parsed(document, bundled=BUNDLED, folders=every_folder(document), languages={"python": READS_EVERY_FACT})
 
 
 def containers(node, steps: list[str]):

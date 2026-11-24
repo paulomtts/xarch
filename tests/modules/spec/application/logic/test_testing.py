@@ -5,7 +5,7 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.spec.format_files import FILE_TYPES
-from tests.modules.spec.languages import BRACE, PYTHON
+from tests.modules.spec.languages import BRACE, PYTHON, READS_EVERY_FACT
 from tests.modules.spec.profiles import PYTEST_FORM, PYTEST_TABLE, TESTING, covered, parsed, problems
 from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.modules.spec.application.logic.profile_checks import use_case_file
@@ -407,8 +407,10 @@ HOLDER = f"{AT}: must have exactly one of decorator, call or loop"
 PLACE = "must be {position: <n>, keyword: <name>}, at least one of them, of the holder's arguments"
 ROW_ID = f"{AT}.id: must be one of {{keyword: <name>}}, {{field: <name>}} or {{position: <n>}}"
 SLOTS = "use call, columns_from, decorator, id, loop, row, rows"
-TOY = replace(PYTHON, checked=replace(PYTHON.checked, title="Toy", writing=Writing()))
-"""Python as a language whose data file writes no template: it cannot say a row."""
+EVERY_FORM = {"python": READS_EVERY_FACT}
+"""The languages of a profile whose forms the loader is tested on, Python's reader read as supplying every form."""
+TOY = replace(READS_EVERY_FACT, checked=replace(READS_EVERY_FACT.checked, title="Toy", writing=Writing()))
+"""Python, reading every form, as a language whose data file writes no template: it cannot say a row."""
 
 
 def with_tables(tables) -> dict:
@@ -421,7 +423,7 @@ def without(entry: dict, key: str) -> dict:
 
 def test_the_forms_of_a_table_are_read_each_in_its_slots():
     assert parsed(with_tables([PYTEST_TABLE])).framework.tables == (PYTEST_FORM,)
-    assert parsed(with_tables([CALL, LOOP])).framework.tables == (
+    assert parsed(with_tables([CALL, LOOP]), languages=EVERY_FORM).framework.tables == (
         TableForm(Place(0), Place(1), ("checks", "case"), RowId(keyword="id"), call=(("checks", "each"),)),
         TableForm("bound", None, (), RowId(position=0), loop=True))
 
@@ -490,7 +492,7 @@ def test_an_empty_list_of_forms_and_a_framework_that_writes_none_have_no_form():
                               "by a field", id="a field id under a language that writes no field"),
 ])
 def test_a_bad_table_form_is_refused(tables, expected):
-    assert problems(with_tables(tables)) == [expected]
+    assert problems(with_tables(tables), languages=EVERY_FORM) == [expected]
 
 
 def test_a_language_that_writes_no_template_cannot_say_a_row_call_nor_its_keyword_id():
