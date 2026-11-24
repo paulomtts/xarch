@@ -158,8 +158,8 @@ def _steps(key: str, problems: list[str]) -> tuple[str, ...] | None:
         problems.append(f"parts: '{key}' has a step with `<` or `>` that is not one word between them: write the "
                         "repeating folder as `<name>`")
     elif _RESERVED in steps:
-        problems.append(f"parts: '{key}' has the step `{_RESERVED}`: `{_RESERVED}` is reserved: `parts.` names a part in "
-                        "every instance; give the repeating folder another word")
+        problems.append(f"parts: '{key}' has the step `{_RESERVED}`: `{_RESERVED}` is reserved: `parts.` names a part "
+                        "in every instance; give the repeating folder another word")
     else:
         return steps
     return None

@@ -214,7 +214,8 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
                            imports_types_only=read[part][1]) for part, item in parts.items()}
     parts = {part: _substance(specs[part], item, declared, problems, words) for part, item in parts.items()}
     uses_never = _never_refs(specs, parts, never_lists, problems)
-    layers = ck.layer_chains(document["layers"], parts, declared, rules, problems, words=words) if "layers" in document else {}
+    layers = (ck.layer_chains(document["layers"], parts, declared, rules, problems, words=words) if "layers" in document
+              else {})
     unread = frozenset(item.address for item in shortfalls if item.note is None)
     testing = _testing(document["testing"], presets or {}, problems, language, unread) if "testing" in document else None
     tiers = _tiers(document, specs, parts, declared, examples, problems, language, built.repeats)
@@ -232,12 +233,12 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     parts = {part: replace(item, entry=True) if part == entry else item for part, item in parts.items()}
     written = ck.init_files(_bare_from(document.get("files", {})), pages, files, problems, "docs.pages", language)
     excluded = ck.excluded_folders(document["excluded"], built.tree, problems) if "excluded" in document else ()
-    own = (own_checks.checks(document["checks"], declared, tiers, language, problems, words=words) if "checks" in document
-           else {})
+    own = (own_checks.checks(document["checks"], declared, tiers, language, problems, words=words)
+           if "checks" in document else {})
     hints = ck.rule_hints(document["hints"], problems, own) if "hints" in document else {}
     never, mask = sending(document["review"], problems) if "review" in document else ((), ())
-    placement, placed, own_evals, alike = (evals(document["evals"], declared, language, problems, words=words) if "evals" in document
-                                           else ({}, ((), ()), {}, ()))
+    placement, placed, own_evals, alike = (evals(document["evals"], declared, language, problems, words=words)
+                                           if "evals" in document else ({}, ((), ()), {}, ()))
     problems += unplaced(placed, {name: part.path for name, part in parts.items()}, language)
     problems += unlike(alike, {name: (frozenset(uses_never.get(name, ())),
                                       tuple((held.kind, held.immutable) for held in part.holds))
@@ -924,7 +925,8 @@ def _no_twins(spec: Any, declared: set[str], parts: dict[str, Part], where: str,
                             "to switch this case off")
             value = None
         found.append(value)
-    names = ck.part_names(spec["translated"], declared, f"{where}.translated", problems, words=words) if "translated" in spec else []
+    names = (ck.part_names(spec["translated"], declared, f"{where}.translated", problems, words=words)
+             if "translated" in spec else [])
     return NoTwins(least, *found, tuple(n for n in names if n in parts))
 
 

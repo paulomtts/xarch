@@ -239,7 +239,8 @@ def test_a_must_import_in_an_old_form_is_refused_once_with_its_reference():
 
 
 @pytest.mark.parametrize("targets, rules", [
-    pytest.param(["module.service"], (Target("service", "own"),), id="a part of the repeating folder by its word is the importer's own"),
+    pytest.param(["module.service"], (Target("service", "own"),),
+                 id="a part of the repeating folder by its word is the importer's own"),
     pytest.param(["parts.service"], (Target("service", "any"),), id="parts is any instance"),
     pytest.param(["parts.shared"], (Target("shared"),), id="a part outside the repeating folder"),
     pytest.param(["parts.shared/text", "module.service/rules"], (Target("shared", "none", ("text",)),
@@ -296,7 +297,8 @@ def test_everything_is_a_part_that_may_import_everything_and_the_rest_a_part_wit
                                              "path after the part", id="a trailing slash"),
     pytest.param("store", ["store"], "layered.yaml: parts.store.imports.may: 'store' is implied: a part may always "
                                      "import itself, its own instance of the repeating folder; remove it "
-                                     "(parts.store, another instance's too, stays allowed)", id="itself in an instance"),
+                                     "(parts.store, another instance's too, stays allowed)",
+                 id="itself in an instance"),
     pytest.param("shared", ["shared"], "layered.yaml: parts.shared.imports.may: 'shared' is implied: a part may always "
                                        "import itself; remove it", id="itself outside the instances"),
     pytest.param("store", ["everything"], "layered.yaml: parts.store.imports.may: 'everything' stands alone: write "
@@ -501,8 +503,8 @@ OUTSIDE = "names a part outside imports: write"
 @pytest.mark.parametrize("document, problem", [
     pytest.param(built_by(["parts.store"]), f"parts.service.holds.classes.built_by: 'parts.store': {OUTSIDE} store",
                  id="holds.classes.built_by"),
-    pytest.param(covered(fakes={"folder": "fakes", "for": ["parts.store"]}), f"fakes.for: 'parts.store': {OUTSIDE} store",
-                 id="fakes.for"),
+    pytest.param(covered(fakes={"folder": "fakes", "for": ["parts.store"]}),
+                 f"fakes.for: 'parts.store': {OUTSIDE} store", id="fakes.for"),
     pytest.param(covered(guards={"no-twins": {"translated": ["module.store"]}}),
                  f"guards.no-twins.translated: 'module.store': {OUTSIDE} store", id="guards.no-twins.translated"),
     pytest.param(covered(guards={"pass-through": {"parts": ["parts.service"]}}),

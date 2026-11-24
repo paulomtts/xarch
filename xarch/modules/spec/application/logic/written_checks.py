@@ -105,8 +105,8 @@ def _check(body: Any, where: str, declared: set[str], tiers: set[str], language:
     if len(quantified) != 1:
         return None
     slot = quantified[0]
-    return WrittenCheck(read, within, _quantified(slot, body[slot], f"{where}.{slot}", declared, tiers, problems, words),
-                        (*cases, own), keep, exempt, mode, flagged, clean)
+    quantifier = _quantified(slot, body[slot], f"{where}.{slot}", declared, tiers, problems, words)
+    return WrittenCheck(read, within, quantifier, (*cases, own), keep, exempt, mode, flagged, clean)
 
 
 def _unknown(body: Mapping[Any, Any], known: tuple[str, ...], where: str) -> list[str]:

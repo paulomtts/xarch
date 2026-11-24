@@ -92,9 +92,11 @@ def test_a_reach_from_roots_reads_its_roots_as_a_scope():
                  ["checks.x.in.part: no part named 'web': write one of api, service, shared, store, or structure",
                   "checks.x.in.tier: no tier named 'unit': the profile has no tiers"], id="a part and a tier not declared"),
     pytest.param({"x": {**SMALL, "in": {"part": "parts.api"}}},
-                 ["checks.x.in.part: 'parts.api': names a part outside imports: write api"], id="a part by a reference"),
+                 ["checks.x.in.part: 'parts.api': names a part outside imports: write api"],
+                 id="a part by a reference"),
     pytest.param({"x": {**SMALL, "in": {"part": "orders.api"}}},
-                 ["checks.x.in.part: no part named 'orders.api': write one of api, service, shared, store, or structure"],
+                 ["checks.x.in.part: no part named 'orders.api': write one of api, service, shared, store, or "
+                  "structure"],
                  id="a prefix that is no word keeps the reader's text"),
     pytest.param({"x": {**{k: v for k, v in SMALL.items() if k != "may_not"}, "read": "class",
                         "must_be_reached": {"from": {"part": "module.api"}, "through": "names-mentioned"}}},

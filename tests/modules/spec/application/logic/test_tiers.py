@@ -521,5 +521,5 @@ def test_each_key_of_the_group_is_refused_with_today_s_text_at_its_new_address(i
 
 def test_a_mark_in_a_folder_tier_s_may_is_refused_as_any_entry_that_is_no_target():
     assert problems(with_guard({"may": [{"parts.store": "types_only"}]})) == [
-        "layered.yaml: tiers.guard.imports.may: {'parts.store': 'types_only'} is not a reference: write parts.<part> or "
-        "<word>.<part>, optionally followed by /<path> and :<pattern>"]
+        "layered.yaml: tiers.guard.imports.may: {'parts.store': 'types_only'} is not a reference: write parts.<part> "
+        "or <word>.<part>, optionally followed by /<path> and :<pattern>"]
