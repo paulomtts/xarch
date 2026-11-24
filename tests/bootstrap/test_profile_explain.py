@@ -370,6 +370,12 @@ def test_the_table_of_testing_is_answered_from_the_table_of_retired_names():
         2, "moved in 0.3.0: write tables, a list of forms (xarch profile explain testing.tables)")
 
 
+def test_the_functions_of_testing_are_answered_from_the_table_of_retired_names():
+    found = runner.invoke(app, ["profile", "explain", "testing.functions", "--format", "json"])
+    assert (found.exit_code, json.loads(found.output)["retired"]) == (
+        2, 'moved in 0.3.0: write declared: [{function: "<pattern>"}]')
+
+
 def test_a_holder_of_a_table_form_says_the_fact_of_its_form_and_whether_python_supplies_it():
     call = json.loads(runner.invoke(app, ["profile", "explain", "testing.tables.call", "--format", "json"]).output)
     assert call["needs"] == [{"fact": "function.tables.call", "meaning": FACTS["function.tables.call"], "grade": "absent",

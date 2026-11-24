@@ -156,3 +156,14 @@ def test_a_profile_writing_the_table_of_testing_is_refused_with_its_hint(tmp_pat
     checked = CliRunner().invoke(app, ["profile", "check", str(path)])
     assert checked.exit_code == 1
     assert f"    {path}: {RETIRED_TABLE}" in checked.output.splitlines()
+
+
+FUNCTIONS_PROFILE = PRESET_PROFILE.replace("testing: pytest\n", 'testing:\n  files: ["test_*.py"]\n  functions: "test_*"\n')
+
+
+def test_a_profile_writing_the_functions_of_testing_is_refused_with_its_hint(tmp_path):
+    path = profile_in(tmp_path, FUNCTIONS_PROFILE)
+    checked = CliRunner().invoke(app, ["profile", "check", str(path)])
+    assert checked.exit_code == 1
+    assert (f"    {path}: testing: unknown key 'functions': moved in 0.3.0: write declared: [{{function: \"<pattern>\"}}]; "
+            "use declared, files, globals, mocks, skips, tables") in checked.output.splitlines()

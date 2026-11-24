@@ -220,6 +220,7 @@ RETIRED: tuple[Retired, ...] = (
     Retired(TIER, "must_import", "moved in 0.3.0: write imports: {must: [...]}"),
     Retired(TIER, "types_only", "moved in 0.3.0: write imports: {types_only: [<part>, ...]}"),
     Retired(TESTING, "table", "moved in 0.3.0: write tables, a list of forms (xarch profile explain testing.tables)"),
+    Retired(TESTING, "functions", 'moved in 0.3.0: write declared: [{function: "<pattern>"}]'),
 )
 """Every key, guard and rule id xarch has retired, and every value a key it still has no longer takes: a profile
 writing one is refused with the entry's text."""

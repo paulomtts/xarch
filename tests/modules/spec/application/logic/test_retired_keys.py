@@ -97,6 +97,8 @@ BLOCK = "renamed in 0.3.0: write never"
 RULE = "renamed in 0.3.0: write never-use"
 IMPORT_RULE = "renamed in 0.3.0: write may-import"
 TABLE_MOVED = "moved in 0.3.0: write tables, a list of forms (xarch profile explain testing.tables)"
+FUNCTIONS_MOVED = 'moved in 0.3.0: write declared: [{function: "<pattern>"}]'
+"""The hint of testing.functions, which testing.declared replaced in 0.3.0."""
 OLD_TABLE = {"decorator": "pytest.mark.parametrize", "row": "pytest.param", "id": "id",
              "keywords": ["argnames", "argvalues"]}
 """testing.table as profiles wrote it before 0.3.0."""
@@ -200,6 +202,7 @@ def test_the_shipped_table_answers_each_name_in_its_scope(scope, name, text):
                  id="tiers.<tier>.may_also_import"),
     pytest.param("tiers.imports.types_only", "", id="tiers.imports.types_only"),
     pytest.param("testing.table", TABLE_MOVED, id="testing.table"),
+    pytest.param("testing.functions", FUNCTIONS_MOVED, id="testing.functions"),
 ])
 def test_the_shipped_table_answers_each_address_profile_explain_is_typed_with(address, text):
     assert retired_at(address) == text
@@ -471,3 +474,22 @@ def test_the_examples_of_an_eval_have_no_scope_and_read_no_entry(monkeypatch):
 def test_the_table_of_testing_is_refused_with_the_list_of_forms_that_replaces_it(testing, presets):
     assert problems(layered(testing=testing), presets=presets) == [
         f"layered.yaml: testing: unknown key 'table': {TABLE_MOVED}; use declared, files, globals, mocks, skips, tables"]
+
+
+@pytest.mark.parametrize("testing, presets", [
+    pytest.param({"files": ["test_*.py"], "functions": "test_*", "declared": [{"function": "test_*"}]}, PRESETS,
+                 id="in an inline map"),
+    pytest.param("old", {"old": {"files": ["test_*.py"], "functions": "test_*", "declared": [{"function": "test_*"}]}},
+                 id="in a preset"),
+])
+def test_the_functions_of_testing_are_refused_with_the_forms_that_declare_a_test(testing, presets):
+    assert problems(layered(testing=testing), presets=presets) == [
+        "layered.yaml: testing: unknown key 'functions': moved in 0.3.0: write declared: [{function: \"<pattern>\"}]; "
+        "use declared, files, globals, mocks, skips, tables"]
+
+
+def test_functions_written_in_place_of_declared_is_refused_with_its_hint_and_declared_is_missing():
+    assert problems(layered(testing={"files": ["test_*.py"], "functions": "test_*"})) == [
+        "layered.yaml: testing: unknown key 'functions': moved in 0.3.0: write declared: [{function: \"<pattern>\"}]; "
+        "use declared, files, globals, mocks, skips, tables",
+        "layered.yaml: testing: missing `declared`"]
