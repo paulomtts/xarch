@@ -200,20 +200,22 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     parts = built.parts
     examples = ex.example_files(document.get("docs", {}), files, problems, language)
     imports = {part: iw.group(specs[part], f"parts.{part}", problems) for part in parts}
-    read = {part: iw.may(imports[part].get("may"), item, parts, declared, f"parts.{part}.imports.may", problems)
+    read = {part: iw.may(imports[part].get("may"), item, parts, declared, f"parts.{part}.imports.may", problems,
+                         repeats=built.repeats)
             for part, item in parts.items()}
     rules = {part: allowed for part, (allowed, _) in read.items()}
     reserved = ck.reserved_modules(document["reserved"], problems, language) if "reserved" in document else {}
     libraries = {part: _imports_libraries(imports[part], f"parts.{part}.imports.libraries", problems, language, reserved)
                  for part in parts}
-    parts = {part: replace(item, imports_must=iw.must(imports[part], item, parts, declared, rules[part], problems),
+    parts = {part: replace(item, imports_must=iw.must(imports[part], item, parts, declared, rules[part], problems,
+                                                      repeats=built.repeats),
                            imports_types_only=read[part][1]) for part, item in parts.items()}
     parts = {part: _substance(specs[part], item, declared, problems) for part, item in parts.items()}
     uses_never = _never_refs(specs, parts, never_lists, problems)
     layers = ck.layer_chains(document["layers"], parts, declared, rules, problems) if "layers" in document else {}
     unread = frozenset(item.address for item in shortfalls if item.note is None)
     testing = _testing(document["testing"], presets or {}, problems, language, unread) if "testing" in document else None
-    tiers = _tiers(document, specs, parts, declared, examples, problems, language)
+    tiers = _tiers(document, specs, parts, declared, examples, problems, language, built.repeats)
     beside = _tests_beside(document, specs, tiers, problems)
     problems += [f"tiers.{tier.name}.plain_tables: needs a table form: the framework {_framework_named(testing)} "
                  "writes none in `testing.tables`" for tier in tiers
@@ -584,7 +586,7 @@ def _mocks(value: Any, problems: list[str], language: Language,
 
 
 def _tiers(document: Mapping[Any, Any], specs: dict[str, Any], parts: dict[str, Part], declared: set[str],
-           examples: ex.Examples, problems: list[str], language: Language) -> tuple[Tier, ...]:
+           examples: ex.Examples, problems: list[str], language: Language, repeats: tuple[Repeat, ...]) -> tuple[Tier, ...]:
     """The tiers in the order of the file, each with the parts that say they are tested by it; then the coverage:
     with tiers, every part names one or is untested, and without them none names one."""
     value = document.get("tiers")
@@ -602,7 +604,7 @@ def _tiers(document: Mapping[Any, Any], specs: dict[str, Any], parts: dict[str, 
             problems.append(f"tiers: {name!r} is not a tier name: one line of text")
             continue
         subject = tuple(Subject(part) for part in parts if assigned.get(part) == name)
-        tier = _tier(name, spec, subject, parts, declared, examples, problems, language)
+        tier = _tier(name, spec, subject, parts, declared, examples, problems, language, repeats)
         if tier is not None:
             tiers.append(tier)
     return tuple(tiers)
@@ -639,7 +641,7 @@ def _coverage(specs: dict[str, Any], parts: dict[str, Part], names: list[str] | 
 
 
 def _tier(name: str, spec: Any, subject: tuple[Subject, ...], parts: dict[str, Part], declared: set[str],
-          examples: ex.Examples, problems: list[str], language: Language) -> Tier | None:
+          examples: ex.Examples, problems: list[str], language: Language, repeats: tuple[Repeat, ...]) -> Tier | None:
     where = f"tiers.{name}"
     if not isinstance(spec, Mapping):
         problems.append(f"{where}: must be a mapping, {{}} if it takes nothing")
@@ -666,9 +668,10 @@ def _tier(name: str, spec: Any, subject: tuple[Subject, ...], parts: dict[str, P
     if "folder" not in spec and "may" in imports:
         problems.append(f"{where}.imports.may: only a tier with a `folder` has an allowance of its own: without one, "
                         "its tests import what the part they mirror may")
-    allowance = (allowed_targets(imports.get("may"), None, parts, declared, f"{where}.imports.may", problems)
-                 if "folder" in spec else None)
-    also = allowed_targets(imports.get("also"), None, parts, declared, f"{where}.imports.also", problems, mirrored=True)
+    allowance = (allowed_targets(imports.get("may"), None, parts, declared, f"{where}.imports.may", problems,
+                                 repeats=repeats) if "folder" in spec else None)
+    also = allowed_targets(imports.get("also"), None, parts, declared, f"{where}.imports.also", problems, mirrored=True,
+                           repeats=repeats)
     docs = _tier_docs(spec["docs"], folder, examples, f"{where}.docs", problems, language) if "docs" in spec else {}
     reach = (ck.part_names(imports["must"], declared, f"{where}.imports.must", problems)
              if "must" in imports else [])

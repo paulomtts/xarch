@@ -1,9 +1,11 @@
 """A profile file: its keys, its parts and the layout they imply, what a part may import, its outside
 packages, the names it may not use, and the layers."""
+from copy import deepcopy
+
 import pytest
 
 from tests.modules.spec.format_files import CATALOGUE
-from tests.modules.spec.profiles import layered, parsed, part_of, problems, two_folders
+from tests.modules.spec.profiles import TESTING, layered, parsed, part_of, problems, two_folders
 from xarch.modules.spec.application.logic.key_lookup import names_of
 from xarch.modules.spec.application.logic.layout_walk import docs_name, is_file
 from xarch.modules.spec.application.logic.profile_parsing import parse_profile
@@ -435,3 +437,48 @@ def test_a_part_that_may_import_everything_may_be_asked_to_reach_any_part():
     part_of(document, "store").setdefault("imports", {})["may"] = "everything"
     part_of(document, "store").setdefault("imports", {})["must"] = ["api"]
     assert parsed(document).parts["store"].imports_must == (Target("api", "own"),)
+
+
+def referencing(services: dict, guard: dict) -> dict:
+    """A profile of modules/<module>/ (domain, services) and kernel/, every part untested, and a tier guard in the
+    folder architecture: services writes the imports given, and the guard the keys given beside its folder."""
+    return {"name": "refs", "testing": deepcopy(TESTING), "parts": {
+        "modules/<module>/": {
+            "domain/": {"role": "the rules", "untested": "read through services"},
+            "services/": {"role": "the use cases", "untested": "read through the guard", "imports": services}},
+        "kernel/": {"role": "shared code", "untested": "too small to test"}},
+        "tiers": {"guard": {"folder": "architecture"} | guard}}
+
+
+def test_references_reach_every_target_spec_reads_and_mean_what_the_old_forms_mean():
+    new = parsed(referencing({"may": ["module.domain", "parts.kernel", {"parts.domain": "types_only"}],
+                              "must": ["parts.kernel"]},
+                             {"imports": {"may": ["parts.kernel"], "also": ["module.domain/values"]}}))
+    old = parsed(referencing({"may": ["domain", "kernel", {"domain@any": "types_only"}], "must": ["kernel"]},
+                             {"imports": {"may": ["kernel"], "also": ["domain/values"]}}))
+    services, (guard,) = new.parts["services"], new.tiers
+    assert (new.rules["services"], services.imports_must, services.imports_types_only) == (
+        (Target("domain", "own"), Target("kernel"), Target("domain", "any")), (Target("kernel"),),
+        (Target("domain", "any"),))
+    assert (guard.imports_may, guard.imports_also) == ((Target("kernel"),), (Target("domain", "own", ("values",)),))
+    assert (new.rules, services.imports_must, services.imports_types_only, guard.imports_may, guard.imports_also) == (
+        old.rules, old.parts["services"].imports_must, old.parts["services"].imports_types_only,
+        old.tiers[0].imports_may, old.tiers[0].imports_also)
+
+
+@pytest.mark.parametrize("services, guard, problem", [
+    pytest.param({"may": ["module.kernel"]}, {},
+                 "layered.yaml: parts.services.imports.may: 'module.kernel': part 'kernel' lies in no <module> folder: "
+                 "write parts.kernel", id="a part's may"),
+    pytest.param({"may": ["parts.kernel"], "must": ["module.kernel"]}, {},
+                 "layered.yaml: parts.services.imports.must: 'module.kernel': part 'kernel' lies in no <module> folder: "
+                 "write parts.kernel", id="a part's must"),
+    pytest.param({"may": ["parts.kernel"]}, {"imports": {"also": ["module.kernel"]}},
+                 "layered.yaml: tiers.guard.imports.also: 'module.kernel': part 'kernel' lies in no <module> folder: "
+                 "write parts.kernel", id="a tier's also"),
+    pytest.param({"may": ["parts.kernel"]}, {"imports": {"may": ["module.domain"]}},
+                 "layered.yaml: tiers.guard.imports.may: 'module.domain': a tier's folder lies in no <module> folder, "
+                 "so it has no own module: write parts.domain", id="a tier's may"),
+])
+def test_a_reference_written_wrong_is_refused_at_its_address(services, guard, problem):
+    assert problems(referencing(services, guard)) == [problem]

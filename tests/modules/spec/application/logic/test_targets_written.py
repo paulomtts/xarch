@@ -1,21 +1,23 @@
 """How a profile writes what may be imported, on hand-made parts: a bare part, @any, a path below it, a pattern where
-one is allowed, `everything`, and each target refused with why."""
+one is allowed, `everything`, the references parts.<part> and <word>.<part>, and each target refused with why."""
 import pytest
 
 from xarch.kernel.placement import EVERYTHING
 from xarch.modules.spec.application.logic.targets_written import allowed_targets
 from xarch.modules.spec.domain.values import Part
-from xarch.profile_values.placement import Target
+from xarch.profile_values.placement import Repeat, Target
 
 API = Part("api", ("src", "*", "api"), "handlers")
 SERVICE = Part("service", ("src", "*", "service"), "logic")
 SHARED = Part("shared", ("shared",), "shared code")
 PARTS = {part.name: part for part in (API, SERVICE, SHARED)}
+REPEATS = (Repeat("module", ("src",)),)
 
 
 def written(value, owner=API, patterns=False):
     problems: list[str] = []
-    return allowed_targets(value, owner, PARTS, set(PARTS), "parts.api.imports.may", problems, patterns), problems
+    return (allowed_targets(value, owner, PARTS, set(PARTS), "parts.api.imports.may", problems, patterns,
+                            repeats=REPEATS), problems)
 
 
 @pytest.mark.parametrize("value, targets", [
@@ -50,6 +52,19 @@ def test_a_target_that_cannot_be_read_is_refused_saying_why(value, problem):
 
 def test_a_tier_folder_s_may_import_refuses_a_marked_entry_as_any_entry_that_is_no_target():
     problems: list[str] = []
-    assert allowed_targets([{"shared": "types_only"}], None, PARTS, {"shared"}, "tiers.guard.imports.may", problems) == ()
+    assert allowed_targets([{"shared": "types_only"}], None, PARTS, {"shared"}, "tiers.guard.imports.may", problems,
+                           repeats=REPEATS) == ()
     assert problems == ["tiers.guard.imports.may: {'shared': 'types_only'} is not a target: use <part>, <part>@any, "
                         "optionally followed by /<path>"]
+
+
+def test_references_are_read_with_the_profile_s_words_in_the_order_written():
+    assert written(["parts.shared", "module.service", "parts.service/rules"]) == (
+        (Target("shared"), Target("service", "own"), Target("service", "any", ("rules",))), [])
+
+
+def test_what_a_tier_s_tests_also_import_reads_a_word_as_the_instance_a_test_mirrors():
+    problems: list[str] = []
+    assert allowed_targets(["module.service/rules"], None, PARTS, set(PARTS), "tiers.unit.imports.also", problems,
+                           mirrored=True, repeats=REPEATS) == (Target("service", "own", ("rules",)),)
+    assert problems == []
