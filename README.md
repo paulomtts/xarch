@@ -107,17 +107,18 @@ tests = "tests"          # optional; the default is tests/ beside the app folder
 
 ## The profile file
 
-A profile is one YAML file that states each fact once, on the thing it is about. Its parts are listed in the order their
-litmus tests run, which is also the order of the generated docs' tree and rules table. The shape (`*` is required;
-everything else is optional, and a key left out means off):
+A profile is one YAML file that states each fact once, on the thing it is about. Its `parts` are the app's folder tree,
+and the tree's reading order (top to bottom, a part before the parts inside it) is the order their litmus tests run,
+which is also the order of the generated docs' rules table. The shape (`*` is required; everything else is optional,
+and a key left out means off):
 
 ```
 name*  based_on  language  hints  excluded  reserved
 testing:  <preset> | {preset, beside} | {files*, declared*, globals, skips, tables, mocks, beside}
-parts*:   {<part>: {path*, role*, litmus, imports: {may, must, libraries}, uses: {never}, tests | untested,
-                    package_only, folders, shared,
-                    holds: {classes: {names, immutable, built_by}, functions: {names}, records: {names, immutable},
-                            exceptions: {names}}}}
+parts*:   {<folder>/ | <file>: {<folder>/ | <file>, name, role*, litmus, imports: {may, must, libraries}, uses: {never},
+                              tests | untested, package_only, shared,
+                              holds: {classes: {names, immutable, built_by}, functions: {names},
+                                      records: {names, immutable}, exceptions: {names}}}}
 never:    {<list>: [<dotted name> | .<method>() | <list>, ...]}  layers: {<chain>: [<part>, ...]}
 tiers:    {<tier>: {proves, litmus, uses: {apply_never}, plain_tables, folder, imports: {may, also, must, types_only},
                     docs}}
@@ -211,16 +212,18 @@ The smallest valid profile is a name and one part (it runs `structure`, the impo
 ```yaml
 name: documents-app
 parts:
-  documents:
-    path: documents
+  documents/:
     role: the documents
 ```
 
 The symbols:
 
-- `<unit>` in a `path`: a repeating folder, one instance per name (`xarch new` takes the word). A profile may have
-  several, each with a word of its own and one parent; a path holds one, so one cannot sit inside another. A last step with a dot
-  (`controller.py`) makes the part a file.
+- Under `parts`, a key ending in `/` is a folder of one or more steps (`modules/<module>/`), a key holding a dot is a
+  file (`controller.py`), and any other key is a key of the part the folder or file is. A folder with a `role` is a
+  part; one with no key of a part is only a folder, whose value may be one line of text, its note; a file is always a
+  part. A part is named by its folder's last step or its file's name before the first dot, or by `name:`, which two
+  parts of one name need. `<unit>/` is a repeating folder, one instance per name (`xarch new` takes the word); a
+  profile may have several, each with a word of its own and one parent, and one cannot sit inside another.
 - In `imports.may`, a bare name is that part in the importer's own instance of its repeating folder; `store@any` any
   instance, and the only way to name a part of another repeating folder, which has no own instance; `store/schema`
   only that path below the part; `store:*Id` only the names that match the pattern, imported by name;
