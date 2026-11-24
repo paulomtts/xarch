@@ -6,10 +6,11 @@ import pytest
 
 from tests.modules.spec.format_files import FILE_TYPES
 from tests.modules.spec.languages import BRACE, PYTHON
-from tests.modules.spec.profiles import TESTING, covered, parsed, problems
+from tests.modules.spec.profiles import PYTEST_FORM, PYTEST_TABLE, TESTING, covered, parsed, problems
 from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.modules.spec.application.logic.profile_checks import use_case_file
-from xarch.profile_values.testing import Fixture, ScenarioCoverage
+from xarch.profile_values.language import Writing
+from xarch.profile_values.testing import Fixture, Place, RowId, ScenarioCoverage, TableForm
 
 FILES = {"files": ["test_*.py"], "functions": "test_*"}
 TABLE_OK = TESTING["table"]
@@ -423,3 +424,116 @@ def test_the_guard_line_shows_the_name_as_name_whatever_its_case(case):
     testing = {"files": ["*_spec.py"], "functions": "it_*"}
     lines = guard_lines(testing=testing, guards={"scenario-coverage": SCENARIOS | {"file": f"{{name:{case}}}_spec.py"}})
     assert "in `<name>_spec.py`" in lines[0]
+
+
+CALL = {"call": ["checks.each"], "columns_from": {"position": 0}, "rows": {"position": 1}, "row": "checks.case",
+        "id": {"keyword": "id"}}
+"""A form whose rows a call that makes the test holds."""
+LOOP = {"loop": True, "columns_from": "bound", "row": "literal", "id": {"position": 0}}
+"""A form whose rows a loop of the test's body runs, each a literal whose id is its first value."""
+FIELD_ROW = {"decorator": "checks.cases", "columns_from": "fields", "rows": {"position": 0}, "row": "literal",
+             "id": {"field": "name"}}
+"""A form of literal rows whose id is a field."""
+POSITIONED = {"decorator": "checks.cases", "columns_from": {"position": 0}, "rows": {"position": 1}, "row": "literal",
+              "id": {"position": 0}}
+"""A form of literal rows whose id is their first value."""
+AT = "layered.yaml: testing.tables.0"
+FORMS = ("layered.yaml: testing.tables: must be a list of table forms, each {decorator | call | loop, columns_from, "
+         "rows, row, id}")
+ENTRY = f"{AT}: must be a mapping with one of decorator, call or loop"
+HOLDER = f"{AT}: must have exactly one of decorator, call or loop"
+PLACE = "must be {position: <n>, keyword: <name>}, at least one of them, of the holder's arguments"
+ROW_ID = f"{AT}.id: must be one of {{keyword: <name>}}, {{field: <name>}} or {{position: <n>}}"
+SLOTS = "use call, columns_from, decorator, id, loop, row, rows"
+TOY = replace(PYTHON, checked=replace(PYTHON.checked, title="Toy", writing=Writing()))
+"""Python as a language whose data file writes no template: it cannot say a row."""
+
+
+def with_tables(tables) -> dict:
+    return with_testing(tables=tables)
+
+
+def without(entry: dict, key: str) -> dict:
+    return {k: v for k, v in entry.items() if k != key}
+
+
+def test_the_forms_of_a_table_are_read_each_in_its_slots():
+    assert parsed(with_tables([PYTEST_TABLE])).framework.tables == (PYTEST_FORM,)
+    assert parsed(with_tables([CALL, LOOP])).framework.tables == (
+        TableForm(Place(0), Place(1), ("checks", "case"), RowId(keyword="id"), call=(("checks", "each"),)),
+        TableForm("bound", None, (), RowId(position=0), loop=True))
+
+
+def test_an_empty_list_of_forms_and_a_framework_that_writes_none_have_no_form():
+    assert parsed(with_tables([])).framework.tables == ()
+    assert parsed(covered(testing=FILES)).framework.tables == ()
+
+
+@pytest.mark.parametrize("tables, expected", [
+    pytest.param(PYTEST_TABLE, FORMS, id="one form written as a map, not a list, is refused"),
+    pytest.param(["pytest.mark.parametrize"], ENTRY, id="an entry that is no mapping is refused"),
+    pytest.param([None], ENTRY, id="an empty entry is refused"),
+    pytest.param([without(PYTEST_TABLE, "decorator")], HOLDER, id="an entry with no holder is refused"),
+    pytest.param([PYTEST_TABLE | {"call": ["checks.each"]}], HOLDER, id="an entry with two holders is refused"),
+    pytest.param([LOOP | {"loop": 1}], f"{AT}.loop: must be true: the rows are a list a loop of the test's body runs",
+                 id="a loop that is not true is refused"),
+    pytest.param([without(PYTEST_TABLE, "row")], f"{AT}: missing `row`", id="an entry with no row is refused"),
+    pytest.param([without(PYTEST_TABLE, "id")], f"{AT}: missing `id`", id="an entry with no id is refused"),
+    pytest.param([without(PYTEST_TABLE, "columns_from")], f"{AT}: missing `columns_from`",
+                 id="an entry with no columns_from is refused"),
+    pytest.param([without(CALL, "rows")], f"{AT}: missing `rows`", id="a call with no rows is refused"),
+    pytest.param([LOOP | {"rows": {"position": 0}}], f"{AT}.rows: a loop runs the rows it iterates: drop rows",
+                 id="rows given with a loop are refused"),
+    pytest.param([PYTEST_TABLE | {"rows": {"position": -1}}], f"{AT}.rows: {PLACE}", id="a negative position"),
+    pytest.param([PYTEST_TABLE | {"rows": {"position": True}}], f"{AT}.rows: {PLACE}",
+                 id="a position that is true is no number"),
+    pytest.param([PYTEST_TABLE | {"rows": {"position": None}}], f"{AT}.rows: {PLACE}",
+                 id="a place with neither"),
+    pytest.param([PYTEST_TABLE | {"rows": {"index": 1}}], f"{AT}.rows: {PLACE}", id="a place with another key"),
+    pytest.param([PYTEST_TABLE | {"columns_from": {"keyword": "arg names"}}], f"{AT}.columns_from: {PLACE}",
+                 id="a place whose keyword is no name"),
+    pytest.param([PYTEST_TABLE | {"columns_from": "names"}],
+                 f"{AT}.columns_from: must be {{position, keyword}}, parameters, bound or fields",
+                 id="columns_from that is no place and no word of its own"),
+    pytest.param([PYTEST_TABLE | {"columns_from": "bound"}],
+                 f"{AT}.columns_from: bound is the names a loop binds: write it with loop", id="bound with a decorator"),
+    pytest.param([LOOP | {"columns_from": {"position": 0}}],
+                 f"{AT}.columns_from: a loop has no arguments: write bound or fields", id="a place with a loop"),
+    pytest.param([LOOP | {"columns_from": "parameters"}], f"{AT}.columns_from: a loop's columns are bound or fields",
+                 id="parameters with a loop"),
+    pytest.param([PYTEST_TABLE | {"columns_from": "fields"}], f"{AT}.columns_from: fields needs row: literal",
+                 id="fields with a dotted row"),
+    pytest.param([PYTEST_TABLE | {"row": "param"}], f"{AT}.row: 'param' is not an outside name such as <package>.<name>",
+                 id="a row that is neither dotted nor literal"),
+    pytest.param([PYTEST_TABLE | {"decorator": "parametrize"}],
+                 f"{AT}.decorator: 'parametrize' is not an outside name such as <package>.<name>",
+                 id="a decorator that is not dotted"),
+    pytest.param([CALL | {"call": []}], f"{AT}.call: must be a list of outside names such as <package>.<name>",
+                 id="an empty list of calls"),
+    pytest.param([PYTEST_TABLE | {"id": "id"}], ROW_ID, id="an id written as a bare keyword, as testing.table wrote it"),
+    pytest.param([PYTEST_TABLE | {"id": {"keyword": "id", "field": "id"}}], ROW_ID, id="an id of two kinds"),
+    pytest.param([PYTEST_TABLE | {"id": {"position": -1}}], ROW_ID, id="an id at a negative position"),
+    pytest.param([PYTEST_TABLE | {"row": "literal"}],
+                 f"{AT}.id: {{keyword}} names a keyword of a row call: write a dotted row", id="a keyword id of a literal row"),
+    pytest.param([PYTEST_TABLE | {"id": {"field": "name"}}],
+                 f"{AT}.id: {{field}} names a field of a literal row: write row: literal", id="a field id of a row call"),
+    pytest.param([PYTEST_TABLE | {"x": 1}], f"{AT}: unknown key 'x': {SLOTS}", id="an unknown key"),
+    pytest.param([PYTEST_TABLE, PYTEST_TABLE | {"x": 1}], f"layered.yaml: testing.tables.1: unknown key 'x': {SLOTS}",
+                 id="an entry is addressed by its index from 0"),
+    pytest.param([FIELD_ROW], f"{AT}.id: the language Python does not write `writing.field`, how a row's id is given "
+                              "by a field", id="a field id under a language that writes no field"),
+])
+def test_a_bad_table_form_is_refused(tables, expected):
+    assert problems(with_tables(tables)) == [expected]
+
+
+def test_a_language_that_writes_no_template_cannot_say_a_row_call_nor_its_keyword_id():
+    assert problems(with_tables([PYTEST_TABLE]), languages={"python": TOY}) == [
+        f"{AT}.row: the language Toy does not write `writing.call`, how a row call is named",
+        f"{AT}.id: the language Toy does not write `writing.keyword`, how a row's id is given by a keyword"]
+
+
+def test_an_id_by_position_needs_no_template():
+    assert parsed(with_tables([POSITIONED, LOOP]), languages={"python": TOY}).framework.tables == (
+        TableForm(Place(0), Place(1), (), RowId(position=0), decorator=("checks", "cases")),
+        TableForm("bound", None, (), RowId(position=0), loop=True))

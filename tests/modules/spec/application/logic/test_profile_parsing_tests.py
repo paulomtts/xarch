@@ -46,7 +46,7 @@ def test_a_preset_is_the_same_map_validated_like_one_written_in_the_file():
     pytest.param({"functions": "test_*"}, PRESETS, ["layered.yaml: testing: missing `files`"], id="no files"),
     pytest.param({"files": ["test_*.py"]}, PRESETS, ["layered.yaml: testing: missing `functions`"], id="no functions"),
     pytest.param({"files": ["test_*.py"], "functions": "test_*", "colour": 1}, PRESETS,
-                 ["layered.yaml: testing: unknown key 'colour': use files, functions, mocks, skips, table"],
+                 ["layered.yaml: testing: unknown key 'colour': use files, functions, mocks, skips, table, tables"],
                  id="an unknown key"),
     pytest.param({"files": ["x"], "functions": "test_*"}, PRESETS,
                  ["layered.yaml: testing.files: 'x' is not a file name pattern: a name ending in .py, with `*` for any "

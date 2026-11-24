@@ -20,16 +20,36 @@ from xarch.modules.spec.application.logic.layout_walk import lies_in
 from xarch.modules.spec.application.logic.outside_name import outside_name
 from xarch.modules.spec.application.logic.profile_listing import listing_in
 from xarch.modules.spec.application.logic.project_files import APP_PLACEHOLDER
-from xarch.modules.spec.domain.profile_keys import FILE, FIXTURE, NAMING, PAGE, RULE_ID, TABLE
+from xarch.modules.spec.domain.profile_keys import FILE, FIXTURE, NAMING, PAGE, RULE_ID, TABLE, TABLES
 from xarch.modules.spec.domain.values import NAME, Doc, FileEntry, Language, Layout, Naming, Part, Tier
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.placement import Target
-from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework
+from xarch.profile_values.testing import (
+    CaseTable,
+    Fakes,
+    Fixture,
+    Framework,
+    Place,
+    RowId,
+    TableForm,
+)
 
 PART_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_-]*")
 """What a profile calls a part: letters, digits, `_` and `-`, not starting with a digit or `-`."""
 CALLED = "()"
 """How a method in a `never` list, called on anything, ends: `.absolute()`."""
+HOLDERS = ("decorator", "call", "loop")
+"""The keys of a table form that say what holds its rows, exactly one of them in each."""
+PARAMETERS = "parameters"
+"""What columns_from says of a form whose column names are the test's own parameters."""
+BOUND = "bound"
+"""What columns_from says of a loop whose column names are the names it binds."""
+FIELDS = "fields"
+"""What columns_from says of a form whose column names are the fields of each row."""
+LITERAL = "literal"
+"""What `row` says of a form whose rows are literals, not calls."""
+PLACE = "must be {position: <n>, keyword: <name>}, at least one of them, of the holder's arguments"
+"""What the loader says of a place of a table form that is none."""
 
 
 def _outside(text: str, language: Language, namespace: str = "") -> tuple[str, ...] | None:
@@ -419,6 +439,133 @@ def use_case_file(value: Any, framework: Framework | None, where: str, problems:
         problems.append(f"{where}: {value!r} is not a name `{files_key}` recognises as a test file")
         return None
     return value
+
+
+def table_forms(value: Any, where: str, problems: list[str], language: Language) -> tuple[TableForm, ...] | None:
+    """The forms a table of cases is written in, each entry addressed `<where>.<i>`, i from 0; None when any entry
+    has a problem."""
+    if not isinstance(value, list):
+        problems.append(f"{where}: must be a list of table forms, each {{decorator | call | loop, columns_from, rows, "
+                        "row, id}")
+        return None
+    forms = [_table_form(entry, f"{where}.{index}", problems, language) for index, entry in enumerate(value)]
+    found = tuple(form for form in forms if form is not None)
+    return found if len(found) == len(forms) else None
+
+
+def _table_form(entry: Any, where: str, problems: list[str], language: Language) -> TableForm | None:
+    """One form: exactly one holder, its slots each in the shape the holder takes, and the language able to say its
+    row."""
+    if not isinstance(entry, Mapping):
+        problems.append(f"{where}: must be a mapping with one of decorator, call or loop")
+        return None
+    count = len(problems)
+    problems += unknown_keys(entry, names_of(TABLES), where, TABLES)
+    holders = [key for key in HOLDERS if key in entry]
+    if len(holders) != 1:
+        problems.append(f"{where}: must have exactly one of decorator, call or loop")
+    loop = holders == ["loop"]
+    needed = (*required_of(TABLES), *(("rows",) if holders in (["decorator"], ["call"]) else ()))
+    problems += [f"{where}: missing `{key}`" for key in needed if key not in entry]
+    decorator = (_outside_name_at(entry["decorator"], f"{where}.decorator", problems, language)
+                 if "decorator" in entry else ())
+    calls = outside_names(entry["call"], f"{where}.call", problems, language) if "call" in entry else ()
+    if "loop" in entry and entry["loop"] is not True:
+        problems.append(f"{where}.loop: must be true: the rows are a list a loop of the test's body runs")
+    if "rows" in entry and loop:
+        problems.append(f"{where}.rows: a loop runs the rows it iterates: drop rows")
+    rows = _place(entry["rows"], f"{where}.rows", problems, language) if "rows" in entry and not loop else None
+    row = _row_of(entry["row"], f"{where}.row", problems, language) if "row" in entry else None
+    columns = (_columns_from(entry["columns_from"], f"{where}.columns_from", loop, row, problems, language)
+               if "columns_from" in entry else None)
+    given = _row_id(entry["id"], f"{where}.id", row, problems, language) if "id" in entry else None
+    if len(problems) != count or decorator is None or calls is None or row is None or columns is None or given is None:
+        return None
+    problems += _unwritten(row, given, where, language)
+    if len(problems) != count:
+        return None
+    return TableForm(columns, rows, row, given, decorator, calls, loop)
+
+
+def _counted(value: Any) -> bool:
+    """Whether a value is a whole number from 0 (true and false are no numbers here)."""
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
+def _place(value: Any, where: str, problems: list[str], language: Language) -> Place | None:
+    """A place among the holder's arguments: {position, keyword}, at least one of them given."""
+    position = value.get("position") if isinstance(value, Mapping) else None
+    keyword = value.get("keyword") if isinstance(value, Mapping) else None
+    if not (isinstance(value, Mapping) and set(value) <= {"position", "keyword"}
+            and (position is not None or keyword is not None)
+            and (position is None or _counted(position))
+            and (keyword is None or (isinstance(keyword, str) and names.is_name(keyword, language.names)))):
+        problems.append(f"{where}: {PLACE}")
+        return None
+    return Place(position, keyword or "")
+
+
+def _row_of(value: Any, where: str, problems: list[str], language: Language) -> tuple[str, ...] | None:
+    """How a row is written: the steps of the outside name a row calls, or none for a literal row."""
+    return () if value == LITERAL else _outside_name_at(value, where, problems, language)
+
+
+def _columns_from(value: Any, where: str, loop: bool, row: tuple[str, ...] | None, problems: list[str],
+                  language: Language) -> Place | str | None:
+    """Where the column names come from: a place of the holder's arguments, or one of PARAMETERS, BOUND and FIELDS,
+    each where its holder and its row allow it (row None: refused already, and not looked at)."""
+    if isinstance(value, Mapping) and loop:
+        problems.append(f"{where}: a loop has no arguments: write bound or fields")
+        return None
+    if isinstance(value, Mapping):
+        return _place(value, where, problems, language)
+    if value not in (PARAMETERS, BOUND, FIELDS):
+        problems.append(f"{where}: must be {{position, keyword}}, parameters, bound or fields")
+        return None
+    if value == BOUND and not loop:
+        problems.append(f"{where}: bound is the names a loop binds: write it with loop")
+        return None
+    if value == PARAMETERS and loop:
+        problems.append(f"{where}: a loop's columns are bound or fields")
+        return None
+    if value == FIELDS and row:
+        problems.append(f"{where}: fields needs row: literal")
+        return None
+    return str(value)
+
+
+def _row_id(value: Any, where: str, row: tuple[str, ...] | None, problems: list[str],
+            language: Language) -> RowId | None:
+    """What gives a row its id: exactly one of {keyword}, {field} and {position}, a keyword only of a row call and a
+    field only of a literal row (row None: refused already, and not looked at)."""
+    kind, item = next(iter(value.items())) if isinstance(value, Mapping) and len(value) == 1 else ("", None)
+    named = isinstance(item, str) and names.is_name(item, language.names)
+    if not ((kind in ("keyword", "field") and named) or (kind == "position" and _counted(item))):
+        problems.append(f"{where}: must be one of {{keyword: <name>}}, {{field: <name>}} or {{position: <n>}}")
+        return None
+    if kind == "keyword" and row == ():
+        problems.append(f"{where}: {{keyword}} names a keyword of a row call: write a dotted row")
+        return None
+    if kind == "field" and row:
+        problems.append(f"{where}: {{field}} names a field of a literal row: write row: literal")
+        return None
+    return RowId(**{kind: item})
+
+
+def _unwritten(row: tuple[str, ...], given: RowId, where: str, language: Language) -> list[str]:
+    """The problems of a form the language cannot say: a row call with no `writing.call`, and an id by a keyword or a
+    field with no template of its own; an id by position needs none."""
+    writing, title = language.checked.writing, language.checked.title
+    found: list[str] = []
+    if row and not writing.call:
+        found.append(f"{where}.row: the language {title} does not write `writing.call`, how a row call is named")
+    if given.keyword and not writing.keyword:
+        found.append(f"{where}.id: the language {title} does not write `writing.keyword`, how a row's id is given by "
+                     "a keyword")
+    if given.field and not writing.field:
+        found.append(f"{where}.id: the language {title} does not write `writing.field`, how a row's id is given by a "
+                     "field")
+    return found
 
 
 def _outside_name_at(value: Any, where: str, problems: list[str], language: Language) -> tuple[str, ...] | None:

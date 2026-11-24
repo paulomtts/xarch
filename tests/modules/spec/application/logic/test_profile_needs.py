@@ -6,7 +6,7 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.spec.languages import PYTHON
-from tests.modules.spec.profiles import covered, layered, parsed, problems
+from tests.modules.spec.profiles import PYTEST_TABLE, covered, layered, parsed, problems
 from xarch.modules.spec.application.logic.language_file import PARTIAL
 from xarch.modules.spec.application.logic.profile_needs import refused, short
 from xarch.modules.spec.domain.key_table import KEYS, SLOTS
@@ -538,3 +538,10 @@ def test_must_and_libraries_fall_short_at_their_new_addresses():
     found = {(item.address, item.fact) for item in short(document, {}, no_standard)}
     assert {("parts.store.imports.must", "import.standard"),
             ("parts.store.imports.libraries", "import.standard")} <= found
+
+
+def test_the_forms_of_a_table_need_the_tables_of_cases_of_a_test_function():
+    document = layered(language="toy", testing={"files": ["test_*.py"], "functions": "test_*", "tables": [PYTEST_TABLE]})
+    assert ("layered.yaml: testing.tables: its check reads function.tables (the tables of cases of a test function), "
+            "which the language toy does not supply: drop testing.tables, or check the app with a language whose "
+            "reader supplies function.tables") in problems(document, languages=LANGUAGES)

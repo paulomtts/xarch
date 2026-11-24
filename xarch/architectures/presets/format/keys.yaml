@@ -35,6 +35,13 @@ fragments:
         decorator: checks.cases
         row: checks.case
         id: id
+  tables: |2
+      tables:
+        - decorator: checks.cases
+          columns_from: {position: 0, keyword: names}
+          rows: {position: 1, keyword: cases}
+          row: checks.case
+          id: {keyword: id}
   mocks: |2
         calls: [doubles.make]
         spec_keywords: [spec]
@@ -831,6 +838,72 @@ keys:
       <<testing>>
       <<table>>
           keywords: [names, rows]
+  testing.tables:
+    meaning: the forms a table of cases is written in
+    accepts: >-
+      a list of forms, each one of decorator, call or loop, with columns_from, rows, row and id; left out or empty:
+      the framework writes no table
+    example: |
+      <<testing>>
+      <<tables>>
+  testing.tables[].decorator:
+    meaning: the decorator that holds the table
+    accepts: a dotted name, a decorator of the test whose arguments hold the column names and the rows
+    example: |
+      <<testing>>
+      <<tables>>
+  testing.tables[].call:
+    meaning: the calls that hold the table
+    accepts: a list of dotted names, each a call that makes or wraps the test and whose arguments hold the rows
+    example: |
+      <<testing>>
+        tables:
+          - call: [checks.each]
+            columns_from: {position: 0}
+            rows: {position: 1}
+            row: checks.case
+            id: {keyword: id}
+  testing.tables[].loop:
+    meaning: a loop of the test's body runs the rows
+    accepts: "true: the rows are a list literal that a loop statement of the test's body iterates"
+    example: |
+      <<testing>>
+        tables:
+          - loop: true
+            columns_from: bound
+            row: literal
+            id: {position: 0}
+  testing.tables[].columns_from:
+    meaning: where the column names come from
+    accepts: >-
+      {position: <n>, keyword: <name>} of the holder's arguments, at least one of them, a keyword alone reading only
+      the keyword; or parameters, the test's own parameters; or bound, the names the loop binds; or fields, the
+      fields of each row
+    example: |
+      <<testing>>
+      <<tables>>
+  testing.tables[].rows:
+    meaning: where the rows are
+    accepts: >-
+      {position: <n>, keyword: <name>} of the holder's arguments, at least one of them; needed with decorator and
+      call, refused with loop
+    example: |
+      <<testing>>
+      <<tables>>
+  testing.tables[].row:
+    meaning: how a row is written
+    accepts: "a dotted name, a row being a call of it; or literal, a row being a list or object literal"
+    example: |
+      <<testing>>
+      <<tables>>
+  testing.tables[].id:
+    meaning: what gives a row its id
+    accepts: >-
+      {keyword: <name>}, a keyword of the row call; {field: <name>}, a field of a literal row; or {position: <n>}, its
+      value at that position
+    example: |
+      <<testing>>
+      <<tables>>
   testing.mocks.calls:
     meaning: the calls that build a mock
     accepts: a list of dotted names

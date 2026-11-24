@@ -10,11 +10,48 @@ class Framework:
     """How the project's test framework names things: the patterns of a test file's name (matched against the file
     name alone, `*` for any text) and of a test function's, and the dotted names of what skips a test or expects it
     to fail (a marker or a call; empty: none is counted); and how a test function holds a table of cases (None: the
-    profile does not say)."""
+    profile does not say); and the table forms it
+    writes (tables; none: it writes none)."""
     files: tuple[str, ...]
     functions: str
     skips: tuple[tuple[str, ...], ...] = ()
     table: CaseTable | None = None
+    tables: tuple[TableForm, ...] = ()
+
+
+@dataclass(frozen=True)
+class Place:
+    """Where a slot of a table form is among the arguments of its holder: the argument at position (from 0; None: none
+    is read by its position), else the one its keyword gives ("": none is read by a keyword); one of the two at
+    least."""
+    position: int | None = None
+    keyword: str = ""
+
+
+@dataclass(frozen=True)
+class RowId:
+    """What gives a row of a table its id, exactly one of three: a keyword of the row call (keyword), a field of a
+    literal row (field), or its value at a position from 0 (position)."""
+    keyword: str = ""
+    field: str = ""
+    position: int | None = None
+
+
+@dataclass(frozen=True)
+class TableForm:
+    """One form a table of cases is written in, as the framework's `testing.tables` says it. Its holder, one of three:
+    a decorator of the test (decorator, its dotted name), a call that makes or wraps the test (call, one or more
+    dotted names), or a loop of the test's body over a list literal (loop). Where the column names come from
+    (columns_from: a place among the holder's arguments, or one of the words parameters, bound and fields); where the rows are (rows: a
+    place among the holder's arguments; None for a loop); how a row is written (row: the dotted name a row calls;
+    empty: a row is a literal); and what gives a row its id."""
+    columns_from: Place | str
+    rows: Place | None
+    row: tuple[str, ...]
+    id: RowId
+    decorator: tuple[str, ...] = ()
+    call: tuple[tuple[str, ...], ...] = ()
+    loop: bool = False
 
 
 @dataclass(frozen=True)

@@ -47,6 +47,7 @@ SHAPE = (
     Shown('testing.functions', 1, "the pattern of a test function's name", True, True),
     Shown('testing.skips', 1, 'what skips a test or expects it to fail', False, True),
     Shown('testing.table', 1, 'how a test function holds a table of cases', False, True),
+    Shown('testing.tables', 1, 'the forms a table of cases is written in', False, True),
     Shown('testing.mocks', 1, 'how a mock is built', False, True),
     Shown('parts', 0, 'where code sits, in the order their litmus tests run', True, True),
     Shown('parts.path', 1, 'where the part lives below the app', True, True),
@@ -345,3 +346,15 @@ def test_holds_says_it_reads_no_top_level_functions_in_a_language_that_does_not_
 ])
 def test_a_key_is_explained_typed_plain_or_with_the_part_it_sits_on(address, key):
     assert explained(address).key == key
+
+
+def test_the_forms_of_a_table_and_each_slot_of_a_form_are_keys_of_the_format():
+    tables, slot = explained("testing.tables"), explained("testing.tables.id")
+    assert (tables.key, tables.meaning, tables.rules) == (
+        "testing.tables", "the forms a table of cases is written in", ("scenario-coverage",))
+    assert [(held.key, held.required) for held in tables.keys] == [
+        ("testing.tables.decorator", False), ("testing.tables.call", False), ("testing.tables.loop", False),
+        ("testing.tables.columns_from", True), ("testing.tables.rows", False), ("testing.tables.row", True),
+        ("testing.tables.id", True)]
+    assert (slot.key, slot.where, slot.required, slot.meaning) == (
+        "testing.tables.id", "testing.tables[]", True, "what gives a row its id")

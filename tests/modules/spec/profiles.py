@@ -13,8 +13,15 @@ from xarch.modules.spec.application.logic.profile_listing import listing, refere
 from xarch.modules.spec.application.logic.profile_parsing import parse_profile
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import Architecture
+from xarch.profile_values.testing import Place, RowId, TableForm
 
 SOURCE = "layered.yaml"
+PYTEST_TABLE = {"decorator": "pytest.mark.parametrize", "columns_from": {"position": 0, "keyword": "argnames"},
+                "rows": {"position": 1, "keyword": "argvalues"}, "row": "pytest.param", "id": {"keyword": "id"}}
+"""The one form pytest writes a table of cases in, as an entry of `testing.tables`."""
+PYTEST_FORM = TableForm(Place(0, "argnames"), Place(1, "argvalues"), ("pytest", "param"), RowId(keyword="id"),
+                        decorator=("pytest", "mark", "parametrize"))
+"""PYTEST_TABLE as the loader reads it."""
 TESTING = {"files": ["test_*.py", "*_test.py"], "functions": "test_*", "skips": ["pytest.mark.skip", "pytest.skip"],
            "table": {"decorator": "pytest.mark.parametrize", "row": "pytest.param", "id": "id",
                      "keywords": ["argnames", "argvalues"]},

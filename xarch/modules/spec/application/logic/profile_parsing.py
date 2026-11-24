@@ -540,10 +540,11 @@ def _testing(value: Any, presets: Mapping[str, Any], problems: list[str], langua
     count = len(problems)
     framework = ck.framework_patterns(value, problems, "testing", names_of(TESTING), language, TESTING)
     table = ck.case_table(value["table"], "testing.table", problems, language) if "table" in value else None
+    tables = ck.table_forms(value["tables"], "testing.tables", problems, language) if "tables" in value else ()
     mocks = _mocks(value["mocks"], problems, language) if "mocks" in value else None
-    if len(problems) != count or framework is None:
+    if len(problems) != count or framework is None or tables is None:
         return None
-    return _Testing(replace(framework, table=table), table, mocks)
+    return _Testing(replace(framework, table=table, tables=tables), table, mocks)
 
 
 def _mocks(value: Any, problems: list[str], language: Language) -> StandIns | None:

@@ -393,7 +393,7 @@ def test_a_file_whose_only_unknown_keys_are_retired_gives_no_joined_problem(monk
     pytest.param(TIER, writing(covered(), "tiers", "unit"),
                  f"tiers.unit: unknown key 'banned': {RENAMED}; use {TIER_USE}", id="a tier"),
     pytest.param(TESTING, writing(covered(), "testing"),
-                 f"testing: unknown key 'banned': {RENAMED}; use files, functions, mocks, skips, table",
+                 f"testing: unknown key 'banned': {RENAMED}; use files, functions, mocks, skips, table, tables",
                  id="testing, through framework_patterns"),
     pytest.param(FIXTURE, writing(covered(), "testing", "mocks", "fixtures", "mocker"),
                  f"testing.mocks.fixtures.mocker: unknown key 'banned': {RENAMED}; use autospec, calls",
