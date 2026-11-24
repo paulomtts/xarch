@@ -1,7 +1,12 @@
 """A profile file: the test framework (a preset or the map), the tiers and which part each covers, the
 fakes, and the guards."""
-import pytest
+from dataclasses import replace
+from pathlib import Path
 
+import pytest
+import yaml
+
+from tests.modules.spec.languages import BRACE, PYTHON
 from tests.modules.spec.profiles import EX, PRESETS, PYTEST_FORM, TESTING, covered, layered, parsed, problems
 from xarch.modules.spec.domain.values import (
     ClosedTree,
@@ -16,8 +21,9 @@ from xarch.modules.spec.domain.values import (
     Tier,
     TierExample,
 )
+from xarch.profile_values.language import Writing
 from xarch.profile_values.placement import Target
-from xarch.profile_values.testing import Fakes, Fixture, Framework, ScenarioCoverage, StandIns
+from xarch.profile_values.testing import Fakes, Fixture, Framework, Place, RowId, ScenarioCoverage, StandIns, TableForm
 
 PRESET_PROBLEM = ("layered.yaml: testing: must be a preset name or a mapping {files, functions}: the patterns of a "
                   "test file's name and of a test function's")
@@ -713,3 +719,24 @@ def test_a_plain_tier_with_no_framework_is_told_only_what_is_wrong_with_testing(
     document["testing"] = "odd"
     assert problems(document) == [
         "layered.yaml: testing: no preset 'odd': use pytest, or write the map {files, functions}"]
+
+
+STUB = yaml.safe_load((Path(__file__).resolve().parents[4] / "fakes" / "frameworks" / "stub.yaml").read_text(encoding="utf-8"))
+"""The test-only framework of tests/fakes/frameworks/, a loop form and a call form with literal rows, as a preset."""
+
+
+def test_the_test_only_framework_loads_under_brace_into_a_loop_form_and_a_call_form():
+    framework = parsed(covered(testing="stub", language="brace"), presets={"stub": STUB},
+                       languages={"python": PYTHON, "brace": BRACE}).framework
+    assert framework == Framework(("*.test.ts",), "test*", tables=(
+        TableForm("bound", None, (), RowId(position=0), loop=True),
+        TableForm("fields", Place(0), (), RowId(field="name"), call=(("vitest", "it", "each"), ("vitest", "test", "each"))),
+    ))
+
+
+def test_the_test_only_framework_is_refused_under_a_brace_that_does_not_write_a_field_id():
+    unwritten = replace(BRACE, checked=replace(BRACE.checked, writing=Writing()))
+    assert problems(covered(testing="stub", language="brace"), presets={"stub": STUB},
+                    languages={"python": PYTHON, "brace": unwritten}) == [
+        "layered.yaml: testing.tables.1.id: the language Brace does not write `writing.field`, how a row's id is "
+        "given by a field"]
