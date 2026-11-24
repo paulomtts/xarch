@@ -126,6 +126,18 @@ position; any other value is not written, and has no id and no cells. A `for` th
 anything else holds no table, and no later `for` is tried.
 
 Any other form reads no table, and the next form of the list is still tried.
+
+A file read for tests holds a test for each of its functions, a method too, whose name matches the pattern of a
+function form of the framework's `testing.declared`, as fnmatch matches a name: it is a test of the first such form,
+tagged with that form's index, untitled, its name the function's and its body that very function, in the order of the
+functions. A call form declares no test this reader reads: Python's reader does not supply `test.call`. A file read
+with no form holds no test.
+
+A bare name no scope binds whose name is the first step of one of the framework's globals (`testing.globals`) is read,
+in a call, an argument and a use, as itself, ahead of a builtin: `it.skip()` calls ("it", "skip"), which is also its
+use, bound none of its steps; a global is never read as ("builtins", <name>). A name the file binds, by an import, a
+definition or an assignment in any scope around the reading, keeps its own binding. A file that holds a star import
+reads no global, as it reads no builtin, since the star import might bind the name.
 """
 from __future__ import annotations
 
@@ -138,6 +150,7 @@ import re
 import tokenize
 from collections.abc import Iterable
 from dataclasses import dataclass
+from fnmatch import fnmatchcase
 from pathlib import Path
 
 from xarch.kernel.logic.names import is_private_name
@@ -158,13 +171,14 @@ from xarch.modules.rules.domain.parsed import (
     SoleCall,
     SourceFile,
     Table,
+    Test,
     Union,
     Use,
 )
 from xarch.modules.rules.domain.published import CLASS, FUNCTION, METHOD, Piece
 from xarch.platform.filesystem import FileSystem
 from xarch.profile_values.language import InterfaceMark, RecordMark
-from xarch.profile_values.testing import Place, TableForm
+from xarch.profile_values.testing import Place, TableForm, TestForm
 
 
 class FsSourceTree:
@@ -179,7 +193,8 @@ class FsSourceTree:
 
     def read(self, root: Path, paths: list[tuple[str, ...]], tables: tuple[TableForm, ...] = (),
              immutable: tuple[RecordMark, ...] = (), interface: tuple[InterfaceMark, ...] = (), *,
-             standard: frozenset[str], private: str, special: str) -> list[SourceFile]:
+             standard: frozenset[str], private: str, special: str, declared: tuple[TestForm, ...] = (),
+             globals: tuple[tuple[str, ...], ...] = ()) -> list[SourceFile]:
         """Each file below root, read as UTF-8 and parsed; one that is not UTF-8, or cannot be read, holds why as its
         error, as one that does not parse does."""
         found: list[SourceFile] = []
@@ -197,7 +212,7 @@ class FsSourceTree:
                     0, f"cannot be read ({e.strerror or e})", unreadable=True)))
                 continue
             found.append(_parsed(name, path, text, tables, immutable, interface, standard, private, special,
-                                 _Where((root.name, *path[:-1]), root, self._fs)))
+                                 _Where((root.name, *path[:-1]), root, self._fs), declared, globals))
         return found
 
     def existing(self, paths: Iterable[Path]) -> frozenset[Path]:
@@ -248,7 +263,8 @@ class _Relative(tuple):
 
 def _parsed(name: str, path: tuple[str, ...], text: str, forms: tuple[TableForm, ...], marks: tuple[RecordMark, ...],
             interface: tuple[InterfaceMark, ...], standard: frozenset[str], private: str, special: str,
-            where: _Where | None = None) -> SourceFile:
+            where: _Where | None = None, declared: tuple[TestForm, ...] = (),
+            bound: tuple[tuple[str, ...], ...] = ()) -> SourceFile:
     try:
         tree = ast.parse(text)
         comments = _comments(text)
@@ -256,7 +272,9 @@ def _parsed(name: str, path: tuple[str, ...], text: str, forms: tuple[TableForm,
         return SourceFile(name, path, (), error=Unparsable(e.lineno or 0, e.msg))
     except (tokenize.TokenError, IndentationError) as e:
         return SourceFile(name, path, (), error=Unparsable(0, str(e)))
-    calls = _Calls(_BUILTINS if not _star_import(tree) else frozenset(), where)
+    star = _star_import(tree)
+    calls = _Calls(_BUILTINS if not star else frozenset(), where,
+                   frozenset(steps[0] for steps in bound) if not star else frozenset())
     calls.visit(tree)
     functions = _functions(tree, forms, private, where)
     return SourceFile(name, path, tuple(_imports(tree, standard, private, where)), comments, functions,
@@ -265,7 +283,19 @@ def _parsed(name: str, path: tuple[str, ...], text: str, forms: tuple[TableForm,
                       uses=tuple(calls.uses), parameter_calls=tuple(calls.parameter_calls),
                       module_functions=_module_functions(tree), named=_named(tree), callbacks=tuple(calls.callbacks),
                       method_calls=tuple(calls.method_calls), constants=tuple(_constants(tree, private)),
-                      unmentioned=_unmentioned(tree), pieces=_pieces(tree))
+                      unmentioned=_unmentioned(tree), pieces=_pieces(tree), tests=_tests(functions, declared))
+
+
+def _tests(functions: tuple[Function, ...], declared: tuple[TestForm, ...]) -> tuple[Test, ...]:
+    """Each function whose name matches the pattern of a function form, a test of the first such form, untitled, its
+    body the function itself, in the order of the functions; a call form declares none this reader reads."""
+    found: list[Test] = []
+    for function in functions:
+        form = next((index for index, held in enumerate(declared)
+                     if held.function and fnmatchcase(function.name, held.function)), None)
+        if form is not None:
+            found.append(Test(function.line, function.name, form, False, function))
+    return tuple(found)
 
 
 def _pieces(tree: ast.Module) -> tuple[Piece, ...]:
@@ -859,13 +889,15 @@ def _own(body: list[ast.AST]):
             stack.extend(reversed(list(ast.iter_child_nodes(node))))
 
 
-def _ref(node: ast.AST, chain: list[Scope]) -> Ref:
-    return _reached(node, chain, frozenset())[0]
+def _ref(node: ast.AST, chain: list[Scope], bare: frozenset[str] = frozenset()) -> Ref:
+    return _reached(node, chain, frozenset(), bare)[0]
 
 
-def _reached(node: ast.AST, chain: list[Scope], names: frozenset[str]) -> tuple[Ref, int]:
+def _reached(node: ast.AST, chain: list[Scope], names: frozenset[str],
+             bare: frozenset[str] = frozenset()) -> tuple[Ref, int]:
     """The path a name or a chain of attributes on one reaches, and how many of its steps the import binding it names
-    from the top (none for a relative import); a name no scope binds that is in names is a builtin."""
+    from the top (none for a relative import); a name no scope binds that is in bare is a global of the framework,
+    read as its own bare name, and else one that is in names is a builtin."""
     attrs: list[str] = []
     while isinstance(node, ast.Attribute):
         attrs.insert(0, node.attr)
@@ -873,6 +905,8 @@ def _reached(node: ast.AST, chain: list[Scope], names: frozenset[str]) -> tuple[
     if not isinstance(node, ast.Name):
         return None, 0
     scope = next((scope for scope in chain if node.id in scope), None)
+    if scope is None and node.id in bare:
+        return (node.id, *attrs), 0
     if scope is None:
         return (("builtins", node.id, *attrs), 0) if node.id in names else (None, 0)
     base = scope[node.id]
@@ -882,13 +916,16 @@ def _reached(node: ast.AST, chain: list[Scope], names: frozenset[str]) -> tuple[
 
 
 class _Calls(ast.NodeVisitor):
-    """Collects every call whose callee is a Ref, reading each name in the scope it is read in."""
+    """Collects every call whose callee is a Ref, reading each name in the scope it is read in, a framework's global by
+    its bare name."""
 
-    def __init__(self, builtins: frozenset[str] = frozenset(), where: _Where | None = None) -> None:
+    def __init__(self, builtins: frozenset[str] = frozenset(), where: _Where | None = None,
+                 bare: frozenset[str] = frozenset()) -> None:
         self._where = where
         self.found: list[Call] = []
         self.uses: list[Use] = []
         self._builtins = builtins
+        self._bare = bare
         self._chain: list[Scope] = []
         self._parameters: list[frozenset[str]] = []
         self._classes: list[bool] = []
@@ -958,12 +995,13 @@ class _Calls(ast.NodeVisitor):
                 function, receiver, callables = self._owners[index]
                 self.callbacks.append(Callback(node.lineno, function, node.func.id, node.func.id == receiver,
                                                node.func.id in callables))
-        func = _ref(node.func, self._chain)
+        func = _ref(node.func, self._chain, self._bare)
         if func is None and isinstance(node.func, ast.Attribute):
             self.method_calls.append(MethodCall(node.lineno, node.func.attr, self._held(node.func.value)))
         if func is not None or self._is_parameter_method(node.func):
-            args = tuple(_ref(a, self._chain) for a in node.args if not isinstance(a, ast.Starred))
-            keywords = tuple((k.arg, _ref(k.value, self._chain)) for k in node.keywords if k.arg is not None)
+            args = tuple(_ref(a, self._chain, self._bare) for a in node.args if not isinstance(a, ast.Starred))
+            keywords = tuple((k.arg, _ref(k.value, self._chain, self._bare)) for k in node.keywords
+                             if k.arg is not None)
             unpacked = any(isinstance(a, ast.Starred) for a in node.args) or any(k.arg is None for k in node.keywords)
             if func is not None:
                 self.found.append(Call(node.lineno, func, args, keywords, unpacked))
@@ -1022,7 +1060,7 @@ class _Calls(ast.NodeVisitor):
             self.visit(base)
 
     def _use(self, node: ast.expr) -> None:
-        name, bound = _reached(node, self._chain, self._builtins)
+        name, bound = _reached(node, self._chain, self._builtins, self._bare)
         if name is not None:
             self.uses.append(Use(node.lineno, name, bound))
 

@@ -6,6 +6,7 @@ import pytest
 
 from xarch.kernel.source import Import
 from xarch.modules.rules.domain.parsed import Class, Constant, Function, Row, Table
+from xarch.modules.rules.domain.parsed import Test as DeclaredTest
 from xarch.profile_values.capabilities import FACTS
 
 
@@ -52,6 +53,7 @@ TABLE_FACTS = {
 @pytest.mark.parametrize("text", [
     pytest.param(Row.__doc__, id="the docstring of a row"),
     pytest.param(Table.__doc__, id="the docstring of a table"),
+    pytest.param(DeclaredTest.__doc__, id="the docstring of a test"),
     *(pytest.param(FACTS[fact], id=f"the text of the fact {fact}") for fact in TABLE_FACTS),
 ])
 def test_what_a_table_and_its_rows_are_is_said_with_no_word_of_python(text):
@@ -61,3 +63,9 @@ def test_what_a_table_and_its_rows_are_is_said_with_no_word_of_python(text):
 def test_the_fact_of_tables_is_one_fact_per_form_each_saying_where_the_table_is_held():
     assert "function.tables" not in FACTS
     assert {fact: FACTS.get(fact) for fact in TABLE_FACTS} == TABLE_FACTS
+
+
+def test_a_test_is_its_line_its_name_the_index_of_its_form_whether_it_is_titled_and_its_body():
+    body = Function(3, "test_a")
+    test = DeclaredTest(3, "test_a", 0, False, body)
+    assert (test.line, test.name, test.form, test.titled, test.body) == (3, "test_a", 0, False, body)

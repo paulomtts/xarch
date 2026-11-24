@@ -1,5 +1,5 @@
-"""How a project's tests are named and placed, as the profile says it: the test framework's names, the
-table forms it writes, the scenario-coverage and stand-ins guards, and where the fakes live."""
+"""How a project's tests are named and placed, as the profile says it: the test framework's names, the forms that
+declare a test, the table forms it writes, the scenario-coverage and stand-ins guards, and where the fakes live."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -26,6 +26,17 @@ class Place:
     least."""
     position: int | None = None
     keyword: str = ""
+
+
+@dataclass(frozen=True)
+class TestForm:
+    """One form a test is declared in, as the framework's `testing.declared` says it, exactly one of two: a function
+    whose name matches function, a pattern with `*` for any text; or a call of one of call's dotted names, the test's
+    title the argument at title and its body the one at body (both set exactly when call is)."""
+    function: str = ""
+    call: tuple[tuple[str, ...], ...] = ()
+    title: Place | None = None
+    body: Place | None = None
 
 
 @dataclass(frozen=True)

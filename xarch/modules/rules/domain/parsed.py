@@ -245,6 +245,19 @@ class Function:
 
 
 @dataclass(frozen=True)
+class Test:
+    """A test a test file declares, in one of the forms of the framework's `testing.declared`: its line; its name, a
+    title's text when titled (a call form's; "" for a title that is no plain literal, and the test still counts), else
+    its function's name; form, the index of its form in that list; and body, the function whose mentions, asserts,
+    blocks, expressions and tables the checks read (for a function form, the very function among the file's)."""
+    line: int
+    name: str
+    form: int
+    titled: bool
+    body: Function
+
+
+@dataclass(frozen=True)
 class SourceFile:
     """A source file as parsed, never run: how it is shown (e.g. "app/kernel/x" and its ending), its path below the root, what
     it imports, its comments, its functions (at module level and in its classes), its unions, its calls, its
@@ -256,8 +269,10 @@ class SourceFile:
     binds at the top level by an assignment (see Constant). unmentioned holds, as (the line of the import, the name it
     takes), each name an import takes from a module that nothing else in the file mentions, in code or an annotation: a
     name it only passes on (listed as text for those who import it from here) or does not use. pieces are its functions and classes at the
-    top level and the methods of those classes, in the order of their first line (see Piece). error is how it fails to
-    parse, and then it holds nothing else."""
+    top level and the methods of those classes, in the order of their first line (see Piece). tests are the tests it
+    declares, as its reader reads them by the framework's forms (see Test): a function form's are also among its
+    functions, a call form's are not; a file read with no form holds none. error is how it fails to parse, and then it
+    holds nothing else."""
     name: str
     path: tuple[str, ...]
     imports: tuple[Import, ...]
@@ -276,3 +291,4 @@ class SourceFile:
     constants: tuple[Constant, ...] = ()
     unmentioned: frozenset[tuple[int, str]] = frozenset()
     pieces: tuple[Piece, ...] = ()
+    tests: tuple[Test, ...] = ()

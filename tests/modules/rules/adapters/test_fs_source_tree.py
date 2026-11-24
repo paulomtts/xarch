@@ -26,9 +26,11 @@ from xarch.modules.rules.domain.parsed import (
     Table,
     Use,
 )
+from xarch.modules.rules.domain.parsed import Test as DeclaredTest
 from xarch.platform.filesystem import FileSystem
 from xarch.profile_values.language import InterfaceMark, RecordMark
 from xarch.profile_values.testing import Place, RowId, TableForm
+from xarch.profile_values.testing import TestForm as DeclaredForm
 
 PYTEST = TableForm(Place(0, "argnames"), Place(1, "argvalues"), ("pytest", "param"), RowId(keyword="id"),
                    decorator=("pytest", "mark", "parametrize"))
@@ -1427,3 +1429,77 @@ def test_a_loop_is_read_by_the_first_loop_form_the_reader_reads_and_tagged_with_
 def test_a_method_s_loop_is_read_too(tmp_path):
     text = "CASES = [('x', 1)]\n\nclass TestA:\n    def test_a(self):\n        for a, b in CASES:\n            assert a\n"
     assert [(f.name, len(f.tables)) for f in parsed(tmp_path, text, (LOOP,)).functions] == [("test_a", 1)]
+
+
+TESTS = """def test_a():
+    assert True
+
+
+def helper():
+    pass
+
+
+class TestB:
+    def test_b(self):
+        pass
+"""
+"""A test file of a function, a helper and a method of a class, by the names pytest would take for tests."""
+SKIPPED = "def test_a():\n    it.skip()\n"
+"""A test calling a method of a name the file does not bind."""
+
+
+def declared_in(tmp_path: Path, text: str, declared: tuple[DeclaredForm, ...] = (),
+                bound: tuple[tuple[str, ...], ...] = ()) -> SourceFile:
+    """The text read as a test file is, handed the forms that declare a test and the framework's globals."""
+    (tmp_path / "x.py").write_text(text)
+    return FsSourceTree(FileSystem()).read(tmp_path, [("x.py",)], standard=STANDARD, declared=declared, globals=bound,
+                                           **HANDED)[0]
+
+
+def test_a_function_or_a_method_whose_name_matches_a_function_form_is_a_test_whose_body_is_that_function(tmp_path):
+    found = declared_in(tmp_path, TESTS, (DeclaredForm(function="test_*"),))
+    assert [function.name for function in found.functions] == ["test_a", "helper", "test_b"]
+    assert found.tests == (DeclaredTest(1, "test_a", 0, False, found.functions[0]),
+                           DeclaredTest(10, "test_b", 0, False, found.functions[2]))
+    assert found.tests[0].body is found.functions[0] and found.tests[1].body is found.functions[2]
+
+
+def test_a_function_is_a_test_of_the_first_form_it_matches_once_and_a_call_form_declares_none_this_reader_reads(
+        tmp_path):
+    call = DeclaredForm(call=(("it",),), title=Place(0), body=Place(1))
+    found = declared_in(tmp_path, "def test_a():\n    pass\n\n\ndef testb():\n    pass\n",
+                        (call, DeclaredForm(function="test_*"), DeclaredForm(function="test*")))
+    assert [(test.name, test.form, test.titled) for test in found.tests] == [("test_a", 1, False), ("testb", 2, False)]
+
+
+def test_a_file_read_with_no_form_holds_no_test(tmp_path):
+    assert declared_in(tmp_path, TESTS).tests == ()
+
+
+def test_a_name_the_file_does_not_bind_that_a_global_starts_is_read_as_that_global_in_a_call_and_a_use(tmp_path):
+    found = declared_in(tmp_path, SKIPPED, bound=(("it",),))
+    assert (found.calls, found.method_calls) == ((Call(2, ("it", "skip")),), ())
+    assert Use(2, ("it", "skip"), 0) in found.uses
+
+
+def test_with_no_globals_a_bare_name_the_file_does_not_bind_is_read_as_before(tmp_path):
+    found = declared_in(tmp_path, SKIPPED)
+    assert (found.calls, found.uses, found.method_calls) == ((), (), (MethodCall(2, "skip", False),))
+
+
+def test_a_name_the_file_binds_keeps_its_own_binding_over_a_global(tmp_path):
+    imported = declared_in(tmp_path, "from x import it\n\n\ndef test_a():\n    it.skip()\n", bound=(("it",),))
+    assert imported.calls == (Call(5, ("x", "it", "skip")),)
+    local = declared_in(tmp_path, "def test_a():\n    it = make()\n    it.skip()\n", bound=(("it",),))
+    assert (local.calls, local.method_calls) == ((), (MethodCall(3, "skip", False),))
+
+
+def test_a_global_named_as_a_builtin_is_read_as_the_global(tmp_path):
+    found = declared_in(tmp_path, "def test_a():\n    print(1)\n", bound=(("print",),))
+    assert found.calls == (Call(2, ("print",), (None,)),)
+    assert [use.name for use in found.uses] == [("print",)]
+
+
+def test_a_file_with_a_star_import_reads_no_global(tmp_path):
+    found = declared_in(tmp_path, "from x import *\n\n\ndef test_a():\n    it.skip()\n", bound=(("it",),))
+    assert (found.calls, found.method_calls) == ((), (MethodCall(5, "skip", False),))
