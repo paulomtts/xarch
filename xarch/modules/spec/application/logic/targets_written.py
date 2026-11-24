@@ -36,7 +36,7 @@ def allowed_targets(value: Any, owner: Part | None, parts: dict[str, Part], decl
                             else f"{where}: {item!r} stands alone: write `{WORD}` in place of the list")
             continue
         written = target(item, None if owner is None else (owner.name, owner.path), paths, declared, where, problems,
-                         patterns, mirrored, alone="a tier's folder")
+                         patterns, mirrored, alone="a tier's folder", repeats=())
         if written is not None:
             found.append(written)
     return tuple(found)

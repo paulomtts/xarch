@@ -9,7 +9,7 @@ from xarch.modules.rules.application.logic.written import check_of, written, wri
 from xarch.modules.rules.domain.rule import EXISTING, MAY_NOT, MUST_BE_REACHED, MUST_REACH, Match, OwnCheck, Rule
 from xarch.profile_values.checks import Condition, Quantified, Saying, Scope, WrittenCheck, WrittenTarget
 from xarch.profile_values.language import LINE, CheckedLanguage, CommentForm
-from xarch.profile_values.placement import Target
+from xarch.profile_values.placement import Repeat, Target
 
 SAID = (Saying("m", "f"),)
 PARTS = {"domain": ("modules", "*", "domain"), "services": ("modules", "*", "services"), "kernel": ("kernel",)}
@@ -25,8 +25,8 @@ SERVICES = ("services", PARTS["services"])
 def test_a_place_is_written_as_it_is_read_and_reads_back_as_itself(written, owner, found):
     rule = Rule("x", Scope(), ("import-into-app",), MAY_NOT, (Match("place", places=(found,)),), SAID)
     (place,) = check_of(rule, ".").quantified.targets[0].values or ()
-    assert (place, target(place, owner, PARTS, PARTS, "at", [], patterns=True, alone="a tier's folder")) == (
-        written, found)
+    assert (place, target(place, owner, PARTS, PARTS, "at", [], patterns=True, alone="a tier's folder",
+                          repeats=(Repeat("module", ("modules",)),))) == (written, found)
 
 
 @pytest.mark.parametrize("rule, check", [
