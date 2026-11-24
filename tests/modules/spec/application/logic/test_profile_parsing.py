@@ -5,7 +5,7 @@ from copy import deepcopy
 import pytest
 
 from tests.modules.spec.format_files import CATALOGUE
-from tests.modules.spec.profiles import TESTING, layered, parsed, part_of, problems, two_folders
+from tests.modules.spec.profiles import TESTING, covered, layered, parsed, part_of, problems, two_folders
 from xarch.modules.spec.application.logic.key_lookup import names_of
 from xarch.modules.spec.application.logic.layout_walk import docs_name, is_file
 from xarch.modules.spec.application.logic.profile_parsing import parse_profile
@@ -482,3 +482,9 @@ def test_references_reach_every_target_spec_reads_and_mean_what_the_old_forms_me
 ])
 def test_a_reference_written_wrong_is_refused_at_its_address(services, guard, problem):
     assert problems(referencing(services, guard)) == [problem]
+
+
+def test_a_reference_outside_imports_is_still_no_part_name():
+    """Only the lists under `imports` take references: `fakes.for` reads plain part names, as before."""
+    assert problems(covered(fakes={"folder": "fakes", "for": ["parts.store"]})) == [
+        "layered.yaml: fakes.for: no part named 'parts.store'"]

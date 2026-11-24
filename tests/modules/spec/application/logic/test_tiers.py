@@ -63,7 +63,7 @@ def with_docs(**docs) -> dict:
 
 TIER_USE = "use docs, folder, imports, litmus, plain_tables, proves, uses"
 """What every unknown-key problem of a tier ends with."""
-NO_MAP = "must be a map of may, also, must and types_only, such as {must: [<part>]}"
+NO_MAP = "must be a map of may, also, must and types_only, such as {must: [parts.<part>]}"
 
 
 def with_imports(imports) -> dict:
@@ -97,6 +97,50 @@ def test_a_bad_types_only_entry_is_refused(types_only, expected):
 
 def test_a_tier_with_no_types_only_has_none():
     assert [tier.imports_types_only for tier in parsed(covered()).tiers] == [(), ()]
+
+
+@pytest.mark.parametrize("key, field", [
+    pytest.param("must", "imports_must", id="must"),
+    pytest.param("types_only", "imports_types_only", id="types_only"),
+])
+@pytest.mark.parametrize("written, read", [
+    pytest.param(["parts.store"], ("store",), id="a reference to a part of the repeating folder"),
+    pytest.param(["parts.shared"], ("shared",), id="a reference to a part in no repeating folder"),
+    pytest.param(["parts.store", "parts.api"], ("store", "api"), id="references in the order written"),
+    pytest.param(["store"], ("store",), id="a plain name still reads"),
+    pytest.param(["parts.store", "api"], ("store", "api"), id="a reference beside a plain name"),
+])
+def test_a_tier_s_must_and_types_only_read_parts_references_as_the_part_names(key, field, written, read):
+    assert getattr(parsed(with_imports({key: written})).tiers[1], field) == read
+
+
+@pytest.mark.parametrize("key", ["must", "types_only"])
+@pytest.mark.parametrize("written, problem", [
+    pytest.param(["parts.store", "store"], "'store' is listed twice", id="the same part in both spellings"),
+    pytest.param(["parts.store", "parts.store"], "'store' is listed twice", id="the same reference twice"),
+    pytest.param(["parts.nope"], "no part named 'nope'", id="a reference to no part"),
+    pytest.param(["module.store"], "'module.store': a tier's tests lie in no instance: write parts.store",
+                 id="a word for a part of the repeating folder"),
+    pytest.param(["module.shared"], "'module.shared': a tier's tests lie in no instance: write parts.shared",
+                 id="a word for a part in no repeating folder"),
+    pytest.param(["parts.store/sql"], "'parts.store/sql': names a part only: write parts.store", id="a path"),
+    pytest.param(["parts.store:*Id"], "'parts.store:*Id': names a part only: write parts.store", id="a pattern"),
+    pytest.param(["everything"], "no part named 'everything'", id="everything"),
+    pytest.param([3], "no part named 3", id="a number"),
+    pytest.param([{"parts.store": "types_only"}], "no part named {'parts.store': 'types_only'}", id="a mode map"),
+    pytest.param("parts.store", "must be a list of part names", id="one text"),
+    pytest.param([], "must be a list of part names", id="no part at all"),
+])
+def test_a_tier_s_must_and_types_only_refuse_what_names_no_whole_part(key, written, problem):
+    assert problems(with_imports({key: written})) == [f"layered.yaml: tiers.integration.imports.{key}: {problem}"]
+
+
+def test_each_bad_entry_of_a_tier_s_must_is_its_own_problem():
+    assert problems(with_imports({"must": ["module.store", "parts.api", "parts.api/v1", "parts.ghost"]})) == [
+        "layered.yaml: tiers.integration.imports.must: 'module.store': a tier's tests lie in no instance: write "
+        "parts.store",
+        "layered.yaml: tiers.integration.imports.must: 'parts.api/v1': names a part only: write parts.api",
+        "layered.yaml: tiers.integration.imports.must: no part named 'ghost'"]
 
 
 def test_a_litmus_of_blanks_is_refused():

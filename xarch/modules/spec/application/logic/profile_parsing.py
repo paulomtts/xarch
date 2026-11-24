@@ -661,8 +661,8 @@ def _tier(name: str, spec: Any, subject: tuple[Subject, ...], parts: dict[str, P
     if not isinstance(plain, bool):
         problems.append(f"{where}.plain_tables: must be true or false: whether every table test of the tier holds no "
                         "branch in its body")
-    imports = iw.group(spec, where, problems, TIER_IMPORTS, "{must: [<part>]}")
-    types_only = (ck.part_names(imports["types_only"], declared, f"{where}.imports.types_only", problems)
+    imports = iw.group(spec, where, problems, TIER_IMPORTS, "{must: [parts.<part>]}")
+    types_only = (iw.tier_parts(imports["types_only"], declared, f"{where}.imports.types_only", problems)
                   if "types_only" in imports else [])
     folder = ck.tier_folder(spec["folder"], parts, f"{where}.folder", problems, language) if "folder" in spec else None
     if "folder" not in spec and "may" in imports:
@@ -673,7 +673,7 @@ def _tier(name: str, spec: Any, subject: tuple[Subject, ...], parts: dict[str, P
     also = allowed_targets(imports.get("also"), None, parts, declared, f"{where}.imports.also", problems, mirrored=True,
                            repeats=repeats)
     docs = _tier_docs(spec["docs"], folder, examples, f"{where}.docs", problems, language) if "docs" in spec else {}
-    reach = (ck.part_names(imports["must"], declared, f"{where}.imports.must", problems)
+    reach = (iw.tier_parts(imports["must"], declared, f"{where}.imports.must", problems)
              if "must" in imports else [])
     if len(problems) != count:
         return None

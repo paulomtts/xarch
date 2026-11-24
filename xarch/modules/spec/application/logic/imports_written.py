@@ -10,10 +10,12 @@ mode; the only mode is `types_only`, a target the part may import only to use as
 part, and `never` and `types_only` written in the group, are refused from the table of retired names.
 
 A tier's `imports`, {may, also, must, types_only}, is checked as a group by the same `group`, under its own scope and
-with its own example; the tier parser reads its keys (see profile_parsing).
+with its own example; the tier parser reads its keys (see profile_parsing), its `must` and `types_only` through
+tier_parts: whole parts, `parts.<part>`, for a tier's tests lie in no instance.
 """
 from __future__ import annotations
 
+import re
 from collections.abc import Collection, Mapping
 from typing import Any
 
@@ -51,6 +53,48 @@ def group(spec: Mapping[Any, Any], where: str, problems: list[str], scope: str =
 def _joined(names: list[str], word: str) -> str:
     """The names in order, the last after the word: may, must and libraries."""
     return f"{', '.join(names[:-1])} {word} {names[-1]}"
+
+
+def tier_parts(value: Any, declared: set[str], where: str, problems: list[str]) -> list[str]:
+    """The parts a tier's `imports.must` or `imports.types_only` names, by name, in the order written: each entry
+    `parts.<part>`, or the plain name of a part declared. An entry that names no whole part declared, or a part
+    named twice in either spelling, adds its one problem, and the other entries are still read."""
+    if not isinstance(value, list) or not value:
+        problems.append(f"{where}: must be a list of part names")
+        return []
+    found: list[str] = []
+    for item in value:
+        name = _tier_part(item, where, problems)
+        if name is None:
+            continue
+        if name not in declared:
+            problems.append(f"{where}: no part named {name!r}")
+        elif name in found:
+            problems.append(f"{where}: {name!r} is listed twice")
+        else:
+            found.append(name)
+    return found
+
+
+def _tier_part(item: Any, where: str, problems: list[str]) -> str | None:
+    """The part an entry of a tier's `must` or `types_only` names: the entry itself when it is no reference (the text
+    before its first `/` or `:` holds no dot), the name after `parts.` when it is one; None, with its problem, for an
+    entry that is no text, for `<word>.<part>`, which names an instance, and for a reference that goes on to a path or
+    a pattern."""
+    if not isinstance(item, str):
+        problems.append(f"{where}: no part named {item!r}")
+        return None
+    if "." not in re.split("[/:]", item, maxsplit=1)[0]:
+        return item
+    prefix, _, rest = item.partition(".")
+    name = re.split("[/:]", rest, maxsplit=1)[0]
+    if prefix != "parts":
+        problems.append(f"{where}: {item!r}: a tier's tests lie in no instance: write parts.{name}")
+        return None
+    if name != rest:
+        problems.append(f"{where}: {item!r}: names a part only: write parts.{name}")
+        return None
+    return name
 
 
 def may(value: Any, owner: Part, parts: dict[str, Part], declared: set[str], where: str,
