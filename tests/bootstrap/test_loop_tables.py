@@ -19,7 +19,7 @@ parts:
       controller.py:
         role: maps
         imports:
-          may: [contract, ports]
+          may: [module.contract, module.ports]
         tests: integration
       ports/: {role: ports, tests: integration}
 tiers:

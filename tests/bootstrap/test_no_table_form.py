@@ -23,7 +23,7 @@ parts:
     application/controller.py:
       role: maps
       imports:
-        may: [contract]
+        may: [module.contract]
       tests: integration
 tiers:
   integration:

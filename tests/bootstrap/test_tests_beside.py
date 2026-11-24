@@ -16,11 +16,11 @@ parts:
       tests: unit
     contract/:
       role: the results of the use cases
-      imports: {may: [domain]}
+      imports: {may: [module.domain]}
       tests: unit
     application/:
       role: the use cases
-      imports: {may: [domain, contract]}
+      imports: {may: [module.domain, module.contract]}
       holds: {classes: {names: "*Controller"}, functions: {names: "build_*"}}
       tests: unit
   scripts/:

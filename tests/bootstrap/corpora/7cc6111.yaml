@@ -9,7 +9,7 @@ parts:
     domain/:
       role: "entities, values, errors: invariants only"
       imports:
-        may: [kernel]
+        may: [parts.kernel]
       uses:
         never: pure
       holds:
@@ -19,7 +19,7 @@ parts:
       logic/:
         role: pure functions over the module's domain objects
         imports:
-          may: [domain, kernel]
+          may: [module.domain, parts.kernel]
         uses:
           never: pure
         holds:
@@ -30,7 +30,7 @@ parts:
       ports/:
         role: Protocols for what the module needs from the outside
         imports:
-          may: [domain, kernel]
+          may: [module.domain, parts.kernel]
         uses:
           never: pure
         holds:
@@ -40,11 +40,11 @@ parts:
         role: "use-case steps: load, check, act"
         imports:
           may:
-            - logic
-            - domain
-            - ports
-            - contract: types_only
-            - kernel
+            - module.logic
+            - module.domain
+            - module.ports
+            - module.contract: types_only
+            - parts.kernel
         holds:
           classes:
             names: "*Service"
@@ -53,7 +53,7 @@ parts:
       controller.py:
         role: maps failures to a Result
         imports:
-          may: [services, logic, domain, ports, contract, kernel]
+          may: [module.services, module.logic, module.domain, module.ports, module.contract, parts.kernel]
         holds:
           classes:
             names: "*Controller"
@@ -62,8 +62,8 @@ parts:
     adapters/:
       role: implement the ports on the filesystem or another module's contract
       imports:
-        may: [ports, domain, kernel, platform, contract@any]
-        must: [platform, contract@any]
+        may: [module.ports, module.domain, parts.kernel, parts.platform, parts.contract]
+        must: [parts.platform, parts.contract]
       holds:
         classes:
           built_by: [bootstrap]
@@ -71,7 +71,7 @@ parts:
     contract/:
       role: "the module's published language: commands, Results"
       imports:
-        may: ["domain/values:*Id", kernel]
+        may: ["module.domain/values:*Id", parts.kernel]
       uses:
         never: pure
       package_only: true
@@ -79,13 +79,13 @@ parts:
   platform/:
     role: "the filesystem, TOML and YAML readers"
     imports:
-      may: [kernel]
+      may: [parts.kernel]
       libraries: [yaml]
     untested: "it wraps the standard library and yaml; the adapter and wired tests reach it on real files"
   cli/:
     role: the only place for commands and terminal output
     imports:
-      may: [controller@any, contract@any, kernel]
+      may: [parts.controller, parts.contract, parts.kernel]
       libraries: [typer]
     tests: wired
     commands/: {}
@@ -94,7 +94,7 @@ parts:
     role: "`python -m xarch`: starts the same app as the console script"
     litmus: "Does it only hand control to the app bootstrap/ builds, so that `python -m xarch` runs it?"
     imports:
-      may: [bootstrap]
+      may: [parts.bootstrap]
     untested: >-
       a two-line shim that runs the app bootstrap/ builds; no test runs `python -m xarch`, and the wired tests drive
       that same app
@@ -129,7 +129,7 @@ tiers:
     proves: a use case, through its controller around fakes
     litmus: Does it drive a controller around fakes and check the Result it returns?
     imports:
-      must: [controller]
+      must: [parts.controller]
     docs:
       may_touch: what the part it mirrors may import; `tests/fakes/`
 
@@ -137,8 +137,8 @@ tiers:
     proves: a command, a check on real files, or what a bundled profile holds, through the app bootstrap/ wires
     litmus: Does it need the whole app, as bootstrap/ wires it, to mean anything?
     imports:
-      must: [bootstrap]
-      types_only: [domain, logic, ports, services, controller, adapters, platform]
+      must: [parts.bootstrap]
+      types_only: [parts.domain, parts.logic, parts.ports, parts.services, parts.controller, parts.adapters, parts.platform]
     docs:
       may_touch: anything bootstrap/ wires; temporary folders
 
@@ -147,7 +147,7 @@ tiers:
     litmus: Does it run the wired check on xarch's own source?
     imports:
       may: everything
-      types_only: [domain, logic, ports, services, controller, adapters, platform]
+      types_only: [parts.domain, parts.logic, parts.ports, parts.services, parts.controller, parts.adapters, parts.platform]
     folder: architecture
     docs:
       subject: xarch's own source tree

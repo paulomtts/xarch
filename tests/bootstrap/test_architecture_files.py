@@ -18,12 +18,12 @@ parts:
       role: "HTTP handlers"
       litmus: "Does it parse a request and call a service?"
       imports:
-        may: [service]
+        may: [module.service]
     service/:
       role: "business logic"
       litmus: "Does it decide what is allowed?"
       imports:
-        may: [store]
+        may: [module.store]
     store/:
       role: "database access"
       litmus: "Does it touch the database?"
@@ -32,9 +32,9 @@ LAYERED_DATA = {
     "name": "layered",
     "parts": {"src/<module>/": {
         "api/": {"role": "HTTP handlers", "litmus": "Does it parse a request and call a service?",
-                 "imports": {"may": ["service"]}},
+                 "imports": {"may": ["module.service"]}},
         "service/": {"role": "business logic", "litmus": "Does it decide what is allowed?",
-                     "imports": {"may": ["store"]}},
+                     "imports": {"may": ["module.store"]}},
         "store/": {"role": "database access", "litmus": "Does it touch the database?"}}},
 }
 """LAYERED as data, as its YAML reads."""
@@ -177,8 +177,8 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
     pytest.param('name: n\nparts: {1: {role: a}, null: {}, yes: {role: b}}\n',
                  ["line 2: duplicate key 'True'"],
                  id='a key 1 and a key yes are one key, True'),
-    pytest.param('name: n\nparts: {a/: {role: r, imports: {may: [a]}}}\n',
-                 ["parts.a.imports.may: 'a' is implied: a part may always import itself; remove it"],
+    pytest.param('name: n\nparts: {a/: {role: r, imports: {may: [parts.a]}}}\n',
+                 ["parts.a.imports.may: 'parts.a' is implied: a part may always import itself; remove it"],
                  id='an imports.may that only says a part may import itself'),
     pytest.param('name: n\nparts: {a/: {role: r, uses: {never: l}}}\nnever: {l: [open]}\n',
                  ["never.l: 'open' is a Python builtin, which a bare name does not ban: write builtins.open"],

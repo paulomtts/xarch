@@ -27,7 +27,7 @@ parts:
   cli/:
     role: commands and output
     imports:
-      may: [core]
+      may: [parts.core]
       libraries: [typer]
     tests: unit
 tiers:

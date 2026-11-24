@@ -87,7 +87,7 @@ ARCHITECTURE = """\
 name: layered
 parts:
   src/<module>/:
-    api/: {role: handlers, litmus: "Does it parse?", imports: {may: [store]}}
+    api/: {role: handlers, litmus: "Does it parse?", imports: {may: [module.store]}}
     store/: {role: database access, litmus: "Does it query?"}
 docs:
   entry: api

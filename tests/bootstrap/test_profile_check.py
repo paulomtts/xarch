@@ -81,7 +81,7 @@ def test_an_unknown_key_fails_with_the_keys_that_exist(tmp_path):
 
 
 def test_a_part_importing_a_part_that_does_not_exist_fails(tmp_path):
-    edit(tmp_path, lambda d: part_of(d, "domain").update(imports={"may": ["kernel", "ghost"]}))
+    edit(tmp_path, lambda d: part_of(d, "domain").update(imports={"may": ["parts.kernel", "parts.ghost"]}))
     result = runner.invoke(app, ["profile", "check", COPY])
     assert result.exit_code == 1 and "ghost" in result.output and "INVALID" in result.output
 
@@ -100,7 +100,7 @@ def test_an_example_that_imports_what_its_part_may_not_fails_with_the_example_an
 
 
 def test_a_looser_copy_is_still_valid_and_the_difference_is_information(tmp_path):
-    edit(tmp_path, lambda d: part_of(d, "domain").update(imports={"may": ["kernel", "platform"]}))
+    edit(tmp_path, lambda d: part_of(d, "domain").update(imports={"may": ["parts.kernel", "parts.platform"]}))
     result = runner.invoke(app, ["profile", "check", COPY])
     assert result.exit_code == 0, result.output
     assert "looser than web" in result.output

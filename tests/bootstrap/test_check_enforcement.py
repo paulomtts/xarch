@@ -105,7 +105,7 @@ def test_strict_fails_on_every_finding_and_lists_them(tmp_path):
 def test_a_custom_copy_of_a_bundled_profile_is_compared_with_it(tmp_path):
     shutil.copytree(BUNDLED, tmp_path / "arch")
     text = (BUNDLED / "web.yaml").read_text().replace("  no-comments: {}\n", "")
-    (tmp_path / "arch/mine.yaml").write_text(text.replace("  kernel/:\n", "  kernel/:\n    imports:\n      may: [platform]\n"))
+    (tmp_path / "arch/mine.yaml").write_text(text.replace("  kernel/:\n", "  kernel/:\n    imports:\n      may: [parts.platform]\n"))
     result = check("--profile", "arch/mine.yaml")
     assert result.exit_code == 0, result.stdout
     assert result.stdout.splitlines()[2:5] == [
@@ -142,7 +142,7 @@ def test_a_copy_of_a_bundled_profile_that_leaves_no_callbacks_out_shows_it_off_a
 def test_how_a_custom_profile_differs_from_the_closest_bundled_one_is_shown_and_never_fails_strict(tmp_path):
     shutil.copytree(BUNDLED, tmp_path / "arch")
     text = (BUNDLED / "web.yaml").read_text()
-    (tmp_path / "arch/mine.yaml").write_text(text.replace("  kernel/:\n", "  kernel/:\n    imports:\n      may: [platform]\n"))
+    (tmp_path / "arch/mine.yaml").write_text(text.replace("  kernel/:\n", "  kernel/:\n    imports:\n      may: [parts.platform]\n"))
     strict = check("--profile", "arch/mine.yaml", "--strict")
     assert strict.exit_code == 0, strict.stdout
     assert "    imports.may: kernel may also import parts.platform (parts.kernel.imports.may)" in strict.stdout.splitlines()

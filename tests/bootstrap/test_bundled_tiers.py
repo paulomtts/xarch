@@ -35,7 +35,7 @@ parts:
     api/:
       role: handlers
       imports:
-        may: [store]
+        may: [module.store]
       tests: driver
     store/:
       role: database access
