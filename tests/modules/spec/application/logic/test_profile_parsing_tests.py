@@ -987,3 +987,92 @@ def test_beside_under_a_tier_is_an_unknown_key_with_no_hint():
     found = problems(document)
     assert len(found) == 1 and found[0].startswith("layered.yaml: tiers.unit: unknown key 'beside': use ")
     assert "moved" not in found[0]
+
+
+EACH = {"call": ["vitest#it.each"], "rows": {"position": 0}, "columns_from": "fields", "row": "literal",
+        "id": {"field": "name"}}
+"""A table form a call that makes the test holds, its one callee vitest#it.each, its rows literals with a field id."""
+LOOP_ROWS = {"loop": True, "columns_from": "bound", "row": "literal", "id": {"position": 0}}
+"""A table form whose rows a loop of the test's body runs."""
+CASES = {"decorator": "vitest#cases", "rows": {"position": 0}, "columns_from": "fields", "row": "literal",
+         "id": {"field": "name"}}
+"""A table form a decorator of the test holds."""
+BY_TEST = {"function": "test*"}
+"""A declared form of a function whose name starts with test."""
+
+
+def called(*callees: str) -> dict:
+    """A declared form of a call of the callees given, the title its first argument and the body its second."""
+    return {"call": list(callees), "title": {"position": 0}, "body": {"position": 1}}
+
+
+def undeclared(index: int, callee: str) -> str:
+    """The refusal of a callee of the table call form at the index that no declared call form lists."""
+    return (f"layered.yaml: testing.tables.{index}.call: `{callee}` declares no test: list it under a `call` form of "
+            "`testing.declared`")
+
+
+def tabled(declared: list, *tables) -> dict:
+    """declaring() with the declared forms given and the table forms given."""
+    return declaring(declared, tables=list(tables))
+
+
+def test_a_table_call_form_whose_callee_no_declared_call_form_lists_is_refused_naming_the_callee():
+    assert problems(tabled([BY_TEST, called("vitest#it")], EACH), languages=BRACED) == [undeclared(0, "vitest#it.each")]
+
+
+def test_the_refusal_of_an_undeclared_callee_is_addressed_by_the_index_of_its_table_form():
+    found = problems(tabled([BY_TEST, called("vitest#it")], LOOP_ROWS, EACH), languages=BRACED)
+    assert found == [undeclared(1, "vitest#it.each")]
+    assert [problem for problem in found if problem.startswith("layered.yaml: testing.tables.0")] == []
+
+
+def test_a_table_call_form_loads_when_each_callee_is_listed_by_some_declared_call_form():
+    two = EACH | {"call": ["vitest#it.each", "vitest#test.each"]}
+    framework = parsed(tabled([called("vitest#it.each"), BY_TEST, called("vitest#test.each")], two),
+                       languages=BRACED).framework
+    assert framework.tables == (TableForm("fields", Place(0), (), RowId(field="name"),
+                                          call=(("vitest", "it", "each"), ("vitest", "test", "each"))),)
+
+
+@pytest.mark.parametrize("declared, expected", [
+    pytest.param([called("vitest#it")], [undeclared(0, "vitest#it.each"), undeclared(0, "vitest#test.each")],
+                 id="two undeclared callees, in the order the form writes them"),
+    pytest.param([called("vitest#test.each")], [undeclared(0, "vitest#it.each")],
+                 id="one declared callee and one not"),
+])
+def test_each_undeclared_callee_of_a_table_call_form_is_its_own_problem(declared, expected):
+    two = EACH | {"call": ["vitest#it.each", "vitest#test.each"]}
+    assert problems(tabled(declared, two), languages=BRACED) == expected
+
+
+def test_a_table_call_form_under_a_framework_that_declares_tests_only_by_function_is_refused():
+    assert problems(tabled([BY_TEST], EACH), languages=BRACED) == [undeclared(0, "vitest#it.each")]
+
+
+@pytest.mark.parametrize("form", [pytest.param(CASES, id="a decorator form"), pytest.param(LOOP_ROWS, id="a loop form")])
+def test_a_decorator_or_loop_table_form_is_not_checked_against_the_declared_calls(form):
+    assert len(parsed(tabled([BY_TEST], form), languages=BRACED).framework.tables) == 1
+
+
+@pytest.mark.parametrize("testing", [pytest.param("each", id="a preset by its name"),
+                                     pytest.param({"preset": "each"}, id="a preset under preset")])
+def test_a_table_call_form_of_a_preset_is_refused_the_same_at_the_same_address(testing):
+    preset = TS_FILES | {"declared": [BY_TEST, called("vitest#it")], "tables": [EACH]}
+    assert problems(covered(testing=testing, language="brace"), presets={"each": preset}, languages=BRACED) == [
+        undeclared(0, "vitest#it.each")]
+
+
+def test_a_problem_of_another_table_form_is_given_alone_and_the_callees_are_not_checked():
+    broken = {key: value for key, value in LOOP_ROWS.items() if key != "row"}
+    assert problems(tabled([BY_TEST], broken, EACH), languages=BRACED) == [
+        "layered.yaml: testing.tables.0: missing `row`"]
+
+
+def test_a_problem_of_the_mocks_does_not_stop_the_callees_being_checked():
+    document = tabled([BY_TEST], EACH)
+    document["testing"]["mocks"] = {"calls": ["vitest#vi.fn"], "spec_keywords": [], "colour": 1}
+    assert problems(document, languages=BRACED) == [
+        undeclared(0, "vitest#it.each"),
+        "layered.yaml: testing.mocks: unknown key 'colour': use autospec, calls, fixtures, spec_keywords, spec_position",
+        "layered.yaml: testing.mocks.spec_keywords: must be a list of keyword names such as [spec]"]

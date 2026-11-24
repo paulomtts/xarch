@@ -399,6 +399,8 @@ def test_the_guard_line_shows_the_name_as_name_whatever_its_case(case):
 CALL = {"call": ["checks.each"], "columns_from": {"position": 0}, "rows": {"position": 1}, "row": "checks.case",
         "id": {"keyword": "id"}}
 """A form whose rows a call that makes the test holds."""
+DECLARED_EACH = {"call": ["checks.each"], "title": {"position": 0}, "body": {"position": 1}}
+"""The declared call form that lists CALL's callee, without which CALL is refused: checks.each declares no test."""
 LOOP = {"loop": True, "columns_from": "bound", "row": "literal", "id": {"position": 0}}
 """A form whose rows a loop of the test's body runs, each a literal whose id is its first value."""
 FIELD_ROW = {"decorator": "checks.cases", "columns_from": "fields", "rows": {"position": 0}, "row": "literal",
@@ -431,7 +433,8 @@ def without(entry: dict, key: str) -> dict:
 
 def test_the_forms_of_a_table_are_read_each_in_its_slots():
     assert parsed(with_tables([PYTEST_TABLE])).framework.tables == (PYTEST_FORM,)
-    assert parsed(with_tables([CALL, LOOP]), languages=EVERY_FORM).framework.tables == (
+    assert parsed(with_testing(tables=[CALL, LOOP], declared=[*FILES["declared"], DECLARED_EACH]),
+                  languages=EVERY_FORM).framework.tables == (
         TableForm(Place(0), Place(1), ("checks", "case"), RowId(keyword="id"), call=(("checks", "each"),)),
         TableForm("bound", None, (), RowId(position=0), loop=True))
 

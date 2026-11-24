@@ -701,3 +701,24 @@ def test_beside_written_beside_a_preset_needs_nothing_and_the_preset_is_walked()
                   TOY)
     assert [(item.address, item.fact) for item in found] == [("testing.skips", "use"),
                                                              ("testing.skips", "import.resolved")]
+
+
+CALLS_MISSED = "a table a call held in a name holds is not read"
+PARTLY_CALLED = replace(PYTHON, checked=replace(PYTHON.checked, supplies=(
+    *PYTHON.checked.supplies, Supply("function.tables.call", PARTIAL, CALLS_MISSED))))
+"""Python, its reader supplying the tables a call holds partly, and every other fact as Python's does."""
+
+
+def test_a_call_form_whose_tables_the_language_supplies_partly_is_still_checked_against_the_declared_calls():
+    assert problems(framed(CALL_FORM), languages={"python": PARTLY_CALLED}) == [
+        "layered.yaml: testing.tables.0.call: `checks.each` declares no test: list it under a `call` form of "
+        "`testing.declared`"]
+
+
+def test_a_call_form_whose_tables_the_language_supplies_partly_loads_once_its_callee_is_declared():
+    declared = [*FILES["declared"], {"call": ["checks.each"], "title": {"position": 0}, "body": {"position": 1}}]
+    document = layered(testing=FILES | {"declared": declared, "tables": [CALL_FORM]})
+    languages = {"python": replace(PARTLY_CALLED, checked=replace(PARTLY_CALLED.checked, supplies=(
+        *PARTLY_CALLED.checked.supplies, Supply("test.call", EXACT))))}
+    assert parsed(document, languages=languages).approximate == (
+        Shortfall("testing.tables.0.call", "function.tables.call", CALLS_MISSED),)

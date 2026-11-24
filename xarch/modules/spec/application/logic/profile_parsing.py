@@ -134,7 +134,7 @@ from xarch.modules.spec.domain.values import (
     TierExample,
 )
 from xarch.profile_values.placement import Repeat
-from xarch.profile_values.testing import Fakes, Framework, ScenarioCoverage, StandIns
+from xarch.profile_values.testing import Fakes, Framework, ScenarioCoverage, StandIns, TableForm
 
 _REPEATING = re.compile(r"<([A-Za-z_][A-Za-z0-9_-]*)>")
 _TIER_TEXTS = ("subject", "may_touch", "one_file_per", "cases_from", "data")
@@ -206,7 +206,8 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     parts = {part: _substance(specs[part], item, declared, problems) for part, item in parts.items()}
     uses_never = _never_refs(specs, parts, never_lists, problems)
     layers = ck.layer_chains(document["layers"], parts, declared, rules, problems) if "layers" in document else {}
-    testing = _testing(document["testing"], presets or {}, problems, language) if "testing" in document else None
+    unread = frozenset(item.address for item in shortfalls if item.note is None)
+    testing = _testing(document["testing"], presets or {}, problems, language, unread) if "testing" in document else None
     tiers = _tiers(document, specs, parts, declared, examples, problems, language)
     beside = _tests_beside(document, specs, tiers, problems)
     problems += [f"tiers.{tier.name}.plain_tables: needs a table form: the framework {_framework_named(testing)} "
@@ -534,9 +535,12 @@ def _group(value: Any, scope: str, example: str, where: str, problems: list[str]
     return value
 
 
-def _testing(value: Any, presets: Mapping[str, Any], problems: list[str], language: Language) -> _Testing | None:
+def _testing(value: Any, presets: Mapping[str, Any], problems: list[str], language: Language,
+             unread: Collection[str] = frozenset()) -> _Testing | None:
     """How the test framework names things: the map in the file, or the one a preset holds, named by its name or under
-    `preset`, validated the same; a preset's map that names a preset in turn, or says beside, is refused."""
+    `preset`, validated the same; a preset's map that names a preset in turn, or says beside, is refused. Once the
+    framework and its table forms are sound, each callee of a table `call` form must be listed by a `call` form of
+    `testing.declared` (see _undeclared); unread are the addresses the needs of the profile refuse."""
     preset = ""
     if isinstance(value, Mapping) and "preset" in value:
         preset = _preset_of(value, presets, problems)
@@ -562,10 +566,23 @@ def _testing(value: Any, presets: Mapping[str, Any], problems: list[str], langua
     count = len(problems)
     framework = ck.framework_patterns(value, problems, "testing", names_of(TESTING), language, TESTING)
     tables = ck.table_forms(value["tables"], "testing.tables", problems, language) if "tables" in value else ()
+    if len(problems) == count and framework is not None and tables is not None:
+        problems += _undeclared(framework, tables, unread, language)
     mocks = _mocks(value["mocks"], problems, language) if "mocks" in value else None
     if len(problems) != count or framework is None or tables is None:
         return None
     return _Testing(replace(framework, tables=tables), mocks, preset)
+
+
+def _undeclared(framework: Framework, tables: tuple[TableForm, ...], unread: Collection[str],
+                language: Language) -> list[str]:
+    """A problem for each callee of a table `call` form that no `call` form of `testing.declared` lists, the forms in
+    the order of the list and the callees in the order each writes them; none for a form whose `call` the language's
+    reader does not read (unread), which the needs of the profile refuse already."""
+    declared = {callee for form in framework.declared for callee in form.call}
+    return [f"testing.tables.{index}.call: `{outside_text(callee, language.checked.member)}` declares no test: list it "
+            "under a `call` form of `testing.declared`" for index, form in enumerate(tables)
+            if f"testing.tables.{index}.call" not in unread for callee in form.call if callee not in declared]
 
 
 def _instead(presets: Mapping[str, Any]) -> str:

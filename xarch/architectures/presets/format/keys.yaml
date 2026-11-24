@@ -892,9 +892,17 @@ keys:
       <<table>>
   testing.tables[].call:
     meaning: the calls that hold the table
-    accepts: a list of dotted names, each a call that makes or wraps the test and whose arguments hold the rows
+    accepts: >-
+      a list of dotted names, each a call that makes or wraps the test and whose arguments hold the rows; each must be
+      listed under a `call` form of testing.declared, else it is refused, testing.tables.0.call: `checks.each` declares
+      no test
     example: |
-      <<testing>>
+      testing:
+        files: [check_*%extension%]
+        declared:
+          - call: [checks.each]
+            title: {position: 0}
+            body: {position: 1}
         tables:
           - call: [checks.each]
             columns_from: {position: 0}
