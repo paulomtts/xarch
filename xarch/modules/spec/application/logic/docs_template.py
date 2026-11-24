@@ -212,7 +212,8 @@ def _layers(architecture: Architecture, name: str, _q: Texts, _t: Texts, _f: boo
 
 def _placement(architecture: Architecture, _: str, _q: Texts, _t: Texts, _f: bool, _k: FileTypes) -> str:
     if not architecture.placement:
-        raise _Missing("the architecture has no placement order: list its `parts` in the order the litmus tests run")
+        raise _Missing("the architecture has no placement order: write its parts under `parts`, whose reading order is "
+                       "the order the litmus tests run")
     return ARROW.join(f"`{name}`" for name in architecture.placement)
 
 

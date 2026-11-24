@@ -39,13 +39,12 @@ def layered(**changes) -> dict:
     return {
         "name": "layered",
         "parts": {
-            "api": {"path": "src/<module>/api", "role": "HTTP handlers",
-                    "imports": {"may": ["service"]}},
-            "service": {"path": "src/<module>/service", "role": "business logic",
-                        "imports": {"may": ["store", "shared"]}},
-            "store": {"path": "src/<module>/store", "role": "database access",
-                      "imports": {"may": ["shared"], "libraries": ["sqlmodel"]}},
-            "shared": {"path": "shared", "role": "shared code"},
+            "src/<module>/": {
+                "api/": {"role": "HTTP handlers", "imports": {"may": ["service"]}},
+                "service/": {"role": "business logic", "imports": {"may": ["store", "shared"]}},
+                "store/": {"role": "database access", "imports": {"may": ["shared"], "libraries": ["sqlmodel"]}},
+            },
+            "shared/": {"role": "shared code"},
         },
     } | changes
 
@@ -53,9 +52,9 @@ def layered(**changes) -> dict:
 def two_folders(**changes) -> dict:
     """layered(), with a second repeating folder, ext/<plugin>/, holding a hooks folder and a manifest.py file."""
     document = layered()
-    document["parts"]["hooks"] = {"path": "ext/<plugin>/hooks", "role": "what a plugin runs"}
-    document["parts"]["manifest"] = {"path": "ext/<plugin>/manifest.py", "role": "what a plugin declares",
-                                     "imports": {"may": ["hooks"]}}
+    document["parts"]["ext/<plugin>/"] = {"hooks/": {"role": "what a plugin runs"},
+                                          "manifest.py": {"role": "what a plugin declares",
+                                                          "imports": {"may": ["hooks"]}}}
     return document | changes
 
 
@@ -65,9 +64,31 @@ def covered(**changes) -> dict:
                        tiers={"unit": {"proves": "a rule", "litmus": "Does it decide?\nIf yes, it is a unit test.\n"},
                               "integration": {"proves": "a request", "litmus": "Does it need the database?"}})
     for name, tier in (("api", "integration"), ("service", "unit"), ("store", "integration")):
-        document["parts"][name]["tests"] = tier
-    document["parts"]["shared"]["untested"] = "reached through the parts that use it"
+        part_of(document, name)["tests"] = tier
+    part_of(document, "shared")["untested"] = "reached through the parts that use it"
     return document | changes
+
+
+def part_of(document: dict, name: str) -> dict:
+    """The map of the part named name in the document's folder tree: the folder or file whose `name` is name, else
+    whose last step, or whose file name before the first dot, is."""
+    found = _part_in(document["parts"], name)
+    assert found is not None, f"no part {name!r} in the tree"
+    return found
+
+
+def _part_in(node: dict, name: str) -> dict | None:
+    for key, value in node.items():
+        if not isinstance(key, str) or not (key.endswith("/") or "." in key) or not isinstance(value, dict):
+            continue
+        last = key.rstrip("/").split("/")[-1]
+        given = last if key.endswith("/") else last.split(".")[0]
+        if value.get("name", given) == name and any(not (k.endswith("/") or "." in k) for k in value):
+            return value
+        deeper = _part_in(value, name)
+        if deeper is not None:
+            return deeper
+    return None
 
 
 def listed(document: dict, files: Collection[str] | None = None, folders: Mapping[str, tuple[str, ...]] | None = None,

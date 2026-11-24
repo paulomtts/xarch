@@ -1,8 +1,9 @@
 """What the keys a profile sets need of the language's reader: every key that configures a check needs the facts of
 the source that check reads (see capabilities and key_table). One walk of the key table finds those keys however deep
 they sit: from the file's keys into the scope each key opens, and from there as far down as the table's scopes go, into
-a mapping, each entry of a map of names (parts.<part>) and each entry of a list (docs.naming[]), which is addressed by
-its index from 0 (<list>.0.<key>). A list of entries each a target or a map of one to its mode (imports.may) holds the
+a mapping, each entry of a map of names (parts.<part>, the parts by their names in the folder tree under `parts`, see
+parts_tree) and each entry of a list (docs.naming[]), which is addressed by its index from 0 (<list>.0.<key>). A list
+of entries each a target or a map of one to its mode (imports.may) holds the
 scope of its modes: a mode an entry carries is set. A key set to false or null configures nothing, but a guard, which
 its name alone configures. A key whose language does not supply one of its facts is a problem of the profile, naming the
 key, the fact and what to do; one whose language supplies a fact partly is kept, and listed as approximate where the
@@ -17,6 +18,7 @@ from dataclasses import replace
 from typing import Any
 
 from xarch.kernel.logic.capabilities import shortfalls
+from xarch.modules.spec.application.logic.parts_tree import parts_tree
 from xarch.modules.spec.domain.key_table import KEYS, SLOTS
 from xarch.modules.spec.domain.profile_keys import GUARD, PROFILE, SCOPES, Key
 from xarch.modules.spec.domain.values import Language
@@ -84,8 +86,16 @@ def short(document: Mapping[Any, Any], presets: Mapping[str, Any], language: Lan
     if language.checked.supplies is None:
         return []
     supplies = {supply.fact: supply for supply in language.checked.supplies}
-    return [read_less(found, key, language) for address, key in _configured(document, PROFILE, "", presets, keys)
+    return [read_less(found, key, language) for address, key in _configured(_named(document), PROFILE, "", presets, keys)
             for found in shortfalls(address, key.needs, supplies)]
+
+
+def _named(document: Mapping[Any, Any]) -> Mapping[Any, Any]:
+    """The document with its folder tree under `parts` as the map of its parts by name, each to its own keys: a folder
+    key is no part, and a part inside another is reached."""
+    if not isinstance(document.get("parts"), Mapping):
+        return document
+    return {**document, "parts": {part.name: part.keys for part in parts_tree(document["parts"], Language()).parts}}
 
 
 def read_less(found: Shortfall, key: Key, language: Language) -> Shortfall:

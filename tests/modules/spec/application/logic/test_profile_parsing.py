@@ -3,7 +3,7 @@ packages, the names it may not use, and the layers."""
 import pytest
 
 from tests.modules.spec.format_files import CATALOGUE
-from tests.modules.spec.profiles import layered, parsed, problems, two_folders
+from tests.modules.spec.profiles import layered, parsed, part_of, problems, two_folders
 from xarch.modules.spec.application.logic.key_lookup import names_of
 from xarch.modules.spec.application.logic.layout_walk import docs_name, is_file
 from xarch.modules.spec.application.logic.profile_parsing import parse_profile
@@ -22,8 +22,8 @@ def test_a_document_that_is_no_mapping_is_refused():
 
 def test_the_smallest_profile_is_a_name_and_parts_and_checks_the_layout_and_the_imports():
     architecture = parsed({"name": "tiny", "parts": {
-        "core": {"path": "core", "role": "the rules"},
-        "cli": {"path": "cli", "role": "commands and output", "imports": {"may": ["core"], "libraries": ["typer"]}}}})
+        "core/": {"role": "the rules"},
+        "cli/": {"role": "commands and output", "imports": {"may": ["core"], "libraries": ["typer"]}}}})
     assert architecture.name == "tiny"
     assert architecture.layout == {"core": {}, "cli": {}}
     assert architecture.rules == {"core": (), "cli": (Target("core"),)}
@@ -49,7 +49,7 @@ def test_unknown_keys_are_refused_with_the_keys_that_exist_in_the_file():
 def test_every_unknown_key_message_reads_the_table_of_keys():
     assert {key.name for key in KEYS if key.scope == "profile"} == names_of("profile")
     assert problems(layered(colour=1))[0].split("use ")[1] == ", ".join(sorted(names_of("profile")))
-    assert problems(layered(parts={"x": {"path": "x", "role": "r", "colour": 1}}))[0].split("use ")[1] == ", ".join(
+    assert problems(layered(parts={"x/": {"role": "r", "colour": 1}}))[0].split("use ")[1] == ", ".join(
         sorted(names_of("part")))
 
 
@@ -96,87 +96,65 @@ def test_the_layout_is_derived_from_the_paths_of_the_parts_and_a_repeating_step_
     assert architecture.parts["api"] == Part("api", ("src", "*", "api"), "HTTP handlers")
 
 
-def test_the_order_of_the_parts_is_the_placement_order():
-    document = layered()
-    document["parts"] = {name: document["parts"][name] for name in ("shared", "store", "api", "service")}
-    assert parsed(document).placement == ("shared", "store", "api", "service")
+def test_a_nested_tree_and_the_same_tree_joined_parse_to_one_architecture():
+    nested = layered(parts={"src/": {"<module>/": {"api/": {"role": "HTTP handlers", "imports": {"may": ["service"]}},
+                                                   "service/": {"role": "business logic",
+                                                                "imports": {"may": ["store", "shared"]}},
+                                                   "store/": {"role": "database access",
+                                                              "imports": {"may": ["shared"],
+                                                                          "libraries": ["sqlmodel"]}}}},
+                            "shared/": {"role": "shared code"}})
+    one, other = parsed(layered()), parsed(nested)
+    assert (one.parts, one.layout, one.notes, one.repeats, one.placement) == (
+        other.parts, other.layout, other.notes, other.repeats, other.placement)
 
 
-def test_a_last_step_with_a_dot_is_a_file_and_a_part_may_sit_inside_another_ones_folder():
+def test_the_reading_order_of_the_tree_is_the_placement_order_a_part_before_the_parts_inside_it():
+    architecture = parsed(layered(parts={
+        "src/<module>/": {"contract/": {"role": "c"}, "api/": {"role": "a"}},
+        "platform/": {"role": "p"},
+        "kernel/": {"role": "k", "logic/": {"name": "kernel-logic", "role": "kl"}}}))
+    assert architecture.placement == ("contract", "api", "platform", "kernel", "kernel-logic")
+    assert architecture.placement == tuple(architecture.parts)
+    assert architecture.parts["kernel-logic"].path == ("kernel", "logic")
+
+
+def test_a_file_part_is_a_file_of_the_layout_and_a_part_may_sit_inside_another():
     document = layered()
-    document["parts"]["entry"] = {"path": "src/<module>/entry.py", "role": "the entry"}
-    document["parts"]["sql"] = {"path": "src/<module>/store/sql", "role": "queries"}
+    document["parts"]["src/<module>/"]["entry.py"] = {"role": "the entry"}
+    part_of(document, "store")["sql/"] = {"role": "queries"}
+    document["parts"]["__main__.py"] = {"name": "main", "role": "starts the app"}
     architecture = parsed(document)
-    assert architecture.layout["src"]["*"]["entry.py"] is None
+    assert architecture.layout["src"]["*"]["entry.py"] is None and architecture.layout["__main__.py"] is None
     assert architecture.layout["src"]["*"]["store"] == {"sql": {}}
-    assert is_file(architecture.layout, ("src", "*", "entry.py")) and not is_file(architecture.layout, ("src", "*", "store"))
+    assert architecture.parts["sql"].path == ("src", "*", "store", "sql")
+    assert architecture.parts["main"].path == ("__main__.py",)
+    assert is_file(architecture.layout, architecture.parts["entry"].path)
+    assert not is_file(architecture.layout, ("src", "*", "store"))
 
 
-def test_a_top_level_file_is_a_file():
+def test_a_folder_with_a_note_or_with_nothing_is_a_folder_of_the_layout_and_its_note_a_note():
     document = layered()
-    document["parts"]["main"] = {"path": "__main__.py", "role": "starts the app"}
-    assert parsed(document).layout["__main__.py"] is None
-
-
-def test_the_folders_of_a_part_are_in_the_layout_with_their_notes_as_the_notes_of_the_layout():
-    document = layered()
-    document["parts"]["shared"]["folders"] = {"text": "string helpers", "io/disk": "what touches the disk"}
-    document["parts"]["api"]["folders"] = ["v1"]
+    part_of(document, "shared")["text/"] = "text helpers"
+    part_of(document, "shared")["io/"] = None
+    part_of(document, "shared")["disk/"] = {}
     architecture = parsed(document)
-    assert architecture.layout["shared"] == {"text": {}, "io": {"disk": {}}}
-    assert architecture.layout["src"]["*"]["api"] == {"v1": {}}
-    assert architecture.notes == {("shared", "text"): "string helpers", ("shared", "io", "disk"): "what touches the disk"}
+    assert architecture.layout["shared"] == {"text": {}, "io": {}, "disk": {}}
+    assert architecture.notes == {("shared", "text"): "text helpers"}
 
 
-@pytest.mark.parametrize("folders, expected", [
-    pytest.param(3, "layered.yaml: parts.shared.folders: must be a mapping of folder paths to one line of text, or a "
-                    "list of folder paths", id="not a mapping or a list"),
-    pytest.param({"../x": "n"}, "layered.yaml: parts.shared.folders: '../x' is not a folder below the part: write "
-                                "a path of plain names such as io/disk", id="a path climbing out"),
-    pytest.param({"a": "two\nlines"}, "layered.yaml: parts.shared.folders.a: must be one line of text",
-                 id="a note of two lines"),
-    pytest.param({"a": 3}, "layered.yaml: parts.shared.folders.a: must be one line of text", id="a note that is no text"),
-    pytest.param(["a", "a"], "layered.yaml: parts.shared.folders: 'a' is listed twice", id="a folder twice"),
-])
-def test_a_bad_folders_entry_is_refused(folders, expected):
-    document = layered()
-    document["parts"]["shared"]["folders"] = folders
-    assert problems(document) == [expected]
-
-
-def test_a_part_that_is_a_file_has_no_folders():
-    document = layered()
-    document["parts"]["main"] = {"path": "main.py", "role": "x", "folders": ["a"]}
-    assert problems(document) == ["layered.yaml: parts.main.folders: a file has no folders: drop the key"]
-
-
-def test_a_folder_that_is_a_part_is_refused_since_its_note_is_its_role():
-    document = layered()
-    document["parts"]["shared"]["folders"] = {"text": "helpers"}
-    document["parts"]["text"] = {"path": "shared/text", "role": "text helpers"}
-    assert problems(document) == ["layered.yaml: parts.shared.folders.text: 'text' is part 'text', whose note is its "
-                                  "role: drop it from `folders`"]
+def test_a_part_s_own_folders_follow_the_parts_in_the_layout_as_today():
+    architecture = parsed(layered(parts={"cli/": {"role": "c", "commands/": {}, "reports/": {"role": "r"}}}))
+    assert list(architecture.layout["cli"]) == ["reports", "commands"]
 
 
 @pytest.mark.parametrize("parts, expected", [
-    pytest.param(3, ["layered.yaml: parts: must be a mapping of part names to {path, role, ...}"], id="not a mapping"),
-    pytest.param({3: {"path": "x", "role": "r"}, "a b": {"path": "y", "role": "r"}},
-                 ["layered.yaml: parts: 3 is not a part name: use letters, digits, '_' and '-'",
-                  "layered.yaml: parts: 'a b' is not a part name: use letters, digits, '_' and '-'"],
-                 id="bad names"),
-    pytest.param({"x": 3}, ["layered.yaml: parts.x: must be a mapping with `path` and `role`"], id="a part that is no mapping"),
-    pytest.param({"x": {}}, ["layered.yaml: parts.x: missing `path`", "layered.yaml: parts.x: missing `role`"],
-                 id="a part with nothing"),
-    pytest.param({"x": {"path": "x", "role": 3, "litmus": 4}},
+    pytest.param({"x/": {"role": 3, "litmus": 4}},
                  ["layered.yaml: parts.x.role: must be a string", "layered.yaml: parts.x.litmus: must be a string"],
                  id="texts that are no strings"),
-    pytest.param({"x": {"path": "x", "role": "r", "colour": 1}},
-                 ["layered.yaml: parts.x: unknown key 'colour': use folders, holds, imports, litmus, "
-                  "package_only, path, role, shared, tests, untested, uses"],
-                 id="an unknown key"),
-    pytest.param({"x": {"path": "x", "role": "r", "package_only": "yes"}},
+    pytest.param({"x/": {"role": "r", "package_only": "yes"}},
                  ["layered.yaml: parts.x.package_only: must be true or false"], id="package_only that is no boolean"),
-    pytest.param({"x": {"path": "x", "role": "r", "untested": "two\nlines"}},
+    pytest.param({"x/": {"role": "r", "untested": "two\nlines"}},
                  ["layered.yaml: parts.x.untested: must be one line of text: why no tier tests the part"],
                  id="an untested reason of two lines"),
 ])
@@ -184,54 +162,35 @@ def test_a_bad_part_is_refused_with_every_problem(parts, expected):
     assert problems(layered(parts=parts)) == expected
 
 
-@pytest.mark.parametrize("path, expected", [
-    pytest.param(3, "layered.yaml: parts.x.path: must be a path such as 'src/<name>/api'", id="no text"),
-    pytest.param("", "layered.yaml: parts.x.path: must be a path such as 'src/<name>/api'", id="empty"),
-    pytest.param("a//b", "layered.yaml: parts.x.path: 'a//b' has an empty, `.` or `..` step", id="an empty step"),
-    pytest.param("a/../b", "layered.yaml: parts.x.path: 'a/../b' has an empty, `.` or `..` step", id="a step climbing"),
-    pytest.param("a/*/b", "layered.yaml: parts.x.path: 'a/*/b' has a `*` step: write the repeating folder as "
-                          "one word between `<` and `>`", id="a star in a path"),
-    pytest.param("a/<mo dule>/b", "layered.yaml: parts.x.path: 'a/<mo dule>/b' has a step with `<` or `>` that is not "
-                                  "one word between them: write the "
-                                  "repeating folder as `<name>`", id="a bracket that holds no word"),
-    pytest.param("a/<x>b", "layered.yaml: parts.x.path: 'a/<x>b' has a step with `<` or `>` that is not "
-                           "one word between them: write the repeating folder as `<name>`", id="a bracket inside a name"),
-    pytest.param("<a>/<b>/c", "layered.yaml: parts.x.path: '<a>/<b>/c' has two repeating steps, <a> and <b>: a "
-                              "repeating folder cannot sit inside another, so give each its own folder",
-                 id="two repeating steps"),
-    pytest.param("shared", "layered.yaml: parts.x.path: 'shared' is already claimed by part 'shared'", id="a path twice"),
-    pytest.param("shared/", "layered.yaml: parts.x.path: 'shared' is already claimed by part 'shared'",
-                 id="a path twice with a slash"),
-])
-def test_a_bad_part_path_is_refused(path, expected):
-    document = layered()
-    document["parts"]["x"] = {"path": path, "role": "r"}
-    assert problems(document) == [expected]
+def test_two_repeating_steps_on_the_way_to_a_part_are_refused():
+    assert problems(layered(parts={"<a>/": {"<b>/": {"c/": {"role": "r"}}}})) == [
+        "layered.yaml: parts.c: '<a>/<b>/c/' has two repeating steps, <a> and <b>: a repeating folder cannot sit "
+        "inside another, so give each its own folder"]
 
 
 def test_two_words_may_not_share_a_parent():
-    document = layered()
-    document["parts"]["x"] = {"path": "src/<doc>/x", "role": "r"}
+    document = layered(parts={"src/": {"<module>/": {"api/": {"role": "a"}}, "<doc>/": {"x/": {"role": "r"}}}})
     assert problems(document) == [
-        "layered.yaml: parts.x.path: 'src/<doc>/x' calls the repeating folder <doc>, but part 'api' called it "
-        "<module> in the same folder 'src': two words may not share a parent, use one word"]
+        "layered.yaml: parts.x: 'src/<doc>/x/' calls the repeating folder <doc>, but part 'api' called it <module> in "
+        "the same folder 'src': two words may not share a parent, use one word"]
 
 
 def test_one_word_repeats_in_one_folder_only():
     document = layered()
-    document["parts"]["y"] = {"path": "other/<module>/y", "role": "r"}
+    document["parts"]["other/<module>/"] = {"y/": {"role": "r"}}
     assert problems(document) == [
-        "layered.yaml: parts.y.path: 'other/<module>/y' repeats <module> below 'other', but part 'api' repeats it "
-        "below 'src': one word repeats in one folder, so give this one a word of its own"]
+        "layered.yaml: parts.y: 'other/<module>/y/' repeats <module> below 'other', but part 'api' repeats it below "
+        "'src': one word repeats in one folder, so give this one a word of its own"]
 
 
 def test_a_profile_may_hold_several_repeating_folders_each_with_its_word_and_parent():
     architecture = parsed(two_folders())
     assert architecture.repeats == (Repeat("module", ("src",)), Repeat("plugin", ("ext",)))
     assert architecture.layout == {"src": {"*": {"api": {}, "service": {}, "store": {}}},
-                                   "ext": {"*": {"hooks": {}, "manifest.py": None}}, "shared": {}}
+                                   "shared": {}, "ext": {"*": {"hooks": {}, "manifest.py": None}}}
     assert architecture.parts["hooks"].path == ("ext", "*", "hooks")
-    assert architecture.top_level_tree() == {"src": {}, "ext": {}, "shared": {}}
+    assert architecture.parts["manifest"].path == ("ext", "*", "manifest.py")
+    assert architecture.top_level_tree() == {"src": {}, "shared": {}, "ext": {}}
     assert architecture.instance_tree(architecture.repeats[1]) == {"hooks": {}, "manifest.py": None}
 
 
@@ -243,8 +202,8 @@ def test_a_part_is_shown_below_its_own_repeating_folder():
 
 def test_a_part_names_a_part_of_its_own_repeating_folder_bare_and_one_of_another_with_any():
     document = two_folders()
-    document["parts"]["hooks"].setdefault("imports", {})["may"] = ["manifest", "service@any", "shared"]
-    document["parts"]["service"].setdefault("imports", {})["may"] = ["store", "shared", "hooks@any"]
+    part_of(document, "hooks").setdefault("imports", {})["may"] = ["manifest", "service@any", "shared"]
+    part_of(document, "service").setdefault("imports", {})["may"] = ["store", "shared", "hooks@any"]
     rules = parsed(document).rules
     assert rules["hooks"] == (Target("manifest", "own"), Target("service", "any"), Target("shared"))
     assert rules["service"] == (Target("store", "own"), Target("shared"), Target("hooks", "any"))
@@ -260,13 +219,13 @@ def test_a_part_names_a_part_of_its_own_repeating_folder_bare_and_one_of_another
 ])
 def test_a_part_in_another_repeating_folder_has_no_own_instance_so_a_bare_name_is_refused(importer, name, expected):
     document = two_folders()
-    document["parts"][importer].setdefault("imports", {})["may"] = [name]
+    part_of(document, importer).setdefault("imports", {})["may"] = [name]
     assert problems(document) == [expected]
 
 
 def test_a_part_in_another_repeating_folder_may_not_be_said_as_own():
     document = two_folders()
-    document["parts"]["hooks"].setdefault("imports", {})["may"] = ["service@own"]
+    part_of(document, "hooks").setdefault("imports", {})["may"] = ["service@own"]
     assert problems(document) == [
         "layered.yaml: parts.hooks.imports.may: 'service@own' lies in another repeating folder than part 'hooks', "
         "which has no own instance of it: write service@any"]
@@ -274,28 +233,11 @@ def test_a_part_in_another_repeating_folder_may_not_be_said_as_own():
 
 def test_a_must_import_names_a_part_of_another_repeating_folder_with_any_as_well():
     document = two_folders()
-    document["parts"]["hooks"].setdefault("imports", {})["may"] = ["service@any"]
-    document["parts"]["hooks"].setdefault("imports", {})["must"] = ["service"]
+    part_of(document, "hooks").setdefault("imports", {})["may"] = ["service@any"]
+    part_of(document, "hooks").setdefault("imports", {})["must"] = ["service"]
     assert problems(document) == [
         "layered.yaml: parts.hooks.imports.must: 'service' lies in another repeating folder than part 'hooks', which "
         "has no own instance of it: write service@any"]
-
-
-def test_a_file_cannot_hold_a_part_below_it():
-    document = layered()
-    document["parts"]["f"] = {"path": "notes.txt", "role": "r"}
-    document["parts"]["g"] = {"path": "notes.txt/x", "role": "r"}
-    assert problems(document) == [
-        "layered.yaml: parts.g.path: 'notes.txt/x' lies below 'notes.txt', which part 'f' makes a file"]
-
-
-def test_a_folder_that_holds_a_part_cannot_also_be_a_file():
-    document = layered()
-    document["parts"]["f"] = {"path": "a.b/x", "role": "r"}
-    document["parts"]["g"] = {"path": "a.b", "role": "r"}
-    assert problems(document) == [
-        "layered.yaml: parts.g.path: 'a.b' is a file, since its last step holds a dot, but part 'f' lies below it: "
-        "rename one of them"]
 
 
 @pytest.mark.parametrize("targets, rules", [
@@ -310,19 +252,19 @@ def test_a_folder_that_holds_a_part_cannot_also_be_a_file():
 ])
 def test_what_a_part_of_the_repeating_folder_may_import(targets, rules):
     document = layered()
-    document["parts"]["store"].setdefault("imports", {})["may"] = targets
+    part_of(document, "store").setdefault("imports", {})["may"] = targets
     assert parsed(document).rules["store"] == rules
 
 
 def test_a_part_outside_the_repeating_folder_reaches_into_it_with_any():
     document = layered()
-    document["parts"]["shared"].setdefault("imports", {})["may"] = ["api@any", "service@any/rules"]
+    part_of(document, "shared").setdefault("imports", {})["may"] = ["api@any", "service@any/rules"]
     assert parsed(document).rules["shared"] == (Target("api", "any"), Target("service", "any", ("rules",)))
 
 
 def test_everything_is_a_part_that_may_import_everything_and_the_rest_a_part_with_no_may_import_imports_itself_only():
     document = layered()
-    document["parts"]["shared"].setdefault("imports", {})["may"] = "everything"
+    part_of(document, "shared").setdefault("imports", {})["may"] = "everything"
     architecture = parsed(document)
     assert architecture.rules["shared"] == (Target("*"),)
     assert architecture.rules["api"] == (Target("service", "own"),)
@@ -364,7 +306,7 @@ def test_everything_is_a_part_that_may_import_everything_and_the_rest_a_part_wit
 ])
 def test_a_bad_target_is_refused_saying_what_to_write(part, targets, expected):
     document = layered()
-    document["parts"][part].setdefault("imports", {})["may"] = targets
+    part_of(document, part).setdefault("imports", {})["may"] = targets
     assert problems(document) == [expected]
 
 
@@ -375,7 +317,7 @@ def test_libraries_are_strict_by_default_and_a_part_lists_what_it_may_import():
 
 def test_a_part_may_leave_libraries_unchecked_with_everything():
     document = layered()
-    document["parts"]["shared"].setdefault("imports", {})["libraries"] = "everything"
+    part_of(document, "shared").setdefault("imports", {})["libraries"] = "everything"
     assert parsed(document).imports_libraries["shared"] == (Target("*").part,)
 
 
@@ -392,14 +334,14 @@ def test_a_part_may_leave_libraries_unchecked_with_everything():
 ])
 def test_bad_libraries_are_refused(libraries, expected):
     document = layered()
-    document["parts"]["store"].setdefault("imports", {})["libraries"] = libraries
+    part_of(document, "store").setdefault("imports", {})["libraries"] = libraries
     assert problems(document) == [expected]
 
 
 def test_a_part_refers_to_a_list_under_never_by_its_name():
     document = layered(never={"pure": ["datetime.datetime.now", "builtins.open", "socket"]})
-    document["parts"]["service"]["uses"] = {"never": "pure"}
-    document["parts"]["shared"]["uses"] = {"never": "pure"}
+    part_of(document, "service")["uses"] = {"never": "pure"}
+    part_of(document, "shared")["uses"] = {"never": "pure"}
     uses_never = parsed(document).uses_never
     assert uses_never == {"service": (("datetime", "datetime", "now"), ("builtins", "open"), ("socket",)),
                           "shared": (("datetime", "datetime", "now"), ("builtins", "open"), ("socket",))}
@@ -429,7 +371,7 @@ def test_a_part_that_names_no_list_forbids_nothing():
 ])
 def test_bad_forbidden_lists_are_refused(never, part, expected):
     document = layered(never=never)
-    document["parts"]["service"]["uses"] = {"never": part}
+    part_of(document, "service")["uses"] = {"never": part}
     assert problems(document) == expected
 
 
@@ -443,16 +385,16 @@ def test_layers_are_chains_of_parts_checked_against_what_the_parts_may_import():
 
 def test_a_part_that_is_package_only_makes_the_guard_with_its_parts_in_the_order_of_the_parts():
     document = layered()
-    document["parts"]["store"]["package_only"] = True
-    document["parts"]["api"]["package_only"] = True
-    document["parts"]["shared"]["package_only"] = False
+    part_of(document, "store")["package_only"] = True
+    part_of(document, "api")["package_only"] = True
+    part_of(document, "shared")["package_only"] = False
     assert [(type(guard).__name__, guard.parts) for guard in parsed(document).guards] == [
         ("PackageOnly", ("api", "store"))]
 
 
 def test_every_problem_of_a_profile_is_reported_at_once():
     document = layered(colour=1, language="ruby", layout={})
-    document["parts"]["store"].setdefault("imports", {})["may"] = ["repo"]
+    part_of(document, "store").setdefault("imports", {})["may"] = ["repo"]
     assert problems(document) == [
         "layered.yaml: unknown keys 'colour', 'layout': use based_on, checks, docs, evals, excluded, fakes, files, guards, "
         "hints, language, layers, name, never, parts, reserved, review, testing, tiers",
@@ -462,8 +404,8 @@ def test_every_problem_of_a_profile_is_reported_at_once():
 
 def test_a_part_says_what_its_files_must_import_with_the_targets_of_may_import():
     document = layered()
-    document["parts"]["store"].setdefault("imports", {})["must"] = ["shared"]
-    document["parts"]["api"].setdefault("imports", {})["must"] = ["service"]
+    part_of(document, "store").setdefault("imports", {})["must"] = ["shared"]
+    part_of(document, "api").setdefault("imports", {})["must"] = ["service"]
     architecture = parsed(document)
     assert architecture.parts["store"].imports_must == (Target("shared"),)
     assert architecture.parts["api"].imports_must == (Target("service", "own"),)
@@ -484,12 +426,12 @@ def test_a_part_says_what_its_files_must_import_with_the_targets_of_may_import()
 ])
 def test_a_bad_must_import_is_refused(value, expected):
     document = layered()
-    document["parts"]["store"].setdefault("imports", {})["must"] = value
+    part_of(document, "store").setdefault("imports", {})["must"] = value
     assert problems(document) == [expected]
 
 
 def test_a_part_that_may_import_everything_may_be_asked_to_reach_any_part():
     document = layered()
-    document["parts"]["store"].setdefault("imports", {})["may"] = "everything"
-    document["parts"]["store"].setdefault("imports", {})["must"] = ["api"]
+    part_of(document, "store").setdefault("imports", {})["may"] = "everything"
+    part_of(document, "store").setdefault("imports", {})["must"] = ["api"]
     assert parsed(document).parts["store"].imports_must == (Target("api", "own"),)

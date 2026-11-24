@@ -43,11 +43,12 @@ def filled(example: str) -> str:
     return said(example, PYTHON)
 
 
-def merged(base: dict, extra: dict) -> dict:
+def merged(base: dict, extra: dict, top: bool = True) -> dict:
+    """The example laid over the smallest profile; an example writing parts writes the whole tree of them."""
     result = deepcopy(base)
     for key, value in extra.items():
-        if isinstance(value, dict) and isinstance(result.get(key), dict):
-            result[key] = merged(result[key], value)
+        if isinstance(value, dict) and isinstance(result.get(key), dict) and not (top and key == "parts"):
+            result[key] = merged(result[key], value, False)
         else:
             result[key] = value
     return result
@@ -76,8 +77,22 @@ def load(document: dict):
     return parsed(document, bundled=BUNDLED, folders=every_folder(document), languages={"python": EVERY_SPEC})
 
 
+def tree_parts(node: dict):
+    """The map of every part in a folder tree: a file, or a folder holding a key of a part."""
+    for key, value in node.items():
+        if isinstance(value, dict) and (key.endswith("/") or "." in key):
+            if "." in key or any(not (name.endswith("/") or "." in name) for name in value):
+                yield value
+            yield from tree_parts(value)
+
+
 def containers(node, steps: list[str]):
-    """Every mapping the steps of a scope's address lead to: `<x>` is any entry, `name[]` the items of a list."""
+    """Every mapping the steps of a scope's address lead to: `<x>` is any entry, `name[]` the items of a list, and
+    `parts.<part>` each part of the folder tree."""
+    if steps[:2] == ["parts", "<part>"] and isinstance(node, dict) and isinstance(node.get("parts"), dict):
+        for part in tree_parts(node["parts"]):
+            yield from containers(part, steps[2:])
+        return
     if not steps:
         if isinstance(node, dict):
             yield node
@@ -160,6 +175,8 @@ def test_a_slot_an_eval_needs_is_missing_in_the_loader_when_left_out(slot):
 @pytest.mark.parametrize("key", [key for key in KEYS if key.required], ids=lambda key: plain(key.address))
 def test_a_required_key_is_missing_in_the_loader_when_left_out(key):
     document = document_of(key)
+    if key.scope == PART:
+        holders(key, document)[0].setdefault("litmus", "a question")
     del holders(key, document)[0][key.name]
     assert any(f"missing `{key.name}`" in problem for problem in problems(document, bundled=BUNDLED,
                                                                          folders=every_folder(document)))

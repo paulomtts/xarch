@@ -6,7 +6,7 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.spec.languages import PYTHON
-from tests.modules.spec.profiles import PYTEST_TABLE, covered, layered, parsed, problems
+from tests.modules.spec.profiles import PYTEST_TABLE, covered, layered, parsed, part_of, problems
 from xarch.modules.spec.application.logic.language_file import PARTIAL
 from xarch.modules.spec.application.logic.profile_needs import refused, short
 from xarch.modules.spec.domain.key_table import KEYS, SLOTS
@@ -52,15 +52,15 @@ CLASSY = {"toy": replace(TOY, checked=replace(TOY.checked, supplies=(
 
 def services(**keys) -> dict:
     document = layered(language="toy")
-    document["parts"]["service"] |= keys
+    part_of(document, "service").update(keys)
     return document
 
 
 def tiered(**keys) -> dict:
     """layered() in toy, with one tier, unit, that tests every part, its keys the ones given."""
     document = layered(language="toy", testing={"files": ["test_*.py"], "declared": [{"function": "test_*"}]}, tiers={"unit": keys})
-    for spec in document["parts"].values():
-        spec["tests"] = "unit"
+    for name in ("api", "service", "store", "shared"):
+        part_of(document, name)["tests"] = "unit"
     return document
 
 
@@ -83,9 +83,9 @@ def everywhere() -> tuple[dict, dict]:
     document = covered(guards={"dead-code": {"untested": True, "tests_only": True, "known": ["shared/wiring.py:build"]},
                                "no-comments": {}, "no-twins": {"translated": ["api"]}},
                        reserved={"json": "only io"})
-    document["parts"]["service"]["holds"] = {"classes": {}}
+    part_of(document, "service")["holds"] = {"classes": {}}
     document["tiers"]["unit"]["imports"] = {"must": ["service"]}
-    document["parts"]["service"]["uses"] = {"never": "pure"}
+    part_of(document, "service")["uses"] = {"never": "pure"}
     document["tiers"]["unit"]["uses"] = {"apply_never": True}
     return document | {"testing": "pytest"}, {"pytest": document["testing"]}
 
@@ -327,7 +327,7 @@ def test_fakes_are_refused_in_a_language_whose_reader_marks_no_interface():
 
 def flat(**keys) -> dict:
     document = layered(language="flat")
-    document["parts"]["service"] |= keys
+    part_of(document, "service").update(keys)
     return document
 
 
@@ -418,7 +418,7 @@ UNSAID = replace(PYTHON, name="unsaid", checked=replace(
 
 def test_a_shared_part_is_refused_under_a_language_whose_reader_does_not_say_which_names_are_public():
     document = layered(language="unsaid")
-    document["parts"]["service"] |= {"shared": 2}
+    part_of(document, "service").update({"shared": 2})
     assert problems(document, languages={"unsaid": UNSAID}) == [
         "layered.yaml: parts.service.shared: its check reads public (whether a name a file defines, or takes by an "
         "import, is for other files to use, as the language decides it), which the language unsaid does not supply: "
@@ -439,7 +439,7 @@ UNRECORDED = replace(PYTHON, name="unrecorded", checked=replace(
 
 def test_a_part_that_holds_is_refused_under_a_language_whose_reader_does_not_say_which_classes_are_records():
     document = layered(language="unrecorded")
-    document["parts"]["service"] |= {"holds": {"functions": {}, "records": {}, "exceptions": {}}}
+    part_of(document, "service").update({"holds": {"functions": {}, "records": {}, "exceptions": {}}})
     assert problems(document, languages={"unrecorded": UNRECORDED}) == [
         not_supplied(address, "class.record", "unrecorded")
         for address in ("parts.service.holds", "parts.service.holds.records")]
@@ -465,7 +465,7 @@ def untopped(address: str) -> str:
 
 def test_a_part_of_functions_is_refused_under_a_language_whose_reader_does_not_say_which_functions_are_top_level():
     document = layered(language="untopped")
-    document["parts"]["service"] |= {"holds": {"functions": {}, "records": {}, "exceptions": {}}}
+    part_of(document, "service").update({"holds": {"functions": {}, "records": {}, "exceptions": {}}})
     assert problems(document, languages={"untopped": UNTOPPED}) == [
         untopped("parts.service.holds.functions"), untopped("parts.service.holds.records")]
     said = replace(UNTOPPED, checked=replace(UNTOPPED.checked, supplies=PYTHON.checked.supplies))
@@ -490,7 +490,7 @@ READS_LESS = "holds reads no top-level functions: the language Untopped does not
 
 def held(language: str, holds: dict) -> dict:
     document = layered(language=language)
-    document["parts"]["service"]["holds"] = holds
+    part_of(document, "service")["holds"] = holds
     return document
 
 
@@ -548,7 +548,7 @@ def test_must_and_libraries_fall_short_at_their_new_addresses():
     no_standard = replace(TOY, checked=replace(TOY.checked, supplies=tuple(
         supply for supply in TOY.checked.supplies if supply.fact != "import.standard")))
     document = layered(language="toy")
-    document["parts"]["store"]["imports"]["must"] = ["shared"]
+    part_of(document, "store")["imports"]["must"] = ["shared"]
     found = {(item.address, item.fact) for item in short(document, {}, no_standard)}
     assert {("parts.store.imports.must", "import.standard"),
             ("parts.store.imports.libraries", "import.standard")} <= found
@@ -756,3 +756,11 @@ def test_a_type_argument_entry_under_python_with_a_bad_place_gets_the_needs_refu
     assert problems(layered(testing=FILES | {"mocks": mocks})) == [
         TYPE_ARGUMENT_REFUSED.format(index=0),
         "layered.yaml: testing.mocks.specs.0.type_argument: must be a whole number, at least 0, such as 0"]
+
+
+def test_a_part_inside_another_is_addressed_by_its_name_and_a_folder_key_is_no_part():
+    document = layered(language="toy", parts={"kernel/": {"role": "k", "docs/": "the notes", "logic/": {
+        "name": "kernel-logic", "role": "kl", "holds": {"classes": {}}}}})
+    found = [item.address for item in short(document, {}, TOY)]
+    assert found
+    assert all(address.startswith("parts.kernel-logic.") for address in found)
