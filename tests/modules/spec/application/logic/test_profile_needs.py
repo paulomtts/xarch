@@ -126,14 +126,15 @@ def test_a_language_whose_data_file_says_nothing_of_its_reader_holds_no_key_to_i
                   languages={"toy": silent}).approximate == ()
 
 
-def test_python_supplies_every_fact_a_bundled_check_reads():
-    assert {supply.fact: supply.grade for supply in PYTHON.checked.supplies} == {fact: EXACT for fact in FACTS}
+def test_python_supplies_every_fact_a_bundled_check_reads_but_the_tables_of_a_call_and_of_a_loop():
+    assert {supply.fact: supply.grade for supply in PYTHON.checked.supplies} == {
+        fact: EXACT for fact in FACTS if fact not in ("function.tables.call", "function.tables.loop")}
 
 
 def test_the_keys_a_profile_sets_are_found_in_every_scope_and_through_a_testing_preset_each_once():
     document, presets = everywhere()
     found = short(document, presets, PARTLY)
-    configured = [("testing.skips", "testing.skips"), ("testing.tables", "testing.tables"),
+    configured = [("testing.skips", "testing.skips"), ("testing.tables.0.decorator", "testing.tables[].decorator"),
                   ("testing.mocks", "testing.mocks"), ("parts.api.imports.may", "parts.<part>.imports.may"),
                   ("parts.service.imports.may", "parts.<part>.imports.may"), ("parts.service.holds", "parts.<part>.holds"),
                   ("parts.service.holds.classes", "parts.<part>.holds.classes"),
@@ -540,8 +541,109 @@ def test_must_and_libraries_fall_short_at_their_new_addresses():
             ("parts.store.imports.libraries", "import.standard")} <= found
 
 
-def test_the_forms_of_a_table_need_the_tables_of_cases_of_a_test_function():
+def test_a_decorator_form_needs_the_tables_of_cases_a_mark_holds_at_its_index_and_testing_tables_needs_none():
     document = layered(language="toy", testing={"files": ["test_*.py"], "functions": "test_*", "tables": [PYTEST_TABLE]})
-    assert ("layered.yaml: testing.tables: its check reads function.tables (the tables of cases of a test function), "
-            "which the language toy does not supply: drop testing.tables, or check the app with a language whose "
-            "reader supplies function.tables") in problems(document, languages=LANGUAGES)
+    found = problems(document, languages=LANGUAGES)
+    assert refusal("testing.tables.0.decorator", "function.tables.decorator") in found
+    assert [problem for problem in found if problem.startswith("layered.yaml: testing.tables: its check reads")] == []
+
+
+def test_each_holder_of_a_table_form_needs_its_own_fact_and_the_keys_that_read_tables_need_no_table_fact():
+    needs = {key.address: key.needs for key in KEYS}
+    assert {address: needs[address] for address in (
+        "testing.tables", "testing.tables[].decorator", "testing.tables[].call", "testing.tables[].loop",
+        "testing.tables[].columns_from", "testing.tables[].rows", "testing.tables[].row", "testing.tables[].id")} == {
+        "testing.tables": (), "testing.tables[].decorator": ("function.tables.decorator",),
+        "testing.tables[].call": ("function.tables.call",), "testing.tables[].loop": ("function.tables.loop",),
+        "testing.tables[].columns_from": (), "testing.tables[].rows": (), "testing.tables[].row": (),
+        "testing.tables[].id": ()}
+    assert needs["tiers.<tier>.plain_tables"] == ("function.blocks", "function.expressions")
+    assert needs["guards.scenario-coverage"] == ("union", "function.blocks", "function.expressions", "function.asserts",
+                                                 "function.mentions")
+
+
+FILES = {"files": ["test_*.py"], "functions": "test_*"}
+CALL_FORM = {"call": ["checks.each"], "columns_from": {"position": 0}, "rows": {"position": 1}, "row": "checks.case",
+             "id": {"keyword": "id"}}
+"""A form whose rows a call that makes the test holds."""
+LOOP_FORM = {"loop": True, "columns_from": "bound", "row": "literal", "id": {"position": 0}}
+"""A form whose rows a loop of the test's body runs."""
+SCENARIO = {"results": "api", "tier": "integration", "suffix": "Result", "columns": ["given", "when", "then"],
+            "file": "test_{name:snake}.py"}
+UNTABLED = replace(PYTHON, checked=replace(PYTHON.checked, title="Untabled", supplies=tuple(
+    Supply(fact, EXACT) for fact in FACTS if not fact.startswith("function.tables."))))
+"""Python, its reader supplying every fact but the tables of cases of every form."""
+LOOP_MISSED = "a table built in a loop is not read"
+LOOSE = replace(PYTHON, checked=replace(PYTHON.checked, supplies=tuple(
+    Supply(supply.fact, PARTIAL, LOOP_MISSED) if supply.fact == "function.tables.decorator" else supply
+    for supply in PYTHON.checked.supplies)))
+"""Python, its reader supplying the tables a mark holds only partly."""
+
+
+def framed(*tables) -> dict:
+    """layered(), its framework writing the forms given."""
+    return layered(testing=FILES | {"tables": list(tables)})
+
+
+def unread(index: int, holder: str) -> str:
+    """The refusal of the holder of the entry at the index, under Python, which does not read its form."""
+    fact, address = f"function.tables.{holder}", f"testing.tables.{index}.{holder}"
+    return (f"layered.yaml: {address}: its check reads {fact} ({FACTS[fact]}), which the language python does not "
+            f"supply: drop {address}, or check the app with a language whose reader supplies {fact}")
+
+
+def test_a_call_form_under_python_is_refused_at_its_index_for_the_tables_of_cases_a_call_holds():
+    assert problems(framed(CALL_FORM)) == [
+        "layered.yaml: testing.tables.0.call: its check reads function.tables.call (the tables of cases a call that "
+        "makes or wraps a test function holds), which the language python does not supply: drop testing.tables.0.call, "
+        "or check the app with a language whose reader supplies function.tables.call"]
+
+
+def test_a_decorator_form_under_python_loads():
+    assert parsed(framed(PYTEST_TABLE)).approximate == ()
+
+
+def test_a_loop_form_under_python_is_refused_at_its_index_for_the_tables_of_cases_a_loop_runs():
+    assert problems(framed(LOOP_FORM)) == [unread(0, "loop")]
+
+
+def test_a_call_form_written_after_the_decorator_form_is_refused_at_its_own_index_and_the_decorator_form_is_not():
+    found = problems(framed(PYTEST_TABLE, CALL_FORM))
+    assert found == [unread(1, "call")]
+    assert [problem for problem in found if problem.startswith("layered.yaml: testing.tables.0.")] == []
+
+
+def test_the_keys_that_read_tables_add_no_table_fact_of_their_own_beside_the_form_that_needs_it():
+    document = covered(guards={"scenario-coverage": SCENARIO})
+    document["tiers"]["unit"]["plain_tables"] = True
+    assert problems(document, languages={"python": UNTABLED}) == [unread(0, "decorator")]
+
+
+def test_a_form_whose_tables_the_language_supplies_partly_loads_and_is_approximate_at_its_index():
+    assert parsed(covered(), languages={"python": LOOSE}).approximate == (
+        Shortfall("testing.tables.0.decorator", "function.tables.decorator", LOOP_MISSED),)
+
+
+def test_an_entry_with_two_holders_is_refused_by_the_form_loader_and_for_the_holder_python_does_not_read():
+    assert sorted(problems(framed(PYTEST_TABLE | {"call": ["checks.each"]}))) == sorted([
+        unread(0, "call"), "layered.yaml: testing.tables.0: must have exactly one of decorator, call or loop"])
+
+
+def test_an_entry_that_is_no_mapping_still_counts_so_a_later_call_form_keeps_its_index():
+    assert sorted(problems(framed("pytest.mark.parametrize", CALL_FORM))) == sorted([
+        unread(1, "call"), "layered.yaml: testing.tables.0: must be a mapping with one of decorator, call or loop"])
+
+
+def test_a_call_form_written_in_a_testing_preset_is_refused_at_its_index():
+    assert problems(layered(testing="each"), presets={"each": FILES | {"tables": [CALL_FORM]}}) == [unread(0, "call")]
+
+
+@pytest.mark.parametrize("testing", [pytest.param(FILES | {"tables": []}, id="an empty list of forms"),
+                                     pytest.param(FILES, id="no tables")])
+def test_a_framework_that_writes_no_form_needs_no_table_fact(testing):
+    assert parsed(layered(testing=testing)).framework.tables == ()
+
+
+def test_a_holder_written_as_null_adds_no_table_fact_problem():
+    found = problems(framed(PYTEST_TABLE | {"call": None}))
+    assert found and [problem for problem in found if "function.tables" in problem] == []

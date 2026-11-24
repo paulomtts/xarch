@@ -11,7 +11,7 @@ from xarch.kernel.placement import Marks
 from xarch.modules.spec.application.logic.language_file import DOC, PARTIAL, first_language, language_of
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import Language, StandardLists
-from xarch.profile_values.capabilities import EXACT, Supply
+from xarch.profile_values.capabilities import EXACT, FACTS, Supply
 from xarch.profile_values.language import BLOCK, LINE, CheckedLanguage, CommentForm, InterfaceMark, RecordMark, Writing
 
 NAME = r"[A-Za-z_]\w*"
@@ -118,6 +118,12 @@ def test_a_token_that_is_not_what_its_key_takes_is_a_problem(given, problem):
     assert [p.removeprefix("presets/language/odd.yaml: ").split(":")[0] for p in caught.value.problems] == [
         problem.split(":")[0]]
     assert caught.value.problems[0].removeprefix("presets/language/odd.yaml: ").startswith(problem)
+
+
+def test_a_data_file_that_supplies_the_fact_of_tables_split_by_form_is_refused_as_supplying_an_unknown_fact():
+    assert refused(DOCUMENT | {"supplies": {"function.tables": "exact"}}) == [
+        f"supplies: 'function.tables' is not a fact a check reads: use {', '.join(sorted(FACTS))}"]
+    assert "function.tables.call" in sorted(FACTS)
 
 
 def test_a_special_name_that_is_no_regular_expression_says_why():

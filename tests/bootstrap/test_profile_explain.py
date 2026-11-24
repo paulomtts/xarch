@@ -9,6 +9,7 @@ from tests.bootstrap.project import bundled_profiles, retiring
 from xarch.bootstrap.app import app
 from xarch.bootstrap.wiring import build_controllers, load_architecture
 from xarch.modules.spec.domain.profile_keys import PART
+from xarch.profile_values.capabilities import FACTS
 from xarch.profile_values.testing import ScenarioCoverage
 
 runner = CliRunner()
@@ -367,3 +368,22 @@ def test_the_table_of_testing_is_answered_from_the_table_of_retired_names():
     found = runner.invoke(app, ["profile", "explain", "testing.table", "--format", "json"])
     assert (found.exit_code, json.loads(found.output)["retired"]) == (
         2, "moved in 0.3.0: write tables, a list of forms (xarch profile explain testing.tables)")
+
+
+def test_a_holder_of_a_table_form_says_the_fact_of_its_form_and_whether_python_supplies_it():
+    call = json.loads(runner.invoke(app, ["profile", "explain", "testing.tables.call", "--format", "json"]).output)
+    assert call["needs"] == [{"fact": "function.tables.call", "meaning": FACTS["function.tables.call"], "grade": "absent",
+                              "note": None}]
+    text = " ".join(runner.invoke(app, ["profile", "explain", "testing.tables.call"]).output.split())
+    assert ("needs: function.tables.call: the facts of the source its check reads; Python supplies not "
+            "function.tables.call") in text
+    decorator = " ".join(runner.invoke(app, ["profile", "explain", "testing.tables.decorator"]).output.split())
+    assert ("needs: function.tables.decorator: the facts of the source its check reads, which Python supplies "
+            "exactly") in decorator
+
+
+def test_the_list_of_table_forms_needs_no_fact_of_its_own():
+    found = runner.invoke(app, ["profile", "explain", "testing.tables", "--format", "json"])
+    assert json.loads(found.output)["needs"] == []
+    text = runner.invoke(app, ["profile", "explain", "testing.tables"]).output
+    assert not any(line.startswith("  needs:") for line in text.splitlines())

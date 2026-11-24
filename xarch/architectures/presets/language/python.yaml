@@ -99,7 +99,7 @@ supplies:
   function.asserts: exact
   function.mentions: exact
   function.named: exact
-  function.tables: exact
+  function.tables.decorator: exact
   union: exact
   module_functions: exact
   constant: exact

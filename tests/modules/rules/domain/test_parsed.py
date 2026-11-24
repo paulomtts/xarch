@@ -41,14 +41,23 @@ def test_a_table_built_without_its_form_and_the_line_that_runs_it_is_refused():
 PYTHON_WORDS = ("decorat", "param", "keyword", "pytest", "tuple literal", "list literal")
 
 
+TABLE_FACTS = {
+    "function.tables.decorator": "the tables of cases a mark on a test function's definition holds",
+    "function.tables.call": "the tables of cases a call that makes or wraps a test function holds",
+    "function.tables.loop": "the tables of cases a test function's body runs through in a loop",
+}
+"""The facts of the tables of cases, one per form a table is written in, and what each is."""
+
+
 @pytest.mark.parametrize("text", [
     pytest.param(Row.__doc__, id="the docstring of a row"),
     pytest.param(Table.__doc__, id="the docstring of a table"),
-    pytest.param(FACTS["function.tables"], id="the text of the fact of tables"),
+    *(pytest.param(FACTS[fact], id=f"the text of the fact {fact}") for fact in TABLE_FACTS),
 ])
 def test_what_a_table_and_its_rows_are_is_said_with_no_word_of_python(text):
     assert [word for word in PYTHON_WORDS if word in text.lower()] == []
 
 
-def test_the_fact_of_tables_reads_the_tables_of_cases_of_a_test_function():
-    assert FACTS["function.tables"] == "the tables of cases of a test function"
+def test_the_fact_of_tables_is_one_fact_per_form_each_saying_where_the_table_is_held():
+    assert "function.tables" not in FACTS
+    assert {fact: FACTS.get(fact) for fact in TABLE_FACTS} == TABLE_FACTS
