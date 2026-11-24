@@ -181,6 +181,9 @@ supplies every fact exactly but `function.tables.call` and `test.call`, so a fra
 Python is refused at that entry (`testing.tables.0.call`, `testing.declared.0.call`). A framework declares its tests
 with `testing.declared`, a list of forms: a `function` form, a function whose name matches a pattern, or a `call` form,
 a call whose arguments hold the test's `title` and its `body`; `testing.globals` names what it binds without an import.
+A table `call` form's callees must each be listed under a `call` form of `testing.declared`, the call that declares
+the test it makes or wraps; one that is not is refused at its entry (`testing.tables.0.call: `it.each` declares no
+test: list it under a `call` form of `testing.declared``).
 `testing: {preset: pytest}` names a preset as a map, and every framework key then comes from it: one written beside
 it is refused (`testing.files: the preset pytest gives files: drop it, or drop preset and write the whole map`), never
 merged, and a project with its own `files` writes the whole map instead; `testing: pytest` is its short form.
