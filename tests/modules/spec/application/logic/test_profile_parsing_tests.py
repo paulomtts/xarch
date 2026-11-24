@@ -55,7 +55,8 @@ def test_a_preset_is_the_same_map_validated_like_one_written_in_the_file():
     pytest.param({"declared": BY_NAME}, PRESETS, ["layered.yaml: testing: missing `files`"], id="no files"),
     pytest.param({"files": ["test_*.py"]}, PRESETS, ["layered.yaml: testing: missing `declared`"], id="no declared"),
     pytest.param({"files": ["test_*.py"], "declared": BY_NAME, "colour": 1}, PRESETS,
-                 ["layered.yaml: testing: unknown key 'colour': use declared, files, globals, mocks, skips, tables"],
+                 ["layered.yaml: testing: unknown key 'colour': use declared, files, globals, mocks, preset, skips, "
+                  "tables"],
                  id="an unknown key"),
     pytest.param({"files": ["x"], "declared": BY_NAME}, PRESETS,
                  ["layered.yaml: testing.files: 'x' is not a file name pattern: a name ending in .py, with `*` for any "
@@ -73,6 +74,71 @@ def test_a_preset_is_the_same_map_validated_like_one_written_in_the_file():
 ])
 def test_a_bad_testing_key_is_refused(testing, presets, expected):
     assert problems(covered(testing=testing), presets=presets) == expected
+
+
+def test_a_map_that_names_a_preset_is_the_preset_by_name():
+    named, mapped = parsed(covered(testing="pytest")), parsed(covered(testing={"preset": "pytest"}))
+    assert mapped.framework == named.framework
+    assert mapped == named
+
+
+BESIDE = "drop it, or drop preset and write the whole map"
+NO_RSPEC = "layered.yaml: testing.preset: no preset 'rspec': use pytest, or write the map {files, declared}"
+NOT_A_NAME = "layered.yaml: testing.preset: must be a preset name: use pytest, or write the map {files, declared}"
+UNKNOWN_COLOUR = "layered.yaml: testing: unknown key 'colour': use declared, files, globals, mocks, preset, skips, tables"
+CHECK_FILES = ["check_*.py"]
+
+
+@pytest.mark.parametrize("testing, presets, expected", [
+    pytest.param({"preset": "rspec"}, PRESETS, [NO_RSPEC], id="a preset that does not exist"),
+    pytest.param({"preset": "rspec"}, {}, ["layered.yaml: testing.preset: no preset 'rspec': write the map "
+                                           "{files, declared}"], id="no preset at all"),
+    pytest.param({"preset": ""}, PRESETS, ["layered.yaml: testing.preset: no preset '': use pytest, or write the map "
+                                           "{files, declared}"], id="an empty name"),
+    pytest.param({"preset": 3}, PRESETS, [NOT_A_NAME], id="a number"),
+    pytest.param({"preset": ["pytest"]}, PRESETS, [NOT_A_NAME], id="a list"),
+    pytest.param({"preset": {"name": "pytest"}}, PRESETS, [NOT_A_NAME], id="a map"),
+    pytest.param({"preset": True}, PRESETS, [NOT_A_NAME], id="true"),
+    pytest.param({"preset": None}, PRESETS, [NOT_A_NAME], id="null"),
+    pytest.param({"preset": 3}, {}, ["layered.yaml: testing.preset: must be a preset name: write the map "
+                                     "{files, declared}"], id="no name, and no preset at all"),
+    pytest.param({"preset": "pytest", "files": CHECK_FILES}, PRESETS,
+                 [f"layered.yaml: testing.files: the preset pytest gives files: {BESIDE}"], id="files beside it"),
+    pytest.param({"preset": "pytest", "declared": [{"function": "check_*"}]}, PRESETS,
+                 [f"layered.yaml: testing.declared: the preset pytest gives declared: {BESIDE}"],
+                 id="declared beside it"),
+    pytest.param({"preset": "pytest", "mocks": {"calls": ["unittest.mock.Mock"], "spec_keywords": ["spec"]}}, PRESETS,
+                 [f"layered.yaml: testing.mocks: the preset pytest gives mocks: {BESIDE}"], id="mocks beside it"),
+    pytest.param({"preset": "pytest", "skips": None}, PRESETS,
+                 [f"layered.yaml: testing.skips: the preset pytest gives skips: {BESIDE}"],
+                 id="a key beside it written null"),
+    pytest.param({"preset": "pytest", "files": "broken"}, PRESETS,
+                 [f"layered.yaml: testing.files: the preset pytest gives files: {BESIDE}"],
+                 id="a broken value beside it is not parsed"),
+    pytest.param({"preset": "pytest", "globals": ["x"]}, PRESETS,
+                 [f"layered.yaml: testing.globals: the preset pytest writes no globals: {BESIDE}"],
+                 id="a key the preset does not hold"),
+    pytest.param({"preset": "pytest", "declared": BY_NAME, "files": CHECK_FILES}, PRESETS,
+                 [f"layered.yaml: testing.files: the preset pytest gives files: {BESIDE}",
+                  f"layered.yaml: testing.declared: the preset pytest gives declared: {BESIDE}"],
+                 id="two keys beside it, in the order of the table"),
+    pytest.param({"preset": "rspec", "files": CHECK_FILES}, PRESETS,
+                 [NO_RSPEC, f"layered.yaml: testing.files: written beside preset: {BESIDE}"],
+                 id="a key beside a preset that does not exist"),
+    pytest.param({"preset": "pytest", "colour": 1}, PRESETS, [UNKNOWN_COLOUR], id="an unknown key beside it"),
+    pytest.param({"files": CHECK_FILES, "preset": 3, "colour": 1}, PRESETS,
+                 [UNKNOWN_COLOUR, NOT_A_NAME, f"layered.yaml: testing.files: written beside preset: {BESIDE}"],
+                 id="every problem, in order"),
+])
+def test_a_map_that_names_a_preset_holds_nothing_else(testing, presets, expected):
+    assert problems(covered(testing=testing), presets=presets) == expected
+
+
+def test_a_preset_may_not_name_a_preset_whichever_form_names_it():
+    presets = {"old": {"preset": "pytest", "files": ["test_*.py"], "declared": BY_NAME}} | PRESETS
+    expected = ["layered.yaml: testing.preset: the preset old names a preset: a preset writes the whole framework"]
+    assert problems(covered(testing="old"), presets=presets) == expected
+    assert problems(covered(testing={"preset": "old"}), presets=presets) == expected
 
 
 def test_a_test_declared_by_a_function_form_is_its_name_pattern():
@@ -768,6 +834,15 @@ def test_a_tier_whose_table_tests_are_plain_says_so_and_needs_a_framework_that_w
 
 def test_a_plain_tier_under_a_preset_that_writes_no_table_form_names_the_preset():
     document = covered(testing="pytest")
+    document["tiers"]["unit"]["plain_tables"] = True
+    presets = {"pytest": {"files": ["test_*.py"], "declared": BY_NAME}}
+    assert problems(document, presets=presets) == [
+        "layered.yaml: tiers.unit.plain_tables: needs a table form: the framework `pytest` writes none in "
+        "`testing.tables`"]
+
+
+def test_a_plain_tier_under_a_map_that_names_a_preset_names_the_preset():
+    document = covered(testing={"preset": "pytest"})
     document["tiers"]["unit"]["plain_tables"] = True
     presets = {"pytest": {"files": ["test_*.py"], "declared": BY_NAME}}
     assert problems(document, presets=presets) == [

@@ -136,6 +136,7 @@ _KEYS: tuple[Key, ...] = (
     Key(TIER_IMPORTS, "must", rules=("must-import",)),
     Key(TIER_IMPORTS, "types_only", rules=("types-only",)),
 
+    Key(TESTING, "preset", rules=("tiers", "test-tree"), choices=CHOICE_PRESETS),
     Key(TESTING, "files", True, rules=("tiers", "test-tree")),
     Key(TESTING, "declared", True, rules=("scenario-coverage", "stand-ins"), opens=DECLARED),
     Key(TESTING, "globals", rules=("scenario-coverage", "stand-ins")),

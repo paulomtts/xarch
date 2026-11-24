@@ -100,6 +100,36 @@ def test_a_preset_that_does_not_exist_is_refused_listing_the_ones_that_do(tmp_pa
         f"{tmp_path / 'small.yaml'}: testing: no preset 'rspec': use pytest, or write the map {{files, declared}}",)
 
 
+MAPPED = PROFILE.replace("testing: pytest", "testing: {preset: pytest}")
+
+
+def test_a_map_naming_the_preset_loads_and_checks_as_the_preset_by_name(tmp_path):
+    assert load_architecture(profile_in(tmp_path, MAPPED)) == load_architecture(profile_in(tmp_path))
+    assert check(tmp_path, {"core/rules.py": "from app.cli import app\n"}, MAPPED) == [
+        "app/core/rules.py:1: core/ may not import cli/ (app.cli.app)"]
+
+
+def test_the_guards_that_read_tests_read_the_same_under_a_map_naming_the_preset(tmp_path):
+    named = load_architecture(profile_in(tmp_path, PRESET_PROFILE))
+    mapped = PRESET_PROFILE.replace("testing: pytest\n", "testing: {preset: pytest}\n")
+    assert load_architecture(profile_in(tmp_path, mapped)) == named
+
+
+def test_a_key_beside_the_shipped_preset_is_refused_naming_what_the_preset_gives(tmp_path):
+    path = profile_in(tmp_path, PROFILE.replace("testing: pytest", "testing: {preset: pytest, files: [check_*.py]}"))
+    with pytest.raises(InvalidArchitecture) as caught:
+        load_architecture(path)
+    assert caught.value.problems == (
+        f"{path}: testing.files: the preset pytest gives files: drop it, or drop preset and write the whole map",)
+
+
+def test_a_map_naming_a_preset_that_does_not_exist_is_refused_at_its_preset(tmp_path):
+    with pytest.raises(InvalidArchitecture) as caught:
+        load_architecture(profile_in(tmp_path, PROFILE.replace("testing: pytest", "testing: {preset: rspec}")))
+    assert caught.value.problems == (
+        f"{tmp_path / 'small.yaml'}: testing.preset: no preset 'rspec': use pytest, or write the map {{files, declared}}",)
+
+
 def test_a_version_line_is_refused_as_an_unknown_key(tmp_path):
     with pytest.raises(InvalidArchitecture) as caught:
         load_architecture(profile_in(tmp_path, "xarch: 2\n" + PROFILE))
@@ -148,7 +178,7 @@ def test_a_bare_name_in_the_file_of_the_scenario_guard_is_refused_with_its_hint(
 OLD_TABLE_PROFILE = PRESET_PROFILE.replace("testing: pytest\n", 'testing:\n  files: ["test_*.py"]\n  declared: [{function: "test_*"}]\n'
                                            "  table: {decorator: pytest.mark.parametrize, row: pytest.param, id: id}\n")
 RETIRED_TABLE = ("testing: unknown key 'table': moved in 0.3.0: write tables, a list of forms (xarch profile explain "
-                 "testing.tables); use declared, files, globals, mocks, skips, tables")
+                 "testing.tables); use declared, files, globals, mocks, preset, skips, tables")
 
 
 def test_a_profile_writing_the_table_of_testing_is_refused_with_its_hint(tmp_path):
@@ -166,4 +196,4 @@ def test_a_profile_writing_the_functions_of_testing_is_refused_with_its_hint(tmp
     checked = CliRunner().invoke(app, ["profile", "check", str(path)])
     assert checked.exit_code == 1
     assert (f"    {path}: testing: unknown key 'functions': moved in 0.3.0: write declared: [{{function: \"<pattern>\"}}]; "
-            "use declared, files, globals, mocks, skips, tables") in checked.output.splitlines()
+            "use declared, files, globals, mocks, preset, skips, tables") in checked.output.splitlines()

@@ -7,6 +7,7 @@ each needs."""
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.domain.key_table import KEYS, NEEDS, SLOTS
 from xarch.modules.spec.domain.profile_keys import (
+    CHOICE_PRESETS,
     DECLARED,
     HELD,
     PART,
@@ -189,7 +190,14 @@ def test_the_tier_import_keys_need_what_the_keys_they_replace_needed():
 def test_the_forms_that_declare_a_test_are_a_list_scope_of_function_call_title_and_body_and_functions_is_no_key():
     assert SCOPES[DECLARED] == "testing.declared[]"
     assert [key.name for key in KEYS if key.scope == DECLARED] == ["function", "call", "title", "body"]
-    assert [key.name for key in KEYS if key.scope == TESTING] == ["files", "declared", "globals", "skips", "tables",
-                                                                  "mocks"]
+    assert [key.name for key in KEYS if key.scope == TESTING] == ["preset", "files", "declared", "globals", "skips",
+                                                                  "tables", "mocks"]
     assert [(key.required, key.opens) for key in KEYS if (key.scope, key.name) == (TESTING, "declared")] == [
         (True, DECLARED)]
+
+
+def test_testing_names_its_preset_by_a_key_that_is_not_required_and_offers_the_presets():
+    held = {key.name: key for key in KEYS if key.scope == TESTING}
+    assert (held["preset"].required, held["preset"].choices, held["preset"].rules) == (
+        False, CHOICE_PRESETS, ("tiers", "test-tree"))
+    assert (held["files"].required, held["declared"].required) == (True, True)

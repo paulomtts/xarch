@@ -8,9 +8,10 @@ key_catalogue); the shape:
     based_on: <bundled name>   optional; the bundled profile this one was copied from, which a report compares with
     language: <language>       optional; the language of the app: the name of a language xarch ships (the first by name
                                when left out), read from its data file
-    testing: <preset> | {files, declared, globals, skips, tables, mocks}
-                               how the test framework names things; a preset is a name, read from data shipped with
-                               xarch. Required with `tiers` and with the guards scenario-coverage and stand-ins
+    testing: <preset> | {preset} | {files, declared, globals, skips, tables, mocks}
+                               how the test framework names things; a preset is a name, alone or under preset, read
+                               from data shipped with xarch, and a key of the framework beside it is refused.
+                               Required with `tiers` and with the guards scenario-coverage and stand-ins
     parts: {<part>: {path, role, ...}}
                                in the order their litmus tests run. A part's path is a folder below the app, or a file
                                when its last step holds a dot; one step written `<word>` is the repeating folder, one
@@ -147,7 +148,8 @@ _TIER_INSTEAD = "`tests: <tier>`, or `untested: <reason>`"
 @dataclass(frozen=True)
 class _Testing:
     """What `testing` says: how test files are named and tests declared and the table forms the framework writes, and,
-    when written, how a mock is built; preset: the name of the preset it names, "" when written as a map."""
+    when written, how a mock is built; preset: the name of the preset it names, "" when the whole framework is written
+    out."""
     framework: Framework
     mocks: StandIns | None
     preset: str = ""
@@ -527,17 +529,25 @@ def _group(value: Any, scope: str, example: str, where: str, problems: list[str]
 
 
 def _testing(value: Any, presets: Mapping[str, Any], problems: list[str], language: Language) -> _Testing | None:
-    """How the test framework names things: the map in the file, or the one a preset holds, validated the same."""
+    """How the test framework names things: the map in the file, or the one a preset holds, named by its name or under
+    `preset`, validated the same; a preset's map that names a preset in turn is refused."""
     preset = ""
-    if isinstance(value, str):
+    if isinstance(value, Mapping) and "preset" in value:
+        preset = _preset_of(value, presets, problems)
+        if not preset:
+            return None
+        value = presets[preset]
+    elif isinstance(value, str):
         if value not in presets:
-            names = f"use {', '.join(sorted(presets))}, or write" if presets else "write"
-            problems.append(f"testing: no preset {value!r}: {names} the map {_PRESET_MAP}")
+            problems.append(f"testing: no preset {value!r}: {_instead(presets)}")
             return None
         preset, value = value, presets[value]
     elif not isinstance(value, Mapping):
         problems.append(f"testing: must be a preset name or a mapping {_PRESET_MAP}: the patterns of a test file's name "
                         "and the forms that declare a test")
+        return None
+    if preset and isinstance(value, Mapping) and "preset" in value:
+        problems.append(f"testing.preset: the preset {preset} names a preset: a preset writes the whole framework")
         return None
     count = len(problems)
     framework = ck.framework_patterns(value, problems, "testing", names_of(TESTING), language, TESTING)
@@ -546,6 +556,37 @@ def _testing(value: Any, presets: Mapping[str, Any], problems: list[str], langua
     if len(problems) != count or framework is None or tables is None:
         return None
     return _Testing(replace(framework, tables=tables), mocks, preset)
+
+
+def _instead(presets: Mapping[str, Any]) -> str:
+    """What a `testing` that names no preset is told to write: a preset that ships, when one does, or the map."""
+    names = f"use {', '.join(sorted(presets))}, or write" if presets else "write"
+    return f"{names} the map {_PRESET_MAP}"
+
+
+def _preset_of(value: Mapping[Any, Any], presets: Mapping[str, Any], problems: list[str]) -> str:
+    """The name of the preset a map of `testing` names under `preset`; "" when the map has a problem: a key it does
+    not know, a preset that is no name or does not ship, or a key of the framework written beside it, in that order."""
+    count = len(problems)
+    problems += ck.unknown_keys(value, names_of(TESTING), "testing", TESTING)
+    name = value["preset"]
+    if not isinstance(name, str):
+        problems.append(f"testing.preset: must be a preset name: {_instead(presets)}")
+    elif name not in presets:
+        problems.append(f"testing.preset: no preset {name!r}: {_instead(presets)}")
+    named = name if isinstance(name, str) and name in presets else ""
+    problems += [_beside(key.name, named, presets) for key in keys_of(TESTING)
+                 if key.name != "preset" and key.name in value]
+    return named if len(problems) == count else ""
+
+
+def _beside(key: str, preset: str, presets: Mapping[str, Any]) -> str:
+    """The problem of a key of the framework written beside `preset`, which names the preset given, "" for none."""
+    instead = "drop it, or drop preset and write the whole map"
+    if not preset:
+        return f"testing.{key}: written beside preset: {instead}"
+    gives = "gives" if isinstance(presets[preset], Mapping) and key in presets[preset] else "writes no"
+    return f"testing.{key}: the preset {preset} {gives} {key}: {instead}"
 
 
 def _framework_named(testing: _Testing) -> str:

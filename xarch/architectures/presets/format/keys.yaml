@@ -143,10 +143,10 @@ keys:
   testing:
     meaning: how the test framework names things
     accepts: >-
-      a preset name, or a map {files, declared, globals, skips, tables, mocks}; needed with `tiers` and the guards
-      scenario-coverage and stand-ins. Dotted names are what an import binds; what stays %language% is
-      `%interface_path%` as the mark of a port, `%package_file%`, the syntax tree, import resolution and the standard
-      library's names
+      a preset name, a map {preset} naming one, or a map {files, declared, globals, skips, tables, mocks}; needed with
+      `tiers` and the guards scenario-coverage and stand-ins. Dotted names are what an import binds; what stays
+      %language% is `%interface_path%` as the mark of a port, `%package_file%`, the syntax tree, import resolution
+      and the standard library's names
     example: |-
       testing:
         files: [check_*%extension%]
@@ -781,9 +781,15 @@ keys:
           imports:
             types_only: [documents]
       <<tiered-part>>
+  testing.preset:
+    meaning: the preset the framework is read from
+    accepts: >-
+      the name of a preset xarch ships: every key of the framework then comes from it, and one written beside it is
+      refused; `testing: <preset>` is its short form
+    example: "testing: {preset: <preset>}"
   testing.files:
     meaning: patterns of a test file's name
-    accepts: a list of %extension% names with `*` for any text
+    accepts: a list of %extension% names with `*` for any text; required unless `preset` is written
     example: |
       <<testing>>
   testing.declared:
@@ -791,7 +797,8 @@ keys:
     accepts: >-
       a non-empty list of forms, each {function: <pattern>}, a function whose name matches the pattern (`*` for any
       text), or {call: [<dotted name>, ...], title, body}, a call whose arguments hold the test's title and its body;
-      a test is of the first form it matches, and an entry's problem names it by its index, testing.declared.0.call
+      a test is of the first form it matches, and an entry's problem names it by its index, testing.declared.0.call;
+      required unless `preset` is written
     example: |
       <<testing>>
   testing.declared[].function:

@@ -376,6 +376,16 @@ def test_the_functions_of_testing_are_answered_from_the_table_of_retired_names()
         2, 'moved in 0.3.0: write declared: [{function: "<pattern>"}]')
 
 
+def test_the_preset_of_testing_is_explained_and_names_the_presets_xarch_ships():
+    result = runner.invoke(app, ["profile", "explain", "testing.preset"])
+    assert result.exit_code == 0, result.output
+    lines = result.output.splitlines()
+    assert lines[0] == "testing.preset"
+    assert "  what: the preset the framework is read from" in lines
+    assert "  one of: pytest" in lines
+    assert "    testing: {preset: pytest}" in lines
+
+
 def test_a_holder_of_a_table_form_says_the_fact_of_its_form_and_whether_python_supplies_it():
     call = json.loads(runner.invoke(app, ["profile", "explain", "testing.tables.call", "--format", "json"]).output)
     assert call["needs"] == [{"fact": "function.tables.call", "meaning": FACTS["function.tables.call"], "grade": "absent",
