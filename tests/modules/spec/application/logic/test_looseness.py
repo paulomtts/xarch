@@ -237,6 +237,16 @@ def test_a_mark_dropped_while_its_target_stays_allowed_is_looser(base, custom, f
             for item in loosened(parsed(marked(custom)), parsed(marked(base))) if item.key == MARK] == found
 
 
+def test_a_mark_dropped_from_an_own_instance_entry_whose_part_lies_in_no_repeating_folder_here_is_shown_with_parts():
+    custom = marked("everything")
+    custom["parts"]["store/"] = custom["parts"]["src/<module>/"].pop("store/")
+    assert [(item.key, item.part, item.what, item.sentence)
+            for item in loosened(parsed(custom), parsed(marked([{"store": "types_only"}, "shared"])))
+            if item.key == MARK] == [
+        (MARK, "service", "parts.store", "service may now call parts.store, which it used only as a type "
+                                         "(parts.service.imports.may.types_only)")]
+
+
 def test_a_tier_s_looser_keys_are_those_of_its_group_and_the_old_words_are_gone():
     assert LOOSER.index("imports.types_only") < LOOSER.index("imports.also") < LOOSER.index("uses.apply_never")
     assert not {"types_only", "may_also_import"} & set(LOOSER)

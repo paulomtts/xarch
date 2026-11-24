@@ -243,6 +243,12 @@ def _into(target: Target, parts: Mapping[str, str]) -> Target:
     return replace(target, part=parts.get(target.part, target.part))
 
 
+def _here(target: Target, words: Mapping[str, str]) -> Target:
+    """A target of the bundled profile renamed into the custom one, its own instance the part itself (scope none) when
+    the part lies in no repeating folder of the custom profile (words), where it has no instance of its own."""
+    return replace(target, scope="none") if target.scope == "own" and target.part not in words else target
+
+
 def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
     member = custom.language.checked.member
     words = custom.words()
@@ -257,7 +263,8 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
     for name in shared:
         allows = [_into(c, pairs) for c in custom.rules.get(name, ())]
         marks = [_into(c, pairs) for c in custom.parts[name].imports_types_only]
-        found += [("imports.may.types_only", name, _shown(_into(t, back), words)) for t in base.parts[pairs[name]].imports_types_only
+        found += [("imports.may.types_only", name, _shown(_here(_into(t, back), words), words))
+                  for t in base.parts[pairs[name]].imports_types_only
                   if any(_covers(c, t) for c in allows) and not any(_covers(c, t) for c in marks)]
     if base.imports_libraries is not None:
         if custom.imports_libraries is None:
