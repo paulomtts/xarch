@@ -83,6 +83,12 @@ All notable changes to this project are written here. The format follows
 - `profile check` lists a `types_only` mark dropped from an entry of a part's `imports.may`, whose target the part
   still may import and no mark of the part covers, under the key `imports.may.types_only`: `<part> may now call
   <target>, which it used only as a type (parts.<part>.imports.may.types_only)`.
+- A test framework that writes no table form (`testing.tables: []`, or `tables` left out) can switch on
+  `guards.scenario-coverage`: every variant of a use case's union must then be named by a test of its test file
+  (`<Union> variant <V> is named by no test`), and a variant named only by tests that never assert is weak. The
+  guard's `columns` is refused for such a framework (`drop \`columns\`: the framework writes no table, so each result
+  is its own test`), and `tiers.<tier>.plain_tables` says `needs a table form: the framework <framework> writes none
+  in \`testing.tables\``.
 
 ### Changed
 
