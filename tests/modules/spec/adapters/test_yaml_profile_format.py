@@ -68,11 +68,11 @@ def c(*texts: str) -> tuple[Condition, ...]:
                   'message: "m"', 'fix: "f"', "cases:", "  - when: [{of-kind: use}]", '    message: "{where} reads {hit}"',
                   '    fix: "f"', "    once_per: [line]"], id="dotted names, a method, and a case"),
     pytest.param(WrittenCheck(("import", "import-into-app"), Scope(part="store"),
-                              Quantified("must_reach", (WrittenTarget("place", ("core", "api@any/v1")),
+                              Quantified("must_reach", (WrittenTarget("place", ("parts.core", "parts.api/v1")),
                                                         WrittenTarget("outside")),
                                          ("import-into-app",), c("target-in-own-part")), (Saying("m", "f"),)),
                  ["read: [import, import-into-app]", "in: {part: store}", "must_reach:",
-                  "  targets: [{place: [core, api@any/v1]}, outside]", "  through: import-into-app",
+                  "  targets: [{place: [parts.core, parts.api/v1]}, outside]", "  through: import-into-app",
                   "  through_only: [target-in-own-part]", 'message: "m"', 'fix: "f"'], id="a reach to targets"),
     pytest.param(WrittenCheck(("class",), Scope(part="ports"),
                               Quantified("must_be_reached", (), ("names-mentioned",), (),
@@ -116,9 +116,9 @@ def test_a_chain_of_folders_that_are_no_part_is_written_as_one_joined_key():
 
 
 def test_a_part_s_own_keys_come_first_in_the_fixed_order_then_its_folders_and_files():
-    assert parts_written({"cli/": {"reports/": {"role": "r"}, "tests": "unit", "commands/": {}, "imports": {"may": ["x"]},
+    assert parts_written({"cli/": {"reports/": {"role": "r"}, "tests": "unit", "commands/": {}, "imports": {"may": ["parts.x"]},
                                    "role": "c", "name": "cli"}}) == (
-        "  cli/:\n    name: cli\n    role: c\n    imports:\n      may: [x]\n    tests: unit\n"
+        "  cli/:\n    name: cli\n    role: c\n    imports:\n      may: [parts.x]\n    tests: unit\n"
         "    reports/:\n      role: r\n    commands/: {}\n")
 
 

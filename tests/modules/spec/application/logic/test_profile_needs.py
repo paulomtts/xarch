@@ -84,7 +84,7 @@ def everywhere() -> tuple[dict, dict]:
                                "no-comments": {}, "no-twins": {"translated": ["api"]}},
                        reserved={"json": "only io"})
     part_of(document, "service")["holds"] = {"classes": {}}
-    document["tiers"]["unit"]["imports"] = {"must": ["service"]}
+    document["tiers"]["unit"]["imports"] = {"must": ["parts.service"]}
     part_of(document, "service")["uses"] = {"never": "pure"}
     document["tiers"]["unit"]["uses"] = {"apply_never": True}
     return document | {"testing": "pytest"}, {"pytest": document["testing"]}
@@ -117,7 +117,8 @@ def test_a_key_whose_check_reads_a_fact_supplied_partly_loads_and_is_kept_as_app
 
 
 def test_a_key_whose_facts_are_all_supplied_exactly_is_neither_refused_nor_approximate():
-    assert parsed(services(imports={"may": ["store", "shared"], "libraries": ["sqlmodel"]}), languages=LANGUAGES).approximate == ()
+    assert parsed(services(imports={"may": ["module.store", "parts.shared"], "libraries": ["sqlmodel"]}),
+                  languages=LANGUAGES).approximate == ()
 
 
 def test_a_language_whose_data_file_says_nothing_of_its_reader_holds_no_key_to_it():
@@ -178,7 +179,7 @@ def test_a_tier_that_applies_the_never_lists_needs_the_facts_their_check_reads()
 
 
 def test_a_tier_s_imports_need_what_the_old_tier_keys_needed_at_their_new_addresses():
-    document = tiered(imports={"must": ["service"], "types_only": ["store"]})
+    document = tiered(imports={"must": ["parts.service"], "types_only": ["parts.store"]})
     assert [(item.address, item.fact) for item in short(document, {}, TOY)] == [
         ("tiers.unit.imports.must", "function.statements"),
         *(("tiers.unit.imports.types_only", fact) for fact in ("call", "use", "module_functions", "import.resolved"))]
@@ -339,7 +340,7 @@ def unsupplied(address: str) -> str:
 
 @pytest.mark.parametrize("keys, address", [
     pytest.param({"package_only": True}, "parts.service.package_only", id="package_only"),
-    pytest.param({"imports": {"may": ["store"], "must": ["store"]}}, "parts.service.imports.must",
+    pytest.param({"imports": {"may": ["module.store"], "must": ["module.store"]}}, "parts.service.imports.must",
                  id="a part's imports.must"),
 ])
 def test_a_key_that_reads_the_package_file_as_written_is_refused_under_a_language_with_none(keys, address):
@@ -529,16 +530,16 @@ def test_the_needs_refused_are_those_of_the_kinds_and_settings_listed_alone():
 
 
 def test_a_mark_needs_what_types_only_reads_at_its_address():
-    document = services(imports={"may": ["store", {"shared": "types_only"}]})
+    document = services(imports={"may": ["module.store", {"parts.shared": "types_only"}]})
     assert [(item.address, item.fact) for item in short(document, {}, TOY)] == [
         ("parts.service.imports.may.types_only", fact) for fact in ("call", "use", "module_functions",
                                                                     "import.resolved")]
 
 
 @pytest.mark.parametrize("may", [
-    pytest.param(["store", "shared"], id="no mark"),
+    pytest.param(["module.store", "parts.shared"], id="no mark"),
     pytest.param("everything", id="everything"),
-    pytest.param(["store", {"shared": "types"}], id="a mode refused"),
+    pytest.param(["module.store", {"parts.shared": "types"}], id="a mode refused"),
 ])
 def test_a_may_with_no_mark_needs_nothing_of_types_only(may):
     assert short(services(imports={"may": may}), {}, TOY) == []
@@ -548,7 +549,7 @@ def test_must_and_libraries_fall_short_at_their_new_addresses():
     no_standard = replace(TOY, checked=replace(TOY.checked, supplies=tuple(
         supply for supply in TOY.checked.supplies if supply.fact != "import.standard")))
     document = layered(language="toy")
-    part_of(document, "store")["imports"]["must"] = ["shared"]
+    part_of(document, "store")["imports"]["must"] = ["parts.shared"]
     found = {(item.address, item.fact) for item in short(document, {}, no_standard)}
     assert {("parts.store.imports.must", "import.standard"),
             ("parts.store.imports.libraries", "import.standard")} <= found

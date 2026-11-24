@@ -43,7 +43,7 @@ def test_a_check_comes_back_with_each_slot_as_the_rules_read_it_and_the_defaults
 def test_a_reach_to_targets_keeps_its_targets_as_written_and_its_filters_as_conditions():
     body = {**SMALL, "read": ["import", "import-into-app"], "in": {"part": "store", "where": ["not package-file",
                                                                                               {"not below": "x/y"}]},
-            "keep": [{"named": "*Repo"}], "must_reach": {"targets": [{"place": ["shared"]}, "outside"],
+            "keep": [{"named": "*Repo"}], "must_reach": {"targets": [{"place": ["parts.shared"]}, "outside"],
                                                           "through": "import-into-app", "through_only": ["target-in-own-part"]},
             "cases": [{"when": ["relative"], "message": "m", "fix": "f", "once_per": ["line"]}]}
     del body["may_not"]
@@ -53,7 +53,7 @@ def test_a_reach_to_targets_keeps_its_targets_as_written_and_its_filters_as_cond
     assert (check.within, check.keep, check.sayings[0]) == (
         Scope(APP, "store", "", (Condition("package-file", negated=True), Condition("below", "x/y", True))),
         (Condition("named", "*Repo"),), Saying("m", "f", (Condition("relative"),), ("line",)))
-    assert check.quantified == Quantified("must_reach", (WrittenTarget("place", ("shared",)), WrittenTarget("outside")),
+    assert check.quantified == Quantified("must_reach", (WrittenTarget("place", ("parts.shared",)), WrittenTarget("outside")),
                                           ("import-into-app",), (Condition("target-in-own-part"),))
 
 

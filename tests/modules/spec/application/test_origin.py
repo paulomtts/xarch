@@ -38,12 +38,12 @@ def test_a_copy_of_a_bundled_profile_is_compared_with_it_and_found_no_looser():
 
 
 def test_every_way_a_custom_profile_is_looser_than_the_bundled_one_it_resembles_is_listed():
-    parts = {**PARTS, "core/": {**PARTS["core/"], "imports": {"may": ["store"], "libraries": ["yaml"]}},
+    parts = {**PARTS, "core/": {**PARTS["core/"], "imports": {"may": ["parts.store"], "libraries": ["yaml"]}},
              "store/": {"role": "storage",
-                       "imports": {"may": ["core"], "libraries": ["sqlmodel", "requests"]}, "untested": "trust me"}}
+                       "imports": {"may": ["parts.core"], "libraries": ["sqlmodel", "requests"]}, "untested": "trust me"}}
     custom = {**BASE, "parts": parts, "never": {"pure": ["socket"]},
               "tiers": {"unit": {key: value for key, value in TIER.items() if key != "imports"}
-                        | {"uses": {"apply_never": False}, "imports": {"also": ["edge"]}}},
+                        | {"uses": {"apply_never": False}, "imports": {"also": ["parts.edge"]}}},
               "testing": {**TESTING, "skips": ["pytest.mark.skip"], "beside": True},
               "guards": {},
               "files": {"tests/test_rules.py": {"from": "guard.py"}}}
@@ -75,7 +75,7 @@ def test_a_stricter_custom_profile_lists_nothing_and_a_broader_ban_covers_a_narr
 
 
 def test_a_part_that_may_import_any_outside_package_is_looser_than_one_that_lists_them():
-    custom = {**BASE, "parts": part("store", imports={"may": ["core"], "libraries": "everything"})}
+    custom = {**BASE, "parts": part("store", imports={"may": ["parts.core"], "libraries": "everything"})}
     assert controller(custom).origin("mine.yaml").looser == (
         Loosened("imports.libraries", "store", "*", "store may import any outside package (parts.store.imports.libraries)"),)
 
@@ -98,11 +98,11 @@ def test_the_closest_bundled_profile_is_the_one_of_highest_match_the_first_by_na
 
 
 def test_a_part_that_no_longer_has_to_import_or_may_meet_it_with_more_is_looser():
-    base = {**BASE, "parts": part("store", imports=held(["core", "edge"], ["core"]))}
-    dropped = {**base, "parts": part("store", imports=held(["core"]))}
-    wider = {**base, "parts": part("store", imports=held(["core", "edge"], ["core", "edge"]))}
-    same = {**base, "parts": part("store", imports=held(["core", "edge"], ["core"]))}
-    stricter = {**BASE, "parts": part("store", imports=held(["core", "edge"], ["core"]))}
+    base = {**BASE, "parts": part("store", imports=held(["parts.core", "parts.edge"], ["parts.core"]))}
+    dropped = {**base, "parts": part("store", imports=held(["parts.core"]))}
+    wider = {**base, "parts": part("store", imports=held(["parts.core", "parts.edge"], ["parts.core", "parts.edge"]))}
+    same = {**base, "parts": part("store", imports=held(["parts.core", "parts.edge"], ["parts.core"]))}
+    stricter = {**BASE, "parts": part("store", imports=held(["parts.core", "parts.edge"], ["parts.core"]))}
     files = FakeArchitectureFiles({"base": base}, {"dropped.yaml": dropped, "wider.yaml": wider, "same.yaml": same,
                                                    "stricter.yaml": stricter}, {"guard.py": "check()\n"})
     spec = spec_controller(files)
