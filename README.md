@@ -113,7 +113,7 @@ everything else is optional, and a key left out means off):
 
 ```
 name*  based_on  language  hints  excluded  reserved
-testing:  <preset> | {files*, declared*, globals, skips, tables, mocks}
+testing:  <preset> | {preset} | {files*, declared*, globals, skips, tables, mocks}
 parts*:   {<part>: {path*, role*, litmus, imports: {may, must, libraries}, uses: {never}, tests | untested,
                     package_only, folders, shared,
                     holds: {classes: {names, immutable, built_by}, functions: {names}, records: {names, immutable},
@@ -181,6 +181,9 @@ supplies every fact exactly but `function.tables.call` and `test.call`, so a fra
 Python is refused at that entry (`testing.tables.0.call`, `testing.declared.0.call`). A framework declares its tests
 with `testing.declared`, a list of forms: a `function` form, a function whose name matches a pattern, or a `call` form,
 a call whose arguments hold the test's `title` and its `body`; `testing.globals` names what it binds without an import.
+`testing: {preset: pytest}` names a preset as a map, and every framework key then comes from it: one written beside
+it is refused (`testing.files: the preset pytest gives files: drop it, or drop preset and write the whole map`), never
+merged, and a project with its own `files` writes the whole map instead; `testing: pytest` is its short form.
 That the table forms and the call form are neutral to a language is proved without a TypeScript reader: a test-only
 framework (`tests/fakes/frameworks/stub.yaml`, a function form and a call form of a test, a loop form and a call form of
 a table with literal rows) is checked on hand-built facts and worded by the `writing` of the test-only language

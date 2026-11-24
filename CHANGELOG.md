@@ -103,6 +103,12 @@ All notable changes to this project are written here. The format follows
   `test.call`, which no reader supplies yet, so a call form under Python is refused at its entry; the call form is
   proved on hand-built facts. A test declared by a title is named in double quotes (`"places an order" has an \`if\`
   in its body`), one declared by its function by its bare name, as before.
+- `testing` may name its preset as a map, `testing: {preset: pytest}`, which means `testing: pytest`: the framework
+  comes wholly from the preset. A framework key written beside `preset` is refused, never merged (`testing.files: the
+  preset pytest gives files: drop it, or drop preset and write the whole map`, or `the preset pytest writes no
+  globals` for a key the preset does not hold); a `preset` that names no preset is refused at `testing.preset`, and a
+  preset may not name a preset. `xarch profile explain testing.preset` explains it, and the "use ..." list of
+  `testing` gains `preset`.
 
 ### Changed
 
