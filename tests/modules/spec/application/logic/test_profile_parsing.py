@@ -455,8 +455,8 @@ def test_references_reach_every_target_spec_reads_and_the_old_forms_are_each_ref
     new = parsed(referencing({"may": ["module.domain", "parts.kernel", {"parts.domain": "types_only"}],
                               "must": ["parts.kernel"]},
                              {"imports": {"may": ["parts.kernel"], "also": ["module.domain/values"]}}))
-    old = (referencing({"may": ["domain", "kernel", {"domain@any": "types_only"}], "must": ["kernel"]},
-                             {"imports": {"may": ["kernel"], "also": ["domain/values"]}}))
+    old = referencing({"may": ["domain", "kernel", {"domain@any": "types_only"}], "must": ["kernel"]},
+                      {"imports": {"may": ["kernel"], "also": ["domain/values"]}})
     services, (guard,) = new.parts["services"], new.tiers
     assert (new.rules["services"], services.imports_must, services.imports_types_only) == (
         (Target("domain", "own"), Target("kernel"), Target("domain", "any")), (Target("kernel"),),
