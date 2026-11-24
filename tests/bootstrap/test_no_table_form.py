@@ -14,7 +14,8 @@ from xarch.modules.spec.domain.errors import InvalidArchitecture
 PROFILE = """name: untabled
 testing:
   files: ["*Test.py"]
-  functions: "Test*"
+  declared:
+    - function: "Test*"
   tables: []
 parts:
   contract:   {path: modules/<module>/contract, role: results, tests: integration}

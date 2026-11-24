@@ -11,6 +11,7 @@ from xarch.bootstrap.app import app
 from xarch.bootstrap.wiring import load_architecture
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.profile_values.testing import ScenarioCoverage, StandIns
+from xarch.profile_values.testing import TestForm as DeclaredForm
 
 PROFILE = """\
 name: small
@@ -89,14 +90,14 @@ def test_the_preset_is_read_from_the_data_file_beside_the_bundled_profiles(tmp_p
     architecture = load_architecture(profile_in(tmp_path))
     assert architecture.framework is not None
     assert architecture.framework.files == ("test_*.py", "*_test.py")
-    assert architecture.framework.functions == "test_*"
+    assert architecture.framework.declared == (DeclaredForm(function="test_*"),)
 
 
 def test_a_preset_that_does_not_exist_is_refused_listing_the_ones_that_do(tmp_path):
     with pytest.raises(InvalidArchitecture) as caught:
         load_architecture(profile_in(tmp_path, PROFILE.replace("testing: pytest", "testing: rspec")))
     assert caught.value.problems == (
-        f"{tmp_path / 'small.yaml'}: testing: no preset 'rspec': use pytest, or write the map {{files, functions}}",)
+        f"{tmp_path / 'small.yaml'}: testing: no preset 'rspec': use pytest, or write the map {{files, declared}}",)
 
 
 def test_a_version_line_is_refused_as_an_unknown_key(tmp_path):
@@ -144,10 +145,10 @@ def test_a_bare_name_in_the_file_of_the_scenario_guard_is_refused_with_its_hint(
     assert f"    {path}: {BARE}" in checked.output.splitlines()
 
 
-OLD_TABLE_PROFILE = PRESET_PROFILE.replace("testing: pytest\n", 'testing:\n  files: ["test_*.py"]\n  functions: "test_*"\n'
+OLD_TABLE_PROFILE = PRESET_PROFILE.replace("testing: pytest\n", 'testing:\n  files: ["test_*.py"]\n  declared: [{function: "test_*"}]\n'
                                            "  table: {decorator: pytest.mark.parametrize, row: pytest.param, id: id}\n")
 RETIRED_TABLE = ("testing: unknown key 'table': moved in 0.3.0: write tables, a list of forms (xarch profile explain "
-                 "testing.tables); use files, functions, mocks, skips, tables")
+                 "testing.tables); use declared, files, globals, mocks, skips, tables")
 
 
 def test_a_profile_writing_the_table_of_testing_is_refused_with_its_hint(tmp_path):

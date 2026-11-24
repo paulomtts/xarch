@@ -369,7 +369,7 @@ class Architecture:
     fakes: where the test fakes live; None: no test may import them
     repeats: the repeating folders of the layout, in the order of the profile: each its word, as the docs show one
         instance, and the folder it repeats in
-    framework: how the test framework names test files and functions; None when no tier or guard needs them
+    framework: how the test framework names test files and declares tests; None when no tier or guard needs them
     files: the project files `init` writes besides the docs, in order
     uses_never: the dotted names and modules a part may not use, and the methods it may not call on anything, each as
         ("", "<name>()"), by part; a part not listed has none

@@ -40,6 +40,7 @@ from xarch.profile_values.checks import Quantified, Saying, Scope, WrittenCheck,
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.placement import Repeat, Target
 from xarch.profile_values.testing import Fakes, Fixture, Framework, ScenarioCoverage, StandIns
+from xarch.profile_values.testing import TestForm as DeclaredForm
 from xarch.profile_values.tiers import CheckedTier
 
 VIEW = ProfileView(
@@ -59,7 +60,7 @@ VIEW = ProfileView(
                       no_twins_translated=("api",), dead_code=True, untested=True, tests_only=True,
                       tests_only_known=("api/x.py:run",), pass_through=("api",), no_callbacks=("core",),
                       private_imports=True),
-    fakes=Fakes(("fakes",), ("api",), "Fake"), framework=Framework(("test_*.py",), "test_*", (("skip",),)),
+    fakes=Fakes(("fakes",), ("api",), "Fake"), framework=Framework(("test_*.py",), (DeclaredForm(function="test_*"),), (("skip",),)),
     excluded=(Excluded(("vendor",), "not ours"),), hints={"may-import": "ask first"},
     checks={"no-print": WrittenCheck(("call",), Scope(), Quantified("may_not", (WrittenTarget("path", ("builtins.print",)),)),
                                      (Saying("{where} prints", "log it"),))})
@@ -119,7 +120,7 @@ def test_the_profile_view_becomes_the_profile_the_checks_see():
         scenarios=ScenarioCoverage("api", "unit", "Result", ("a", "b", "c"),
                             "test_{name:snake}.py"),
         no_comments=True, stand_ins=StandIns((("m", "Mock"),), (), ("spec",), (Fixture("mocker", ("Mock",)),)),
-        closed_tree=True, framework=Framework(("test_*.py",), "test_*", (("skip",),)),
+        closed_tree=True, framework=Framework(("test_*.py",), (DeclaredForm(function="test_*"),), (("skip",),)),
         uses_never={"core": (("socket",),)},
         info={"core": PartInfo("the rules", "Is it a rule?", "core/"),
               "api": PartInfo("handlers", "", "api/ of src/<module>", "it only wires")},

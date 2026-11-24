@@ -32,9 +32,9 @@ def test_a_language_xarch_does_not_ship_is_refused_naming_those_it_does():
 
 
 def test_the_extension_of_the_language_is_what_a_test_file_pattern_ends_in():
-    testing = {"files": ["check_*.pas"], "functions": "check_*"}
+    testing = {"files": ["check_*.pas"], "declared": [{"function": "check_*"}]}
     assert parsed(layered(testing=testing), languages=BOTH, presets={}).framework.files == ("check_*.pas",)
-    assert problems(covered(testing={"files": ["check_*.py"], "functions": "check_*"}), languages=BOTH) == [
+    assert problems(covered(testing={"files": ["check_*.py"], "declared": [{"function": "check_*"}]}), languages=BOTH) == [
         "layered.yaml: testing.files: 'check_*.py' is not a file name pattern: a name ending in .pas, with `*` for any "
         "text"]
 

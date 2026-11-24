@@ -12,14 +12,14 @@ from xarch.modules.spec.application.logic.profile_checks import use_case_file
 from xarch.profile_values.language import Writing
 from xarch.profile_values.testing import Fixture, Place, RowId, ScenarioCoverage, TableForm
 
-FILES = {"files": ["test_*.py"], "functions": "test_*"}
+FILES = {"files": ["test_*.py"], "declared": [{"function": "test_*"}]}
 MOCKS_OK = TESTING["mocks"]
 SCENARIOS = {"results": "api", "tier": "integration", "suffix": "Result", "columns": ["given", "when", "then"],
              "file": "test_{name:snake}.py"}
 FAKES = {"folder": "fakes", "for": ["store"], "prefix": "Fake"}
 PATTERN = ("layered.yaml: testing.files: must be a non-empty list of file name patterns, each a .py name with `*` for "
            "any text")
-FUNCTION = "layered.yaml: testing.functions: must be a function name pattern: a name with `*` for any text"
+FUNCTION = "layered.yaml: testing.declared.0.function: must be a function name pattern: a name with `*` for any text"
 FIXTURES = ("layered.yaml: testing.mocks.fixtures: must be a mapping of parameter names to {calls}, and optionally "
             "autospec: the names of the methods that build a mock, and of those that build one from a spec given as "
             "an argument")
@@ -31,7 +31,7 @@ POSITION = ("layered.yaml: testing.mocks.spec_position: must be a whole number, 
             "the argument that names the spec; leave it out when only a keyword names it")
 DOTTED = "must be a list of outside names such as <package>.<name>"
 METHODS = "must be a list of method names such as [build]"
-WRITE = "write testing: <preset>, or testing: {files: [<pattern>, ...], functions: <pattern>}"
+WRITE = "write testing: <preset>, or testing: {files: [<pattern>, ...], declared: [{function: <pattern>}]}"
 BARE = "{name} with no case was removed in 0.3.0: write {name:snake} for what {name} meant"
 ONCE = "must hold `{name:<case>}` once, <case> one of snake, kebab, camel, pascal, such as a_{name:snake}"
 
@@ -56,9 +56,9 @@ def with_fixtures(fixtures) -> dict:
     pytest.param(FILES | {"files": ["test_*"]},
                  "layered.yaml: testing.files: 'test_*' is not a file name pattern: a name ending in .py, with `*` "
                  "for any text", id="a file pattern with no .py ending is refused"),
-    pytest.param(FILES | {"functions": ""}, FUNCTION, id="an empty function pattern is refused"),
-    pytest.param(FILES | {"functions": "9_*"}, FUNCTION, id="a function pattern starting with a digit is refused"),
-    pytest.param(FILES | {"functions": ["test_*"]}, FUNCTION, id="function patterns given as a list are refused"),
+    pytest.param(FILES | {"declared": [{"function": ""}]}, FUNCTION, id="an empty function pattern is refused"),
+    pytest.param(FILES | {"declared": [{"function": "9_*"}]}, FUNCTION, id="a function pattern starting with a digit is refused"),
+    pytest.param(FILES | {"declared": [{"function": ["test_*"]}]}, FUNCTION, id="function patterns given as a list are refused"),
 ])
 def test_a_bad_framework_pattern_is_refused(testing, expected):
     assert problems(covered(testing=testing)) == [expected]
@@ -189,7 +189,7 @@ def test_a_guard_that_reads_test_files_needs_testing(guards, needs):
 
 def test_the_file_of_the_scenario_guard_is_checked_against_the_testing_patterns_only_when_both_are_valid():
     document = covered(guards={"scenario-coverage": SCENARIOS | {"file": "spec_{name:snake}.py"}},
-                       testing={"files": [], "functions": "test_*"})
+                       testing={"files": [], "declared": [{"function": "test_*"}]})
     assert problems(document) == [PATTERN]
 
 
@@ -242,7 +242,7 @@ def test_the_stand_ins_line_says_each_annotation_of_no_value_of_the_language():
 
 
 def test_a_profile_naming_another_framework_gets_its_own_words_in_the_guards_lines():
-    testing = {"files": ["*_spec.py"], "functions": "it_*",
+    testing = {"files": ["*_spec.py"], "declared": [{"function": "it_*"}],
                "tables": [{"decorator": "cases.table", "columns_from": {"position": 0}, "rows": {"position": 1},
                           "row": "cases.row", "id": {"keyword": "name"}}],
                "mocks": {"calls": ["doubles.Double"], "spec_keywords": ["of"]}}
@@ -301,7 +301,7 @@ BRACED = {"python": PYTHON, "brace": BRACE}
 
 
 def braced(files) -> dict:
-    return covered(testing={"files": files, "functions": "test*"}, language="brace")
+    return covered(testing={"files": files, "declared": [{"function": "test*"}]}, language="brace")
 
 
 def test_under_several_endings_a_file_pattern_may_end_in_any_of_them():
@@ -320,8 +320,8 @@ def test_under_several_endings_a_refusal_lists_every_ending(files, expected):
 
 
 def test_a_file_pattern_may_hold_any_character_but_a_slash():
-    assert parsed(covered(testing={"files": ["tést_*.py"], "functions": "test_*"})).framework.files == ("tést_*.py",)
-    assert problems(covered(testing={"files": [".py"], "functions": "test_*"})) == [
+    assert parsed(covered(testing={"files": ["tést_*.py"], "declared": [{"function": "test_*"}]})).framework.files == ("tést_*.py",)
+    assert problems(covered(testing={"files": [".py"], "declared": [{"function": "test_*"}]})) == [
         "layered.yaml: testing.files: '.py' is not a file name pattern: a name ending in .py, with `*` for any text"]
 
 
@@ -391,7 +391,7 @@ def test_a_file_in_any_case_is_checked_against_the_testing_patterns(file):
     pytest.param("pascal", id="pascal"),
 ])
 def test_the_guard_line_shows_the_name_as_name_whatever_its_case(case):
-    testing = {"files": ["*_spec.py"], "functions": "it_*"}
+    testing = {"files": ["*_spec.py"], "declared": [{"function": "it_*"}]}
     lines = guard_lines(testing=testing, guards={"scenario-coverage": SCENARIOS | {"file": f"{{name:{case}}}_spec.py"}})
     assert "in `<name>_spec.py`" in lines[0]
 

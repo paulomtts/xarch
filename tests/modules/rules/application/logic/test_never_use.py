@@ -9,6 +9,7 @@ from xarch.modules.rules.domain.parsed import MethodCall, SourceFile, Use
 from xarch.modules.rules.domain.profile import Profile
 from xarch.profile_values.placement import Target
 from xarch.profile_values.testing import Fakes, Framework
+from xarch.profile_values.testing import TestForm as DeclaredForm
 from xarch.profile_values.tiers import CheckedTier as Tier
 
 NOW = ("datetime", "datetime", "now")
@@ -18,7 +19,7 @@ PROFILE = Profile(parts={"domain": ("modules", "*", "domain"), "adapters": ("mod
                   tiers=(Tier("unit", (Target("domain", "own"),), apply_never=True),
                          Tier("loose", (Target("adapters", "own"),))),
                   uses_never={"domain": (NOW, ("builtins", "open"), ("socket",), ("urllib",))},
-                  framework=Framework(("test_*.py",), "test_*"), language=PYTHON)
+                  framework=Framework(("test_*.py",), (DeclaredForm(function="test_*"),)), language=PYTHON)
 DOMAIN = ("modules", "docs", "domain", "doc.py")
 
 

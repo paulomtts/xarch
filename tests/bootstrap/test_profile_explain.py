@@ -396,3 +396,8 @@ def test_the_loop_holder_of_a_table_form_says_python_supplies_its_fact_exactly()
     text = " ".join(runner.invoke(app, ["profile", "explain", "testing.tables.loop"]).output.split())
     assert ("needs: function.tables.loop: the facts of the source its check reads, which Python supplies "
             "exactly") in text
+
+
+def test_a_slot_of_a_form_that_declares_a_test_is_explained_by_the_key_without_an_index():
+    result = runner.invoke(app, ["profile", "explain", "testing.declared.call"])
+    assert result.exit_code == 0 and "the calls that declare a test" in result.output

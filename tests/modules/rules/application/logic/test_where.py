@@ -12,6 +12,7 @@ from xarch.modules.rules.domain.places import FakePlace, PartAt, PartPlace, Reso
 from xarch.modules.rules.domain.profile import PartInfo, Profile
 from xarch.profile_values.placement import Repeat, Target
 from xarch.profile_values.testing import Fakes, Framework
+from xarch.profile_values.testing import TestForm as DeclaredForm
 from xarch.profile_values.tiers import CheckedTier as Tier
 
 ROOT, APP, TESTS = Path("/p"), Path("/p/app"), Path("/p/tests")
@@ -37,7 +38,7 @@ PROFILE = Profile(
            Tier("guard", (), ("architecture",), (), False, "a rule holds", "the source tree")),
     imports_libraries={"kernel": (), "domain": (), "platform": ("yaml",), "entry": ("typer",)}, default_tests="tests",
     fakes=Fakes(("fakes",), ("ports",), "Fake"), repeats=(Repeat("module", ("modules",)),),
-    framework=Framework(("test_*.py",), "test_*"),
+    framework=Framework(("test_*.py",), (DeclaredForm(function="test_*"),)),
     uses_never={"domain": (NOW, ("builtins", "open"))},
     info={name: PartInfo(f"the {name} role", f"Is it {name}?", SHOWN[name],
                          "wraps a library" if name == "platform" else "") for name in PARTS},
@@ -316,7 +317,7 @@ def test_the_parts_near_a_path_in_the_second_repeating_folder_are_shown_with_its
     assert [(n.target.part, n.path) for n in here.nearest] == [("hooks", "app/plugins/seo/hooks/")]
 
 
-BRACED = replace(PROFILE, language=BRACE, framework=Framework(("*.test.ts",), "test*"))
+BRACED = replace(PROFILE, language=BRACE, framework=Framework(("*.test.ts",), (DeclaredForm(function="test*"),)))
 """PROFILE in the TypeScript-like test-only language, its test files named `*.test.ts`."""
 
 

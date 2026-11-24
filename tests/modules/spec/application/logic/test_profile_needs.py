@@ -58,7 +58,7 @@ def services(**keys) -> dict:
 
 def tiered(**keys) -> dict:
     """layered() in toy, with one tier, unit, that tests every part, its keys the ones given."""
-    document = layered(language="toy", testing={"files": ["test_*.py"], "functions": "test_*"}, tiers={"unit": keys})
+    document = layered(language="toy", testing={"files": ["test_*.py"], "declared": [{"function": "test_*"}]}, tiers={"unit": keys})
     for spec in document["parts"].values():
         spec["tests"] = "unit"
     return document
@@ -542,7 +542,7 @@ def test_must_and_libraries_fall_short_at_their_new_addresses():
 
 
 def test_a_decorator_form_needs_the_tables_of_cases_a_mark_holds_at_its_index_and_testing_tables_needs_none():
-    document = layered(language="toy", testing={"files": ["test_*.py"], "functions": "test_*", "tables": [PYTEST_TABLE]})
+    document = layered(language="toy", testing={"files": ["test_*.py"], "declared": [{"function": "test_*"}], "tables": [PYTEST_TABLE]})
     found = problems(document, languages=LANGUAGES)
     assert refusal("testing.tables.0.decorator", "function.tables.decorator") in found
     assert [problem for problem in found if problem.startswith("layered.yaml: testing.tables: its check reads")] == []
@@ -562,7 +562,7 @@ def test_each_holder_of_a_table_form_needs_its_own_fact_and_the_keys_that_read_t
                                                  "function.mentions")
 
 
-FILES = {"files": ["test_*.py"], "functions": "test_*"}
+FILES = {"files": ["test_*.py"], "declared": [{"function": "test_*"}]}
 CALL_FORM = {"call": ["checks.each"], "columns_from": {"position": 0}, "rows": {"position": 1}, "row": "checks.case",
              "id": {"keyword": "id"}}
 """A form whose rows a call that makes the test holds."""

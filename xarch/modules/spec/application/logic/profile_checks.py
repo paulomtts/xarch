@@ -20,7 +20,7 @@ from xarch.modules.spec.application.logic.layout_walk import lies_in
 from xarch.modules.spec.application.logic.outside_name import outside_name
 from xarch.modules.spec.application.logic.profile_listing import listing_in
 from xarch.modules.spec.application.logic.project_files import APP_PLACEHOLDER
-from xarch.modules.spec.domain.profile_keys import FILE, FIXTURE, NAMING, PAGE, RULE_ID, TABLES
+from xarch.modules.spec.domain.profile_keys import DECLARED, FILE, FIXTURE, NAMING, PAGE, RULE_ID, TABLES
 from xarch.modules.spec.domain.values import NAME, Doc, FileEntry, Language, Layout, Naming, Part, Tier
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.placement import Target
@@ -31,6 +31,7 @@ from xarch.profile_values.testing import (
     Place,
     RowId,
     TableForm,
+    TestForm,
 )
 
 PART_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_-]*")
@@ -39,6 +40,10 @@ CALLED = "()"
 """How a method in a `never` list, called on anything, ends: `.absolute()`."""
 HOLDERS = ("decorator", "call", "loop")
 """The keys of a table form that say what holds its rows, exactly one of them in each."""
+DECLARING = ("function", "call")
+"""The keys of a form that declares a test that say how it declares one, exactly one of them in each."""
+CALL_SLOTS = ("title", "body")
+"""The slots of a call form: where the test's title and its body are among the call's arguments."""
 PARAMETERS = "parameters"
 """What columns_from says of a form whose column names are the test's own parameters."""
 BOUND = "bound"
@@ -544,23 +549,26 @@ def _unwritten(row: tuple[str, ...], given: RowId, where: str, language: Languag
     return found
 
 
-def _outside_name_at(value: Any, where: str, problems: list[str], language: Language) -> tuple[str, ...] | None:
-    """An outside name of at least two steps, <package><member><name>: the path an import binds."""
+def _outside_name_at(value: Any, where: str, problems: list[str], language: Language,
+                     least: int = 2) -> tuple[str, ...] | None:
+    """An outside name of at least `least` steps: two by default, <package><member><name>, the path an import binds;
+    one, a name the framework binds without an import too."""
     steps = _outside(value, language) if isinstance(value, str) else None
-    if steps is None or len(steps) < 2:
+    if steps is None or len(steps) < least:
         problems.append(f"{where}: {value!r} is not an outside name such as {_such(language)}")
         return None
     return steps
 
 
-def outside_names(value: Any, where: str, problems: list[str], language: Language) -> tuple[tuple[str, ...], ...] | None:
-    """A non-empty list of outside names of at least two steps, each once."""
+def outside_names(value: Any, where: str, problems: list[str], language: Language,
+                  least: int = 2) -> tuple[tuple[str, ...], ...] | None:
+    """A non-empty list of outside names of at least `least` steps (see _outside_name_at), each once."""
     if not isinstance(value, list) or not value:
         problems.append(f"{where}: must be a list of outside names such as {_such(language)}")
         return None
     found: list[tuple[str, ...]] = []
     for item in value:
-        steps = _outside_name_at(item, where, problems, language)
+        steps = _outside_name_at(item, where, problems, language, least)
         if steps is not None and steps in found:
             problems.append(f"{where}: {item!r} is listed twice")
         elif steps is not None:
@@ -617,27 +625,74 @@ def identifiers(value: Any, where: str, problems: list[str], noun: str, example:
     return tuple(found)
 
 
+def _declared_forms(value: Any, where: str, problems: list[str], language: Language) -> tuple[TestForm, ...] | None:
+    """The forms a test is declared in, at least one, each entry addressed `<where>.<i>`, i from 0; None when any entry
+    has a problem."""
+    if not isinstance(value, list) or not value:
+        problems.append(f"{where}: must be a non-empty list of test forms, each {{function}} or {{call, title, body}}")
+        return None
+    forms = [_declared_form(entry, f"{where}.{index}", problems, language) for index, entry in enumerate(value)]
+    found = tuple(form for form in forms if form is not None)
+    return found if len(found) == len(forms) else None
+
+
+def _declared_form(entry: Any, where: str, problems: list[str], language: Language) -> TestForm | None:
+    """One form: exactly one of function and call, and only the keys of the scope."""
+    if not isinstance(entry, Mapping) or sum(key in entry for key in DECLARING) != 1:
+        problems.append(f"{where}: write one of function, call")
+        return None
+    count = len(problems)
+    problems += unknown_keys(entry, names_of(DECLARED), where, DECLARED)
+    if "function" in entry:
+        return _function_form(entry, where, problems, language, count)
+    return _call_form(entry, where, problems, language, count)
+
+
+def _function_form(entry: Mapping[Any, Any], where: str, problems: list[str], language: Language,
+                   count: int) -> TestForm | None:
+    """A function form: a name pattern, `*` for any text, and no slot of a call form; count is how many problems
+    there were before the entry."""
+    problems += [f"{where}.{slot}: a function form takes no slot: drop {slot}" for slot in CALL_SLOTS if slot in entry]
+    pattern = entry["function"]
+    if not (isinstance(pattern, str) and names.is_name(pattern.replace("*", "x"), language.names)):
+        problems.append(f"{where}.function: must be a function name pattern: a name with `*` for any text")
+    return TestForm(function=pattern) if len(problems) == count else None
+
+
+def _call_form(entry: Mapping[Any, Any], where: str, problems: list[str], language: Language,
+               count: int) -> TestForm | None:
+    """A call form: at least one callee, each a name of one step or more, and the places of the test's title and its
+    body among the call's arguments; count is how many problems there were before the entry."""
+    problems += [f"{where}: missing `{slot}`" for slot in CALL_SLOTS if slot not in entry]
+    if entry["call"] == []:
+        problems.append(f"{where}.call: must list at least one callee")
+    calls = outside_names(entry["call"], f"{where}.call", problems, language, 1) if entry["call"] != [] else None
+    title = _place(entry["title"], f"{where}.title", problems, language) if "title" in entry else None
+    body = _place(entry["body"], f"{where}.body", problems, language) if "body" in entry else None
+    if len(problems) != count or calls is None or title is None or body is None:
+        return None
+    return TestForm(call=calls, title=title, body=body)
+
+
 def framework_patterns(value: Any, problems: list[str], where: str, known: Collection[str],
                        language: Language, scope: str = "") -> Framework | None:
-    """How the test framework names test files and functions, the map written at `where`; `known` are the keys the
-    map may hold, which the caller may widen with what it reads itself, and `scope` the scope whose retired names
-    the map's unknown keys are looked up in."""
+    """How the test framework names test files and declares its tests, the map written at `where`; `known` are the
+    keys the map may hold, which the caller may widen with what it reads itself, and `scope` the scope whose retired
+    names the map's unknown keys are looked up in."""
     if not isinstance(value, Mapping):
-        problems.append(f"{where}: must be a mapping {{files, functions}}: the patterns of a test file's name and of a "
-                        "test function's")
+        problems.append(f"{where}: must be a mapping {{files, declared}}: the patterns of a test file's name and the "
+                        "forms that declare a test")
         return None
     count = len(problems)
     problems += unknown_keys(value, known, where, scope)
-    problems += [f"{where}: missing `{key}`" for key in ("files", "functions") if key not in value]
+    problems += [f"{where}: missing `{key}`" for key in ("files", "declared") if key not in value]
     files = _file_patterns(value["files"], problems, f"{where}.files", language) if "files" in value else None
     skips = outside_names(value["skips"], f"{where}.skips", problems, language) if "skips" in value else ()
-    functions = value.get("functions")
-    if "functions" in value and not (isinstance(functions, str)
-                                     and names.is_name(functions.replace("*", "x"), language.names)):
-        problems.append(f"{where}.functions: must be a function name pattern: a name with `*` for any text")
-    if len(problems) != count or files is None or skips is None:
+    declared = _declared_forms(value["declared"], f"{where}.declared", problems, language) if "declared" in value else None
+    bound = outside_names(value["globals"], f"{where}.globals", problems, language, 1) if "globals" in value else ()
+    if len(problems) != count or files is None or skips is None or declared is None or bound is None:
         return None
-    return Framework(files, functions, skips)
+    return Framework(files, declared, skips, globals=bound)
 
 
 def _file_patterns(value: Any, problems: list[str], where: str, language: Language) -> tuple[str, ...] | None:

@@ -7,6 +7,7 @@ from xarch.modules.rules.application.logic.explained import general
 from xarch.modules.rules.domain.profile import PartInfo, Profile
 from xarch.profile_values.placement import Target
 from xarch.profile_values.testing import Fakes, Framework
+from xarch.profile_values.testing import TestForm as DeclaredForm
 from xarch.profile_values.tiers import CheckedTier
 
 EVERY_KEY = Profile(
@@ -20,7 +21,7 @@ EVERY_KEY = Profile(
     holds={"one": ("classes",), "two": ("functions", "records", "exceptions")},
     holds_immutable={"one": ("classes",), "two": ("records",)}, imports_must={"one": (Target("two"),)}, dead_code=True,
     untested=True, tests_only=True,
-    pass_through=("one",), fakes=Fakes(("fakes",), ("two",)), framework=Framework(("*",), "*"),
+    pass_through=("one",), fakes=Fakes(("fakes",), ("two",)), framework=Framework(("*",), (DeclaredForm(function="*"),)),
     info={"one": PartInfo(), "two": PartInfo()})
 """A profile of two parts and a tier that sets every key the engine expands."""
 

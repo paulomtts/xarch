@@ -9,7 +9,7 @@ PROFILE = """
 name: looped
 testing:
   files: ["test_*.py"]
-  functions: "test_*"
+  declared: [{function: "test_*"}]
   tables: [{loop: true, columns_from: bound, row: literal, id: {position: 0}}]
   mocks: {calls: [doubles.Double], spec_keywords: [of]}
 parts:

@@ -4,12 +4,13 @@ from dataclasses import replace
 
 import pytest
 
-from tests.modules.rules.builders import BRACE, PROFILE, PYTEST_FORM, PYTHON, STUB, TESTS, in_tests, profile, source
+from tests.modules.rules.builders import BRACE, PROFILE, PYTEST_FORM, PYTHON, STUB, declaring, in_tests, profile, source
 from xarch.modules.rules.application.logic.scenarios import plain, violations, weak
 from xarch.modules.rules.domain.parsed import Function, Row, Table, Union
 from xarch.modules.rules.domain.published import Weak
 from xarch.profile_values.language import Writing
 from xarch.profile_values.testing import Framework, Place, RowId, TableForm
+from xarch.profile_values.testing import TestForm as DeclaredForm
 
 COLUMNS = ("given", "when", "then")
 RESULTS = source("modules/docs/contract/results.py", unions=(Union(4, "PublishResult", ("Published", "Missing")),))
@@ -27,7 +28,7 @@ TABLE = table(row("Published"), row("Missing", 11))
 
 
 def publish_tests(*functions: Function, path: str = "modules/docs/application/test_publish.py"):
-    return in_tests(path, functions=functions)
+    return declaring(path, *functions)
 
 
 def problems(*tests, app=(RESULTS,), checked=PROFILE) -> list[str]:
@@ -170,6 +171,16 @@ def test_the_test_file_follows_the_guards_file_pattern():
     assert problems(covered, checked=checked) == []
 
 
+def test_a_file_whose_functions_match_the_pattern_but_that_holds_no_test_has_no_table_test():
+    unread = in_tests("modules/docs/application/test_publish.py", functions=(Function(8, "test_publish", (TABLE,)),))
+    assert problems(unread) == [f"{FILE}:1: no table test whose parameters are given, when, then (scenario-coverage)"]
+
+
+def test_the_test_only_framework_declares_a_function_form_and_a_call_form_and_binds_expect():
+    assert ([form.function for form in STUB.declared], STUB.declared[1].call[:2], STUB.globals) == (
+        ["test*", ""], (("vitest", "it"), ("vitest", "test")), (("expect",),))
+
+
 @pytest.mark.parametrize("functions, expected", [
     pytest.param([Function(8, "test_publish", (table(row("Published")),)),
                   Function(20, "test_missing", mentions=frozenset({"Missing"}))],
@@ -235,8 +246,8 @@ BRANCHED = Function(8, "test_doc", (table(row("x"), columns=("a", "b")),), block
 
 
 def test_a_table_test_of_a_tier_whose_tables_are_plain_holds_no_branch_and_one_of_another_tier_may():
-    tests = [in_tests(UNIT_TEST, functions=(BRANCHED, Function(20, "test_other", blocks=((21, "if"),)))),
-             in_tests("modules/web/test_page.py", functions=(BRANCHED,))]
+    tests = [declaring(UNIT_TEST, BRANCHED, Function(20, "test_other", blocks=((21, "if"),))),
+             declaring("modules/web/test_page.py", BRANCHED)]
     assert [str(v) for v in plain(tests, PLAIN)] == [
         "tests/modules/docs/domain/test_doc.py:11: test_doc has an `if` expression in its body, and a table test of "
         "the unit tier holds no branch (tiers.unit.plain_tables; scenario-coverage)",
@@ -300,7 +311,7 @@ def test_the_statement_that_runs_a_table_s_rows_is_no_branch_of_its_test(tables,
 
 def test_a_table_test_of_a_plain_tier_holds_no_branch_but_the_statement_that_runs_its_rows():
     ran = replace(BRANCHED, tables=(replace(BRANCHED.tables[0], runs=12),))
-    assert [str(v) for v in plain([in_tests(UNIT_TEST, functions=(ran,))], PLAIN)] == [
+    assert [str(v) for v in plain([declaring(UNIT_TEST, ran)], PLAIN)] == [
         "tests/modules/docs/domain/test_doc.py:11: test_doc has an `if` expression in its body, and a table test of "
         "the unit tier holds no branch (tiers.unit.plain_tables; scenario-coverage)"]
 
@@ -320,7 +331,8 @@ def test_a_table_a_loop_runs_is_checked_as_any_table_by_its_form_s_slots():
          "(scenario-coverage)", "add a row whose then is Missing, or a standalone test naming it")]
 
 
-NO_FORM = profile(framework=Framework(("test_*.py",), "test_*"), scenarios=replace(PROFILE.scenarios, columns=()))
+NO_FORM = profile(framework=Framework(("test_*.py",), (DeclaredForm(function="test_*"),)),
+                  scenarios=replace(PROFILE.scenarios, columns=()))
 PUBLISHED = Function(8, "test_published", mentions=frozenset({"Published"}), asserts=True)
 MISSING = Function(12, "test_missing", mentions=frozenset({"Missing"}), asserts=True)
 
@@ -405,8 +417,8 @@ def written(*rows: Row, form: int = 1, line: int = 9, runs: int = 0) -> Table:
     return Table(line, COLUMNS, rows, form, runs)
 
 
-def brace_tests(*functions: Function, path: str = "modules/docs/application/publish.test.ts"):
-    return source(path, root=TESTS, language=BRACE, functions=functions)
+def brace_tests(*functions: Function, path: str = "modules/docs/application/publish.test.ts", tests=None):
+    return declaring(path, *functions, framework=STUB, language=BRACE, tests=tests)
 
 
 def stubbed(*tests, checked=STUB_PROFILE) -> list[tuple[str, str]]:

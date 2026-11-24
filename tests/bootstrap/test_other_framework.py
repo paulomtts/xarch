@@ -9,7 +9,7 @@ PROFILE = """
 name: other
 testing:
   files: ["*_spec.py"]
-  functions: "it_*"
+  declared: [{function: "it_*"}]
   tables: [{decorator: cases.table, columns_from: {position: 0}, rows: {position: 1}, row: cases.row,
             id: {keyword: name}}]
   mocks: {calls: [doubles.Double], spec_keywords: [of]}

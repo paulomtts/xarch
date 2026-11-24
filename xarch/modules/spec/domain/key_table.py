@@ -10,6 +10,7 @@ from xarch.modules.spec.domain.profile_keys import (
     CHOICE_LANGUAGES,
     CHOICE_PRESETS,
     DEAD_CODE,
+    DECLARED,
     DOCS,
     EVAL,
     EVALS,
@@ -136,10 +137,16 @@ _KEYS: tuple[Key, ...] = (
     Key(TIER_IMPORTS, "types_only", rules=("types-only",)),
 
     Key(TESTING, "files", True, rules=("tiers", "test-tree")),
-    Key(TESTING, "functions", True, rules=("scenario-coverage", "stand-ins")),
+    Key(TESTING, "declared", True, rules=("scenario-coverage", "stand-ins"), opens=DECLARED),
+    Key(TESTING, "globals", rules=("scenario-coverage", "stand-ins")),
     Key(TESTING, "skips"),
     Key(TESTING, "tables", rules=("scenario-coverage",), opens=TABLES),
     Key(TESTING, "mocks", rules=("stand-ins",), opens=MOCKS),
+
+    Key(DECLARED, "function", rules=("scenario-coverage",)),
+    Key(DECLARED, "call", rules=("scenario-coverage",)),
+    Key(DECLARED, "title", rules=("scenario-coverage",)),
+    Key(DECLARED, "body", rules=("scenario-coverage",)),
 
     Key(TABLES, "decorator", rules=("scenario-coverage",)),
     Key(TABLES, "call", rules=("scenario-coverage",)),

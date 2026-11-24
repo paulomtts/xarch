@@ -27,6 +27,7 @@ TIER_USES = "tier.uses"
 TIER_IMPORTS = "tier.imports"
 TESTING = "testing"
 TABLES = "testing.tables"
+DECLARED = "testing.declared"
 MOCKS = "testing.mocks"
 FIXTURE = "testing.fixture"
 FAKES = "fakes"
@@ -63,6 +64,7 @@ SCOPES = {
     TIER_IMPORTS: "tiers.<tier>.imports",
     TESTING: "testing",
     TABLES: "testing.tables[]",
+    DECLARED: "testing.declared[]",
     MOCKS: "testing.mocks",
     FIXTURE: "testing.mocks.fixtures.<parameter>",
     FAKES: "fakes",

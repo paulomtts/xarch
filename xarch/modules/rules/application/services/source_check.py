@@ -64,7 +64,8 @@ class SourceCheckService:
         Only the app's files that the profile governs are read: a file in a folder that is neither a part nor a
         folder of the layout (such as reference code kept as data) is never read, and is listed as ungoverned; a file
         below a folder the profile excludes is not looked at at all, and the folder is named in the enforcement. Every
-        file below tests is read. The init files are looked for in the folder holding root, where `init` writes them.
+        file below tests is read, with the framework's forms of a table and of a test and its globals, the app's with
+        none, so an app file holds no test. The init files are looked for in the folder holding root, where `init` writes them.
         """
         absent = self._tree.absent(folder for folder in (root, tests) if folder is not None)
         if absent:
@@ -76,9 +77,13 @@ class SourceCheckService:
         private, special = rules.language.private, rules.language.special
         app = self._tree.read(root, [p for p in paths if governed.governed(rules, p)], immutable=marks,
                               interface=interface, standard=standard, private=private, special=special)
-        tables = rules.framework.tables if rules.framework is not None else ()
+        framework = rules.framework
+        tables = framework.tables if framework is not None else ()
+        declared = framework.declared if framework is not None else ()
+        bound = framework.globals if framework is not None else ()
         test_files = self._tree.read(tests, self._tree.paths(tests, extensions), tables, marks, interface,
-                                     standard=standard, private=private, special=special) if tests is not None else []
+                                     standard=standard, private=private, special=special, declared=declared,
+                                     globals=bound) if tests is not None else []
         tests_root = tests.name if tests is not None else None
         shown = root.name
         unread = governed.unread(paths, rules, shown)

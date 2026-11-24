@@ -24,52 +24,118 @@ from xarch.modules.spec.domain.values import (
 from xarch.profile_values.language import Writing
 from xarch.profile_values.placement import Target
 from xarch.profile_values.testing import Fakes, Fixture, Framework, Place, RowId, ScenarioCoverage, StandIns, TableForm
+from xarch.profile_values.testing import TestForm as DeclaredForm
 
-PRESET_PROBLEM = ("layered.yaml: testing: must be a preset name or a mapping {files, functions}: the patterns of a "
-                  "test file's name and of a test function's")
+PRESET_PROBLEM = ("layered.yaml: testing: must be a preset name or a mapping {files, declared}: the patterns of a "
+                  "test file's name and the forms that declare a test")
+BY_NAME = [{"function": "test_*"}]
+"""The one form that declares a test by its function's name, as an entry of `testing.declared`."""
 
 
 def test_the_framework_is_a_preset_by_name_or_the_map_written_out():
     named = parsed(covered(testing="pytest"))
     written = parsed(covered())
     assert named.framework == written.framework == Framework(
-        ("test_*.py", "*_test.py"), "test_*", (("pytest", "mark", "skip"), ("pytest", "skip")),
+        ("test_*.py", "*_test.py"), (DeclaredForm(function="test_*"),), (("pytest", "mark", "skip"), ("pytest", "skip")),
         (PYTEST_FORM,))
 
 
 def test_a_preset_is_the_same_map_validated_like_one_written_in_the_file():
-    broken = {"files": ["test_*.py"], "functions": 3}
+    broken = {"files": ["test_*.py"], "declared": [{"function": 3}]}
     assert problems(covered(testing="odd"), presets={"odd": broken}) == [
-        "layered.yaml: testing.functions: must be a function name pattern: a name with `*` for any text"]
+        "layered.yaml: testing.declared.0.function: must be a function name pattern: a name with `*` for any text"]
 
 
 @pytest.mark.parametrize("testing, presets, expected", [
     pytest.param("rspec", PRESETS, ["layered.yaml: testing: no preset 'rspec': use pytest, or write the map "
-                                    "{files, functions}"], id="a preset that does not exist"),
-    pytest.param("rspec", {}, ["layered.yaml: testing: no preset 'rspec': write the map {files, functions}"],
+                                    "{files, declared}"], id="a preset that does not exist"),
+    pytest.param("rspec", {}, ["layered.yaml: testing: no preset 'rspec': write the map {files, declared}"],
                  id="no preset at all"),
     pytest.param(3, PRESETS, [PRESET_PROBLEM], id="not a name or a map"),
-    pytest.param({"functions": "test_*"}, PRESETS, ["layered.yaml: testing: missing `files`"], id="no files"),
-    pytest.param({"files": ["test_*.py"]}, PRESETS, ["layered.yaml: testing: missing `functions`"], id="no functions"),
-    pytest.param({"files": ["test_*.py"], "functions": "test_*", "colour": 1}, PRESETS,
-                 ["layered.yaml: testing: unknown key 'colour': use files, functions, mocks, skips, tables"],
+    pytest.param({"declared": BY_NAME}, PRESETS, ["layered.yaml: testing: missing `files`"], id="no files"),
+    pytest.param({"files": ["test_*.py"]}, PRESETS, ["layered.yaml: testing: missing `declared`"], id="no declared"),
+    pytest.param({"files": ["test_*.py"], "declared": BY_NAME, "colour": 1}, PRESETS,
+                 ["layered.yaml: testing: unknown key 'colour': use declared, files, globals, mocks, skips, tables"],
                  id="an unknown key"),
-    pytest.param({"files": ["x"], "functions": "test_*"}, PRESETS,
+    pytest.param({"files": ["x"], "declared": BY_NAME}, PRESETS,
                  ["layered.yaml: testing.files: 'x' is not a file name pattern: a name ending in .py, with `*` for any "
                   "text"], id="a file pattern that is no .py name"),
-    pytest.param({"files": [], "functions": "test_*"}, PRESETS,
+    pytest.param({"files": [], "declared": BY_NAME}, PRESETS,
                  ["layered.yaml: testing.files: must be a non-empty list of file name patterns, each a .py name with "
                   "`*` for any text"], id="no file patterns"),
-    pytest.param({"files": ["a.py", "a.py"], "functions": "test_*"}, PRESETS,
+    pytest.param({"files": ["a.py", "a.py"], "declared": BY_NAME}, PRESETS,
                  ["layered.yaml: testing.files: 'a.py' is listed twice"], id="a pattern twice"),
-    pytest.param({"files": ["a.py"], "functions": "a b"}, PRESETS,
-                 ["layered.yaml: testing.functions: must be a function name pattern: a name with `*` for any text"],
-                 id="a function pattern with a space"),
-    pytest.param({"files": ["a.py"], "functions": "t_*", "skips": ["skip"]}, PRESETS,
+    pytest.param({"files": ["a.py"], "declared": [{"function": "a b"}]}, PRESETS,
+                 ["layered.yaml: testing.declared.0.function: must be a function name pattern: a name with `*` for any "
+                  "text"], id="a function pattern with a space"),
+    pytest.param({"files": ["a.py"], "declared": [{"function": "t_*"}], "skips": ["skip"]}, PRESETS,
                  ["layered.yaml: testing.skips: 'skip' is not an outside name such as <package>.<name>"], id="a skip that is not dotted"),
 ])
 def test_a_bad_testing_key_is_refused(testing, presets, expected):
     assert problems(covered(testing=testing), presets=presets) == expected
+
+
+def test_a_test_declared_by_a_function_form_is_its_name_pattern():
+    document = covered(testing={"files": ["test_*.py"], "declared": BY_NAME})
+    assert parsed(document).framework == Framework(("test_*.py",), (DeclaredForm(function="test_*"),))
+
+
+BRACED = {"python": PYTHON, "brace": BRACE}
+"""Brace beside Python: Brace's data file says nothing of its reader, so no form is refused there for a fact."""
+CALL_FORM = {"call": ["it"], "title": {"position": 0}, "body": {"position": 1}}
+"""A call form whose one callee is a name the framework binds without an import."""
+TS_FILES = {"files": ["*.test.ts"]}
+"""The file pattern of a test file of Brace."""
+
+
+def declaring(declared, **more) -> dict:
+    """covered() in Brace, its test files *.test.ts and its tests declared by the forms given."""
+    return covered(testing=TS_FILES | {"declared": declared} | more, language="brace")
+
+
+def test_a_test_declared_by_a_call_form_is_its_callees_title_and_body_and_globals_are_names_bound_without_an_import():
+    framework = parsed(declaring([CALL_FORM], globals=["it", "expect"]), languages=BRACED).framework
+    assert framework == Framework(("*.test.ts",), (DeclaredForm(call=(("it",),), title=Place(0), body=Place(1)),),
+                                  globals=(("it",), ("expect",)))
+
+
+def test_globals_left_out_are_none():
+    assert parsed(declaring([CALL_FORM]), languages=BRACED).framework.globals == ()
+
+
+DECLARED_AT = "layered.yaml: testing.declared"
+NOT_A_LIST = f"{DECLARED_AT}: must be a non-empty list of test forms, each {{function}} or {{call, title, body}}"
+
+
+@pytest.mark.parametrize("testing, expected", [
+    pytest.param(TS_FILES, "layered.yaml: testing: missing `declared`", id="no declared"),
+    pytest.param(TS_FILES | {"declared": []}, NOT_A_LIST, id="an empty list"),
+    pytest.param(TS_FILES | {"declared": "test*"}, NOT_A_LIST, id="a pattern that is no list"),
+    pytest.param(TS_FILES | {"declared": [CALL_FORM | {"function": "test*"}]}, f"{DECLARED_AT}.0: write one of function, call",
+                 id="an entry with both holders"),
+    pytest.param(TS_FILES | {"declared": [{"title": {"position": 0}}]}, f"{DECLARED_AT}.0: write one of function, call",
+                 id="an entry with no holder"),
+    pytest.param(TS_FILES | {"declared": [None]}, f"{DECLARED_AT}.0: write one of function, call",
+                 id="an entry that is no mapping"),
+    pytest.param(TS_FILES | {"declared": [{"function": "a b"}]},
+                 f"{DECLARED_AT}.0.function: must be a function name pattern: a name with `*` for any text",
+                 id="a bad function pattern"),
+    pytest.param(TS_FILES | {"declared": [{"function": "test*", "title": {"position": 0}}]},
+                 f"{DECLARED_AT}.0.title: a function form takes no slot: drop title", id="a function form with a title"),
+    pytest.param(TS_FILES | {"declared": [{"call": ["it"], "body": {"position": 1}}]}, f"{DECLARED_AT}.0: missing `title`",
+                 id="a call form with no title"),
+    pytest.param(TS_FILES | {"declared": [{"call": ["it"], "title": {"position": 0}}]}, f"{DECLARED_AT}.0: missing `body`",
+                 id="a call form with no body"),
+    pytest.param(TS_FILES | {"declared": [{"function": "test*"}, CALL_FORM | {"call": []}]},
+                 f"{DECLARED_AT}.1.call: must list at least one callee", id="a call form with no callee, at its index"),
+    pytest.param(TS_FILES | {"declared": [CALL_FORM | {"title": {"position": -1}}]},
+                 f"{DECLARED_AT}.0.title: must be {{position: <n>, keyword: <name>}}, at least one of them, of the "
+                 "holder's arguments", id="a bad title place"),
+    pytest.param(TS_FILES | {"declared": [{"function": "test*", "colour": 1}]},
+                 f"{DECLARED_AT}.0: unknown key 'colour': use body, call, function, title", id="an unknown key of an entry"),
+])
+def test_a_bad_declared_is_refused(testing, expected):
+    assert problems(covered(testing=testing, language="brace"), languages=BRACED) == [expected]
 
 
 def test_the_table_of_cases_and_the_mocks_are_checked_with_the_framework_whether_or_not_a_guard_uses_them():
@@ -402,7 +468,7 @@ def test_tiers_need_the_framework_to_tell_a_test_from_a_helper():
     document = covered()
     del document["testing"]
     assert problems(document) == ["layered.yaml: missing `testing`: `tiers` must recognise a test file by its name: "
-                                  "write testing: <preset>, or testing: {files: [<pattern>, ...], functions: <pattern>}"]
+                                  "write testing: <preset>, or testing: {files: [<pattern>, ...], declared: [{function: <pattern>}]}"]
 
 
 def test_fakes_name_their_folder_below_the_tests_folder_the_parts_they_stand_in_for_and_how_a_fake_is_named():
@@ -592,7 +658,7 @@ def test_scenario_coverage_under_a_framework_with_no_table_form_takes_no_columns
 
 
 def test_scenario_coverage_under_a_preset_with_no_table_form_takes_no_columns():
-    presets = {"pytest": {"files": ["test_*.py"], "functions": "test_*"}}
+    presets = {"pytest": {"files": ["test_*.py"], "declared": BY_NAME}}
     document = covered(testing="pytest", guards={"scenario-coverage": NO_COLUMNS})
     assert parsed(document, presets=presets).guards == (
         ScenarioCoverage("api", "integration", "Result", (), "test_{name:snake}.py"),)
@@ -624,7 +690,7 @@ def test_scenario_coverage_under_a_framework_with_no_table_form_needs_every_othe
 def test_scenario_coverage_with_a_refused_framework_still_lists_columns_as_missing():
     document = covered(testing="odd", guards={"scenario-coverage": NO_COLUMNS})
     assert problems(document) == [
-        "layered.yaml: testing: no preset 'odd': use pytest, or write the map {files, functions}",
+        "layered.yaml: testing: no preset 'odd': use pytest, or write the map {files, declared}",
         "layered.yaml: guards.scenario-coverage: missing `columns`"]
 
 
@@ -682,7 +748,7 @@ def test_a_guard_that_reads_tests_needs_the_framework_even_without_tiers():
     document = layered(guards={"stand-ins": {}}, fakes=FAKES)
     assert problems(document) == [
         "layered.yaml: missing `testing`: `guards.stand-ins` must recognise a test file by its name: write testing: "
-        "<preset>, or testing: {files: [<pattern>, ...], functions: <pattern>}"]
+        "<preset>, or testing: {files: [<pattern>, ...], declared: [{function: <pattern>}]}"]
 
 
 
@@ -703,7 +769,7 @@ def test_a_tier_whose_table_tests_are_plain_says_so_and_needs_a_framework_that_w
 def test_a_plain_tier_under_a_preset_that_writes_no_table_form_names_the_preset():
     document = covered(testing="pytest")
     document["tiers"]["unit"]["plain_tables"] = True
-    presets = {"pytest": {"files": ["test_*.py"], "functions": "test_*"}}
+    presets = {"pytest": {"files": ["test_*.py"], "declared": BY_NAME}}
     assert problems(document, presets=presets) == [
         "layered.yaml: tiers.unit.plain_tables: needs a table form: the framework `pytest` writes none in "
         "`testing.tables`"]
@@ -715,23 +781,27 @@ def test_a_plain_tier_with_no_framework_is_told_only_what_is_wrong_with_testing(
     document["tiers"]["unit"]["plain_tables"] = True
     assert problems(document) == [
         "layered.yaml: missing `testing`: `tiers` must recognise a test file by its name: write testing: <preset>, "
-        "or testing: {files: [<pattern>, ...], functions: <pattern>}"]
+        "or testing: {files: [<pattern>, ...], declared: [{function: <pattern>}]}"]
     document["testing"] = "odd"
     assert problems(document) == [
-        "layered.yaml: testing: no preset 'odd': use pytest, or write the map {files, functions}"]
+        "layered.yaml: testing: no preset 'odd': use pytest, or write the map {files, declared}"]
 
 
 STUB = yaml.safe_load((Path(__file__).resolve().parents[4] / "fakes" / "frameworks" / "stub.yaml").read_text(encoding="utf-8"))
 """The test-only framework of tests/fakes/frameworks/, a loop form and a call form with literal rows, as a preset."""
 
 
-def test_the_test_only_framework_loads_under_brace_into_a_loop_form_and_a_call_form():
+def test_the_test_only_framework_loads_under_brace_into_two_forms_of_a_test_two_forms_of_a_table_and_a_global():
     framework = parsed(covered(testing="stub", language="brace"), presets={"stub": STUB},
                        languages={"python": PYTHON, "brace": BRACE}).framework
-    assert framework == Framework(("*.test.ts",), "test*", tables=(
+    assert framework == Framework(("*.test.ts",), (
+        DeclaredForm(function="test*"),
+        DeclaredForm(call=(("vitest", "it"), ("vitest", "test"), ("vitest", "it", "each"), ("vitest", "test", "each")),
+                     title=Place(0), body=Place(1)),
+    ), tables=(
         TableForm("bound", None, (), RowId(position=0), loop=True),
         TableForm("fields", Place(0), (), RowId(field="name"), call=(("vitest", "it", "each"), ("vitest", "test", "each"))),
-    ))
+    ), globals=(("expect",),))
 
 
 def test_the_test_only_framework_is_refused_under_a_brace_that_does_not_write_a_field_id():

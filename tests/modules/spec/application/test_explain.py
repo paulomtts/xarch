@@ -44,7 +44,8 @@ SHAPE = (
     Shown('language', 0, 'the language of the app', False, True),
     Shown('testing', 0, 'how the test framework names things', False, True),
     Shown('testing.files', 1, "patterns of a test file's name", True, True),
-    Shown('testing.functions', 1, "the pattern of a test function's name", True, True),
+    Shown('testing.declared', 1, 'the forms a test is declared in', True, True),
+    Shown('testing.globals', 1, 'the names the framework binds without an import', False, True),
     Shown('testing.skips', 1, 'what skips a test or expects it to fail', False, True),
     Shown('testing.tables', 1, 'the forms a table of cases is written in', False, True),
     Shown('testing.mocks', 1, 'how a mock is built', False, True),
@@ -368,3 +369,14 @@ def test_the_forms_of_a_table_and_each_slot_of_a_form_are_keys_of_the_format():
         ("testing.tables.id", True)]
     assert (slot.key, slot.where, slot.required, slot.meaning) == (
         "testing.tables.id", "testing.tables[]", True, "what gives a row its id")
+
+
+def test_the_forms_that_declare_a_test_and_each_slot_of_a_form_are_keys_of_the_format():
+    declared, slot = explained("testing.declared"), explained("testing.declared.call")
+    assert (declared.key, declared.meaning, declared.rules) == (
+        "testing.declared", "the forms a test is declared in", ("scenario-coverage", "stand-ins"))
+    assert [(held.key, held.required) for held in declared.keys] == [
+        ("testing.declared.function", False), ("testing.declared.call", False), ("testing.declared.title", False),
+        ("testing.declared.body", False)]
+    assert (slot.key, slot.where, slot.required, slot.meaning) == (
+        "testing.declared.call", "testing.declared[]", False, "the calls that declare a test")

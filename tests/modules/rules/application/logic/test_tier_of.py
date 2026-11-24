@@ -8,6 +8,7 @@ from xarch.modules.rules.application.logic import tier_of
 from xarch.modules.rules.application.logic.tier_of import as_place
 from xarch.profile_values.placement import Target
 from xarch.profile_values.testing import Framework
+from xarch.profile_values.testing import TestForm as DeclaredForm
 from xarch.profile_values.tiers import CheckedTier as Tier
 
 KERNEL_LOGIC = Tier("pure", (Target("kernel", sub=("logic",)),))
@@ -81,7 +82,7 @@ def test_tested(checked, path, expected):
     pytest.param(PROFILE, "doc_test.py", True, id="a name the second pattern matches is a test"),
     pytest.param(PROFILE, "conftest.py", False, id="a name no pattern matches is not a test"),
     pytest.param(PROFILE, "test_doc.pyc", False, id="a pattern matches the whole name"),
-    pytest.param(profile(framework=Framework(("check_*.py",), "check_*")), "test_doc.py", False,
+    pytest.param(profile(framework=Framework(("check_*.py",), (DeclaredForm(function="check_*"),))), "test_doc.py", False,
                  id="the patterns are the profile's"),
     pytest.param(profile(framework=None), "test_doc.py", False, id="without a framework no file is a test"),
 ])

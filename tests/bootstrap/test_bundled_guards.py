@@ -5,6 +5,7 @@ from xarch.bootstrap.wiring import build_controllers, load_architecture
 from xarch.modules.spec.contract import GuardsView
 from xarch.modules.spec.domain.values import NoCallbacks
 from xarch.profile_values.testing import Fakes, Fixture, Framework, Place, RowId, ScenarioCoverage, StandIns, TableForm
+from xarch.profile_values.testing import TestForm as DeclaredForm
 
 
 @pytest.mark.parametrize("name, expected", [
@@ -36,7 +37,7 @@ def test_the_bundled_profiles_use_every_guard_of_their_own(name):
         private_imports=True)
     skips = ("pytest.mark.skip", "pytest.mark.skipif", "pytest.mark.xfail", "pytest.skip", "pytest.xfail",
              "pytest.importorskip", "unittest.skip", "unittest.skipIf", "unittest.skipUnless", "unittest.expectedFailure")
-    assert profile.framework == Framework(("test_*.py", "*_test.py"), "test_*",
+    assert profile.framework == Framework(("test_*.py", "*_test.py"), (DeclaredForm(function="test_*"),),
                                               tuple(tuple(s.split(".")) for s in skips), (form,))
     assert [(file.path, file.pinned) for file in load_architecture(name).files] == [
         (("tests", "architecture", "test_rules.py"), True), (("AGENTS.md",), False), (("ruff.toml",), False)]

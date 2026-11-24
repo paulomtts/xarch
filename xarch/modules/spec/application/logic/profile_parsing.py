@@ -8,7 +8,7 @@ key_catalogue); the shape:
     based_on: <bundled name>   optional; the bundled profile this one was copied from, which a report compares with
     language: <language>       optional; the language of the app: the name of a language xarch ships (the first by name
                                when left out), read from its data file
-    testing: <preset> | {files, functions, skips, table, mocks}
+    testing: <preset> | {files, declared, globals, skips, tables, mocks}
                                how the test framework names things; a preset is a name, read from data shipped with
                                xarch. Required with `tiers` and with the guards scenario-coverage and stand-ins
     parts: {<part>: {path, role, ...}}
@@ -140,13 +140,13 @@ _NEEDS_TESTING = (KEY[ScenarioCoverage], KEY[StandIns])
 _LISTED = {PassThrough: (PASS_THROUGH, "the parts whose methods are listed when they only forward"),
            NoCallbacks: (NO_CALLBACKS, "the parts whose functions call none of their parameters annotated as callables")}
 """The guards whose one key is the parts they read, each with the scope of its keys and what its parts are."""
-_PRESET_MAP = "{files, functions}"
+_PRESET_MAP = "{files, declared}"
 _TIER_INSTEAD = "`tests: <tier>`, or `untested: <reason>`"
 
 
 @dataclass(frozen=True)
 class _Testing:
-    """What `testing` says: how test files and functions are named and the table forms the framework writes, and,
+    """What `testing` says: how test files are named and tests declared and the table forms the framework writes, and,
     when written, how a mock is built; preset: the name of the preset it names, "" when written as a map."""
     framework: Framework
     mocks: StandIns | None
@@ -537,7 +537,7 @@ def _testing(value: Any, presets: Mapping[str, Any], problems: list[str], langua
         preset, value = value, presets[value]
     elif not isinstance(value, Mapping):
         problems.append(f"testing: must be a preset name or a mapping {_PRESET_MAP}: the patterns of a test file's name "
-                        "and of a test function's")
+                        "and the forms that declare a test")
         return None
     count = len(problems)
     framework = ck.framework_patterns(value, problems, "testing", names_of(TESTING), language, TESTING)
@@ -956,7 +956,7 @@ def _needs_testing(document: Mapping[Any, Any]) -> list[str]:
     if not needing:
         return []
     return [f"missing `testing`: {ck.join_and(needing)} must recognise a test file by its name: write testing: "
-            "<preset>, or testing: {files: [<pattern>, ...], functions: <pattern>}"]
+            "<preset>, or testing: {files: [<pattern>, ...], declared: [{function: <pattern>}]}"]
 
 
 def _docs(value: Any, declared: set[str], files: Collection[str], problems: list[str]) -> tuple[str, tuple, tuple]:

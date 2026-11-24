@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import sys
 from dataclasses import replace
+from fnmatch import fnmatchcase
 from importlib import resources
 from pathlib import Path
 
@@ -19,11 +20,11 @@ import yaml
 from xarch.kernel.logic.names import is_private_name, outside_steps
 from xarch.kernel.placement import EVERYTHING
 from xarch.kernel.source import Import
-from xarch.modules.rules.domain.parsed import Class, SourceFile
+from xarch.modules.rules.domain.parsed import Class, Function, SourceFile, Test
 from xarch.modules.rules.domain.profile import Profile
 from xarch.profile_values.language import LINE, CheckedLanguage, CommentForm, InterfaceMark, RecordMark, Writing
 from xarch.profile_values.placement import Repeat, Target
-from xarch.profile_values.testing import Fakes, Fixture, Framework, Place, RowId, ScenarioCoverage, StandIns, TableForm
+from xarch.profile_values.testing import Fakes, Fixture, Framework, Place, RowId, ScenarioCoverage, StandIns, TableForm, TestForm
 from xarch.profile_values.tiers import CheckedTier
 
 
@@ -79,6 +80,14 @@ def _table_form(form: dict, member: str) -> TableForm:
                      loop=form.get("loop", False))
 
 
+def declared_of(file: dict, member: str) -> tuple[TestForm, ...]:
+    """The forms a framework's data file declares a test in, as its loader reads them: a function form's pattern, or a
+    call form's callees split at the language's member, its title and its body."""
+    return tuple(TestForm(function=form["function"]) if "function" in form else
+                 TestForm(call=tuple(outside_steps(name, member) for name in form["call"]), title=_place(form["title"]),
+                          body=_place(form["body"])) for form in file["declared"])
+
+
 PYTHON_FILE = yaml.safe_load(resources.files("xarch").joinpath("architectures", "presets", "language", "python.yaml")
                              .read_text(encoding="utf-8"))
 PYTHON = CheckedLanguage(title="Python", extensions=(".py",), package_files=("__init__.py",),
@@ -111,8 +120,11 @@ marks, marks of an immutable record, annotations of no value, comment forms, dir
 it writes a row of a table and standard modules read from its data file."""
 STUB_FILE = yaml.safe_load((Path(__file__).resolve().parents[2] / "fakes" / "frameworks" / "stub.yaml")
                            .read_text(encoding="utf-8"))
-STUB = Framework(tuple(STUB_FILE["files"]), STUB_FILE["functions"], tables=tables_of(STUB_FILE, BRACE_FILE["member"]))
-"""The test-only framework as a check reads it: a loop form and a call form with literal rows, read from its data file."""
+STUB = Framework(tuple(STUB_FILE["files"]), declared_of(STUB_FILE, BRACE_FILE["member"]),
+                 tables=tables_of(STUB_FILE, BRACE_FILE["member"]),
+                 globals=tuple(outside_steps(name, BRACE_FILE["member"]) for name in STUB_FILE.get("globals", ())))
+"""The test-only framework as a check reads it: a function form and a call form of a test, a loop form and a call form
+of a table with literal rows, and its one global, read from its data file."""
 PERCENT_FILE = yaml.safe_load((Path(__file__).resolve().parents[2] / "fakes" / "languages" / "percent.yaml")
                               .read_text(encoding="utf-8"))
 PERCENT = CheckedLanguage(title=PERCENT_FILE["title"], extensions=tuple(PERCENT_FILE["extensions"]),
@@ -174,7 +186,7 @@ PROFILE = Profile(
     no_comments=True,
     stand_ins=StandIns((MOCK, ("unittest", "mock", "MagicMock")), (AUTOSPEC,), ("spec", "spec_set"),
                        (Fixture("mocker", ("Mock", "MagicMock"), ("create_autospec",)),), 0),
-    framework=Framework(("test_*.py", "*_test.py"), "test_*", tables=(PYTEST_FORM,)),
+    framework=Framework(("test_*.py", "*_test.py"), (TestForm(function="test_*"),), tables=(PYTEST_FORM,)),
     uses_never={"domain": (NOW, ("builtins", "open"), ("socket",))}, language=PYTHON, default_tests="tests")
 
 
@@ -249,6 +261,30 @@ def source(path: str, *imports: Import, root: str = APP, language: CheckedLangua
 def in_tests(path: str, *imports: Import, **fields) -> SourceFile:
     """A file at path below the tests root."""
     return source(path, *imports, root=TESTS, **fields)
+
+
+def tests_of(functions: tuple[Function, ...], framework: Framework) -> tuple[Test, ...]:
+    """The tests a reader finds among functions by the function forms of framework, as the Python reader finds them:
+    each function whose name matches a form's pattern, a test of the first such form, untitled, its body the function
+    itself."""
+    found: list[Test] = []
+    for function in functions:
+        form = next((index for index, held in enumerate(framework.declared)
+                     if held.function and fnmatchcase(function.name, held.function)), None)
+        if form is not None:
+            found.append(Test(function.line, function.name, form, False, function))
+    return tuple(found)
+
+
+def declaring(path: str, *functions: Function, framework: Framework | None = None, language: CheckedLanguage = PYTHON,
+              tests: tuple[Test, ...] | None = None, **fields) -> SourceFile:
+    """A file at path below the tests root holding functions, its tests those given, else those tests_of finds among
+    the functions by framework (PROFILE's unless given), each definition public or not as the reader of language would
+    say."""
+    held = framework if framework is not None else PROFILE.framework
+    assert held is not None
+    return source(path, root=TESTS, language=language, functions=functions,
+                  tests=tests_of(functions, held) if tests is None else tests, **fields)
 
 
 def aliased(line: int, written: str, module: str, *names: str) -> Import:

@@ -1,8 +1,9 @@
 # The test framework pytest, as a profile names it with `testing: pytest`: the same map a profile writes out for another
-# framework. How a test file and a test function are named, what skips a test or expects it to fail, the table forms
-# it writes, and how a mock is built.
+# framework. How a test file is named and how a test is declared, what skips a test or expects it to fail, the table
+# forms it writes, and how a mock is built.
 files: ["test_*.py", "*_test.py"]
-functions: "test_*"
+declared:
+  - function: "test_*"
 skips: [pytest.mark.skip, pytest.mark.skipif, pytest.mark.xfail, pytest.skip, pytest.xfail, pytest.importorskip,
         unittest.skip, unittest.skipIf, unittest.skipUnless, unittest.expectedFailure]
 tables:

@@ -7,6 +7,7 @@ each needs."""
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.domain.key_table import KEYS, NEEDS, SLOTS
 from xarch.modules.spec.domain.profile_keys import (
+    DECLARED,
     HELD,
     PART,
     PART_HOLDS,
@@ -182,3 +183,12 @@ def test_the_tier_import_keys_need_what_the_keys_they_replace_needed():
         "tiers.<tier>.imports.also": imports}
     assert not [address for address in NEEDS if address.startswith("tiers.<tier>.") and address.count(".") == 2
                 and address.rsplit(".", 1)[1] in ("may_import", "may_also_import", "must_import", "types_only")]
+
+
+def test_the_forms_that_declare_a_test_are_a_list_scope_of_function_call_title_and_body_and_functions_is_no_key():
+    assert SCOPES[DECLARED] == "testing.declared[]"
+    assert [key.name for key in KEYS if key.scope == DECLARED] == ["function", "call", "title", "body"]
+    assert [key.name for key in KEYS if key.scope == TESTING] == ["files", "declared", "globals", "skips", "tables",
+                                                                  "mocks"]
+    assert [(key.required, key.opens) for key in KEYS if (key.scope, key.name) == (TESTING, "declared")] == [
+        (True, DECLARED)]
