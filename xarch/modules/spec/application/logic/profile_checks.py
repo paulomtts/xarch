@@ -80,7 +80,7 @@ def _method_name(item: str, language: Language) -> str | None:
     return name if names.is_name(name, language.names) else None
 
 
-def _endings(language: Language) -> str:
+def endings(language: Language) -> str:
     """The endings of a source file of the language, as a refusal lists them: one alone, or all but the last joined by
     commas and the last after `or`."""
     *rest, last = language.checked.extensions or ("",)
@@ -748,14 +748,14 @@ def framework_patterns(value: Any, problems: list[str], where: str, known: Colle
 
 def _file_patterns(value: Any, problems: list[str], where: str, language: Language) -> tuple[str, ...] | None:
     if not isinstance(value, list) or not value:
-        problems.append(f"{where}: must be a non-empty list of file name patterns, each a {_endings(language)} name "
+        problems.append(f"{where}: must be a non-empty list of file name patterns, each a {endings(language)} name "
                         "with `*` for any text")
         return None
     pattern = _file_pattern(language)
     found: list[str] = []
     for item in value:
         if not isinstance(item, str) or not pattern.fullmatch(item):
-            problems.append(f"{where}: {item!r} is not a file name pattern: a name ending in {_endings(language)}, "
+            problems.append(f"{where}: {item!r} is not a file name pattern: a name ending in {endings(language)}, "
                             "with `*` for any text")
         elif item in found:
             problems.append(f"{where}: {item!r} is listed twice")

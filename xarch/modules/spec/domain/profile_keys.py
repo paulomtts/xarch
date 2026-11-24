@@ -189,6 +189,9 @@ class Retired:
 RETIRED: tuple[Retired, ...] = (
     Retired(PART, "tier", "renamed in 0.3.0: write tests"),
     Retired(PART, "forbidden", "moved in 0.3.0: write uses: {never: <list>}"),
+    Retired(PART, "path", "moved in 0.3.0: a part is the folder or file it is written as under parts: drop it"),
+    Retired(PART, "folders", "moved in 0.3.0: write each folder below the part as a key ending in /, with its note as "
+                             "its value"),
     Retired(TIER, "apply_forbidden", "moved in 0.3.0: write uses: {apply_never: true}"),
     Retired(PROFILE, "forbidden", "renamed in 0.3.0: write never"),
     Retired(RULE_ID, "forbidden", "renamed in 0.3.0: write never-use"),

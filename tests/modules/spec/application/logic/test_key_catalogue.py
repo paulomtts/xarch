@@ -39,7 +39,7 @@ def problems(given) -> list[str]:
 def test_the_shipped_file_gives_a_text_for_every_key_of_the_table_and_no_other():
     catalogue = catalogue_of(KEYS_DOCUMENT)
     assert list(catalogue.texts) == [key.address for key in KEYS]
-    assert catalogue.smallest.startswith("name: documents-app\n") and catalogue.symbols[0][0] == "<word>"
+    assert catalogue.smallest.startswith("name: documents-app\n") and catalogue.symbols[0][0] == "<folder>/"
     assert catalogue.texts["guards.no-duplicates.min_statements"].accepts == "a whole number, 4 when left out"
     assert catalogue.texts["guards.no-twins.min_fields"].accepts == "a whole number, 3 when left out"
 

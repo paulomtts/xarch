@@ -12,7 +12,7 @@ from tests.modules.spec.languages import BRACE, PERCENT, PYTHON, READS_EVERY_FAC
 from tests.modules.spec.profiles import PRESETS, parsed, problems
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic.explain import said
-from xarch.modules.spec.application.logic.key_lookup import keys_of, plain
+from xarch.modules.spec.application.logic.key_lookup import keys_of, names_of, plain, required_of
 from xarch.modules.spec.application.logic.profile_listing import referenced
 from xarch.modules.spec.domain.guards import ORDER
 from xarch.modules.spec.domain.key_table import KEYS, SLOTS
@@ -22,6 +22,7 @@ from xarch.modules.spec.domain.profile_keys import (
     CHOICE_PRESETS,
     GUARD,
     MOCK_SPECS,
+    PART,
     PART_IMPORTS_MAY,
     PROFILE,
     SCOPES,
@@ -30,7 +31,7 @@ from xarch.modules.spec.domain.profile_keys import (
 from xarch.modules.spec.domain.values import Language
 from xarch.profile_values.language import InterfaceMark, SpecWriting
 
-BASE = {"name": "example", "parts": {"documents": {"path": "documents", "role": "the documents"}}}
+BASE = {"name": "example", "parts": {"documents/": {"role": "the documents"}}}
 LISTING = ("src/documents.py", "tests/documents/check_documents.py", "tests/documents/builders.py")
 BUNDLED = ("base",)
 SUBSTITUTIONS = {"<bundled>": "base", "<preset>": "pytest", "<language>": "python"}
@@ -228,3 +229,10 @@ def test_an_entry_of_the_mock_specs_with_a_key_besides_its_own_is_told_each_key_
     holders(keys_of(MOCK_SPECS)[0], document)[0]["zz_unknown"] = 1
     found = [p for p in problems(document, bundled=BUNDLED, folders=every_folder(document)) if "specs.0:" in p]
     assert found and [key.name for key in keys_of(MOCK_SPECS) if f"{{{key.name}: <" not in found[0]] == []
+
+
+def test_a_part_is_named_by_its_place_or_by_name_and_holds_no_path_and_no_folders():
+    assert names_of(PART) == {"holds", "imports", "litmus", "name", "package_only", "role", "shared", "tests",
+                              "untested", "uses"}
+    assert required_of(PART) == ("role",)
+    assert [key.name for key in KEYS if key.scope == PART][0] == "name"

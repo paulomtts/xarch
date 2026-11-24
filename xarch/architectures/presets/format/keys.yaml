@@ -10,16 +10,13 @@
 fragments:
   part: |
     parts:
-      documents:
-        path: documents
+      documents/:
         role: the documents
   two: |
     parts:
-      core:
-        path: core
+      core/:
         role: the rules of the documents
-      documents:
-        path: documents
+      documents/:
         role: the documents
         imports:
           may: [core]
@@ -53,14 +50,13 @@ fragments:
       integration:
         proves: a use case
     parts:
-      documents:
-        path: units/<unit>/documents
-        role: the documents
-        tests: integration
-      results:
-        path: units/<unit>/results
-        role: the result unions
-        tests: integration
+      units/<unit>/:
+        documents/:
+          role: the documents
+          tests: integration
+        results/:
+          role: the result unions
+          tests: integration
   coverage-guard: |
     <<coverage>>
     guards:
@@ -111,17 +107,17 @@ fragments:
 smallest: |
   name: documents-app
   parts:
-    documents:
-      path: documents
+    documents/:
       role: the documents
 symbols:
-  "<word>": "in a path: a repeating folder, one per name, as in units/<unit>/store; there may be several"
+  "<folder>/": "under parts, a key ending in /: a folder, holding the folders, files and keys of what lies in it"
+  "<word>/": "under parts, a folder key written <word>/: a repeating folder, one per name, as in units/<unit>/; there may be several"
   store: "in imports.may, a bare name: that part, in the importer's own instance of its repeating folder"
   store@any: that part in any instance; the only way to name a part of another repeating folder
   store/schema: only what lies below that path of the part
   store:*Id: "in imports.may, after `:`: only the names that match the pattern, `*` for any text"
   everything: "in imports.may or imports.libraries: no limit"
-  a path ending in %extension%: "a last path step with a dot: the part is one file, not a folder"
+  "<file>%extension%": "under parts, a key holding a dot: a file, always a part"
 keys:
   name:
     meaning: what the profile is called
@@ -153,10 +149,15 @@ keys:
         declared:
           - function: "check_*"
   parts:
-    meaning: where code sits, in the order their litmus tests run
+    meaning: the folder tree of the app, and its parts
     accepts: >-
-      a map {<part>: {path, role, ...}}: each part is a folder or a file below the app; the layout is made of their
-      paths and `folders`
+      the folder tree below the app: a key ending in `/` is a folder of one or more steps (`modules/<module>/`), a key
+      holding a dot is a file, and any other key is a key of the part the folder or file is. A folder with a `role` is
+      a part, one with another key of a part and no `role` is refused, and one with neither is only a folder, whose
+      value may be one line of text, its note; a file is always a part. A part is named by its folder's last step or
+      its file's name before the first dot, or by `name:`; two parts of one name are refused. A part may lie inside
+      another, and a file belongs to the deepest part around it. The parts' reading order, top to bottom and a part
+      before the parts inside it, is the order their litmus tests run
     example: |
       <<two>>
   never:
@@ -304,16 +305,18 @@ keys:
       evals:
         placement:
           lines: {documents: 0.2}
-  parts.<part>.path:
-    meaning: where the part lives below the app
+  parts.<part>.name:
+    meaning: the part's name, when its folder or file does not give it
     accepts: >-
-      a folder, or a file when its last step holds a dot; a step written `<word>` is a repeating folder, one per name: a
-      profile may have several, each with a word of its own and one parent, and a path holds one
+      a name of letters, digits, `_` and `-`: the part is called this instead of its folder's last step or its file's
+      name before the first dot; needed when two parts would take one name, and every other key names the part by it
     example: |
       parts:
-        store:
-          path: units/<unit>/store
-          role: saves the documents of one unit
+        kernel/:
+          role: the bases every module shares
+          logic/:
+            name: kernel-logic
+            role: the pure rules every module shares
   parts.<part>.role:
     meaning: what the part is for, in one line
     accepts: "one line of text: the note of its folder in the docs tree"
@@ -359,11 +362,9 @@ keys:
       `imports.types_only` is the list form of the same idea, read on a test
     example: |
       parts:
-        core:
-          path: core
+        core/:
           role: the rules of the documents
-        documents:
-          path: documents
+        documents/:
           role: the documents
           imports:
             may: [{core: types_only}]
@@ -542,13 +543,6 @@ keys:
     example: |
       <<part>>
           package_only: true
-  parts.<part>.folders:
-    meaning: the folders below the part that the layout shows
-    accepts: "{<folder>: <note>} or [<folder>, ...]"
-    example: |
-      <<part>>
-          folders:
-            schemas: the table definitions
   parts.<part>.uses.never:
     meaning: the list of names the part never uses
     accepts: >-
@@ -746,12 +740,10 @@ keys:
           imports:
             also: [core]
       parts:
-        core:
-          path: core
+        core/:
           role: the rules of the documents
           tests: unit
-        documents:
-          path: documents
+        documents/:
           role: the documents
           tests: unit
   tiers.<tier>.imports.must:
@@ -1247,11 +1239,9 @@ keys:
       its enforcement section; `profile check` lists each part the bundled profile does not as looser
     example: |
       parts:
-        documents:
-          path: documents
+        documents/:
           role: the documents
-        adapters:
-          path: adapters
+        adapters/:
           role: the documents as the outside reads them
           imports: {may: [documents]}
       guards:
