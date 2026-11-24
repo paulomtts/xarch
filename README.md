@@ -133,6 +133,9 @@ evals:    {placement: {lines, alike, examples}, <id>: {ask*, answer*, yes, no, r
           fix*, examples*}}                             what `xarch review` asks; `check` never acts on it
 ```
 
+A key on a part is about its own code and reach; a guard is a pre-built check with a scope, which names the parts it
+reads.
+
 An entry of a `never` list that is the name of another list includes that list's names in its place, such as
 `published: [pure, typing.Any]`; a list may not take the name of a package of the standard library or of a package the
 profile names, since an entry of that name would name the list.
