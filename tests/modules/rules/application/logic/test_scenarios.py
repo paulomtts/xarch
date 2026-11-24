@@ -9,7 +9,7 @@ from xarch.modules.rules.application.logic.scenarios import plain, violations, w
 from xarch.modules.rules.domain.parsed import Function, Row, Table, Union
 from xarch.modules.rules.domain.published import Weak
 from xarch.profile_values.language import Writing
-from xarch.profile_values.testing import Place, RowId, TableForm
+from xarch.profile_values.testing import Framework, Place, RowId, TableForm
 
 COLUMNS = ("given", "when", "then")
 RESULTS = source("modules/docs/contract/results.py", unions=(Union(4, "PublishResult", ("Published", "Missing")),))
@@ -318,3 +318,73 @@ def test_a_table_a_loop_runs_is_checked_as_any_table_by_its_form_s_slots():
          "write the row's id, a sentence stating the outcome, as its value at position 0"),
         (f"{FILE}:9: PublishResult variant Missing has no row in the table and no standalone test naming it "
          "(scenario-coverage)", "add a row whose then is Missing, or a standalone test naming it")]
+
+
+NO_FORM = profile(framework=Framework(("test_*.py",), "test_*"), scenarios=replace(PROFILE.scenarios, columns=()))
+PUBLISHED = Function(8, "test_published", mentions=frozenset({"Published"}), asserts=True)
+MISSING = Function(12, "test_missing", mentions=frozenset({"Missing"}), asserts=True)
+
+
+def unnamed(variant: str, file: str = FILE) -> tuple[str, str]:
+    return (f"{file}:1: PublishResult variant {variant} is named by no test (scenario-coverage)",
+            f"write a test naming {variant}")
+
+
+def no_form(*tests) -> list[tuple[str, str]]:
+    return [(str(v), v.fix) for v in violations([RESULTS], list(tests), NO_FORM)]
+
+
+@pytest.mark.parametrize("functions, expected", [
+    pytest.param([PUBLISHED, MISSING], [], id="every variant named by a test of the file is covered"),
+    pytest.param([Function(8, "test_both", mentions=frozenset({"Published", "Missing"}), asserts=True)], [],
+                 id="one test may name every variant"),
+    pytest.param([PUBLISHED], [unnamed("Missing")], id="a variant named by no test is reported at the top of the file"),
+    pytest.param([], [unnamed("Published"), unnamed("Missing")],
+                 id="each variant named by no test is reported, in the union's order"),
+    pytest.param([PUBLISHED, replace(MISSING, name="check_missing")], [unnamed("Missing")],
+                 id="a function the test pattern does not match names nothing"),
+    pytest.param([PUBLISHED, replace(MISSING, owner="PublishTests")], [],
+                 id="a method of a class is a test like a function"),
+    pytest.param([Function(8, "test_publish", (table(row("Gone", written=False, id=None)),),
+                           mentions=frozenset({"Published", "Missing"}), blocks=((14, "if"), (15, "for")),
+                           expressions=((16, "if"),))], [],
+                 id="a test holding a table is held to naming alone: no row, id or branch is checked"),
+    pytest.param([Function(8, "test_publish", (Table(9, COLUMNS, None, 0, 0),), mentions=frozenset({"Published"}))],
+                 [unnamed("Missing")], id="a table whose rows cannot be read is not reported, only the naming"),
+    pytest.param([Function(8, "test_publish", (TABLE,), mentions=frozenset({"Published"}))], [unnamed("Missing")],
+                 id="the rows of a table name no variant: only a test's body does"),
+])
+def test_scenario_coverage_under_a_framework_with_no_table_form(functions, expected):
+    assert no_form(publish_tests(*functions)) == expected
+
+
+def test_a_use_case_with_no_test_file_is_reported_with_no_form_as_with_one():
+    assert no_form() == [("app/modules/docs/contract/results.py:4: PublishResult has no test file test_publish.py "
+                          "among the integration tests of docs (scenario-coverage)",
+                          "write test_publish.py among the integration tests of docs")]
+
+
+def test_each_test_file_of_a_use_case_names_every_variant_on_its_own():
+    nested = "modules/docs/application/services/test_publish.py"
+    assert no_form(publish_tests(PUBLISHED, MISSING), publish_tests(PUBLISHED, path=nested)) == [
+        unnamed("Missing", "tests/modules/docs/application/services/test_publish.py")]
+
+
+@pytest.mark.parametrize("functions, expected", [
+    pytest.param([PUBLISHED, replace(MISSING, asserts=False)],
+                 [Weak("scenario-coverage", FILE, 12, "PublishResult variant Missing is credited to test_missing by "
+                                                      "name only: no assert in their bodies")],
+                 id="a variant named only by a test with no assert is weak"),
+    pytest.param([PUBLISHED, replace(MISSING, asserts=False),
+                  Function(20, "test_missing_again", mentions=frozenset({"Missing"}), asserts=True)], [],
+                 id="one test that asserts is enough"),
+    pytest.param([PUBLISHED], [], id="a variant named by no test is a violation, not weak"),
+    pytest.param([Function(8, "test_publish", (TABLE,), mentions=frozenset({"Published", "Missing"}))],
+                 [Weak("scenario-coverage", FILE, 8, "PublishResult variant Published is credited to test_publish by "
+                                                     "name only: no assert in their bodies"),
+                  Weak("scenario-coverage", FILE, 8, "PublishResult variant Missing is credited to test_publish by "
+                                                     "name only: no assert in their bodies")],
+                 id="a test holding a table is a test like any other, its rows covering nothing"),
+])
+def test_weak_under_a_framework_with_no_table_form(functions, expected):
+    assert weak([RESULTS], [publish_tests(*functions)], NO_FORM) == expected

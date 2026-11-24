@@ -20,12 +20,18 @@ function being one whose name matches the profile's pattern:
     statement that runs a table's rows, at the line the reader gives as the table's runs, is the table and no branch
     of its test.
 
+A framework that writes no table form (its `testing.tables` empty) has no table to read, and each result is its own
+test: the guard has no columns, and every variant of the union must be named in the body of a test function of the
+file, its name matching the profile's pattern; a variant named by none is a violation at the top of the file. No row,
+id or branch is checked then, whatever the facts of a function hold.
+
 plain holds every table test of a tier that says `plain_tables` to the same rule as a use case's: no statement that
 branches and no expression that chooses between values in its body, but the statement that runs a table's rows, said
 once where scenario-coverage already says it of a use case's table.
 
 weak lists, without failing, a variant met to the letter only: one no row covers, credited only to standalone tests
-of the file that name it, none of which holds an `assert` statement in its body.
+of the file that name it (to any test function of the file that names it, for a framework that writes no table form),
+none of which holds an `assert` statement in its body.
 """
 from __future__ import annotations
 
@@ -59,7 +65,8 @@ def violations(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: 
                                                           f"{guard.tier} tests of {instance} ({RULE})", RULE,
                                    f"write {name} among the {guard.tier} tests of {instance}"))
         for test in files:
-            found += _covered(test, union.name, union.members, guard, profile)
+            found += (_covered(test, union.name, union.members, guard, profile) if profile.framework.tables
+                      else _named(test, union.name, union.members, profile))
     return found
 
 
@@ -127,18 +134,35 @@ def _given_id(row: Row) -> str | None:
     return row.id if row.id is not None and row.id.strip() else None
 
 
+def _tests(test: SourceFile, profile: Profile) -> list[Function]:
+    """The test functions of a test file: those whose name matches the framework's pattern."""
+    assert profile.framework is not None
+    return [f for f in test.functions if fnmatchcase(f.name, profile.framework.functions)]
+
+
+def _named(test: SourceFile, union: str, variants: tuple[str, ...], profile: Profile) -> list[Violation]:
+    """Each variant no test function of the file names, for a framework that writes no table form, in the union's
+    order, at the top of the file."""
+    named = set().union(*(f.mentions for f in _tests(test, profile)))
+    return [Violation(test.name, 1, f"{union} variant {v} is named by no test ({RULE})", RULE,
+                      f"write a test naming {v}") for v in variants if v not in named]
+
+
 def _credited(test: SourceFile, union: str, variants: tuple[str, ...], guard: ScenarioCoverage,
               profile: Profile) -> list[Weak]:
     assert profile.framework is not None
-    functions = [f for f in test.functions if fnmatchcase(f.name, profile.framework.functions)]
+    functions = _tests(test, profile)
     covered: set[str] = set()
-    for function in functions:
-        for table in function.tables:
-            if set(guard.columns) <= set(table.columns):
-                _rows(table, union, variants, guard, profile, covered)
+    standalone = functions
+    if profile.framework.tables:
+        for function in functions:
+            for table in function.tables:
+                if set(guard.columns) <= set(table.columns):
+                    _rows(table, union, variants, guard, profile, covered)
+        standalone = [f for f in functions if not f.tables]
     found: list[Weak] = []
     for variant in variants:
-        credit = [f for f in functions if not f.tables and variant in f.mentions]
+        credit = [f for f in standalone if variant in f.mentions]
         if variant not in covered and credit and not any(f.asserts for f in credit):
             names = ", ".join(f.name for f in credit)
             found.append(Weak(RULE, test.name, credit[0].line, f"{union} variant {variant} is credited to {names} by "
@@ -154,8 +178,7 @@ def _in(profile: Profile, test: SourceFile, tier: str, instance: str) -> bool:
 def _covered(test: SourceFile, union: str, variants: tuple[str, ...], guard: ScenarioCoverage,
              profile: Profile) -> list[Violation]:
     columns = guard.columns
-    assert profile.framework is not None
-    functions = [f for f in test.functions if fnmatchcase(f.name, profile.framework.functions)]
+    functions = _tests(test, profile)
     tables = [(f, t) for f in functions for t in f.tables if set(columns) <= set(t.columns)]
     if not tables:
         return [Violation(test.name, 1, f"no table test whose parameters are {', '.join(columns)} ({RULE})", RULE,
