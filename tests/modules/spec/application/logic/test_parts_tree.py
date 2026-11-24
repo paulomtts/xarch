@@ -93,6 +93,8 @@ def test_two_repeating_steps_on_the_way_to_a_part_are_kept_for_the_parser_to_ref
                  "between `<` and `>`", id="15 a star step"),
     pytest.param({"a/<mo dule>/b/": {"role": "r"}}, "parts: 'a/<mo dule>/b/' has a step with `<` or `>` that is not "
                  "one word between them: write the repeating folder as `<name>`", id="15 a bracket that is no word"),
+    pytest.param({"a/<x>b/": {"role": "r"}}, "parts: 'a/<x>b/' has a step with `<` or `>` that is not one word "
+                 "between them: write the repeating folder as `<name>`", id="15 a bracket inside a name"),
     pytest.param({"modules/<module>/": {}}, "parts: 'modules/<module>/' is a repeating folder with no part below it: "
                  "write a part in it, or drop it", id="17 a repeating folder with no part"),
 ])
