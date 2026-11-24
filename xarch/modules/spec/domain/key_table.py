@@ -273,6 +273,7 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "testing.declared[].function": ("test.function",),
     "testing.declared[].call": ("test.call",),
     "testing.mocks": ("call", "parameter_call", "import.resolved"),
+    "testing.mocks.specs[].type_argument": ("call.type_arguments",),
     "guards.scenario-coverage": ("union", "function.blocks", "function.expressions", "function.asserts",
                                  "function.mentions"),
     "guards.no-comments": ("comment", "comment.doc"),

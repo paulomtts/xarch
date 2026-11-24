@@ -131,7 +131,8 @@ A file read for tests holds a test for each of its functions, a method too, whos
 function form of the framework's `testing.declared`, as fnmatch matches a name: it is a test of the first such form,
 tagged with that form's index, untitled, its name the function's and its body that very function, in the order of the
 functions. A call form declares no test this reader reads: Python's reader does not supply `test.call`. A file read
-with no form holds no test.
+with no form holds no test. A call holds no type arguments this reader reads: Python's reader does not supply
+`call.type_arguments`, and every call's types are empty.
 
 A bare name no scope binds whose name is the first step of one of the framework's globals (`testing.globals`) is read,
 in a call, an argument and a use, as itself, ahead of a builtin: `it.skip()` calls ("it", "skip"), which is also its

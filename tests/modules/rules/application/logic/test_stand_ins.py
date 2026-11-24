@@ -10,7 +10,7 @@ from tests.modules.rules.builders import AUTOSPEC, BRACE, MOCK, PERCENT, PROFILE
 from xarch.modules.rules.application.logic.stand_ins import violations, weak
 from xarch.modules.rules.domain.parsed import Call, Class, Method, ParameterCall
 from xarch.modules.rules.domain.published import Weak
-from xarch.profile_values.testing import SpecEntry
+from xarch.profile_values.testing import Fixture, SpecEntry, StandIns
 
 PROTOCOL = ("typing", "Protocol")
 PORT_FILE = "modules/docs/application/ports/repo.py"
@@ -200,6 +200,11 @@ def test_an_autospec_reads_the_position_after_the_first_keyword_but_no_later_key
         f"tests/{INTEGRATION_TEST}:6: create_autospec() names nothing it stands in for (stand-ins)"]
 
 
+def test_a_type_argument_entry_reads_nothing_of_a_call_whose_reader_gives_no_type_arguments():
+    checked = specified(SpecEntry(type_argument=0))
+    assert problems([PORTS], [FAKE, in_tests(INTEGRATION_TEST, calls=(Call(5, MOCK, (REPO,)),))], checked) == [NO_SPEC]
+
+
 NO_SPEC_FIXTURE = (f"tests/{INTEGRATION_TEST}:5: mocker.Mock() names nothing it stands in for (stand-ins)")
 AUTOSPEC_NO_SPEC_FIXTURE = (f"tests/{INTEGRATION_TEST}:5: mocker.create_autospec() names nothing it stands in for (stand-ins)")
 
@@ -368,3 +373,48 @@ def test_a_class_beside_the_code_in_a_folder_named_like_the_fakes_is_no_fake():
                      beside=True)
     assert problems([PORTS], [beside]) == [f"app/{PORT_FILE}:3: Repo is a read port with no fake (stand-ins)"]
     assert weak([PORTS], [beside], PROFILE) == []
+
+
+BRACE_MOCK = ("vitest", "mock")
+BRACE_TEST = "modules/docs/application/services/test_publish.ts"
+BRACE_PORTS = ported(READ, path=BRACE_PORT)
+
+
+def braced(*specs: SpecEntry):
+    """PROFILE under the TypeScript-like test-only language, its mocks built by vitest#mock and the fixture vi's mock,
+    naming their spec by the entries given."""
+    return profile(language=BRACE, stand_ins=StandIns((BRACE_MOCK,), (), specs, (Fixture("vi", ("mock",)),)))
+
+
+def braced_problems(*calls: Call | ParameterCall, specs: tuple[SpecEntry, ...] = (SpecEntry(type_argument=0),)):
+    """The violations of the Brace port and its fake, with a test that makes the calls given."""
+    made = in_tests(BRACE_TEST, calls=tuple(c for c in calls if isinstance(c, Call)),
+                    parameter_calls=tuple(c for c in calls if isinstance(c, ParameterCall)))
+    return [(str(v), v.fix) for v in violations([BRACE_PORTS], [FAKE, made], braced(*specs), "app", "tests")]
+
+
+@pytest.mark.parametrize("calls, specs, expected", [
+    pytest.param((Call(5, BRACE_MOCK, types=(REPO,)),), (SpecEntry(type_argument=0),),
+                 [(f"tests/{BRACE_TEST}:5: mock<Repo>() stands in for Repo, a read port (stand-ins)", "use its fake FakeRepo")],
+                 id="a read port as the first type argument, written by the language's template"),
+    pytest.param((Call(5, BRACE_MOCK),), (SpecEntry(type_argument=0),),
+                 [(f"tests/{BRACE_TEST}:5: mock() names nothing it stands in for (stand-ins)",
+                   "give it a spec, such as mock<<port>>()")],
+                 id="no type argument: the fix writes the first entry by the template"),
+    pytest.param((Call(5, BRACE_MOCK, types=(REPO,)),), (SpecEntry(type_argument=1),),
+                 [(f"tests/{BRACE_TEST}:5: mock() names nothing it stands in for (stand-ins)",
+                   "give it a spec, such as mock<..., <port>>()")],
+                 id="a type argument before the place names none"),
+    pytest.param((Call(5, BRACE_MOCK, types=(None, REPO)),), (SpecEntry(type_argument=1),),
+                 [(f"tests/{BRACE_TEST}:5: mock<..., Repo>() stands in for Repo, a read port (stand-ins)",
+                   "use its fake FakeRepo")],
+                 id="the type argument at the place is the spec, shown at its place"),
+    pytest.param((ParameterCall(5, "vi", "mock", types=(REPO,)),), (SpecEntry(type_argument=0),),
+                 [(f"tests/{BRACE_TEST}:5: vi.mock<Repo>() stands in for Repo, a read port (stand-ins)",
+                   "use its fake FakeRepo")],
+                 id="a fixture's mock is read by its type arguments the same"),
+    pytest.param((Call(5, BRACE_MOCK, types=(("app", "modules", "docs", "application", "ports", "repo", "Other"),)),),
+                 (SpecEntry(type_argument=0),), [], id="a type argument that is no read port passes"),
+])
+def test_under_a_typescript_like_language_a_mock_names_its_spec_by_a_type_argument(calls, specs, expected):
+    assert braced_problems(*calls, specs=specs) == expected

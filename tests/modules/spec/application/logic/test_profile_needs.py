@@ -126,9 +126,9 @@ def test_a_language_whose_data_file_says_nothing_of_its_reader_holds_no_key_to_i
                   languages={"toy": silent}).approximate == ()
 
 
-def test_python_supplies_every_fact_a_bundled_check_reads_but_the_tables_of_a_call_and_the_tests_a_call_declares():
+def test_python_supplies_every_fact_a_bundled_check_reads_but_the_tables_and_the_tests_of_a_call_and_its_type_arguments():
     assert {supply.fact: supply.grade for supply in PYTHON.checked.supplies} == {
-        fact: EXACT for fact in FACTS if fact not in ("function.tables.call", "test.call")}
+        fact: EXACT for fact in FACTS if fact not in ("function.tables.call", "test.call", "call.type_arguments")}
 
 
 def test_the_keys_a_profile_sets_are_found_in_every_scope_and_through_a_testing_preset_each_once():
@@ -722,3 +722,37 @@ def test_a_call_form_whose_tables_the_language_supplies_partly_loads_once_its_ca
         *PARTLY_CALLED.checked.supplies, Supply("test.call", EXACT))))}
     assert parsed(document, languages=languages).approximate == (
         Shortfall("testing.tables.0.call", "function.tables.call", CALLS_MISSED),)
+
+
+TYPE_ARGUMENT_REFUSED = (
+    "layered.yaml: testing.mocks.specs.{index}.type_argument: its check reads call.type_arguments (the type arguments "
+    "a call is given), which the language python does not supply: drop testing.mocks.specs.{index}.type_argument, or "
+    "check the app with a language whose reader supplies call.type_arguments")
+
+
+def test_a_mock_spec_by_a_type_argument_needs_the_type_arguments_of_a_call_and_the_other_entries_need_nothing():
+    needs = {key.address: key.needs for key in KEYS}
+    assert {address: needs[address] for address in (
+        "testing.mocks.specs", "testing.mocks.specs[].keyword", "testing.mocks.specs[].position",
+        "testing.mocks.specs[].type_argument")} == {
+        "testing.mocks.specs": (), "testing.mocks.specs[].keyword": (), "testing.mocks.specs[].position": (),
+        "testing.mocks.specs[].type_argument": ("call.type_arguments",)}
+    assert FACTS["call.type_arguments"] == "the type arguments a call is given"
+
+
+def test_a_type_argument_entry_under_python_gets_the_needs_refusal_alone_at_its_index():
+    mocks = {"calls": ["unittest.mock.Mock"], "specs": [{"keyword": "spec"}, {"type_argument": 0}]}
+    assert problems(layered(testing=FILES | {"mocks": mocks})) == [TYPE_ARGUMENT_REFUSED.format(index=1)]
+
+
+def test_a_type_argument_entry_of_a_testing_preset_is_refused_at_the_same_index():
+    mocks = {"calls": ["unittest.mock.Mock"], "specs": [{"type_argument": 0}]}
+    assert problems(layered(testing="typed"), presets={"typed": FILES | {"mocks": mocks}}) == [
+        TYPE_ARGUMENT_REFUSED.format(index=0)]
+
+
+def test_a_type_argument_entry_under_python_with_a_bad_place_gets_the_needs_refusal_and_the_problem_of_its_place():
+    mocks = {"calls": ["unittest.mock.Mock"], "specs": [{"type_argument": -1}]}
+    assert problems(layered(testing=FILES | {"mocks": mocks})) == [
+        TYPE_ARGUMENT_REFUSED.format(index=0),
+        "layered.yaml: testing.mocks.specs.0.type_argument: must be a whole number, at least 0, such as 0"]

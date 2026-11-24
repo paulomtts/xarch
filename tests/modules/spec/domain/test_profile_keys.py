@@ -208,6 +208,7 @@ def test_the_ways_a_mock_names_its_spec_are_a_required_list_scope_of_keyword_pos
         (True, MOCK_SPECS, ("stand-ins",))]
     assert {key.name: key.rules for key in KEYS if key.scope == MOCK_SPECS} == dict.fromkeys(
         ("keyword", "position", "type_argument"), ("stand-ins",))
+    assert NEEDS["testing.mocks.specs[].type_argument"] == ("call.type_arguments",)
 
 
 def test_testing_names_its_preset_by_a_key_that_is_not_required_and_offers_the_presets():

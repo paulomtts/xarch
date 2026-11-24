@@ -5,7 +5,7 @@ from dataclasses import fields
 import pytest
 
 from xarch.kernel.source import Import
-from xarch.modules.rules.domain.parsed import Class, Constant, Function, Row, Table
+from xarch.modules.rules.domain.parsed import Call, Class, Constant, Function, ParameterCall, Row, Table
 from xarch.modules.rules.domain.parsed import Test as DeclaredTest
 from xarch.profile_values.capabilities import FACTS
 
@@ -56,6 +56,7 @@ TABLE_FACTS = {
     pytest.param(DeclaredTest.__doc__, id="the docstring of a test"),
     pytest.param(FACTS["test.function"], id="the text of the fact test.function"),
     pytest.param(FACTS["test.call"], id="the text of the fact test.call"),
+    pytest.param(FACTS["call.type_arguments"], id="the text of the fact call.type_arguments"),
     *(pytest.param(FACTS[fact], id=f"the text of the fact {fact}") for fact in TABLE_FACTS),
 ])
 def test_what_a_table_and_its_rows_are_is_said_with_no_word_of_python(text):
@@ -71,3 +72,8 @@ def test_a_test_is_its_line_its_name_the_index_of_its_form_whether_it_is_titled_
     body = Function(3, "test_a")
     test = DeclaredTest(3, "test_a", 0, False, body)
     assert (test.line, test.name, test.form, test.titled, test.body) == (3, "test_a", 0, False, body)
+
+
+def test_a_call_and_a_parameter_call_end_with_their_type_arguments_none_by_default():
+    assert [f.name for f in fields(Call)][-1] == "types" == [f.name for f in fields(ParameterCall)][-1]
+    assert Call(1, ("a", "b")).types == () == ParameterCall(1, "p", "m").types

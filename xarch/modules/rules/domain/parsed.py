@@ -47,25 +47,28 @@ not follow (see Import.unresolved)."""
 @dataclass(frozen=True)
 class Call:
     """A call whose callee is a Ref, and the line it is on: its positional arguments and its keyword arguments as
-    (name, value), each value a Ref; unpacked is whether it also passes *args or **kwargs."""
+    (name, value), each value a Ref; unpacked is whether it also passes *args or **kwargs; types are the type
+    arguments it is given, in the order written, each a Ref as any name is."""
     line: int
     func: tuple[str, ...]
     args: tuple[Ref, ...] = ()
     keywords: tuple[tuple[str, Ref], ...] = ()
     unpacked: bool = False
+    types: tuple[Ref, ...] = ()
 
 
 @dataclass(frozen=True)
 class ParameterCall:
     """A call of a method of a function's parameter, `<parameter>.<method>(...)`, and the line it is on: the names of
-    the parameter and of the method, and the arguments as a Call holds them. Only a parameter its function's
-    signature alone binds is read: one the body rebinds, or that is no function's parameter, is not."""
+    the parameter and of the method, and the arguments and the type arguments as a Call holds them. Only a parameter
+    its function's signature alone binds is read: one the body rebinds, or that is no function's parameter, is not."""
     line: int
     parameter: str
     method: str
     args: tuple[Ref, ...] = ()
     keywords: tuple[tuple[str, Ref], ...] = ()
     unpacked: bool = False
+    types: tuple[Ref, ...] = ()
 
 
 @dataclass(frozen=True)

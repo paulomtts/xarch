@@ -211,14 +211,14 @@ def _read(specs: tuple[SpecEntry, ...], autospec: bool) -> tuple[SpecEntry, ...]
 
 def _spec(call: _Built, specs: tuple[SpecEntry, ...]) -> tuple[bool, Ref, SpecEntry | None]:
     """Whether the call names a spec (or may, when it unpacks arguments), by the first of specs it gives: a keyword it
-    is given, or a positional argument it has at the entry's place; the spec (a Ref) and the entry that named it, None
-    and None when none did."""
+    is given, or a positional or a type argument it has at the entry's place; the spec (a Ref) and the entry that
+    named it, None and None when none did."""
     made = call.made
     keywords = dict(made.keywords)
     for entry in specs:
         if entry.keyword and entry.keyword in keywords:
             return True, keywords[entry.keyword], entry
-        given = made.args if entry.position is not None else ()
+        given = made.args if entry.position is not None else made.types if entry.type_argument is not None else ()
         if len(given) > entry.place:
             return True, given[entry.place], entry
     return made.unpacked, None, None
