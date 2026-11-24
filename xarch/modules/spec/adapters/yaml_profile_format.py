@@ -1,7 +1,7 @@
-"""A profile xarch writes, as a YAML file that reads as one written by hand; and the checks of a profile written as the
-YAML of its `checks` (see written_checks for the format): each check under its id, one slot to a line in the order a
-check is written, a slot left out when it says what the format assumes, maps and lists of words on one line, and
-sentences quoted."""
+"""A profile xarch writes, as a YAML file that reads as one written by hand, its `parts` as the folder tree in canonical
+form (see _tree); and the checks of a profile written as the YAML of its `checks` (see written_checks for the format):
+each check under its id, one slot to a line in the order a check is written, a slot left out when it says what the
+format assumes, maps and lists of words on one line, and sentences quoted."""
 from __future__ import annotations
 
 import re
@@ -30,6 +30,8 @@ _BASED_ON = re.compile(r"^based_on:.*\n", re.MULTILINE)
 """The top-level `based_on` line of a YAML profile, with its line break."""
 _INDENT = "  "
 """How far a line of the checks is indented below the line that holds it."""
+_PART_KEYS = ("name", "role", "litmus", "imports", "uses", "holds", "shared", "package_only", "tests", "untested")
+"""The keys of a part in the order a profile writes them, before the folders and files below the part."""
 
 
 class YamlProfileFormat:
@@ -39,7 +41,9 @@ class YamlProfileFormat:
         self._writer = writer
 
     def written(self, document: dict[str, Any]) -> bytes:
-        return self._writer.dump(document).encode("utf-8")
+        parts = document.get("parts")
+        shown = {**document, "parts": _tree(parts)} if isinstance(parts, Mapping) else document
+        return self._writer.dump(shown).encode("utf-8")
 
     def renamed(self, text: str, name: str, based_on: str) -> str | None:
         without = _BASED_ON.sub("", text)
@@ -132,3 +136,56 @@ class YamlProfileFormat:
 def _ordered(said: Mapping[str, list[str]], slots: Iterable[str]) -> list[str]:
     """The lines said for each of slots, in their order; what is said for no slot of them is not written."""
     return [line for slot in slots for line in said.get(slot, [])]
+
+
+def _tree(parts: Mapping[str, Any]) -> dict[str, Any]:
+    """The folder tree in canonical form: each key split into its steps and the tree built again, a part's own keys
+    first in the order a profile writes them, then its folders and files in the order given; a folder that is no part,
+    has no note and holds one entry joined with that entry; a folder holding nothing written {}."""
+    return _joined(_nested(parts))
+
+
+def _below(key: str) -> bool:
+    """Whether a key of the tree is a folder (it ends in `/`) or a file (it holds a dot), not a key of a part."""
+    return key.endswith("/") or "." in key
+
+
+def _nested(node: Mapping[str, Any]) -> dict[str, Any]:
+    """The node with its own keys in the order a profile writes them and each folder or file key one step to a
+    level."""
+    own = sorted((key for key in node if not _below(key)),
+                 key=lambda key: _PART_KEYS.index(key) if key in _PART_KEYS else len(_PART_KEYS))
+    nested: dict[str, Any] = {key: node[key] for key in own}
+    for key, value in node.items():
+        if _below(key):
+            _put(nested, key, value)
+    return nested
+
+
+def _put(nested: dict[str, Any], key: str, value: Any) -> None:
+    """The folder or file a key writes, put in nested one step to a level."""
+    first, slash, rest = key.partition("/")
+    if rest:
+        held = nested.get(f"{first}/")
+        if not isinstance(held, dict):
+            held = nested[f"{first}/"] = {}
+        _put(held, rest, value)
+        return
+    below = _nested(value) if isinstance(value, Mapping) else value
+    step = f"{first}{slash}"
+    held = nested.get(step)
+    nested[step] = {**held, **below} if isinstance(held, dict) and isinstance(below, dict) else below
+
+
+def _joined(nested: dict[str, Any]) -> dict[str, Any]:
+    """The nested tree with each folder that is no part, has no note and holds one entry joined with that entry, and
+    each folder holding nothing as {}."""
+    joined: dict[str, Any] = {}
+    for key, value in nested.items():
+        if _below(key) and isinstance(value, Mapping):
+            value = _joined(dict(value))
+            if key.endswith("/") and len(value) == 1 and _below(next(iter(value))):
+                ((step, value),) = value.items()
+                key += step
+        joined[key] = {} if value is None and key.endswith("/") else value
+    return joined
