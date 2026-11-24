@@ -339,7 +339,7 @@ def test_a_tier_name_is_one_line_of_text_and_a_tier_is_a_mapping():
                                                    "`folder` has an allowance of its own: without one, its tests "
                                                    "import what the part they mirror may", id="may without a folder"),
     pytest.param({"imports": {"also": "everything"}}, "layered.yaml: tiers.unit.imports.also: must be a list of "
-                                                      "targets such as [<part>, shared/text, api@any]: `everything` "
+                                                      "targets such as [parts.core, unit.store/schema]: `everything` "
                                                       "is not taken, name each target the tests may also import",
                  id="also of everything"),
     pytest.param({"imports": {"also": ["shared", "everything"]}}, "layered.yaml: tiers.unit.imports.also: "

@@ -1,7 +1,7 @@
 """What a part's `imports` says: what it may import, what each of its files must import one of, and the outside
 packages it may import, in one group.
 
-    imports: {may: [<target> | {<target>: types_only}, ...] | everything, must: [<target>, ...],
+    imports: {may: [<reference> | {<reference>: types_only}, ...] | everything, must: [<reference>, ...],
               libraries: [<package>, ...] | everything}
 
 An entry of `may` is a target as the target grammar writes it (see kernel/logic/targets), or a map of one target to its
@@ -32,7 +32,7 @@ MODE = "types_only"
 
 
 def group(spec: Mapping[Any, Any], where: str, problems: list[str], scope: str = PART_IMPORTS,
-          example: str = "{may: [<part>]}") -> Mapping[Any, Any]:
+          example: str = "{may: [parts.<part>]}") -> Mapping[Any, Any]:
     """The `imports` of the part or tier at where, its keys those of the scope: {} when it writes none, or when it is
     no map or says nothing, each problem added, naming the keys in the order of the table and showing the example;
     its unknown keys are refused under the scope."""
@@ -125,7 +125,7 @@ def must(written: Mapping[Any, Any], owner: Part, parts: dict[str, Part], declar
         return ()
     value = written["must"]
     if not isinstance(value, list) or not value:
-        problems.append(f"{where}: must be a list of targets such as [<part>, <part>@any]")
+        problems.append(f"{where}: must be a list of targets such as [parts.<part>, <word>.<part>]")
         return ()
     count = len(problems)
     problems += [f"{where}: {_shown(item)}: must takes references only, with no mode" for item in value
@@ -158,7 +158,7 @@ def _marked(entry: Mapping[Any, Any], where: str, problems: list[str]) -> Any:
 
 
 def _shown(entry: Mapping[Any, Any]) -> str:
-    """A map entry as a profile writes it, in flow style: {ports: types_only}."""
+    """A map entry as a profile writes it, in flow style: {parts.ports: types_only}."""
     return "{" + ", ".join(f"{_scalar(key)}: {_scalar(value)}" for key, value in entry.items()) + "}"
 
 

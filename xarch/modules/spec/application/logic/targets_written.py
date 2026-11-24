@@ -1,8 +1,8 @@
-"""What a part, or the tests in a tier's folder, may import, as a profile writes it: a list of targets (see the target
-grammar in kernel/logic/targets: the old forms, and the references parts.<part> and <word>.<part>, the word one of the
-profile's repeating folders), or `everything`; checked against the parts declared and the part that writes them (None
-for a tier's folder), each problem said at its address. What a tier's tests may also import is a list of targets
-alone, a bare name in the repeating folder, or <word>.<part>, being the instance a test mirrors."""
+"""What a part, or the tests in a tier's folder, may import, as a profile writes it: a list of targets, each a reference
+(see the target grammar in kernel/logic/targets), parts.<part> or <word>.<part>, the word one of the profile's
+repeating folders, or `everything`; checked against the parts declared and the part that writes them (None for a
+tier's folder), each problem said at its address. What a tier's tests may also import is a list of targets alone,
+<word>.<part> being the instance a test mirrors."""
 from __future__ import annotations
 
 from collections.abc import Collection
@@ -28,7 +28,7 @@ def allowed_targets(value: Any, owner: Part | None, parts: dict[str, Part], decl
     if value == WORD and not mirrored:
         return (Target(EVERYTHING),)
     if not isinstance(value, list):
-        problems.append(f"{where}: must be a list of targets such as [<part>, shared/text, api@any]"
+        problems.append(f"{where}: must be a list of targets such as [parts.core, unit.store/schema]"
                         + (f": `{WORD}` is not taken, name each target the tests may also import" if mirrored
                            else f", or {WORD}"))
         return ()

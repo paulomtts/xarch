@@ -211,7 +211,8 @@ class Tier:
         test; empty: no such rule
     plain_tables: every table test of it holds no branch in its body
     imports_also: what each of its tests may import of the app besides what the part it mirrors may (or its own
-        folder's allowance), as targets; a bare name of a part in the repeating folder is the instance the test mirrors
+        folder's allowance), as targets; `<word>.<part>`, a part in the repeating folder, is the instance the test
+        mirrors
     """
     name: str
     subject: tuple[Subject, ...]

@@ -363,6 +363,16 @@ All notable changes to this project are written here. The format follows
   own instance, the word that of the folder the part lies in, then `/<path>` and `:<pattern>` as before (`domain may
   also import parts.platform`, `targets: [{place: [parts.platform, parts.contract]}, outside]`). `everything` is
   still written `everything`, and the JSON's shape does not change.
+- The bundled profiles (`cli`, `web`) and xarch's own `architecture.yaml` write every list of parts under `imports`
+  as references: a part in the importer's own instance `module.<part>`, one in any instance or in no repeating
+  folder `parts.<part>` (`may: [module.domain, parts.kernel, parts.contract]`, `"module.domain/values:*Id"`,
+  `types_only: [parts.controller]`); what each allows does not change, and `profile check architecture.yaml` prints
+  what it printed. A tier's `imports.must` and `imports.types_only` read `parts.<part>` beside a plain name, and
+  refuse `<word>.<part>` (`'module.controller': a tier's tests lie in no instance: write parts.controller`) and a
+  path or a pattern (`'parts.controller/x': names a part only: write parts.controller`), each entry its own problem.
+  `profile explain` (its symbols and the keys under `imports`), the README and the examples the messages give
+  (`must be a list of targets such as [parts.core, unit.store/schema]`, `such as {must: [parts.<part>]}`,
+  `[{parts.ports: types_only}]`) say references.
 
 ## [0.2.0] - 2026-11-18
 

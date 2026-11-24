@@ -19,11 +19,11 @@ BROKEN = {"bundled": {"base": {}}, "languages": {"python": "not a mapping"}}
 UNTOLD = {"bundled": {"base": {}}, "keys": {"fragments": {}, "smallest": "name: n\n", "symbols": []}}
 SAID = (
     Symbol("<folder>/", "under parts, a key ending in /: a folder, holding the folders, files and keys of what lies in it"),
-    Symbol("<word>/", "under parts, a folder key: a repeating folder, one per name, as in units/<unit>/; there may be several"),
-    Symbol("store", "in imports.may, a bare name: that part, in the importer's own instance of its repeating folder"),
-    Symbol("store@any", "that part in any instance; the only way to name a part of another repeating folder"),
-    Symbol("store/schema", "only what lies below that path of the part"),
-    Symbol("store:*Id", "in imports.may, after `:`: only the names that match the pattern, `*` for any text"),
+    Symbol("<word>/", "under parts: a repeating folder, one per name, as in units/<unit>/; there may be several"),
+    Symbol("parts.store", "in imports: that part in every instance of its repeating folder, or the part itself outside one"),
+    Symbol("unit.store", "in imports: that part in the importer's own instance of its repeating folder, units/<unit>/"),
+    Symbol("parts.store/schema", "only what lies below that path of the part"),
+    Symbol("parts.store:*Id", "in imports.may, after `:`: only the names that match the pattern, `*` for any text"),
     Symbol("everything", "in imports.may or imports.libraries: no limit"),
     Symbol("<file>.py", "under parts, a key holding a dot: a file, always a part"),
 )
@@ -149,7 +149,8 @@ def test_a_key_says_what_it_accepts_whether_check_enforces_it_through_which_rule
     key = explained("parts.imports.may")
     assert (key.key, key.where, key.required, key.enforced, key.rules) == (
         "parts.imports.may", "parts.<part>.imports", False, True, ("may-import",))
-    assert "@any" in key.accepts and "may: [core]" in key.example
+    assert "parts.<part>" in key.accepts and "<word>.<part>" in key.accepts and "may: [parts.core]" in key.example
+    assert "@any" not in key.accepts and "bare name" not in key.accepts
     assert [held_key.key for held_key in key.keys] == ["parts.imports.may.types_only"]
     assert [(held_key.key, held_key.required) for held_key in explained("fakes").keys] == [
         ("fakes.folder", True), ("fakes.for", True), ("fakes.prefix", False)]

@@ -274,10 +274,10 @@ def test_everything_is_a_part_that_may_import_everything_and_the_rest_a_part_wit
 
 
 @pytest.mark.parametrize("part, targets, expected", [
-    pytest.param("store", 3, "layered.yaml: parts.store.imports.may: must be a list of targets such as [<part>, "
-                              "shared/text, api@any], or everything", id="not a list"),
-    pytest.param("store", "all", "layered.yaml: parts.store.imports.may: must be a list of targets such as [<part>, "
-                                 "shared/text, api@any], or everything", id="a string that is not everything"),
+    pytest.param("store", 3, "layered.yaml: parts.store.imports.may: must be a list of targets such as [parts.core, "
+                              "unit.store/schema], or everything", id="not a list"),
+    pytest.param("store", "all", "layered.yaml: parts.store.imports.may: must be a list of targets such as [parts.core, "
+                                 "unit.store/schema], or everything", id="a string that is not everything"),
     pytest.param("store", ["repo"], "layered.yaml: parts.store.imports.may: 'repo' names no part 'repo'", id="no such part"),
     pytest.param("store", [3], "layered.yaml: parts.store.imports.may: 3 is not a target: use <part>, <part>@any, "
                                "optionally followed by /<path>", id="not text"),
@@ -416,8 +416,8 @@ def test_a_part_says_what_its_files_must_import_with_the_targets_of_may_import()
 
 @pytest.mark.parametrize("value, expected", [
     pytest.param("everything", "layered.yaml: parts.store.imports.must: must be a list of targets such as "
-                               "[<part>, <part>@any]", id="no everything"),
-    pytest.param([], "layered.yaml: parts.store.imports.must: must be a list of targets such as [<part>, <part>@any]",
+                               "[parts.<part>, <word>.<part>]", id="no everything"),
+    pytest.param([], "layered.yaml: parts.store.imports.must: must be a list of targets such as [parts.<part>, <word>.<part>]",
                  id="an empty list"),
     pytest.param(["ghost"], "layered.yaml: parts.store.imports.must: 'ghost' names no part 'ghost'", id="no such part"),
     pytest.param(["api"], "layered.yaml: parts.store.imports.must: 'api' is not in imports.may, so no file could "

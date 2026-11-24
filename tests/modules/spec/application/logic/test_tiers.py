@@ -432,7 +432,7 @@ def test_the_group_is_refused_when_written_wrong(imports, problem):
     pytest.param("may_import", ["shared"], "moved in 0.3.0: write imports: {may: [...]}", id="may_import"),
     pytest.param("may_also_import", ["shared"], "moved in 0.3.0: write imports: {also: [...]}", id="may_also_import"),
     pytest.param("must_import", ["store"], "moved in 0.3.0: write imports: {must: [...]}", id="must_import"),
-    pytest.param("types_only", ["store"], "moved in 0.3.0: write imports: {types_only: [<part>, ...]}",
+    pytest.param("types_only", ["store"], "moved in 0.3.0: write imports: {types_only: [parts.<part>, ...]}",
                  id="types_only"),
 ])
 def test_an_old_tier_key_is_refused_with_the_form_that_replaces_it(key, value, hint):
@@ -450,7 +450,7 @@ def test_a_tier_writing_the_four_old_keys_gets_one_problem_for_each_in_sorted_or
         f"layered.yaml: tiers.integration: unknown key 'must_import': moved in 0.3.0: write imports: "
         f"{{must: [...]}}; {TIER_USE}",
         f"layered.yaml: tiers.integration: unknown key 'types_only': moved in 0.3.0: write imports: "
-        f"{{types_only: [<part>, ...]}}; {TIER_USE}"]
+        f"{{types_only: [parts.<part>, ...]}}; {TIER_USE}"]
 
 
 def test_a_retired_key_beside_the_group_is_its_own_problem_and_the_group_is_still_read():
@@ -487,7 +487,7 @@ def test_an_empty_also_loads_and_adds_nothing():
 
 @pytest.mark.parametrize("imports, problem", [
     pytest.param({"also": "everything"}, "tiers.integration.imports.also: must be a list of targets such as "
-                 "[<part>, shared/text, api@any]: `everything` is not taken, name each target the tests may also "
+                 "[parts.core, unit.store/schema]: `everything` is not taken, name each target the tests may also "
                  "import", id="also everything"),
     pytest.param({"also": ["shared", "everything"]}, "tiers.integration.imports.also: `everything` is not taken, "
                  "name each target the tests may also import", id="everything in a list of also"),

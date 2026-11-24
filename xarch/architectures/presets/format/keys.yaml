@@ -19,7 +19,7 @@ fragments:
       documents/:
         role: the documents
         imports:
-          may: [core]
+          may: [parts.core]
   tiered-part: |
     <<part>>
         tests: unit
@@ -111,11 +111,11 @@ smallest: |
       role: the documents
 symbols:
   "<folder>/": "under parts, a key ending in /: a folder, holding the folders, files and keys of what lies in it"
-  "<word>/": "under parts, a folder key: a repeating folder, one per name, as in units/<unit>/; there may be several"
-  store: "in imports.may, a bare name: that part, in the importer's own instance of its repeating folder"
-  store@any: that part in any instance; the only way to name a part of another repeating folder
-  store/schema: only what lies below that path of the part
-  store:*Id: "in imports.may, after `:`: only the names that match the pattern, `*` for any text"
+  "<word>/": "under parts: a repeating folder, one per name, as in units/<unit>/; there may be several"
+  parts.store: "in imports: that part in every instance of its repeating folder, or the part itself outside one"
+  unit.store: "in imports: that part in the importer's own instance of its repeating folder, units/<unit>/"
+  parts.store/schema: only what lies below that path of the part
+  parts.store:*Id: "in imports.may, after `:`: only the names that match the pattern, `*` for any text"
   everything: "in imports.may or imports.libraries: no limit"
   "<file>%extension%": "under parts, a key holding a dot: a file, always a part"
 keys:
@@ -213,7 +213,7 @@ keys:
       needs `testing`.
       Tests mirror the app: tests/<path> for the app's <path>, and a test file has the tier of the part its folder
       mirrors (a folder that mirrors no part belongs to the tier whose `folder` holds it). A test imports only the part
-      its folder mirrors and what that may import, a bare name meaning the instance it mirrors, then what its tier's
+      its folder mirrors and what that may import, a `<word>.<part>` reference meaning the instance it mirrors, then what its tier's
       `imports.also` adds, and other test code only from its own folder; a test in no tier is a violation. Every folder below tests/<a repeating folder>/ mirrors a
       folder of the app
     example: |
@@ -343,23 +343,25 @@ keys:
   parts.<part>.imports.may:
     meaning: what the part may import besides itself
     accepts: >-
-      [<part>, <part>@any, <part>/<path>, <part>:<pattern>, {<target>: types_only}, ...] or everything: a bare name is
-      that part in the importer's own instance (a part of another repeating folder has none: write `@any`), `@any` any
-      instance, `/<path>` only what lies below it, `:<pattern>` only the names that match the pattern (`*` for any
-      text, such as `core/ids:*Id`): `from <there> import <name>` for each name, never the file as a whole, and a file
-      of the tests is not narrowed; an entry written `{<target>: types_only}` is a target the part may import only to
-      use as a type (imports.may.types_only); a part may always import itself, so a target that only says so is refused
+      [parts.<part>, <word>.<part>, ...] or everything, each reference optionally followed by `/<path>` and
+      `:<pattern>`, or one marked {<reference>: types_only}: `parts.<part>` is that part in every instance of its
+      repeating folder, or the part itself outside one; `<word>.<part>` the part in the importer's own instance of the
+      folder the word repeats, which the importer lies in too; `/<path>` only what lies below it, `:<pattern>` only the
+      names that match the pattern (`*` for any text, such as `parts.core/ids:*Id`): `from <there> import <name>` for
+      each name, never the file as a whole, and a file of the tests is not narrowed; an entry written
+      `{<reference>: types_only}` is a target the part may import only to use as a type (imports.may.types_only); a
+      part may always import itself, so a target that only says so is refused
     example: |
       <<two>>
   parts.<part>.imports.may.types_only:
     meaning: a target of imports.may the part may use only as a type
     accepts: >-
-      the mode of an entry of `imports.may`, written `{<target>: types_only}`, one target per entry, such as
-      `[{core: types_only}]`: a file of the part may import what the entry reaches to annotate, and for `isinstance`
-      and exception matching, but never call what it imports from there (`X(...)`, `m.X(...)`, `X.build(...)`) nor
-      reference one of its top-level functions at all, read through every import, however written. The rule reads what
-      the entry reaches, its part, instance and path; its name pattern narrows only what may be imported. A tier's
-      `imports.types_only` is the list form of the same idea, read on a test
+      the mode of an entry of `imports.may`, written `{<reference>: types_only}`, one reference per entry, such as
+      `[{parts.core: types_only}]`: a file of the part may import what the entry reaches to annotate, and for
+      `isinstance` and exception matching, but never call what it imports from there (`X(...)`, `m.X(...)`,
+      `X.build(...)`) nor reference one of its top-level functions at all, read through every import, however written.
+      The rule reads what the entry reaches, its part, instance and path; its name pattern narrows only what may be
+      imported. A tier's `imports.types_only` is the list form of the same idea, read on a test
     example: |
       parts:
         core/:
@@ -367,18 +369,18 @@ keys:
         documents/:
           role: the documents
           imports:
-            may: [{core: types_only}]
+            may: [{parts.core: types_only}]
   parts.<part>.imports.must:
     meaning: what each file of the part has to reach
     accepts: >-
-      [<target>, ...] written as `imports.may` writes them, with no mode, each an entry of `imports.may`: each file
+      [<reference>, ...] written as `imports.may` writes them, with no mode, each an entry of `imports.may`: each file
       imports one of them, or an outside package (top-level, neither standard library nor the app's own, whatever
       `imports.libraries` says), or imports a file of its own part that does, however far the chain; files that only
       import each other meet nothing. Exempt: `%package_file%` and a file with no function or method holding a real
       statement (types, constants, %interface% stubs). A failing file is reported once, as a whole
     example: |
       <<two>>
-            must: [core]
+            must: [parts.core]
   parts.<part>.imports.libraries:
     meaning: the outside packages the part may import
     accepts: >-
@@ -610,14 +612,15 @@ keys:
     accepts: >-
       a map {may, also, must, types_only}, at least one of them, in any order: `may` what the tests in its folder may
       import of the app (only for a tier with a `folder`), `also` what its tests may import besides, `must` the parts
-      one of which each of its test files reaches, `types_only` the parts its tests may import only as types. Without
-      `imports`, a test imports what the part it mirrors may, and a test of the tier's folder nothing of the app
+      (`parts.<part>`) one of which each of its test files reaches, `types_only` the parts (`parts.<part>`) its tests
+      may import only as types. Without `imports`, a test imports what the part it mirrors may, and a test of the
+      tier's folder nothing of the app
     example: |
       <<testing>>
       tiers:
         unit:
           imports:
-            must: [documents]
+            must: [parts.documents]
       <<tiered-part>>
   tiers.<tier>.docs:
     meaning: what only fills the generated docs
@@ -730,15 +733,15 @@ keys:
   tiers.<tier>.imports.also:
     meaning: what its tests may also import of the app
     accepts: >-
-      targets, as a part's `imports.may`, read from the instance a test mirrors, and added to what each test of the
-      tier may import of the app, such as the values a test builds its fakes' answers with; not `everything`. A target
-      the bundled profile's tier does not give is listed by `profile check` as looser
+      references, as a part's `imports.may`, `<word>.<part>` the instance a test mirrors, and added to what each
+      test of the tier may import of the app, such as the values a test builds its fakes' answers with; not
+      `everything`. A target the bundled profile's tier does not give is listed by `profile check` as looser
     example: |
       <<testing>>
       tiers:
         unit:
           imports:
-            also: [core]
+            also: [parts.core]
       parts:
         core/:
           role: the rules of the documents
@@ -749,21 +752,22 @@ keys:
   tiers.<tier>.imports.must:
     meaning: what each of its test files has to reach
     accepts: >-
-      [<part>, ...]: each test file of the tier (a file whose name `testing.files` matches) imports from one of those
-      parts, in any instance, or imports test code that is no test file and does, however far the chain goes; a test
-      file with no function holding a real statement is exempt, and a file failing is reported once, as a whole. Silent
-      on what a test is handed without importing it, such as a fixture
+      [parts.<part>, ...]: each test file of the tier (a file whose name `testing.files` matches) imports from one of
+      those parts, in any instance, or imports test code that is no test file and does, however far the chain goes; a
+      test file with no function holding a real statement is exempt, and a file failing is reported once, as a whole.
+      A tier's tests lie in no instance, so `<word>.<part>` is refused here. Silent on what a test is handed without
+      importing it, such as a fixture
     example: |
       <<testing>>
       tiers:
         unit:
           imports:
-            must: [documents]
+            must: [parts.documents]
       <<tiered-part>>
   tiers.<tier>.imports.types_only:
     meaning: the parts its tests may import only as types
     accepts: >-
-      [<part>, ...]: a test may import them to annotate, never to call: `def build(c: Controller)` is fine,
+      [parts.<part>, ...]: a test may import them to annotate, never to call: `def build(c: Controller)` is fine,
       `Controller(...)` is not; a plain function of such a part may not be referenced at all, while `isinstance`,
       exception matching and enum members stay allowed
     example: |
@@ -771,7 +775,7 @@ keys:
       tiers:
         unit:
           imports:
-            types_only: [documents]
+            types_only: [parts.documents]
       <<tiered-part>>
   testing.preset:
     meaning: the preset the framework is read from
@@ -1243,7 +1247,7 @@ keys:
           role: the documents
         adapters/:
           role: the documents as the outside reads them
-          imports: {may: [documents]}
+          imports: {may: [parts.documents]}
       guards:
         no-twins: {min_fields: 2, translated: [adapters]}
   guards.dead-code.untested:

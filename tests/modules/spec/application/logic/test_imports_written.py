@@ -42,18 +42,18 @@ def test_a_part_with_no_imports_imports_only_itself_and_no_outside_package():
 
 @pytest.mark.parametrize("imports, problem", [
     pytest.param({}, "parts.store.imports: says nothing: write may, must or libraries, or drop it", id="empty"),
-    pytest.param(["shared"], "parts.store.imports: must be a map of may, must and libraries, such as {may: [<part>]}",
+    pytest.param(["shared"], "parts.store.imports: must be a map of may, must and libraries, such as {may: [parts.<part>]}",
                  id="a list"),
-    pytest.param(True, "parts.store.imports: must be a map of may, must and libraries, such as {may: [<part>]}",
+    pytest.param(True, "parts.store.imports: must be a map of may, must and libraries, such as {may: [parts.<part>]}",
                  id="true"),
-    pytest.param("shared", "parts.store.imports: must be a map of may, must and libraries, such as {may: [<part>]}",
+    pytest.param("shared", "parts.store.imports: must be a map of may, must and libraries, such as {may: [parts.<part>]}",
                  id="a string"),
-    pytest.param(None, "parts.store.imports: must be a map of may, must and libraries, such as {may: [<part>]}",
+    pytest.param(None, "parts.store.imports: must be a map of may, must and libraries, such as {may: [parts.<part>]}",
                  id="null"),
     pytest.param({"never": "pure"}, "parts.store.imports: unknown key 'never': a key of uses, beside imports: write "
                  "uses: {never: <list>}; use libraries, may, must", id="never"),
     pytest.param({"types_only": ["shared"]}, "parts.store.imports: unknown key 'types_only': write it as the mode of "
-                 "its entry in imports.may, such as [{ports: types_only}]; use libraries, may, must", id="types_only"),
+                 "its entry in imports.may, such as [{parts.ports: types_only}]; use libraries, may, must", id="types_only"),
     pytest.param({"also": ["shared"]}, "parts.store.imports: unknown key 'also': use libraries, may, must", id="also"),
 ])
 def test_the_group_is_refused_when_written_wrong(imports, problem):
@@ -105,8 +105,8 @@ def test_a_mark_written_wrong_is_refused_at_may(entry, problem):
 
 
 @pytest.mark.parametrize("must, problem", [
-    pytest.param([], "must be a list of targets such as [<part>, <part>@any]", id="empty"),
-    pytest.param("shared", "must be a list of targets such as [<part>, <part>@any]", id="no list"),
+    pytest.param([], "must be a list of targets such as [parts.<part>, <word>.<part>]", id="empty"),
+    pytest.param("shared", "must be a list of targets such as [parts.<part>, <word>.<part>]", id="no list"),
     pytest.param([{"shared": "types_only"}], "{shared: types_only}: must takes references only, with no mode",
                  id="a mode"),
     pytest.param(["api"], "'api' is not in imports.may, so no file could import it: add it there, or name a part the "
@@ -133,7 +133,7 @@ def test_must_without_may_is_refused_entry_by_entry():
     pytest.param("must_import", "moved in 0.3.0: write imports: {must: [...]}", id="must_import"),
     pytest.param("libraries", "moved in 0.3.0: write imports: {libraries: [...]}", id="libraries"),
     pytest.param("types_only", "moved in 0.3.0: write it as the mode of its entry in imports.may, such as "
-                 "[{ports: types_only}]", id="types_only"),
+                 "[{parts.ports: types_only}]", id="types_only"),
 ])
 def test_each_old_key_of_a_part_is_refused_with_the_form_that_replaces_it(key, text):
     document = layered()
@@ -168,4 +168,4 @@ def test_a_never_list_beside_imports_written_as_no_map_names_no_package_and_says
     document["never"] = {"pure": ["time.time"]}
     part_of(document, "service")["uses"] = {"never": "pure"}
     assert problems(document) == [
-        "layered.yaml: parts.store.imports: must be a map of may, must and libraries, such as {may: [<part>]}"]
+        "layered.yaml: parts.store.imports: must be a map of may, must and libraries, such as {may: [parts.<part>]}"]

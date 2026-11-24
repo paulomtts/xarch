@@ -24,9 +24,9 @@ key_catalogue); the shape:
                                the reading order, a part before the parts inside it, is the order their litmus tests run
         name: <name>           the part's name, when its folder or file does not give it
         imports: {may, must, libraries}
-                               what the part may import besides itself, which it always may: each entry a target
-                               (a bare name of a part in the repeating folder is the importer's own instance, `@any`
-                               any instance, `/<path>` below it) or one marked {<target>: types_only}, or everything;
+                               what the part may import besides itself, which it always may: each entry a reference
+                               (`parts.<part>` the part in every instance, `<word>.<part>` the importer's own
+                               instance, `/<path>` below it) or one marked {<reference>: types_only}, or everything;
                                the targets each file must import one of; the outside packages by top-level import
                                name, none unless listed, everything leaving the part unchecked (see imports_written)
         uses: {never: <list>}  the name of a list under the top-level `never`, which the part never uses
@@ -45,8 +45,8 @@ key_catalogue); the shape:
                                the kinds of test, in the order their litmus tests run. A tier with a `folder` below
                                the tests folder says in `imports.may` what the tests there may import; `imports.also`
                                what each of its tests may import beyond that or what the part it mirrors may;
-                               `imports.must` the parts one of which each of its test files reaches;
-                               `imports.types_only` the parts its tests may import only as types;
+                               `imports.must` the parts (`parts.<part>`) one of which each of its test files reaches;
+                               `imports.types_only` the parts (`parts.<part>`) its tests may import only as types;
                                `uses: {apply_never: true}` holds its tests to the `uses.never` list of the part they
                                mirror; `docs` holds what only fills the generated docs
     fakes: {folder, for, prefix}               the folder of the test fakes below the tests folder, the parts they
