@@ -147,9 +147,10 @@ _TIER_INSTEAD = "`tests: <tier>`, or `untested: <reason>`"
 @dataclass(frozen=True)
 class _Testing:
     """What `testing` says: how test files and functions are named and the table forms the framework writes, and,
-    when written, how a mock is built."""
+    when written, how a mock is built; preset: the name of the preset it names, "" when written as a map."""
     framework: Framework
     mocks: StandIns | None
+    preset: str = ""
 
 
 @dataclass(frozen=True)
@@ -200,9 +201,9 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     layers = ck.layer_chains(document["layers"], parts, declared, rules, problems) if "layers" in document else {}
     testing = _testing(document["testing"], presets or {}, problems, language) if "testing" in document else None
     tiers = _tiers(document, specs, parts, declared, examples, problems, language)
-    problems += [f"tiers.{tier.name}.plain_tables: needs `testing.tables`, the forms a table of cases is written in, "
-                 "to know a table test" for tier in tiers
-                 if tier.plain_tables and (testing is None or not testing.framework.tables)]
+    problems += [f"tiers.{tier.name}.plain_tables: needs a table form: the framework {_framework_named(testing)} "
+                 "writes none in `testing.tables`" for tier in tiers
+                 if tier.plain_tables and testing is not None and not testing.framework.tables]
     fakes = _fakes(document["fakes"], parts, declared, problems, language) if "fakes" in document else None
     problems += ck.folder_clashes(tiers, fakes)
     guards = _guards(document.get("guards", {}), specs, parts, declared, tiers, fakes, testing, problems, language)
@@ -527,12 +528,13 @@ def _group(value: Any, scope: str, example: str, where: str, problems: list[str]
 
 def _testing(value: Any, presets: Mapping[str, Any], problems: list[str], language: Language) -> _Testing | None:
     """How the test framework names things: the map in the file, or the one a preset holds, validated the same."""
+    preset = ""
     if isinstance(value, str):
         if value not in presets:
             names = f"use {', '.join(sorted(presets))}, or write" if presets else "write"
             problems.append(f"testing: no preset {value!r}: {names} the map {_PRESET_MAP}")
             return None
-        value = presets[value]
+        preset, value = value, presets[value]
     elif not isinstance(value, Mapping):
         problems.append(f"testing: must be a preset name or a mapping {_PRESET_MAP}: the patterns of a test file's name "
                         "and of a test function's")
@@ -543,7 +545,12 @@ def _testing(value: Any, presets: Mapping[str, Any], problems: list[str], langua
     mocks = _mocks(value["mocks"], problems, language) if "mocks" in value else None
     if len(problems) != count or framework is None or tables is None:
         return None
-    return _Testing(replace(framework, tables=tables), mocks)
+    return _Testing(replace(framework, tables=tables), mocks, preset)
+
+
+def _framework_named(testing: _Testing) -> str:
+    """How a problem names the framework `testing` says: the preset it names, or `testing` itself when written out."""
+    return f"`{testing.preset}`" if testing.preset else "of `testing`"
 
 
 def _mocks(value: Any, problems: list[str], language: Language) -> StandIns | None:
@@ -780,18 +787,20 @@ def _scenario_coverage(spec: Any, parts: dict[str, Part], declared: set[str], ti
         return None
     count = len(problems)
     problems += ck.unknown_keys(spec, names_of(SCENARIO_COVERAGE), where, SCENARIO_COVERAGE)
-    problems += [f"{where}: missing `{key}`" for key in sorted(required_of(SCENARIO_COVERAGE)) if key not in spec]
-    if testing is not None and not testing.framework.tables:
-        problems.append(f"{where}: needs `testing.tables`: the forms a table of cases is written in, such as "
-                        "[{decorator, columns_from, rows, row, id}]")
+    forms = testing is None or bool(testing.framework.tables)
+    required = {*required_of(SCENARIO_COVERAGE), *(("columns",) if forms else ())}
+    problems += [f"{where}: missing `{key}`" for key in sorted(required) if key not in spec]
+    if not forms and "columns" in spec:
+        problems.append(f"{where}.columns: drop `columns`: the framework writes no table, so each result is its own "
+                        "test")
     if len(problems) != count:
         return None
     ck.scenario_places(spec["results"], spec["tier"], spec["suffix"], parts, declared, tiers, where, problems,
                        language)
-    columns = ck.column_names(spec["columns"], f"{where}.columns", problems, language)
+    columns = ck.column_names(spec["columns"], f"{where}.columns", problems, language) if forms else ()
     framework = testing.framework if testing is not None else None
     file = ck.use_case_file(spec["file"], framework, f"{where}.file", problems, language, "testing.files")
-    if len(problems) != count or columns is None or file is None or testing is None or not testing.framework.tables:
+    if len(problems) != count or columns is None or file is None or testing is None:
         return None
     return ScenarioCoverage(spec["results"], spec["tier"], spec["suffix"], columns, file)
 

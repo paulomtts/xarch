@@ -176,7 +176,7 @@ _KEYS: tuple[Key, ...] = (
     Key(SCENARIO_COVERAGE, "results", True, rules=("scenario-coverage",)),
     Key(SCENARIO_COVERAGE, "tier", True, rules=("scenario-coverage",)),
     Key(SCENARIO_COVERAGE, "suffix", True, rules=("scenario-coverage",)),
-    Key(SCENARIO_COVERAGE, "columns", True, rules=("scenario-coverage",)),
+    Key(SCENARIO_COVERAGE, "columns", rules=("scenario-coverage",)),
     Key(SCENARIO_COVERAGE, "file", True, rules=("scenario-coverage",)),
 
     Key(NO_DUPLICATES, "min_statements", rules=("no-duplicates",)),

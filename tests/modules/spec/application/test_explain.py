@@ -227,6 +227,17 @@ def test_the_tier_of_scenario_coverage_is_still_a_key_of_the_format():
     assert isinstance(found, KeyExplained) and found.key == "guards.scenario-coverage.tier"
 
 
+def test_the_columns_of_scenario_coverage_are_required_only_where_the_framework_writes_a_table_form():
+    found = explained("guards.scenario-coverage.columns")
+    assert (found.key, found.where, found.required) == (
+        "guards.scenario-coverage.columns", "guards.scenario-coverage", False)
+    assert found.accepts == ("[<state>, <command>, <result>]: required when `testing.tables` writes a form, refused "
+                             "when it writes none")
+    assert explained("tiers.<tier>.plain_tables").accepts.endswith("refused when `testing.tables` writes no form")
+    assert "`columns` is written only when `testing.tables` writes a form" in explained(
+        "guards.scenario-coverage").accepts
+
+
 def test_the_lists_a_part_never_uses_are_the_top_level_never_and_the_key_never_of_its_uses():
     block, group, held = (explained(address) for address in ("never", "parts.uses", "parts.<part>.uses.never"))
     assert (block.key, block.meaning) == ("never", "named lists of names a part never uses")

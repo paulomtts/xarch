@@ -566,16 +566,60 @@ def test_dead_code_without_fakes_is_refused():
         "classes in `fakes.folder`"]
 
 
-NO_FORMS = ("layered.yaml: guards.scenario-coverage: needs `testing.tables`: the forms a table of cases is written in, "
-            "such as [{decorator, columns_from, rows, row, id}]")
+DROP_COLUMNS = ("layered.yaml: guards.scenario-coverage.columns: drop `columns`: the framework writes no table, so "
+                "each result is its own test")
+NO_COLUMNS = {key: value for key, value in GUARDS["scenario-coverage"].items() if key != "columns"}
 
 
-def test_scenario_coverage_reads_its_forms_from_the_framework_and_says_so_when_there_is_none():
-    document = covered(guards={"scenario-coverage": GUARDS["scenario-coverage"]})
-    del document["testing"]["tables"]
-    assert problems(document) == [NO_FORMS]
-    document["testing"]["tables"] = []
-    assert problems(document) == [NO_FORMS]
+def no_form(document: dict, tables: str) -> dict:
+    if tables == "absent":
+        del document["testing"]["tables"]
+    else:
+        document["testing"]["tables"] = []
+    return document
+
+
+@pytest.mark.parametrize("tables", ["absent", "empty"])
+def test_scenario_coverage_under_a_framework_with_no_table_form_takes_no_columns(tables):
+    document = no_form(covered(guards={"scenario-coverage": NO_COLUMNS}), tables)
+    assert parsed(document).guards == (ScenarioCoverage("api", "integration", "Result", (), "test_{name:snake}.py"),)
+
+
+def test_scenario_coverage_under_a_preset_with_no_table_form_takes_no_columns():
+    presets = {"pytest": {"files": ["test_*.py"], "functions": "test_*"}}
+    document = covered(testing="pytest", guards={"scenario-coverage": NO_COLUMNS})
+    assert parsed(document, presets=presets).guards == (
+        ScenarioCoverage("api", "integration", "Result", (), "test_{name:snake}.py"),)
+
+
+@pytest.mark.parametrize("columns", [["given", "when", "then"], "anything", None])
+@pytest.mark.parametrize("tables", ["absent", "empty"])
+def test_scenario_coverage_under_a_framework_with_no_table_form_refuses_columns(tables, columns):
+    document = no_form(covered(guards={"scenario-coverage": NO_COLUMNS | {"columns": columns}}), tables)
+    assert problems(document) == [DROP_COLUMNS]
+
+
+def test_scenario_coverage_under_a_framework_with_a_table_form_still_needs_columns():
+    assert problems(covered(guards={"scenario-coverage": NO_COLUMNS})) == [
+        "layered.yaml: guards.scenario-coverage: missing `columns`"]
+
+
+def test_scenario_coverage_under_a_framework_with_no_table_form_needs_every_other_key():
+    guard = {key: value for key, value in NO_COLUMNS.items() if key != "file"}
+    assert problems(no_form(covered(guards={"scenario-coverage": guard}), "empty")) == [
+        "layered.yaml: guards.scenario-coverage: missing `file`"]
+    assert problems(no_form(covered(guards={"scenario-coverage": {}}), "absent")) == [
+        "layered.yaml: guards.scenario-coverage: missing `file`",
+        "layered.yaml: guards.scenario-coverage: missing `results`",
+        "layered.yaml: guards.scenario-coverage: missing `suffix`",
+        "layered.yaml: guards.scenario-coverage: missing `tier`"]
+
+
+def test_scenario_coverage_with_a_refused_framework_still_lists_columns_as_missing():
+    document = covered(testing="odd", guards={"scenario-coverage": NO_COLUMNS})
+    assert problems(document) == [
+        "layered.yaml: testing: no preset 'odd': use pytest, or write the map {files, functions}",
+        "layered.yaml: guards.scenario-coverage: missing `columns`"]
 
 
 SCENARIOS = "layered.yaml: guards.scenario-coverage"
@@ -636,11 +680,11 @@ def test_a_guard_that_reads_tests_needs_the_framework_even_without_tiers():
 
 
 
-PLAIN_NEEDS = ("layered.yaml: tiers.unit.plain_tables: needs `testing.tables`, the forms a table of cases is written in, "
-               "to know a table test")
+PLAIN_NEEDS = ("layered.yaml: tiers.unit.plain_tables: needs a table form: the framework of `testing` writes none in "
+               "`testing.tables`")
 
 
-def test_a_tier_whose_table_tests_are_plain_says_so_and_needs_the_form_of_a_table():
+def test_a_tier_whose_table_tests_are_plain_says_so_and_needs_a_framework_that_writes_a_table_form():
     document = covered()
     document["tiers"]["unit"]["plain_tables"] = True
     assert [tier.plain_tables for tier in parsed(document).tiers] == [True, False]
@@ -648,3 +692,24 @@ def test_a_tier_whose_table_tests_are_plain_says_so_and_needs_the_form_of_a_tabl
     assert problems(document) == [PLAIN_NEEDS]
     document["testing"] = TESTING | {"tables": []}
     assert problems(document) == [PLAIN_NEEDS]
+
+
+def test_a_plain_tier_under_a_preset_that_writes_no_table_form_names_the_preset():
+    document = covered(testing="pytest")
+    document["tiers"]["unit"]["plain_tables"] = True
+    presets = {"pytest": {"files": ["test_*.py"], "functions": "test_*"}}
+    assert problems(document, presets=presets) == [
+        "layered.yaml: tiers.unit.plain_tables: needs a table form: the framework `pytest` writes none in "
+        "`testing.tables`"]
+
+
+def test_a_plain_tier_with_no_framework_is_told_only_what_is_wrong_with_testing():
+    document = covered()
+    del document["testing"]
+    document["tiers"]["unit"]["plain_tables"] = True
+    assert problems(document) == [
+        "layered.yaml: missing `testing`: `tiers` must recognise a test file by its name: write testing: <preset>, "
+        "or testing: {files: [<pattern>, ...], functions: <pattern>}"]
+    document["testing"] = "odd"
+    assert problems(document) == [
+        "layered.yaml: testing: no preset 'odd': use pytest, or write the map {files, functions}"]

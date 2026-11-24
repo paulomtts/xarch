@@ -69,12 +69,13 @@ class TableForm:
 @dataclass(frozen=True)
 class ScenarioCoverage:
     """The guard scenario-coverage: the part holding the result unions, the tier holding their tables, how a union's
-    name ends, the names of the three parameters of a table (its state, its command and its result, in that order),
-    and the name of a use case's test file, `{name:<case>}` standing for the use case in the case it writes."""
+    name ends, the names of the three parameters of a table (its state, its command and its result, in that order;
+    none for a framework that writes no table form, where each result is its own test), and the name of a use case's
+    test file, `{name:<case>}` standing for the use case in the case it writes."""
     results: str
     tier: str
     suffix: str
-    columns: tuple[str, str, str]
+    columns: tuple[str, ...]
     file: str
 
 
