@@ -46,17 +46,18 @@ WHERE = {
 }
 """What `where` said of each part before the change: may_import_text and libraries."""
 RULES = {
-    ("cli", "may"): (12, "b5fb19f749264287"), ("cli", "must"): (1, "3a6fe3a7e4628850"),
+    ("cli", "may"): (12, "b5fb19f749264287"), ("cli", "must"): (1, "cb8bbbfa024c046c"),
     ("cli", "libraries"): (24, "ae1fba4a77503d1a"),
-    ("web", "may"): (12, "f06766b1dbdc51b7"), ("web", "must"): (1, "3a6fe3a7e4628850"),
+    ("web", "may"): (12, "f06766b1dbdc51b7"), ("web", "must"): (1, "cb8bbbfa024c046c"),
     ("web", "libraries"): (24, "058402903c045a47"),
-    ("architecture.yaml", "may"): (15, "0d94a54e9f44405d"), ("architecture.yaml", "must"): (1, "3a6fe3a7e4628850"),
+    ("architecture.yaml", "may"): (15, "0d94a54e9f44405d"), ("architecture.yaml", "must"): (1, "cb8bbbfa024c046c"),
     ("architecture.yaml", "libraries"): (30, "27ee07b82ce0c6a6"),
 }
 """For each profile and key of the group: how many rules it expands to, and the first 16 hex digits of the SHA-256 of
 their checks text before the change. The rules come in the order of the parts, which became the folder tree's reading
 order in 0.3.0 (`contract` after `adapters`, `kernel` before `kernel-logic`): the lines of `may` and `libraries` are the
-same as before, and only their order, so only their digests, moved."""
+same as before, and only their order, so only their digests, moved. In 0.3.0 the places of `must` are written as
+references (`parts.<part>`), which moved only that digest."""
 TIER_KEYS = {"types_only": "tiers.imports.types_only", "must": "tiers.imports.must",
              "also": "tiers.imports.also", "tiers": "tiers"}
 """The address `profile explain` is asked for each key of a tier's group that rules are keyed by, and for `tiers`,
@@ -107,6 +108,14 @@ def test_where_says_what_each_part_of_xarch_may_import_as_before(part):
 @pytest.mark.parametrize("profile, key", list(RULES))
 def test_each_key_of_the_group_expands_to_the_rules_of_before(profile, key):
     assert explained(KEYS[key], profile) == RULES[profile, key]
+
+
+@pytest.mark.parametrize("profile", ["cli", "web", "architecture.yaml"])
+def test_the_places_a_part_must_import_are_written_as_references(profile):
+    found = json.loads(runner.invoke(app, ["profile", "explain", "parts.imports.must", "--rule", "--profile", profile,
+                                           "--format", "json"]).output)
+    assert "targets: [{place: [parts.platform, parts.contract]}, outside]" in found["checks"]
+    assert "@any" not in found["checks"]
 
 
 @pytest.mark.parametrize("test", list(TESTS))

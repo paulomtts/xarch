@@ -1,6 +1,6 @@
-"""A rule as the check a profile would write: its slots as the format holds them, its targets as written (places in
-the target grammar, dotted names joined), a rule of reach with how it reaches; each under an id of its own; and the
-tokens of the language filled into the examples."""
+"""A rule as the check a profile would write: its slots as the format holds them, its targets as written (places as
+references, `parts.<part>` or `<word>.<part>`, which target() reads back; dotted names joined), a rule of reach with how
+it reaches; each under an id of its own; and the tokens of the language filled into the examples."""
 import pytest
 
 from tests.modules.rules.builders import BRACE
@@ -12,21 +12,51 @@ from xarch.profile_values.language import LINE, CheckedLanguage, CommentForm
 from xarch.profile_values.placement import Repeat, Target
 
 SAID = (Saying("m", "f"),)
-PARTS = {"domain": ("modules", "*", "domain"), "services": ("modules", "*", "services"), "kernel": ("kernel",)}
+PARTS = {"domain": ("modules", "*", "domain"), "services": ("modules", "*", "services"), "kernel": ("kernel",),
+         "kernel-logic": ("kernel", "logic")}
 SERVICES = ("services", PARTS["services"])
+WORDS = {"domain": "module", "services": "module"}
+"""The word of the repeating folder each part of PARTS lies in, as Profile.words() gives it."""
+REPEATS = (Repeat("module", ("modules",)),)
+
+
+def placed(made: Target, words=WORDS) -> str:
+    """The one place of a rule that names made, as check_of writes it."""
+    rule = Rule("x", Scope(), ("import-into-app",), MAY_NOT, (Match("place", places=(made,)),), SAID)
+    (place,) = check_of(rule, ".", words=words).quantified.targets[0].values or ()
+    return place
 
 
 @pytest.mark.parametrize("written, owner, found", [
-    pytest.param("domain", SERVICES, Target("domain", "own"), id="a bare name in the importer's repeating folder is its own instance"),
-    pytest.param("domain@any/values", SERVICES, Target("domain", "any", ("values",)), id="any instance, and a path below"),
-    pytest.param("kernel:*Id", SERVICES, Target("kernel", "none", (), "*Id"), id="a part outside, narrowed by a name pattern"),
-    pytest.param("domain@any", None, Target("domain", "any"), id="a scope of no part reaches an instance only by @any"),
+    pytest.param("module.domain", SERVICES, Target("domain", "own"), id="own instance by its word"),
+    pytest.param("parts.domain/values", SERVICES, Target("domain", "any", ("values",)), id="any instance, and a path below"),
+    pytest.param("parts.kernel:*Id", SERVICES, Target("kernel", "none", (), "*Id"), id="a part outside, narrowed by a name pattern"),
+    pytest.param("parts.domain", None, Target("domain", "any"), id="a scope of no part reaches an instance by parts."),
+    pytest.param("module.domain/values:*Id", SERVICES, Target("domain", "own", ("values",), "*Id"),
+                 id="own instance, a path and a pattern"),
+    pytest.param("parts.kernel-logic", SERVICES, Target("kernel-logic", "none"), id="a part whose name holds a dash"),
 ])
 def test_a_place_is_written_as_it_is_read_and_reads_back_as_itself(written, owner, found):
-    rule = Rule("x", Scope(), ("import-into-app",), MAY_NOT, (Match("place", places=(found,)),), SAID)
-    (place,) = check_of(rule, ".").quantified.targets[0].values or ()
-    assert (place, target(place, owner, PARTS, PARTS, "at", [], patterns=True, alone="a tier's folder",
-                          repeats=(Repeat("module", ("modules",)),))) == (written, found)
+    place = placed(found)
+    problems: list[str] = []
+    assert (place, target(place, owner, PARTS, PARTS, "at", problems, patterns=True, alone="a tier's folder",
+                          repeats=REPEATS), problems) == (written, found, [])
+
+
+def test_the_word_of_an_own_instance_is_that_of_the_folder_its_part_lies_in():
+    parts = {**PARTS, "store": ("units", "*", "store"), "ledger": ("units", "*", "ledger")}
+    made = Target("store", "own", ("sql",), "Sql*")
+    place = placed(made, {**WORDS, "store": "unit", "ledger": "unit"})
+    problems: list[str] = []
+    assert (place, target(place, ("ledger", parts["ledger"]), parts, parts, "at", problems, patterns=True,
+                          alone="a tier's folder", repeats=(*REPEATS, Repeat("unit", ("units",)))), problems) == (
+        "unit.store/sql:Sql*", made, [])
+
+
+def test_a_place_in_the_own_instance_of_a_part_in_no_repeating_folder_is_refused():
+    with pytest.raises(ValueError, match="Target 'kernel' is in its importer's own instance, but part 'kernel' lies in "
+                                         "no repeating folder"):
+        placed(Target("kernel", "own"), {})
 
 
 @pytest.mark.parametrize("rule, check", [
@@ -34,7 +64,7 @@ def test_a_place_is_written_as_it_is_read_and_reads_back_as_itself(written, owne
                       (Match("place", places=(Target("core"), Target("api", "any", ("v1",)))), Match("outside")),
                       SAID, links=("import-into-app",), via=(Condition("target-in-own-part"),)),
                  WrittenCheck(("import", "import-into-app"), Scope(part="store"),
-                              Quantified(MUST_REACH, (WrittenTarget("place", ("core", "api@any/v1")),
+                              Quantified(MUST_REACH, (WrittenTarget("place", ("parts.core", "parts.api/v1")),
                                                       WrittenTarget("outside")),
                                          ("import-into-app",), (Condition("target-in-own-part"),)), SAID),
                  id="places in the target grammar, and how a rule reaches"),
@@ -54,15 +84,17 @@ def test_a_place_is_written_as_it_is_read_and_reads_back_as_itself(written, owne
                  id="a reach from roots, which names no target"),
 ])
 def test_a_rule_is_the_check_a_profile_would_write(rule, check):
-    assert check_of(rule, ".") == check
+    assert check_of(rule, ".", words={}) == check
 
 
 def test_rules_written_as_checks_each_take_an_id_of_their_own():
     rule = Rule("names", Scope(part="store"), ("class",), MAY_NOT, EXISTING, SAID)
     other = Rule("names", Scope(), ("class",), MAY_NOT, EXISTING, SAID)
-    assert written([rule, rule, other], ".") == {
-        "names-store": check_of(rule, "."), "names-store-2": check_of(rule, "."), "names": check_of(other, ".")}
-    assert written([rule, other], ".") == {"names-store": check_of(rule, "."), "names": check_of(other, ".")}
+    assert written([rule, rule, other], ".", words={}) == {
+        "names-store": check_of(rule, ".", words={}), "names-store-2": check_of(rule, ".", words={}),
+        "names": check_of(other, ".", words={})}
+    assert written([rule, other], ".", words={}) == {"names-store": check_of(rule, ".", words={}),
+                                                     "names": check_of(other, ".", words={})}
 
 
 def test_a_check_of_one_s_own_is_written_under_its_id_with_its_examples_filled_in():
@@ -92,10 +124,11 @@ def test_the_tokens_of_the_language_are_filled_in(text, importing, written_out):
     rule = Rule("no-todo", Scope(), ("comment",), MAY_NOT, EXISTING, SAID)
     language = CheckedLanguage(extensions=(".py",), comments=(CommentForm(LINE, "#"),), importing=importing)
     assert written_own((OwnCheck(rule, (("notes%extension%", text),), ()),), language) == {
-        "no-todo": check_of(rule, language.member, (("notes.py", written_out),), ())}
+        "no-todo": check_of(rule, language.member, (("notes.py", written_out),), (), words={})}
 
 
 def test_an_outside_name_is_written_back_with_the_member_of_the_language():
     rule = Rule("x", Scope(), ("use",), MAY_NOT,
                 (Match("path", names=(("node:fs", "readFileSync"), ("", "toISOString()"))),), SAID)
-    assert check_of(rule, "#").quantified.targets == (WrittenTarget("path", ("node:fs#readFileSync", ".toISOString()")),)
+    assert check_of(rule, "#", words={}).quantified.targets == (
+        WrittenTarget("path", ("node:fs#readFileSync", ".toISOString()")),)

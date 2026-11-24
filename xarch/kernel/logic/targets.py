@@ -6,7 +6,8 @@ A value whose head (the text before its first `/` or `:`) holds a dot is a refer
 instance of its repeating folder or, outside one, the part itself; or `<word>.<part>`, the part in the importer's own
 instance of the folder the word repeats, a word of the profile's repeating folders; each optionally followed by
 `/<path>` and, where the key takes one, `:<pattern>`. Any other value is read in the old forms: `<part>`, `<part>@any`,
-`<part>/<path>` and `<part>:<pattern>`."""
+`<part>/<path>` and `<part>:<pattern>`. A target is written back as a reference (see written_target), which reads
+back as itself."""
 from __future__ import annotations
 
 import re
@@ -79,6 +80,18 @@ def target(value: Any, owner: tuple[str, tuple[str, ...]] | None, parts: Mapping
         problems.append(_implied(where, value, owner, f"{name}@any"))
         return None
     return Target(name, chosen, steps, names or "")
+
+
+def written_target(made: Target, words: Mapping[str, str]) -> str:
+    """The target as a reference, which target() reads back to it: `parts.<part>` for the part in every instance of its
+    repeating folder or in none, `<word>.<part>` for the importer's own instance, the word that of the repeating folder
+    the part lies in (words, by part); then the path below the part and the name pattern. Raises ValueError for the own
+    instance of a part words gives no word, which lies in no repeating folder and has no own instance."""
+    if made.scope == "own" and made.part not in words:
+        raise ValueError(f"Target {made.part!r} is in its importer's own instance, but part {made.part!r} lies in no "
+                         "repeating folder")
+    prefix = words[made.part] if made.scope == "own" else "parts"
+    return f"{prefix}.{made.part}" + "".join(f"/{step}" for step in made.sub) + (f":{made.names}" if made.names else "")
 
 
 def _reference(value: str, owner: tuple[str, tuple[str, ...]] | None, parts: Mapping[str, tuple[str, ...]],
