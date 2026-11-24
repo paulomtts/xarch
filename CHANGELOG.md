@@ -109,6 +109,17 @@ All notable changes to this project are written here. The format follows
   globals` for a key the preset does not hold); a `preset` that names no preset is refused at `testing.preset`, and a
   preset may not name a preset. `xarch profile explain testing.preset` explains it, and the "use ..." list of
   `testing` gains `preset`.
+- `testing.beside`: `testing: {preset: pytest, beside: true}` (or `beside: true` in the whole map) keeps every test
+  of a part beside the code it tests. A file of the app whose name `testing.files` matches is then a test of the tier
+  its part names, read with the framework's forms and never as code of its part; a finding on it names its app path.
+  A tier with a `folder` keeps its tests below the tests root, and a part that names such a tier in `tests` is refused
+  (`tiers.guard: parts.domain says tests: guard, and guard keeps its tests in tests/architecture: under
+  testing.beside a part's tests sit beside its code; give the part a tier with no folder`). `test-tree` reports a test
+  file left below the tests root outside every tier `folder` and the fakes' folder (`lies below the tests folder, but
+  testing.beside keeps the tests of a part beside its code: move it beside the code it tests`), in place of the
+  folder check of the mirrored tree. A test beside the code with no tier says `lies in no tier: its part is untested`
+  or `lies in no part`. A preset may not say `beside`; `profile check` lists `testing.beside` as looser; `xarch
+  profile explain testing.beside` explains it, and the "use ..." list of `testing` gains `beside`.
 
 ### Changed
 
