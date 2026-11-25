@@ -58,7 +58,7 @@ from xarch.kernel.logic.cases import CASED
 from xarch.kernel.logic.imports import shown_target, targets_phrase
 from xarch.kernel.logic.names import outside_text
 from xarch.kernel.placement import EACH, EVERYTHING
-from xarch.modules.spec.application.logic.layout_walk import docs_name, is_file
+from xarch.modules.spec.application.logic.layout_walk import docs_name, folders, is_file
 from xarch.modules.spec.domain.errors import InvalidTemplate
 from xarch.modules.spec.domain.published import DEFAULT_TESTS, KINDS, Held
 from xarch.modules.spec.domain.values import (
@@ -437,12 +437,17 @@ def _guards(architecture: Architecture, _: str, _q: Texts, _t: Texts, _f: bool, 
                          f"{_branches(architecture)}.")
     roots = [repeat.root for repeat in architecture.repeats]
     if roots:
-        folders = _and([f"`{'/'.join((DEFAULT_TESTS, *root))}/`" for root in roots])
-        lines.append(f"`test tree`: every folder below {folders} mirrors a folder of the app.")
+        mirrored = _and([f"`{'/'.join((DEFAULT_TESTS, *root))}/`" for root in roots])
+        lines.append(f"`test tree`: every folder below {mirrored} mirrors a folder of the app.")
         instances = _or([f"`{'/'.join(root)}/<name>/`" for root in roots])
+        beside = [f"`{'/'.join(path)}/`" for path in folders(architecture.layout)
+                  if any(len(path) == len(root) + 1 and path[:-1] == root and path[-1] != EACH for root in roots)]
+        through = (f", nor through {_or(beside)}, which {'lies' if len(beside) == 1 else 'lie'} beside them and "
+                   f"{'is' if len(beside) == 1 else 'are'} held in the same graph though "
+                   f"{'it is' if len(beside) == 1 else 'they are'} none of them") if beside else ""
         lines.append(f"`cycles`: no {instances} imports from another that imports, directly or through "
-                     "others, from it; each group of them that import each other is reported once, with the "
-                     "dependencies to cut and their imports.")
+                     f"others, from it{through}; each group of them that import each other is reported once, with "
+                     "the dependencies to cut and their imports.")
     lines += [_must_import_line(architecture, part) for part in architecture.parts.values() if part.imports_must]
     lines += [_tier_must_import_line(architecture, tier) for tier in architecture.tiers if tier.imports_must]
     lines += _part_lines(architecture)

@@ -1,36 +1,38 @@
 """The cycles check: no instance of a repeating folder imports, through the others, from itself.
 
 The instances of every repeating folder are the nodes of one graph: a module and a plugin may depend on each other.
-Instance A depends on instance B when a file below A imports from below B, absolutely or relatively, whatever the
-parts (under the bundled rules only an adapter can, importing B's contract). Each group of instances that all reach
-each other (a strongly connected group of two or more) is one violation, however many cycles run through it: its
-instances by name, how many dependencies run between them, and the dependencies to cut, each with every import that
-makes it (once per file and line, by file then line).
+So is each folder the layout names beside the instances, in the repeating folder's own folder (adapters/web/ beside
+adapters/<adapter>/): it is no instance, for placement, `where` and every other check, but a cycle may run through
+it. A file lying in that folder is no node, nor is a part the layout names anywhere else. Node A depends on node B
+when a file below A imports from below B, absolutely or relatively, whatever the parts (under the bundled rules only
+an adapter can, importing B's contract). Each group of nodes that all reach each other (a strongly connected group of
+two or more) is one violation, however many cycles run through it: its nodes by name, how many dependencies run
+between them, and the dependencies to cut, each with every import that makes it (once per file and line, by file
+then line).
 
-The dependencies to cut are those that go back in an order of the group's instances chosen so that few imports go
-back (the greedy order of Eades, Lin and Smyth, each dependency weighing as many imports as make it): an instance no
-other one left in the group depends on goes first, one that depends on none left goes last, and else the one whose
-imports out weigh most over its imports in goes first, the first by name among equals. Cutting them all leaves the
-group with no cycle. The violation is reported at the first import of the first of them by name. A file in no
-instance is not this check's business, and an import within one instance is no dependency.
+The dependencies to cut are those that go back in an order of the group's nodes chosen so that few imports go back
+(the greedy order of Eades, Lin and Smyth, each dependency weighing as many imports as make it): a node no other one
+left in the group depends on goes first, one that depends on none left goes last, and else the one whose imports out
+weigh most over its imports in goes first, the first by name among equals. Cutting them all leaves the group with no
+cycle. The violation is reported at the first import of the first of them by name. A file in no node is not this
+check's business, and an import within one node is no dependency.
 """
 from __future__ import annotations
 
 from collections.abc import Iterable
 
-from xarch.kernel.logic.placement import module_steps
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.imports import dotted, targets
-from xarch.modules.rules.application.logic.places import instance_root
+from xarch.modules.rules.application.logic.places import repeat_child
 from xarch.modules.rules.domain.parsed import SourceFile
 from xarch.modules.rules.domain.profile import Profile
 from xarch.profile_values.placement import Repeat
 
 Edge = tuple[str, int, str]
-"""An import that makes one instance depend on another: the file, its line, and what it imports, dotted."""
+"""An import that makes one node depend on another: the file, its line, and what it imports, dotted."""
 
 Graph = dict[str, dict[str, list[Edge]]]
-"""Each instance, the instances it depends on, and the imports that make each dependency, by file then line."""
+"""Each node, the nodes it depends on, and the imports that make each dependency, by file then line."""
 
 
 def violations(files: Iterable[SourceFile], profile: Profile, root: str) -> list[Violation]:
@@ -39,24 +41,22 @@ def violations(files: Iterable[SourceFile], profile: Profile, root: str) -> list
     parsed = [(f, *dotted(f.path, profile.language.marks)) for f in files]
     known = {steps for _, steps, _ in parsed}
     files = frozenset(steps for _, steps, is_package in parsed if not is_package)
-    patterns = tuple(module_steps(pattern, profile.language.marks) for pattern in profile.parts.values())
     edges: Graph = {}
     for file, steps, is_package in sorted(parsed, key=lambda p: p[0].name):
-        source = _instance(profile.repeats, steps, patterns, files)
+        source = _node(profile.repeats, steps, files)
         if source is None:
             continue
         for line, target in sorted(set(targets(file.imports, steps if is_package else steps[:-1], known, root))):
-            depends = _instance(profile.repeats, target, patterns, files)
+            depends = _node(profile.repeats, target, files)
             if depends is not None and depends != source:
                 edges.setdefault(source, {}).setdefault(depends, []).append((file.name, line, ".".join((root, *target))))
     return [_violation(group, edges) for group in _groups(edges)]
 
 
-def _instance(repeats: tuple[Repeat, ...], steps: tuple[str, ...], patterns: tuple[tuple[str, ...], ...],
-              files: frozenset[tuple[str, ...]]) -> str | None:
-    """The instance a path lies in, as the folder holding it and its name, e.g. "modules/docs": none for a folder or
-    file the parts write by name beside the instances, nor for a file of the app lying beside them."""
-    folder = instance_root(repeats, steps, patterns, files)
+def _node(repeats: tuple[Repeat, ...], steps: tuple[str, ...], files: frozenset[tuple[str, ...]]) -> str | None:
+    """The node a path lies in, as the folder holding it and its name, e.g. "modules/docs": an instance, or a folder
+    the parts write by name beside the instances; none for a file of the app lying beside them."""
+    folder = repeat_child(repeats, steps, files)
     return None if folder is None else "/".join(folder)
 
 
@@ -72,7 +72,7 @@ def _reach(start: str, edges: Graph) -> set[str]:
 
 
 def _groups(edges: Graph) -> list[list[str]]:
-    """Each strongly connected group of two or more instances once, its instances by name, the groups by their first."""
+    """Each strongly connected group of two or more nodes once, its nodes by name, the groups by their first."""
     reach = {node: _reach(node, edges) for node in edges}
     found: list[list[str]] = []
     for node in sorted(edges):
@@ -83,7 +83,7 @@ def _groups(edges: Graph) -> list[list[str]]:
 
 
 def _order(group: list[str], weight: dict[tuple[str, str], int]) -> list[str]:
-    """The group's instances in the greedy order that leaves few imports going back (see the module's text)."""
+    """The group's nodes in the greedy order that leaves few imports going back (see the module's text)."""
     left = set(group)
     first: list[str] = []
     last: list[str] = []

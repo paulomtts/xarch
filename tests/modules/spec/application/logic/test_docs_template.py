@@ -282,6 +282,19 @@ def test_the_guards_name_every_repeating_folder():
         "and their imports."]
 
 
+def test_the_cycles_line_names_the_folders_the_layout_names_beside_the_instances_as_in_their_graph():
+    beside = {"src/": {"<module>/": TWO["src/<module>/"],
+                       "web/": {"role": "the web ring", "litmus": "Is it the web?"},
+                       "engine.py": {"role": "the engine", "litmus": "Is it the engine?"}},
+              **{key: value for key, value in TWO.items() if key != "src/<module>/"}}
+    lines = two("{{guards}}", parts=beside).splitlines()
+    assert [line for line in lines if line.startswith("- `cycles`")] == [
+        "- `cycles`: no `src/<name>/` or `ext/<name>/` imports from another that imports, directly or through "
+        "others, from it, nor through `src/web/`, which lies beside them and is held in the same graph though it is "
+        "none of them; each group of them that import each other is reported once, with the dependencies to cut "
+        "and their imports."]
+
+
 @pytest.mark.parametrize("guard, said", [
     pytest.param({"min_fields": 3}, "", id="the same fields only"),
     pytest.param({"min_fields": 3, "min_renamed": 4, "min_subset": 3},

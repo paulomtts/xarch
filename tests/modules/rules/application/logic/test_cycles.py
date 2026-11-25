@@ -152,11 +152,33 @@ BESIDE = profile(parts={**PROFILE.parts, "web": ("modules", "web")})
 @pytest.mark.parametrize("files, checked", [
     pytest.param([source("modules/engine.py", uses(1, "a")), adapter("a", imp(1, "app.modules", "engine"))], PROFILE,
                  id="a file beside the instances is none of them"),
-    pytest.param([source("modules/web/routes.py", uses(1, "a")), adapter("a", imp(1, "app.modules.web", "routes"))],
-                 BESIDE, id="a folder the layout names beside the instances is none of them"),
+    pytest.param([source("modules/web/routes.py", imp(1, "app.kernel", "ids")),
+                  adapter("a", imp(1, "app.modules.web", "routes"))],
+                 BESIDE, id="a folder the layout names beside the instances that only they import is in no cycle"),
+    pytest.param([source("modules/web.py", uses(1, "a")), adapter("a", imp(1, "app.modules", "web"))], BESIDE,
+                 id="a file of the name of a folder the layout names beside the instances is none of them"),
 ])
 def test_what_lies_beside_the_instances_of_a_repeating_folder_is_in_no_cycle(files, checked):
     assert problems(*files, checked=checked) == []
+
+
+def test_a_folder_the_layout_names_beside_the_instances_is_in_their_graph_though_it_is_none_of_them():
+    assert problems(source("modules/web/routes.py", uses(1, "a")), adapter("a", imp(1, "app.modules.web", "routes")),
+                    checked=BESIDE) == [
+        said("app/modules/web/routes.py:1", "modules/a and modules/web", 2,
+             "modules/web → modules/a: app/modules/web/routes.py:1 imports app.modules.a.contract")]
+
+
+def test_a_cycle_through_a_folder_the_layout_names_beside_the_instances_is_one_group_with_them():
+    assert problems(adapter("a", uses(1, "b")), source("modules/b/domain/doc.py", imp(1, "app.modules.web", "routes")),
+                    source("modules/web/routes.py", uses(2, "a")), checked=BESIDE) == [
+        said("app/modules/web/routes.py:2", "modules/a, modules/b and modules/web", 3,
+             "modules/web → modules/a: app/modules/web/routes.py:2 imports app.modules.a.contract")]
+
+
+def test_parts_the_layout_names_outside_every_repeating_folder_are_in_no_cycle():
+    assert problems(source("kernel/ids.py", imp(1, "app.platform", "sql")),
+                    source("platform/sql.py", imp(1, "app.kernel", "ids"))) == []
 
 
 def test_instances_of_one_repeating_folder_still_form_a_cycle_beside_another_one():

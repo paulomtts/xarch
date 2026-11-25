@@ -4,7 +4,7 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.rules.builders import PROFILE, TWO, profile, steps
-from xarch.kernel.placement import Marks, Place
+from xarch.kernel.placement import EACH, Marks, Place
 from xarch.modules.rules.application.logic.places import (
     allowed,
     excluded_by,
@@ -13,6 +13,7 @@ from xarch.modules.rules.application.logic.places import (
     label,
     matches,
     place,
+    repeat_child,
     targets_of,
 )
 from xarch.profile_values.excluded import Excluded
@@ -177,3 +178,13 @@ def test_a_path_lies_below_the_folder_of_the_instance_of_the_deepest_repeating_f
     assert instance_root(repeats, ("modules", "docs", "plugins", "seo", "x")) == ("modules", "docs", "plugins", "seo")
     assert instance_root(repeats, ("modules", "docs", "domain")) == ("modules", "docs")
     assert instance_root(repeats, ("kernel", "x")) is None
+
+
+def test_the_folder_in_a_repeating_folder_a_path_lies_below_is_an_instance_or_a_folder_named_beside_them():
+    repeats = (Repeat("adapter", ("adapters",)),)
+    named = (("adapters", "web"), ("adapters", EACH))
+    assert repeat_child(repeats, ("adapters", "web", "routes")) == ("adapters", "web")
+    assert instance_root(repeats, ("adapters", "web", "routes"), named) is None
+    assert repeat_child(repeats, ("adapters", "mail", "smtp")) == ("adapters", "mail")
+    assert repeat_child(repeats, ("adapters", "engine"), {("adapters", "engine")}) is None
+    assert repeat_child(repeats, ("kernel", "x")) is None

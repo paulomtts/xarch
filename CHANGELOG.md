@@ -98,7 +98,10 @@ All notable changes to this project are written here. The format follows
   instance named after it, and a folder the layout names beside them (`adapters/web/` beside `adapters/<adapter>/`)
   as one too, or not, by the order of the parts: each gave false `may-import` and `cycles` findings and a wrong
   `where`. An instance is now a folder the layout does not name; such a file belongs to the part of its folder, or to
-  its own part when the layout names it.
+  its own part when the layout names it. `cycles` still holds a folder the layout names beside the instances in one
+  graph with them, though it is no instance, so a loop through it (`adapters/mail` → `adapters/web` →
+  `adapters/factories` → `adapters/mail`) is one finding with them; a file lying beside the instances is no node of
+  that graph, and a loop between parts the layout names anywhere else is still left to `layers` and `may-import`.
 - `xarch check` no longer stops when a source file holds a string xarch cannot parse as code, such as a lone
   surrogate or a null byte; the string is ignored. A file nested too deep for Python's parser is reported as
   unparsable instead of stopping the run.

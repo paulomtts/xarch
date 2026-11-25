@@ -69,14 +69,23 @@ def instance_root(repeats: Iterable[Repeat], path: tuple[str, ...], patterns: It
     """The folder of the instance a path lies below (src/billing for src/billing/x): of the deepest repeating folder
     whose folder the path lies below, an instance of it named; None below none, and None for a step the patterns
     write by name in that folder or for a file of files lying in it, neither of which is an instance."""
+    folder = repeat_child(repeats, path, files)
+    if folder is None or folder[-1] in named_beside(patterns, folder[:-1]):
+        return None
+    return folder
+
+
+def repeat_child(repeats: Iterable[Repeat], path: tuple[str, ...],
+                 files: Collection[tuple[str, ...]] = frozenset()) -> tuple[str, ...] | None:
+    """The folder a path lies below in the own folder of the deepest repeating folder holding it, an instance or a
+    folder the layout names beside the instances (adapters/web for adapters/web/x); None below none, and None for a
+    file of files lying in that folder, which is no folder."""
     below = [r for r in repeats if len(path) > len(r.root) and path[:len(r.root)] == r.root]
     deepest = max(below, key=lambda r: len(r.root), default=None)
     if deepest is None:
         return None
     folder = path[:len(deepest.root) + 1]
-    if folder[-1] in named_beside(patterns, deepest.root) or (folder == path and path in files):
-        return None
-    return folder
+    return None if folder == path and path in files else folder
 
 
 def targets_of(profile: Profile, part: str) -> tuple[Target, ...]:
