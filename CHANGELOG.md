@@ -5,9 +5,242 @@ All notable changes to this project are written here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-24
+
+### Breaking changes
+
+A profile, a data file or a reader of the JSON written for 0.2.0 reads as the table says in 0.3.0. A retired key
+or value is refused with a hint saying what to write (`xarch profile check` lists every one); the entries after the
+table say each change in full.
+
+| 0.2.0 | 0.3.0 |
+|---|---|
+| `forbidden` (the top-level block) | `never` |
+| `parts.<p>.forbidden: pure` | `parts.<p>.uses: {never: pure}` |
+| none | an entry of a `never` list naming another list (`published: [pure, typing.Any]`) |
+| `tiers.<t>.apply_forbidden: true` | `tiers.<t>.uses: {apply_never: true}` |
+| rule id `forbidden` | rule id `never-use` |
+| rule id `rules` | rule id `may-import` |
+| `where` text `may not use:`, JSON `forbidden` | `never uses:`, JSON `never_uses` |
+| `parts.<p>.tier: unit` | `parts.<p>.tests: unit` |
+| `holds: classes` | `holds: {classes: {}}` |
+| `holds: functions` | `holds: {functions: {}, records: {}, exceptions: {}}` |
+| `parts.<p>.names` | `parts.<p>.holds.<kind>.names` (every kind, `records` included) |
+| `parts.<p>.immutable` | `holds.classes.immutable`, `holds.records.immutable` |
+| `parts.<p>.built_by` | `holds.classes.built_by` |
+| `parts.<p>.no_callbacks: true` | `guards.no-callbacks: {parts: [...]}` |
+| `parts.<p>.may_import` | `parts.<p>.imports.may` |
+| `parts.<p>.must_import` | `parts.<p>.imports.must` (each entry also in `may`) |
+| `parts.<p>.libraries` | `parts.<p>.imports.libraries` |
+| `parts.<p>.types_only: [ports]` | a mark on the entry: `imports.may: [{module.ports: types_only}]` |
+| `tiers.<t>.may_import` | `tiers.<t>.imports.may` |
+| `tiers.<t>.may_also_import` | `tiers.<t>.imports.also` |
+| `tiers.<t>.must_import: [controller]` | `tiers.<t>.imports.must: [parts.controller]` |
+| `tiers.<t>.types_only: [controller]` | `tiers.<t>.imports.types_only: [parts.controller]` |
+| `<part>@any`; the bare name of a part in no repeating folder | `parts.<part>` |
+| the bare name of a part in a repeating folder; `<part>@own` | `<word>.<part>`, such as `module.domain` |
+| `/path`, `:pattern`, `everything` | unchanged |
+| `parts.<p>.path`, `parts.<p>.folders` | the folder tree of `parts`; `parts.<p>.name` where needed |
+| the order of `parts` as the placement order | the tree's reading order, a part before the parts inside it |
+| the filter `top-level`, worked out by the checks | the fact `function.top_level`, which the filter reads |
+| `testing.table: {decorator, row, id, keywords}` | `testing.tables: [{decorator \| call \| loop, columns_from, rows, row, id}]` |
+| the fact `function.tables` | `function.tables.decorator`, `function.tables.call`, `function.tables.loop` |
+| none | `writing: {call, keyword, field, specs}` in the language file |
+| guard `scenario-coverage` `file: test_{name}.py` | `file: test_{name:snake}.py` (also `kebab`, `camel`, `pascal`) |
+| `testing.functions: "test_*"` | `testing.declared: [{function: "test_*"}]` |
+| none | `testing.globals` |
+| `testing.mocks.spec_keywords`, `spec_position` | `testing.mocks.specs: [{keyword} \| {position} \| {type_argument}]` |
+| none | `testing.beside: true` |
+| `testing: pytest` only as a name, or a whole map | also `testing: {preset: pytest, beside: true}` |
+| language file `interface: [names]`, `nothing: None`, `special: __` | `interface: [{base} \| {keyword}]`, `nothing: [None]`, `special: <pattern>`; new `package`, `member`, `unannotated` |
+| `standard: interpreter` only | `interpreter`, or `{modules, reserved, builtins}` |
+| `extension: .py`, `package_file: __init__.py` (required) | `extensions: [.py]`, `package_files: [__init__.py]` (optional) |
+| `comment: "#"` | `comments: [{line} \| {block} \| {doc}]` |
+| privacy from `private: _` in the checking code | the fact `public`, set by the reader; `private` read by the reader, scaffold and layout only |
+| a record worked out by the checks; `immutable: [names, "call(k=v)"]` | the fact `class.record`; `immutable: [{base} \| {decorator, keywords} \| {fields} \| {type}]` |
+| none | facts `import.resolved`, `class.interface`, `file.package`, `comment.doc`, `public`, `class.record`, `test.function`, `test.call`, `call.type_arguments`; enforcement section `unresolved` |
+| `Loosened` keys `forbidden`, `apply_forbidden`, `may_import`, `libraries`, `must_import`, `types_only`, `may_also_import` | `uses.never`, `uses.apply_never`, `imports.may`, `imports.libraries`, `imports.must`, `imports.types_only`, `imports.also`; new `holds`, `holds.<kind>.<setting>`, `shared`, `imports.may.types_only`, `tiers.imports.must`, `plain_tables`, `testing.beside` |
+| `where` JSON `may_import`, `may_import_text`, `libraries`, `test.types_only` | unchanged |
+| `check` JSON `enforcement.profile.closest` | `enforcement.profile.compared_with`, with `chosen_by`, `match`, `low`, `counts`, `only_here`, `only_there`, `elsewhere`, `higher`, `anchor` |
+| none | `--against <profile>` on `check` and `profile check`; refused with `--strict` |
+| `based_on: <bundled>` | `based_on: <bundled> \| <path from this file's folder>` |
+| `holds` (name), `untested`, `tiers`, `guards.scenario-coverage.tier`, `in: {tier}`, `guards.dead-code.untested`, `tests_only`, `package_only`, `shared`, `litmus` (part and tier), `layers`, `review.never`, rule ids `holds`, `names`, `immutable`, `built-by`, `must-import`, `types-only`, `libraries`, `no-callbacks`, filter `may-import-everything` | unchanged |
+
+- `parts` is the app's folder tree: a key ending in `/` is a folder, a key holding a dot a file, any other key a key
+  of the part; a folder with a `role` is a part, a file always is, and a part is named by its folder's last step or
+  its file's name before the first dot. `name` is new, for a part whose place does not give its name (`kernel/logic/`
+  with `name: kernel-logic`). `path` and `folders` are retired: a profile written with them is refused with one line
+  per part saying where it goes (`parts.domain: unknown key 'path': moved in 0.3.0: write the part as the folder
+  domain/: under the folder it lies in (modules/<module>/); use ...`), and a folder of a part is written below it, its
+  note as its value. The placement order is the tree's reading order, a part before the parts inside it: in the
+  bundled profiles `contract` moves up to follow `adapters`, and `kernel` now comes before `kernel-logic`, so review's
+  placement question offers its options in that order. `profile new` copies the tree, and the profile writer writes
+  it, single chains of plain folders joined.
+- `testing.functions` is replaced by `testing.declared`: a profile or a preset writing it is refused with `unknown key
+  'functions': moved in 0.3.0: write declared: [{function: "<pattern>"}]`. The bundled `pytest` preset writes
+  `declared: [{function: "test_*"}]`; the same functions are tests as before, and findings and docs read as before.
+- A framework says how a table of cases is written with `testing.tables`, a list of table forms, each with one of
+  `decorator`, `call` or `loop` and the slots `columns_from`, `rows`, `row` and `id`; an entry's problem names it by
+  its index, `testing.tables.0.id`. `testing.table` is refused with "moved in 0.3.0: write tables, a list of forms
+  (xarch profile explain testing.tables)", and the bundled `pytest` preset writes its one form in the new shape. The
+  guard `scenario-coverage` keeps no copy of the table: it reads the framework's forms. A language data file says how
+  a row is written with `writing: {call, keyword, field}`; Python writes `call` and `keyword`. Findings and docs read
+  as before.
+- The guard `scenario-coverage`'s `file` writes the case of the use case's name: `{name:snake}`, `{name:kebab}`,
+  `{name:camel}` or `{name:pascal}`, so `{name:kebab}.test.ts` looks for `http-check.test.ts`. The words are split as
+  before (HTTPCheck is http, check). A bare `{name}` is refused with "write {name:snake} for what {name} meant". The
+  bundled profiles write `test_{name:snake}.py`.
+- The fact `function.tables` is now three facts, one per form a table is written in: `function.tables.decorator`,
+  `function.tables.call` and `function.tables.loop`. Each holder of an entry of `testing.tables` needs its own fact,
+  and is refused at its index when the language does not supply it (`testing.tables.0.call: its check reads
+  function.tables.call ...`). Python supplies `function.tables.decorator` and `function.tables.loop`, and not
+  `call`. A language data file that writes `function.tables` under `supplies` is refused as an unknown fact.
+- `check --format json`: `enforcement.profile.closest` is now `enforcement.profile.compared_with`, the same object as
+  `profile check`'s `compared_with` (`null` when nothing is compared).
+- A part's `may_import`, `must_import` and `libraries` move into one group, `imports: {may, must, libraries}`, with
+  the same meaning: `may` what the part may import besides itself (or `everything`), `must` the targets each of its
+  files imports one of, each an entry of `may`, `libraries` its outside packages. A part's `types_only` becomes a mark
+  on its entry of `imports.may`, `{<target>: types_only}`, such as `may: [ports, {contract: types_only}]`, read on what
+  the entry reaches (its part, instance and path; a name pattern narrows only what may be imported), not on the part
+  in any instance. Findings name the new addresses (`parts.<part>.imports.may`,
+  `.imports.must`, `.imports.libraries`, `.imports.may.types_only`), and so do `profile explain` and the `Loosened`
+  keys of `profile check` (`imports.may`, `imports.libraries`, `imports.must`). The old keys are refused with the form
+  that replaces them (`unknown key 'may_import': moved in 0.3.0: write imports: {may: [...]}`, and the same for
+  `must_import`, `libraries` and `types_only`); `profile explain parts.may_import` says the same. Rule ids and `where`'s
+  JSON fields do not change.
+- A tier's `may_import`, `may_also_import`, `must_import` and `types_only` move into one group, `imports: {may, also,
+  must, types_only}`, with the same meaning: `may` what the tests in the tier's `folder` may import (only for a tier
+  with a `folder`), `also` what its tests may import besides what the part they mirror may, `must` the parts one of
+  which each of its test files reaches, `types_only` the parts its tests may import only as types. Findings name the
+  new addresses (`tiers.<tier>.imports.types_only`, `tiers.<tier>.imports.must`, and `tiers.<tier>.imports.also` beside
+  `tiers`), and so do `profile explain` and the `Loosened` keys of `profile check` (`imports.types_only`,
+  `imports.also`). The old keys are refused with the form that replaces them (`unknown key 'may_also_import': moved in
+  0.3.0: write imports: {also: [...]}`, and the same for `may_import`, `must_import` and `types_only`); `profile
+  explain tiers.may_import` says the same. Rule ids and `where`'s JSON fields do not change.
+- `holds` is a map of kinds, `{classes, functions, records, exceptions}`, each `{}` or its settings: a kind listed may
+  exist at the top level of a file of the part, one not listed may not, and no `holds` allows every kind. `names`,
+  `immutable` and `built_by` leave the part for the kinds: `holds: {classes: {names: "*Service", built_by:
+  [bootstrap]}}`, `holds: {functions: {}, records: {immutable: true}, exceptions: {}}`. `holds: classes` is
+  `holds: {classes: {}}` and `holds: functions` is `holds: {functions: {}, records: {}, exceptions: {}}`; written as
+  one word, `holds` is refused with that map (`parts.<part>.holds: 'functions': holds as one word was removed in
+  0.3.0: write holds: {functions: {}, records: {}, exceptions: {}}, which allows what holds: functions allowed`), and
+  so are the flat keys on a part (`unknown key 'names': moved in 0.3.0: write it under the kind it names, such as
+  holds: {classes: {names: "*Service"}}`, and the like for `immutable` and `built_by`) and a setting under a kind that
+  does not take it (`unknown key 'immutable': a setting of classes and records`), which `xarch profile explain
+  <old address>` also gives. Every bundled profile, xarch's own and the corpora profiles write the map.
+- Findings name the nested keys: `(parts.<part>.holds.classes.names)`, `(parts.<part>.holds.classes.built_by)`,
+  `(parts.<part>.holds.records.immutable)` and the like, in place of `(parts.<part>.names)`, `(parts.<part>.built_by)`
+  and `(parts.<part>.immutable)`; `xarch profile explain parts.holds.classes.names --rule` gives the rules. A class in
+  a part of functions, records and exceptions is said to be where the part `holds functions, records and exceptions`;
+  a definition a part does not allow is said as the narrowest kind it fits (`is a function at the top level`, `is a
+  class`, `is a record`, `is an exception`).
+- A profile's keys are held to the facts their checks read at any depth, in every scope a key opens and in each
+  entry of a list (addressed by its index from 0, as `<list>.0.<key>`), by one walk of the key table in place of a
+  walk of the file's scopes one by one; a key written with no value configures nothing, as one set to `false` does.
+  The refusals of a profile with several keys short of facts are now listed in the order the key table lists the
+  keys, each key before those of the scope it opens.
+- `no_callbacks` on a part is now the guard `no-callbacks: {parts: [<part>, ...]}`, which lists the parts whose
+  functions call none of their parameters annotated as callables, as `pass-through` lists its parts; it reads the same
+  code and still fails `check`. A part writing `no_callbacks` is refused at load: `parts.<part>: unknown key
+  'no_callbacks': moved in 0.3.0: write guards: {no-callbacks: {parts: [<part>, ...]}}`. Its findings name
+  `(guards.no-callbacks)` in place of `(parts.<part>.no_callbacks)`, `guards off` lists `no-callbacks` for a profile
+  that leaves it out, and its line in the generated docs sits among the guard lines, after `pass-through`'s in the
+  bundled profiles, which write `no-callbacks: {parts: [domain, logic]}`.
+- An eval of your own is now held to the facts it reads, as a check of your own is: one that reads a fact the
+  language's reader does not supply is refused at its address, `evals.<name>: needs <fact> (<what it is>), which the
+  reader of <language> does not supply: read another kind of fact, or drop the eval`, in `xarch profile check` and
+  when its facts are kept, and its examples are not read.
+- A language's data file writes what makes a class an immutable record as marks, each a map of one of four forms,
+  as interface marks are: `{base: <outside name>}`, `{decorator: <outside name>, keywords: {<name>: <value>}}`
+  (keywords left out: the decorator however it is written), `{fields: <word>}` or `{type: <outside name>}`. Python
+  writes `[{base: typing.NamedTuple}, {decorator: dataclasses.dataclass, keywords: {frozen: "True"}}]`, and its reader
+  reads the first two forms. The string form is no longer read. Refused, once for the key: `immutable: each mark is
+  {base}, {decorator, keywords}, {fields} or {type}`. No finding of a Python app changes.
+- A language's data file says how its comments are written as a list of forms: `comment` became `comments`, each
+  form `{line: <marker>}`, `{block: [<open>, <close>]}` or `{doc: [<open>, <close>]}` (a doc form's closing may be
+  `""`, the end of its line; `[{line: "#"}]` for Python); left out, the language has none. `%comment%` is the first
+  line form's marker, else the first block form's opening. A directive and an encoding declaration are matched after
+  the marker of the comment, whatever its form, and `no-comments` keeps doc comments. The old key is an unknown key.
+  Refused: `comments: each form is {line: <marker>}, {block: [<open>, <close>]} or {doc: [<open>, <close>]}` and
+  `comments: needs one form at least`. No finding of a Python app changes.
+- A language's data file says the endings of a source file as a list and its package files as an optional list:
+  `extension` and `package_file` became `extensions` (`[.py]` for Python, the first the one messages print) and
+  `package_files` (`[__init__.py]`), each package file ending in one of the extensions; a language may have none.
+  Every check decides what a source file is by all its endings, and `testing.files` takes a pattern of any of them.
+  The old keys are unknown keys. Refused: `extensions: must be a non-empty list of endings, each starting with a
+  dot`, `package_files: must be a list of file names, each ending in one of extensions`, and
+  `package_files: '<item>' ends in none of extensions`. No finding of a Python app changes.
+- A language's data file says its standard library as data, or where it is known from: `standard` is `interpreter`
+  (the Python running xarch, as before) or a map of three lists, `{modules: [...], reserved: [...], builtins: [...]}`,
+  the top-level modules of its standard library, its reserved words and its builtins, each module checked with the
+  file's `package` pattern and each other item with its `name` pattern. The reader is handed the standard modules
+  from the language instead of asking the interpreter itself, so the set a profile is checked with and the set an
+  import is marked by are one. Refused: `standard: must be interpreter, or a map of modules, reserved and builtins,
+  each a list of names`, `standard.modules: '<item>' is not a package name the language allows`, and
+  `standard.reserved: '<item>' is not a name the language allows` (`standard.builtins` the same). No finding of a
+  Python app changes.
+- The language's data file says as data what makes a class a port: `interface` is a list of marks, each
+  `{base: <outside name>}`, a name among a class's bases (`{base: typing.Protocol}`), or `{keyword: <word>}`, a keyword
+  a declaration carries; `nothing` is the list of return annotations that give no value (`nothing: [None]`); `special`
+  is a regular expression a special name matches in full (`'(?=__)\w*(?<=__)'` for Python); and a file may say
+  `unannotated: nothing`, that a method with no return annotation gives no value. The reader marks a class an
+  interface, and the stand-ins, the dead-code ports, the `interface` filter and no-twins read that mark instead of
+  comparing bases. The keys that read ports (`fakes`, `guards.stand-ins`, `guards.dead-code`) need the new fact
+  `class.interface`, which Python supplies `exact`. Refused: `interface: each mark is {base: <outside name>} or
+  {keyword: <word>}` (the old list of names among them), `nothing: must be a list of return annotations`,
+  `special: must be a regular expression`, and `unannotated: must be nothing`. No finding of a Python app changes.
+- A key, a guard or a rule id that xarch has retired is refused with a fixed hint naming what to write instead, one
+  problem per retired name ahead of the keys that are only unknown, read from one table that
+  `xarch profile explain <old key>` also answers from (the hint in its error, `retired` in its JSON, `null` for an
+  address with no entry).
+- The part key `tier` is renamed `tests`: a part writes `tests: <tier>` or `untested: <reason>`. A profile still
+  writing `tier` on a part is refused with "renamed in 0.3.0: write tests", which `xarch profile explain parts.tier`
+  also gives, and a value of `tests` holding a `/` is told it names a tier of `tiers`, not a folder. Nothing else a
+  profile writes or xarch reports changes.
+- The part key `forbidden` is now `uses: {never: <list>}`, the top-level block `forbidden` is `never`, and a tier's
+  `apply_forbidden: true` is `uses: {apply_never: true}`. The rule id is `never-use`, in findings, in JSON and under
+  `hints`, and a finding's message ends with the new key, such as `(parts.domain.uses.never)`; `where` prints
+  `never uses:` and its JSON field is `never_uses`; the `Loosened` keys are `uses.never` and `uses.apply_never`. Each
+  old name is refused with its new form, which `xarch profile explain <old address>` also gives, and `never:` on a
+  part or `apply_never:` on a tier is told it is a key of `uses`. Finding and fix texts are otherwise unchanged.
+- The rule id `rules` is renamed `may-import`, in findings, in JSON and under `hints`. A profile writing `hints.rules`
+  is refused with "renamed in 0.3.0: write may-import", and a check of the profile's own may now take the id `rules`.
+  On a line with findings of both, the `may-import` findings now come before the `package-only` ones. Finding and fix
+  texts are unchanged.
+- `testing.mocks.specs` replaces `testing.mocks.spec_keywords` and `testing.mocks.spec_position`: a list, in order, of
+  the ways a call that builds a mock names its spec, each `{keyword: <name>}`, `{position: <n>}` or
+  `{type_argument: <n>}`, an entry's problem naming it by its index (`testing.mocks.specs.1.keyword`). A profile or a
+  preset writing either old key is refused with `unknown key 'spec_keywords': moved in 0.3.0: write specs: [{keyword:
+  spec}, {position: 0}]`. The bundled `pytest` preset writes `specs: [{keyword: spec}, {keyword: spec_set}, {position:
+  0}]`: a call giving both a keyword and a first argument now names its spec by the keyword, and a read port named by
+  `spec_set=` is shown with `spec_set=`. A `type_argument` entry needs `call.type_arguments`, and an entry of a form the
+  language's `writing.specs` does not write is refused at its index.
+- The bundled profiles (`cli`, `web`) and xarch's own `architecture.yaml` write every list of parts under `imports`
+  as references: a part in the importer's own instance `module.<part>`, one in any instance or in no repeating
+  folder `parts.<part>` (`may: [module.domain, parts.kernel, parts.contract]`, `"module.domain/values:*Id"`,
+  `types_only: [parts.controller]`); what each allows does not change, and `profile check architecture.yaml` prints
+  what it printed. A tier's `imports.must` and `imports.types_only` read `parts.<part>`, and
+  refuse `<word>.<part>` (`'module.controller': a tier's tests lie in no instance: write parts.controller`) and a
+  path or a pattern (`'parts.controller/x': names a part only: write parts.controller`), each entry its own problem.
+  `profile explain` (its symbols and the keys under `imports`), the README and the examples the messages give
+  (`must be a list of targets such as [parts.core, unit.store/schema]`, `such as {must: [parts.<part>]}`,
+  `[{parts.ports: types_only}]`) say references.
+- The old forms of a target are refused, each with the reference to write, computed from the profile, one problem
+  per value: `<part>@any` (`'contract@any': @any was removed in 0.3.0: write parts.contract`), `<part>@own` (`write
+  module.contract` where the importer lies in the part's `<module>` folder, else `write parts.contract`) and the bare
+  name of a part (`'domain': a bare part name was removed in 0.3.0: write module.domain (this module's) or
+  parts.domain (any module's)`, or `write parts.kernel` for a part `<word>.` cannot name from there), each with its
+  `/<path>` and `:<pattern>` carried into the reference. A bare name, `@any` or `@own` in a tier's `imports.must` or
+  `imports.types_only` is told `parts.<part>`. A value with `@` and no dot, such as `domain@all`, is not a reference.
+  The tree's reader refuses the repeating folder `<parts>` (`parts.` names a part in every instance: give the
+  repeating folder another word), and a key outside `imports` that names a part by its plain name refuses a prefixed
+  one (`'parts.bootstrap': names a part outside imports: write bootstrap`). `<word>.<part>` from an importer outside
+  its folder and a concrete instance name (`orders.services`, also when a part is named `orders`) stay refused. No
+  form is rewritten on load: a profile written in the old forms is refused until it is rewritten.
+
 ### Added
 
-- References beside the old forms of a target: a part's `imports.may` and `imports.must`, a tier's `imports.may` and
+- References as the form of a target: a part's `imports.may` and `imports.must`, a tier's `imports.may` and
   `imports.also`, and a check's `place` read `parts.<part>` and `<word>.<part>`, each optionally followed by `/<path>`
   and, where the key takes one, `:<pattern>`. `parts.<part>` is the part in every instance of its repeating folder
   (as `<part>@any`), or the part itself when it lies in none; `<word>.<part>` is the part in the importer's own
@@ -61,7 +294,6 @@ All notable changes to this project are written here. The format follows
   section of `check` (an `approximate` item at `parts.<part>.holds`) say: `holds reads no top-level functions: the
   language <title> does not supply function.top_level`. A part listing `functions` or `records` there is refused with
   the needs text at `parts.<part>.holds.functions` or `.records`.
-
 - The fact `function.top_level`, whether a function is defined at the top level of its file, in no class, which
   `parts.<part>.holds`, `guards.dead-code.tests_only` and a check of your own or an eval whose filter reads
   `top-level` (negated or not) need; a language that does not supply it is refused them with the needs text. Python
@@ -146,35 +378,6 @@ All notable changes to this project are written here. The format follows
 
 ### Changed
 
-- `parts` is the app's folder tree: a key ending in `/` is a folder, a key holding a dot a file, any other key a key
-  of the part; a folder with a `role` is a part, a file always is, and a part is named by its folder's last step or
-  its file's name before the first dot. `name` is new, for a part whose place does not give its name (`kernel/logic/`
-  with `name: kernel-logic`). `path` and `folders` are retired: a profile written with them is refused with one line
-  per part saying where it goes (`parts.domain: unknown key 'path': moved in 0.3.0: write the part as the folder
-  domain/: under the folder it lies in (modules/<module>/); use ...`), and a folder of a part is written below it, its
-  note as its value. The placement order is the tree's reading order, a part before the parts inside it: in the
-  bundled profiles `contract` moves up to follow `adapters`, and `kernel` now comes before `kernel-logic`, so review's
-  placement question offers its options in that order. `profile new` copies the tree, and the profile writer writes
-  it, single chains of plain folders joined.
-- `testing.functions` is replaced by `testing.declared`: a profile or a preset writing it is refused with `unknown key
-  'functions': moved in 0.3.0: write declared: [{function: "<pattern>"}]`. The bundled `pytest` preset writes
-  `declared: [{function: "test_*"}]`; the same functions are tests as before, and findings and docs read as before.
-- A framework says how a table of cases is written with `testing.tables`, a list of table forms, each with one of
-  `decorator`, `call` or `loop` and the slots `columns_from`, `rows`, `row` and `id`; an entry's problem names it by
-  its index, `testing.tables.0.id`. `testing.table` is refused with "moved in 0.3.0: write tables, a list of forms
-  (xarch profile explain testing.tables)", and the bundled `pytest` preset writes its one form in the new shape. The
-  guard `scenario-coverage` keeps no copy of the table: it reads the framework's forms. A language data file says how
-  a row is written with `writing: {call, keyword, field}`; Python writes `call` and `keyword`. Findings and docs read
-  as before.
-- The guard `scenario-coverage`'s `file` writes the case of the use case's name: `{name:snake}`, `{name:kebab}`,
-  `{name:camel}` or `{name:pascal}`, so `{name:kebab}.test.ts` looks for `http-check.test.ts`. The words are split as
-  before (HTTPCheck is http, check). A bare `{name}` is refused with "write {name:snake} for what {name} meant". The
-  bundled profiles write `test_{name:snake}.py`.
-- The fact `function.tables` is now three facts, one per form a table is written in: `function.tables.decorator`,
-  `function.tables.call` and `function.tables.loop`. Each holder of an entry of `testing.tables` needs its own fact,
-  and is refused at its index when the language does not supply it (`testing.tables.0.call: its check reads
-  function.tables.call ...`). Python supplies `function.tables.decorator` and `function.tables.loop`, and not
-  `call`. A language data file that writes `function.tables` under `supplies` is refused as an unknown fact.
 - Python's reader reads a table from the first `for` of a test's own body over a list literal of the file (`for
   given, when, then in CASES:`), its columns the names the loop binds. Its rows are calls of the form's `row` with a
   keyword id, or tuple or list literals with an id at a position. That `for` is not reported as a branch by
@@ -184,8 +387,6 @@ All notable changes to this project are written here. The format follows
   layout path, and tiers by name, then by subject, and the ways a profile is looser are compared on the parts and
   tiers that pair, so a part renamed in place is still compared, under its own name. `profile check` heads a profile
   `custom; based_on: cli` or `custom; closest bundled: cli, match 80%`.
-- `check --format json`: `enforcement.profile.closest` is now `enforcement.profile.compared_with`, the same object as
-  `profile check`'s `compared_with` (`null` when nothing is compared).
 - The looser lines cover every loosening of 0.3.0: `profile check` and `check`'s enforcement section now also list a
   kind a part's `holds` allows that the other's does not (`holds`), a setting of a kind dropped or widened
   (`holds.classes.names`, `holds.classes.immutable`, `holds.classes.built_by`, `holds.functions.names`,
@@ -195,43 +396,6 @@ All notable changes to this project are written here. The format follows
   a sentence ending in its address, such as
   `the classes of service may also be named * (parts.service.holds.classes.names)`. Each is information, like the
   others: `--strict` still fails only on a missing `litmus`.
-- A part's `may_import`, `must_import` and `libraries` move into one group, `imports: {may, must, libraries}`, with
-  the same meaning: `may` what the part may import besides itself (or `everything`), `must` the targets each of its
-  files imports one of, each an entry of `may`, `libraries` its outside packages. A part's `types_only` becomes a mark
-  on its entry of `imports.may`, `{<target>: types_only}`, such as `may: [ports, {contract: types_only}]`, read on what
-  the entry reaches (its part, instance and path; a name pattern narrows only what may be imported), not on the part
-  in any instance. Findings name the new addresses (`parts.<part>.imports.may`,
-  `.imports.must`, `.imports.libraries`, `.imports.may.types_only`), and so do `profile explain` and the `Loosened`
-  keys of `profile check` (`imports.may`, `imports.libraries`, `imports.must`). The old keys are refused with the form
-  that replaces them (`unknown key 'may_import': moved in 0.3.0: write imports: {may: [...]}`, and the same for
-  `must_import`, `libraries` and `types_only`); `profile explain parts.may_import` says the same. Rule ids and `where`'s
-  JSON fields do not change.
-- A tier's `may_import`, `may_also_import`, `must_import` and `types_only` move into one group, `imports: {may, also,
-  must, types_only}`, with the same meaning: `may` what the tests in the tier's `folder` may import (only for a tier
-  with a `folder`), `also` what its tests may import besides what the part they mirror may, `must` the parts one of
-  which each of its test files reaches, `types_only` the parts its tests may import only as types. Findings name the
-  new addresses (`tiers.<tier>.imports.types_only`, `tiers.<tier>.imports.must`, and `tiers.<tier>.imports.also` beside
-  `tiers`), and so do `profile explain` and the `Loosened` keys of `profile check` (`imports.types_only`,
-  `imports.also`). The old keys are refused with the form that replaces them (`unknown key 'may_also_import': moved in
-  0.3.0: write imports: {also: [...]}`, and the same for `may_import`, `must_import` and `types_only`); `profile
-  explain tiers.may_import` says the same. Rule ids and `where`'s JSON fields do not change.
-- `holds` is a map of kinds, `{classes, functions, records, exceptions}`, each `{}` or its settings: a kind listed may
-  exist at the top level of a file of the part, one not listed may not, and no `holds` allows every kind. `names`,
-  `immutable` and `built_by` leave the part for the kinds: `holds: {classes: {names: "*Service", built_by:
-  [bootstrap]}}`, `holds: {functions: {}, records: {immutable: true}, exceptions: {}}`. `holds: classes` is
-  `holds: {classes: {}}` and `holds: functions` is `holds: {functions: {}, records: {}, exceptions: {}}`; written as
-  one word, `holds` is refused with that map (`parts.<part>.holds: 'functions': holds as one word was removed in
-  0.3.0: write holds: {functions: {}, records: {}, exceptions: {}}, which allows what holds: functions allowed`), and
-  so are the flat keys on a part (`unknown key 'names': moved in 0.3.0: write it under the kind it names, such as
-  holds: {classes: {names: "*Service"}}`, and the like for `immutable` and `built_by`) and a setting under a kind that
-  does not take it (`unknown key 'immutable': a setting of classes and records`), which `xarch profile explain
-  <old address>` also gives. Every bundled profile, xarch's own and the corpora profiles write the map.
-- Findings name the nested keys: `(parts.<part>.holds.classes.names)`, `(parts.<part>.holds.classes.built_by)`,
-  `(parts.<part>.holds.records.immutable)` and the like, in place of `(parts.<part>.names)`, `(parts.<part>.built_by)`
-  and `(parts.<part>.immutable)`; `xarch profile explain parts.holds.classes.names --rule` gives the rules. A class in
-  a part of functions, records and exceptions is said to be where the part `holds functions, records and exceptions`;
-  a definition a part does not allow is said as the narrowest kind it fits (`is a function at the top level`, `is a
-  class`, `is a record`, `is an exception`).
 - In a part of functions, `immutable` (now under `records`) reads its records only, and `names` its records and
   exceptions, so a plain class there, already listed by `holds`, is no longer listed a second time; the generated
   docs' `immutable` line says "every record of" those parts. `review` rules out the same parts for every file of a
@@ -239,94 +403,14 @@ All notable changes to this project are written here. The format follows
 - `evals.placement.alike` compares the kinds `holds` lists and the `immutable` of each, in place of `holds` and
   `immutable` as part keys: the refusal says `write the same uses.never, and list the same kinds with the same
   immutable under holds, for each, or drop the group`.
-
-- A profile's keys are held to the facts their checks read at any depth, in every scope a key opens and in each
-  entry of a list (addressed by its index from 0, as `<list>.0.<key>`), by one walk of the key table in place of a
-  walk of the file's scopes one by one; a key written with no value configures nothing, as one set to `false` does.
-  The refusals of a profile with several keys short of facts are now listed in the order the key table lists the
-  keys, each key before those of the scope it opens.
-- `no_callbacks` on a part is now the guard `no-callbacks: {parts: [<part>, ...]}`, which lists the parts whose
-  functions call none of their parameters annotated as callables, as `pass-through` lists its parts; it reads the same
-  code and still fails `check`. A part writing `no_callbacks` is refused at load: `parts.<part>: unknown key
-  'no_callbacks': moved in 0.3.0: write guards: {no-callbacks: {parts: [<part>, ...]}}`. Its findings name
-  `(guards.no-callbacks)` in place of `(parts.<part>.no_callbacks)`, `guards off` lists `no-callbacks` for a profile
-  that leaves it out, and its line in the generated docs sits among the guard lines, after `pass-through`'s in the
-  bundled profiles, which write `no-callbacks: {parts: [domain, logic]}`.
-- An eval of your own is now held to the facts it reads, as a check of your own is: one that reads a fact the
-  language's reader does not supply is refused at its address, `evals.<name>: needs <fact> (<what it is>), which the
-  reader of <language> does not supply: read another kind of fact, or drop the eval`, in `xarch profile check` and
-  when its facts are kept, and its examples are not read.
-- A language's data file writes what makes a class an immutable record as marks, each a map of one of four forms,
-  as interface marks are: `{base: <outside name>}`, `{decorator: <outside name>, keywords: {<name>: <value>}}`
-  (keywords left out: the decorator however it is written), `{fields: <word>}` or `{type: <outside name>}`. Python
-  writes `[{base: typing.NamedTuple}, {decorator: dataclasses.dataclass, keywords: {frozen: "True"}}]`, and its reader
-  reads the first two forms. The string form is no longer read. Refused, once for the key: `immutable: each mark is
-  {base}, {decorator, keywords}, {fields} or {type}`. No finding of a Python app changes.
 - The filter `public` reads the fact `public`, never how a name is spelled, and applies to `class`, `function` and
   `imported-name` only: written on another kind in a check of your own, `profile check` refuses it (`public does not
   apply to <kind>`). `CheckedLanguage.is_public` is gone. Under a language that gives no `private`, the docs line of
   `private-imports` says "a name another file of them keeps private". No finding of a Python app changes.
-- A language's data file says how its comments are written as a list of forms: `comment` became `comments`, each
-  form `{line: <marker>}`, `{block: [<open>, <close>]}` or `{doc: [<open>, <close>]}` (a doc form's closing may be
-  `""`, the end of its line; `[{line: "#"}]` for Python); left out, the language has none. `%comment%` is the first
-  line form's marker, else the first block form's opening. A directive and an encoding declaration are matched after
-  the marker of the comment, whatever its form, and `no-comments` keeps doc comments. The old key is an unknown key.
-  Refused: `comments: each form is {line: <marker>}, {block: [<open>, <close>]} or {doc: [<open>, <close>]}` and
-  `comments: needs one form at least`. No finding of a Python app changes.
-- A language's data file says the endings of a source file as a list and its package files as an optional list:
-  `extension` and `package_file` became `extensions` (`[.py]` for Python, the first the one messages print) and
-  `package_files` (`[__init__.py]`), each package file ending in one of the extensions; a language may have none.
-  Every check decides what a source file is by all its endings, and `testing.files` takes a pattern of any of them.
-  The old keys are unknown keys. Refused: `extensions: must be a non-empty list of endings, each starting with a
-  dot`, `package_files: must be a list of file names, each ending in one of extensions`, and
-  `package_files: '<item>' ends in none of extensions`. No finding of a Python app changes.
-- A language's data file says its standard library as data, or where it is known from: `standard` is `interpreter`
-  (the Python running xarch, as before) or a map of three lists, `{modules: [...], reserved: [...], builtins: [...]}`,
-  the top-level modules of its standard library, its reserved words and its builtins, each module checked with the
-  file's `package` pattern and each other item with its `name` pattern. The reader is handed the standard modules
-  from the language instead of asking the interpreter itself, so the set a profile is checked with and the set an
-  import is marked by are one. Refused: `standard: must be interpreter, or a map of modules, reserved and builtins,
-  each a list of names`, `standard.modules: '<item>' is not a package name the language allows`, and
-  `standard.reserved: '<item>' is not a name the language allows` (`standard.builtins` the same). No finding of a
-  Python app changes.
-- The language's data file says as data what makes a class a port: `interface` is a list of marks, each
-  `{base: <outside name>}`, a name among a class's bases (`{base: typing.Protocol}`), or `{keyword: <word>}`, a keyword
-  a declaration carries; `nothing` is the list of return annotations that give no value (`nothing: [None]`); `special`
-  is a regular expression a special name matches in full (`'(?=__)\w*(?<=__)'` for Python); and a file may say
-  `unannotated: nothing`, that a method with no return annotation gives no value. The reader marks a class an
-  interface, and the stand-ins, the dead-code ports, the `interface` filter and no-twins read that mark instead of
-  comparing bases. The keys that read ports (`fakes`, `guards.stand-ins`, `guards.dead-code`) need the new fact
-  `class.interface`, which Python supplies `exact`. Refused: `interface: each mark is {base: <outside name>} or
-  {keyword: <word>}` (the old list of names among them), `nothing: must be a list of return annotations`,
-  `special: must be a regular expression`, and `unannotated: must be nothing`. No finding of a Python app changes.
 - The two archived corpora's profiles (`7cc6111`, `df537ca`) are plain yaml files beside their archives in
   `tests/bootstrap/corpora/`, so a change of format edits them as files; the recorded findings are unchanged.
-
-- A key, a guard or a rule id that xarch has retired is refused with a fixed hint naming what to write instead, one
-  problem per retired name ahead of the keys that are only unknown, read from one table that
-  `xarch profile explain <old key>` also answers from (the hint in its error, `retired` in its JSON, `null` for an
-  address with no entry).
-
-- The part key `tier` is renamed `tests`: a part writes `tests: <tier>` or `untested: <reason>`. A profile still
-  writing `tier` on a part is refused with "renamed in 0.3.0: write tests", which `xarch profile explain parts.tier`
-  also gives, and a value of `tests` holding a `/` is told it names a tier of `tiers`, not a folder. Nothing else a
-  profile writes or xarch reports changes.
-
-- The part key `forbidden` is now `uses: {never: <list>}`, the top-level block `forbidden` is `never`, and a tier's
-  `apply_forbidden: true` is `uses: {apply_never: true}`. The rule id is `never-use`, in findings, in JSON and under
-  `hints`, and a finding's message ends with the new key, such as `(parts.domain.uses.never)`; `where` prints
-  `never uses:` and its JSON field is `never_uses`; the `Loosened` keys are `uses.never` and `uses.apply_never`. Each
-  old name is refused with its new form, which `xarch profile explain <old address>` also gives, and `never:` on a
-  part or `apply_never:` on a tier is told it is a key of `uses`. Finding and fix texts are otherwise unchanged.
-
-- The rule id `rules` is renamed `may-import`, in findings, in JSON and under `hints`. A profile writing `hints.rules`
-  is refused with "renamed in 0.3.0: write may-import", and a check of the profile's own may now take the id `rules`.
-  On a line with findings of both, the `may-import` findings now come before the `package-only` ones. Finding and fix
-  texts are unchanged.
-
 - Internal names follow the 0.3.0 key names: the fields and functions that read `uses.never` and `uses.apply_never`
   say `uses_never`, `apply_never` and `never_lists` in place of `forbidden`; no output changes.
-
 - The Python reader follows relative imports to the place they name: `from .order import Order` in
   `app/domain/services.py` binds `app.domain.order.Order`, as `from app.domain.order import Order` does, so
   `uses.never`, `built_by`, `types_only`, `shared`, the mocks, `stand-ins` and the twins' translation read names
@@ -341,7 +425,6 @@ All notable changes to this project are written here. The format follows
   under the JSON key `unresolved` (`{"file", "line", "written"}`), and `--strict` fails on each, as on a dynamic
   import (`strict_failures` key `unresolved`). A project with no such import sees only the empty JSON key
   `"unresolved": []`.
-
 - A language's data file gives `package`, what an import names from outside the app as one step, and `member`, the
   text that joins a package to a name in it (`.` for Python), beside `name`: the three are given together or not at
   all. The outside names a profile writes (`libraries`, `reserved`, the `never` lists, `testing.skips`,
@@ -351,42 +434,12 @@ All notable changes to this project are written here. The format follows
   `'<value>' is not an outside name such as <package>.<name>` under the testing names; and under a `never` list
   `'<entry>' is not an outside name such as <package>.<name>, nor a package, nor a method such as .<name>()` and
   `'<entry>' is neither an outside name nor a method: write <entry>() for a method called on anything`.
-- `testing.mocks.specs` replaces `testing.mocks.spec_keywords` and `testing.mocks.spec_position`: a list, in order, of
-  the ways a call that builds a mock names its spec, each `{keyword: <name>}`, `{position: <n>}` or
-  `{type_argument: <n>}`, an entry's problem naming it by its index (`testing.mocks.specs.1.keyword`). A profile or a
-  preset writing either old key is refused with `unknown key 'spec_keywords': moved in 0.3.0: write specs: [{keyword:
-  spec}, {position: 0}]`. The bundled `pytest` preset writes `specs: [{keyword: spec}, {keyword: spec_set}, {position:
-  0}]`: a call giving both a keyword and a first argument now names its spec by the keyword, and a read port named by
-  `spec_set=` is shown with `spec_set=`. A `type_argument` entry needs `call.type_arguments`, and an entry of a form the
-  language's `writing.specs` does not write is refused at its index.
 - `profile explain <key> --rule` and the example of `profile explain <word>` write a check's `place` as a reference,
   and the looser lines of `profile check` and `check` (and their JSON `what` and `sentence`) write a target so:
   `parts.<part>` for a part in every instance of its repeating folder or in none, `<word>.<part>` for the importer's
   own instance, the word that of the folder the part lies in, then `/<path>` and `:<pattern>` as before (`domain may
   also import parts.platform`, `targets: [{place: [parts.platform, parts.contract]}, outside]`). `everything` is
   still written `everything`, and the JSON's shape does not change.
-- The bundled profiles (`cli`, `web`) and xarch's own `architecture.yaml` write every list of parts under `imports`
-  as references: a part in the importer's own instance `module.<part>`, one in any instance or in no repeating
-  folder `parts.<part>` (`may: [module.domain, parts.kernel, parts.contract]`, `"module.domain/values:*Id"`,
-  `types_only: [parts.controller]`); what each allows does not change, and `profile check architecture.yaml` prints
-  what it printed. A tier's `imports.must` and `imports.types_only` read `parts.<part>`, and
-  refuse `<word>.<part>` (`'module.controller': a tier's tests lie in no instance: write parts.controller`) and a
-  path or a pattern (`'parts.controller/x': names a part only: write parts.controller`), each entry its own problem.
-  `profile explain` (its symbols and the keys under `imports`), the README and the examples the messages give
-  (`must be a list of targets such as [parts.core, unit.store/schema]`, `such as {must: [parts.<part>]}`,
-  `[{parts.ports: types_only}]`) say references.
-- The old forms of a target are refused, each with the reference to write, computed from the profile, one problem
-  per value: `<part>@any` (`'contract@any': @any was removed in 0.3.0: write parts.contract`), `<part>@own` (`write
-  module.contract` where the importer lies in the part's `<module>` folder, else `write parts.contract`) and the bare
-  name of a part (`'domain': a bare part name was removed in 0.3.0: write module.domain (this module's) or
-  parts.domain (any module's)`, or `write parts.kernel` for a part `<word>.` cannot name from there), each with its
-  `/<path>` and `:<pattern>` carried into the reference. A bare name, `@any` or `@own` in a tier's `imports.must` or
-  `imports.types_only` is told `parts.<part>`. A value with `@` and no dot, such as `domain@all`, is not a reference.
-  The tree's reader refuses the repeating folder `<parts>` (`parts.` names a part in every instance: give the
-  repeating folder another word), and a key outside `imports` that names a part by its plain name refuses a prefixed
-  one (`'parts.bootstrap': names a part outside imports: write bootstrap`). `<word>.<part>` from an importer outside
-  its folder and a concrete instance name (`orders.services`, also when a part is named `orders`) stay refused. No
-  form is rewritten on load: a profile written in the old forms is refused until it is rewritten.
 
 ## [0.2.0] - 2026-11-18
 
@@ -563,6 +616,7 @@ The first release.
 - Languages other than Python.
 - A stable check vocabulary: the words a profile's checks are written in may change.
 
+[0.3.0]: https://github.com/paulomtts/xarch/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/paulomtts/xarch/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/paulomtts/xarch/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/paulomtts/xarch/releases/tag/v0.1.0
