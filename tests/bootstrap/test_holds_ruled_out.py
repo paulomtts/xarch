@@ -42,6 +42,7 @@ RULED_OUT = {
         "cli/commands/where.py",
         "cli/reports/document.py",
         "cli/reports/eval_report.py",
+        "cli/reports/hook_report.py",
         "cli/reports/profile_report.py",
         "cli/reports/refusal_report.py",
         "cli/reports/report.py",
@@ -77,6 +78,7 @@ RULED_OUT = {
         "modules/review/application/logic/sending.py",
         "modules/review/application/logic/withholding.py",
         "modules/rules/application/logic/asked.py",
+        "modules/rules/application/logic/chosen.py",
         "modules/rules/application/logic/cycles.py",
         "modules/rules/application/logic/duplicates.py",
         "modules/rules/application/logic/elsewhere.py",
@@ -260,6 +262,7 @@ RULED_OUT = {
         "profile_values/tiers.py",
     ),
     ('domain', 'logic', 'ports', 'services', 'controller', 'adapters', 'reports', 'profile-values', 'kernel', 'kernel-logic'): (
+        "cli/commands/hook.py",
         "cli/commands/review.py",
         "cli/terminal.py",
         "platform/typesafe.py",

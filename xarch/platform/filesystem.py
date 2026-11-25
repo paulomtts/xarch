@@ -1,6 +1,8 @@
 """The local filesystem, in plain paths and strings. Knows no module."""
 from __future__ import annotations
 
+import os
+import tempfile
 from pathlib import Path
 
 HIDDEN = "."
@@ -88,3 +90,17 @@ class FileSystem:
         """Write data to path, creating the folders above it."""
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)
+
+    def replace_bytes(self, path: Path, data: bytes) -> None:
+        """Write data to path whole or not at all, creating the folders above it: to a file beside it first, then moved
+        over it in one step, so that a reader, or a second writer, never sees half of it. Raises OSError when it cannot
+        be written, leaving nothing behind."""
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(dir=path.parent, prefix=f".{path.name}.", delete=False) as beside:
+            written = Path(beside.name)
+        try:
+            written.write_bytes(data)
+            os.replace(written, path)
+        except OSError:
+            written.unlink(missing_ok=True)
+            raise

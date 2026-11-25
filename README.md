@@ -34,9 +34,12 @@ xarch init [--app PATH] [--profile NAME|FILE]                 # create the top-l
                                                              # app folder, if not app/) in pyproject.toml, write the
                                                              # project docs and files; never overwrites
 xarch new WORD NAME [--app PATH] [--profile NAME|FILE]       # create one instance of a repeating folder, with its skeleton
-xarch check [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json] [--strict] [--against NAME|FILE]
+xarch check [PATH ...] [--files-from FILE|-] [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json] [--strict] [--against NAME|FILE]
                                                              # report every violation in the app and its tests, each
-                                                             # with its fix, then the state of the check's own enforcement
+                                                             # with its fix, then the state of the check's own enforcement;
+                                                             # with paths, only those of the files at or below them
+xarch hook claude [--command TEXT]                           # print Claude Code hooks that run the check after each edit
+                                                             # and before the agent stops; writes nothing
 xarch where PATH [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json]
                                                              # what a path is and what code there may do, before it is written
 xarch profile explain [KEY] [--profile NAME|FILE | --configured] [--rule] [--app PATH] [--format text|json]
@@ -419,6 +422,42 @@ app/kernel/x.py:1: kernel/ may not import platform/ (app.platform)
 1 violation(s) in 1 file(s)
 ```
 
+### Checking some files: `xarch check PATH ...`
+
+Given paths (files or folders, read from the working folder), or a list of them with `--files-from FILE` (`-` for
+stdin, one path per line, blank lines ignored; both may be given), `check` shows only the violations of the files at
+or below them, and only those decide the exit code (0, 1 or 2, as for a whole check). It is meant to run after every
+edit, by an agent's hook or a pre-commit hook:
+
+```
+xarch check app/modules/docs/domain/document.py
+git diff --name-only HEAD | xarch check --files-from -
+```
+
+Every check still runs on the whole app and its tests, whole-program ones included (`cycles`, `dead-code`,
+`no-twins`, `shared`, `stand-ins`, `scenario-coverage`): a partial check skips none, so a violation an edit causes in
+the file edited is never missed because its cause lies elsewhere. What it does not show is counted: the summary
+names the paths given, `OK: no violations in the 1 path(s) given` or `<n> violation(s) in <m> file(s) of the <k>
+path(s) given`, and a `partial:` line follows it, naming the paths, saying that no check was skipped and how many
+violations other files have, so its OK never reads as the whole app's:
+
+```
+OK: no violations in the 1 path(s) given
+partial:     1 path(s) given (app/kernel/clean.py); every check ran on the whole app and its tests, none skipped; 2 violation(s) in other files, not shown: run `xarch check` with no path to see them
+```
+
+The enforcement section is the whole app's, as is what `--strict` fails on. In JSON the document gains
+`"partial": {"paths": [...], "skipped_checks": [], "elsewhere": <n>}`; a whole check has no `partial` key.
+
+What makes it fast is not reading less but reading once: the reader keeps what it read of each file in a cache, and
+a file read again whose text, the way it is read (the profile's language and test framework) and what its relative
+imports find on disk are all unchanged, read by the same xarch code, is not parsed again. On xarch's own 310 files a
+whole check takes about 11 s with no cache and 1.5 s with it, so a check of one file after an edit takes about as
+long as a whole one with a warm cache. The cache is in `xarch/` in the user's cache folder (`$XDG_CACHE_HOME`, else
+`~/.cache`); the environment variable `XARCH_CACHE_DIR` names another folder, and set empty switches it off. A cache
+that cannot be read is ignored and one that cannot be written is not written; it never changes what `check` finds,
+and the folder may be deleted at any time.
+
 ### JSON
 
 `xarch check --format json` prints one JSON document on stdout, and nothing else. This shape is a contract: fields
@@ -454,9 +493,11 @@ and rule ids may be added, but an existing one keeps its name and meaning.
 ```
 
 A profile that writes checks of its own also has `"checks"` in `enforcement`: each `{"id", "read", "said"}`, `read`
-how many facts it read in the project.
+how many facts it read in the project. A check of some paths also has `"partial"` (see
+[Checking some files](#checking-some-files-xarch-check-path-)): `paths` as given, `skipped_checks` (always `[]`:
+every check runs on the whole app) and `elsewhere`, how many violations of other files `violations` leaves out.
 
-- `ok`: no violation, and with `--strict` no enforcement finding either; it agrees with the exit code. `strict`:
+- `ok`: no violation (of the paths given, for a partial check), and with `--strict` no enforcement finding either; it agrees with the exit code. `strict`:
   whether `--strict` was given. `profile`: the profile in force, a bundled name or a path, as selected.
 - `violations`: sorted by `file`, then `line` (a whole-file or folder violation, `line: null`, first), then `rule`.
   `file` is the path the text output prints; `message` the sentence it prints after the path; `fix` what to do about
@@ -561,8 +602,12 @@ enforcement
   import rules cannot see what it names.
 - `weak`, met to the letter only, never a violation: a fake `<prefix><Port>` that defines in its own body (methods,
   or names its body or `self.` assigns) less than every port of its name declares; and a `Result` variant that no
-  row covers, credited only to standalone tests that name it and hold no `assert`; and a method `pass-through` finds.
-  A weak check that has a fix shows it on an indented `fix:` line under its own.
+  row covers, credited only to standalone tests that name it and hold no `assert`; a method `pass-through` finds; a
+  class or function `holds` finds where its part does not hold that kind, and a class `immutable` finds mutable; a
+  file `dead-code`'s `untested` finds no test of its tier reaches, a name its `tests_only` finds only the tests use,
+  and an entry of `guards.dead-code.known` that no longer holds; and a finding of a check of the profile's own
+  whose `mode` is `list`. None of them changes the exit code of a plain `check`; each fails `--strict`, which the
+  guard test runs. A weak check that has a fix shows it on an indented `fix:` line under its own.
 - `approximate`: each key the profile sets whose check reads a fact the language's reader supplies only partly, as
   its data file grades it (`supplies`), with what the reader misses: the check runs, and may miss what it looks for.
   A key whose check reads a fact the language does not supply at all is refused when the profile loads, naming the
@@ -574,8 +619,67 @@ Without `--strict` the section never changes the exit code. `--strict` fails (ex
 in force, or the one a custom profile is compared with, does not also leave off (with no profile to compare with,
 every guard left off); each ungoverned file; each missing or changed init file; each skip; each dynamic import; each
 unresolved import; each weak finding; each approximate key; each part redefined without its litmus. The text lists
-them after the section, under `strict:`. The guard test `init` writes runs `check` without `--strict`: a
-project opts in by running `xarch check --strict` in CI or a pre-commit hook.
+them after the section, under `strict:`. The guard test `init` writes runs `check --strict` (see
+[Project files](#project-files)): a fresh project of either bundled profile has no such finding.
+
+## Running the check from an agent's hooks: `xarch hook claude`
+
+A coding agent that runs `xarch check` only when it remembers to finds the violations late. `xarch hook claude`
+prints the hooks that run it for Claude Code, as the JSON its settings hold; it writes nothing (add its `hooks` key
+to `.claude/settings.json`, or `.claude/settings.local.json` for yourself alone, merging it with hooks already
+there), reads no app and no profile, and needs `jq`, as Claude Code's own examples do:
+
+- `PostToolUse`, matched on `Edit|Write`: the check of the file just written,
+  `jq -r '.tool_input.file_path' | xarch check --files-from -` (see
+  [Checking some files](#checking-some-files-xarch-check-path-)); it does not pass `--strict`, so a weak finding
+  elsewhere does not interrupt every edit.
+- `Stop`: the whole check, `xarch check --strict`, what the guard test runs, skipped when Claude Code is already
+  going on because of this hook (`stop_hook_active`), so a check the agent cannot make pass never loops.
+
+Each runs from `$CLAUDE_PROJECT_DIR`, prints the check's output on stderr and exits 2 when the check fails: for
+`PostToolUse` Claude Code shows that output to the agent after the edit, and for `Stop` it keeps the agent working,
+with the output as the reason. `--command "uv run xarch"` (or any other) says how the hooks run xarch when it is not
+on the PATH.
+
+Another agent's hooks are not printed: their formats are their own. The same two hooks carry over to any agent that
+can run a command after it edits a file and before it ends its turn: after an edit, pipe the path edited into
+`xarch check --files-from -` (or give it as an argument), and before it finishes, run `xarch check --strict`; both
+exit 0 when clean, 1 with violations and 2 on a usage error, and print what to fix. An agent with no hooks follows
+`AGENTS.md`, which tells it to run `xarch check --strict` before it finishes; the guard test catches what it forgets.
+
+## Running the check before each commit: pre-commit
+
+The repository ships a [pre-commit](https://pre-commit.com) hook, `xarch-check` in `.pre-commit-hooks.yaml`: it runs
+`xarch check` with the files staged as its paths, in one run (`require_serial`), so the commit fails on their
+violations alone (see [Checking some files](#checking-some-files-xarch-check-path-)); the violations of other files
+are counted, not shown, and do not fail it. In the project's `.pre-commit-config.yaml`:
+
+```yaml
+repos:
+  - repo: https://github.com/paulomtts/xarch
+    rev: <a tag or commit of xarch>
+    hooks:
+      - id: xarch-check
+```
+
+pre-commit installs xarch in an environment of its own (Python 3.13 or later), which is enough: `check` reads the
+source and never imports it. To run the xarch the project already has as a dev dependency instead, write the hook
+locally:
+
+```yaml
+repos:
+  - repo: local
+    hooks:
+      - id: xarch-check
+        name: xarch check
+        entry: uv run xarch check
+        language: system
+        pass_filenames: true
+        require_serial: true
+```
+
+Neither passes `--strict`, which judges the whole app: add `args: [--strict]` to the first, or `--strict` to the
+local `entry`, to fail the commit on it too, as the guard test does.
 
 ## xarch where: ask before you write
 
@@ -1152,9 +1256,11 @@ Both bundled profiles list three files: the guard test, `AGENTS.md` and `ruff.to
 project edits them.
 
 `AGENTS.md` (beside the app folder, about 60 lines) is written for a coding agent that has never seen xarch: what governs
-the project (the profile and `docs/project/`), to run `xarch where <path>` before creating or moving a file and to
-take the first litmus test a piece of code passes, to run `xarch check` and `ruff check` before finishing, how tests are
-written, how to run `xarch review` as a second, advisory reading (with no key set it refuses: skip it, or run it with
+the project (the profile); that it works from `xarch where <path>`, the `fix:` lines of `check` and the Placement
+order (section 7 of `docs/project/architecture.md`, about 15 lines), the two project docs (about 20k tokens) being
+reference, not required reading; to run `xarch where <path>` before creating or moving a file and to take the first
+litmus test a piece of code passes; to run `xarch check --strict` (what the guard test runs, so a weak finding fails
+it too) and `ruff check` before finishing; how tests are written; how to run `xarch review` as a second, advisory reading (with no key set it refuses: skip it, or run it with
 `--offline` when the project commits its answer cache; `xarch review calibrate` is the maintainer's), and what not to
 do to get a green check: move code into a folder no part covers, switch a guard off or loosen the profile, edit the
 guard test, skip a test. It is static text (it names the app folder with `{{app}}`).
@@ -1165,11 +1271,14 @@ the pytest-style rules, no `print`, no naive datetime and no unused `noqa`, for 
 What differs by part (which imports, names or outside packages a part may use) is the profile's job, via
 `imports.may`, `imports.libraries` and `uses.never`; `xarch check` does not run the linter.
 
-The guard test, `tests/architecture/test_rules.py`, runs `python -m xarch check --app <project>/<app>` with the
-interpreter running the test, and fails with `xarch check`'s output as its message, so every guard runs with the
-project's test suite; xarch must be installed in that environment. It does not pass `--strict`; a project that wants
-strictness runs `xarch check --strict` in CI or a pre-commit hook (editing the pinned guard test is itself reported as
-changed). It is also the guard tier's example in `testing.md`.
+The guard test, `tests/architecture/test_rules.py`, runs `python -m xarch check --strict --app <project>/<app>` with
+the interpreter running the test, and fails with `xarch check`'s output as its message, so every guard runs with the
+project's test suite; xarch must be installed in that environment. It passes `--strict` because a project `init` and
+`new` have just written, of either bundled profile, has no finding `--strict` fails on: a weak finding (a method that
+only forwards, a class where the part holds functions, a file no test reaches) therefore fails the build as soon as it
+appears, rather than piling up as advice nobody acts on, and `AGENTS.md` tells an agent to run the same command.
+Editing the pinned guard test (to drop `--strict`, say) is itself reported as changed. It is also the guard tier's
+example in `testing.md`.
 
 ## Development
 

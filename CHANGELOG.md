@@ -10,10 +10,39 @@ All notable changes to this project are written here. The format follows
 - `testing.shared: [<folder or file>, ...]` names test code below the tests root (such as `support`, `helpers.py`)
   that a test of any tier may import besides its own folder's; an entry overlapping a tier's `folder` or the fakes'
   folder is refused.
+- `xarch check PATH ...` and `xarch check --files-from FILE|-` show only the violations of the files at or below
+  the paths given, and only those decide the exit code; every check still runs on the whole app and its tests, none
+  skipped, and a `partial:` line (JSON `partial: {paths, skipped_checks, elsewhere}`) names the paths, says no check
+  was skipped and counts the violations of other files, so its OK never reads as the whole app's.
+- `xarch hook claude [--command TEXT]` prints Claude Code hooks for `.claude/settings.json` and writes nothing:
+  `PostToolUse` on `Edit|Write` runs `xarch check --files-from -` on the file written, `Stop` runs
+  `xarch check --strict` (unless `stop_hook_active`); each hands the check's output back to the agent (exit 2) when
+  it fails. The README says how to do the same with another agent's hooks.
+- `.pre-commit-hooks.yaml` at the repository's root ships the pre-commit hook `xarch-check`: `xarch check` with the
+  files staged as its paths, in one run; the README gives the `.pre-commit-config.yaml` snippet, and a local form
+  running the project's own xarch.
+- The reader keeps what it read of each file in a cache (`xarch/` in `$XDG_CACHE_HOME`, else `~/.cache`;
+  `XARCH_CACHE_DIR` names another folder, empty switches it off), keyed by the file's text, how it is read, what
+  its relative imports find on disk and xarch's own code: reading the tree was 87% of a check (about 11 s of 12.7 s
+  on xarch's own 310 files), and with the cache warm a whole check takes about 1.5 s.
 - `fakes.tiers: [<tier>, ...]` lets the tests of the tiers it lists import the fakes besides those of a tier that
   tests a part `fakes.for` names (such as a tier placed only by its `folder`); an unknown tier is refused.
 - A tier's `folder` may lie inside another tier's (`unit` and `unit/meta`): a test has the tier of the deepest folder
   holding it, which is its own folder; only two tiers with the same folder are still refused.
+
+### Changed
+
+- The guard test `init` writes (`tests/architecture/test_rules.py`) runs `xarch check --strict`, and the `AGENTS.md`
+  it writes tells an agent to run the same: a fresh project of either bundled profile, with a module, has no finding
+  `--strict` fails on, so a weak finding (`holds`, `immutable`, `pass-through`, a file `dead-code`'s `untested` finds)
+  now fails the project's test suite as soon as it appears instead of staying advice. The guard test is pinned, so a
+  project written by 0.3.0 sees it listed as changed until it takes the new one.
+- The `AGENTS.md` `init` writes no longer tells an agent to read `docs/project/architecture.md` and
+  `docs/project/testing.md` (about 20k tokens) before changing anything: it points at `xarch where <path>`, the
+  `fix:` lines of `xarch check` and the Placement order section, and names the two docs as reference, not required.
+- The README's list of weak findings names every kind the enforcement section lists as `weak` (it left out `holds`,
+  `immutable`, `dead-code`'s `untested` and `tests_only` findings, stale `known` entries and the `list` findings of a
+  profile's own checks); the code was right.
 
 ### Fixed
 

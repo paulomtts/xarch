@@ -147,10 +147,11 @@ import builtins
 import copy
 import hashlib
 import io
+import pickle
 import re
 import tokenize
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from fnmatch import fnmatchcase
 from pathlib import Path
 
@@ -183,8 +184,14 @@ from xarch.profile_values.testing import Place, TableForm, TestForm
 
 
 class FsSourceTree:
-    def __init__(self, fs: FileSystem):
-        self._fs = fs
+    """With a cache folder and the folder of the reader's own code, each file read is kept there, with a digest of its
+    text and what its relative imports found on disk: a file read again whose text is the same, read the same way, by
+    the same code, whose relative imports find the same, is not parsed again. A cache that cannot be read is empty, and
+    one that cannot be written is not written: the cache never changes what a file is read as."""
+
+    def __init__(self, fs: FileSystem, cache: Path | None = None, code: Path | None = None):
+        self._fs, self._cache, self._code = fs, cache, code
+        self._version: str | None = None
 
     def absent(self, roots: Iterable[Path]) -> list[Path]:
         return [root for root in roots if not self._fs.is_dir(root)]
@@ -198,6 +205,10 @@ class FsSourceTree:
              globals: tuple[tuple[str, ...], ...] = ()) -> list[SourceFile]:
         """Each file below root, read as UTF-8 and parsed; one that is not UTF-8, or cannot be read, holds why as its
         error, as one that does not parse does."""
+        handed = (tables, immutable, interface, tuple(sorted(standard)), private, special, declared, globals)
+        store = self._store(root, handed)
+        kept = self._kept(store)
+        fresh: dict[tuple[str, ...], tuple[str, tuple[tuple[tuple[str, ...], bool], ...], SourceFile]] = {}
         found: list[SourceFile] = []
         for path in paths:
             name = root.joinpath(*path).relative_to(root.parent).as_posix()
@@ -212,9 +223,54 @@ class FsSourceTree:
                 found.append(SourceFile(name, path, (), error=Unparsable(
                     0, f"cannot be read ({e.strerror or e})", unreadable=True)))
                 continue
-            found.append(_parsed(name, path, text, tables, immutable, interface, standard, private, special,
-                                 _Where((root.name, *path[:-1]), root, self._fs), declared, globals))
+            digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
+            where = _Where((root.name, *path[:-1]), root, self._fs)
+            entry = kept.get(path)
+            if entry is not None and entry[0] == digest and all(where.exists(s) == there for s, there in entry[1]):
+                fresh[path] = entry
+            else:
+                seen = _Where((root.name, *path[:-1]), root, self._fs, {})
+                read = _parsed(name, path, text, tables, immutable, interface, standard, private, special, seen,
+                               declared, globals)
+                fresh[path] = (digest, tuple((seen.seen or {}).items()), read)
+            found.append(fresh[path][2])
+        if store is not None and fresh != kept:
+            self._keep(store, fresh)
         return found
+
+    def _store(self, root: Path, handed: tuple) -> Path | None:
+        """The file of the cache that keeps the files read below root the way handed says, or None with no cache."""
+        if self._cache is None or self._code is None:
+            return None
+        key = hashlib.sha256(repr((str(root), handed)).encode("utf-8")).hexdigest()[:32]
+        return self._cache / f"{key}.pickle"
+
+    def _kept(self, store: Path | None) -> dict:
+        """What the store keeps, read by the reader's code as it is now; nothing when there is no store, when it cannot
+        be read, or when other code wrote it."""
+        if store is None:
+            return {}
+        try:
+            version, files = pickle.loads(self._fs.read_bytes(store))
+        except Exception:
+            return {}
+        return files if version == self.version() and isinstance(files, dict) else {}
+
+    def _keep(self, store: Path, files: dict) -> None:
+        try:
+            self._fs.replace_bytes(store, pickle.dumps((self.version(), files), protocol=pickle.HIGHEST_PROTOCOL))
+        except OSError:
+            return
+
+    def version(self) -> str:
+        """A digest of the reader's own code: every source file below its folder, by path and content."""
+        if self._version is None:
+            digest = hashlib.sha256()
+            for file in self._fs.files(self._code, "*.py") if self._code is not None else []:
+                digest.update(file.relative_to(self._code).as_posix().encode("utf-8") + b"\0")
+                digest.update(self._fs.read_bytes(file) + b"\0")
+            self._version = digest.hexdigest()
+        return self._version
 
     def existing(self, paths: Iterable[Path]) -> frozenset[Path]:
         return frozenset(path for path in paths if self._fs.exists(path))
@@ -237,6 +293,7 @@ class _Where:
     package: tuple[str, ...]
     root: Path
     fs: FileSystem
+    seen: dict[tuple[str, ...], bool] | None = field(default=None, compare=False)
 
     def target(self, level: int, module: tuple[str, ...]) -> tuple[str, ...] | None:
         """The place a relative import of that many dots names, the root's name first: up one folder fewer than its
@@ -245,16 +302,19 @@ class _Where:
         if kept < 1:
             return None
         steps = (*self.package[:kept], *module)
-        return steps if self._exists(steps[1:]) else None
+        return steps if self.exists(steps[1:]) else None
 
-    def _exists(self, steps: tuple[str, ...]) -> bool:
+    def exists(self, steps: tuple[str, ...]) -> bool:
         """Whether steps below the root name a folder or a `.py` file; a place the file system cannot look up is not
-        there."""
+        there. What it answers is noted in seen, when there is one."""
         place = self.root.joinpath(*steps)
         try:
-            return self.fs.is_dir(place) or (bool(steps) and self.fs.is_file(place.with_name(f"{steps[-1]}.py")))
+            there = self.fs.is_dir(place) or (bool(steps) and self.fs.is_file(place.with_name(f"{steps[-1]}.py")))
         except OSError:
-            return False
+            there = False
+        if self.seen is not None:
+            self.seen[steps] = there
+        return there
 
 
 class _Relative(tuple):

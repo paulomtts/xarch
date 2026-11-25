@@ -81,7 +81,7 @@ class RulesController:
         """The whole check of an app; strict asked with against is refused first, a root or tests folder that is no
         folder is refused, and so are a profile whose own checks cannot run and one that cannot be used."""
         try:
-            return self._app.check(cmd.root, cmd.profile, cmd.tests, cmd.cwd, cmd.strict, cmd.against)
+            return self._app.check(cmd.root, cmd.profile, cmd.tests, cmd.cwd, cmd.strict, cmd.against, cmd.paths)
         except RootMissing as e:
             return NotADirectory(e.root)
         except ChecksRefused as e:

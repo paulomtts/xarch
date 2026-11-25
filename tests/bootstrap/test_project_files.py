@@ -55,6 +55,28 @@ def test_the_written_guard_test_fails_with_the_violation_as_its_message(tmp_path
     assert "app/kernel/bad.py:1:" in result.stdout and "1 violation(s) in 1 file(s)" in result.stdout
 
 
+@pytest.mark.parametrize("profile", PROFILES)
+def test_a_fresh_project_with_a_module_has_no_strict_finding_so_its_guard_test_passes(tmp_path, profile):
+    app = tmp_path / "app"
+    init(app, profile)
+    assert isinstance(build_controllers().scaffold.new(NewInstance(app, "module", "documents", profile)), Scaffolded)
+    checked = app_check(app, profile, tmp_path / "tests")
+    assert checked.violations == () and checked.enforcement.weak == () and checked.enforcement.strict == ()
+    result = pytest_in(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_the_written_guard_test_runs_the_strict_check_so_a_weak_finding_fails_it(tmp_path):
+    app = tmp_path / "app"
+    init(app, "cli")
+    assert isinstance(build_controllers().scaffold.new(NewInstance(app, "module", "docs", "cli")), Scaffolded)
+    (app / "modules" / "docs" / "application" / "logic" / "rule.py").write_text(
+        'class Rule:\n    """A class where logic holds functions."""\n')
+    result = pytest_in(tmp_path)
+    assert result.returncode == 1
+    assert "OK: no violations" in result.stdout and "weak:" in result.stdout and "1 finding fails the check" in result.stdout
+
+
 def test_the_written_guard_test_checks_an_app_folder_with_another_path_and_name(tmp_path):
     init(tmp_path / "src" / "shop", "web")
     assert (tmp_path / "src" / GUARD).is_file()
@@ -83,6 +105,17 @@ def test_init_writes_the_agent_instructions_unpinned_and_short_naming_the_comman
         assert needed in text, needed
     shipped = {file.path: file.pinned for file in build_controllers().spec.files(profile, "app").files}
     assert shipped[("AGENTS.md",)] is False
+
+
+@pytest.mark.parametrize("profile", PROFILES)
+def test_the_agent_instructions_rely_on_where_the_fix_lines_and_the_placement_order_not_on_reading_the_docs(
+        tmp_path, profile):
+    init(tmp_path / "app", profile)
+    opening = " ".join((tmp_path / "AGENTS.md").read_text().split("\n## ")[0].split())
+    assert "before you change anything" not in opening
+    for needed in ["`xarch where <path>`", "`fix:` line", "`Placement order` (section 7 of "
+                   "`docs/project/architecture.md`", "reference", "not required"]:
+        assert needed in opening, needed
 
 
 @pytest.mark.parametrize("profile", PROFILES)

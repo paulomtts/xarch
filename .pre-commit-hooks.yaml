@@ -1,0 +1,9 @@
+- id: xarch-check
+  name: xarch check
+  description: >-
+    Runs every check of xarch on the whole app and its tests, and fails the commit on the violations of the files
+    staged alone; the violations of other files are counted on its `partial:` line, not shown.
+  entry: xarch check
+  language: python
+  pass_filenames: true
+  require_serial: true
