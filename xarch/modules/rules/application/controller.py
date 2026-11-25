@@ -46,11 +46,12 @@ class RulesController:
 
     def check_profile(self, cmd: CheckProfile) -> ProfileCheckResult:
         """Validates a profile without an app: every problem at once, what spec's check of it finds and what its own
-        checks find against their examples and the vocabulary, with how it differs from the bundled one it is based
-        on. One that does not load comes back with the loader's problems, none chosen with the profiles known, and
-        one that cannot be used is refused with why."""
+        checks find against their examples and the vocabulary, with how it differs from the profile it is compared
+        with, the one cmd.against names when it is given. One that does not load comes back with the loader's
+        problems, none chosen with the profiles known, and one that cannot be used, or an against that does not
+        load, is refused with why."""
         try:
-            return self._examples.check(cmd.app, cmd.target)
+            return self._examples.check(cmd.app, cmd.target, cmd.against)
         except Unloaded as e:
             return ProfileUnloaded(e.location, e.problems)
         except NoProfile as e:
@@ -77,10 +78,10 @@ class RulesController:
             return NoRuleShown(cmd.address, cmd.profile, e.reason)
 
     def check_app(self, cmd: CheckApp) -> CheckAppResult:
-        """The whole check of an app; a root or tests folder that is no folder is refused, and so are a profile whose
-        own checks cannot run and one that cannot be used."""
+        """The whole check of an app; strict asked with against is refused first, a root or tests folder that is no
+        folder is refused, and so are a profile whose own checks cannot run and one that cannot be used."""
         try:
-            return self._app.check(cmd.root, cmd.profile, cmd.tests, cmd.cwd, cmd.strict)
+            return self._app.check(cmd.root, cmd.profile, cmd.tests, cmd.cwd, cmd.strict, cmd.against)
         except RootMissing as e:
             return NotADirectory(e.root)
         except ChecksRefused as e:

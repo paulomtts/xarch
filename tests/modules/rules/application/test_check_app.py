@@ -48,6 +48,8 @@ MISSING = Violation("pkg", 0, "missing kernel/logic/", "structure", "create pkg/
 
 REFUSED = ("checks.mine.mode: is 'fial': write fail or list",)
 UNUSABLE = "gone: cannot read the file: no such file"
+STRICT_AGAINST = ("--against shows a comparison and --strict fails on one: run `check --strict` without --against, "
+                  "and it judges the profile against its baseline")
 
 
 def check(files: dict, when: CheckApp, structure: list[Violation] | None = None, profile: Profile = PROFILE):
@@ -74,6 +76,12 @@ def check(files: dict, when: CheckApp, structure: list[Violation] | None = None,
                  id="a profile whose own checks cannot run is refused with every problem"),
     pytest.param(dict(files=GOOD), CheckApp(ROOT, "gone", ROOT.parent), CheckRefused(UNUSABLE),
                  id="a profile spec refuses is refused with spec's reason"),
+    pytest.param(dict(files=GOOD), CheckApp(ROOT, "cli", ROOT.parent, strict=True, against="web"),
+                 CheckRefused(STRICT_AGAINST), id="strict with against is refused"),
+    pytest.param(dict(files=GOOD), CheckApp(Path("/elsewhere"), "cli", ROOT.parent, strict=True, against="web"),
+                 CheckRefused(STRICT_AGAINST), id="strict with against is refused before the app folder is looked at"),
+    pytest.param(dict(files=GOOD), CheckApp(ROOT, "gone", ROOT.parent, strict=True, against="web"),
+                 CheckRefused(STRICT_AGAINST), id="strict with against is refused before the profile is read"),
 ])
 def test_check_app(given, when, then):
     assert check(given.get("files", {}), when, given.get("structure"), given.get("profile", PROFILE)) == then
@@ -82,6 +90,12 @@ def test_check_app(given, when, then):
 def test_without_strict_a_finding_of_the_enforcement_does_not_fail_the_check():
     result = check({**GOOD, "stray.py": []}, CheckApp(ROOT, "cli", ROOT.parent))
     assert isinstance(result, AppChecked) and result.ok
+
+
+def test_against_without_strict_checks_as_without_it():
+    files = {**BAD, "stray.py": []}
+    assert check(files, CheckApp(ROOT, "cli", ROOT.parent, against="web"), [MISSING]) == check(
+        files, CheckApp(ROOT, "cli", ROOT.parent), [MISSING])
 
 
 def entered(entry: str) -> Profile:

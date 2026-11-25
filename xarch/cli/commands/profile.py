@@ -8,6 +8,7 @@ from xarch.cli.reports import profile_report as report
 from xarch.cli.reports import vocabulary_report as words
 from xarch.cli.reports.refusal_report import key_or_profile, no_profile_to_check, reason, rule_needs_key
 from xarch.cli.terminal import (
+    AgainstName,
     AppPath,
     Format,
     FormatOption,
@@ -169,17 +170,18 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
     def check(target: Annotated[str | None, typer.Argument(
                   help="A bundled profile's name, or a path to a profile file. Default: the profile configured under "
                        "\\[tool.xarch] in pyproject.toml.")] = None,
-              app_path: AppPath = None, output: FormatOption = Format.text) -> None:
+              against: AgainstName = None, app_path: AppPath = None, output: FormatOption = Format.text) -> None:
         """Validate a profile without an app.
 
         It loads (every problem at once, which includes every file it points to existing), its examples import only
         what their part may, each check of its own is written in words that apply and finds something in the code its
-        examples flag and nothing in their clean code, and how it differs from the bundled profile it is based on is
-        shown as information. Exit 0 when the profile is valid, 1 when it has problems, 2 when no profile can be
-        chosen."""
+        examples flag and nothing in their clean code, and how it differs from the profile it is compared with (the
+        one --against names, else the one its based_on names, else the bundled profile of highest match) is shown as
+        information. Exit 0 when the profile is valid, 1 when it has problems, 2 when no profile can be chosen or
+        --against names one that does not load."""
         refuse = refusal(output)
         app = app_for(spec, in_full(Path()), app_path, refuse)
-        match rules.check_profile(CheckProfile(app, target)):
+        match rules.check_profile(CheckProfile(app, target, against)):
             case ProfileHeld() | ProfileUnloaded() as checked:
                 _show(output, report.check_document(checked), report.check_lines(checked))
                 if isinstance(checked, ProfileUnloaded) or not checked.ok:

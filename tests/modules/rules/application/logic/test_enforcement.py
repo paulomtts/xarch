@@ -16,13 +16,14 @@ from xarch.modules.rules.application.logic.enforcement import (
     reading,
     skipped,
     strict_findings,
+    unplaced,
     unresolved,
     weak_of,
 )
 from xarch.modules.rules.domain.outcomes import Enforcement, Finding, InitFile
 from xarch.modules.rules.domain.parsed import SourceFile, Use
 from xarch.modules.rules.domain.profile import Profile
-from xarch.modules.rules.domain.published import At, Drift, Unresolved, Weak
+from xarch.modules.rules.domain.published import At, Drift, Loosened, Unresolved, Weak
 from xarch.profile_values.capabilities import Shortfall
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.language import CheckedLanguage
@@ -134,7 +135,7 @@ def test_with_no_bundled_profile_to_compare_with_every_guard_left_off_fails_stri
     assert strict_findings(enforcement) == (Finding("guards_off", "no-comments"), Finding("guards_off", "closed-tree"))
 
 
-def test_how_a_custom_profile_differs_from_the_closest_bundled_one_is_never_a_strict_finding():
+def test_how_a_custom_profile_differs_from_the_profile_it_is_compared_with_is_never_a_strict_finding():
     """The enforcement holds only the guards a profile leaves off: how it is looser is spec's, and shown beside it."""
     assert strict_findings(Enforcement((), ())) == ()
 
@@ -220,3 +221,11 @@ def test_an_aliased_import_resolved_to_the_root_is_not_listed_and_one_the_reader
     assert found == (Unresolved("app/domain/services.py", 4, "@app/domain/ordr"),)
     assert strict_findings(Enforcement(unresolved=found)) == (Finding("unresolved", found[0]),)
     assert detail(found[0]) == 'app/domain/services.py:4: import "@app/domain/ordr" names no file of the app'
+
+
+def test_strict_fails_on_a_guard_the_anchor_does_not_excuse_and_on_a_litmus_the_anchor_demands():
+    said = "core has no litmus, though cli, which --strict rests on, gives the part it pairs with one (parts.core.litmus)"
+    demanded = unplaced((Loosened("untested", "api"), Loosened("litmus", "core", "cli", said)))
+    assert demanded == (said,)
+    assert strict_findings(Enforcement(("no-comments", "dead-code"), ("dead-code",), unplaced=demanded)) == (
+        Finding("guards_off", "no-comments"), Finding("litmus", said))

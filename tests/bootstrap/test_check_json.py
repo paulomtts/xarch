@@ -73,6 +73,7 @@ def test_the_text_output_prints_each_violation_with_its_fix_under_it(tmp_path):
 @pytest.mark.parametrize("arguments, error", [
     (["--profile", "nowhere"], "unknown profile 'nowhere'"),
     (["--app", "missing"], "missing is not a directory"),
+    (["--against", "nosuch"], "--against does not load: nosuch: no bundled architecture 'nosuch'"),
 ])
 def test_a_refusal_is_a_json_error_with_exit_code_2(arguments, error):
     result = runner.invoke(app, ["check", "--format", "json", *arguments])

@@ -16,7 +16,8 @@ class FakeProfiles:
     (none unless given), whatever the app's name; the profiles a project knows (none in force and those given as the
     bundled ones, unless known says; a DomainError there is raised), what the format says of a key (nothing unless
     given; a DomainError there is raised); a location whose own checks are refused raises ChecksRefused with
-    their problems, and one spec refuses raises ProfileUnusable with spec's reason."""
+    their problems, and one spec refuses raises ProfileUnusable with spec's reason. Every against reviewed is asked
+    with is kept in against, in order."""
 
     def __init__(self, profiles: dict[str, Profile], guards: dict[str, Standing] | None = None,
                  files: dict[str, tuple[InitFile, ...]] | None = None, refused: dict[str, tuple[str, ...]] | None = None,
@@ -27,6 +28,7 @@ class FakeProfiles:
         self._known = Known(None, tuple(profiles)) if known is None else known
         self._keys, self._reviewed = dict(keys or {}), dict(reviewed or {})
         self._refused, self._unusable = dict(refused or {}), dict(unusable or {})
+        self.against: list[str | None] = []
 
     def profile(self, location: str) -> Profile:
         if location in self._refused:
@@ -46,7 +48,8 @@ class FakeProfiles:
             raise found
         return found
 
-    def reviewed(self, app: Path, target: str | None) -> Reviewed:
+    def reviewed(self, app: Path, target: str | None, against: str | None = None) -> Reviewed:
+        self.against.append(against)
         found = self._reviewed[target]
         if isinstance(found, DomainError):
             raise found

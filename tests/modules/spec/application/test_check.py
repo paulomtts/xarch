@@ -18,11 +18,15 @@ WITH_EXAMPLE_FILES = {"ex/core/rule.py": "from app.api import handler\n", "ex/ap
 WITH_EXAMPLE_READS = {"from app.api import handler\n": (Import(1, ("app", "api"), ("handler",)),)}
 OFF = ("package-only", "scenario-coverage", "no-comments", "stand-ins", "closed-tree", "no-duplicates", "no-twins",
        "dead-code", "pass-through", "no-callbacks", "private-imports")
+SELF = (("parts", 2, 2), ("part_keys", 3, 3), ("tiers", 0, 0), ("guards", 0, 0), ("profile", 2, 2))
+"""The counts of base against itself: everything check reads under it has a counterpart."""
+COPY = Origin("mine.yaml", False, "base", OFF, OFF, (), "based_on", 1.0, False, SELF, anchor="base")
+"""The origin of a copy of base that says it is based on it."""
 
 
 @pytest.mark.parametrize("given, when, then", [
     pytest.param(dict(files={"mine.yaml": MINE}), CheckProfile(APP, "mine.yaml"),
-                 ProfileChecked("mine.yaml", (), 2, Origin("mine.yaml", False, "base", OFF, OFF, ())),
+                 ProfileChecked("mine.yaml", (), 2, COPY),
                  id="a profile that loads and keeps to its rules is valid, with how many files it points to"),
     pytest.param(dict(files={"mine.yaml": {**MINE, "colour": 1, "parts": {"core": {"path": "core"}}}}),
                  CheckProfile(APP, "mine.yaml"),
@@ -35,8 +39,7 @@ OFF = ("package-only", "scenario-coverage", "no-comments", "stand-ins", "closed-
                  CheckProfile(APP, "mine.yaml"),
                  ProfileChecked("mine.yaml", (
                      Problem("examples", "example (core/rule.py): imports app.api which core may not import "
-                                         "(parts.core.imports.may)"),), 3,
-                                Origin("mine.yaml", False, "base", OFF, OFF, ())),
+                                         "(parts.core.imports.may)"),), 3, COPY),
                  id="an example that imports what its part may not is a problem"),
     pytest.param(dict(files={}), CheckProfile(APP, "gone.yaml"),
                  ProfileChecked("gone.yaml", (Problem("load", "gone.yaml: cannot read the file: no such file"),), 0, None),
@@ -63,3 +66,30 @@ def test_a_bundled_profile_is_valid_and_is_compared_with_nothing():
     spec, _ = spec_controller()
     checked = spec.check_profile(CheckProfile(APP, "base"))
     assert isinstance(checked, ProfileChecked) and checked.ok and checked.origin.bundled
+
+
+THEIRS = {**BASE, "name": "theirs"}
+"""A copy of base at a path, for --against to name."""
+
+
+def test_with_against_the_profile_checked_is_compared_with_the_one_it_names():
+    spec, _ = spec_controller(files={"mine.yaml": MINE, "theirs.yaml": THEIRS})
+    checked = spec.check_profile(CheckProfile(APP, "mine.yaml", "theirs.yaml"))
+    assert isinstance(checked, ProfileChecked) and checked.origin is not None
+    assert (checked.problems, checked.origin.compared, checked.origin.chosen_by, checked.origin.based_on) == (
+        (), "theirs.yaml", "against", "base")
+
+
+def test_against_a_profile_with_several_problems_is_refused_with_all_of_them_on_one_line():
+    broken = {**MINE, "colour": 1, "parts": {"core": {"path": "core"}}}
+    spec, _ = spec_controller(files={"mine.yaml": MINE, "broken.yaml": broken})
+    assert spec.check_profile(CheckProfile(APP, "mine.yaml", "broken.yaml")) == ProfileRefused(
+        "--against does not load: broken.yaml: unknown key 'colour': use based_on, checks, docs, evals, excluded, "
+        "fakes, files, guards, hints, language, layers, name, never, parts, reserved, review, testing, tiers; "
+        "broken.yaml: parts.core: missing `role`")
+
+
+def test_against_is_not_read_when_the_profile_checked_does_not_load():
+    spec, _ = spec_controller(files={})
+    assert spec.check_profile(CheckProfile(APP, "gone.yaml", "nosuch")) == ProfileChecked(
+        "gone.yaml", (Problem("load", "gone.yaml: cannot read the file: no such file"),), 0, None)

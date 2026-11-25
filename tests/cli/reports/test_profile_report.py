@@ -1,5 +1,6 @@
 """How `xarch profile` shows what it found, on hand-made results: a key the format lacks, and a copy just written."""
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -11,18 +12,16 @@ from xarch.cli.reports.profile_report import (
     key_document,
     key_lines,
     new_taken,
-    origin_words,
     overview_lines,
     unknown_document,
     unknown_message,
 )
-from xarch.modules.rules.contract import ChecksHeld, ProfileHeld, ProfileUnloaded, Resemblance, Reviewed
+from xarch.modules.rules.contract import ChecksHeld, Loosened, ProfileHeld, ProfileUnloaded, Resemblance, Reviewed
 from xarch.modules.spec.contract import (
     FilesTaken,
     FormatExplained,
     KeyExplained,
     Need,
-    Origin,
     ProfileCreated,
     Shortfall,
     Shown,
@@ -99,16 +98,125 @@ def test_a_key_another_command_reads_is_said_to_be_read_by_it_and_never_by_check
     assert [row.split()[:3] for row in rows] == [["docs", "optional", "documentary"], ["review", "optional", "review"]]
 
 
-@pytest.mark.parametrize("origin, resemblance, words", [
-    pytest.param(Origin("web"), Resemblance(True), "bundled", id="a bundled profile"),
-    pytest.param(Origin("mine.yaml", False, "web"), Resemblance(False, "web"), "custom; closest bundled: web",
-                 id="a custom one names the bundled profile closest to it"),
-    pytest.param(Origin("mine.yaml", False), Resemblance(False), "custom; no bundled profile resembles it",
+COUNTS = (("parts", 12, 15), ("part_keys", 72, 91), ("tiers", 21, 31), ("guards", 11, 11), ("profile", 9, 9))
+"""The counts of xarch's own profile against cli."""
+MATCH = ("  match: 80% with cli (based_on): 12 of 15 parts, 72 of 91 part keys, 21 of 31 tier entries, 11 of 11 guards, "
+         "9 of 9 profile keys sit where both profiles have them")
+"""The match line of a profile based on cli that matches it at 80%, with COUNTS."""
+
+
+def based_on_cli(**changes) -> Resemblance:
+    """A custom profile based on cli, which --strict rests on, matching it at 80% with COUNTS and nothing unpaired; the
+    fields given replaced."""
+    return replace(Resemblance(False, "cli", (), "based_on", 0.8, False, COUNTS, anchor="cli"), **changes)
+
+
+AGAINST_WEB = based_on_cli(compared="web", chosen_by="against", anchor=None)
+"""A custom profile compared with web because --against names it, matching it at 80% with COUNTS."""
+PATH_BASED = based_on_cli(compared="../team.yaml")
+"""A custom profile based on the profile file ../team.yaml, resting on cli."""
+
+
+def checked(resemblance: Resemblance) -> list[str]:
+    """What `profile check` says of a valid profile that resembles the bundled ones as given, but its verdict."""
+    return check_lines(ProfileHeld(Reviewed("mine.yaml", (), 1, resemblance), ChecksHeld((), 0)))[:-1]
+
+
+def matched(resemblance: Resemblance) -> list[str]:
+    """The lines `profile check` says of the match: those between the examples and the comparison."""
+    return checked(resemblance)[4:-1]
+
+
+@pytest.mark.parametrize("resemblance, words", [
+    pytest.param(Resemblance(True), "bundled", id="a bundled profile"),
+    pytest.param(based_on_cli(), "custom; based_on: cli", id="a custom one names the profile it is based on"),
+    pytest.param(based_on_cli(chosen_by="closest"), "custom; closest bundled: cli, match 80%",
+                 id="a custom one names the bundled profile of highest match, with the match"),
+    pytest.param(Resemblance(False), "custom; no bundled profile resembles it",
                  id="a custom one that resembles none says so"),
+    pytest.param(replace(AGAINST_WEB, based_on="cli"), "custom; against web, given with --against; based_on: cli",
+                 id="a custom one compared with the profile against names says so, then what it is based on"),
+    pytest.param(AGAINST_WEB, "custom; against web, given with --against",
+                 id="a custom one based on nothing compared with the profile against names says so"),
+    pytest.param(replace(AGAINST_WEB, bundled=True), "bundled; against web, given with --against",
+                 id="a bundled one compared with the profile against names says so"),
+    pytest.param(PATH_BASED, "custom; based_on: ../team.yaml, resting on cli",
+                 id="a custom one based on a profile file names it and the bundled profile --strict rests on"),
+    pytest.param(replace(PATH_BASED, anchor=None), "custom; based_on: ../team.yaml, resting on no bundled profile",
+                 id="a custom one based on a profile file that rests on no bundled profile says so"),
+    pytest.param(replace(AGAINST_WEB, based_on="../team.yaml"),
+                 "custom; against web, given with --against; based_on: ../team.yaml",
+                 id="with --against a based_on path is said beside it as written, and no anchor"),
 ])
-def test_where_a_profile_comes_from_is_said_the_same_by_profile_check_and_by_check(origin, resemblance, words):
-    held = ProfileHeld(Reviewed(origin.location, (), 1, resemblance), ChecksHeld((), 0))
-    assert (origin_words(origin), check_lines(held)[0]) == (words, f"checking {origin.location} ({words})")
+def test_profile_check_is_headed_with_where_the_profile_comes_from(resemblance, words):
+    assert checked(resemblance)[0] == f"checking mine.yaml ({words})"
+
+
+def test_the_match_is_said_with_its_counts_and_what_pairs_with_nothing_on_either_side_before_the_comparison():
+    resemblance = based_on_cli(only_here=("part main", "part profile-values", "part reports", "tier wired"),
+                               only_there=("tier rendering",))
+    assert checked(resemblance)[4:] == [
+        MATCH, "    only here: parts main, profile-values, reports; tier wired. only in cli: tier rendering",
+        "  compared: no looser than cli"]
+
+
+@pytest.mark.parametrize("only_here, only_there, said", [
+    pytest.param((), ("part web", "tier rendering"), ["    only in cli: part web; tier rendering"],
+                 id="an empty side is left out"),
+    pytest.param(("tier wired",), (), ["    only here: tier wired"], id="an empty group is left out"),
+    pytest.param((), (), [], id="with both sides empty the line is left out"),
+    pytest.param(tuple(f"part p{n}" for n in range(7)), (), ["    only here: parts p0, p1, p2, p3, p4 and 2 more"],
+                 id="past five names a group counts the rest"),
+])
+def test_what_pairs_with_nothing_is_said_by_side_and_by_group(only_here, only_there, said):
+    assert matched(based_on_cli(only_here=only_here, only_there=only_there)) == [MATCH, *said]
+
+
+def test_a_part_of_the_same_name_at_another_path_is_said_past_five_counting_the_rest():
+    elsewhere = tuple(f"p{n}: modules/*/p{n} there" for n in range(7))
+    assert matched(based_on_cli(elsewhere=elsewhere)) == [
+        MATCH, "    same name, other path: p0: modules/*/p0 there, p1: modules/*/p1 there, p2: modules/*/p2 there, "
+               "p3: modules/*/p3 there, p4: modules/*/p4 there and 2 more"]
+
+
+@pytest.mark.parametrize("resemblance, said", [
+    pytest.param(based_on_cli(compared="web", match=0.73, low=True),
+                 "    low: 27% of what check reads under either profile has nothing to compare with in the other, so the "
+                 "list below says little about how check would do under web",
+                 id="by the share that has nothing to compare with"),
+    pytest.param(based_on_cli(compared="web", match=0.75, low=True),
+                 "    low: 25% of what check reads under either profile has nothing to compare with in the other, so the "
+                 "list below says little about how check would do under web",
+                 id="a match just below 75% that rounds to it is still low"),
+    pytest.param(based_on_cli(compared="web", match=0.5, low=True, counts=(("parts", 0, 4), *COUNTS[1:])),
+                 "    low: no part in common, so the list below says little about how check would do under web",
+                 id="with no part in common"),
+])
+def test_a_low_match_says_why_the_comparison_says_little(resemblance, said):
+    assert matched(resemblance)[-1] == said
+
+
+def test_a_bundled_profile_of_higher_match_than_the_one_based_on_is_named_with_its_match():
+    assert matched(based_on_cli(higher=("web", 0.88))) == [MATCH, "    web matches 88%"]
+
+
+def test_nothing_of_a_match_is_said_when_nothing_is_compared():
+    assert matched(Resemblance(True)) == matched(Resemblance(False)) == []
+
+
+def test_the_json_of_profile_check_holds_every_field_of_the_profile_compared_with():
+    resemblance = based_on_cli(looser=(Loosened("untested", "api", "", "api is newly marked untested (parts.api.untested)"),),
+                               only_here=("part main", "tier wired"), only_there=("tier rendering",),
+                               elsewhere=("store: src/*/store there",), higher=("web", 0.88))
+    held = ProfileHeld(Reviewed("mine.yaml", (), 1, resemblance), ChecksHeld((), 0))
+    assert json.loads(check_document(held))["compared_with"] == {
+        "profile": "cli", "chosen_by": "based_on", "match": 0.8, "low": False,
+        "counts": {"parts": [12, 15], "part_keys": [72, 91], "tiers": [21, 31], "guards": [11, 11], "profile": [9, 9]},
+        "only_here": ["part main", "tier wired"], "only_there": ["tier rendering"],
+        "elsewhere": ["store: src/*/store there"], "higher": {"profile": "web", "match": 0.88}, "anchor": "cli",
+        "looser": [{"key": "untested", "part": "api", "what": "", "sentence": "api is newly marked untested (parts.api.untested)"}]}
+    bundled = ProfileHeld(Reviewed("web", (), 1, Resemblance(True)), ChecksHeld((), 0))
+    assert json.loads(check_document(bundled))["compared_with"] is None
 
 
 def test_a_profile_that_does_not_load_is_said_to_be_custom_and_nothing_more():
@@ -174,3 +282,30 @@ def test_an_address_xarch_retired_is_said_with_its_fixed_text_before_the_nearest
     assert json.loads(unknown_document(found)) == {
         "ok": False, "error": unknown_message(found), "key": "parts.tested_by", "nearest": ["parts.untested"],
         "words": [], "retired": "renamed in 0.3.0: write tier"}
+
+
+def test_a_profile_compared_with_the_one_against_names_says_so_in_its_match_and_a_bundled_one_is_compared_too():
+    said = MATCH.replace("with cli (based_on)", "with web (--against)")
+    assert matched(AGAINST_WEB) == [said]
+    bundled = replace(AGAINST_WEB, bundled=True)
+    assert matched(bundled) == [said]
+    assert checked(bundled)[-1] == "  compared: no looser than web"
+    compared = json.loads(check_document(ProfileHeld(Reviewed("cli", (), 1, bundled), ChecksHeld((), 0))))[
+        "compared_with"]
+    assert (compared["profile"], compared["chosen_by"], compared["higher"]) == ("web", "against", None)
+
+
+def test_a_profile_based_on_a_profile_file_is_matched_and_compared_with_it_as_written():
+    assert matched(PATH_BASED) == [MATCH.replace("with cli (based_on)", "with ../team.yaml (based_on)")]
+    assert checked(PATH_BASED)[-1] == "  compared: no looser than ../team.yaml"
+
+
+def test_the_json_of_profile_check_names_the_bundled_profile_strict_rests_on():
+    def anchor(resemblance: Resemblance):
+        held = ProfileHeld(Reviewed("mine.yaml", (), 1, resemblance), ChecksHeld((), 0))
+        return json.loads(check_document(held))["compared_with"]["anchor"]
+
+    assert anchor(PATH_BASED) == "cli"
+    assert anchor(replace(PATH_BASED, anchor=None)) is None
+    assert anchor(based_on_cli()) == "cli"
+    assert anchor(AGAINST_WEB) is None

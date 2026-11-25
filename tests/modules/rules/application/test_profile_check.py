@@ -135,3 +135,11 @@ def test_an_eval_that_reads_a_fact_the_language_does_not_supply_is_refused_at_it
     assert controller(tree, profiles).check_profile(CheckProfile(APP_FOLDER, "mine")) == ProfileHeld(
         MINE, ChecksHeld((), 0, (UNTOPPED_EVAL,), 1))
     assert tree.handed == []
+
+
+def test_against_is_handed_to_spec_s_check_of_the_profile_and_none_without_it():
+    profiles = FakeProfiles({"mine": profile()}, reviewed={"mine": MINE})
+    rules = controller(FakeSourceTree(Path("/src/app"), {}, parsed=PARSED), profiles)
+    assert rules.check_profile(CheckProfile(APP_FOLDER, "mine", "web")) == ProfileHeld(MINE, ChecksHeld((), 0))
+    assert rules.check_profile(CheckProfile(APP_FOLDER, "mine")) == ProfileHeld(MINE, ChecksHeld((), 0))
+    assert profiles.against == ["web", None]

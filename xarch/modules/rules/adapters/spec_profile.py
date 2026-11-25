@@ -112,16 +112,19 @@ class SpecProfiles:
                 raise ProfileUnusable(reason)
         return KeyFacts()
 
-    def reviewed(self, app: Path, target: str | None) -> Reviewed:
-        """What spec's check of the profile found, in rules' terms: a profile that does not load raises Unloaded with
-        the loader's problems, none chosen NoProfile with the profiles known, and one spec refuses ProfileUnusable."""
-        match self._spec.check_profile(CheckProfile(app, target)):
+    def reviewed(self, app: Path, target: str | None, against: str | None = None) -> Reviewed:
+        """What spec's check of the profile found, compared with the profile against names when it is given, in rules'
+        terms: a profile that does not load raises Unloaded with the loader's problems, none chosen NoProfile with the
+        profiles known, and one spec refuses ProfileUnusable."""
+        match self._spec.check_profile(CheckProfile(app, target, against)):
             case ProfileChecked(location, problems, _, None):
                 raise Unloaded(location, tuple(problem.text for problem in problems))
             case ProfileChecked(location, problems, files, Origin() as origin):
                 looser = tuple(Loosened(item.key, item.part, item.what, item.sentence) for item in origin.looser)
                 return Reviewed(location, tuple(problem.text for problem in problems), files,
-                                Resemblance(origin.bundled, origin.closest, looser))
+                                Resemblance(origin.bundled, origin.compared, looser, origin.chosen_by, origin.match,
+                                            origin.low, origin.counts, origin.only_here, origin.only_there,
+                                            origin.elsewhere, origin.higher, origin.based_on, origin.anchor))
             case NoProfileChosen(known):
                 raise NoProfile(known)
             case ProfileRefused(reason):

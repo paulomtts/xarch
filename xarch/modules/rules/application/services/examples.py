@@ -25,11 +25,11 @@ class ExamplesService:
     def __init__(self, tree: SourceTree, profiles: Profiles):
         self._tree, self._profiles = tree, profiles
 
-    def check(self, app: Path, target: str | None) -> ProfileHeld:
-        """The profile target names, else the one configured for the project holding the app folder, checked, its own
-        checks held to their examples; raises Unloaded when it does not load, NoProfile when none is chosen, and
-        DomainError when it cannot be used."""
-        reviewed = self._profiles.reviewed(app, target)
+    def check(self, app: Path, target: str | None, against: str | None = None) -> ProfileHeld:
+        """The profile target names, else the one configured for the project holding the app folder, checked and
+        compared with the profile against names when it is given, its own checks held to their examples; raises
+        Unloaded when it does not load, NoProfile when none is chosen, and DomainError when it cannot be used."""
+        reviewed = self._profiles.reviewed(app, target, against)
         return ProfileHeld(reviewed, self._held(reviewed.location, app.name))
 
     def _held(self, location: str, app: str) -> ChecksHeld:

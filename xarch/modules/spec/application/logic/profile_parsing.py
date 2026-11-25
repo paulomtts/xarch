@@ -114,6 +114,7 @@ from xarch.modules.spec.domain.profile_keys import (
 from xarch.modules.spec.domain.profile_keys import GUARD as GUARD_SCOPE
 from xarch.modules.spec.domain.values import (
     Architecture,
+    ArchitectureSource,
     DeadCode,
     Guard,
     Language,
@@ -247,9 +248,13 @@ def _language(document: Mapping[Any, Any], languages: Mapping[str, Language], pr
 
 
 def _based_on(value: Any, bundled: Collection[str], problems: list[str]) -> str:
+    """The profile the file says it is based on: a bundled name, or the path of a profile file, which is taken as
+    written and read by no one here."""
     use = f": use {', '.join(bundled)}" if bundled else ""
-    if not isinstance(value, str):
-        problems.append(f"based_on: must be the name of a bundled profile{use}")
+    if not isinstance(value, str) or not value:
+        problems.append(f"based_on: must be the name of a bundled profile or the path of a profile file{use}")
+    elif ArchitectureSource.names_a_file(value):
+        return value
     elif value not in bundled:
         problems.append(f"based_on: no bundled profile {value!r}{use}")
     else:

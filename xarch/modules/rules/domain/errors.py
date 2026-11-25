@@ -64,3 +64,12 @@ class NoProfile(DomainError):
     def __init__(self, known: tuple[str, ...]):
         super().__init__(f"no profile is chosen: the profiles found are {', '.join(known)}")
         self.known = known
+
+
+class StrictAgainst(DomainError):
+    """`check --strict` asked with --against: strict fails on how the profile stands to its baseline, which --against
+    does not change, so the two are never run together."""
+
+    def __init__(self) -> None:
+        super().__init__("--against shows a comparison and --strict fails on one: run `check --strict` without "
+                         "--against, and it judges the profile against its baseline")

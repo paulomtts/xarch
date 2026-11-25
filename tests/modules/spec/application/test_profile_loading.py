@@ -1,5 +1,5 @@
 """Use case: a profile file is read by the loader, and a profile that says what it is based on is compared with that
-bundled profile, whatever it shares most parts with."""
+bundled profile, whatever bundled profile matches it higher."""
 from pathlib import Path
 
 from tests.fakes.architecture_files import FakeArchitectureFiles
@@ -43,18 +43,19 @@ def test_a_preset_the_files_port_does_not_hold_is_refused_listing_the_ones_it_do
         Problem("load", "mine.yaml: testing: no preset 'nope': use kit, or write the map {files, functions}"),)
 
 
-def test_without_saying_so_a_profile_resembles_the_bundled_one_sharing_most_parts():
-    assert controller(MINE).origin("mine.yaml").closest == "base"
+def test_without_saying_so_a_profile_is_compared_with_the_bundled_one_of_highest_match():
+    origin = controller(MINE).origin("mine.yaml")
+    assert (origin.compared, origin.chosen_by) == ("base", "closest")
 
 
 def test_a_profile_says_which_bundled_profile_it_is_based_on_and_is_compared_with_that_one():
     origin = controller(MINE | {"based_on": "other"}).origin("mine.yaml")
-    assert origin.closest == "other"
+    assert (origin.compared, origin.chosen_by) == ("other", "based_on")
     assert origin.looser == ()
 
 
 def test_based_on_a_bundled_profile_the_looseness_is_listed_against_it():
     origin = controller(MINE | {"based_on": "base"}).origin("mine.yaml")
-    assert origin.closest == "base"
+    assert (origin.compared, origin.chosen_by) == ("base", "based_on")
     assert Loosened("imports.libraries", "store", "requests",
                     "store may also import requests (parts.store.imports.libraries)") in origin.looser

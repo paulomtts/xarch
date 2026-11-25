@@ -1,6 +1,7 @@
 """Rules' Profiles read from spec's contract: the profile view becomes the profile as the checks see it (the checks it
 writes itself as spec read them), the origin keeps each looseness, the init files are compared as text, and spec's
 check of a profile becomes what rules reviews, or why it cannot."""
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -65,7 +66,9 @@ VIEW = ProfileView(
                                      (Saying("{where} prints", "log it"),))})
 
 
-ORIGIN = Origin("mine.yaml", False, "cli", ("closed-tree",), (), (Loosened("untested", "api"),))
+COUNTS = (("parts", 3, 4), ("part_keys", 5, 6), ("tiers", 2, 2), ("guards", 1, 1), ("profile", 2, 2))
+ORIGIN = Origin("mine.yaml", False, "cli", ("closed-tree",), (), (Loosened("untested", "api"),), "based_on", 0.87,
+                False, COUNTS, ("part jobs",), ("tier rendering",), ("store: src/*/store there",), ("web", 0.9))
 
 
 class Spec:
@@ -74,11 +77,14 @@ class Spec:
     def __init__(self, files: tuple[ProjectFile, ...] | None = None, origin: OriginResult = ORIGIN,
                  checked: CheckResult | None = None):
         self._files, self._origin, self._checked = files, origin, checked
+        self.asked: list[CheckProfile] = []
+        self.origins: list[tuple[str, ...]] = []
 
     def profile(self, location: str) -> ProfileView:
         return VIEW
 
-    def origin(self, location: str) -> OriginResult:
+    def origin(self, location: str, *against: str) -> OriginResult:
+        self.origins.append((location, *against))
         return self._origin
 
     def files(self, profile: str, app: str, presets: bool = True) -> FilesResult:
@@ -95,7 +101,8 @@ class Spec:
         return KEY if cmd.key == KEY.key else UnknownKey(cmd.key, ())
 
     def check_profile(self, cmd: CheckProfile) -> CheckResult:
-        assert cmd == CheckProfile(Path("/p/app"), "mine.yaml"), cmd
+        assert (cmd.app, cmd.target) == (Path("/p/app"), "mine.yaml"), cmd
+        self.asked.append(cmd)
         return self._checked
 
 
@@ -172,8 +179,11 @@ def test_an_explanation_spec_refuses_raises_its_reason():
 @pytest.mark.parametrize("checked, then", [
     pytest.param(ProfileChecked("mine.yaml", (Problem("examples", "example (core/a.py): imports app.api"),), 3, ORIGIN),
                  Reviewed("mine.yaml", ("example (core/a.py): imports app.api",), 3,
-                          Resemblance(False, "cli", (published.Loosened("untested", "api"),))),
-                 id="a profile that loads keeps its example problems, its files and how it resembles the bundled ones"),
+                          Resemblance(False, "cli", (published.Loosened("untested", "api"),), "based_on", 0.87, False,
+                                      COUNTS, ("part jobs",), ("tier rendering",), ("store: src/*/store there",),
+                                      ("web", 0.9))),
+                 id="a profile that loads keeps its example problems, its files and every field of how it resembles "
+                    "the bundled ones"),
     pytest.param(ProfileChecked("cli", (), 48, Origin("cli")), Reviewed("cli", (), 48, Resemblance(True)),
                  id="a bundled profile resembles itself and nothing else"),
 ])
@@ -199,3 +209,23 @@ def test_spec_choosing_no_profile_raises_with_the_profiles_known():
 def test_a_profile_spec_refuses_to_check_raises_with_spec_s_reason():
     with pytest.raises(ProfileUnusable, match="^unknown profile 'nope'$"):
         SpecProfiles(Spec(checked=ProfileRefused("unknown profile 'nope'"))).reviewed(Path("/p/app"), "mine.yaml")
+
+
+def test_against_is_sent_to_spec_s_check_its_word_and_based_on_are_kept_and_the_standing_never_asks_for_it():
+    origin = Origin("mine.yaml", False, "web", chosen_by="against", match=0.73, low=True, based_on="cli")
+    spec = Spec(origin=origin, checked=ProfileChecked("mine.yaml", (), 3, origin))
+    reviewed = SpecProfiles(spec).reviewed(Path("/p/app"), "mine.yaml", "web")
+    assert spec.asked == [CheckProfile(Path("/p/app"), "mine.yaml", "web")]
+    assert reviewed.resemblance == Resemblance(False, "web", (), "against", 0.73, True, based_on="cli")
+    SpecProfiles(spec).standing("mine.yaml", "app")
+    assert spec.origins == [("mine.yaml",)]
+
+
+def test_the_bundled_profile_strict_rests_on_is_kept_and_the_standing_keeps_what_it_excuses_and_demands():
+    said = "core has no litmus, though cli, which --strict rests on, gives the part it pairs with one (parts.core.litmus)"
+    origin = replace(ORIGIN, compared="../team.yaml", baseline_off=("dead-code",),
+                     looser=(Loosened("litmus", "core", "cli", said),), anchor="cli")
+    reviewed = SpecProfiles(Spec(checked=ProfileChecked("mine.yaml", (), 3, origin))).reviewed(Path("/p/app"), "mine.yaml")
+    assert (reviewed.resemblance.compared, reviewed.resemblance.anchor) == ("../team.yaml", "cli")
+    standing = SpecProfiles(Spec(origin=origin)).standing("mine.yaml", "app")
+    assert (standing.baseline_off, standing.looser) == (("dead-code",), (published.Loosened("litmus", "core", "cli", said),))

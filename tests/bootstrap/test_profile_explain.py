@@ -334,3 +334,18 @@ def test_an_old_tier_key_answers_with_the_form_that_replaces_it(address, text):
     assert said.exit_code == 2 and f"error: no key `{address}` in the format: {text}; the nearest are " in said.output
     found = runner.invoke(app, ["profile", "explain", address, "--format", "json"])
     assert found.exit_code == 2 and json.loads(found.output)["retired"] == text
+
+
+ACCEPTS = ("the name of a bundled profile, or the path of a profile file from this file's folder: `profile check` and "
+           "`check` compare this one with it, unless `--against` names another for the run; `--strict` rests on a "
+           "bundled profile: the chain's bundled root, else the bundled profile closest to its last file")
+"""What based_on accepts, as `profile explain based_on` says it."""
+
+
+def test_based_on_is_explained_as_a_bundled_name_or_a_profile_file_and_its_choices_stay_the_bundled_names():
+    explained = json.loads(runner.invoke(app, ["profile", "explain", "based_on", "--format", "json"]).output)
+    assert explained["accepts"] == ACCEPTS
+    assert explained["meaning"] == "the profile this one is based on: a bundled one, or a profile file"
+    assert tuple(explained["choices"]) == bundled_profiles()
+    text = runner.invoke(app, ["profile", "explain", "based_on"])
+    assert text.exit_code == 0 and "the path of a profile file from this file's folder" in " ".join(text.output.split())

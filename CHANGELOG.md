@@ -7,6 +7,33 @@ All notable changes to this project are written here. The format follows
 
 ### Added
 
+- The match of a custom profile with the bundled one it is compared with: the share of what `check` reads under
+  either profile (each part, each key a part, a tier or the profile writes, each setting of a kind of `holds` on its
+  own, each guard switched on, each check of the profile's own of an id both write) that has a counterpart in the
+  other. A match below 75% is low and says why. It is printed on every run that compares: `profile check` says
+  `match: 80% with cli (based_on): 12 of 15 parts, 72 of 91 part keys, ...`, the parts and tiers only one profile has,
+  the parts of the same name at another path, and the bundled profile that matches higher than the one `based_on`
+  names; `check`'s enforcement section names the match on its `profile:` line, `(custom; compared with cli, based_on;
+  match 80%)`, with a `match:` line under it when it is low. `compared_with` in the JSON of both gains `chosen_by`,
+  `match`, `low`, `counts`, `only_here`, `only_there`, `elsewhere` and `higher`.
+- `--against NAME|FILE` on `check` and `profile check`: for that run, the profile in force is compared with the one it
+  names, a bundled name or a path to a profile file read from the working folder, instead of the one its `based_on`
+  names or the bundled one of highest match, and a bundled profile, its own baseline without the flag, is compared
+  too. `profile check` heads it `(custom; against web, given with --against; based_on: cli)` and says `match: 73% with
+  web (--against): ...`; `check`'s `profile:` line says `(custom; compared with web, --against; match 73%)`; the JSON
+  of both says `"chosen_by": "against"` in `compared_with`. A value that does not load refuses the run (exit 2,
+  `--against does not load: ...`), and `--strict` with `--against` is refused (exit 2), since `--strict` judges the
+  profile against its baseline.
+- `based_on` takes the path of a profile file, read from the folder of the file that writes it (`based_on:
+  ../team.yaml`): `profile check` and `check` compare the profile with that file, as written, and follow its own
+  `based_on` in turn. A file of the chain that does not load refuses the profile (exit 2, `sub/mine.yaml: based_on:
+  ../team.yaml does not load: ...`), and so does a chain that comes back to a file of it (`mine.yaml: based_on: a.yaml
+  is based on this profile`). `--strict` rests on a bundled profile, the anchor: the bundled profile the chain ends on,
+  else the one closest to its last file, else none. A guard left off is excused only when the anchor and every file of
+  the chain leave it off too, and a part fails `litmus` when it lacks a litmus the path file or the anchor gives the
+  part it pairs with, so a file of one's own never loosens `--strict`. `profile check` heads it `(custom; based_on:
+  ../team.yaml, resting on cli)`, `check`'s `profile:` line says `(custom; compared with ../team.yaml, based_on; match
+  92%; --strict rests on cli)`, and `compared_with` gains `anchor` in the JSON of both.
 - The kinds `records` and `exceptions` of `holds`, narrower than `classes`: a record (`class.record`) or an exception
   may be defined at the top level of a part that lists the kind, `records` with the settings `names` and `immutable`,
   `exceptions` with `names`; `functions` takes `names` (`holds.functions.names`), which every public top-level
@@ -59,6 +86,22 @@ All notable changes to this project are written here. The format follows
 
 ### Changed
 
+- Without `based_on`, a custom profile is compared with the bundled profile of highest match (the first by name on a
+  tie, and one no part pairs with never), no longer the one sharing the most part names. Parts pair by name, then by
+  layout path, and tiers by name, then by subject, and the ways a profile is looser are compared on the parts and
+  tiers that pair, so a part renamed in place is still compared, under its own name. `profile check` heads a profile
+  `custom; based_on: cli` or `custom; closest bundled: cli, match 80%`.
+- `check --format json`: `enforcement.profile.closest` is now `enforcement.profile.compared_with`, the same object as
+  `profile check`'s `compared_with` (`null` when nothing is compared).
+- The looser lines cover every loosening of 0.3.0: `profile check` and `check`'s enforcement section now also list a
+  kind a part's `holds` allows that the other's does not (`holds`), a setting of a kind dropped or widened
+  (`holds.classes.names`, `holds.classes.immutable`, `holds.classes.built_by`, `holds.functions.names`,
+  `holds.records.names`, `holds.records.immutable`, `holds.exceptions.names`), a part's `shared` dropped or lowered
+  (`shared`), a tier's `imports.must` dropped or a part added to it (`tiers.imports.must`), a tier no longer
+  `plain_tables` (`plain_tables`), and `testing.beside` set where the other leaves it out (`testing.beside`), each by
+  a sentence ending in its address, such as
+  `the classes of service may also be named * (parts.service.holds.classes.names)`. Each is information, like the
+  others: `--strict` still fails only on a missing `litmus`.
 - A part's `may_import`, `must_import` and `libraries` move into one group, `imports: {may, must, libraries}`, with
   the same meaning: `may` what the part may import besides itself (or `everything`), `must` the targets each of its
   files imports one of, each an entry of `may`, `libraries` its outside packages. A part's `types_only` becomes a mark

@@ -9,7 +9,10 @@ from pathlib import Path
 
 from xarch.kernel.source import CommentSpan, Import
 from xarch.modules.spec.domain.published import (
+    AGAINST,
+    BASED_ON,
     CHOICE,
+    CLOSEST,
     DEFAULT_APP,
     DEFAULT_TESTS,
     EXAMPLE_APP,
@@ -41,7 +44,7 @@ __all__ = ["CHOICE", "READS", "SCORE", "YES_NO", "Eval", "Held", "KINDS", "Examp
            "FilesResult", "SkeletonResult", "ProfileResult", "DocsResult", "OriginResult", "PartView",
            "GuardsView", "ProfileView", "ChooseApp", "AppChosen", "ChooseAppResult",
            "SelectProfile", "ProfileSelected", "ProfileRefused",
-           "NoProfileChosen", "SelectResult", "Origin", "Loosened", "LITMUS",
+           "NoProfileChosen", "SelectResult", "Origin", "Loosened", "LITMUS", "BASED_ON", "CLOSEST", "AGAINST",
            "FilesTaken", "Shown", "Symbol", "Explain", "FormatExplained", "KeyExplained", "UnknownKey",
            "ExplainResult", "Need", "ViewProfile", "ProfileViewed", "ViewResult", "CheckProfile", "LOAD", "EXAMPLES",
            "Problem", "ProfileChecked",
@@ -361,9 +364,11 @@ ViewResult = ProfileViewed | NoProfileChosen | ProfileRefused
 
 @dataclass(frozen=True)
 class CheckProfile:
-    """Validate a profile without an app: target as for ViewProfile."""
+    """Validate a profile without an app: target as for ViewProfile; against, when given, the profile it is compared
+    with for this run, a bundled name or a path."""
     app: Path
     target: str | None = None
+    against: str | None = None
 
 
 LOAD, EXAMPLES = "load", "examples"
@@ -382,7 +387,7 @@ class Problem:
 @dataclass(frozen=True)
 class ProfileChecked:
     """What validating a profile found, its own checks aside: its problems (none: valid), how many files it points to
-    (when it loads), and, when it loads, its origin: how it differs from the bundled profile it is based on, as
+    (when it loads), and, when it loads, its origin: how it differs from the profile it is compared with, as
     information."""
     location: str
     problems: tuple[Problem, ...]

@@ -8,7 +8,7 @@ from xarch.modules.rules.application.ports.source_tree import SourceTree
 from xarch.modules.rules.application.ports.structure import Structure
 from xarch.modules.rules.application.services.source_check import SourceCheckService
 from xarch.modules.rules.contract import AppChecked
-from xarch.modules.rules.domain.errors import RootMissing
+from xarch.modules.rules.domain.errors import RootMissing, StrictAgainst
 
 
 class AppCheckService:
@@ -18,11 +18,14 @@ class AppCheckService:
     def __init__(self, source: SourceCheckService, structure: Structure, tree: SourceTree):
         self._source, self._structure, self._tree = source, structure, tree
 
-    def check(self, root: Path, profile: str, tests: Path | None, cwd: Path, strict: bool) -> AppChecked:
+    def check(self, root: Path, profile: str, tests: Path | None, cwd: Path, strict: bool,
+              against: str | None = None) -> AppChecked:
         """The violations of the source and of the structure, in order of file, line and rule, a relative root or
         tests folder read from cwd, the working folder; whether the check passes, under strict too on the findings of
-        its enforcement. Raises RootMissing, with the folder as given, when the app folder or the tests folder is no
-        folder."""
+        its enforcement. Raises StrictAgainst, before anything is looked at, when strict is asked with against, and
+        RootMissing, with the folder as given, when the app folder or the tests folder is no folder."""
+        if strict and against is not None:
+            raise StrictAgainst()
         app, tested = cwd / root, (cwd / tests if tests is not None else None)
         absent = self._tree.absent(folder for folder in (app, tested) if folder is not None)
         if absent:

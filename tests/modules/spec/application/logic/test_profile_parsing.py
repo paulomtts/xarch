@@ -76,7 +76,17 @@ def test_python_is_the_default_and_the_only_language():
 def test_based_on_names_a_bundled_profile_and_nothing_else():
     assert parsed(layered(based_on="web")).based_on == "web"
     assert problems(layered(based_on="mine")) == ["layered.yaml: based_on: no bundled profile 'mine': use cli, web"]
-    assert problems(layered(based_on=3)) == ["layered.yaml: based_on: must be the name of a bundled profile: use cli, web"]
+    assert problems(layered(based_on=3)) == [
+        "layered.yaml: based_on: must be the name of a bundled profile or the path of a profile file: use cli, web"]
+    assert problems(layered(based_on="")) == [
+        "layered.yaml: based_on: must be the name of a bundled profile or the path of a profile file: use cli, web"]
+    assert problems(layered(based_on=3), bundled=()) == [
+        "layered.yaml: based_on: must be the name of a bundled profile or the path of a profile file"]
+
+
+@pytest.mark.parametrize("path", ["../team.yaml", "team.yaml", "base/team.json"])
+def test_based_on_a_path_is_kept_as_written_without_reading_any_file(path):
+    assert parsed(layered(based_on=path)).based_on == path
 
 
 def test_the_layout_is_derived_from_the_paths_of_the_parts_and_a_repeating_step_is_one_star():
