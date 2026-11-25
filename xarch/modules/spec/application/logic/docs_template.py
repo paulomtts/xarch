@@ -692,9 +692,10 @@ def _stand_ins_line(architecture: Architecture, mock: str, spec: SpecEntry, buil
              f"`{spec.written(writing, mock, '<Port>')}`{fixture}, never a read port") if tiers else ""
     interface = architecture.language.interface_name
     nothing = " or ".join(f"`{annotation}`" for annotation in architecture.language.checked.nothing)
+    named = " or ".join(f"`{start}<Port>`" for start in fakes.prefixes or (fakes.prefix,))
     return (f"`stand-ins`: every `{interface}` in {parts} is fire-only (every method returns "
             f"{nothing}) or read (any method returns a value), each method annotated; every "
-            f"read port `<Port>` has a fake `{fakes.prefix}<Port>` in `{'/'.join((DEFAULT_TESTS, *fakes.folder))}/`{mocks} "
+            f"read port `<Port>` has a fake {named} in `{'/'.join((DEFAULT_TESTS, *fakes.folder))}/`{mocks} "
             "(section 6).")
 
 

@@ -107,6 +107,8 @@ def _enforcement_lines(origin: Origin, state: EnforcementView, strict: bool, cwd
     lines += [_line("translated", f"{item.file}:{item.line}: {item.function} names {item.built}, which its file "
                                   f"builds, and {item.other}: no-twins accepts the pair as a translation "
                                   "(guards.no-twins.translated)", 2) for item in state.translated]
+    lines += [_line("accepted", f"{item.file}:{item.line}: imports {item.written}, which parts.{item.part}.imports."
+                                f"accepted accepts: {item.why}", 2) for item in state.accepted]
     lines += [_line(LABELS[INIT_FILES], f"{'/'.join(item.path)} is {item.state}", 2) for item in state.init_files]
     if state.skipped:
         lines.append(_line(LABELS[SKIPPED], f"{_count(len(state.skipped), 'skip')} ({_places(state.skipped)})", 2))
@@ -178,6 +180,8 @@ def _enforcement_document(origin: Origin, state: EnforcementView) -> dict[str, A
         "strict_failures": [_finding(f) for f in state.strict],
         **({"checks": [{"id": check.id, "read": check.read, "said": check.said} for check in state.checks]}
            if state.checks else {}),
+        **({"accepted": [{"file": item.file, "line": item.line, "part": item.part, "import": item.written,
+                          "why": item.why} for item in state.accepted]} if state.accepted else {}),
     }
 
 

@@ -118,14 +118,14 @@ and a key left out means off):
 ```
 name*  based_on  language  hints  excluded  reserved
 testing:  <preset> | {preset, beside, shared} | {files*, declared*, globals, skips, tables, mocks, beside, shared}
-parts*:   {<folder>/ | <file>: {<folder>/ | <file>, name, role*, litmus, imports: {may, must, libraries}, uses: {never},
-                              tests | untested, package_only, shared,
+parts*:   {<folder>/ | <file>: {<folder>/ | <file>, name, role*, litmus, imports: {may, must, libraries, accepted}, uses: {never},
+                              tests | untested, package_only, shared, optional,
                               holds: {classes: {names, immutable, built_by}, functions: {names},
                                       records: {names, immutable}, exceptions: {names}}}}
-never:    {<list>: [<dotted name> | .<method>() | <list>, ...]}  layers: {<chain>: [<part>, ...]}
+never:    {<list>: [<dotted name> | .<method>() | <list>, ...]}  layers: {<chain>: [<part>, ...] | {parts*, types_only}}
 tiers:    {<tier>: {proves, litmus, uses: {apply_never}, plain_tables, folder, imports: {may, also, must, types_only},
                     docs}}
-fakes:    {folder*, for*, prefix, tiers}
+fakes:    {folder*, for*, prefix | [prefix, ...], tiers}
 guards:   {scenario-coverage, no-comments, stand-ins, closed-tree, no-duplicates, no-twins, dead-code,
            pass-through, no-callbacks, private-imports}
 files:    {<path>: <from> | {from*, pinned, fill}}      docs: {entry, pages, naming, examples, example_notes}
@@ -138,6 +138,11 @@ evals:    {placement: {lines, alike, examples}, <id>: {ask*, answer*, yes, no, r
 
 A key on a part is about its own code and reach; a guard is a pre-built check with a scope, which names the parts it
 reads.
+
+A chain of `layers` lists parts from the inside out, and a profile whose `imports.may` lets a part import one after it
+is refused when it loads. Layering is strict: an entry marked `types_only` breaks the chain too, unless the chain is
+written as a map that says so, `layers: {inward: {parts: [domain, services, controller], types_only: true}}`, where a
+part may name one after it as a type only (`types-only` still holds it to that), and any other entry still breaks it.
 
 An entry of a `never` list that is the name of another list includes that list's names in its place, such as
 `published: [pure, typing.Any]`; a list may not take the name of a package of the standard library or of a package the
@@ -223,6 +228,8 @@ its own folder's: folders and files below the tests root (default none), each ou
 fakes' folder (an entry inside or holding one is refused). A test file there is still a test file, which no test
 imports, and the fakes keep their own rule; the `tiers` message of an import from elsewhere names the shared entries,
 and `xarch where` lists them for a test.
+A fake of the port `X` is named `<prefix>X` (`fakes.prefix`), or, with a list of starts such as `prefix: [InMemory,
+Fake]`, by any of them: `stand-ins` and `dead-code` read each, and a fix writes the first.
 A test may import the fakes (`fakes.folder`) when its tier's subject holds a part `fakes.for` names; `fakes.tiers:
 [<tier>, ...]` (default none) lets the tests of the tiers it lists import them too, a tier with no such part, such as
 one placed by its `folder`, and `stand-ins` then holds their mocks as well. A tier the profile does not have is
@@ -262,7 +269,15 @@ The symbols:
   part; one with no key of a part is only a folder, whose value may be one line of text, its note; a file is always a
   part. A part is named by its folder's last step or its file's name before the first dot, or by `name:`, which two
   parts of one name need. `<unit>/` is a repeating folder, one instance per name (`xarch new` takes the word); a
-  profile may have several, each with a word of its own and one parent, and one cannot sit inside another.
+  profile may have several, each with a word of its own and one parent, and one cannot sit inside another. An
+  instance is a folder the layout does not name: a file lying beside the instances (`sql/engine.py` beside
+  `sql/<store>/`) belongs to the part of the folder holding them, or is its own part when the layout names it, and a
+  folder the layout names beside them (`adapters/web/` beside `adapters/<adapter>/`) is never an instance, for the
+  import rules, `cycles` and `where` alike.
+- `optional: true` on a part, a folder or a file, says it may be left out: `structure` does not ask for it, in the app
+  or in any instance of its repeating folder (a `config.py` only some modules hold, a controller only one module has),
+  and `new` and `init` do not make it. Where it is there, its code is checked as any part's, and what the layout puts
+  in it is required.
 - Every list of parts under `imports` writes each target as a reference: `parts.store` is that part in every
   instance of its repeating folder (or, outside one, the part itself), and `<word>.store`, such as `unit.store`, the
   part in the importer's own instance of the `<word>` folder, which the importer lies in too (in a tier's
@@ -391,8 +406,8 @@ that switches or configures each (`-` for none: the rule is always on):
 | Rule id | What it catches | Key |
 |---|---|---|
 | `syntax` | a file that does not parse, or that cannot be read as UTF-8 text at all (the message says which), so no other check could read it | - |
-| `structure` | a folder or file of the layout missing, at any depth, in the app and in every instance of each repeating folder | `parts`, `parts.name` |
-| `may-import` | an import between parts that the importing part's `imports.may` does not allow, or a name its pattern does not match; the findings of one import line are one, listing what it may not take (the names the pattern does not match, or the places it may not import) | `parts.imports.may` |
+| `structure` | a folder or file of the layout missing, at any depth, in the app and in every instance of each repeating folder; an optional part, and what it holds where it is not there, aside | `parts`, `parts.name`, `parts.optional` |
+| `may-import` | an import between parts that the importing part's `imports.may` does not allow, or a name its pattern does not match, but one its `imports.accepted` names, which the enforcement section names instead; the findings of one import line are one, listing what it may not take (the names the pattern does not match, or the places it may not import); an entry of `imports.accepted` that accepts nothing any more (its file gone, the import gone, or `imports.may` now allowing it) | `parts.imports.may`, `parts.imports.accepted` |
 | `libraries` | an outside package a part does not list, or a standard-library name `reserved` holds that it does not list; the rest of the standard library is always allowed, tests are not checked | `parts.imports.libraries`, `reserved` |
 | `never-use` | a name or module a part (or, with `uses.apply_never`, its tests) may not use, or a method written `.name()` it may not call on anything but its own object and what that holds | `never`, `parts.uses.never`, `tiers.uses.apply_never` |
 | `tiers` | a test importing what its tier does not allow, or another test file, or a test in no tier | `tiers`, `tiers.folder`, `tiers.imports.may`, `tiers.imports.also`, `parts.tests`, `testing.shared`, `fakes.tiers` |
@@ -515,7 +530,9 @@ and rule ids may be added, but an existing one keeps its name and meaning.
 A profile that writes checks of its own also has `"checks"` in `enforcement`: each `{"id", "read", "said"}`, `read`
 how many facts it read in the project. A check of some paths also has `"partial"` (see
 [Checking some files](#checking-some-files-xarch-check-path-)): `paths` as given, `skipped_checks` (always `[]`:
-every check runs on the whole app) and `elsewhere`, how many violations of other files `violations` leaves out.
+every check runs on the whole app) and `elsewhere`, how many violations of other files `violations` leaves out. A
+run in which a part's `imports.accepted` accepts an import also has `"accepted"` in `enforcement`: each
+`{"file", "line", "part", "import", "why"}`, the import as the entry writes it.
 
 - `ok`: no violation (of the paths given, for a partial check), and with `--strict` no enforcement finding either; it agrees with the exit code. `strict`:
   whether `--strict` was given. `profile`: the profile in force, a bundled name or a path, as selected.
@@ -532,7 +549,7 @@ every check runs on the whole app) and `elsewhere`, how many violations of other
   names.
 - `enforcement`: every key always present, empty when there is nothing to report. `profile.looser` items are
   `{"key", "part", "what", "sentence"}` with `key` one of `imports.may`, `imports.may.types_only`, `imports.libraries`,
-  `uses.never`, `untested`, `imports.types_only`, `imports.also`, `uses.apply_never`, `testing.skips`, `testing.shared`,
+  `uses.never`, `untested`, `optional`, `imports.accepted`, `imports.types_only`, `imports.also`, `uses.apply_never`, `testing.skips`, `testing.shared`,
   `fakes.tiers`, `files.pinned`, `reserved`, `imports.must`, `litmus`, `known`, `translated` (the `sentence` names the full address, such as
   `parts.kernel.imports.may`); `excluded` items
   `{"folder", "reason"}`; `known` items `{"file", "line", "name"}`, each public name `guards.dead-code.known` accepts
@@ -563,6 +580,7 @@ enforcement
     imports.may: kernel may also import platform (parts.kernel.imports.may)
   ungoverned:  1 Python file outside every part (app/scripts/)
   excluded:    app/examples/ (example sources the docs show)
+  accepted:    app/adapters/mail/send.py:3: imports web/i18n.py, which parts.adapter.imports.accepted accepts: the mail copy is translated by the web ring until its port exists
   known:       app/bootstrap/wiring.py:12: build_app is public, a test names it and no other file of the app does, which the profile accepts (guards.dead-code.known)
   init files:  tests/architecture/test_rules.py is changed
   skipped:     1 skip (tests/modules/docs/domain/test_x.py:4)
@@ -588,7 +606,7 @@ enforcement
   too; one of them, `package-only`, is switched on by a part's `package_only: true` rather than under `guards`, and the
   line names that key. For a custom file, each way it is looser than the one it is compared with, compared only on
   the parts and tiers that pair (a part renamed in place is still compared, under its own name): a target added to a part's `imports.may`, a `types_only` mark dropped from an entry of it, an outside package
-  added to its `imports.libraries` (or `everything`), a name of its `uses.never` list no entry covers any more, a part newly `untested`, a part dropped from a tier's
+  added to its `imports.libraries` (or `everything`), a name of its `uses.never` list no entry covers any more, a part newly `untested`, a part newly `optional`, a part dropped from a tier's
   `imports.types_only`, a target added to a tier's `imports.also`, a tier no longer `uses.apply_never`, a name dropped from `testing.skips`, a `files` entry no longer
   `pinned`, a target added to a part's `imports.must` or the key dropped, a part redefined without the `litmus` the
   other gives it, a public name `guards.dead-code.known` accepts that the other's does not, a part
@@ -598,7 +616,8 @@ enforcement
   dropped or widened (`names`, `immutable`, `built_by`, compared kind by kind on the settings the part holds each kind
   to, for a kind either lists), a part's `shared` dropped or lowered, a tier's `imports.must` dropped or a part added
   to it, a tier no longer `plain_tables`, `testing.beside` set where the other leaves it out, an entry of
-  `testing.shared` the other does not share, and a tier `fakes.tiers` lists that the other's does not.
+  `testing.shared` the other does not share, a tier `fakes.tiers` lists that the other's does not, and an entry of a
+  part's `imports.accepted` (a file and what it imports) the other's part does not hold.
   Stricter differences, new parts, the layout and the guards' other parameters are not compared. This comparison is
   information: the profile defines the architecture, so how it differs from another is no finding for `--strict`, but
   for a litmus dropped, which leaves a part's code no question to be placed by.
@@ -608,6 +627,10 @@ enforcement
   so the exclusion stays visible here.
 - `translated`: each pair of classes `no-twins` accepts as a translation (`guards.no-twins.translated`), naming the
   function that translates and where it is: the check does not report the pair, so the acceptance stays visible here.
+- `accepted`: each import a part's `imports.accepted` accepts although its `imports.may` does not allow it, where it
+  is, with the entry's reason: `may-import` does not report it, so the acceptance stays visible here. An entry that
+  accepts nothing any more (its file is gone, the file no longer imports what it names, or `imports.may` now allows
+  it) is itself a `may-import` violation, so a list of accepted imports, a ratchet, can only shrink.
 - `known`: each public name `guards.dead-code.known` accepts as only the tests', where it is defined: a test names
   it and no other file of the app does, the `tests_only` check lists it no more, so the acceptance stays visible
   here. An entry that no longer holds (its file defines no such name, another file of the app names it, or no test

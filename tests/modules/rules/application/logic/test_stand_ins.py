@@ -418,3 +418,28 @@ def braced_problems(*calls: Call | ParameterCall, specs: tuple[SpecEntry, ...] =
 ])
 def test_under_a_typescript_like_language_a_mock_names_its_spec_by_a_type_argument(calls, specs, expected):
     assert braced_problems(*calls, specs=specs) == expected
+
+
+TWO = profile(fakes=replace(PROFILE.fakes, prefix="InMemory", prefixes=("InMemory", "Fake")))
+"""PROFILE, its fakes named by either of two prefixes, InMemory first."""
+
+
+@pytest.mark.parametrize("tests, found", [
+    pytest.param([FAKE], [], id="a fake of the second prefix serves the port"),
+    pytest.param([in_tests("fakes/repo.py", classes=(Class(1, "InMemoryRepo", (), (Method(2, "get", None),
+                                                                                  Method(3, "save", None))),))], [],
+                 id="a fake of the first prefix serves the port"),
+    pytest.param([], [f"app/{PORT_FILE}:3: Repo is a read port with no fake (stand-ins)"], id="no fake of either"),
+])
+def test_a_fake_of_any_prefix_serves_a_read_port(tests, found):
+    assert problems([PORTS], tests, TWO) == found
+
+
+def test_the_fix_of_a_read_port_with_no_fake_writes_the_first_prefix():
+    assert [v.fix for v in violations([PORTS], [], TWO, "app", "tests")] == ["write InMemoryRepo under tests/fakes/"]
+
+
+def test_a_fake_of_any_prefix_short_of_its_port_is_weak():
+    short = in_tests("fakes/repo.py", classes=(Class(1, "FakeRepo", (), (Method(2, "get", None),)),))
+    assert [item.message for item in weak([PORTS], [short], TWO)] == [
+        f"FakeRepo does not define save, which Repo declares (app/{PORT_FILE})"]

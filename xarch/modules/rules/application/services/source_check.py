@@ -5,6 +5,7 @@ from pathlib import Path
 
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic import (
+    accepted,
     cycles,
     duplicates,
     enforcement,
@@ -56,7 +57,8 @@ class SourceCheckService:
                                   for a in state.approximate),
             tuple(OwnCheckView(name, read, enforcement.reading(name, read)) for name, read in state.checks),
             state.known, state.translated,
-            unresolved=tuple(UnresolvedView(item, enforcement.detail(item)) for item in state.unresolved))
+            unresolved=tuple(UnresolvedView(item, enforcement.detail(item)) for item in state.unresolved),
+            accepted=state.accepted)
 
     def check(self, root: Path, package: str, profile: str, tests: Path | None = None) -> Checked:
         """The violations below root and below tests, each given in full with its links followed, and the state of the
@@ -101,8 +103,9 @@ class SourceCheckService:
                          [*(r for group in book.values() for r in group), *own], unread)
         app = [f for f in app if f.error is None]
         test_files = [f for f in test_files if f.error is None]
-        found = run(book["syntax"], facts, rules) + run(book["may-import"], facts, rules) + run(book["libraries"], facts,
-                                                                                           rules)
+        ratchet = accepted.ratchet(facts, rules)
+        found = run(book["syntax"], facts, rules) + run(book["may-import"], facts, rules) + list(ratchet.stale)
+        found += run(book["libraries"], facts, rules)
         found += run(book["never-use"], facts, rules)
         found += cycles.violations(app, rules, package)
         found += run(book["tiers"], facts, rules)
@@ -134,7 +137,7 @@ class SourceCheckService:
                                   run(book["untested"], facts, rules),
                                   [*run(book["pass-through"], facts, rules), *only.listed, *written])
         state = replace(state, checks=tuple((rule.id, read(rule, facts, rules)) for rule in own), known=only.known,
-                        translated=twinned.translated)
+                        translated=twinned.translated, accepted=ratchet.accepted)
         return Checked(tuple(found), replace(state, strict=enforcement.strict_findings(state)), rules)
 
     def _enforcement(self, resolved: Path, package: str, location: str, rules: Profile, app: list[SourceFile],

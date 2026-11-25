@@ -9,15 +9,20 @@ class FakeSkeleton:
     """Satisfies layout's Skeleton: the same top-level folders and repeating folders under every profile; repeats
     holds, by the folder of each repeating folder, the parts every instance of it holds; and how the language names
     a folder (the language says nothing unless given); where the tests sit under testing.beside (None: they mirror the
-    app); a profile refused raises ProfileUnusable with its reason."""
+    app); when, by None for the top level or the folder of a repeating folder, the optional part each path required
+    there lies in (none unless given); a profile refused raises ProfileUnusable with its reason."""
 
     def __init__(self, top_level: list[tuple[str, ...]],
                  repeats: dict[tuple[str, ...], list[tuple[tuple[str, ...], bool]]] | None = None,
                  top_files: list[tuple[str, ...]] | None = None, naming: Naming = Naming(),
-                 refused: dict[str, str] | None = None, beside: Beside | None = None):
+                 refused: dict[str, str] | None = None, beside: Beside | None = None,
+                 when: dict[tuple[str, ...] | None, dict[tuple[str, ...], tuple[str, ...]]] | None = None):
         self._top, self._repeats = list(top_level), dict(repeats or {})
         self._files, self._naming, self._refused = list(top_files or []), naming, dict(refused or {})
-        self._beside = beside
+        self._beside, self._when = beside, dict(when or {})
+
+    def when(self, profile: str, root: tuple[str, ...] | None = None) -> dict[tuple[str, ...], tuple[str, ...]]:
+        return dict(self._when.get(root, {}))
 
     def naming(self, profile: str) -> Naming:
         return self._naming

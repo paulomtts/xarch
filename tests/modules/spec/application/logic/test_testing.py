@@ -269,6 +269,12 @@ def test_the_guards_lines_say_the_names_of_the_framework_the_file_declares():
         "(or, from a fixture, `mocker.Mock(spec=<Port>)`), never a read port (section 6)."]
 
 
+def test_the_stand_ins_line_names_a_fake_by_each_prefix_the_fakes_list():
+    document = covered(guards={"stand-ins": {}}, fakes=FAKES | {"prefix": ["InMemory", "Fake"]})
+    line = fill("{{guards}}", parsed(document), "layered.md", file_types=FILE_TYPES).splitlines()[-1]
+    assert "every read port `<Port>` has a fake `InMemory<Port>` or `Fake<Port>` in `tests/fakes/`" in line
+
+
 def test_the_scenario_coverage_line_of_a_framework_with_no_table_form_says_each_result_is_its_own_test():
     guard = {key: value for key, value in SCENARIOS.items() if key != "columns"}
     assert guard_lines(testing={"tables": []}, guards={"scenario-coverage": guard})[0] == (

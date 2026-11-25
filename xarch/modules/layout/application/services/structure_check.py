@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from xarch.modules.layout.application.logic.beside import stray
-from xarch.modules.layout.application.logic.requirements import missing, requirements
+from xarch.modules.layout.application.logic.requirements import anchors, missing, requirements
 from xarch.modules.layout.application.logic.unmirrored import unmirrored
 from xarch.modules.layout.application.ports.disk import Disk
 from xarch.modules.layout.application.ports.skeleton import Skeleton
@@ -21,11 +21,11 @@ class StructureCheckService:
         folder whose tests stay there instead; root and tests are given in full."""
         roots = self._skeleton.each_roots(profile)
         repeated = [Repeated(each, self._skeleton.each_parts(profile, each),
-                             self._disk.instances(root, each)) for each in roots]
+                             self._disk.instances(root, each), self._skeleton.when(profile, each)) for each in roots]
         naming = self._skeleton.naming(profile)
         required = requirements(package, self._skeleton.top_level(profile), repeated,
-                                self._skeleton.top_level_files(profile), naming)
-        found = missing(required, self._disk.present(root, required))
+                                self._skeleton.top_level_files(profile), naming, self._skeleton.when(profile))
+        found = missing(required, self._disk.present(root, [*required, *anchors(required)]))
         if tests is None:
             return StructureChecked(tuple(found))
         beside = self._skeleton.beside(profile)

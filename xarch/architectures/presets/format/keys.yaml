@@ -200,12 +200,38 @@ keys:
   layers:
     meaning: chains of parts from the inside out
     accepts: >-
-      a map {<name>: [<part>, ...]}: no part imports one after it in its chain; refused at load when an `imports.may`
-      breaks a chain
+      a map {<name>: [<part>, ...] | {parts, types_only}}: no part imports one after it in its chain; refused at load
+      when an `imports.may` breaks a chain
     example: |
       layers:
         stack: [core, documents]
       <<two>>
+  layers.<layer>.parts:
+    meaning: the parts of the chain, from the inside out
+    accepts: >-
+      [<part>, ...]: the chain written as a map, so that it may say `types_only`; the same as the list written alone
+    example: |
+      layers:
+        stack: {parts: [core, documents]}
+      <<two>>
+  layers.<layer>.types_only:
+    meaning: an import of a type only does not break the chain
+    accepts: >-
+      true or false (default false): with true, an entry of a part's `imports.may` marked `types_only` that names a
+      part after it in the chain does not break the chain, since the part only uses it as a type (`types-only` holds it
+      to that); any other entry still does. Off, layering is strict
+    example: |
+      layers:
+        stack: {parts: [core, documents], types_only: true}
+      parts:
+        core/:
+          role: the rules of the documents
+          imports:
+            may: [{parts.documents: types_only}]
+        documents/:
+          role: the documents
+          imports:
+            may: [parts.core]
   tiers:
     meaning: the kinds of test, in the order their litmus tests run
     accepts: >-
@@ -335,8 +361,9 @@ keys:
   parts.<part>.imports:
     meaning: what the part may and must import, and its outside packages
     accepts: >-
-      a map {may, must, libraries}, at least one of them, in any order: `may` the targets the part may import besides
-      itself, `must` those each of its files imports one of, `libraries` the outside packages it may import. Without
+      a map {may, must, libraries, accepted}, at least one of them, in any order: `may` the targets the part may import
+      besides itself, `must` those each of its files imports one of, `libraries` the outside packages it may import,
+      `accepted` the imports `may` does not allow that the part accepts one by one, each with a reason. Without
       `imports`, or without `may`, the part imports only itself; without `libraries`, no outside package. `never`
       belongs to `uses`, beside `imports`
     example: |
@@ -391,6 +418,26 @@ keys:
       <<part>>
           imports:
             libraries: [yaml]
+  parts.<part>.imports.accepted:
+    meaning: the imports the part accepts that its `may` does not allow
+    accepts: >-
+      a list of {file, import, why}: `file` a file of the part, by its path below the app; `import` the file or folder
+      below the app it imports, optionally followed by `:<name>`, only that name taken from it; `why` one line, the
+      reason. Such an import is no `may-import` finding: every `xarch check` names it in its enforcement section, with
+      its reason, instead. An entry whose file is gone, which the file no longer imports, or which `may` now allows, is
+      itself a `may-import` finding, so the list can only shrink. `profile check` lists each entry the profile compared
+      with does not hold as looser
+    example: |
+      parts:
+        core/:
+          role: the rules of the documents
+        documents/:
+          role: the documents
+          imports:
+            accepted:
+              - file: documents/legacy%extension%
+                import: core/old%extension%
+                why: the legacy export reads the old rules until it is retired
   parts.<part>.holds:
     meaning: what the files of the part define at the top level
     accepts: >-
@@ -546,6 +593,16 @@ keys:
     example: |
       <<part>>
           package_only: true
+  parts.<part>.optional:
+    meaning: the part may be left out
+    accepts: >-
+      true: the folder or file of the part need not be there, in the app nor in any instance of its repeating folder,
+      and `structure` reports nothing for it where it is not (a file only some instances hold, such as a settings
+      file); where it is there, its code is checked as any part's, and what the layout puts in it is required. `new`
+      and `init` do not make it. `profile check` lists a part newly optional as looser
+    example: |
+      <<part>>
+          optional: true
   parts.<part>.uses.never:
     meaning: the list of names the part never uses
     accepts: >-
@@ -1060,7 +1117,10 @@ keys:
       <<fakes>>
   fakes.prefix:
     meaning: how a fake's name starts
-    accepts: "the start of a class name: the fake of DocumentRepo is FakeDocumentRepo"
+    accepts: >-
+      the start of a class name: the fake of DocumentRepo is FakeDocumentRepo; or a list of starts, each once, such as
+      [InMemory, Fake]: a fake may start with any of them, `stand-ins` and `dead-code` read each, and a fix writes the
+      first
     example: |
       <<two>>
       <<fakes>>

@@ -42,7 +42,9 @@ key_catalogue); the shape:
                                list includes it
     reserved: {<module>: <reason>}             standard-library modules only the parts whose `imports.libraries` list them
                                may import
-    layers: {<name>: [<part>, ...]}            chains of parts from the inside out: none imports one after it
+    layers: {<name>: [<part>, ...] | {parts, types_only}}
+                               chains of parts from the inside out: none imports one after it, but, with
+                               types_only: true, through an entry of its imports.may marked types_only
     tiers: {<tier>: {proves, litmus, uses, plain_tables, folder, imports: {may, also, must, types_only}, docs}}
                                the kinds of test, in the order their litmus tests run. A tier with a `folder` below
                                the tests folder (one may lie inside another's, the deepest holding a test being its
@@ -216,6 +218,9 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     parts = {part: replace(item, imports_must=iw.must(imports[part], item, parts, declared, rules[part], problems,
                                                       repeats=built.repeats),
                            imports_types_only=read[part][1]) for part, item in parts.items()}
+    parts = {part: replace(item, imports_accepted=iw.accepted(imports[part], item, built.parts,
+                                                              language.checked.marks, problems))
+             for part, item in parts.items()}
     parts = {part: _substance(specs[part], item, declared, problems, words) for part, item in parts.items()}
     uses_never = _never_refs(specs, parts, never_lists, problems)
     layers = (ck.layer_chains(document["layers"], parts, declared, rules, problems, words=words) if "layers" in document
@@ -319,7 +324,8 @@ def _layout(tree: pt.PartsTree, problems: list[str]) -> _Layout:
         _insert(layout, entry.steps, entry.file, entry.name, owners)
         parts[entry.name] = Part(entry.name, entry.steps, ck.string(entry.keys.get("role")),
                                  ck.string(entry.keys.get("litmus")), False,
-                                 entry.keys["untested"] if ck.line(entry.keys.get("untested")) else "")
+                                 entry.keys["untested"] if ck.line(entry.keys.get("untested")) else "",
+                                 optional=entry.keys.get("optional") is True)
     for folder in tree.folders:
         _add_folder(layout, notes, folder)
     return _Layout(parts, layout, notes, tuple(repeats))
@@ -333,8 +339,9 @@ def _own_problems(entry: pt.TreePart) -> list[str]:
             problems.append(f"{where}.{key}: must be a string")
     if "untested" in spec and not ck.line(spec["untested"]):
         problems.append(f"{where}.untested: must be one line of text: why no tier tests the part")
-    if "package_only" in spec and not isinstance(spec["package_only"], bool):
-        problems.append(f"{where}.package_only: must be true or false")
+    for key in ("package_only", "optional"):
+        if key in spec and not isinstance(spec[key], bool):
+            problems.append(f"{where}.{key}: must be true or false")
     return problems
 
 
@@ -761,9 +768,15 @@ def _fakes(value: Any, parts: dict[str, Part], declared: set[str], problems: lis
     count = len(problems)
     problems += ck.unknown_keys(value, names_of(FAKES), where, FAKES)
     problems += [f"{where}: missing `{key}`" for key in required_of(FAKES) if key not in value]
-    prefix = value.get("prefix", "")
-    if "prefix" in value and (not isinstance(prefix, str) or not is_name(prefix, language.names)):
-        problems.append(f"{where}.prefix: must be the start of a class name, such as Fake")
+    written = value.get("prefix", "")
+    starts = written if isinstance(written, list) else [written]
+    if "prefix" in value and (not starts or len(set(map(str, starts))) < len(starts)
+                              or any(not isinstance(start, str) or not is_name(start, language.names)
+                                     for start in starts)):
+        problems.append(f"{where}.prefix: must be the start of a class name, such as Fake"
+                        + (", or a list of such starts, each once" if isinstance(written, list) else ""))
+        starts = [""]
+    prefix, prefixes = starts[0], tuple(starts) if len(starts) > 1 else ()
     folder = value.get("folder")
     steps = tuple(folder.split("/")) if ck.line(folder) and not folder.startswith("/") else ()
     if "folder" in value and (not steps or any(step in ("", ".", "..") or EACH in step for step in steps)):
@@ -773,7 +786,7 @@ def _fakes(value: Any, parts: dict[str, Part], declared: set[str], problems: lis
     opened = _fakes_tiers(value["tiers"], tiers, problems) if "tiers" in value else ()
     if len(problems) != count:
         return None
-    return Fakes(steps, tuple(n for n in names if n in parts), prefix, opened)
+    return Fakes(steps, tuple(n for n in names if n in parts), prefix, opened, prefixes)
 
 
 def _fakes_tiers(value: Any, tiers: Collection[str], problems: list[str]) -> tuple[str, ...]:

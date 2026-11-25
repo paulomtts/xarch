@@ -156,12 +156,23 @@ def test_a_part_s_own_folders_follow_the_parts_in_the_layout_as_today():
                  id="texts that are no strings"),
     pytest.param({"x/": {"role": "r", "package_only": "yes"}},
                  ["layered.yaml: parts.x.package_only: must be true or false"], id="package_only that is no boolean"),
+    pytest.param({"x/": {"role": "r", "optional": "yes"}},
+                 ["layered.yaml: parts.x.optional: must be true or false"], id="optional that is no boolean"),
     pytest.param({"x/": {"role": "r", "untested": "two\nlines"}},
                  ["layered.yaml: parts.x.untested: must be one line of text: why no tier tests the part"],
                  id="an untested reason of two lines"),
 ])
 def test_a_bad_part_is_refused_with_every_problem(parts, expected):
     assert problems(layered(parts=parts)) == expected
+
+
+@pytest.mark.parametrize("written, optional", [
+    pytest.param({"optional": True}, True, id="a part marked optional"),
+    pytest.param({"optional": False}, False, id="a part marked not optional"),
+    pytest.param({}, False, id="a part that does not say"),
+])
+def test_a_part_is_optional_only_when_it_says_so(written, optional):
+    assert parsed(layered(parts={"x/": {"role": "r", **written}})).parts["x"].optional is optional
 
 
 def test_two_repeating_steps_on_the_way_to_a_part_are_refused():
@@ -381,6 +392,41 @@ def test_layers_are_chains_of_parts_checked_against_what_the_parts_may_import():
     document = layered(layers={"app": ["api", "service"]})
     assert problems(document) == ["layered.yaml: layers.app: 'api' imports 'service', which is outward of it"]
     assert problems(layered(layers={"app": ["api", "repo"]})) == ["layered.yaml: layers.app: no part named 'repo'"]
+
+
+def typed(chain) -> dict:
+    """layered(), its service part importing the api part as a type only, and the chain given as `layers.app`."""
+    document = layered(layers={"app": chain})
+    part_of(document, "service")["imports"]["may"].append({"module.api": "types_only"})
+    return document
+
+
+def test_an_edge_marked_types_only_breaks_a_chain_unless_the_chain_says_types_only():
+    assert problems(typed(["store", "service", "api"])) == [
+        "layered.yaml: layers.app: 'service' imports 'api', which is outward of it"]
+    assert problems(typed({"parts": ["store", "service", "api"], "types_only": False})) == [
+        "layered.yaml: layers.app: 'service' imports 'api', which is outward of it"]
+    assert parsed(typed({"parts": ["store", "service", "api"], "types_only": True})).layers == {
+        "app": ("store", "service", "api")}
+
+
+def test_a_chain_that_says_types_only_is_still_broken_by_an_edge_that_is_no_type_only():
+    document = typed({"parts": ["shared", "store", "service", "api"], "types_only": True})
+    part_of(document, "store")["imports"]["may"].append("parts.service")
+    assert problems(document) == ["layered.yaml: layers.app: 'store' imports 'service', which is outward of it"]
+
+
+@pytest.mark.parametrize("chain, found", [
+    pytest.param({"types_only": True}, ["layered.yaml: layers.app: missing `parts`"], id="no parts"),
+    pytest.param({"parts": ["store"], "types_only": "yes"}, ["layered.yaml: layers.app.types_only: must be true or false"],
+                 id="types_only that is no boolean"),
+    pytest.param({"parts": ["store"], "order": 1}, ["layered.yaml: layers.app: unknown key 'order': use parts, types_only"],
+                 id="an unknown key"),
+    pytest.param({"parts": []}, ["layered.yaml: layers.app: must be a list of parts, from the inside out"],
+                 id="no part in the list"),
+])
+def test_a_chain_written_as_a_map_is_refused_when_written_wrong(chain, found):
+    assert problems(layered(layers={"app": chain})) == found
 
 
 def test_a_part_that_is_package_only_makes_the_guard_with_its_parts_in_the_order_of_the_parts():

@@ -37,6 +37,15 @@ from xarch.modules.rules.domain.parsed import Class
 from xarch.modules.rules.domain.rule import Found
 from xarch.modules.rules.domain.vocabulary import FILTERS
 from xarch.profile_values.checks import APP, TESTS, Scope
+from xarch.profile_values.placement import AcceptedImport
+
+
+def accepting(name: str) -> object:
+    """PROFILE with the services part accepting the import of platform/db.py by its publish file, of name alone when
+    given."""
+    entry = AcceptedImport(("modules", "docs", "application", "services", "publish.py"), ("platform", "db.py"), name,
+                           "the publisher writes the store directly until its port exists", "platform/db.py")
+    return replace(PROFILE, imports_accepted={"services": (entry,)})
 
 
 @pytest.mark.parametrize("text, file, kind, lines, profile, hit", [
@@ -94,6 +103,14 @@ from xarch.profile_values.checks import APP, TESTS, Scope
     pytest.param("exceptions-only", DOMAIN, "file", [], PROFILE, None, id="exceptions-only: classes of other kinds"),
     pytest.param("reported-at-import", DOMAIN, "use", [17], PROFILE, ("datetime", "datetime"), id="reported-at-import"),
     pytest.param("names-restricted", SERVICE, "import-into-app", [1, 2], NARROWED, None, id="names-restricted"),
+    pytest.param("fake-named", PORTS, "class", [2], replace(PROFILE, fakes=replace(PROFILE.fakes, prefix="Re")), None,
+                 id="fake-named: a name a prefix of the fakes starts"),
+    pytest.param("fake-named", PORTS, "class", [], replace(PROFILE, fakes=replace(PROFILE.fakes, prefix="Repo")), None,
+                 id="fake-named: the prefix alone is no fake's name"),
+    pytest.param("target-accepted", SERVICE, "import-into-app", [3], accepting(""), None,
+                 id="target-accepted: the import an entry names"),
+    pytest.param("target-accepted", SERVICE, "import-into-app", [], accepting("connect"), None,
+                 id="target-accepted: an entry naming another name"),
     pytest.param("of-kind call", SERVICE, "call", [4, 5, 6], PROFILE, None, id="of-kind"),
     pytest.param("of-kind use", SERVICE, "call", [], PROFILE, None, id="of-kind: another kind"),
     pytest.param("target-placed", SERVICE, "call", [4, 5], PROFILE, None, id="target-placed"),

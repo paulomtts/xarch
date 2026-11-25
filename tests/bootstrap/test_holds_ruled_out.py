@@ -79,6 +79,7 @@ RULED_OUT = {
         "modules/review/application/logic/withholding.py",
         "modules/rules/application/logic/asked.py",
         "modules/rules/application/logic/chosen.py",
+        "modules/rules/application/logic/accepted.py",
         "modules/rules/application/logic/cycles.py",
         "modules/rules/application/logic/duplicates.py",
         "modules/rules/application/logic/elsewhere.py",

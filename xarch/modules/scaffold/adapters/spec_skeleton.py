@@ -78,4 +78,5 @@ class SpecSkeleton:
 
 
 def _entries(entries: tuple[Entry, ...]) -> list[tuple[tuple[str, ...], bool]]:
-    return [(e.path, e.is_dir) for e in entries]
+    """What is built: every entry but the optional parts and what lies in them."""
+    return [(e.path, e.is_dir) for e in entries if not e.optional and not e.when]

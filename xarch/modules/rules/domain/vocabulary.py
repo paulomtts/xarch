@@ -286,6 +286,8 @@ FILTERS: tuple[Filter, ...] = (
     Filter("special", "the name the fact carries is one the language reserves for itself", FACT, ("name",)),
     Filter("named", "the name the fact carries matches the pattern, `*` standing for any text", FACT, ("name",),
            value=PATTERN),
+    Filter("fake-named", "the name the fact carries is a fake's: one of the starts `fakes.prefix` gives, followed by "
+                         "more", FACT, ("name",)),
     Filter("top-level", "the function is defined at the top level of its file, in no class", FACT, ("top-level",)),
     Filter("forwards", "the method only passes its arguments on to one call on what its object holds", FACT,
            ("forwards",)),
@@ -325,6 +327,9 @@ FILTERS: tuple[Filter, ...] = (
            ("reaches",), value=FOLDER),
     Filter("target-allows-under", "the part what the fact reaches lies in allows the file's part under that key "
                                 "(built_by)", TARGET, ("place",), side=APP_SIDE, value=KEY),
+    Filter("target-accepted", "the file's part accepts the import of what the fact reaches, by an entry of its "
+                              "`imports.accepted` naming the file, what it imports and why", TARGET, ("reaches",),
+           side=APP_SIDE),
 )
 """Every filter, about the file first, then about the fact, then about what it reaches."""
 

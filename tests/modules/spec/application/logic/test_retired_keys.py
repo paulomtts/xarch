@@ -50,7 +50,7 @@ from xarch.modules.spec.domain.profile_keys import (
 RENAMED = "renamed in 0.3.0: write tier"
 MOVED = "moved in 0.3.0: write uses: {never: <list>}"
 MISPLACED = "a key of uses: write uses: {never: <list>}"
-PART_USE = "holds, imports, litmus, name, package_only, role, shared, tests, untested, uses"
+PART_USE = "holds, imports, litmus, name, optional, package_only, role, shared, tests, untested, uses"
 TIER_USE = "docs, folder, imports, litmus, plain_tables, proves, uses"
 PROFILE_USE = ("based_on, checks, docs, evals, excluded, fakes, files, guards, hints, language, layers, name, never, "
                "parts, reserved, review, testing, tiers")

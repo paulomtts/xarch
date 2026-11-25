@@ -152,6 +152,7 @@ def test_the_guards_the_table_names_are_the_guards_the_loader_reads():
     assert {key.name for key in keys_of(GUARD)} == set(ORDER) - {"package-only"}
     assert all(key.rules == (key.name,) for key in keys_of(GUARD))
     assert next(key for key in keys_of("part") if key.name == "package_only").rules == ("package-only",)
+    assert next(key for key in keys_of("part") if key.name == "optional").rules == ("structure",)
 
 
 @pytest.mark.parametrize("key", KEYS, ids=lambda key: plain(key.address))
@@ -254,7 +255,7 @@ def test_an_entry_of_the_mock_specs_with_a_key_besides_its_own_is_told_each_key_
 
 
 def test_a_part_is_named_by_its_place_or_by_name_and_holds_no_path_and_no_folders():
-    assert names_of(PART) == {"holds", "imports", "litmus", "name", "package_only", "role", "shared", "tests",
-                              "untested", "uses"}
+    assert names_of(PART) == {"holds", "imports", "litmus", "name", "optional", "package_only", "role", "shared",
+                              "tests", "untested", "uses"}
     assert required_of(PART) == ("role",)
     assert [key.name for key in KEYS if key.scope == PART][0] == "name"

@@ -151,8 +151,11 @@ class StandIns:
 class Fakes:
     """Where the test fakes live, as a folder below the tests folder (e.g. ("fakes",)), the parts they stand in for,
     how a fake's name starts (the fake of port X is <prefix>X; empty when the file does not say), and the tiers whose
-    tests may import them besides those that test a part they stand in for (`fakes.tiers`; empty: none)."""
+    tests may import them besides those that test a part they stand in for (`fakes.tiers`; empty: none); prefixes,
+    when `fakes.prefix` lists several, each of them in the order written, prefix being the first, the one a fix
+    writes (empty: prefix alone)."""
     folder: tuple[str, ...]
     stand_in_for: tuple[str, ...]
     prefix: str = ""
     tiers: tuple[str, ...] = ()
+    prefixes: tuple[str, ...] = ()

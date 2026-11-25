@@ -193,12 +193,13 @@ REACHED = {"quantifier": MUST_BE_REACHED, "targets": EXISTING, "facts": ("class"
     pytest.param({"keep": c("sunny"), "mode": "fial", "sayings": say("{weather}")},
                  ["keep: no filter is named 'sunny': write one of test, tiered, placed, package-file, mirrors-a-part, "
                   "may-import-everything, below, beside, relative, standard, type-only, reserved, "
-                  "listed-by-another-part, app-package, own-code, takes-a-name, on-own-object, public, special, named, top-level, "
+                  "listed-by-another-part, app-package, own-code, takes-a-name, on-own-object, public, special, named, "
+                  "fake-named, top-level, "
                   "forwards, returns-an-attribute, exception, record, interface, immutable, receiver, annotated-callable, unreadable, "
                   "directive, doc, no-statements, exceptions-only, reported-at-import, names-restricted, of-kind, "
                   "target-placed, "
                   "target-inside-part, target-in-own-part, target-in-own-tier, target-test, target-below, "
-                  "target-allows-under",
+                  "target-allows-under, target-accepted",
                   "mode: is 'fial': write fail (a finding fails the check) or list (it is listed as weak and fails only "
                   "`check --strict`)",
                   "message: {weather} is no variable: did you mean where or tier or path?"],

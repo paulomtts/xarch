@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+from xarch.kernel.logic.placement import module_steps
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.imports import dotted, targets
 from xarch.modules.rules.application.logic.places import instance_root
@@ -37,21 +38,25 @@ def violations(files: Iterable[SourceFile], profile: Profile, root: str) -> list
         return []
     parsed = [(f, *dotted(f.path, profile.language.marks)) for f in files]
     known = {steps for _, steps, _ in parsed}
+    files = frozenset(steps for _, steps, is_package in parsed if not is_package)
+    patterns = tuple(module_steps(pattern, profile.language.marks) for pattern in profile.parts.values())
     edges: Graph = {}
     for file, steps, is_package in sorted(parsed, key=lambda p: p[0].name):
-        source = _instance(profile.repeats, steps)
+        source = _instance(profile.repeats, steps, patterns, files)
         if source is None:
             continue
         for line, target in sorted(set(targets(file.imports, steps if is_package else steps[:-1], known, root))):
-            depends = _instance(profile.repeats, target)
+            depends = _instance(profile.repeats, target, patterns, files)
             if depends is not None and depends != source:
                 edges.setdefault(source, {}).setdefault(depends, []).append((file.name, line, ".".join((root, *target))))
     return [_violation(group, edges) for group in _groups(edges)]
 
 
-def _instance(repeats: tuple[Repeat, ...], steps: tuple[str, ...]) -> str | None:
-    """The instance a path lies in, as the folder holding it and its name, e.g. "modules/docs"."""
-    folder = instance_root(repeats, steps)
+def _instance(repeats: tuple[Repeat, ...], steps: tuple[str, ...], patterns: tuple[tuple[str, ...], ...],
+              files: frozenset[tuple[str, ...]]) -> str | None:
+    """The instance a path lies in, as the folder holding it and its name, e.g. "modules/docs": none for a folder or
+    file the parts write by name beside the instances, nor for a file of the app lying beside them."""
+    folder = instance_root(repeats, steps, patterns, files)
     return None if folder is None else "/".join(folder)
 
 

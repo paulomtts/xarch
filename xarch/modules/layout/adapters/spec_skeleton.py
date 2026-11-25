@@ -21,10 +21,10 @@ class SpecSkeleton:
         self._spec = spec
 
     def top_level(self, profile: str) -> list[tuple[str, ...]]:
-        return [e.path for e in self._skeleton(profile).top_level if e.is_dir]
+        return [e.path for e in self._skeleton(profile).top_level if e.is_dir and not e.optional]
 
     def top_level_files(self, profile: str) -> list[tuple[str, ...]]:
-        return [e.path for e in self._skeleton(profile).top_level if not e.is_dir]
+        return [e.path for e in self._skeleton(profile).top_level if not e.is_dir and not e.optional]
 
     def each_roots(self, profile: str) -> list[tuple[str, ...]]:
         return [repeating.root for repeating in self._skeleton(profile).repeating]
@@ -35,7 +35,13 @@ class SpecSkeleton:
 
     def each_parts(self, profile: str, root: tuple[str, ...]) -> list[tuple[tuple[str, ...], bool]]:
         repeating = next(r for r in self._skeleton(profile).repeating if r.root == root)
-        return [(e.path, e.is_dir) for e in repeating.entries if e.leaf]
+        return [(e.path, e.is_dir) for e in repeating.entries if e.leaf and not e.optional]
+
+    def when(self, profile: str, root: tuple[str, ...] | None = None) -> dict[tuple[str, ...], tuple[str, ...]]:
+        skeleton = self._skeleton(profile)
+        entries = (skeleton.top_level if root is None
+                   else next(r for r in skeleton.repeating if r.root == root).entries)
+        return {e.path: e.when for e in entries if e.when and not e.optional}
 
     def beside(self, profile: str) -> Beside | None:
         skeleton = self._skeleton(profile)

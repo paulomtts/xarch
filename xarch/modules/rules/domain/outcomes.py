@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.domain.profile import Profile
-from xarch.modules.rules.domain.published import At, Drift, KnownName, Loosened, Translation, Unresolved, Weak
+from xarch.modules.rules.domain.published import AcceptedEdge, At, Drift, KnownName, Loosened, Translation, Unresolved, Weak
 from xarch.profile_values.capabilities import Shortfall
 from xarch.profile_values.excluded import Excluded
 
@@ -64,7 +64,8 @@ class Enforcement:
     the profile redefines without the litmus the bundled profile it is compared with gives it, as said; and known, the
     public names only the tests use that the profile accepts (guards.dead-code.known), which the tests-only check
     then does not list; and translated, the pairs of classes no-twins accepts as translations
-    (guards.no-twins.translated), which it then does not report."""
+    (guards.no-twins.translated), which it then does not report; and accepted, the imports a part's imports.accepted
+    accepts, which may-import then does not report."""
     guards_off: tuple[str, ...] = ()
     baseline_off: tuple[str, ...] = ()
     ungoverned: tuple[str, ...] = ()
@@ -82,6 +83,7 @@ class Enforcement:
     unplaced: tuple[str, ...] = ()
     known: tuple[KnownName, ...] = ()
     translated: tuple[Translation, ...] = ()
+    accepted: tuple[AcceptedEdge, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -98,6 +100,14 @@ class Accepting:
     the findings still listed, each entry that no longer holds among them, and the names accepted."""
     listed: tuple[Violation | Weak, ...]
     known: tuple[KnownName, ...]
+
+
+@dataclass(frozen=True)
+class Ratchet:
+    """What the imports the parts accept come to: each entry that no longer accepts anything, as a may-import
+    violation, and each import accepted."""
+    stale: tuple[Violation, ...]
+    accepted: tuple[AcceptedEdge, ...]
 
 
 @dataclass(frozen=True)

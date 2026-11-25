@@ -54,7 +54,7 @@ from xarch.modules.rules.application.logic.tier_of import may_use_fakes, tested
 from xarch.modules.rules.domain.parsed import Call, Class, ParameterCall, Ref, SourceFile
 from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.published import Weak
-from xarch.profile_values.testing import SpecEntry, StandIns
+from xarch.profile_values.testing import Fakes, SpecEntry, StandIns
 
 RULE = "stand-ins"
 GUARD = f"({RULE})"
@@ -87,7 +87,7 @@ def violations(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: 
 def weak(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile) -> list[Weak]:
     if profile.stand_ins is None or profile.fakes is None:
         return []
-    folder, prefix = profile.fakes.folder, profile.fakes.prefix
+    folder = profile.fakes.folder
     ports, _ = _ports(app, profile)
     found: list[Weak] = []
     for test in tests:
@@ -96,7 +96,7 @@ def weak(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profil
         for cls in test.classes:
             defined = {m.name for m in cls.methods} | set(cls.attributes)
             gaps = [([m for m in port.methods if m not in defined], port) for port in ports.values()
-                    if cls.name == f"{prefix}{port.name}"]
+                    if cls.name in _fake_names(profile.fakes, port.name)]
             if gaps and all(missing for missing, _ in gaps):
                 missing, port = min(gaps, key=lambda gap: len(gap[0]))
                 found.append(Weak(RULE, test.name, cls.line, f"{cls.name} does not define {', '.join(missing)}, "
@@ -145,7 +145,7 @@ def _missing_fakes(ports: Iterable[_Port], tests: list[SourceFile], profile: Pro
     shown = "/".join((tests_root, *folder)) + "/"
     return [Violation(p.file, p.line, f"{p.name} is a read port with no fake {GUARD}", RULE,
                       f"write {profile.fakes.prefix}{p.name} under {shown}")
-            for p in ports if p.kind == "read" and f"{profile.fakes.prefix}{p.name}" not in fakes]
+            for p in ports if p.kind == "read" and not fakes.intersection(_fake_names(profile.fakes, p.name))]
 
 
 def _mocks(tests: list[SourceFile], ports: dict[tuple[tuple[str, ...], str], _Port], profile: Profile,
@@ -200,6 +200,11 @@ def _mock(file: SourceFile, mock: _Built, ports: dict[tuple[tuple[str, ...], str
             return [Violation(file.name, mock.made.line, f"{written} stands in for {port.name}, a read port {GUARD}", RULE,
                               f"use its fake {profile.fakes.prefix}{port.name}")]
     return []
+
+
+def _fake_names(fakes: Fakes, port: str) -> tuple[str, ...]:
+    """The names a fake of the port may have: one of the fakes' prefixes, then the port's name."""
+    return tuple(f"{prefix}{port}" for prefix in fakes.prefixes or (fakes.prefix,))
 
 
 def _read(specs: tuple[SpecEntry, ...], autospec: bool) -> tuple[SpecEntry, ...]:

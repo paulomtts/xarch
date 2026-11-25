@@ -43,6 +43,23 @@ All notable changes to this project are written here. The format follows
   import binds (`getattr(t, "time")` after `import time as t`) is listed under `dynamic` in the enforcement section,
   so `--strict` fails on it, since `uses.never` cannot see which member it reads. A `getattr` of a parameter or an
   object is not listed. The README says, under `never`, what `uses.never` follows and what it does not.
+- `optional: true` on a part, a folder or a file, says it may be left out: `structure` reports nothing for it where it
+  is not there, in the app or in any instance of its repeating folder (a file only some instances hold), `new` and
+  `init` do not make it, and where it is there its code is checked as any part's and what the layout puts in it is
+  required. A part newly optional is listed as looser.
+- `parts.<part>.imports.accepted: [{file, import, why}, ...]` names imports the part's `imports.may` does not allow
+  that it accepts one by one, each with a reason (`import` a file or folder below the app, optionally `:<name>`):
+  `may-import` does not report them, every `check` names them in its enforcement section (`accepted:`, and
+  `enforcement.accepted` in JSON when there is one), and an entry that accepts nothing any more (its file gone, the
+  import gone, or `imports.may` now allowing it) is a `may-import` violation, so the list can only shrink. An entry
+  needs a reason and a file of its part. Each entry the compared profile does not hold is listed as looser. The new
+  filter `target-accepted` says the same in a check of one's own.
+- A chain of `layers` may be written as a map, `{parts: [...], types_only: true}`, so that an entry of a part's
+  `imports.may` marked `types_only` naming a part after it no longer breaks the chain; layering stays strict by
+  default, and a chain written as a list reads as before.
+- `fakes.prefix` takes a list of starts besides one (`prefix: [InMemory, Fake]`): a fake may start with any of them,
+  `stand-ins` and `dead-code` read each, a fix writes the first, and the new filter `fake-named` says the same in a
+  check of one's own. A single start reads as before.
 
 ### Changed
 
@@ -57,9 +74,6 @@ All notable changes to this project are written here. The format follows
   those that go back in a greedy order of the group that leaves few imports going back (each dependency weighing as
   many imports as make it), so cutting them all leaves the group with no cycle. A project whose instances share a few
   back edges sees one finding per group, not one per path through them.
-
-### Changed
-
 - The guard test `init` writes (`tests/architecture/test_rules.py`) runs `xarch check --strict`, and the `AGENTS.md`
   it writes tells an agent to run the same: a fresh project of either bundled profile, with a module, has no finding
   `--strict` fails on, so a weak finding (`holds`, `immutable`, `pass-through`, a file `dead-code`'s `untested` finds)
@@ -80,7 +94,11 @@ All notable changes to this project are written here. The format follows
 - `xarch check` no longer prints the parser's `SyntaxWarning` lines on stderr (`<unknown>:1: SyntaxWarning: invalid
   escape sequence '\d'`) for the code it reads, a file with an invalid escape in a string or a string holding one;
   the warnings are about the user's code, not xarch's output.
-
+- A file lying beside the instances of a repeating folder (`sql/engine.py` beside `sql/<store>/`) was read as an
+  instance named after it, and a folder the layout names beside them (`adapters/web/` beside `adapters/<adapter>/`)
+  as one too, or not, by the order of the parts: each gave false `may-import` and `cycles` findings and a wrong
+  `where`. An instance is now a folder the layout does not name; such a file belongs to the part of its folder, or to
+  its own part when the layout names it.
 - `xarch check` no longer stops when a source file holds a string xarch cannot parse as code, such as a lone
   surrogate or a null byte; the string is ignored. A file nested too deep for Python's parser is reported as
   unparsable instead of stopping the run.

@@ -10,7 +10,7 @@ from collections.abc import Callable
 
 from xarch.kernel.logic.placement import name_matches
 from xarch.kernel.placement import EVERYTHING
-from xarch.modules.rules.application.logic.places import narrowed
+from xarch.modules.rules.application.logic.places import accepting, narrowed
 from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.rule import Facts, Found, Read
 from xarch.profile_values.checks import ALL, ANY, APP, STRUCTURE, TESTS, Condition, Scope
@@ -135,6 +135,12 @@ def _named(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
     return found.fact.name is not None and name_matches(value, found.fact.name)
 
 
+def _fake_named(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
+    fakes, name = profile.fakes, found.fact.name
+    return fakes is not None and name is not None and any(
+        name.startswith(prefix) and name != prefix for prefix in fakes.prefixes or (fakes.prefix,))
+
+
 def _trait(name: str) -> Asked:
     return lambda found, facts, profile, value: name in found.fact.traits
 
@@ -162,6 +168,11 @@ def _reported_at_import(found: Found, facts: Facts, profile: Profile, value: str
 
 def _names_restricted(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
     return bool(narrowed(found.read.place, found.fact.at, profile))
+
+
+def _target_accepted(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
+    part = found.read.place.part if found.read.place is not None else None
+    return accepting(profile, part, found.read.file.path, found.fact.target, found.fact.name) is not None
 
 
 def _of_kind(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
@@ -205,6 +216,7 @@ _FACT: dict[str, Asked] = {
     "relative": _relative, "standard": _standard, "reserved": _reserved,
     "listed-by-another-part": _listed_by_another_part, "app-package": _app_package, "own-code": _own_code,
     "takes-a-name": _takes_a_name, "on-own-object": _on_own_object, "special": _special, "named": _named,
+    "fake-named": _fake_named,
     **{name: _trait(name) for name in ("top-level", "forwards", "exception", "record", "interface", "immutable",
                                        "receiver", "annotated-callable", "no-statements", "exceptions-only",
                                        "unreadable", "doc", "public", "type-only")},
@@ -212,7 +224,7 @@ _FACT: dict[str, Asked] = {
     "names-restricted": _names_restricted, "of-kind": _of_kind, "target-placed": _target_placed,
     "target-inside-part": _target_inside_part, "target-in-own-part": _target_in_own_part,
     "target-in-own-tier": _target_in_own_tier, "target-test": _target_test, "target-below": _target_below,
-    "target-allows-under": _target_allows_under}
+    "target-allows-under": _target_allows_under, "target-accepted": _target_accepted}
 """Each filter about the fact or what it reaches by its name, the question it asks."""
 
 NAMES = (*_FILE, *_FACT)

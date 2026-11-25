@@ -37,3 +37,18 @@ def test_the_skeleton_says_beside_the_test_files_and_the_folders_whose_tests_sta
 def test_without_beside_the_skeleton_says_no_beside():
     found = SPEC.skeleton("cli")
     assert (found.beside, found.kept) == (False, ())
+
+
+SPARSE = {"name": "sparse", "parts": {
+    "api/": {"role": "a surface", "optional": True, "v1/": {"role": "its first version"}},
+    "modules/<module>/": {"domain/": {"role": "rules"}, "config.py": {"role": "settings", "optional": True},
+                          "settings/": {"defaults.py": {"role": "defaults", "optional": True}}}}}
+
+
+def test_the_skeleton_says_which_entries_are_optional_parts_and_which_optional_part_each_lies_in():
+    found = controller(FakeArchitectureFiles({"cli": SPARSE})).skeleton("cli")
+    assert found.top_level == (Entry(("api",), True, False, True), Entry(("api", "v1"), True, True, False, ("api",)),
+                               Entry(("modules",), True, True))
+    assert found.repeating[0].entries == (
+        Entry(("domain",), True, True), Entry(("config.py",), False, True, True),
+        Entry(("settings",), True, True), Entry(("settings", "defaults.py"), False, True, True))

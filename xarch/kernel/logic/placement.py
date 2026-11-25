@@ -16,7 +16,7 @@ never says so; `with_itself` adds it to the row of the part.
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable, Mapping
+from collections.abc import Collection, Iterable, Mapping
 
 from xarch.kernel.placement import EACH, EVERYTHING, Marks, Place
 from xarch.profile_values.placement import Repeat, Target
@@ -60,24 +60,43 @@ def stands_for_folder(path: tuple[str, ...], marks: Marks) -> bool:
                                            and name in {stem(file, marks) for file in marks.package_files})
 
 
-def place_of(patterns: Mapping[str, tuple[str, ...]], path: tuple[str, ...], marks: Marks) -> Place:
-    """The place of a path among patterns, by name; Place(None) when no pattern claims it."""
+def _plain_file(path: tuple[str, ...], marks: Marks) -> bool:
+    """Whether a path is a file that does not stand for its folder: its last step carries one of the endings, and it
+    is no package file."""
+    return bool(path) and stem(path[-1], marks) is not None and not stands_for_folder(path, marks)
+
+
+def place_of(patterns: Mapping[str, tuple[str, ...]], path: tuple[str, ...], marks: Marks,
+             files: Collection[tuple[str, ...]] = frozenset()) -> Place:
+    """The place of a path among patterns, by name; Place(None) when no pattern claims it. An instance of a
+    repeating folder is a folder the layout does not name: a step a pattern writes beside the repeating step is never
+    one, nor is a file (a plain file as written, or a path files holds, each as the language names it) lying in the
+    repeating folder's own folder."""
     steps = module_steps(path, marks)
+    files = {*files, *((steps,) if _plain_file(path, marks) else ())}
+    shaped = {name: module_steps(raw, marks) for name, raw in patterns.items()}
     best = Place(None)
     depth = -1
-    for name, raw in patterns.items():
-        pattern = module_steps(raw, marks)
+    for name, pattern in shaped.items():
         if len(steps) < len(pattern) or len(pattern) <= depth:
             continue
         instance = None
-        for want, step in zip(pattern, steps):
+        for at, (want, step) in enumerate(zip(pattern, steps)):
             if want == EACH and step != EACH:
+                if step in named_beside(shaped.values(), pattern[:at]) or (at == len(steps) - 1 and steps in files):
+                    break
                 instance = step
             elif want != step or step == EACH:
                 break
         else:
             best, depth = Place(name, instance, steps[len(pattern):]), len(pattern)
     return best
+
+
+def named_beside(patterns: Iterable[tuple[str, ...]], folder: tuple[str, ...]) -> frozenset[str]:
+    """The steps the patterns write by name in a folder: the folders and files beside its instances."""
+    return frozenset(pattern[len(folder)] for pattern in patterns
+                     if len(pattern) > len(folder) and pattern[:len(folder)] == folder and pattern[len(folder)] != EACH)
 
 
 def name_matches(pattern: str, name: str) -> bool:

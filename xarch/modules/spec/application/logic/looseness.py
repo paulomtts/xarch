@@ -3,17 +3,17 @@ match), the guards it leaves off, and every way it is looser than that one.
 
 A custom profile is compared with the bundled profile its `based_on` names, else with the one of highest match, the
 first by name on a tie; one no part pairs with is no candidate, and with none left nothing is compared. For one run,
-`--against` names the profile compared with instead, bundled or a file, and then a bundled profile is compared too,
-even with one no part pairs with, and no other is said to match higher. The match is
-the share of the items of either profile, one per thing `check` reads, that have a counterpart in the other: each part;
-each key of a part that holds a value (imports.may, imports.libraries, imports.must, each target marked types_only,
-uses.never, each kind of holds and each setting it writes, untested, litmus, shared, entry, package_only); each tier,
-each entry of its subject and each of its keys that holds a value; each guard switched on; and each key of the profile
-as a whole (libraries, testing.skips, each reserved module, files entry and excluded folder, fakes, each check of its
-own). Parts pair by name, then by the same layout path; tiers by name, then by the same subject, its parts read
-through the pairing; each at most once. An item has a counterpart when every part and tier holding it pairs (a check
-of the profile's own, when the other writes one of its id), so a key one side drops on a paired holder still has one.
-A match below LOW, or one with no part paired, is low.
+`--against` names the profile compared with instead, bundled or a file, and then a bundled profile is compared too, even
+with one no part pairs with, and no other is said to match higher. The match is the share of the items of either
+profile, one per thing `check` reads, that have a counterpart in the other: each part; each key of a part that holds a
+value (imports.may, imports.libraries, imports.must, each target marked types_only, uses.never, each kind of holds and
+each setting it writes, untested, litmus, shared, entry, package_only, optional, imports.accepted); each tier, each
+entry of its subject and each of its keys that holds a value; each guard switched on; and each key of the profile as a
+whole (libraries, testing.skips, each reserved module, files entry and excluded folder, fakes, each check of its own).
+Parts pair by name, then by the same layout path; tiers by name, then by the same subject, its parts read through the
+pairing; each at most once. An item has a counterpart when every part and tier holding it pairs (a check of the
+profile's own, when the other writes one of its id), so a key one side drops on a paired holder still has one. A match
+below LOW, or one with no part paired, is low.
 
 Looser is compared only on the parts and tiers that pair, the part of a target read through the pairing (a part
 renamed in place is compared, and said, under the custom profile's name), and on the files of the same path, and only
@@ -25,7 +25,9 @@ the part still may import (some entry covers it) and no mark of its covers; an o
 `imports.libraries`, or `libraries` dropped as a whole; a target added to a part's `imports.must`, or the key dropped
 from a part that has it; a name the bundled
 `uses.never` list of a part holds that no entry of the custom list covers (`time` covers `time.time`); a part newly
-marked `untested`; a part dropped from a tier's `imports.types_only`; a target added to a tier's `imports.also` that no
+marked `untested`; a part newly `optional`; an entry of a part's `imports.accepted` (a file, and what it imports)
+the bundled part does not hold; a part dropped from a tier's `imports.types_only`; a target added to
+a tier's `imports.also` that no
 target of the bundled tier's covers; a tier no longer `uses.apply_never`; a name dropped from `testing.skips`; a `files`
 entry no longer `pinned`; a name the bundled profile `reserved` holds that the custom one does not; a part the bundled
 profile gives a `litmus` that the custom one redefines without one; a public name `guards.dead-code.known` accepts as
@@ -73,7 +75,7 @@ HELD = ("holds.classes.names", "holds.classes.immutable", "holds.classes.built_b
         "holds.records.names", "holds.records.immutable", "holds.exceptions.names")
 """The key of each setting of a kind of holds, a way it is looser listed under, kind by kind in the order of KINDS."""
 LOOSER = ("imports.may", "imports.may.types_only", "imports.libraries", "uses.never", "imports.must", "untested",
-          LITMUS, "holds", *HELD, "shared", "imports.types_only", "imports.also", "uses.apply_never",
+          "optional", "imports.accepted", LITMUS, "holds", *HELD, "shared", "imports.types_only", "imports.also", "uses.apply_never",
           "tiers.imports.must", "plain_tables", "testing.skips", "testing.beside", "testing.shared", "fakes.tiers",
           "files.pinned", "reserved", "known",
           "translated", "review.never", "review.mask", "evals.placement.lines")
@@ -158,7 +160,8 @@ def _part_keys(architecture: Architecture, name: str, part: Part, packaged: bool
                "imports.libraries": libraries is not None and name in libraries,
                "imports.must": bool(part.imports_must), "uses.never": bool(architecture.uses_never.get(name)),
                "untested": bool(part.untested), LITMUS: bool(part.litmus), "shared": part.shared is not None,
-               "entry": part.entry, "package_only": packaged}
+               "entry": part.entry, "package_only": packaged, "optional": part.optional,
+               "imports.accepted": bool(part.imports_accepted)}
     keys: list[tuple[object, ...]] = [(key,) for key, held in written.items() if held]
     keys += [("imports.may.types_only", target) for target in part.imports_types_only]
     for held in part.holds:
@@ -286,6 +289,12 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
             found += [("imports.must", name, _shown(t, words)) for t in now if before and _into(t, pairs) not in before]
     found += [("untested", name, "") for name in shared
               if custom.parts[name].untested and not base.parts[pairs[name]].untested]
+    found += [("optional", name, "") for name in shared
+              if custom.parts[name].optional and not base.parts[pairs[name]].optional]
+    for name in shared:
+        before = {(entry.file, entry.written) for entry in base.parts[pairs[name]].imports_accepted}
+        found += [("imports.accepted", name, f"{'/'.join(entry.file)}: {entry.written}")
+                  for entry in custom.parts[name].imports_accepted if (entry.file, entry.written) not in before]
     found += [(LITMUS, name, "") for name in shared if base.parts[pairs[name]].litmus and not custom.parts[name].litmus]
     found += [("holds", name, kind) for name in shared for kind in _allowed(custom.parts[name])
               if kind not in _allowed(base.parts[pairs[name]])]
@@ -505,6 +514,11 @@ def _sentence(key: str, part: str, what: str = "") -> str:
             return f"{part} may also meet imports.must with {what} (parts.{part}.imports.must)"
         case "untested":
             return f"{part} is newly marked untested (parts.{part}.untested)"
+        case "optional":
+            return f"{part} is newly optional: structure no longer requires it (parts.{part}.optional)"
+        case "imports.accepted":
+            file, _, imported = what.partition(": ")
+            return f"{part} accepts {file} importing {imported} (parts.{part}.imports.accepted)"
         case "litmus" if what:
             return (f"{part} has no litmus, though {what}, which --strict rests on, gives the part it pairs with one "
                     f"(parts.{part}.litmus)")

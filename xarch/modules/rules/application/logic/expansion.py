@@ -123,8 +123,8 @@ def _narrower(profile: Profile, part: str) -> tuple[str, ...]:
 def _rules(profile: Profile) -> tuple[Rule, ...]:
     """Every import between places the profile governs is allowed by the rules of the importing file's part: a part
     may import itself and its `imports.may`, where a target with a name pattern allows only the names it matches
-    (the findings of one import line are one, listing the names, or the targets, it may not import);
-    the structure may import nothing the profile governs."""
+    (the findings of one import line are one, listing the names, or the targets, it may not import), and an import
+    its `imports.accepted` names is excused (see accepted); the structure may import nothing the profile governs."""
     narrowed = Saying("{where} may import only {allowed_names} from {target_part}, {disallowed_name} ({target_name})",
                       "import from {target_part} only names that match {allowed_names} ({key}), or move what "
                       "needs the rest to a part that may import it", _all("names-restricted"),
@@ -133,7 +133,9 @@ def _rules(profile: Profile) -> tuple[Rule, ...]:
     found = [Rule("may-import", Scope(APP, part), ("import-into-app",), MAY_ONLY, (Match("permitted"),),
                   (narrowed, Saying(plain, "import only {importable_parts} in {where} ({key}), or {move_fix}",
                                     per_line=("target",))),
-                  keep=_all("target-placed"), key=f"parts.{part}.imports.may") for part in profile.parts]
+                  keep=_all("target-placed"), key=f"parts.{part}.imports.may",
+                  exempt=_all("target-accepted") if profile.imports_accepted.get(part) else ())
+             for part in profile.parts]
     return (*found, Rule("may-import", Scope(APP, STRUCTURE), ("import-into-app",), MAY_ONLY, (Match("permitted"),),
                          (Saying(plain, "drop the import of {target_part}, or {move_fix}", per_line=("target",)),),
                          keep=_all("target-placed")))
@@ -403,7 +405,9 @@ def _dead_code(profile: Profile) -> tuple[Rule, ...]:
     fakes = Rule("dead-code", Scope(TESTS, where=_all(f"below {folder}")), ("class",), MUST_BE_REACHED, EXISTING,
                  (Saying("{name} is a fake that no test names (dead-code)",
                          "delete {name}, or write the test that uses it"),),
-                 keep=_all(f"named {prefix}*"), exempt=_all(f"named {prefix}") if prefix else (), links=("names-mentioned",),
+                 keep=_all(f"named {prefix}*") if not profile.fakes.prefixes else _all("fake-named"),
+                 exempt=_all(f"named {prefix}") if prefix and not profile.fakes.prefixes else (),
+                 links=("names-mentioned",),
                  roots=Scope(TESTS, where=_all(f"not below {folder}")), spread=("class",), key="guards.dead-code")
     return (*ports, fakes)
 

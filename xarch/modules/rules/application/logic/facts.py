@@ -73,8 +73,9 @@ from xarch.modules.rules.domain.rule import MUST_REACH, Defined, Fact, Facts, Re
 from xarch.modules.rules.domain.vocabulary import KINDS as VOCABULARY
 from xarch.profile_values.checks import Scope
 
-Placements = dict[tuple[str, ...], Place | None]
-"""Where each path below the root placed so far sits."""
+Placements = tuple[dict[tuple[str, ...], Place | None], frozenset[tuple[str, ...]]]
+"""Where each path below the root placed so far sits, and the paths of the app's files that are no package file, none
+of which is an instance of a repeating folder."""
 
 KINDS = tuple(kind.name for kind in VOCABULARY)
 """Every kind of fact, in the order a file's facts are worked out."""
@@ -101,7 +102,7 @@ def facts_of(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Pr
     known = frozenset(steps for f, steps, _ in app if f.error is None)
     known_tests = frozenset(steps for f, steps, _ in tests if f.error is None)
     near = frozenset(steps for f, steps, _ in tests if f.beside and f.error is None)
-    cache: Placements = {}
+    cache: Placements = ({}, frozenset(steps for f, steps, package in app if not package))
     parsed = [(f, steps) for f, steps, _ in app if f.error is None]
     defined = Defined(root, {(root, *steps, c.name): _placed(profile, cache, steps) for f, steps in parsed
                              for c in f.classes},
@@ -257,9 +258,10 @@ def _references(file: SourceFile, profile: Profile, cache: Placements, defined: 
 
 def _placed(profile: Profile, cache: Placements, path: tuple[str, ...]) -> Place | None:
     """Where a path below the root sits, worked out once a run."""
-    if path not in cache:
-        cache[path] = place(profile, path)
-    return cache[path]
+    found, files = cache
+    if path not in found:
+        found[path] = place(profile, path, files)
+    return found[path]
 
 
 def _class(cls: Class, read: Read, defined: Defined, ports: dict[str, Class]) -> frozenset[str]:

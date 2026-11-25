@@ -21,6 +21,7 @@ PART_HOLDS_CLASSES = "part.holds.classes"
 PART_HOLDS_FUNCTIONS = "part.holds.functions"
 PART_HOLDS_RECORDS = "part.holds.records"
 PART_HOLDS_EXCEPTIONS = "part.holds.exceptions"
+LAYER = "layer"
 TIER = "tier"
 TIER_DOCS = "tier.docs"
 TIER_USES = "tier.uses"
@@ -59,6 +60,7 @@ SCOPES = {
     PART_HOLDS_FUNCTIONS: "parts.<part>.holds.functions",
     PART_HOLDS_RECORDS: "parts.<part>.holds.records",
     PART_HOLDS_EXCEPTIONS: "parts.<part>.holds.exceptions",
+    LAYER: "layers.<layer>",
     TIER: "tiers.<tier>",
     TIER_DOCS: "tiers.<tier>.docs",
     TIER_USES: "tiers.<tier>.uses",

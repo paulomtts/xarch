@@ -18,6 +18,7 @@ from xarch.modules.spec.domain.profile_keys import (
     FILE,
     FIXTURE,
     GUARD,
+    LAYER,
     MOCK_SPECS,
     MOCKS,
     NAMING,
@@ -65,7 +66,7 @@ _KEYS: tuple[Key, ...] = (
     Key(PROFILE, "parts", True, rules=("structure", "may-import"), opens=PART),
     Key(PROFILE, "never", rules=("never-use",)),
     Key(PROFILE, "reserved", rules=("libraries",)),
-    Key(PROFILE, "layers"),
+    Key(PROFILE, "layers", opens=LAYER),
     Key(PROFILE, "tiers", rules=("tiers", "test-tree"), opens=TIER),
     Key(PROFILE, "fakes", rules=("stand-ins", "dead-code"), opens=FAKES),
     Key(PROFILE, "guards", opens=GUARD),
@@ -88,10 +89,12 @@ _KEYS: tuple[Key, ...] = (
     Key(PART, "tests", rules=("tiers",)),
     Key(PART, "untested"),
     Key(PART, "package_only", rules=("package-only",)),
+    Key(PART, "optional", rules=("structure",)),
 
     Key(PART_IMPORTS, "may", rules=("may-import",), opens=PART_IMPORTS_MAY),
     Key(PART_IMPORTS, "must", rules=("must-import",)),
     Key(PART_IMPORTS, "libraries", rules=("libraries",)),
+    Key(PART_IMPORTS, "accepted", rules=("may-import",)),
 
     Key(PART_IMPORTS_MAY, "types_only", rules=("types-only",)),
 
@@ -112,6 +115,9 @@ _KEYS: tuple[Key, ...] = (
     Key(PART_HOLDS_RECORDS, "immutable", rules=("immutable",)),
 
     Key(PART_HOLDS_EXCEPTIONS, "names", rules=("names",)),
+
+    Key(LAYER, "parts", True),
+    Key(LAYER, "types_only"),
 
     Key(TIER, "proves", False, False),
     Key(TIER, "litmus", False, False),
@@ -241,6 +247,7 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "fakes": ("class", "class.interface"),
     "fakes.tiers": _IMPORTS,
     "parts.<part>.imports.may": _IMPORTS,
+    "parts.<part>.imports.accepted": _IMPORTS,
     "parts.<part>.imports.must": (*_IMPORTS, "import.standard", "function.statements", "file", "file.package"),
     "parts.<part>.imports.may.types_only": _TYPES_ONLY,
     "parts.<part>.holds": ("class", "class.exception", "class.record", "function", "function.top_level", "public"),
