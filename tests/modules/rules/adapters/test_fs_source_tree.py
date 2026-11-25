@@ -887,6 +887,21 @@ def test_a_file_names_every_name_it_mentions_annotations_and_string_annotations_
     assert {"Repo", "Notifier", "Store"} <= cls.named and "Clock" not in cls.named
 
 
+@pytest.mark.parametrize("escape", [
+    pytest.param("\\ud800", id="a lone surrogate, which the parser cannot encode"),
+    pytest.param("a\\x00b", id="a null byte, which the parser refuses"),
+    pytest.param("(" * 1000, id="a nesting too deep for the parser"),
+])
+def test_a_string_the_parser_cannot_read_as_code_is_ignored_and_the_file_is_still_read(tmp_path, escape):
+    text = (f"from typing import ClassVar\nX = '{escape}'\nY = 'Box[Thing]'\n\n\n"
+            f"class A:\n    z: '{escape}'\n\n\ndef f(check: '{escape}') -> '{escape}':\n    return check()\n")
+    found = parsed(tmp_path, text)
+    assert found.error is None
+    assert {"Box", "Thing"} <= found.named
+    assert found.classes[0].fields == ("z",)
+    assert [c.annotated for c in found.callbacks] == [False]
+
+
 @pytest.mark.parametrize("text, found", [
     pytest.param("def a(check, path):\n    return check(path)\n", [Callback(2, "a", "check", False)],
                  id="a function calls a parameter by its bare name"),
@@ -1095,6 +1110,8 @@ def test_handed_the_interpreter_s_standard_library_every_import_of_xarch_s_own_s
 @pytest.mark.parametrize("text, error", [
     pytest.param("def f(:\n", Unparsable(1, "invalid syntax"), id="a syntax error is the parser's message at its line"),
     pytest.param("x = 1\n", None, id="a text that parses has none"),
+    pytest.param("x = " + "1 + " * 200_000 + "1\n", Unparsable(0, "maximum recursion depth exceeded during ast construction"),
+                 id="a text nested too deep for the parser is unparsable, not a crash"),
 ])
 def test_a_text_in_no_file_is_parsed_as_a_file_is(text, error):
     assert FsSourceTree(FileSystem()).parsed(text, STANDARD, **HANDED).error == error

@@ -271,7 +271,7 @@ def _parsed(name: str, path: tuple[str, ...], text: str, forms: tuple[TableForm,
         comments = _comments(text)
     except SyntaxError as e:
         return SourceFile(name, path, (), error=Unparsable(e.lineno or 0, e.msg))
-    except (tokenize.TokenError, IndentationError) as e:
+    except (tokenize.TokenError, IndentationError, ValueError, RecursionError) as e:
         return SourceFile(name, path, (), error=Unparsable(0, str(e)))
     star = _star_import(tree)
     calls = _Calls(_BUILTINS if not star else frozenset(), where,
@@ -643,11 +643,19 @@ def _named(tree: ast.AST) -> frozenset[str]:
     return frozenset(found)
 
 
+def _expression(text: str) -> ast.Expression | None:
+    """The expression a string holds, or None when the parser cannot read it as one: a syntax error, a lone surrogate
+    or a null byte it refuses, or a nesting too deep for it."""
+    try:
+        return ast.parse(text.strip(), mode="eval")
+    except (SyntaxError, ValueError, RecursionError):
+        return None
+
+
 def _in_string(text: str) -> set[str]:
     """The names an expression written as a string holds; nothing when the string is no expression."""
-    try:
-        tree = ast.parse(text.strip(), mode="eval")
-    except SyntaxError:
+    tree = _expression(text)
+    if tree is None:
         return set()
     return {n.id if isinstance(n, ast.Name) else n.attr for n in ast.walk(tree) if isinstance(n, (ast.Name, ast.Attribute))}
 
@@ -1030,10 +1038,9 @@ class _Calls(ast.NodeVisitor):
     def _is_callable(self, annotation: ast.expr) -> bool:
         """Whether an annotation, read in the scope around the function, is a Callable (see the module's text)."""
         if isinstance(annotation, ast.Constant) and isinstance(annotation.value, str):
-            try:
-                annotation = ast.parse(annotation.value.strip(), mode="eval").body
-            except SyntaxError:
+            if (expression := _expression(annotation.value)) is None:
                 return False
+            annotation = expression.body
         if isinstance(annotation, ast.BinOp) and isinstance(annotation.op, ast.BitOr):
             return self._is_callable(annotation.left) or self._is_callable(annotation.right)
         if isinstance(annotation, ast.Subscript):
@@ -1124,10 +1131,9 @@ def _declared(node: ast.ClassDef) -> list[ast.AnnAssign]:
 
 def _class_variable(annotation: ast.expr) -> bool:
     if isinstance(annotation, ast.Constant) and isinstance(annotation.value, str):
-        try:
-            annotation = ast.parse(annotation.value.strip(), mode="eval").body
-        except SyntaxError:
+        if (expression := _expression(annotation.value)) is None:
             return False
+        annotation = expression.body
     if isinstance(annotation, ast.Subscript):
         annotation = annotation.value
     name = annotation.id if isinstance(annotation, ast.Name) else annotation.attr \

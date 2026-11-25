@@ -5,6 +5,12 @@ All notable changes to this project are written here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- `xarch check` no longer stops when a source file holds a string xarch cannot parse as code, such as a lone
+  surrogate or a null byte; the string is ignored. A file nested too deep for Python's parser is reported as
+  unparsable instead of stopping the run.
+
 ## [0.3.0] - 2026-11-24
 
 ### Breaking changes
